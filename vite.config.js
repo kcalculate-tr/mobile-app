@@ -41,5 +41,35 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-  }
+  },
+  build: {
+    // 1 MB'ın altındaki chunk'lar için uyarı gösterme
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          // React çekirdeği — her sayfanın ihtiyaç duyduğu en küçük runtime
+          if (
+            id.includes('react/') ||
+            id.includes('react-dom') ||
+            id.includes('react-router-dom') ||
+            id.includes('scheduler')
+          ) return 'vendor-react';
+
+          // Animasyon + ikon kütüphaneleri — sayfa geçişlerinde kullanılır
+          if (id.includes('framer-motion') || id.includes('lucide-react')) {
+            return 'vendor-ui';
+          }
+
+          // Supabase — realtime websocket dahil büyük bir paket
+          if (id.includes('@supabase')) return 'vendor-supabase';
+
+          // Kalan tüm node_modules (date-fns, uuid, vb.)
+          return 'vendor';
+        },
+      },
+    },
+  },
 })
