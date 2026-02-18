@@ -1,13 +1,16 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  CheckCircle2,
   ChevronLeft,
+  Circle,
   HelpCircle,
   Minus,
   Plus,
   ShoppingCart,
 } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
+import { buildCartLineKey } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { supabase } from '../supabase';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -33,6 +36,14 @@ export default function ProductDetail() {
     !cachedProducts.find((p) => String(p.id) === String(id))
   );
   const [error, setError] = useState(null);
+
+  // ── Opsiyon Grupları ────────────────────────────────────────────────────────
+  // Her grup: { id, name, min_selection, max_selection, is_required, sort_order, items: [] }
+  const [optionGroups, setOptionGroups] = useState([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+
+  // Kullanıcının seçimleri: { [groupId]: Set<itemId> }
+  const [selections, setSelections] = useState({});
 
   useEffect(() => {
     // Context cache'de varsa ağa gitme — anında göster
@@ -87,12 +98,141 @@ export default function ProductDetail() {
     return () => { isMounted = false; };
   }, [id, cachedProducts]);
 
-  const cartQuantity = product?.id
-    ? Math.max(
+  // ── Ürün opsiyon gruplarını çek ────────────────────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+    setOptionsLoading(true);
+    setSelections({});
+
+    async function fetchOptions() {
+      try {
+        // product_option_groups → option_groups → option_items (sort_order ile)
+        const { data: pogRows, error: pogErr } = await supabase
+          .from('product_option_groups')
+          .select(`
+            id,
+            sort_order,
+            option_groups (
+              id,
+              name,
+              description,
+              min_selection,
+              max_selection,
+              is_required,
+              option_items (
+                id,
+                name,
+                price_adjustment,
+                is_available,
+                sort_order
+              )
+            )
+          `)
+          .eq('product_id', id)
+          .order('sort_order', { ascending: true });
+
+        if (pogErr || !isMounted) return;
+
+        const groups = (pogRows || [])
+          .map((row) => ({
+            pogId: row.id,
+            sort_order: row.sort_order,
+            ...row.option_groups,
+            items: [...(row.option_groups?.option_items || [])]
+              .sort((a, b) => a.sort_order - b.sort_order),
+          }))
+          .filter((g) => g.id);
+
+        if (!isMounted) return;
+        setOptionGroups(groups);
+
+        // Zorunlu + tek seçimli gruplar için ilk available item'ı ön-seç
+        const initialSelections = {};
+        groups.forEach((g) => {
+          if (g.is_required && g.max_selection === 1) {
+            const first = g.items.find((item) => item.is_available);
+            if (first) initialSelections[g.id] = new Set([first.id]);
+          }
+        });
+        setSelections(initialSelections);
+      } catch (e) {
+        console.error('[ProductDetail] options fetch error:', e);
+      } finally {
+        if (isMounted) setOptionsLoading(false);
+      }
+    }
+
+    fetchOptions();
+    return () => { isMounted = false; };
+  }, [id]);
+
+  // ── Seçim değiştirme ───────────────────────────────────────────────────────
+  const toggleItem = useCallback((group, itemId) => {
+    setSelections((prev) => {
+      const current = new Set(prev[group.id] || []);
+      const isSingle = group.max_selection === 1;
+
+      if (isSingle) {
+        // Radio: sadece bu item seçili olsun
+        return { ...prev, [group.id]: new Set([itemId]) };
+      }
+
+      // Checkbox (multi)
+      if (current.has(itemId)) {
+        current.delete(itemId);
+      } else if (current.size < group.max_selection) {
+        current.add(itemId);
+      }
+      return { ...prev, [group.id]: current };
+    });
+  }, []);
+
+  // ── Seçim geçerli mi? (tüm zorunlu gruplar dolu) ──────────────────────────
+  const selectionsValid = useMemo(() => {
+    return optionGroups
+      .filter((g) => g.is_required)
+      .every((g) => {
+        const sel = selections[g.id];
+        return sel && sel.size >= (g.min_selection || 1);
+      });
+  }, [optionGroups, selections]);
+
+  // ── Ekstra fiyat toplamı ───────────────────────────────────────────────────
+  const extraPrice = useMemo(() => {
+    let total = 0;
+    optionGroups.forEach((g) => {
+      const sel = selections[g.id];
+      if (!sel) return;
+      g.items.forEach((item) => {
+        if (sel.has(item.id)) total += parseFloat(item.price_adjustment || 0);
+      });
+    });
+    return total;
+  }, [optionGroups, selections]);
+
+  // ── selectedOptions objesini CartContext formatına çevir ──────────────────
+  const selectedOptionsForCart = useMemo(() => {
+    const obj = { _extraPrice: extraPrice };
+    Object.entries(selections).forEach(([gId, set]) => {
+      obj[gId] = set.size === 1 ? [...set][0] : [...set];
+    });
+    return obj;
+  }, [selections, extraPrice]);
+
+  // lineKey: opsiyonlar değiştikçe yeniden hesaplanır
+  const currentLineKey = useMemo(
+    () => product?.id ? buildCartLineKey(product.id, selectedOptionsForCart) : null,
+    [product?.id, selectedOptionsForCart]
+  );
+
+  const cartQuantity = useMemo(() => {
+    if (!currentLineKey) return 0;
+    return Math.max(
       0,
-      Number((cart || []).find((item) => String(item.id) === String(product.id))?.quantity || 0)
-    )
-    : 0;
+      Number((cart || []).find((item) => item.lineKey === currentLineKey)?.quantity || 0)
+    );
+  }, [cart, currentLineKey]);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -116,7 +256,8 @@ export default function ProductDetail() {
   const productName = product?.name || 'Ürün';
   const productDesc = product?.desc || product?.description || 'Ürün açıklaması bulunamadı.';
   const productPrice = toNumber(product?.price);
-  const primaryActionTotal = formatCurrency(productPrice * Math.max(1, quantity));
+  const unitPrice = productPrice + extraPrice;
+  const primaryActionTotal = formatCurrency(unitPrice * Math.max(1, quantity));
 
   // product değişmediği sürece SVG arc hesaplamaları tekrarlanmaz
   const macroCards = useMemo(() => {
@@ -148,7 +289,7 @@ export default function ProductDetail() {
       return;
     }
 
-    addToCart(product, quantity);
+    addToCart(product, quantity, selectedOptionsForCart);
     setIsAdded(true);
   };
 
@@ -157,12 +298,12 @@ export default function ProductDetail() {
     const next = quantity + 1;
     setQuantity(next);
 
-    if (cartQuantity > 0) {
-      updateQuantity(product.id, next);
+    if (cartQuantity > 0 && currentLineKey) {
+      updateQuantity(currentLineKey, next);
       return;
     }
 
-    addToCart(product, next);
+    addToCart(product, next, selectedOptionsForCart);
     setIsAdded(true);
   };
 
@@ -172,8 +313,8 @@ export default function ProductDetail() {
     const next = quantity - 1;
     setQuantity(next);
 
-    if (cartQuantity > 0) {
-      updateQuantity(product.id, next);
+    if (cartQuantity > 0 && currentLineKey) {
+      updateQuantity(currentLineKey, next);
     }
   };
 
@@ -266,6 +407,108 @@ export default function ProductDetail() {
           <div className="mt-2.5 rounded-2xl bg-[#F0F0F0] p-3 shadow-[0_4px_12px_rgba(32,32,32,0.08)] min-[390px]:mt-3 min-[390px]:p-3.5">
             <p className="mb-0 font-google text-[12px] font-thin leading-relaxed text-black min-[390px]:text-[13px]">{productDesc}</p>
           </div>
+
+          {/* ── Opsiyon Grupları ──────────────────────────────────────────── */}
+          {optionsLoading && (
+            <div className="mt-4 flex justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#98CD00] border-t-transparent" />
+            </div>
+          )}
+
+          {!optionsLoading && optionGroups.length > 0 && (
+            <div className="mt-4 flex flex-col gap-4">
+              {optionGroups.map((group) => {
+                const isSingle = group.max_selection === 1;
+                const currentSel = selections[group.id] || new Set();
+
+                return (
+                  <div key={group.id} className="rounded-2xl bg-brand-white overflow-hidden shadow-[0_2px_8px_rgba(32,32,32,0.06)]">
+                    {/* Grup başlığı */}
+                    <div className="flex items-center justify-between bg-[#202020] px-4 py-2.5">
+                      <div>
+                        <p className="font-google text-[13px] font-semibold text-white">
+                          {group.name}
+                        </p>
+                        {group.description && (
+                          <p className="text-[11px] text-white/60">{group.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {group.is_required && (
+                          <span className="rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
+                            Zorunlu
+                          </span>
+                        )}
+                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/70">
+                          {isSingle ? '1 seçim' : `max ${group.max_selection}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Seçenekler */}
+                    <div className="divide-y divide-gray-100">
+                      {group.items.map((item) => {
+                        const isSelected = currentSel.has(item.id);
+                        const isDisabled = !item.is_available || (
+                          !isSelected &&
+                          !isSingle &&
+                          currentSel.size >= group.max_selection
+                        );
+
+                        return (
+                          <button
+                            key={item.id}
+                            disabled={isDisabled}
+                            onClick={() => toggleItem(group, item.id)}
+                            className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors
+                              ${isSelected ? 'bg-[#98CD00]/10' : 'hover:bg-gray-50'}
+                              ${isDisabled && !isSelected ? 'opacity-40' : ''}
+                            `}
+                          >
+                            {/* Radio / Checkbox ikonu */}
+                            {isSelected
+                              ? <CheckCircle2 className="h-5 w-5 shrink-0 text-[#98CD00]" />
+                              : <Circle className={`h-5 w-5 shrink-0 ${isSingle ? 'text-gray-300' : 'text-gray-300'}`} />
+                            }
+
+                            {/* Ad */}
+                            <span className={`flex-1 font-google text-[13px] font-medium
+                              ${isSelected ? 'text-[#202020]' : 'text-brand-dark/80'}
+                              ${!item.is_available ? 'line-through' : ''}
+                            `}>
+                              {item.name}
+                              {!item.is_available && (
+                                <span className="ml-1.5 text-[11px] font-normal text-red-400">(Tükendi)</span>
+                              )}
+                            </span>
+
+                            {/* Ekstra fiyat */}
+                            {item.price_adjustment > 0 && (
+                              <span className={`shrink-0 font-google text-[12px] font-semibold
+                                ${isSelected ? 'text-[#98CD00]' : 'text-gray-400'}
+                              `}>
+                                +{formatCurrency(item.price_adjustment)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Seçim özeti / ekstra fiyat */}
+              {extraPrice > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-[#98CD00]/10 px-4 py-3">
+                  <span className="font-google text-[13px] text-brand-dark/70">Ekstralar</span>
+                  <span className="font-google text-[13px] font-bold text-[#98CD00]">
+                    +{formatCurrency(extraPrice)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       </main>
 
@@ -302,13 +545,22 @@ export default function ProductDetail() {
           </div>
 
           <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handlePrimaryAction}
-            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 bg-[#98CD00] text-[#F0F0F0] font-google text-[13px] font-medium transition-transform active:scale-95 min-[390px]:h-10 min-[390px]:px-3.5 min-[390px]:text-sm"
+            whileTap={selectionsValid ? { scale: 0.95 } : {}}
+            onClick={selectionsValid ? handlePrimaryAction : undefined}
+            className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 font-google text-[13px] font-medium transition-all min-[390px]:h-10 min-[390px]:px-3.5 min-[390px]:text-sm
+              ${selectionsValid
+                ? 'bg-[#98CD00] text-[#F0F0F0] active:scale-95'
+                : 'cursor-not-allowed bg-gray-200 text-gray-400'
+              }`}
           >
             <ShoppingCart className="h-[14px] w-[14px] min-[390px]:h-[15px] min-[390px]:w-[15px]" />
-            <span>{(cartQuantity > 0 || isAdded) ? `Sepete Git (${quantity})` : 'Sepete Ekle'}</span>
-            {!(cartQuantity > 0 || isAdded) && (
+            <span>
+              {!selectionsValid
+                ? 'Seçim yapın'
+                : (cartQuantity > 0 || isAdded) ? `Sepete Git (${quantity})` : 'Sepete Ekle'
+              }
+            </span>
+            {selectionsValid && !(cartQuantity > 0 || isAdded) && (
               <span className="font-google font-medium">{primaryActionTotal}</span>
             )}
           </motion.button>

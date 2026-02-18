@@ -206,7 +206,7 @@ export default function Cart() {
                         <h3 className="truncate pr-1 text-base font-bold text-brand-dark">{item.name}</h3>
                         <motion.button
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.lineKey || item.id)}
                           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F0F0F0] text-brand-dark/60"
                           aria-label="Kaldır"
                         >
@@ -235,7 +235,7 @@ export default function Cart() {
                         <div className="inline-flex items-center rounded-full border border-brand-white/10 bg-[#F0F0F0] p-1">
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
+                            onClick={() => updateQuantity(item.lineKey || item.id, (item.quantity || 1) - 1)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-brand-dark/70"
                             aria-label="Azalt"
                           >
@@ -256,7 +256,7 @@ export default function Cart() {
                           </span>
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
+                            onClick={() => updateQuantity(item.lineKey || item.id, (item.quantity || 1) + 1)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#98CD00] text-[#F0F0F0]"
                             aria-label="Arttır"
                           >

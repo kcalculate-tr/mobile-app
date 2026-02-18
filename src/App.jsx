@@ -6,35 +6,47 @@ import { AuthProvider } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext';
 import { supabase } from './supabase';
 
-// ── Kritik yol (Critical path) — hemen açılması gereken sayfalar ─────────────
-// Bunlar eager-loaded: ilk render'da hazır olmaları gerekiyor.
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
+// ── Her zaman eager yüklenen shell bileşenleri ────────────────────────────────
+// Bunlar route içeriği değil, uygulama iskeleti — lazy yapılmamalı.
 import BottomNavLayout from './components/BottomNavLayout';
 
-// ── Lazy-loaded sayfalar ──────────────────────────────────────────────────────
-// İlk açılışta parse edilmez; kullanıcı bu route'a gittiğinde yüklenir.
-// Özellikle Admin (4 K+ satır) kritik yolda olmamalı.
-const ProductDetail  = React.lazy(() => import('./pages/ProductDetail'));
-const Cart           = React.lazy(() => import('./pages/Cart'));
-const Checkout       = React.lazy(() => import('./pages/Checkout'));
-const Success        = React.lazy(() => import('./pages/Success'));
-const Payment        = React.lazy(() => import('./pages/Payment'));
-const Fail           = React.lazy(() => import('./pages/Fail'));
-const Tracker        = React.lazy(() => import('./pages/Tracker'));
-const Offers         = React.lazy(() => import('./pages/Offers'));
-const Subscription   = React.lazy(() => import('./pages/Subscription'));
-const Profile        = React.lazy(() => import('./pages/Profile'));
-const Orders         = React.lazy(() => import('./pages/Orders'));
-const OrderDetail    = React.lazy(() => import('./pages/OrderDetail'));
-const Support        = React.lazy(() => import('./pages/Support'));
-const Addresses      = React.lazy(() => import('./pages/profile/Addresses'));
-const Cards          = React.lazy(() => import('./pages/profile/Cards'));
-const Coupons        = React.lazy(() => import('./pages/profile/Coupons'));
-const Security       = React.lazy(() => import('./pages/profile/Security'));
-const Contracts      = React.lazy(() => import('./pages/profile/Contracts'));
-const Admin          = React.lazy(() => import('./pages/Admin'));
+// ── Tüm sayfalar lazy-loaded ──────────────────────────────────────────────────
+// Vite, her import() çağrısını ayrı bir chunk'a böler.
+// webpackChunkName yorumları Vite'ta da chunk adı olarak çalışır.
+
+// Kritik yol — kullanıcının ilk göreceği sayfalar (preload ipucu eklenebilir)
+const Home         = React.lazy(() => import(/* webpackChunkName: "page-home"     */ './pages/Home'));
+const Login        = React.lazy(() => import(/* webpackChunkName: "page-login"    */ './pages/Login'));
+const Register     = React.lazy(() => import(/* webpackChunkName: "page-register" */ './pages/Register'));
+
+// Alışveriş akışı
+const ProductDetail = React.lazy(() => import(/* webpackChunkName: "page-product" */ './pages/ProductDetail'));
+const Cart          = React.lazy(() => import(/* webpackChunkName: "page-cart"    */ './pages/Cart'));
+const Checkout      = React.lazy(() => import(/* webpackChunkName: "page-checkout"*/ './pages/Checkout'));
+const Payment       = React.lazy(() => import(/* webpackChunkName: "page-payment" */ './pages/Payment'));
+const Success       = React.lazy(() => import(/* webpackChunkName: "page-success" */ './pages/Success'));
+const Fail          = React.lazy(() => import(/* webpackChunkName: "page-fail"    */ './pages/Fail'));
+
+// Kullanıcı profili grubu — aynı chunk'ta birleştirilebilir ama ayrı tutmak daha temiz
+const Profile      = React.lazy(() => import(/* webpackChunkName: "page-profile"    */ './pages/Profile'));
+const Orders       = React.lazy(() => import(/* webpackChunkName: "page-orders"     */ './pages/Orders'));
+const OrderDetail  = React.lazy(() => import(/* webpackChunkName: "page-order-detail"*/ './pages/OrderDetail'));
+const Addresses    = React.lazy(() => import(/* webpackChunkName: "page-addresses"  */ './pages/profile/Addresses'));
+const Cards        = React.lazy(() => import(/* webpackChunkName: "page-cards"      */ './pages/profile/Cards'));
+const Coupons      = React.lazy(() => import(/* webpackChunkName: "page-coupons"    */ './pages/profile/Coupons'));
+const Security     = React.lazy(() => import(/* webpackChunkName: "page-security"   */ './pages/profile/Security'));
+const Contracts    = React.lazy(() => import(/* webpackChunkName: "page-contracts"  */ './pages/profile/Contracts'));
+const Support      = React.lazy(() => import(/* webpackChunkName: "page-support"    */ './pages/Support'));
+
+// Bottom-nav sekmeleri
+const Tracker      = React.lazy(() => import(/* webpackChunkName: "page-tracker"     */ './pages/Tracker'));
+const Offers       = React.lazy(() => import(/* webpackChunkName: "page-offers"      */ './pages/Offers'));
+const Subscription = React.lazy(() => import(/* webpackChunkName: "page-subscription"*/ './pages/Subscription'));
+
+// Admin — en ağır chunk, asla kritik yolda olmamalı
+const Admin             = React.lazy(() => import(/* webpackChunkName: "admin-main"    */ './pages/Admin'));
+const AdminOptionGroups = React.lazy(() => import(/* webpackChunkName: "admin-options" */ './pages/admin/OptionGroups'));
+const AdminProductOpts  = React.lazy(() => import(/* webpackChunkName: "admin-product" */ './pages/admin/ProductOptionManager'));
 
 // Sadece opacity fade: transform/will-change KULLANMA.
 // transform içeren animasyonlar position:fixed elementleri (modal, sticky footer)
@@ -128,7 +140,7 @@ class AppErrorBoundary extends Component {
   }
 }
 
-function AdminRouteGuard() {
+function AdminRouteGuard({ page } = {}) {
   const [accessState, setAccessState] = useState('loading');
 
   useEffect(() => {
@@ -195,7 +207,7 @@ function AdminRouteGuard() {
     return <Navigate to="/" replace />;
   }
 
-  return <Admin />;
+  return page ?? <Admin />;
 }
 
 function AnimatedRoutes() {
@@ -239,6 +251,8 @@ function AnimatedRoutes() {
           <Route path="/profile/security" element={withPageTransition(<Security />)} />
           <Route path="/profile/contracts" element={withPageTransition(<Contracts />)} />
           <Route path="/admin" element={withPageTransition(<AdminRouteGuard />)} />
+          <Route path="/admin/option-groups" element={withPageTransition(<AdminRouteGuard page={<AdminOptionGroups />} />)} />
+          <Route path="/admin/product-options" element={withPageTransition(<AdminRouteGuard page={<AdminProductOpts />} />)} />
           <Route path="/fail" element={withPageTransition(<Fail />)} />
           <Route path="/login" element={withPageTransition(<Login />)} />
           <Route path="/register" element={withPageTransition(<Register />)} />
@@ -250,12 +264,33 @@ function AnimatedRoutes() {
   );
 }
 
-// Sayfa yükleme beklerken gösterilecek hafif fallback.
-// Suspense, lazy-loaded sayfaların yüklenirken beyaz ekran vermesini önler.
+/**
+ * PageLoadingFallback
+ * Lazy chunk yüklenirken gösterilen markalı loading ekranı.
+ * Beyaz ekran / flash of unstyled content önlenir.
+ */
 function PageLoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F0F0F0]">
-      <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#98CD00] border-t-transparent" />
+    <div
+      className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[#F0F0F0]"
+      aria-label="Sayfa yükleniyor"
+      role="status"
+    >
+      {/* Çift halka — marka yeşili + turuncu */}
+      <div className="relative h-14 w-14">
+        {/* Dış halka: marka yeşili */}
+        <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-[#98CD00] border-t-transparent" />
+        {/* İç halka: turuncu, ters yönde */}
+        <div
+          className="absolute inset-[6px] rounded-full border-[3px] border-orange-400 border-b-transparent"
+          style={{ animation: 'spin 0.75s linear infinite reverse' }}
+        />
+      </div>
+
+      {/* Marka adı */}
+      <p className="font-google text-[13px] font-medium tracking-widest text-[#202020]/40 uppercase">
+        Kcal
+      </p>
     </div>
   );
 }

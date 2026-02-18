@@ -3,6 +3,22 @@ import React, { createContext, useState, useCallback, useEffect, useMemo } from 
 export const CartContext = createContext(null);
 const CART_STORAGE_KEY = 'kcal_cart_items';
 
+/**
+ * Seçilen opsiyonlara göre benzersiz bir satır anahtarı üretir.
+ * Aynı ürün, farklı seçimlerle ayrı satır olur.
+ * selectedOptions: { [groupId]: itemId | itemId[] }
+ */
+export function buildCartLineKey(productId, selectedOptions = {}) {
+    const sorted = Object.entries(selectedOptions)
+        .sort(([a], [b]) => String(a).localeCompare(String(b)))
+        .map(([gId, val]) => {
+            const ids = Array.isArray(val) ? [...val].sort() : [val];
+            return `${gId}:${ids.join(',')}`;
+        })
+        .join('|');
+    return `${productId}__${sorted}`;
+}
+
 function readCartFromStorage() {
     if (typeof window === 'undefined') return [];
     try {
@@ -15,6 +31,8 @@ function readCartFromStorage() {
             .map((item) => ({
                 ...item,
                 quantity: Math.max(1, Number(item.quantity || 1)),
+                // Eski kayıtlar için geriye dönük uyumluluk
+                lineKey: item.lineKey || buildCartLineKey(item.id, item.selectedOptions || {}),
             }));
     } catch {
         return [];
@@ -33,32 +51,58 @@ export function CartProvider({ children }) {
         }
     }, [cart]);
 
-    const addToCart = useCallback((product, quantity = 1) => {
+    /**
+     * addToCart(product, quantity, selectedOptions?)
+     *
+     * selectedOptions örneği:
+     *   { "grp-uuid-1": "item-uuid-a", "grp-uuid-2": ["item-uuid-b","item-uuid-c"] }
+     *
+     * Aynı ürün + aynı opsiyonlar → miktarı artır.
+     * Aynı ürün + farklı opsiyonlar → yeni satır ekle.
+     */
+    const addToCart = useCallback((product, quantity = 1, selectedOptions = {}) => {
+        const lineKey = buildCartLineKey(product.id, selectedOptions);
+        // Ekstra fiyat hesabı: seçilen her item'ın price_adjustment toplamı
+        const extraPrice = selectedOptions._extraPrice || 0;
+
         setCart((prev) => {
-            const existing = prev.find((item) => item.id === product.id);
+            const existing = prev.find((item) => item.lineKey === lineKey);
             if (existing) {
                 return prev.map((item) =>
-                    item.id === product.id
+                    item.lineKey === lineKey
                         ? { ...item, quantity: item.quantity + quantity }
                         : item
                 );
             }
-            return [...prev, { ...product, quantity }];
+            return [
+                ...prev,
+                {
+                    ...product,
+                    quantity,
+                    selectedOptions,
+                    extraPrice,
+                    lineKey,
+                    // Sepette gösterilecek toplam birim fiyat
+                    unitPrice: parseFloat(product.price || 0) + extraPrice,
+                },
+            ];
         });
     }, []);
 
-    const removeFromCart = useCallback((productId) => {
-        setCart((prev) => prev.filter((item) => item.id !== productId));
+    /** lineKey bazlı silme — opsiyon farkı olan aynı ürünleri karıştırmaz */
+    const removeFromCart = useCallback((lineKey) => {
+        setCart((prev) => prev.filter((item) => (item.lineKey || item.id) !== lineKey));
     }, []);
 
-    const updateQuantity = useCallback((productId, quantity) => {
+    /** lineKey bazlı miktar güncelleme */
+    const updateQuantity = useCallback((lineKey, quantity) => {
         if (quantity <= 0) {
-            setCart((prev) => prev.filter((item) => item.id !== productId));
+            setCart((prev) => prev.filter((item) => (item.lineKey || item.id) !== lineKey));
             return;
         }
         setCart((prev) =>
             prev.map((item) =>
-                item.id === productId ? { ...item, quantity } : item
+                (item.lineKey || item.id) === lineKey ? { ...item, quantity } : item
             )
         );
     }, []);
@@ -68,7 +112,10 @@ export function CartProvider({ children }) {
     }, []);
 
     const totalAmount = useMemo(
-        () => cart.reduce((sum, item) => sum + parseFloat(item.price || 0) * (item.quantity || 1), 0),
+        () => cart.reduce((sum, item) => {
+            const unit = parseFloat(item.unitPrice ?? item.price ?? 0);
+            return sum + unit * (item.quantity || 1);
+        }, 0),
         [cart]
     );
 
