@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kcal Icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#98CD00"/>
+      <stop offset="1" stop-color="#82CD47"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <path d="M132 356V156h62v88l82-88h78l-95 102 102 98h-81l-86-83v83z" fill="#FFFFFF"/>
+</svg>

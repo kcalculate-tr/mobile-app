@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 257" role="img" aria-label="App Logo">
+  <rect width="256" height="257" rx="48" fill="#98CD00"/>
+  <circle cx="128" cy="128" r="70" fill="#82CD47"/>
+  <path d="M128 62l32 66h-64l32-66zm0 41l20 40h-40l20-40z" fill="#FFFFFF"/>
+</svg>
