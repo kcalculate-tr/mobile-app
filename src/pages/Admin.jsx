@@ -2663,6 +2663,36 @@ export default function Admin() {
         </div>
       )}
 
+      <div className="px-4 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/admin/option-groups')}
+          className="bg-brand-white border border-brand-secondary rounded-2xl p-3 text-left shadow-sm hover:bg-brand-bg transition-colors"
+        >
+          <div className="inline-flex items-center gap-2 text-brand-primary">
+            <Tags size={16} />
+            <span className="text-sm font-bold text-brand-dark">Seçim Grupları</span>
+          </div>
+          <p className="mt-1 text-xs text-brand-dark/70">
+            Grupları, seçenekleri ve zorunluluk kurallarını yönetin.
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/admin/product-options')}
+          className="bg-brand-white border border-brand-secondary rounded-2xl p-3 text-left shadow-sm hover:bg-brand-bg transition-colors"
+        >
+          <div className="inline-flex items-center gap-2 text-brand-primary">
+            <GripVertical size={16} />
+            <span className="text-sm font-bold text-brand-dark">Ürün Bağlama</span>
+          </div>
+          <p className="mt-1 text-xs text-brand-dark/70">
+            Ürünlere seçim grubu bağlayın ve gösterim sırasını ayarlayın.
+          </p>
+        </button>
+      </div>
+
       <main className="p-4">
         {activeTab === 'orders' && (
           <section>
