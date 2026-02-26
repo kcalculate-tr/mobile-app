@@ -50,7 +50,7 @@ export default function BottomNavLayout() {
               <NavLink
                 to="/tracker"
                 aria-label="Takip"
-                className={({ isActive }) => `relative flex h-9 w-9 flex-col items-center justify-center transition-colors ${
+                className={({ isActive }) => `tour-kcal-tracker relative flex h-9 w-9 flex-col items-center justify-center transition-colors ${
                   isActive ? 'text-[#98CD00]' : 'text-brand-dark/70 hover:text-brand-dark'
                 }`}
               >
@@ -65,7 +65,7 @@ export default function BottomNavLayout() {
               <NavLink
                 to="/cart"
                 aria-label="Sepet"
-                className={({ isActive }) => `relative flex h-11 w-11 -translate-y-1.5 items-center justify-center rounded-full bg-[#98CD00] text-[#F0F0F0] shadow-[0_8px_18px_rgba(152,205,0,0.35)] transition-transform hover:-translate-y-2 ${
+                className={({ isActive }) => `tour-cart-delivery relative flex h-11 w-11 -translate-y-1.5 items-center justify-center rounded-full bg-[#98CD00] text-[#F0F0F0] shadow-[0_8px_18px_rgba(152,205,0,0.35)] transition-transform hover:-translate-y-2 ${
                   isActive ? 'ring-2 ring-brand-white/35' : ''
                 }`}
               >

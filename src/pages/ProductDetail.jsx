@@ -21,6 +21,19 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function getSelectionLimits(group) {
+  const rawMin = Math.max(0, Math.floor(toNumber(group?.min_selection, 0)));
+  const normalizedMin = group?.is_required ? Math.max(1, rawMin) : rawMin;
+  const rawMax = Math.max(0, Math.floor(toNumber(group?.max_selection, 1)));
+  const normalizedMax = Math.max(rawMax, normalizedMin);
+  return { min: normalizedMin, max: normalizedMax };
+}
+
+const PRODUCT_OPTION_GROUP_TABLE_CANDIDATES = ['product_option_groups', 'product_option_group'];
+function normalizeId(value) {
+  return String(value ?? '').trim();
+}
+
 export default function ProductDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -41,6 +54,7 @@ export default function ProductDetail() {
   // Her grup: { id, name, min_selection, max_selection, is_required, sort_order, items: [] }
   const [optionGroups, setOptionGroups] = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
 
   // Kullanıcının seçimleri: { [groupId]: Set<itemId> }
   const [selections, setSelections] = useState({});
@@ -103,46 +117,108 @@ export default function ProductDetail() {
     if (!id) return;
     let isMounted = true;
     setOptionsLoading(true);
+    setOptionsError('');
     setSelections({});
 
     async function fetchOptions() {
       try {
-        // product_option_groups → option_groups → option_items (sort_order ile)
-        const { data: pogRows, error: pogErr } = await supabase
-          .from('product_option_groups')
-          .select(`
-            id,
-            sort_order,
-            option_groups (
-              id,
-              name,
-              description,
-              min_selection,
-              max_selection,
-              is_required,
-              option_items (
-                id,
-                name,
-                price_adjustment,
-                is_available,
-                sort_order
-              )
-            )
-          `)
-          .eq('product_id', id)
-          .order('sort_order', { ascending: true });
+        let relationRows = null;
+        let lastError = null;
 
-        if (pogErr || !isMounted) return;
+        for (const tableName of PRODUCT_OPTION_GROUP_TABLE_CANDIDATES) {
+          const response = await supabase
+            .from(tableName)
+            .select('id,product_id,group_id,sort_order')
+            .eq('product_id', id)
+            .order('sort_order', { ascending: true });
 
-        const groups = (pogRows || [])
+          if (!response.error) {
+            relationRows = Array.isArray(response.data) ? response.data : [];
+            lastError = null;
+            break;
+          }
+
+          console.error('Supabase Option Fetch Hatası Detayı:', response.error);
+          lastError = response.error;
+          const lower = `${response.error?.message || ''} ${response.error?.details || ''}`.toLowerCase();
+          const relationMissing = lower.includes('does not exist') || lower.includes('could not find the table') || response.error?.code === '42P01';
+          if (!relationMissing) break;
+        }
+
+        if (!relationRows && lastError) {
+          throw lastError;
+        }
+        if (!isMounted) return;
+
+        const normalizedLinks = (relationRows || [])
           .map((row) => ({
-            pogId: row.id,
-            sort_order: row.sort_order,
-            ...row.option_groups,
-            items: [...(row.option_groups?.option_items || [])]
-              .sort((a, b) => a.sort_order - b.sort_order),
+            id: row?.id,
+            group_id: normalizeId(row?.group_id),
+            sort_order: Number.isFinite(Number(row?.sort_order)) ? Number(row.sort_order) : 0,
           }))
-          .filter((g) => g.id);
+          .filter((row) => row.group_id)
+          .sort((a, b) => a.sort_order - b.sort_order);
+
+        if (normalizedLinks.length === 0) {
+          setOptionGroups([]);
+          setSelections({});
+          return;
+        }
+
+        const groupIds = Array.from(new Set(normalizedLinks.map((row) => row.group_id)));
+
+        const { data: groupRows, error: groupError } = await supabase
+          .from('option_groups')
+          .select('id,name,description,min_selection,max_selection,is_required')
+          .in('id', groupIds);
+        if (groupError) {
+          console.error('Supabase Option Fetch Hatası Detayı:', groupError);
+          throw groupError;
+        }
+
+        const { data: itemRows, error: itemError } = await supabase
+          .from('option_items')
+          .select('id,group_id,name,price_adjustment,is_available,sort_order')
+          .in('group_id', groupIds)
+          .order('sort_order', { ascending: true });
+        if (itemError) {
+          console.error('Supabase Option Fetch Hatası Detayı:', itemError);
+          throw itemError;
+        }
+
+        const groupMap = new Map(
+          (Array.isArray(groupRows) ? groupRows : []).map((group) => [normalizeId(group?.id), group])
+        );
+        const itemsByGroup = new Map();
+        (Array.isArray(itemRows) ? itemRows : []).forEach((item) => {
+          const groupKey = normalizeId(item?.group_id);
+          if (!groupKey) return;
+          const list = itemsByGroup.get(groupKey) || [];
+          list.push({
+            ...item,
+            id: normalizeId(item?.id),
+            group_id: groupKey,
+            sort_order: Number.isFinite(Number(item?.sort_order)) ? Number(item.sort_order) : 0,
+          });
+          itemsByGroup.set(groupKey, list);
+        });
+
+        const groups = normalizedLinks
+          .map((link) => {
+            const group = groupMap.get(link.group_id);
+            if (!group) return null;
+            const groupKey = normalizeId(group?.id);
+            const items = [...(itemsByGroup.get(groupKey) || [])]
+              .sort((a, b) => Number(a?.sort_order || 0) - Number(b?.sort_order || 0));
+            return {
+              pogId: link.id,
+              sort_order: link.sort_order,
+              ...group,
+              id: groupKey,
+              items,
+            };
+          })
+          .filter(Boolean);
 
         if (!isMounted) return;
         setOptionGroups(groups);
@@ -150,14 +226,19 @@ export default function ProductDetail() {
         // Zorunlu + tek seçimli gruplar için ilk available item'ı ön-seç
         const initialSelections = {};
         groups.forEach((g) => {
-          if (g.is_required && g.max_selection === 1) {
+          const { min, max } = getSelectionLimits(g);
+          if (min > 0 && max === 1) {
             const first = g.items.find((item) => item.is_available);
-            if (first) initialSelections[g.id] = new Set([first.id]);
+            if (first) initialSelections[normalizeId(g.id)] = new Set([normalizeId(first.id)]);
           }
         });
         setSelections(initialSelections);
       } catch (e) {
         console.error('[ProductDetail] options fetch error:', e);
+        if (isMounted) {
+          setOptionGroups([]);
+          setOptionsError('Seçim grupları yüklenemedi.');
+        }
       } finally {
         if (isMounted) setOptionsLoading(false);
       }
@@ -169,43 +250,49 @@ export default function ProductDetail() {
 
   // ── Seçim değiştirme ───────────────────────────────────────────────────────
   const toggleItem = useCallback((group, itemId) => {
+    const { max } = getSelectionLimits(group);
+    const groupKey = normalizeId(group?.id);
+    const itemKey = normalizeId(itemId);
+    if (!groupKey || !itemKey) return;
+
     setSelections((prev) => {
-      const current = new Set(prev[group.id] || []);
-      const isSingle = group.max_selection === 1;
+      const current = new Set(prev[groupKey] || []);
+      const isSingle = max === 1;
 
       if (isSingle) {
         // Radio: sadece bu item seçili olsun
-        return { ...prev, [group.id]: new Set([itemId]) };
+        return { ...prev, [groupKey]: new Set([itemKey]) };
       }
 
       // Checkbox (multi)
-      if (current.has(itemId)) {
-        current.delete(itemId);
-      } else if (current.size < group.max_selection) {
-        current.add(itemId);
+      if (current.has(itemKey)) {
+        current.delete(itemKey);
+      } else if (current.size < max) {
+        current.add(itemKey);
       }
-      return { ...prev, [group.id]: current };
+      return { ...prev, [groupKey]: current };
     });
   }, []);
 
   // ── Seçim geçerli mi? (tüm zorunlu gruplar dolu) ──────────────────────────
   const selectionsValid = useMemo(() => {
-    return optionGroups
-      .filter((g) => g.is_required)
-      .every((g) => {
-        const sel = selections[g.id];
-        return sel && sel.size >= (g.min_selection || 1);
-      });
+    if (optionGroups.length === 0) return true;
+    return optionGroups.every((group) => {
+      const { min, max } = getSelectionLimits(group);
+      const groupKey = normalizeId(group?.id);
+      const selectedCount = selections[groupKey]?.size || 0;
+      return selectedCount >= min && selectedCount <= max;
+    });
   }, [optionGroups, selections]);
 
   // ── Ekstra fiyat toplamı ───────────────────────────────────────────────────
   const extraPrice = useMemo(() => {
     let total = 0;
     optionGroups.forEach((g) => {
-      const sel = selections[g.id];
+      const sel = selections[normalizeId(g?.id)];
       if (!sel) return;
       g.items.forEach((item) => {
-        if (sel.has(item.id)) total += parseFloat(item.price_adjustment || 0);
+        if (sel.has(normalizeId(item?.id))) total += parseFloat(item.price_adjustment || 0);
       });
     });
     return total;
@@ -418,74 +505,83 @@ export default function ProductDetail() {
           {!optionsLoading && optionGroups.length > 0 && (
             <div className="mt-4 flex flex-col gap-4">
               {optionGroups.map((group) => {
-                const isSingle = group.max_selection === 1;
-                const currentSel = selections[group.id] || new Set();
+                const { min, max } = getSelectionLimits(group);
+                const isSingle = max === 1;
+                const groupKey = normalizeId(group?.id);
+                const currentSel = selections[groupKey] || new Set();
+                const selectedCount = currentSel.size;
+                const minRuleLabel = min > 0 ? `En az ${min} seçim` : '';
+                const maxRuleLabel = isSingle ? '1 seçim' : `En fazla ${max} seçim`;
 
                 return (
-                  <div key={group.id} className="rounded-2xl bg-brand-white overflow-hidden shadow-[0_2px_8px_rgba(32,32,32,0.06)]">
+                  <div key={group.id} className="overflow-hidden rounded-2xl bg-brand-white shadow-sm">
                     {/* Grup başlığı */}
-                    <div className="flex items-center justify-between bg-[#202020] px-4 py-2.5">
+                    <div className="flex items-center justify-between border-b border-brand-secondary/30 bg-brand-bg px-4 py-2.5">
                       <div>
-                        <p className="font-google text-[13px] font-semibold text-white">
+                        <p className="font-zalando text-[14px] font-semibold text-brand-dark">
                           {group.name}
                         </p>
                         {group.description && (
-                          <p className="text-[11px] text-white/60">{group.description}</p>
+                          <p className="font-google text-[11px] font-normal text-brand-dark/60">{group.description}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {group.is_required && (
-                          <span className="rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold text-white">
-                            Zorunlu
+                        {(group.is_required || min > 0) && (
+                          <span className="rounded-full bg-brand-primary px-2 py-0.5 font-google text-[10px] font-medium text-brand-white">
+                            {minRuleLabel || 'Zorunlu'}
                           </span>
                         )}
-                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/70">
-                          {isSingle ? '1 seçim' : `max ${group.max_selection}`}
+                        <span className="rounded-full border border-brand-secondary/40 bg-brand-white px-2 py-0.5 font-google text-[10px] text-brand-dark/70">
+                          {maxRuleLabel}
+                        </span>
+                        <span className="rounded-full border border-brand-secondary/40 bg-brand-white px-2 py-0.5 font-google text-[10px] text-brand-dark/70">
+                          {selectedCount} seçili
                         </span>
                       </div>
                     </div>
 
                     {/* Seçenekler */}
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-brand-secondary/20">
                       {group.items.map((item) => {
-                        const isSelected = currentSel.has(item.id);
-                        const isDisabled = !item.is_available || (
-                          !isSelected &&
-                          !isSingle &&
-                          currentSel.size >= group.max_selection
-                        );
+                        const itemKey = normalizeId(item?.id);
+                        const isSelected = currentSel.has(itemKey);
+                          const isDisabled = !item.is_available || (
+                            !isSelected &&
+                            !isSingle &&
+                            currentSel.size >= max
+                          );
 
                         return (
                           <button
                             key={item.id}
                             disabled={isDisabled}
-                            onClick={() => toggleItem(group, item.id)}
+                            onClick={() => toggleItem(group, itemKey)}
                             className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors
-                              ${isSelected ? 'bg-[#98CD00]/10' : 'hover:bg-gray-50'}
+                              ${isSelected ? 'bg-brand-primary/10' : 'hover:bg-brand-bg'}
                               ${isDisabled && !isSelected ? 'opacity-40' : ''}
                             `}
                           >
                             {/* Radio / Checkbox ikonu */}
                             {isSelected
-                              ? <CheckCircle2 className="h-5 w-5 shrink-0 text-[#98CD00]" />
-                              : <Circle className={`h-5 w-5 shrink-0 ${isSingle ? 'text-gray-300' : 'text-gray-300'}`} />
+                              ? <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-primary" />
+                              : <Circle className="h-5 w-5 shrink-0 text-brand-dark/35" />
                             }
 
                             {/* Ad */}
                             <span className={`flex-1 font-google text-[13px] font-medium
-                              ${isSelected ? 'text-[#202020]' : 'text-brand-dark/80'}
+                              ${isSelected ? 'text-brand-dark' : 'text-brand-dark/80'}
                               ${!item.is_available ? 'line-through' : ''}
                             `}>
                               {item.name}
                               {!item.is_available && (
-                                <span className="ml-1.5 text-[11px] font-normal text-red-400">(Tükendi)</span>
+                                <span className="ml-1.5 text-[11px] font-normal text-brand-dark/45">(Tükendi)</span>
                               )}
                             </span>
 
                             {/* Ekstra fiyat */}
                             {item.price_adjustment > 0 && (
                               <span className={`shrink-0 font-google text-[12px] font-semibold
-                                ${isSelected ? 'text-[#98CD00]' : 'text-gray-400'}
+                                ${isSelected ? 'text-brand-primary' : 'text-brand-dark/50'}
                               `}>
                                 +{formatCurrency(item.price_adjustment)}
                               </span>
@@ -500,13 +596,19 @@ export default function ProductDetail() {
 
               {/* Seçim özeti / ekstra fiyat */}
               {extraPrice > 0 && (
-                <div className="flex items-center justify-between rounded-2xl bg-[#98CD00]/10 px-4 py-3">
-                  <span className="font-google text-[13px] text-brand-dark/70">Ekstralar</span>
-                  <span className="font-google text-[13px] font-bold text-[#98CD00]">
+                <div className="flex items-center justify-between rounded-2xl border border-brand-secondary/35 bg-brand-bg px-4 py-3">
+                  <span className="font-google text-[13px] font-normal text-brand-dark/70">Ekstralar</span>
+                  <span className="font-google text-[13px] font-medium text-brand-primary">
                     +{formatCurrency(extraPrice)}
                   </span>
                 </div>
               )}
+            </div>
+          )}
+
+          {!optionsLoading && optionsError && (
+            <div className="mt-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+              {optionsError}
             </div>
           )}
         </section>
@@ -556,7 +658,7 @@ export default function ProductDetail() {
             <ShoppingCart className="h-[14px] w-[14px] min-[390px]:h-[15px] min-[390px]:w-[15px]" />
             <span>
               {!selectionsValid
-                ? 'Seçim yapın'
+                ? 'Zorunlu seçimleri tamamlayın'
                 : (cartQuantity > 0 || isAdded) ? `Sepete Git (${quantity})` : 'Sepete Ekle'
               }
             </span>

@@ -36,7 +36,7 @@ function getMacroValuesFromItem(item) {
   return {
     kcal: Math.max(0, Math.round(toNumber(item?.cal ?? item?.kcal ?? item?.calories))),
     protein: Math.max(0, Math.round(toNumber(item?.protein))),
-    carbs: Math.max(0, Math.round(toNumber(item?.carbs))),
+    carbs: Math.max(0, Math.round(toNumber(item?.carbs ?? item?.carb))),
     fats: Math.max(0, Math.round(toNumber(item?.fats ?? item?.fat))),
   };
 }
@@ -140,7 +140,7 @@ export default function Cart() {
   return (
     <div className="min-h-screen bg-[#F0F0F0] text-brand-dark">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col pb-36">
-        <header className="sticky top-0 z-40 border-b border-brand-white/10 bg-[#F0F0F0]/95 px-5 py-4 backdrop-blur">
+        <header className="app-page-padding sticky top-0 z-40 border-b border-brand-white/10 bg-[#F0F0F0]/95 py-4 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -152,7 +152,7 @@ export default function Cart() {
             </motion.button>
 
             <div className="flex-1 text-center">
-              <h1 className="mb-0 text-xl text-brand-dark">Sepetim</h1>
+              <h1 className="app-heading-primary mb-0">Sepetim</h1>
               <p className="mb-0 text-[11px] text-brand-dark/55">{itemCount} ürün</p>
             </div>
 
@@ -167,23 +167,35 @@ export default function Cart() {
           </div>
         </header>
 
-        <main className="flex-1 space-y-4 px-5 py-4">
+        <main className="app-page-padding flex-1 space-y-4 py-4">
           {cart.length === 0 ? (
-            <div className="rounded-2xl border border-brand-white/10 bg-[#F0F0F0] p-7 text-center">
-              <ShoppingBag size={26} className="mx-auto text-brand-dark/60" />
-              <p className="mt-3 text-brand-dark/65">Sepetiniz şu anda boş.</p>
+            <div className="app-card p-8 text-center">
+              <ShoppingBag size={32} className="mx-auto text-gray-300" />
+              <p className="mt-3 text-sm font-semibold text-gray-700">Sepetiniz şu anda boş</p>
+              <p className="mt-1 text-xs text-gray-400">Lezzetli öğünlerimizi keşfetmek için menüye göz atın.</p>
               <button
                 onClick={() => navigate('/')}
-                className="mt-2 rounded-full bg-[#98CD00] px-4 py-2 text-sm font-bold text-[#F0F0F0]"
+                className="app-btn-green mt-5"
               >
-                Ürünlere Dön
+                Menüye Git
               </button>
             </div>
           ) : (
             <>
+              <AnimatePresence mode="popLayout" initial={false}>
               <motion.div variants={LIST_STAGGER} initial="initial" animate="animate" className="space-y-4">
-              {cart.map((item) => (
-                <motion.article key={item.id} variants={LIST_ITEM} className="rounded-2xl border border-brand-white/10 bg-[#F0F0F0] p-3.5">
+              {cart.map((item) => {
+                const lineId = item.lineKey || item.id;
+                const unitPrice = Number(item.unitPrice ?? item.price ?? 0);
+                return (
+                <motion.article
+                  key={lineId}
+                  variants={LIST_ITEM}
+                  exit={{ opacity: 0, x: -40, scale: 0.95 }}
+                  transition={{ duration: 0.22, ease: 'easeInOut' }}
+                  layout
+                  className="app-card p-3.5"
+                >
                   <div className="flex gap-3">
                     <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-brand-white">
                       {item.img || item.image ? (
@@ -206,7 +218,7 @@ export default function Cart() {
                         <h3 className="truncate pr-1 text-base font-bold text-brand-dark">{item.name}</h3>
                         <motion.button
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => removeFromCart(item.lineKey || item.id)}
+                          onClick={() => removeFromCart(lineId)}
                           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F0F0F0] text-brand-dark/60"
                           aria-label="Kaldır"
                         >
@@ -225,17 +237,17 @@ export default function Cart() {
                       <div className="mt-3 flex items-end justify-between">
                         <div>
                           <p className="mb-0 text-[11px] font-medium text-brand-dark/45">
-                            Birim <span className="font-price font-semibold">{formatCurrency(item.price)}</span>
+                            Birim <span className="font-price font-semibold">{formatCurrency(unitPrice)}</span>
                           </p>
                           <p className="font-price mb-0 text-lg font-semibold text-brand-dark">
-                            {formatCurrency(Number(item.price || 0) * Number(item.quantity || 1))}
+                            {formatCurrency(unitPrice * Number(item.quantity || 1))}
                           </p>
                         </div>
 
                         <div className="inline-flex items-center rounded-full border border-brand-white/10 bg-[#F0F0F0] p-1">
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => updateQuantity(item.lineKey || item.id, (item.quantity || 1) - 1)}
+                            onClick={() => updateQuantity(lineId, (item.quantity || 1) - 1)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-brand-dark/70"
                             aria-label="Azalt"
                           >
@@ -244,7 +256,7 @@ export default function Cart() {
                           <span className="relative inline-flex w-8 justify-center overflow-hidden text-center text-lg font-bold text-brand-dark">
                             <AnimatePresence mode="popLayout" initial={false}>
                               <motion.span
-                                key={`cart-qty-${item.id}-${item.quantity || 1}`}
+                                key={`cart-qty-${lineId}-${item.quantity || 1}`}
                                 initial={{ y: 10, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: -10, opacity: 0 }}
@@ -256,7 +268,7 @@ export default function Cart() {
                           </span>
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => updateQuantity(item.lineKey || item.id, (item.quantity || 1) + 1)}
+                            onClick={() => updateQuantity(lineId, (item.quantity || 1) + 1)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#98CD00] text-[#F0F0F0]"
                             aria-label="Arttır"
                           >
@@ -267,13 +279,15 @@ export default function Cart() {
                     </div>
                   </div>
                 </motion.article>
-              ))}
+              );
+              })}
               </motion.div>
+              </AnimatePresence>
 
-              <div className="rounded-2xl border border-brand-white/10 bg-[#F0F0F0] p-3">
+              <div className="app-card p-3">
                 <div className="relative flex items-center">
                   <input
-                    className="input-no-stroke w-full rounded-xl border-none bg-[#F0F0F0] py-3 pl-4 pr-24 text-sm text-brand-dark placeholder:text-brand-dark/35 outline-none"
+                    className="app-input pr-24"
                     placeholder="Kupon kodu"
                     type="text"
                     value={promoCode}
@@ -289,7 +303,7 @@ export default function Cart() {
                       }
                       setPromoHint('Kupon uygulaması ödeme adımında yapılır.');
                     }}
-                    className="absolute right-1.5 rounded-lg bg-[#98CD00] px-4 py-2 text-xs font-bold text-[#F0F0F0]"
+                    className="app-btn-green-sm absolute right-1.5 px-3 py-2 text-xs"
                   >
                     Uygula
                   </motion.button>
@@ -297,15 +311,15 @@ export default function Cart() {
                 {promoHint && <p className="mb-0 mt-2 text-[11px] text-brand-dark/60">{promoHint}</p>}
               </div>
 
-              <div className="rounded-2xl border border-brand-white/10 bg-[#F0F0F0] p-4">
-                <div className="mb-3 rounded-2xl border border-brand-primary/20 bg-brand-bg p-3">
-                  <p className="mb-2 text-xs font-semibold text-brand-dark/65">Sepet Toplam Makro</p>
+              <div className="app-card space-y-3">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <p className="mb-2 text-xs font-semibold text-gray-500">Sepet Toplam Makro</p>
                   <MacroGrid values={cartMacroTotals} compact />
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-brand-white/10 pt-3">
-                  <span className="text-lg font-bold text-brand-dark">Toplam</span>
-                  <span className="font-price text-2xl font-semibold text-brand-dark">{formatCurrency(payableTotal)}</span>
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                  <span className="text-lg font-bold text-gray-900">Toplam</span>
+                  <span className="font-price text-2xl font-semibold text-gray-900">{formatCurrency(payableTotal)}</span>
                 </div>
               </div>
             </>
@@ -313,12 +327,12 @@ export default function Cart() {
         </main>
 
         {cart.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-brand-white/10 bg-[#F0F0F0]/95 px-5 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur">
+          <div className="app-page-padding fixed bottom-0 left-0 right-0 z-40 border-t border-brand-white/10 bg-[#F0F0F0]/95 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur">
             <div className="mx-auto max-w-md">
               <motion.button
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/checkout')}
-                className="flex w-full items-center justify-between rounded-full bg-[#98CD00] px-6 py-4 text-lg font-google font-medium text-[#F0F0F0] transition-transform active:scale-[0.98]"
+                className="app-btn-green justify-between text-base"
               >
                 <span>Ödemeye Geç</span>
                 <span className="inline-flex items-center gap-2">

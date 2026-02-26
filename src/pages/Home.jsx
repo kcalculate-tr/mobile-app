@@ -2,10 +2,8 @@ import React, { useState, useContext, useEffect, useRef, useCallback, useMemo } 
 import { useNavigate } from 'react-router-dom';
 import {
     Bell,
-    Bike,
     ChevronDown,
     ChevronsRight,
-    Menu,
     Plus,
     Check,
     MapPin,
@@ -23,6 +21,8 @@ import { useProducts, sortByProductOrder } from '../context/ProductContext';
 import { supabase } from '../supabase';
 import { formatCurrency } from '../utils/formatCurrency';
 import { AnimatePresence, motion } from 'framer-motion';
+import SkeletonCard from '../components/SkeletonCard';
+import { StaggerContainer, StaggerItem } from '../components/StaggerContainer';
 
 const trLowerCase = (str) => String(str || '').toLocaleLowerCase('tr-TR');
 const CATEGORY_ALL_LABEL = 'Tümü';
@@ -31,26 +31,6 @@ const SORT_OPTIONS = [
     { key: 'price_asc', label: 'Fiyata Göre Artan' },
     { key: 'price_desc', label: 'Fiyata Göre Azalan' },
     { key: 'calories', label: 'Kaloriye Göre' },
-];
-const HOW_IT_WORKS_STEPS = [
-    {
-        id: 'pick',
-        icon: Menu,
-        title: 'Paketini Seç',
-        description: 'Hedefine uygun menü ya da paketi seç.',
-    },
-    {
-        id: 'address',
-        icon: MapPin,
-        title: 'Adresini Gir',
-        description: 'Teslimat adresini belirle.',
-    },
-    {
-        id: 'delivery',
-        icon: Bike,
-        title: 'Kapına Gelsin',
-        description: 'Siparişin sıcak ve hızlı gelsin.',
-    },
 ];
 const CATEGORY_ICONS = {
     'Yüksek Proteinli Sporcu': Beef,
@@ -150,15 +130,33 @@ const HomeBanner = React.memo(function HomeBanner({ banners, bannersLoading }) {
     );
 });
 
-function useCartQuantityActions() {
+function useCartQuantityActions(onProductAdded) {
     const { cart, addToCart, removeFromCart, updateQuantity } = useContext(CartContext);
 
-    const cartQuantityMap = useMemo(() => {
+    const cartProductMetaMap = useMemo(() => {
         const next = new Map();
         (cart || []).forEach((item) => {
             const key = String(item?.id ?? '');
             if (!key) return;
-            next.set(key, Math.max(0, Number(item?.quantity || 0)));
+            const quantity = Math.max(0, Number(item?.quantity || 0));
+            const lineKey = String(item?.lineKey || '');
+            const isDefaultLine = lineKey.endsWith('__default');
+            const prev = next.get(key) || { totalQty: 0, targetLineKey: '', targetQty: 0 };
+            const totalQty = prev.totalQty + quantity;
+
+            // Home kartları varsayılan ürün satırını yönetir.
+            // Varsayılan satır yoksa, ilk görülen satırı fallback olarak kullan.
+            let targetLineKey = prev.targetLineKey;
+            let targetQty = prev.targetQty;
+            if (isDefaultLine) {
+                targetLineKey = lineKey;
+                targetQty = quantity;
+            } else if (!targetLineKey && lineKey) {
+                targetLineKey = lineKey;
+                targetQty = quantity;
+            }
+
+            next.set(key, { totalQty, targetLineKey, targetQty });
         });
         return next;
     }, [cart]);
@@ -166,26 +164,42 @@ function useCartQuantityActions() {
     const handleIncreaseFromCard = useCallback((event, product, currentQty) => {
         event.stopPropagation();
         if (!product?.isAvailable) return;
+        const key = String(product?.id ?? '');
+        const meta = cartProductMetaMap.get(key);
+        const productName = product?.name || 'Ürün';
 
-        if (currentQty > 0) {
-            updateQuantity(product.id, currentQty + 1);
+        if (currentQty > 0 && meta?.targetLineKey) {
+            updateQuantity(meta.targetLineKey, meta.targetQty + 1);
+            onProductAdded?.(`${productName} sepete eklendi`);
             return;
         }
 
         addToCart(product, 1);
-    }, [addToCart, updateQuantity]);
+        onProductAdded?.(`${productName} sepete eklendi`);
+    }, [addToCart, cartProductMetaMap, onProductAdded, updateQuantity]);
 
     const handleDecreaseFromCard = useCallback((event, product, currentQty) => {
         event.stopPropagation();
         if (currentQty <= 0) return;
+        const key = String(product?.id ?? '');
+        const meta = cartProductMetaMap.get(key);
+        if (!meta?.targetLineKey) return;
 
-        if (currentQty === 1) {
-            removeFromCart(product.id);
+        if (meta.targetQty <= 1) {
+            removeFromCart(meta.targetLineKey);
             return;
         }
 
-        updateQuantity(product.id, currentQty - 1);
-    }, [removeFromCart, updateQuantity]);
+        updateQuantity(meta.targetLineKey, meta.targetQty - 1);
+    }, [cartProductMetaMap, removeFromCart, updateQuantity]);
+
+    const cartQuantityMap = useMemo(() => {
+        const quantities = new Map();
+        cartProductMetaMap.forEach((meta, key) => {
+            quantities.set(key, meta.totalQty);
+        });
+        return quantities;
+    }, [cartProductMetaMap]);
 
     return {
         cartQuantityMap,
@@ -201,7 +215,6 @@ const HomeHeader = React.memo(function HomeHeader({
     addressMenuRef,
     setIsAddressMenuOpen,
     setSelectedAddress,
-    setIsHowItWorksOpen,
     navigate,
 }) {
     const { user: currentUser, avatarUrl, avatarUploading, uploadAvatar } = useContext(AuthContext);
@@ -278,7 +291,7 @@ const HomeHeader = React.memo(function HomeHeader({
                             <span className="block truncate font-google text-[10px] font-extralight text-[#202020]/80">
                                 {selectedAddress?.city && selectedAddress?.district
                                     ? `${selectedAddress.city} / ${selectedAddress.district}`
-                                    : 'İstanbul / Kadıköy'}
+                                    : 'İl / İlçe'}
                             </span>
                         </span>
                         <ChevronDown size={14} className="shrink-0" />
@@ -309,10 +322,13 @@ const HomeHeader = React.memo(function HomeHeader({
                     </h1>
                     <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => setIsHowItWorksOpen(true)}
-                        className="mt-3 inline-flex items-center rounded-full border border-[#F0F0F0] bg-transparent px-4 py-2 text-sm font-bold text-[#F0F0F0]"
+                        onClick={() => navigate('/nasil-calisir')}
+                        className="mt-3 inline-flex items-center gap-2 rounded-full !border-none !bg-transparent px-1 py-2 text-sm font-bold text-white outline-none ring-0 !outline-none !ring-0 focus:!ring-0 focus:!outline-none !shadow-none !drop-shadow-none [box-shadow:none]"
                     >
-                        Nasıl Çalışır?
+                        <span>Nasıl Çalışır</span>
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white text-xs text-white">
+                            ?
+                        </span>
                     </motion.button>
                 </div>
                 <img
@@ -382,8 +398,9 @@ const FavoritesRow = React.memo(function FavoritesRow({
     hasNoProducts,
     fetchProducts,
     onProductNavigate,
+    onProductAdded,
 }) {
-    const { cartQuantityMap, handleIncreaseFromCard, handleDecreaseFromCard } = useCartQuantityActions();
+    const { cartQuantityMap, handleIncreaseFromCard, handleDecreaseFromCard } = useCartQuantityActions(onProductAdded);
 
     return (
         <section className="px-4 pt-4 min-[390px]:px-5 min-[430px]:px-6">
@@ -396,23 +413,25 @@ const FavoritesRow = React.memo(function FavoritesRow({
             </div>
 
             {loading ? (
-                <p className="py-8 text-center text-sm text-brand-dark/60">Yükleniyor...</p>
+                <div className="hide-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 min-[390px]:-mx-5 min-[390px]:px-5 min-[430px]:-mx-6 min-[430px]:px-6">
+                    <SkeletonCard variant="favorite" count={2} />
+                </div>
             ) : error ? (
-                <div className="rounded-2xl bg-[#F0F0F0] p-4 text-center shadow-[0_8px_18px_rgba(32,32,32,0.08)]">
-                    <p className="text-sm text-brand-dark">{error}</p>
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm">
+                    <p className="text-sm text-gray-600">{error}</p>
                     <button
                         onClick={fetchProducts}
-                        className="mt-2 rounded-full bg-[#98CD00] px-4 py-2 text-xs font-bold text-[#F0F0F0]"
+                        className="mt-3 rounded-full bg-[#98CD00] px-5 py-2 text-xs font-bold text-white active:scale-95 transition-transform"
                     >
                         Tekrar Dene
                     </button>
                 </div>
             ) : favoriteProducts.length === 0 ? (
-                <p className="py-6 text-sm text-brand-dark/60">
+                <p className="py-6 text-sm text-gray-400">
                     {hasNoProducts ? 'Şu an ürün bulunamadı.' : 'Henüz favori ürün bulunmuyor.'}
                 </p>
             ) : (
-                <div className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 min-[390px]:-mx-5 min-[390px]:gap-2.5 min-[390px]:px-5 min-[430px]:-mx-6 min-[430px]:px-6">
+                <div className="hide-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 min-[390px]:-mx-5 min-[390px]:px-5 min-[430px]:-mx-6 min-[430px]:px-6">
                     {favoriteProducts.map((p, index) => {
                         const cartQty = cartQuantityMap.get(String(p.id)) || 0;
                         return (
@@ -422,11 +441,11 @@ const FavoritesRow = React.memo(function FavoritesRow({
                                     if (!p.isAvailable || !p?.id) return;
                                     onProductNavigate(p.id);
                                 }}
-                                className={`flex h-full w-[214px] shrink-0 flex-col overflow-hidden rounded-2xl bg-[#F0F0F0] shadow-[0_8px_20px_rgba(32,32,32,0.08)] min-[390px]:w-[226px] min-[414px]:w-[234px] min-[430px]:w-[242px] ${
-                                    p.isAvailable && p?.id ? 'cursor-pointer' : 'opacity-65 cursor-not-allowed'
+                                className={`flex h-full w-[214px] shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm min-[390px]:w-[226px] min-[414px]:w-[234px] min-[430px]:w-[242px] ${
+                                    p.isAvailable && p?.id ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'
                                 }`}
                             >
-                                <div className="relative aspect-[1260/1025] w-full overflow-hidden bg-brand-white">
+                                <div className="relative aspect-[1260/1025] w-full overflow-hidden bg-white">
                                     <img
                                         src={p.img}
                                         className="h-full w-full object-contain"
@@ -434,38 +453,36 @@ const FavoritesRow = React.memo(function FavoritesRow({
                                         loading="lazy"
                                         decoding="async"
                                     />
-                                    <span className="absolute left-2 top-2 inline-flex items-center rounded-md bg-brand-white px-2 py-1 font-google text-[9px] font-extralight text-[#98CD00] shadow-[0_2px_6px_rgba(32,32,32,0.12)] min-[390px]:text-[10px]">
+                                    <span className="tour-product-macro absolute left-2 top-2 inline-flex items-center rounded-lg bg-white/90 px-2 py-1 text-[9px] font-semibold text-[#98CD00] shadow-sm backdrop-blur-sm">
                                         {Math.max(0, Math.round(Number(p.cal || 0)))} kcal
                                     </span>
                                 </div>
-                                <div className="flex flex-1 flex-col space-y-0.5 p-2 min-[390px]:p-2.5">
-                                    <div className="flex min-w-0 items-start justify-between gap-2">
-                                        <h4
-                                            className="mb-1 min-h-[40px] min-w-0 break-words text-[12px] font-zalando font-semibold leading-tight text-brand-dark"
-                                            style={{
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                            }}
-                                        >
-                                            {p.name}
-                                        </h4>
-                                    </div>
-                                    <p className="mb-0 line-clamp-1 font-google text-[12px] font-thin leading-snug text-brand-dark/60">{p.desc}</p>
-                                    <div className="mt-auto flex items-center justify-between pt-0.5">
-                                        <span className="font-google text-[14px] font-medium leading-tight text-brand-dark">{formatCurrency(p.price)}</span>
+                                <div className="flex flex-1 flex-col gap-1 p-2.5">
+                                    <h4
+                                        className="mb-0 min-h-[36px] text-[12px] font-semibold leading-tight text-gray-900"
+                                        style={{
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        {p.name}
+                                    </h4>
+                                    <p className="mb-0 line-clamp-1 text-[11px] leading-snug text-gray-400">{p.desc}</p>
+                                    <div className="mt-auto flex items-center justify-between pt-1">
+                                        <span className="text-sm font-bold text-gray-900">{formatCurrency(p.price)}</span>
                                         <div onClick={(e) => e.stopPropagation()}>
                                             {cartQty > 0 ? (
-                                                <div className="inline-flex items-center gap-1 rounded-full bg-[#98CD00] px-1 py-0.5 text-[#F0F0F0]">
+                                                <div className="inline-flex items-center gap-1 rounded-full bg-[#98CD00] px-1 py-0.5 text-white">
                                                     <motion.button
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={(e) => handleDecreaseFromCard(e, p, cartQty)}
-                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-white/15 text-[11px] font-black leading-none"
+                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white/20 text-[11px] font-black leading-none"
                                                     >
                                                         -
                                                     </motion.button>
-                                                    <span className="relative inline-flex min-w-[18px] justify-center overflow-hidden text-center font-google text-[14px] font-medium">
+                                                    <span className="relative inline-flex min-w-[18px] justify-center overflow-hidden text-center text-sm font-bold">
                                                         <AnimatePresence mode="wait" initial={false}>
                                                             <motion.span
                                                                 key={`fav-qty-${p.id}-${cartQty}`}
@@ -481,7 +498,7 @@ const FavoritesRow = React.memo(function FavoritesRow({
                                                     <motion.button
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={(e) => handleIncreaseFromCard(e, p, cartQty)}
-                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-white/15 text-[11px] font-black leading-none"
+                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white/20 text-[11px] font-black leading-none"
                                                     >
                                                         +
                                                     </motion.button>
@@ -491,9 +508,9 @@ const FavoritesRow = React.memo(function FavoritesRow({
                                                     whileTap={{ scale: 0.95 }}
                                                     onClick={(e) => handleIncreaseFromCard(e, p, cartQty)}
                                                     disabled={!p.isAvailable}
-                                                    className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#98CD00] text-[#F0F0F0] disabled:opacity-50 min-[390px]:h-6 min-[390px]:w-6"
+                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#98CD00] text-white shadow-sm disabled:opacity-50"
                                                 >
-                                                    <Plus className="h-[11px] w-[11px] min-[390px]:h-3 min-[390px]:w-3" />
+                                                    <Plus className="h-3.5 w-3.5" />
                                                 </motion.button>
                                             )}
                                         </div>
@@ -509,13 +526,15 @@ const FavoritesRow = React.memo(function FavoritesRow({
 });
 
 const ProductsGrid = React.memo(function ProductsGrid({
+    loading,
     error,
     recommendedProducts,
     hasNoProducts,
     onProductNavigate,
     fetchProducts,
+    onProductAdded,
 }) {
-    const { cartQuantityMap, handleIncreaseFromCard, handleDecreaseFromCard } = useCartQuantityActions();
+    const { cartQuantityMap, handleIncreaseFromCard, handleDecreaseFromCard } = useCartQuantityActions(onProductAdded);
 
     return (
         <section className="space-y-2.5 px-4 pb-24 pt-2.5 min-[390px]:px-5 min-[430px]:px-6">
@@ -523,7 +542,11 @@ const ProductsGrid = React.memo(function ProductsGrid({
                 <h3 className="mb-0 font-zalando text-lg font-semibold leading-none text-brand-dark">Tüm Ürünler</h3>
             </div>
 
-            {error ? (
+            {loading ? (
+                <div className="grid grid-cols-2 gap-2 pb-2 min-[390px]:gap-2.5">
+                    <SkeletonCard variant="product" count={4} />
+                </div>
+            ) : error ? (
                 <div className="rounded-2xl bg-[#F0F0F0] p-6 text-center shadow-[0_8px_18px_rgba(32,32,32,0.08)]">
                     <p className="text-sm font-medium text-brand-dark">{error}</p>
                     <button
@@ -538,21 +561,22 @@ const ProductsGrid = React.memo(function ProductsGrid({
                     {hasNoProducts ? 'Şu an ürün bulunamadı.' : 'Bu kategoride öne çıkan ürün yok.'}
                 </p>
             ) : (
-                <div className="grid grid-cols-2 gap-1.5 pb-2 min-[390px]:gap-2 min-[430px]:gap-2.5">
+                <StaggerContainer className="grid grid-cols-2 gap-2 pb-2 min-[390px]:gap-2.5" stagger={0.07}>
                     {recommendedProducts.map((p, index) => {
                         const cartQty = cartQuantityMap.get(String(p.id)) || 0;
                         return (
-                            <article
-                                key={`recommended-${String(p?.id ?? `idx-${index}`)}`}
+                            <StaggerItem key={`recommended-${String(p?.id ?? `idx-${index}`)}`}>
+                            <motion.article
                                 onClick={() => {
                                     if (!p.isAvailable || !p?.id) return;
                                     onProductNavigate(p.id);
                                 }}
-                                className={`flex h-full flex-col overflow-hidden rounded-2xl bg-[#F0F0F0] shadow-[0_8px_18px_rgba(32,32,32,0.08)] ${
-                                    p.isAvailable && p?.id ? 'cursor-pointer' : 'opacity-65 cursor-not-allowed'
+                                whileTap={p.isAvailable && p?.id ? { scale: 0.97 } : undefined}
+                                className={`flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md ${
+                                    p.isAvailable && p?.id ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'
                                 }`}
                             >
-                                <div className="relative aspect-[1260/1025] w-full overflow-hidden bg-brand-white">
+                                <div className="relative aspect-[1260/1025] w-full overflow-hidden bg-white">
                                     <img
                                         src={p.img}
                                         className="h-full w-full object-contain"
@@ -560,38 +584,36 @@ const ProductsGrid = React.memo(function ProductsGrid({
                                         loading="lazy"
                                         decoding="async"
                                     />
-                                    <span className="absolute left-2 top-2 shrink-0 rounded-md bg-brand-white px-2 py-1 font-google text-[8px] font-extralight text-[#98CD00] shadow-[0_2px_6px_rgba(32,32,32,0.08)] min-[390px]:text-[9px]">
+                                    <span className="tour-product-macro absolute left-2 top-2 shrink-0 rounded-lg bg-white/90 px-2 py-1 text-[9px] font-semibold text-[#98CD00] shadow-sm backdrop-blur-sm">
                                         {Math.max(0, Math.round(Number(p.cal || 0)))} kcal
                                     </span>
                                 </div>
-                                <div className="flex flex-1 flex-col space-y-0.5 p-2 min-[390px]:p-2.5">
-                                    <div className="flex min-w-0 items-start justify-between gap-1.5">
-                                        <h4
-                                            className="mb-1 min-h-[40px] min-w-0 break-words text-[12px] font-zalando font-semibold leading-tight text-brand-dark"
-                                            style={{
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                            }}
-                                        >
-                                            {p.name}
-                                        </h4>
-                                    </div>
-                                    <p className="mb-0 line-clamp-1 font-google text-[12px] font-thin leading-snug text-brand-dark/55">{p.desc}</p>
-                                    <div className="mt-auto flex items-center justify-between pt-0">
-                                        <span className="font-google text-[14px] font-medium text-brand-dark">{formatCurrency(p.price)}</span>
+                                <div className="flex flex-1 flex-col gap-1 p-2.5">
+                                    <h4
+                                        className="mb-0 min-h-[36px] text-[12px] font-semibold leading-tight text-gray-900"
+                                        style={{
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        {p.name}
+                                    </h4>
+                                    <p className="mb-0 line-clamp-1 text-[11px] leading-snug text-gray-400">{p.desc}</p>
+                                    <div className="mt-auto flex items-center justify-between pt-1">
+                                        <span className="text-sm font-bold text-gray-900">{formatCurrency(p.price)}</span>
                                         <div onClick={(e) => e.stopPropagation()}>
                                             {cartQty > 0 ? (
-                                                <div className="inline-flex items-center gap-1 rounded-full bg-[#98CD00] px-1 py-0.5 text-[#F0F0F0]">
+                                                <div className="inline-flex items-center gap-1 rounded-full bg-[#98CD00] px-1 py-0.5 text-white">
                                                     <motion.button
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={(e) => handleDecreaseFromCard(e, p, cartQty)}
-                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-white/15 text-[11px] font-black leading-none"
+                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white/20 text-[11px] font-black leading-none"
                                                     >
                                                         -
                                                     </motion.button>
-                                                    <span className="relative inline-flex min-w-[18px] justify-center overflow-hidden text-center font-google text-[14px] font-medium">
+                                                    <span className="relative inline-flex min-w-[18px] justify-center overflow-hidden text-center text-sm font-bold">
                                                         <AnimatePresence mode="wait" initial={false}>
                                                             <motion.span
                                                                 key={`grid-qty-${p.id}-${cartQty}`}
@@ -607,7 +629,7 @@ const ProductsGrid = React.memo(function ProductsGrid({
                                                     <motion.button
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={(e) => handleIncreaseFromCard(e, p, cartQty)}
-                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-white/15 text-[11px] font-black leading-none"
+                                                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white/20 text-[11px] font-black leading-none"
                                                     >
                                                         +
                                                     </motion.button>
@@ -617,18 +639,19 @@ const ProductsGrid = React.memo(function ProductsGrid({
                                                     whileTap={{ scale: 0.95 }}
                                                     onClick={(e) => handleIncreaseFromCard(e, p, cartQty)}
                                                     disabled={!p.isAvailable}
-                                                    className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#98CD00] text-[#F0F0F0] disabled:opacity-50 min-[390px]:h-6 min-[390px]:w-6"
+                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#98CD00] text-white shadow-sm disabled:opacity-50"
                                                 >
-                                                    <Plus className="h-[11px] w-[11px] min-[390px]:h-3 min-[390px]:w-3" />
+                                                    <Plus className="h-3.5 w-3.5" />
                                                 </motion.button>
                                             )}
                                         </div>
                                     </div>
                                 </div>
-                            </article>
+                            </motion.article>
+                            </StaggerItem>
                         );
                     })}
-                </div>
+                </StaggerContainer>
             )}
         </section>
     );
@@ -656,9 +679,10 @@ export default function Home() {
     const [addresses, setAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [isAddressMenuOpen, setIsAddressMenuOpen] = useState(false);
-    const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
     const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
+    const [cartToast, setCartToast] = useState('');
     const addressMenuRef = useRef(null);
+    const toastTimeoutRef = useRef(null);
 
     // ── Adres çekme — isMounted guard ────────────────────────────────────────
     useEffect(() => {
@@ -797,6 +821,23 @@ export default function Home() {
         navigate(`/product/${id}`);
     }, [navigate]);
 
+    const showCartToast = useCallback((message) => {
+        setCartToast(message);
+        if (toastTimeoutRef.current) {
+            window.clearTimeout(toastTimeoutRef.current);
+        }
+        toastTimeoutRef.current = window.setTimeout(() => {
+            setCartToast('');
+            toastTimeoutRef.current = null;
+        }, 1600);
+    }, []);
+
+    useEffect(() => () => {
+        if (toastTimeoutRef.current) {
+            window.clearTimeout(toastTimeoutRef.current);
+        }
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#F0F0F0] text-brand-dark pb-24">
             <HomeHeader
@@ -806,57 +847,8 @@ export default function Home() {
                 addressMenuRef={addressMenuRef}
                 setIsAddressMenuOpen={setIsAddressMenuOpen}
                 setSelectedAddress={setSelectedAddress}
-                setIsHowItWorksOpen={setIsHowItWorksOpen}
                 navigate={navigate}
             />
-
-            <AnimatePresence>
-                {isHowItWorksOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[70] flex items-center justify-center bg-brand-dark/35 px-5"
-                        onClick={() => setIsHowItWorksOpen(false)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                            transition={{ duration: 0.18, ease: 'easeOut' }}
-                            className="w-full max-w-sm rounded-3xl bg-brand-white p-4 shadow-[0_22px_44px_rgba(32,32,32,0.24)]"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="mb-3 flex items-center justify-between">
-                                <h3 className="mb-0 text-lg font-bold text-brand-dark">Nasıl Çalışır?</h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsHowItWorksOpen(false)}
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-bg text-brand-dark"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                            <div className="space-y-2.5">
-                                {HOW_IT_WORKS_STEPS.map((step, index) => {
-                                    const Icon = step.icon;
-                                    return (
-                                        <div key={step.id} className="flex items-start gap-3 rounded-2xl bg-brand-bg p-3">
-                                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-white text-brand-primary">
-                                                <Icon size={16} />
-                                            </span>
-                                            <div>
-                                                <p className="mb-0 text-sm font-bold text-brand-dark">{`${index + 1}. ${step.title}`}</p>
-                                                <p className="mb-0 mt-0.5 text-xs text-brand-dark/70">{step.description}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <FavoritesRow
                 loading={loading}
@@ -865,6 +857,7 @@ export default function Home() {
                 hasNoProducts={hasNoProducts}
                 fetchProducts={refetchProducts}
                 onProductNavigate={handleProductNavigate}
+                onProductAdded={showCartToast}
             />
 
             <HomeBanner banners={banners} bannersLoading={bannersLoading} />
@@ -899,11 +892,13 @@ export default function Home() {
             </section>
 
             <ProductsGrid
+                loading={loading}
                 error={error}
                 recommendedProducts={recommendedProducts}
                 hasNoProducts={hasNoProducts}
                 onProductNavigate={handleProductNavigate}
                 fetchProducts={refetchProducts}
+                onProductAdded={showCartToast}
             />
 
             <AnimatePresence>
@@ -954,6 +949,21 @@ export default function Home() {
                                 })}
                             </div>
                         </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {cartToast && (
+                    <motion.div
+                        key={cartToast}
+                        initial={{ opacity: 0, y: 18, scale: 0.92 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 28, mass: 0.5 }}
+                        className="pointer-events-none fixed bottom-24 left-1/2 z-[85] -translate-x-1/2 rounded-2xl border border-brand-white/20 bg-brand-dark/90 px-4 py-2.5 text-sm font-medium text-brand-white shadow-[0_14px_30px_rgba(32,32,32,0.34)]"
+                    >
+                        {cartToast}
                     </motion.div>
                 )}
             </AnimatePresence>

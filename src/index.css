@@ -85,6 +85,30 @@
     font-weight: 600;
   }
 
+  h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+    color: #111827;
+  }
+
+  p {
+    color: #4B5563;
+  }
+
   input,
   textarea,
   select,
@@ -95,27 +119,123 @@
     font-weight: 500;
   }
 
+  button,
+  [role='button'],
+  a {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  button:not(:disabled):active,
+  [role='button']:active,
+  a:active {
+    transform: scale(0.97);
+  }
+
   input,
   textarea,
   select {
+    background-color: transparent !important;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
   }
 
   input:focus,
   textarea:focus,
   select:focus {
+    background-color: transparent !important;
+    border: none !important;
     outline: none !important;
     box-shadow: none !important;
     --tw-ring-color: transparent !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
   }
 
   .input-no-stroke,
   .input-no-stroke:focus {
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
     outline: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+  }
+}
+
+@layer components {
+  .app-page-padding {
+    @apply px-4 min-[390px]:px-5;
+  }
+
+  /* ── Tipografi ─────────────────────────────────────────────────── */
+  .app-heading-primary {
+    @apply text-2xl font-bold tracking-tight text-gray-900;
+  }
+
+  .app-heading-secondary {
+    @apply text-lg font-semibold text-gray-800;
+  }
+
+  .app-text-muted {
+    @apply text-sm leading-relaxed text-gray-500;
+  }
+
+  /* ── Butonlar ──────────────────────────────────────────────────── */
+  /* Ana eylem butonu: tam genişlik, yuvarlak, aktif animasyonlu */
+  .app-btn-green {
+    @apply flex w-full items-center justify-center gap-2
+           rounded-2xl bg-[#98CD00] px-4 py-3.5
+           font-semibold text-white transition-all
+           active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70;
+  }
+
+  /* Dar (inline) buton varyantı — genişlik inherit eder */
+  .app-btn-green-sm {
+    @apply inline-flex items-center justify-center gap-1.5
+           rounded-xl bg-[#98CD00] px-4 py-2.5
+           text-sm font-semibold text-white transition-all
+           active:scale-[0.97] disabled:opacity-70;
+  }
+
+  /* İkincil / outline buton */
+  .app-btn-outline {
+    @apply flex w-full items-center justify-center gap-2
+           rounded-2xl border border-gray-200 bg-white px-4 py-3.5
+           text-sm font-semibold text-gray-700 transition-all
+           active:scale-[0.98];
+  }
+
+  /* ── Kartlar ───────────────────────────────────────────────────── */
+  /* Premium yükseltilmiş kart — her türlü liste öğesi için */
+  .app-card {
+    @apply rounded-2xl border border-gray-100 bg-white p-4 shadow-sm;
+  }
+
+  .app-skeleton {
+    @apply animate-pulse rounded-2xl border border-gray-100 bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100;
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite, pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* ── Input alanları ────────────────────────────────────────────── */
+  .app-input {
+    @apply w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3.5
+           text-sm text-gray-900 outline-none transition-all
+           placeholder:text-gray-400
+           focus:border-[#98CD00] focus:bg-white focus:ring-2 focus:ring-[#98CD00]/15;
   }
 }
 
@@ -168,11 +288,8 @@ body {
   animation: success-scale 0.4s ease-out forwards;
 }
 
-/* NOT: transform veya will-change KULLANMA.
-   transform içeren bir parent, position:fixed çocukları viewport yerine
-   kendi boyutlarına göre konumlandırır — modal ve sticky footer'ı kırar. */
 .route-transition-page {
-  will-change: opacity;
+  will-change: transform, opacity;
 }
 
 .route-animating [class*='backdrop-blur'] {
@@ -197,11 +314,12 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 9999px #F0F0F0 inset !important;
-  box-shadow: 0 0 0 9999px #F0F0F0 inset !important;
+  background-color: transparent !important;
+  -webkit-box-shadow: 0 0 0 9999px transparent inset !important;
+  box-shadow: 0 0 0 9999px transparent inset !important;
   -webkit-text-fill-color: #202020 !important;
   caret-color: #202020;
-  transition: background-color 9999s ease-in-out 0s;
+  transition: background-color 0s ease-in-out 0s;
 }
 
 /* font-size:16px @layer base içinde zaten tanımlı (iOS Safari zoom önler) */

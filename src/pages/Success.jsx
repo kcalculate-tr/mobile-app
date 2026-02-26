@@ -279,73 +279,73 @@ export default function Success() {
 
   const displayOrderId = createdOrderId || effectiveOid || orderNumber || 'Oluşturuluyor...';
   return (
-    <div className="min-h-screen bg-[#F0F0F0] flex justify-center px-4 py-4">
-      <main className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-brand-white/10 bg-[#F0F0F0] p-5">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-          <span className="absolute left-[10%] top-[12%] h-2 w-2 rotate-12 rounded-sm bg-[#98CD00]/60" />
-          <span className="absolute right-[16%] top-[18%] h-3 w-3 rotate-45 rounded-sm bg-[#98CD00]/40" />
-          <span className="absolute bottom-[24%] left-[14%] h-2 w-4 -rotate-12 rounded-sm bg-[#98CD00]/50" />
-          <span className="absolute bottom-[16%] right-[12%] h-3 w-2 rotate-12 rounded-sm bg-[#98CD00]/60" />
-        </div>
-
-        <div className="relative flex flex-1 flex-col">
-          <div className="mt-6 flex flex-col items-center text-center">
-            <div className="relative mb-6">
-              <div className="flex h-28 w-28 items-center justify-center rounded-full border border-brand-white/10 bg-[#F0F0F0] shadow-sm">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#98CD00]/40">
-                  <CheckCircle2 size={54} className="text-brand-dark" strokeWidth={2.2} />
-                </div>
-              </div>
+    <div className="min-h-screen bg-brand-bg px-4 py-6">
+      <main className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[430px] flex-col rounded-[2rem] bg-brand-white p-6 shadow-sm">
+        <section className="mt-3 flex flex-col items-center text-center">
+          <div className="mb-5 flex h-28 w-28 items-center justify-center rounded-full bg-brand-primary/15">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-primary text-brand-white shadow-[0_10px_24px_rgba(152,205,0,0.35)]">
+              <CheckCircle2 size={48} strokeWidth={2.4} />
             </div>
-
-            <h1 className="text-2xl font-bold text-brand-dark">Siparişiniz Alındı</h1>
-            <p className="mt-1 text-sm text-brand-dark/60">
-              Siparişiniz hazırlanıyor. Tahmini teslim süresi: <span className="font-semibold text-brand-dark">{estimatedRange}</span>
-            </p>
           </div>
 
-          <section className="mt-8 rounded-2xl border border-brand-white/10 bg-[#F0F0F0] p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-dark/50">Sipariş No</p>
-                <p className="font-mono text-sm font-bold text-brand-dark">#{displayOrderId}</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#98CD00]/40">
-                <ReceiptText size={18} className="text-brand-dark" />
-              </div>
-            </div>
+          <h1 className="text-3xl font-extrabold text-brand-dark">Siparişiniz Başarıyla Alındı</h1>
+          <p className="mt-2 max-w-[290px] text-sm text-brand-dark/65">
+            Siparişiniz hazırlanıyor. Tahmini teslim süresi <span className="font-semibold text-brand-dark">{estimatedRange}</span>.
+          </p>
+        </section>
 
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#F0F0F0]">
-                  <MapPin size={16} className="text-brand-dark" />
-                </span>
-                <div>
-                  <p className="mb-0.5 text-xs font-semibold text-brand-dark/50">Teslimat Adresi</p>
-                  <p className="text-sm font-semibold text-brand-dark leading-snug">
-                    {deliveryAddress || 'Adres bilgisi kaydediliyor...'}
-                  </p>
-                </div>
-              </div>
+        <section className="mt-8 rounded-2xl border border-brand-dark/10 bg-brand-bg px-4 py-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-brand-dark/45">Sipariş No</p>
+              <p className="font-mono text-sm font-bold text-brand-dark">#{displayOrderId}</p>
             </div>
-          </section>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/20 text-brand-dark">
+              <ReceiptText size={18} />
+            </span>
+          </div>
 
-          {savingOrder && (
-            <p className="mt-4 text-center text-xs text-brand-dark/50">Siparişiniz veritabanına kaydediliyor...</p>
-          )}
-
-          {!savingOrder && (
-            <div className="mt-auto mb-2 pt-8">
-              <button
-                onClick={() => navigate('/')}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#98CD00] py-3.5 text-sm font-google font-medium text-[#F0F0F0] active:scale-[0.98]"
-              >
-                <Home size={17} />
-                Ana Sayfaya Dön
-              </button>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary/15 text-brand-dark">
+              <MapPin size={15} />
+            </span>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-brand-dark/50">Teslimat Adresi</p>
+              <p className="text-sm font-medium leading-snug text-brand-dark">
+                {deliveryAddress || 'Adres bilgisi kaydediliyor...'}
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        </section>
+
+        {savingOrder && (
+          <p className="mt-4 text-center text-xs text-brand-dark/55">Siparişiniz veritabanına kaydediliyor...</p>
+        )}
+
+        {!!saveError && !savingOrder && (
+          <p className="mt-4 rounded-xl bg-brand-primary/10 px-3 py-2 text-center text-xs text-brand-dark">
+            Siparişiniz alındı. Teknik doğrulama devam ediyor, dilerseniz siparişlerinizi kontrol edebilirsiniz.
+          </p>
+        )}
+
+        {!savingOrder && (
+          <div className="mt-auto space-y-3 pt-8">
+            <button
+              onClick={() => navigate('/orders')}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary py-3.5 text-sm font-semibold text-brand-white shadow-[0_10px_24px_rgba(152,205,0,0.35)] active:scale-[0.99]"
+            >
+              <ReceiptText size={16} />
+              Siparişlerim'e Git
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-brand-dark/10 bg-transparent py-3.5 text-sm font-semibold text-brand-dark active:scale-[0.99]"
+            >
+              <Home size={16} />
+              Ana Sayfaya Dön
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

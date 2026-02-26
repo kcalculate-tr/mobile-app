@@ -8,7 +8,7 @@
  *  - Grup silme (bağlı product_option_groups cascade ile temizlenir)
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../supabase';
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react';
 
@@ -22,6 +22,7 @@ const EMPTY_GROUP = {
 };
 
 const EMPTY_ITEM = {
+    product_id: '',
     name: '',
     price_adjustment: 0,
     is_available: true,
@@ -52,7 +53,7 @@ function Badge({ label, color = 'green' }) {
 }
 
 // ─── Ana bileşen ──────────────────────────────────────────────────────────────
-export default function OptionGroups() {
+export default function OptionGroups({ products: sourceProducts = [] }) {
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -61,7 +62,6 @@ export default function OptionGroups() {
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [items, setItems] = useState([]);
     const [itemsLoading, setItemsLoading] = useState(false);
-
     // Modal: grup oluştur / düzenle
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [editingGroup, setEditingGroup] = useState(null);
@@ -92,6 +92,17 @@ export default function OptionGroups() {
 
     useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
+    const products = useMemo(() => {
+        const rows = Array.isArray(sourceProducts) ? sourceProducts : [];
+        return rows
+            .map((row) => ({
+                id: row?.id,
+                name: String(row?.name || row?.title || `Ürün #${row?.id ?? ''}`).trim(),
+                price: Number(row?.price || 0),
+            }))
+            .filter((row) => row.id !== undefined && row.id !== null && row.name);
+    }, [sourceProducts]);
+
     // ── Grup itemlarını yükle ─────────────────────────────────────────────────
     const fetchItems = useCallback(async (groupId) => {
         setItemsLoading(true);
@@ -117,18 +128,41 @@ export default function OptionGroups() {
 
     // ── Grup kaydet (oluştur/güncelle) ────────────────────────────────────────
     const saveGroup = async (form) => {
+        const normalizedName = String(form?.name || '').trim();
+        const minSelection = Math.max(0, parseInt(form?.min_selection, 10) || 0);
+        const rawMax = parseInt(form?.max_selection, 10);
+        const maxSelection = Number.isFinite(rawMax) ? Math.max(0, rawMax) : 0;
+        const requiredMin = form?.is_required ? Math.max(1, minSelection) : minSelection;
+
+        if (!normalizedName) {
+            alert('Grup adı zorunludur.');
+            return;
+        }
+        if (maxSelection < requiredMin) {
+            alert('Max seçim, min seçimden küçük olamaz.');
+            return;
+        }
+
+        const payload = {
+            name: normalizedName,
+            description: String(form?.description || '').trim(),
+            min_selection: requiredMin,
+            max_selection: maxSelection,
+            is_required: Boolean(form?.is_required),
+        };
+
         setSaving(true);
         try {
             if (editingGroup) {
                 const { error: err } = await supabase
                     .from('option_groups')
-                    .update(form)
+                    .update(payload)
                     .eq('id', editingGroup.id);
                 if (err) throw err;
             } else {
                 const { error: err } = await supabase
                     .from('option_groups')
-                    .insert(form);
+                    .insert(payload);
                 if (err) throw err;
             }
             setShowGroupModal(false);
@@ -155,18 +189,42 @@ export default function OptionGroups() {
 
     // ── Item kaydet ───────────────────────────────────────────────────────────
     const saveItem = async (form) => {
+        const normalizedName = String(form?.name || '').trim();
+        const priceAdjustment = parseFloat(form?.price_adjustment);
+        const sortOrder = parseInt(form?.sort_order, 10);
+
+        if (!normalizedName) {
+            alert('Seçenek adı zorunludur.');
+            return;
+        }
+        if (!Number.isFinite(priceAdjustment) || priceAdjustment < 0) {
+            alert('Ekstra fiyat 0 veya daha büyük olmalıdır.');
+            return;
+        }
+        if (!Number.isFinite(sortOrder) || sortOrder < 0) {
+            alert('Sıra numarası 0 veya daha büyük olmalıdır.');
+            return;
+        }
+
+        const payload = {
+            name: normalizedName,
+            price_adjustment: priceAdjustment,
+            is_available: Boolean(form?.is_available),
+            sort_order: sortOrder,
+        };
+
         setSaving(true);
         try {
             if (editingItem?.id) {
                 const { error: err } = await supabase
                     .from('option_items')
-                    .update(form)
+                    .update(payload)
                     .eq('id', editingItem.id);
                 if (err) throw err;
             } else {
                 const { error: err } = await supabase
                     .from('option_items')
-                    .insert({ ...form, group_id: selectedGroup.id });
+                    .insert({ ...payload, group_id: selectedGroup.id });
                 if (err) throw err;
             }
             setShowItemModal(false);
@@ -241,10 +299,18 @@ export default function OptionGroups() {
                         </p>
                     )}
                     {groups.map((g) => (
-                        <button
+                        <div
                             key={g.id}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => selectGroup(g)}
-                            className={`group flex w-full flex-col items-start px-4 py-3 text-left transition-colors hover:bg-white
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    selectGroup(g);
+                                }
+                            }}
+                            className={`group flex w-full cursor-pointer flex-col items-start px-4 py-3 text-left transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-green-400/40
                                 ${selectedGroup?.id === g.id ? 'bg-white shadow-sm' : ''}`}
                         >
                             <div className="flex w-full items-center justify-between">
@@ -276,7 +342,7 @@ export default function OptionGroups() {
                                     color="gray"
                                 />
                             </div>
-                        </button>
+                        </div>
                     ))}
                 </div>
 
@@ -406,6 +472,7 @@ export default function OptionGroups() {
                     onClose={() => { setShowItemModal(false); setEditingItem(null); }}
                     saving={saving}
                     existingCount={items.length}
+                    products={products}
                 />
             )}
         </div>
@@ -497,11 +564,15 @@ function GroupModal({ initial, onSave, onClose, saving }) {
 }
 
 // ─── ItemModal ────────────────────────────────────────────────────────────────
-function ItemModal({ initial, onSave, onClose, saving, existingCount }) {
+function ItemModal({ initial, onSave, onClose, saving, existingCount, products }) {
+    const initialMatchedProduct = initial
+        ? products.find((item) => String(item.id) === String(initial.product_id) || item.name === initial.name)
+        : null;
     const [form, setForm] = useState({
         ...EMPTY_ITEM,
         sort_order: existingCount,
         ...(initial ? {
+            product_id: initialMatchedProduct ? String(initialMatchedProduct.id) : '',
             name: initial.name,
             price_adjustment: initial.price_adjustment,
             is_available: initial.is_available,
@@ -510,6 +581,25 @@ function ItemModal({ initial, onSave, onClose, saving, existingCount }) {
     });
 
     const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+    const selectedProduct = products.find((item) => String(item.id) === String(form.product_id));
+
+    useEffect(() => {
+        if (!initial?.id || form.product_id || products.length === 0) return;
+        const matchedByName = products.find((item) => item.name === form.name);
+        if (matchedByName) {
+            set('product_id', String(matchedByName.id));
+        }
+    }, [initial?.id, form.name, form.product_id, products]);
+
+    const handleProductChange = (nextProductId) => {
+        const matched = products.find((item) => String(item.id) === String(nextProductId));
+        setForm((prev) => ({
+            ...prev,
+            product_id: nextProductId,
+            name: matched?.name || '',
+            price_adjustment: matched ? Number(matched.price || 0) : 0,
+        }));
+    };
 
     return (
         <ModalOverlay onClose={onClose}>
@@ -517,13 +607,32 @@ function ItemModal({ initial, onSave, onClose, saving, existingCount }) {
                 {initial?.id ? 'Seçeneği Düzenle' : 'Yeni Seçenek Ekle'}
             </h2>
 
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Seçenek Adı *</label>
-            <input
-                value={form.name}
-                onChange={(e) => set('name', e.target.value)}
-                placeholder="Örn: Coca-Cola 250ml"
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Ürün Seçimi *</label>
+            <select
+                value={form.product_id}
+                onChange={(e) => handleProductChange(e.target.value)}
                 className="mb-3 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-green-500"
-            />
+            >
+                <option value="">{products.length > 0 ? 'Ürün seçin' : 'Ürün listesi boş'}</option>
+                {products.map((item) => (
+                    <option key={`option-item-product-${item.id}`} value={String(item.id)}>
+                        {item.name}
+                    </option>
+                ))}
+            </select>
+
+            <div className="mb-3 grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p className="text-[11px] text-gray-500">Seçenek Adı</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{form.name || 'Ürün seçin'}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p className="text-[11px] text-gray-500">Ürün Fiyatı</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                        {selectedProduct ? `${Number(selectedProduct.price || 0).toFixed(2)} ₺` : '—'}
+                    </p>
+                </div>
+            </div>
 
             <div className="mb-3 grid grid-cols-2 gap-3">
                 <div>

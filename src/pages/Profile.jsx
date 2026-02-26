@@ -10,8 +10,6 @@ import {
   LogOut,
   Package,
   Settings,
-  Award,
-  BadgeCheck,
   Headset,
   Loader2,
 } from 'lucide-react';
@@ -52,6 +50,7 @@ export default function Profile() {
   const { user, avatarUrl, avatarUploading, uploadAvatar, authLoading } = useContext(AuthContext);
   const [error, setError] = useState('');
   const [avatarError, setAvatarError] = useState('');
+  const [macroPoints, setMacroPoints] = useState(0);
   const avatarInputRef = useRef(null);
 
   useEffect(() => {
@@ -67,6 +66,58 @@ export default function Profile() {
     () => menuItems,
     []
   );
+  const formattedMacroPoints = useMemo(
+    () => Math.max(0, Number(macroPoints || 0)).toLocaleString('tr-TR'),
+    [macroPoints]
+  );
+  const macroProgressPercent = useMemo(
+    () => Math.min(100, (Math.max(0, Number(macroPoints || 0)) / 2000) * 100),
+    [macroPoints]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchMacroPoints() {
+      if (authLoading || !user?.id) {
+        if (isMounted) setMacroPoints(0);
+        return;
+      }
+
+      try {
+        let pointsValue = 0;
+
+        const profileByUserId = await supabase
+          .from('profiles')
+          .select('macro_points')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!profileByUserId.error && profileByUserId.data) {
+          pointsValue = Number(profileByUserId.data?.macro_points || 0);
+        } else {
+          const profileById = await supabase
+            .from('profiles')
+            .select('macro_points')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (!profileById.error && profileById.data) {
+            pointsValue = Number(profileById.data?.macro_points || 0);
+          }
+        }
+
+        if (isMounted) setMacroPoints(Math.max(0, Number(pointsValue) || 0));
+      } catch {
+        if (isMounted) setMacroPoints(0);
+      }
+    }
+
+    fetchMacroPoints();
+    return () => {
+      isMounted = false;
+    };
+  }, [authLoading, user?.id]);
 
   const handleAvatarChange = async (event) => {
     const file = event.target.files?.[0];
@@ -90,30 +141,34 @@ export default function Profile() {
     const Icon = item.icon;
     return (
       <motion.button
-        whileTap={{ scale: 0.95 }}
+        whileTap={{ scale: 0.97 }}
         key={item.key}
         onClick={() => navigate(item.to)}
-        className="w-full flex items-center gap-4 p-4 bg-brand-white rounded-xl shadow-md active:scale-[0.98]"
+        className="flex w-full items-center gap-3.5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md active:scale-[0.98]"
       >
-        <span className="w-10 h-10 rounded-lg bg-brand-bg flex items-center justify-center shrink-0">
-          <Icon size={18} className="text-brand-primary" />
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100">
+          <Icon size={18} className="text-gray-600" />
         </span>
-        <span className="flex-1 text-left font-semibold text-brand-dark truncate">{item.label}</span>
-        <ChevronRight size={18} className="text-brand-dark/60" />
+        <span className="flex-1 truncate text-left text-sm font-semibold text-gray-900">{item.label}</span>
+        <ChevronRight size={16} className="text-gray-300" />
       </motion.button>
     );
   };
 
   if (authLoading) {
-    return <div className="min-h-screen bg-[#F0F0F0] p-8 text-center text-brand-dark/60">Yükleniyor...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F0F0F0]">
+        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#98CD00] border-t-transparent" />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] text-brand-dark flex justify-center">
-      <div className="w-full max-w-[430px] min-h-screen px-5 pb-28 pt-10">
+    <div className="flex min-h-screen justify-center bg-[#F0F0F0]">
+      <div className="app-page-padding w-full max-w-[430px] min-h-screen pb-28 pt-10">
         <header className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <label className="relative block w-14 h-14 cursor-pointer rounded-full border-2 border-[#98CD00] p-0.5 bg-[#F0F0F0] shadow-lg overflow-hidden">
+            <label className="relative block h-14 w-14 cursor-pointer overflow-hidden rounded-full border-2 border-[#98CD00] p-0.5 shadow-lg">
               <input
                 ref={avatarInputRef}
                 type="file"
@@ -125,78 +180,72 @@ export default function Profile() {
               {avatarUrl ? (
                 <img src={avatarUrl} alt={displayName} className="h-full w-full rounded-full object-cover" />
               ) : (
-                <div className="w-full h-full rounded-full bg-[#F0F0F0] text-brand-dark flex items-center justify-center text-lg font-bold">
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-100 text-lg font-bold text-gray-600">
                   {initials}
                 </div>
               )}
               {avatarUploading && (
-                <span className="absolute inset-0 flex items-center justify-center bg-brand-dark/35 text-brand-white">
-                  <Loader2 size={16} className="animate-spin" />
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30">
+                  <Loader2 size={16} className="animate-spin text-white" />
                 </span>
               )}
             </label>
             <div className="min-w-0">
-              <h1 className="mb-0 truncate text-2xl font-bold leading-tight text-brand-dark">{displayName}</h1>
-              <p className="mb-0 mt-0.5 truncate text-sm text-brand-dark/55">{user?.email || '-'}</p>
+              <h1 className="mb-0 truncate text-xl font-bold leading-tight text-gray-900">{displayName}</h1>
+              <p className="mb-0 mt-0.5 truncate text-sm text-gray-400">{user?.email || '-'}</p>
             </div>
           </div>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/profile/security')}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-brand-white shadow-sm border border-[#82CD47] shrink-0"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-100 bg-white shadow-sm"
             aria-label="Ayarlar"
           >
-            <Settings size={18} className="text-[#202020]" />
+            <Settings size={18} className="text-gray-600" />
           </motion.button>
         </header>
 
-        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-yellow-500 bg-brand-white px-3 py-1.5">
-          <Award size={14} className="text-yellow-500" />
-          <span className="text-xs font-bold uppercase tracking-wider text-yellow-600">Altın Seviye</span>
-        </div>
         {avatarError && <p className="mt-2 text-xs text-[#98CD00]">{avatarError}</p>}
 
-        <section className="mt-4 rounded-2xl bg-brand-white p-4 shadow-md">
+        <section className="mt-4 rounded-2xl bg-[#202020] p-4 shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <p className="mb-0 text-[11px] font-semibold uppercase tracking-wider text-brand-dark/80">Sadakat Puanı</p>
-              <p className="mb-0 mt-1 text-2xl font-semibold text-brand-dark">1,250</p>
+              <p className="mb-0 text-[11px] font-semibold uppercase tracking-wider text-white/70">Makro Puan</p>
+              <p className="mb-0 mt-1 text-2xl font-semibold text-white">{formattedMacroPoints}</p>
             </div>
-            <div className="inline-flex items-center gap-1 rounded-full bg-brand-bg px-2.5 py-1 text-xs font-semibold text-brand-dark">
-              <BadgeCheck size={12} className="text-brand-primary" />
-              Altın Seviye
+            <div className="inline-flex items-center rounded-full border border-white/25 px-2.5 py-1 text-xs font-semibold text-white">
+              Aktif
             </div>
           </div>
           <div className="mt-3">
-            <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-brand-dark/75">
-              <span>Platin Seviyeye İlerleme</span>
-              <span className="font-semibold">%75</span>
+            <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-white/75">
+              <span>Sipariş verdikçe Makro Puan kazan, indirimleri yakala.</span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-brand-white/70">
-              <div className="h-full w-3/4 rounded-full bg-brand-primary" />
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
+              <div className="h-full rounded-full bg-white" style={{ width: `${macroProgressPercent}%` }} />
             </div>
           </div>
         </section>
 
         <section className="mt-6">
-          <h2 className="mb-0 text-[30px] leading-none text-brand-dark">Genel</h2>
+          <h2 className="app-heading-secondary mb-0 leading-none">Genel</h2>
           <div className="mt-3 space-y-3">
             {generalItems.map(renderMenuButton)}
             <motion.button
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.97 }}
               onClick={handleLogout}
-              className="w-full flex items-center gap-4 p-4 bg-brand-white rounded-xl shadow-md active:scale-[0.98]"
+              className="flex w-full items-center gap-3.5 rounded-2xl border border-red-100 bg-white p-4 shadow-sm active:scale-[0.98]"
             >
-              <span className="w-10 h-10 rounded-lg bg-brand-bg flex items-center justify-center shrink-0">
-                <LogOut size={18} className="text-brand-primary" />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50">
+                <LogOut size={18} className="text-red-500" />
               </span>
-              <span className="flex-1 text-left font-semibold text-brand-dark truncate">Çıkış Yap</span>
-              <ChevronRight size={18} className="text-brand-dark/60" />
+              <span className="flex-1 truncate text-left text-sm font-semibold text-red-500">Çıkış Yap</span>
+              <ChevronRight size={16} className="text-red-200" />
             </motion.button>
           </div>
 
           {error && (
-            <div className="mt-3 rounded-xl border border-brand-white/10 bg-[#F0F0F0] px-3 py-2 text-xs text-brand-dark">
+            <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
               {error}
             </div>
           )}

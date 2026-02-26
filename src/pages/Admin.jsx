@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  ArrowUp,
+  ArrowDown,
   Loader2,
   Megaphone,
   MessageSquare,
@@ -32,6 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import OptionGroups from './admin/OptionGroups';
 
 const IMAGE_BUCKET = 'images';
 const MAX_IMAGE_SIZE_MB = 5;
@@ -65,6 +68,7 @@ const STATUS_LABELS = {
   delivered: 'Teslim Edildi',
   cancelled: 'İptal Edildi',
 };
+const PRODUCT_OPTION_GROUP_TABLE_CANDIDATES = ['product_option_groups', 'product_option_group'];
 
 function formatCurrency(value) {
   const amount = Number(value || 0);
@@ -342,6 +346,15 @@ function getWritableErrorMessage(err, fallbackMessage) {
   return message;
 }
 
+function getDetailedErrorMessage(err, fallbackMessage) {
+  const base = getWritableErrorMessage(err, fallbackMessage);
+  const details = [err?.details, err?.hint]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' | ');
+  return details ? `${base} (${details})` : base;
+}
+
 function normalizeBoolean(value, fallback = true) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
@@ -351,6 +364,10 @@ function normalizeBoolean(value, fallback = true) {
     if (['0', 'false', 'no', 'off', 'inactive'].includes(normalized)) return false;
   }
   return fallback;
+}
+
+function normalizeTextForCompare(value) {
+  return String(value || '').trim().toLocaleLowerCase('tr-TR');
 }
 
 function emitProductsSyncSignal() {
@@ -632,6 +649,9 @@ export default function Admin() {
   const [favoriteSavingId, setFavoriteSavingId] = useState('');
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [catalogOptionGroups, setCatalogOptionGroups] = useState([]);
+  const [catalogOptionGroupsLoading, setCatalogOptionGroupsLoading] = useState(false);
+  const [productSelectedGroupIds, setProductSelectedGroupIds] = useState([]);
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormOrder, setCategoryFormOrder] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
@@ -691,6 +711,12 @@ export default function Admin() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [storeOpen, setStoreOpen] = useState(true);
   const [minCartAmount, setMinCartAmount] = useState(0);
+  const [deliveryZones, setDeliveryZones] = useState([]);
+  const [deliveryZonesLoading, setDeliveryZonesLoading] = useState(false);
+  const [deliveryZonesImporting, setDeliveryZonesImporting] = useState(false);
+  const [deliveryZoneUpdatingKey, setDeliveryZoneUpdatingKey] = useState('');
+  const [deliveryZoneBulkUpdatingField, setDeliveryZoneBulkUpdatingField] = useState('');
+  const [selectedDeliveryDistrict, setSelectedDeliveryDistrict] = useState('');
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsFilter, setReviewsFilter] = useState('all');
@@ -813,12 +839,50 @@ export default function Admin() {
     return sortedProducts.filter((item) => String(item?.category || '').trim().toLocaleLowerCase('tr-TR') === normalizedSelected);
   }, [sortedProducts, productCategoryFilter]);
 
+  const deliveryDistrictOptions = useMemo(() => {
+    const names = new Set();
+    deliveryZones.forEach((item) => {
+      const districtName = String(item?.district || '').trim();
+      if (districtName) names.add(districtName);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [deliveryZones]);
+
+  const selectedDistrictDeliveryZones = useMemo(() => {
+    if (!selectedDeliveryDistrict) return [];
+    const normalizedSelected = normalizeTextForCompare(selectedDeliveryDistrict);
+    return deliveryZones
+      .filter((item) => normalizeTextForCompare(item?.district) === normalizedSelected)
+      .sort((a, b) => String(a?.neighborhood || '').localeCompare(String(b?.neighborhood || ''), 'tr'));
+  }, [deliveryZones, selectedDeliveryDistrict]);
+
+  const districtAllImmediateEnabled = useMemo(() => (
+    selectedDistrictDeliveryZones.length > 0
+    && selectedDistrictDeliveryZones.every((item) => normalizeBoolean(item?.allow_immediate, false))
+  ), [selectedDistrictDeliveryZones]);
+
+  const districtAllScheduledEnabled = useMemo(() => (
+    selectedDistrictDeliveryZones.length > 0
+    && selectedDistrictDeliveryZones.every((item) => normalizeBoolean(item?.allow_scheduled, false))
+  ), [selectedDistrictDeliveryZones]);
+
   useEffect(() => {
     if (productCategoryFilter === 'Tümü') return;
     if (!productCategoryOptions.includes(productCategoryFilter)) {
       setProductCategoryFilter('Tümü');
     }
   }, [productCategoryFilter, productCategoryOptions]);
+
+  useEffect(() => {
+    if (deliveryDistrictOptions.length === 0) {
+      setSelectedDeliveryDistrict('');
+      return;
+    }
+
+    if (!selectedDeliveryDistrict || !deliveryDistrictOptions.includes(selectedDeliveryDistrict)) {
+      setSelectedDeliveryDistrict(deliveryDistrictOptions[0]);
+    }
+  }, [deliveryDistrictOptions, selectedDeliveryDistrict]);
 
   useEffect(() => {
     setFavoriteSelectionIds((prev) => prev.filter((id) => products.some((item) => String(item.id) === String(id))));
@@ -1147,9 +1211,11 @@ export default function Admin() {
     fetchOrders();
     fetchProducts();
     fetchCategories();
+    fetchCatalogOptionGroups();
     fetchBanners();
     fetchCampaigns();
     fetchStoreSetting();
+    fetchDeliveryZones();
     fetchReviews();
 
     const ordersChannel = supabase
@@ -1217,10 +1283,16 @@ export default function Admin() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, fetchCategories)
       .subscribe();
 
+    const deliveryZonesChannel = supabase
+      .channel('admin-delivery-zones-stream')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_zones' }, fetchDeliveryZones)
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(reviewsChannel);
       supabase.removeChannel(categoriesChannel);
+      supabase.removeChannel(deliveryZonesChannel);
     };
   }, [isAuthenticated, playNotificationSound, startAlarmLoop]);
 
@@ -1419,14 +1491,48 @@ export default function Admin() {
   const fetchProducts = async () => {
     setProductsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .or('type.eq.meal,type.is.null')
-        .order('order', { ascending: true });
+      let finalData = null;
+      let lastError = null;
 
-      if (error) throw error;
-      setProducts(data || []);
+      for (const tableName of PRODUCT_OPTION_GROUP_TABLE_CANDIDATES) {
+        const response = await supabase
+          .from('products')
+          .select(`*, ${tableName}(group_id,sort_order)`)
+          .or('type.eq.meal,type.is.null')
+          .order('order', { ascending: true });
+
+        if (!response.error) {
+          finalData = (Array.isArray(response.data) ? response.data : []).map((row) => {
+            const rawGroups = Array.isArray(row?.[tableName]) ? row[tableName] : [];
+            const normalizedGroups = rawGroups
+              .map((item) => ({
+                group_id: String(item?.group_id ?? '').trim(),
+                sort_order: Number.isFinite(Number(item?.sort_order)) ? Number(item.sort_order) : 0,
+              }))
+              .filter((item) => item.group_id)
+              .sort((a, b) => a.sort_order - b.sort_order);
+
+            const next = { ...row, product_option_groups: normalizedGroups };
+            if (tableName !== 'product_option_groups' && Object.prototype.hasOwnProperty.call(next, tableName)) {
+              delete next[tableName];
+            }
+            return next;
+          });
+          break;
+        }
+
+        lastError = response.error;
+        const lower = `${response.error?.message || ''} ${response.error?.details || ''}`.toLowerCase();
+        const relationMissing = lower.includes('does not exist') || lower.includes('could not find the table') || response.error?.code === '42P01';
+        if (!relationMissing) break;
+      }
+
+      if (!finalData) {
+        console.error('Ürünler ilişki verisiyle çekilemedi:', lastError);
+        throw (lastError || new Error('Ürünler alınamadı.'));
+      }
+
+      setProducts(finalData);
     } catch (err) {
       setPanelError(err?.message || 'Ürünler alınamadı.');
     } finally {
@@ -1465,6 +1571,149 @@ export default function Admin() {
       setPanelError(err?.message || 'Kategoriler alınamadı.');
     } finally {
       setCategoriesLoading(false);
+    }
+  };
+
+  const fetchCatalogOptionGroups = async () => {
+    setCatalogOptionGroupsLoading(true);
+    try {
+      let response = await supabase
+        .from('option_groups')
+        .select('id,name')
+        .order('name', { ascending: true });
+
+      if (response.error) {
+        response = await supabase
+          .from('option_groups')
+          .select('id,name')
+          .order('id', { ascending: true });
+      }
+
+      if (response.error) throw response.error;
+      setCatalogOptionGroups(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      setPanelError(err?.message || 'Seçim grupları alınamadı.');
+      setCatalogOptionGroups([]);
+    } finally {
+      setCatalogOptionGroupsLoading(false);
+    }
+  };
+
+  const fetchProductGroupLinks = async (productId) => {
+    if (!productId) return [];
+    let finalResponse = null;
+    let finalTable = '';
+    let lastError = null;
+
+    for (const tableName of PRODUCT_OPTION_GROUP_TABLE_CANDIDATES) {
+      let response = await supabase
+        .from(tableName)
+        .select('group_id,sort_order')
+        .eq('product_id', productId)
+        .order('sort_order', { ascending: true });
+
+      if (response.error) {
+        response = await supabase
+          .from(tableName)
+          .select('group_id,sort_order')
+          .eq('product_id', productId)
+          .order('id', { ascending: true });
+      }
+
+      if (!response.error) {
+        finalResponse = response;
+        finalTable = tableName;
+        break;
+      }
+
+      lastError = response.error;
+      const lower = `${response.error?.message || ''} ${response.error?.details || ''}`.toLowerCase();
+      const relationMissing = lower.includes('does not exist') || lower.includes('could not find the table') || response.error?.code === '42P01';
+      if (!relationMissing) {
+        break;
+      }
+    }
+
+    if (!finalResponse) {
+      console.error('Ürüne bağlı seçim grupları çekilemedi:', lastError);
+      throw lastError || new Error('Ürüne bağlı seçim grupları çekilemedi.');
+    }
+
+    if (finalTable !== 'product_option_groups') {
+      console.warn('Seçim grupları için fallback tablo kullanıldı:', finalTable);
+    }
+
+    return (Array.isArray(finalResponse.data) ? finalResponse.data : [])
+      .map((row) => String(row?.group_id || '').trim())
+      .filter(Boolean);
+  };
+
+  const syncProductGroupLinks = async (productId, selectedGroupIds = []) => {
+    if (!productId) return;
+    const normalizedProductIdRaw = String(productId ?? '').trim();
+    if (!normalizedProductIdRaw) return;
+    const normalizedProductIdNumber = Number(normalizedProductIdRaw);
+    const normalizedProductId = Number.isFinite(normalizedProductIdNumber)
+      ? normalizedProductIdNumber
+      : normalizedProductIdRaw;
+
+    const normalizedIds = [];
+    const seenGroupIds = new Set();
+    selectedGroupIds.forEach((value) => {
+      const normalizedValue = String(value ?? '').trim();
+      if (!normalizedValue || seenGroupIds.has(normalizedValue)) return;
+      seenGroupIds.add(normalizedValue);
+      normalizedIds.push(normalizedValue);
+    });
+
+    const payload = normalizedIds.map((groupId, index) => ({
+      product_id: normalizedProductId,
+      group_id: groupId,
+      sort_order: index,
+    }));
+    console.log('Seçim grupları veritabanına gönderiliyor...', {
+      productId: normalizedProductId,
+      selectedGroupIds,
+      payload,
+    });
+    let selectedTable = '';
+    let lastError = null;
+
+    for (const tableName of PRODUCT_OPTION_GROUP_TABLE_CANDIDATES) {
+      const { error: deleteError } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('product_id', normalizedProductId);
+
+      if (deleteError) {
+        lastError = deleteError;
+        const lower = `${deleteError?.message || ''} ${deleteError?.details || ''}`.toLowerCase();
+        const relationMissing = lower.includes('does not exist') || lower.includes('could not find the table') || deleteError?.code === '42P01';
+        if (relationMissing) continue;
+        console.error(`${tableName} silme hatası:`, deleteError);
+        throw deleteError;
+      }
+
+      selectedTable = tableName;
+      break;
+    }
+
+    if (!selectedTable) {
+      console.error('Seçim grubu eşleşmelerini silecek tablo bulunamadı:', lastError);
+      throw lastError || new Error('Seçim grubu eşleşmelerini silecek tablo bulunamadı.');
+    }
+
+    if (normalizedIds.length === 0) return;
+    const { error: insertError } = await supabase
+      .from(selectedTable)
+      .insert(payload);
+    if (insertError) {
+      console.error(`${selectedTable} insert hatası:`, insertError);
+      throw insertError;
+    }
+
+    if (selectedTable !== 'product_option_groups') {
+      console.warn('Seçim grupları için fallback tabloya yazıldı:', selectedTable);
     }
   };
 
@@ -1548,6 +1797,196 @@ export default function Admin() {
       setPanelInfo('Ayarlar tablosu bulunamadı. Şimdilik yerel/simülasyon modunda çalışıyor.');
     } finally {
       setSettingsLoading(false);
+    }
+  };
+
+  const fetchDeliveryZones = async () => {
+    setDeliveryZonesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('delivery_zones')
+        .select('id,district,neighborhood,is_active,allow_immediate,allow_scheduled')
+        .order('district', { ascending: true })
+        .order('neighborhood', { ascending: true });
+
+      if (error) throw error;
+
+      const rows = Array.isArray(data) ? data : [];
+      setDeliveryZones(rows.map((item) => ({
+        ...item,
+        district: String(item?.district || '').trim(),
+        neighborhood: String(item?.neighborhood || '').trim(),
+        is_active: normalizeBoolean(item?.is_active, false),
+        allow_immediate: normalizeBoolean(item?.allow_immediate, false),
+        allow_scheduled: normalizeBoolean(item?.allow_scheduled, false),
+      })));
+    } catch (err) {
+      setPanelError(getDetailedErrorMessage(err, 'Teslimat bölgeleri alınamadı.'));
+      setDeliveryZones([]);
+    } finally {
+      setDeliveryZonesLoading(false);
+    }
+  };
+
+  const importIzmirNeighborhoods = async () => {
+    setDeliveryZonesImporting(true);
+    setPanelError('');
+    setPanelInfo('');
+
+    try {
+      const provinceResponse = await fetch('https://turkiyeapi.dev/api/v1/provinces/35');
+      if (!provinceResponse.ok) {
+        throw new Error(`İzmir verisi alınamadı (${provinceResponse.status})`);
+      }
+
+      const provinceJson = await provinceResponse.json();
+      const districts = Array.isArray(provinceJson?.data?.districts) ? provinceJson.data.districts : [];
+      if (districts.length === 0) {
+        throw new Error('İzmir ilçeleri API yanıtında bulunamadı.');
+      }
+
+      const districtDetails = await Promise.all(districts.map(async (district) => {
+        const districtId = district?.id;
+        const districtName = String(district?.name || '').trim();
+        if (!districtId || !districtName) return [];
+
+        try {
+          const districtResponse = await fetch(`https://turkiyeapi.dev/api/v1/districts/${districtId}`);
+          if (!districtResponse.ok) return [];
+          const districtJson = await districtResponse.json();
+          const neighborhoods = Array.isArray(districtJson?.data?.neighborhoods) ? districtJson.data.neighborhoods : [];
+
+          return neighborhoods
+            .map((neighborhood) => String(neighborhood?.name || '').trim())
+            .filter(Boolean)
+            .map((neighborhoodName) => ({
+              district: districtName,
+              neighborhood: neighborhoodName,
+              is_active: false,
+              allow_immediate: false,
+              allow_scheduled: false,
+            }));
+        } catch {
+          return [];
+        }
+      }));
+
+      const importedRows = districtDetails.flat();
+      if (importedRows.length === 0) {
+        throw new Error('İzmir mahalleleri alınamadı.');
+      }
+
+      const existingResponse = await supabase
+        .from('delivery_zones')
+        .select('district,neighborhood');
+
+      if (existingResponse.error) throw existingResponse.error;
+
+      const existingKeySet = new Set(
+        (Array.isArray(existingResponse.data) ? existingResponse.data : [])
+          .map((item) => `${normalizeTextForCompare(item?.district)}|${normalizeTextForCompare(item?.neighborhood)}`)
+      );
+
+      const dedupedRows = [];
+      const newKeySet = new Set();
+      importedRows.forEach((row) => {
+        const key = `${normalizeTextForCompare(row.district)}|${normalizeTextForCompare(row.neighborhood)}`;
+        if (!row.district || !row.neighborhood) return;
+        if (existingKeySet.has(key)) return;
+        if (newKeySet.has(key)) return;
+        newKeySet.add(key);
+        dedupedRows.push(row);
+      });
+
+      if (dedupedRows.length === 0) {
+        setPanelInfo('İzmir mahalleleri zaten içe aktarılmış.');
+        await fetchDeliveryZones();
+        return;
+      }
+
+      const chunkSize = 400;
+      for (let i = 0; i < dedupedRows.length; i += chunkSize) {
+        const chunk = dedupedRows.slice(i, i + chunkSize);
+        const { error: insertError } = await supabase.from('delivery_zones').insert(chunk);
+        if (insertError) throw insertError;
+      }
+
+      await fetchDeliveryZones();
+      setPanelInfo(`İzmir mahalleleri içe aktarıldı. Eklenen kayıt: ${dedupedRows.length}`);
+    } catch (err) {
+      setPanelError(getDetailedErrorMessage(err, 'İzmir mahalleleri içe aktarılamadı.'));
+    } finally {
+      setDeliveryZonesImporting(false);
+    }
+  };
+
+  const updateDeliveryZoneToggle = async (zoneId, field, nextValue) => {
+    if (!zoneId || !field) return;
+    const normalizedField = String(field);
+    const allowedFields = new Set(['is_active', 'allow_immediate', 'allow_scheduled']);
+    if (!allowedFields.has(normalizedField)) return;
+
+    setDeliveryZoneUpdatingKey(`${zoneId}:${normalizedField}`);
+    setPanelError('');
+
+    try {
+      const updated = await safeUpdateById('delivery_zones', zoneId, {
+        [normalizedField]: Boolean(nextValue),
+      });
+
+      setDeliveryZones((prev) => prev.map((item) => {
+        if (String(item.id) !== String(zoneId)) return item;
+        return {
+          ...item,
+          ...updated,
+          is_active: normalizeBoolean(updated?.is_active ?? item?.is_active, false),
+          allow_immediate: normalizeBoolean(updated?.allow_immediate ?? item?.allow_immediate, false),
+          allow_scheduled: normalizeBoolean(updated?.allow_scheduled ?? item?.allow_scheduled, false),
+        };
+      }));
+    } catch (err) {
+      setPanelError(getDetailedErrorMessage(err, 'Teslimat bölgesi güncellenemedi.'));
+    } finally {
+      setDeliveryZoneUpdatingKey('');
+    }
+  };
+
+  const updateSelectedDistrictDeliveryField = async (field, nextValue) => {
+    const normalizedField = String(field);
+    const allowedFields = new Set(['allow_immediate', 'allow_scheduled']);
+    if (!allowedFields.has(normalizedField)) return;
+
+    const districtName = String(selectedDeliveryDistrict || '').trim();
+    if (!districtName) return;
+
+    setDeliveryZoneBulkUpdatingField(normalizedField);
+    setPanelError('');
+
+    try {
+      const { error } = await supabase
+        .from('delivery_zones')
+        .update({ [normalizedField]: Boolean(nextValue) })
+        .eq('district', districtName);
+
+      if (error) throw error;
+
+      const normalizedDistrict = normalizeTextForCompare(districtName);
+      setDeliveryZones((prev) => prev.map((item) => {
+        if (normalizeTextForCompare(item?.district) !== normalizedDistrict) return item;
+        return {
+          ...item,
+          [normalizedField]: Boolean(nextValue),
+        };
+      }));
+      setPanelInfo(
+        normalizedField === 'allow_immediate'
+          ? `“${districtName}” ilçesi için Hemen Teslim ${nextValue ? 'açıldı' : 'kapatıldı'}.`
+          : `“${districtName}” ilçesi için Randevulu Teslim ${nextValue ? 'açıldı' : 'kapatıldı'}.`
+      );
+    } catch (err) {
+      setPanelError(getDetailedErrorMessage(err, 'İlçe bazlı toplu teslimat güncellemesi yapılamadı.'));
+    } finally {
+      setDeliveryZoneBulkUpdatingField('');
     }
   };
 
@@ -1698,7 +2137,35 @@ export default function Admin() {
     }
   };
 
+  const toggleProductGroupSelection = (groupId, checked) => {
+    const normalizedId = String(groupId);
+    setProductSelectedGroupIds((prev) => {
+      if (checked) {
+        if (prev.includes(normalizedId)) return prev;
+        return [...prev, normalizedId];
+      }
+      return prev.filter((id) => id !== normalizedId);
+    });
+  };
+
+  const moveProductGroupSelection = (groupId, direction) => {
+    const normalizedId = String(groupId);
+    setProductSelectedGroupIds((prev) => {
+      const index = prev.indexOf(normalizedId);
+      if (index < 0) return prev;
+      const swapIndex = direction === 'up' ? index - 1 : index + 1;
+      if (swapIndex < 0 || swapIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+      return next;
+    });
+  };
+
   const openCreateProduct = () => {
+    if (catalogOptionGroups.length === 0) {
+      fetchCatalogOptionGroups();
+    }
     const nextOrder = products.reduce((max, item) => {
       const current = Number(item?.order ?? item?.sort_order);
       return Number.isFinite(current) ? Math.max(max, current) : max;
@@ -1706,6 +2173,7 @@ export default function Admin() {
     const fallbackCategory = productCategoryOptions[0] || '';
 
     setEditingProduct(null);
+    setProductSelectedGroupIds([]);
     setProductForm({
       name: '',
       price: '',
@@ -1721,32 +2189,64 @@ export default function Admin() {
     setProductModalOpen(true);
   };
 
-  const openEditProduct = (product) => {
+  const openEditProduct = async (product) => {
+    if (catalogOptionGroups.length === 0) {
+      fetchCatalogOptionGroups();
+    }
     const fallbackOrder = products.reduce((max, item) => {
       const current = Number(item?.order ?? item?.sort_order);
       return Number.isFinite(current) ? Math.max(max, current) : max;
     }, 0) + 1;
     const fallbackCategory = productCategoryOptions[0] || '';
 
-    setEditingProduct(product);
+    const selectedProduct = products.find((item) => String(item?.id) === String(product?.id)) || product;
+
+    setEditingProduct(selectedProduct);
     setProductForm({
-      name: getProductName(product),
-      price: String(product?.price ?? ''),
-      description: getProductDescription(product),
-      imageUrl: product?.img || product?.image || '',
-      category: product?.category || fallbackCategory,
-      order: String(product?.order ?? product?.sort_order ?? fallbackOrder),
-      calories: String(product?.calories ?? product?.cal ?? product?.kcal ?? ''),
-      protein: String(product?.protein ?? ''),
-      carbs: String(product?.carbs ?? ''),
-      fats: String(product?.fats ?? product?.fat ?? ''),
+      name: getProductName(selectedProduct),
+      price: String(selectedProduct?.price ?? ''),
+      description: getProductDescription(selectedProduct),
+      imageUrl: selectedProduct?.img || selectedProduct?.image || '',
+      category: selectedProduct?.category || fallbackCategory,
+      order: String(selectedProduct?.order ?? selectedProduct?.sort_order ?? fallbackOrder),
+      calories: String(selectedProduct?.calories ?? selectedProduct?.cal ?? selectedProduct?.kcal ?? ''),
+      protein: String(selectedProduct?.protein ?? ''),
+      carbs: String(selectedProduct?.carbs ?? ''),
+      fats: String(selectedProduct?.fats ?? selectedProduct?.fat ?? ''),
     });
+    const embeddedGroups = Array.isArray(selectedProduct?.product_option_groups) ? selectedProduct.product_option_groups : [];
+    const embeddedSelectedGroupIds = embeddedGroups
+      .map((row) => {
+        const groupId = String(row?.group_id ?? row?.groupId ?? row?.option_groups?.id ?? row?.id ?? '').trim();
+        const rawOrder = Number(row?.sort_order ?? row?.sortOrder ?? 0);
+        return {
+          groupId,
+          sortOrder: Number.isFinite(rawOrder) ? rawOrder : 0,
+        };
+      })
+      .filter((row) => row.groupId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((row) => row.groupId);
+
+    setProductSelectedGroupIds(embeddedSelectedGroupIds);
+    try {
+      const selectedGroupIds = await fetchProductGroupLinks(selectedProduct?.id);
+      const normalizedSelected = selectedGroupIds
+        .map((id) => String(id || '').trim())
+        .filter(Boolean);
+      setProductSelectedGroupIds(normalizedSelected);
+    } catch (err) {
+      setProductSelectedGroupIds(embeddedSelectedGroupIds);
+      console.error('Ürün düzenleme modalı için seçim grupları yüklenemedi:', err);
+      setPanelError(err?.message || 'Ürüne bağlı seçim grupları alınamadı.');
+    }
     setProductModalOpen(true);
   };
 
   const saveProduct = async () => {
     setPanelError('');
     setPanelInfo('');
+    console.log('Ürün kaydet işlemi başlatıldı. Seçili seçim grupları:', productSelectedGroupIds);
 
     if (!productForm.name.trim()) {
       setPanelError('Ürün adı zorunlu.');
@@ -1850,19 +2350,22 @@ export default function Admin() {
         }
 
         const updated = await safeUpdateById('products', editingProduct.id, payload);
-        setProducts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+        await syncProductGroupLinks(updated?.id || editingProduct.id, productSelectedGroupIds);
         setPanelInfo('Ürün güncellendi.');
-        await refetchProductsAndNotify();
+        await fetchProducts();
+        emitProductsSyncSignal();
       } else {
         const created = await safeInsert('products', { ...canonicalPayload, type: 'meal' });
-        setProducts((prev) => [created, ...prev]);
+        await syncProductGroupLinks(created?.id, productSelectedGroupIds);
         setPanelInfo('Yeni ürün eklendi.');
-        await refetchProductsAndNotify();
+        await fetchProducts();
+        emitProductsSyncSignal();
       }
 
       setProductModalOpen(false);
     } catch (err) {
-      setPanelError(err?.message || 'Ürün kaydedilemedi.');
+      console.error('Ürün kaydetme hatası (grup senkronu dahil):', err);
+      setPanelError(getDetailedErrorMessage(err, 'Ürün kaydedilemedi.'));
     } finally {
       setProductSaving(false);
     }
@@ -2592,7 +3095,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 sm:grid-cols-7 gap-2">
+        <div className="mt-3 grid grid-cols-3 sm:grid-cols-9 gap-2">
           <button
             onClick={() => setActiveTab('orders')}
             className={`py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 ${
@@ -2624,6 +3127,22 @@ export default function Admin() {
             }`}
           >
             <Tags size={14} /> Kategoriler
+          </button>
+          <button
+            onClick={() => setActiveTab('options')}
+            className={`py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 ${
+              activeTab === 'options' ? 'bg-brand-primary text-brand-white shadow-md' : 'bg-brand-bg text-brand-dark'
+            }`}
+          >
+            <Tags size={14} /> Seçenekler
+          </button>
+          <button
+            onClick={() => setActiveTab('delivery_zones')}
+            className={`py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 ${
+              activeTab === 'delivery_zones' ? 'bg-brand-primary text-brand-white shadow-md' : 'bg-brand-bg text-brand-dark'
+            }`}
+          >
+            <Truck size={14} /> Teslimat Bölgeleri
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -2662,36 +3181,6 @@ export default function Admin() {
           )}
         </div>
       )}
-
-      <div className="px-4 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/admin/option-groups')}
-          className="bg-brand-white border border-brand-secondary rounded-2xl p-3 text-left shadow-sm hover:bg-brand-bg transition-colors"
-        >
-          <div className="inline-flex items-center gap-2 text-brand-primary">
-            <Tags size={16} />
-            <span className="text-sm font-bold text-brand-dark">Seçim Grupları</span>
-          </div>
-          <p className="mt-1 text-xs text-brand-dark/70">
-            Grupları, seçenekleri ve zorunluluk kurallarını yönetin.
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/admin/product-options')}
-          className="bg-brand-white border border-brand-secondary rounded-2xl p-3 text-left shadow-sm hover:bg-brand-bg transition-colors"
-        >
-          <div className="inline-flex items-center gap-2 text-brand-primary">
-            <GripVertical size={16} />
-            <span className="text-sm font-bold text-brand-dark">Ürün Bağlama</span>
-          </div>
-          <p className="mt-1 text-xs text-brand-dark/70">
-            Ürünlere seçim grubu bağlayın ve gösterim sırasını ayarlayın.
-          </p>
-        </button>
-      </div>
 
       <main className="p-4">
         {activeTab === 'orders' && (
@@ -3413,6 +3902,145 @@ export default function Admin() {
           </section>
         )}
 
+        {activeTab === 'delivery_zones' && (
+          <section className="space-y-4">
+            <div className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-bold text-brand-dark inline-flex items-center gap-2">
+                    <Truck size={15} className="text-brand-primary" /> Teslimat Yönetimi
+                  </h2>
+                  <p className="text-xs text-brand-dark mt-1">
+                    İlçe ve mahalle bazında teslimat açık/kapalı, hemen ve randevulu teslimat ayarlarını yönetin.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={importIzmirNeighborhoods}
+                  disabled={deliveryZonesImporting}
+                  className="px-3 py-2 rounded-xl bg-brand-primary text-brand-white shadow-md hover:opacity-90 text-xs font-bold inline-flex items-center gap-1 disabled:opacity-60"
+                >
+                  {deliveryZonesImporting ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  İzmir Mahallelerini İçe Aktar
+                </button>
+              </div>
+            </div>
+
+            {deliveryZonesLoading ? (
+              <p className="text-brand-dark text-center py-8">Teslimat bölgeleri yükleniyor...</p>
+            ) : deliveryDistrictOptions.length === 0 ? (
+              <div className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-5 text-center">
+                <p className="text-sm text-brand-dark">Kayıtlı teslimat bölgesi yok.</p>
+                <p className="text-xs text-brand-dark mt-1">Yukarıdaki buton ile İzmir mahallelerini içe aktarabilirsiniz.</p>
+              </div>
+            ) : (
+              <div className="grid gap-3 lg:grid-cols-[260px,1fr]">
+                <aside className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-3">
+                  <p className="text-xs font-bold text-brand-dark mb-2">İlçeler</p>
+                  <div className="max-h-[60vh] overflow-y-auto space-y-1.5 pr-1">
+                    {deliveryDistrictOptions.map((districtName) => (
+                      <button
+                        key={districtName}
+                        type="button"
+                        onClick={() => setSelectedDeliveryDistrict(districtName)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                          selectedDeliveryDistrict === districtName
+                            ? 'bg-brand-primary text-brand-white shadow-sm'
+                            : 'bg-brand-bg text-brand-dark'
+                        }`}
+                      >
+                        {districtName}
+                      </button>
+                    ))}
+                  </div>
+                </aside>
+
+                <div className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-bold text-brand-dark">{selectedDeliveryDistrict || 'İlçe seçin'}</p>
+                    <span className="text-xs font-semibold text-brand-dark">
+                      {selectedDistrictDeliveryZones.length} mahalle
+                    </span>
+                  </div>
+
+                  {selectedDistrictDeliveryZones.length > 0 && (
+                    <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => updateSelectedDistrictDeliveryField('allow_immediate', !districtAllImmediateEnabled)}
+                        disabled={deliveryZoneBulkUpdatingField === 'allow_immediate'}
+                        className="inline-flex items-center justify-center rounded-lg border border-brand-secondary bg-brand-bg px-3 py-2 text-xs font-semibold text-brand-dark disabled:opacity-60"
+                      >
+                        {deliveryZoneBulkUpdatingField === 'allow_immediate'
+                          ? 'Güncelleniyor...'
+                          : `Tümüne Hemen Teslim ${districtAllImmediateEnabled ? 'Kapat' : 'Aç'}`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateSelectedDistrictDeliveryField('allow_scheduled', !districtAllScheduledEnabled)}
+                        disabled={deliveryZoneBulkUpdatingField === 'allow_scheduled'}
+                        className="inline-flex items-center justify-center rounded-lg border border-brand-secondary bg-brand-bg px-3 py-2 text-xs font-semibold text-brand-dark disabled:opacity-60"
+                      >
+                        {deliveryZoneBulkUpdatingField === 'allow_scheduled'
+                          ? 'Güncelleniyor...'
+                          : `Tümüne Randevulu Teslim ${districtAllScheduledEnabled ? 'Kapat' : 'Aç'}`}
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedDistrictDeliveryZones.length === 0 ? (
+                    <p className="text-xs text-brand-dark">Bu ilçe için mahalle kaydı bulunamadı.</p>
+                  ) : (
+                    <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1">
+                      {selectedDistrictDeliveryZones.map((zone) => (
+                        <article
+                          key={zone.id}
+                          className="rounded-xl border border-brand-secondary bg-brand-bg px-3 py-2.5"
+                        >
+                          <p className="text-sm font-semibold text-brand-dark">{zone.neighborhood || 'Mahalle'}</p>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {[
+                              { field: 'allow_immediate', label: 'Hemen Teslim' },
+                              { field: 'allow_scheduled', label: 'Randevulu Teslim' },
+                            ].map((toggle) => {
+                              const checked = normalizeBoolean(zone?.[toggle.field], false);
+                              const rowUpdateKey = `${zone.id}:${toggle.field}`;
+                              const updating = deliveryZoneUpdatingKey === rowUpdateKey || deliveryZoneBulkUpdatingField === toggle.field;
+
+                              return (
+                                <div
+                                  key={`${zone.id}-${toggle.field}`}
+                                  className="rounded-lg border border-brand-secondary bg-brand-white px-2 py-1.5 flex items-center justify-between gap-2"
+                                >
+                                  <p className="text-[11px] font-semibold text-brand-dark">{toggle.label}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateDeliveryZoneToggle(zone.id, toggle.field, !checked)}
+                                    disabled={updating}
+                                    className={`w-11 h-6 rounded-full p-0.5 transition ${
+                                      checked ? 'bg-brand-primary' : 'bg-brand-bg'
+                                    } ${updating ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    aria-label={toggle.label}
+                                  >
+                                    <span className={`block w-5 h-5 rounded-full bg-brand-white transition-transform ${
+                                      checked ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                    />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         {activeTab === 'settings' && (
           <section>
             <div className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-4">
@@ -3567,6 +4195,12 @@ export default function Admin() {
                 })}
               </div>
             )}
+          </section>
+        )}
+
+        {activeTab === 'options' && (
+          <section className="min-h-[600px] rounded-2xl bg-brand-white border border-brand-secondary shadow-sm overflow-hidden">
+            <OptionGroups products={products} />
           </section>
         )}
 
@@ -3960,6 +4594,68 @@ export default function Admin() {
                 placeholder="Kategori"
                 className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
               />
+
+              <div className="rounded-xl border border-gray-300 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-brand-dark">Seçim Grupları</p>
+                  <button
+                    type="button"
+                    onClick={fetchCatalogOptionGroups}
+                    className="text-[11px] text-brand-dark underline underline-offset-2"
+                  >
+                    Yenile
+                  </button>
+                </div>
+
+                {catalogOptionGroupsLoading ? (
+                  <p className="mt-2 text-xs text-brand-dark">Gruplar yükleniyor...</p>
+                ) : catalogOptionGroups.length === 0 ? (
+                  <p className="mt-2 text-xs text-brand-dark">Henüz seçim grubu bulunamadı. Önce Seçenekler sekmesinden grup ekleyin.</p>
+                ) : (
+                  <div className="mt-2 space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                    {catalogOptionGroups.map((group) => {
+                      const groupId = String(group.id);
+                      const selectedIndex = productSelectedGroupIds.indexOf(groupId);
+                      const isSelected = selectedIndex !== -1;
+
+                      return (
+                        <div key={`product-group-${groupId}`} className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-2 py-1.5 bg-brand-white">
+                          <label className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => toggleProductGroupSelection(groupId, e.target.checked)}
+                            />
+                            <span className="text-xs text-brand-dark truncate">{group.name || `Grup #${groupId}`}</span>
+                          </label>
+
+                          {isSelected && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] font-semibold text-brand-dark">#{selectedIndex + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => moveProductGroupSelection(groupId, 'up')}
+                                disabled={selectedIndex === 0}
+                                className="w-6 h-6 rounded-md border border-gray-200 inline-flex items-center justify-center disabled:opacity-40"
+                              >
+                                <ArrowUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveProductGroupSelection(groupId, 'down')}
+                                disabled={selectedIndex === productSelectedGroupIds.length - 1}
+                                className="w-6 h-6 rounded-md border border-gray-200 inline-flex items-center justify-center disabled:opacity-40"
+                              >
+                                <ArrowDown size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               <input
                 type="number"

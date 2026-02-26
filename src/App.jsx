@@ -9,6 +9,7 @@ import { supabase } from './supabase';
 // ── Her zaman eager yüklenen shell bileşenleri ────────────────────────────────
 // Bunlar route içeriği değil, uygulama iskeleti — lazy yapılmamalı.
 import BottomNavLayout from './components/BottomNavLayout';
+import OnboardingTour from './components/OnboardingTour';
 
 // ── Tüm sayfalar lazy-loaded ──────────────────────────────────────────────────
 // Vite, her import() çağrısını ayrı bir chunk'a böler.
@@ -37,6 +38,10 @@ const Coupons      = React.lazy(() => import(/* webpackChunkName: "page-coupons"
 const Security     = React.lazy(() => import(/* webpackChunkName: "page-security"   */ './pages/profile/Security'));
 const Contracts    = React.lazy(() => import(/* webpackChunkName: "page-contracts"  */ './pages/profile/Contracts'));
 const Support      = React.lazy(() => import(/* webpackChunkName: "page-support"    */ './pages/Support'));
+const HowItWorks   = React.lazy(() => import(/* webpackChunkName: "page-how-it-works" */ './pages/HowItWorks'));
+const PrivacyPolicy = React.lazy(() => import(/* webpackChunkName: "page-privacy-policy" */ './pages/PrivacyPolicy'));
+const RefundPolicy = React.lazy(() => import(/* webpackChunkName: "page-refund-policy" */ './pages/RefundPolicy'));
+const TermsOfService = React.lazy(() => import(/* webpackChunkName: "page-terms-of-service" */ './pages/TermsOfService'));
 
 // Bottom-nav sekmeleri
 const Tracker      = React.lazy(() => import(/* webpackChunkName: "page-tracker"     */ './pages/Tracker'));
@@ -48,18 +53,15 @@ const Admin             = React.lazy(() => import(/* webpackChunkName: "admin-ma
 const AdminOptionGroups = React.lazy(() => import(/* webpackChunkName: "admin-options" */ './pages/admin/OptionGroups'));
 const AdminProductOpts  = React.lazy(() => import(/* webpackChunkName: "admin-product" */ './pages/admin/ProductOptionManager'));
 
-// Sadece opacity fade: transform/will-change KULLANMA.
-// transform içeren animasyonlar position:fixed elementleri (modal, sticky footer)
-// viewport yerine animate container'a göre konumlandırır ve kırar.
 const PAGE_VARIANTS = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
 };
 
 const PAGE_TRANSITION = {
-  duration: 0.18,
-  ease: 'easeInOut',
+  duration: 0.26,
+  ease: [0.22, 1, 0.36, 1],
 };
 
 function PageTransition({ children, onStateChange }) {
@@ -248,6 +250,10 @@ function AnimatedRoutes() {
           <Route path="/profile/cards" element={withPageTransition(<Cards />)} />
           <Route path="/profile/coupons" element={withPageTransition(<Coupons />)} />
           <Route path="/profile/support" element={withPageTransition(<Support />)} />
+          <Route path="/nasil-calisir" element={withPageTransition(<HowItWorks />)} />
+          <Route path="/gizlilik-politikasi" element={withPageTransition(<PrivacyPolicy />)} />
+          <Route path="/iade-politikasi" element={withPageTransition(<RefundPolicy />)} />
+          <Route path="/kullanim-kosullari" element={withPageTransition(<TermsOfService />)} />
           <Route path="/profile/security" element={withPageTransition(<Security />)} />
           <Route path="/profile/contracts" element={withPageTransition(<Contracts />)} />
           <Route path="/admin" element={withPageTransition(<AdminRouteGuard />)} />
@@ -276,15 +282,17 @@ function PageLoadingFallback() {
       aria-label="Sayfa yükleniyor"
       role="status"
     >
-      {/* Çift halka — marka yeşili + turuncu */}
+      {/* Çift halka — marka yeşili + beyaz */}
+      <div className="rounded-full bg-black/20 p-2">
       <div className="relative h-14 w-14">
         {/* Dış halka: marka yeşili */}
         <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-[#98CD00] border-t-transparent" />
-        {/* İç halka: turuncu, ters yönde */}
+        {/* İç halka: beyaz, ters yönde */}
         <div
-          className="absolute inset-[6px] rounded-full border-[3px] border-orange-400 border-b-transparent"
+          className="absolute inset-[6px] rounded-full border-[3px] border-white border-b-transparent"
           style={{ animation: 'spin 0.75s linear infinite reverse' }}
         />
+      </div>
       </div>
 
       {/* Marka adı */}
@@ -307,6 +315,7 @@ export default function App() {
               <LazyMotion features={domAnimation}>
                 <MotionConfig reducedMotion="user" transition={PAGE_TRANSITION}>
                   <div className="relative min-h-screen" style={{ overflowX: 'clip' }}>
+                    <OnboardingTour />
                     <Suspense fallback={<PageLoadingFallback />}>
                       <AnimatedRoutes />
                     </Suspense>

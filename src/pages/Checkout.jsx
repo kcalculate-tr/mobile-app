@@ -1,11 +1,16 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, Bike, CalendarDays, CheckCircle2, ChevronLeft, CreditCard, ShoppingBag, TicketPercent, Zap } from 'lucide-react';
-import { CartContext } from '../context/CartContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AlertCircle, Bike, CalendarDays, CheckCircle2, ChevronLeft, CreditCard, Loader2, ShoppingBag, TicketPercent, Zap } from 'lucide-react';
+import { CartContext, CART_STORAGE_KEY } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../supabase';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import useDeliveryZones from '../hooks/useDeliveryZones';
+import AuthModal from '../components/AuthModal';
 
 const DELIVERY_FEE = 40;
+const IMMEDIATE_DELIVERY_MIN_AMOUNT = 500;
+const SCHEDULED_DELIVERY_MIN_AMOUNT = 1000;
 const SERVICE_START_MINUTE = 9 * 60;
 const SERVICE_END_MINUTE = 22 * 60;
 const DELIVERY_SLOTS = ['09.00 - 13.00', '13.00 - 18.00', '18.00 - 22.00'];
@@ -45,10 +50,142 @@ function createDeliveryDays(dayCount = 7) {
   });
 }
 
+function normalizeForCompare(value) {
+  return String(value || '').trim().toLocaleLowerCase('tr-TR');
+}
+
+function isMissingRequiredValue(value) {
+  const text = String(value || '').trim();
+  if (!text) return true;
+  const normalized = text.toLocaleLowerCase('tr-TR');
+  return normalized === 'seçiniz' || normalized === 'seciniz';
+}
+
+function extractNeighborhoodFromFullAddress(fullAddress) {
+  return String(fullAddress || '').split(',')[0]?.trim() || '';
+}
+
+function getMissingColumnName(errorText) {
+  const pattern = /column ["']?([a-zA-Z0-9_]+)["']?/i;
+  const match = String(errorText || '').match(pattern);
+  return match?.[1] || '';
+}
+
+async function insertOrderWithFallback(payload) {
+  const nextPayload = { ...payload };
+
+  for (let i = 0; i < 8; i += 1) {
+    const { data, error } = await supabase.from('orders').insert([nextPayload]).select('id').single();
+    if (!error) return { data, payload: nextPayload };
+
+    const errorText = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+    const missingCol = getMissingColumnName(errorText);
+
+    if (missingCol && Object.prototype.hasOwnProperty.call(nextPayload, missingCol)) {
+      delete nextPayload[missingCol];
+      continue;
+    }
+
+    const fallbackColumns = [
+      'user_id',
+      'customer_id',
+      'city',
+      'district',
+      'phone',
+      'items',
+      'paytr_oid',
+      'total_price',
+      'payment_method',
+      'payment_card_id',
+      'payment_card_last4',
+      'payment_card_brand',
+      'delivery_method',
+      'delivery_time_type',
+      'scheduled_date',
+      'scheduled_slot',
+      'coupon_code',
+      'coupon_id',
+      'discount_amount',
+      'subtotal_amount',
+      'delivery_fee',
+      'total_amount',
+    ];
+    let removedAny = false;
+    fallbackColumns.forEach((column) => {
+      if (errorText.includes(column) && Object.prototype.hasOwnProperty.call(nextPayload, column)) {
+        delete nextPayload[column];
+        removedAny = true;
+      }
+    });
+
+    if (removedAny) continue;
+    throw error;
+  }
+
+  throw new Error('orders insert fallback limiti aşıldı');
+}
+
+async function awardMacroPoints(userId, increment = 100) {
+  const safeUserId = String(userId || '').trim();
+  const safeIncrement = Math.max(0, Number(increment) || 0);
+  if (!safeUserId || !safeIncrement) return;
+
+  const readProfileByUserId = async () => supabase
+    .from('profiles')
+    .select('id,user_id,macro_points')
+    .eq('user_id', safeUserId)
+    .maybeSingle();
+
+  const readProfileById = async () => supabase
+    .from('profiles')
+    .select('id,user_id,macro_points')
+    .eq('id', safeUserId)
+    .maybeSingle();
+
+  const applyUpdate = async (field, value, nextPoints) => supabase
+    .from('profiles')
+    .update({ macro_points: nextPoints })
+    .eq(field, value);
+
+  const upsertInsert = async (payload) => supabase
+    .from('profiles')
+    .insert([payload]);
+
+  try {
+    let profile = null;
+
+    const byUserId = await readProfileByUserId();
+    if (!byUserId.error && byUserId.data) {
+      profile = byUserId.data;
+    } else {
+      const byId = await readProfileById();
+      if (!byId.error && byId.data) profile = byId.data;
+    }
+
+    const nextPoints = Math.max(0, Number(profile?.macro_points || 0)) + safeIncrement;
+
+    if (profile?.id !== undefined && profile?.id !== null) {
+      const updateById = await applyUpdate('id', profile.id, nextPoints);
+      if (!updateById.error) return;
+    }
+
+    const updateByUserId = await applyUpdate('user_id', safeUserId, nextPoints);
+    if (!updateByUserId.error) return;
+
+    const insertByUserId = await upsertInsert({ user_id: safeUserId, macro_points: safeIncrement });
+    if (!insertByUserId.error) return;
+
+    await upsertInsert({ id: safeUserId, macro_points: safeIncrement });
+  } catch {
+    // Puan yazılamasa da sipariş akışı kesilmez.
+  }
+}
+
 export default function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cart, totalAmount } = useContext(CartContext);
+  const { cart, totalAmount, clearCart } = useContext(CartContext);
+  const { user, authLoading } = useContext(AuthContext);
   const deliveryDays = useMemo(() => createDeliveryDays(7), []);
   const defaultScheduledDate = deliveryDays[0]?.iso || toDateInputValue(new Date());
 
@@ -64,6 +201,8 @@ export default function Checkout() {
   );
 
   const [deliveryMethod, setDeliveryMethod] = useState('delivery');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isContractsAccepted, setIsContractsAccepted] = useState(false);
   const [deliveryTimeType, setDeliveryTimeType] = useState('immediate');
   const [scheduledDate, setScheduledDate] = useState(defaultScheduledDate);
   const [scheduledSlot, setScheduledSlot] = useState(DELIVERY_SLOTS[0]);
@@ -110,13 +249,22 @@ export default function Checkout() {
     ];
   }, []);
   const [selectedCardId, setSelectedCardId] = useState('');
+  const {
+    deliveryZones,
+    deliveryZonesLoading,
+    deliveryZonesError,
+    districts: districtOptions,
+    getNeighborhoodsByDistrict,
+  } = useDeliveryZones();
 
   const [form, setForm] = useState({
     adSoyad: '',
     telefon: '',
+    email: '',
     adres: '',
     city: '',
     district: '',
+    neighborhood: '',
     odemeYontemi: getInitialPaymentMethod(),
   });
 
@@ -132,10 +280,62 @@ export default function Checkout() {
   const deliveryFeeAmount = isDelivery ? DELIVERY_FEE : 0;
   const discountAmount = Number(couponInfo?.discountAmount || 0);
   const payableTotal = Number((Math.max(0, subtotalAmount + deliveryFeeAmount - discountAmount)).toFixed(2));
-  const selectedCard = useMemo(
-    () => savedCards.find((card) => String(card.id) === String(selectedCardId)),
-    [savedCards, selectedCardId]
+  const deliveryMethodMinAmount = useMemo(() => {
+    if (!isDelivery) return 0;
+    return deliveryTimeType === 'scheduled' ? SCHEDULED_DELIVERY_MIN_AMOUNT : IMMEDIATE_DELIVERY_MIN_AMOUNT;
+  }, [isDelivery, deliveryTimeType]);
+  const deliveryMethodMissingAmount = useMemo(
+    () => Math.max(0, Number((deliveryMethodMinAmount - payableTotal).toFixed(2))),
+    [deliveryMethodMinAmount, payableTotal]
   );
+  const isBelowDeliveryMethodMinimum = isDelivery && deliveryMethodMissingAmount > 0;
+  const deliveryMethodMinimumMessage = useMemo(() => {
+    if (!isBelowDeliveryMethodMinimum) return '';
+
+    const missingText = deliveryMethodMissingAmount.toFixed(2);
+    if (deliveryTimeType === 'scheduled') {
+      return `Randevulu teslimat için minimum sepet tutarı 1.000 TL'dir. Sepetinize ${missingText} TL'lik daha ürün eklemelisiniz.`;
+    }
+    return `Hemen teslimat için minimum sepet tutarı 500 TL'dir. Sepetinize ${missingText} TL'lik daha ürün eklemelisiniz.`;
+  }, [isBelowDeliveryMethodMinimum, deliveryMethodMissingAmount, deliveryTimeType]);
+  const neighborhoodOptions = useMemo(() => {
+    return getNeighborhoodsByDistrict(form.district);
+  }, [form.district, getNeighborhoodsByDistrict]);
+  const selectedZone = useMemo(() => {
+    const selectedDistrict = normalizeForCompare(form.district);
+    const selectedNeighborhood = normalizeForCompare(form.neighborhood);
+    if (!selectedDistrict || !selectedNeighborhood) return null;
+
+    return (
+      deliveryZones.find((item) => (
+        normalizeForCompare(item?.district) === selectedDistrict
+        && normalizeForCompare(item?.neighborhood) === selectedNeighborhood
+      )) || null
+    );
+  }, [deliveryZones, form.district, form.neighborhood]);
+  const deliveryZoneValidationMessage = useMemo(() => {
+    if (!isDelivery) return '';
+    if (!selectedZone) return '';
+
+    const allowImmediate = Boolean(selectedZone?.allow_immediate);
+    const allowScheduled = Boolean(selectedZone?.allow_scheduled);
+
+    if (!allowImmediate && !allowScheduled) {
+      return 'Ne yazık ki şu anda bölgenize kurye hizmetimiz bulunmamaktadır. Siparişinizi "Gel Al" seçeneği ile oluşturabilirsiniz.';
+    }
+
+    if (deliveryTimeType === 'immediate' && !allowImmediate) {
+      return 'Mevcut adresinize ne yazık ki şu anda "Hemen Teslim" seçeneği sunulmuyor. Lütfen "Randevulu Teslim" veya "Gel Al" seçeneği ile siparişinizi tamamlayınız.';
+    }
+
+    if (deliveryTimeType === 'scheduled' && !allowScheduled) {
+      return 'Mevcut adresinize "Randevulu Teslim" yapılamamaktadır. Lütfen "Hemen Teslim" (eğer açıksa) veya "Gel Al" seçiniz.';
+    }
+
+    return '';
+  }, [isDelivery, selectedZone, deliveryTimeType]);
+  const isDeliveryZoneBlocked = Boolean(deliveryZoneValidationMessage);
+  const hasRequiredLegalApprovals = isContractsAccepted;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -151,6 +351,11 @@ export default function Checkout() {
     const defaultCard = savedCards.find((card) => card?.isDefault);
     setSelectedCardId(String(defaultCard?.id || savedCards[0].id));
   }, [savedCards, selectedCardId]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    setShowAuthModal(!user);
+  }, [authLoading, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -204,6 +409,23 @@ export default function Checkout() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isDelivery) return;
+    setForm((prev) => (prev.city === RESTAURANT_CITY ? prev : { ...prev, city: RESTAURANT_CITY }));
+  }, [isDelivery]);
+
+  useEffect(() => {
+    if (!isDelivery) return;
+    if (!form.neighborhood) return;
+
+    const existsInDistrict = neighborhoodOptions.some(
+      (item) => normalizeForCompare(item?.neighborhood) === normalizeForCompare(form.neighborhood)
+    );
+    if (!existsInDistrict) {
+      setForm((prev) => ({ ...prev, neighborhood: '' }));
+    }
+  }, [isDelivery, neighborhoodOptions, form.neighborhood]);
 
   useEffect(() => {
     if (isRestrictedByAdmin) {
@@ -295,10 +517,11 @@ export default function Checkout() {
           return;
         }
 
-        if (!form.adSoyad) {
+        if (!form.adSoyad || !form.email) {
           setForm((prev) => ({
             ...prev,
             adSoyad: user.user_metadata?.full_name || prev.adSoyad,
+            email: user.email || prev.email,
           }));
         }
 
@@ -334,12 +557,19 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!selectedAddress) return;
+    const fallbackNeighborhood = extractNeighborhoodFromFullAddress(selectedAddress.full_address);
     setForm((prev) => ({
       ...prev,
       adSoyad: selectedAddress.contact_name || prev.adSoyad,
       telefon: selectedAddress.contact_phone || prev.telefon,
-      city: selectedAddress.city || '',
+      email: selectedAddress.contact_email || prev.email,
+      city: RESTAURANT_CITY,
       district: selectedAddress.district || '',
+      neighborhood:
+        selectedAddress.neighborhood
+        || selectedAddress.neighbourhood
+        || selectedAddress.mahalle
+        || fallbackNeighborhood,
       adres: selectedAddress.full_address || '',
     }));
   }, [selectedAddress]);
@@ -371,23 +601,54 @@ export default function Checkout() {
       return;
     }
 
+    if (!user) {
+      setShowAuthModal(true);
+      setError('Siparişi tamamlamak için giriş yapmanız gerekiyor.');
+      return;
+    }
+
     if (cart.length === 0) {
       setError('Sepetiniz boş. Lütfen ürün ekleyin.');
       return;
     }
 
-    if (subtotalAmount < minCartAmount) {
+    if (isBelowDeliveryMethodMinimum) {
+      return;
+    }
+
+    if (!hasRequiredLegalApprovals) {
+      setError('Lütfen siparişi tamamlamak için sözleşme onayını işaretleyin.');
+      return;
+    }
+
+    if (isDelivery && subtotalAmount < minCartAmount) {
       setError(`Minimum sipariş tutarı ₺${Number(minCartAmount || 0).toFixed(0)} olmalıdır.`);
       return;
     }
 
-    if (!form.adSoyad.trim() || !form.telefon.trim()) {
-      setError('Lütfen ad soyad ve telefon bilgilerinizi girin.');
+    const fullNameMissing = isMissingRequiredValue(form.adSoyad);
+    const phoneMissing = isMissingRequiredValue(form.telefon);
+    const emailMissing = isMissingRequiredValue(form.email);
+    const districtMissing = isMissingRequiredValue(form.district);
+    const neighborhoodMissing = isMissingRequiredValue(form.neighborhood);
+
+    if (fullNameMissing || phoneMissing || emailMissing || (isDelivery && (districtMissing || neighborhoodMissing))) {
+      setError('Lütfen Ad Soyad, Telefon, E-posta, İlçe ve Mahalle alanlarının tamamını doldurduğunuzdan emin olun.');
       return;
     }
 
-    if (isDelivery && (!form.adres.trim() || !form.city.trim() || !form.district.trim())) {
-      setError('Eve teslim için adres, şehir ve ilçe alanları zorunludur.');
+    if (isDelivery && (!form.adres.trim() || !form.city.trim() || districtMissing)) {
+      setError('Eve teslim için adres, şehir, ilçe ve mahalle alanları zorunludur.');
+      return;
+    }
+
+    if (isDelivery && neighborhoodMissing) {
+      setError('Lütfen mahalle seçimi yapın.');
+      return;
+    }
+
+    if (isDeliveryZoneBlocked) {
+      setError(deliveryZoneValidationMessage);
       return;
     }
 
@@ -418,8 +679,8 @@ export default function Checkout() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setError('Sipariş vermek için giriş yapmalısınız.');
-        navigate('/login');
+        setShowAuthModal(true);
+        setError('Siparişi tamamlamak için giriş yapmanız gerekiyor.');
         return;
       }
 
@@ -448,17 +709,17 @@ export default function Checkout() {
       const items = cart.map((item) => ({
         id: item.id,
         name: item.name,
-        price: Number(item.price || 0),
+        price: Number(item.unitPrice ?? item.price ?? 0),
         quantity: item.quantity || 1,
         type: item.type || 'meal',
         cal: Number(item.cal ?? item.kcal ?? 0),
         protein: Number(item.protein ?? 0),
-        carbs: Number(item.carbs ?? 0),
+        carbs: Number(item.carbs ?? item.carb ?? 0),
         fats: Number(item.fats ?? 0),
       }));
 
       const composedAddress = isDelivery
-        ? [form.adres, form.district, form.city].filter(Boolean).join(', ')
+        ? [form.adres, form.neighborhood, form.district, form.city].filter(Boolean).join(', ')
         : RESTAURANT_ADDRESS;
       const orderCity = isDelivery ? form.city : RESTAURANT_CITY;
       const orderDistrict = isDelivery ? form.district : RESTAURANT_DISTRICT;
@@ -466,101 +727,69 @@ export default function Checkout() {
       const orderScheduledDate = isScheduledDelivery ? scheduledDate : null;
       const orderScheduledSlot = isScheduledDelivery ? scheduledSlot : null;
 
-      const basePayload = {
-        paytr_oid: orderOid,
-        total_price: finalPayableTotal,
+      const orderPayload = {
         status: 'pending',
         customer_name: form.adSoyad,
-        customer_email: user.email,
+        customer_email: form.email.trim(),
         address: composedAddress,
         city: orderCity,
         district: orderDistrict,
         phone: form.telefon,
         items,
-        payment_method: 'kredi-karti',
-        payment_card_id: selectedCard?.id || null,
-        payment_card_last4: selectedCard?.last4 || null,
-        payment_card_brand: selectedCard?.brand || null,
         delivery_method: deliveryMethod,
         delivery_time_type: orderDeliveryTimeType,
         scheduled_date: orderScheduledDate,
         scheduled_slot: orderScheduledSlot,
-        coupon_code: confirmedCoupon?.code || null,
-        coupon_id: confirmedCoupon?.id || null,
-        discount_amount: Number(confirmedDiscountAmount.toFixed(2)),
-        subtotal_amount: subtotalAmount,
-        delivery_fee: Number(deliveryFeeAmount.toFixed(2)),
-      };
-
-      const draft = {
-        oid: orderOid,
-        created_at: new Date().toISOString(),
         user_id: user.id,
-        cart: items,
-        checkout: {
-          adSoyad: form.adSoyad,
-          telefon: form.telefon,
-          adres: isDelivery ? form.adres : RESTAURANT_ADDRESS,
-          city: orderCity,
-          district: orderDistrict,
-          odemeYontemi: form.odemeYontemi,
-          selectedCardId: selectedCard?.id || null,
-          selectedCardLast4: selectedCard?.last4 || null,
-          deliveryMethod,
-          deliveryTimeType: orderDeliveryTimeType,
-          scheduledDate: orderScheduledDate,
-          scheduledSlot: orderScheduledSlot,
-          deliveryFeeAmount,
-          couponCode: confirmedCoupon?.code || null,
-          couponId: confirmedCoupon?.id || null,
-          discountAmount: Number(confirmedDiscountAmount.toFixed(2)),
-          subtotalAmount: Number(subtotalAmount.toFixed(2)),
-        },
-        order: basePayload,
+        total_amount: finalPayableTotal,
       };
 
-      localStorage.setItem(`pending_order_${orderOid}`, JSON.stringify(draft));
-      localStorage.setItem('latest_pending_order_oid', orderOid);
+      const { data: insertedOrder } = await insertOrderWithFallback(orderPayload);
+      const finalOrderId = insertedOrder?.id ? String(insertedOrder.id) : '';
+
+      if (!finalOrderId) {
+        throw new Error('Sipariş kaydı oluşturulamadı.');
+      }
+
+      if (items.length > 0) {
+        const orderItemsPayload = items.map((item) => ({
+          order_id: finalOrderId,
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+        }));
+
+        const { error: orderItemsError } = await supabase.from('order_items').insert(orderItemsPayload);
+        if (orderItemsError) {
+          const errorText = `${orderItemsError.message || ''} ${orderItemsError.details || ''}`.toLowerCase();
+          const relationProblem =
+            errorText.includes('order_items') ||
+            errorText.includes('relation') ||
+            errorText.includes('column');
+
+          if (relationProblem) {
+            await supabase.from('orders').update({ items }).eq('id', finalOrderId);
+          } else {
+            throw orderItemsError;
+          }
+        }
+      }
+
+      await awardMacroPoints(user.id, 100);
+
+      // localStorage'ı clearCart() öncesi elle temizle.
+      // clearCart(), setCart([]) çağırır ve ilgili useEffect'in localStorage'a
+      // yazması bir sonraki render'da gerçekleşir. Eğer navigate() bileşeni
+      // unmount ederse bu render hiç olmayabilir — eski sepet veritabanında
+      // kalır. Dolayısıyla sepet anahtarını burada direkt siliyoruz.
+      localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.setItem(`order_created_${orderOid}`, '1');
+      localStorage.removeItem(`pending_order_${orderOid}`);
+      localStorage.removeItem('latest_pending_order_oid');
       localStorage.removeItem('checkout_coupon_code');
       localStorage.removeItem('checkout_selected_address_id');
-
-      const basket = items.map((item) => [item.name, item.price.toFixed(2), item.quantity]);
-      if (deliveryFeeAmount > 0) {
-        basket.push(['Teslimat Ücreti', deliveryFeeAmount.toFixed(2), 1]);
-      }
-
-      const paymentEndpoint = import.meta.env.VITE_PAYMENT_API_URL || '/api/payment';
-      const okUrl = `${window.location.origin}/success?oid=${encodeURIComponent(orderOid)}`;
-      const failUrl = `${window.location.origin}/fail?oid=${encodeURIComponent(orderOid)}`;
-
-      const paymentResponse = await fetch(paymentEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          merchant_oid: orderOid,
-          total_amount: finalPayableTotal,
-          user_basket: basket,
-          cart_subtotal: subtotalAmount,
-          delivery_fee: deliveryFeeAmount,
-          coupon_code: confirmedCoupon?.code || null,
-          email: user.email,
-          user_name: form.adSoyad,
-          user_address: composedAddress,
-          user_phone: form.telefon,
-          merchant_ok_url: okUrl,
-          merchant_fail_url: failUrl,
-        }),
-      });
-
-      const paymentData = await paymentResponse.json().catch(() => ({}));
-      if (!paymentResponse.ok || !paymentData?.token) {
-        throw {
-          message: paymentData?.error || 'PayTR token alınamadı',
-          code: paymentResponse.status,
-        };
-      }
-
-      window.location.assign(`/payment?token=${encodeURIComponent(paymentData.token)}&oid=${encodeURIComponent(orderOid)}`);
+      clearCart();
+      navigate(`/success?oid=${encodeURIComponent(orderOid)}`);
     } catch (err) {
       console.error(
         'Checkout Error Detayı:',
@@ -578,25 +807,19 @@ export default function Checkout() {
         .join(' | ');
 
       console.error('Checkout flow failed:', err);
-      const rawMessage = String(err?.message || '');
-      const isPaymentTokenError = rawMessage.toLowerCase().includes('paytr') || rawMessage.toLowerCase().includes('token');
-      if (isPaymentTokenError) {
-        setError(`Ödeme başlatılamadı: ${rawMessage || 'PayTR token alınamadı'}`);
-      } else {
-        setError('Sipariş kaydedilemedi. Lütfen tekrar deneyin.');
-      }
+      setError('Sipariş kaydedilemedi. Lütfen tekrar deneyin.');
       setDebugError(readableError || 'Bilinmeyen hata');
     } finally {
       setLoading(false);
     }
   };
 
-  const cardClass = 'rounded-2xl border border-brand-primary/30 bg-[#F0F0F0] shadow-[0_8px_20px_rgba(32,32,32,0.25)]';
-  const infoSectionClass = 'rounded-2xl border border-brand-dark/10 bg-brand-white shadow-sm';
+  const cardClass = 'rounded-2xl border border-gray-100 bg-white shadow-sm';
+  const infoSectionClass = 'rounded-2xl border border-gray-100 bg-white shadow-sm';
 
   if (isOrderSuccess) {
     return (
-      <div className="min-h-screen bg-brand-white px-5 py-10 text-brand-dark">
+      <div className="app-page-padding min-h-screen bg-brand-white py-10 text-brand-dark">
         <div className="mx-auto flex min-h-[70vh] w-full max-w-md items-center justify-center">
           <div className="w-full rounded-3xl bg-brand-white p-7 text-center shadow-[0_16px_36px_rgba(32,32,32,0.12)]">
             <motion.div
@@ -607,13 +830,13 @@ export default function Checkout() {
             >
               <CheckCircle2 size={50} className="text-[#98CD00]" strokeWidth={2.4} />
             </motion.div>
-            <h1 className="mb-2 font-zalando text-lg font-semibold text-brand-dark">Siparişiniz Alındı!</h1>
+            <h1 className="app-heading-primary mb-2">Siparişiniz Alındı!</h1>
             <p className="mb-0 font-google text-sm font-normal text-brand-dark/70">Siparişiniz hazırlanıyor, afiyet olsun.</p>
 
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/')}
-              className="mt-7 inline-flex w-full items-center justify-center rounded-2xl bg-[#98CD00] px-5 py-3.5 font-google font-medium text-[#F0F0F0]"
+              className="app-btn-green mt-7 inline-flex w-full items-center justify-center"
             >
               Ana Sayfaya Dön
             </motion.button>
@@ -625,7 +848,7 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F0F0F0] to-[#F0F0F0] text-brand-dark">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-brand-white/10 bg-[#F0F0F0]/95 px-5 py-4 backdrop-blur-md">
+      <header className="app-page-padding sticky top-0 z-30 flex items-center justify-between border-b border-brand-white/10 bg-[#F0F0F0]/95 py-4 backdrop-blur-md">
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate(-1)}
@@ -635,13 +858,13 @@ export default function Checkout() {
           <ChevronLeft size={18} className="text-brand-dark" />
         </motion.button>
         <div className="text-center leading-tight">
-          <h1 className="mb-0 font-zalando text-lg font-semibold text-brand-dark">Ödeme</h1>
+          <h1 className="app-heading-primary mb-0">Ödeme</h1>
           <p className="mb-0 font-google text-[10px] font-extralight uppercase tracking-widest text-brand-dark/60">Güvenli Ödeme</p>
         </div>
         <div className="w-10" />
       </header>
 
-      <form id="checkout-form" onSubmit={handleSubmit} className="mx-auto flex-1 w-full max-w-lg space-y-5 overflow-y-auto px-5 pb-48 pt-3">
+      <form id="checkout-form" onSubmit={handleSubmit} className="app-page-padding mx-auto flex-1 w-full max-w-lg space-y-5 overflow-y-auto pb-48 pt-3">
         {serviceNotice && (
           <div className="inline-flex w-full items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 font-google text-sm font-normal text-red-600">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -651,7 +874,7 @@ export default function Checkout() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="mb-0 font-zalando text-lg font-semibold text-brand-dark">Teslimat Yöntemi</h2>
+            <h2 className="app-heading-secondary mb-0">Teslimat Yöntemi</h2>
           </div>
 
           <div className={`${cardClass} p-4`}>
@@ -798,36 +1021,41 @@ export default function Checkout() {
         </section>
 
         <section className={`${infoSectionClass} space-y-4 p-4`}>
-          <h2 className="mb-0 font-zalando text-lg font-semibold text-brand-dark">İletişim Bilgileri</h2>
-          <div className="space-y-2 rounded-2xl border border-brand-dark/10 bg-brand-white p-2.5">
-            <div className="rounded-xl border border-brand-dark/10 bg-brand-white px-4 py-3.5">
-              <input
-                type="text"
-                name="adSoyad"
-                value={form.adSoyad}
-                onChange={handleChange}
-                placeholder="Ad Soyad"
-                className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark placeholder:text-brand-dark/60"
-                required
-              />
-            </div>
-            <div className="rounded-xl border border-brand-dark/10 bg-brand-white px-4 py-3.5">
-              <input
-                type="tel"
-                name="telefon"
-                value={form.telefon}
-                onChange={handleChange}
-                placeholder="Telefon"
-                className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark placeholder:text-brand-dark/60"
-                required
-              />
-            </div>
+          <h2 className="app-heading-secondary mb-0">İletişim Bilgileri</h2>
+          <div className="space-y-2">
+            <input
+              type="text"
+              name="adSoyad"
+              value={form.adSoyad}
+              onChange={handleChange}
+              placeholder="Ad Soyad"
+              className="app-input"
+              required
+            />
+            <input
+              type="tel"
+              name="telefon"
+              value={form.telefon}
+              onChange={handleChange}
+              placeholder="Telefon"
+              className="app-input"
+              required
+            />
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="E-posta"
+              className="app-input"
+              required
+            />
           </div>
         </section>
 
         {isDelivery && (
           <section className={`${infoSectionClass} space-y-4 p-4`}>
-            <h2 className="mb-0 font-zalando text-lg font-semibold text-brand-dark">Teslimat Adresi</h2>
+            <h2 className="app-heading-secondary mb-0">Teslimat Adresi</h2>
 
             <div className="space-y-3 rounded-2xl border border-brand-dark/10 bg-brand-white p-2.5">
               <div className="space-y-2">
@@ -877,31 +1105,60 @@ export default function Checkout() {
                   <input
                     type="text"
                     name="city"
-                    value={form.city}
-                    onChange={handleChange}
-                    placeholder="Şehir"
-                    className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark placeholder:text-brand-dark/60"
-                    required={isDelivery}
+                    value={RESTAURANT_CITY}
+                    readOnly
+                    disabled
+                    className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark placeholder:text-brand-dark/60 disabled:opacity-100"
                   />
                 </div>
                 <div className="rounded-xl border border-brand-dark/10 bg-brand-white px-4 py-3.5">
-                  <input
-                    type="text"
+                  <select
                     name="district"
                     value={form.district}
-                    onChange={handleChange}
-                    placeholder="İlçe"
-                    className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark placeholder:text-brand-dark/60"
+                    onChange={(e) => {
+                      const nextDistrict = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        district: nextDistrict,
+                        neighborhood: '',
+                      }));
+                    }}
+                    className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark"
                     required={isDelivery}
-                  />
+                  >
+                    <option value="">İlçe Seçiniz</option>
+                    {districtOptions.map((district) => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+              <div className="rounded-xl border border-brand-dark/10 bg-brand-white px-4 py-3.5">
+                <select
+                  name="neighborhood"
+                  value={form.neighborhood}
+                  onChange={handleChange}
+                  className="input-no-stroke !border-none !outline-none !ring-0 !shadow-none w-full bg-transparent font-google text-sm font-normal text-brand-dark"
+                  required={isDelivery}
+                  disabled={!form.district}
+                >
+                  <option value="">{form.district ? 'Mahalle Seçiniz' : 'Önce İlçe Seçiniz'}</option>
+                  {neighborhoodOptions.map((zone) => (
+                    <option key={zone.id} value={zone.neighborhood}>{zone.neighborhood}</option>
+                  ))}
+                </select>
+              </div>
+              {(deliveryZonesLoading || deliveryZonesError) && (
+                <p className="mb-0 text-xs text-brand-dark/60">
+                  {deliveryZonesLoading ? 'Teslimat bölgeleri yükleniyor...' : deliveryZonesError}
+                </p>
+              )}
             </div>
           </section>
         )}
 
         <section className={`${infoSectionClass} space-y-3 p-4`}>
-          <h2 className="mb-0 inline-flex items-center gap-2 font-zalando text-lg font-semibold text-brand-dark">
+          <h2 className="app-heading-secondary mb-0 inline-flex items-center gap-2">
             <TicketPercent size={16} className="text-[#98CD00]" />
             Kampanya Kodu
           </h2>
@@ -927,26 +1184,63 @@ export default function Checkout() {
                   type="button"
                   onClick={handleApplyCoupon}
                   disabled={couponLoading}
-                  className="rounded-xl bg-[#98CD00] px-3 font-google text-sm font-medium text-[#F0F0F0] disabled:opacity-60"
+                  className="app-btn-green inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm disabled:opacity-60"
                 >
-                  {couponLoading ? 'Kontrol...' : 'Uygula'}
+                  {couponLoading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Kontrol...
+                    </>
+                  ) : (
+                    'Uygula'
+                  )}
                 </button>
               )}
             </div>
           </div>
-          {couponInfo && (
-            <p className="text-xs text-brand-dark">
-              {couponInfo.code} uygulandı. İndirim: <span className="font-google font-medium">₺{Number(couponInfo.discountAmount || 0).toFixed(2)}</span>
-            </p>
-          )}
-          {!couponInfo && couponMessage && (
-            <p className="font-google text-xs font-extralight text-brand-dark/70">{couponMessage}</p>
-          )}
-          {couponError && <p className="text-xs text-[#98CD00]">{couponError}</p>}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {couponInfo && (
+              <motion.p
+                key="coupon-success"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                className="text-xs text-brand-dark"
+              >
+                {couponInfo.code} uygulandı. İndirim:{' '}
+                <span className="font-google font-medium">₺{Number(couponInfo.discountAmount || 0).toFixed(2)}</span>
+              </motion.p>
+            )}
+            {!couponInfo && couponMessage && (
+              <motion.p
+                key="coupon-message"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                className="font-google text-xs font-extralight text-brand-dark/70"
+              >
+                {couponMessage}
+              </motion.p>
+            )}
+            {couponError && (
+              <motion.p
+                key="coupon-error"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                className="text-xs text-[#98CD00]"
+              >
+                {couponError}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </section>
 
         <section className={`${cardClass} space-y-4 p-4`}>
-          <h2 className="mb-0 font-zalando text-lg font-semibold text-brand-dark">Ödeme Yöntemi</h2>
+          <h2 className="app-heading-secondary mb-0">Ödeme Yöntemi</h2>
 
           <div className="rounded-xl border border-brand-primary/30 bg-[#F0F0F0] px-3 py-2.5">
             <p className="mb-0 inline-flex items-center gap-2 font-google text-sm font-medium text-brand-dark">
@@ -1028,7 +1322,7 @@ export default function Checkout() {
       </form>
 
       <div className="fixed bottom-0 left-0 right-0 z-30">
-        <div className="mx-auto max-w-lg rounded-t-3xl border-t border-brand-white/10 bg-[#F0F0F0]/95 px-5 pb-8 pt-5 shadow-[0_-14px_30px_rgba(32,32,32,0.45)] backdrop-blur">
+        <div className="app-page-padding mx-auto max-w-lg rounded-t-3xl border-t border-brand-white/10 bg-[#F0F0F0]/95 pb-8 pt-5 shadow-[0_-14px_30px_rgba(32,32,32,0.45)] backdrop-blur">
           <div className="mb-4 flex items-center justify-between px-1">
             <div className="flex flex-col">
               <span className="font-google text-xs font-medium uppercase tracking-widest text-brand-dark/60">Ödenecek Tutar</span>
@@ -1041,15 +1335,48 @@ export default function Checkout() {
             )}
           </div>
 
+          {isDeliveryZoneBlocked && (
+            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-500">
+              {deliveryZoneValidationMessage}
+            </div>
+          )}
+          {isBelowDeliveryMethodMinimum && (
+            <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-600">
+              {deliveryMethodMinimumMessage}
+            </div>
+          )}
+
+          <div className="mb-4 space-y-2 rounded-xl border border-brand-dark/10 bg-brand-white p-3">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={isContractsAccepted}
+                onChange={(e) => setIsContractsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-[#98CD00]"
+              />
+              <span className="font-google text-xs leading-relaxed text-brand-dark">
+                <Link to="/kullanim-kosullari" className="font-medium underline underline-offset-2">
+                  Ön Bilgilendirme Formu&apos;nu ve Mesafeli Satış Sözleşmesi&apos;ni
+                </Link>{' '}
+                okudum, onaylıyorum.
+              </span>
+            </label>
+          </div>
+
           <motion.button
             whileTap={{ scale: 0.95 }}
             type="submit"
             form="checkout-form"
-            disabled={loading || controlsLocked}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#98CD00] py-4 font-google text-[#F0F0F0] shadow-[0_12px_24px_rgba(152,205,0,0.35)] transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80"
+            disabled={loading || controlsLocked || isDeliveryZoneBlocked || isBelowDeliveryMethodMinimum || authLoading || !hasRequiredLegalApprovals}
+            className="app-btn-green flex w-full items-center justify-center gap-3 shadow-[0_12px_24px_rgba(152,205,0,0.35)] transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80"
           >
             <span className="font-google text-lg font-medium">
-              {loading ? 'İşleniyor...' : controlsLocked ? 'Servis Kontrol Ediliyor...' : 'Siparişi Tamamla'}
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  İşleniyor...
+                </span>
+              ) : controlsLocked ? 'Servis Kontrol Ediliyor...' : 'Siparişi Tamamla'}
             </span>
             {!loading && !controlsLocked && (
               <>
@@ -1061,6 +1388,14 @@ export default function Checkout() {
           <div className="h-3" />
         </div>
       </div>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onPhoneContinue={() => navigate('/login')}
+        onGoogleContinue={() => navigate('/login')}
+        onAppleContinue={() => navigate('/login')}
+      />
     </div>
   );
 }

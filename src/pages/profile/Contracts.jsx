@@ -1,32 +1,33 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronLeft } from 'lucide-react';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, FileText, Scale, Shield } from 'lucide-react';
 
 const contractItems = [
   {
-    key: 'user-contract',
-    title: 'Kullanıcı Sözleşmesi',
+    key: 'terms',
+    title: 'Kullanım Koşulları ve Mesafeli Satış',
+    description: 'Mesafeli satış süreci, üyelik kuralları, hizmet kapsamı ve sorumluluk sınırları.',
+    to: '/kullanim-kosullari',
+    icon: Scale,
   },
   {
     key: 'privacy',
-    title: 'Gizlilik Politikası',
+    title: 'KVKK ve Gizlilik Politikası',
+    description: 'Kişisel verilerin işlenmesi, aktarımı ve ilgili kişi hakları.',
+    to: '/gizlilik-politikasi',
+    icon: Shield,
   },
   {
-    key: 'kvkk',
-    title: 'KVKK',
+    key: 'refund',
+    title: 'İptal, İade ve Teslimat Politikası',
+    description: 'Gıda ürünlerinde cayma hakkı istisnası, ayıplı mal bildirimi ve teslimat kuralları.',
+    to: '/iade-politikasi',
+    icon: FileText,
   },
 ];
 
-const loremText =
-  'Bu metin bilgilendirme amaçlıdır. Uygulamayı kullanırken üyelik, gizlilik ve kişisel verilerin korunmasına ilişkin şartları kabul etmiş olursunuz. Güncel sürüm her zaman bu sayfada yayınlanır.';
-
 export default function Contracts() {
   const navigate = useNavigate();
-  const [openKey, setOpenKey] = useState('user-contract');
-
-  const toggleItem = (key) => {
-    setOpenKey((prev) => (prev === key ? '' : key));
-  };
 
   return (
     <div className="min-h-screen bg-[#F0F0F0] pb-28 text-brand-dark">
@@ -44,27 +45,28 @@ export default function Contracts() {
         </div>
       </header>
 
-      <div className="px-4 pt-4 space-y-2">
+      <div className="px-4 pt-4 space-y-3">
+        <div className="rounded-2xl border border-brand-dark/10 bg-brand-white px-4 py-3 text-xs leading-relaxed text-brand-dark/65">
+          Sözleşmelerin güncel tam metnini aşağıdaki başlıklardan görüntüleyebilirsiniz.
+        </div>
+
         {contractItems.map((item) => {
-          const isOpen = openKey === item.key;
+          const Icon = item.icon;
           return (
-            <div key={item.key} className="bg-[#F0F0F0] rounded-2xl border border-brand-white/10 shadow-sm overflow-hidden">
-              <button
-                onClick={() => toggleItem(item.key)}
-                className="w-full p-4 flex items-center justify-between text-left"
-              >
-                <span className="text-sm font-bold text-brand-dark">{item.title}</span>
-                <ChevronDown
-                  size={18}
-                  className={`text-brand-dark/50 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {isOpen && (
-                <div className="px-4 pb-4 border-t border-brand-white/10">
-                  <p className="pt-3 text-xs text-brand-dark/70 leading-relaxed">{loremText}</p>
-                </div>
-              )}
-            </div>
+            <Link
+              key={item.key}
+              to={item.to}
+              className="flex items-start gap-3 rounded-2xl border border-brand-dark/10 bg-brand-white p-4 shadow-sm transition hover:border-brand-primary/40"
+            >
+              <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-bg text-brand-primary">
+                <Icon size={16} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-brand-dark">{item.title}</span>
+                <span className="mt-1 block text-xs leading-relaxed text-brand-dark/65">{item.description}</span>
+              </span>
+              <ChevronRight size={18} className="mt-1 shrink-0 text-brand-dark/45" />
+            </Link>
           );
         })}
       </div>

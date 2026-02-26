@@ -2,6 +2,20 @@ import { createClient } from '@supabase/supabase-js';
 
 const FALLBACK_CAMPAIGNS = [
   {
+    id: 'fallback-hosgeldin150',
+    title: 'Hoş Geldin İndirimi',
+    description: 'KCAL ailesine katıldığınız için teşekkürler! İlk siparişinizde geçerlidir.',
+    code: 'HOSGELDIN150',
+    badge: 'Yeni Üye',
+    is_active: true,
+    discount_type: 'fixed',
+    discount_value: 150,
+    max_discount: 150,
+    min_cart_total: 0,
+    start_date: null,
+    end_date: null,
+  },
+  {
     id: 'fallback-merhaba20',
     title: 'İlk Siparişe Özel %20 İndirim',
     description: 'İlk siparişinde sepette anında indirim kazan.',

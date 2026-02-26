@@ -1,7 +1,7 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo } from 'react';
 
 export const CartContext = createContext(null);
-const CART_STORAGE_KEY = 'kcal_cart_items';
+export const CART_STORAGE_KEY = 'kcal_cart_items';
 
 /**
  * Seçilen opsiyonlara göre benzersiz bir satır anahtarı üretir.
@@ -10,13 +10,21 @@ const CART_STORAGE_KEY = 'kcal_cart_items';
  */
 export function buildCartLineKey(productId, selectedOptions = {}) {
     const sorted = Object.entries(selectedOptions)
+        .filter(([groupId, value]) => {
+            if (String(groupId).startsWith('_')) return false;
+            if (value === undefined || value === null) return false;
+            if (Array.isArray(value) && value.length === 0) return false;
+            return true;
+        })
         .sort(([a], [b]) => String(a).localeCompare(String(b)))
         .map(([gId, val]) => {
-            const ids = Array.isArray(val) ? [...val].sort() : [val];
+            const ids = (Array.isArray(val) ? [...val] : [val])
+                .map((id) => String(id))
+                .sort((a, b) => a.localeCompare(b));
             return `${gId}:${ids.join(',')}`;
         })
         .join('|');
-    return `${productId}__${sorted}`;
+    return `${productId}__${sorted || 'default'}`;
 }
 
 function readCartFromStorage() {
@@ -61,16 +69,19 @@ export function CartProvider({ children }) {
      * Aynı ürün + farklı opsiyonlar → yeni satır ekle.
      */
     const addToCart = useCallback((product, quantity = 1, selectedOptions = {}) => {
+        const nextQuantity = Math.max(1, Number(quantity || 1));
         const lineKey = buildCartLineKey(product.id, selectedOptions);
         // Ekstra fiyat hesabı: seçilen her item'ın price_adjustment toplamı
-        const extraPrice = selectedOptions._extraPrice || 0;
+        const extraPrice = Number(selectedOptions._extraPrice || 0);
+        const baseUnitPrice = Number(product.unitPrice ?? product.price ?? 0);
+        const computedUnitPrice = baseUnitPrice + extraPrice;
 
         setCart((prev) => {
             const existing = prev.find((item) => item.lineKey === lineKey);
             if (existing) {
                 return prev.map((item) =>
                     item.lineKey === lineKey
-                        ? { ...item, quantity: item.quantity + quantity }
+                        ? { ...item, quantity: Math.max(1, Number(item.quantity || 1) + nextQuantity) }
                         : item
                 );
             }
@@ -78,12 +89,12 @@ export function CartProvider({ children }) {
                 ...prev,
                 {
                     ...product,
-                    quantity,
+                    quantity: nextQuantity,
                     selectedOptions,
                     extraPrice,
                     lineKey,
                     // Sepette gösterilecek toplam birim fiyat
-                    unitPrice: parseFloat(product.price || 0) + extraPrice,
+                    unitPrice: computedUnitPrice,
                 },
             ];
         });
@@ -119,9 +130,29 @@ export function CartProvider({ children }) {
         [cart]
     );
 
+    /**
+     * Sepetteki tüm ürünlerin makro toplamları (quantity ile çarpılır).
+     * Checkout ve Sipariş özeti ekranlarında kullanılabilir.
+     */
+    const totalMacros = useMemo(
+        () => cart.reduce(
+            (acc, item) => {
+                const qty = item.quantity || 1;
+                return {
+                    kcal:    acc.kcal    + Math.round(parseFloat(item.cal     ?? item.kcal     ?? item.calories ?? 0) * qty),
+                    protein: acc.protein + Math.round(parseFloat(item.protein ?? 0) * qty),
+                    carbs:   acc.carbs   + Math.round(parseFloat(item.carbs   ?? item.carb ?? 0) * qty),
+                    fats:    acc.fats    + Math.round(parseFloat(item.fats    ?? item.fat  ?? 0) * qty),
+                };
+            },
+            { kcal: 0, protein: 0, carbs: 0, fats: 0 }
+        ),
+        [cart]
+    );
+
     const value = useMemo(
-        () => ({ cart, cartItems: cart, addToCart, removeFromCart, updateQuantity, clearCart, totalAmount }),
-        [cart, addToCart, removeFromCart, updateQuantity, clearCart, totalAmount]
+        () => ({ cart, cartItems: cart, addToCart, removeFromCart, updateQuantity, clearCart, totalAmount, totalMacros }),
+        [cart, addToCart, removeFromCart, updateQuantity, clearCart, totalAmount, totalMacros]
     );
 
     return (

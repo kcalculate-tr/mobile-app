@@ -15,8 +15,29 @@ import {
   User,
   MessageCircle,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '../supabase';
 import { CartContext } from '../context/CartContext';
+import SkeletonCard from '../components/SkeletonCard';
+
+const ORDER_LIST_VARIANTS = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+};
+
+const ORDER_ITEM_VARIANTS = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+  },
+};
 
 function isDeliveredStatus(statusRaw) {
   const status = String(statusRaw || '').toLowerCase();
@@ -78,20 +99,32 @@ export default function Orders() {
         let { data, error } = await supabase
           .from('orders')
           .select('*')
-          .eq('customer_id', user.id)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(50);
 
         if (error) {
-          const fallback = await supabase
+          const byCustomerId = await supabase
             .from('orders')
             .select('*')
-            .eq('customer_email', user.email)
+            .eq('customer_id', user.id)
             .order('created_at', { ascending: false })
             .limit(50);
 
-          data = fallback.data;
-          error = fallback.error;
+          if (!byCustomerId.error) {
+            data = byCustomerId.data;
+            error = null;
+          } else {
+            const fallback = await supabase
+              .from('orders')
+              .select('*')
+              .eq('customer_email', user.email)
+              .order('created_at', { ascending: false })
+              .limit(50);
+
+            data = fallback.data;
+            error = fallback.error;
+          }
         }
 
         if (error) throw error;
@@ -229,7 +262,7 @@ export default function Orders() {
   return (
     <div className="bg-[#F0F0F0] text-brand-dark min-h-screen flex justify-center">
       <main className="w-full max-w-[430px] min-h-screen relative flex flex-col overflow-hidden pb-24">
-        <header className="px-6 pb-4 pt-4 sticky top-0 bg-[#F0F0F0]/95 backdrop-blur-md z-30 border-b border-brand-white/10">
+        <header className="app-page-padding sticky top-0 z-30 border-b border-brand-white/10 bg-[#F0F0F0]/95 pb-4 pt-4 backdrop-blur-md">
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={() => navigate(-1)}
@@ -237,7 +270,7 @@ export default function Orders() {
             >
               <ChevronLeft size={18} className="text-brand-dark" />
             </button>
-            <h1 className="text-xl font-bold mb-0">Siparişlerim</h1>
+            <h1 className="app-heading-primary mb-0">Siparişlerim</h1>
             <button
               onClick={() => pushInfo('Sipariş arama yakında aktif olacak.')}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-[#F0F0F0] border border-brand-white/10 shadow-sm"
@@ -271,124 +304,166 @@ export default function Orders() {
           </div>
         </header>
 
-        <div className="flex-1 px-6 overflow-y-auto hide-scrollbar pb-32">
-          {reviewInfo && (
-            <div className="mt-3 rounded-xl border border-brand-white/10 bg-[#F0F0F0] px-3 py-2 text-xs text-brand-dark">
-              {reviewInfo}
+        <div className="app-page-padding hide-scrollbar flex-1 overflow-y-auto pb-32">
+          <AnimatePresence>
+            {reviewInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 26, mass: 0.45 }}
+                className="mt-3 rounded-xl border border-brand-white/10 bg-[#F0F0F0] px-3 py-2 text-xs text-brand-dark"
+              >
+                {reviewInfo}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {loading && (
+            <div className="space-y-3 py-3">
+              <SkeletonCard variant="order" count={3} />
             </div>
           )}
 
-          {loading && <p className="text-sm text-brand-dark/60 text-center py-8">Yükleniyor...</p>}
-
           {!loading && error && (
-            <div className="rounded-xl border border-brand-white/10 bg-[#F0F0F0] px-3 py-2 text-xs text-brand-dark">
+            <div className="app-card mt-4 p-4 text-sm text-gray-600">
               {error}
             </div>
           )}
 
           {!loading && !error && (
             <>
-              <div className="mt-4 mb-4">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-brand-dark/40">
+              <div className="mb-3 mt-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
                   {activeTab === 'active' ? 'Canlı Teslimat' : 'Yakın Geçmiş'}
-                </h2>
+                </p>
               </div>
 
               {visibleOrders.length === 0 && (
-                <div className="bg-[#F0F0F0] rounded-2xl border border-brand-white/10 shadow-sm p-8 text-center text-sm text-brand-dark/60">
-                  Bu sekmede sipariş bulunmuyor.
+                <div className="app-card p-8 text-center">
+                  <p className="app-text-muted mb-0">
+                    Henüz hiç siparişiniz bulunmuyor. Lezzetli öğünlerimizi keşfetmek için menüye göz atın.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="app-btn-green mt-5"
+                  >
+                    Menüye Git
+                  </button>
                 </div>
               )}
 
+              <motion.div variants={ORDER_LIST_VARIANTS} initial="hidden" animate="visible">
               {visibleOrders.map((order) => {
                 const isDelivered = isDeliveredStatus(order.status);
                 const items = Array.isArray(order.items) ? order.items : [];
                 const itemCount = items.reduce((sum, item) => sum + Number(item?.quantity || 1), 0) || items.length;
+                const statusLabel = orderStatusLabel(order.status);
 
                 return (
-                  <article
+                  <motion.article
                     key={order.id}
-                    className="bg-[#F0F0F0] rounded-2xl p-4 mb-4 border border-brand-white/10 shadow-sm"
+                    variants={ORDER_ITEM_VARIANTS}
+                    className="app-card mb-3 space-y-4"
                   >
-                    <div className="flex gap-4 mb-4">
+                    <div className="flex gap-3">
                       <img
                         alt={order.paytr_oid || order.id}
-                        className={`w-16 h-16 rounded-xl object-cover bg-brand-white ${activeTab === 'past' ? 'grayscale-[0.3]' : ''}`}
+                        className={`h-16 w-16 shrink-0 rounded-2xl object-cover ${activeTab === 'past' ? 'grayscale-[0.4]' : ''}`}
                         src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=200"
                       />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <h3 className="font-bold text-brand-dark leading-tight truncate">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="truncate text-sm font-bold text-gray-900">
                             {order.customer_name || 'Sipariş'}
                           </h3>
-                          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-[#F0F0F0] text-brand-dark uppercase tracking-tighter">
-                            {orderStatusLabel(order.status)}
+                          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide
+                            ${isDelivered
+                              ? 'bg-green-50 text-green-700'
+                              : order.status === 'on_way'
+                                ? 'bg-blue-50 text-blue-700'
+                                : order.status === 'preparing'
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : order.status === 'cancelled' || String(order.status).includes('iptal')
+                                    ? 'bg-red-50 text-red-600'
+                                    : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {statusLabel}
                           </span>
                         </div>
-                        <p className="text-xs text-brand-dark/50 mt-1">
+                        <p className="mt-1 text-xs text-gray-400">
                           {order.created_at ? new Date(order.created_at).toLocaleString('tr-TR') : '-'} • {itemCount || 0} ürün
                         </p>
-                        <p className="font-price text-sm font-semibold text-brand-dark mt-1">₺{Number(order.total_price || 0).toFixed(2)}</p>
+                        <p className="font-price mt-1 text-base font-bold text-gray-900">
+                          ₺{Number(order.total_amount ?? order.total_price ?? 0).toFixed(2)}
+                        </p>
                       </div>
                     </div>
 
                     {activeTab === 'active' && (
                       <>
-                        <div className="flex items-center gap-2 mb-4 px-1">
-                          <div className="h-1.5 flex-1 bg-[#98CD00] rounded-full" />
-                          <div className="h-1.5 flex-1 bg-[#98CD00] rounded-full" />
-                          <div className="h-1.5 flex-1 bg-[#F0F0F0] rounded-full" />
-                          <div className="h-1.5 flex-1 bg-[#F0F0F0] rounded-full" />
+                        <div className="flex items-center gap-1.5 px-0.5">
+                          <div className="h-1.5 flex-1 rounded-full bg-[#98CD00]" />
+                          <div className="h-1.5 flex-1 rounded-full bg-[#98CD00]" />
+                          <div className="h-1.5 flex-1 rounded-full bg-gray-100" />
+                          <div className="h-1.5 flex-1 rounded-full bg-gray-100" />
                         </div>
-                        <div className="flex gap-3">
-                          <button
+                        <div className="flex gap-2">
+                          <motion.button
+                            whileTap={{ scale: 0.97 }}
                             onClick={() => navigate(`/order-detail/${order.id}`)}
-                            className="flex-1 py-3.5 bg-[#98CD00] text-[#F0F0F0] font-bold rounded-xl text-sm"
+                            className="app-btn-green flex-1 py-3 text-sm"
                           >
                             Siparişi Takip Et
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => pushInfo('Canlı destek yakında aktif olacak.')}
-                            className="w-14 flex items-center justify-center rounded-xl bg-[#F0F0F0] border border-brand-white/10"
+                            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50"
                             aria-label="Canlı destek"
                           >
-                            <MessageCircle size={18} className="text-brand-dark/70" />
-                          </button>
+                            <MessageCircle size={18} className="text-gray-500" />
+                          </motion.button>
                         </div>
                       </>
                     )}
 
                     {activeTab === 'past' && (
-                      <div className="space-y-3">
-                        <button
+                      <div className="space-y-2">
+                        <motion.button
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => navigate(`/order-detail/${order.id}`)}
-                          className="w-full py-3 border border-brand-white/20 text-brand-dark font-bold rounded-xl text-sm hover:bg-[#F0F0F0] transition-colors"
+                          className="app-btn-outline py-3 text-sm"
                         >
                           Yeniden Sipariş Ver
-                        </button>
+                        </motion.button>
 
                         {isDelivered && (
                           <div className="flex justify-end">
                             {reviewedOrderMap[String(order.id)] ? (
-                              <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#F0F0F0] text-brand-dark border border-brand-white/10">
-                                Değerlendirildi
+                              <span className="inline-flex items-center gap-1 rounded-xl bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500">
+                                ✓ Değerlendirildi
                               </span>
                             ) : (
-                              <button
+                              <motion.button
                                 type="button"
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => openReviewModal(order)}
-                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#98CD00] text-[#F0F0F0]"
+                                className="app-btn-green-sm"
                               >
-                                Puanla & Yorum Yap
-                              </button>
+                                Puanla &amp; Yorum Yap
+                              </motion.button>
                             )}
                           </div>
                         )}
                       </div>
                     )}
-                  </article>
+                  </motion.article>
                 );
               })}
+              </motion.div>
             </>
           )}
         </div>
@@ -453,28 +528,41 @@ export default function Orders() {
         </nav>
       </main>
 
+      <AnimatePresence>
       {reviewModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#F0F0F0]/45 flex items-end sm:items-center sm:justify-center p-3">
-          <div className="w-full sm:max-w-md bg-[#F0F0F0] rounded-2xl border border-brand-white/10 shadow-2xl p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-end bg-black/40 p-3 backdrop-blur-sm sm:items-center sm:justify-center"
+        >
+          <motion.div
+            initial={{ y: 28, opacity: 0.96, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 22, opacity: 0.92, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28, mass: 0.6 }}
+            className="app-card w-full space-y-4 sm:max-w-md"
+          >
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-brand-dark mb-0">Siparişi Değerlendir</h2>
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Siparişi Değerlendir</h2>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Sipariş No: {reviewOrder?.paytr_oid || reviewOrder?.id || '-'}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={closeReviewModal}
-                className="w-8 h-8 rounded-full bg-[#F0F0F0] inline-flex items-center justify-center text-brand-dark/70"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500"
                 disabled={reviewSaving}
               >
                 <X size={14} />
               </button>
             </div>
 
-            <p className="mt-1 text-xs text-brand-dark/60">
-              Sipariş No: {reviewOrder?.paytr_oid || reviewOrder?.id || '-'}
-            </p>
-
-            <div className="mt-4">
-              <p className="text-xs font-semibold text-brand-dark/70 mb-0">Puanınız</p>
-              <div className="mt-2 flex items-center gap-1">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-gray-500">Puanınız</p>
+              <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((star) => {
                   const activeValue = reviewHover || reviewRating;
                   const isActive = star <= activeValue;
@@ -485,11 +573,11 @@ export default function Orders() {
                       onMouseEnter={() => setReviewHover(star)}
                       onMouseLeave={() => setReviewHover(0)}
                       onClick={() => setReviewRating(star)}
-                      className="p-1.5 rounded-lg hover:bg-[#F0F0F0] transition-colors"
+                      className="rounded-xl p-1.5 transition-colors hover:bg-gray-50"
                     >
                       <Star
-                        size={24}
-                        className={isActive ? 'text-[#98CD00] fill-[#98CD00]' : 'text-brand-dark/20'}
+                        size={26}
+                        className={isActive ? 'fill-[#98CD00] text-[#98CD00]' : 'text-gray-200'}
                       />
                     </button>
                   );
@@ -497,29 +585,29 @@ export default function Orders() {
               </div>
             </div>
 
-            <div className="mt-4">
-              <p className="text-xs font-semibold text-brand-dark/70 mb-0">Yorumunuz</p>
+            <div>
+              <p className="mb-2 text-xs font-semibold text-gray-500">Yorumunuz</p>
               <textarea
                 rows={4}
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
                 placeholder="Deneyiminizi paylaşın..."
-                className="mt-2 w-full resize-none rounded-xl border border-brand-white/10 px-3 py-2 text-sm outline-none focus:border-brand-white"
+                className="app-input resize-none"
                 disabled={reviewSaving}
               />
             </div>
 
             {reviewError && (
-              <div className="mt-3 bg-[#F0F0F0] border border-brand-white/10 rounded-lg px-2.5 py-2 text-xs text-brand-dark">
+              <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
                 {reviewError}
               </div>
             )}
 
-            <div className="mt-4 flex gap-2">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={closeReviewModal}
-                className="flex-1 py-2.5 rounded-xl border border-brand-white/10 text-sm font-semibold text-brand-dark/70"
+                className="app-btn-outline flex-none w-auto px-5 py-3 text-sm"
                 disabled={reviewSaving}
               >
                 Vazgeç
@@ -528,15 +616,16 @@ export default function Orders() {
                 type="button"
                 onClick={submitReview}
                 disabled={reviewSaving}
-                className="flex-1 py-2.5 rounded-xl bg-[#98CD00] text-[#F0F0F0] text-sm font-bold inline-flex items-center justify-center gap-1 disabled:opacity-60"
+                className="app-btn-green flex-1 py-3 text-sm disabled:opacity-60"
               >
                 {reviewSaving ? <Loader2 size={14} className="animate-spin" /> : null}
                 {reviewSaving ? 'Kaydediliyor...' : 'Gönder'}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
