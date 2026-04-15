@@ -47,7 +47,6 @@
     "expo-updates": "~29.0.16",
     "expo-video": "~3.0.16",
     "expo-web-browser": "~15.0.10",
-    "lucide-react-native": "^0.400.0",
     "nativewind": "^2.0.11",
     "phosphor-react-native": "^3.0.3",
     "react": "19.1.0",
