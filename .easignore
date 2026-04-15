@@ -1,0 +1,41 @@
+# EAS build ignore — mirrors .gitignore + excludes panels/docs not needed for mobile build
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Panels and unrelated projects
+admin-panel/
+branch-panel/
+landing-page/
+supabase/
+
+# Local scripts / audits / docs
+scripts/
+fix_all.py
+fix_popups.py
+*.md
+QUICK_SUMMARY.txt
+app.config.js.bak
+
+# Secrets
+.env*.local
+.env
+
+# Native generated
+/ios
+/android
+
+# Credentials
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/

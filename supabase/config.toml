@@ -1,0 +1,22 @@
+
+[functions.payment-init]
+enabled = true
+verify_jwt = true
+import_map = "./functions/payment-init/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/payment-init/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/payment-init/*.html" ]
+
+[functions.payment-verify]
+enabled = true
+verify_jwt = true
+import_map = "./functions/payment-verify/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/payment-verify/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/payment-verify/*.html" ]

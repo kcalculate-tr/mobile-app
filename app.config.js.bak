@@ -1,0 +1,14 @@
+module.exports = ({ config }) => ({
+  ...config,
+  scheme: 'kcal',
+  android: {
+    ...(config.android || {}),
+    package: 'com.kcal.mobile',
+  },
+  extra: {
+    ...(config.extra || {}),
+    EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    EXPO_PUBLIC_SUPABASE_KEY: process.env.EXPO_PUBLIC_SUPABASE_KEY,
+    EXPO_PUBLIC_API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL,
+  },
+});

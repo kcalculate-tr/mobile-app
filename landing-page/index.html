@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KCAL — Sağlıklı Beslenme, Kapınıza Teslim</title>
+  <meta name="description" content="Makro dostu öğünleri seçin, hızlıca teslim alın. Kalori takibi, hızlı teslimat ve Macro Coin ödülleri." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f172a;
+      --bg2:      #1e293b;
+      --bg3:      #0d1525;
+      --green:    #84cc16;
+      --green2:   #a3e635;
+      --green-dk: #4d7c0f;
+      --text:     #f1f5f9;
+      --muted:    #94a3b8;
+      --border:   rgba(132,204,22,0.15);
+      --card:     rgba(30,41,59,0.9);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Utility ── */
+    .container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(132,204,22,0.12); border: 1px solid rgba(132,204,22,0.3);
+      color: var(--green2); border-radius: 100px;
+      padding: 5px 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,23,42,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .logo {
+      font-size: 22px; font-weight: 900; letter-spacing: -0.5px;
+      color: var(--text); text-decoration: none;
+    }
+    .logo span { color: var(--green); }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--green); color: #0f172a;
+      font-size: 14px; font-weight: 700;
+      padding: 10px 22px; border-radius: 100px;
+      border: none; cursor: pointer; text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent;
+      border: 1px solid rgba(132,204,22,0.4);
+      color: var(--green2);
+      font-size: 14px; font-weight: 600;
+      padding: 10px 22px; border-radius: 100px;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-ghost:hover { background: rgba(132,204,22,0.08); border-color: var(--green2); }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      padding: 96px 0 80px;
+      text-align: center;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -160px; left: 50%; transform: translateX(-50%);
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(132,204,22,0.12) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .hero-eyebrow { margin-bottom: 20px; }
+    .hero h1 {
+      font-size: clamp(34px, 6vw, 60px);
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 20px;
+    }
+    .hero h1 .accent { color: var(--green); }
+    .hero p {
+      font-size: clamp(16px, 2.2vw, 20px);
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 40px;
+    }
+    .store-btns { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+    .store-btn {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: var(--bg2); border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text); border-radius: 14px;
+      padding: 12px 22px; text-decoration: none;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      min-width: 160px;
+    }
+    .store-btn:hover { background: var(--bg3); border-color: rgba(132,204,22,0.3); transform: translateY(-2px); }
+    .store-btn svg { flex-shrink: 0; }
+    .store-btn-text { text-align: left; }
+    .store-btn-text .small { font-size: 10px; color: var(--muted); letter-spacing: 0.02em; }
+    .store-btn-text .big { font-size: 15px; font-weight: 700; line-height: 1.2; }
+
+    /* phone mockup */
+    .phone-wrap {
+      margin-top: 64px;
+      display: flex; justify-content: center;
+    }
+    .phone {
+      width: 240px; height: 420px;
+      background: linear-gradient(160deg, var(--bg2) 0%, var(--bg3) 100%);
+      border: 1.5px solid rgba(132,204,22,0.2);
+      border-radius: 40px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 60px rgba(132,204,22,0.08);
+      position: relative; overflow: hidden;
+    }
+    .phone::before {
+      content: '';
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 80px; height: 5px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 0 0 8px 8px;
+    }
+    .phone-screen {
+      position: absolute; inset: 10px;
+      background: var(--bg);
+      border-radius: 32px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .phone-top {
+      background: linear-gradient(135deg, #1a2f10 0%, #0f172a 100%);
+      padding: 20px 16px 14px;
+    }
+    .phone-top .phone-logo { font-size: 18px; font-weight: 900; color: var(--green); }
+    .phone-top p { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .phone-cards { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .phone-card {
+      background: var(--bg2);
+      border-radius: 10px; padding: 10px;
+      display: flex; align-items: center; gap: 10px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .phone-card-img {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, #2d4a18, #1a2f10);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .phone-card-info .name { font-size: 10px; font-weight: 700; color: var(--text); }
+    .phone-card-info .macro { font-size: 9px; color: var(--muted); }
+    .phone-card-price { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--green); }
+
+    /* ── Sections shared ── */
+    section { padding: 80px 0; }
+    .section-header { text-align: center; margin-bottom: 52px; }
+    .section-header h2 {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800; letter-spacing: -0.8px;
+      margin-top: 14px; margin-bottom: 14px;
+    }
+    .section-header p { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto; }
+
+    /* ── Features ── */
+    .features { background: var(--bg2); }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: rgba(132,204,22,0.4); transform: translateY(-4px); }
+    .feature-icon {
+      font-size: 36px; margin-bottom: 20px; display: block;
+    }
+    .feature-card h3 {
+      font-size: 18px; font-weight: 700; margin-bottom: 10px;
+    }
+    .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    /* ── How it works ── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 32px;
+    }
+    .step { text-align: center; position: relative; }
+    .step-num {
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, var(--green), var(--green-dk));
+      color: #0f172a; font-size: 20px; font-weight: 900;
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; margin: 0 auto 20px;
+      box-shadow: 0 8px 24px rgba(132,204,22,0.3);
+    }
+    .step h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .step p { font-size: 14px; color: var(--muted); }
+    .step-connector {
+      position: absolute; top: 26px; left: calc(50% + 36px);
+      width: calc(100% - 72px);
+      height: 1px;
+      background: linear-gradient(90deg, rgba(132,204,22,0.4), rgba(132,204,22,0.1));
+    }
+
+    /* ── CTA ── */
+    .cta {
+      background: linear-gradient(135deg, rgba(77,124,15,0.2) 0%, rgba(15,23,42,0) 50%, rgba(30,41,59,0.4) 100%);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .cta h2 {
+      font-size: clamp(24px, 4vw, 38px); font-weight: 800; letter-spacing: -0.8px;
+      margin-bottom: 14px;
+    }
+    .cta p { color: var(--muted); font-size: 16px; margin-bottom: 36px; }
+    .cta-btns { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 48px 0 36px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      background: var(--bg3);
+    }
+    .footer-inner {
+      display: flex; flex-wrap: wrap;
+      align-items: flex-start; justify-content: space-between;
+      gap: 32px;
+    }
+    .footer-left .logo { font-size: 20px; }
+    .footer-company { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+    .footer-company span { font-size: 11px; color: var(--muted); line-height: 1.6; }
+    .footer-right { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: flex-end; }
+    .footer-links a {
+      font-size: 12px; color: var(--muted); text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--green2); }
+    .footer-sep { color: rgba(255,255,255,0.12); }
+    .footer-copy { font-size: 11px; color: rgba(148,163,184,0.5); }
+    @media (max-width: 640px) {
+      .footer-right { align-items: flex-start; }
+      .footer-links { justify-content: flex-start; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .hero { padding: 64px 0 48px; }
+      .step-connector { display: none; }
+      section { padding: 56px 0; }
+      .phone-wrap { margin-top: 40px; }
+    }
+
+    /* ── Scroll-reveal ── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─────────────────────────────────────────────────────── -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <a href="#" class="logo">KC<span>AL</span></a>
+      <a href="#indir" class="btn-primary">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 16l-6-6h4V4h4v6h4l-6 6z"/><path d="M4 20h16"/></svg>
+        Uygulamayı İndir
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ─── HERO ────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <p class="hero-eyebrow"><span class="tag">✦ Yeni Nesil Sağlıklı Beslenme</span></p>
+    <h1>
+      Sağlıklı Beslenme,<br/>
+      <span class="accent">Kapınıza Teslim</span>
+    </h1>
+    <p>Makro dostu öğünleri seçin, hızlıca teslim alın.<br/>Hedeflerinize uygun beslenme, artık çok kolay.</p>
+
+    <div class="store-btns" id="indir">
+      <a href="#" class="store-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--text)">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+        </svg>
+        <div class="store-btn-text">
+          <div class="small">App Store'dan İndir</div>
+          <div class="big">App Store</div>
+        </div>
+      </a>
+      <a href="#" class="store-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M3 20.5v-17c0-.83 1-.97 1.4-.43l14 8.5c.4.24.4.82 0 1.06l-14 8.5c-.4.54-1.4.4-1.4-.63z" fill="var(--green)"/>
+          <path d="M3 20.5L13.7 12 3 3.5v17z" fill="var(--green2)" opacity=".6"/>
+        </svg>
+        <div class="store-btn-text">
+          <div class="small">Google Play'den İndir</div>
+          <div class="big">Google Play</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Phone mockup -->
+    <div class="phone-wrap reveal">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-top">
+            <div class="phone-logo">KCAL</div>
+            <p>Bugünün menüsü</p>
+          </div>
+          <div class="phone-cards">
+            <div class="phone-card">
+              <div class="phone-card-img">🥗</div>
+              <div class="phone-card-info">
+                <div class="name">Tavuk Fileto Salata</div>
+                <div class="macro">420 kcal · P:38g · K:12g · Y:22g</div>
+              </div>
+              <div class="phone-card-price">₺189</div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-img">🥩</div>
+              <div class="phone-card-info">
+                <div class="name">Izgara Köfte Tabağı</div>
+                <div class="macro">510 kcal · P:42g · K:28g · Y:24g</div>
+              </div>
+              <div class="phone-card-price">₺215</div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-img">🍱</div>
+              <div class="phone-card-info">
+                <div class="name">Protein Kasesi</div>
+                <div class="macro">380 kcal · P:35g · K:30g · Y:10g</div>
+              </div>
+              <div class="phone-card-price">₺199</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FEATURES ─────────────────────────────────────────────────────── -->
+<section class="features">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="tag">Özellikler</span>
+      <h2>Neden KCAL?</h2>
+      <p>Beslenme hedeflerinize ulaşmanızı kolaylaştıran akıllı özellikler.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <span class="feature-icon">🥗</span>
+        <h3>Makro Takibi</h3>
+        <p>Her öğünün kalori, protein, karbonhidrat ve yağ değerlerini anında görün. Günlük makro hedeflerinizi kolayca takip edin.</p>
+      </div>
+      <div class="feature-card reveal" style="transition-delay:0.1s">
+        <span class="feature-icon">🚀</span>
+        <h3>Hızlı Teslimat</h3>
+        <p>Hemen teslim seçeneğiyle dakikalar içinde kapınızda. Ya da istediğiniz saate randevu verin, taze öğününüz hazır olsun.</p>
+      </div>
+      <div class="feature-card reveal" style="transition-delay:0.2s">
+        <span class="feature-icon">⭐</span>
+        <h3>Macro Coin</h3>
+        <p>Her siparişten Macro Coin kazanın. Biriktirdiğiniz coinleri indirim ve ödüllere çevirin. Sağlıklı beslenmenin ödülü büyük!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ──────────────────────────────────────────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="tag">Nasıl Çalışır?</span>
+      <h2>3 Adımda Sağlıklı Beslen</h2>
+      <p>Uygulamayı açmaktan teslimata kadar son derece basit.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <div class="step-connector"></div>
+        <h3>Seç</h3>
+        <p>Makro değerlerine göre filtreleyerek hedeflerinize uygun öğünü seçin.</p>
+      </div>
+      <div class="step reveal" style="transition-delay:0.15s">
+        <div class="step-num">2</div>
+        <div class="step-connector"></div>
+        <h3>Sipariş Ver</h3>
+        <p>Hemen teslim veya dilediğiniz saate randevulu sipariş seçeneğiyle kolayca ödeyin.</p>
+      </div>
+      <div class="step reveal" style="transition-delay:0.3s">
+        <div class="step-num">3</div>
+        <h3>Teslim Al</h3>
+        <p>Taze ve makro değerleri hesaplanmış öğününüz kapınıza gelsin, zevkle yiyin.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA ──────────────────────────────────────────────────────────── -->
+<section class="cta">
+  <div class="container reveal">
+    <h2>Hemen Başlayın</h2>
+    <p>Binlerce kullanıcı sağlıklı beslenme yolculuğuna KCAL ile başladı.</p>
+    <div class="cta-btns">
+      <a href="#" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        App Store
+      </a>
+      <a href="#" class="btn-ghost">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 20.5v-17c0-.83 1-.97 1.4-.43l14 8.5c.4.24.4.82 0 1.06l-14 8.5c-.4.54-1.4.4-1.4-.63z" fill="currentColor"/></svg>
+        Google Play
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <div class="logo">KC<span>AL</span></div>
+        <div class="footer-company">
+          <span><strong style="color:var(--text)">Sekülart Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.</strong></span>
+          <span>Vergi No: 7591148741 &nbsp;·&nbsp; DUNS: 751169177</span>
+          <span>Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir</span>
+          <span><a href="mailto:info@eatkcal.com" style="color:var(--muted);text-decoration:none;transition:color .15s" onmouseover="this.style.color='#a3e635'" onmouseout="this.style.color='var(--muted)'">info@eatkcal.com</a></span>
+        </div>
+      </div>
+      <div class="footer-right">
+        <div class="footer-links">
+          <a href="/privacy.html">Gizlilik Politikası</a>
+          <span class="footer-sep">|</span>
+          <a href="/terms.html">Kullanım Koşulları</a>
+        </div>
+        <p class="footer-copy">© 2026 KCAL. Tüm hakları saklıdır.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll-reveal
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  els.forEach((el) => io.observe(el));
+</script>
+</body>
+</html>

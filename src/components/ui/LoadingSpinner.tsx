@@ -1,0 +1,19 @@
+import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+export default function LoadingSpinner() {
+  return (
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#C6F04F" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F0F0',
+  },
+});

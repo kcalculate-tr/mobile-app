@@ -1,0 +1,1196 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CachedImage } from '../components/CachedImage';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag } from 'phosphor-react-native';
+import ScreenContainer from '../components/ScreenContainer';
+import { haptic } from '../utils/haptics';
+import HowItWorksModal from '../components/modals/HowItWorksModal';
+import PopupModal from '../components/PopupModal';
+import { useModal } from '../hooks/useModal';
+import { usePopups } from '../hooks/usePopups';
+import { useCartStore } from '../store/cartStore';
+import { useAuth } from '../context/AuthContext';
+import { Category, fetchCategories } from '../lib/categories';
+import { RootStackParamList } from '../navigation/types';
+import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
+import { getSupabaseClient } from '../lib/supabase';
+import { Banner, Campaign, fetchBanners, fetchCampaigns, fetchPromoBanners } from '../lib/offers';
+import { useAddressStore } from '../store/addressStore';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const SLIDE_W = SCREEN_W - 32 + 12;
+const CARD_GAP = 12;
+const CARD_PADDING = 16;
+const CARD_WIDTH = (SCREEN_W - CARD_PADDING * 2 - CARD_GAP) / 2;
+const BANNER_GAP = 12;
+const BANNER_PADDING = 16;
+const HALF_BANNER_WIDTH = (SCREEN_W - BANNER_PADDING * 2 - BANNER_GAP) / 2;
+const FULL_BANNER_WIDTH = SCREEN_W - BANNER_PADDING * 2;
+
+type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
+
+export default function HomeScreen() {
+  const navigation = useNavigation<HomeNavProp>();
+  const howItWorks = useModal();
+  const { popup, total, index, handleClose, handleNext } = usePopups();
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const selectedAddress = useAddressStore((s) => s.selectedAddress);
+  const setSelectedAddress = useAddressStore((s) => s.setSelectedAddress);
+  const addItem = useCartStore((state) => state.addItem);
+  const removeItem = useCartStore((state) => state.removeItem);
+  const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const cartItems = useCartStore((state) => state.items);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [promoBanners, setPromoBanners] = useState<Banner[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [activeHero, setActiveHero] = useState(0);
+  const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
+  const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [mealModalVisible, setMealModalVisible] = useState(false);
+  const [mealType, setMealType] = useState<'kahvalti' | 'ogle' | 'aksam' | 'atistirma'>('kahvalti');
+  const [mealCalories, setMealCalories] = useState('');
+  const [mealNote, setMealNote] = useState('');
+  const [mealSaving, setMealSaving] = useState(false);
+  const [mealLogs, setMealLogs] = useState<{ id: string; meal_type: string; calories: number; date: string }[]>([]);
+  const heroFlatListRef = useRef<FlatList>(null);
+  const sheetTranslateY = useRef(new Animated.Value(400)).current;
+  const activeDotWidth  = useRef(new Animated.Value(14)).current;
+
+  // Modal sheet slide-up animation
+  useEffect(() => {
+    if (mealModalVisible) {
+      Animated.spring(sheetTranslateY, { toValue: 0, useNativeDriver: true, speed: 15, bounciness: 4 }).start();
+    } else {
+      Animated.timing(sheetTranslateY, { toValue: 400, duration: 250, useNativeDriver: true }).start();
+    }
+  }, [mealModalVisible]);
+
+  // Auto-load default address on first mount
+  useEffect(() => {
+    if (!user?.id || selectedAddress) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (cancelled || error || !data || data.length === 0) return;
+        const row = data[0] as Record<string, any>;
+        setSelectedAddress({
+          ...row,
+          neighbourhood: row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? null,
+        } as any);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, selectedAddress, setSelectedAddress]);
+
+  // Active dot expand animation
+  useEffect(() => {
+    activeDotWidth.setValue(5);
+    Animated.spring(activeDotWidth, { toValue: 14, useNativeDriver: false, speed: 20, bounciness: 4 }).start();
+  }, [activeHero]);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveHero((prev) => {
+        const next = prev + 1 >= banners.length ? 0 : prev + 1;
+        heroFlatListRef.current?.scrollToOffset({ offset: next * SLIDE_W, animated: true });
+        return next;
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [banners.length]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const supabase = getSupabaseClient();
+      const [cats, prods, bans, camps, featured, mealLogsRes, promos] = await Promise.all([
+        fetchCategories(),
+        fetchProducts(),
+        fetchBanners(),
+        fetchCampaigns(),
+        fetchFeaturedProducts(),
+        supabase
+          .from('meal_logs')
+          .select('id,meal_type,calories,date')
+          .eq('user_id', user?.id ?? '')
+          .eq('date', new Date().toISOString().split('T')[0]),
+        fetchPromoBanners(),
+      ]);
+      setCategories(cats);
+      setProducts(prods);
+      setBanners(bans);
+      setCampaigns(camps);
+      setFeaturedProducts(featured);
+      setPromoBanners(promos);
+      if (mealLogsRes.data) setMealLogs(mealLogsRes.data as any);
+    } catch {}
+    finally { setLoading(false); }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSaveMealLog = async () => {
+    if (!user || !mealCalories) return;
+    setMealSaving(true);
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.from('meal_logs').insert({
+        user_id: user.id,
+        date: new Date().toISOString().split('T')[0],
+        meal_type: mealType,
+        calories: parseInt(mealCalories),
+        note: mealNote || null,
+      }).select().single();
+      if (error) throw error;
+      setMealLogs(prev => [...prev, data as any]);
+      setMealCalories('');
+      setMealNote('');
+      setMealModalVisible(false);
+    } catch (e) {
+      if (__DEV__) console.warn('meal log error:', e);
+    } finally {
+      setMealSaving(false);
+    }
+  };
+
+  const handleCategoryPress = (cat: Category) => {
+    haptic.selection();
+    setSearchText('');
+    navigation.navigate('CategoryProducts', { categoryName: cat.name });
+  };
+
+  const handleProductPress = (product: Product) => {
+    haptic.selection();
+    navigation.navigate('ProductDetail', { productId: product.id.toString() });
+  };
+
+  const handleAddToCart = async (product: Product) => {
+    haptic.medium();
+    setCheckingOptions(prev => ({ ...prev, [product.id]: true }));
+    try {
+      const supabase = getSupabaseClient();
+      const groups = await fetchProductOptionGroups(supabase, String(product.id));
+      const hasRequired = groups.some(g => g.isRequired || g.minSelection > 0);
+      if (hasRequired) {
+        haptic.selection();
+        navigation.navigate('ProductDetail', { productId: product.id.toString() });
+        return;
+      }
+    } catch {
+      // hata olursa direkt ekle
+    } finally {
+      setCheckingOptions(prev => ({ ...prev, [product.id]: false }));
+    }
+    addItem(product, {}, 1);
+    setCardQuantities(prev => ({ ...prev, [product.id]: 1 }));
+  };
+
+  const handleCardQuantityChange = (product: Product, newQty: number) => {
+    haptic.light();
+    if (newQty <= 0) {
+      const existingItem = cartItems.find(
+        i => i.productId === String(product.id) &&
+        Object.keys(i.selectedOptions?.byGroup ?? {}).length === 0
+      );
+      if (existingItem) removeItem(existingItem.lineKey);
+      setCardQuantities(prev => {
+        const next = { ...prev };
+        delete next[product.id];
+        return next;
+      });
+      return;
+    }
+    const existingItem = cartItems.find(
+      i => i.productId === String(product.id) &&
+      Object.keys(i.selectedOptions?.byGroup ?? {}).length === 0
+    );
+    if (existingItem) updateQuantity(existingItem.lineKey, newQty);
+    setCardQuantities(prev => ({ ...prev, [product.id]: newQty }));
+  };
+
+  const allCategoriesWithAll: Category[] = [...categories];
+
+  const displayProducts = searchText.trim()
+    ? products.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()))
+    : (featuredProducts.length > 0 ? featuredProducts : products.slice(0, 6));
+
+  const renderHeroBanner = useCallback(({ item: banner }: { item: any }) => (
+    <TouchableOpacity
+      style={styles.heroSlide}
+      activeOpacity={0.95}
+      onPress={() => {
+        const dest = (banner.navigate_to || 'Home') as any;
+        navigation.navigate(dest);
+      }}
+    >
+      <CachedImage uri={banner.image_url} style={styles.heroImage} />
+    </TouchableOpacity>
+  ), [navigation]);
+
+  return (
+    <ScreenContainer style={styles.container} edges={['top']}>
+      <Modal
+        visible={mealModalVisible}
+        animationType="none"
+        transparent
+        onRequestClose={() => setMealModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setMealModalVisible(false)}
+          />
+          <Animated.View style={[styles.modalSheet, { paddingBottom: Math.max(32, insets.bottom + 16), transform: [{ translateY: sheetTranslateY }] }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Kalori Ekle</Text>
+            <Text style={styles.modalSub}>Bugün tükettiğin kaloriyi gir</Text>
+
+            {/* Öğün tipi */}
+            <View style={styles.mealTypeRow}>
+              {([
+                { key: 'kahvalti', label: '🌅 Kahvaltı' },
+                { key: 'ogle', label: '☀️ Öğle' },
+                { key: 'aksam', label: '🌙 Akşam' },
+                { key: 'atistirma', label: '🍎 Atıştırma' },
+              ] as const).map(opt => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.mealTypeBtn, mealType === opt.key && styles.mealTypeBtnActive]}
+                  onPress={() => setMealType(opt.key)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.mealTypeBtnText, mealType === opt.key && styles.mealTypeBtnTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Kalori input */}
+            <View style={styles.calorieInputWrapper}>
+              <TextInput
+                style={styles.calorieInput}
+                value={mealCalories}
+                onChangeText={setMealCalories}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor={COLORS.text.tertiary}
+                maxLength={5}
+                autoFocus
+              />
+              <Text style={styles.calorieInputUnit}>kcal</Text>
+            </View>
+
+            {/* Not (opsiyonel) */}
+            <TextInput
+              style={styles.mealNoteInput}
+              value={mealNote}
+              onChangeText={setMealNote}
+              placeholder="Not ekle (opsiyonel) — örn: tavuk salata"
+              placeholderTextColor={COLORS.text.tertiary}
+              maxLength={80}
+            />
+
+            <TouchableOpacity
+              style={[styles.modalSaveBtn, (!mealCalories || mealSaving) && { opacity: 0.5 }]}
+              onPress={handleSaveMealLog}
+              disabled={!mealCalories || mealSaving}
+              activeOpacity={0.85}
+            >
+              {mealSaving
+                ? <ActivityIndicator color="#000" size="small" />
+                : <Text style={styles.modalSaveBtnText}>Kaydet</Text>
+              }
+            </TouchableOpacity>
+
+            {/* Bugünkü öğünler */}
+            {mealLogs.length > 0 && (
+              <View style={styles.todayMealsSection}>
+                <Text style={styles.todayMealsTitle}>Bugün girildi</Text>
+                {mealLogs.map(log => (
+                  <View key={log.id} style={styles.todayMealRow}>
+                    <Text style={styles.todayMealType}>
+                      {log.meal_type === 'kahvalti' ? '🌅 Kahvaltı'
+                        : log.meal_type === 'ogle' ? '☀️ Öğle'
+                        : log.meal_type === 'aksam' ? '🌙 Akşam'
+                        : '🍎 Atıştırma'}
+                    </Text>
+                    <Text style={styles.todayMealKcal}>{log.calories} kcal</Text>
+                  </View>
+                ))}
+                <View style={styles.todayMealTotal}>
+                  <Text style={styles.todayMealTotalLabel}>Toplam</Text>
+                  <Text style={styles.todayMealTotalValue}>
+                    {mealLogs.reduce((sum, m) => sum + m.calories, 0)} kcal
+                  </Text>
+                </View>
+              </View>
+            )}
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {loading && (
+        <View style={styles.skeletonContainer}>
+          {/* Skeleton Header */}
+          <View style={styles.skeletonHeader}>
+            <View style={[styles.skeletonBox, { width: 80, height: 32, borderRadius: RADIUS.xs }]} />
+            <View style={[styles.skeletonBox, { width: 120, height: 32, borderRadius: RADIUS.pill }]} />
+            <View style={[styles.skeletonBox, { width: 36, height: 36, borderRadius: RADIUS.md }]} />
+          </View>
+          {/* Skeleton Search */}
+          <View style={[styles.skeletonBox, { height: 52, borderRadius: RADIUS.pill, marginHorizontal: SPACING.lg, marginBottom: SPACING.lg }]} />
+          {/* Skeleton Categories */}
+          <View style={styles.skeletonCategoryRow}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <View key={i} style={styles.skeletonCategory}>
+                <View style={[styles.skeletonBox, { width: 54, height: 54, borderRadius: RADIUS.md }]} />
+                <View style={[styles.skeletonBox, { width: 40, height: 10, borderRadius: 4, marginTop: SPACING.xs }]} />
+              </View>
+            ))}
+          </View>
+          {/* Skeleton Banner */}
+          <View style={[styles.skeletonBox, { height: 170, borderRadius: RADIUS.lg, marginHorizontal: SPACING.lg, marginBottom: SPACING.lg }]} />
+          {/* Skeleton Grid */}
+          <View style={styles.skeletonGrid}>
+            {[1, 2, 3, 4].map((i) => (
+              <View key={i} style={styles.skeletonCard}>
+                <View style={[styles.skeletonBox, { height: 110, borderRadius: RADIUS.sm, marginBottom: SPACING.sm }]} />
+                <View style={[styles.skeletonBox, { height: 12, borderRadius: 4, marginBottom: SPACING.xs, width: '80%' }]} />
+                <View style={[styles.skeletonBox, { height: 12, borderRadius: 4, width: '50%' }]} />
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        style={{ display: loading ? 'none' : 'flex' }}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          {/* Logo - absolute sol */}
+          <View style={{ position: 'absolute', left: 16, zIndex: 1, gap: 4 }}>
+            <Image
+              source={require('../../assets/kcal-logo.png')}
+              style={styles.logoImg}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* Adres - tam merkez */}
+          <TouchableOpacity
+            style={styles.addressButton}
+            onPress={() => navigation.navigate('Addresses')}
+            activeOpacity={0.8}
+          >
+            <MapPin size={13} color="#000000" />
+            <Text style={styles.addressText} numberOfLines={1}>
+              {selectedAddress?.neighbourhood || selectedAddress?.district || 'Adres seçin'}
+            </Text>
+            <CaretDown size={12} color="#000000" />
+          </TouchableOpacity>
+
+          {/* Sağ butonlar */}
+          <View style={{ position: 'absolute', right: 8, zIndex: 1, flexDirection: 'row', gap: 0, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={styles.headerActionBtn}
+              onPress={() => navigation.navigate('ProfileCoupons')}
+              activeOpacity={0.8}
+            >
+              <Tag size={16} color="#000000" />
+              <Text style={styles.headerActionText}>Kuponlar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerActionBtn}
+              onPress={howItWorks.open}
+              activeOpacity={0.8}
+            >
+              <Question size={16} color="#000000" />
+              <Text style={styles.headerActionText}>Nasıl Çalışır?</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Empty/Retry State */}
+        {!loading && products.length === 0 && categories.length === 0 && (
+          <View style={{ alignItems: 'center', paddingTop: 80 }}>
+            <Text style={{ fontSize: 16, color: '#878787', marginBottom: 16, fontFamily: 'PlusJakartaSans_500Medium' }}>
+              İçerikler yüklenemedi
+            </Text>
+            <TouchableOpacity onPress={fetchData} style={{ backgroundColor: '#C6F04F', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 100 }}>
+              <Text style={{ fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000' }}>Tekrar Dene</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Hero Banner Slider */}
+        {banners.length > 0 && (
+          <View style={styles.heroWrapper}>
+            <FlatList
+              keyboardShouldPersistTaps="handled"
+              ref={heroFlatListRef}
+              data={banners}
+              keyExtractor={(item) => item.id}
+              horizontal
+              pagingEnabled
+              snapToAlignment="start"
+              snapToInterval={SLIDE_W}
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: SPACING.md, paddingHorizontal: SPACING.lg }}
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / SLIDE_W);
+                setActiveHero(idx);
+              }}
+              renderItem={renderHeroBanner}
+            />
+            {banners.length > 1 && (
+              <View style={styles.bannerDots}>
+                {banners.map((_, i) => (
+                  <Animated.View
+                    key={i}
+                    style={[
+                      styles.bannerDot,
+                      i === activeHero && { backgroundColor: '#C6F04F', width: activeDotWidth },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Categories */}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryRow}
+          style={styles.categoryScroll}
+        >
+          {allCategoriesWithAll.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={styles.categoryItem}
+              onPress={() => handleCategoryPress(cat)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.categoryIcon}>
+                {cat.img ? (
+                  <CachedImage uri={cat.img} style={{ width: 56, height: 56, borderRadius: RADIUS.sm }} />
+                ) : (
+                  <Text style={styles.categoryEmoji}>
+                    {cat.emoji || cat.name.slice(0, 1).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.categoryName}>{cat.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Bu Hafta Popüler */}
+        {(promoBanners.length > 0 || campaigns.length > 0) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bu Hafta Popüler</Text>
+            <View style={styles.promoRow}>
+              {(promoBanners.length > 0 ? promoBanners : campaigns).map((campaign, idx, arr) => {
+                const isFull = arr.length % 2 !== 0 && idx === arr.length - 1;
+                return (
+                <TouchableOpacity
+                  key={campaign.id}
+                  style={[
+                    styles.promoCard,
+                    isFull
+                      ? { width: FULL_BANNER_WIDTH, height: 155 }
+                      : { width: HALF_BANNER_WIDTH, height: 155 },
+                  ]}
+                  onPress={() => {
+                    const navTo = (campaign as any).navigate_to || 'Offers';
+                    if (navTo.startsWith('CategoryProducts:')) {
+                      const categoryName = navTo.split(':')[1];
+                      navigation.navigate('CategoryProducts', { categoryName });
+                    } else {
+                      navigation.navigate(navTo as any);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <ImageBackground
+                    source={campaign.image_url ? { uri: campaign.image_url } : undefined}
+                    style={styles.promoCardInner}
+                    imageStyle={{ borderRadius: RADIUS.md }}
+                  />
+
+                </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Search Bar */}
+        <View style={styles.searchBar}>
+          <MagnifyingGlass size={18} color={COLORS.text.tertiary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Ürün ara..."
+            placeholderTextColor={COLORS.text.tertiary}
+            value={searchText}
+            onChangeText={setSearchText}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+        </View>
+
+        {/* Sana Özel Teklifler */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sana Özel Teklifler</Text>
+          
+          {/* Product Grid */}
+          <View style={styles.productGrid}>
+            {displayProducts.map((product) => (
+              <TouchableOpacity
+                key={product.id}
+                style={styles.productCard}
+                onPress={() => handleProductPress(product)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.productImageContainer}>
+                  {product.img ? (
+                    <CachedImage uri={product.img} style={styles.productImage} />
+                  ) : (
+                    <Text style={styles.productImageFallback}>
+                      {String(product.name || '').slice(0, 1).toUpperCase()}
+                    </Text>
+                  )}
+                  {product.calories ? (
+                    <View style={styles.caloriesBadge}>
+                      <Text style={styles.caloriesText}>{product.calories} kcal</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={{ flex: 1, justifyContent: 'space-between' }}>
+                  <Text style={styles.productName} numberOfLines={2}>
+                    {product.name}
+                  </Text>
+                  <View style={styles.productFooter}>
+                    <Text style={styles.productPrice}>₺{product.price.toFixed(2)}</Text>
+                    {cardQuantities[product.id] ? (
+                      <View style={styles.qtyControl}>
+                        <TouchableOpacity
+                          style={styles.qtyBtn}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleCardQuantityChange(product, (cardQuantities[product.id] ?? 1) - 1);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Minus size={12} color="#000000" />
+                        </TouchableOpacity>
+                        <Text style={styles.qtyText}>{cardQuantities[product.id]}</Text>
+                        <TouchableOpacity
+                          style={styles.qtyBtn}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleCardQuantityChange(product, (cardQuantities[product.id] ?? 1) + 1);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Plus size={12} color="#000000" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product);
+                        }}
+                        activeOpacity={0.8}
+                        disabled={checkingOptions[product.id]}
+                      >
+                        {checkingOptions[product.id] ? (
+                          <ActivityIndicator size="small" color="#000000" />
+                        ) : (
+                          <Plus size={16} color="#000000" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      <HowItWorksModal visible={howItWorks.visible} onClose={howItWorks.close} />
+      {popup && (
+        <PopupModal
+          popup={popup}
+          total={total}
+          index={index}
+          onClose={handleClose}
+          onNext={handleNext}
+          onCta={(dest) => {
+            if (!dest) return
+            if (dest.startsWith('CategoryProducts:')) {
+              navigation.navigate('CategoryProducts', { categoryName: dest.split(':')[1] })
+            } else {
+              try { navigation.navigate(dest as any) } catch {}
+            }
+          }}
+        />
+      )}
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  logoImg: { width: 80, height: 32 },
+  logoBox: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.xs,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoEmoji: {
+    fontSize: TYPOGRAPHY.size.lg,
+  },
+  logoText: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+    letterSpacing: -0.5,
+  },
+  addressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.pill,
+    paddingVertical: 7,
+    paddingHorizontal: SPACING.md,
+    maxWidth: 220,
+  },
+  addressText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.primary,
+  },
+  headerActionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.xs,
+    width: 54,
+  },
+  headerActionText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#555555',
+    textAlign: 'center',
+    lineHeight: 11,
+  },
+  helpButton: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Search Bar
+  searchBar: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.lg,
+    height: 52,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border.medium,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.md,
+    ...SHADOWS.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.text.primary,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.text.tertiary,
+  },
+  searchButton: {
+    backgroundColor: '#000000',
+    borderRadius: RADIUS.pill,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+  },
+  searchButtonText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.brand.green,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  // Categories
+  categoryScroll: {
+    marginBottom: SPACING.lg,
+  },
+  categoryRow: {
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
+    paddingBottom: SPACING.xs,
+  },
+  categoryItem: {
+    alignItems: 'center',
+    width: 72,
+    gap: SPACING.xs,
+  },
+  categoryIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  categoryEmoji: {
+    fontSize: TYPOGRAPHY.size['3xl'],
+  },
+  categoryName: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.medium,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.primary,
+    textAlign: 'center',
+    lineHeight: 14,
+    flexWrap: 'wrap',
+    maxWidth: 68,
+  },
+  // Section
+  section: {
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING['2xl'],
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    marginBottom: SPACING.md,
+    letterSpacing: -0.4,
+  },
+  // Promo Cards
+  promoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BANNER_GAP,
+  },
+  promoCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  promoCardInner: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'transparent',
+  },
+  promoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    backgroundColor: 'transparent',
+  },
+  promoEmoji: {
+    fontSize: TYPOGRAPHY.size['3xl'],
+    marginBottom: SPACING.xs,
+    opacity: 0.9,
+  },
+  promoTitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
+    lineHeight: 14,
+  },
+  promoAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  promoActionText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.brand.green,
+  },
+  badgeText: { color: 'white', fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold'},
+  chipScroll: {
+    maxHeight: 52,
+    marginBottom: SPACING.md,
+  },
+  chipRow: {
+    gap: SPACING.sm,
+  },
+  chip: {
+    height: 34,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.md,
+    justifyContent: 'center',
+  },
+  chipActive: {
+    backgroundColor: COLORS.brand.green,
+  },
+  chipText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.medium,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.primary,
+    opacity: 0.6,
+  },
+  chipTextActive: {
+    opacity: 1,
+  },
+  // Product Grid
+  productGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+  },
+  productCard: {
+    width: CARD_WIDTH,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    overflow: 'hidden',
+    ...SHADOWS.md,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: 220,
+  },
+  productImageContainer: {
+    width: '100%',
+    height: CARD_WIDTH * 0.85,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.background,
+    marginBottom: SPACING.sm,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productImageFallback: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    fontSize: TYPOGRAPHY.size['4xl'],
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.text.disabled,
+    transform: [{ translateX: -12 }, { translateY: -20 }],
+  },
+  caloriesBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  caloriesText: {
+    color: '#1A1A1A',
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: 0.3,
+  },
+  productName: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.primary,
+    marginBottom: 0,
+    lineHeight: 16,
+    flex: 1,
+  },
+  productFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  productPrice: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.brand.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomSpacer: {
+    height: 0,
+  },
+
+  // Hero banner slider
+  heroWrapper: {
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  heroSlide: {
+    width: SCREEN_W - 32,
+    height: 170,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    backgroundColor: '#e0e0e0',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: SPACING.sm,
+  },
+  bannerDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  privilegedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: '#FEF2F2',
+    borderRadius: RADIUS.pill,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    marginTop: SPACING.xs,
+  },
+  privilegedBadgeText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#DC2626',
+  },
+  bannerDotActive: {
+    backgroundColor: '#000000',
+    width: 14,
+  },
+  qtyControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.brand.green,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.xs,
+    gap: SPACING.xs,
+  },
+  qtyBtn: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  skeletonContainer: {
+    flex: 1,
+    paddingTop: SPACING.md,
+  },
+  skeletonBox: {
+    backgroundColor: '#E5E7EB',
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  skeletonCategoryRow: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  skeletonCategory: {
+    alignItems: 'center',
+    width: 54,
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+  },
+  skeletonCard: {
+    width: '48%',
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    minHeight: 180,
+  },
+  // Modal & Meal Log
+  addMealBtn: {
+    backgroundColor: COLORS.brand.green, borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+  },
+  addMealBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: {
+    backgroundColor: COLORS.white, borderTopLeftRadius: 28,
+    borderTopRightRadius: 28, paddingHorizontal: SPACING.xl, paddingTop: SPACING.md,
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: SPACING.xl,
+  },
+  modalTitle: { fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.extrabold,
+fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary, marginBottom: SPACING.xs },
+  modalSub: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary, marginBottom: SPACING.lg },
+
+  mealTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.xl },
+  mealTypeBtn: {
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.pill,
+    backgroundColor: '#f0f0f0',
+  },
+  mealTypeBtnActive: { backgroundColor: COLORS.brand.green },
+  mealTypeBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.semibold,
+fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
+  mealTypeBtnTextActive: { color: COLORS.text.primary },
+
+  calorieInputWrapper: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: SPACING.sm, marginBottom: SPACING.lg,
+  },
+  calorieInput: {
+    fontSize: 48, fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary,
+    textAlign: 'center', minWidth: 120,
+  },
+  calorieInputUnit: { fontSize: TYPOGRAPHY.size['2xl'], color: COLORS.text.tertiary, fontWeight: TYPOGRAPHY.weight.semibold,
+fontFamily: 'PlusJakartaSans_600SemiBold'},
+  mealNoteInput: {
+    backgroundColor: COLORS.background, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md, fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary, marginBottom: SPACING.lg,
+  },
+  modalSaveBtn: {
+    height: 56, borderRadius: RADIUS.pill, backgroundColor: COLORS.brand.green,
+    alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm,
+  },
+  modalSaveBtnText: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+
+  todayMealsSection: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: SPACING.lg, gap: SPACING.sm },
+  todayMealsTitle: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.tertiary },
+  todayMealRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  todayMealType: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary },
+  todayMealKcal: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  todayMealTotal: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: '#f0f0f0',
+  },
+  todayMealTotalLabel: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  todayMealTotalValue: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.extrabold,
+fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.brand.green },
+});
