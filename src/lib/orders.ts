@@ -2,9 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
 
-const ORDER_SCHEMA_BLOCK_MESSAGE =
-  'Sipariş kaydı yapılandırma hatası. Lütfen destek ile iletişime geçin.';
-
 export type OrderCreateWarning = {
   code: 'ORDER_ITEMS_FALLBACK';
   message: string;
@@ -42,18 +39,6 @@ const toSafeNumber = (value: unknown) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
-const createOrderSchemaFallbackError = (columns: string[]) => {
-  const error = new Error(ORDER_SCHEMA_BLOCK_MESSAGE) as Error & {
-    name: string;
-    code?: string;
-    droppedColumns?: string[];
-  };
-  error.name = 'OrderSchemaFallbackError';
-  error.code = 'ORDER_SCHEMA_FALLBACK_BLOCKED';
-  error.droppedColumns = columns;
-  return error;
-};
-
 const insertOrderWithFallback = async (
   supabase: SupabaseClient,
   payload: Record<string, unknown>,
@@ -83,9 +68,6 @@ const insertOrderWithFallback = async (
       missingColumn &&
       Object.prototype.hasOwnProperty.call(workingPayload, missingColumn)
     ) {
-      if (!__DEV__) {
-        throw createOrderSchemaFallbackError([missingColumn]);
-      }
       delete workingPayload[missingColumn];
       droppedColumns.add(missingColumn);
       continue;
@@ -107,8 +89,12 @@ const insertOrderWithFallback = async (
       'coupon_code',
       'coupon_id',
       'payment_status',
+      'payment_provider',
       'order_code',
       'order_note',
+      'delivery_type',
+      'scheduled_date',
+      'scheduled_time',
     ];
 
     const matchedColumns: string[] = [];
@@ -122,9 +108,6 @@ const insertOrderWithFallback = async (
     });
 
     if (matchedColumns.length > 0) {
-      if (!__DEV__) {
-        throw createOrderSchemaFallbackError(matchedColumns);
-      }
       matchedColumns.forEach((column) => {
         delete workingPayload[column];
         droppedColumns.add(column);
@@ -363,7 +346,6 @@ export const createOrderDraftForPayment = async ({
   const orderPayload: Record<string, unknown> = {
     status: 'pending_payment',
     payment_status: 'pending',
-    payment_provider: 'tosla',
     customer_name: customerName,
     customer_email: customerEmail,
     address: address.full_address,

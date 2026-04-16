@@ -20,6 +20,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft, CaretRight, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
@@ -106,13 +107,8 @@ const normalizeAddress = (row: Record<string, unknown>): Address => ({
   updated_at: String(row.updated_at ?? '').trim() || undefined,
 });
 
-const resolveCheckoutErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof Error && error.message.includes('Sipariş kaydı yapılandırma hatası')) {
-    return error.message;
-  }
-
-  return mapSupabaseErrorToUserMessage(error, fallback);
-};
+const resolveCheckoutErrorMessage = (error: unknown, fallback: string) =>
+  mapSupabaseErrorToUserMessage(error, fallback);
 
 const fallbackOrderCodeFromId = (orderId: string) =>
   `#${String(orderId || '').slice(0, 8).toUpperCase()}`;
@@ -127,6 +123,16 @@ const readZoneNeighborhood = (row: Record<string, unknown>) =>
   String(row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '').trim();
 
 const BRANCH_ADDRESS = 'Basın Sitesi Mah. 177/3. Sk. No:3A Karabağlar İzmir';
+
+const getGoogleMapsKey = (): string => {
+  const fromConfig =
+    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+  const value =
+    (typeof fromConfig === 'string' ? fromConfig : '') ||
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
+    '';
+  return String(value).trim();
+};
 
 // ─── Checkout Reducers ─────────────────────────────────────────────────────
 
@@ -849,11 +855,18 @@ export default function CheckoutScreen() {
     dispatchAddr({ type: 'SET_MAP_COORDS', payload: null });
     const run = async () => {
       try {
+        const apiKey = getGoogleMapsKey();
+        if (!apiKey) {
+          if (__DEV__) {
+            console.warn('[checkout] EXPO_PUBLIC_GOOGLE_MAPS_KEY missing — map disabled');
+          }
+          return;
+        }
         const q = encodeURIComponent(
           `${selectedAddress.full_address}, ${selectedAddress.district}, ${selectedAddress.city || 'İzmir'}, Turkey`
         );
         const res = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY}`
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${apiKey}`
         );
         const data = await res.json();
         if (mounted && data?.results?.[0]?.geometry?.location) {
@@ -1416,7 +1429,7 @@ export default function CheckoutScreen() {
                   style={styles.mapPreview}
                 >
                   <Image
-                    source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${mapCoords.lat},${mapCoords.lng}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${mapCoords.lat},${mapCoords.lng}&style=feature:poi%7Cvisibility:off&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY}` }}
+                    source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${mapCoords.lat},${mapCoords.lng}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${mapCoords.lat},${mapCoords.lng}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}` }}
                     style={styles.mapPreviewImg}
                     resizeMode="cover"
                   />
@@ -1460,7 +1473,7 @@ export default function CheckoutScreen() {
                     style={styles.mapPreview}
                   >
                     <Image
-                      source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(BRANCH_ADDRESS)}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${encodeURIComponent(BRANCH_ADDRESS)}&style=feature:poi%7Cvisibility:off&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY}` }}
+                      source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(BRANCH_ADDRESS)}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${encodeURIComponent(BRANCH_ADDRESS)}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}` }}
                       style={styles.mapPreviewImg}
                       resizeMode="cover"
                     />

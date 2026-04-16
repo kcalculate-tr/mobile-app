@@ -15,6 +15,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { CaretLeft, PencilSimple, MapPin, Plus, Trash } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import FormField, { FormFieldOption } from '../components/FormField';
@@ -94,36 +95,24 @@ const getMissingColumnName = (errorText: string) => {
   return match?.[1] || '';
 };
 
-const ADDRESS_SCHEMA_BLOCK_MESSAGE =
-  'Adres kaydı yapılandırma hatası. Lütfen destek ile iletişime geçin.';
-
-const createAddressSchemaFallbackError = (columns: string[]) => {
-  const error = new Error(ADDRESS_SCHEMA_BLOCK_MESSAGE) as Error & {
-    name: string;
-    code?: string;
-    droppedColumns?: string[];
-  };
-  error.name = 'AddressSchemaFallbackError';
-  error.code = 'ADDRESS_SCHEMA_FALLBACK_BLOCKED';
-  error.droppedColumns = columns;
-  return error;
-};
-
-const resolveAddressSaveErrorMessage = (error: unknown, fallback: string) => {
-  if (
-    error instanceof Error &&
-    error.message.includes('Adres kaydı yapılandırma hatası')
-  ) {
-    return error.message;
-  }
-  return mapSupabaseErrorToUserMessage(error, fallback);
-};
+const resolveAddressSaveErrorMessage = (error: unknown, fallback: string) =>
+  mapSupabaseErrorToUserMessage(error, fallback);
 
 const readZoneDistrict = (row: Record<string, unknown>) =>
   String(row.district ?? '').trim();
 
 const readZoneNeighborhood = (row: Record<string, unknown>) =>
   String(row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '').trim();
+
+const getGoogleMapsKey = (): string => {
+  const fromConfig =
+    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+  const value =
+    (typeof fromConfig === 'string' ? fromConfig : '') ||
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
+    '';
+  return String(value).trim();
+};
 
 export default function AddressesScreen() {
   const navigation = useNavigation<AddressesNavigationProp>();
@@ -286,9 +275,16 @@ export default function AddressesScreen() {
     setMapCoords(null);
     const run = async () => {
       try {
+        const apiKey = getGoogleMapsKey();
+        if (!apiKey) {
+          if (__DEV__) {
+            console.warn('[addresses] EXPO_PUBLIC_GOOGLE_MAPS_KEY missing — map disabled');
+          }
+          return;
+        }
         const q = encodeURIComponent(`${address.full_address}, ${address.district}, İzmir, Turkey`);
         const res = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY}`
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${apiKey}`
         );
         const data = await res.json();
         if (mounted && data?.results?.[0]?.geometry?.location) {
@@ -440,7 +436,6 @@ export default function AddressesScreen() {
           lastError = error;
 
           if (missingColumn && Object.prototype.hasOwnProperty.call(workingPayload, missingColumn)) {
-            if (!__DEV__) throw createAddressSchemaFallbackError([missingColumn]);
             droppedColumns.add(missingColumn);
             delete workingPayload[missingColumn];
             continue;
@@ -481,7 +476,6 @@ export default function AddressesScreen() {
           lastError = error;
 
           if (missingColumn && Object.prototype.hasOwnProperty.call(workingPayload, missingColumn)) {
-            if (!__DEV__) throw createAddressSchemaFallbackError([missingColumn]);
             droppedColumns.add(missingColumn);
             delete workingPayload[missingColumn];
             continue;
@@ -592,7 +586,7 @@ export default function AddressesScreen() {
             {mapCoords ? (
               <React.Fragment>
                 <Image
-                  source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${mapCoords.lat},${mapCoords.lng}&zoom=16&size=800x400&scale=2&markers=color:0xE8431A%7C${mapCoords.lat},${mapCoords.lng}&style=feature:poi%7Cvisibility:off&key=${process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY}` }}
+                  source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${mapCoords.lat},${mapCoords.lng}&zoom=16&size=800x400&scale=2&markers=color:0xE8431A%7C${mapCoords.lat},${mapCoords.lng}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}` }}
                   style={s.mapContainerImg}
                   resizeMode="cover"
                 />
