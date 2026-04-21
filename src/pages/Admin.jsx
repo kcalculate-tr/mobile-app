@@ -1420,6 +1420,20 @@ export default function Admin({
     }
   };
 
+  const fetchOrderModifications = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_modifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      setOrderModifications(data || []);
+    } catch (err) {
+      console.warn('[admin] fetchOrderModifications failed:', err?.message || err);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) return undefined;
 
@@ -1658,20 +1672,6 @@ export default function Admin({
       setOrdersLoading(false);
     }
   };
-
-  const fetchOrderModifications = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('order_modifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      setOrderModifications(data || []);
-    } catch (err) {
-      console.warn('[admin] fetchOrderModifications failed:', err?.message || err);
-    }
-  }, []);
 
   const MOD_TYPE_LABELS = {
     cancel: 'İptal Talebi',
