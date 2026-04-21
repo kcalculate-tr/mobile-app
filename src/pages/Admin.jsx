@@ -709,6 +709,10 @@ export default function Admin({
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState('');
+  const [orderModifications, setOrderModifications] = useState([]);
+  const [modBusyId, setModBusyId] = useState('');
+  const [rejectingModId, setRejectingModId] = useState('');
+  const [rejectReasonDraft, setRejectReasonDraft] = useState('');
 
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -1426,6 +1430,7 @@ export default function Admin({
     if (disableNotifications) return undefined;
 
     fetchOrders();
+    fetchOrderModifications();
     fetchBanners();
     fetchCampaigns();
     fetchStoreSetting();
@@ -1492,6 +1497,11 @@ export default function Admin({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, fetchReviews)
       .subscribe();
 
+    const orderModificationsChannel = supabase
+      .channel('admin-order-modifications-stream')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_modifications' }, fetchOrderModifications)
+      .subscribe();
+
     const categoriesChannel = supabase
       .channel('admin-categories-stream')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, fetchCategories)
@@ -1507,8 +1517,9 @@ export default function Admin({
       supabase.removeChannel(reviewsChannel);
       supabase.removeChannel(categoriesChannel);
       supabase.removeChannel(deliveryZonesChannel);
+      supabase.removeChannel(orderModificationsChannel);
     };
-  }, [isAuthenticated, playNotificationSound, startAlarmLoop]);
+  }, [isAuthenticated, playNotificationSound, startAlarmLoop, fetchOrderModifications]);
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
@@ -1647,6 +1658,114 @@ export default function Admin({
       setOrdersLoading(false);
     }
   };
+
+  const fetchOrderModifications = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_modifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      setOrderModifications(data || []);
+    } catch (err) {
+      console.warn('[admin] fetchOrderModifications failed:', err?.message || err);
+    }
+  }, []);
+
+  const MOD_TYPE_LABELS = {
+    cancel: 'İptal Talebi',
+    date_change: 'Tarih Değişikliği',
+    address_change: 'Adres Değişikliği',
+  };
+
+  const approveOrderModification = useCallback(async (mod) => {
+    if (!mod) return;
+    setModBusyId(mod.id);
+    try {
+      const now = new Date().toISOString();
+      if (mod.type === 'cancel') {
+        const { error } = await supabase.from('orders')
+          .update({ status: 'cancelled', updated_at: now })
+          .eq('id', mod.order_id);
+        if (error) throw error;
+      } else if (mod.type === 'date_change') {
+        const patch = { updated_at: now };
+        if (mod.new_scheduled_date) patch.scheduled_date = mod.new_scheduled_date;
+        if (mod.new_scheduled_time) patch.scheduled_time = mod.new_scheduled_time;
+        const { error } = await supabase.from('orders').update(patch).eq('id', mod.order_id);
+        if (error) throw error;
+      } else if (mod.type === 'address_change') {
+        const patch = { updated_at: now };
+        if (mod.new_address_id) patch.address_id = mod.new_address_id;
+        if (mod.new_address_text) patch.address = mod.new_address_text;
+        const { error } = await supabase.from('orders').update(patch).eq('id', mod.order_id);
+        if (error) throw error;
+      }
+
+      const { error: modErr } = await supabase.from('order_modifications')
+        .update({ status: 'approved', reviewed_at: now, updated_at: now })
+        .eq('id', mod.id);
+      if (modErr) throw modErr;
+
+      try {
+        await supabase.from('notifications').insert([{
+          user_id: mod.user_id,
+          type: `order_modification_${mod.type}_approved`,
+          title: `${MOD_TYPE_LABELS[mod.type] || 'Talep'} onaylandı`,
+          body: 'Talebiniz ekibimiz tarafından onaylandı.',
+          data: { order_id: mod.order_id, modification_id: mod.id },
+        }]);
+      } catch (notifErr) {
+        console.warn('[admin] notification insert failed:', notifErr?.message || notifErr);
+      }
+
+      await Promise.all([fetchOrderModifications(), fetchOrders()]);
+      setPanelInfo('Değişiklik talebi onaylandı.');
+    } catch (err) {
+      setPanelError(err?.message || 'Onay başarısız.');
+    } finally {
+      setModBusyId('');
+    }
+  }, [fetchOrderModifications]);
+
+  const rejectOrderModification = useCallback(async (mod, reason) => {
+    if (!mod) return;
+    setModBusyId(mod.id);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('order_modifications')
+        .update({
+          status: 'rejected',
+          reviewed_at: now,
+          updated_at: now,
+          reject_reason: reason || null,
+        })
+        .eq('id', mod.id);
+      if (error) throw error;
+
+      try {
+        await supabase.from('notifications').insert([{
+          user_id: mod.user_id,
+          type: `order_modification_${mod.type}_rejected`,
+          title: `${MOD_TYPE_LABELS[mod.type] || 'Talep'} reddedildi`,
+          body: reason || 'Talebiniz reddedildi.',
+          data: { order_id: mod.order_id, modification_id: mod.id, reject_reason: reason || null },
+        }]);
+      } catch (notifErr) {
+        console.warn('[admin] notification insert failed:', notifErr?.message || notifErr);
+      }
+
+      await fetchOrderModifications();
+      setPanelInfo('Değişiklik talebi reddedildi.');
+    } catch (err) {
+      setPanelError(err?.message || 'Reddetme başarısız.');
+    } finally {
+      setModBusyId('');
+      setRejectingModId('');
+      setRejectReasonDraft('');
+    }
+  }, [fetchOrderModifications]);
 
   const fetchReviews = async () => {
     setReviewsLoading(true);
@@ -3803,6 +3922,17 @@ export default function Admin({
                                   {minutesToScheduled !== null ? `${Math.max(minutesToScheduled, 0)} dk` : ''}
                                 </span>
                               )}
+                              {(() => {
+                                const pendingMod = orderModifications.find(
+                                  (m) => String(m.order_id) === String(order.id) && m.status === 'pending',
+                                );
+                                if (!pendingMod) return null;
+                                return (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-300">
+                                    {MOD_TYPE_LABELS[pendingMod.type] || 'Talep'}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                           <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${getStatusClass(normalizedStatus)}`}>
@@ -3845,6 +3975,110 @@ export default function Admin({
                           </div>
 
                           <p className="mt-2 text-base font-bold text-brand-primary">{formatCurrency(order.total_price)}</p>
+
+                          {(() => {
+                            const related = orderModifications.filter((m) => String(m.order_id) === String(order.id));
+                            if (related.length === 0) return null;
+                            return (
+                              <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
+                                <p className="text-xs font-bold text-orange-800 mb-2">Değişiklik Talepleri</p>
+                                <div className="space-y-2">
+                                  {related.map((mod) => {
+                                    const busy = modBusyId === mod.id;
+                                    const statusCls = mod.status === 'pending'
+                                      ? 'bg-orange-100 text-orange-700 border-orange-300'
+                                      : mod.status === 'approved'
+                                        ? 'bg-green-100 text-green-700 border-green-300'
+                                        : 'bg-red-100 text-red-700 border-red-300';
+                                    const statusLabel = mod.status === 'pending' ? 'Bekliyor' : mod.status === 'approved' ? 'Onaylandı' : 'Reddedildi';
+                                    const isRejecting = rejectingModId === mod.id;
+                                    return (
+                                      <div key={mod.id} className="rounded-lg border border-orange-200 bg-white p-2.5">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-xs font-bold text-brand-dark">
+                                              {MOD_TYPE_LABELS[mod.type] || mod.type}
+                                            </span>
+                                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusCls}`}>
+                                              {statusLabel}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-slate-400">{formatDate(mod.created_at)}</span>
+                                        </div>
+                                        {mod.type === 'date_change' && (
+                                          <p className="mt-1 text-xs text-slate-500">
+                                            <span className="line-through">{mod.old_scheduled_date || '—'} {(mod.old_scheduled_time || '').slice(0,5)}</span>
+                                            {' → '}
+                                            <span className="font-semibold text-brand-dark">
+                                              {mod.new_scheduled_date || '—'} {(mod.new_scheduled_time || '').slice(0,5)}
+                                            </span>
+                                          </p>
+                                        )}
+                                        {mod.type === 'address_change' && (
+                                          <p className="mt-1 text-xs text-slate-500">
+                                            Yeni adres: <span className="font-semibold text-brand-dark">{mod.new_address_text || '—'}</span>
+                                          </p>
+                                        )}
+                                        {mod.customer_note && (
+                                          <p className="mt-1 text-[11px] italic text-slate-400">Not: {mod.customer_note}</p>
+                                        )}
+                                        {mod.status === 'rejected' && mod.reject_reason && (
+                                          <p className="mt-1 text-[11px] text-red-500">Red nedeni: {mod.reject_reason}</p>
+                                        )}
+                                        {mod.reviewed_at && (
+                                          <p className="mt-1 text-[10px] text-slate-400">İnceleme: {formatDate(mod.reviewed_at)}</p>
+                                        )}
+                                        {mod.status === 'pending' && !isRejecting && (
+                                          <div className="mt-2 flex gap-2">
+                                            <button
+                                              onClick={() => approveOrderModification(mod)}
+                                              disabled={busy}
+                                              className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 py-1.5 text-xs font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                                            >
+                                              {busy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} Onayla
+                                            </button>
+                                            <button
+                                              onClick={() => { setRejectingModId(mod.id); setRejectReasonDraft(''); }}
+                                              disabled={busy}
+                                              className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-red-300 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                            >
+                                              <X size={12} /> Reddet
+                                            </button>
+                                          </div>
+                                        )}
+                                        {mod.status === 'pending' && isRejecting && (
+                                          <div className="mt-2 space-y-2">
+                                            <textarea
+                                              rows={2}
+                                              value={rejectReasonDraft}
+                                              onChange={(e) => setRejectReasonDraft(e.target.value)}
+                                              placeholder="Red nedeni (opsiyonel)"
+                                              className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-red-200"
+                                            />
+                                            <div className="flex gap-2">
+                                              <button
+                                                onClick={() => { setRejectingModId(''); setRejectReasonDraft(''); }}
+                                                className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold text-slate-600 hover:bg-gray-50"
+                                              >
+                                                Vazgeç
+                                              </button>
+                                              <button
+                                                onClick={() => rejectOrderModification(mod, rejectReasonDraft.trim())}
+                                                disabled={busy}
+                                                className="flex-1 rounded-lg bg-red-500 py-1.5 text-xs font-bold text-white hover:bg-red-600 disabled:opacity-50"
+                                              >
+                                                {busy ? <Loader2 size={12} className="animate-spin inline" /> : 'Onayla Red'}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
 
