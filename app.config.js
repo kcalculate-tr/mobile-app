@@ -11,7 +11,7 @@ module.exports = {
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#000000',
     },
     assetBundlePatterns: ['**/*'],
     ios: {
@@ -36,10 +36,10 @@ module.exports = {
       versionCode: 1,
       userInterfaceStyle: 'light',
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
-        foregroundImage: './assets/android-icon-foreground.png',
-        backgroundImage: './assets/android-icon-background.png',
-        monochromeImage: './assets/android-icon-monochrome.png',
+        backgroundColor: '#000000',
+        foregroundImage: './assets/adaptive-icon-foreground.png',
+        backgroundImage: './assets/adaptive-icon-background.png',
+        monochromeImage: './assets/adaptive-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
       permissions: [

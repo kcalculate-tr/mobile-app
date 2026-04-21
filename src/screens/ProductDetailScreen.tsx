@@ -8,6 +8,7 @@ import { Animated,
   TouchableOpacity,
   View,
   Image,
+  findNodeHandle,
 } from 'react-native';
 import { CachedImage } from '../components/CachedImage';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -103,7 +104,7 @@ export default function ProductDetailScreen() {
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [validationAttempted, setValidationAttempted] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  const groupPositions = useRef<Record<string, number>>({});
+  const groupRefs = useRef<Record<string, View | null>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -196,11 +197,18 @@ export default function ProductDetailScreen() {
     });
 
     if (!nextIncomplete) return;
-    const y = groupPositions.current[nextIncomplete.id];
-    if (y === undefined) return;
 
     setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+      const groupNode = groupRefs.current[nextIncomplete.id];
+      const scrollNode = findNodeHandle(scrollViewRef.current);
+      if (!groupNode || !scrollNode) return;
+      groupNode.measureLayout(
+        scrollNode,
+        (_x, y) => {
+          scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+        },
+        () => {},
+      );
     }, 150);
   };
 
@@ -501,9 +509,7 @@ export default function ProductDetailScreen() {
               return (
                 <View
                   key={group.id}
-                  onLayout={(e) => {
-                    groupPositions.current[group.id] = e.nativeEvent.layout.y;
-                  }}
+                  ref={(r) => { groupRefs.current[group.id] = r; }}
                   style={[styles.optionGroupCard, isGroupInvalid && styles.optionGroupCardError]}
                 >
                   <View style={styles.optionGroupHeader}>

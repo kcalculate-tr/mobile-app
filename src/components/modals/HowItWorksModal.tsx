@@ -12,7 +12,16 @@ import {
   UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, CaretDown } from 'phosphor-react-native';
+import {
+  X,
+  CaretDown,
+  Package as PackageIcon,
+  CookingPot as CookingPotIcon,
+  ChartLineUp as ChartLineUpIcon,
+  CreditCard as CreditCardIcon,
+} from 'phosphor-react-native';
+import type { IconProps } from 'phosphor-react-native';
+import type { ComponentType } from 'react';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -23,80 +32,103 @@ type Props = {
   onClose: () => void;
 };
 
-const FAQ_DATA = [
+type FaqSection = {
+  key: string;
+  category: string;
+  Icon: ComponentType<IconProps>;
+  items: { q: string; a: string }[];
+};
+
+const FAQ_DATA: FaqSection[] = [
   {
     key: 'order',
-    category: '📦 Sipariş ve Teslimat',
+    category: 'Sipariş ve Teslimat',
+    Icon: PackageIcon,
     items: [
       {
         q: 'Siparişimi ne zaman teslim alırım?',
-        a: 'Siparişler genellikle aynı gün veya ertesi gün teslim edilir. Teslimat saatini sipariş onayı sırasında seçebilirsiniz.',
+        a: 'Hemen teslimat siparişlerinde, siparişiniz hazırlandıktan sonra en kısa sürede adresinize teslim edilir. Randevulu siparişlerde ise seçtiğiniz gün ve saat aralığında teslimat yapılır.',
       },
       {
         q: 'Minimum sipariş tutarı var mı?',
-        a: 'Evet, minimum sipariş tutarı 150 ₺\'dir. Sepetiniz bu tutara ulaştığında siparişinizi tamamlayabilirsiniz.',
+        a: 'Evet, minimum sipariş tutarı bulunmaktadır. Güncel minimum tutar sepet ekranında gösterilir. Ücretsiz teslimat için gereken minimum tutara ulaştığınızda teslimat ücreti otomatik olarak kaldırılır.',
       },
       {
         q: 'Teslimat ücreti ne kadar?',
-        a: '300 ₺ ve üzeri siparişlerde teslimat ücretsizdir. Altındaki siparişler için 29 ₺ teslimat ücreti uygulanır.',
+        a: 'Teslimat ücreti sipariş tutarınıza ve teslimat bölgenize göre değişir. Belirli bir sipariş tutarının üzerinde ücretsiz teslimat kazanırsınız. Güncel teslimat ücreti ödeme ekranında gösterilir.',
+      },
+      {
+        q: 'Hangi bölgelere teslimat yapıyorsunuz?',
+        a: 'İzmir\'in belirli ilçe ve mahallelerine teslimat yapıyoruz. Teslimat bölgelerini ana sayfadaki "Teslimat bölgelerini görüntüle" bağlantısından kontrol edebilirsiniz.',
       },
       {
         q: 'Siparişimi iptal edebilir miyim?',
-        a: 'Siparişiniz hazırlanmaya başlanmadan önce iptal edebilirsiniz. Hazırlandıktan sonra iptal mümkün değildir.',
+        a: 'Randevulu siparişlerde teslimat zamanına 48 saatten fazla varsa uygulamadan iptal talebi oluşturabilirsiniz. Talebiniz KCAL tarafından onaylandığında bildirim alırsınız. Anlık siparişlerde iptal mümkün değildir, sorun yaşarsanız destek ekibimizle iletişime geçebilirsiniz.',
+      },
+      {
+        q: 'Sipariş tarihimi veya adresimi değiştirebilir miyim?',
+        a: 'Randevulu siparişlerde teslimatına 48 saatten fazla varsa tarih ve adres değişikliği talebi oluşturabilirsiniz. 48 saatten az kaldıysa sadece adres değişikliği talep edebilirsiniz. Anlık siparişlerde sipariş oluşturulduktan sonra 30 dakika içinde adres değişikliği talep edebilirsiniz. Tüm talepler KCAL onayına tabidir.',
       },
     ],
   },
   {
     key: 'products',
-    category: '🍱 Ürünler ve Isıtma',
+    category: 'Ürünler ve Isıtma',
+    Icon: CookingPotIcon,
     items: [
       {
         q: 'Yemekler nasıl paketleniyor?',
-        a: 'Tüm yemekler hijyenik, vakumlu ve soğutuculu özel ambalajlarda teslim edilir. Tazeliği korunur.',
+        a: 'Tüm yemeklerimiz hijyenik koşullarda, gıdaya uygun özel polipropilen kaplarda hazırlanıp paketlenir. Her porsiyon ayrı kapta, makro besin değerleri etiketlenmiş şekilde teslim edilir.',
       },
       {
         q: 'Yemekleri nasıl ısıtmalıyım?',
-        a: 'Mikrodalgada 2-3 dakika veya fırında 180°C\'de 10 dakika ısıtmanız yeterlidir. Ambalaj üzerinde detaylı talimatlar bulunur.',
+        a: 'Yemeklerinizi doğrudan size gelen kap ile mikrodalga fırında 2-3 dakika ısıtabilirsiniz. Jelatini sökerek veya birkaç delik oluşturarak ısıtmanızı öneririz. Bazı ürünler soğuk tüketilebilir (salata, smoothie vb.).',
       },
       {
         q: 'Yemeklerin raf ömrü ne kadar?',
-        a: 'Buzdolabında 3 gün, dondurucuda 30 gün saklayabilirsiniz. Ambalaj üzerindeki son tüketim tarihine dikkat edin.',
+        a: 'Taze hazırlanan yemeklerimizin buzdolabında 3 gün raf ömrü vardır. Teslim aldığınız gün dahil olmak üzere 3 gün içinde tüketmenizi öneririz. Dondurucuda saklamayınız.',
       },
     ],
   },
   {
     key: 'tracker',
-    category: '🎯 Kalori Takibi ve Puanlar',
+    category: 'Kalori Takibi ve Puanlar',
+    Icon: ChartLineUpIcon,
     items: [
       {
         q: 'Kalori takibi nasıl çalışır?',
-        a: 'Sipariş ettiğiniz ürünler otomatik olarak günlük kalori takibinize eklenir. Tracker ekranından detayları görebilirsiniz.',
+        a: 'Kcalculate özelliğimiz ile günlük kalori, protein, karbonhidrat ve yağ alımınızı otomatik olarak takip edebilirsiniz. KCAL\'dan sipariş verdiğiniz ürünler otomatik olarak günlük takibinize eklenir. Beslenme profilinizi oluşturarak kişisel hedeflerinizi belirleyebilirsiniz.',
       },
       {
         q: 'Puan sistemi nedir?',
-        a: 'Her siparişinizde harcadığınız tutarın %5\'i kadar puan kazanırsınız. Biriken puanları sonraki siparişlerinizde kullanabilirsiniz.',
+        a: 'Macro Puan sistemi ile verdiğiniz her siparişten puan kazanırsınız. Biriktirdiğiniz puanları indirim kuponu olarak kullanabilirsiniz. Ayrıcalıklı Üye seviyesine ulaştığınızda ekstra avantajlar elde edersiniz.',
       },
       {
         q: 'Makro besin değerleri nereden görüntülerim?',
-        a: 'Her ürün sayfasında karbonhidrat, protein, yağ ve kalori değerleri detaylı olarak belirtilmiştir.',
+        a: 'Her ürünün detay sayfasında kalori, protein, karbonhidrat ve yağ değerleri gösterilir. Ayrıca sepet ekranında toplam sepet besin değerlerinizi ve Kcalculate sekmesinde günlük takibinizi görebilirsiniz.',
+      },
+      {
+        q: 'Ayrıcalıklı Üye nedir?',
+        a: 'Belirli sayıda sipariş vererek Ayrıcalıklı Üye (Macro Üye) seviyesine ulaşabilirsiniz. 15, 30, 45 ve 60 sipariş basamakları bulunur. Ayrıcalıklı Üyeler özel indirimler, öncelikli teslimat ve ekstra puanlardan yararlanır.',
       },
     ],
   },
   {
     key: 'payment',
-    category: '💳 Ödeme ve İade',
+    category: 'Ödeme ve İade',
+    Icon: CreditCardIcon,
     items: [
       {
         q: 'Hangi ödeme yöntemlerini kabul ediyorsunuz?',
-        a: 'Kredi kartı, banka kartı ve dijital cüzdan ile ödeme yapabilirsiniz. Tüm işlemler 3D Secure ile güvence altındadır.',
+        a: 'Şu anda kredi kartı ve banka kartı ile 3D Secure güvenli ödeme kabul ediyoruz. Yakında Apple Pay, Google Pay ve kayıtlı kart ile ödeme seçenekleri de eklenecektir.',
       },
       {
         q: 'İade politikanız nedir?',
-        a: 'Ürün hasarlı veya hatalı geldiyse 24 saat içinde müşteri hizmetlerimize bildirin. Eksiksiz iade yapılır.',
+        a: 'Ürünlerimiz kişiye özel hazırlandığından cayma hakkı bulunmamaktadır. Ancak ürün hasarlı veya hatalı teslim edildiyse, teslimattan itibaren 2 saat içinde destek ekibimize bildirmeniz halinde iade veya yeniden gönderim yapılır.',
       },
       {
         q: 'Fatura alabilir miyim?',
-        a: 'Evet, kurumsal fatura taleplerini sipariş notuna belirtebilirsiniz. Fatura vergi numaranıza düzenlenir.',
+        a: 'Evet, tüm siparişleriniz için e-fatura otomatik olarak kayıtlı e-posta adresinize gönderilir. Kurumsal fatura talebiniz varsa destek ekibimizle iletişime geçebilirsiniz.',
       },
     ],
   },
@@ -129,9 +161,14 @@ export default function HowItWorksModal({ visible, onClose }: Props) {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {FAQ_DATA.map(section => (
+          {FAQ_DATA.map(section => {
+            const SectionIcon = section.Icon;
+            return (
             <View key={section.key} style={styles.section}>
-              <Text style={styles.sectionTitle}>{section.category}</Text>
+              <View style={styles.sectionTitleRow}>
+                <SectionIcon size={20} color="#000000" weight="bold" />
+                <Text style={styles.sectionTitle}>{section.category}</Text>
+              </View>
               {section.items.map((item, idx) => {
                 const itemKey = `${section.key}-${idx}`;
                 const isOpen = openKey === itemKey;
@@ -155,7 +192,8 @@ export default function HowItWorksModal({ visible, onClose }: Props) {
                 );
               })}
             </View>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
     </Modal>
@@ -199,12 +237,17 @@ const styles = StyleSheet.create({
   section: {
     gap: 8,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#202020',
-    marginBottom: 4,
+    color: '#000000',
   },
   accordionItem: {
     backgroundColor: '#ffffff',

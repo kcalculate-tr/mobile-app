@@ -259,8 +259,17 @@ export default function OrderDetailScreen() {
   const isCancelled = order?.status === 'cancelled' || order?.status === 'payment_failed';
   const isTerminal = isCancelled || order?.status === 'delivered' || order?.status === 'refunded';
 
-  const canShowCancelAndDate = !!order && !isTerminal && hasScheduled && hoursUntil !== null && hoursUntil >= 48;
-  const canShowAddressOnly = !!order && !isTerminal && hasScheduled && hoursUntil !== null && hoursUntil < 48;
+  const isImmediate = !!order && !hasScheduled;
+  const minutesSinceOrder = order?.created_at
+    ? (Date.now() - new Date(order.created_at).getTime()) / 60000
+    : Number.POSITIVE_INFINITY;
+
+  const canCancel = !!order && !isTerminal && hasScheduled && hoursUntil !== null && hoursUntil >= 48;
+  const canChangeDate = !!order && !isTerminal && hasScheduled && hoursUntil !== null && hoursUntil >= 48;
+  const canChangeAddress =
+    !!order && !isTerminal && (hasScheduled || (isImmediate && minutesSinceOrder <= 30));
+  const showSupportFallback =
+    !!order && !isTerminal && isImmediate && minutesSinceOrder > 30;
 
   const handleCancelPress = useCallback(() => {
     if (!order) return;
@@ -549,7 +558,7 @@ export default function OrderDetailScreen() {
             </View>
 
             {/* Modification actions */}
-            {!isTerminal && (pendingMod || canShowCancelAndDate || canShowAddressOnly) && (
+            {!isTerminal && (pendingMod || canCancel || canChangeDate || canChangeAddress || showSupportFallback) && (
               <View style={s.card}>
                 <Text style={s.sectionTitle}>Sipariş Değişikliği</Text>
                 {pendingMod ? (
@@ -560,29 +569,29 @@ export default function OrderDetailScreen() {
                   </View>
                 ) : (
                   <View style={{ gap: 10 }}>
-                    {canShowCancelAndDate && (
-                      <>
-                        <TouchableOpacity
-                          style={[s.modBtn, s.modBtnDanger]}
-                          onPress={handleCancelPress}
-                          disabled={modifying}
-                          activeOpacity={0.85}
-                        >
-                          <XCircleIcon size={18} color="#DC2626" />
-                          <Text style={[s.modBtnText, { color: '#DC2626' }]}>Siparişi İptal Et</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[s.modBtn, s.modBtnGray]}
-                          onPress={openDatePicker}
-                          disabled={modifying}
-                          activeOpacity={0.85}
-                        >
-                          <CalendarIcon size={18} color={COLORS.text.primary} />
-                          <Text style={[s.modBtnText, { color: COLORS.text.primary }]}>Tarih Değiştir</Text>
-                        </TouchableOpacity>
-                      </>
+                    {canCancel && (
+                      <TouchableOpacity
+                        style={[s.modBtn, s.modBtnDanger]}
+                        onPress={handleCancelPress}
+                        disabled={modifying}
+                        activeOpacity={0.85}
+                      >
+                        <XCircleIcon size={18} color="#DC2626" />
+                        <Text style={[s.modBtnText, { color: '#DC2626' }]}>Siparişi İptal Et</Text>
+                      </TouchableOpacity>
                     )}
-                    {canShowAddressOnly && (
+                    {canChangeDate && (
+                      <TouchableOpacity
+                        style={[s.modBtn, s.modBtnGray]}
+                        onPress={openDatePicker}
+                        disabled={modifying}
+                        activeOpacity={0.85}
+                      >
+                        <CalendarIcon size={18} color={COLORS.text.primary} />
+                        <Text style={[s.modBtnText, { color: COLORS.text.primary }]}>Tarih Değiştir</Text>
+                      </TouchableOpacity>
+                    )}
+                    {canChangeAddress && (
                       <TouchableOpacity
                         style={[s.modBtn, s.modBtnGray]}
                         onPress={openAddressSheet}
@@ -591,6 +600,17 @@ export default function OrderDetailScreen() {
                       >
                         <MapPinIcon size={18} color={COLORS.text.primary} />
                         <Text style={[s.modBtnText, { color: COLORS.text.primary }]}>Adres Değiştir</Text>
+                      </TouchableOpacity>
+                    )}
+                    {showSupportFallback && (
+                      <TouchableOpacity
+                        style={[s.modBtn, s.modBtnGray]}
+                        onPress={() => navigation.navigate('ProfileSupport')}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={[s.modBtnText, { color: COLORS.text.primary }]}>
+                          Sorun mu var? Destek ile iletişime geçin
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </View>
