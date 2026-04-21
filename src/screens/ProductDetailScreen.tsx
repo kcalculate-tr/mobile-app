@@ -12,7 +12,7 @@ import { Animated,
 import { CachedImage } from '../components/CachedImage';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Minus, Plus, ShoppingBag, CheckCircle } from 'phosphor-react-native';
+import { ArrowLeft, Minus, Plus, ShoppingBag, CheckCircle, Check as CheckIcon } from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import { haptic } from '../utils/haptics';
 import { useAnimatedPress } from '../utils/useAnimatedPress';
@@ -102,6 +102,8 @@ export default function ProductDetailScreen() {
   const [optionsError, setOptionsError] = useState('');
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const groupPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -183,30 +185,50 @@ export default function ProductDetailScreen() {
     };
   }, [product?.id]);
 
+  const scrollToNextRequiredGroup = (currentGroupId: string) => {
+    const currentIndex = optionGroups.findIndex((g) => g.id === currentGroupId);
+    if (currentIndex === -1) return;
+
+    const nextIncomplete = optionGroups.slice(currentIndex + 1).find((g) => {
+      const { min } = getGroupSelectionLimits(g);
+      const selectedCount = (selections[g.id] || []).length;
+      return min > 0 && selectedCount < min;
+    });
+
+    if (!nextIncomplete) return;
+    const y = groupPositions.current[nextIncomplete.id];
+    if (y === undefined) return;
+
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+    }, 150);
+  };
+
   const toggleSelection = (group: OptionGroup, itemId: string) => {
     const { max } = getGroupSelectionLimits(group);
+    const current = new Set(selections[group.id] || []);
+    let shouldAdvance = false;
+    let nextSelection: string[];
 
-    setSelections((prev) => {
-      const current = new Set(prev[group.id] || []);
+    if (max === 1) {
+      nextSelection = [itemId];
+      shouldAdvance = true;
+    } else if (current.has(itemId)) {
+      current.delete(itemId);
+      nextSelection = Array.from(current);
+    } else if (current.size < max) {
+      current.add(itemId);
+      nextSelection = Array.from(current);
+      shouldAdvance = nextSelection.length === max;
+    } else {
+      return;
+    }
 
-      if (max === 1) {
-        return {
-          ...prev,
-          [group.id]: [itemId],
-        };
-      }
+    setSelections((prev) => ({ ...prev, [group.id]: nextSelection }));
 
-      if (current.has(itemId)) {
-        current.delete(itemId);
-      } else if (current.size < max) {
-        current.add(itemId);
-      }
-
-      return {
-        ...prev,
-        [group.id]: Array.from(current),
-      };
-    });
+    if (shouldAdvance) {
+      scrollToNextRequiredGroup(group.id);
+    }
   };
 
   const selectionsValid = useMemo(() => {
@@ -371,6 +393,7 @@ export default function ProductDetailScreen() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         keyboardShouldPersistTaps="handled"
         style={styles.scrollView}
         contentContainerStyle={{
@@ -467,21 +490,30 @@ export default function ProductDetailScreen() {
         ) : null}
 
         {!optionsLoading && optionGroups.length > 0 ? (
-          <View style={styles.optionsWrapper}>
+          <View>
             {optionGroups.map((group) => {
               const selected = new Set(selections[group.id] || []);
               const { min, max } = getGroupSelectionLimits(group);
               const selectedCount = selected.size;
               const isGroupInvalid = validationAttempted && selectedCount < min;
+              const isMulti = max > 1;
 
               return (
-                <View key={group.id} style={[styles.optionGroupCard, isGroupInvalid && styles.optionGroupCardError]}>
+                <View
+                  key={group.id}
+                  onLayout={(e) => {
+                    groupPositions.current[group.id] = e.nativeEvent.layout.y;
+                  }}
+                  style={[styles.optionGroupCard, isGroupInvalid && styles.optionGroupCardError]}
+                >
                   <View style={styles.optionGroupHeader}>
                     <Text style={styles.optionGroupTitle}>{group.name}</Text>
                     {min > 0 && (
-                      <Text style={[styles.requiredBadge, isGroupInvalid && styles.requiredBadgeError]}>
-                        Zorunlu
-                      </Text>
+                      <View style={[styles.requiredPill, isGroupInvalid && styles.requiredPillError]}>
+                        <Text style={[styles.requiredPillText, isGroupInvalid && styles.requiredPillTextError]}>
+                          Zorunlu
+                        </Text>
+                      </View>
                     )}
                   </View>
                   {group.description ? (
@@ -491,33 +523,58 @@ export default function ProductDetailScreen() {
                     <Text style={styles.groupValidationError}>⚠ Lütfen bir seçim yapınız</Text>
                   )}
 
-                  {group.items.map((item) => {
-                    const isSelected = selected.has(item.id);
-                    const isDisabled =
-                      !item.isAvailable ||
-                      (!isSelected && max > 1 && selected.size >= max);
+                  <View style={styles.optionList}>
+                    {group.items.map((item, idx) => {
+                      const isSelected = selected.has(item.id);
+                      const isDisabled =
+                        !item.isAvailable ||
+                        (!isSelected && max > 1 && selected.size >= max);
+                      const isLast = idx === group.items.length - 1;
 
-                    return (
-                      <Pressable
-                        key={item.id}
-                        onPress={() => toggleSelection(group, item.id)}
-                        disabled={isDisabled}
-                        style={({ pressed }) => [
-                          styles.optionRow,
-                          isSelected && styles.optionRowSelected,
-                          isDisabled && styles.optionRowDisabled,
-                          pressed && !isDisabled && styles.optionRowPressed,
-                        ]}
-                      >
-                        <Text style={styles.optionName}>{item.name}</Text>
-                        <Text style={styles.optionPrice}>
-                          {item.priceAdjustment > 0
-                            ? `+${toCurrency(item.priceAdjustment)}`
-                            : 'Dahil'}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                      return (
+                        <Pressable
+                          key={item.id}
+                          onPress={() => toggleSelection(group, item.id)}
+                          disabled={isDisabled}
+                          style={({ pressed }) => [
+                            styles.optionRow,
+                            !isLast && styles.optionRowDivider,
+                            isDisabled && styles.optionRowDisabled,
+                            pressed && !isDisabled && styles.optionRowPressed,
+                          ]}
+                        >
+                          {isMulti ? (
+                            <View
+                              style={[
+                                styles.checkbox,
+                                isSelected && styles.checkboxSelected,
+                              ]}
+                            >
+                              {isSelected && <CheckIcon size={14} color="#000000" weight="bold" />}
+                            </View>
+                          ) : (
+                            <View
+                              style={[
+                                styles.radio,
+                                isSelected && styles.radioSelected,
+                              ]}
+                            >
+                              {isSelected && <View style={styles.radioInner} />}
+                            </View>
+                          )}
+
+                          <View style={styles.optionLabelRow}>
+                            <Text style={styles.optionName}>{item.name}</Text>
+                            {item.priceAdjustment > 0 && (
+                              <Text style={styles.optionPriceInline}>
+                                {`(+₺${item.priceAdjustment.toFixed(0)})`}
+                              </Text>
+                            )}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
               );
             })}
@@ -749,14 +806,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
   },
-  optionsWrapper: {
-    gap: 12,
-    paddingHorizontal: 16,
-  },
   optionGroupCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
     padding: 14,
+    overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
@@ -770,25 +826,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   optionGroupTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
+    color: '#000000',
   },
-  requiredBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#64748B',
-    backgroundColor: '#F1F5F9',
+  requiredPill: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#C6F04F',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 100,
-    overflow: 'hidden',
   },
-  requiredBadgeError: {
+  requiredPillError: {
+    borderColor: '#EF4444',
+  },
+  requiredPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
+  },
+  requiredPillTextError: {
     color: '#EF4444',
-    backgroundColor: '#FEE2E2',
   },
   groupValidationError: {
     fontSize: 12,
@@ -802,47 +863,78 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 13,
   },
-  optionGroupRule: {
-    marginTop: 6,
-    color: COLORS.brand.green,
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+  optionList: {
+    marginTop: 8,
   },
   optionRow: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border.medium,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  optionRowSelected: {
-    borderColor: COLORS.brand.green,
-    backgroundColor: '#F5FBE4',
+  optionRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   optionRowDisabled: {
     opacity: 0.45,
   },
   optionRowPressed: {
-    opacity: 0.85,
+    opacity: 0.7,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  radioSelected: {
+    borderColor: '#C6F04F',
+    backgroundColor: '#C6F04F',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#000000',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxSelected: {
+    borderColor: '#C6F04F',
+    backgroundColor: '#C6F04F',
+  },
+  optionLabelRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   optionName: {
-    color: COLORS.text.primary,
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'PlusJakartaSans_500Medium',
-    flex: 1,
-    paddingRight: 10,
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '400',
+    fontFamily: 'PlusJakartaSans_400Regular',
   },
-  optionPrice: {
-    color: '#666',
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+  optionPriceInline: {
+    color: '#878787',
+    fontSize: 11,
+    fontWeight: '400',
+    fontFamily: 'PlusJakartaSans_400Regular',
+    marginLeft: 6,
   },
   errorBox: {
     marginTop: 10,

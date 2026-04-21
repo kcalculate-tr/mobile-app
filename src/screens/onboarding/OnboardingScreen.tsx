@@ -333,23 +333,52 @@ export default function OnboardingScreen() {
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
-      const [address] = await Location.reverseGeocodeAsync({
+      const [addr] = await Location.reverseGeocodeAsync({
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       });
-      if (address) {
-        setForm((f) => ({
-          ...f,
-          city: 'İzmir',
-          district: address.district || address.subregion || f.district,
-          neighbourhood: address.street || f.neighbourhood,
-          fullAddress: [address.street, address.name].filter(Boolean).join(' '),
-        }));
-        setLocationStatus('done');
-        setTimeout(() => setLocationStatus('idle'), 2000);
-      } else {
+      if (!addr) {
         setLocationStatus('idle');
+        return;
       }
+
+      const norm = (s?: string | null) =>
+        (s ?? '').toLocaleLowerCase('tr').replace(/\s+mah(allesi)?$/i, '').trim();
+
+      const districtCandidates = [addr.subregion, addr.district].filter(Boolean) as string[];
+      let matchedDistrict = '';
+      for (const cand of districtCandidates) {
+        const hit = districtOptions.find((o) => norm(o.value) === norm(cand));
+        if (hit) { matchedDistrict = hit.value; break; }
+      }
+
+      let matchedNeighbourhood = '';
+      if (matchedDistrict) {
+        const neighOpts = neighborhoodMap[matchedDistrict] ?? [];
+        const neighCandidates = [addr.district, addr.name].filter(Boolean) as string[];
+        for (const cand of neighCandidates) {
+          const hit = neighOpts.find((o) => norm(o.value) === norm(cand));
+          if (hit) { matchedNeighbourhood = hit.value; break; }
+        }
+      }
+
+      const streetLine = [addr.street, addr.streetNumber].filter(Boolean).join(' ');
+      const fullAddress = [streetLine, addr.name, addr.postalCode]
+        .filter(Boolean)
+        .join(', ');
+
+      setForm((f) => {
+        const districtChanged = matchedDistrict && matchedDistrict !== f.district;
+        return {
+          ...f,
+          city: addr.region || addr.city || f.city || 'İzmir',
+          district: matchedDistrict || f.district,
+          neighbourhood: matchedNeighbourhood || (districtChanged ? '' : f.neighbourhood),
+          fullAddress: fullAddress || f.fullAddress,
+        };
+      });
+      setLocationStatus('done');
+      setTimeout(() => setLocationStatus('idle'), 2000);
     } catch {
       setLocationStatus('idle');
     }

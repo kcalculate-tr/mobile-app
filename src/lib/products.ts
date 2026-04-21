@@ -94,6 +94,20 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
   );
 };
 
+export const fetchCrosssellProducts = async (limit = 10): Promise<Product[]> => {
+  const { getSupabaseClient } = await import('./supabase');
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('is_crosssell', true)
+    .limit(limit);
+  if (error) throw error;
+  return (Array.isArray(data) ? data : [])
+    .map((row) => mapProductRow(row as Record<string, unknown>))
+    .filter((product) => product.is_available !== false && product.in_stock !== false);
+};
+
 const mapOptionItemRow = (row: Record<string, unknown>): OptionItem => ({
   id: toSafeString(row.id),
   groupId: toSafeString(row.group_id),

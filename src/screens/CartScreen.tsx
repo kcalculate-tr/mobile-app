@@ -17,6 +17,8 @@ import { useCartStore } from '../store/cartStore';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getSupabaseClient } from '../lib/supabase';
+import { fetchCrosssellProducts } from '../lib/products';
+import type { Product } from '../types';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -30,8 +32,14 @@ export default function CartScreen() {
   const items = useCartStore(s => s.items);
   const updateQuantity = useCartStore(s => s.updateQuantity);
   const removeItem = useCartStore(s => s.removeItem);
+  const addItem = useCartStore(s => s.addItem);
   const getSubtotal = useCartStore(s => s.getSubtotal);
   const getTotalMacros = useCartStore(s => s.getTotalMacros);
+  const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchCrosssellProducts().then(setCrosssellProducts).catch(() => {});
+  }, []);
   const subtotal = getSubtotal();
   const totalMacros = getTotalMacros();
   const hasTotalMacros = totalMacros.kcal > 0 || totalMacros.protein > 0;
@@ -258,6 +266,66 @@ export default function CartScreen() {
             </View>
           );
         })}
+
+        {/* Cross-sell: Bunlar da ilgini çekebilir */}
+        {(() => {
+          const availableCrosssell = crosssellProducts.filter(
+            (p) => !items.some((item) => item.productId === String(p.id)),
+          );
+          if (availableCrosssell.length === 0) return null;
+          return (
+            <View style={styles.crosssellSection}>
+              <Text style={styles.crosssellTitle}>Bunlar da ilgini çekebilir</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.crosssellScroll}
+              >
+                {availableCrosssell.map((product) => (
+                  <TouchableOpacity
+                    key={product.id}
+                    style={styles.crosssellCard}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      haptic.selection();
+                      navigation.navigate('ProductDetail', { productId: String(product.id) });
+                    }}
+                  >
+                    <View style={styles.crosssellImageWrap}>
+                      {product.img ? (
+                        <CachedImage
+                          uri={product.img}
+                          style={{ width: '100%', height: '100%', borderRadius: RADIUS.sm }}
+                        />
+                      ) : (
+                        <Text style={styles.crosssellImageLetter}>
+                          {String(product.name || 'U').slice(0, 1).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.crosssellName} numberOfLines={2}>
+                      {product.name}
+                    </Text>
+                    <View style={styles.crosssellBottomRow}>
+                      <Text style={styles.crosssellPrice}>₺{product.price.toFixed(2)}</Text>
+                      <TouchableOpacity
+                        style={styles.crosssellPlusBtn}
+                        activeOpacity={0.7}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          haptic.medium();
+                          addItem(product, {}, 1);
+                        }}
+                      >
+                        <Plus size={14} color="#000000" weight="bold" />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          );
+        })()}
 
         {/* Coupon */}
         {couponCode ? (
@@ -595,6 +663,75 @@ fontFamily: 'PlusJakartaSans_700Bold', marginTop: SPACING.xs },
     color: COLORS.text.primary,
     minWidth: 20,
     textAlign: 'center',
+  },
+
+  // Cross-sell section
+  crosssellSection: {
+    marginHorizontal: -SPACING.lg,
+    marginVertical: SPACING.xs,
+  },
+  crosssellTitle: {
+    fontSize: 16,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: 12,
+  },
+  crosssellScroll: {
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  crosssellCard: {
+    width: 140,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.sm,
+    padding: SPACING.sm,
+    ...SHADOWS.sm,
+  },
+  crosssellImageWrap: {
+    width: '100%',
+    height: 100,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: SPACING.xs,
+  },
+  crosssellImageLetter: {
+    fontSize: TYPOGRAPHY.size['3xl'],
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.tertiary,
+  },
+  crosssellName: {
+    fontSize: 13,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.primary,
+    lineHeight: 16,
+    minHeight: 32,
+    marginBottom: SPACING.xs,
+  },
+  crosssellBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  crosssellPrice: {
+    fontSize: 13,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  crosssellPlusBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.brand.green,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Coupon button

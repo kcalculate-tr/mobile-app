@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
+import { getSupabaseClient } from './supabase';
 
 export type OrderCreateWarning = {
   code: 'ORDER_ITEMS_FALLBACK';
@@ -541,3 +542,137 @@ export const fetchLatestPendingPaymentOrder = async ({
 
   return mapOrderSummary(data as Record<string, unknown>);
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Order modification requests (customer-initiated cancel / date / address)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OrderModificationType = 'cancel' | 'date_change' | 'address_change';
+export type OrderModificationStatus = 'pending' | 'approved' | 'rejected';
+
+export type OrderModification = {
+  id: string;
+  order_id: string;
+  user_id: string;
+  type: OrderModificationType;
+  status: OrderModificationStatus;
+  old_scheduled_date: string | null;
+  new_scheduled_date: string | null;
+  old_scheduled_time: string | null;
+  new_scheduled_time: string | null;
+  old_address_id: string | null;
+  new_address_id: string | null;
+  new_address_text: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  reject_reason: string | null;
+  customer_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const normalizeModification = (row: Record<string, unknown>): OrderModification => ({
+  id: String(row.id ?? ''),
+  order_id: String(row.order_id ?? ''),
+  user_id: String(row.user_id ?? ''),
+  type: (String(row.type ?? 'cancel') as OrderModificationType),
+  status: (String(row.status ?? 'pending') as OrderModificationStatus),
+  old_scheduled_date: row.old_scheduled_date ? String(row.old_scheduled_date) : null,
+  new_scheduled_date: row.new_scheduled_date ? String(row.new_scheduled_date) : null,
+  old_scheduled_time: row.old_scheduled_time ? String(row.old_scheduled_time) : null,
+  new_scheduled_time: row.new_scheduled_time ? String(row.new_scheduled_time) : null,
+  old_address_id: row.old_address_id ? String(row.old_address_id) : null,
+  new_address_id: row.new_address_id ? String(row.new_address_id) : null,
+  new_address_text: row.new_address_text ? String(row.new_address_text) : null,
+  reviewed_by: row.reviewed_by ? String(row.reviewed_by) : null,
+  reviewed_at: row.reviewed_at ? String(row.reviewed_at) : null,
+  reject_reason: row.reject_reason ? String(row.reject_reason) : null,
+  customer_note: row.customer_note ? String(row.customer_note) : null,
+  created_at: String(row.created_at ?? ''),
+  updated_at: String(row.updated_at ?? ''),
+});
+
+export async function createOrderModification(data: {
+  orderId: string | number;
+  type: OrderModificationType;
+  newScheduledDate?: string;
+  newScheduledTime?: string;
+  newAddressId?: string;
+  newAddressText?: string;
+  customerNote?: string;
+}): Promise<OrderModification> {
+  const supabase = getSupabaseClient();
+
+  const { data: userResp, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  const userId = userResp?.user?.id;
+  if (!userId) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  // Snapshot old values from the order
+  const { data: orderRow, error: orderError } = await supabase
+    .from('orders')
+    .select('scheduled_date, scheduled_time, address_id')
+    .eq('id', data.orderId)
+    .maybeSingle();
+  if (orderError) throw orderError;
+
+  const old = (orderRow ?? {}) as Record<string, unknown>;
+
+  const payload: Record<string, unknown> = {
+    order_id: data.orderId,
+    user_id: userId,
+    type: data.type,
+    status: 'pending',
+    old_scheduled_date: old.scheduled_date ?? null,
+    old_scheduled_time: old.scheduled_time ? String(old.scheduled_time) : null,
+    old_address_id: old.address_id ?? null,
+    new_scheduled_date: data.newScheduledDate ?? null,
+    new_scheduled_time: data.newScheduledTime ?? null,
+    new_address_id: data.newAddressId ?? null,
+    new_address_text: data.newAddressText ?? null,
+    customer_note: data.customerNote ?? null,
+  };
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('order_modifications')
+    .insert([payload])
+    .select('*')
+    .single();
+
+  if (insertError) throw insertError;
+  return normalizeModification(inserted as Record<string, unknown>);
+}
+
+export async function getOrderModifications(
+  orderId: string | number,
+): Promise<OrderModification[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('order_modifications')
+    .select('*')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map((row) =>
+    normalizeModification(row as Record<string, unknown>),
+  );
+}
+
+export async function getPendingModificationsForUser(
+  userId: string,
+): Promise<OrderModification[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('order_modifications')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'pending');
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map((row) =>
+    normalizeModification(row as Record<string, unknown>),
+  );
+}

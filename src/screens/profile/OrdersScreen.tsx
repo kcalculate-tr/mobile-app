@@ -25,6 +25,13 @@ import {
 } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
+import { getPendingModificationsForUser, type OrderModificationType } from '../../lib/orders';
+
+const MOD_SHORT_LABELS: Record<OrderModificationType, string> = {
+  cancel: 'İptal Talebi',
+  date_change: 'Tarih Değ.',
+  address_change: 'Adres Değ.',
+};
 
 type OrdersNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -94,6 +101,7 @@ export default function OrdersScreen() {
   const { getStyle } = useStaggerAnimation(orders.length);
   const [errorMessage, setErrorMessage] = useState('')
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingMods, setPendingMods] = useState<Record<string, OrderModificationType>>({});
 
   const loadOrders = useCallback(async () => {
     if (!user) return;
@@ -127,6 +135,21 @@ export default function OrdersScreen() {
           payment_status: row.payment_status != null ? String(row.payment_status) : null,
         })),
       );
+
+      // Fetch pending modifications for this user in one shot.
+      try {
+        const mods = await getPendingModificationsForUser(user.id);
+        const map: Record<string, OrderModificationType> = {};
+        mods.forEach((mod) => {
+          // Keep first (most specific) per order_id
+          if (!map[mod.order_id]) map[mod.order_id] = mod.type;
+        });
+        setPendingMods(map);
+      } catch (modErr: unknown) {
+        if (__DEV__) {
+          console.warn(`[orders-screen] pending modifications load error: ${formatSupabaseErrorForDevLog(modErr)}`);
+        }
+      }
     } catch (error: unknown) {
       if (__DEV__) {
         console.warn(`[orders-screen] load error: ${formatSupabaseErrorForDevLog(error)}`);
@@ -249,11 +272,16 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
               >
                 {/* Top row */}
                 <View style={s.cardTop}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={s.orderCode}>
                       {order.order_code ?? `#${String(order.id).slice(0, 8).toUpperCase()}`}
                     </Text>
                     <Text style={s.dateText}>{formatDate(order.created_at)}</Text>
+                    {pendingMods[String(order.id)] ? (
+                      <View style={s.modPill}>
+                        <Text style={s.modPillText}>{MOD_SHORT_LABELS[pendingMods[String(order.id)]]}</Text>
+                      </View>
+                    ) : null}
                   </View>
                   <View style={[s.badge, { backgroundColor: cfg.bg }]}>
                     <cfg.Icon size={11} color={cfg.color} weight="fill" />
@@ -348,6 +376,21 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginBottom:
   badgeEmoji: { fontSize: TYPOGRAPHY.size.xs },
   badgeText: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold'},
+
+  modPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFEDD5',
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    marginTop: 6,
+  },
+  modPillText: {
+    color: '#EA580C',
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
 
   // Progress
   progressWrap: { gap: SPACING.xs },
