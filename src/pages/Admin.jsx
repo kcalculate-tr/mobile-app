@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   BellRing,
   CheckCircle2,
+  CalendarClock,
   ClipboardList,
   Clock3,
   ArrowUp,
@@ -62,7 +63,9 @@ const currencyFormatter = new Intl.NumberFormat('tr-TR', {
 });
 
 const STATUS_LABELS = {
+  pending_payment: 'Ödeme Bekliyor',
   pending: 'Bekliyor',
+  confirmed: 'Onaylandı',
   preparing: 'Hazırlanıyor',
   on_way: 'Yolda',
   delivered: 'Teslim Edildi',
@@ -248,7 +251,8 @@ function normalizeOrderStatus(statusRaw) {
   if (status.includes('yol')) return 'on_way';
   if (status.includes('teslim')) return 'delivered';
   if (status.includes('iptal') || status.includes('cancel')) return 'cancelled';
-  if (['pending', 'preparing', 'on_way', 'delivered', 'cancelled'].includes(status)) return status;
+  if (status === 'pending_payment') return 'pending_payment';
+  if (['pending', 'confirmed', 'preparing', 'on_way', 'delivered', 'cancelled'].includes(status)) return status;
   return 'pending';
 }
 
@@ -280,7 +284,7 @@ function parseScheduledDateTime(order) {
   const dateRaw = String(order?.scheduled_date || '').trim();
   if (!dateRaw) return null;
 
-  const slotTime = parseTimeFromSlot(order?.scheduled_slot);
+  const slotTime = parseTimeFromSlot(order?.scheduled_time || order?.scheduled_slot);
   if (!slotTime) return null;
 
   const dateMatch = dateRaw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -308,6 +312,7 @@ function isScheduledApproaching(order, nowDate) {
 }
 
 function getStatusClass(status) {
+  if (status === 'pending_payment') return 'bg-amber-100 text-amber-700';
   if (status === 'preparing') return 'bg-brand-secondary text-brand-dark';
   if (status === 'on_way') return 'bg-brand-secondary text-brand-dark';
   if (status === 'delivered') return 'bg-brand-secondary text-brand-dark';
@@ -391,7 +396,8 @@ async function safeUpdateById(table, id, payload) {
     if (!error) {
       const row = Array.isArray(data) ? data[0] : data;
       if (row) return row;
-      throw new Error(`${table} tablosunda id=${id} için kayıt bulunamadı.`);
+      // RLS select engeli: update başarılı ama satır dönmedi → id ile fallback
+      return { id, ...next };
     }
 
     const missing = getMissingColumnName(error);
@@ -605,11 +611,87 @@ function ImageUploadField({ label, value, onUploaded, folder = 'admin' }) {
   );
 }
 
-export default function Admin() {
+function CategoryRow({ category, indent, onEdit, onDelete, deletingId }) {
+  const isDeleting = deletingId === String(category.id);
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border border-brand-secondary bg-brand-bg px-3 py-2 ${indent ? 'ml-6' : ''}`}>
+      {indent && <span className="shrink-0 text-sm text-brand-dark opacity-40">↳</span>}
+      <div className="group relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-brand-secondary bg-brand-white">
+        {category.image_url ? (
+          <>
+            <img src={category.image_url} alt={category.name} className="h-full w-full object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center bg-brand-dark/50 opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="text-[9px] font-bold text-white">Değiştir</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-lg text-brand-dark opacity-25">+</div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-brand-dark">{category.name || 'Kategori'}</p>
+        <p className="text-[11px] text-brand-dark">
+          Sıra: {getCategoryOrder(category) === Number.MAX_SAFE_INTEGER ? '—' : getCategoryOrder(category)}
+          {category.discount_type && (
+            <span className="ml-2 rounded-full bg-brand-secondary px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
+              {category.discount_type === 'percent' ? `%${category.discount_value}` : `₺${category.discount_value}`} indirim
+            </span>
+          )}
+        </p>
+      </div>
+      <button
+        onClick={() => onEdit(category)}
+        className="inline-flex items-center gap-1 rounded-lg bg-brand-white border border-brand-secondary px-3 py-1.5 text-xs font-bold text-brand-dark"
+      >
+        Düzenle
+      </button>
+      <button
+        onClick={() => onDelete(category)}
+        disabled={isDeleting}
+        className="inline-flex items-center gap-1 rounded-lg bg-brand-secondary px-3 py-1.5 text-xs font-bold text-brand-dark disabled:opacity-60"
+      >
+        {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+        Sil
+      </button>
+    </div>
+  );
+}
+
+export default function Admin({
+  initialTab = 'orders',
+  forcedTab = '',
+  visibleTabs = null,
+  hideAdminChrome = false,
+  disableNotifications = false,
+} = {}) {
   const navigate = useNavigate();
 
+  const availableTabKeys = [
+    'orders',
+    'products',
+    'showcase',
+    'campaigns',
+    'categories',
+    'options',
+    'delivery_zones',
+    'settings',
+    'finance',
+    'reviews',
+  ];
+
+  const isTabAllowed = (tabKey) => {
+    if (!Array.isArray(visibleTabs) || visibleTabs.length === 0) return true;
+    return visibleTabs.includes(tabKey);
+  };
+
+  const resolveTabKey = (candidate) => {
+    const normalized = availableTabKeys.includes(candidate) ? candidate : 'orders';
+    if (isTabAllowed(normalized)) return normalized;
+    return availableTabKeys.find((item) => isTabAllowed(item)) || 'orders';
+  };
+
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState(() => resolveTabKey(forcedTab || initialTab));
   const [ordersSubTab, setOrdersSubTab] = useState('incoming');
   const [productCategoryFilter, setProductCategoryFilter] = useState('Tümü');
   const [isFinanceUnlocked, setIsFinanceUnlocked] = useState(true);
@@ -634,6 +716,8 @@ export default function Admin() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productSaving, setProductSaving] = useState(false);
   const [productRowSavingId, setProductRowSavingId] = useState('');
+  const [productCrosssellSavingId, setProductCrosssellSavingId] = useState('');
+  const [productCrosssellOnly, setProductCrosssellOnly] = useState(false);
   const [productsReorderSaving, setProductsReorderSaving] = useState(false);
   const [productDeleteId, setProductDeleteId] = useState('');
   const [productPriceDrafts, setProductPriceDrafts] = useState({});
@@ -654,8 +738,24 @@ export default function Admin() {
   const [productSelectedGroupIds, setProductSelectedGroupIds] = useState([]);
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormOrder, setCategoryFormOrder] = useState('');
+  const [categoryFormImageUrl, setCategoryFormImageUrl] = useState('');
+  const [categoryFormDiscountType, setCategoryFormDiscountType] = useState('');
+  const [categoryFormDiscountValue, setCategoryFormDiscountValue] = useState('');
+  const [categoryFormParentId, setCategoryFormParentId] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryDeleteId, setCategoryDeleteId] = useState('');
+  const [categoryEditModal, setCategoryEditModal] = useState(false);
+  const [categoryEditItem, setCategoryEditItem] = useState(null);
+  const [categoryEditName, setCategoryEditName] = useState('');
+  const [categoryEditOrder, setCategoryEditOrder] = useState('');
+  const [categoryEditImageUrl, setCategoryEditImageUrl] = useState('');
+  const [categoryEditDiscountType, setCategoryEditDiscountType] = useState('');
+  const [categoryEditDiscountValue, setCategoryEditDiscountValue] = useState('');
+  const [categoryEditParentId, setCategoryEditParentId] = useState('');
+  const [categoryEditSaving, setCategoryEditSaving] = useState(false);
+  const [categoryImageUploading, setCategoryImageUploading] = useState(false);
+  const [categoryNewImageFile, setCategoryNewImageFile] = useState(null);
+  const [categoryNewImagePreview, setCategoryNewImagePreview] = useState('');
   const [productForm, setProductForm] = useState({
     name: '',
     price: '',
@@ -667,6 +767,11 @@ export default function Admin() {
     protein: '',
     carbs: '',
     fats: '',
+    allow_immediate: true,
+    allow_scheduled: true,
+    discount_type: '',
+    discount_value: '',
+    is_crosssell: false,
   });
 
   const [banners, setBanners] = useState([]);
@@ -717,6 +822,8 @@ export default function Admin() {
   const [deliveryZoneUpdatingKey, setDeliveryZoneUpdatingKey] = useState('');
   const [deliveryZoneBulkUpdatingField, setDeliveryZoneBulkUpdatingField] = useState('');
   const [selectedDeliveryDistrict, setSelectedDeliveryDistrict] = useState('');
+  const [deliveryDistrictDrafts, setDeliveryDistrictDrafts] = useState({});
+  const [deliveryDistrictSavingKey, setDeliveryDistrictSavingKey] = useState('');
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsFilter, setReviewsFilter] = useState('all');
@@ -735,6 +842,17 @@ export default function Admin() {
   const draggedProductIdRef = useRef('');
   const hasBootstrappedScheduleAlertsRef = useRef(false);
   const lastProcessedTickRef = useRef(timeCursor);
+  const visibleTabsKey = useMemo(
+    () => (Array.isArray(visibleTabs) ? visibleTabs.join(',') : ''),
+    [visibleTabs]
+  );
+
+  useEffect(() => {
+    setActiveTab((prev) => {
+      const next = resolveTabKey(forcedTab || prev);
+      return prev === next ? prev : next;
+    });
+  }, [forcedTab, visibleTabsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const nowDate = useMemo(() => new Date(timeCursor), [timeCursor]);
   const printableOrderMacroTotals = useMemo(() => (
@@ -744,9 +862,9 @@ export default function Admin() {
   const incomingOrders = useMemo(() => {
     return orders.filter((item) => {
       const status = normalizeOrderStatus(item.status);
-      if (status !== 'pending' && status !== 'preparing') return false;
+      if (status !== 'pending' && status !== 'confirmed' && status !== 'preparing') return false;
 
-      const deliveryTimeType = normalizeDeliveryTimeType(item.delivery_time_type);
+      const deliveryTimeType = normalizeDeliveryTimeType((item.delivery_type || item.delivery_time_type));
       if (deliveryTimeType === 'immediate') return true;
       return isScheduledApproaching(item, nowDate);
     });
@@ -757,7 +875,7 @@ export default function Admin() {
       const status = normalizeOrderStatus(item.status);
       if (status !== 'pending') return false;
 
-      const deliveryTimeType = normalizeDeliveryTimeType(item.delivery_time_type);
+      const deliveryTimeType = normalizeDeliveryTimeType((item.delivery_type || item.delivery_time_type));
       if (deliveryTimeType !== 'scheduled') return false;
       return !isScheduledApproaching(item, nowDate);
     });
@@ -785,7 +903,7 @@ export default function Admin() {
 
     orders.forEach((item) => {
       const status = normalizeOrderStatus(item.status);
-      const deliveryTimeType = normalizeDeliveryTimeType(item.delivery_time_type);
+      const deliveryTimeType = normalizeDeliveryTimeType((item.delivery_type || item.delivery_time_type));
       if ((status === 'pending' || status === 'preparing') && deliveryTimeType === 'scheduled' && isScheduledApproaching(item, nowDate)) {
         ids.add(String(item.id));
       }
@@ -834,10 +952,16 @@ export default function Admin() {
   }, [sortedProducts]);
 
   const filteredProducts = useMemo(() => {
-    if (productCategoryFilter === 'Tümü') return sortedProducts;
-    const normalizedSelected = String(productCategoryFilter || '').trim().toLocaleLowerCase('tr-TR');
-    return sortedProducts.filter((item) => String(item?.category || '').trim().toLocaleLowerCase('tr-TR') === normalizedSelected);
-  }, [sortedProducts, productCategoryFilter]);
+    let list = sortedProducts;
+    if (productCategoryFilter !== 'Tümü') {
+      const normalizedSelected = String(productCategoryFilter || '').trim().toLocaleLowerCase('tr-TR');
+      list = list.filter((item) => String(item?.category || '').trim().toLocaleLowerCase('tr-TR') === normalizedSelected);
+    }
+    if (productCrosssellOnly) {
+      list = list.filter((item) => Boolean(item?.is_crosssell));
+    }
+    return list;
+  }, [sortedProducts, productCategoryFilter, productCrosssellOnly]);
 
   const deliveryDistrictOptions = useMemo(() => {
     const names = new Set();
@@ -847,6 +971,77 @@ export default function Admin() {
     });
     return Array.from(names).sort((a, b) => a.localeCompare(b, 'tr'));
   }, [deliveryZones]);
+
+  const deliveryDistrictSettings = useMemo(() => {
+    const districtMap = new Map();
+
+    deliveryZones.forEach((item) => {
+      const districtName = String(item?.district || '').trim();
+      if (!districtName) return;
+
+      const key = normalizeTextForCompare(districtName);
+      const minOrder = Math.max(0, Number(item?.min_order || 0));
+      const cityName = String(item?.city || 'İzmir').trim() || 'İzmir';
+      const zoneId = String(item?.id || '').trim();
+
+      if (!districtMap.has(key)) {
+        districtMap.set(key, {
+          key,
+          district: districtName,
+          city: cityName,
+          is_active: normalizeBoolean(item?.is_active, false),
+          min_order: minOrder,
+          zoneIds: zoneId ? [zoneId] : [],
+        });
+        return;
+      }
+
+      const current = districtMap.get(key);
+      current.is_active = current.is_active || normalizeBoolean(item?.is_active, false);
+      current.min_order = Math.max(current.min_order, minOrder);
+      if (!current.city && cityName) current.city = cityName;
+      if (zoneId) current.zoneIds.push(zoneId);
+    });
+
+    return Array.from(districtMap.values()).sort((a, b) => (
+      String(a?.district || '').localeCompare(String(b?.district || ''), 'tr')
+    ));
+  }, [deliveryZones]);
+
+  const selectedDeliveryDistrictKey = useMemo(
+    () => normalizeTextForCompare(selectedDeliveryDistrict),
+    [selectedDeliveryDistrict]
+  );
+
+  const selectedDeliveryDistrictSetting = useMemo(() => (
+    deliveryDistrictSettings.find((item) => item.key === selectedDeliveryDistrictKey) || null
+  ), [deliveryDistrictSettings, selectedDeliveryDistrictKey]);
+
+  const selectedDeliveryDistrictDraft = useMemo(() => {
+    if (!selectedDeliveryDistrictKey) return null;
+
+    const fallback = {
+      city: selectedDeliveryDistrictSetting?.city || 'İzmir',
+      district: selectedDeliveryDistrictSetting?.district || selectedDeliveryDistrict,
+      is_active: Boolean(selectedDeliveryDistrictSetting?.is_active),
+      min_order: String(selectedDeliveryDistrictSetting?.min_order ?? 0),
+    };
+
+    const draft = deliveryDistrictDrafts[selectedDeliveryDistrictKey];
+    if (!draft) return fallback;
+
+    return {
+      ...fallback,
+      ...draft,
+      is_active: typeof draft?.is_active === 'boolean' ? draft.is_active : fallback.is_active,
+      min_order: draft?.min_order !== undefined ? draft.min_order : fallback.min_order,
+    };
+  }, [
+    deliveryDistrictDrafts,
+    selectedDeliveryDistrict,
+    selectedDeliveryDistrictKey,
+    selectedDeliveryDistrictSetting,
+  ]);
 
   const selectedDistrictDeliveryZones = useMemo(() => {
     if (!selectedDeliveryDistrict) return [];
@@ -865,6 +1060,22 @@ export default function Admin() {
     selectedDistrictDeliveryZones.length > 0
     && selectedDistrictDeliveryZones.every((item) => normalizeBoolean(item?.allow_scheduled, false))
   ), [selectedDistrictDeliveryZones]);
+
+  useEffect(() => {
+    setDeliveryDistrictDrafts((prev) => {
+      const next = {};
+      deliveryDistrictSettings.forEach((item) => {
+        const existing = prev[item.key];
+        next[item.key] = {
+          city: item.city || 'İzmir',
+          district: item.district,
+          is_active: typeof existing?.is_active === 'boolean' ? existing.is_active : item.is_active,
+          min_order: existing?.min_order !== undefined ? existing.min_order : String(item.min_order),
+        };
+      });
+      return next;
+    });
+  }, [deliveryDistrictSettings]);
 
   useEffect(() => {
     if (productCategoryFilter === 'Tümü') return;
@@ -1208,10 +1419,13 @@ export default function Admin() {
   useEffect(() => {
     if (!isAuthenticated) return undefined;
 
-    fetchOrders();
     fetchProducts();
     fetchCategories();
     fetchCatalogOptionGroups();
+
+    if (disableNotifications) return undefined;
+
+    fetchOrders();
     fetchBanners();
     fetchCampaigns();
     fetchStoreSetting();
@@ -1224,7 +1438,7 @@ export default function Admin() {
         fetchOrders();
 
         const nextOrder = payload?.new;
-        const deliveryTimeType = normalizeDeliveryTimeType(nextOrder?.delivery_time_type);
+        const deliveryTimeType = normalizeDeliveryTimeType((nextOrder?.delivery_type || nextOrder?.delivery_time_type));
         const nextStatus = normalizeOrderStatus(nextOrder?.status);
         if (deliveryTimeType === 'immediate') {
           playNotificationSound();
@@ -1242,8 +1456,8 @@ export default function Admin() {
 
         const previousStatus = normalizeOrderStatus(previousOrder.status);
         const nextStatus = normalizeOrderStatus(nextOrder.status);
-        const previousType = normalizeDeliveryTimeType(previousOrder.delivery_time_type);
-        const nextType = normalizeDeliveryTimeType(nextOrder.delivery_time_type);
+        const previousType = normalizeDeliveryTimeType((previousOrder.delivery_type || previousOrder.delivery_time_type));
+        const nextType = normalizeDeliveryTimeType((nextOrder.delivery_type || nextOrder.delivery_time_type));
 
         const previousUrgent = (
           (previousStatus === 'pending' || previousStatus === 'preparing')
@@ -1298,6 +1512,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
+    if (disableNotifications) return undefined;
 
     const unlockOnInteraction = () => {
       if (isAudioUnlockedRef.current) return;
@@ -1404,6 +1619,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
+    if (disableNotifications) return undefined;
 
     if (pendingIncomingOrders.length === 0) {
       stopAlarmLoop();
@@ -1497,7 +1713,7 @@ export default function Admin() {
       for (const tableName of PRODUCT_OPTION_GROUP_TABLE_CANDIDATES) {
         const response = await supabase
           .from('products')
-          .select(`*, ${tableName}(group_id,sort_order)`)
+          .select(`*, ${tableName}!${tableName}_product_id_fkey(group_id,sort_order)`)
           .or('type.eq.meal,type.is.null')
           .order('order', { ascending: true });
 
@@ -1805,21 +2021,26 @@ export default function Admin() {
     try {
       const { data, error } = await supabase
         .from('delivery_zones')
-        .select('id,district,neighborhood,is_active,allow_immediate,allow_scheduled')
-        .order('district', { ascending: true })
-        .order('neighborhood', { ascending: true });
+        .select('*')
+        .order('district', { ascending: true });
 
       if (error) throw error;
 
       const rows = Array.isArray(data) ? data : [];
       setDeliveryZones(rows.map((item) => ({
         ...item,
+        city: String(item?.city || '').trim(),
         district: String(item?.district || '').trim(),
         neighborhood: String(item?.neighborhood || '').trim(),
         is_active: normalizeBoolean(item?.is_active, false),
+        min_order: Math.max(0, Number(item?.min_order || 0)),
         allow_immediate: normalizeBoolean(item?.allow_immediate, false),
         allow_scheduled: normalizeBoolean(item?.allow_scheduled, false),
-      })));
+      })).sort((a, b) => {
+        const districtDiff = String(a?.district || '').localeCompare(String(b?.district || ''), 'tr');
+        if (districtDiff !== 0) return districtDiff;
+        return String(a?.neighborhood || '').localeCompare(String(b?.neighborhood || ''), 'tr');
+      }));
     } catch (err) {
       setPanelError(getDetailedErrorMessage(err, 'Teslimat bölgeleri alınamadı.'));
       setDeliveryZones([]);
@@ -1990,6 +2211,98 @@ export default function Admin() {
     }
   };
 
+  const updateDeliveryDistrictDraft = (districtKey, field, value) => {
+    if (!districtKey || !field) return;
+    setDeliveryDistrictDrafts((prev) => {
+      const current = prev[districtKey] || {};
+      return {
+        ...prev,
+        [districtKey]: {
+          ...current,
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  const saveDeliveryDistrictRule = async (districtKey) => {
+    const draft = deliveryDistrictDrafts[districtKey];
+    if (!draft) return;
+
+    const districtName = String(draft?.district || '').trim();
+    if (!districtName) {
+      setPanelError('İlçe adı boş olamaz.');
+      return;
+    }
+
+    const parsedMinOrder = Number(String(draft?.min_order || '').replace(',', '.'));
+    if (!Number.isFinite(parsedMinOrder) || parsedMinOrder < 0) {
+      setPanelError('Minimum sepet için 0 veya daha büyük bir tutar girin.');
+      return;
+    }
+
+    const payload = {
+      city: String(draft?.city || 'İzmir').trim() || 'İzmir',
+      district: districtName,
+      is_active: Boolean(draft?.is_active),
+      min_order: parsedMinOrder,
+      updated_at: new Date().toISOString(),
+    };
+
+    setDeliveryDistrictSavingKey(districtKey);
+    setPanelError('');
+    setPanelInfo('');
+
+    try {
+      const existing = deliveryDistrictSettings.find((item) => item.key === districtKey);
+      if (existing && Array.isArray(existing.zoneIds) && existing.zoneIds.length > 0) {
+        const updatedRows = await Promise.all(
+          existing.zoneIds.map((zoneId) => safeUpdateById('delivery_zones', zoneId, payload))
+        );
+
+        const updatedById = new Map(updatedRows.map((row) => [String(row?.id || ''), row]));
+        setDeliveryZones((prev) => prev.map((item) => {
+          const matched = updatedById.get(String(item?.id || ''));
+          if (!matched) return item;
+          return {
+            ...item,
+            ...matched,
+            city: String(matched?.city || item?.city || '').trim(),
+            district: String(matched?.district || item?.district || '').trim(),
+            neighborhood: String(matched?.neighborhood || item?.neighborhood || '').trim(),
+            is_active: normalizeBoolean(matched?.is_active ?? item?.is_active, false),
+            min_order: Math.max(0, Number(matched?.min_order ?? item?.min_order ?? 0)),
+            allow_immediate: normalizeBoolean(matched?.allow_immediate ?? item?.allow_immediate, false),
+            allow_scheduled: normalizeBoolean(matched?.allow_scheduled ?? item?.allow_scheduled, false),
+          };
+        }));
+      } else {
+        const created = await safeInsert('delivery_zones', payload);
+        const normalizedCreated = {
+          ...created,
+          city: String(created?.city || '').trim(),
+          district: String(created?.district || '').trim(),
+          neighborhood: String(created?.neighborhood || '').trim(),
+          is_active: normalizeBoolean(created?.is_active, false),
+          min_order: Math.max(0, Number(created?.min_order || 0)),
+          allow_immediate: normalizeBoolean(created?.allow_immediate, false),
+          allow_scheduled: normalizeBoolean(created?.allow_scheduled, false),
+        };
+        setDeliveryZones((prev) => [...prev, normalizedCreated].sort((a, b) => {
+          const districtDiff = String(a?.district || '').localeCompare(String(b?.district || ''), 'tr');
+          if (districtDiff !== 0) return districtDiff;
+          return String(a?.neighborhood || '').localeCompare(String(b?.neighborhood || ''), 'tr');
+        }));
+      }
+
+      setPanelInfo(`"${districtName}" için teslimat ve minimum sepet ayarı kaydedildi.`);
+    } catch (err) {
+      setPanelError(getDetailedErrorMessage(err, 'İlçe ayarı kaydedilemedi.'));
+    } finally {
+      setDeliveryDistrictSavingKey('');
+    }
+  };
+
   const saveCategory = async () => {
     const nextName = String(categoryFormName || '').trim();
     if (!nextName) {
@@ -2019,10 +2332,24 @@ export default function Admin() {
     setPanelInfo('');
 
     try {
+      const parsedDiscountVal = categoryFormDiscountValue !== '' ? Number(categoryFormDiscountValue) : null;
       const created = await safeInsert('categories', {
         name: nextName,
         order: hasManualOrder ? Math.round(parsedOrder) : maxOrder + 10,
+        image_url: null,
+        discount_type: categoryFormDiscountType || null,
+        discount_value: (categoryFormDiscountType && Number.isFinite(parsedDiscountVal)) ? parsedDiscountVal : null,
+        parent_id: categoryFormParentId || null,
       });
+
+      // Upload image after we have the ID
+      if (categoryNewImageFile && created?.id) {
+        try {
+          const url = await uploadCategoryImage(created.id, categoryNewImageFile);
+          await supabase.from('categories').update({ image_url: url, img: url }).eq('id', created.id);
+          created.image_url = url;
+        } catch (_) { /* image upload failure is non-fatal */ }
+      }
 
       setCategories((prev) => [...prev, created].sort((a, b) => {
         const orderDiff = getCategoryOrder(a) - getCategoryOrder(b);
@@ -2031,6 +2358,12 @@ export default function Admin() {
       }));
       setCategoryFormName('');
       setCategoryFormOrder('');
+      setCategoryFormImageUrl('');
+      setCategoryFormDiscountType('');
+      setCategoryFormDiscountValue('');
+      setCategoryFormParentId('');
+      setCategoryNewImageFile(null);
+      setCategoryNewImagePreview('');
       setPanelInfo('Kategori eklendi.');
     } catch (err) {
       setPanelError(getWritableErrorMessage(err, 'Kategori eklenemedi.'));
@@ -2057,6 +2390,90 @@ export default function Admin() {
       setPanelError(getWritableErrorMessage(err, 'Kategori silinemedi.'));
     } finally {
       setCategoryDeleteId('');
+    }
+  };
+
+  const uploadCategoryImage = async (categoryId, file) => {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `categories/${categoryId}/${Date.now()}_${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from(IMAGE_BUCKET)
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { data: { publicUrl } } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+    return publicUrl;
+  };
+
+  const openCategoryEdit = (category) => {
+    setCategoryEditItem(category);
+    setCategoryEditName(String(category.name || ''));
+    const ord = getCategoryOrder(category);
+    setCategoryEditOrder(ord === Number.MAX_SAFE_INTEGER ? '' : String(ord));
+    setCategoryEditImageUrl(String(category.image_url || ''));
+    setCategoryEditDiscountType(String(category.discount_type || ''));
+    setCategoryEditDiscountValue(category.discount_value != null ? String(category.discount_value) : '');
+    setCategoryEditParentId(String(category.parent_id || ''));
+    setCategoryEditModal(true);
+  };
+
+  const closeCategoryEdit = () => {
+    if (categoryEditSaving || categoryImageUploading) return;
+    setCategoryEditModal(false);
+    setCategoryEditItem(null);
+  };
+
+  const handleCategoryEditImageUpload = async (file) => {
+    if (!file || !categoryEditItem?.id) return;
+    setCategoryImageUploading(true);
+    setPanelError('');
+    try {
+      const url = await uploadCategoryImage(categoryEditItem.id, file);
+      const { error } = await supabase.from('categories').update({ image_url: url, img: url }).eq('id', categoryEditItem.id);
+      if (error) throw error;
+      setCategoryEditImageUrl(url);
+      setCategories((prev) => prev.map((c) => String(c.id) === String(categoryEditItem.id) ? { ...c, image_url: url } : c));
+    } catch (err) {
+      setPanelError(err?.message || 'Görsel yüklenemedi.');
+    } finally {
+      setCategoryImageUploading(false);
+    }
+  };
+
+  const saveCategoryEdit = async () => {
+    if (!categoryEditItem?.id) return;
+    const name = String(categoryEditName || '').trim();
+    if (!name) { setPanelError('Kategori adı zorunlu.'); return; }
+    setCategoryEditSaving(true);
+    setPanelError('');
+    setPanelInfo('');
+    try {
+      const parsedOrder = Number(String(categoryEditOrder || '').trim());
+      const hasOrder = String(categoryEditOrder || '').trim() !== '';
+      const parsedDiscountVal = categoryEditDiscountValue !== '' ? Number(categoryEditDiscountValue) : null;
+      const payload = {
+        name,
+        ...(hasOrder && Number.isFinite(parsedOrder) && parsedOrder >= 0 ? { order: Math.round(parsedOrder) } : {}),
+        image_url: categoryEditImageUrl || null,
+        img: categoryEditImageUrl || null,
+        discount_type: categoryEditDiscountType || null,
+        discount_value: (categoryEditDiscountType && Number.isFinite(parsedDiscountVal) && parsedDiscountVal >= 0) ? parsedDiscountVal : null,
+        parent_id: categoryEditParentId || null,
+      };
+      const { error } = await supabase.from('categories').update(payload).eq('id', categoryEditItem.id);
+      if (error) throw error;
+      setCategories((prev) =>
+        prev.map((c) => String(c.id) === String(categoryEditItem.id) ? { ...c, ...payload } : c)
+          .sort((a, b) => {
+            const diff = getCategoryOrder(a) - getCategoryOrder(b);
+            return diff !== 0 ? diff : String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+          })
+      );
+      setPanelInfo('Kategori güncellendi.');
+      closeCategoryEdit();
+    } catch (err) {
+      setPanelError(getWritableErrorMessage(err, 'Kategori güncellenemedi.'));
+    } finally {
+      setCategoryEditSaving(false);
     }
   };
 
@@ -2185,6 +2602,11 @@ export default function Admin() {
       protein: '',
       carbs: '',
       fats: '',
+      allow_immediate: true,
+      allow_scheduled: true,
+      discount_type: '',
+      discount_value: '',
+      is_crosssell: false,
     });
     setProductModalOpen(true);
   };
@@ -2213,6 +2635,11 @@ export default function Admin() {
       protein: String(selectedProduct?.protein ?? ''),
       carbs: String(selectedProduct?.carbs ?? ''),
       fats: String(selectedProduct?.fats ?? selectedProduct?.fat ?? ''),
+      allow_immediate: selectedProduct?.allow_immediate !== false,
+      allow_scheduled: selectedProduct?.allow_scheduled !== false,
+      discount_type: selectedProduct?.discount_type || '',
+      discount_value: String(selectedProduct?.discount_value ?? ''),
+      is_crosssell: Boolean(selectedProduct?.is_crosssell),
     });
     const embeddedGroups = Array.isArray(selectedProduct?.product_option_groups) ? selectedProduct.product_option_groups : [];
     const embeddedSelectedGroupIds = embeddedGroups
@@ -2307,6 +2734,11 @@ export default function Admin() {
         carbs: parsedCarbs,
         fats: parsedFats,
         fat: parsedFats,
+        allow_immediate: productForm.allow_immediate,
+        allow_scheduled: productForm.allow_scheduled,
+        discount_type: productForm.discount_type || null,
+        discount_value: productForm.discount_value ? Number(productForm.discount_value) : null,
+        is_crosssell: Boolean(productForm.is_crosssell),
       };
 
       if (editingProduct?.id) {
@@ -2343,6 +2775,7 @@ export default function Admin() {
         ['fats', 'fat'].forEach((columnName) => {
           if (hasColumn(columnName)) payload[columnName] = canonicalPayload.fats;
         });
+        payload.is_crosssell = Boolean(productForm.is_crosssell);
 
         if (Object.keys(payload).length === 0) {
           setPanelError('Bu ürün için güncellenebilir alan bulunamadı.');
@@ -2368,6 +2801,24 @@ export default function Admin() {
       setPanelError(getDetailedErrorMessage(err, 'Ürün kaydedilemedi.'));
     } finally {
       setProductSaving(false);
+    }
+  };
+
+  const toggleProductCrosssell = async (product) => {
+    if (!product?.id) return;
+    setPanelError('');
+    setPanelInfo('');
+    setProductCrosssellSavingId(String(product.id));
+    try {
+      const nextValue = !Boolean(product?.is_crosssell);
+      const updated = await safeUpdateById('products', product.id, { is_crosssell: nextValue });
+      setProducts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setPanelInfo(nextValue ? 'Ürün sepette önerilenlere eklendi.' : 'Ürün sepette önerilenlerden çıkarıldı.');
+      emitProductsSyncSignal();
+    } catch (err) {
+      setPanelError(err?.message || 'Sepette öner durumu güncellenemedi.');
+    } finally {
+      setProductCrosssellSavingId('');
     }
   };
 
@@ -3041,7 +3492,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg pb-8">
+    <div className={`admin-skin ${hideAdminChrome ? '' : 'min-h-screen pb-8'}`}>
       <audio ref={notificationAudioRef} src={ALARM_SOUND_URL} preload="auto" className="hidden" />
       <style>
         {`
@@ -3070,8 +3521,9 @@ export default function Admin() {
           }
         `}
       </style>
-      <header className="sticky top-0 z-40 bg-brand-white border-b border-brand-secondary px-4 py-3">
-        <div className="flex justify-between items-center">
+      {!hideAdminChrome && (
+      <header className="admin-topbar sticky top-0 z-40 bg-brand-white border-b border-brand-secondary px-4 py-3">
+        <div className="admin-topbar-inner flex justify-between items-center">
           <h1 className="text-lg font-bold text-brand-dark">Admin Paneli</h1>
           <div className="flex items-center gap-2">
             <button
@@ -3082,6 +3534,24 @@ export default function Admin() {
             >
               <Volume2 size={14} />
               Sesi Test Et
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/boss/tickets')}
+              className="px-3 h-9 rounded-lg inline-flex items-center justify-center gap-1.5 border border-brand-secondary bg-brand-bg text-brand-dark text-xs font-semibold hover:bg-brand-bg transition-colors"
+              title="Destek Talepleri"
+            >
+              <MessageSquare size={14} />
+              Destek Talepleri
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/boss/customers')}
+              className="px-3 h-9 rounded-lg inline-flex items-center justify-center gap-1.5 border border-brand-secondary bg-brand-bg text-brand-dark text-xs font-semibold hover:bg-brand-bg transition-colors"
+              title="Müşteriler"
+            >
+              <Users size={14} />
+              Müşteriler
             </button>
             <button onClick={() => navigate('/')} className="text-sm text-brand-primary font-medium">
               Ana Sayfa
@@ -3095,7 +3565,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 sm:grid-cols-9 gap-2">
+        <div className="admin-sidebar-nav mt-3 grid grid-cols-3 sm:grid-cols-10 gap-2">
           <button
             onClick={() => setActiveTab('orders')}
             className={`py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 ${
@@ -3103,6 +3573,13 @@ export default function Admin() {
             }`}
           >
             <ClipboardList size={14} /> Sipariş
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/boss/scheduled-orders')}
+            className="py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 bg-brand-bg text-brand-dark"
+          >
+            <CalendarClock size={14} /> Randevulu
           </button>
           <button
             onClick={() => setActiveTab('products')}
@@ -3170,9 +3647,10 @@ export default function Admin() {
           </button>
         </div>
       </header>
+      )}
 
       {(panelError || panelInfo) && (
-        <div className="px-4 pt-3 space-y-2">
+        <div className="admin-alert-stack px-4 pt-3 space-y-2">
           {panelError && (
             <div className="bg-brand-secondary border border-brand-secondary rounded-xl px-3 py-2 text-xs text-brand-dark">{panelError}</div>
           )}
@@ -3182,7 +3660,7 @@ export default function Admin() {
         </div>
       )}
 
-      <main className="p-4">
+      <main className={`admin-content ${hideAdminChrome ? '' : 'p-4'}`}>
         {activeTab === 'orders' && (
           <section>
             <div className="grid grid-cols-3 gap-2 mb-3">
@@ -3234,7 +3712,7 @@ export default function Admin() {
               <div className="space-y-3">
                 {visibleOrders.map((order) => {
                   const normalizedStatus = normalizeOrderStatus(order.status);
-                  const deliveryTimeType = normalizeDeliveryTimeType(order.delivery_time_type);
+                  const deliveryTimeType = normalizeDeliveryTimeType((order.delivery_type || order.delivery_time_type));
                   const minutesToScheduled = getMinutesToScheduled(order, nowDate);
                   const isApproachingScheduled = deliveryTimeType === 'scheduled' && isScheduledApproaching(order, nowDate);
                   const isBlinkingAlert = ordersSubTab === 'incoming' && normalizedStatus === 'pending';
@@ -3410,16 +3888,27 @@ export default function Admin() {
         {activeTab === 'products' && (
           <section>
             <div className="flex items-center justify-between gap-2 mb-3">
-              <select
-                value={productCategoryFilter}
-                onChange={(e) => setProductCategoryFilter(e.target.value)}
-                className="py-2 px-3 rounded-xl border border-brand-secondary text-xs font-semibold text-brand-dark bg-brand-white"
-              >
-                <option value="Tümü">Tümü</option>
-                {productCategoryOptions.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={productCategoryFilter}
+                  onChange={(e) => setProductCategoryFilter(e.target.value)}
+                  className="py-2 px-3 rounded-xl border border-brand-secondary text-xs font-semibold text-brand-dark bg-brand-white"
+                >
+                  <option value="Tümü">Tümü</option>
+                  {productCategoryOptions.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                <label className="inline-flex items-center gap-1.5 py-2 px-3 rounded-xl border border-brand-secondary text-xs font-semibold text-brand-dark bg-brand-white cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={productCrosssellOnly}
+                    onChange={(e) => setProductCrosssellOnly(e.target.checked)}
+                    className="accent-green-600"
+                  />
+                  Sadece Crosssell
+                </label>
+              </div>
               <button
                 onClick={openCreateProduct}
                 className="px-3 py-2 rounded-xl bg-brand-primary text-brand-white shadow-md hover:opacity-90 text-xs font-bold inline-flex items-center gap-1"
@@ -3435,7 +3924,9 @@ export default function Admin() {
             {productsLoading ? (
               <p className="text-brand-dark text-center py-8">Yükleniyor...</p>
             ) : filteredProducts.length === 0 ? (
-              <p className="text-brand-dark text-center py-8">Seçili kategoride ürün bulunamadı.</p>
+              <p className="text-brand-dark text-center py-8">
+                {productCrosssellOnly ? 'Sepette önerilecek ürün bulunamadı.' : 'Seçili kategoride ürün bulunamadı.'}
+              </p>
             ) : (
               <div className="space-y-2.5">
                 {filteredProducts.map((product, index) => {
@@ -3485,123 +3976,72 @@ export default function Admin() {
                         setDraggedProductId('');
                         setDragOverProductId('');
                       }}
-                      className={`bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-3 transition-all ${
+                      className={`bg-brand-white rounded-2xl border border-brand-secondary shadow-sm px-3 py-2.5 transition-all ${
                         isDragOver ? 'ring-2 ring-brand-primary/45' : ''
                       } ${isDragging ? 'opacity-60' : ''}`}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <button
-                            type="button"
-                            draggable={productCategoryFilter === 'Tümü'}
-                            onDragStart={(e) => handleProductDragStart(e, product.id)}
-                            onDragEnd={() => {
-                              draggedProductIdRef.current = '';
-                              setDraggedProductId('');
-                              setDragOverProductId('');
-                            }}
-                            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-bg text-brand-dark ${
-                              productCategoryFilter === 'Tümü' ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-60'
-                            }`}
-                            aria-label="Sürükle bırak ile sırala"
-                          >
-                            <GripVertical size={16} />
-                          </button>
-                          <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-brand-bg px-2 text-xs font-black text-brand-white">
-                            #{visualOrder}
-                          </span>
-                          <img
-                            src={getProductImage(product)}
-                            alt={getProductName(product)}
-                            className="h-10 w-10 rounded-xl bg-brand-white object-cover"
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-brand-dark">{getProductName(product)}</p>
-                            <p className="text-[11px] text-brand-dark">ID: {product.id}</p>
-                          </div>
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          draggable={productCategoryFilter === 'Tümü'}
+                          onDragStart={(e) => handleProductDragStart(e, product.id)}
+                          onDragEnd={() => {
+                            draggedProductIdRef.current = '';
+                            setDraggedProductId('');
+                            setDragOverProductId('');
+                          }}
+                          className={`inline-flex h-9 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-bg text-brand-dark ${
+                            productCategoryFilter === 'Tümü' ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-40'
+                          }`}
+                          aria-label="Sürükle bırak ile sırala"
+                        >
+                          <GripVertical size={14} />
+                        </button>
+                        <img
+                          src={getProductImage(product)}
+                          alt={getProductName(product)}
+                          className="h-10 w-10 shrink-0 rounded-xl bg-brand-bg object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-brand-dark leading-tight">{getProductName(product)}</p>
+                          <p className="text-[11px] text-brand-dark leading-tight">{product.category || '—'} · #{visualOrder}</p>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-bold ${available ? 'text-brand-dark' : 'text-brand-dark'}`}>
-                            {available ? 'Stokta' : 'Tükendi'}
-                          </span>
+                        <span className="shrink-0 text-sm font-bold text-brand-dark whitespace-nowrap">
+                          {toMoneyText(product.price)}
+                        </span>
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          <span className="text-[11px] text-brand-dark hidden sm:inline">{available ? 'Stokta' : 'Tükendi'}</span>
                           <button
                             onClick={() => toggleProductAvailability(product)}
-                            className={`h-7 w-12 rounded-full p-1 transition-all ${available ? 'bg-brand-secondary' : 'bg-brand-bg'}`}
+                            className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-all ${available ? 'bg-brand-primary' : 'bg-brand-bg border border-brand-secondary'}`}
                             aria-label="Stok durumunu değiştir"
                           >
-                            <span className={`block h-5 w-5 rounded-full bg-brand-white transition-all ${available ? 'translate-x-5' : 'translate-x-0'}`} />
+                            <span className={`block h-5 w-5 rounded-full bg-brand-white shadow-sm transition-all ${available ? 'translate-x-5' : 'translate-x-0'}`} />
                           </button>
                         </div>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-12">
-                        <input
-                          type="text"
-                          value={inlineNameValue}
-                          onChange={(e) => setProductNameDrafts((prev) => ({ ...prev, [product.id]: e.target.value }))}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 md:col-span-3"
-                          placeholder="Ürün adı"
-                        />
-                        <input
-                          type="text"
-                          list="admin-category-options"
-                          value={inlineCategoryValue}
-                          onChange={(e) => setProductCategoryDrafts((prev) => ({ ...prev, [product.id]: e.target.value }))}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 md:col-span-2"
-                          placeholder="Kategori"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={inlinePriceValue}
-                          onChange={(e) => setProductPriceDrafts((prev) => ({ ...prev, [product.id]: e.target.value }))}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 md:col-span-1"
-                          placeholder="Fiyat"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={inlineOrderValue}
-                          onChange={(e) => setProductOrderDrafts((prev) => ({ ...prev, [product.id]: e.target.value }))}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 md:col-span-1"
-                          placeholder="Sıra"
-                        />
-                        <input
-                          type="text"
-                          value={inlineDescriptionValue}
-                          onChange={(e) => setProductDescriptionDrafts((prev) => ({ ...prev, [product.id]: e.target.value }))}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 md:col-span-4"
-                          placeholder="Açıklama"
-                        />
-                        <button
-                          onClick={() => saveInlineProductRow(product)}
-                          disabled={productRowSavingId === String(product.id) || productsReorderSaving}
-                          className="rounded-lg bg-brand-primary px-3 py-2 text-xs font-bold text-brand-white hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-1 md:col-span-1"
-                        >
-                          {productRowSavingId === String(product.id) ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-                          Kaydet
-                        </button>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-                        <button
-                          onClick={() => toggleProductFavorite(product, !isFavorite)}
-                          disabled={favoriteSavingId === String(product.id)}
-                          className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-60 ${
-                            isFavorite ? 'bg-brand-secondary text-brand-dark' : 'bg-brand-bg text-brand-dark'
-                          }`}
-                        >
-                          {favoriteSavingId === String(product.id) ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <Star size={12} className={isFavorite ? 'fill-current' : ''} />
-                          )}
-                          {isFavorite ? 'Favoriden Çıkar' : 'Favori Yap'}
-                        </button>
-                        <div className="flex items-center gap-2">
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          <span className="text-[11px] text-brand-dark hidden sm:inline">Sepette Öner</span>
+                          <button
+                            onClick={() => toggleProductCrosssell(product)}
+                            disabled={productCrosssellSavingId === String(product.id)}
+                            className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-all disabled:opacity-60 ${Boolean(product?.is_crosssell) ? 'bg-brand-primary' : 'bg-brand-bg border border-brand-secondary'}`}
+                            aria-label="Sepette öner durumunu değiştir"
+                            title="Sepette Öner (is_crosssell)"
+                          >
+                            <span className={`block h-5 w-5 rounded-full bg-brand-white shadow-sm transition-all ${Boolean(product?.is_crosssell) ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          <button
+                            onClick={() => toggleProductFavorite(product, !isFavorite)}
+                            disabled={favoriteSavingId === String(product.id)}
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-60 ${
+                              isFavorite ? 'bg-brand-secondary text-brand-primary' : 'bg-brand-bg text-brand-dark'
+                            }`}
+                            title={isFavorite ? 'Favoriden Çıkar' : 'Favori Yap'}
+                          >
+                            {favoriteSavingId === String(product.id) ? <Loader2 size={12} className="animate-spin" /> : <Star size={13} className={isFavorite ? 'fill-current' : ''} />}
+                          </button>
                           <button
                             onClick={() => openEditProduct(product)}
                             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-bg text-brand-dark"
@@ -3611,10 +4051,9 @@ export default function Admin() {
                           <button
                             onClick={() => deleteProduct(product)}
                             disabled={productDeleteId === String(product.id)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-secondary text-brand-dark inline-flex items-center gap-1 disabled:opacity-60"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-brand-secondary text-brand-dark inline-flex items-center gap-1 disabled:opacity-60"
                           >
                             {productDeleteId === String(product.id) ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                            Sil
                           </button>
                         </div>
                       </div>
@@ -3710,16 +4149,55 @@ export default function Admin() {
 
         {activeTab === 'categories' && (
           <section className="space-y-4">
+            {/* ─── YENİ KATEGORİ EKLE ─── */}
             <div className="rounded-2xl border border-brand-secondary bg-brand-white p-4 shadow-sm">
               <p className="text-sm font-bold text-brand-dark">Yeni Kategori Ekle</p>
               <p className="mt-1 text-xs text-brand-dark">Kategoriler mobil ve admin tarafında anlık kullanılacaktır.</p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+
+              {/* Görsel seçici */}
+              <div className="mt-3 flex items-center gap-3">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-brand-secondary bg-brand-bg">
+                  {categoryNewImagePreview ? (
+                    <img src={categoryNewImagePreview} alt="Önizleme" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl text-brand-dark opacity-30">+</div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-brand-secondary bg-brand-bg px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-secondary">
+                    <Upload size={12} />
+                    Görsel Seç
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setCategoryNewImageFile(f);
+                        setCategoryNewImagePreview(URL.createObjectURL(f));
+                      }}
+                    />
+                  </label>
+                  {categoryNewImagePreview && (
+                    <button
+                      type="button"
+                      onClick={() => { setCategoryNewImageFile(null); setCategoryNewImagePreview(''); }}
+                      className="text-[11px] text-rose-500 hover:underline text-left"
+                    >
+                      Görseli Kaldır
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input
                   type="text"
                   value={categoryFormName}
                   onChange={(e) => setCategoryFormName(e.target.value)}
-                  placeholder="Kategori adı"
-                  className="flex-1 rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                  placeholder="Kategori adı *"
+                  className="rounded-xl border border-brand-secondary px-3 py-2 text-sm"
                 />
                 <input
                   type="number"
@@ -3728,21 +4206,56 @@ export default function Admin() {
                   value={categoryFormOrder}
                   onChange={(e) => setCategoryFormOrder(e.target.value)}
                   placeholder="Sıra No"
-                  className="w-full rounded-xl border border-brand-secondary px-3 py-2 text-sm sm:w-32"
+                  className="rounded-xl border border-brand-secondary px-3 py-2 text-sm"
                 />
+                <select
+                  value={categoryFormParentId}
+                  onChange={(e) => setCategoryFormParentId(e.target.value)}
+                  className="rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                >
+                  <option value="">Üst Kategori — Yok (Ana Kategori)</option>
+                  {categories.filter((c) => !c.parent_id).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={categoryFormDiscountType}
+                    onChange={(e) => setCategoryFormDiscountType(e.target.value)}
+                    className="flex-1 rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                  >
+                    <option value="">İndirim Yok</option>
+                    <option value="percent">Yüzde (%)</option>
+                    <option value="fixed">Sabit (₺)</option>
+                  </select>
+                  {categoryFormDiscountType && (
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={categoryFormDiscountValue}
+                      onChange={(e) => setCategoryFormDiscountValue(e.target.value)}
+                      placeholder={categoryFormDiscountType === 'percent' ? 'Oran (%)' : 'Tutar (₺)'}
+                      className="w-28 rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
                 <button
                   onClick={saveCategory}
                   disabled={categorySaving}
                   className="inline-flex items-center justify-center gap-1 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-brand-white shadow-md hover:opacity-90 disabled:opacity-60"
                 >
                   {categorySaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                  Yeni Kategori Ekle
+                  Kategori Ekle
                 </button>
               </div>
             </div>
 
+            {/* ─── KATEGORİ LİSTESİ ─── */}
             <div className="rounded-2xl border border-brand-secondary bg-brand-white p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 mb-3">
                 <p className="text-sm font-bold text-brand-dark">Kategori Listesi</p>
                 <span className="text-xs font-semibold text-brand-dark">{categories.length} kayıt</span>
               </div>
@@ -3752,34 +4265,179 @@ export default function Admin() {
               ) : categories.length === 0 ? (
                 <p className="py-6 text-center text-sm text-brand-dark">Henüz kategori bulunmuyor.</p>
               ) : (
-                <div className="mt-3 space-y-2">
-                  {categories.map((category) => (
-                    <div
-                      key={category.id}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-brand-secondary bg-brand-bg px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-brand-dark">{category.name || 'Kategori'}</p>
-                        <p className="text-[11px] text-brand-dark">Sıra: {getCategoryOrder(category) === Number.MAX_SAFE_INTEGER ? '—' : getCategoryOrder(category)}</p>
-                      </div>
-                      <button
-                        onClick={() => deleteCategory(category)}
-                        disabled={categoryDeleteId === String(category.id)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-brand-secondary px-3 py-1.5 text-xs font-bold text-brand-dark disabled:opacity-60"
-                      >
-                        {categoryDeleteId === String(category.id) ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        Sil
-                      </button>
-                    </div>
-                  ))}
+                <div className="space-y-1.5">
+                  {[
+                    ...categories.filter((c) => !c.parent_id),
+                    ...categories.filter((c) => c.parent_id && !categories.find((p) => String(p.id) === String(c.parent_id))),
+                  ].map((parent) => {
+                    const children = categories.filter((c) => String(c.parent_id) === String(parent.id));
+                    const isOrphan = !!parent.parent_id;
+                    return (
+                      <React.Fragment key={parent.id}>
+                        <CategoryRow
+                          category={parent}
+                          indent={isOrphan}
+                          onEdit={openCategoryEdit}
+                          onDelete={deleteCategory}
+                          deletingId={categoryDeleteId}
+                        />
+                        {children.map((child) => (
+                          <CategoryRow
+                            key={child.id}
+                            category={child}
+                            indent
+                            onEdit={openCategoryEdit}
+                            onDelete={deleteCategory}
+                            deletingId={categoryDeleteId}
+                          />
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               )}
             </div>
+
+            {/* ─── KATEGORİ DÜZENLEME MODALİ ─── */}
+            {categoryEditModal && categoryEditItem && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/40 px-4">
+                <div className="w-full max-w-md rounded-3xl border border-brand-secondary bg-brand-white p-5 shadow-2xl">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-brand-dark">Kategori Düzenle</p>
+                    <button
+                      type="button"
+                      onClick={closeCategoryEdit}
+                      disabled={categoryEditSaving || categoryImageUploading}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-bg text-brand-dark disabled:opacity-60"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  {/* Görsel yönetimi */}
+                  <div className="mb-4 flex items-start gap-4 rounded-xl border border-brand-secondary bg-brand-bg p-3">
+                    <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-xl border border-brand-secondary bg-brand-white">
+                      {categoryEditImageUrl ? (
+                        <img src={categoryEditImageUrl} alt="Kategori görseli" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-3xl text-brand-dark opacity-20">+</div>
+                      )}
+                      {categoryImageUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-brand-white/80">
+                          <Loader2 size={22} className="animate-spin text-brand-primary" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs font-semibold text-brand-dark">Kategori Görseli</p>
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-brand-secondary bg-brand-white px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-bg disabled:opacity-60">
+                        <Upload size={12} />
+                        Görsel Yükle
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={categoryImageUploading}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleCategoryEditImageUpload(f);
+                          }}
+                        />
+                      </label>
+                      {categoryEditImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setCategoryEditImageUrl('')}
+                          disabled={categoryImageUploading}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-60"
+                        >
+                          <Trash2 size={11} />
+                          Görseli Kaldır
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Form alanları */}
+                  <div className="space-y-2.5">
+                    <input
+                      type="text"
+                      value={categoryEditName}
+                      onChange={(e) => setCategoryEditName(e.target.value)}
+                      placeholder="Kategori adı *"
+                      className="rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={categoryEditOrder}
+                      onChange={(e) => setCategoryEditOrder(e.target.value)}
+                      placeholder="Sıra No"
+                      className="rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                    />
+                    <select
+                      value={categoryEditParentId}
+                      onChange={(e) => setCategoryEditParentId(e.target.value)}
+                      className="rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                    >
+                      <option value="">Üst Kategori — Yok (Ana Kategori)</option>
+                      {categories.filter((c) => !c.parent_id && String(c.id) !== String(categoryEditItem.id)).map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2">
+                      <select
+                        value={categoryEditDiscountType}
+                        onChange={(e) => setCategoryEditDiscountType(e.target.value)}
+                        className="flex-1 rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                      >
+                        <option value="">İndirim Yok</option>
+                        <option value="percent">Yüzde (%)</option>
+                        <option value="fixed">Sabit (₺)</option>
+                      </select>
+                      {categoryEditDiscountType && (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={categoryEditDiscountValue}
+                          onChange={(e) => setCategoryEditDiscountValue(e.target.value)}
+                          placeholder={categoryEditDiscountType === 'percent' ? 'Oran (%)' : 'Tutar (₺)'}
+                          className="w-28 rounded-xl border border-brand-secondary px-3 py-2 text-sm"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeCategoryEdit}
+                      disabled={categoryEditSaving || categoryImageUploading}
+                      className="rounded-xl border border-brand-secondary bg-brand-bg px-4 py-2 text-sm font-bold text-brand-dark disabled:opacity-60"
+                    >
+                      İptal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveCategoryEdit}
+                      disabled={categoryEditSaving || categoryImageUploading}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-brand-white shadow-md disabled:opacity-60"
+                    >
+                      {categoryEditSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                      Kaydet
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
-        {activeTab === 'showcase' && (
+        {(activeTab === 'showcase' || activeTab === 'campaigns') && (
           <section className="space-y-5">
+            {activeTab !== 'campaigns' && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-brand-dark inline-flex items-center gap-2">
@@ -3842,6 +4500,7 @@ export default function Admin() {
                 </div>
               )}
             </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -3908,10 +4567,10 @@ export default function Admin() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-bold text-brand-dark inline-flex items-center gap-2">
-                    <Truck size={15} className="text-brand-primary" /> Teslimat Yönetimi
+                    <Truck size={15} className="text-brand-primary" /> Teslimat Bölgeleri
                   </h2>
                   <p className="text-xs text-brand-dark mt-1">
-                    İlçe ve mahalle bazında teslimat açık/kapalı, hemen ve randevulu teslimat ayarlarını yönetin.
+                    İlçe bazında teslimat durumunu ve minimum sepet tutarını yönetin.
                   </p>
                 </div>
                 <button
@@ -3934,7 +4593,8 @@ export default function Admin() {
                 <p className="text-xs text-brand-dark mt-1">Yukarıdaki buton ile İzmir mahallelerini içe aktarabilirsiniz.</p>
               </div>
             ) : (
-              <div className="grid gap-3 lg:grid-cols-[260px,1fr]">
+              <div className="space-y-3">
+                <div className="grid gap-3 lg:grid-cols-[260px,1fr]">
                 <aside className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-3">
                   <p className="text-xs font-bold text-brand-dark mb-2">İlçeler</p>
                   <div className="max-h-[60vh] overflow-y-auto space-y-1.5 pr-1">
@@ -3962,6 +4622,47 @@ export default function Admin() {
                       {selectedDistrictDeliveryZones.length} mahalle
                     </span>
                   </div>
+
+                  {selectedDeliveryDistrictDraft && (
+                    <div className="mb-3 rounded-xl border border-brand-secondary bg-brand-bg px-3 py-2.5">
+                      <p className="text-xs font-semibold text-brand-dark">İlçe Ayarı</p>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-[auto,160px,auto]">
+                        <div className="rounded-lg border border-brand-secondary bg-brand-white px-2 py-1.5 flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold text-brand-dark">İlçe Aktif</p>
+                          <button
+                            type="button"
+                            onClick={() => updateDeliveryDistrictDraft(selectedDeliveryDistrictKey, 'is_active', !selectedDeliveryDistrictDraft.is_active)}
+                            className={`w-11 h-6 rounded-full p-0.5 transition ${selectedDeliveryDistrictDraft.is_active ? 'bg-brand-primary' : 'bg-brand-bg'}`}
+                            aria-label={`${selectedDeliveryDistrictDraft.district || selectedDeliveryDistrict} aktiflik`}
+                          >
+                            <span className={`block w-5 h-5 rounded-full bg-brand-white transition-transform ${selectedDeliveryDistrictDraft.is_active ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+
+                        <div className="rounded-lg border border-brand-secondary bg-brand-white px-2 py-1.5">
+                          <p className="mb-1 text-[11px] font-semibold text-brand-dark/70">Minimum Sepet (TL)</p>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={selectedDeliveryDistrictDraft.min_order}
+                            onChange={(e) => updateDeliveryDistrictDraft(selectedDeliveryDistrictKey, 'min_order', e.target.value)}
+                            className="w-full bg-transparent text-sm font-semibold text-brand-dark outline-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => saveDeliveryDistrictRule(selectedDeliveryDistrictKey)}
+                          disabled={deliveryDistrictSavingKey === selectedDeliveryDistrictKey}
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-brand-primary px-3 py-2 text-xs font-bold text-brand-white disabled:opacity-60"
+                        >
+                          {deliveryDistrictSavingKey === selectedDeliveryDistrictKey ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                          {deliveryDistrictSavingKey === selectedDeliveryDistrictKey ? 'Kaydediliyor...' : 'Kaydet'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {selectedDistrictDeliveryZones.length > 0 && (
                     <div className="mb-3 grid gap-2 sm:grid-cols-2">
@@ -4036,6 +4737,7 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             )}
           </section>
@@ -4568,32 +5270,41 @@ export default function Admin() {
             </div>
 
             <div className="space-y-3">
-              <input
-                type="text"
-                value={productForm.name}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Ürün adı"
-                className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-              />
+              <div>
+                <p className="mb-1 text-xs font-semibold text-gray-600">Ürün Adı *</p>
+                <input
+                  type="text"
+                  value={productForm.name}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ürün adı"
+                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                />
+              </div>
 
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={productForm.price}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, price: e.target.value }))}
-                placeholder="Fiyat"
-                className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-              />
+              <div>
+                <p className="mb-1 text-xs font-semibold text-gray-600">Fiyat (₺) *</p>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productForm.price}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, price: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                />
+              </div>
 
-              <input
-                type="text"
-                list="admin-category-options"
-                value={productForm.category}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))}
-                placeholder="Kategori"
-                className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-              />
+              <div>
+                <p className="mb-1 text-xs font-semibold text-gray-600">Kategori</p>
+                <input
+                  type="text"
+                  list="admin-category-options"
+                  value={productForm.category}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))}
+                  placeholder="Kategori seçin"
+                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                />
+              </div>
 
               <div className="rounded-xl border border-gray-300 p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -4657,62 +5368,123 @@ export default function Admin() {
                 )}
               </div>
 
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={productForm.order}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, order: e.target.value }))}
-                placeholder="Sıra"
-                className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-              />
-
-              <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p className="mb-1 text-xs font-semibold text-gray-600">Görüntülenme Sırası</p>
                 <input
                   type="number"
                   min="0"
                   step="1"
-                  value={productForm.calories}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, calories: e.target.value }))}
-                  placeholder="Kalori (kcal)"
-                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={productForm.protein}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, protein: e.target.value }))}
-                  placeholder="Protein (g)"
-                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={productForm.carbs}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, carbs: e.target.value }))}
-                  placeholder="Karbonhidrat (g)"
-                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={productForm.fats}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, fats: e.target.value }))}
-                  placeholder="Yağ (g)"
+                  value={productForm.order}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, order: e.target.value }))}
+                  placeholder="1"
                   className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
                 />
               </div>
 
-              <textarea
-                rows={3}
-                value={productForm.description}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Açıklama"
-                className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm resize-none outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
-              />
+              <div>
+                <p className="mb-1 text-xs font-semibold text-gray-600">Besin Değerleri</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={productForm.calories}
+                    onChange={(e) => setProductForm((prev) => ({ ...prev, calories: e.target.value }))}
+                    placeholder="Kalori (kcal)"
+                    className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={productForm.protein}
+                    onChange={(e) => setProductForm((prev) => ({ ...prev, protein: e.target.value }))}
+                    placeholder="Protein (g)"
+                    className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={productForm.carbs}
+                    onChange={(e) => setProductForm((prev) => ({ ...prev, carbs: e.target.value }))}
+                    placeholder="Karbonhidrat (g)"
+                    className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={productForm.fats}
+                    onChange={(e) => setProductForm((prev) => ({ ...prev, fats: e.target.value }))}
+                    placeholder="Yağ (g)"
+                    className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                  />
+                </div>
+              </div>
+
+              {/* Teslimat seçenekleri */}
+              <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-600">Teslimat Türü</p>
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={productForm.allow_immediate}
+                    onChange={e => setProductForm(p => ({ ...p, allow_immediate: e.target.checked }))}
+                    className="accent-green-600" />
+                  Hemen Teslim (allow_immediate)
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={productForm.allow_scheduled}
+                    onChange={e => setProductForm(p => ({ ...p, allow_scheduled: e.target.checked }))}
+                    className="accent-green-600" />
+                  Programlı Teslimat (allow_scheduled)
+                </label>
+              </div>
+
+              {/* Sepette Öner (cross-sell) */}
+              <div className="rounded-xl border border-gray-200 p-3">
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={productForm.is_crosssell}
+                    onChange={e => setProductForm(p => ({ ...p, is_crosssell: e.target.checked }))}
+                    className="accent-green-600" />
+                  <span className="font-semibold">Sepette Öner</span>
+                  <span className="text-gray-500">(is_crosssell — "Bunlar da ilgini çekebilir" bölümünde gösterilir)</span>
+                </label>
+              </div>
+
+              {/* İndirim */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="mb-1 text-xs font-semibold text-gray-600">İndirim Türü</p>
+                  <select value={productForm.discount_type}
+                    onChange={e => setProductForm(p => ({ ...p, discount_type: e.target.value }))}
+                    className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary">
+                    <option value="">— Yok —</option>
+                    <option value="percent">Yüzde (%)</option>
+                    <option value="fixed">Sabit (₺)</option>
+                  </select>
+                </div>
+                {productForm.discount_type && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold text-gray-600">İndirim Değeri</p>
+                    <input type="number" min="0" step="0.01"
+                      value={productForm.discount_value}
+                      onChange={e => setProductForm(p => ({ ...p, discount_value: e.target.value }))}
+                      placeholder={productForm.discount_type === 'percent' ? '10' : '25'}
+                      className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm outline-none focus:border-brand-primary" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold text-gray-600">Açıklama</p>
+                <textarea
+                  rows={3}
+                  value={productForm.description}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="İçerik, malzemeler, besin bilgisi..."
+                  className="w-full py-2.5 px-3 rounded-xl border border-gray-300 text-sm resize-none outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+                />
+              </div>
 
               <ImageUploadField
                 label="Ürün Görseli"

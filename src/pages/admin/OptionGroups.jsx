@@ -596,8 +596,9 @@ function ItemModal({ initial, onSave, onClose, saving, existingCount, products }
         setForm((prev) => ({
             ...prev,
             product_id: nextProductId,
-            name: matched?.name || '',
-            price_adjustment: matched ? Number(matched.price || 0) : 0,
+            // Sadece henüz boşsa ürün adını otomatik doldur, kullanıcı yazdıysa koru
+            name: prev.name.trim() ? prev.name : (matched?.name || ''),
+            price_adjustment: matched ? Number(matched.price || 0) : prev.price_adjustment,
         }));
     };
 
@@ -621,18 +622,22 @@ function ItemModal({ initial, onSave, onClose, saving, existingCount, products }
                 ))}
             </select>
 
-            <div className="mb-3 grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                    <p className="text-[11px] text-gray-500">Seçenek Adı</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">{form.name || 'Ürün seçin'}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                    <p className="text-[11px] text-gray-500">Ürün Fiyatı</p>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Seçenek Adı *</label>
+            <input
+                value={form.name}
+                onChange={(e) => set('name', e.target.value)}
+                placeholder="Örn: Büyük Boy, Az Şekerli..."
+                className="mb-3 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-green-500"
+            />
+
+            {selectedProduct && (
+                <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p className="text-[11px] text-gray-500">Bağlı Ürün Fiyatı</p>
                     <p className="text-sm font-semibold text-gray-800">
-                        {selectedProduct ? `${Number(selectedProduct.price || 0).toFixed(2)} ₺` : '—'}
+                        {Number(selectedProduct.price || 0).toFixed(2)} ₺
                     </p>
                 </div>
-            </div>
+            )}
 
             <div className="mb-3 grid grid-cols-2 gap-3">
                 <div>

@@ -94,6 +94,20 @@ function normalizeInitialValues(values) {
   };
 }
 
+function hasSavedTargets(values) {
+  const source = values && typeof values === 'object' ? values : {};
+  const targets = source.targets && typeof source.targets === 'object' ? source.targets : null;
+  if (!targets) return false;
+
+  const keys = ['kcal', 'protein', 'carbs', 'fats'];
+  return keys.some((key) => (
+    Object.prototype.hasOwnProperty.call(targets, key)
+    && targets[key] !== undefined
+    && targets[key] !== null
+    && String(targets[key]).trim() !== ''
+  ));
+}
+
 export default function MacroProfileModal({
   open,
   initialData,
@@ -109,16 +123,20 @@ export default function MacroProfileModal({
   const [weightKg, setWeightKg] = useState(DEFAULT_FORM.weightKg);
   const [goal, setGoal] = useState(DEFAULT_FORM.goal);
   const [targets, setTargets] = useState(DEFAULT_FORM.targets);
+  const [autoApplyTargets, setAutoApplyTargets] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    const normalized = normalizeInitialValues(initialData || initialValues);
+    const sourceValues = initialData || initialValues;
+    const normalized = normalizeInitialValues(sourceValues);
+    const noSavedTargets = !hasSavedTargets(sourceValues);
     setGender(normalized.gender);
     setAge(normalized.age);
     setHeightCm(normalized.heightCm);
     setWeightKg(normalized.weightKg);
     setGoal(normalized.goal);
     setTargets(normalized.targets);
+    setAutoApplyTargets(noSavedTargets);
   }, [initialData, initialValues, open]);
 
   const autoTargets = useMemo(() => (
@@ -126,9 +144,9 @@ export default function MacroProfileModal({
   ), [gender, age, goal, heightCm, weightKg]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !autoApplyTargets) return;
     setTargets(autoTargets);
-  }, [autoTargets, open]);
+  }, [autoApplyTargets, autoTargets, open]);
 
   const summary = useMemo(() => (
     `${targets.kcal} kcal | ${targets.protein}g Protein | ${targets.carbs}g Karb. | ${targets.fats}g Yağ`
@@ -136,10 +154,16 @@ export default function MacroProfileModal({
 
   const handleTargetChange = (key, value) => {
     const parsed = Number(value);
+    setAutoApplyTargets(false);
     setTargets((prev) => ({
       ...prev,
       [key]: Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0,
     }));
+  };
+
+  const handleAutoCalculate = () => {
+    setAutoApplyTargets(true);
+    setTargets(autoTargets);
   };
 
   const handleSubmit = async (event) => {
@@ -286,10 +310,19 @@ export default function MacroProfileModal({
           </div>
 
           <div className="rounded-2xl border border-brand-secondary/70 bg-brand-bg px-3 py-3">
-            <p className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-dark/70">
-              <Calculator size={13} />
-              Günlük Hedeflerin
-            </p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="mb-0 inline-flex items-center gap-1 text-xs font-semibold text-brand-dark/70">
+                <Calculator size={13} />
+                Günlük Hedeflerin
+              </p>
+              <button
+                type="button"
+                onClick={handleAutoCalculate}
+                className="rounded-full border border-brand-secondary/60 bg-brand-white px-2.5 py-1 text-[10px] font-semibold text-brand-dark/75 transition hover:bg-brand-bg"
+              >
+                Otomatik Hesapla
+              </button>
+            </div>
             <p className="mb-0 text-sm font-bold text-brand-dark">{summary}</p>
           </div>
 

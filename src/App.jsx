@@ -1,62 +1,43 @@
 import React, { Component, Suspense, useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m } from 'framer-motion';
-import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
-import { ProductProvider } from './context/ProductContext';
 import { supabase } from './supabase';
 
-// ── Her zaman eager yüklenen shell bileşenleri ────────────────────────────────
-// Bunlar route içeriği değil, uygulama iskeleti — lazy yapılmamalı.
-import BottomNavLayout from './components/BottomNavLayout';
-import OnboardingTour from './components/OnboardingTour';
+// ── Shell bileşenleri ────────────────────────────────────────────────────────
+import NotificationListener from './components/NotificationListener';
 
-// ── Tüm sayfalar lazy-loaded ──────────────────────────────────────────────────
-// Vite, her import() çağrısını ayrı bir chunk'a böler.
-// webpackChunkName yorumları Vite'ta da chunk adı olarak çalışır.
+// ── Sayfalar (lazy) ──────────────────────────────────────────────────────────
+const Login           = React.lazy(() => import('./pages/Login'));
+const StaffLogin      = React.lazy(() => import('./pages/StaffLogin'));
 
-// Kritik yol — kullanıcının ilk göreceği sayfalar (preload ipucu eklenebilir)
-const Home         = React.lazy(() => import(/* webpackChunkName: "page-home"     */ './pages/Home'));
-const Login        = React.lazy(() => import(/* webpackChunkName: "page-login"    */ './pages/Login'));
-const Register     = React.lazy(() => import(/* webpackChunkName: "page-register" */ './pages/Register'));
+const Admin           = React.lazy(() => import('./pages/Admin'));
+const BossLayout      = React.lazy(() => import('./pages/admin/BossLayout'));
+const BossDashboard   = React.lazy(() => import('./pages/admin/BossDashboard'));
+const BossCatalog     = React.lazy(() => import('./pages/admin/BossCatalog'));
+const BossShowcase    = React.lazy(() => import('./pages/admin/BossShowcase'));
+const BossVitrin      = React.lazy(() => import('./pages/admin/BossVitrin'));
+const BossDelivery    = React.lazy(() => import('./pages/admin/BossDelivery'));
+const BossBusinessHours = React.lazy(() => import('./pages/admin/BossBusinessHours'));
+const BossSupport = React.lazy(() => import('./pages/admin/BossSupport'));
+const BossMacro = React.lazy(() => import('./pages/admin/BossMacro'));
+const BossSettings    = React.lazy(() => import('./pages/admin/BossSettings'));
+const BossBranches    = React.lazy(() => import('./pages/admin/BossBranches'));
+const BossFinance     = React.lazy(() => import('./pages/admin/BossFinance'));
+const BossReviews     = React.lazy(() => import('./pages/admin/BossReviews'));
+const AdminOrders     = React.lazy(() => import('./pages/admin/AdminOrders'));
+const AdminCustomers  = React.lazy(() => import('./pages/admin/AdminCustomers'));
+const AdminTickets         = React.lazy(() => import('./pages/admin/AdminTickets'));
+const AdminOptionGroups = React.lazy(() => import('./pages/admin/OptionGroups'));
+const AdminProductOpts  = React.lazy(() => import('./pages/admin/ProductOptionManager'));
+const KitchenLayout   = React.lazy(() => import('./pages/admin/KitchenLayout'));
+const KitchenDashboard = React.lazy(() => import('./pages/admin/KitchenDashboard'));
 
-// Alışveriş akışı
-const ProductDetail = React.lazy(() => import(/* webpackChunkName: "page-product" */ './pages/ProductDetail'));
-const Cart          = React.lazy(() => import(/* webpackChunkName: "page-cart"    */ './pages/Cart'));
-const Checkout      = React.lazy(() => import(/* webpackChunkName: "page-checkout"*/ './pages/Checkout'));
-const Payment       = React.lazy(() => import(/* webpackChunkName: "page-payment" */ './pages/Payment'));
-const Success       = React.lazy(() => import(/* webpackChunkName: "page-success" */ './pages/Success'));
-const Fail          = React.lazy(() => import(/* webpackChunkName: "page-fail"    */ './pages/Fail'));
-
-// Kullanıcı profili grubu — aynı chunk'ta birleştirilebilir ama ayrı tutmak daha temiz
-const Profile      = React.lazy(() => import(/* webpackChunkName: "page-profile"    */ './pages/Profile'));
-const Orders       = React.lazy(() => import(/* webpackChunkName: "page-orders"     */ './pages/Orders'));
-const OrderDetail  = React.lazy(() => import(/* webpackChunkName: "page-order-detail"*/ './pages/OrderDetail'));
-const Addresses    = React.lazy(() => import(/* webpackChunkName: "page-addresses"  */ './pages/profile/Addresses'));
-const Cards        = React.lazy(() => import(/* webpackChunkName: "page-cards"      */ './pages/profile/Cards'));
-const Coupons      = React.lazy(() => import(/* webpackChunkName: "page-coupons"    */ './pages/profile/Coupons'));
-const Security     = React.lazy(() => import(/* webpackChunkName: "page-security"   */ './pages/profile/Security'));
-const Contracts    = React.lazy(() => import(/* webpackChunkName: "page-contracts"  */ './pages/profile/Contracts'));
-const Support      = React.lazy(() => import(/* webpackChunkName: "page-support"    */ './pages/Support'));
-const HowItWorks   = React.lazy(() => import(/* webpackChunkName: "page-how-it-works" */ './pages/HowItWorks'));
-const PrivacyPolicy = React.lazy(() => import(/* webpackChunkName: "page-privacy-policy" */ './pages/PrivacyPolicy'));
-const RefundPolicy = React.lazy(() => import(/* webpackChunkName: "page-refund-policy" */ './pages/RefundPolicy'));
-const TermsOfService = React.lazy(() => import(/* webpackChunkName: "page-terms-of-service" */ './pages/TermsOfService'));
-
-// Bottom-nav sekmeleri
-const Tracker      = React.lazy(() => import(/* webpackChunkName: "page-tracker"     */ './pages/Tracker'));
-const Offers       = React.lazy(() => import(/* webpackChunkName: "page-offers"      */ './pages/Offers'));
-const Subscription = React.lazy(() => import(/* webpackChunkName: "page-subscription"*/ './pages/Subscription'));
-
-// Admin — en ağır chunk, asla kritik yolda olmamalı
-const Admin             = React.lazy(() => import(/* webpackChunkName: "admin-main"    */ './pages/Admin'));
-const AdminOptionGroups = React.lazy(() => import(/* webpackChunkName: "admin-options" */ './pages/admin/OptionGroups'));
-const AdminProductOpts  = React.lazy(() => import(/* webpackChunkName: "admin-product" */ './pages/admin/ProductOptionManager'));
-
+// ── Sayfa geçiş animasyonu ───────────────────────────────────────────────────
 const PAGE_VARIANTS = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 const PAGE_TRANSITION = {
@@ -67,7 +48,7 @@ const PAGE_TRANSITION = {
 function PageTransition({ children, onStateChange }) {
   return (
     <m.div
-      className="route-transition-page"
+      className="route-transition-page bg-[#F0F0F0]"
       variants={PAGE_VARIANTS}
       initial="initial"
       animate="animate"
@@ -83,36 +64,28 @@ function PageTransition({ children, onStateChange }) {
 
 function ScrollToTop() {
   const location = useLocation();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
-
+  useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
   return null;
 }
 
+// ── Error Boundary ────────────────────────────────────────────────────────────
 class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+  static getDerivedStateFromError() {
+    return { hasError: true };
   }
 
-  componentDidCatch(error, errorInfo) {
-    console.error(
-      '%c AppErrorBoundary: Uygulama çöktü ',
-      'background:#ff0000;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px',
-      error,
-      errorInfo
-    );
+  componentDidCatch(error, info) {
+    console.error('AppErrorBoundary:', error, info);
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null });
-    window.location.replace('/');
+    this.setState({ hasError: false });
+    window.location.replace('/boss');
   };
 
   render() {
@@ -120,28 +93,24 @@ class AppErrorBoundary extends Component {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-[#F0F0F0] p-6 text-center">
           <div className="mx-auto w-full max-w-sm rounded-3xl bg-white p-8 shadow-lg">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl">
-              !
-            </div>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl">!</div>
             <h1 className="mb-2 text-xl font-bold text-[#202020]">Bir şeyler ters gitti</h1>
-            <p className="mb-6 text-sm text-[#202020]/60">
-              Sayfa yüklenirken beklenmeyen bir hata oluştu.
-            </p>
+            <p className="mb-6 text-sm text-[#202020]/60">Sayfa yüklenirken beklenmeyen bir hata oluştu.</p>
             <button
               onClick={this.handleReset}
               className="w-full rounded-full bg-[#98CD00] px-6 py-3 text-sm font-bold text-white active:scale-95 transition-transform"
             >
-              Ana Sayfaya Dön
+              Panele Dön
             </button>
           </div>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
+// ── Admin route guard ────────────────────────────────────────────────────────
 function AdminRouteGuard({ page } = {}) {
   const [accessState, setAccessState] = useState('loading');
 
@@ -149,16 +118,10 @@ function AdminRouteGuard({ page } = {}) {
     let isMounted = true;
 
     async function verifyAccess() {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (!isMounted) return;
-      if (authError || !user) {
-        setAccessState('unauthenticated');
-        return;
-      }
+      if (authError || !user) { setAccessState('unauthenticated'); return; }
 
       let response = await supabase
         .from('admin_allowlist')
@@ -188,143 +151,119 @@ function AdminRouteGuard({ page } = {}) {
     }
 
     verifyAccess();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   if (accessState === 'loading') {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center text-sm text-brand-dark">
+      <div className="min-h-screen bg-[#F0F0F0] flex items-center justify-center text-sm text-gray-500">
         Yetki kontrol ediliyor...
       </div>
     );
   }
-
-  if (accessState === 'unauthenticated') {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (accessState === 'forbidden') {
-    return <Navigate to="/" replace />;
-  }
-
+  if (accessState === 'unauthenticated') return <Navigate to="/login" replace />;
+  if (accessState === 'forbidden') return <Navigate to="/login" replace />;
   return page ?? <Admin />;
 }
 
+// ── Animated routes ──────────────────────────────────────────────────────────
 function AnimatedRoutes() {
   const location = useLocation();
   const [isRouteAnimating, setIsRouteAnimating] = useState(false);
 
-  useEffect(() => {
-    setIsRouteAnimating(true);
-  }, [location.pathname]);
+  useEffect(() => { setIsRouteAnimating(true); }, [location.pathname]);
 
-  const withPageTransition = useCallback(
+  const wrap = useCallback(
     (node) => <PageTransition onStateChange={setIsRouteAnimating}>{node}</PageTransition>,
     []
   );
 
   return (
-    <div className={isRouteAnimating ? 'route-animating' : ''}>
+    <div className={`bg-[#F0F0F0] min-h-screen ${isRouteAnimating ? 'route-animating' : ''}`}>
       <ScrollToTop />
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<BottomNavLayout />}>
-            <Route index element={withPageTransition(<Home />)} />
-            <Route path="tracker" element={withPageTransition(<Tracker />)} />
-            <Route path="offers" element={withPageTransition(<Offers />)} />
-            <Route path="subscription" element={withPageTransition(<Subscription />)} />
-            <Route path="profile" element={withPageTransition(<Profile />)} />
+          {/* ── Boss (admin) ── */}
+          <Route path="/boss" element={<AdminRouteGuard page={<BossLayout />} />}>
+            <Route index element={wrap(<BossDashboard />)} />
+            <Route path="siparisler" element={wrap(<AdminOrders />)} />
+            <Route path="customers" element={wrap(<AdminCustomers />)} />
+            <Route path="catalog" element={wrap(<BossCatalog />)} />
+            <Route path="showcase" element={wrap(<BossShowcase />)} />
+            <Route path="vitrin" element={wrap(<BossVitrin />)} />
+            <Route path="teslimat" element={wrap(<BossDelivery />)} />
+            <Route path="yorumlar" element={wrap(<BossReviews />)} />
+            <Route path="branches" element={wrap(<BossBranches />)} />
+            <Route path="subeler" element={<Navigate to="/boss/branches" replace />} />
+            <Route path="finance" element={wrap(<BossFinance />)} />
+            <Route path="finans" element={<Navigate to="/boss/finance" replace />} />
+            <Route path="reviews" element={wrap(<BossReviews />)} />
+            <Route path="business-hours" element={wrap(<BossBusinessHours />)} />
+            <Route path="support" element={wrap(<BossSupport />)} />
+            <Route path="macro" element={wrap(<BossMacro />)} />
+            <Route path="settings" element={wrap(<BossSettings />)} />
+            <Route path="ayarlar" element={<Navigate to="/boss/settings" replace />} />
+            <Route path="option-groups" element={wrap(<AdminOptionGroups />)} />
+            <Route path="product-options" element={wrap(<AdminProductOpts />)} />
+            <Route path="tickets" element={wrap(<AdminTickets />)} />
           </Route>
 
-          <Route path="/product/:id" element={withPageTransition(<ProductDetail />)} />
-          <Route path="/cart" element={withPageTransition(<Cart />)} />
-          <Route path="/checkout" element={withPageTransition(<Checkout />)} />
-          <Route path="/payment" element={withPageTransition(<Payment />)} />
-          <Route path="/success" element={withPageTransition(<Success />)} />
-          <Route path="/orders" element={withPageTransition(<Orders />)} />
-          <Route path="/order-detail/:id" element={withPageTransition(<OrderDetail />)} />
-          <Route path="/profile/orders" element={<Navigate to="/orders" replace />} />
-          <Route path="/profile/addresses" element={withPageTransition(<Addresses />)} />
-          <Route path="/profile/cards" element={withPageTransition(<Cards />)} />
-          <Route path="/profile/coupons" element={withPageTransition(<Coupons />)} />
-          <Route path="/profile/support" element={withPageTransition(<Support />)} />
-          <Route path="/nasil-calisir" element={withPageTransition(<HowItWorks />)} />
-          <Route path="/gizlilik-politikasi" element={withPageTransition(<PrivacyPolicy />)} />
-          <Route path="/iade-politikasi" element={withPageTransition(<RefundPolicy />)} />
-          <Route path="/kullanim-kosullari" element={withPageTransition(<TermsOfService />)} />
-          <Route path="/profile/security" element={withPageTransition(<Security />)} />
-          <Route path="/profile/contracts" element={withPageTransition(<Contracts />)} />
-          <Route path="/admin" element={withPageTransition(<AdminRouteGuard />)} />
-          <Route path="/admin/option-groups" element={withPageTransition(<AdminRouteGuard page={<AdminOptionGroups />} />)} />
-          <Route path="/admin/product-options" element={withPageTransition(<AdminRouteGuard page={<AdminProductOpts />} />)} />
-          <Route path="/fail" element={withPageTransition(<Fail />)} />
-          <Route path="/login" element={withPageTransition(<Login />)} />
-          <Route path="/register" element={withPageTransition(<Register />)} />
-          <Route path="/account" element={<Navigate to="/profile" replace />} />
-          <Route path="/subscriptions" element={<Navigate to="/subscription" replace />} />
+          {/* ── Kitchen (KDS) ── */}
+          <Route path="/kitchen" element={<AdminRouteGuard page={<KitchenLayout />} />}>
+            <Route index element={wrap(<KitchenDashboard />)} />
+            <Route path="completed" element={wrap(<KitchenDashboard />)} />
+          </Route>
+
+          {/* ── Auth ── */}
+          <Route path="/login" element={wrap(<Login />)} />
+          <Route path="/staff" element={wrap(<StaffLogin />)} />
+
+          {/* ── Yönlendirmeler ── */}
+          <Route path="/admin" element={<Navigate to="/boss" replace />} />
+          <Route path="/admin/*" element={<Navigate to="/boss" replace />} />
+          <Route path="/" element={<Navigate to="/boss" replace />} />
+          <Route path="*" element={<Navigate to="/boss" replace />} />
         </Routes>
       </AnimatePresence>
     </div>
   );
 }
 
-/**
- * PageLoadingFallback
- * Lazy chunk yüklenirken gösterilen markalı loading ekranı.
- * Beyaz ekran / flash of unstyled content önlenir.
- */
+// ── Loading fallback ─────────────────────────────────────────────────────────
 function PageLoadingFallback() {
   return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[#F0F0F0]"
-      aria-label="Sayfa yükleniyor"
-      role="status"
-    >
-      {/* Çift halka — marka yeşili + beyaz */}
+    <div className="flex min-h-screen items-center justify-center gap-5 bg-[#F0F0F0]" role="status">
       <div className="rounded-full bg-black/20 p-2">
-      <div className="relative h-14 w-14">
-        {/* Dış halka: marka yeşili */}
-        <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-[#98CD00] border-t-transparent" />
-        {/* İç halka: beyaz, ters yönde */}
-        <div
-          className="absolute inset-[6px] rounded-full border-[3px] border-white border-b-transparent"
-          style={{ animation: 'spin 0.75s linear infinite reverse' }}
-        />
+        <div className="relative h-14 w-14">
+          <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-[#98CD00] border-t-transparent" />
+          <div
+            className="absolute inset-[6px] rounded-full border-[3px] border-white border-b-transparent"
+            style={{ animation: 'spin 0.75s linear infinite reverse' }}
+          />
+        </div>
       </div>
-      </div>
-
-      {/* Marka adı */}
-      <p className="font-google text-[13px] font-medium tracking-widest text-[#202020]/40 uppercase">
-        Kcal
-      </p>
+      <p className="text-[13px] font-medium tracking-widest text-[#202020]/40 uppercase">Kcal Admin</p>
     </div>
   );
 }
 
+// ── Root ─────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
-        {/* ProductProvider: ürünleri App seviyesinde bir kez çeker,
-            sayfa geçişlerinde yeniden fetch yapılmaz. */}
-        <ProductProvider>
-          <CartProvider>
-            <BrowserRouter>
-              <LazyMotion features={domAnimation}>
-                <MotionConfig reducedMotion="user" transition={PAGE_TRANSITION}>
-                  <div className="relative min-h-screen" style={{ overflowX: 'clip' }}>
-                    <OnboardingTour />
-                    <Suspense fallback={<PageLoadingFallback />}>
-                      <AnimatedRoutes />
-                    </Suspense>
-                  </div>
-                </MotionConfig>
-              </LazyMotion>
-            </BrowserRouter>
-          </CartProvider>
-        </ProductProvider>
+        <BrowserRouter>
+          <LazyMotion features={domAnimation}>
+            <MotionConfig reducedMotion="user" transition={PAGE_TRANSITION}>
+              <div className="relative min-h-screen" style={{ overflowX: 'clip' }}>
+                <NotificationListener />
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <AnimatedRoutes />
+                </Suspense>
+              </div>
+            </MotionConfig>
+          </LazyMotion>
+        </BrowserRouter>
       </AuthProvider>
     </AppErrorBoundary>
   );

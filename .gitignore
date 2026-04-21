@@ -31,3 +31,4 @@ dist-ssr
 
 # Figma design import — binary assets, not needed in git history
 .figma_import/
+.env*.local
