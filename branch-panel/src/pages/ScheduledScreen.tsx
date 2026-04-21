@@ -1,7 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarClock, CheckCircle, ClipboardList, Loader2, XCircle } from 'lucide-react'
+import { CalendarClock, CheckCircle, ClipboardList, Loader2, XCircle, BellRing } from 'lucide-react'
 import { supabase } from '../supabase'
 import type { Order, OrderItem } from '../types'
+
+// ── Order modification request types ──────────────────────────────────────────
+type ModType = 'cancel' | 'date_change' | 'address_change'
+type ModStatus = 'pending' | 'approved' | 'rejected'
+
+interface OrderModification {
+  id: string
+  order_id: string
+  user_id: string
+  type: ModType
+  status: ModStatus
+  old_scheduled_date: string | null
+  new_scheduled_date: string | null
+  old_scheduled_time: string | null
+  new_scheduled_time: string | null
+  old_address_id: string | null
+  new_address_id: string | null
+  new_address_text: string | null
+  reject_reason: string | null
+  customer_note: string | null
+  created_at: string
+}
+
+const MOD_TYPE_LABEL: Record<ModType, string> = {
+  cancel: 'İptal Talebi',
+  date_change: 'Tarih Değişikliği',
+  address_change: 'Adres Değişikliği',
+}
 
 // ── Yardımcılar ───────────────────────────────────────────────────────────────
 function parseItems(raw: unknown): OrderItem[] {
@@ -131,8 +159,8 @@ function PrepList({ orders }: { orders: Order[] }) {
 }
 
 // ── Sipariş Kartı ─────────────────────────────────────────────────────────────
-function OrderCard({ order, saving, onAccept, onReady, onCancel }: {
-  order: Order; saving: string | null
+function OrderCard({ order, saving, pendingMod, onAccept, onReady, onCancel }: {
+  order: Order; saving: string | null; pendingMod?: OrderModification
   onAccept: (id: string) => void; onReady: (id: string) => void; onCancel: (o: Order) => void
 }) {
   const items       = parseItems(order.items)
@@ -161,6 +189,11 @@ function OrderCard({ order, saving, onAccept, onReady, onCancel }: {
           }`}>
             {isPending ? '📅 Bekliyor' : 'Hazırlanıyor'}
           </span>
+          {pendingMod && (
+            <span className="rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+              {MOD_TYPE_LABEL[pendingMod.type]}
+            </span>
+          )}
         </div>
       </div>
 
@@ -234,8 +267,13 @@ export default function ScheduledScreen() {
   const [saving,      setSaving]      = useState<string | null>(null)
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null)
   const [cancelling,  setCancelling]  = useState(false)
+  const [modifications,    setModifications]    = useState<OrderModification[]>([])
+  const [rejectingMod,     setRejectingMod]     = useState<OrderModification | null>(null)
+  const [rejectReasonText, setRejectReasonText] = useState('')
+  const [modBusy,          setModBusy]          = useState<string | null>(null)
 
   const channelRef    = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const modChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const prevCountRef  = useRef(0)
   const unlockedRef   = useRef(false)
 
@@ -263,7 +301,20 @@ export default function ScheduledScreen() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchOrders() }, [fetchOrders])
+  const fetchModifications = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('order_modifications')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+    if (error) {
+      console.error('[ScheduledScreen] modifications fetch error:', error)
+      return
+    }
+    setModifications((data ?? []) as OrderModification[])
+  }, [])
+
+  useEffect(() => { fetchOrders(); fetchModifications() }, [fetchOrders, fetchModifications])
 
   useEffect(() => {
     channelRef.current = supabase
@@ -272,6 +323,109 @@ export default function ScheduledScreen() {
       .subscribe()
     return () => { channelRef.current?.unsubscribe() }
   }, [fetchOrders])
+
+  useEffect(() => {
+    modChannelRef.current = supabase
+      .channel('scheduled-order-modifications')
+      .on('postgres_changes', { event: '*' as const, schema: 'public', table: 'order_modifications' }, () => fetchModifications())
+      .subscribe()
+    return () => { modChannelRef.current?.unsubscribe() }
+  }, [fetchModifications])
+
+  async function approveModification(mod: OrderModification) {
+    setModBusy(mod.id)
+    try {
+      const now = new Date().toISOString()
+      // 1) Apply the change to the order
+      if (mod.type === 'cancel') {
+        const { error } = await supabase.from('orders')
+          .update({ status: 'cancelled', updated_at: now })
+          .eq('id', mod.order_id)
+        if (error) throw error
+      } else if (mod.type === 'date_change') {
+        const patch: Record<string, unknown> = { updated_at: now }
+        if (mod.new_scheduled_date) patch.scheduled_date = mod.new_scheduled_date
+        if (mod.new_scheduled_time) patch.scheduled_time = mod.new_scheduled_time
+        const { error } = await supabase.from('orders').update(patch).eq('id', mod.order_id)
+        if (error) throw error
+      } else if (mod.type === 'address_change') {
+        const patch: Record<string, unknown> = { updated_at: now }
+        if (mod.new_address_id) patch.address_id = mod.new_address_id
+        if (mod.new_address_text) patch.address = mod.new_address_text
+        const { error } = await supabase.from('orders').update(patch).eq('id', mod.order_id)
+        if (error) throw error
+      }
+
+      // 2) Mark modification approved
+      const { error: modErr } = await supabase.from('order_modifications')
+        .update({ status: 'approved', reviewed_at: now, updated_at: now })
+        .eq('id', mod.id)
+      if (modErr) throw modErr
+
+      // 3) Notify the user (best-effort)
+      try {
+        await supabase.from('notifications').insert([{
+          user_id: mod.user_id,
+          type: `order_modification_${mod.type}_approved`,
+          title: `${MOD_TYPE_LABEL[mod.type]} onaylandı`,
+          body: 'Talebiniz ekibimiz tarafından onaylandı.',
+          data: { order_id: mod.order_id, modification_id: mod.id },
+        }])
+      } catch (notifErr) {
+        console.warn('[ScheduledScreen] notification insert failed:', notifErr)
+      }
+
+      await Promise.all([fetchModifications(), fetchOrders()])
+    } catch (err) {
+      console.error('[ScheduledScreen] approve error:', err)
+      alert('Onay başarısız. Lütfen tekrar deneyin.')
+    } finally {
+      setModBusy(null)
+    }
+  }
+
+  async function rejectModification(mod: OrderModification, reason: string) {
+    setModBusy(mod.id)
+    try {
+      const now = new Date().toISOString()
+      const { error } = await supabase.from('order_modifications')
+        .update({
+          status: 'rejected',
+          reviewed_at: now,
+          updated_at: now,
+          reject_reason: reason || null,
+        })
+        .eq('id', mod.id)
+      if (error) throw error
+
+      try {
+        await supabase.from('notifications').insert([{
+          user_id: mod.user_id,
+          type: `order_modification_${mod.type}_rejected`,
+          title: `${MOD_TYPE_LABEL[mod.type]} reddedildi`,
+          body: reason || 'Talebiniz reddedildi.',
+          data: { order_id: mod.order_id, modification_id: mod.id, reject_reason: reason || null },
+        }])
+      } catch (notifErr) {
+        console.warn('[ScheduledScreen] notification insert failed:', notifErr)
+      }
+
+      await fetchModifications()
+    } catch (err) {
+      console.error('[ScheduledScreen] reject error:', err)
+      alert('Reddetme başarısız. Lütfen tekrar deneyin.')
+    } finally {
+      setModBusy(null)
+      setRejectingMod(null)
+      setRejectReasonText('')
+    }
+  }
+
+  const modsByOrderId = useMemo(() => {
+    const map = new Map<string, OrderModification>()
+    modifications.forEach((mod) => { map.set(String(mod.order_id), mod) })
+    return map
+  }, [modifications])
 
   // Bip: yeni randevulu sipariş gelince
   useEffect(() => {
@@ -327,6 +481,107 @@ export default function ScheduledScreen() {
         />
       )}
 
+      {rejectingMod && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h3 className="text-base font-bold text-brand-dark mb-1">Talebi Reddet</h3>
+            <p className="text-xs text-slate-400 mb-4">
+              {MOD_TYPE_LABEL[rejectingMod.type]} — müşteriye gösterilecek bir neden yazın.
+            </p>
+            <textarea
+              rows={3}
+              value={rejectReasonText}
+              onChange={(e) => setRejectReasonText(e.target.value)}
+              placeholder="Ör: Mutfak randevu saatini karşılayamıyor..."
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200 mb-3"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setRejectingMod(null); setRejectReasonText('') }}
+                disabled={modBusy === rejectingMod.id}
+                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={() => rejectModification(rejectingMod, rejectReasonText.trim())}
+                disabled={modBusy === rejectingMod.id}
+                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+              >
+                {modBusy === rejectingMod.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                Reddet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modifications.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-orange-200 bg-orange-50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <BellRing size={16} className="text-orange-600" />
+            <p className="text-sm font-bold text-orange-800">
+              Müşteri Değişiklik Talepleri ({modifications.length})
+            </p>
+          </div>
+          <div className="space-y-2">
+            {modifications.map((mod) => {
+              const busy = modBusy === mod.id
+              const relatedOrder = orders.find((o) => String(o.id) === String(mod.order_id))
+              const displayCode = relatedOrder ? orderCode(relatedOrder) : `#${String(mod.order_id).slice(-6).toUpperCase()}`
+              return (
+                <div key={mod.id} className="rounded-xl border border-orange-200 bg-white p-3">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                          {MOD_TYPE_LABEL[mod.type]}
+                        </span>
+                        <span className="text-xs font-bold text-brand-dark">{displayCode}</span>
+                      </div>
+                      {mod.type === 'date_change' && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          <span className="line-through">{mod.old_scheduled_date ?? '—'} {(mod.old_scheduled_time || '').slice(0,5)}</span>
+                          {' → '}
+                          <span className="font-semibold text-brand-dark">
+                            {mod.new_scheduled_date ?? '—'} {(mod.new_scheduled_time || '').slice(0,5)}
+                          </span>
+                        </p>
+                      )}
+                      {mod.type === 'address_change' && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Yeni adres: <span className="font-semibold text-brand-dark">{mod.new_address_text || '—'}</span>
+                        </p>
+                      )}
+                      {mod.customer_note && (
+                        <p className="mt-1 text-[11px] italic text-slate-400">Not: {mod.customer_note}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => approveModification(mod)}
+                      disabled={busy}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-xs font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {busy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                      Onayla
+                    </button>
+                    <button
+                      onClick={() => { setRejectingMod(mod); setRejectReasonText('') }}
+                      disabled={busy}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-300 py-2 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <XCircle size={12} /> Reddet
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -354,6 +609,7 @@ export default function ScheduledScreen() {
             {orders.map(order => (
               <OrderCard
                 key={order.id} order={order} saving={saving}
+                pendingMod={modsByOrderId.get(String(order.id))}
                 onAccept={markAccept} onReady={markReady} onCancel={setCancelOrder}
               />
             ))}
