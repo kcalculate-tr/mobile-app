@@ -46,6 +46,26 @@ const ORDER_SYNC_POLL_MS = 12000;
 const AUTOPLAY_BLOCKED_MESSAGE = 'Tarayıcı otomatik ses çalmayı engelledi. Bir kez sayfaya tıklayıp tekrar deneyin.';
 const RECEIPT_BUSINESS_NAME = 'KCAL';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DELIVERY_DAY_PILLS = [
+  { value: 1, label: 'Pzt' },
+  { value: 2, label: 'Sal' },
+  { value: 3, label: 'Çar' },
+  { value: 4, label: 'Per' },
+  { value: 5, label: 'Cum' },
+  { value: 6, label: 'Cmt' },
+  { value: 0, label: 'Paz' },
+];
+const DELIVERY_DAY_SHORT = {
+  0: 'Paz', 1: 'Pzt', 2: 'Sal', 3: 'Çar', 4: 'Per', 5: 'Cum', 6: 'Cmt',
+};
+function formatDeliveryDaysLabel(days) {
+  if (!Array.isArray(days) || days.length === 0) return 'Belirtilmemiş';
+  const sorted = [...days].map((v) => Number(v)).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (sorted.length === 7) return 'Her gün';
+  if (JSON.stringify(sorted) === JSON.stringify([1, 2, 3, 4, 5])) return 'Hafta içi';
+  if (JSON.stringify(sorted) === JSON.stringify([0, 6])) return 'Hafta sonu';
+  return sorted.map((d) => DELIVERY_DAY_SHORT[d]).join(', ');
+}
 const FINANCE_PERIOD_OPTIONS = [
   { key: 'today', label: 'Bugün' },
   { key: 'yesterday', label: 'Dün' },
@@ -987,6 +1007,12 @@ export default function Admin({
       const minOrder = Math.max(0, Number(item?.min_order || 0));
       const cityName = String(item?.city || 'İzmir').trim() || 'İzmir';
       const zoneId = String(item?.id || '').trim();
+      const rawDays = Array.isArray(item?.delivery_days) ? item.delivery_days : null;
+      const parsedDays = rawDays
+        ? rawDays
+            .map((v) => Number(v))
+            .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+        : null;
 
       if (!districtMap.has(key)) {
         districtMap.set(key, {
@@ -995,6 +1021,7 @@ export default function Admin({
           city: cityName,
           is_active: normalizeBoolean(item?.is_active, false),
           min_order: minOrder,
+          delivery_days: parsedDays && parsedDays.length > 0 ? parsedDays : [1, 2, 3, 4, 5],
           zoneIds: zoneId ? [zoneId] : [],
         });
         return;
@@ -1029,6 +1056,9 @@ export default function Admin({
       district: selectedDeliveryDistrictSetting?.district || selectedDeliveryDistrict,
       is_active: Boolean(selectedDeliveryDistrictSetting?.is_active),
       min_order: String(selectedDeliveryDistrictSetting?.min_order ?? 0),
+      delivery_days: Array.isArray(selectedDeliveryDistrictSetting?.delivery_days)
+        ? selectedDeliveryDistrictSetting.delivery_days
+        : [1, 2, 3, 4, 5],
     };
 
     const draft = deliveryDistrictDrafts[selectedDeliveryDistrictKey];
@@ -1039,6 +1069,7 @@ export default function Admin({
       ...draft,
       is_active: typeof draft?.is_active === 'boolean' ? draft.is_active : fallback.is_active,
       min_order: draft?.min_order !== undefined ? draft.min_order : fallback.min_order,
+      delivery_days: Array.isArray(draft?.delivery_days) ? draft.delivery_days : fallback.delivery_days,
     };
   }, [
     deliveryDistrictDrafts,
@@ -1075,6 +1106,9 @@ export default function Admin({
           district: item.district,
           is_active: typeof existing?.is_active === 'boolean' ? existing.is_active : item.is_active,
           min_order: existing?.min_order !== undefined ? existing.min_order : String(item.min_order),
+          delivery_days: Array.isArray(existing?.delivery_days)
+            ? existing.delivery_days
+            : (Array.isArray(item.delivery_days) ? item.delivery_days : [1, 2, 3, 4, 5]),
         };
       });
       return next;
@@ -2155,6 +2189,11 @@ export default function Admin({
         min_order: Math.max(0, Number(item?.min_order || 0)),
         allow_immediate: normalizeBoolean(item?.allow_immediate, false),
         allow_scheduled: normalizeBoolean(item?.allow_scheduled, false),
+        delivery_days: Array.isArray(item?.delivery_days)
+          ? item.delivery_days
+              .map((v) => Number(v))
+              .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+          : [1, 2, 3, 4, 5],
       })).sort((a, b) => {
         const districtDiff = String(a?.district || '').localeCompare(String(b?.district || ''), 'tr');
         if (districtDiff !== 0) return districtDiff;
@@ -2360,11 +2399,22 @@ export default function Admin({
       return;
     }
 
+    const rawDays = Array.isArray(draft?.delivery_days) ? draft.delivery_days : [1, 2, 3, 4, 5];
+    const normalizedDays = Array.from(
+      new Set(
+        rawDays
+          .map((v) => Number(v))
+          .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+      )
+    ).sort((a, b) => a - b);
+    const deliveryDaysPayload = normalizedDays.length > 0 ? normalizedDays : [1, 2, 3, 4, 5];
+
     const payload = {
       city: String(draft?.city || 'İzmir').trim() || 'İzmir',
       district: districtName,
       is_active: Boolean(draft?.is_active),
       min_order: parsedMinOrder,
+      delivery_days: deliveryDaysPayload,
       updated_at: new Date().toISOString(),
     };
 
@@ -2393,6 +2443,9 @@ export default function Admin({
             min_order: Math.max(0, Number(matched?.min_order ?? item?.min_order ?? 0)),
             allow_immediate: normalizeBoolean(matched?.allow_immediate ?? item?.allow_immediate, false),
             allow_scheduled: normalizeBoolean(matched?.allow_scheduled ?? item?.allow_scheduled, false),
+            delivery_days: Array.isArray(matched?.delivery_days)
+              ? matched.delivery_days
+              : (Array.isArray(item?.delivery_days) ? item.delivery_days : deliveryDaysPayload),
           };
         }));
       } else {
@@ -2406,6 +2459,7 @@ export default function Admin({
           min_order: Math.max(0, Number(created?.min_order || 0)),
           allow_immediate: normalizeBoolean(created?.allow_immediate, false),
           allow_scheduled: normalizeBoolean(created?.allow_scheduled, false),
+          delivery_days: Array.isArray(created?.delivery_days) ? created.delivery_days : deliveryDaysPayload,
         };
         setDeliveryZones((prev) => [...prev, normalizedCreated].sort((a, b) => {
           const districtDiff = String(a?.district || '').localeCompare(String(b?.district || ''), 'tr');
@@ -4852,9 +4906,16 @@ export default function Admin({
                 <div className="bg-brand-white rounded-2xl border border-brand-secondary shadow-sm p-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-bold text-brand-dark">{selectedDeliveryDistrict || 'İlçe seçin'}</p>
-                    <span className="text-xs font-semibold text-brand-dark">
-                      {selectedDistrictDeliveryZones.length} mahalle
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {selectedDeliveryDistrictSetting && Array.isArray(selectedDeliveryDistrictSetting.delivery_days) && selectedDeliveryDistrictSetting.delivery_days.length > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-brand-bg border border-brand-secondary px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
+                          {formatDeliveryDaysLabel(selectedDeliveryDistrictSetting.delivery_days)}
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-brand-dark">
+                        {selectedDistrictDeliveryZones.length} mahalle
+                      </span>
+                    </div>
                   </div>
 
                   {selectedDeliveryDistrictDraft && (
@@ -4894,6 +4955,40 @@ export default function Admin({
                           {deliveryDistrictSavingKey === selectedDeliveryDistrictKey ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
                           {deliveryDistrictSavingKey === selectedDeliveryDistrictKey ? 'Kaydediliyor...' : 'Kaydet'}
                         </button>
+                      </div>
+
+                      <div className="mt-3 rounded-lg border border-brand-secondary bg-brand-white px-2 py-2">
+                        <p className="mb-2 text-[11px] font-semibold text-brand-dark/70">Teslimat Günleri</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {DELIVERY_DAY_PILLS.map((pill) => {
+                            const current = Array.isArray(selectedDeliveryDistrictDraft.delivery_days)
+                              ? selectedDeliveryDistrictDraft.delivery_days
+                              : [];
+                            const checked = current.includes(pill.value);
+                            return (
+                              <button
+                                key={pill.value}
+                                type="button"
+                                onClick={() => {
+                                  const next = checked
+                                    ? current.filter((v) => v !== pill.value)
+                                    : [...current, pill.value];
+                                  updateDeliveryDistrictDraft(selectedDeliveryDistrictKey, 'delivery_days', next);
+                                }}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
+                                  checked
+                                    ? 'bg-brand-primary text-brand-white border-brand-primary'
+                                    : 'bg-brand-bg text-brand-dark border-brand-secondary'
+                                }`}
+                              >
+                                {pill.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-2 text-[10px] text-brand-dark/60">
+                          Seçili: {formatDeliveryDaysLabel(selectedDeliveryDistrictDraft.delivery_days)}
+                        </p>
                       </div>
                     </div>
                   )}
