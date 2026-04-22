@@ -243,12 +243,22 @@ export default function BossDeliveryManagement() {
         grouped.get(d).push(r);
       });
 
+      const sanitizeDays = (arr) =>
+        Array.isArray(arr) && arr.length > 0
+          ? arr.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+          : null;
+
       const list = Array.from(grouped.entries())
         .map(([district, rawRows]) => {
           const sortedRows = [...rawRows].sort((a, b) =>
             String(a?.neighborhood || '').localeCompare(String(b?.neighborhood || ''), 'tr')
           );
           const first = sortedRows[0] || {};
+          const legacyDays = sanitizeDays(first?.delivery_days);
+          const immediateDays =
+            sanitizeDays(first?.delivery_days_immediate) ?? legacyDays ?? [1, 2, 3, 4, 5];
+          const scheduledDays =
+            sanitizeDays(first?.delivery_days_scheduled) ?? legacyDays ?? [1, 2, 3, 4, 5];
           return {
             district,
             city: String(first?.city || 'İzmir').trim() || 'İzmir',
@@ -259,9 +269,8 @@ export default function BossDeliveryManagement() {
               allow_scheduled: !!r?.allow_scheduled,
             })),
             is_active: !!first?.is_active,
-            delivery_days: Array.isArray(first?.delivery_days) && first.delivery_days.length > 0
-              ? first.delivery_days.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
-              : [1, 2, 3, 4, 5],
+            deliveryDaysImmediate: immediateDays,
+            deliveryDaysScheduled: scheduledDays,
             min_order: Number(first?.min_order || 0),
             delivery_fee_immediate: toStrOrEmpty(first?.delivery_fee_immediate),
             delivery_fee_scheduled: toStrOrEmpty(first?.delivery_fee_scheduled),
@@ -407,18 +416,26 @@ export default function BossDeliveryManagement() {
     markDistrictDirty(district);
   };
 
-  const toggleDistrictDay = (district, day) => {
+  // field = 'deliveryDaysImmediate' | 'deliveryDaysScheduled'
+  const toggleDistrictDay = (district, day, field) => {
     setDistricts((prev) => prev.map((d) => {
       if (d.district !== district) return d;
-      const has = d.delivery_days.includes(day);
-      const next = has ? d.delivery_days.filter((x) => x !== day) : [...d.delivery_days, day].sort((a, b) => a - b);
-      return { ...d, delivery_days: next };
+      const current = Array.isArray(d[field]) ? d[field] : [];
+      const has = current.includes(day);
+      const next = has
+        ? current.filter((x) => x !== day)
+        : [...current, day].sort((a, b) => a - b);
+      return { ...d, [field]: next };
     }));
     markDistrictDirty(district);
   };
 
-  const setDistrictDays = (district, days) => {
-    setDistricts((prev) => prev.map((d) => (d.district === district ? { ...d, delivery_days: [...days].sort((a, b) => a - b) } : d)));
+  const setDistrictDays = (district, days, field) => {
+    setDistricts((prev) => prev.map((d) => (
+      d.district === district
+        ? { ...d, [field]: [...days].sort((a, b) => a - b) }
+        : d
+    )));
     markDistrictDirty(district);
   };
 
@@ -450,9 +467,19 @@ export default function BossDeliveryManagement() {
     if (!d) return;
     setSavingDistrict(districtName); setErr(''); setOk('');
     try {
+      const immediateDays = Array.isArray(d.deliveryDaysImmediate) && d.deliveryDaysImmediate.length > 0
+        ? d.deliveryDaysImmediate
+        : [1, 2, 3, 4, 5];
+      const scheduledDays = Array.isArray(d.deliveryDaysScheduled) && d.deliveryDaysScheduled.length > 0
+        ? d.deliveryDaysScheduled
+        : [1, 2, 3, 4, 5];
+
       const districtLevelPayload = {
         is_active: !!d.is_active,
-        delivery_days: d.delivery_days.length > 0 ? d.delivery_days : [1, 2, 3, 4, 5],
+        delivery_days_immediate: immediateDays,
+        delivery_days_scheduled: scheduledDays,
+        // Keep legacy column in sync for any consumer still reading it.
+        delivery_days: immediateDays,
         min_order: Number(d.min_order) || 0,
         delivery_fee_immediate: toNumOrNull(d.delivery_fee_immediate),
         delivery_fee_scheduled: toNumOrNull(d.delivery_fee_scheduled),
@@ -803,7 +830,9 @@ export default function BossDeliveryManagement() {
                     <div className="min-w-0">
                       <p className="font-zalando text-base text-geex-text truncate">{d.district}</p>
                       <p className="text-xs text-slate-500">
-                        {enabledNeighborhoodsCount} / {d.rows.length} mahalle · {formatDeliveryDays(d.delivery_days)}
+                        {enabledNeighborhoodsCount} / {d.rows.length} mahalle · {formatDeliveryDays(
+                          isImmediate ? d.deliveryDaysImmediate : d.deliveryDaysScheduled
+                        )}
                       </p>
                     </div>
                   </div>
@@ -851,42 +880,48 @@ export default function BossDeliveryManagement() {
                       </span>
                     </div>
 
-                    {/* Teslimat günleri — paylaşılan */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-semibold text-slate-500">
-                          Teslimat Günleri <span className="font-normal text-slate-400">(her iki teslimat türünü etkiler)</span>
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setDistrictDays(d.district, [1, 2, 3, 4, 5])}
-                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-gray-50"
-                          >
-                            Hafta İçi
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDistrictDays(d.district, [0, 1, 2, 3, 4, 5, 6])}
-                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-gray-50"
-                          >
-                            Her Gün
-                          </button>
+                    {/* Teslimat günleri — sekmeye özgü */}
+                    {(() => {
+                      const daysField = isImmediate ? 'deliveryDaysImmediate' : 'deliveryDaysScheduled';
+                      const currentDays = Array.isArray(d[daysField]) ? d[daysField] : [];
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-slate-500">
+                              Teslimat Günleri
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setDistrictDays(d.district, [1, 2, 3, 4, 5], daysField)}
+                                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-gray-50"
+                              >
+                                Hafta İçi
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDistrictDays(d.district, [0, 1, 2, 3, 4, 5, 6], daysField)}
+                                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-gray-50"
+                              >
+                                Her Gün
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {DAY_OPTIONS.map(({ value, label }) => (
+                              <Pill
+                                key={value}
+                                active={currentDays.includes(value)}
+                                accent={accent}
+                                onClick={() => toggleDistrictDay(d.district, value, daysField)}
+                              >
+                                {label}
+                              </Pill>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {DAY_OPTIONS.map(({ value, label }) => (
-                          <Pill
-                            key={value}
-                            active={d.delivery_days.includes(value)}
-                            accent={accent}
-                            onClick={() => toggleDistrictDay(d.district, value)}
-                          >
-                            {label}
-                          </Pill>
-                        ))}
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* Sekmeye özgü kargo alanları */}
                     <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
