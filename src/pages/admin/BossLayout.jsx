@@ -2,7 +2,6 @@ import React from 'react';
 import { Crown, Link, Outlet, useLocation } from 'react-router-dom';
 import {
   ChefHat,
-  Clock,
   ClipboardList,
   Headphones,
   LayoutGrid,
@@ -57,17 +56,10 @@ const NAV_ITEMS = [
   },
   {
     key: 'delivery-management',
-    label: 'Teslimat (Yeni)',
+    label: 'Teslimat ve Çalışma Saatleri',
     to: '/boss/delivery-management',
     icon: Truck,
-    matchPrefixes: ['/boss/delivery-management'],
-  },
-  {
-    key: 'teslimat',
-    label: 'Teslimat',
-    to: '/boss/teslimat',
-    icon: MapPin,
-    matchPrefixes: ['/boss/teslimat'],
+    matchPrefixes: ['/boss/delivery-management', '/boss/teslimat'],
   },
   {
     key: 'branches',
@@ -103,13 +95,6 @@ const NAV_ITEMS = [
     to: '/boss/support',
     icon: Headphones,
     matchPrefixes: ['/boss/support'],
-  },
-  {
-    key: 'business-hours',
-    label: 'Çalışma Saatleri',
-    to: '/boss/business-hours',
-    icon: Clock,
-    matchPrefixes: ['/boss/business-hours'],
   },
   {
     key: 'macro',
