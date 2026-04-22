@@ -185,7 +185,6 @@ export default function BossDeliveryManagement() {
 
   // ── Filtre ────────────────────────────────────────────────────
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // all | active | inactive
 
   // ── Veri yükle ────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -521,13 +520,11 @@ export default function BossDeliveryManagement() {
   const filteredDistricts = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
     return districts.filter((d) => {
-      if (statusFilter === 'active' && !d.is_active) return false;
-      if (statusFilter === 'inactive' && d.is_active) return false;
       if (!q) return true;
       if (d.district.toLocaleLowerCase('tr-TR').includes(q)) return true;
       return d.rows.some((r) => r.neighborhood.toLocaleLowerCase('tr-TR').includes(q));
     });
-  }, [districts, search, statusFilter]);
+  }, [districts, search]);
 
   const activeCount = districts.filter((d) => d.is_active).length;
 
@@ -766,26 +763,6 @@ export default function BossDeliveryManagement() {
             placeholder="İlçe veya mahalle ara..."
             className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary"
           />
-        </div>
-        <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1">
-          {[
-            { key: 'all', label: 'Tümü' },
-            { key: 'active', label: 'Aktif' },
-            { key: 'inactive', label: 'Pasif' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStatusFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                statusFilter === key
-                  ? 'bg-white text-geex-text shadow-sm'
-                  : 'text-slate-500 hover:text-geex-text'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
         </div>
         <span className="text-xs font-semibold text-slate-500">
           {filteredDistricts.length} / {districts.length} ilçe
