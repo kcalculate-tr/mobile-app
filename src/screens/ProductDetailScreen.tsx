@@ -8,7 +8,6 @@ import { Animated,
   TouchableOpacity,
   View,
   Image,
-  findNodeHandle,
 } from 'react-native';
 import { CachedImage } from '../components/CachedImage';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -104,7 +103,8 @@ export default function ProductDetailScreen() {
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [validationAttempted, setValidationAttempted] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  const groupRefs = useRef<Record<string, View | null>>({});
+  const optionGroupsOffsetY = useRef(0);
+  const groupPositions = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -187,29 +187,21 @@ export default function ProductDetailScreen() {
   }, [product?.id]);
 
   const scrollToNextRequiredGroup = (currentGroupId: string) => {
-    const currentIndex = optionGroups.findIndex((g) => g.id === currentGroupId);
-    if (currentIndex === -1) return;
-
-    const nextIncomplete = optionGroups.slice(currentIndex + 1).find((g) => {
-      const { min } = getGroupSelectionLimits(g);
-      const selectedCount = (selections[g.id] || []).length;
-      return min > 0 && selectedCount < min;
-    });
-
-    if (!nextIncomplete) return;
-
     setTimeout(() => {
-      const groupNode = groupRefs.current[nextIncomplete.id];
-      const scrollNode = findNodeHandle(scrollViewRef.current);
-      if (!groupNode || !scrollNode) return;
-      groupNode.measureLayout(
-        scrollNode,
-        (_x, y) => {
-          scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
-        },
-        () => {},
-      );
-    }, 150);
+      const currentIndex = optionGroups.findIndex((g) => g.id === currentGroupId);
+      if (currentIndex === -1) return;
+      for (let i = currentIndex + 1; i < optionGroups.length; i++) {
+        const g = optionGroups[i];
+        const { min } = getGroupSelectionLimits(g);
+        const selectedCount = (selections[g.id] || []).length;
+        if (min > 0 && selectedCount < min) {
+          const y = groupPositions.current[g.id];
+          if (y === undefined) return;
+          scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
+          return;
+        }
+      }
+    }, 200);
   };
 
   const toggleSelection = (group: OptionGroup, itemId: string) => {
@@ -498,7 +490,11 @@ export default function ProductDetailScreen() {
         ) : null}
 
         {!optionsLoading && optionGroups.length > 0 ? (
-          <View>
+          <View
+            onLayout={(e) => {
+              optionGroupsOffsetY.current = e.nativeEvent.layout.y;
+            }}
+          >
             {optionGroups.map((group) => {
               const selected = new Set(selections[group.id] || []);
               const { min, max } = getGroupSelectionLimits(group);
@@ -509,7 +505,10 @@ export default function ProductDetailScreen() {
               return (
                 <View
                   key={group.id}
-                  ref={(r) => { groupRefs.current[group.id] = r; }}
+                  onLayout={(e) => {
+                    groupPositions.current[group.id] =
+                      optionGroupsOffsetY.current + e.nativeEvent.layout.y;
+                  }}
                   style={[styles.optionGroupCard, isGroupInvalid && styles.optionGroupCardError]}
                 >
                   <View style={styles.optionGroupHeader}>

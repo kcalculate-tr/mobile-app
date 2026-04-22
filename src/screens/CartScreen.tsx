@@ -18,12 +18,23 @@ import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchCrosssellProducts } from '../lib/products';
+import {
+  fetchGlobalDeliverySettings,
+  resolveShippingFee,
+  resolveFreeShippingAbove,
+  DeliveryGlobals,
+} from '../lib/delivery';
 import type { Product } from '../types';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
 
-const FREE_DELIVERY_THRESHOLD = 150;
-const DELIVERY_FEE = 15;
+// Hard fallbacks used only if delivery_settings.__GLOBAL__ is unreachable.
+// In normal operation, values come from the admin panel via fetchGlobalDeliverySettings.
+const FALLBACK_FREE_DELIVERY_THRESHOLD = 150;
+const FALLBACK_DELIVERY_FEE = 15;
+// Cart doesn't know the selected district, so use `immediate` globals as default
+// (the most restrictive / common case).
+const CART_DEFAULT_TYPE: 'immediate' | 'scheduled' = 'immediate';
 
 export default function CartScreen() {
   const navigation = useNavigation<CartNavProp>();
@@ -36,16 +47,30 @@ export default function CartScreen() {
   const getSubtotal = useCartStore(s => s.getSubtotal);
   const getTotalMacros = useCartStore(s => s.getTotalMacros);
   const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
+  const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
 
   useEffect(() => {
     fetchCrosssellProducts().then(setCrosssellProducts).catch(() => {});
+    fetchGlobalDeliverySettings().then(setDeliveryGlobals).catch(() => {});
   }, []);
   const subtotal = getSubtotal();
   const totalMacros = getTotalMacros();
   const hasTotalMacros = totalMacros.kcal > 0 || totalMacros.protein > 0;
-  const remainingForFree = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
+
+  // Cart doesn't know the district yet — resolve using globals-only (district rule = null).
+  const freeDeliveryThreshold = (() => {
+    const t = resolveFreeShippingAbove(null, deliveryGlobals, CART_DEFAULT_TYPE);
+    return t > 0 ? t : FALLBACK_FREE_DELIVERY_THRESHOLD;
+  })();
+  const baseDeliveryFee = (() => {
+    if (!deliveryGlobals) return FALLBACK_DELIVERY_FEE;
+    // Pass subtotal=0 so we get the raw fee (the banner computes freeness itself).
+    return resolveShippingFee(null, deliveryGlobals, CART_DEFAULT_TYPE, 0);
+  })();
+
+  const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotal);
   const isFreeDelivery = remainingForFree === 0;
-  const deliveryFee = isFreeDelivery ? 0 : DELIVERY_FEE;
+  const deliveryFee = isFreeDelivery ? 0 : baseDeliveryFee;
 
   const [couponCode,    setCouponCode]    = useState('');
   const [couponInput,   setCouponInput]   = useState('');
@@ -176,7 +201,7 @@ export default function CartScreen() {
           <View
             style={[
               styles.progressFill,
-              { width: `${Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` as any },
+              { width: `${freeDeliveryThreshold > 0 ? Math.min(100, (subtotal / freeDeliveryThreshold) * 100) : 0}%` as any },
             ]}
           />
         </View>
@@ -441,7 +466,7 @@ export default function CartScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Teslimat</Text>
             <Text style={[styles.summaryValue, isFreeDelivery && styles.summaryFreeText]}>
-              {isFreeDelivery ? 'Ücretsiz' : `₺${DELIVERY_FEE.toFixed(2)}`}
+              {isFreeDelivery ? 'Ücretsiz' : `₺${deliveryFee.toFixed(2)}`}
             </Text>
           </View>
           {couponDiscount > 0 && (

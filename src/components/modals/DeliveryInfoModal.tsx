@@ -1,17 +1,14 @@
 import React from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  X, Truck, Calendar, Storefront, Thermometer, Snowflake, Package, Leaf,
+  Truck, Calendar, Storefront, Thermometer, Snowflake, Package, Leaf,
 } from 'phosphor-react-native';
+import BottomSheet from '../BottomSheet';
 
 type Props = { visible: boolean; onClose: () => void };
 
@@ -61,86 +58,37 @@ const SECTIONS = [
 ];
 
 export default function DeliveryInfoModal({ visible, onClose }: Props) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      animationType="slide"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.backdrop} onPress={onClose} />
-
-      <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
-        <View style={styles.handle} />
-
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Truck size={18} color="#000" weight="bold" />
-            <Text style={styles.title}>Teslimat Seçenekleri</Text>
-          </View>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <X size={16} color="#374151" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {SECTIONS.map((s, i) => (
-            <View key={i} style={styles.row}>
-              <View style={[styles.iconWrap, { backgroundColor: s.bg }]}>
-                <s.Icon size={18} color={s.color} weight="bold" />
-              </View>
-              <View style={styles.rowText}>
-                <Text style={styles.rowLabel}>{s.title}</Text>
-                <Text style={styles.rowValue}>{s.desc}</Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-
+      onClose={onClose}
+      title="Teslimat Seçenekleri"
+      showCloseButton
+      footer={
         <TouchableOpacity style={styles.closeActionBtn} onPress={onClose} activeOpacity={0.85}>
           <Text style={styles.closeActionText}>Kapat</Text>
         </TouchableOpacity>
+      }
+    >
+      <View style={styles.scrollContent}>
+        {SECTIONS.map((s, i) => (
+          <View key={i} style={styles.row}>
+            <View style={[styles.iconWrap, { backgroundColor: s.bg }]}>
+              <s.Icon size={18} color={s.color} weight="bold" />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={styles.rowLabel}>{s.title}</Text>
+              <Text style={styles.rowValue}>{s.desc}</Text>
+            </View>
+          </View>
+        ))}
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    maxHeight: '88%',
-  },
-  handle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: '#D1D5DB',
-    alignSelf: 'center', marginBottom: 16,
-  },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 16,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 17, fontWeight: '800',
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#000000' },
-  closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  scrollContent: { gap: 10, paddingBottom: 8 },
+  scrollContent: { gap: 10, paddingBottom: 8, paddingTop: 12 },
   row: {
     flexDirection: 'row', alignItems: 'flex-start',
     backgroundColor: '#f9f9f9', borderRadius: 14,
@@ -155,7 +103,7 @@ fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#000000' },
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 3 },
   rowValue: { fontSize: 12, color: '#4B5563', lineHeight: 18 },
   closeActionBtn: {
-    marginTop: 12, borderRadius: 14, minHeight: 50,
+    borderRadius: 14, minHeight: 50,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#000000',
   },

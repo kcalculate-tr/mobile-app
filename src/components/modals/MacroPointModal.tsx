@@ -1,17 +1,14 @@
 import React from 'react';
 import {
-  Modal,
-  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   Image,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, ShoppingCart, Crown, Lightning, CurrencyCircleDollar } from 'phosphor-react-native';
+import { ShoppingCart, Crown, Lightning, CurrencyCircleDollar } from 'phosphor-react-native';
 
 import { MacroProfile, MACRO_PRICE, MEMBERSHIP_THRESHOLD, ORDER_EARN_THRESHOLD, isPrivileged, privilegedDaysLeft } from '../../lib/macros';
+import BottomSheet from '../BottomSheet';
 
 type Props = {
   visible: boolean;
@@ -27,110 +24,81 @@ const BENEFITS = [
   { Icon: CurrencyCircleDollar, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Macro satın al', desc: `${MACRO_PRICE.toLocaleString('tr-TR')}₺/adet — anında bakiye yükle` },
 ];
 
-export default function MacroPointModal({ visible, onClose, onNavigateToProfile, macroProfile }: Props) {
-  const insets = useSafeAreaInsets();
-
+export default function MacroPointModal({ visible, onClose, macroProfile }: Props) {
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      animationType="slide"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
+      onClose={onClose}
+      showCloseButton
+      containerStyle={styles.container}
+      handleColor="rgba(255,255,255,0.15)"
+      titleColor="#FFFFFF"
+      titleSeparatorColor="rgba(255,255,255,0.1)"
     >
-      <View style={styles.container}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
-          <View style={styles.handle} />
+      <View style={styles.header}>
+        <Image
+          source={require('../../../assets/macro-coin.png')}
+          style={styles.headerCoin}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Macro Nedir?</Text>
+      </View>
 
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Image
-                source={require('../../../assets/macro-coin.png')}
-                style={styles.headerCoin}
-                resizeMode="contain"
-              />
-              <Text style={styles.title}>Macro Nedir?</Text>
-            </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-              <X size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.heroCard}>
-            <View style={styles.heroLeft}>
-              <Text style={styles.heroNumber}>{ORDER_EARN_THRESHOLD.toLocaleString('tr-TR')}₺</Text>
-              <Text style={styles.heroSub}>= 1 Macro</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroRight}>
-              <Text style={styles.heroNumber}>{MEMBERSHIP_THRESHOLD}</Text>
-              <Text style={styles.heroSub}>Macro = Ayrıcalıklı Üye</Text>
-            </View>
-          </View>
-
-          <View style={styles.benefitsContainer}>
-            {BENEFITS.map((b, i) => (
-              <View key={i} style={styles.benefitRow}>
-                <View style={[styles.benefitIconWrap, { backgroundColor: b.bg }]}>
-                  <b.Icon size={20} color={b.color} weight="bold" />
-                </View>
-                <View style={styles.benefitText}>
-                  <Text style={styles.benefitTitle}>{b.title}</Text>
-                  <Text style={styles.benefitDesc}>{b.desc}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.progressHint}>
-            <View style={styles.progressHintBar}>
-              <View style={[styles.progressHintFill, { width: `${Math.min(((macroProfile?.macro_balance ?? 0) / MEMBERSHIP_THRESHOLD) * 100, 100)}%` as any }]} />
-            </View>
-            <Text style={styles.progressHintText}>
-              {macroProfile
-                ? isPrivileged(macroProfile)
-                  ? `Ayrıcalıklı Üye • ${privilegedDaysLeft(macroProfile)} gün kaldı`
-                  : `${macroProfile.macro_balance} / ${MEMBERSHIP_THRESHOLD} Macro — ${Math.max(0, MEMBERSHIP_THRESHOLD - macroProfile.macro_balance)} tane daha al, Ayrıcalıklı Üye ol`
-                : `0 / ${MEMBERSHIP_THRESHOLD} Macro — Macro satın al, Ayrıcalıklı Üye ol`}
-            </Text>
-          </View>
+      <View style={styles.heroCard}>
+        <View style={styles.heroLeft}>
+          <Text style={styles.heroNumber}>{ORDER_EARN_THRESHOLD.toLocaleString('tr-TR')}₺</Text>
+          <Text style={styles.heroSub}>= 1 Macro</Text>
+        </View>
+        <View style={styles.heroDivider} />
+        <View style={styles.heroRight}>
+          <Text style={styles.heroNumber}>{MEMBERSHIP_THRESHOLD}</Text>
+          <Text style={styles.heroSub}>Macro = Ayrıcalıklı Üye</Text>
         </View>
       </View>
-    </Modal>
+
+      <View style={styles.benefitsContainer}>
+        {BENEFITS.map((b, i) => (
+          <View key={i} style={styles.benefitRow}>
+            <View style={[styles.benefitIconWrap, { backgroundColor: b.bg }]}>
+              <b.Icon size={20} color={b.color} weight="bold" />
+            </View>
+            <View style={styles.benefitText}>
+              <Text style={styles.benefitTitle}>{b.title}</Text>
+              <Text style={styles.benefitDesc}>{b.desc}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.progressHint}>
+        <View style={styles.progressHintBar}>
+          <View style={[styles.progressHintFill, { width: `${Math.min(((macroProfile?.macro_balance ?? 0) / MEMBERSHIP_THRESHOLD) * 100, 100)}%` as any }]} />
+        </View>
+        <Text style={styles.progressHintText}>
+          {macroProfile
+            ? isPrivileged(macroProfile)
+              ? `Ayrıcalıklı Üye • ${privilegedDaysLeft(macroProfile)} gün kaldı`
+              : `${macroProfile.macro_balance} / ${MEMBERSHIP_THRESHOLD} Macro — ${Math.max(0, MEMBERSHIP_THRESHOLD - macroProfile.macro_balance)} tane daha al, Ayrıcalıklı Üye ol`
+            : `0 / ${MEMBERSHIP_THRESHOLD} Macro — Macro satın al, Ayrıcalıklı Üye ol`}
+        </Text>
+      </View>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent' },
-  sheet: {
+  container: {
     backgroundColor: '#0D0D0D',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
     borderTopWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
-  handle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center', marginBottom: 20,
-  },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 20,
+    gap: 10, marginBottom: 20, marginTop: 8,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerCoin: { width: 32, height: 32 },
   title: { fontSize: 20, fontWeight: '800',
 fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#ffffff', letterSpacing: -0.5 },
-  closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
   heroCard: {
     flexDirection: 'row', backgroundColor: '#E8431A',
     borderRadius: 18, padding: 20, marginBottom: 20, alignItems: 'center',
@@ -157,7 +125,7 @@ fontFamily: 'PlusJakartaSans_500Medium', marginTop: 2 },
 fontFamily: 'PlusJakartaSans_700Bold', color: '#ffffff', marginBottom: 2 },
   benefitDesc: { fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: '400',
 fontFamily: 'PlusJakartaSans_400Regular'},
-  progressHint: { gap: 8 },
+  progressHint: { gap: 8, paddingBottom: 8 },
   progressHintBar: {
     height: 4, borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden',

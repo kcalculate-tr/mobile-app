@@ -139,5 +139,10 @@ export type DeliveryRuleStatus =
         minOrder: number;
         allowImmediate: boolean;
         allowScheduled: boolean;
+        // Full zone row (raw) so resolvers can access per-type override columns:
+        //  - min_order_immediate / min_order_scheduled
+        //  - delivery_fee_immediate / delivery_fee_scheduled
+        //  - free_shipping_above_immediate / free_shipping_above_scheduled
+        zoneRow?: Record<string, unknown> | null;
       };
     };

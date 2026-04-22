@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +15,7 @@ import { type Icon, CaretLeftIcon, ShoppingCartIcon, CheckCircleIcon, ChefHatIco
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ScreenContainer from '../../components/ScreenContainer';
+import BottomSheet from '../../components/BottomSheet';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
   formatSupabaseErrorForDevLog,
@@ -31,6 +30,7 @@ import {
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, TYPOGRAPHY } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { formatDeliveryDays, isDeliveryDay, DAY_NAMES_TR } from '../../utils/deliveryDays';
 
 type OrderDetailRouteProp = RouteProp<RootStackParamList, 'OrderDetail'>;
 type OrderDetailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -180,6 +180,7 @@ export default function OrderDetailScreen() {
   const [addressSheetOpen, setAddressSheetOpen] = useState(false);
   const [addresses, setAddresses] = useState<AddressRow[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
+  const [modDeliveryDays, setModDeliveryDays] = useState<number[] | null>(null);
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
@@ -241,6 +242,66 @@ export default function OrderDetailScreen() {
     void loadOrder();
     void loadModifications();
   }, [loadOrder, loadModifications]);
+
+  useEffect(() => {
+    const addressId = order?.address_id;
+    if (!addressId) {
+      setModDeliveryDays(null);
+      return;
+    }
+
+    let mounted = true;
+
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: addressData, error: addressError } = await supabase
+          .from('addresses')
+          .select('district')
+          .eq('id', addressId)
+          .maybeSingle();
+        if (addressError) throw addressError;
+        const district = String((addressData as Record<string, unknown> | null)?.district ?? '').trim();
+        if (!district) {
+          if (mounted) setModDeliveryDays(null);
+          return;
+        }
+
+        const { data: zoneData, error: zoneError } = await supabase
+          .from('delivery_zones')
+          .select('delivery_days_scheduled, delivery_days')
+          .eq('district', district)
+          .limit(1);
+        if (zoneError) throw zoneError;
+
+        if (!mounted) return;
+
+        const zoneRows = Array.isArray(zoneData) ? zoneData : [];
+        // Date-change is scheduled-specific — prefer new scheduled col, fall back to legacy.
+        const zoneRow = zoneRows.length > 0
+          ? (zoneRows[0] as Record<string, unknown>)
+          : null;
+        const rawDays = zoneRow
+          ? (zoneRow.delivery_days_scheduled ?? zoneRow.delivery_days)
+          : null;
+        const parsed = Array.isArray(rawDays)
+          ? (rawDays as unknown[])
+              .map((v) => Number(v))
+              .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+          : [];
+        setModDeliveryDays(parsed.length > 0 ? parsed : null);
+      } catch (err: unknown) {
+        if (__DEV__) {
+          console.warn(`[order-detail] delivery days load error: ${formatSupabaseErrorForDevLog(err)}`);
+        }
+        if (mounted) setModDeliveryDays(null);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [order?.address_id]);
 
   const latestMod = modifications[0] ?? null;
   const pendingMod = useMemo(
@@ -307,6 +368,13 @@ export default function OrderDetailScreen() {
   const handleDateChangeSubmit = useCallback(
     async (nextDate: Date) => {
       if (!order) return;
+      if (!isDeliveryDay(nextDate, modDeliveryDays)) {
+        Alert.alert(
+          'Teslimat Yapılmıyor',
+          `${DAY_NAMES_TR[nextDate.getDay()]} günü bu bölgeye teslimat yapılmamaktadır.\n\nMüsait günler: ${formatDeliveryDays(modDeliveryDays)}`,
+        );
+        return;
+      }
       const y = nextDate.getFullYear();
       const m = String(nextDate.getMonth() + 1).padStart(2, '0');
       const d = String(nextDate.getDate()).padStart(2, '0');
@@ -333,7 +401,7 @@ export default function OrderDetailScreen() {
         setModifying(false);
       }
     },
-    [order, loadModifications],
+    [order, loadModifications, modDeliveryDays],
   );
 
   const openDatePicker = useCallback(() => {
@@ -643,23 +711,11 @@ export default function OrderDetailScreen() {
             />
           )}
           {Platform.OS === 'ios' && (
-            <Modal
+            <BottomSheet
               visible={showDatePicker}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setShowDatePicker(false)}
-            >
-              <Pressable style={s.sheetBackdrop} onPress={() => setShowDatePicker(false)} />
-              <View style={[s.sheet, { paddingBottom: Math.max(16, insets.bottom) }]}>
-                <View style={s.sheetHandle} />
-                <Text style={s.sheetTitle}>Yeni Tarih Seç</Text>
-                <DateTimePicker
-                  mode="date"
-                  display="spinner"
-                  value={datePickerValue}
-                  minimumDate={new Date(Date.now() + 48 * 60 * 60 * 1000)}
-                  onChange={onDatePickerChange}
-                />
+              onClose={() => setShowDatePicker(false)}
+              title="Yeni Tarih Seç"
+              footer={
                 <View style={s.sheetActions}>
                   <TouchableOpacity
                     style={[s.sheetBtn, s.sheetBtnGhost]}
@@ -676,52 +732,56 @@ export default function OrderDetailScreen() {
                     <Text style={s.sheetBtnPrimaryText}>Onayla</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            </Modal>
+              }
+            >
+              <DateTimePicker
+                mode="date"
+                display="spinner"
+                value={datePickerValue}
+                minimumDate={new Date(Date.now() + 48 * 60 * 60 * 1000)}
+                onChange={onDatePickerChange}
+              />
+            </BottomSheet>
           )}
 
           {/* Address sheet */}
-          <Modal
+          <BottomSheet
             visible={addressSheetOpen}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setAddressSheetOpen(false)}
-          >
-            <Pressable style={s.sheetBackdrop} onPress={() => setAddressSheetOpen(false)} />
-            <View style={[s.sheet, { paddingBottom: Math.max(16, insets.bottom) }]}>
-              <View style={s.sheetHandle} />
-              <Text style={s.sheetTitle}>Yeni Adres Seç</Text>
-              {addressesLoading ? (
-                <ActivityIndicator color={COLORS.brand.green} style={{ padding: 24 }} />
-              ) : addresses.length === 0 ? (
-                <Text style={s.emptyText}>Kayıtlı adres bulunamadı.</Text>
-              ) : (
-                <ScrollView style={{ maxHeight: 360 }}>
-                  {addresses.map((addr) => (
-                    <TouchableOpacity
-                      key={addr.id}
-                      style={s.addrRow}
-                      onPress={() => void handleAddressPick(addr)}
-                      activeOpacity={0.85}
-                    >
-                      <MapPinIcon size={18} color={COLORS.text.primary} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.addrTitle}>{addr.title}</Text>
-                        <Text style={s.addrSub} numberOfLines={2}>{addr.full_address}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
+            onClose={() => setAddressSheetOpen(false)}
+            title="Yeni Adres Seç"
+            footer={
               <TouchableOpacity
-                style={[s.sheetBtn, s.sheetBtnGhost, { marginTop: 12 }]}
+                style={[s.sheetBtn, s.sheetBtnGhost]}
                 onPress={() => setAddressSheetOpen(false)}
                 activeOpacity={0.8}
               >
                 <Text style={s.sheetBtnGhostText}>Vazgeç</Text>
               </TouchableOpacity>
-            </View>
-          </Modal>
+            }
+          >
+            {addressesLoading ? (
+              <ActivityIndicator color={COLORS.brand.green} style={{ padding: 24 }} />
+            ) : addresses.length === 0 ? (
+              <Text style={s.emptyText}>Kayıtlı adres bulunamadı.</Text>
+            ) : (
+              <View>
+                {addresses.map((addr) => (
+                  <TouchableOpacity
+                    key={addr.id}
+                    style={s.addrRow}
+                    onPress={() => void handleAddressPick(addr)}
+                    activeOpacity={0.85}
+                  >
+                    <MapPinIcon size={18} color={COLORS.text.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.addrTitle}>{addr.title}</Text>
+                      <Text style={s.addrSub} numberOfLines={2}>{addr.full_address}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </BottomSheet>
         </>
       )}
     </ScreenContainer>
@@ -895,21 +955,28 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
 
   // Sheet
   sheetBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
   },
   sheet: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 20, paddingTop: 14,
+    paddingHorizontal: 20,
+    maxHeight: '85%',
     gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
   },
   sheetHandle: {
     width: 40, height: 4,
     backgroundColor: '#E0E0E0',
     borderRadius: 2,
     alignSelf: 'center',
+    marginTop: 12,
     marginBottom: 8,
   },
   sheetTitle: {

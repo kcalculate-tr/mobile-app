@@ -22,7 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, CaretRight, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin } from 'phosphor-react-native';
+import { ArrowLeft, CaretRight, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import FormField from '../components/FormField';
 import { useAuth } from '../context/AuthContext';
@@ -47,6 +47,14 @@ import {
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
 import { getSupabaseClient } from '../lib/supabase';
+import {
+  fetchGlobalDeliverySettings,
+  resolveMinOrder,
+  resolveShippingFee,
+  resolveFreeShippingAbove,
+  DeliveryGlobals,
+  DeliveryZoneRow,
+} from '../lib/delivery';
 import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvailableScheduledDates, formatTime, BusinessHours } from '../lib/businessHours';
 import { fetchBranches, Branch } from '../lib/branches';
 import { RootStackParamList } from '../navigation/types';
@@ -57,6 +65,7 @@ import { Address, CouponValidationResult, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
+import { formatDeliveryDays, isDeliveryDay, DAY_NAMES_TR } from '../utils/deliveryDays';
 
 type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -67,9 +76,9 @@ const TR_DAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 const TIME_SLOTS = [
-  { id: '1', label: '09:30 – 13:30', start: '09:30', end: '13:30' },
-  { id: '2', label: '13:30 – 17:30', start: '13:30', end: '17:30' },
-  { id: '3', label: '17:30 – 21:30', start: '17:30', end: '21:30' },
+  { id: '1', label: '09:30 – 13:30', start: '09:30', end: '13:30', disabled: false },
+  { id: '2', label: '13:30 – 17:30', start: '13:30', end: '17:30', disabled: false },
+  { id: '3', label: '17:30 – 21:30', start: '17:30', end: '21:30', disabled: true },
 ] as const;
 
 type TimeSlot = (typeof TIME_SLOTS)[number];
@@ -338,6 +347,8 @@ export default function CheckoutScreen() {
 
   const couponCode = '';
   const [showZonesSheet, setShowZonesSheet] = useState(false);
+  const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
+  const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
 
   const scheduledDates = useMemo(() =>
     businessHours ? getAvailableScheduledDates(businessHours, 21) : [],
@@ -371,8 +382,6 @@ export default function CheckoutScreen() {
   const pendingPaymentOrderIdFromRoute = route.params?.pendingPaymentOrderId || '';
   const hasPendingOrderRoute = Boolean(pendingPaymentOrderIdFromRoute);
   const discountAmount = Number(couponInfo?.discountAmount || 0);
-  const deliveryFee = 0;
-  const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount);
 
   const selectedAddress = useMemo(
     () => addresses.find((address) => address.id === selectedAddressId) || null,
@@ -384,14 +393,31 @@ export default function CheckoutScreen() {
   const rulesLoading =
     settingsFetchStatus === 'loading' || deliveryRuleStatus.status === 'loading';
 
-  const districtMinOrder =
+  // ─── Resolve min-order / shipping-fee from district override + globals ───
+  const activeZoneRow: DeliveryZoneRow | null =
     deliveryRuleStatus.status === 'ok'
-      ? Math.max(0, Number(deliveryRuleStatus.data.minOrder || 0))
-      : 0;
+      ? ((deliveryRuleStatus.data.zoneRow as DeliveryZoneRow | undefined) ?? null)
+      : null;
 
+  const resolvedMinOrder = resolveMinOrder(activeZoneRow, deliveryGlobals, deliveryTimeType);
+  const freeShippingAbove = resolveFreeShippingAbove(
+    activeZoneRow,
+    deliveryGlobals,
+    deliveryTimeType,
+  );
+  const resolvedShippingFee =
+    deliveryMethod === 'pickup'
+      ? 0
+      : resolveShippingFee(activeZoneRow, deliveryGlobals, deliveryTimeType, subtotal);
+
+  const deliveryFee = resolvedShippingFee;
+  const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount);
+
+  // settingsMinCartAmount (from `settings.min_cart_amount`) remains a hard
+  // floor across the whole app; district/global values layer on top.
   const effectiveMinAmount = Math.max(
     Math.max(0, settingsMinCartAmount),
-    districtMinOrder,
+    resolvedMinOrder,
   );
 
   const remainingToMinAmount = Math.max(0, effectiveMinAmount - subtotal);
@@ -631,6 +657,10 @@ export default function CheckoutScreen() {
         dispatchOrder({ type: 'SET_SETTINGS_FETCH_STATUS', payload: 'ready' });
         const bh = await fetchBusinessHours();
         dispatchDelivery({ type: 'SET_BUSINESS_HOURS', payload: bh });
+        // Fetch global delivery defaults (delivery_settings.__GLOBAL__.cargo_rules).
+        // If absent, per-type overrides on delivery_zones still take precedence via resolvers.
+        const globals = await fetchGlobalDeliverySettings();
+        if (mounted) setDeliveryGlobals(globals);
       } catch (error: unknown) {
         if (!mounted) return;
         if (__DEV__) {
@@ -716,8 +746,31 @@ export default function CheckoutScreen() {
   }, [selectedAddress, user?.email]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    if (user.email) {
+      dispatchOrder({ type: 'SET_CUSTOMER_EMAIL', payload: user.email });
+    }
+    const supabase = getSupabaseClient();
+    supabase
+      .from('profiles')
+      .select('full_name, phone')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.full_name) {
+          dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: String(data.full_name) });
+        }
+        if (data.phone) {
+          dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: String(data.phone) });
+        }
+      });
+  }, [user?.id, user?.email]);
+
+  useEffect(() => {
     if (!selectedAddress?.district) {
       dispatchAddr({ type: 'SET_DELIVERY_RULE_STATUS', payload: { status: 'idle' } });
+      setDeliveryDays(null);
       return;
     }
 
@@ -766,6 +819,22 @@ export default function CheckoutScreen() {
         }
 
         const zoneRow = matchingRow as Record<string, unknown>;
+        // Pick per delivery type — fallback chain: new typed column → legacy delivery_days → weekdays.
+        const typedCol =
+          deliveryTimeType === 'immediate'
+            ? zoneRow.delivery_days_immediate
+            : zoneRow.delivery_days_scheduled;
+        const rawDeliveryDays =
+          typedCol !== undefined && typedCol !== null
+            ? typedCol
+            : zoneRow.delivery_days;
+        const parsedDeliveryDays = Array.isArray(rawDeliveryDays)
+          ? (rawDeliveryDays as unknown[])
+              .map((v) => Number(v))
+              .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+          : [];
+        setDeliveryDays(parsedDeliveryDays.length > 0 ? parsedDeliveryDays : [1, 2, 3, 4, 5]);
+
         const hasAllowRule =
           zoneRow.allow_immediate !== undefined ||
           zoneRow.allow_scheduled !== undefined;
@@ -786,6 +855,7 @@ export default function CheckoutScreen() {
             minOrder: Math.max(0, Number(zoneRow.min_order || 0)),
             allowImmediate,
             allowScheduled,
+            zoneRow,
           },
         } });
       } catch (error: unknown) {
@@ -811,6 +881,7 @@ export default function CheckoutScreen() {
     selectedAddress?.district,
     selectedAddress?.neighbourhood,
     rulesRefreshKey,
+    deliveryTimeType,
   ]);
 
   useEffect(() => {
@@ -914,7 +985,10 @@ export default function CheckoutScreen() {
       }
 
       if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
-        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen iletişim bilgilerini doldurun.' });
+        dispatchOrder({
+          type: 'SET_SCREEN_ERROR',
+          payload: 'İletişim bilgileriniz eksik. Profil ayarlarından ad soyad ve telefonunuzu tamamlayın.',
+        });
         return;
       }
 
@@ -1297,6 +1371,14 @@ export default function CheckoutScreen() {
                     <View>
                       <View style={{ height: 8 }} />
                       <Text style={styles.deliveryGroupLabel}>Teslimat Tarihi</Text>
+                      {deliveryDays && deliveryDays.length < 7 ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', padding: 12, borderRadius: 12, marginBottom: 12 }}>
+                          <InfoIcon size={16} color="#F8C90E" weight="fill" style={{ marginRight: 8 }} />
+                          <Text style={{ fontSize: 13, color: '#666', fontFamily: 'PlusJakartaSans_400Regular', flex: 1 }}>
+                            Bu bölgeye teslimat günleri: {formatDeliveryDays(deliveryDays)}
+                          </Text>
+                        </View>
+                      ) : null}
                       <FlatList
                         keyboardShouldPersistTaps="handled"
                         data={scheduledDates}
@@ -1312,6 +1394,13 @@ export default function CheckoutScreen() {
                             <TouchableOpacity
                               activeOpacity={0.7}
                               onPress={() => {
+                                if (!isDeliveryDay(item, deliveryDays)) {
+                                  Alert.alert(
+                                    'Teslimat Yapılmıyor',
+                                    `${DAY_NAMES_TR[item.getDay()]} günü bu bölgeye teslimat yapılmamaktadır.\n\nMüsait günler: ${formatDeliveryDays(deliveryDays)}`,
+                                  );
+                                  return;
+                                }
                                 dispatchDelivery({ type: 'SET_SCHEDULED_DATE', payload: item });
                                 dispatchDelivery({ type: 'SET_TIME_SLOT', payload: null });
                               }}
@@ -1340,16 +1429,31 @@ export default function CheckoutScreen() {
                           <View style={styles.timeSlotsRow}>
                             {TIME_SLOTS.map((slot) => {
                               const isActive = selectedTimeSlot?.id === slot.id;
+                              const isDisabled = slot.disabled;
                               return (
                                 <TouchableOpacity
                                   key={slot.id}
                                   activeOpacity={0.7}
+                                  disabled={isDisabled}
                                   onPress={() => dispatchDelivery({ type: 'SET_TIME_SLOT', payload: slot })}
-                                  style={[styles.timeSlotCard, isActive && styles.timeSlotCardActive]}
+                                  style={[
+                                    styles.timeSlotCard,
+                                    isActive && styles.timeSlotCardActive,
+                                    isDisabled && styles.timeSlotCardDisabled,
+                                  ]}
                                 >
-                                  <Text style={[styles.timeSlotLabel, isActive && styles.timeSlotLabelActive]}>
+                                  <Text
+                                    style={[
+                                      styles.timeSlotLabel,
+                                      isActive && styles.timeSlotLabelActive,
+                                      isDisabled && styles.timeSlotLabelDisabled,
+                                    ]}
+                                  >
                                     {slot.label}
                                   </Text>
+                                  {isDisabled && (
+                                    <Text style={styles.timeSlotFullText}>Dolu</Text>
+                                  )}
                                 </TouchableOpacity>
                               );
                             })}
@@ -1490,14 +1594,6 @@ export default function CheckoutScreen() {
             </View>
           ) : null}
 
-          {/* ── İletişim ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>İletişim Bilgileri</Text>
-            <FormField label="Ad Soyad" value={customerName} onChangeText={(v: string) => dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: v })} placeholder="Ad Soyad" />
-            <FormField label="E-posta" value={customerEmail} onChangeText={(v: string) => dispatchOrder({ type: 'SET_CUSTOMER_EMAIL', payload: v })} placeholder="ornek@mail.com" keyboardType="email-address" autoCapitalize="none" />
-            <FormField label="Telefon" value={customerPhone} onChangeText={(v: string) => dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: v })} placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
-          </View>
-
           {/* ── Sipariş Notu ── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Sipariş Notu</Text>
@@ -1528,6 +1624,27 @@ export default function CheckoutScreen() {
               <Text style={styles.summaryLabel}>Ara Toplam</Text>
               <Text style={styles.summaryValue}>{toCurrency(subtotal)}</Text>
             </View>
+            {deliveryMethod === 'home_delivery' ? (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Teslimat</Text>
+                <Text
+                  style={[
+                    styles.summaryValue,
+                    deliveryFee === 0 ? { color: '#16a34a' } : null,
+                  ]}
+                >
+                  {deliveryFee === 0 ? 'Ücretsiz' : toCurrency(deliveryFee)}
+                </Text>
+              </View>
+            ) : null}
+            {deliveryMethod === 'home_delivery' &&
+            deliveryFee > 0 &&
+            freeShippingAbove > 0 &&
+            subtotal < freeShippingAbove ? (
+              <Text style={[styles.summaryLabel, { fontSize: 12, color: '#64748b' }]}>
+                Ücretsiz teslimat için {toCurrency(Math.max(0, freeShippingAbove - subtotal))} daha ekleyin.
+              </Text>
+            ) : null}
             {discountAmount > 0 ? (
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>İndirim</Text>
@@ -2320,6 +2437,20 @@ const styles = StyleSheet.create({
     color: COLORS.text.primary,
     fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  timeSlotCardDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#e8e8e8',
+  },
+  timeSlotLabelDisabled: {
+    color: '#999999',
+  },
+  timeSlotFullText: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#C1282E',
   },
 
   mapPreview: {

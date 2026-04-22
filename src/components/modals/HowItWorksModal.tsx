@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,9 +8,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  X,
   CaretDown,
   Package as PackageIcon,
   CookingPot as CookingPotIcon,
@@ -22,6 +17,7 @@ import {
 } from 'phosphor-react-native';
 import type { IconProps } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
+import BottomSheet from '../BottomSheet';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -135,7 +131,6 @@ const FAQ_DATA: FaqSection[] = [
 ];
 
 export default function HowItWorksModal({ visible, onClose }: Props) {
-  const insets = useSafeAreaInsets();
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   function toggle(key: string) {
@@ -144,26 +139,17 @@ export default function HowItWorksModal({ visible, onClose }: Props) {
   }
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onClose}
+      onClose={onClose}
+      title="SSS"
+      showCloseButton
+      containerStyle={styles.container}
     >
-      <Pressable style={styles.overlay} onPress={onClose} />
-      <View style={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>SSS</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <X size={20} color="#374151" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {FAQ_DATA.map(section => {
-            const SectionIcon = section.Icon;
-            return (
+      <View style={styles.scrollContent}>
+        {FAQ_DATA.map(section => {
+          const SectionIcon = section.Icon;
+          return (
             <View key={section.key} style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <SectionIcon size={20} color="#000000" weight="bold" />
@@ -192,47 +178,21 @@ export default function HowItWorksModal({ visible, onClose }: Props) {
                 );
               })}
             </View>
-            );
-          })}
-        </ScrollView>
+          );
+        })}
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
   container: {
-    flex: 1,
     backgroundColor: '#f6f6f6',
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#202020',
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   scrollContent: {
     gap: 24,
     paddingBottom: 16,
+    paddingTop: 16,
   },
   section: {
     gap: 8,

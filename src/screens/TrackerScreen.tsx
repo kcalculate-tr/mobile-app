@@ -3,6 +3,7 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -813,6 +814,24 @@ export default function TrackerScreen() {
 
   const insets = useSafeAreaInsets();
 
+  // Meal modal custom animation (backdrop fade + sheet slide, independent)
+  const mealBackdropOpacity = useRef(new Animated.Value(0)).current;
+  const mealSheetTranslateY = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+  useEffect(() => {
+    const screenH = Dimensions.get('window').height;
+    if (mealModalVisible) {
+      Animated.parallel([
+        Animated.timing(mealBackdropOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(mealSheetTranslateY, { toValue: 0, damping: 28, stiffness: 120, mass: 1, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(mealBackdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(mealSheetTranslateY, { toValue: screenH, duration: 250, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [mealModalVisible, mealBackdropOpacity, mealSheetTranslateY]);
+
   const fetchData = useCallback(
     async (filter: FilterType) => {
       if (!user) {
@@ -1408,16 +1427,19 @@ const html = `
       {/* ── Kalori Ekle Modal ── */}
       <Modal
         visible={mealModalVisible}
-        animationType="slide"
+        animationType="none"
         transparent
+        statusBarTranslucent
         onRequestClose={() => dispatchMealForm({ type: 'SET_VISIBLE', payload: false })}
       >
         <KeyboardAvoidingView
           style={s.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => dispatchMealForm({ type: 'SET_VISIBLE', payload: false })} />
-          <View style={[s.modalSheet, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: mealBackdropOpacity }]}>
+            <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => dispatchMealForm({ type: 'SET_VISIBLE', payload: false })} />
+          </Animated.View>
+          <Animated.View style={[s.modalSheet, { paddingBottom: Math.max(40, insets.bottom + 24), transform: [{ translateY: mealSheetTranslateY }] }]}>
             <View style={s.modalHandle} />
             <Text style={s.modalTitle}>Kalori Ekle</Text>
             <Text style={s.modalSub}>Bugün tükettiğin kaloriyi gir</Text>
@@ -1492,7 +1514,7 @@ const html = `
                 </View>
               </View>
             )}
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -2353,14 +2375,24 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   },
   // Meal log modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
   modalSheet: {
-    backgroundColor: '#ffffff', borderTopLeftRadius: 28,
-    borderTopRightRadius: 28, paddingHorizontal: SPACING.xl, paddingTop: SPACING.md,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: SPACING.xl,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
   },
   modalHandle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: SPACING.xl,
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+    marginTop: 12, marginBottom: SPACING.xl,
   },
   modalTitle: { fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.extrabold,
 fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#000000', marginBottom: SPACING.xs },
