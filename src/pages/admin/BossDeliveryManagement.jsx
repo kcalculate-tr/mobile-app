@@ -1,8 +1,9 @@
 /**
  * BossDeliveryManagement.jsx — Birleşik Teslimat Yönetimi
  *
- * 3 eski sayfayı (Admin.jsx delivery_zones sekmesi, BossDelivery.jsx,
- * BossBusinessHours.jsx) kompakt ilçe-kartı tabanlı tek bir arayüzde toplar.
+ * 2 üst seviye sekme ile ayrılmış teslimat paneli:
+ *   - Hemen Teslimat
+ *   - Randevulu Teslimat
  *
  * Kullanılan tablolar:
  *   - settings(id=1): working_days[], open_time, close_time,
@@ -87,7 +88,8 @@ function toStrOrEmpty(v) {
 }
 
 // ─── Yardımcı bileşenler ────────────────────────────────────────────────────
-function Toggle({ on, onClick, disabled }) {
+function Toggle({ on, onClick, disabled, accent = 'green' }) {
+  const onCls = accent === 'blue' ? 'text-blue-500' : 'text-green-500';
   return (
     <button
       type="button"
@@ -97,22 +99,23 @@ function Toggle({ on, onClick, disabled }) {
       aria-pressed={!!on}
     >
       {on
-        ? <ToggleRight size={26} className="text-green-500" />
+        ? <ToggleRight size={26} className={onCls} />
         : <ToggleLeft size={26} className="text-gray-300" />}
     </button>
   );
 }
 
-function Pill({ active, onClick, children, disabled }) {
+function Pill({ active, onClick, children, disabled, accent = 'green' }) {
+  const activeCls = accent === 'blue'
+    ? 'bg-blue-500 text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)]'
+    : 'bg-green-500 text-white shadow-[0_4px_12px_rgba(152,205,0,0.35)]';
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-        active
-          ? 'bg-green-500 text-white shadow-[0_4px_12px_rgba(152,205,0,0.35)]'
-          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        active ? activeCls : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
       } disabled:opacity-50`}
     >
       {children}
@@ -155,6 +158,9 @@ export default function BossDeliveryManagement() {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
 
+  // ── Aktif sekme ──────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState('immediate'); // 'immediate' | 'scheduled'
+
   // ── Genel ayarlar ─────────────────────────────────────────────
   const [general, setGeneral] = useState({
     working_days: [1, 2, 3, 4, 5],
@@ -171,7 +177,7 @@ export default function BossDeliveryManagement() {
   const [newDateNote, setNewDateNote] = useState('');
 
   // ── İlçe kartları ─────────────────────────────────────────────
-  const [districts, setDistricts] = useState([]); // [{ district, rows:[...], district_level:{...} }]
+  const [districts, setDistricts] = useState([]);
   const [dirtyDistricts, setDirtyDistricts] = useState(new Set());
   const [savingDistrict, setSavingDistrict] = useState('');
   const [expanded, setExpanded] = useState(null);
@@ -228,7 +234,6 @@ export default function BossDeliveryManagement() {
       });
       setGeneralDirty(false);
 
-      // İlçelere göre grupla
       const rows = Array.isArray(zonesRes.data) ? zonesRes.data : [];
       const grouped = new Map();
       rows.forEach((r) => {
@@ -253,7 +258,6 @@ export default function BossDeliveryManagement() {
               allow_immediate: !!r?.allow_immediate,
               allow_scheduled: !!r?.allow_scheduled,
             })),
-            // ilçe seviyesi (tüm satırlar için aynı uygulanır)
             is_active: !!first?.is_active,
             delivery_days: Array.isArray(first?.delivery_days) && first.delivery_days.length > 0
               ? first.delivery_days.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
@@ -331,17 +335,15 @@ export default function BossDeliveryManagement() {
   };
 
   // ── General save ──────────────────────────────────────────────
+  // Her iki sekme de aynı satırlara (settings id=1 + delivery_settings __GLOBAL__)
+  // yazar, ancak sekmeye özgü alanlar farklıdır:
+  //   - Hemen: working_days/open_time/close_time/closed_dates + cargo_rules.immediate
+  //   - Randevulu: sadece cargo_rules.scheduled (çalışma saatleri Hemen sekmesine özgü)
+  // Not: cargo_rules tek jsonb kolonu olduğu için upsert'lerde her iki anahtarı
+  //      da koruyarak yazıyoruz (yoksa diğer sekmenin verisi silinir).
   const saveGeneral = async () => {
     setGeneralSaving(true); setErr(''); setOk('');
     try {
-      const settingsUpdate = supabase.from('settings').update({
-        working_days: general.working_days,
-        open_time: general.open_time,
-        close_time: general.close_time,
-        closed_dates: general.closed_dates,
-        closed_dates_note: general.closed_dates_note,
-      }).eq('id', 1);
-
       const globalRules = {
         immediate: {
           active: true,
@@ -361,9 +363,24 @@ export default function BossDeliveryManagement() {
         { onConflict: 'district' }
       );
 
-      const [sRes, dRes] = await Promise.all([settingsUpdate, deliveryUpsert]);
-      if (sRes.error) throw sRes.error;
-      if (dRes.error) throw dRes.error;
+      const promises = [deliveryUpsert];
+
+      // Çalışma saatleri sadece Hemen sekmesinde düzenlenir.
+      if (activeTab === 'immediate') {
+        const settingsUpdate = supabase.from('settings').update({
+          working_days: general.working_days,
+          open_time: general.open_time,
+          close_time: general.close_time,
+          closed_dates: general.closed_dates,
+          closed_dates_note: general.closed_dates_note,
+        }).eq('id', 1);
+        promises.unshift(settingsUpdate);
+      }
+
+      const results = await Promise.all(promises);
+      for (const r of results) {
+        if (r.error) throw r.error;
+      }
 
       setGeneralDirty(false);
       setOk('Genel ayarlar kaydedildi.');
@@ -425,12 +442,14 @@ export default function BossDeliveryManagement() {
   };
 
   // ── Save district ─────────────────────────────────────────────
+  // Kullanıcı sekmeler arasında gezerken edit'ler kaybolmasın diye
+  // çalışma alanındaki TÜM alanları yazıyoruz (shared + her iki sekmeye özgü
+  // alanlar). Böylece dirty state sekme değişikliğinde de korunur.
   const saveDistrict = async (districtName) => {
     const d = districts.find((x) => x.district === districtName);
     if (!d) return;
     setSavingDistrict(districtName); setErr(''); setOk('');
     try {
-      // ilçe seviyesindeki alanlar tüm satırlar için aynı
       const districtLevelPayload = {
         is_active: !!d.is_active,
         delivery_days: d.delivery_days.length > 0 ? d.delivery_days : [1, 2, 3, 4, 5],
@@ -445,7 +464,6 @@ export default function BossDeliveryManagement() {
         updated_at: new Date().toISOString(),
       };
 
-      // her satır için ayrı update (mahalle seviyesinde toggle farklı)
       await Promise.all(d.rows.map((r) => (
         supabase
           .from('delivery_zones')
@@ -492,6 +510,13 @@ export default function BossDeliveryManagement() {
     } catch { return d; }
   };
 
+  // Sekmeye göre tema/renk yardımcıları
+  const isImmediate = activeTab === 'immediate';
+  const accent = isImmediate ? 'green' : 'blue';
+  const saveBtnClass = isImmediate
+    ? 'bg-brand-primary shadow-[0_10px_24px_rgba(152,205,0,0.35)]'
+    : 'bg-blue-500 shadow-[0_10px_24px_rgba(59,130,246,0.35)]';
+
   // ─── Render ────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -520,6 +545,32 @@ export default function BossDeliveryManagement() {
         </div>
       </header>
 
+      {/* ── Tab strip ── */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('immediate')}
+          className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all ${
+            activeTab === 'immediate'
+              ? 'bg-green-500 text-white shadow-md'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          🚀 Hemen Teslimat
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('scheduled')}
+          className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all ${
+            activeTab === 'scheduled'
+              ? 'bg-blue-500 text-white shadow-md'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          📅 Randevulu Teslimat
+        </button>
+      </div>
+
       <Banner type="err" msg={err} onClose={() => setErr('')} />
       <Banner type="ok" msg={ok} onClose={() => setOk('')} />
 
@@ -527,168 +578,155 @@ export default function BossDeliveryManagement() {
       <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-zalando text-geex-text flex items-center gap-2">
-            <Clock size={18} className="text-brand-primary" /> Genel Ayarlar
+            <Clock size={18} className={isImmediate ? 'text-brand-primary' : 'text-blue-500'} />
+            Genel Ayarlar — {isImmediate ? 'Hemen Teslimat' : 'Randevulu Teslimat'}
           </h2>
           <button
             type="button"
             onClick={saveGeneral}
             disabled={!generalDirty || generalSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white shadow-[0_10px_24px_rgba(152,205,0,0.35)] disabled:opacity-50 disabled:shadow-none"
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white disabled:opacity-50 disabled:shadow-none ${saveBtnClass}`}
           >
             {generalSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             Kaydet
           </button>
         </div>
 
-        {/* Çalışma günleri */}
-        <div className="mb-5">
-          <p className="text-xs font-semibold text-slate-500 mb-2">Çalışma Günleri</p>
-          <div className="flex flex-wrap gap-2">
-            {DAY_OPTIONS.map(({ value, label }) => (
-              <Pill
-                key={value}
-                active={general.working_days.includes(value)}
-                onClick={() => toggleWorkingDay(value)}
-              >
-                {label}
-              </Pill>
-            ))}
-          </div>
-        </div>
-
-        {/* Açılış / kapanış */}
-        <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Paylaşılan kargo kuralları (tek sekmeye göre renderlanıyor) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Açılış Saati</label>
-            <input
-              type="time"
-              value={general.open_time}
-              onChange={(e) => patchGeneral({ open_time: e.target.value })}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold focus:border-brand-primary focus:outline-none"
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+              Varsayılan Kargo Ücreti (₺)
+            </label>
+            <NumInput
+              value={isImmediate ? general.immediate.shipping_fee : general.scheduled.shipping_fee}
+              onChange={(v) => patchGeneralRule(activeTab, 'shipping_fee', v)}
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Kapanış Saati</label>
-            <input
-              type="time"
-              value={general.close_time}
-              onChange={(e) => patchGeneral({ close_time: e.target.value })}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold focus:border-brand-primary focus:outline-none"
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+              Ücretsiz Kargo Eşiği (₺)
+            </label>
+            <NumInput
+              value={isImmediate ? general.immediate.free_shipping_above : general.scheduled.free_shipping_above}
+              onChange={(v) => patchGeneralRule(activeTab, 'free_shipping_above', v)}
+              placeholder="0 = devre dışı"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+              Min. Sepet Tutarı (₺)
+            </label>
+            <NumInput
+              value={isImmediate ? general.immediate.min_order : general.scheduled.min_order}
+              onChange={(v) => patchGeneralRule(activeTab, 'min_order', v)}
             />
           </div>
         </div>
 
-        {/* Kapalı günler */}
-        <div className="mb-5">
-          <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
-            <CalendarDays size={13} /> Kapalı Günler
-          </p>
-          <div className="flex flex-wrap gap-3 items-end mb-3">
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Tarih</label>
-              <input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-            <div className="flex-1 min-w-[160px]">
-              <label className="block text-[11px] text-slate-400 mb-1">Açıklama</label>
-              <input
-                value={newDateNote}
-                onChange={(e) => setNewDateNote(e.target.value)}
-                placeholder="Ör: Kurban Bayramı"
-                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={addClosedDate}
-              className="h-10 inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 text-sm font-bold text-white"
-            >
-              <Plus size={14} /> Ekle
-            </button>
-          </div>
-          {general.closed_dates.length === 0 ? (
-            <p className="text-xs text-slate-400">Kapalı gün eklenmedi.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {general.closed_dates.map((d) => (
-                <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-700">
-                  <CalendarDays size={12} className="text-gray-400" />
-                  <span className="font-semibold">{formatClosedDate(d)}</span>
-                  <span className="text-gray-400">{general.closed_dates_note?.[d] ? `· ${general.closed_dates_note[d]}` : ''}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeClosedDate(d)}
-                    className="ml-1 text-gray-400 hover:text-rose-500"
+        {/* Çalışma saatleri / günleri / kapalı günler — sadece Hemen sekmesinde */}
+        {isImmediate && (
+          <>
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-slate-500 mb-2">Çalışma Günleri</p>
+              <div className="flex flex-wrap gap-2">
+                {DAY_OPTIONS.map(({ value, label }) => (
+                  <Pill
+                    key={value}
+                    active={general.working_days.includes(value)}
+                    onClick={() => toggleWorkingDay(value)}
+                    accent="green"
                   >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
+                    {label}
+                  </Pill>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Global kargo kuralları */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-            <p className="text-sm font-bold text-geex-text mb-3">Varsayılan — Hemen</p>
-            <div className="space-y-3">
+            <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
-                <NumInput
-                  value={general.immediate.shipping_fee}
-                  onChange={(v) => patchGeneralRule('immediate', 'shipping_fee', v)}
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Açılış Saati</label>
+                <input
+                  type="time"
+                  value={general.open_time}
+                  onChange={(e) => patchGeneral({ open_time: e.target.value })}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold focus:border-brand-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
-                <NumInput
-                  value={general.immediate.free_shipping_above}
-                  onChange={(v) => patchGeneralRule('immediate', 'free_shipping_above', v)}
-                  placeholder="0 = devre dışı"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
-                <NumInput
-                  value={general.immediate.min_order}
-                  onChange={(v) => patchGeneralRule('immediate', 'min_order', v)}
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Kapanış Saati</label>
+                <input
+                  type="time"
+                  value={general.close_time}
+                  onChange={(e) => patchGeneral({ close_time: e.target.value })}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold focus:border-brand-primary focus:outline-none"
                 />
               </div>
             </div>
-          </div>
-          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-            <p className="text-sm font-bold text-geex-text mb-3">Varsayılan — Randevulu</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
-                <NumInput
-                  value={general.scheduled.shipping_fee}
-                  onChange={(v) => patchGeneralRule('scheduled', 'shipping_fee', v)}
-                />
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
+                <CalendarDays size={13} /> Kapalı Günler
+              </p>
+              <div className="flex flex-wrap gap-3 items-end mb-3">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Tarih</label>
+                  <input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-[11px] text-slate-400 mb-1">Açıklama</label>
+                  <input
+                    value={newDateNote}
+                    onChange={(e) => setNewDateNote(e.target.value)}
+                    placeholder="Ör: Kurban Bayramı"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addClosedDate}
+                  className="h-10 inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 text-sm font-bold text-white"
+                >
+                  <Plus size={14} /> Ekle
+                </button>
               </div>
-              <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
-                <NumInput
-                  value={general.scheduled.free_shipping_above}
-                  onChange={(v) => patchGeneralRule('scheduled', 'free_shipping_above', v)}
-                  placeholder="0 = devre dışı"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
-                <NumInput
-                  value={general.scheduled.min_order}
-                  onChange={(v) => patchGeneralRule('scheduled', 'min_order', v)}
-                />
-              </div>
+              {general.closed_dates.length === 0 ? (
+                <p className="text-xs text-slate-400">Kapalı gün eklenmedi.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {general.closed_dates.map((d) => (
+                    <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-700">
+                      <CalendarDays size={12} className="text-gray-400" />
+                      <span className="font-semibold">{formatClosedDate(d)}</span>
+                      <span className="text-gray-400">
+                        {general.closed_dates_note?.[d] ? `· ${general.closed_dates_note[d]}` : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeClosedDate(d)}
+                        className="ml-1 text-gray-400 hover:text-rose-500"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        </div>
+          </>
+        )}
+
+        {!isImmediate && (
+          <p className="text-xs text-slate-400 italic">
+            Çalışma saatleri ve kapalı günler, Hemen Teslimat sekmesinden yönetilir.
+            Randevulu teslimat tarihleri sipariş anında kullanıcı tarafından seçilir.
+          </p>
+        )}
       </section>
 
       {/* ── Filtre bar ── */}
@@ -740,11 +778,18 @@ export default function BossDeliveryManagement() {
             const isDirty = dirtyDistricts.has(d.district);
             const neighOpen = !!expandedNeighborhoods[d.district];
             const saving = savingDistrict === d.district;
+
+            // Sekmeye özgü sayaç + bayrak
+            const allowField = isImmediate ? 'allow_immediate' : 'allow_scheduled';
+            const enabledNeighborhoodsCount = d.rows.filter((r) => r[allowField]).length;
+            const allAllowedOn = d.rows.length > 0 && d.rows.every((r) => r[allowField]);
+            const tabInactive = !d.is_active || enabledNeighborhoodsCount === 0;
+
             return (
               <div
                 key={d.district}
                 className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 ${
-                  !d.is_active ? 'opacity-60' : ''
+                  tabInactive ? 'opacity-60' : ''
                 }`}
               >
                 {/* Kart header */}
@@ -758,7 +803,7 @@ export default function BossDeliveryManagement() {
                     <div className="min-w-0">
                       <p className="font-zalando text-base text-geex-text truncate">{d.district}</p>
                       <p className="text-xs text-slate-500">
-                        {d.rows.length} mahalle · {formatDeliveryDays(d.delivery_days)}
+                        {enabledNeighborhoodsCount} / {d.rows.length} mahalle · {formatDeliveryDays(d.delivery_days)}
                       </p>
                     </div>
                   </div>
@@ -769,11 +814,11 @@ export default function BossDeliveryManagement() {
                       </span>
                     )}
                     <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                      d.is_active
-                        ? 'bg-green-500 text-white'
+                      d.is_active && enabledNeighborhoodsCount > 0
+                        ? (isImmediate ? 'bg-green-500 text-white' : 'bg-blue-500 text-white')
                         : 'bg-gray-100 text-gray-600'
                     }`}>
-                      {d.is_active ? 'Aktif' : 'Pasif'}
+                      {d.is_active && enabledNeighborhoodsCount > 0 ? 'Aktif' : 'Pasif'}
                     </span>
                   </div>
                 </button>
@@ -781,129 +826,37 @@ export default function BossDeliveryManagement() {
                 {/* Expand */}
                 {isOpen && (
                   <div className="mt-5 space-y-5 border-t border-gray-100 pt-5">
-                    {/* Master toggle */}
+                    {/* Master toggle — tüm mahallelere bu sekmenin allow_* alanını uygular */}
                     <div className="flex items-center gap-3">
                       <Toggle
-                        on={d.is_active}
-                        onClick={() => patchDistrict(d.district, { is_active: !d.is_active })}
+                        on={allAllowedOn}
+                        accent={accent}
+                        onClick={() => bulkSetNeighborhoods(d.district, allowField, !allAllowedOn)}
                       />
                       <span className="text-sm font-semibold text-geex-text">
-                        İlçe {d.is_active ? 'aktif' : 'pasif'} (tüm mahalleler için)
+                        {isImmediate ? 'Hemen teslimat' : 'Randevulu teslimat'}{' '}
+                        {allAllowedOn ? 'aktif' : 'pasif'} (tüm mahalleler için)
                       </span>
                     </div>
 
-                    {/* Hemen / Randevulu kolonları */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Hemen */}
-                      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm font-bold text-geex-text">Hemen</p>
-                          <div className="flex items-center gap-2">
-                            <Toggle
-                              on={d.rows.every((r) => r.allow_immediate) && d.rows.length > 0}
-                              onClick={() => {
-                                const allOn = d.rows.every((r) => r.allow_immediate) && d.rows.length > 0;
-                                bulkSetNeighborhoods(d.district, 'allow_immediate', !allOn);
-                              }}
-                            />
-                            <span className="text-[11px] text-slate-500">Aktif</span>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
-                            <NumInput
-                              value={d.min_order_immediate}
-                              placeholder={`Varsayılan: ${general.immediate.min_order}`}
-                              onChange={(v) => patchDistrict(d.district, { min_order_immediate: v })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
-                            <NumInput
-                              value={d.delivery_fee_immediate}
-                              placeholder={`Varsayılan: ${general.immediate.shipping_fee}`}
-                              onChange={(v) => patchDistrict(d.district, { delivery_fee_immediate: v })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
-                            <NumInput
-                              value={d.free_shipping_above_immediate}
-                              placeholder={`Varsayılan: ${general.immediate.free_shipping_above}`}
-                              onChange={(v) => patchDistrict(d.district, { free_shipping_above_immediate: v })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Ortalama süre (dk)</label>
-                            <NumInput
-                              value={d.estimated_delivery_minutes}
-                              placeholder="Örn: 45"
-                              onChange={(v) => patchDistrict(d.district, { estimated_delivery_minutes: v })}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Randevulu */}
-                      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm font-bold text-geex-text">Randevulu</p>
-                          <div className="flex items-center gap-2">
-                            <Toggle
-                              on={d.rows.every((r) => r.allow_scheduled) && d.rows.length > 0}
-                              onClick={() => {
-                                const allOn = d.rows.every((r) => r.allow_scheduled) && d.rows.length > 0;
-                                bulkSetNeighborhoods(d.district, 'allow_scheduled', !allOn);
-                              }}
-                            />
-                            <span className="text-[11px] text-slate-500">Aktif</span>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
-                            <NumInput
-                              value={d.min_order_scheduled}
-                              placeholder={`Varsayılan: ${general.scheduled.min_order}`}
-                              onChange={(v) => patchDistrict(d.district, { min_order_scheduled: v })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
-                            <NumInput
-                              value={d.delivery_fee_scheduled}
-                              placeholder={`Varsayılan: ${general.scheduled.shipping_fee}`}
-                              onChange={(v) => patchDistrict(d.district, { delivery_fee_scheduled: v })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
-                            <NumInput
-                              value={d.free_shipping_above_scheduled}
-                              placeholder={`Varsayılan: ${general.scheduled.free_shipping_above}`}
-                              onChange={(v) => patchDistrict(d.district, { free_shipping_above_scheduled: v })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] text-slate-500 mb-1">Genel min. sepet — ilçe (₺)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={d.min_order}
-                              onChange={(e) => patchDistrict(d.district, { min_order: e.target.value })}
-                              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-geex-text placeholder:text-gray-400 outline-none focus:border-brand-primary"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                    {/* İlçe aktif/pasif — paylaşılan */}
+                    <div className="flex items-center gap-3 pt-1 border-t border-gray-50 pt-3">
+                      <Toggle
+                        on={d.is_active}
+                        accent={accent}
+                        onClick={() => patchDistrict(d.district, { is_active: !d.is_active })}
+                      />
+                      <span className="text-sm font-semibold text-geex-text">
+                        İlçe {d.is_active ? 'aktif' : 'pasif'} <span className="text-[11px] font-normal text-slate-400">(her iki teslimat türünü etkiler)</span>
+                      </span>
                     </div>
 
-                    {/* Teslimat günleri */}
+                    {/* Teslimat günleri — paylaşılan */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-semibold text-slate-500">Teslimat Günleri</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          Teslimat Günleri <span className="font-normal text-slate-400">(her iki teslimat türünü etkiler)</span>
+                        </p>
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -926,11 +879,64 @@ export default function BossDeliveryManagement() {
                           <Pill
                             key={value}
                             active={d.delivery_days.includes(value)}
+                            accent={accent}
                             onClick={() => toggleDistrictDay(d.district, value)}
                           >
                             {label}
                           </Pill>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* Sekmeye özgü kargo alanları */}
+                    <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                      <p className={`text-sm font-bold mb-3 ${isImmediate ? 'text-green-700' : 'text-blue-700'}`}>
+                        {isImmediate ? 'Hemen Teslimat Ayarları' : 'Randevulu Teslimat Ayarları'}
+                      </p>
+                      <div className={`grid grid-cols-1 ${isImmediate ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-3`}>
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Kargo Ücreti (₺)</label>
+                          <NumInput
+                            value={isImmediate ? d.delivery_fee_immediate : d.delivery_fee_scheduled}
+                            placeholder={String(isImmediate ? general.immediate.shipping_fee : general.scheduled.shipping_fee)}
+                            onChange={(v) => patchDistrict(d.district, isImmediate
+                              ? { delivery_fee_immediate: v }
+                              : { delivery_fee_scheduled: v }
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz Kargo Eşiği (₺)</label>
+                          <NumInput
+                            value={isImmediate ? d.free_shipping_above_immediate : d.free_shipping_above_scheduled}
+                            placeholder={String(isImmediate ? general.immediate.free_shipping_above : general.scheduled.free_shipping_above)}
+                            onChange={(v) => patchDistrict(d.district, isImmediate
+                              ? { free_shipping_above_immediate: v }
+                              : { free_shipping_above_scheduled: v }
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-500 mb-1">Min. Sepet (₺)</label>
+                          <NumInput
+                            value={isImmediate ? d.min_order_immediate : d.min_order_scheduled}
+                            placeholder={String(isImmediate ? general.immediate.min_order : general.scheduled.min_order)}
+                            onChange={(v) => patchDistrict(d.district, isImmediate
+                              ? { min_order_immediate: v }
+                              : { min_order_scheduled: v }
+                            )}
+                          />
+                        </div>
+                        {isImmediate && (
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Ortalama Teslimat Süresi (dk)</label>
+                            <NumInput
+                              value={d.estimated_delivery_minutes}
+                              placeholder="Örn: 45"
+                              onChange={(v) => patchDistrict(d.district, { estimated_delivery_minutes: v })}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -946,7 +952,7 @@ export default function BossDeliveryManagement() {
                           Mahalleler ({d.rows.length})
                         </span>
                         <span className="text-[11px] text-slate-400">
-                          {d.rows.filter((r) => r.allow_immediate).length} hemen · {d.rows.filter((r) => r.allow_scheduled).length} randevulu
+                          {enabledNeighborhoodsCount} {isImmediate ? 'hemen' : 'randevulu'} aktif
                         </span>
                       </button>
 
@@ -955,20 +961,18 @@ export default function BossDeliveryManagement() {
                           <div className="flex flex-wrap gap-2 mt-3 mb-2">
                             <button
                               type="button"
-                              onClick={() => {
-                                bulkSetNeighborhoods(d.district, 'allow_immediate', true);
-                                bulkSetNeighborhoods(d.district, 'allow_scheduled', true);
-                              }}
-                              className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-semibold text-green-700 hover:bg-green-100"
+                              onClick={() => bulkSetNeighborhoods(d.district, allowField, true)}
+                              className={`rounded-lg border px-3 py-1 text-[11px] font-semibold ${
+                                isImmediate
+                                  ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                                  : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                              }`}
                             >
                               Tümünü Aç
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                bulkSetNeighborhoods(d.district, 'allow_immediate', false);
-                                bulkSetNeighborhoods(d.district, 'allow_scheduled', false);
-                              }}
+                              onClick={() => bulkSetNeighborhoods(d.district, allowField, false)}
                               className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-100"
                             >
                               Tümünü Kapa
@@ -979,21 +983,17 @@ export default function BossDeliveryManagement() {
                             <p className="text-center text-xs text-slate-400 py-4">Mahalle yok.</p>
                           ) : (
                             <div className="divide-y divide-gray-100 max-h-[360px] overflow-y-auto">
-                              <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sticky top-0 bg-white">
+                              <div className="grid grid-cols-[1fr_auto] gap-4 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sticky top-0 bg-white">
                                 <span>Mahalle</span>
-                                <span>Hemen</span>
-                                <span>Randevulu</span>
+                                <span>{isImmediate ? 'Hemen' : 'Randevulu'}</span>
                               </div>
                               {d.rows.map((r) => (
-                                <div key={r.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 py-2">
+                                <div key={r.id} className="grid grid-cols-[1fr_auto] items-center gap-4 py-2">
                                   <span className="truncate text-sm text-geex-text">{r.neighborhood || '—'}</span>
                                   <Toggle
-                                    on={r.allow_immediate}
-                                    onClick={() => toggleNeighborhood(d.district, r.id, 'allow_immediate')}
-                                  />
-                                  <Toggle
-                                    on={r.allow_scheduled}
-                                    onClick={() => toggleNeighborhood(d.district, r.id, 'allow_scheduled')}
+                                    on={r[allowField]}
+                                    accent={accent}
+                                    onClick={() => toggleNeighborhood(d.district, r.id, allowField)}
                                   />
                                 </div>
                               ))}
@@ -1009,7 +1009,7 @@ export default function BossDeliveryManagement() {
                         type="button"
                         onClick={() => saveDistrict(d.district)}
                         disabled={!isDirty || saving}
-                        className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(152,205,0,0.35)] disabled:opacity-50 disabled:shadow-none"
+                        className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 disabled:shadow-none ${saveBtnClass}`}
                       >
                         {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                         Kaydet
