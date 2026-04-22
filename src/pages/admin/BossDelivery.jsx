@@ -13,6 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Clock, Loader2, MapPin, Save, ToggleLeft, ToggleRight, Truck, X } from 'lucide-react';
 import { supabase } from '../../supabase';
+import { fetchAllDeliveryZones } from '../../lib/supabaseHelpers';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const TABS = [
@@ -83,26 +84,31 @@ export default function BossDelivery() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setErr('');
-    const [zonesRes, settingsRes] = await Promise.all([
-      supabase
-        .from('delivery_zones')
-        .select('id, city, district, neighborhood, min_order, allow_immediate, allow_scheduled, is_active')
-        .order('district')
-        .order('neighborhood'),
-      supabase
-        .from('delivery_settings')
-        .select('district, cargo_rules'),
-    ]);
+    try {
+      const [zones, settingsRes] = await Promise.all([
+        // Paginated — PostgREST single-request cap of 1000 rows would drop
+        // late-alphabetical districts once mahalleler grow past that threshold.
+        fetchAllDeliveryZones({
+          select: 'id, city, district, neighborhood, min_order, allow_immediate, allow_scheduled, is_active',
+          orderBy: ['district', 'neighborhood'],
+        }),
+        supabase
+          .from('delivery_settings')
+          .select('district, cargo_rules'),
+      ]);
 
-    if (zonesRes.error) setErr(zonesRes.error.message);
-    else setZones(zonesRes.data || []);
+      setZones(zones);
 
-    if (!settingsRes.error && settingsRes.data) {
-      const map = {};
-      settingsRes.data.forEach(row => { map[row.district] = row.cargo_rules || {}; });
-      setSettings(map);
+      if (!settingsRes.error && settingsRes.data) {
+        const map = {};
+        settingsRes.data.forEach(row => { map[row.district] = row.cargo_rules || {}; });
+        setSettings(map);
+      }
+    } catch (e) {
+      setErr(e?.message || 'Teslimat bölgeleri yüklenemedi.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);

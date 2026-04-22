@@ -38,29 +38,50 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../../supabase';
+import { fetchAllDeliveryZones } from '../../lib/supabaseHelpers';
 
 // ─── Sabitler ──────────────────────────────────────────────────────────────
 const GLOBAL_KEY = '__GLOBAL__';
 
 const DAY_OPTIONS = [
-  { value: 1, label: 'Pzt' },
-  { value: 2, label: 'Sal' },
-  { value: 3, label: 'Çar' },
-  { value: 4, label: 'Per' },
-  { value: 5, label: 'Cum' },
-  { value: 6, label: 'Cmt' },
-  { value: 0, label: 'Paz' },
+  { value: 1, label: 'Pazartesi' },
+  { value: 2, label: 'Salı' },
+  { value: 3, label: 'Çarşamba' },
+  { value: 4, label: 'Perşembe' },
+  { value: 5, label: 'Cuma' },
+  { value: 6, label: 'Cumartesi' },
+  { value: 0, label: 'Pazar' },
 ];
 
-const DAY_SHORT = { 0: 'Paz', 1: 'Pzt', 2: 'Sal', 3: 'Çar', 4: 'Per', 5: 'Cum', 6: 'Cmt' };
+const DAY_FULL_TR = {
+  0: 'Pazar', 1: 'Pazartesi', 2: 'Salı', 3: 'Çarşamba',
+  4: 'Perşembe', 5: 'Cuma', 6: 'Cumartesi',
+};
 
+// Mirror of src/utils/deliveryDays.ts formatDeliveryDaysFull. Keep in sync —
+// admin-panel can't import mobile utils.
+// Day numbering: 0=Pazar … 6=Cumartesi (JS Date.getDay()). Weekdays: [1..5].
 function formatDeliveryDays(days) {
   if (!Array.isArray(days) || days.length === 0) return 'Belirtilmemiş';
-  const sorted = [...days].map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
-  if (sorted.length === 7) return 'Her gün';
-  if (JSON.stringify(sorted) === JSON.stringify([1, 2, 3, 4, 5])) return 'Hafta içi';
-  if (JSON.stringify(sorted) === JSON.stringify([0, 6])) return 'Hafta sonu';
-  return sorted.map((d) => DAY_SHORT[d]).join(', ');
+  const unique = Array.from(new Set(days.map(Number)))
+    .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+    .sort((a, b) => a - b);
+  if (unique.length === 0) return 'Belirtilmemiş';
+
+  if (unique.length === 7) return 'Her gün';
+  if (unique.length === 2 && unique[0] === 0 && unique[1] === 6) return 'Hafta sonu';
+
+  const weekdays = [1, 2, 3, 4, 5];
+  const hasAllWeekdays = weekdays.every((d) => unique.includes(d));
+  if (hasAllWeekdays) {
+    if (unique.length === 5) return 'Hafta içi her gün';
+    if (unique.length === 6) {
+      if (unique.includes(6)) return 'Hafta içi her gün ve Cumartesi';
+      if (unique.includes(0)) return 'Hafta içi her gün ve Pazar';
+    }
+  }
+
+  return unique.map((d) => DAY_FULL_TR[d]).join(', ');
 }
 
 const DEFAULT_RULES = {
@@ -191,7 +212,7 @@ export default function BossDeliveryManagement() {
     setLoading(true);
     setErr('');
     try {
-      const [settingsRes, globalRes, zonesRes] = await Promise.all([
+      const [settingsRes, globalRes, zoneRows] = await Promise.all([
         supabase
           .from('settings')
           .select('working_days, open_time, close_time, closed_dates, closed_dates_note')
@@ -202,14 +223,8 @@ export default function BossDeliveryManagement() {
           .select('district, cargo_rules')
           .eq('district', GLOBAL_KEY)
           .maybeSingle(),
-        supabase
-          .from('delivery_zones')
-          .select('*')
-          .order('district')
-          .order('neighborhood'),
+        fetchAllDeliveryZones(),
       ]);
-
-      if (zonesRes.error) throw zonesRes.error;
 
       const s = settingsRes.data || {};
       const globalRules = normalizeRules(globalRes.data?.cargo_rules);
@@ -233,7 +248,7 @@ export default function BossDeliveryManagement() {
       });
       setGeneralDirty(false);
 
-      const rows = Array.isArray(zonesRes.data) ? zonesRes.data : [];
+      const rows = zoneRows;
       const grouped = new Map();
       rows.forEach((r) => {
         const d = String(r?.district || '').trim();

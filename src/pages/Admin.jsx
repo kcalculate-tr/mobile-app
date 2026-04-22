@@ -35,6 +35,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { fetchAllDeliveryZones, fetchAllRows } from '../lib/supabaseHelpers';
 import OptionGroups from './admin/OptionGroups';
 
 const IMAGE_BUCKET = 'images';
@@ -2172,14 +2173,10 @@ export default function Admin({
   const fetchDeliveryZones = async () => {
     setDeliveryZonesLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('delivery_zones')
-        .select('*')
-        .order('district', { ascending: true });
-
-      if (error) throw error;
-
-      const rows = Array.isArray(data) ? data : [];
+      // Paginated fetch — delivery_zones exceeds PostgREST's 1000-row hard cap
+      // once İzmir mahalleleri are imported. A single .select() silently drops
+      // late-alphabetical districts (Urla, Torbalı, Tire, Seferihisar, Selçuk).
+      const rows = await fetchAllDeliveryZones({ orderBy: ['district'] });
       setDeliveryZones(rows.map((item) => ({
         ...item,
         city: String(item?.city || '').trim(),
@@ -2255,15 +2252,17 @@ export default function Admin({
         throw new Error('İzmir mahalleleri alınamadı.');
       }
 
-      const existingResponse = await supabase
-        .from('delivery_zones')
-        .select('district,neighborhood');
-
-      if (existingResponse.error) throw existingResponse.error;
+      // CRITICAL: paginated read. A single SELECT is capped at 1000 rows and
+      // would misreport existing (district, neighborhood) pairs beyond the cap
+      // as "missing", causing this import to re-insert duplicates for already-
+      // imported mahalleler every run.
+      const existingRows = await fetchAllRows('delivery_zones', {
+        select: 'district,neighborhood',
+        orderBy: ['district', 'neighborhood'],
+      });
 
       const existingKeySet = new Set(
-        (Array.isArray(existingResponse.data) ? existingResponse.data : [])
-          .map((item) => `${normalizeTextForCompare(item?.district)}|${normalizeTextForCompare(item?.neighborhood)}`)
+        existingRows.map((item) => `${normalizeTextForCompare(item?.district)}|${normalizeTextForCompare(item?.neighborhood)}`)
       );
 
       const dedupedRows = [];

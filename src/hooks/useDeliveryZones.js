@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabase';
+import { fetchAllDeliveryZones } from '../lib/supabaseHelpers';
 
 function normalizeForCompare(value) {
   return String(value || '').trim().toLocaleLowerCase('tr-TR');
@@ -31,15 +32,13 @@ export default function useDeliveryZones() {
       setDeliveryZonesError('');
 
       try {
-        const { data, error } = await supabase
-          .from('delivery_zones')
-          .select('*')
-          .order('district', { ascending: true });
+        // Paginated read — a single .select() stops at 1000 rows and loses
+        // late-alphabetical districts once mahalleler grow past that cap.
+        const data = await fetchAllDeliveryZones({ orderBy: ['district'] });
 
-        if (error) throw error;
         if (!isMounted) return;
 
-        const normalized = (Array.isArray(data) ? data : []).map((item) => ({
+        const normalized = data.map((item) => ({
           ...item,
           city: String(item?.city || '').trim(),
           district: String(item?.district || '').trim(),
