@@ -18,6 +18,7 @@ const BossCatalog     = React.lazy(() => import('./pages/admin/BossCatalog'));
 const BossShowcase    = React.lazy(() => import('./pages/admin/BossShowcase'));
 const BossVitrin      = React.lazy(() => import('./pages/admin/BossVitrin'));
 const BossDelivery    = React.lazy(() => import('./pages/admin/BossDelivery'));
+const BossDeliveryManagement = React.lazy(() => import('./pages/admin/BossDeliveryManagement'));
 const BossBusinessHours = React.lazy(() => import('./pages/admin/BossBusinessHours'));
 const BossSupport = React.lazy(() => import('./pages/admin/BossSupport'));
 const BossMacro = React.lazy(() => import('./pages/admin/BossMacro'));
@@ -192,6 +193,7 @@ function AnimatedRoutes() {
             <Route path="showcase" element={wrap(<BossShowcase />)} />
             <Route path="vitrin" element={wrap(<BossVitrin />)} />
             <Route path="teslimat" element={wrap(<BossDelivery />)} />
+            <Route path="delivery-management" element={wrap(<BossDeliveryManagement />)} />
             <Route path="yorumlar" element={wrap(<BossReviews />)} />
             <Route path="branches" element={wrap(<BossBranches />)} />
             <Route path="subeler" element={<Navigate to="/boss/branches" replace />} />

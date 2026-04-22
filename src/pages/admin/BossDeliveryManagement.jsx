@@ -1,0 +1,1041 @@
+/**
+ * BossDeliveryManagement.jsx — Birleşik Teslimat Yönetimi
+ *
+ * 3 eski sayfayı (Admin.jsx delivery_zones sekmesi, BossDelivery.jsx,
+ * BossBusinessHours.jsx) kompakt ilçe-kartı tabanlı tek bir arayüzde toplar.
+ *
+ * Kullanılan tablolar:
+ *   - settings(id=1): working_days[], open_time, close_time,
+ *                     closed_dates[], closed_dates_note jsonb
+ *   - delivery_settings(district PK, cargo_rules jsonb, updated_at)
+ *       → district = '__GLOBAL__' satırı genel varsayılanları tutar.
+ *   - delivery_zones(id, city, district, neighborhood, min_order,
+ *                    delivery_days int[], is_active, allow_immediate,
+ *                    allow_scheduled,
+ *                    delivery_fee_immediate, delivery_fee_scheduled,
+ *                    free_shipping_above_immediate, free_shipping_above_scheduled,
+ *                    min_order_immediate, min_order_scheduled,
+ *                    estimated_delivery_minutes)
+ *
+ * Eski sayfalar (/boss/teslimat, /boss/business-hours) dokunulmadan kalır
+ * ve fallback olarak erişilebilir.
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Loader2,
+  MapPin,
+  Plus,
+  Save,
+  Search,
+  ToggleLeft,
+  ToggleRight,
+  Truck,
+  X,
+} from 'lucide-react';
+import { supabase } from '../../supabase';
+
+// ─── Sabitler ──────────────────────────────────────────────────────────────
+const GLOBAL_KEY = '__GLOBAL__';
+
+const DAY_OPTIONS = [
+  { value: 1, label: 'Pzt' },
+  { value: 2, label: 'Sal' },
+  { value: 3, label: 'Çar' },
+  { value: 4, label: 'Per' },
+  { value: 5, label: 'Cum' },
+  { value: 6, label: 'Cmt' },
+  { value: 0, label: 'Paz' },
+];
+
+const DAY_SHORT = { 0: 'Paz', 1: 'Pzt', 2: 'Sal', 3: 'Çar', 4: 'Per', 5: 'Cum', 6: 'Cmt' };
+
+function formatDeliveryDays(days) {
+  if (!Array.isArray(days) || days.length === 0) return 'Belirtilmemiş';
+  const sorted = [...days].map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (sorted.length === 7) return 'Her gün';
+  if (JSON.stringify(sorted) === JSON.stringify([1, 2, 3, 4, 5])) return 'Hafta içi';
+  if (JSON.stringify(sorted) === JSON.stringify([0, 6])) return 'Hafta sonu';
+  return sorted.map((d) => DAY_SHORT[d]).join(', ');
+}
+
+const DEFAULT_RULES = {
+  immediate: { active: true, min_order: 0, shipping_fee: 0, free_shipping_above: 0 },
+  scheduled: { active: true, min_order: 0, shipping_fee: 0, free_shipping_above: 0 },
+};
+
+function normalizeRules(row) {
+  if (!row || typeof row !== 'object') return structuredClone(DEFAULT_RULES);
+  return {
+    immediate: { ...DEFAULT_RULES.immediate, ...(row.immediate || {}) },
+    scheduled: { ...DEFAULT_RULES.scheduled, ...(row.scheduled || {}) },
+  };
+}
+
+function toNumOrNull(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+function toStrOrEmpty(v) {
+  if (v === null || v === undefined) return '';
+  return String(v);
+}
+
+// ─── Yardımcı bileşenler ────────────────────────────────────────────────────
+function Toggle({ on, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="shrink-0 inline-flex items-center"
+      aria-pressed={!!on}
+    >
+      {on
+        ? <ToggleRight size={26} className="text-green-500" />
+        : <ToggleLeft size={26} className="text-gray-300" />}
+    </button>
+  );
+}
+
+function Pill({ active, onClick, children, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+        active
+          ? 'bg-green-500 text-white shadow-[0_4px_12px_rgba(152,205,0,0.35)]'
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      } disabled:opacity-50`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function NumInput({ value, onChange, placeholder, id }) {
+  return (
+    <input
+      id={id}
+      type="number"
+      min="0"
+      step="1"
+      inputMode="decimal"
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-geex-text placeholder:text-gray-400 outline-none focus:border-brand-primary"
+    />
+  );
+}
+
+function Banner({ type, msg, onClose }) {
+  if (!msg) return null;
+  const cls = type === 'err'
+    ? 'bg-rose-50 text-rose-700 border-rose-200'
+    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  return (
+    <div className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-3 text-sm ${cls}`}>
+      <span>{msg}</span>
+      <button type="button" onClick={onClose}><X size={14} /></button>
+    </div>
+  );
+}
+
+// ─── Ana bileşen ────────────────────────────────────────────────────────────
+export default function BossDeliveryManagement() {
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+
+  // ── Genel ayarlar ─────────────────────────────────────────────
+  const [general, setGeneral] = useState({
+    working_days: [1, 2, 3, 4, 5],
+    open_time: '09:00',
+    close_time: '21:00',
+    closed_dates: [],
+    closed_dates_note: {},
+    immediate: { min_order: 0, shipping_fee: 0, free_shipping_above: 0 },
+    scheduled: { min_order: 0, shipping_fee: 0, free_shipping_above: 0 },
+  });
+  const [generalDirty, setGeneralDirty] = useState(false);
+  const [generalSaving, setGeneralSaving] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const [newDateNote, setNewDateNote] = useState('');
+
+  // ── İlçe kartları ─────────────────────────────────────────────
+  const [districts, setDistricts] = useState([]); // [{ district, rows:[...], district_level:{...} }]
+  const [dirtyDistricts, setDirtyDistricts] = useState(new Set());
+  const [savingDistrict, setSavingDistrict] = useState('');
+  const [expanded, setExpanded] = useState(null);
+  const [expandedNeighborhoods, setExpandedNeighborhoods] = useState({});
+
+  // ── Filtre ────────────────────────────────────────────────────
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // all | active | inactive
+
+  // ── Veri yükle ────────────────────────────────────────────────
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr('');
+    try {
+      const [settingsRes, globalRes, zonesRes] = await Promise.all([
+        supabase
+          .from('settings')
+          .select('working_days, open_time, close_time, closed_dates, closed_dates_note')
+          .eq('id', 1)
+          .maybeSingle(),
+        supabase
+          .from('delivery_settings')
+          .select('district, cargo_rules')
+          .eq('district', GLOBAL_KEY)
+          .maybeSingle(),
+        supabase
+          .from('delivery_zones')
+          .select('*')
+          .order('district')
+          .order('neighborhood'),
+      ]);
+
+      if (zonesRes.error) throw zonesRes.error;
+
+      const s = settingsRes.data || {};
+      const globalRules = normalizeRules(globalRes.data?.cargo_rules);
+
+      setGeneral({
+        working_days: Array.isArray(s.working_days) ? s.working_days : [1, 2, 3, 4, 5],
+        open_time: (s.open_time || '09:00').slice(0, 5),
+        close_time: (s.close_time || '21:00').slice(0, 5),
+        closed_dates: Array.isArray(s.closed_dates) ? s.closed_dates : [],
+        closed_dates_note: (s.closed_dates_note && typeof s.closed_dates_note === 'object') ? s.closed_dates_note : {},
+        immediate: {
+          min_order: Number(globalRules.immediate.min_order) || 0,
+          shipping_fee: Number(globalRules.immediate.shipping_fee) || 0,
+          free_shipping_above: Number(globalRules.immediate.free_shipping_above) || 0,
+        },
+        scheduled: {
+          min_order: Number(globalRules.scheduled.min_order) || 0,
+          shipping_fee: Number(globalRules.scheduled.shipping_fee) || 0,
+          free_shipping_above: Number(globalRules.scheduled.free_shipping_above) || 0,
+        },
+      });
+      setGeneralDirty(false);
+
+      // İlçelere göre grupla
+      const rows = Array.isArray(zonesRes.data) ? zonesRes.data : [];
+      const grouped = new Map();
+      rows.forEach((r) => {
+        const d = String(r?.district || '').trim();
+        if (!d) return;
+        if (!grouped.has(d)) grouped.set(d, []);
+        grouped.get(d).push(r);
+      });
+
+      const list = Array.from(grouped.entries())
+        .map(([district, rawRows]) => {
+          const sortedRows = [...rawRows].sort((a, b) =>
+            String(a?.neighborhood || '').localeCompare(String(b?.neighborhood || ''), 'tr')
+          );
+          const first = sortedRows[0] || {};
+          return {
+            district,
+            city: String(first?.city || 'İzmir').trim() || 'İzmir',
+            rows: sortedRows.map((r) => ({
+              id: r.id,
+              neighborhood: String(r?.neighborhood || '').trim(),
+              allow_immediate: !!r?.allow_immediate,
+              allow_scheduled: !!r?.allow_scheduled,
+            })),
+            // ilçe seviyesi (tüm satırlar için aynı uygulanır)
+            is_active: !!first?.is_active,
+            delivery_days: Array.isArray(first?.delivery_days) && first.delivery_days.length > 0
+              ? first.delivery_days.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 6)
+              : [1, 2, 3, 4, 5],
+            min_order: Number(first?.min_order || 0),
+            delivery_fee_immediate: toStrOrEmpty(first?.delivery_fee_immediate),
+            delivery_fee_scheduled: toStrOrEmpty(first?.delivery_fee_scheduled),
+            free_shipping_above_immediate: toStrOrEmpty(first?.free_shipping_above_immediate),
+            free_shipping_above_scheduled: toStrOrEmpty(first?.free_shipping_above_scheduled),
+            min_order_immediate: toStrOrEmpty(first?.min_order_immediate),
+            min_order_scheduled: toStrOrEmpty(first?.min_order_scheduled),
+            estimated_delivery_minutes: toStrOrEmpty(first?.estimated_delivery_minutes),
+          };
+        })
+        .sort((a, b) => a.district.localeCompare(b.district, 'tr'));
+
+      setDistricts(list);
+      setDirtyDistricts(new Set());
+    } catch (e) {
+      console.error('load failed', e);
+      setErr(e.message || 'Veri yüklenemedi.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── General field setters ─────────────────────────────────────
+  const patchGeneral = (patch) => {
+    setGeneral((prev) => ({ ...prev, ...patch }));
+    setGeneralDirty(true);
+  };
+
+  const patchGeneralRule = (key, field, value) => {
+    setGeneral((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value },
+    }));
+    setGeneralDirty(true);
+  };
+
+  const toggleWorkingDay = (d) => {
+    setGeneral((prev) => {
+      const has = prev.working_days.includes(d);
+      const next = has ? prev.working_days.filter((x) => x !== d) : [...prev.working_days, d].sort();
+      return { ...prev, working_days: next };
+    });
+    setGeneralDirty(true);
+  };
+
+  const addClosedDate = () => {
+    if (!newDate) { setErr('Tarih seçin.'); return; }
+    if (general.closed_dates.includes(newDate)) { setErr('Bu tarih zaten ekli.'); return; }
+    const nextDates = [...general.closed_dates, newDate].sort();
+    const nextNotes = { ...general.closed_dates_note, [newDate]: newDateNote.trim() || 'Kapalı' };
+    setGeneral((prev) => ({ ...prev, closed_dates: nextDates, closed_dates_note: nextNotes }));
+    setGeneralDirty(true);
+    setNewDate('');
+    setNewDateNote('');
+    setErr('');
+  };
+
+  const removeClosedDate = (d) => {
+    setGeneral((prev) => {
+      const nextNotes = { ...prev.closed_dates_note };
+      delete nextNotes[d];
+      return {
+        ...prev,
+        closed_dates: prev.closed_dates.filter((x) => x !== d),
+        closed_dates_note: nextNotes,
+      };
+    });
+    setGeneralDirty(true);
+  };
+
+  // ── General save ──────────────────────────────────────────────
+  const saveGeneral = async () => {
+    setGeneralSaving(true); setErr(''); setOk('');
+    try {
+      const settingsUpdate = supabase.from('settings').update({
+        working_days: general.working_days,
+        open_time: general.open_time,
+        close_time: general.close_time,
+        closed_dates: general.closed_dates,
+        closed_dates_note: general.closed_dates_note,
+      }).eq('id', 1);
+
+      const globalRules = {
+        immediate: {
+          active: true,
+          min_order: Number(general.immediate.min_order) || 0,
+          shipping_fee: Number(general.immediate.shipping_fee) || 0,
+          free_shipping_above: Number(general.immediate.free_shipping_above) || 0,
+        },
+        scheduled: {
+          active: true,
+          min_order: Number(general.scheduled.min_order) || 0,
+          shipping_fee: Number(general.scheduled.shipping_fee) || 0,
+          free_shipping_above: Number(general.scheduled.free_shipping_above) || 0,
+        },
+      };
+      const deliveryUpsert = supabase.from('delivery_settings').upsert(
+        { district: GLOBAL_KEY, cargo_rules: globalRules, updated_at: new Date().toISOString() },
+        { onConflict: 'district' }
+      );
+
+      const [sRes, dRes] = await Promise.all([settingsUpdate, deliveryUpsert]);
+      if (sRes.error) throw sRes.error;
+      if (dRes.error) throw dRes.error;
+
+      setGeneralDirty(false);
+      setOk('Genel ayarlar kaydedildi.');
+    } catch (e) {
+      console.error(e);
+      setErr(e.message || 'Genel ayarlar kaydedilemedi.');
+    } finally {
+      setGeneralSaving(false);
+    }
+  };
+
+  // ── District helpers ──────────────────────────────────────────
+  const markDistrictDirty = (district) => {
+    setDirtyDistricts((prev) => {
+      if (prev.has(district)) return prev;
+      const n = new Set(prev);
+      n.add(district);
+      return n;
+    });
+  };
+
+  const patchDistrict = (district, patch) => {
+    setDistricts((prev) => prev.map((d) => (d.district === district ? { ...d, ...patch } : d)));
+    markDistrictDirty(district);
+  };
+
+  const toggleDistrictDay = (district, day) => {
+    setDistricts((prev) => prev.map((d) => {
+      if (d.district !== district) return d;
+      const has = d.delivery_days.includes(day);
+      const next = has ? d.delivery_days.filter((x) => x !== day) : [...d.delivery_days, day].sort((a, b) => a - b);
+      return { ...d, delivery_days: next };
+    }));
+    markDistrictDirty(district);
+  };
+
+  const setDistrictDays = (district, days) => {
+    setDistricts((prev) => prev.map((d) => (d.district === district ? { ...d, delivery_days: [...days].sort((a, b) => a - b) } : d)));
+    markDistrictDirty(district);
+  };
+
+  const toggleNeighborhood = (district, id, field) => {
+    setDistricts((prev) => prev.map((d) => {
+      if (d.district !== district) return d;
+      return {
+        ...d,
+        rows: d.rows.map((r) => (r.id === id ? { ...r, [field]: !r[field] } : r)),
+      };
+    }));
+    markDistrictDirty(district);
+  };
+
+  const bulkSetNeighborhoods = (district, field, value) => {
+    setDistricts((prev) => prev.map((d) => {
+      if (d.district !== district) return d;
+      return { ...d, rows: d.rows.map((r) => ({ ...r, [field]: value })) };
+    }));
+    markDistrictDirty(district);
+  };
+
+  // ── Save district ─────────────────────────────────────────────
+  const saveDistrict = async (districtName) => {
+    const d = districts.find((x) => x.district === districtName);
+    if (!d) return;
+    setSavingDistrict(districtName); setErr(''); setOk('');
+    try {
+      // ilçe seviyesindeki alanlar tüm satırlar için aynı
+      const districtLevelPayload = {
+        is_active: !!d.is_active,
+        delivery_days: d.delivery_days.length > 0 ? d.delivery_days : [1, 2, 3, 4, 5],
+        min_order: Number(d.min_order) || 0,
+        delivery_fee_immediate: toNumOrNull(d.delivery_fee_immediate),
+        delivery_fee_scheduled: toNumOrNull(d.delivery_fee_scheduled),
+        free_shipping_above_immediate: toNumOrNull(d.free_shipping_above_immediate),
+        free_shipping_above_scheduled: toNumOrNull(d.free_shipping_above_scheduled),
+        min_order_immediate: toNumOrNull(d.min_order_immediate),
+        min_order_scheduled: toNumOrNull(d.min_order_scheduled),
+        estimated_delivery_minutes: d.estimated_delivery_minutes === '' ? null : (Number(d.estimated_delivery_minutes) || null),
+        updated_at: new Date().toISOString(),
+      };
+
+      // her satır için ayrı update (mahalle seviyesinde toggle farklı)
+      await Promise.all(d.rows.map((r) => (
+        supabase
+          .from('delivery_zones')
+          .update({
+            ...districtLevelPayload,
+            allow_immediate: !!r.allow_immediate,
+            allow_scheduled: !!r.allow_scheduled,
+          })
+          .eq('id', r.id)
+          .then(({ error }) => { if (error) throw error; })
+      )));
+
+      setDirtyDistricts((prev) => {
+        const n = new Set(prev);
+        n.delete(districtName);
+        return n;
+      });
+      setOk(`"${districtName}" kaydedildi.`);
+    } catch (e) {
+      console.error(e);
+      setErr(e.message || 'İlçe kaydedilemedi.');
+    } finally {
+      setSavingDistrict('');
+    }
+  };
+
+  // ── Filtre ────────────────────────────────────────────────────
+  const filteredDistricts = useMemo(() => {
+    const q = search.trim().toLocaleLowerCase('tr-TR');
+    return districts.filter((d) => {
+      if (statusFilter === 'active' && !d.is_active) return false;
+      if (statusFilter === 'inactive' && d.is_active) return false;
+      if (!q) return true;
+      if (d.district.toLocaleLowerCase('tr-TR').includes(q)) return true;
+      return d.rows.some((r) => r.neighborhood.toLocaleLowerCase('tr-TR').includes(q));
+    });
+  }, [districts, search, statusFilter]);
+
+  const activeCount = districts.filter((d) => d.is_active).length;
+
+  const formatClosedDate = (d) => {
+    try {
+      return new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch { return d; }
+  };
+
+  // ─── Render ────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-brand-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 text-geex-text">
+      {/* ── Başlık ── */}
+      <header className="rounded-3xl border border-geex-border bg-geex-card p-5 shadow-geex-soft">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-zalando text-geex-text flex items-center gap-2">
+              <Truck size={22} className="text-brand-primary" /> Teslimat Yönetimi
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Genel ayarlar, ilçe bazlı kargo kuralları, mahalle toggle'ları ve çalışma saatleri tek panelde.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-geex-border bg-geex-bg px-3 py-1 text-xs font-semibold text-slate-500">
+            <MapPin size={13} /> {districts.length} ilçe · {activeCount} aktif
+          </span>
+        </div>
+      </header>
+
+      <Banner type="err" msg={err} onClose={() => setErr('')} />
+      <Banner type="ok" msg={ok} onClose={() => setOk('')} />
+
+      {/* ── Genel Ayarlar ── */}
+      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-zalando text-geex-text flex items-center gap-2">
+            <Clock size={18} className="text-brand-primary" /> Genel Ayarlar
+          </h2>
+          <button
+            type="button"
+            onClick={saveGeneral}
+            disabled={!generalDirty || generalSaving}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white shadow-[0_10px_24px_rgba(152,205,0,0.35)] disabled:opacity-50 disabled:shadow-none"
+          >
+            {generalSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            Kaydet
+          </button>
+        </div>
+
+        {/* Çalışma günleri */}
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-slate-500 mb-2">Çalışma Günleri</p>
+          <div className="flex flex-wrap gap-2">
+            {DAY_OPTIONS.map(({ value, label }) => (
+              <Pill
+                key={value}
+                active={general.working_days.includes(value)}
+                onClick={() => toggleWorkingDay(value)}
+              >
+                {label}
+              </Pill>
+            ))}
+          </div>
+        </div>
+
+        {/* Açılış / kapanış */}
+        <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Açılış Saati</label>
+            <input
+              type="time"
+              value={general.open_time}
+              onChange={(e) => patchGeneral({ open_time: e.target.value })}
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold focus:border-brand-primary focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Kapanış Saati</label>
+            <input
+              type="time"
+              value={general.close_time}
+              onChange={(e) => patchGeneral({ close_time: e.target.value })}
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold focus:border-brand-primary focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Kapalı günler */}
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
+            <CalendarDays size={13} /> Kapalı Günler
+          </p>
+          <div className="flex flex-wrap gap-3 items-end mb-3">
+            <div>
+              <label className="block text-[11px] text-slate-400 mb-1">Tarih</label>
+              <input
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+                className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-[11px] text-slate-400 mb-1">Açıklama</label>
+              <input
+                value={newDateNote}
+                onChange={(e) => setNewDateNote(e.target.value)}
+                placeholder="Ör: Kurban Bayramı"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-brand-primary"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addClosedDate}
+              className="h-10 inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 text-sm font-bold text-white"
+            >
+              <Plus size={14} /> Ekle
+            </button>
+          </div>
+          {general.closed_dates.length === 0 ? (
+            <p className="text-xs text-slate-400">Kapalı gün eklenmedi.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {general.closed_dates.map((d) => (
+                <span key={d} className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-700">
+                  <CalendarDays size={12} className="text-gray-400" />
+                  <span className="font-semibold">{formatClosedDate(d)}</span>
+                  <span className="text-gray-400">{general.closed_dates_note?.[d] ? `· ${general.closed_dates_note[d]}` : ''}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeClosedDate(d)}
+                    className="ml-1 text-gray-400 hover:text-rose-500"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Global kargo kuralları */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+            <p className="text-sm font-bold text-geex-text mb-3">Varsayılan — Hemen</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
+                <NumInput
+                  value={general.immediate.shipping_fee}
+                  onChange={(v) => patchGeneralRule('immediate', 'shipping_fee', v)}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
+                <NumInput
+                  value={general.immediate.free_shipping_above}
+                  onChange={(v) => patchGeneralRule('immediate', 'free_shipping_above', v)}
+                  placeholder="0 = devre dışı"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
+                <NumInput
+                  value={general.immediate.min_order}
+                  onChange={(v) => patchGeneralRule('immediate', 'min_order', v)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+            <p className="text-sm font-bold text-geex-text mb-3">Varsayılan — Randevulu</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
+                <NumInput
+                  value={general.scheduled.shipping_fee}
+                  onChange={(v) => patchGeneralRule('scheduled', 'shipping_fee', v)}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
+                <NumInput
+                  value={general.scheduled.free_shipping_above}
+                  onChange={(v) => patchGeneralRule('scheduled', 'free_shipping_above', v)}
+                  placeholder="0 = devre dışı"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
+                <NumInput
+                  value={general.scheduled.min_order}
+                  onChange={(v) => patchGeneralRule('scheduled', 'min_order', v)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Filtre bar ── */}
+      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="İlçe veya mahalle ara..."
+            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary"
+          />
+        </div>
+        <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1">
+          {[
+            { key: 'all', label: 'Tümü' },
+            { key: 'active', label: 'Aktif' },
+            { key: 'inactive', label: 'Pasif' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                statusFilter === key
+                  ? 'bg-white text-geex-text shadow-sm'
+                  : 'text-slate-500 hover:text-geex-text'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs font-semibold text-slate-500">
+          {filteredDistricts.length} / {districts.length} ilçe
+        </span>
+      </section>
+
+      {/* ── İlçe kartları ── */}
+      {filteredDistricts.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-sm text-slate-400">
+          Filtreye uyan ilçe yok. Mahalle verisi henüz yoksa eski Admin panelindeki
+          "İzmir mahallelerini içe aktar" aksiyonunu kullanabilirsiniz.
+        </div>
+      ) : (
+        <div>
+          {filteredDistricts.map((d) => {
+            const isOpen = expanded === d.district;
+            const isDirty = dirtyDistricts.has(d.district);
+            const neighOpen = !!expandedNeighborhoods[d.district];
+            const saving = savingDistrict === d.district;
+            return (
+              <div
+                key={d.district}
+                className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 ${
+                  !d.is_active ? 'opacity-60' : ''
+                }`}
+              >
+                {/* Kart header */}
+                <button
+                  type="button"
+                  onClick={() => setExpanded((prev) => (prev === d.district ? null : d.district))}
+                  className="w-full flex items-center justify-between gap-3 text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {isOpen ? <ChevronDown size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+                    <div className="min-w-0">
+                      <p className="font-zalando text-base text-geex-text truncate">{d.district}</p>
+                      <p className="text-xs text-slate-500">
+                        {d.rows.length} mahalle · {formatDeliveryDays(d.delivery_days)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isDirty && (
+                      <span className="rounded-full bg-amber-100 text-amber-700 px-2.5 py-0.5 text-[11px] font-semibold">
+                        Kaydedilmedi
+                      </span>
+                    )}
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      d.is_active
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {d.is_active ? 'Aktif' : 'Pasif'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Expand */}
+                {isOpen && (
+                  <div className="mt-5 space-y-5 border-t border-gray-100 pt-5">
+                    {/* Master toggle */}
+                    <div className="flex items-center gap-3">
+                      <Toggle
+                        on={d.is_active}
+                        onClick={() => patchDistrict(d.district, { is_active: !d.is_active })}
+                      />
+                      <span className="text-sm font-semibold text-geex-text">
+                        İlçe {d.is_active ? 'aktif' : 'pasif'} (tüm mahalleler için)
+                      </span>
+                    </div>
+
+                    {/* Hemen / Randevulu kolonları */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Hemen */}
+                      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-bold text-geex-text">Hemen</p>
+                          <div className="flex items-center gap-2">
+                            <Toggle
+                              on={d.rows.every((r) => r.allow_immediate) && d.rows.length > 0}
+                              onClick={() => {
+                                const allOn = d.rows.every((r) => r.allow_immediate) && d.rows.length > 0;
+                                bulkSetNeighborhoods(d.district, 'allow_immediate', !allOn);
+                              }}
+                            />
+                            <span className="text-[11px] text-slate-500">Aktif</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
+                            <NumInput
+                              value={d.min_order_immediate}
+                              placeholder={`Varsayılan: ${general.immediate.min_order}`}
+                              onChange={(v) => patchDistrict(d.district, { min_order_immediate: v })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
+                            <NumInput
+                              value={d.delivery_fee_immediate}
+                              placeholder={`Varsayılan: ${general.immediate.shipping_fee}`}
+                              onChange={(v) => patchDistrict(d.district, { delivery_fee_immediate: v })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
+                            <NumInput
+                              value={d.free_shipping_above_immediate}
+                              placeholder={`Varsayılan: ${general.immediate.free_shipping_above}`}
+                              onChange={(v) => patchDistrict(d.district, { free_shipping_above_immediate: v })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Ortalama süre (dk)</label>
+                            <NumInput
+                              value={d.estimated_delivery_minutes}
+                              placeholder="Örn: 45"
+                              onChange={(v) => patchDistrict(d.district, { estimated_delivery_minutes: v })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Randevulu */}
+                      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-bold text-geex-text">Randevulu</p>
+                          <div className="flex items-center gap-2">
+                            <Toggle
+                              on={d.rows.every((r) => r.allow_scheduled) && d.rows.length > 0}
+                              onClick={() => {
+                                const allOn = d.rows.every((r) => r.allow_scheduled) && d.rows.length > 0;
+                                bulkSetNeighborhoods(d.district, 'allow_scheduled', !allOn);
+                              }}
+                            />
+                            <span className="text-[11px] text-slate-500">Aktif</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Min. sepet (₺)</label>
+                            <NumInput
+                              value={d.min_order_scheduled}
+                              placeholder={`Varsayılan: ${general.scheduled.min_order}`}
+                              onChange={(v) => patchDistrict(d.district, { min_order_scheduled: v })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Kargo (₺)</label>
+                            <NumInput
+                              value={d.delivery_fee_scheduled}
+                              placeholder={`Varsayılan: ${general.scheduled.shipping_fee}`}
+                              onChange={(v) => patchDistrict(d.district, { delivery_fee_scheduled: v })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Ücretsiz kargo eşiği (₺)</label>
+                            <NumInput
+                              value={d.free_shipping_above_scheduled}
+                              placeholder={`Varsayılan: ${general.scheduled.free_shipping_above}`}
+                              onChange={(v) => patchDistrict(d.district, { free_shipping_above_scheduled: v })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] text-slate-500 mb-1">Genel min. sepet — ilçe (₺)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={d.min_order}
+                              onChange={(e) => patchDistrict(d.district, { min_order: e.target.value })}
+                              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-geex-text placeholder:text-gray-400 outline-none focus:border-brand-primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Teslimat günleri */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-slate-500">Teslimat Günleri</p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDistrictDays(d.district, [1, 2, 3, 4, 5])}
+                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-gray-50"
+                          >
+                            Hafta İçi
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDistrictDays(d.district, [0, 1, 2, 3, 4, 5, 6])}
+                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-gray-50"
+                          >
+                            Her Gün
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {DAY_OPTIONS.map(({ value, label }) => (
+                          <Pill
+                            key={value}
+                            active={d.delivery_days.includes(value)}
+                            onClick={() => toggleDistrictDay(d.district, value)}
+                          >
+                            {label}
+                          </Pill>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Mahalleler */}
+                    <div className="rounded-xl border border-gray-100 p-4">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedNeighborhoods((prev) => ({ ...prev, [d.district]: !prev[d.district] }))}
+                        className="w-full flex items-center justify-between gap-2 text-left"
+                      >
+                        <span className="text-sm font-bold text-geex-text flex items-center gap-2">
+                          {neighOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          Mahalleler ({d.rows.length})
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {d.rows.filter((r) => r.allow_immediate).length} hemen · {d.rows.filter((r) => r.allow_scheduled).length} randevulu
+                        </span>
+                      </button>
+
+                      {neighOpen && (
+                        <>
+                          <div className="flex flex-wrap gap-2 mt-3 mb-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                bulkSetNeighborhoods(d.district, 'allow_immediate', true);
+                                bulkSetNeighborhoods(d.district, 'allow_scheduled', true);
+                              }}
+                              className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-semibold text-green-700 hover:bg-green-100"
+                            >
+                              Tümünü Aç
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                bulkSetNeighborhoods(d.district, 'allow_immediate', false);
+                                bulkSetNeighborhoods(d.district, 'allow_scheduled', false);
+                              }}
+                              className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-100"
+                            >
+                              Tümünü Kapa
+                            </button>
+                          </div>
+
+                          {d.rows.length === 0 ? (
+                            <p className="text-center text-xs text-slate-400 py-4">Mahalle yok.</p>
+                          ) : (
+                            <div className="divide-y divide-gray-100 max-h-[360px] overflow-y-auto">
+                              <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 sticky top-0 bg-white">
+                                <span>Mahalle</span>
+                                <span>Hemen</span>
+                                <span>Randevulu</span>
+                              </div>
+                              {d.rows.map((r) => (
+                                <div key={r.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 py-2">
+                                  <span className="truncate text-sm text-geex-text">{r.neighborhood || '—'}</span>
+                                  <Toggle
+                                    on={r.allow_immediate}
+                                    onClick={() => toggleNeighborhood(d.district, r.id, 'allow_immediate')}
+                                  />
+                                  <Toggle
+                                    on={r.allow_scheduled}
+                                    onClick={() => toggleNeighborhood(d.district, r.id, 'allow_scheduled')}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Save */}
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => saveDistrict(d.district)}
+                        disabled={!isDirty || saving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(152,205,0,0.35)] disabled:opacity-50 disabled:shadow-none"
+                      >
+                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        Kaydet
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Bilgi kutusu / eski panel bağlantısı */}
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-bold mb-1">Daha fazla özellik</p>
+        <p className="text-[13px]">
+          İzmir mahallelerini turkiyeapi.dev üzerinden toplu içe aktarmak için{' '}
+          <a href="/boss" className="underline font-semibold">Eski admin paneli → Teslimat sekmesi</a>
+          {' '}kullanılabilir. Eski tek-ilçe cargo_rules düzenleyicisi için{' '}
+          <a href="/boss/teslimat" className="underline font-semibold">/boss/teslimat</a>
+          {' '}hâlâ erişilebilir. Çalışma saatleri için eski{' '}
+          <a href="/boss/business-hours" className="underline font-semibold">/boss/business-hours</a>
+          {' '}sayfası da çalışmaya devam eder.
+        </p>
+      </section>
+    </div>
+  );
+}

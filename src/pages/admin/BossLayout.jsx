@@ -12,6 +12,7 @@ import {
   Package,
   Search,
   Settings,
+  Truck,
   Users,
   Wallet,
   Coins,
@@ -53,6 +54,13 @@ const NAV_ITEMS = [
     to: '/boss/vitrin',
     icon: Megaphone,
     matchPrefixes: ['/boss/vitrin', '/boss/showcase'],
+  },
+  {
+    key: 'delivery-management',
+    label: 'Teslimat (Yeni)',
+    to: '/boss/delivery-management',
+    icon: Truck,
+    matchPrefixes: ['/boss/delivery-management'],
   },
   {
     key: 'teslimat',
