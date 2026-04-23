@@ -16,6 +16,7 @@ import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { Category, fetchCategories } from '../lib/categories';
 import { CachedImage } from '../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
 
@@ -73,7 +74,7 @@ export default function CategoriesScreen() {
     >
       {item.image_url ? (
         <View style={styles.iconCircle}>
-          <CachedImage uri={item.image_url} style={styles.categoryImage} />
+          <CachedImage uri={transformImageUrl(item.image_url, ImagePreset.categoryIcon) ?? item.image_url} style={styles.categoryImage} />
         </View>
       ) : (
         <View style={[styles.iconCircle, { backgroundColor: CAT_COLORS[index % CAT_COLORS.length] }]}>

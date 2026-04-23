@@ -25,6 +25,7 @@ import { WebView } from 'react-native-webview';
 import { ArrowLeft, CaretRight, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import FormField from '../components/FormField';
+import DeliveryProgressBar from '../components/DeliveryProgressBar';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
 import { fetchMacroProfile, isPrivileged, processOrderMacroEarn } from '../lib/macros';
@@ -65,7 +66,7 @@ import { Address, CouponValidationResult, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
-import { formatDeliveryDays, isDeliveryDay, DAY_NAMES_TR } from '../utils/deliveryDays';
+import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../utils/deliveryDays';
 
 type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -412,6 +413,16 @@ export default function CheckoutScreen() {
 
   const deliveryFee = resolvedShippingFee;
   const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount);
+
+  // True when the selected address falls inside an active delivery_zones row.
+  // Mirrors the checks resolveShippingFee relies on, so the warning banner,
+  // dimmed method card, progress bar gate, and button disable all agree.
+  const addressInDeliveryZone =
+    deliveryRuleStatus.status === 'ok' && deliveryRuleStatus.data.isActive;
+  const isDeliverable =
+    deliveryMethod === 'pickup'
+      ? true
+      : !!selectedAddress && addressInDeliveryZone;
 
   // settingsMinCartAmount (from `settings.min_cart_amount`) remains a hard
   // floor across the whole app; district/global values layer on top.
@@ -1307,177 +1318,7 @@ export default function CheckoutScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {step === 'summary' ? (<>
-          {/* ── Teslimat Yöntemi + Zamanı ── */}
-          <View style={styles.card}>
-            {/* Yöntem */}
-            <View>
-              <Text style={styles.deliveryGroupLabel}>Yöntem</Text>
-              <View style={styles.chipRow}>
-                <TouchableOpacity
-                  style={[styles.chip, deliveryMethod === 'home_delivery' && styles.chipActive]}
-                  onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'home_delivery' }))}
-                  activeOpacity={0.8}
-                >
-                  <House size={14} color={deliveryMethod === 'home_delivery' ? '#000' : COLORS.text.secondary} />
-                  <Text style={[styles.chipText, deliveryMethod === 'home_delivery' && styles.chipTextActive]}>Eve Teslim</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.chip, deliveryMethod === 'pickup' && styles.chipActive, !shopOpenNow && styles.chipDisabled]}
-                  onPress={() => shopOpenNow && animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' }))}
-                  activeOpacity={0.8}
-                >
-                  <Storefront size={14} color={deliveryMethod === 'pickup' ? '#000' : COLORS.text.secondary} />
-                  <Text style={[styles.chipText, deliveryMethod === 'pickup' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>{shopOpenNow ? 'Gel-Al' : 'Kapalı'}</Text>
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity onPress={() => setShowZonesSheet(true)} style={{ marginTop: 8 }}>
-                <Text style={{ fontSize: 12, fontWeight: '500', fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.tertiary }}>Teslimat bölgelerini gör →</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Zaman — sadece eve teslim */}
-            {deliveryMethod === 'home_delivery' ? (
-              <>
-                <View style={styles.deliverySeparator} />
-                <Animated.View style={{ opacity: sectionOpacity }}>
-                <View>
-                  <Text style={styles.deliveryGroupLabel}>Zaman</Text>
-                  <View style={styles.chipRow}>
-                    <TouchableOpacity
-                      style={[styles.chip, deliveryTimeType === 'immediate' && styles.chipActive, !shopOpenNow && styles.chipDisabled]}
-                      onPress={() => shopOpenNow && animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }))}
-                      activeOpacity={0.8}
-                    >
-                      <Lightning size={14} color={deliveryTimeType === 'immediate' ? '#000' : !shopOpenNow ? '#dc2626' : COLORS.text.secondary} />
-                      <Text style={[styles.chipText, deliveryTimeType === 'immediate' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>
-                        {shopOpenNow ? 'Hemen' : 'Kapalı'}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.chip, deliveryTimeType === 'scheduled' && styles.chipActive]}
-                      onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }))}
-                      activeOpacity={0.8}
-                    >
-                      <CalendarBlank size={14} color={deliveryTimeType === 'scheduled' ? '#000' : COLORS.text.secondary} />
-                      <Text style={[styles.chipText, deliveryTimeType === 'scheduled' && styles.chipTextActive]}>Randevulu</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* ── Randevulu tarih seçici ── */}
-                {deliveryTimeType === 'scheduled' ? (
-                  <>
-                    <View style={styles.deliverySeparator} />
-                    <View>
-                      <View style={{ height: 8 }} />
-                      <Text style={styles.deliveryGroupLabel}>Teslimat Tarihi</Text>
-                      {deliveryDays && deliveryDays.length < 7 ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', padding: 12, borderRadius: 12, marginBottom: 12 }}>
-                          <InfoIcon size={16} color="#F8C90E" weight="fill" style={{ marginRight: 8 }} />
-                          <Text style={{ fontSize: 13, color: '#666', fontFamily: 'PlusJakartaSans_400Regular', flex: 1 }}>
-                            Bu bölgeye teslimat günleri: {formatDeliveryDays(deliveryDays)}
-                          </Text>
-                        </View>
-                      ) : null}
-                      <FlatList
-                        keyboardShouldPersistTaps="handled"
-                        data={scheduledDates}
-                        keyExtractor={(item) => item.toISOString()}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.dateFlatListContent}
-                        renderItem={({ item }) => {
-                          const isSelected =
-                            selectedScheduledDate !== null &&
-                            item.toDateString() === selectedScheduledDate.toDateString();
-                          return (
-                            <TouchableOpacity
-                              activeOpacity={0.7}
-                              onPress={() => {
-                                if (!isDeliveryDay(item, deliveryDays)) {
-                                  Alert.alert(
-                                    'Teslimat Yapılmıyor',
-                                    `${DAY_NAMES_TR[item.getDay()]} günü bu bölgeye teslimat yapılmamaktadır.\n\nMüsait günler: ${formatDeliveryDays(deliveryDays)}`,
-                                  );
-                                  return;
-                                }
-                                dispatchDelivery({ type: 'SET_SCHEDULED_DATE', payload: item });
-                                dispatchDelivery({ type: 'SET_TIME_SLOT', payload: null });
-                              }}
-                              style={[styles.dateCard, isSelected && styles.dateCardActive]}
-                            >
-                              <Text style={[styles.dateDayName, isSelected && styles.dateLabelActive]}>
-                                {TR_DAYS[item.getDay()]}
-                              </Text>
-                              <Text style={[styles.dateDayNum, isSelected && styles.dateLabelActive]}>
-                                {item.getDate()}
-                              </Text>
-                              <Text style={[styles.dateMonth, isSelected && styles.dateLabelActive]}>
-                                {TR_MONTHS[item.getMonth()]}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        }}
-                      />
-
-                      {/* ── Time slot picker (shows after date selected) ── */}
-                      {selectedScheduledDate !== null ? (
-                        <View style={styles.timeSlotsWrap}>
-                          <Text style={[styles.deliveryGroupLabel, { marginTop: SPACING.md, marginBottom: SPACING.sm }]}>
-                            Teslimat Saati
-                          </Text>
-                          <View style={styles.timeSlotsRow}>
-                            {TIME_SLOTS.map((slot) => {
-                              const isActive = selectedTimeSlot?.id === slot.id;
-                              const isDisabled = slot.disabled;
-                              return (
-                                <TouchableOpacity
-                                  key={slot.id}
-                                  activeOpacity={0.7}
-                                  disabled={isDisabled}
-                                  onPress={() => dispatchDelivery({ type: 'SET_TIME_SLOT', payload: slot })}
-                                  style={[
-                                    styles.timeSlotCard,
-                                    isActive && styles.timeSlotCardActive,
-                                    isDisabled && styles.timeSlotCardDisabled,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.timeSlotLabel,
-                                      isActive && styles.timeSlotLabelActive,
-                                      isDisabled && styles.timeSlotLabelDisabled,
-                                    ]}
-                                  >
-                                    {slot.label}
-                                  </Text>
-                                  {isDisabled && (
-                                    <Text style={styles.timeSlotFullText}>Dolu</Text>
-                                  )}
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      ) : null}
-                    </View>
-                  </>
-                ) : null}
-                </Animated.View>
-              </>
-            ) : null}
-
-            {rulesFetchFailed ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorBoxText}>{RULES_FETCH_ERROR_MESSAGE}</Text>
-                <TouchableOpacity style={styles.retryBtn} onPress={handleRetryRules} disabled={rulesLoading}>
-                  {rulesLoading ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.retryBtnText}>Tekrar Dene</Text>}
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </View>
-
-          {/* ── Adres (eve teslim) ── */}
+          {/* ── 1. Teslimat Adresi (eve teslim) ── */}
           {deliveryMethod === 'home_delivery' ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Teslimat Adresi</Text>
@@ -1558,7 +1399,7 @@ export default function CheckoutScreen() {
             </View>
           ) : null}
 
-          {/* ── Gel-Al şube ── */}
+          {/* ── 1b. Gel-Al şube (pickup) ── */}
           {deliveryMethod === 'pickup' ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Şube Bilgisi</Text>
@@ -1594,6 +1435,193 @@ export default function CheckoutScreen() {
             </View>
           ) : null}
 
+          {/* ── 2. Teslimat bölgesi uyarı + zones link (eve teslim) ── */}
+          {deliveryMethod === 'home_delivery' ? (
+            <View style={styles.zonesHintWrap}>
+              {selectedAddress && !isDeliverable ? (
+                <Text style={styles.zonesOutOfArea}>
+                  Seçtiğiniz adres için şu anda teslimatımız bulunmamaktadır.
+                </Text>
+              ) : null}
+              <TouchableOpacity onPress={() => setShowZonesSheet(true)} activeOpacity={0.7}>
+                <Text style={styles.zonesLinkText}>Teslimat bölgelerini gör →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {/* ── 3-6. Teslimat Yöntemi + Zamanı (dimmed if !isDeliverable for eve teslim) ── */}
+          <View
+            style={[
+              styles.card,
+              deliveryMethod === 'home_delivery' && !isDeliverable ? styles.cardDisabled : null,
+            ]}
+            pointerEvents={deliveryMethod === 'home_delivery' && !isDeliverable ? 'none' : 'auto'}
+          >
+            {/* Yöntem */}
+            <View>
+              <Text style={styles.deliveryGroupLabel}>Yöntem</Text>
+              <View style={styles.chipRow}>
+                <TouchableOpacity
+                  style={[styles.chip, deliveryMethod === 'home_delivery' && styles.chipActive]}
+                  onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'home_delivery' }))}
+                  activeOpacity={0.8}
+                >
+                  <House size={14} color={deliveryMethod === 'home_delivery' ? '#000' : COLORS.text.secondary} />
+                  <Text style={[styles.chipText, deliveryMethod === 'home_delivery' && styles.chipTextActive]}>Eve Teslim</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chip, deliveryMethod === 'pickup' && styles.chipActive, !shopOpenNow && styles.chipDisabled]}
+                  onPress={() => shopOpenNow && animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' }))}
+                  activeOpacity={0.8}
+                >
+                  <Storefront size={14} color={deliveryMethod === 'pickup' ? '#000' : COLORS.text.secondary} />
+                  <Text style={[styles.chipText, deliveryMethod === 'pickup' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>{shopOpenNow ? 'Gel-Al' : 'Kapalı'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Zaman — sadece eve teslim */}
+            {deliveryMethod === 'home_delivery' ? (
+              <>
+                <View style={styles.deliverySeparator} />
+                <Animated.View style={{ opacity: sectionOpacity }}>
+                <View>
+                  <Text style={styles.deliveryGroupLabel}>Zaman</Text>
+                  <View style={styles.chipRow}>
+                    <TouchableOpacity
+                      style={[styles.chip, deliveryTimeType === 'immediate' && styles.chipActive, !shopOpenNow && styles.chipDisabled]}
+                      onPress={() => shopOpenNow && animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }))}
+                      activeOpacity={0.8}
+                    >
+                      <Lightning size={14} color={deliveryTimeType === 'immediate' ? '#000' : !shopOpenNow ? '#dc2626' : COLORS.text.secondary} />
+                      <Text style={[styles.chipText, deliveryTimeType === 'immediate' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>
+                        {shopOpenNow ? 'Hemen' : 'Kapalı'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.chip, deliveryTimeType === 'scheduled' && styles.chipActive]}
+                      onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }))}
+                      activeOpacity={0.8}
+                    >
+                      <CalendarBlank size={14} color={deliveryTimeType === 'scheduled' ? '#000' : COLORS.text.secondary} />
+                      <Text style={[styles.chipText, deliveryTimeType === 'scheduled' && styles.chipTextActive]}>Randevulu</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* ── Randevulu tarih seçici ── */}
+                {deliveryTimeType === 'scheduled' ? (
+                  <>
+                    <View style={styles.deliverySeparator} />
+                    <View>
+                      <View style={{ height: 8 }} />
+                      <Text style={styles.deliveryGroupLabel}>Teslimat Tarihi</Text>
+                      {deliveryDays && deliveryDays.length < 7 ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', padding: 12, borderRadius: 12, marginBottom: 12 }}>
+                          <InfoIcon size={16} color="#F8C90E" weight="fill" style={{ marginRight: 8 }} />
+                          <Text style={{ fontSize: 13, color: '#666', fontFamily: 'PlusJakartaSans_400Regular', flex: 1 }}>
+                            Bu bölgeye teslimat günleri: {formatDeliveryDaysFull(deliveryDays)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <FlatList
+                        keyboardShouldPersistTaps="handled"
+                        data={scheduledDates}
+                        keyExtractor={(item) => item.toISOString()}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.dateFlatListContent}
+                        renderItem={({ item }) => {
+                          const isSelected =
+                            selectedScheduledDate !== null &&
+                            item.toDateString() === selectedScheduledDate.toDateString();
+                          return (
+                            <TouchableOpacity
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                if (!isDeliveryDay(item, deliveryDays)) {
+                                  Alert.alert(
+                                    'Teslimat Yapılmıyor',
+                                    `${DAY_NAMES_FULL[item.getDay()]} günü bu bölgeye teslimat yapılmamaktadır.\n\nMüsait günler: ${formatDeliveryDaysFull(deliveryDays)}`,
+                                  );
+                                  return;
+                                }
+                                dispatchDelivery({ type: 'SET_SCHEDULED_DATE', payload: item });
+                                dispatchDelivery({ type: 'SET_TIME_SLOT', payload: null });
+                              }}
+                              style={[styles.dateCard, isSelected && styles.dateCardActive]}
+                            >
+                              <Text style={[styles.dateDayName, isSelected && styles.dateLabelActive]}>
+                                {TR_DAYS[item.getDay()]}
+                              </Text>
+                              <Text style={[styles.dateDayNum, isSelected && styles.dateLabelActive]}>
+                                {item.getDate()}
+                              </Text>
+                              <Text style={[styles.dateMonth, isSelected && styles.dateLabelActive]}>
+                                {TR_MONTHS[item.getMonth()]}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        }}
+                      />
+
+                      {/* ── Time slot picker (shows after date selected) ── */}
+                      {selectedScheduledDate !== null ? (
+                        <View style={styles.timeSlotsWrap}>
+                          <Text style={[styles.deliveryGroupLabel, { marginTop: SPACING.md, marginBottom: SPACING.sm }]}>
+                            Teslimat Saati
+                          </Text>
+                          <View style={styles.timeSlotsRow}>
+                            {TIME_SLOTS.map((slot) => {
+                              const isActive = selectedTimeSlot?.id === slot.id;
+                              const isDisabled = slot.disabled;
+                              return (
+                                <TouchableOpacity
+                                  key={slot.id}
+                                  activeOpacity={0.7}
+                                  disabled={isDisabled}
+                                  onPress={() => dispatchDelivery({ type: 'SET_TIME_SLOT', payload: slot })}
+                                  style={[
+                                    styles.timeSlotCard,
+                                    isActive && styles.timeSlotCardActive,
+                                    isDisabled && styles.timeSlotCardDisabled,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.timeSlotLabel,
+                                      isActive && styles.timeSlotLabelActive,
+                                      isDisabled && styles.timeSlotLabelDisabled,
+                                    ]}
+                                  >
+                                    {slot.label}
+                                  </Text>
+                                  {isDisabled && (
+                                    <Text style={styles.timeSlotFullText}>Dolu</Text>
+                                  )}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  </>
+                ) : null}
+                </Animated.View>
+              </>
+            ) : null}
+
+            {rulesFetchFailed ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorBoxText}>{RULES_FETCH_ERROR_MESSAGE}</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={handleRetryRules} disabled={rulesLoading}>
+                  {rulesLoading ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.retryBtnText}>Tekrar Dene</Text>}
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+
           {/* ── Sipariş Notu ── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Sipariş Notu</Text>
@@ -1609,6 +1637,15 @@ export default function CheckoutScreen() {
             />
             <Text style={styles.noteCounter}>{orderNote.length}/300</Text>
           </View>
+
+          {/* ── 8. Teslimat İlerleme Çubuğu (sadece teslimat bölgesiyse) ── */}
+          {isDeliverable ? (
+            <DeliveryProgressBar
+              cartTotal={subtotal}
+              minOrderAmount={resolvedMinOrder}
+              freeDeliveryThreshold={freeShippingAbove}
+            />
+          ) : null}
 
           {/* ── Sepet Özeti ── */}
           <View style={styles.card}>
@@ -1637,14 +1674,6 @@ export default function CheckoutScreen() {
                 </Text>
               </View>
             ) : null}
-            {deliveryMethod === 'home_delivery' &&
-            deliveryFee > 0 &&
-            freeShippingAbove > 0 &&
-            subtotal < freeShippingAbove ? (
-              <Text style={[styles.summaryLabel, { fontSize: 12, color: '#64748b' }]}>
-                Ücretsiz teslimat için {toCurrency(Math.max(0, freeShippingAbove - subtotal))} daha ekleyin.
-              </Text>
-            ) : null}
             {discountAmount > 0 ? (
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>İndirim</Text>
@@ -1656,16 +1685,6 @@ export default function CheckoutScreen() {
               <Text style={styles.summaryLabelBold}>Toplam</Text>
               <Text style={styles.summaryValueBold}>{toCurrency(totalAmount)}</Text>
             </View>
-            {checkoutBlockMessage ? (
-              <View style={styles.warningBox}>
-                <Text style={styles.warningText}>{checkoutBlockMessage}</Text>
-                {(checkoutBlockMessage.includes('teslimat yok') || checkoutBlockMessage.includes('teslimat kuralı tanımlı değil')) && (
-                  <TouchableOpacity onPress={() => setShowZonesSheet(true)} style={{ marginTop: 6 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', color: '#F97316' }}>Teslimat bölgelerini görüntüle →</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : null}
           </View>
 
           {/* ── Bekleyen ödeme ── */}
@@ -1801,22 +1820,30 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
         {/* ── Footer ── */}
         <View style={{ backgroundColor: COLORS.white }}>
         <View style={[styles.footer, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
-          {step === 'summary' ? (
-            <TouchableOpacity
-              style={[styles.orderBtn, isCheckoutDisabled && styles.orderBtnDisabled]}
-              onPress={handleCreateOrder}
-              disabled={isCheckoutDisabled}
-              activeOpacity={0.85}
-            >
-              {placingOrder ? (
-                <ActivityIndicator color={COLORS.brand.green} />
-              ) : (
-                <Text style={[styles.orderBtnText, isCheckoutDisabled && styles.orderBtnTextDisabled]}>
-                  {actionButtonLabel}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ) : (
+          {step === 'summary' ? (() => {
+            const belowMinOrder = subtotal < resolvedMinOrder;
+            const buttonDisabled = isCheckoutDisabled || belowMinOrder || !isDeliverable;
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.orderBtn,
+                  buttonDisabled && styles.orderBtnDisabled,
+                  belowMinOrder && styles.orderBtnBelowMin,
+                ]}
+                onPress={handleCreateOrder}
+                disabled={buttonDisabled}
+                activeOpacity={0.85}
+              >
+                {placingOrder ? (
+                  <ActivityIndicator color={COLORS.brand.green} />
+                ) : (
+                  <Text style={[styles.orderBtnText, buttonDisabled && styles.orderBtnTextDisabled]}>
+                    {actionButtonLabel}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })() : (
             <TouchableOpacity
               style={[styles.orderBtn, payLoading && styles.orderBtnDisabled]}
               onPress={handlePay}
@@ -1941,6 +1968,27 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: SPACING.lg,
     gap: SPACING.sm,
+  },
+  cardDisabled: {
+    opacity: 0.4,
+  },
+  // Inline hint under the address card: out-of-zone warning + "view zones" link.
+  zonesHintWrap: {
+    paddingHorizontal: SPACING.xs,
+    gap: 4,
+    marginTop: -SPACING.xs,
+  },
+  zonesOutOfArea: {
+    fontSize: 13,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#F97316',
+  },
+  zonesLinkText: {
+    fontSize: 12,
+    fontWeight: TYPOGRAPHY.weight.medium,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
   },
   cardTitle: {
     fontSize: TYPOGRAPHY.size.md,
@@ -2150,6 +2198,10 @@ const styles = StyleSheet.create({
   },
   orderBtnDisabled: {
     backgroundColor: '#d0d0d0',
+  },
+  orderBtnBelowMin: {
+    backgroundColor: '#9ca3af',
+    opacity: 0.4,
   },
   orderBtnText: {
     fontSize: TYPOGRAPHY.size.lg,

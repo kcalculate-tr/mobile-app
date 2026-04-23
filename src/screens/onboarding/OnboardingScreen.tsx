@@ -34,10 +34,10 @@ import FormField, { FormFieldOption } from '../../components/FormField';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const loginRegisterImage = require('../../assets/login-register.jpg');
-const onboardingImage1 = require('../../assets/onboarding/onboarding-flow-1.jpg');
+const loginRegisterImage = require('../../assets/login-register.webp');
+const onboardingImage1 = require('../../assets/onboarding/onboarding-flow-1.webp');
 const onboardingVideo2 = require('../../assets/onboarding/onboarding-flow-2.mp4');
-const onboardingImage3 = require('../../assets/onboarding/onboarding-flow-3.jpg');
+const onboardingImage3 = require('../../assets/onboarding/onboarding-flow-3.webp');
 
 const BRAND = '#C6F04F';
 const BG = '#f6f6f6';

@@ -6,10 +6,11 @@ interface Props {
   uri: string;
   style?: StyleProp<ImageStyle>;
   placeholder?: string;
+  priority?: 'high' | 'normal' | 'low';
   onError?: () => void;
 }
 
-export function CachedImage({ uri, style, placeholder, onError }: Props) {
+export function CachedImage({ uri, style, placeholder, priority = 'normal', onError }: Props) {
   return (
     <Image
       source={{ uri }}
@@ -17,7 +18,10 @@ export function CachedImage({ uri, style, placeholder, onError }: Props) {
       contentFit="cover"
       transition={200}
       cachePolicy="memory-disk"
-      placeholder={placeholder ?? '#f0f0f0'}
+      placeholder={placeholder ?? '#F1F1F1'}
+      placeholderContentFit="cover"
+      priority={priority}
+      recyclingKey={uri}
       onError={onError}
     />
   );

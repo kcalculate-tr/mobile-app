@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const loginRegisterImage = require('../../assets/login-register.jpg');
+const loginRegisterImage = require('../../assets/login-register.webp');
 import { useAuth } from '../../context/AuthContext';
 import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';

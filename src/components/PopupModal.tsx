@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native'
 import type { Popup } from '../hooks/usePopups'
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl'
 
 interface Props {
   popup: Popup
@@ -54,7 +55,7 @@ export default function PopupModal({ popup, total, index, onClose, onNext, onCta
         {/* Görsel */}
         {popup.image_url ? (
           <Image
-            source={{ uri: popup.image_url }}
+            source={{ uri: transformImageUrl(popup.image_url, ImagePreset.bannerMedium) ?? popup.image_url }}
             style={styles.image}
             resizeMode="cover"
           />

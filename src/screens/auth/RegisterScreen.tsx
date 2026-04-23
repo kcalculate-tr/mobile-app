@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const loginRegisterImage = require('../../assets/login-register.jpg');
+const loginRegisterImage = require('../../assets/login-register.webp');
 import * as Location from 'expo-location';
 import * as WebBrowser from 'expo-web-browser';
 import {

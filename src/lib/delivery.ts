@@ -41,6 +41,48 @@ export interface DeliveryZoneRow {
   [key: string]: unknown;
 }
 
+// ─── Paginated zone fetcher ─────────────────────────────────────────────────
+
+// PostgREST caps a single SELECT at 1000 rows. delivery_zones exceeds that once
+// İzmir mahalleleri are imported (~1300+ rows), so a single .select() silently
+// drops late-alphabetical districts (Urla, Torbalı, Tire, Seferihisar, Selçuk).
+// Paginate with .range() until a batch returns fewer than pageSize rows.
+//
+// applyFilters lets callers tack on .or(), .eq(), etc. before the range clause —
+// the DeliveryZonesSheet uses it to keep its allow_immediate/scheduled filter.
+
+export interface FetchAllDeliveryZonesOptions {
+  select?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  applyFilters?: (query: any) => any;
+}
+
+export async function fetchAllDeliveryZones<T = DeliveryZoneRow>(
+  options: FetchAllDeliveryZonesOptions = {},
+): Promise<T[]> {
+  const { select = '*', applyFilters } = options;
+  const pageSize = 1000;
+  const maxPages = 20;
+  const all: T[] = [];
+  let from = 0;
+
+  const supabase = getSupabaseClient();
+  for (let page = 0; page < maxPages; page += 1) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from('delivery_zones').select(select);
+    if (applyFilters) q = applyFilters(q);
+    q = q.order('district').range(from, from + pageSize - 1);
+
+    const { data, error } = (await q) as { data: T[] | null; error: Error | null };
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 // ─── Globals fetcher ─────────────────────────────────────────────────────────
 
 /**

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, ActivityIndicator, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/CachedImage';
 import { useNavigation } from '@react-navigation/native';
@@ -17,7 +17,9 @@ import { Category, fetchCategories } from '../lib/categories';
 import { RootStackParamList } from '../navigation/types';
 import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
 import { getSupabaseClient } from '../lib/supabase';
-import { Banner, Campaign, fetchBanners, fetchCampaigns, fetchPromoBanners } from '../lib/offers';
+import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
+import { resolveNavigation } from '../lib/navigation';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 
@@ -26,10 +28,10 @@ const SLIDE_W = SCREEN_W - 32 + 12;
 const CARD_GAP = 12;
 const CARD_PADDING = 16;
 const CARD_WIDTH = (SCREEN_W - CARD_PADDING * 2 - CARD_GAP) / 2;
-const BANNER_GAP = 12;
 const BANNER_PADDING = 16;
-const HALF_BANNER_WIDTH = (SCREEN_W - BANNER_PADDING * 2 - BANNER_GAP) / 2;
 const FULL_BANNER_WIDTH = SCREEN_W - BANNER_PADDING * 2;
+const BANNER_HEIGHT = 155;
+const PROMO_CELL_GAP = 8;
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -49,9 +51,8 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [promoBanners, setPromoBanners] = useState<Banner[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [heroRows, setHeroRows] = useState<BannerRow[]>([]);
+  const [promoRows, setPromoRows] = useState<BannerRow[]>([]);
   const [activeHero, setActiveHero] = useState(0);
   const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
@@ -106,41 +107,43 @@ export default function HomeScreen() {
     Animated.spring(activeDotWidth, { toValue: 14, useNativeDriver: false, speed: 20, bounciness: 4 }).start();
   }, [activeHero]);
 
+  const heroCells = useMemo(
+    () => heroRows.flatMap((r) => r.cells),
+    [heroRows],
+  );
+
   useEffect(() => {
-    if (banners.length <= 1) return;
+    if (heroCells.length <= 1) return;
     const interval = setInterval(() => {
       setActiveHero((prev) => {
-        const next = prev + 1 >= banners.length ? 0 : prev + 1;
+        const next = prev + 1 >= heroCells.length ? 0 : prev + 1;
         heroFlatListRef.current?.scrollToOffset({ offset: next * SLIDE_W, animated: true });
         return next;
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [banners.length]);
+  }, [heroCells.length]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = getSupabaseClient();
-      const [cats, prods, bans, camps, featured, mealLogsRes, promos] = await Promise.all([
+      const [cats, prods, bannerData, featured, mealLogsRes] = await Promise.all([
         fetchCategories(),
         fetchProducts(),
-        fetchBanners(),
-        fetchCampaigns(),
+        fetchBannerRows(),
         fetchFeaturedProducts(),
         supabase
           .from('meal_logs')
           .select('id,meal_type,calories,date')
           .eq('user_id', user?.id ?? '')
           .eq('date', new Date().toISOString().split('T')[0]),
-        fetchPromoBanners(),
       ]);
       setCategories(cats);
       setProducts(prods);
-      setBanners(bans);
-      setCampaigns(camps);
+      setHeroRows(bannerData.hero);
+      setPromoRows(bannerData.promo);
       setFeaturedProducts(featured);
-      setPromoBanners(promos);
       if (mealLogsRes.data) setMealLogs(mealLogsRes.data as any);
     } catch {}
     finally { setLoading(false); }
@@ -235,16 +238,17 @@ export default function HomeScreen() {
     ? products.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()))
     : (featuredProducts.length > 0 ? featuredProducts : products.slice(0, 6));
 
-  const renderHeroBanner = useCallback(({ item: banner }: { item: any }) => (
+  const renderHeroBanner = useCallback(({ item: cell }: { item: BannerCell }) => (
     <TouchableOpacity
       style={styles.heroSlide}
       activeOpacity={0.95}
-      onPress={() => {
-        const dest = (banner.navigate_to || 'Home') as any;
-        navigation.navigate(dest);
-      }}
+      onPress={() => resolveNavigation(navigation, cell.navigate_to)}
     >
-      <CachedImage uri={banner.image_url} style={styles.heroImage} />
+      <CachedImage
+        uri={transformImageUrl(cell.image_url ?? '', ImagePreset.bannerLarge) ?? (cell.image_url ?? '')}
+        style={styles.heroImage}
+        priority="high"
+      />
     </TouchableOpacity>
   ), [navigation]);
 
@@ -375,7 +379,7 @@ export default function HomeScreen() {
             ))}
           </View>
           {/* Skeleton Banner */}
-          <View style={[styles.skeletonBox, { height: 170, borderRadius: RADIUS.lg, marginHorizontal: SPACING.lg, marginBottom: SPACING.lg }]} />
+          <View style={[styles.skeletonBox, { aspectRatio: 2, borderRadius: RADIUS.lg, marginHorizontal: SPACING.lg, marginBottom: SPACING.lg }]} />
           {/* Skeleton Grid */}
           <View style={styles.skeletonGrid}>
             {[1, 2, 3, 4].map((i) => (
@@ -452,12 +456,12 @@ export default function HomeScreen() {
         )}
 
         {/* Hero Banner Slider */}
-        {banners.length > 0 && (
+        {heroCells.length > 0 && (
           <View style={styles.heroWrapper}>
             <FlatList
               keyboardShouldPersistTaps="handled"
               ref={heroFlatListRef}
-              data={banners}
+              data={heroCells}
               keyExtractor={(item) => item.id}
               horizontal
               pagingEnabled
@@ -472,9 +476,9 @@ export default function HomeScreen() {
               }}
               renderItem={renderHeroBanner}
             />
-            {banners.length > 1 && (
+            {heroCells.length > 1 && (
               <View style={styles.bannerDots}>
-                {banners.map((_, i) => (
+                {heroCells.map((_, i) => (
                   <Animated.View
                     key={i}
                     style={[
@@ -505,7 +509,7 @@ export default function HomeScreen() {
             >
               <View style={styles.categoryIcon}>
                 {cat.img ? (
-                  <CachedImage uri={cat.img} style={{ width: 56, height: 56, borderRadius: RADIUS.sm }} />
+                  <CachedImage uri={transformImageUrl(cat.img, ImagePreset.categoryIcon) ?? cat.img} style={{ width: 56, height: 56, borderRadius: RADIUS.sm }} />
                 ) : (
                   <Text style={styles.categoryEmoji}>
                     {cat.emoji || cat.name.slice(0, 1).toUpperCase()}
@@ -517,43 +521,43 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Bu Hafta Popüler */}
-        {(promoBanners.length > 0 || campaigns.length > 0) && (
+        {/* Bu Hafta Popüler — banner_rows promo grid */}
+        {promoRows.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bu Hafta Popüler</Text>
-            <View style={styles.promoRow}>
-              {(promoBanners.length > 0 ? promoBanners : campaigns).map((campaign, idx, arr) => {
-                const isFull = arr.length % 2 !== 0 && idx === arr.length - 1;
-                return (
-                <TouchableOpacity
-                  key={campaign.id}
-                  style={[
-                    styles.promoCard,
-                    isFull
-                      ? { width: FULL_BANNER_WIDTH, height: 155 }
-                      : { width: HALF_BANNER_WIDTH, height: 155 },
-                  ]}
-                  onPress={() => {
-                    const navTo = (campaign as any).navigate_to || 'Offers';
-                    if (navTo.startsWith('CategoryProducts:')) {
-                      const categoryName = navTo.split(':')[1];
-                      navigation.navigate('CategoryProducts', { categoryName });
-                    } else {
-                      navigation.navigate(navTo as any);
-                    }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <ImageBackground
-                    source={campaign.image_url ? { uri: campaign.image_url } : undefined}
-                    style={styles.promoCardInner}
-                    imageStyle={{ borderRadius: RADIUS.md }}
-                  />
-
-                </TouchableOpacity>
-                );
-              })}
-            </View>
+            {promoRows.map((row) => {
+              const gapTotal = (row.grid_size - 1) * PROMO_CELL_GAP;
+              const cellWidth = (FULL_BANNER_WIDTH - gapTotal) / row.grid_size;
+              return (
+                <View key={row.id} style={styles.promoRow}>
+                  {row.cells.map((cell, idx) => (
+                    <TouchableOpacity
+                      key={cell.id}
+                      style={[
+                        styles.promoCell,
+                        {
+                          width: cellWidth,
+                          height: BANNER_HEIGHT,
+                          marginRight: idx < row.cells.length - 1 ? PROMO_CELL_GAP : 0,
+                        },
+                      ]}
+                      activeOpacity={0.9}
+                      onPress={() => resolveNavigation(navigation, cell.navigate_to, 'Offers')}
+                    >
+                      <CachedImage
+                        uri={
+                          transformImageUrl(
+                            cell.image_url ?? '',
+                            row.grid_size === 1 ? ImagePreset.bannerLarge : ImagePreset.bannerMedium,
+                          ) ?? (cell.image_url ?? '')
+                        }
+                        style={styles.promoImage}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -577,7 +581,7 @@ export default function HomeScreen() {
           
           {/* Product Grid */}
           <View style={styles.productGrid}>
-            {displayProducts.map((product) => (
+            {displayProducts.map((product, idx) => (
               <TouchableOpacity
                 key={product.id}
                 style={styles.productCard}
@@ -586,7 +590,7 @@ export default function HomeScreen() {
               >
                 <View style={styles.productImageContainer}>
                   {product.img ? (
-                    <CachedImage uri={product.img} style={styles.productImage} />
+                    <CachedImage uri={transformImageUrl(product.img, ImagePreset.productCard) ?? product.img} style={styles.productImage} priority={idx < 2 ? 'high' : 'normal'} />
                   ) : (
                     <Text style={styles.productImageFallback}>
                       {String(product.name || '').slice(0, 1).toUpperCase()}
@@ -663,14 +667,7 @@ export default function HomeScreen() {
           index={index}
           onClose={handleClose}
           onNext={handleNext}
-          onCta={(dest) => {
-            if (!dest) return
-            if (dest.startsWith('CategoryProducts:')) {
-              navigation.navigate('CategoryProducts', { categoryName: dest.split(':')[1] })
-            } else {
-              try { navigation.navigate(dest as any) } catch {}
-            }
-          }}
+          onCta={(dest) => resolveNavigation(navigation, dest)}
         />
       )}
     </ScreenContainer>
@@ -847,20 +844,20 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     letterSpacing: -0.4,
   },
-  // Promo Cards
+  // Promo grid (banner_rows promo — her row N hücre yan yana, eşit yükseklik)
   promoRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: BANNER_GAP,
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  promoCard: {
-    borderRadius: 16,
+  promoCell: {
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
+    backgroundColor: '#e0e0e0',
   },
-  promoCardInner: {
+  promoImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'transparent',
   },
   promoOverlay: {
     position: 'absolute',
@@ -1020,7 +1017,7 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   },
   heroSlide: {
     width: SCREEN_W - 32,
-    height: 170,
+    aspectRatio: 2,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     backgroundColor: '#e0e0e0',

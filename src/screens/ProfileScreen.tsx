@@ -46,6 +46,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -271,7 +272,7 @@ export default function ProfileScreen() {
             <View style={styles.profileRow}>
               <TouchableOpacity style={styles.avatarContainer} onPress={pickAvatar} activeOpacity={0.85}>
                 {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatarCircle} />
+                  <Image source={{ uri: transformImageUrl(avatarUrl, ImagePreset.avatarSmall) ?? avatarUrl }} style={styles.avatarCircle} />
                 ) : (
                   <View style={styles.avatarCircle}>
                     <Text style={styles.avatarInitial}>{initial}</Text>

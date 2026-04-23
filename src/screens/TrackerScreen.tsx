@@ -29,6 +29,7 @@ import {ChartBar, CheckCircle, SquaresFour, Package, Plus, Drop, FilePdf, ForkKn
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import { CachedImage } from '../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { getSupabaseClient } from '../lib/supabase';
@@ -1694,7 +1695,7 @@ const html = `
                         <View style={s.pantryImageBox}>
                           {item.imageUrl ? (
                             <CachedImage
-                              uri={item.imageUrl}
+                              uri={transformImageUrl(item.imageUrl, ImagePreset.productCard) ?? item.imageUrl}
                               style={{ width: 48, height: 48, borderRadius: RADIUS.sm }}
                             />
                           ) : (

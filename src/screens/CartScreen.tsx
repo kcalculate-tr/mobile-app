@@ -3,10 +3,11 @@ import { Animated, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, T
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {CaretRight, Minus, Plus, Tag, Trash, Flame, Truck, Confetti} from 'phosphor-react-native';
+import {CaretRight, Minus, Plus, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import { CachedImage } from '../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { haptic } from '../utils/haptics';
 import { useAnimatedPress } from '../utils/useAnimatedPress';
 import { Toast } from '../components/ui/Toast';
@@ -18,23 +19,9 @@ import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchCrosssellProducts } from '../lib/products';
-import {
-  fetchGlobalDeliverySettings,
-  resolveShippingFee,
-  resolveFreeShippingAbove,
-  DeliveryGlobals,
-} from '../lib/delivery';
 import type { Product } from '../types';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
-
-// Hard fallbacks used only if delivery_settings.__GLOBAL__ is unreachable.
-// In normal operation, values come from the admin panel via fetchGlobalDeliverySettings.
-const FALLBACK_FREE_DELIVERY_THRESHOLD = 150;
-const FALLBACK_DELIVERY_FEE = 15;
-// Cart doesn't know the selected district, so use `immediate` globals as default
-// (the most restrictive / common case).
-const CART_DEFAULT_TYPE: 'immediate' | 'scheduled' = 'immediate';
 
 export default function CartScreen() {
   const navigation = useNavigation<CartNavProp>();
@@ -47,30 +34,13 @@ export default function CartScreen() {
   const getSubtotal = useCartStore(s => s.getSubtotal);
   const getTotalMacros = useCartStore(s => s.getTotalMacros);
   const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
-  const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
 
   useEffect(() => {
     fetchCrosssellProducts().then(setCrosssellProducts).catch(() => {});
-    fetchGlobalDeliverySettings().then(setDeliveryGlobals).catch(() => {});
   }, []);
   const subtotal = getSubtotal();
   const totalMacros = getTotalMacros();
   const hasTotalMacros = totalMacros.kcal > 0 || totalMacros.protein > 0;
-
-  // Cart doesn't know the district yet — resolve using globals-only (district rule = null).
-  const freeDeliveryThreshold = (() => {
-    const t = resolveFreeShippingAbove(null, deliveryGlobals, CART_DEFAULT_TYPE);
-    return t > 0 ? t : FALLBACK_FREE_DELIVERY_THRESHOLD;
-  })();
-  const baseDeliveryFee = (() => {
-    if (!deliveryGlobals) return FALLBACK_DELIVERY_FEE;
-    // Pass subtotal=0 so we get the raw fee (the banner computes freeness itself).
-    return resolveShippingFee(null, deliveryGlobals, CART_DEFAULT_TYPE, 0);
-  })();
-
-  const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotal);
-  const isFreeDelivery = remainingForFree === 0;
-  const deliveryFee = isFreeDelivery ? 0 : baseDeliveryFee;
 
   const [couponCode,    setCouponCode]    = useState('');
   const [couponInput,   setCouponInput]   = useState('');
@@ -130,7 +100,7 @@ export default function CartScreen() {
       : Math.min(couponData.discount_value, subtotal)
     : 0;
 
-  const total = subtotal + deliveryFee - couponDiscount;
+  const total = subtotal - couponDiscount;
 
   if (items.length === 0) {
     return (
@@ -138,7 +108,7 @@ export default function CartScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Sepetim</Text>
           <TouchableOpacity style={styles.deliveryBtn} onPress={deliveryModal.open} activeOpacity={0.8}>
-            <Truck size={15} color="#000000" />
+            <TruckIcon size={15} color="#000000" />
             <Text style={styles.deliveryBtnText}>Teslimat Nasıl Olur?</Text>
           </TouchableOpacity>
         </View>
@@ -167,7 +137,7 @@ export default function CartScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Sepetim</Text>
         <TouchableOpacity style={styles.deliveryBtn} onPress={deliveryModal.open} activeOpacity={0.8}>
-          <Truck size={15} color="#000000" />
+          <TruckIcon size={15} color="#000000" />
           <Text style={styles.deliveryBtnText}>Teslimat Nasıl Olur?</Text>
         </TouchableOpacity>
       </View>
@@ -177,35 +147,6 @@ export default function CartScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Shipping threshold banner */}
-        <View style={[styles.shippingBanner, isFreeDelivery ? styles.shippingBannerFree : styles.shippingBannerPending]}>
-          {isFreeDelivery ? (
-            <>
-              <Confetti size={18} color="#16A34A" weight="fill" />
-              <Text style={[styles.shippingText, styles.shippingTextFree]}>Ücretsiz teslimat kazandınız!</Text>
-            </>
-          ) : (
-            <>
-              <Truck size={18} color="#64748b" weight="fill" />
-              <Text style={styles.shippingText}>
-                Ücretsiz teslimat için{' '}
-                <Text style={styles.shippingHighlight}>₺{remainingForFree.toFixed(2)}</Text>
-                {' '}daha ekle
-              </Text>
-            </>
-          )}
-        </View>
-
-        {/* Shipping progress bar */}
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${freeDeliveryThreshold > 0 ? Math.min(100, (subtotal / freeDeliveryThreshold) * 100) : 0}%` as any },
-            ]}
-          />
-        </View>
-
         {/* Items */}
         {items.map((item) => {
           const itemKcal = Math.round((item.calories ?? 0) * item.quantity);
@@ -220,7 +161,7 @@ export default function CartScreen() {
               <View style={styles.itemRow}>
                 <View style={styles.itemImage}>
                   {item.img ? (
-                    <CachedImage uri={item.img} style={{ width: 76, height: 76, borderRadius: RADIUS.sm }} />
+                    <CachedImage uri={transformImageUrl(item.img, ImagePreset.productCard) ?? item.img} style={{ width: 76, height: 76, borderRadius: RADIUS.sm }} />
                   ) : (
                     <Text style={styles.itemImageLetter}>
                       {String(item.name || 'U').slice(0, 1).toUpperCase()}
@@ -319,7 +260,7 @@ export default function CartScreen() {
                     <View style={styles.crosssellImageWrap}>
                       {product.img ? (
                         <CachedImage
-                          uri={product.img}
+                          uri={transformImageUrl(product.img, ImagePreset.productCard) ?? product.img}
                           style={{ width: '100%', height: '100%', borderRadius: RADIUS.sm }}
                         />
                       ) : (
@@ -462,12 +403,6 @@ export default function CartScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Ara Toplam</Text>
             <Text style={styles.summaryValue}>₺{subtotal.toFixed(2)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Teslimat</Text>
-            <Text style={[styles.summaryValue, isFreeDelivery && styles.summaryFreeText]}>
-              {isFreeDelivery ? 'Ücretsiz' : `₺${deliveryFee.toFixed(2)}`}
-            </Text>
           </View>
           {couponDiscount > 0 && (
             <View style={styles.summaryRow}>

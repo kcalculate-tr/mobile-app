@@ -10,14 +10,16 @@ import { useToast } from '../hooks/useToast';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CaretLeft, Clock, Copy, Tag, Ticket } from 'phosphor-react-native';
-import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import ScreenContainer from '../components/ScreenContainer';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../context/AuthContext';
-import { Banner, Campaign, fetchBanners, fetchCampaigns } from '../lib/offers';
+import { Campaign, fetchCampaigns } from '../lib/offers';
+import { BannerCell, fetchBannerRows } from '../lib/banners';
+import { resolveNavigation } from '../lib/navigation';
 import { getSupabaseClient } from '../lib/supabase';
 import { formatSupabaseErrorForDevLog } from '../lib/supabaseErrors';
 import { RootStackParamList } from '../navigation/types';
@@ -133,12 +135,12 @@ export default function OffersAndCouponsScreen() {
   const { toast, show: showToast, hide: hideToast } = useToast();
 
   // Kampanya state
-  const [banners,      setBanners]      = useState<Banner[]>([]);
+  const [banners,      setBanners]      = useState<BannerCell[]>([]);
   const [campaigns,    setCampaigns]    = useState<Campaign[]>([]);
   const [offersLoading, setOffersLoading] = useState(true);
   const [offersError,  setOffersError]  = useState('');
   const [bannerIndex,  setBannerIndex]  = useState(0);
-  const bannerRef = useRef<FlatList<Banner>>(null);
+  const bannerRef = useRef<FlatList<BannerCell>>(null);
 
   // Kupon state
   const [coupons,      setCoupons]      = useState<UserCoupon[]>([]);
@@ -155,8 +157,9 @@ export default function OffersAndCouponsScreen() {
   const loadOffers = useCallback(async () => {
     setOffersLoading(true); setOffersError('');
     try {
-      const [b, c] = await Promise.all([fetchBanners(), fetchCampaigns()]);
-      setBanners(b); setCampaigns(c);
+      const [bannerData, c] = await Promise.all([fetchBannerRows(), fetchCampaigns()]);
+      setBanners(bannerData.hero.flatMap((r) => r.cells));
+      setCampaigns(c);
     } catch (err: unknown) {
       setOffersError(err instanceof Error ? err.message : 'Veriler yüklenemedi.');
     } finally { setOffersLoading(false); }
@@ -272,8 +275,8 @@ export default function OffersAndCouponsScreen() {
                     setBannerIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));
                   }}
                   renderItem={({ item }) => (
-                    <Pressable onPress={() => item.link && Linking.openURL(item.link)} style={s.bannerSlide}>
-                      <CachedImage uri={item.image_url} style={s.bannerImage} />
+                    <Pressable onPress={() => resolveNavigation(navigation, item.navigate_to, 'Offers')} style={s.bannerSlide}>
+                      <CachedImage uri={transformImageUrl(item.image_url ?? '', ImagePreset.bannerLarge) ?? (item.image_url ?? '')} style={s.bannerImage} />
                     </Pressable>
                   )}
                 />

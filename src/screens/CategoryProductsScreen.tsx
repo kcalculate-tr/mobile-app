@@ -15,6 +15,7 @@ const CARD_PADDING = 16;
 const CARD_WIDTH = (SCREEN_WIDTH - CARD_PADDING * 2 - CARD_GAP) / 2;
 import { SkeletonProductCard } from '../components/ui/SkeletonLoader';
 import { CachedImage } from '../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowLeft, Minus, Plus } from 'phosphor-react-native';
@@ -156,7 +157,7 @@ export default function CategoryProductsScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={6}
           windowSize={5}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
               <TouchableOpacity
                 onPress={() =>
                   navigation.navigate('ProductDetail', { productId: String(item.id) })
@@ -166,7 +167,7 @@ export default function CategoryProductsScreen() {
               >
                 <View style={styles.imageWrap}>
                   {item.img ? (
-                    <CachedImage uri={item.img} style={styles.productImage} />
+                    <CachedImage uri={transformImageUrl(item.img, ImagePreset.productCard) ?? item.img} style={styles.productImage} priority={index < 4 ? 'high' : 'normal'} />
                   ) : (
                     <View style={styles.productImageFallback}>
                       <Text style={styles.productImageFallbackText}>

@@ -1,15 +1,9 @@
 import { supabase } from './supabase';
 
-export interface Banner {
-  id: string;
-  image_url: string;
-  link?: string;
-  is_active: boolean;
-  order?: number;
-  navigate_to?: string;
-  title?: string;
-  section?: string;
-}
+// Not: Banner + fetchBanners/fetchPromoBanners yeni banner_rows + banner_cells
+// sistemine taşındı — src/lib/banners.ts. Campaign tipi ve fetchCampaigns
+// "Fırsatlar & Kuponlar" ekranında indirim kartları + kupon listesi için
+// kullanılmaya devam ediyor.
 
 export interface Campaign {
   id: string;
@@ -29,27 +23,6 @@ export interface Campaign {
   discount_value?: number;
   max_discount?: number;
   image_url?: string;
-}
-
-export async function fetchBanners(): Promise<Banner[]> {
-  const { data, error } = await supabase
-    .from('banners')
-    .select('*')
-    .eq('is_active', true)
-    .eq('section', 'slider')
-    .order('order', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function fetchPromoBanners(): Promise<Banner[]> {
-  const { data } = await supabase
-    .from('banners')
-    .select('*')
-    .eq('is_active', true)
-    .eq('section', 'promo')
-    .order('order');
-  return (data || []) as Banner[];
 }
 
 export async function fetchCampaigns(): Promise<Campaign[]> {

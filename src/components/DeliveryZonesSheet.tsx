@@ -9,9 +9,15 @@ import {
 import { MapPin } from 'phosphor-react-native';
 import { ActivityIndicator } from 'react-native';
 import BottomSheet from './BottomSheet';
-import { getSupabaseClient } from '../lib/supabase';
 import { COLORS, TYPOGRAPHY, SPACING } from '../constants/theme';
-import { formatDeliveryDays } from '../utils/deliveryDays';
+import { formatDeliveryDaysFull } from '../utils/deliveryDays';
+import {
+  fetchAllDeliveryZones,
+  fetchGlobalDeliverySettings,
+  resolveMinOrder,
+  DeliveryGlobals,
+  DeliveryZoneRow,
+} from '../lib/delivery';
 
 type Tab = 'immediate' | 'scheduled';
 
@@ -19,6 +25,8 @@ type ZoneRow = {
   id: string;
   district: string;
   min_order: number;
+  min_order_immediate: number | null;
+  min_order_scheduled: number | null;
   is_active: boolean;
   allow_immediate: boolean;
   allow_scheduled: boolean;
@@ -29,7 +37,8 @@ type ZoneRow = {
 
 type DistrictGroup = {
   district: string;
-  minAmount: number;
+  minOrderImmediate: number;
+  minOrderScheduled: number;
   deliveryDaysImmediate: number[] | null;
   deliveryDaysScheduled: number[] | null;
 };
@@ -42,15 +51,21 @@ function sanitizeDays(arr: unknown): number[] | null {
   return out.length > 0 ? out : null;
 }
 
-function groupByDistrict(zones: ZoneRow[]): DistrictGroup[] {
-  const minMap = new Map<string, number>();
+function groupByDistrict(
+  zones: ZoneRow[],
+  globals: DeliveryGlobals | null,
+): DistrictGroup[] {
+  const rowMap = new Map<string, ZoneRow>();
   const immediateMap = new Map<string, number[] | null>();
   const scheduledMap = new Map<string, number[] | null>();
   zones.forEach(z => {
-    const current = minMap.get(z.district);
-    const amount = Number(z.min_order) || 0;
-    if (current === undefined || amount < current) {
-      minMap.set(z.district, amount);
+    // Keep the row with the smallest resolved immediate min-order so the
+    // displayed amount is a reasonable "starting at" value when multiple
+    // neighbourhood rows exist for the same district.
+    const existing = rowMap.get(z.district);
+    const currentImmediate = resolveMinOrder(z as DeliveryZoneRow, globals, 'immediate');
+    if (!existing || currentImmediate < resolveMinOrder(existing as DeliveryZoneRow, globals, 'immediate')) {
+      rowMap.set(z.district, z);
     }
     // Fallback chain: new typed column → legacy delivery_days → null (unknown).
     const legacy = sanitizeDays(z.delivery_days);
@@ -61,10 +76,11 @@ function groupByDistrict(zones: ZoneRow[]): DistrictGroup[] {
       scheduledMap.set(z.district, sanitizeDays(z.delivery_days_scheduled) ?? legacy);
     }
   });
-  return Array.from(minMap.entries())
-    .map(([district, minAmount]) => ({
+  return Array.from(rowMap.entries())
+    .map(([district, row]) => ({
       district,
-      minAmount,
+      minOrderImmediate: resolveMinOrder(row as DeliveryZoneRow, globals, 'immediate'),
+      minOrderScheduled: resolveMinOrder(row as DeliveryZoneRow, globals, 'scheduled'),
       deliveryDaysImmediate: immediateMap.get(district) ?? null,
       deliveryDaysScheduled: scheduledMap.get(district) ?? null,
     }))
@@ -79,6 +95,7 @@ type Props = {
 const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('immediate');
   const [zones, setZones] = useState<ZoneRow[]>([]);
+  const [globals, setGlobals] = useState<DeliveryGlobals | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -88,18 +105,25 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
 
     (async () => {
       try {
-        const supabase = getSupabaseClient();
-        const { data, error } = await supabase
-          .from('delivery_zones')
-          .select('district, min_order, allow_immediate, allow_scheduled, delivery_days, delivery_days_immediate, delivery_days_scheduled')
-          .or('allow_immediate.eq.true,allow_scheduled.eq.true')
-          .order('district');
-        if (__DEV__ && error) {
-          console.warn('delivery_zones error:', error.message);
+        const [zoneRows, globalsRes] = await Promise.all([
+          // Paginated — a single .select() stops at PostgREST's 1000-row cap and
+          // would lose late-alphabetical districts once delivery_zones grows.
+          // allow_immediate/scheduled filter is pushed to the server to minimize
+          // payload, then client also filters by active tab below.
+          fetchAllDeliveryZones<ZoneRow>({
+            select: 'district, min_order, min_order_immediate, min_order_scheduled, allow_immediate, allow_scheduled, delivery_days, delivery_days_immediate, delivery_days_scheduled',
+            applyFilters: (q) => q.or('allow_immediate.eq.true,allow_scheduled.eq.true'),
+          }),
+          fetchGlobalDeliverySettings(),
+        ]);
+        if (mounted) {
+          setZones(zoneRows);
+          setGlobals(globalsRes);
         }
-        if (mounted && data) setZones(data as ZoneRow[]);
-      } catch {
-        // silently fail
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('delivery_zones error:', e);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -111,10 +135,11 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
   const filtered = zones.filter(z =>
     tab === 'immediate' ? z.allow_immediate : z.allow_scheduled,
   );
-  const grouped = groupByDistrict(filtered);
+  const grouped = groupByDistrict(filtered, globals);
 
   const renderItem = ({ item }: { item: DistrictGroup }) => {
     const days = tab === 'immediate' ? item.deliveryDaysImmediate : item.deliveryDaysScheduled;
+    const minAmount = tab === 'immediate' ? item.minOrderImmediate : item.minOrderScheduled;
     return (
       <View style={s.row}>
         <View style={s.rowLeft}>
@@ -122,11 +147,11 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
           <View style={{ flex: 1 }}>
             <Text style={s.districtText} numberOfLines={1}>{item.district}</Text>
             {days && days.length > 0 ? (
-              <Text style={s.deliveryDaysText} numberOfLines={1}>{formatDeliveryDays(days)}</Text>
+              <Text style={s.deliveryDaysText} numberOfLines={1}>{formatDeliveryDaysFull(days)}</Text>
             ) : null}
           </View>
         </View>
-        <Text style={s.minAmountText} numberOfLines={1}>Min ₺{item.minAmount.toLocaleString('tr-TR')}</Text>
+        <Text style={s.minAmountText} numberOfLines={1}>Min ₺{minAmount.toLocaleString('tr-TR')}</Text>
       </View>
     );
   };

@@ -10,6 +10,7 @@ import { Animated,
   Image,
 } from 'react-native';
 import { CachedImage } from '../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowLeft, Minus, Plus, ShoppingBag, CheckCircle, Check as CheckIcon } from 'phosphor-react-native';
@@ -405,8 +406,9 @@ export default function ProductDetailScreen() {
         <View style={styles.imageContainer}>
           {product.img && !imageLoadError ? (
             <CachedImage
-              uri={product.img}
+              uri={transformImageUrl(product.img, ImagePreset.productDetail) ?? product.img}
               style={styles.image}
+              priority="high"
               onError={() => setImageLoadError(true)}
             />
           ) : (

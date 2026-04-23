@@ -30,7 +30,7 @@ import {
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, TYPOGRAPHY } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-import { formatDeliveryDays, isDeliveryDay, DAY_NAMES_TR } from '../../utils/deliveryDays';
+import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../utils/deliveryDays';
 
 type OrderDetailRouteProp = RouteProp<RootStackParamList, 'OrderDetail'>;
 type OrderDetailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -371,7 +371,7 @@ export default function OrderDetailScreen() {
       if (!isDeliveryDay(nextDate, modDeliveryDays)) {
         Alert.alert(
           'Teslimat Yapılmıyor',
-          `${DAY_NAMES_TR[nextDate.getDay()]} günü bu bölgeye teslimat yapılmamaktadır.\n\nMüsait günler: ${formatDeliveryDays(modDeliveryDays)}`,
+          `${DAY_NAMES_FULL[nextDate.getDay()]} günü bu bölgeye teslimat yapılmamaktadır.\n\nMüsait günler: ${formatDeliveryDaysFull(modDeliveryDays)}`,
         );
         return;
       }
