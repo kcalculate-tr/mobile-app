@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   ChefHat,
   ClipboardList,
