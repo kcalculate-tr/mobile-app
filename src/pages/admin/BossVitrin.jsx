@@ -219,7 +219,16 @@ function BannersTab() {
             <span className="text-sm text-gray-600">{form.is_active ? 'Aktif' : 'Pasif'}</span>
           </div>
         </div>
-        <ImageUploadField label="Banner Görseli *" value={form.image_url} onUploaded={v => set('image_url', v)} folder="banners" />
+        <ImageUploadField
+          label="Banner Görseli *"
+          value={form.image_url}
+          onUploaded={v => set('image_url', v)}
+          folder="banners"
+          aspectRatio={2}
+          aspectLabel="2:1"
+          recommendedSize="1600×800"
+          showMobilePreview
+        />
         <div className="flex gap-2">
           <button onClick={save} disabled={saving} className="btn-primary text-sm">
             {saving ? 'Kaydediliyor…' : editId ? 'Güncelle' : 'Ekle'}

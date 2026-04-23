@@ -12,14 +12,57 @@ function buildPath(folder, filename) {
   return `${folder}/${base}_${Date.now()}.${ext}`;
 }
 
-export default function ImageUploadField({ label = 'Görsel', value, onUploaded, folder = 'admin', className = '' }) {
+function measureDimensions(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+function gcd(a, b) {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+function formatAspect(w, h) {
+  const d = gcd(w, h);
+  const rw = w / d;
+  const rh = h / d;
+  if (rw > 20 || rh > 20) return `${(w / h).toFixed(2)}:1`;
+  return `${rw}:${rh}`;
+}
+
+export default function ImageUploadField({
+  label = 'Görsel',
+  value,
+  onUploaded,
+  folder = 'admin',
+  className = '',
+  aspectRatio,
+  aspectTolerance = 0.05,
+  aspectLabel,
+  recommendedSize,
+  showMobilePreview = false,
+  mobilePreviewSize = { width: 343, height: 170 },
+  mobilePreviewLabel = 'Mobilde nasıl görünecek',
+}) {
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
+  const [aspectWarn, setAspectWarn] = useState('');
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setErr('');
+    setAspectWarn('');
 
     if (!ALLOWED.includes(file.type)) {
       setErr('Desteklenmeyen format. JPG, PNG, WEBP veya GIF yükleyin.');
@@ -30,6 +73,22 @@ export default function ImageUploadField({ label = 'Görsel', value, onUploaded,
       setErr(`Maks. ${MAX_MB}MB.`);
       e.target.value = '';
       return;
+    }
+
+    if (aspectRatio) {
+      const dims = await measureDimensions(file);
+      if (dims && dims.width > 0 && dims.height > 0) {
+        const actual = dims.width / dims.height;
+        const delta = Math.abs(actual - aspectRatio) / aspectRatio;
+        if (delta > aspectTolerance) {
+          const shown = formatAspect(dims.width, dims.height);
+          const target = aspectLabel || `${aspectRatio}:1`;
+          const sizeHint = recommendedSize ? ` (örn. ${recommendedSize})` : '';
+          setAspectWarn(
+            `⚠️ Banner ${target} aspect oranında olmalı${sizeHint}. Yüklediğiniz görsel ${dims.width}×${dims.height} (${shown}). Devam etmek zorunda değilsiniz ama görsel mobilde kırpılacak.`
+          );
+        }
+      }
     }
 
     setUploading(true);
@@ -60,7 +119,7 @@ export default function ImageUploadField({ label = 'Görsel', value, onUploaded,
         {value && (
           <button
             type="button"
-            onClick={() => onUploaded('')}
+            onClick={() => { onUploaded(''); setAspectWarn(''); }}
             className="rounded-lg border border-gray-200 p-1.5 text-gray-400 hover:text-red-500"
           >
             <X size={13} />
@@ -68,8 +127,26 @@ export default function ImageUploadField({ label = 'Görsel', value, onUploaded,
         )}
       </div>
       {err && <p className="text-xs text-red-500">{err}</p>}
+      {aspectWarn && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {aspectWarn}
+        </p>
+      )}
       {value && (
-        <img src={value} alt="önizleme" className="h-24 w-40 rounded-xl border border-gray-100 object-cover" />
+        <div className="flex flex-wrap items-start gap-3">
+          <img src={value} alt="önizleme" className="h-24 w-40 rounded-xl border border-gray-100 object-cover" />
+          {showMobilePreview && (
+            <div className="space-y-1">
+              <p className="text-[11px] font-medium text-gray-500">{mobilePreviewLabel} ({mobilePreviewSize.width}×{mobilePreviewSize.height})</p>
+              <div
+                className="overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm"
+                style={{ width: mobilePreviewSize.width, height: mobilePreviewSize.height }}
+              >
+                <img src={value} alt="mobil önizleme" className="h-full w-full object-cover" />
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
