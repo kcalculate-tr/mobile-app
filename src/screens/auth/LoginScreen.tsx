@@ -23,6 +23,7 @@ import { Dimensions } from 'react-native';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const loginRegisterImage = require('../../assets/login-register.webp');
 import { useAuth } from '../../context/AuthContext';
+import { registerForPushNotifications } from '../../lib/notifications';
 import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
 
@@ -110,6 +111,8 @@ export default function LoginScreen() {
       setErrorMessage(error);
       return;
     }
+    // Push token register — best-effort, akışı bloklama
+    registerForPushNotifications().catch(() => {});
     goAfterAuth();
   };
 

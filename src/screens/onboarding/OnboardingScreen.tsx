@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Location from 'expo-location';
 import { getSupabaseClient } from '../../lib/supabase';
+import { registerForPushNotifications, requestPushPermissionOnly } from '../../lib/notifications';
 import { RootStackParamList } from '../../navigation/types';
 import FormField, { FormFieldOption } from '../../components/FormField';
 
@@ -317,6 +318,12 @@ export default function OnboardingScreen() {
     try {
       await AsyncStorage.setItem(ONBOARDING_FLAG, 'true');
     } catch {}
+    // Native push permission popup — sessiz fail (reddedilirse akış devam eder)
+    try {
+      await requestPushPermissionOnly();
+    } catch (e) {
+      if (__DEV__) console.warn('[onboarding] push permission ask failed:', e);
+    }
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
 
@@ -447,6 +454,10 @@ export default function OnboardingScreen() {
     setSubmitting(false);
     await AsyncStorage.setItem('@kcal_needs_nutrition_profile', 'true');
     await AsyncStorage.setItem('@kcal_onboarding_done', 'true');
+    // Onboarding-içi register: izin ister + token kaydeder (auth oluştu)
+    registerForPushNotifications().catch(() => {
+      // izin reddi sessiz — akışı bozmasın
+    });
     navigation.reset({
       index: 0,
       routes: [{ name: 'EmailVerification', params: { email: form.email.trim() } }],
@@ -819,6 +830,9 @@ export default function OnboardingScreen() {
               <TouchableOpacity
                 onPress={async () => {
                   await AsyncStorage.setItem(ONBOARDING_FLAG, 'true');
+                  try {
+                    await requestPushPermissionOnly();
+                  } catch {}
                   navigation.reset({
                     index: 0,
                     routes: [{ name: 'Login' }],

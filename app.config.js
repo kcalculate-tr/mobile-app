@@ -14,6 +14,14 @@ module.exports = {
       backgroundColor: '#000000',
     },
     assetBundlePatterns: ['**/*'],
+    notification: {
+      // TODO: monokrom 256×256 notification-icon.png hazırlanınca değiştir
+      icon: './assets/icon.png',
+      color: '#C6F04F',
+      iosDisplayInForeground: true,
+      androidMode: 'default',
+      androidCollapsedTitle: 'KCAL',
+    },
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.kcalmobile.app',
@@ -90,8 +98,11 @@ module.exports = {
       [
         'expo-notifications',
         {
+          // TODO: monokrom 256×256 notification-icon.png hazırlanınca değiştir
           icon: './assets/icon.png',
           color: '#C6F04F',
+          defaultChannel: 'default',
+          sounds: [],
         },
       ],
       'expo-video',

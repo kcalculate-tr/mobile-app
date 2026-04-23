@@ -35,34 +35,18 @@ setupGlobalErrorHandler();
 function AppContent() {
   const { session } = useAuth();
 
+  // Notification listener'ı session'dan bağımsız mount et — cold-start'taki
+  // tap response'unu yakalayabilmek için. Token register'ı session olunca yap.
+  useEffect(() => {
+    const cleanup = setupNotificationListeners(navigationRef);
+    return cleanup;
+  }, []);
+
   useEffect(() => {
     if (!session) return;
-
-    let notificationCleanup: (() => void) | undefined;
-
-    try {
-      registerForPushNotifications();
-
-      notificationCleanup = setupNotificationListeners(
-        () => {},
-        (response) => {
-          try {
-            const data = response.notification.request.content.data as Record<string, unknown>;
-            if (data?.orderId && navigationRef.isReady()) {
-              navigationRef.navigate('OrderDetail', { orderId: Number(data.orderId) });
-            }
-          } catch (error) {
-            console.error('[Notification Handler] Error:', error);
-          }
-        },
-      );
-    } catch (error) {
-      console.error('[Push Notifications] Setup failed:', error);
-    }
-
-    return () => {
-      notificationCleanup?.();
-    };
+    registerForPushNotifications().catch((error) => {
+      console.warn('[Push Notifications] Auto-register failed:', error);
+    });
   }, [session]);
 
   useEffect(() => {

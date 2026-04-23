@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowRight,
+  Bell,
   CaretRight,
   ChartLine,
   CreditCard,
@@ -47,6 +48,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
+import { unregisterPushToken } from '../lib/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -227,6 +229,8 @@ export default function ProfileScreen() {
   }, [fetchData]);
 
   const handleLogout = async () => {
+    // Push token'ı önce deaktive et — signOut'tan sonra auth.uid() kaybolur
+    await unregisterPushToken();
     await signOut();
     await AsyncStorage.removeItem('@kcal_onboarding_done');
     await AsyncStorage.removeItem('@kcal_needs_nutrition_profile');
@@ -493,6 +497,12 @@ export default function ProfileScreen() {
             icon={<Tag color={COLORS.text.secondary} size={18} />}
             title="Kuponlarım"
             onPress={() => navigation.navigate('ProfileCoupons')}
+            showBorder
+          />
+          <MenuItem
+            icon={<Bell color={COLORS.text.secondary} size={18} />}
+            title="Bildirim Tercihleri"
+            onPress={() => navigation.navigate('ProfileNotificationPreferences')}
             showBorder
           />
           <MenuItem

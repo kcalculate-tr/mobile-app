@@ -31,6 +31,7 @@ import {
   MapPinIcon,
 } from 'phosphor-react-native';
 import { getSupabaseClient } from '../../lib/supabase';
+import { registerForPushNotifications } from '../../lib/notifications';
 import { RootStackParamList } from '../../navigation/types';
 import FormField, { FormFieldOption } from '../../components/FormField';
 
@@ -239,6 +240,8 @@ export default function RegisterScreen() {
     setSubmitting(false);
     await AsyncStorage.setItem('@kcal_needs_nutrition_profile', 'true');
     await AsyncStorage.setItem('@kcal_onboarding_done', 'true');
+    // Push token register — best-effort, akışı bloklama
+    registerForPushNotifications().catch(() => {});
     navigation.reset({
       index: 0,
       routes: [{ name: 'EmailVerification', params: { email: form.email.trim() } }],

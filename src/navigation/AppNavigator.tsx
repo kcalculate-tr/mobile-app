@@ -40,6 +40,7 @@ import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
 import OrdersScreen from '../screens/profile/OrdersScreen';
 import SavedCardsScreen from '../screens/profile/SavedCardsScreen';
 import SecurityScreen from '../screens/profile/SecurityScreen';
+import NotificationPreferencesScreen from '../screens/profile/NotificationPreferencesScreen';
 import SupportScreen from '../screens/profile/SupportScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -160,6 +161,7 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileCoupons" component={CouponsScreen} />
       <Stack.Screen name="ProfileSupport" component={SupportScreen} />
       <Stack.Screen name="ProfileSecurity" component={SecurityScreen} />
+      <Stack.Screen name="ProfileNotificationPreferences" component={NotificationPreferencesScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       <Stack.Screen name="ProfileContracts" component={ContractsScreen} />

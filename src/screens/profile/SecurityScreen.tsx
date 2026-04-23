@@ -19,6 +19,7 @@ import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { getSupabaseClient } from '../../lib/supabase';
+import { unregisterPushToken } from '../../lib/notifications';
 import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
@@ -141,6 +142,7 @@ export default function SecurityScreen() {
                   text: 'Evet, Sil',
                   style: 'destructive',
                   onPress: async () => {
+                    await unregisterPushToken();
                     await signOut();
                     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
                   },
