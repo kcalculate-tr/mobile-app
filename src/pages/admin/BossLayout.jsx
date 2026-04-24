@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
+  BellRing,
   ChefHat,
   ClipboardList,
   Headphones,
@@ -102,6 +103,13 @@ const NAV_ITEMS = [
     to: '/boss/macro',
     icon: Coins,
     matchPrefixes: ['/boss/macro'],
+  },
+  {
+    key: 'push-test',
+    label: 'Push Test',
+    to: '/boss/push-test',
+    icon: BellRing,
+    matchPrefixes: ['/boss/push-test'],
   },
   {
     key: 'kitchen',
