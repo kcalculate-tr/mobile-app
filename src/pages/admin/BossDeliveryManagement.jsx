@@ -541,7 +541,10 @@ export default function BossDeliveryManagement() {
     });
   }, [districts, search]);
 
-  const activeCount = districts.filter((d) => d.is_active).length;
+  // Header özet: en az bir mahallede allow_immediate VEYA allow_scheduled aktif olan ilçeler
+  const activeCount = districts.filter((d) =>
+    d.rows.some((r) => r.allow_immediate || r.allow_scheduled)
+  ).length;
 
   const formatClosedDate = (d) => {
     try {
@@ -802,7 +805,19 @@ export default function BossDeliveryManagement() {
             const allowField = isImmediate ? 'allow_immediate' : 'allow_scheduled';
             const enabledNeighborhoodsCount = d.rows.filter((r) => r[allowField]).length;
             const allAllowedOn = d.rows.length > 0 && d.rows.every((r) => r[allowField]);
-            const tabInactive = !d.is_active || enabledNeighborhoodsCount === 0;
+            const tabInactive = enabledNeighborhoodsCount === 0;
+
+            // İlçe status — iki teslimat türünün birleşiminden türetilir
+            const hasAnyImmediate = d.rows.some((r) => r.allow_immediate);
+            const hasAnyScheduled = d.rows.some((r) => r.allow_scheduled);
+            const districtStatus =
+              hasAnyImmediate && hasAnyScheduled ? 'active'
+              : !hasAnyImmediate && !hasAnyScheduled ? 'inactive'
+              : 'partial';
+            const statusBadge =
+              districtStatus === 'active'   ? { label: 'Aktif',         cls: 'bg-emerald-100 text-emerald-700' }
+              : districtStatus === 'partial' ? { label: 'Kısmen Aktif', cls: 'bg-amber-100 text-amber-700' }
+              :                                { label: 'Pasif',        cls: 'bg-red-100 text-red-700' };
 
             return (
               <div
@@ -834,12 +849,8 @@ export default function BossDeliveryManagement() {
                         Kaydedilmedi
                       </span>
                     )}
-                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                      d.is_active && enabledNeighborhoodsCount > 0
-                        ? (isImmediate ? 'bg-green-500 text-white' : 'bg-blue-500 text-white')
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {d.is_active && enabledNeighborhoodsCount > 0 ? 'Aktif' : 'Pasif'}
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusBadge.cls}`}>
+                      {statusBadge.label}
                     </span>
                   </div>
                 </button>
@@ -847,30 +858,19 @@ export default function BossDeliveryManagement() {
                 {/* Expand */}
                 {isOpen && (
                   <div className="mt-5 space-y-5 border-t border-gray-100 pt-5">
-                    {/* Master toggle — tüm mahallelere bu sekmenin allow_* alanını uygular */}
-                    <div className="flex items-center gap-3">
-                      <Toggle
-                        on={allAllowedOn}
-                        accent={accent}
-                        onClick={() => bulkSetNeighborhoods(d.district, allowField, !allAllowedOn)}
-                      />
-                      <span className="text-sm font-semibold text-geex-text">
-                        {isImmediate ? 'Hemen teslimat' : 'Randevulu teslimat'}{' '}
-                        {allAllowedOn ? 'aktif' : 'pasif'} (tüm mahalleler için)
-                      </span>
-                    </div>
-
-                    {/* İlçe aktif/pasif — paylaşılan */}
-                    <div className="flex items-center gap-3 pt-1 border-t border-gray-50 pt-3">
-                      <Toggle
-                        on={d.is_active}
-                        accent={accent}
-                        onClick={() => patchDistrict(d.district, { is_active: !d.is_active })}
-                      />
-                      <span className="text-sm font-semibold text-geex-text">
-                        İlçe {d.is_active ? 'aktif' : 'pasif'} <span className="text-[11px] font-normal text-slate-400">(her iki teslimat türünü etkiler)</span>
-                      </span>
-                    </div>
+                    <div className="space-y-5">
+                      {/* Sekmeye özel bulk toggle — tüm mahallelere bu sekmenin allow_* alanını uygular */}
+                      <div className="flex items-center gap-3">
+                        <Toggle
+                          on={allAllowedOn}
+                          accent={accent}
+                          onClick={() => bulkSetNeighborhoods(d.district, allowField, !allAllowedOn)}
+                        />
+                        <span className="text-sm font-semibold text-geex-text">
+                          {isImmediate ? 'Hemen teslimat' : 'Randevulu teslimat'}{' '}
+                          {allAllowedOn ? 'aktif' : 'pasif'} (tüm mahalleler için)
+                        </span>
+                      </div>
 
                     {/* Teslimat günleri — sekmeye özgü */}
                     {(() => {
@@ -1029,8 +1029,10 @@ export default function BossDeliveryManagement() {
                         </>
                       )}
                     </div>
+                    </div>
+                    {/* /Sekmeye özel içerik sarmalayıcı sonu */}
 
-                    {/* Save */}
+                    {/* Save — master pasifken de erişilebilir */}
                     <div className="flex justify-end">
                       <button
                         type="button"
