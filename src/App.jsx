@@ -30,6 +30,7 @@ const AdminOrders     = React.lazy(() => import('./pages/admin/AdminOrders'));
 const AdminCustomers  = React.lazy(() => import('./pages/admin/AdminCustomers'));
 const AdminTickets         = React.lazy(() => import('./pages/admin/AdminTickets'));
 const PushTestPanel        = React.lazy(() => import('./pages/admin/PushTestPanel'));
+const Campaigns            = React.lazy(() => import('./pages/admin/Campaigns'));
 const AdminOptionGroups = React.lazy(() => import('./pages/admin/OptionGroups'));
 const AdminProductOpts  = React.lazy(() => import('./pages/admin/ProductOptionManager'));
 const KitchenLayout   = React.lazy(() => import('./pages/admin/KitchenLayout'));
@@ -210,6 +211,7 @@ function AnimatedRoutes() {
             <Route path="product-options" element={wrap(<AdminProductOpts />)} />
             <Route path="tickets" element={wrap(<AdminTickets />)} />
             <Route path="push-test" element={wrap(<PushTestPanel />)} />
+            <Route path="campaigns" element={wrap(<Campaigns />)} />
           </Route>
 
           {/* ── Kitchen (KDS) ── */}

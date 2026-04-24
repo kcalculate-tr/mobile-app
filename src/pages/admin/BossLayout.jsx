@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   BellRing,
+  Bell,
   ChefHat,
   ClipboardList,
   Headphones,
@@ -105,10 +106,17 @@ const NAV_ITEMS = [
     matchPrefixes: ['/boss/macro'],
   },
   {
-    key: 'push-test',
-    label: 'Push Test',
-    to: '/boss/push-test',
+    key: 'campaigns',
+    label: 'Bildirim Kampanyaları',
+    to: '/boss/campaigns',
     icon: BellRing,
+    matchPrefixes: ['/boss/campaigns'],
+  },
+  {
+    key: 'push-test',
+    label: 'Hızlı Test',
+    to: '/boss/push-test',
+    icon: Bell,
     matchPrefixes: ['/boss/push-test'],
   },
   {
