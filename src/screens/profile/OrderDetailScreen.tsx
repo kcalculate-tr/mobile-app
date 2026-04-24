@@ -14,7 +14,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { type Icon, CaretLeftIcon, ShoppingCartIcon, CheckCircleIcon, ChefHatIcon, TruckIcon, ConfettiIcon, MapPinIcon, CalendarIcon, XCircleIcon } from 'phosphor-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import ScreenContainer from '../../components/ScreenContainer';
 import BottomSheet from '../../components/BottomSheet';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
@@ -491,7 +490,7 @@ export default function OrderDetailScreen() {
   );
 
   return (
-    <ScreenContainer edges={['top']} style={s.root}>
+    <View style={[s.root, { flex: 1, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
@@ -784,7 +783,7 @@ export default function OrderDetailScreen() {
           </BottomSheet>
         </>
       )}
-    </ScreenContainer>
+    </View>
   );
 }
 

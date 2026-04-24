@@ -172,7 +172,7 @@ export default function MacroScreen() {
             ) : (
               <>
                 <View style={styles.coinWrapper}>
-                  <Image source={MACRO_COIN} style={styles.heroCoin} resizeMode="contain" />
+                  <Image source={MACRO_COIN} style={styles.heroCoin} resizeMode="contain" fadeDuration={0} />
                   <View style={styles.coinGlow} />
                 </View>
 
@@ -181,7 +181,7 @@ export default function MacroScreen() {
 
                 {/* Balance badge */}
                 <View style={styles.balanceBadge}>
-                  <Image source={MACRO_COIN} style={{ width: 18, height: 18 }} resizeMode="contain" />
+                  <Image source={MACRO_COIN} style={{ width: 18, height: 18 }} resizeMode="contain" fadeDuration={0} />
                   <Text style={styles.balanceText}>{balance} Macro</Text>
                   <View style={styles.balanceDivider} />
                   {privileged ? (
@@ -230,7 +230,7 @@ export default function MacroScreen() {
                 activeOpacity={0.8}
                 style={[styles.packCard, qty === pack.qty && styles.packCardActive]}
               >
-                <Image source={MACRO_COIN} style={styles.packCoin} resizeMode="contain" />
+                <Image source={MACRO_COIN} style={styles.packCoin} resizeMode="contain" fadeDuration={0} />
                 <Text style={[styles.packQty, qty === pack.qty && styles.packQtyActive]}>{pack.qty}</Text>
                 <Text style={[styles.packLabel, qty === pack.qty && styles.packLabelActive]}>{pack.label}</Text>
                 <Text style={[styles.packPrice, qty === pack.qty && styles.packPriceActive]}>
@@ -253,7 +253,7 @@ export default function MacroScreen() {
                 <Minus size={18} color="#fff" weight="bold" />
               </TouchableOpacity>
               <View style={styles.qtyDisplay}>
-                <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" />
+                <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" fadeDuration={0} />
                 <Text style={styles.qtyNumber}>{qty}</Text>
               </View>
               <TouchableOpacity
@@ -284,7 +284,7 @@ export default function MacroScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" />
+                <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" fadeDuration={0} />
                 <Text style={styles.buyBtnText}>
                   {qty} Macro Al — ₺{totalPrice.toLocaleString('tr-TR')}
                 </Text>
@@ -298,7 +298,7 @@ export default function MacroScreen() {
         <View style={styles.section}>
           <View style={styles.membershipHeader}>
             <View style={styles.membershipBadgeIcon}>
-              <Image source={MACRO_COIN} style={{ width: 28, height: 28 }} resizeMode="contain" />
+              <Image source={MACRO_COIN} style={{ width: 28, height: 28 }} resizeMode="contain" fadeDuration={0} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.membershipTitle}>Ayrıcalıklı Üyelik</Text>

@@ -15,7 +15,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CaretLeft, CaretRight, Timer, CreditCard, CheckCircle, ChefHat, Truck, Confetti, XCircle, ArrowCounterClockwise, Package, ShoppingBag, WarningCircle } from 'phosphor-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { getSupabaseClient } from '../../lib/supabase';
@@ -176,7 +175,7 @@ export default function OrdersScreen() {
   if (!isAuthenticated) return null;
 
   return (
-    <ScreenContainer edges={['top']} style={s.root}>
+    <View style={[s.root, { flex: 1, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
@@ -315,7 +314,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
           })}
         </ScrollView>
       )}
-    </ScreenContainer>
+    </View>
   );
 }
 

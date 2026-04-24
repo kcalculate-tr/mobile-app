@@ -15,7 +15,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CaretLeft, PencilSimple, LockSimple } from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { getSupabaseClient } from '../../lib/supabase';
@@ -272,7 +271,7 @@ export default function NutritionProfileScreen() {
   if (!isAuthenticated) return null;
 
   return (
-    <ScreenContainer edges={['top']} style={s.root}>
+    <View style={[s.root, { flex: 1, paddingTop: insets.top }]}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
           <CaretLeft size={22} color="#000000" />
@@ -486,7 +485,7 @@ export default function NutritionProfileScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenContainer>
+    </View>
   );
 }
 

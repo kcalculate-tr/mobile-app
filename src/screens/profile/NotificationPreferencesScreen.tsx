@@ -16,7 +16,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretLeft, Bell } from 'phosphor-react-native';
 import * as Notifications from 'expo-notifications';
-import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { supabase } from '../../lib/supabase';
@@ -161,8 +160,8 @@ export default function NotificationPreferencesScreen() {
   const showSystemDisabledBanner = systemStatus === 'denied';
 
   return (
-    <ScreenContainer>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: COLORS.background }}>
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
@@ -266,7 +265,7 @@ export default function NotificationPreferencesScreen() {
           kapatırsan hiçbir bildirim alamazsın.
         </Text>
       </ScrollView>
-    </ScreenContainer>
+    </View>
   );
 }
 

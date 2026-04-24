@@ -9,7 +9,6 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { CaretLeft } from 'phosphor-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreenContainer from '../../components/ScreenContainer';
 import { CONTRACTS } from '../../data/contractsData';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -35,7 +34,7 @@ export default function ContractsScreen() {
   );
 
   return (
-    <ScreenContainer edges={['top']} style={s.root}>
+    <View style={[s.root, { flex: 1, paddingTop: insets.top }]}>
       <View style={s.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -87,7 +86,7 @@ export default function ContractsScreen() {
           );
         })}
       </ScrollView>
-    </ScreenContainer>
+    </View>
   );
 }
 

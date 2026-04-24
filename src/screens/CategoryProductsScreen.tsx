@@ -19,7 +19,9 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowLeft, Minus, Plus } from 'phosphor-react-native';
-import ScreenContainer from '../components/ScreenContainer';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FloatingCartPill from '../components/FloatingCartPill';
+import { FLOATING_PILL_GAP, FLOATING_PILL_HEIGHT } from '../constants/layout';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { CategoryProduct, fetchProductsByCategory } from '../lib/categories';
@@ -36,6 +38,7 @@ type CategoryProductsNavigationProp = NativeStackNavigationProp<RootStackParamLi
 export default function CategoryProductsScreen() {
   const navigation = useNavigation<CategoryProductsNavigationProp>();
   const route = useRoute<CategoryProductsRouteProp>();
+  const insets = useSafeAreaInsets();
   const { categoryName } = route.params;
 
   const addItem = useCartStore((state) => state.addItem);
@@ -119,7 +122,7 @@ export default function CategoryProductsScreen() {
   };
 
   return (
-    <ScreenContainer style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -152,7 +155,12 @@ export default function CategoryProductsScreen() {
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
           columnWrapperStyle={styles.grid}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            // Pill alt edge'i = insets.bottom + GAP (12). Pill yüksekliği 52.
+            // Pill üst edge'i = insets.bottom + 64. Buna buffer (48) ekleyerek son kartın tamamı görünsün.
+            { paddingBottom: insets.bottom + FLOATING_PILL_HEIGHT + FLOATING_PILL_GAP + 48 },
+          ]}
           showsVerticalScrollIndicator={false}
           initialNumToRender={8}
           maxToRenderPerBatch={6}
@@ -234,7 +242,9 @@ export default function CategoryProductsScreen() {
           )}
         />
       )}
-    </ScreenContainer>
+
+      <FloatingCartPill />
+    </View>
   );
 }
 
@@ -295,7 +305,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: CARD_PADDING,
-    paddingBottom: 100,
     gap: CARD_GAP,
   },
   // Grid (columnWrapperStyle for FlatList numColumns=2)

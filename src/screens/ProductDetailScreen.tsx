@@ -13,12 +13,12 @@ import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Minus, Plus, ShoppingBag, CheckCircle, Check as CheckIcon } from 'phosphor-react-native';
+import { ArrowLeft, ArrowRight, Minus, Plus, ShoppingBag, ShoppingCart, CheckCircle, Check as CheckIcon } from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import { haptic } from '../utils/haptics';
 import { useAnimatedPress } from '../utils/useAnimatedPress';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreenContainer from '../components/ScreenContainer';
+import AnimatedNumberText from '../components/AnimatedNumberText';
 import { getSupabaseClient } from '../lib/supabase';
 import {
   fetchProductOptionGroups,
@@ -28,6 +28,7 @@ import {
 import { RootStackParamList } from '../navigation/types';
 import { OptionGroup, Product } from '../types';
 import { useCartStore } from '../store/cartStore';
+import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '../constants/theme';
 
@@ -86,14 +87,14 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
 
   const addItem = useCartStore((state) => state.addItem);
+  const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const cartItems = useCartStore((state) => state.items);
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [liked, setLiked] = useState(false);
 
-  const [addedToCart, setAddedToCart] = useState(false)
   const addButtonScale  = useRef(new Animated.Value(1)).current
   const successOpacity  = useRef(new Animated.Value(0)).current
   const { animatedScale: cartBtnScale, onPressIn: cartPressIn, onPressOut: cartPressOut } = useAnimatedPress(0.95);
@@ -271,7 +272,36 @@ export default function ProductDetailScreen() {
   }, [optionGroups, selections]);
 
   const totalUnitPrice = Number(((product?.price || 0) + extraPrice).toFixed(2));
-  const totalPrice = Number((totalUnitPrice * quantity).toFixed(2));
+
+  // Bu varyant sepette mi?
+  const currentLineKey = useMemo(() => {
+    if (!product) return null;
+    const normalized = normalizeSelectedOptions({ byGroup: selections });
+    return buildCartLineKey(String(product.id), normalized.byGroup);
+  }, [product, selections]);
+
+  const cartEntry = useMemo(
+    () => (currentLineKey ? cartItems.find((i) => i.lineKey === currentLineKey) ?? null : null),
+    [cartItems, currentLineKey],
+  );
+  const inCart = cartEntry != null;
+
+  // Bottom bar state crossfade — Animated.parallel (250ms, opacity + translateX)
+  const addBtnOpacity  = useRef(new Animated.Value(inCart ? 0 : 1)).current;
+  const stepperOpacity = useRef(new Animated.Value(inCart ? 1 : 0)).current;
+  const prevInCartRef  = useRef(inCart);
+
+  useEffect(() => {
+    if (prevInCartRef.current === inCart) return;
+    prevInCartRef.current = inCart;
+    Animated.parallel([
+      Animated.timing(addBtnOpacity,  { toValue: inCart ? 0 : 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(stepperOpacity, { toValue: inCart ? 1 : 0, duration: 250, useNativeDriver: true }),
+    ]).start();
+  }, [inCart, addBtnOpacity, stepperOpacity]);
+
+  const addBtnTx  = addBtnOpacity.interpolate({  inputRange: [0, 1], outputRange: [-30, 0] });
+  const stepperTx = stepperOpacity.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
 
   const animateAddToCart = () => {
     Animated.sequence([
@@ -300,27 +330,26 @@ export default function ProductDetailScreen() {
         extraPrice,
         labels: optionLabels,
       },
-      quantity,
+      1,
     );
 
     haptic.light();
     animateAddToCart();
-    setAddedToCart(true);
   };
 
   if (loading) {
     return (
-      <ScreenContainer>
+      <View style={[styles.container, { flex: 1, paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <ActivityIndicator color={COLORS.brand.green} size="large" />
         </View>
-      </ScreenContainer>
+      </View>
     );
   }
 
   if (!product) {
     return (
-      <ScreenContainer>
+      <View style={[styles.container, { flex: 1, paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <Text style={styles.errorTitle}>Ürün Yüklenemedi</Text>
           <Text style={styles.errorText}>{errorMessage || 'Bilinmeyen hata oluştu.'}</Text>
@@ -331,7 +360,7 @@ export default function ProductDetailScreen() {
             <Text style={styles.secondaryButtonText}>Geri Dön</Text>
           </TouchableOpacity>
         </View>
-      </ScreenContainer>
+      </View>
     );
   }
 
@@ -376,7 +405,7 @@ export default function ProductDetailScreen() {
   ];
 
   return (
-    <ScreenContainer style={styles.container}>
+    <View style={[styles.container, { flex: 1, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -421,51 +450,7 @@ export default function ProductDetailScreen() {
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          {/* Title + Quantity Controls */}
-          <View style={styles.titleRow}>
-            <Text style={styles.productTitle}>{product.name}</Text>
-            <View style={styles.quantityControls}>
-              <TouchableOpacity
-                onPress={() => {
-                  haptic.light();
-                  const newQty = Math.max(1, quantity - 1);
-                  setQuantity(newQty);
-                  if (addedToCart) {
-                    const { items, updateQuantity } = useCartStore.getState();
-                    const existing = items.find(
-                      i => i.productId === String(product?.id) &&
-                      JSON.stringify(i.selectedOptions?.byGroup) === JSON.stringify(selections)
-                    );
-                    if (existing) updateQuantity(existing.lineKey, newQty);
-                  }
-                }}
-                style={styles.quantityButtonSmall}
-                activeOpacity={0.8}
-              >
-                <Minus size={13} color="#000000" />
-              </TouchableOpacity>
-              <Text style={styles.quantityText}>{quantity}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  haptic.light();
-                  const newQty = quantity + 1;
-                  setQuantity(newQty);
-                  if (addedToCart) {
-                    const { items, updateQuantity } = useCartStore.getState();
-                    const existing = items.find(
-                      i => i.productId === String(product?.id) &&
-                      JSON.stringify(i.selectedOptions?.byGroup) === JSON.stringify(selections)
-                    );
-                    if (existing) updateQuantity(existing.lineKey, newQty);
-                  }
-                }}
-                style={[styles.quantityButtonSmall, styles.quantityButtonActive]}
-                activeOpacity={0.8}
-              >
-                <Plus size={13} color="#000000" />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Text style={styles.productTitle}>{product.name}</Text>
 
           {/* Macro Badges */}
           {(product.calories ?? product.cal) != null && (
@@ -595,41 +580,95 @@ export default function ProductDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Cart Banner */}
-      {addedToCart && (
-        <TouchableOpacity
-          style={[styles.cartBanner, { bottom: Math.max(14, insets.bottom) + 80 }]}
-          onPress={() => navigation.navigate('Tabs', { screen: 'Cart' })}
-          activeOpacity={0.9}
-        >
-          <ShoppingBag size={16} color="#000000" />
-          <Text style={styles.cartBannerText}>Sepete eklendi — Sepete git →</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Bottom Bar */}
+      {/* Bottom Bar — iki varyant crossfade ile yer değiştirir */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(14, insets.bottom) }]}>
-        <View style={styles.priceSection}>
-          <Text style={styles.priceLabel}>Toplam Tutar</Text>
-          <Text style={styles.priceValue}>{toCurrency(totalPrice)}</Text>
-        </View>
-        <Animated.View style={{ transform: [{ scale: addButtonScale }] }}>
-          <TouchableOpacity
-            style={styles.addToCartButton}
-            onPress={handleAddToCart}
-            onPressIn={cartPressIn}
-            onPressOut={cartPressOut}
-            activeOpacity={1}
+        <View style={styles.bottomBarContent}>
+          {/* Varyant A: sepette yok → Toplam Tutar + Sepete Ekle */}
+          <Animated.View
+            pointerEvents={inCart ? 'none' : 'auto'}
+            style={[
+              styles.bottomBarVariant,
+              styles.bottomBarVariantNotInCart,
+              { opacity: addBtnOpacity, transform: [{ translateX: addBtnTx }] },
+            ]}
           >
-            <ShoppingBag size={18} color="#000000" />
-            <Text style={styles.addToCartText}>Sepete Ekle</Text>
-            <Animated.View style={{ position: 'absolute', right: 16, opacity: successOpacity }}>
-              <CheckCircle size={18} color="#000000" weight="fill" />
+            <View style={styles.priceSection}>
+              <Text style={styles.priceLabel}>Toplam Tutar</Text>
+              <Text style={styles.priceValue}>{toCurrency(totalUnitPrice)}</Text>
+            </View>
+            <Animated.View style={{ transform: [{ scale: addButtonScale }] }}>
+              <TouchableOpacity
+                style={styles.addToCartButton}
+                onPress={handleAddToCart}
+                onPressIn={cartPressIn}
+                onPressOut={cartPressOut}
+                activeOpacity={1}
+              >
+                <ShoppingBag size={18} color="#000000" />
+                <Text style={styles.addToCartText}>Sepete Ekle</Text>
+                <Animated.View style={{ position: 'absolute', right: 16, opacity: successOpacity }}>
+                  <CheckCircle size={18} color="#000000" weight="fill" />
+                </Animated.View>
+              </TouchableOpacity>
             </Animated.View>
-          </TouchableOpacity>
-        </Animated.View>
+          </Animated.View>
+
+          {/* Varyant B: sepette var → Fiyat + Stepper + Sepete Git */}
+          <Animated.View
+            pointerEvents={inCart ? 'auto' : 'none'}
+            style={[
+              styles.bottomBarVariant,
+              styles.bottomBarVariantInCart,
+              { opacity: stepperOpacity, transform: [{ translateX: stepperTx }] },
+            ]}
+          >
+            <AnimatedNumberText
+              style={styles.priceCompact}
+              value={toCurrency((cartEntry?.unitPrice ?? totalUnitPrice) * (cartEntry?.quantity ?? 1))}
+            />
+
+            <View style={styles.stepperCompact}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!cartEntry) return;
+                  haptic.light();
+                  updateQuantity(cartEntry.lineKey, cartEntry.quantity - 1);
+                }}
+                style={styles.stepperBtn}
+                activeOpacity={0.85}
+              >
+                <Minus size={14} color="#000000" />
+              </TouchableOpacity>
+              <AnimatedNumberText style={styles.stepperQty} value={cartEntry?.quantity ?? 0} />
+              <TouchableOpacity
+                onPress={() => {
+                  if (!cartEntry) return;
+                  haptic.light();
+                  updateQuantity(cartEntry.lineKey, cartEntry.quantity + 1);
+                }}
+                style={styles.stepperBtn}
+                activeOpacity={0.85}
+              >
+                <Plus size={14} color="#000000" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                haptic.light();
+                navigation.navigate('Tabs', { screen: 'Cart' });
+              }}
+              style={styles.goToCartBtn}
+              activeOpacity={0.9}
+            >
+              <ShoppingCart size={14} color="#0A1F0F" weight="bold" />
+              <Text style={styles.goToCartText}>Sepete Git</Text>
+              <ArrowRight size={12} color="#0A1F0F" weight="bold" />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </View>
-    </ScreenContainer>
+    </View>
   );
 }
 
@@ -710,48 +749,13 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     marginBottom: 12,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
   productTitle: {
     fontSize: 22,
     fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
-    flex: 1,
-    marginRight: 12,
     lineHeight: 26,
-  },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.background,
-    borderRadius: 100,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-  },
-  quantityButtonSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityButtonActive: {
-    backgroundColor: COLORS.brand.green,
-  },
-  quantityText: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-    minWidth: 20,
-    textAlign: 'center',
+    marginBottom: 10,
   },
   macroContainer: {
     flexDirection: 'row',
@@ -964,14 +968,78 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     paddingTop: 14,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
     shadowRadius: 20,
     elevation: 8,
+  },
+  bottomBarContent: {
+    position: 'relative',
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  bottomBarVariant: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bottomBarVariantNotInCart: {
+    justifyContent: 'space-between',
+  },
+  bottomBarVariantInCart: {
+    gap: 10,
+  },
+  priceCompact: {
+    fontSize: 18,
+    fontWeight: '800',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  stepperCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 22,
+    paddingHorizontal: 4,
+  },
+  stepperBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperQty: {
+    minWidth: 28,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  goToCartBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: COLORS.brand.green,
+    paddingHorizontal: 12,
+  },
+  goToCartText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#0A1F0F',
   },
   priceSection: {
     gap: 2,
@@ -1036,29 +1104,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 14,
-  },
-  cartBanner: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    backgroundColor: COLORS.brand.green,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  cartBannerText: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-    flex: 1,
   },
 });

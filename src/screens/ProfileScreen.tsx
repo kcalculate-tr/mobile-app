@@ -40,6 +40,7 @@ import {
   CameraIcon,
 } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import { TAB_BAR_TOTAL } from '../constants/layout';
 import MacroPointModal from '../components/modals/MacroPointModal';
 import { fetchMacroProfile, isPrivileged, privilegedDaysLeft, privilegedUntilFormatted, MacroProfile, MEMBERSHIP_THRESHOLD } from '../lib/macros';
 import { useModal } from '../hooks/useModal';
@@ -264,7 +265,10 @@ export default function ProfileScreen() {
     <ScreenContainer edges={['top']}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top > 0 ? 0 : 8 }]}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingTop: insets.top > 0 ? 0 : 8, paddingBottom: insets.bottom + TAB_BAR_TOTAL + 24 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* ─── Üst Profil Kartı ─── */}
@@ -534,7 +538,7 @@ export default function ProfileScreen() {
         {/* ─── Çıkış / Auth ─── */}
         {user ? (
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-            <SignOut color="#EF4444" size={18} />
+            <SignOut color="#0A1F0F" size={18} />
             <Text style={styles.logoutText}>Çıkış Yap</Text>
           </TouchableOpacity>
         ) : (
@@ -628,7 +632,6 @@ const MenuItem = ({
 
 const styles = StyleSheet.create({
   contentContainer: {
-    paddingBottom: 120,
     gap: 0,
   },
 
@@ -981,15 +984,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: SPACING.lg,
     marginHorizontal: SPACING.lg,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'transparent',
     borderRadius: RADIUS.md,
     paddingVertical: SPACING.md,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#0A1F0F',
     gap: SPACING.sm,
   },
   logoutText: {
-    color: '#DC2626',
+    color: '#0A1F0F',
     fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: TYPOGRAPHY.size.md,

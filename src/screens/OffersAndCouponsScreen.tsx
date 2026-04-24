@@ -13,7 +13,8 @@ import { CaretLeft, Clock, Copy, Tag, Ticket } from 'phosphor-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
-import ScreenContainer from '../components/ScreenContainer';
+import FloatingCartPill from '../components/FloatingCartPill';
+import { FLOATING_PILL_GAP, FLOATING_PILL_HEIGHT } from '../constants/layout';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../context/AuthContext';
@@ -217,7 +218,7 @@ export default function OffersAndCouponsScreen() {
   const totalSavings = coupons.reduce((s, c) => s + (c.discount_amount ?? 0), 0);
 
   return (
-    <ScreenContainer edges={['top']} style={s.root}>
+    <View style={[s.root, { flex: 1, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
@@ -260,7 +261,7 @@ export default function OffersAndCouponsScreen() {
           <ScrollView
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await loadCoupons(); setRefreshing(false); }} tintColor={COLORS.brand.green} />} showsVerticalScrollIndicator={false}
-            contentContainerStyle={[s.scrollContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
+            contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + FLOATING_PILL_HEIGHT + FLOATING_PILL_GAP + 48 }]}
           >
             {banners.length > 0 && (
               <View style={s.bannerSection}>
@@ -305,7 +306,7 @@ export default function OffersAndCouponsScreen() {
         <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await loadCoupons(); setRefreshing(false); }} tintColor={COLORS.brand.green} />} showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[s.scrollContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
+          contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + FLOATING_PILL_HEIGHT + FLOATING_PILL_GAP + 48 }]}
         >
           {/* Stats */}
           <View style={s.statsRow}>
@@ -363,7 +364,9 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Kuponunuz Yok</Text>
         </ScrollView>
       )}
       <Toast {...toast} onHide={hideToast} />
-    </ScreenContainer>
+
+      <FloatingCartPill />
+    </View>
   );
 }
 

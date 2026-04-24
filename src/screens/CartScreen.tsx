@@ -3,7 +3,7 @@ import { Animated, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, T
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {CaretRight, Minus, Plus, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
+import {CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import { CachedImage } from '../components/CachedImage';
@@ -113,7 +113,9 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>🛒</Text>
+          <View style={styles.emptyIconWrap}>
+            <ShoppingCart size={64} color={COLORS.brand.green} weight="bold" />
+          </View>
           <Text style={styles.emptyTitle}>Sepetiniz Boş</Text>
           <Text style={styles.emptySubtitle}>
             Ürün eklemek için menüyü inceleyin.
@@ -486,7 +488,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
     justifyContent: 'center',
     paddingHorizontal: SPACING['3xl'],
   },
-  emptyIcon: { fontSize: 64, marginBottom: SPACING.lg },
+  emptyIconWrap: { marginBottom: SPACING.lg },
   emptyTitle: { fontSize: TYPOGRAPHY.size['2xl'], fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginBottom: SPACING.sm },
   emptySubtitle: {

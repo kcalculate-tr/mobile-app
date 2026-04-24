@@ -5,7 +5,7 @@ import { CachedImage } from '../components/CachedImage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag } from 'phosphor-react-native';
-import ScreenContainer from '../components/ScreenContainer';
+import { TAB_BAR_TOTAL } from '../constants/layout';
 import { haptic } from '../utils/haptics';
 import HowItWorksModal from '../components/modals/HowItWorksModal';
 import PopupModal from '../components/PopupModal';
@@ -253,7 +253,7 @@ export default function HomeScreen() {
   ), [navigation]);
 
   return (
-    <ScreenContainer style={styles.container} edges={['top']}>
+    <View style={[styles.container, { flex: 1, paddingTop: insets.top }]}>
       <Modal
         visible={mealModalVisible}
         animationType="none"
@@ -395,7 +395,10 @@ export default function HomeScreen() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + TAB_BAR_TOTAL + 24 },
+        ]}
         style={{ display: loading ? 'none' : 'flex' }}
       >
         {/* Header */}
@@ -670,7 +673,7 @@ export default function HomeScreen() {
           onCta={(dest) => resolveNavigation(navigation, dest)}
         />
       )}
-    </ScreenContainer>
+    </View>
   );
 }
 
@@ -678,9 +681,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.background,
   },
-  scrollContent: {
-    paddingBottom: 120,
-  },
+  scrollContent: {},
   // Header
   header: {
     flexDirection: 'row',

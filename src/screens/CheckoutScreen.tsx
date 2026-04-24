@@ -414,6 +414,36 @@ export default function CheckoutScreen() {
   const deliveryFee = resolvedShippingFee;
   const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount);
 
+  // Zone flag guards — activeZoneRow.allow_immediate / allow_scheduled
+  // UI chip'lerini + Ödemeye Geç butonunu bunlara göre disabled yap.
+  const allowImmediateByZone =
+    deliveryMethod === 'pickup' || !activeZoneRow
+      ? true
+      : activeZoneRow.allow_immediate !== false;
+  const allowScheduledByZone =
+    deliveryMethod === 'pickup' || !activeZoneRow
+      ? true
+      : activeZoneRow.allow_scheduled !== false;
+  const canPickImmediate = allowImmediateByZone && shopOpenNow;
+  const canPickScheduled = allowScheduledByZone;
+  const zoneBlocksDelivery =
+    deliveryMethod === 'home_delivery'
+      && !!activeZoneRow
+      && !canPickImmediate
+      && !canPickScheduled;
+
+  // Zone flag'ine göre seçili tip geçersizse diğerine çevir.
+  // Adres değişimi activeZoneRow'u yeniler → bu efekt de yeniden koşar.
+  useEffect(() => {
+    if (deliveryMethod !== 'home_delivery') return;
+    if (!activeZoneRow) return;
+    if (deliveryTimeType === 'immediate' && !allowImmediateByZone && allowScheduledByZone) {
+      dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' });
+    } else if (deliveryTimeType === 'scheduled' && !allowScheduledByZone && allowImmediateByZone) {
+      dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' });
+    }
+  }, [deliveryMethod, deliveryTimeType, activeZoneRow, allowImmediateByZone, allowScheduledByZone]);
+
   // True when the selected address falls inside an active delivery_zones row.
   // Mirrors the checks resolveShippingFee relies on, so the warning banner,
   // dimmed method card, progress bar gate, and button disable all agree.
@@ -422,7 +452,7 @@ export default function CheckoutScreen() {
   const isDeliverable =
     deliveryMethod === 'pickup'
       ? true
-      : !!selectedAddress && addressInDeliveryZone;
+      : !!selectedAddress && addressInDeliveryZone && !zoneBlocksDelivery;
 
   // settingsMinCartAmount (from `settings.min_cart_amount`) remains a hard
   // floor across the whole app; district/global values layer on top.
@@ -1487,24 +1517,75 @@ export default function CheckoutScreen() {
                 <Animated.View style={{ opacity: sectionOpacity }}>
                 <View>
                   <Text style={styles.deliveryGroupLabel}>Zaman</Text>
+                  {zoneBlocksDelivery && (
+                    <View style={styles.zoneBlockBanner}>
+                      <Text style={styles.zoneBlockBannerText}>
+                        Bu bölgeye şu anda teslimat yapılmıyor.
+                      </Text>
+                    </View>
+                  )}
                   <View style={styles.chipRow}>
                     <TouchableOpacity
-                      style={[styles.chip, deliveryTimeType === 'immediate' && styles.chipActive, !shopOpenNow && styles.chipDisabled]}
-                      onPress={() => shopOpenNow && animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }))}
+                      style={[
+                        styles.chip,
+                        deliveryTimeType === 'immediate' && styles.chipActive,
+                        !canPickImmediate && styles.chipDisabled,
+                      ]}
+                      disabled={!canPickImmediate}
+                      onPress={() => {
+                        if (!canPickImmediate) return;
+                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }));
+                      }}
                       activeOpacity={0.8}
                     >
-                      <Lightning size={14} color={deliveryTimeType === 'immediate' ? '#000' : !shopOpenNow ? '#dc2626' : COLORS.text.secondary} />
-                      <Text style={[styles.chipText, deliveryTimeType === 'immediate' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>
-                        {shopOpenNow ? 'Hemen' : 'Kapalı'}
+                      <Lightning
+                        size={14}
+                        color={
+                          deliveryTimeType === 'immediate' ? '#000'
+                          : !canPickImmediate ? '#dc2626'
+                          : COLORS.text.secondary
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.chipText,
+                          deliveryTimeType === 'immediate' && styles.chipTextActive,
+                          !canPickImmediate && { color: '#dc2626' },
+                        ]}
+                      >
+                        {!allowImmediateByZone ? 'Hemen yok' : !shopOpenNow ? 'Kapalı' : 'Hemen'}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.chip, deliveryTimeType === 'scheduled' && styles.chipActive]}
-                      onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }))}
+                      style={[
+                        styles.chip,
+                        deliveryTimeType === 'scheduled' && styles.chipActive,
+                        !canPickScheduled && styles.chipDisabled,
+                      ]}
+                      disabled={!canPickScheduled}
+                      onPress={() => {
+                        if (!canPickScheduled) return;
+                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }));
+                      }}
                       activeOpacity={0.8}
                     >
-                      <CalendarBlank size={14} color={deliveryTimeType === 'scheduled' ? '#000' : COLORS.text.secondary} />
-                      <Text style={[styles.chipText, deliveryTimeType === 'scheduled' && styles.chipTextActive]}>Randevulu</Text>
+                      <CalendarBlank
+                        size={14}
+                        color={
+                          deliveryTimeType === 'scheduled' ? '#000'
+                          : !canPickScheduled ? '#dc2626'
+                          : COLORS.text.secondary
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.chipText,
+                          deliveryTimeType === 'scheduled' && styles.chipTextActive,
+                          !canPickScheduled && { color: '#dc2626' },
+                        ]}
+                      >
+                        {!allowScheduledByZone ? 'Randevulu yok' : 'Randevulu'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2400,6 +2481,21 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     borderColor: '#fca5a5',
     backgroundColor: '#fef2f2',
+  },
+  zoneBlockBanner: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  zoneBlockBannerText: {
+    color: '#b91c1c',
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   chipActive: {
     backgroundColor: COLORS.brand.green,
