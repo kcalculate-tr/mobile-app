@@ -1,8 +1,16 @@
 import { getSupabaseClient } from './supabase'
 
-export const MACRO_PRICE = 1250 // TL per macro
-export const MEMBERSHIP_THRESHOLD = 15 // 15 macro = ayrıcalıklı üye
-export const MEMBERSHIP_DAYS = 30
+// Fallback değerler — settings tablosundan okunamazsa kullanılır.
+// Admin BossMacro panelinden değiştirilir (settings.macro_price vs).
+export const FALLBACK_MACRO_PRICE = 1500      // TL / macro (admin default ile align)
+export const FALLBACK_THRESHOLD = 15          // macro → ayrıcalıklı üye
+export const FALLBACK_MEMBERSHIP_DAYS = 30    // gün
+
+// Legacy isimler — mevcut consumer'lar kırılmadan yaşasın.
+// Yeni kod useMacroSettings() üzerinden canlı değer okusun.
+export const MACRO_PRICE = FALLBACK_MACRO_PRICE
+export const MEMBERSHIP_THRESHOLD = FALLBACK_THRESHOLD
+export const MEMBERSHIP_DAYS = FALLBACK_MEMBERSHIP_DAYS
 
 export interface MacroProfile {
   macro_balance: number
@@ -149,9 +157,9 @@ export async function fetchMacroSettings(): Promise<MacroSettings> {
     .eq('id', 1)
     .maybeSingle()
   return {
-    macro_price: data?.macro_price ?? 1500,
-    macro_threshold: data?.macro_threshold ?? 15,
-    macro_membership_days: data?.macro_membership_days ?? 30,
+    macro_price: data?.macro_price ?? FALLBACK_MACRO_PRICE,
+    macro_threshold: data?.macro_threshold ?? FALLBACK_THRESHOLD,
+    macro_membership_days: data?.macro_membership_days ?? FALLBACK_MEMBERSHIP_DAYS,
   }
 }
 

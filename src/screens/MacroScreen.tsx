@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { Animated, StatusBar } from 'react-native'
 import {
   ActivityIndicator,
@@ -18,10 +18,12 @@ import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme
 import { useAuth } from '../context/AuthContext'
 import { RootStackParamList } from '../navigation/types'
 import {
-  MACRO_PRICE,
-  MEMBERSHIP_THRESHOLD,
+  FALLBACK_MACRO_PRICE,
+  FALLBACK_THRESHOLD,
   MacroProfile,
+  MacroSettings,
   fetchMacroProfile,
+  fetchMacroSettings,
   isPrivileged,
   privilegedDaysLeft,
   privilegedUntilFormatted,
@@ -37,11 +39,12 @@ const RED_MID = '#FCA5A5'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
-const QUICK_PACKS = [
-  { qty: 15, label: '1 Ay',  price: 18750, popular: false },
-  { qty: 30, label: '2 Ay',  price: 30000, popular: false },
-  { qty: 45, label: '3 Ay',  price: 39900, popular: true  },
-  { qty: 60, label: '4 Ay',  price: 47500, popular: false },
+// Paket sayıları + etiket + "popular" badge sabit. Fiyat settings.macro_price'tan türetilir.
+const QUICK_PACK_SPECS = [
+  { qty: 15, label: '1 Ay', popular: false },
+  { qty: 30, label: '2 Ay', popular: false },
+  { qty: 45, label: '3 Ay', popular: true  },
+  { qty: 60, label: '4 Ay', popular: false },
 ]
 
 const BENEFITS = [
@@ -62,13 +65,18 @@ export default function MacroScreen() {
 
   const [profile,  setProfile]  = useState<MacroProfile | null>(null)
   const [loading,  setLoading]  = useState(true)
+  const [settings, setSettings] = useState<MacroSettings>({
+    macro_price: FALLBACK_MACRO_PRICE,
+    macro_threshold: FALLBACK_THRESHOLD,
+    macro_membership_days: 30,
+  })
   const [qty,      setQty]      = useState(15)
   const [buying,   setBuying]   = useState(false)
   const { animatedScale: buyScale, onPressIn: buyPressIn, onPressOut: buyPressOut } = useAnimatedPress(0.96)
   const [error,    setError]    = useState('')
 
   // Pack selection bounce scales
-  const packScales = useRef(QUICK_PACKS.map(() => new Animated.Value(1))).current
+  const packScales = useRef(QUICK_PACK_SPECS.map(() => new Animated.Value(1))).current
 
   const selectPack = (index: number, packQty: number) => {
     setQty(packQty)
@@ -103,8 +111,12 @@ export default function MacroScreen() {
   const fetchProfile = useCallback(async () => {
     if (!user?.id) { setLoading(false); return }
     setLoading(true)
-    const p = await fetchMacroProfile(user.id)
+    const [p, s] = await Promise.all([
+      fetchMacroProfile(user.id),
+      fetchMacroSettings(),
+    ])
     setProfile(p)
+    setSettings(s)
     setLoading(false)
   }, [user?.id])
 
@@ -113,13 +125,21 @@ export default function MacroScreen() {
   const balance    = profile?.macro_balance ?? 0
   const privileged = isPrivileged(profile)
   const daysLeft   = privilegedDaysLeft(profile)
-  const neededForMembership = Math.max(0, MEMBERSHIP_THRESHOLD - balance)
-  const selectedPack = QUICK_PACKS.find(p => p.qty === qty)
-  const totalPrice = selectedPack?.price ?? qty * MACRO_PRICE
+  const threshold  = settings.macro_threshold
+  const macroPrice = settings.macro_price
+  const neededForMembership = Math.max(0, threshold - balance)
+
+  // Paketler settings'ten türetilir: paket fiyatı = qty * macroPrice
+  const quickPacks = useMemo(
+    () => QUICK_PACK_SPECS.map(spec => ({ ...spec, price: spec.qty * macroPrice })),
+    [macroPrice],
+  )
+  const selectedPack = quickPacks.find(p => p.qty === qty)
+  const totalPrice = selectedPack?.price ?? qty * macroPrice
 
   useEffect(() => {
     if (loading) return
-    const progressValue = Math.min(balance / MEMBERSHIP_THRESHOLD, 1)
+    const progressValue = Math.min(balance / threshold, 1)
     Animated.spring(progressAnim, {
       toValue: progressValue,
       useNativeDriver: false,
@@ -209,7 +229,7 @@ export default function MacroScreen() {
                 }]} />
               </View>
               <View style={styles.progressLabels}>
-                <Text style={styles.progressLabelLeft}>{balance}/{MEMBERSHIP_THRESHOLD} Macro</Text>
+                <Text style={styles.progressLabelLeft}>{balance}/{threshold} Macro</Text>
                 <Text style={styles.progressLabelRight}>Ayrıcalıklı Üyelik</Text>
               </View>
             </View>
@@ -223,7 +243,7 @@ export default function MacroScreen() {
 
           {/* Quick packs */}
           <View style={styles.packRow}>
-            {QUICK_PACKS.map((pack, index) => (
+            {quickPacks.map((pack, index) => (
               <Animated.View key={pack.qty} style={{ flex: 1, transform: [{ scale: packScales[index] }] }}>
               <TouchableOpacity
                 onPress={() => selectPack(index, pack.qty)}
@@ -303,7 +323,7 @@ export default function MacroScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.membershipTitle}>Ayrıcalıklı Üyelik</Text>
               <Text style={styles.membershipDesc}>
-                Ayda {MEMBERSHIP_THRESHOLD} Macro topla, {30} gün boyunca tüm ayrıcalıklardan yararlan
+                Ayda {threshold} Macro topla, {settings.macro_membership_days} gün boyunca tüm ayrıcalıklardan yararlan
               </Text>
             </View>
           </View>
@@ -333,11 +353,11 @@ export default function MacroScreen() {
           </Text>
           <View style={styles.infoRow}>
             <View style={styles.infoCard}>
-              <Text style={styles.infoCardNum}>₺{MACRO_PRICE.toLocaleString('tr-TR')}</Text>
+              <Text style={styles.infoCardNum}>₺{macroPrice.toLocaleString('tr-TR')}</Text>
               <Text style={styles.infoCardLabel}>1 Macro Fiyatı</Text>
             </View>
             <View style={styles.infoCard}>
-              <Text style={styles.infoCardNum}>{MEMBERSHIP_THRESHOLD}</Text>
+              <Text style={styles.infoCardNum}>{threshold}</Text>
               <Text style={styles.infoCardLabel}>Üyelik İçin Macro</Text>
             </View>
             <View style={styles.infoCard}>
