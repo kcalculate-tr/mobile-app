@@ -67,7 +67,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Ödeme Bekleniyor',
   confirmed: 'Onaylandı',
   preparing: 'Hazırlanıyor',
-  on_the_way: 'Yolda',
+  on_way: 'Yolda',
   ready: 'Hazır',
   delivered: 'Teslim Edildi',
   cancelled: 'İptal',
@@ -80,7 +80,7 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string }> = {
   pending_payment: { bg: 'rgba(245,158,11,0.12)', color: '#F59E0B' },
   confirmed:       { bg: 'rgba(59,130,246,0.12)', color: '#3B82F6' },
   preparing:       { bg: '#f0f0f0',               color: COLORS.text.primary },
-  on_the_way:      { bg: COLORS.brand.green,               color: COLORS.text.primary },
+  on_way:      { bg: COLORS.brand.green,               color: COLORS.text.primary },
   ready:           { bg: COLORS.brand.green,               color: COLORS.text.primary },
   delivered:       { bg: COLORS.brand.green,               color: COLORS.text.primary },
   cancelled:       { bg: 'rgba(212,24,61,0.1)',   color: '#d4183d' },
@@ -119,7 +119,7 @@ const getTrackingProgress = (status: string): number => {
     pending: 0, pending_payment: 0,
     confirmed: 1,
     preparing: 2,
-    on_the_way: 3, ready: 3,
+    on_way: 3, ready: 3,
     delivered: 4,
   };
   return map[status] ?? -1;

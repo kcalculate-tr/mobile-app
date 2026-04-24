@@ -44,7 +44,7 @@ type Order = {
   payment_status: string | null;
 };
 
-const ACTIVE_STATUSES = ['pending', 'pending_payment', 'confirmed', 'preparing', 'on_the_way', 'ready'];
+const ACTIVE_STATUSES = ['pending', 'pending_payment', 'confirmed', 'preparing', 'on_way', 'ready'];
 const PAST_STATUSES = ['delivered', 'cancelled', 'payment_failed', 'refunded'];
 
 const STATUS_LABELS: Record<string, string> = {
@@ -52,7 +52,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Ödeme Bekleniyor',
   confirmed: 'Onaylandı',
   preparing: 'Hazırlanıyor',
-  on_the_way: 'Yolda',
+  on_way: 'Yolda',
   ready: 'Hazır',
   delivered: 'Teslim Edildi',
   cancelled: 'İptal Edildi',
@@ -65,7 +65,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; 
   pending_payment: { label: 'Ödeme Bekleniyor', bg: 'rgba(245,158,11,0.12)',  color: '#F59E0B', Icon: CreditCard },
   confirmed:       { label: 'Onaylandı',         bg: 'rgba(59,130,246,0.12)', color: '#3B82F6', Icon: CheckCircle },
   preparing:       { label: 'Hazırlanıyor',      bg: '#ffffff',                color: COLORS.text.primary, Icon: ChefHat },
-  on_the_way:      { label: 'Yolda',             bg: COLORS.brand.green,                color: COLORS.text.primary, Icon: Truck },
+  on_way:      { label: 'Yolda',             bg: COLORS.brand.green,                color: COLORS.text.primary, Icon: Truck },
   ready:           { label: 'Hazır',             bg: COLORS.brand.green,                color: COLORS.text.primary, Icon: Confetti },
   delivered:       { label: 'Teslim Edildi',     bg: COLORS.brand.green,                color: COLORS.text.primary, Icon: CheckCircle },
   cancelled:       { label: 'İptal Edildi',      bg: 'rgba(212,24,61,0.1)',    color: '#d4183d', Icon: XCircle },
@@ -258,7 +258,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
               Icon: Package,
             };
             const isActive = ACTIVE_STATUSES.includes(order.status);
-            const progress = order.status === 'on_the_way' ? 0.65
+            const progress = order.status === 'on_way' ? 0.65
               : order.status === 'preparing' ? 0.4
               : order.status === 'confirmed' ? 0.2
               : 0;
@@ -296,7 +296,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
                       <View style={[s.progressFill, { width: `${progress * 100}%` as `${number}%` }]} />
                     </View>
                     <Text style={s.progressLabel}>
-                      {order.status === 'on_the_way' ? '~20 dk kaldı' : 'Hazırlanıyor...'}
+                      {order.status === 'on_way' ? '~20 dk kaldı' : 'Hazırlanıyor...'}
                     </Text>
                   </View>
                 )}
