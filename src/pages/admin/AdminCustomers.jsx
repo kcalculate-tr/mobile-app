@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Gift,
   Loader2,
@@ -10,8 +11,8 @@ import {
   MapPin,
   CalendarClock,
   CircleUserRound,
-  Plus,
   ShoppingBag,
+  Settings,
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 
@@ -29,7 +30,10 @@ const FIELD_LABEL_MAP = {
   phone_number: 'Telefon Numarası',
   mobile: 'Mobil',
   contact_phone: 'İletişim Telefonu',
-  macro_points: 'Makro Puan',
+  macro_balance: 'Macro Bakiye',
+  macro_points: 'Harcama Birikimi (₺)',
+  total_macros_purchased: 'Toplam Alınan Macro',
+  privileged_until: 'Üyelik Bitişi',
   created_at: 'Kayıt Tarihi',
   updated_at: 'Güncelleme Tarihi',
 };
@@ -155,7 +159,10 @@ function normalizeCustomer(row) {
     email: row?.email || row?.user_email || row?.email_address || '',
     email: emailRaw || '—',
     phone: phoneRaw || '—',
-    macroPoints: Math.max(0, toSafeNumber(row?.macro_points, 0)),
+    // macro_balance = fiili macro cüzdan; macro_points = TL harcama accumulator (order-earn pool)
+    macroBalance: Math.max(0, toSafeNumber(row?.macro_balance, 0)),
+    macroAccumulator: Math.max(0, toSafeNumber(row?.macro_points, 0)),
+    privilegedUntil: row?.privileged_until || null,
     createdAt: row?.created_at || null,
     profile: row,
   };
@@ -176,7 +183,10 @@ function getRemainingProfileFields(profile = {}) {
     'phone_number',
     'mobile',
     'contact_phone',
+    'macro_balance',
     'macro_points',
+    'total_macros_purchased',
+    'privileged_until',
     'created_at',
     'updated_at',
   ]);
@@ -266,9 +276,6 @@ export default function AdminCustomers() {
   const [detailError, setDetailError] = useState('');
 
   // Makro ekle modal
-  const [macroModalOpen, setMacroModalOpen] = useState(false);
-  const [macroAmount, setMacroAmount] = useState('');
-  const [macroSaving, setMacroSaving] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -317,10 +324,10 @@ export default function AdminCustomers() {
   }, [fetchCustomers]);
 
   const stats = useMemo(() => {
-    const totalPoints = customers.reduce((sum, item) => sum + toSafeNumber(item.macroPoints, 0), 0);
+    const totalBalance = customers.reduce((sum, item) => sum + toSafeNumber(item.macroBalance, 0), 0);
     return {
       customerCount: customers.length,
-      totalPoints,
+      totalBalance,
     };
   }, [customers]);
 
@@ -364,31 +371,6 @@ export default function AdminCustomers() {
     setDetailAddresses([]);
     setDetailOrders([]);
     setDetailError('');
-  };
-
-  const handleAddMacro = async () => {
-    const amount = parseInt(macroAmount, 10);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Geçerli bir puan girin.');
-      return;
-    }
-    setMacroSaving(true);
-    setError('');
-    const current = toSafeNumber(detailCustomer?.macroPoints, 0);
-    const { error: upErr } = await supabase
-      .from('profiles')
-      .update({ macro_points: current + amount })
-      .eq('id', detailCustomer.id);
-    if (upErr) {
-      setError(upErr.message);
-    } else {
-      setInfo(`${detailCustomer.fullName} için +${amount} makro puan eklendi.`);
-      setDetailCustomer(prev => ({ ...prev, macroPoints: current + amount }));
-      setMacroModalOpen(false);
-      setMacroAmount('');
-      fetchCustomers();
-    }
-    setMacroSaving(false);
   };
 
   const ORDER_STATUS = {
@@ -505,8 +487,8 @@ export default function AdminCustomers() {
           <p className="mt-2 text-3xl font-zalando text-geex-text">{stats.customerCount.toLocaleString('tr-TR')}</p>
         </article>
         <article className="rounded-3xl border border-geex-border bg-geex-card p-5 shadow-geex-soft">
-          <p className="text-sm font-semibold text-slate-500">Toplam Makro Puan</p>
-          <p className="mt-2 text-3xl font-zalando text-geex-text">{stats.totalPoints.toLocaleString('tr-TR')}</p>
+          <p className="text-sm font-semibold text-slate-500">Toplam Macro Bakiye</p>
+          <p className="mt-2 text-3xl font-zalando text-geex-text">{stats.totalBalance.toLocaleString('tr-TR')}</p>
         </article>
       </div>
 
@@ -523,7 +505,7 @@ export default function AdminCustomers() {
             <tr className="border-b border-geex-border text-left text-xs uppercase tracking-wide text-slate-500">
               <th className="px-5 py-4 font-semibold">Ad Soyad</th>
               <th className="px-5 py-4 font-semibold">E-posta</th>
-              <th className="px-5 py-4 font-semibold">Makro Puan</th>
+              <th className="px-5 py-4 font-semibold">Macro Bakiye</th>
               <th className="px-5 py-4 font-semibold">Kayıt Tarihi</th>
               <th className="px-5 py-4 text-right font-semibold">İşlem</th>
             </tr>
@@ -547,7 +529,7 @@ export default function AdminCustomers() {
                   <td className="px-5 py-4 font-medium text-geex-text">{customer.fullName}
                       {customer.email && <p className="text-xs text-slate-400">{customer.email}</p>}</td>
                   <td className="px-5 py-4 text-geex-text">{customer.email}</td>
-                  <td className="px-5 py-4 text-geex-text">{customer.macroPoints.toLocaleString('tr-TR')}</td>
+                  <td className="px-5 py-4 text-geex-text">{customer.macroBalance.toLocaleString('tr-TR')}</td>
                   <td className="px-5 py-4 text-slate-500">{formatDate(customer.createdAt)}</td>
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-end gap-2">
@@ -597,14 +579,14 @@ export default function AdminCustomers() {
             </div>
 
             <div className="mb-4 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => { setMacroAmount(''); setMacroModalOpen(true); }}
+              <Link
+                to="/boss/macro"
                 className="inline-flex h-10 items-center gap-2 rounded-xl border border-geex-border bg-geex-bg px-4 text-sm font-semibold text-geex-text hover:bg-white"
+                title="Macro bakiyeyi yönet"
               >
-                <Plus size={14} />
-                Makro Ekle
-              </button>
+                <Settings size={14} />
+                BossMacro'da Yönet
+              </Link>
               <button
                 type="button"
                 onClick={() => openCouponModal(detailCustomer)}
@@ -643,14 +625,22 @@ export default function AdminCustomers() {
               <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Hesap Özeti</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <article className="rounded-2xl border border-geex-border bg-geex-card p-3">
-                  <p className="mb-1 text-xs font-semibold text-slate-500">Güncel Makro Puan</p>
-                  <p className="mb-0 text-2xl font-zalando text-geex-text">{detailCustomer.macroPoints.toLocaleString('tr-TR')}</p>
+                  <p className="mb-1 text-xs font-semibold text-slate-500">Macro Bakiye</p>
+                  <p className="mb-0 text-2xl font-zalando text-geex-text">{detailCustomer.macroBalance.toLocaleString('tr-TR')}</p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Harcama birikimi: ₺{detailCustomer.macroAccumulator.toLocaleString('tr-TR')}
+                  </p>
                 </article>
                 <article className="rounded-2xl border border-geex-border bg-geex-card p-3">
                   <p className="mb-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
                     <CalendarClock size={12} /> Kayıt Tarihi
                   </p>
                   <p className="mb-0 text-sm font-semibold text-geex-text">{formatDate(detailCustomer.createdAt)}</p>
+                  {detailCustomer.privilegedUntil && (
+                    <p className="mt-1 text-[11px] font-semibold text-emerald-700">
+                      ⭐ Üyelik: {formatDate(detailCustomer.privilegedUntil)}
+                    </p>
+                  )}
                 </article>
               </div>
             </section>
@@ -732,39 +722,6 @@ export default function AdminCustomers() {
                 </div>
               )}
             </section>
-          </div>
-        </div>
-      )}
-
-      {macroModalOpen && detailCustomer && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/35 p-4 sm:items-center">
-          <div className="w-full max-w-sm rounded-3xl border border-geex-border bg-geex-card p-5 shadow-geex">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-lg font-zalando text-geex-text">Makro Puan Ekle</p>
-                <p className="mt-1 text-xs text-slate-500">{detailCustomer.fullName} • Mevcut: {detailCustomer.macroPoints} puan</p>
-              </div>
-              <button type="button" onClick={() => setMacroModalOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-geex-border bg-white text-geex-text">
-                <X size={14} />
-              </button>
-            </div>
-            <label className="block text-xs font-semibold text-slate-500">
-              Eklenecek Puan
-              <input
-                type="number" min="1" value={macroAmount}
-                onChange={e => setMacroAmount(e.target.value)}
-                placeholder="100"
-                className="mt-1.5 h-11 w-full rounded-xl border border-geex-border bg-white px-3 text-sm font-medium text-geex-text"
-              />
-            </label>
-            <div className="mt-4 flex justify-end">
-              <button type="button" onClick={handleAddMacro} disabled={macroSaving}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-primary px-4 text-sm font-semibold text-brand-white shadow-[0_10px_20px_rgba(152,205,0,0.25)] disabled:opacity-60">
-                {macroSaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                Ekle
-              </button>
-            </div>
           </div>
         </div>
       )}
