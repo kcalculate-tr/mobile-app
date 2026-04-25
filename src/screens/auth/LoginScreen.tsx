@@ -153,7 +153,7 @@ export default function LoginScreen() {
                 style={s.input}
                 value={email}
                 onChangeText={setEmail}
-                placeholder="ornek@mail.com"
+                placeholder="Mail adresinizi girin"
                 placeholderTextColor={COLORS.text.tertiary}
                 keyboardType="email-address"
                 autoCapitalize="none"

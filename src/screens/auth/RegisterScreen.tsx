@@ -311,7 +311,7 @@ export default function RegisterScreen() {
               style={s.input}
               value={form.email}
               onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
-              placeholder="ornek@mail.com"
+              placeholder="Mail adresinizi girin"
               placeholderTextColor={GRAY_400}
               keyboardType="email-address"
               autoCapitalize="none"

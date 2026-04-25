@@ -42,7 +42,6 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const selectedAddress = useAddressStore((s) => s.selectedAddress);
-  const setSelectedAddress = useAddressStore((s) => s.setSelectedAddress);
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
@@ -77,31 +76,7 @@ export default function HomeScreen() {
     }
   }, [mealModalVisible]);
 
-  // Auto-load default address on first mount
-  useEffect(() => {
-    if (!user?.id || selectedAddress) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const supabase = getSupabaseClient();
-        const { data, error } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        if (cancelled || error || !data || data.length === 0) return;
-        const row = data[0] as Record<string, any>;
-        setSelectedAddress({
-          ...row,
-          neighbourhood: row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? null,
-        } as any);
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id, selectedAddress, setSelectedAddress]);
-
-  // Active dot expand animation
+// Active dot expand animation
   useEffect(() => {
     activeDotWidth.setValue(5);
     Animated.spring(activeDotWidth, { toValue: 14, useNativeDriver: false, speed: 20, bounciness: 4 }).start();
