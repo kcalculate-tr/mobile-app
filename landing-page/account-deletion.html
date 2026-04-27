@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hesap Silme Talebi — KCAL</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f172a; --bg2: #1e293b; --green: #84cc16; --text: #f1f5f9; --muted: #94a3b8; --border: rgba(132,204,22,0.15); }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+    header { background: rgba(15,23,42,0.95); border-bottom: 1px solid var(--border); padding: 0 24px; }
+    .header-inner { max-width: 860px; margin: 0 auto; display: flex; align-items: center; height: 60px; justify-content: space-between; }
+    .logo { font-size: 20px; font-weight: 900; color: var(--text); text-decoration: none; }
+    .logo span { color: var(--green); }
+    a.back { font-size: 13px; color: var(--muted); text-decoration: none; }
+    a.back:hover { color: var(--green); }
+    main { max-width: 860px; margin: 0 auto; padding: 56px 24px 80px; }
+    h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 40px; }
+    h2 { font-size: 16px; font-weight: 700; margin: 32px 0 10px; color: var(--green); }
+    p { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+    .info-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; margin: 32px 0; }
+    .info-box p { margin: 0; line-height: 1.8; }
+    .info-box strong { color: var(--text); }
+    .step-list { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; margin: 24px 0; }
+    .step-list ol { padding-left: 22px; }
+    .step-list li { font-size: 14px; color: var(--muted); margin-bottom: 8px; line-height: 1.7; }
+    .step-list li strong { color: var(--text); }
+    .data-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 16px 0 32px; }
+    @media (min-width: 640px) { .data-grid { grid-template-columns: 1fr 1fr; } }
+    .data-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .data-card h3 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .data-card.delete h3::before { content: "🗑 "; }
+    .data-card.keep h3::before { content: "📁 "; }
+    .data-card ul { list-style: none; padding: 0; }
+    .data-card li { font-size: 13px; color: var(--muted); padding: 4px 0; }
+    .data-card li::before { content: "• "; color: var(--green); }
+    .cta-mail { display: inline-block; background: var(--green); color: #0f172a; font-weight: 700; font-size: 14px; text-decoration: none; padding: 12px 22px; border-radius: 10px; margin-top: 12px; }
+    .cta-mail:hover { opacity: 0.9; }
+    footer { border-top: 1px solid rgba(255,255,255,0.06); padding: 24px; text-align: center; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a href="/" class="logo">KC<span>AL</span></a>
+    <a href="/" class="back">← Ana Sayfa</a>
+  </div>
+</header>
+<main>
+  <h1>Hesap Silme Talebi</h1>
+  <p class="subtitle">KVKK ve GDPR kapsamında verilerinizi silme hakkı</p>
+
+  <p>KCAL hesabınızı ve ilişkili verileri silmek için aşağıdaki adımları izleyebilirsiniz. Talebiniz <strong style="color:#f1f5f9">7 iş günü</strong> içinde işleme alınacaktır.</p>
+
+  <h2>Nasıl Talep Ederim?</h2>
+  <div class="step-list">
+    <ol>
+      <li><strong>info@eatkcal.com</strong> adresine bir e-posta gönderin.</li>
+      <li>E-posta konusu: <em>"Hesap Silme Talebi"</em></li>
+      <li>Mesaj içeriğinde <strong>kayıtlı e-posta adresinizi</strong> ve isteğe bağlı olarak silme nedeninizi belirtin.</li>
+      <li>Talebinizi aldıktan sonra kimlik doğrulaması için size dönüş yapacağız.</li>
+      <li>Doğrulama tamamlandıktan sonra hesabınız ve aşağıda listelenen veriler kalıcı olarak silinecektir.</li>
+    </ol>
+  </div>
+
+  <a class="cta-mail" href="mailto:info@eatkcal.com?subject=Hesap%20Silme%20Talebi&body=Merhaba%2C%0A%0AKCAL%20hesab%C4%B1m%C4%B1n%20silinmesini%20talep%20ediyorum.%0A%0AKay%C4%B1tl%C4%B1%20e-posta%20adresim%3A%20%0ASilme%20nedeni%20(iste%C4%9Fe%20ba%C4%9Fl%C4%B1)%3A%20%0A%0ATe%C5%9Fekk%C3%BCrler.">info@eatkcal.com adresine yaz</a>
+
+  <h2>Hangi Veriler Silinir?</h2>
+  <div class="data-grid">
+    <div class="data-card delete">
+      <h3>Silinecek Veriler</h3>
+      <ul>
+        <li>Profil bilgileri (ad, telefon, doğum tarihi)</li>
+        <li>Kayıtlı teslimat adresleri</li>
+        <li>Sipariş geçmişi (görüntüleme erişimi)</li>
+        <li>Makro hedefleri ve beslenme verileri</li>
+        <li>Kayıtlı ödeme yöntemleri (token'lar)</li>
+        <li>Push bildirim kayıtları</li>
+        <li>Uygulama kullanım analitikleri</li>
+      </ul>
+    </div>
+    <div class="data-card keep">
+      <h3>Yasal Olarak Saklanan Veriler</h3>
+      <ul>
+        <li>Fatura ve ödeme kayıtları (10 yıl)</li>
+        <li>Sipariş içeriği ve tutarları (10 yıl)</li>
+        <li>Vergi mevzuatı gereği muhasebe kayıtları</li>
+        <li>Yasal tebligat gerektiren işlemler</li>
+      </ul>
+    </div>
+  </div>
+  <p style="font-size: 13px;">Yukarıdaki saklama süreleri Türk Ticaret Kanunu, Vergi Usul Kanunu ve KVKK kapsamındaki yasal zorunluluklardan kaynaklanmaktadır. Saklanan veriler hiçbir pazarlama veya analitik amaçla kullanılmaz; yalnızca yasal yükümlülüklerin yerine getirilmesi için tutulur.</p>
+
+  <h2>Önemli Notlar</h2>
+  <p>• Hesap silme işlemi geri alınamaz. Aynı e-posta ile yeniden kayıt olabilirsiniz, ancak önceki verileriniz geri yüklenemez.<br/>
+     • Aktif (henüz teslim edilmemiş) bir siparişiniz varsa, talebiniz sipariş tamamlandıktan sonra işleme alınacaktır.<br/>
+     • Kullanılmamış kupon ve macro point bakiyeleri silme ile birlikte iptal edilir.</p>
+
+  <h2>İletişim</h2>
+  <div class="info-box">
+    <p>
+      <strong>Sekülart Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.</strong><br/>
+      Vergi No: 7591148741 &nbsp;·&nbsp; DUNS: 751169177<br/>
+      Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir<br/>
+      E-posta: <a href="mailto:info@eatkcal.com" style="color:#84cc16">info@eatkcal.com</a>
+    </p>
+  </div>
+</main>
+<footer>© 2026 KCAL · Sekülart Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.</footer>
+</body>
+</html>
