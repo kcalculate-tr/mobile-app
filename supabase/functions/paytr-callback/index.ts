@@ -107,6 +107,16 @@ Deno.serve(async (req: Request) => {
       const totalAmountNumeric = Number(totalAmount) / 100
       const installmentCount = parseInt(String(data.installment_count ?? '1'), 10) || 1
 
+      console.log('[PAYTR-CALLBACK] success — order status transition', {
+        orderId: order.id,
+        merchantOid,
+        previousStatus: order.status,
+        previousPaymentStatus: order.payment_status,
+        nextStatus: 'confirmed',
+        nextPaymentStatus: 'paid',
+        totalAmount: totalAmountNumeric,
+      })
+
       const { error: updErr } = await supabase
         .from('orders')
         .update({
@@ -140,6 +150,16 @@ Deno.serve(async (req: Request) => {
         data.failed_reason_msg ??
         data.failed_reason_code ??
         'unknown'
+
+      console.log('[PAYTR-CALLBACK] failure — order status transition', {
+        orderId: order.id,
+        merchantOid,
+        previousStatus: order.status,
+        previousPaymentStatus: order.payment_status,
+        nextStatus: 'payment_failed',
+        nextPaymentStatus: 'failed',
+        reason: String(failureReason),
+      })
 
       const { error: updErr } = await supabase
         .from('orders')

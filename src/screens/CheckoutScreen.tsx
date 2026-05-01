@@ -1029,6 +1029,15 @@ export default function CheckoutScreen() {
     dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
     dispatchOrder({ type: 'SET_PAYMENT_NOTICE', payload: '' });
 
+    console.log('[CHECKOUT] handleCreateOrder', {
+      deliveryTimeType,
+      hasScheduledDate: !!selectedScheduledDate,
+      hasScheduledSlot: !!selectedTimeSlot,
+      isPaymentFeatureEnabled,
+      PAYMENT_PROVIDER,
+      envProvider: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
+    });
+
     if (!user) {
       navigation.replace('Login', { redirectTo: 'Checkout' });
       return;
@@ -1118,6 +1127,11 @@ export default function CheckoutScreen() {
       const orderDeliveryMethod = deliveryMethod === 'home_delivery' ? 'delivery' : 'pickup';
 
       if (!isPaymentFeatureEnabled) {
+        console.warn('[CHECKOUT] payment feature DISABLED — creating order without PayTR', {
+          deliveryType: scheduledFields.delivery_type,
+          PAYMENT_PROVIDER,
+          envProvider: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
+        });
         const orderResult = await createOrderFromCart({
           supabase,
           userId: user.id,
@@ -1172,6 +1186,7 @@ export default function CheckoutScreen() {
       }
 
       if (!paymentOrderId) {
+        console.log('[CHECKOUT] creating draft', { scheduledFields });
         const draftResult = await createOrderDraftForPayment({
           supabase,
           userId: user.id,
@@ -1220,12 +1235,19 @@ export default function CheckoutScreen() {
       }
 
       if (PAYMENT_PROVIDER === 'paytr_iframe' && paymentOrderId) {
+        console.log('[CHECKOUT] navigate to payment', {
+          paymentOrderId,
+          paymentOrderCode,
+          deliveryType: scheduledFields.delivery_type,
+          amount: paymentOrderAmount ?? totalAmount,
+        });
         navigation.navigate('PaymentScreen', {
           orderId: String(paymentOrderId),
           amount: paymentOrderAmount ?? totalAmount,
           orderCode: paymentOrderCode,
         });
       } else {
+        console.log('[CHECKOUT] legacy payment step', { paymentOrderId, PAYMENT_PROVIDER });
         dispatchPay({ type: 'SET_STEP', payload: 'payment' });
       }
     } catch (error: unknown) {

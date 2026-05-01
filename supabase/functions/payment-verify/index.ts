@@ -68,6 +68,15 @@ Deno.serve(async (req: Request) => {
     }
 
     // Status + payment_status güncelle
+    console.log('[PAYMENT-VERIFY] order status transition', {
+      orderId,
+      isSuccess,
+      bankResponseCode,
+      mdStatus,
+      previousStatus: order?.status ?? null,
+      nextStatus: isSuccess ? 'confirmed' : 'payment_failed',
+      nextPaymentStatus: isSuccess ? 'paid' : 'failed',
+    })
     const { error: updateError } = await supabase
       .from('orders')
       .update({
