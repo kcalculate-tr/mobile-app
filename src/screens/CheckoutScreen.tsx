@@ -69,7 +69,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
 import { usePantryStore } from '../store/pantryStore';
 import { useAddressStore } from '../store/addressStore';
-import { Address, CouponValidationResult, DeliveryRuleStatus } from '../types';
+import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
@@ -237,7 +237,6 @@ type OrderFormState = {
   paymentNotice: string;
   settingsFetchStatus: 'loading' | 'ready' | 'error';
   settingsMinCartAmount: number;
-  couponInfo: CouponValidationResult | null;
   rulesRefreshKey: number;
 };
 type OrderFormAction =
@@ -251,7 +250,6 @@ type OrderFormAction =
   | { type: 'SET_PAYMENT_NOTICE'; payload: string }
   | { type: 'SET_SETTINGS_FETCH_STATUS'; payload: 'loading' | 'ready' | 'error' }
   | { type: 'SET_SETTINGS_MIN_CART'; payload: number }
-  | { type: 'SET_COUPON_INFO'; payload: CouponValidationResult | null }
   | { type: 'SET_RULES_REFRESH_KEY'; payload: number };
 function orderFormReducer(state: OrderFormState, action: OrderFormAction): OrderFormState {
   switch (action.type) {
@@ -265,7 +263,6 @@ function orderFormReducer(state: OrderFormState, action: OrderFormAction): Order
     case 'SET_PAYMENT_NOTICE': return { ...state, paymentNotice: action.payload };
     case 'SET_SETTINGS_FETCH_STATUS': return { ...state, settingsFetchStatus: action.payload };
     case 'SET_SETTINGS_MIN_CART': return { ...state, settingsMinCartAmount: action.payload };
-    case 'SET_COUPON_INFO': return { ...state, couponInfo: action.payload };
     case 'SET_RULES_REFRESH_KEY': return { ...state, rulesRefreshKey: action.payload };
     default: return state;
   }
@@ -275,7 +272,7 @@ const orderFormInitial: OrderFormState = {
   orderNote: '', contractsAccepted: false, placingOrder: false,
   screenError: '', paymentNotice: '',
   settingsFetchStatus: 'loading', settingsMinCartAmount: 0,
-  couponInfo: null, rulesRefreshKey: 0,
+  rulesRefreshKey: 0,
 };
 
 type PayState = {
@@ -352,7 +349,7 @@ export default function CheckoutScreen() {
   // Destructure for JSX convenience
   const { loadingAddresses, addressError, addresses, selectedAddressId, mapCoords, geocoding, deliveryRuleStatus } = addr;
   const { deliveryMethod, deliveryTimeType, selectedScheduledDate, selectedTimeSlot, branches, branchesLoading, branchesError, businessHours } = delivery;
-  const { customerName, customerEmail, customerPhone, orderNote, contractsAccepted, placingOrder, screenError, paymentNotice, settingsFetchStatus, settingsMinCartAmount, couponInfo, rulesRefreshKey } = orderForm;
+  const { customerName, customerEmail, customerPhone, orderNote, contractsAccepted, placingOrder, screenError, paymentNotice, settingsFetchStatus, settingsMinCartAmount, rulesRefreshKey } = orderForm;
   const { step, cardHolder, cardNumber, expiry, cvv, payLoading, payError, webViewHtml, pendingPaymentOrder, loadingPendingOrder, retryPaymentOrderId } = pay;
 
   const [showZonesSheet, setShowZonesSheet] = useState(false);
@@ -389,7 +386,10 @@ export default function CheckoutScreen() {
   const isPaymentConfigured = paymentConfig.isConfigured;
   const pendingPaymentOrderIdFromRoute = route.params?.pendingPaymentOrderId || '';
   const hasPendingOrderRoute = Boolean(pendingPaymentOrderIdFromRoute);
-  const discountAmount = Number(couponInfo?.discountAmount || 0);
+  const discountAmount = useMemo(
+    () => (appliedCoupon ? getDiscountAmount(subtotal) : 0),
+    [appliedCoupon, subtotal, getDiscountAmount],
+  );
 
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   useEffect(() => {
@@ -943,21 +943,6 @@ export default function CheckoutScreen() {
   ]);
 
   useEffect(() => {
-    if (!appliedCoupon) {
-      dispatchOrder({ type: 'SET_COUPON_INFO', payload: null });
-      return;
-    }
-    dispatchOrder({
-      type: 'SET_COUPON_INFO',
-      payload: {
-        valid: true,
-        discountAmount: getDiscountAmount(subtotal),
-        campaign: appliedCoupon.campaign,
-      },
-    });
-  }, [appliedCoupon, subtotal, getDiscountAmount]);
-
-  useEffect(() => {
     if (deliveryMethod !== 'pickup') return;
 
     let mounted = true;
@@ -1157,7 +1142,7 @@ export default function CheckoutScreen() {
           subtotal,
           deliveryFee,
           discountAmount,
-          couponCode: couponInfo?.campaign?.code || null,
+          couponCode: appliedCoupon?.code || appliedCoupon?.campaign?.code || null,
           deliveryMethod: orderDeliveryMethod,
           orderNote: orderNote.trim() || null,
           deliveryType: scheduledFields.delivery_type,
