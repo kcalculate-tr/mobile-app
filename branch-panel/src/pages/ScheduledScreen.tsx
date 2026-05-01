@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarClock, CheckCircle, ClipboardList, Loader2, XCircle, BellRing } from 'lucide-react'
+import { CalendarClock, CheckCircle, ClipboardList, History, Loader2, Truck, XCircle, BellRing } from 'lucide-react'
 import { supabase } from '../supabase'
 import type { Order, OrderItem } from '../types'
+
+// Yeni: ödenmiş sipariş kontrolü — payment_status='paid' veya legacy paytr_oid dolu
+function isOrderPaid(o: Order): boolean {
+  if (o.payment_status === 'paid') return true
+  if (o.payment_status == null) return Boolean(o.paytr_oid)
+  return false
+}
 
 // ── Order modification request types ──────────────────────────────────────────
 type ModType = 'cancel' | 'date_change' | 'address_change'
@@ -159,20 +166,39 @@ function PrepList({ orders }: { orders: Order[] }) {
 }
 
 // ── Sipariş Kartı ─────────────────────────────────────────────────────────────
-function OrderCard({ order, saving, pendingMod, onAccept, onReady, onCancel }: {
+function OrderCard({ order, saving, pendingMod, onAccept, onReady, onDeliver, onCancel }: {
   order: Order; saving: string | null; pendingMod?: OrderModification
-  onAccept: (id: string) => void; onReady: (id: string) => void; onCancel: (o: Order) => void
+  onAccept: (id: string) => void; onReady: (id: string) => void
+  onDeliver: (id: string) => void; onCancel: (o: Order) => void
 }) {
   const items       = parseItems(order.items)
   const isSaving    = saving === order.id
   const isPending   = order.status === 'pending' || order.status === 'confirmed'
   const isPreparing = order.status === 'preparing'
+  const isOnWay     = order.status === 'on_way'
+  const isDelivered = order.status === 'delivered'
+  const isCancelled = order.status === 'cancelled'
+  const isCompleted = isDelivered || isCancelled
   const code        = orderCode(order)
   const note        = order.customer_note || (order as any).note || ''
   const scheduledInfo = [order.scheduled_date, (order.scheduled_time || '').slice(0, 5)].filter(Boolean).join(' ')
 
+  const ringClass = isPending ? 'border-indigo-300 ring-2 ring-indigo-100'
+    : isPreparing ? 'border-blue-200 ring-1 ring-blue-100'
+    : isOnWay ? 'border-purple-200 ring-1 ring-purple-100'
+    : isDelivered ? 'border-emerald-200 ring-1 ring-emerald-50'
+    : isCancelled ? 'border-rose-200 ring-1 ring-rose-50'
+    : 'border-gray-200'
+
+  const badge = isPending ? { cls: 'border-indigo-300 bg-indigo-50 text-indigo-700', label: '📅 Bekliyor' }
+    : isPreparing ? { cls: 'border-blue-200 bg-blue-50 text-blue-600', label: 'Hazırlanıyor' }
+    : isOnWay ? { cls: 'border-purple-200 bg-purple-50 text-purple-700', label: '🚚 Yolda' }
+    : isDelivered ? { cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', label: '✅ Teslim Edildi' }
+    : isCancelled ? { cls: 'border-rose-200 bg-rose-50 text-rose-700', label: '❌ İptal' }
+    : { cls: 'border-gray-200 bg-gray-50 text-slate-500', label: order.status }
+
   return (
-    <div className={`rounded-2xl border bg-white shadow-sm ${isPending ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-blue-200 ring-1 ring-blue-100'}`}>
+    <div className={`rounded-2xl border bg-white shadow-sm ${ringClass}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
         <div className="min-w-0 flex-1">
@@ -184,10 +210,8 @@ function OrderCard({ order, saving, pendingMod, onAccept, onReady, onCancel }: {
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="text-xs text-slate-400">{formatTime(order.created_at)}</span>
-          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-            isPending ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-blue-200 bg-blue-50 text-blue-600'
-          }`}>
-            {isPending ? '📅 Bekliyor' : 'Hazırlanıyor'}
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
+            {badge.label}
           </span>
           {pendingMod && (
             <span className="rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
@@ -234,37 +258,49 @@ function OrderCard({ order, saving, pendingMod, onAccept, onReady, onCancel }: {
       )}
 
       {/* Butonlar */}
-      <div className="px-4 pb-4 space-y-2">
-        {isPending && (
-          <>
-            <button onClick={() => onAccept(order.id)} disabled={isSaving}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-[0_4px_12px_rgba(79,70,229,0.3)] transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50">
+      {!isCompleted && (
+        <div className="px-4 pb-4 space-y-2">
+          {isPending && (
+            <>
+              <button onClick={() => onAccept(order.id)} disabled={isSaving}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-[0_4px_12px_rgba(79,70,229,0.3)] transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50">
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                KABUL ET &amp; HAZIRLA
+              </button>
+              <button onClick={() => onCancel(order)} disabled={isSaving}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition disabled:opacity-50">
+                <XCircle size={16} /> İptal Et
+              </button>
+            </>
+          )}
+          {isPreparing && (
+            <button onClick={() => onReady(order.id)} disabled={isSaving}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 py-3 text-sm font-bold text-white shadow-[0_4px_12px_rgba(249,115,22,0.25)] transition hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50">
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-              KABUL ET &amp; HAZIRLA
+              Hazırlandı → Kuryeye Ver
             </button>
-            <button onClick={() => onCancel(order)} disabled={isSaving}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition disabled:opacity-50">
-              <XCircle size={16} /> İptal Et
+          )}
+          {isOnWay && (
+            <button onClick={() => onDeliver(order.id)} disabled={isSaving}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-bold text-white shadow-[0_4px_12px_rgba(147,51,234,0.25)] transition hover:bg-purple-700 active:scale-[0.98] disabled:opacity-50">
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+              Müşteriye Teslim Et
             </button>
-          </>
-        )}
-        {isPreparing && (
-          <button onClick={() => onReady(order.id)} disabled={isSaving}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 py-3 text-sm font-bold text-white shadow-[0_4px_12px_rgba(249,115,22,0.25)] transition hover:bg-orange-600 active:scale-[0.98] disabled:opacity-50">
-            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-            Hazırlandı → Kuryeye Ver
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Ana component ─────────────────────────────────────────────────────────────
+type ScheduledTab = 'pending' | 'preparing' | 'on_way' | 'completed'
+
 export default function ScheduledScreen() {
   const [orders,      setOrders]      = useState<Order[]>([])
   const [loading,     setLoading]     = useState(true)
   const [saving,      setSaving]      = useState<string | null>(null)
+  const [tab,         setTab]         = useState<ScheduledTab>('pending')
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null)
   const [cancelling,  setCancelling]  = useState(false)
   const [modifications,    setModifications]    = useState<OrderModification[]>([])
@@ -293,11 +329,12 @@ export default function ScheduledScreen() {
       .from('orders')
       .select('*')
       .eq('delivery_type', 'scheduled')
-      .in('status', ['pending', 'confirmed', 'preparing'])
+      .in('status', ['pending', 'confirmed', 'preparing', 'on_way', 'delivered', 'cancelled'])
       .order('scheduled_date', { ascending: true })
       .order('scheduled_time', { ascending: true })
     if (error) console.error('[ScheduledScreen] fetch error:', error)
-    setOrders((data ?? []) as Order[])
+    // Güvenlik: sadece ödenmiş randevulu siparişleri göster
+    setOrders(((data ?? []) as Order[]).filter(isOrderPaid))
     setLoading(false)
   }, [])
 
@@ -427,9 +464,19 @@ export default function ScheduledScreen() {
     return map
   }, [modifications])
 
-  // Bip: yeni randevulu sipariş gelince
+  // Tab bucket'ları
+  const pendingScheduled   = useMemo(() => orders.filter(o => o.status === 'pending' || o.status === 'confirmed'), [orders])
+  const preparingScheduled = useMemo(() => orders.filter(o => o.status === 'preparing'), [orders])
+  const onWayScheduled     = useMemo(() => orders.filter(o => o.status === 'on_way'), [orders])
+  const completedScheduled = useMemo(() => orders.filter(o => o.status === 'delivered' || o.status === 'cancelled'), [orders])
+  const activeScheduled    = useMemo(
+    () => orders.filter(o => o.status === 'pending' || o.status === 'confirmed' || o.status === 'preparing'),
+    [orders],
+  )
+
+  // Bip: bekleyen+confirmed sipariş artınca
   useEffect(() => {
-    const count = orders.length
+    const count = pendingScheduled.length
     if (count > prevCountRef.current && unlockedRef.current) {
       // 3 kez çal
       playScheduledBeep()
@@ -437,9 +484,14 @@ export default function ScheduledScreen() {
       setTimeout(playScheduledBeep, 1200)
     }
     prevCountRef.current = count
-  }, [orders.length])
+  }, [pendingScheduled.length])
 
   async function markAccept(id: string) {
+    const target = orders.find(o => String(o.id) === String(id))
+    if (target && !isOrderPaid(target)) {
+      alert('Bu randevulu sipariş henüz ödenmemiş. Kabul edilemez.')
+      return
+    }
     setSaving(id)
     await supabase.from('orders').update({ status: 'preparing', updated_at: new Date().toISOString() }).eq('id', id)
     setSaving(null); fetchOrders()
@@ -449,6 +501,22 @@ export default function ScheduledScreen() {
     setSaving(id)
     await supabase.from('orders').update({ status: 'on_way', updated_at: new Date().toISOString() }).eq('id', id)
     setSaving(null); fetchOrders()
+  }
+
+  async function markDelivered(id: string) {
+    setSaving(id)
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'delivered', delivered_at: now, updated_at: now })
+      .eq('id', id)
+    setSaving(null)
+    if (error) {
+      console.error('markDelivered error:', error)
+      alert('Teslim işaretleme başarısız: ' + error.message)
+      return
+    }
+    fetchOrders()
   }
 
   async function handleCancelConfirm(reason: string) {
@@ -589,33 +657,74 @@ export default function ScheduledScreen() {
           <h1 className="text-xl font-black text-brand-dark">Randevulu Siparişler</h1>
         </div>
         <div className="flex items-center gap-2">
-          {orders.length > 0 && (
+          {pendingScheduled.length > 0 && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
-              📅 {orders.length} bekliyor
+              📅 {pendingScheduled.length} bekliyor
             </span>
           )}
         </div>
       </div>
 
-      {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-white py-16">
-          <CalendarClock size={40} strokeWidth={1.5} className="text-slate-200" />
-          <p className="mt-3 text-sm font-bold text-slate-400">Bekleyen randevulu sipariş yok</p>
-        </div>
-      ) : (
-        <>
-          <PrepList orders={orders} />
+      {/* Tab bar */}
+      <div className="mb-4 flex items-center gap-1 overflow-x-auto rounded-xl border border-gray-100 bg-white p-1">
+        {([
+          { key: 'pending'   as ScheduledTab, label: 'Bekleyen',     icon: <CalendarClock size={14} />, count: pendingScheduled.length,   active: 'bg-indigo-50 border-b-2 border-indigo-500 text-indigo-700 font-semibold' },
+          { key: 'preparing' as ScheduledTab, label: 'Hazırlanıyor', icon: <ClipboardList size={14} />, count: preparingScheduled.length, active: 'bg-blue-50 border-b-2 border-blue-500 text-blue-700 font-semibold' },
+          { key: 'on_way'    as ScheduledTab, label: 'Yolda',        icon: <Truck size={14} />,         count: onWayScheduled.length,     active: 'bg-purple-50 border-b-2 border-purple-500 text-purple-700 font-semibold' },
+          { key: 'completed' as ScheduledTab, label: 'Tamamlanan',   icon: <History size={14} />,       count: completedScheduled.length, active: 'bg-slate-50 border-b-2 border-slate-500 text-slate-700 font-semibold' },
+        ]).map(t => {
+          const isActive = tab === t.key
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs transition ${
+                isActive ? t.active : 'text-slate-600 hover:bg-gray-50'
+              }`}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+              {t.count > 0 && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${
+                  isActive ? 'bg-white/70 text-slate-700' : 'bg-gray-100 text-slate-600'
+                }`}>{t.count}</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {tab === 'pending' && <PrepList orders={activeScheduled} />}
+
+      {(() => {
+        const list = tab === 'pending' ? pendingScheduled
+          : tab === 'preparing' ? preparingScheduled
+          : tab === 'on_way' ? onWayScheduled
+          : completedScheduled
+        const emptyText = tab === 'pending' ? 'Bekleyen randevulu sipariş yok'
+          : tab === 'preparing' ? 'Hazırlanan randevulu sipariş yok'
+          : tab === 'on_way' ? 'Yolda randevulu sipariş yok'
+          : 'Tamamlanan randevulu sipariş yok'
+        if (list.length === 0) {
+          return (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-white py-16">
+              <CalendarClock size={40} strokeWidth={1.5} className="text-slate-200" />
+              <p className="mt-3 text-sm font-bold text-slate-400">{emptyText}</p>
+            </div>
+          )
+        }
+        return (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {orders.map(order => (
+            {list.map(order => (
               <OrderCard
                 key={order.id} order={order} saving={saving}
                 pendingMod={modsByOrderId.get(String(order.id))}
-                onAccept={markAccept} onReady={markReady} onCancel={setCancelOrder}
+                onAccept={markAccept} onReady={markReady} onDeliver={markDelivered} onCancel={setCancelOrder}
               />
             ))}
           </div>
-        </>
-      )}
+        )
+      })()}
     </div>
   )
 }

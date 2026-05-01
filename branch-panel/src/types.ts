@@ -21,6 +21,7 @@ export interface Order {
   order_code?: string | null
   // real column name in DB
   paytr_oid: string | null
+  payment_status?: 'paid' | 'pending' | 'failed' | 'refunded' | null
   status: 'pending' | 'preparing' | 'on_way' | 'delivered' | 'cancelled' | 'confirmed' | 'refunded'
   total_price: number
   items: OrderItem[]

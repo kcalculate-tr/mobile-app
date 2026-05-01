@@ -8,6 +8,13 @@ import type { Order, OrderItem } from '../types'
 
 const ALARM_SOUND_URL = '/sounds/notification.mp3'
 const AUDIO_UNLOCKED_KEY = 'kitchen.audio.unlocked'
+
+// Ödenmiş sipariş kontrolü — payment_status='paid' veya legacy paytr_oid dolu
+function isOrderPaid(o: Order): boolean {
+  if (o.payment_status === 'paid') return true
+  if (o.payment_status == null) return Boolean(o.paytr_oid)
+  return false
+}
 const BASE_DOC_TITLE = 'KCAL Mutfak'
 const ALERT_DOC_TITLE = '🔔 Yeni Sipariş — KCAL Mutfak'
 
@@ -510,8 +517,12 @@ export default function KitchenScreen() {
     return () => { channelRef.current?.unsubscribe() }
   }, [fetchOrders, playNotification, flashTitle])
 
-  const pendingOrders   = useMemo(() => orders.filter(o => o.status === 'pending' || o.status === 'confirmed'), [orders])
+  const pendingOrders   = useMemo(
+    () => orders.filter(o => (o.status === 'pending' || o.status === 'confirmed') && isOrderPaid(o)),
+    [orders],
+  )
   const immediateOrders = useMemo(() => orders.filter(o => {
+    if (!isOrderPaid(o)) return false
     const dt = o.delivery_type || o.delivery_time_type || 'immediate'
     return dt === 'immediate' || !dt
   }), [orders])
@@ -530,6 +541,11 @@ export default function KitchenScreen() {
   }, [pendingOrders.length])
 
   async function markAccept(id: string) {
+    const target = orders.find(o => String(o.id) === String(id))
+    if (target && !isOrderPaid(target)) {
+      alert('Bu sipariş henüz ödenmemiş. Kabul edilemez.')
+      return
+    }
     setSaving(id)
     const { error } = await supabase.from('orders').update({ status: 'preparing', updated_at: new Date().toISOString() }).eq('id', id)
     setSaving(null)
