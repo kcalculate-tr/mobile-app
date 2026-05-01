@@ -7,6 +7,9 @@ import { useBranch } from '../context/BranchContext'
 import type { Order, OrderItem } from '../types'
 
 const ALARM_SOUND_URL = '/sounds/notification.mp3'
+const AUDIO_UNLOCKED_KEY = 'kitchen.audio.unlocked'
+const BASE_DOC_TITLE = 'KCAL Mutfak'
+const ALERT_DOC_TITLE = '🔔 Yeni Sipariş — KCAL Mutfak'
 
 // ── Yardımcı fonksiyonlar ─────────────────────────────────────────────────────
 function elapsed(createdAt: string) {
@@ -392,23 +395,66 @@ export default function KitchenScreen() {
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null)
   const [cancelling,  setCancelling]  = useState(false)
 
-  const [showAudioPrompt, setShowAudioPrompt] = useState(true)
+  const initialUnlocked = (() => {
+    try { return localStorage.getItem(AUDIO_UNLOCKED_KEY) === '1' } catch { return false }
+  })()
+  const [showAudioPrompt, setShowAudioPrompt] = useState(!initialUnlocked)
   const channelRef         = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const audioRef           = useRef<HTMLAudioElement | null>(null)
   const prevPendingRef     = useRef(0)
-  const isAudioUnlockedRef = useRef(false)
+  const isAudioUnlockedRef = useRef(initialUnlocked)
+  const titleFlashRef      = useRef(false)
 
-  // Autoplay unlock
+  const markAudioUnlocked = useCallback(() => {
+    isAudioUnlockedRef.current = true
+    try { localStorage.setItem(AUDIO_UNLOCKED_KEY, '1') } catch {}
+  }, [])
+
+  // Autoplay unlock — herhangi bir click/key user gesture sayilir
   useEffect(() => {
     const unlock = () => {
       if (isAudioUnlockedRef.current || !audioRef.current) return
       const a = audioRef.current
       a.muted = true
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; isAudioUnlockedRef.current = true }).catch(() => {})
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; markAudioUnlocked() }).catch(() => {})
     }
     document.addEventListener('pointerdown', unlock)
     document.addEventListener('keydown', unlock)
     return () => { document.removeEventListener('pointerdown', unlock); document.removeEventListener('keydown', unlock) }
+  }, [markAudioUnlocked])
+
+  const playNotification = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio || !isAudioUnlockedRef.current) return
+    // Loop "Zil" effect'i ayri yonetiyor; burada yalnizca bir tetikleyici.
+    audio.currentTime = 0
+    audio.play().catch((e) => { if (import.meta.env.DEV) console.warn('autoplay blocked', e) })
+  }, [])
+
+  const flashTitle = useCallback(() => {
+    if (typeof document === 'undefined') return
+    if (document.visibilityState === 'visible') return
+    titleFlashRef.current = true
+    document.title = ALERT_DOC_TITLE
+  }, [])
+
+  // Sayfa gorunur olunca title'i normalize et
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && titleFlashRef.current) {
+        document.title = BASE_DOC_TITLE
+        titleFlashRef.current = false
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    if (document.visibilityState === 'visible') {
+      document.title = BASE_DOC_TITLE
+    }
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      document.title = BASE_DOC_TITLE
+    }
   }, [])
 
   const fetchOrders = useCallback(async () => {
@@ -453,9 +499,16 @@ export default function KitchenScreen() {
     channelRef.current = supabase
       .channel('kitchen-all-orders')
       .on('postgres_changes', { event: '*' as const, schema: 'public', table: 'orders' }, () => fetchOrders())
+      .on('postgres_changes', { event: 'INSERT' as const, schema: 'public', table: 'orders' }, (payload) => {
+        const status = (payload.new as { status?: string } | null)?.status
+        if (status === 'pending' || status === 'confirmed') {
+          playNotification()
+          flashTitle()
+        }
+      })
       .subscribe()
     return () => { channelRef.current?.unsubscribe() }
-  }, [fetchOrders])
+  }, [fetchOrders, playNotification, flashTitle])
 
   const pendingOrders   = useMemo(() => orders.filter(o => o.status === 'pending' || o.status === 'confirmed'), [orders])
   const immediateOrders = useMemo(() => orders.filter(o => {
@@ -533,7 +586,7 @@ export default function KitchenScreen() {
     audio.currentTime = 0
     audio.muted = false
     audio.play().then(() => {
-      isAudioUnlockedRef.current = true
+      markAudioUnlocked()
     }).catch(() => {
       alert('Ses çalınamadı. Tarayıcı ayarlarından sesi açın.')
     })
@@ -575,7 +628,8 @@ export default function KitchenScreen() {
                   audio.muted = false
                   audio.currentTime = 0
                   audio.play().then(() => {
-                    isAudioUnlockedRef.current = true
+                    markAudioUnlocked()
+                    setShowAudioPrompt(false)
                   }).catch(() => {
                     alert('Ses çalınamadı. Tarayıcı ayarlarından sesi açın.')
                   })
