@@ -32,7 +32,6 @@ import PrivilegedBadge from '../components/PrivilegedBadge';
 import {
   fetchMacroProfile,
   isPrivileged,
-  processOrderMacroEarn,
   calculateMacroDiscount,
   MACRO_MEMBER_DISCOUNT_PERCENT,
   MacroProfile,
@@ -41,7 +40,6 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { isApiBaseUrlConfigured } from '../lib/api';
 import {
   createOrderDraftForPayment,
-  createOrderFromCart,
   fetchPendingPaymentOrderById,
   PendingPaymentOrder,
   updateOrderPaymentStatus,
@@ -1127,61 +1125,22 @@ export default function CheckoutScreen() {
       const orderDeliveryMethod = deliveryMethod === 'home_delivery' ? 'delivery' : 'pickup';
 
       if (!isPaymentFeatureEnabled) {
-        console.warn('[CHECKOUT] payment feature DISABLED — creating order without PayTR', {
-          deliveryType: scheduledFields.delivery_type,
+        // GUVENLIK: Daha once bu kosulda createOrderFromCart cagrilarak siparis
+        // odeme alinmadan status='pending' ile DB'ye yaziliyordu. Bu yol kaldirildi.
+        // Eger isPaymentFeatureEnabled runtime'da false donerse (env propagation/build cache)
+        // siparis YARATILMADAN kullaniciya hata gosterilir.
+        console.error('[CHECKOUT] payment feature DISABLED at runtime', {
           PAYMENT_PROVIDER,
           envProvider: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
+          isPaymentConfigured,
         });
-        const orderResult = await createOrderFromCart({
-          supabase,
-          userId: user.id,
-          address: effectiveAddress,
-          cartItems: items,
-          customerName: customerName.trim(),
-          customerEmail: customerEmail.trim(),
-          customerPhone: customerPhone.trim(),
-          subtotal,
-          deliveryFee,
-          discountAmount,
-          couponCode: couponInfo?.campaign?.code || null,
-          deliveryMethod: orderDeliveryMethod,
-          orderNote: orderNote.trim() || null,
-          deliveryType: scheduledFields.delivery_type,
-          scheduledDate: scheduledFields.scheduled_date,
-          scheduledTime: scheduledFields.scheduled_time,
+        haptic.error();
+        dispatchOrder({
+          type: 'SET_SCREEN_ERROR',
+          payload:
+            'Ödeme sistemi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin veya destek ile iletişime geçin.',
         });
-
-        haptic.success();
-        clearCart();
-
-        // Sipariş macro kazanımı — fire & forget, navigasyonu bloklama
-        const totalForEarn = subtotal + deliveryFee - discountAmount - macroDiscount;
-        processOrderMacroEarn({
-          userId: user.id,
-          orderTotal: totalForEarn,
-          orderId: orderResult.orderId,
-        }).then(({ earnedMacros }) => {
-          // macro_points params'a geçirildi — OrderSuccessScreen Supabase'e sorgu atmaz
-          navigation.replace('OrderSuccess', {
-            orderCode: orderResult.orderCode,
-            orderId: orderResult.orderId,
-            macro_points: earnedMacros,
-            noticeMessage:
-              orderResult.warnings.length > 0
-                ? orderResult.warnings.map((warning) => warning.message).join('\n')
-                : undefined,
-          });
-        }).catch(() => {
-          navigation.replace('OrderSuccess', {
-            orderCode: orderResult.orderCode,
-            orderId: orderResult.orderId,
-            macro_points: 0,
-            noticeMessage:
-              orderResult.warnings.length > 0
-                ? orderResult.warnings.map((warning) => warning.message).join('\n')
-                : undefined,
-          });
-        });
+        dispatchOrder({ type: 'SET_PLACING_ORDER', payload: false });
         return;
       }
 
