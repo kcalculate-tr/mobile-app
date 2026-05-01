@@ -2,6 +2,22 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
 import { getSupabaseClient } from './supabase';
+import { calculateMacroDiscount, isMacroMemberFromUntil } from './macros';
+
+const fetchMacroDiscountForUser = async (
+  supabase: SupabaseClient,
+  userId: string,
+  subtotal: number,
+): Promise<number> => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('privileged_until')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error || !data) return 0;
+  const isMember = isMacroMemberFromUntil((data as { privileged_until: string | null }).privileged_until);
+  return calculateMacroDiscount(subtotal, isMember);
+};
 
 export type OrderCreateWarning = {
   code: 'ORDER_ITEMS_FALLBACK';
@@ -88,7 +104,6 @@ const insertOrderWithFallback = async (
       'discount_amount',
       'delivery_method',
       'coupon_code',
-      'coupon_id',
       'payment_status',
       'payment_provider',
       'order_code',
@@ -143,7 +158,6 @@ export const createOrderFromCart = async ({
   deliveryFee,
   discountAmount,
   couponCode,
-  couponId,
   deliveryMethod = 'delivery',
   orderNote,
   deliveryType,
@@ -161,7 +175,6 @@ export const createOrderFromCart = async ({
   deliveryFee: number;
   discountAmount: number;
   couponCode?: string | null;
-  couponId?: string | number | null;
   deliveryMethod?: 'delivery' | 'pickup';
   orderNote?: string | null;
   deliveryType?: 'immediate' | 'scheduled' | null;
@@ -176,7 +189,10 @@ export const createOrderFromCart = async ({
   const safeSubtotal = Number(Math.max(0, subtotal).toFixed(2));
   const safeDeliveryFee = Number(Math.max(0, deliveryFee).toFixed(2));
   const safeDiscount = Number(Math.max(0, discountAmount).toFixed(2));
-  const totalAmount = Number(Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount).toFixed(2));
+  const macroDiscount = await fetchMacroDiscountForUser(supabase, userId, safeSubtotal);
+  const totalAmount = Number(
+    Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount - macroDiscount).toFixed(2),
+  );
 
   const itemsPayload = cartItems.map((item) => ({
     line_key: item.lineKey,
@@ -207,11 +223,11 @@ export const createOrderFromCart = async ({
     subtotal_amount: safeSubtotal,
     delivery_fee: safeDeliveryFee,
     discount_amount: safeDiscount,
+    macro_discount_amount: macroDiscount,
     total_price: totalAmount,
     order_code: orderCode,
     delivery_method: deliveryMethod,
     coupon_code: couponCode || null,
-    coupon_id: couponId || null,
     order_note: orderNote || null,
     delivery_type: deliveryType || 'immediate',
     scheduled_date: scheduledDate || null,
@@ -293,7 +309,6 @@ export const createOrderDraftForPayment = async ({
   deliveryFee,
   discountAmount,
   couponCode,
-  couponId,
   deliveryMethod = 'delivery',
   orderNote,
   deliveryType,
@@ -311,7 +326,6 @@ export const createOrderDraftForPayment = async ({
   deliveryFee: number;
   discountAmount: number;
   couponCode?: string | null;
-  couponId?: string | number | null;
   deliveryMethod?: 'delivery' | 'pickup';
   orderNote?: string | null;
   deliveryType?: 'immediate' | 'scheduled' | null;
@@ -326,8 +340,9 @@ export const createOrderDraftForPayment = async ({
   const safeSubtotal = Number(Math.max(0, subtotal).toFixed(2));
   const safeDeliveryFee = Number(Math.max(0, deliveryFee).toFixed(2));
   const safeDiscount = Number(Math.max(0, discountAmount).toFixed(2));
+  const macroDiscount = await fetchMacroDiscountForUser(supabase, userId, safeSubtotal);
   const totalAmount = Number(
-    Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount).toFixed(2),
+    Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount - macroDiscount).toFixed(2),
   );
 
   const itemsPayload = cartItems.map((item) => ({
@@ -359,11 +374,11 @@ export const createOrderDraftForPayment = async ({
     subtotal_amount: safeSubtotal,
     delivery_fee: safeDeliveryFee,
     discount_amount: safeDiscount,
+    macro_discount_amount: macroDiscount,
     total_price: totalAmount,
     order_code: orderCode,
     delivery_method: deliveryMethod,
     coupon_code: couponCode || null,
-    coupon_id: couponId || null,
     order_note: orderNote || null,
     delivery_type: deliveryType || 'immediate',
     scheduled_date: scheduledDate || null,

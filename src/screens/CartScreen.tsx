@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
+import AnimatedNumberText from '../components/AnimatedNumberText';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { haptic } from '../utils/haptics';
@@ -15,10 +16,18 @@ import { useToast } from '../hooks/useToast';
 import DeliveryInfoModal from '../components/modals/DeliveryInfoModal';
 import { useModal } from '../hooks/useModal';
 import { useCartStore } from '../store/cartStore';
+import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchCrosssellProducts } from '../lib/products';
+import {
+  fetchMacroProfile,
+  isPrivileged,
+  calculateMacroDiscount,
+  MACRO_MEMBER_DISCOUNT_PERCENT,
+  MacroProfile,
+} from '../lib/macros';
 import type { Product } from '../types';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -27,22 +36,34 @@ export default function CartScreen() {
   const navigation = useNavigation<CartNavProp>();
   const insets = useSafeAreaInsets();
   const deliveryModal = useModal();
+  const { user } = useAuth();
   const items = useCartStore(s => s.items);
   const updateQuantity = useCartStore(s => s.updateQuantity);
   const removeItem = useCartStore(s => s.removeItem);
   const addItem = useCartStore(s => s.addItem);
   const getSubtotal = useCartStore(s => s.getSubtotal);
   const getTotalMacros = useCartStore(s => s.getTotalMacros);
+  const appliedCoupon = useCartStore(s => s.appliedCoupon);
+  const setCoupon = useCartStore(s => s.setCoupon);
+  const clearCoupon = useCartStore(s => s.clearCoupon);
+  const getDiscountAmount = useCartStore(s => s.getDiscountAmount);
   const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
+  const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
 
   useEffect(() => {
     fetchCrosssellProducts().then(setCrosssellProducts).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) { setMacroProfile(null); return; }
+    let mounted = true;
+    fetchMacroProfile(user.id).then(p => { if (mounted) setMacroProfile(p); }).catch(() => {});
+    return () => { mounted = false; };
+  }, [user?.id]);
   const subtotal = getSubtotal();
   const totalMacros = getTotalMacros();
   const hasTotalMacros = totalMacros.kcal > 0 || totalMacros.protein > 0;
 
-  const [couponCode,    setCouponCode]    = useState('');
   const [couponInput,   setCouponInput]   = useState('');
   const [couponOpen,    setCouponOpen]    = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -51,7 +72,6 @@ export default function CartScreen() {
   const couponOpacity  = useRef(new Animated.Value(0)).current
   const { toast, show: showToast, hide: hideToast } = useToast()
   const { animatedScale: checkoutScale, onPressIn: checkoutPressIn, onPressOut: checkoutPressOut } = useAnimatedPress(0.97)
-  const [couponData,    setCouponData]    = useState<{ discount_type: string; discount_value: number; title: string } | null>(null);
 
 
 
@@ -62,7 +82,7 @@ export default function CartScreen() {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('campaigns')
-      .select('id,title,code,discount_type,discount_value,min_cart_total,end_date,is_active')
+      .select('id,title,code,discount_type,discount_value,min_cart_total,max_discount,end_date,is_active')
       .eq('code', code)
       .eq('is_active', true)
       .maybeSingle();
@@ -73,17 +93,32 @@ export default function CartScreen() {
       setCouponError(`Min. sepet tutarı ₺${data.min_cart_total} olmalı.`); return;
     }
     haptic.success();
-    setCouponCode(code);
-    setCouponData({ discount_type: data.discount_type, discount_value: data.discount_value, title: data.title });
+    setCoupon({
+      code: data.code,
+      campaignId: String(data.id),
+      discountType: data.discount_type,
+      discountValue: Number(data.discount_value),
+      minOrderAmount: Number(data.min_cart_total || 0),
+      title: data.title,
+      campaign: {
+        id: String(data.id),
+        code: data.code,
+        title: data.title,
+        discount_type: data.discount_type,
+        discount_value: Number(data.discount_value),
+        max_discount: Number(data.max_discount || 0),
+        min_cart_total: Number(data.min_cart_total || 0),
+      },
+    });
     setCouponOpen(false);
     setCouponError('');
     showToast(`${code} kuponu uygulandı!`, 'success');
   };
 
-  const removeCoupon = () => { setCouponCode(''); setCouponData(null); setCouponInput(''); };
+  const removeCoupon = () => { clearCoupon(); setCouponInput(''); };
 
   useEffect(() => {
-    if (couponCode) {
+    if (appliedCoupon) {
       Animated.parallel([
         Animated.spring(couponSlideY, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 8 }),
         Animated.timing(couponOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -92,15 +127,13 @@ export default function CartScreen() {
       couponSlideY.setValue(-20)
       couponOpacity.setValue(0)
     }
-  }, [couponCode])
+  }, [appliedCoupon])
 
-  const couponDiscount = couponData
-    ? couponData.discount_type === 'percent'
-      ? Math.round(subtotal * couponData.discount_value / 100)
-      : Math.min(couponData.discount_value, subtotal)
-    : 0;
+  const couponDiscount = getDiscountAmount(subtotal);
 
-  const total = subtotal - couponDiscount;
+  const isMacroMember = isPrivileged(macroProfile);
+  const macroDiscount = calculateMacroDiscount(subtotal, isMacroMember);
+  const total = Math.max(0, subtotal - couponDiscount - macroDiscount);
 
   if (items.length === 0) {
     return (
@@ -178,7 +211,7 @@ export default function CartScreen() {
                       {item.selectedOptions.labels.join(', ')}
                     </Text>
                   ) : null}
-                  <Text style={styles.itemPrice}>₺{(item.unitPrice * item.quantity).toFixed(2)}</Text>
+                  <AnimatedNumberText style={styles.itemPrice} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
                 </View>
 
                 <View style={styles.itemActions}>
@@ -195,7 +228,7 @@ export default function CartScreen() {
                     >
                       <Minus size={13} color={COLORS.text.primary} />
                     </TouchableOpacity>
-                    <Text style={styles.qtyText}>{item.quantity}</Text>
+                    <AnimatedNumberText style={styles.qtyText} value={item.quantity} />
                     <TouchableOpacity
                       style={[styles.qtyBtn, styles.qtyBtnAdd]}
                       onPress={() => { haptic.light(); updateQuantity(item.lineKey, item.quantity + 1); }}
@@ -296,13 +329,13 @@ export default function CartScreen() {
         })()}
 
         {/* Coupon */}
-        {couponCode ? (
+        {appliedCoupon ? (
           <Animated.View style={[styles.couponApplied, { opacity: couponOpacity, transform: [{ translateY: couponSlideY }] }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flex: 1 }}>
               <View style={styles.couponAppliedIcon}><Tag size={14} color="#000" /></View>
               <View>
-                <Text style={styles.couponAppliedCode}>{couponCode}</Text>
-                <Text style={styles.couponAppliedDesc}>{couponData?.title}</Text>
+                <Text style={styles.couponAppliedCode}>{appliedCoupon.code}</Text>
+                <Text style={styles.couponAppliedDesc}>{appliedCoupon.title}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={removeCoupon} style={styles.couponRemoveBtn} activeOpacity={0.7}>
@@ -404,18 +437,24 @@ export default function CartScreen() {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Ara Toplam</Text>
-            <Text style={styles.summaryValue}>₺{subtotal.toFixed(2)}</Text>
+            <AnimatedNumberText style={styles.summaryValue} value={`₺${subtotal.toFixed(2)}`} />
           </View>
-          {couponDiscount > 0 && (
+          {couponDiscount > 0 && appliedCoupon && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Kupon ({couponCode})</Text>
-              <Text style={[styles.summaryValue, { color: '#16A34A' }]}>-₺{couponDiscount.toFixed(2)}</Text>
+              <Text style={styles.summaryLabel}>Kupon ({appliedCoupon.code})</Text>
+              <AnimatedNumberText style={[styles.summaryValue, { color: '#16A34A' }]} value={`-₺${couponDiscount.toFixed(2)}`} />
+            </View>
+          )}
+          {macroDiscount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>{`Macro Üye İndirimi (%${MACRO_MEMBER_DISCOUNT_PERCENT})`}</Text>
+              <AnimatedNumberText style={[styles.summaryValue, { color: '#16A34A' }]} value={`-₺${macroDiscount.toFixed(2)}`} />
             </View>
           )}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryTotalLabel}>Toplam</Text>
-            <Text style={styles.summaryTotalValue}>₺{total.toFixed(2)}</Text>
+            <AnimatedNumberText style={styles.summaryTotalValue} value={`₺${total.toFixed(2)}`} />
           </View>
         </View>
 
@@ -429,7 +468,7 @@ export default function CartScreen() {
             activeOpacity={1}
           >
           <View style={styles.checkoutPriceTag}>
-            <Text style={styles.checkoutPriceText}>₺{total.toFixed(2)}</Text>
+            <AnimatedNumberText style={styles.checkoutPriceText} value={`₺${total.toFixed(2)}`} />
           </View>
           <Text style={styles.checkoutText}>Siparişe Devam</Text>
           <CaretRight size={20} color={COLORS.brand.green} />

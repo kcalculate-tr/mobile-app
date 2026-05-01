@@ -24,11 +24,19 @@ import Constants from 'expo-constants';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft, CaretRight, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import AnimatedNumberText from '../components/AnimatedNumberText';
 import FormField from '../components/FormField';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
-import { fetchMacroProfile, isPrivileged, processOrderMacroEarn } from '../lib/macros';
+import {
+  fetchMacroProfile,
+  isPrivileged,
+  processOrderMacroEarn,
+  calculateMacroDiscount,
+  MACRO_MEMBER_DISCOUNT_PERCENT,
+  MacroProfile,
+} from '../lib/macros';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { isApiBaseUrlConfigured } from '../lib/api';
 import {
@@ -43,6 +51,7 @@ import {
   initPayment,
   mapPaymentErrorToMessage,
 } from '../lib/payment';
+import { PAYMENT_PROVIDER } from '../config/payment';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
@@ -334,6 +343,8 @@ export default function CheckoutScreen() {
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
   const subtotal = useCartStore((state) => state.getSubtotal());
+  const appliedCoupon = useCartStore((state) => state.appliedCoupon);
+  const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
 
   const [addr, dispatchAddr] = useReducer(addressReducer, addressInitial);
   const [delivery, dispatchDelivery] = useReducer(deliveryReducer, deliveryInitial);
@@ -346,7 +357,6 @@ export default function CheckoutScreen() {
   const { customerName, customerEmail, customerPhone, orderNote, contractsAccepted, placingOrder, screenError, paymentNotice, settingsFetchStatus, settingsMinCartAmount, couponInfo, rulesRefreshKey } = orderForm;
   const { step, cardHolder, cardNumber, expiry, cvv, payLoading, payError, webViewHtml, pendingPaymentOrder, loadingPendingOrder, retryPaymentOrderId } = pay;
 
-  const couponCode = '';
   const [showZonesSheet, setShowZonesSheet] = useState(false);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
   const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
@@ -371,7 +381,6 @@ export default function CheckoutScreen() {
     ]).start();
     callback();
   };
-  const previousSubtotalRef = useRef(subtotal);
 
   const addToPantry = usePantryStore((s) => s.addItems);
   const setSelectedAddress = useAddressStore((s) => s.setSelectedAddress);
@@ -383,6 +392,16 @@ export default function CheckoutScreen() {
   const pendingPaymentOrderIdFromRoute = route.params?.pendingPaymentOrderId || '';
   const hasPendingOrderRoute = Boolean(pendingPaymentOrderIdFromRoute);
   const discountAmount = Number(couponInfo?.discountAmount || 0);
+
+  const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
+  useEffect(() => {
+    if (!user?.id) { setMacroProfile(null); return; }
+    let mounted = true;
+    fetchMacroProfile(user.id).then(p => { if (mounted) setMacroProfile(p); }).catch(() => {});
+    return () => { mounted = false; };
+  }, [user?.id]);
+  const isMacroMember = isPrivileged(macroProfile);
+  const macroDiscount = calculateMacroDiscount(subtotal, isMacroMember);
 
   const selectedAddress = useMemo(
     () => addresses.find((address) => address.id === selectedAddressId) || null,
@@ -412,7 +431,7 @@ export default function CheckoutScreen() {
       : resolveShippingFee(activeZoneRow, deliveryGlobals, deliveryTimeType, subtotal);
 
   const deliveryFee = resolvedShippingFee;
-  const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount);
+  const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount - macroDiscount);
 
   // Zone flag guards — activeZoneRow.allow_immediate / allow_scheduled
   // UI chip'lerini + Ödemeye Geç butonunu bunlara göre disabled yap.
@@ -926,12 +945,19 @@ export default function CheckoutScreen() {
   ]);
 
   useEffect(() => {
-    if (previousSubtotalRef.current === subtotal) return;
-    previousSubtotalRef.current = subtotal;
-
-    if (!couponInfo) return;
-    dispatchOrder({ type: 'SET_COUPON_INFO', payload: null });
-  }, [subtotal, couponInfo]);
+    if (!appliedCoupon) {
+      dispatchOrder({ type: 'SET_COUPON_INFO', payload: null });
+      return;
+    }
+    dispatchOrder({
+      type: 'SET_COUPON_INFO',
+      payload: {
+        valid: true,
+        discountAmount: getDiscountAmount(subtotal),
+        campaign: appliedCoupon.campaign,
+      },
+    });
+  }, [appliedCoupon, subtotal, getDiscountAmount]);
 
   useEffect(() => {
     if (deliveryMethod !== 'pickup') return;
@@ -1043,11 +1069,6 @@ export default function CheckoutScreen() {
         return;
       }
 
-      if (couponCode.trim() && !couponInfo && apiConfigured) {
-        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Kuponu uygulayın veya alanı temizleyin.' });
-        return;
-      }
-
       if (deliveryTimeType === 'scheduled' && (!selectedScheduledDate || !selectedTimeSlot)) {
         dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen teslimat tarihi ve saatini seçin.' });
         return;
@@ -1109,7 +1130,6 @@ export default function CheckoutScreen() {
           deliveryFee,
           discountAmount,
           couponCode: couponInfo?.campaign?.code || null,
-          couponId: couponInfo?.campaign?.id || null,
           deliveryMethod: orderDeliveryMethod,
           orderNote: orderNote.trim() || null,
           deliveryType: scheduledFields.delivery_type,
@@ -1121,7 +1141,7 @@ export default function CheckoutScreen() {
         clearCart();
 
         // Sipariş macro kazanımı — fire & forget, navigasyonu bloklama
-        const totalForEarn = subtotal + deliveryFee - discountAmount;
+        const totalForEarn = subtotal + deliveryFee - discountAmount - macroDiscount;
         processOrderMacroEarn({
           userId: user.id,
           orderTotal: totalForEarn,
@@ -1164,7 +1184,6 @@ export default function CheckoutScreen() {
           deliveryFee,
           discountAmount,
           couponCode: couponInfo?.campaign?.code || null,
-          couponId: couponInfo?.campaign?.id || null,
           deliveryMethod: orderDeliveryMethod,
           orderNote: orderNote.trim() || null,
           deliveryType: scheduledFields.delivery_type,
@@ -1200,7 +1219,15 @@ export default function CheckoutScreen() {
         });
       }
 
-      dispatchPay({ type: 'SET_STEP', payload: 'payment' });
+      if (PAYMENT_PROVIDER === 'paytr_iframe' && paymentOrderId) {
+        navigation.navigate('PaymentScreen', {
+          orderId: String(paymentOrderId),
+          amount: paymentOrderAmount ?? totalAmount,
+          orderCode: paymentOrderCode,
+        });
+      } else {
+        dispatchPay({ type: 'SET_STEP', payload: 'payment' });
+      }
     } catch (error: unknown) {
       if (__DEV__) {
         console.warn(`[checkout] create order error: ${formatSupabaseErrorForDevLog(error)}`);
@@ -1270,6 +1297,23 @@ export default function CheckoutScreen() {
 
   const handlePay = async () => {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: '' });
+
+    // PayTR iframe akışı: kart bilgileri PayTR sayfasında girilir.
+    // Burada kart formu doğrulamasını atla ve PaymentScreen router'a yönlendir.
+    if (PAYMENT_PROVIDER === 'paytr_iframe') {
+      const paytrOrderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;
+      if (!paytrOrderId) {
+        dispatchPay({ type: 'SET_PAY_ERROR', payload: 'Sipariş bulunamadı.' });
+        return;
+      }
+      navigation.navigate('PaymentScreen', {
+        orderId: String(paytrOrderId),
+        amount: pendingPaymentOrder?.totalAmount || totalAmount,
+        orderCode: pendingPaymentOrder?.orderCode,
+      });
+      return;
+    }
+
     const cardDigits = cardNumber.replace(/\D/g, '');
     const expiryDigits = expiry.replace(/\D/g, '');
 
@@ -1734,37 +1778,42 @@ export default function CheckoutScreen() {
             {items.map((item) => (
               <View key={item.lineKey} style={styles.summaryRow}>
                 <Text style={styles.summaryLabel} numberOfLines={1}>{item.name} ×{item.quantity}</Text>
-                <Text style={styles.summaryValue}>{toCurrency(item.unitPrice * item.quantity)}</Text>
+                <AnimatedNumberText style={styles.summaryValue} value={toCurrency(item.unitPrice * item.quantity)} />
               </View>
             ))}
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Ara Toplam</Text>
-              <Text style={styles.summaryValue}>{toCurrency(subtotal)}</Text>
+              <AnimatedNumberText style={styles.summaryValue} value={toCurrency(subtotal)} />
             </View>
             {deliveryMethod === 'home_delivery' ? (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Teslimat</Text>
-                <Text
+                <AnimatedNumberText
                   style={[
                     styles.summaryValue,
                     deliveryFee === 0 ? { color: '#16a34a' } : null,
                   ]}
-                >
-                  {deliveryFee === 0 ? 'Ücretsiz' : toCurrency(deliveryFee)}
-                </Text>
+                  value={deliveryFee === 0 ? 'Ücretsiz' : toCurrency(deliveryFee)}
+                />
               </View>
             ) : null}
             {discountAmount > 0 ? (
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>İndirim</Text>
-                <Text style={[styles.summaryValue, { color: '#16a34a' }]}>-{toCurrency(discountAmount)}</Text>
+                <AnimatedNumberText style={[styles.summaryValue, { color: '#16a34a' }]} value={`-${toCurrency(discountAmount)}`} />
+              </View>
+            ) : null}
+            {macroDiscount > 0 ? (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>{`Macro Üye İndirimi (%${MACRO_MEMBER_DISCOUNT_PERCENT})`}</Text>
+                <AnimatedNumberText style={[styles.summaryValue, { color: '#16a34a' }]} value={`-${toCurrency(macroDiscount)}`} />
               </View>
             ) : null}
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabelBold}>Toplam</Text>
-              <Text style={styles.summaryValueBold}>{toCurrency(totalAmount)}</Text>
+              <AnimatedNumberText style={styles.summaryValueBold} value={toCurrency(totalAmount)} />
             </View>
           </View>
 
@@ -1798,17 +1847,12 @@ export default function CheckoutScreen() {
             </Text>
           </View>
 
-          {/* ── Ödeme logosu ── */}
-          <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-            <Image source={require('../../assets/checkout-tosla.png')} style={{ width: 240, height: 52, opacity: 1 }} resizeMode="contain" />
-          </View>
-
           {screenError ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorBoxText}>{screenError}</Text>
             </View>
           ) : null}
-          </>) : (<>
+          </>) : (PAYMENT_PROVIDER !== 'paytr_iframe' ? (<>
             {/* ── Kart Görseli ── */}
             <View style={styles.cardVisual}>
               <View style={styles.cardDeco1} />
@@ -1888,13 +1932,8 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
               </View>
             </View>
 
-            {/* ── Ödeme logosu ── */}
-            <View style={{ alignItems: 'center', paddingVertical: SPACING.sm }}>
-              <Image source={require('../../assets/checkout-tosla.png')} style={{ width: 240, height: 52, opacity: 1 }} resizeMode="contain" />
-            </View>
-
             {payError ? <Text style={[styles.errorText, { textAlign: 'center', marginTop: SPACING.sm }]}>{payError}</Text> : null}
-          </>)}
+          </>) : null)}
 
         </ScrollView>
 
@@ -1934,9 +1973,10 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
               {payLoading ? (
                 <ActivityIndicator color={COLORS.brand.green} />
               ) : (
-                <Text style={styles.orderBtnText}>
-                  Ödemeyi Tamamla • {toCurrency(totalAmount)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.orderBtnText}>Ödemeyi Tamamla • </Text>
+                  <AnimatedNumberText style={styles.orderBtnText} value={toCurrency(totalAmount)} />
+                </View>
               )}
             </TouchableOpacity>
           )}

@@ -8,6 +8,7 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      appliedCoupon: null,
 
       addItem: (product: Product, options: Partial<CartSelectedOptions>, quantity = 1) => {
         const normalizedOptions = normalizeSelectedOptions(options);
@@ -62,7 +63,22 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], appliedCoupon: null }),
+
+      setCoupon: (coupon) => set({ appliedCoupon: coupon }),
+
+      clearCoupon: () => set({ appliedCoupon: null }),
+
+      getDiscountAmount: (subtotal: number) => {
+        const { appliedCoupon } = get();
+        if (!appliedCoupon) return 0;
+        if (subtotal < (appliedCoupon.minOrderAmount || 0)) return 0;
+        const type = appliedCoupon.discountType;
+        if (type === 'percent' || type === 'percentage') {
+          return Math.floor(subtotal * (appliedCoupon.discountValue / 100));
+        }
+        return Math.min(appliedCoupon.discountValue, subtotal);
+      },
 
       getSubtotal: () => {
         const { items } = get();

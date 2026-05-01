@@ -70,14 +70,36 @@ export interface CartMacros {
   fats: number;
 }
 
+export interface AppliedCoupon {
+  code: string;
+  campaignId: string;
+  discountType: string;
+  discountValue: number;
+  minOrderAmount: number;
+  title?: string;
+  campaign: {
+    id?: string;
+    code?: string;
+    title?: string;
+    discount_type?: string;
+    discount_value?: number;
+    max_discount?: number;
+    min_cart_total?: number;
+  };
+}
+
 export interface CartState {
   items: CartItem[];
+  appliedCoupon: AppliedCoupon | null;
   addItem: (product: Product, options: Partial<CartSelectedOptions>, quantity?: number) => void;
   removeItem: (lineKey: string) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getTotalMacros: () => CartMacros;
+  setCoupon: (coupon: AppliedCoupon) => void;
+  clearCoupon: () => void;
+  getDiscountAmount: (subtotal: number) => number;
 }
 
 // ─── Address ──────────────────────────────────────────────────────────────────
