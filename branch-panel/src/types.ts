@@ -18,6 +18,7 @@ export interface BranchUser {
 export interface Order {
   id: string
   branch_id: string | null
+  order_code?: string | null
   // real column name in DB
   paytr_oid: string | null
   status: 'pending' | 'preparing' | 'on_way' | 'delivered' | 'cancelled' | 'confirmed' | 'refunded'
@@ -35,6 +36,7 @@ export interface Order {
   address?: string | null
   created_at: string
   updated_at: string
+  delivered_at?: string | null
 }
 
 export interface OrderItem {

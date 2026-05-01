@@ -1,49 +1,57 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabase'
 import { Loader2 } from 'lucide-react'
+import { supabase } from '../supabase'
+import { useBranch } from '../context/BranchContext'
 
 export default function BranchLogin() {
-  const navigate  = useNavigate()
-  const [email,    setEmail]    = useState('')
+  const navigate = useNavigate()
+  const { branch, loading: branchLoading } = useBranch()
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [awaitingContext, setAwaitingContext] = useState(false)
+  const [error, setError] = useState('')
 
-  const slug        = window.location.hostname.split('.')[0]
+  const slug = window.location.hostname.split('.')[0]
   const isLocalhost = slug === 'localhost' || slug === '127'
+
+  useEffect(() => {
+    if (!awaitingContext) return
+    if (branchLoading) return
+
+    if (branch) {
+      navigate('/dashboard/kitchen', { replace: true })
+      return
+    }
+
+    setAwaitingContext(false)
+    setError('Bu hesap herhangi bir şubeye bağlı değil. Lütfen yöneticiyle iletişime geçin.')
+    void supabase.auth.signOut()
+  }, [awaitingContext, branchLoading, branch, navigate])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting || awaitingContext) return
     setError('')
-    setLoading(true)
+    setSubmitting(true)
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     })
 
+    setSubmitting(false)
+
     if (authError || !authData.user) {
       setError(authError?.message ?? 'Giriş başarısız.')
-      setLoading(false)
       return
     }
 
-    const { data: bu } = await supabase
-      .from('branch_users')
-      .select('branch_id')
-      .eq('user_id', authData.user.id)
-      .maybeSingle()
-
-    if (!bu) {
-      await supabase.auth.signOut()
-      setError('Bu hesaba bağlı şube bulunamadı.')
-      setLoading(false)
-      return
-    }
-
-    navigate('/dashboard/kitchen', { replace: true })
+    setAwaitingContext(true)
   }
+
+  const busy = submitting || awaitingContext
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4">
@@ -79,7 +87,8 @@ export default function BranchLogin() {
                 required
                 autoComplete="email"
                 placeholder="sube@eatkcal.com"
-                className="w-full rounded-xl border border-gray-200 bg-brand-input px-4 py-3 text-sm text-brand-dark placeholder:text-slate-300 outline-none transition focus:border-brand-primary focus:bg-white"
+                disabled={busy}
+                className="w-full rounded-xl border border-gray-200 bg-brand-input px-4 py-3 text-sm text-brand-dark placeholder:text-slate-300 outline-none transition focus:border-brand-primary focus:bg-white disabled:opacity-60"
               />
             </div>
 
@@ -94,17 +103,18 @@ export default function BranchLogin() {
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-gray-200 bg-brand-input px-4 py-3 text-sm text-brand-dark placeholder:text-slate-300 outline-none transition focus:border-brand-primary focus:bg-white"
+                disabled={busy}
+                className="w-full rounded-xl border border-gray-200 bg-brand-input px-4 py-3 text-sm text-brand-dark placeholder:text-slate-300 outline-none transition focus:border-brand-primary focus:bg-white disabled:opacity-60"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={busy}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-[0_4px_14px_rgba(132,204,22,0.35)] transition hover:bg-brand-secondary disabled:opacity-50"
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-              {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+              {busy ? <Loader2 size={16} className="animate-spin" /> : null}
+              {submitting ? 'Giriş yapılıyor…' : awaitingContext ? 'Şube yükleniyor…' : 'Giriş Yap'}
             </button>
           </form>
         </div>

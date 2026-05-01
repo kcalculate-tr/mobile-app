@@ -24,6 +24,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function loadBranchForUser(userId: string) {
+    setLoading(true)
     const { data: bu } = await supabase
       .from('branch_users')
       .select('*, branch:branches(*)')
@@ -33,6 +34,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     if (bu) {
       setBranchUser(bu as BranchUser)
       setBranch((bu as any).branch as Branch)
+    } else {
+      setBranchUser(null)
+      setBranch(null)
     }
     setLoading(false)
   }

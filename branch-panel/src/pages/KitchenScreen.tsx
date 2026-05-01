@@ -34,7 +34,10 @@ function parseItems(raw: unknown): OrderItem[] {
 function itemLabel(item: OrderItem): string { return item.name || 'Ürün' }
 
 function orderCode(order: Order): string {
-  return order.paytr_oid || `#${String(order.id).slice(-6).toUpperCase()}`
+  const explicit = String(order.order_code || '').trim()
+  if (explicit) return explicit
+  if (order.paytr_oid) return order.paytr_oid
+  return `#${String(order.id).slice(-6).toUpperCase()}`
 }
 
 // ── TimerBadge ────────────────────────────────────────────────────────────────
@@ -194,17 +197,19 @@ interface OrderCardProps {
   saving: string | null
   onAccept: (id: string) => void
   onReady: (id: string) => void
+  onDeliver: (id: string) => void
   onCancel: (order: Order) => void
   scheduledInfo?: string
   completed?: boolean
 }
 
-function OrderCard({ order, saving, onAccept, onReady, onCancel, scheduledInfo, completed }: OrderCardProps) {
+function OrderCard({ order, saving, onAccept, onReady, onDeliver, onCancel, scheduledInfo, completed }: OrderCardProps) {
   const items       = parseItems(order.items)
   const isSaving    = saving === order.id
   const code        = orderCode(order)
   const isPending   = order.status === 'pending' || order.status === 'confirmed'
   const isPreparing = order.status === 'preparing'
+  const isOnWay     = order.status === 'on_way'
   const isDelivered = order.status === 'delivered'
   const isCancelled = order.status === 'cancelled'
   const note        = order.customer_note || (order as any).note || ''
@@ -215,6 +220,7 @@ function OrderCard({ order, saving, onAccept, onReady, onCancel, scheduledInfo, 
         ? isDelivered ? 'border-emerald-100' : 'border-red-100 opacity-75'
         : isPending    ? 'border-amber-300 ring-2 ring-amber-100'
         : isPreparing  ? 'border-blue-200 ring-1 ring-blue-100'
+        : isOnWay      ? 'border-purple-200 ring-1 ring-purple-100'
         : 'border-gray-100'
     }`}>
       {/* Header */}
@@ -224,9 +230,15 @@ function OrderCard({ order, saving, onAccept, onReady, onCancel, scheduledInfo, 
             <p className="text-lg font-black text-brand-dark tracking-tight leading-none">{code}</p>
             {completed && (
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                isDelivered ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+                isDelivered ? 'bg-emerald-100 text-emerald-700'
+                  : isOnWay ? 'bg-purple-100 text-purple-700'
+                  : isCancelled ? 'bg-red-100 text-red-600'
+                  : 'bg-gray-100 text-gray-600'
               }`}>
-                {isDelivered ? '✓ Teslim' : '✗ İptal'}
+                {isDelivered ? '✓ Teslim'
+                  : isOnWay ? '🚴 Yolda'
+                  : isCancelled ? '✗ İptal'
+                  : order.status}
               </span>
             )}
           </div>
@@ -257,12 +269,17 @@ function OrderCard({ order, saving, onAccept, onReady, onCancel, scheduledInfo, 
           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
             isPending    ? 'border-amber-300 bg-amber-50 text-amber-700'
             : isPreparing  ? 'border-blue-200 bg-blue-50 text-blue-600'
+            : isOnWay      ? 'border-purple-200 bg-purple-50 text-purple-700'
             : isDelivered  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
             : isCancelled  ? 'border-red-200 bg-red-50 text-red-600'
             : 'border-gray-200 bg-gray-50 text-gray-500'
           }`}>
-            {isPending ? '🔔 Yeni' : isPreparing ? 'Hazırlanıyor'
-              : isDelivered ? 'Teslim Edildi' : isCancelled ? 'İptal' : order.status}
+            {isPending ? '🔔 Yeni'
+              : isPreparing ? 'Hazırlanıyor'
+              : isOnWay ? '🚴 Yolda'
+              : isDelivered ? 'Teslim Edildi'
+              : isCancelled ? 'İptal'
+              : order.status}
           </span>
         </div>
       </div>
@@ -346,6 +363,16 @@ function OrderCard({ order, saving, onAccept, onReady, onCancel, scheduledInfo, 
               Hazırlandı → Kuryeye Ver
             </button>
           )}
+          {isOnWay && (
+            <button
+              onClick={() => onDeliver(order.id)}
+              disabled={isSaving}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-bold text-white shadow-[0_4px_12px_rgba(147,51,234,0.25)] transition hover:bg-purple-700 active:scale-[0.98] disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+              Müşteriye Teslim Et
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -386,13 +413,35 @@ export default function KitchenScreen() {
 
   const fetchOrders = useCallback(async () => {
     const [active, done] = await Promise.all([
-      supabase.from('orders').select('*, profiles(privileged_until)').in('status', ['pending', 'confirmed', 'preparing']).order('created_at', { ascending: true }),
-      supabase.from('orders').select('*, profiles(privileged_until)').in('status', ['delivered', 'cancelled', 'on_way']).order('updated_at', { ascending: false }).limit(30),
+      supabase.from('orders').select('*').in('status', ['pending', 'confirmed', 'preparing', 'on_way']).order('created_at', { ascending: true }),
+      supabase.from('orders').select('*').in('status', ['delivered', 'cancelled']).order('updated_at', { ascending: false }).limit(30),
     ])
-    const mapPrivileged = (o: any): Order => ({
-      ...o,
-      is_privileged: o.profiles?.privileged_until ? new Date(o.profiles.privileged_until) > new Date() : false,
-    })
+
+    const userIds = Array.from(new Set(
+      [...(active.data ?? []), ...(done.data ?? [])]
+        .map((o: any) => o.user_id)
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+    ))
+
+    const privilegedMap = new Map<string, string | null>()
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, privileged_until')
+        .in('id', userIds)
+      for (const p of profiles ?? []) {
+        privilegedMap.set((p as any).id, (p as any).privileged_until ?? null)
+      }
+    }
+
+    const now = Date.now()
+    const mapPrivileged = (o: any): Order => {
+      const until = o.user_id ? privilegedMap.get(o.user_id) : null
+      return {
+        ...o,
+        is_privileged: until ? new Date(until).getTime() > now : false,
+      }
+    }
     setOrders((active.data ?? []).map(mapPrivileged))
     setCompleted((done.data ?? []).map(mapPrivileged))
     setLoading(false)
@@ -429,14 +478,39 @@ export default function KitchenScreen() {
 
   async function markAccept(id: string) {
     setSaving(id)
-    await supabase.from('orders').update({ status: 'preparing', updated_at: new Date().toISOString() }).eq('id', id)
-    setSaving(null); fetchOrders()
+    const { error } = await supabase.from('orders').update({ status: 'preparing', updated_at: new Date().toISOString() }).eq('id', id)
+    setSaving(null)
+    if (error) {
+      console.error('markAccept error:', error)
+      alert('Sipariş kabul edilemedi: ' + error.message)
+      return
+    }
+    await fetchOrders()
   }
 
   async function markReady(id: string) {
     setSaving(id)
-    await supabase.from('orders').update({ status: 'on_way', updated_at: new Date().toISOString() }).eq('id', id)
-    setSaving(null); fetchOrders()
+    const { error } = await supabase.from('orders').update({ status: 'on_way', updated_at: new Date().toISOString() }).eq('id', id)
+    setSaving(null)
+    if (error) {
+      console.error('markReady error:', error)
+      alert('Kuryeye verme işaretlenemedi: ' + error.message)
+      return
+    }
+    await fetchOrders()
+  }
+
+  async function markDelivered(id: string) {
+    setSaving(id)
+    const now = new Date().toISOString()
+    const { error } = await supabase.from('orders').update({ status: 'delivered', delivered_at: now, updated_at: now }).eq('id', id)
+    setSaving(null)
+    if (error) {
+      console.error('markDelivered error:', error)
+      alert('Teslim işaretleme başarısız: ' + error.message)
+      return
+    }
+    await fetchOrders()
   }
 
   async function handleCancelConfirm(reason: string) {
@@ -592,7 +666,7 @@ export default function KitchenScreen() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {immediateOrders.map(order => (
-              <OrderCard key={order.id} order={order} saving={saving} onAccept={markAccept} onReady={markReady} onCancel={setCancelOrder} />
+              <OrderCard key={order.id} order={order} saving={saving} onAccept={markAccept} onReady={markReady} onDeliver={markDelivered} onCancel={setCancelOrder} />
             ))}
           </div>
         )
@@ -605,7 +679,7 @@ export default function KitchenScreen() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {completed.map(order => (
-              <OrderCard key={order.id} order={order} saving={saving} onAccept={markAccept} onReady={markReady} onCancel={setCancelOrder} completed />
+              <OrderCard key={order.id} order={order} saving={saving} onAccept={markAccept} onReady={markReady} onDeliver={markDelivered} onCancel={setCancelOrder} completed />
             ))}
           </div>
         )
