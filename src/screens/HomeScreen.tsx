@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, ActivityIndicator, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/CachedImage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag, ForkKnife } from 'phosphor-react-native';
+import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag } from 'phosphor-react-native';
 import { TAB_BAR_TOTAL } from '../constants/layout';
 import { haptic } from '../utils/haptics';
 import HowItWorksModal from '../components/modals/HowItWorksModal';
@@ -12,7 +12,6 @@ import PopupModal from '../components/PopupModal';
 import { useModal } from '../hooks/useModal';
 import { usePopups } from '../hooks/usePopups';
 import { useCartStore } from '../store/cartStore';
-import { useAuth } from '../context/AuthContext';
 import { Category, fetchCategories } from '../lib/categories';
 import { RootStackParamList } from '../navigation/types';
 import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
@@ -41,7 +40,6 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const howItWorks = useModal();
   const { popup, total, index, handleClose, handleNext } = usePopups();
-  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const selectedAddress = useAddressStore((s) => s.selectedAddress);
   const addItem = useCartStore((state) => state.addItem);
@@ -59,24 +57,8 @@ export default function HomeScreen() {
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [mealModalVisible, setMealModalVisible] = useState(false);
-  const [mealType, setMealType] = useState<'kahvalti' | 'ogle' | 'aksam' | 'atistirma'>('kahvalti');
-  const [mealCalories, setMealCalories] = useState('');
-  const [mealNote, setMealNote] = useState('');
-  const [mealSaving, setMealSaving] = useState(false);
-  const [mealLogs, setMealLogs] = useState<{ id: string; meal_type: string; calories: number; date: string; note?: string | null; created_at?: string }[]>([]);
   const heroFlatListRef = useRef<FlatList>(null);
-  const sheetTranslateY = useRef(new Animated.Value(400)).current;
   const activeDotWidth  = useRef(new Animated.Value(14)).current;
-
-  // Modal sheet slide-up animation
-  useEffect(() => {
-    if (mealModalVisible) {
-      Animated.spring(sheetTranslateY, { toValue: 0, useNativeDriver: true, speed: 15, bounciness: 4 }).start();
-    } else {
-      Animated.timing(sheetTranslateY, { toValue: 400, duration: 250, useNativeDriver: true }).start();
-    }
-  }, [mealModalVisible]);
 
 // Active dot expand animation
   useEffect(() => {
@@ -104,56 +86,24 @@ export default function HomeScreen() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const supabase = getSupabaseClient();
-      const [cats, prods, bannerData, featured, mealLogsRes] = await Promise.all([
+      const [cats, prods, bannerData, featured] = await Promise.all([
         fetchCategories(),
         fetchProducts(),
         fetchBannerRows(),
         fetchFeaturedProducts(),
-        supabase
-          .from('meal_logs')
-          .select('id,meal_type,calories,date,note,created_at')
-          .eq('user_id', user?.id ?? '')
-          .eq('date', new Date().toISOString().split('T')[0])
-          .order('created_at', { ascending: false }),
       ]);
       setCategories(cats);
       setProducts(prods);
       setHeroRows(bannerData.hero);
       setPromoRows(bannerData.promo);
       setFeaturedProducts(featured);
-      if (mealLogsRes.data) setMealLogs(mealLogsRes.data as any);
     } catch {}
     finally { setLoading(false); }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleSaveMealLog = async () => {
-    if (!user || !mealCalories) return;
-    setMealSaving(true);
-    try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.from('meal_logs').insert({
-        user_id: user.id,
-        date: new Date().toISOString().split('T')[0],
-        meal_type: mealType,
-        calories: parseInt(mealCalories),
-        note: mealNote || null,
-      }).select().single();
-      if (error) throw error;
-      setMealLogs(prev => [data as any, ...prev]);
-      setMealCalories('');
-      setMealNote('');
-      setMealModalVisible(false);
-    } catch (e) {
-      if (__DEV__) console.warn('meal log error:', e);
-    } finally {
-      setMealSaving(false);
-    }
-  };
 
   const handleCategoryPress = (cat: Category) => {
     haptic.selection();
@@ -237,111 +187,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { flex: 1, paddingTop: insets.top }]}>
-      <Modal
-        visible={mealModalVisible}
-        animationType="none"
-        transparent
-        onRequestClose={() => setMealModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setMealModalVisible(false)}
-          />
-          <Animated.View style={[styles.modalSheet, { paddingBottom: Math.max(32, insets.bottom + 16), transform: [{ translateY: sheetTranslateY }] }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Kalori Ekle</Text>
-            <Text style={styles.modalSub}>Bugün tükettiğin kaloriyi gir</Text>
-
-            {/* Öğün tipi */}
-            <View style={styles.mealTypeRow}>
-              {([
-                { key: 'kahvalti', label: '🌅 Kahvaltı' },
-                { key: 'ogle', label: '☀️ Öğle' },
-                { key: 'aksam', label: '🌙 Akşam' },
-                { key: 'atistirma', label: '🍎 Atıştırma' },
-              ] as const).map(opt => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[styles.mealTypeBtn, mealType === opt.key && styles.mealTypeBtnActive]}
-                  onPress={() => setMealType(opt.key)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.mealTypeBtnText, mealType === opt.key && styles.mealTypeBtnTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Kalori input */}
-            <View style={styles.calorieInputWrapper}>
-              <TextInput
-                style={styles.calorieInput}
-                value={mealCalories}
-                onChangeText={setMealCalories}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor={COLORS.text.tertiary}
-                maxLength={5}
-                autoFocus
-              />
-              <Text style={styles.calorieInputUnit}>kcal</Text>
-            </View>
-
-            {/* Not (opsiyonel) */}
-            <TextInput
-              style={styles.mealNoteInput}
-              value={mealNote}
-              onChangeText={setMealNote}
-              placeholder="Not ekle (opsiyonel) — örn: tavuk salata"
-              placeholderTextColor={COLORS.text.tertiary}
-              maxLength={80}
-            />
-
-            <TouchableOpacity
-              style={[styles.modalSaveBtn, (!mealCalories || mealSaving) && { opacity: 0.5 }]}
-              onPress={handleSaveMealLog}
-              disabled={!mealCalories || mealSaving}
-              activeOpacity={0.85}
-            >
-              {mealSaving
-                ? <ActivityIndicator color="#000" size="small" />
-                : <Text style={styles.modalSaveBtnText}>Kaydet</Text>
-              }
-            </TouchableOpacity>
-
-            {/* Bugünkü öğünler */}
-            {mealLogs.length > 0 && (
-              <View style={styles.todayMealsSection}>
-                <Text style={styles.todayMealsTitle}>Bugün girildi</Text>
-                {mealLogs.map(log => (
-                  <View key={log.id} style={styles.todayMealRow}>
-                    <Text style={styles.todayMealType}>
-                      {log.meal_type === 'kahvalti' ? '🌅 Kahvaltı'
-                        : log.meal_type === 'ogle' ? '☀️ Öğle'
-                        : log.meal_type === 'aksam' ? '🌙 Akşam'
-                        : '🍎 Atıştırma'}
-                    </Text>
-                    <Text style={styles.todayMealKcal}>{log.calories} kcal</Text>
-                  </View>
-                ))}
-                <View style={styles.todayMealTotal}>
-                  <Text style={styles.todayMealTotalLabel}>Toplam</Text>
-                  <Text style={styles.todayMealTotalValue}>
-                    {mealLogs.reduce((sum, m) => sum + m.calories, 0)} kcal
-                  </Text>
-                </View>
-              </View>
-            )}
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
-
       {loading && (
         <View style={styles.skeletonContainer}>
           {/* Skeleton Header */}
@@ -639,53 +484,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
-        </View>
-
-        {/* Bugün Tüketilenler — manuel kalori girişleri (meal_logs) */}
-        <View style={styles.section}>
-          <View style={styles.consumedHeader}>
-            <Text style={styles.sectionTitle}>Bugün Tüketilenler</Text>
-            <View style={styles.soonBadge}>
-              <Text style={styles.soonBadgeText}>Yakında: dolaptan tüketim</Text>
-            </View>
-          </View>
-
-          <View style={styles.consumedCard}>
-            {mealLogs.length === 0 ? (
-              <View style={styles.consumedEmpty}>
-                <ForkKnife size={32} color={COLORS.text.tertiary} weight="duotone" />
-                <Text style={styles.consumedEmptyTitle}>Henüz bir şey eklemediniz</Text>
-                <Text style={styles.consumedEmptySub}>Sağ üstteki "Kalori Ekle" ile başla.</Text>
-              </View>
-            ) : (
-              <>
-                {mealLogs.map(log => {
-                  const label = log.meal_type === 'kahvalti' ? '🌅 Kahvaltı'
-                    : log.meal_type === 'ogle' ? '☀️ Öğle'
-                    : log.meal_type === 'aksam' ? '🌙 Akşam'
-                    : '🍎 Atıştırma';
-                  const note = (log.note ?? '').toString().trim();
-                  return (
-                    <View key={log.id} style={styles.consumedRow}>
-                      <View style={styles.consumedRowMain}>
-                        <Text style={styles.consumedType}>{label}</Text>
-                        <Text style={styles.consumedNote} numberOfLines={1}>
-                          {note || 'Manuel'}
-                        </Text>
-                      </View>
-                      <Text style={styles.consumedKcal}>{log.calories} kcal</Text>
-                    </View>
-                  );
-                })}
-                <View style={styles.consumedTotal}>
-                  <Text style={styles.consumedTotalLabel}>Toplam</Text>
-                  <Text style={styles.consumedTotalValue}>
-                    {mealLogs.reduce((sum, m) => sum + m.calories, 0)} kcal
-                  </Text>
-                </View>
-              </>
-            )}
           </View>
         </View>
 
@@ -1150,181 +948,5 @@ fontFamily: 'PlusJakartaSans_700Bold'},
     borderRadius: RADIUS.md,
     padding: SPACING.sm,
     minHeight: 180,
-  },
-  // Modal & Meal Log
-  addMealBtn: {
-    backgroundColor: COLORS.brand.green, borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-  },
-  addMealBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
-
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
-  modalSheet: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: SPACING.xl,
-    maxHeight: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 20,
-  },
-  modalHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: '#E0E0E0',
-    alignSelf: 'center',
-    marginTop: 12, marginBottom: SPACING.xl,
-  },
-  modalTitle: { fontSize: TYPOGRAPHY.size.xl, fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary, marginBottom: SPACING.xs },
-  modalSub: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary, marginBottom: SPACING.lg },
-
-  mealTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.xl },
-  mealTypeBtn: {
-    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.pill,
-    backgroundColor: '#f0f0f0',
-  },
-  mealTypeBtnActive: { backgroundColor: COLORS.brand.green },
-  mealTypeBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.semibold,
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
-  mealTypeBtnTextActive: { color: COLORS.text.primary },
-
-  calorieInputWrapper: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: SPACING.sm, marginBottom: SPACING.lg,
-  },
-  calorieInput: {
-    fontSize: 48, fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary,
-    textAlign: 'center', minWidth: 120,
-  },
-  calorieInputUnit: { fontSize: TYPOGRAPHY.size['2xl'], color: COLORS.text.tertiary, fontWeight: TYPOGRAPHY.weight.semibold,
-fontFamily: 'PlusJakartaSans_600SemiBold'},
-  mealNoteInput: {
-    backgroundColor: COLORS.background, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md, fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary, marginBottom: SPACING.lg,
-  },
-  modalSaveBtn: {
-    height: 56, borderRadius: RADIUS.pill, backgroundColor: COLORS.brand.green,
-    alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm,
-  },
-  modalSaveBtnText: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
-
-  todayMealsSection: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: SPACING.lg, gap: SPACING.sm },
-  todayMealsTitle: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.tertiary },
-  todayMealRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  todayMealType: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary },
-  todayMealKcal: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
-  todayMealTotal: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: '#f0f0f0',
-  },
-  todayMealTotalLabel: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
-  todayMealTotalValue: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.brand.green },
-
-  // Bugün Tüketilenler section
-  consumedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  soonBadge: {
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: RADIUS.pill,
-    backgroundColor: '#f4f4f4',
-  },
-  soonBadgeText: {
-    fontSize: 10,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.tertiary,
-    letterSpacing: 0.2,
-  },
-  consumedCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    ...SHADOWS.sm,
-  },
-  consumedEmpty: {
-    alignItems: 'center',
-    paddingVertical: SPACING.lg,
-    gap: SPACING.xs,
-  },
-  consumedEmptyTitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-    marginTop: SPACING.xs,
-  },
-  consumedEmptySub: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.text.tertiary,
-    textAlign: 'center',
-  },
-  consumedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
-    gap: SPACING.sm,
-  },
-  consumedRowMain: {
-    flex: 1,
-    minWidth: 0,
-  },
-  consumedType: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-  },
-  consumedNote: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.text.tertiary,
-    marginTop: 2,
-  },
-  consumedKcal: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  consumedTotal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: SPACING.md,
-    marginTop: SPACING.xs,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  consumedTotalLabel: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-  },
-  consumedTotalValue: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: COLORS.brand.green,
   },
 });

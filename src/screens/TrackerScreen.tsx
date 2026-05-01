@@ -78,7 +78,22 @@ type UserNutritionProfile = {
 // ─── Reducer Types ─────────────────────────────────────────────────────────
 
 type MeasurementRow = { date: string; weight_kg: number | null; waist_cm: number | null; hip_cm: number | null; chest_cm: number | null };
-type MealLogRow = { id: string; meal_type: string; calories: number; date: string };
+
+type ConsumedRow = {
+  id: string;
+  source: 'pantry' | 'manual';
+  source_ref: string | null;
+  name: string;
+  meal_type: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  note: string | null;
+  consumed_at: string;
+};
+
+type WeeklyDay = { label: string; date: string; kcal: number; protein: number; carbs: number; fat: number };
 
 // UI state
 type UIState = {
@@ -121,7 +136,8 @@ type DataState = {
   orders: Order[];
   nutritionProfile: UserNutritionProfile | null;
   measurements: MeasurementRow[];
-  mealLogs: MealLogRow[];
+  todayConsumed: ConsumedRow[];
+  weeklyConsumption: WeeklyDay[];
   todayMacros: MacroTotals;
   waterCount: number;
   consumedInstances: Set<string>;
@@ -130,8 +146,10 @@ type DataAction =
   | { type: 'SET_ORDERS'; payload: Order[] }
   | { type: 'SET_NUTRITION_PROFILE'; payload: UserNutritionProfile | null }
   | { type: 'SET_MEASUREMENTS'; payload: MeasurementRow[] }
-  | { type: 'SET_MEAL_LOGS'; payload: MealLogRow[] }
-  | { type: 'APPEND_MEAL_LOG'; payload: MealLogRow }
+  | { type: 'SET_TODAY_CONSUMED'; payload: ConsumedRow[] }
+  | { type: 'PREPEND_CONSUMED'; payload: ConsumedRow }
+  | { type: 'REMOVE_CONSUMED_BY_REF'; payload: { source: 'pantry' | 'manual'; source_ref: string } }
+  | { type: 'SET_WEEKLY_CONSUMPTION'; payload: WeeklyDay[] }
   | { type: 'SET_TODAY_MACROS'; payload: MacroTotals }
   | { type: 'SET_WATER_COUNT'; payload: number }
   | { type: 'SET_CONSUMED_INSTANCES'; payload: Set<string> };
@@ -140,8 +158,15 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     case 'SET_ORDERS': return { ...state, orders: action.payload };
     case 'SET_NUTRITION_PROFILE': return { ...state, nutritionProfile: action.payload };
     case 'SET_MEASUREMENTS': return { ...state, measurements: action.payload };
-    case 'SET_MEAL_LOGS': return { ...state, mealLogs: action.payload };
-    case 'APPEND_MEAL_LOG': return { ...state, mealLogs: [...state.mealLogs, action.payload] };
+    case 'SET_TODAY_CONSUMED': return { ...state, todayConsumed: action.payload };
+    case 'PREPEND_CONSUMED': return { ...state, todayConsumed: [action.payload, ...state.todayConsumed] };
+    case 'REMOVE_CONSUMED_BY_REF': return {
+      ...state,
+      todayConsumed: state.todayConsumed.filter(
+        c => !(c.source === action.payload.source && c.source_ref === action.payload.source_ref),
+      ),
+    };
+    case 'SET_WEEKLY_CONSUMPTION': return { ...state, weeklyConsumption: action.payload };
     case 'SET_TODAY_MACROS': return { ...state, todayMacros: action.payload };
     case 'SET_WATER_COUNT': return { ...state, waterCount: action.payload };
     case 'SET_CONSUMED_INSTANCES': return { ...state, consumedInstances: action.payload };
@@ -152,7 +177,8 @@ const dataInitial: DataState = {
   orders: [],
   nutritionProfile: null,
   measurements: [],
-  mealLogs: [],
+  todayConsumed: [],
+  weeklyConsumption: [],
   todayMacros: { kcal: 0, protein: 0, carbs: 0, fat: 0 },
   waterCount: 0,
   consumedInstances: new Set(),
@@ -334,29 +360,50 @@ const formatDayKey = (d: Date): string => {
   return `${y}-${m}-${day}`;
 };
 
+const startOfTodayISO = (): string => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
+
+const startOfTomorrowISO = (): string => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  return d.toISOString();
+};
+
+const startOfDaysAgoISO = (days: number): string => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+};
+
+const normalizeConsumedRow = (raw: any): ConsumedRow => {
+  const r = (raw != null && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const source = r.source === 'manual' ? 'manual' : 'pantry';
+  return {
+    id: String(r.id ?? ''),
+    source,
+    source_ref: r.source_ref != null ? String(r.source_ref) : null,
+    name: String(r.name ?? '').trim() || (source === 'manual' ? 'Manuel' : 'Ürün'),
+    meal_type: r.meal_type != null ? String(r.meal_type) : null,
+    calories: toNum(r.calories),
+    protein: toNum(r.protein),
+    carbs: toNum(r.carbs),
+    fat: toNum(r.fat),
+    note: r.note != null ? String(r.note) : null,
+    consumed_at: String(r.consumed_at ?? new Date().toISOString()),
+  };
+};
+
 const formatDayLabel = (dayKey: string): string => {
   const d = new Date(`${dayKey}T00:00:00`);
   if (Number.isNaN(d.getTime())) return dayKey;
   const today = formatDayKey(new Date());
   if (dayKey === today) return 'Bugün';
   return d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
-};
-
-const groupByDay = (orders: Order[]) => {
-  const map = new Map<string, Order[]>();
-  orders.forEach((order) => {
-    const key = formatDayKey(new Date(order.created_at));
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(order);
-  });
-  return Array.from(map.entries())
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([dayKey, dayOrders]) => ({
-      dayKey,
-      dayLabel: formatDayLabel(dayKey),
-      orders: dayOrders,
-      macros: calculateTotalMacros(dayOrders),
-    }));
 };
 
 // ─── BigCalorieRing ──────────────────────────────────────────────────────────
@@ -478,7 +525,7 @@ function MacroRing({ label, current, target, color, trackColor, unit, onPress }:
 type MeasurementPoint = { date: string; weight_kg: number | null; waist_cm: number | null; hip_cm: number | null; chest_cm: number | null };
 
 type GrafikViewProps = {
-  orders: Order[];
+  weeklyConsumption: WeeklyDay[];
   nutritionProfile: UserNutritionProfile | null;
   measurements: MeasurementPoint[];
   onExportPDF: () => void;
@@ -487,37 +534,24 @@ type GrafikViewProps = {
 
 const WEEK_DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-function GrafikView({ orders, nutritionProfile, measurements, onExportPDF, exportingPDF }: GrafikViewProps) {
+function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExportPDF, exportingPDF }: GrafikViewProps) {
   const targetKcal = nutritionProfile?.target_calories ?? 2000;
   const targetProtein = nutritionProfile?.target_protein ?? 120;
   const targetCarbs = nutritionProfile?.target_carbs ?? 250;
   const targetFat = nutritionProfile?.target_fat ?? 65;
 
-  const weeklyData = useMemo(() => {
-    const days: { label: string; kcal: number; date: string }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = formatDayKey(d);
-      const dayOrders = orders.filter(o => formatDayKey(new Date(o.created_at)) === key);
-      const kcal = calculateTotalMacros(dayOrders).kcal;
-      days.push({ label: WEEK_DAYS[(d.getDay() + 6) % 7], kcal, date: key });
-    }
-    return days;
-  }, [orders]);
+  const weeklyData = weeklyConsumption;
 
   const macroConsistency = useMemo(() => {
     let proteinDays = 0, carbsDays = 0, fatDays = 0;
-    weeklyData.forEach(({ date }) => {
-      const dayOrders = orders.filter(o => formatDayKey(new Date(o.created_at)) === date);
-      if (dayOrders.length === 0) return;
-      const m = calculateTotalMacros(dayOrders);
-      if (m.protein >= targetProtein * 0.85) proteinDays++;
-      if (m.carbs >= targetCarbs * 0.85) carbsDays++;
-      if (m.fat >= targetFat * 0.85) fatDays++;
+    weeklyData.forEach((d) => {
+      if (d.kcal === 0 && d.protein === 0 && d.carbs === 0 && d.fat === 0) return;
+      if (d.protein >= targetProtein * 0.85) proteinDays++;
+      if (d.carbs >= targetCarbs * 0.85) carbsDays++;
+      if (d.fat >= targetFat * 0.85) fatDays++;
     });
     return { proteinDays, carbsDays, fatDays };
-  }, [weeklyData, orders, targetProtein, targetCarbs, targetFat]);
+  }, [weeklyData, targetProtein, targetCarbs, targetFat]);
 
   const adherenceScore = useMemo(() => {
     const activeDays = weeklyData.filter(d => d.kcal > 0);
@@ -539,10 +573,15 @@ function GrafikView({ orders, nutritionProfile, measurements, onExportPDF, expor
     ? Math.round(activeDays7.reduce((s, d) => s + d.kcal, 0) / activeDays7.length) : 0;
   const kcalDiff = avgKcal > 0 ? avgKcal - targetKcal : 0;
 
-  const weekOrders = orders.filter(o =>
-    weeklyData.some(w => w.date === formatDayKey(new Date(o.created_at)))
-  );
-  const weekTotals = calculateTotalMacros(weekOrders);
+  const weekTotals = useMemo(() => weeklyData.reduce(
+    (acc, d) => ({
+      kcal: acc.kcal + d.kcal,
+      protein: acc.protein + d.protein,
+      carbs: acc.carbs + d.carbs,
+      fat: acc.fat + d.fat,
+    }),
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 } as MacroTotals,
+  ), [weeklyData]);
   const pK = weekTotals.protein * 4;
   const cK = weekTotals.carbs * 4;
   const fK = weekTotals.fat * 9;
@@ -594,7 +633,7 @@ function GrafikView({ orders, nutritionProfile, measurements, onExportPDF, expor
           <Text style={s.grafikTitle}>Hedefe Uyum</Text>
           <Text style={s.grafikSub}>Bu hafta</Text>
           {adherenceScore === null ? (
-            <View style={s.noDataBox}><Text style={s.noDataText}>Henüz sipariş yok</Text></View>
+            <View style={s.noDataBox}><Text style={s.noDataText}>Henüz tüketim yok</Text></View>
           ) : (
             <>
               <View style={s.scoreCircle}>
@@ -784,7 +823,7 @@ export default function TrackerScreen() {
 
   // Destructure for convenience (avoids changing 200+ JSX references)
   const { viewMode, showStartPicker, showEndPicker, dataLoading, errorMessage, exportingPDF } = ui;
-  const { orders, nutritionProfile, measurements, mealLogs, todayMacros, waterCount, consumedInstances } = data;
+  const { orders, nutritionProfile, measurements, todayConsumed, weeklyConsumption, todayMacros, waterCount, consumedInstances } = data;
   const { selectedFilter, customStart, customEnd } = filters;
 
   const pantryItems = usePantryStore((state) => state.items);
@@ -847,8 +886,11 @@ export default function TrackerScreen() {
       try {
         const supabase = getSupabaseClient();
         const { start, end } = getFilterRange(filter);
+        const todayStartISO = startOfTodayISO();
+        const tomorrowStartISO = startOfTomorrowISO();
+        const sevenDaysAgoISO = startOfDaysAgoISO(6);
 
-        const [profileRes, ordersRes, measurementRes, mealLogsRes] = await Promise.all([
+        const [profileRes, ordersRes, measurementRes, todayConsumedRes, weeklyConsumedRes] = await Promise.all([
           supabase
             .from('user_nutrition_profiles')
             .select('target_calories,target_protein,target_carbs,target_fat,target_water')
@@ -869,10 +911,18 @@ export default function TrackerScreen() {
             .order('date', { ascending: false })
             .limit(30),
           supabase
-            .from('meal_logs')
-            .select('id,meal_type,calories,date')
+            .from('meal_consumptions')
+            .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
             .eq('user_id', user.id)
-            .eq('date', new Date().toISOString().split('T')[0]),
+            .gte('consumed_at', todayStartISO)
+            .lt('consumed_at', tomorrowStartISO)
+            .order('consumed_at', { ascending: false }),
+          supabase
+            .from('meal_consumptions')
+            .select('calories,protein,carbs,fat,consumed_at')
+            .eq('user_id', user.id)
+            .gte('consumed_at', sevenDaysAgoISO)
+            .lt('consumed_at', tomorrowStartISO),
         ]);
 
         if (profileRes.data && !profileRes.error) {
@@ -898,7 +948,43 @@ export default function TrackerScreen() {
           dispatchData({ type: 'SET_MEASUREMENTS', payload: measurementRes.data as any });
         }
 
-        if (mealLogsRes.data) dispatchData({ type: 'SET_MEAL_LOGS', payload: mealLogsRes.data as any });
+        if (Array.isArray(todayConsumedRes.data)) {
+          const rows = todayConsumedRes.data.map(normalizeConsumedRow);
+          dispatchData({ type: 'SET_TODAY_CONSUMED', payload: rows });
+          const pantryRefs = new Set(
+            rows
+              .filter(r => r.source === 'pantry' && r.source_ref)
+              .map(r => r.source_ref as string),
+          );
+          dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: pantryRefs });
+        }
+
+        if (Array.isArray(weeklyConsumedRes.data)) {
+          const days: WeeklyDay[] = [];
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() - i);
+            const key = formatDayKey(d);
+            days.push({
+              label: WEEK_DAYS[(d.getDay() + 6) % 7],
+              date: key,
+              kcal: 0, protein: 0, carbs: 0, fat: 0,
+            });
+          }
+          const idx = new Map(days.map((d, i) => [d.date, i]));
+          for (const raw of weeklyConsumedRes.data as any[]) {
+            const key = formatDayKey(new Date(String(raw.consumed_at)));
+            const i = idx.get(key);
+            if (i == null) continue;
+            const target = days[i];
+            target.kcal += toNum(raw.calories);
+            target.protein += toNum(raw.protein);
+            target.carbs += toNum(raw.carbs);
+            target.fat += toNum(raw.fat);
+          }
+          dispatchData({ type: 'SET_WEEKLY_CONSUMPTION', payload: days });
+        }
 
       } catch (error: unknown) {
         if (__DEV__) {
@@ -1018,31 +1104,97 @@ export default function TrackerScreen() {
     [expandedItems, consumedInstances]
   );
 
-  const displayMacros = useMemo(() => {
-    const mealLogKcal = selectedFilter === 'today'
-      ? mealLogs.reduce((s, m) => s + m.calories, 0)
-      : 0;
+  const manualConsumedTotals = useMemo(() => {
+    return todayConsumed
+      .filter(c => c.source === 'manual')
+      .reduce(
+        (acc, c) => ({
+          kcal: acc.kcal + c.calories,
+          protein: acc.protein + c.protein,
+          carbs: acc.carbs + c.carbs,
+          fat: acc.fat + c.fat,
+        }),
+        { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+      );
+  }, [todayConsumed]);
 
+  const displayMacros = useMemo(() => {
     const base = selectedFilter === 'today'
       ? calculateTotalMacros(orders)
       : calculateAverageMacros(orders, selectedFilter);
 
     if (selectedFilter === 'today') {
       return {
-        kcal: base.kcal + pantryConsumedMacros.kcal + mealLogKcal,
-        protein: base.protein + pantryConsumedMacros.protein,
-        carbs: base.carbs + pantryConsumedMacros.carbs,
-        fat: base.fat + pantryConsumedMacros.fat,
+        kcal: base.kcal + pantryConsumedMacros.kcal + manualConsumedTotals.kcal,
+        protein: base.protein + pantryConsumedMacros.protein + manualConsumedTotals.protein,
+        carbs: base.carbs + pantryConsumedMacros.carbs + manualConsumedTotals.carbs,
+        fat: base.fat + pantryConsumedMacros.fat + manualConsumedTotals.fat,
       };
     }
     return base;
-  }, [orders, selectedFilter, pantryConsumedMacros, mealLogs]);
+  }, [orders, selectedFilter, pantryConsumedMacros, manualConsumedTotals]);
 
-  const handleToggleConsumed = (instanceId: string) => {
-    const next = new Set(consumedInstances);
-    if (next.has(instanceId)) next.delete(instanceId);
-    else next.add(instanceId);
-    dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: next });
+  const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
+    if (!user) return;
+    const isCurrentlyConsumed = consumedInstances.has(instanceId);
+
+    // Optimistic update (UI Set)
+    const optimistic = new Set(consumedInstances);
+    if (isCurrentlyConsumed) optimistic.delete(instanceId);
+    else optimistic.add(instanceId);
+    dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: optimistic });
+
+    const supabase = getSupabaseClient();
+
+    if (isCurrentlyConsumed) {
+      // Untoggle: DB'den sil + listeden kaldır
+      dispatchData({
+        type: 'REMOVE_CONSUMED_BY_REF',
+        payload: { source: 'pantry', source_ref: instanceId },
+      });
+      const { error } = await supabase
+        .from('meal_consumptions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('source', 'pantry')
+        .eq('source_ref', instanceId);
+      if (error) {
+        if (__DEV__) console.warn('untoggle consume error:', error);
+        // Rollback Set
+        const rollback = new Set(consumedInstances);
+        rollback.add(instanceId);
+        dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: rollback });
+      }
+    } else {
+      // Toggle: DB'ye ekle
+      const payload = {
+        user_id: user.id,
+        source: 'pantry' as const,
+        source_ref: instanceId,
+        name: item.name,
+        meal_type: null,
+        calories: Math.round(item.calories || 0),
+        protein: item.protein || 0,
+        carbs: item.carbs || 0,
+        fat: item.fat || 0,
+        note: null,
+        consumed_at: new Date().toISOString(),
+      };
+      const { data: row, error } = await supabase
+        .from('meal_consumptions')
+        .insert(payload)
+        .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+        .single();
+      if (error) {
+        if (__DEV__) console.warn('toggle consume error:', error);
+        // Rollback Set
+        const rollback = new Set(consumedInstances);
+        rollback.delete(instanceId);
+        dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: rollback });
+      } else if (row) {
+        dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
+      }
+    }
   };
 
   const getAnimValues = (instanceId: string) => {
@@ -1057,7 +1209,8 @@ export default function TrackerScreen() {
     return animValuesRef.current.get(instanceId)!;
   };
 
-  const handleTukettim = (instanceId: string) => {
+  const handleTukettim = (item: PantryItem & { instanceId: string }) => {
+    const { instanceId } = item;
     const anim = getAnimValues(instanceId);
 
     // bgFlash tamamen JS driver'da — diğer native animasyonlardan ayrı çalışır
@@ -1076,7 +1229,7 @@ export default function TrackerScreen() {
       ]),
     ]).start(() => {
       animValuesRef.current.delete(instanceId);
-      handleToggleConsumed(instanceId);
+      void handleToggleConsumed(instanceId, item);
     });
   };
 
@@ -1089,13 +1242,35 @@ export default function TrackerScreen() {
         {
           text: 'Kaldır',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             const next = new Set(consumedInstances);
+            const removedRefs: string[] = [];
             for (const key of next) {
-              if (key.startsWith(itemId)) next.delete(key);
+              if (key.startsWith(itemId)) {
+                next.delete(key);
+                removedRefs.push(key);
+              }
             }
             dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: next });
+            for (const ref of removedRefs) {
+              dispatchData({
+                type: 'REMOVE_CONSUMED_BY_REF',
+                payload: { source: 'pantry', source_ref: ref },
+              });
+            }
             removePantryItem(itemId);
+            if (user && removedRefs.length > 0) {
+              const supabase = getSupabaseClient();
+              const { error } = await supabase
+                .from('meal_consumptions')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('source', 'pantry')
+                .in('source_ref', removedRefs);
+              if (error && __DEV__) {
+                console.warn('pantry delete cascade error:', error);
+              }
+            }
           },
         },
       ]
@@ -1104,18 +1279,33 @@ export default function TrackerScreen() {
 
   const handleSaveMealLog = async () => {
     if (!user || !mealCalories) return;
+    const calNum = parseInt(mealCalories, 10);
+    if (!Number.isFinite(calNum) || calNum <= 0) return;
     dispatchMealForm({ type: 'SET_SAVING', payload: true });
     try {
       const supabase = getSupabaseClient();
-      const { data: row, error } = await supabase.from('meal_logs').insert({
-        user_id: user.id,
-        date: new Date().toISOString().split('T')[0],
-        meal_type: mealType,
-        calories: parseInt(mealCalories),
-        note: mealNote || null,
-      }).select().single();
+      const trimmedNote = (mealNote || '').trim();
+      const { data: row, error } = await supabase
+        .from('meal_consumptions')
+        .insert({
+          user_id: user.id,
+          source: 'manual',
+          source_ref: null,
+          name: trimmedNote || mealType,
+          meal_type: mealType,
+          calories: calNum,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          note: trimmedNote || null,
+          consumed_at: new Date().toISOString(),
+        })
+        .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+        .single();
       if (error) throw error;
-      dispatchData({ type: 'APPEND_MEAL_LOG', payload: row as any });
+      if (row) {
+        dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
+      }
       dispatchMealForm({ type: 'RESET_FORM' });
     } catch (e) {
       if (__DEV__) console.warn('meal log error:', e);
@@ -1124,20 +1314,7 @@ export default function TrackerScreen() {
     }
   };
 
-  const timeline = useMemo(() => groupByDay(orders), [orders]);
-
-  const weeklyData7 = useMemo(() => {
-    const days: { label: string; kcal: number; date: string }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = formatDayKey(d);
-      const dayOrders = orders.filter(o => formatDayKey(new Date(o.created_at)) === key);
-      const kcal = calculateTotalMacros(dayOrders).kcal;
-      days.push({ label: WEEK_DAYS[(d.getDay() + 6) % 7], kcal, date: key });
-    }
-    return days;
-  }, [orders]);
+  const weeklyData7 = weeklyConsumption;
 
   const handleExportPDF = async () => {
     dispatchUI({ type: 'SET_EXPORTING_PDF', payload: true });
@@ -1563,26 +1740,6 @@ const html = `
                 : <Text style={s.modalSaveBtnText}>Kaydet</Text>
               }
             </TouchableOpacity>
-            {mealLogs.length > 0 && (
-              <View style={s.todayMealsSection}>
-                <Text style={s.todayMealsTitle}>Bugün girildi</Text>
-                {mealLogs.map(log => (
-                  <View key={log.id} style={s.todayMealRow}>
-                    <Text style={s.todayMealType}>
-                      {log.meal_type === 'kahvalti' ? '🌅 Kahvaltı'
-                        : log.meal_type === 'ogle' ? '☀️ Öğle'
-                        : log.meal_type === 'aksam' ? '🌙 Akşam'
-                        : '🍎 Atıştırma'}
-                    </Text>
-                    <Text style={s.todayMealKcal}>{log.calories} kcal</Text>
-                  </View>
-                ))}
-                <View style={s.todayMealTotal}>
-                  <Text style={s.todayMealTotalLabel}>Toplam</Text>
-                  <Text style={s.todayMealTotalValue}>{mealLogs.reduce((sum, m) => sum + m.calories, 0)} kcal</Text>
-                </View>
-              </View>
-            )}
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1667,7 +1824,7 @@ const html = `
         ) : viewMode === 'grafik' ? (
           <>
             <GrafikView
-              orders={orders}
+              weeklyConsumption={weeklyConsumption}
               nutritionProfile={nutritionProfile}
               measurements={measurements}
               onExportPDF={handleExportPDF}
@@ -1776,7 +1933,7 @@ const html = `
                         <Text style={s.pantryKcal}>{item.calories} kcal</Text>
                         <TouchableOpacity
                           style={s.consumeBtn}
-                          onPress={() => handleTukettim(item.instanceId)}
+                          onPress={() => handleTukettim(item)}
                           activeOpacity={0.8}
                         >
                           <CheckCircle size={12} color="#000000" />
@@ -1880,53 +2037,45 @@ const html = `
               </View>
             </View>
 
-            {/* ── Sipariş Geçmişi ── */}
-            {orders.length === 0 ? (
+            {/* ── Bugün Tüketilenler ── */}
+            {todayConsumed.length === 0 ? (
               <View style={s.emptyState}>
                 <ForkKnife size={56} color={COLORS.brand.green} weight="duotone" />
-                <Text style={s.emptyTitle}>Henüz sipariş geçmişiniz yok</Text>
-                <Text style={s.emptySub}>Teslim edilen siparişleriniz burada gösterilir.</Text>
-                <TouchableOpacity
-                  style={s.orderBtn}
-                  onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
-                  activeOpacity={0.85}
-                >
-                  <Text style={s.orderBtnText}>Sipariş Ver</Text>
-                </TouchableOpacity>
+                <Text style={s.emptyTitle}>Bugün henüz bir şey tüketmediniz</Text>
+                <Text style={s.emptySub}>Dolabından "Tükettim" tıkla veya sağ üstten Kalori Ekle.</Text>
               </View>
             ) : (
               <View style={s.section}>
-                <Text style={s.sectionTitle}>Sipariş Geçmişi</Text>
-                {timeline.map((group) => (
-                  <View key={group.dayKey} style={s.dayGroup}>
-                    <View style={s.dayHeaderRow}>
-                      <Text style={s.dayHeaderLabel}>{group.dayLabel}</Text>
-                      <Text style={s.dayHeaderKcal}>{Math.round(group.macros.kcal)} kcal</Text>
-                    </View>
-                    {group.orders.map((order) => {
-                      const om = calculateOrderMacros(order);
-                      const itemNames = order.order_items
-                        .map((i) => i.products?.name)
-                        .filter(Boolean)
-                        .join(', ');
-                      return (
-                        <View key={order.id} style={s.orderCard}>
-                          <View style={s.orderCardTop}>
-                            <Text style={s.orderCode}>
-                              {order.order_code ?? `#${order.id.slice(0, 8).toUpperCase()}`}
-                            </Text>
-                            <View style={s.orderKcalBadge}>
-                              <Text style={s.orderKcalText}>{Math.round(om.kcal)} kcal</Text>
-                            </View>
-                          </View>
-                          {itemNames ? (
-                            <Text style={s.orderItems} numberOfLines={2}>{itemNames}</Text>
+                <Text style={s.sectionTitle}>Bugün Tüketilenler</Text>
+                <View style={s.consumedCard}>
+                  {todayConsumed.map((row) => {
+                    const emoji = row.source === 'pantry'
+                      ? '🥗'
+                      : row.meal_type === 'kahvalti' ? '🌅'
+                      : row.meal_type === 'ogle' ? '☀️'
+                      : row.meal_type === 'aksam' ? '🌙'
+                      : '🍎';
+                    const note = (row.note ?? '').trim();
+                    return (
+                      <View key={row.id} style={s.consumedRow}>
+                        <Text style={s.consumedEmoji}>{emoji}</Text>
+                        <View style={s.consumedRowMain}>
+                          <Text style={s.consumedName} numberOfLines={1}>{row.name}</Text>
+                          {note ? (
+                            <Text style={s.consumedNote} numberOfLines={1}>{note}</Text>
                           ) : null}
                         </View>
-                      );
-                    })}
+                        <Text style={s.consumedKcal}>{Math.round(row.calories)} kcal</Text>
+                      </View>
+                    );
+                  })}
+                  <View style={s.consumedTotal}>
+                    <Text style={s.consumedTotalLabel}>Toplam</Text>
+                    <Text style={s.consumedTotalValue}>
+                      {Math.round(todayConsumed.reduce((s, r) => s + r.calories, 0))} kcal
+                    </Text>
                   </View>
-                ))}
+                </View>
               </View>
             )}
           </>
@@ -2254,26 +2403,63 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   legendDot: { width: 8, height: 8, borderRadius: 2 },
   legendText: { fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.secondary },
 
-  // Day groups
-  dayGroup: { gap: SPACING.xs, marginBottom: SPACING.sm },
-  dayHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.xs, marginTop: SPACING.xs },
-  dayHeaderLabel: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', textTransform: 'capitalize' },
-  dayHeaderKcal: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary, fontWeight: TYPOGRAPHY.weight.semibold,
-fontFamily: 'PlusJakartaSans_600SemiBold'},
-  orderCard: {
+  // Bugün Tüketilenler
+  consumedCard: {
     backgroundColor: '#ffffff',
-    borderRadius: RADIUS.md,
-    padding: 13,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
     ...SHADOWS.sm,
   },
-  orderCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderCode: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  orderKcalBadge: { backgroundColor: '#f0f0f0', borderRadius: RADIUS.pill, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs },
-  orderKcalText: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  orderItems: { marginTop: SPACING.xs, fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.secondary, lineHeight: 17 },
+  consumedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+    gap: SPACING.sm,
+  },
+  consumedEmoji: { fontSize: 22, width: 28, textAlign: 'center' },
+  consumedRowMain: { flex: 1, minWidth: 0 },
+  consumedName: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
+  },
+  consumedNote: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.tertiary,
+    marginTop: 2,
+  },
+  consumedKcal: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
+    fontVariant: ['tabular-nums'],
+  },
+  consumedTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xs,
+    marginTop: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  consumedTotalLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  consumedTotalValue: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.brand.green,
+  },
 
   // Pantry
   pantrySection: {
@@ -2493,30 +2679,9 @@ fontFamily: 'PlusJakartaSans_600SemiBold'},
   },
   modalSaveBtnText: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  todayMealsSection: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: SPACING.lg, gap: SPACING.sm },
-  todayMealsTitle: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.tertiary },
-  todayMealRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  todayMealType: { fontSize: TYPOGRAPHY.size.sm, color: '#000000' },
-  todayMealKcal: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  todayMealTotal: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: '#f0f0f0',
-  },
-  todayMealTotalLabel: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  todayMealTotalValue: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.brand.green },
-
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: SPACING['3xl'], paddingHorizontal: SPACING['2xl'] },
-  emptyIcon: { fontSize: 56, marginBottom: SPACING.md },
   emptyTitle: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: SPACING.xs, textAlign: 'center' },
   emptySub: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.secondary, textAlign: 'center', lineHeight: 19, marginBottom: SPACING.lg },
-  orderBtn: { backgroundColor: COLORS.brand.green, borderRadius: RADIUS.pill, paddingHorizontal: 28, paddingVertical: SPACING.md },
-  orderBtnText: { color: '#000000', fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', fontSize: TYPOGRAPHY.size.md },
-
 });
