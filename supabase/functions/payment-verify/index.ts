@@ -1,3 +1,4 @@
+// Tosla-specific callback handler. PayTR uses paytr-callback (separate endpoint).
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const corsHeaders = {

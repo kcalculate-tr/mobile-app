@@ -163,6 +163,17 @@ export default function AddressesScreen() {
     return neighborhoodOptionsByDistrict[district] || [];
   }, [form.district, neighborhoodOptionsByDistrict]);
 
+  const isFormValid = useMemo(() => (
+    Boolean(form.first_name.trim()) &&
+    Boolean(form.last_name.trim()) &&
+    Boolean(form.contact_phone.trim()) &&
+    Boolean(form.contact_email.trim()) &&
+    Boolean(form.district.trim()) &&
+    Boolean(form.neighborhood.trim()) &&
+    Boolean(form.street.trim()) &&
+    Boolean(form.building_no.trim())
+  ), [form]);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -341,7 +352,6 @@ export default function AddressesScreen() {
     setInfoMessage('');
 
     if (
-      !form.title.trim() ||
       !form.first_name.trim() ||
       !form.last_name.trim() ||
       !form.contact_phone.trim() ||
@@ -349,9 +359,7 @@ export default function AddressesScreen() {
       !form.district.trim() ||
       !form.neighborhood.trim() ||
       !form.street.trim() ||
-      !form.building_no.trim() ||
-      !form.floor.trim() ||
-      !form.apartment_no.trim()
+      !form.building_no.trim()
     ) {
       setErrorMessage('Lütfen zorunlu alanları doldurun.');
       return;
@@ -720,22 +728,22 @@ export default function AddressesScreen() {
                   {/* Ad - Soyad yan yana */}
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <View style={{ flex: 1 }}>
-                      <FormField label="Ad" value={form.first_name}
+                      <FormField label="Ad *" value={form.first_name}
                         onChangeText={(v) => setForm((p) => ({ ...p, first_name: v }))}
                         placeholder="Adınız" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FormField label="Soyad" value={form.last_name}
+                      <FormField label="Soyad *" value={form.last_name}
                         onChangeText={(v) => setForm((p) => ({ ...p, last_name: v }))}
                         placeholder="Soyadınız" />
                     </View>
                   </View>
 
-                  <FormField label="Telefon" value={form.contact_phone}
+                  <FormField label="Telefon *" value={form.contact_phone}
                     onChangeText={(v) => setForm((p) => ({ ...p, contact_phone: v }))}
                     placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
 
-                  <FormField label="İlçe" value={form.district}
+                  <FormField label="İlçe *" value={form.district}
                     onChangeText={handleDistrictChange}
                     type="select" placeholder="İlçe seçiniz"
                     options={districtOptions} editable={districtOptions.length > 0} />
@@ -743,7 +751,7 @@ export default function AddressesScreen() {
                     <Text style={s.noteText}>İlçe listesi yüklenemedi.</Text>
                   )}
 
-                  <FormField label="Mahalle" value={form.neighborhood}
+                  <FormField label="Mahalle *" value={form.neighborhood}
                     onChangeText={(v) => setForm((p) => ({ ...p, neighborhood: v }))}
                     type="select" options={neighborhoodOptions}
                     placeholder={form.district ? 'Mahalle seçiniz' : 'Önce ilçe seçiniz'}
@@ -752,14 +760,14 @@ export default function AddressesScreen() {
                     <Text style={s.noteText}>Seçilen ilçe için mahalle listesi bulunamadı.</Text>
                   )}
 
-                  <FormField label="Cadde / Sokak" value={form.street}
+                  <FormField label="Cadde / Sokak *" value={form.street}
                     onChangeText={(v) => setForm((p) => ({ ...p, street: v }))}
                     placeholder="Cadde veya sokak adını girin" />
 
                   {/* No - Kat - Daire yan yana */}
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <View style={{ flex: 1 }}>
-                      <FormField label="No" value={form.building_no}
+                      <FormField label="No *" value={form.building_no}
                         onChangeText={(v) => setForm((p) => ({ ...p, building_no: v }))}
                         placeholder="8" keyboardType="number-pad" />
                     </View>
@@ -787,7 +795,11 @@ export default function AddressesScreen() {
                     <TouchableOpacity style={s.cancelBtn} onPress={resetForm} disabled={saving} activeOpacity={0.8}>
                       <Text style={s.cancelBtnText}>Vazgeç</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.saveBtn} onPress={saveAddress} disabled={saving} activeOpacity={0.85}>
+                    <TouchableOpacity
+                      style={[s.saveBtn, (saving || !isFormValid) && { opacity: 0.5 }]}
+                      onPress={saveAddress}
+                      disabled={saving || !isFormValid}
+                      activeOpacity={0.85}>
                       {saving
                         ? <ActivityIndicator color="#000000" size="small" />
                         : <Text style={s.saveBtnText}>Kaydet</Text>}

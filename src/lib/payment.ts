@@ -68,10 +68,11 @@ export type PaymentVerifyResult = {
 export const getPaymentConfigStatus = (): PaymentConfigStatus => {
   const provider = readEnvValue('EXPO_PUBLIC_PAYMENT_PROVIDER').toLowerCase();
   const redirectUrl = Linking.createURL('payment-callback');
-  const isPaymentEnabled = provider === 'tosla';
+  const isPaymentEnabled = provider === 'tosla' || provider === 'paytr_iframe' || provider === 'paytr';
 
   const missingKeys: string[] = [];
-  if (isPaymentEnabled && !isApiBaseUrlConfigured()) {
+  // PayTR iframe runs via dedicated edge function, not the legacy API base URL.
+  if (provider === 'tosla' && !isApiBaseUrlConfigured()) {
     missingKeys.push('EXPO_PUBLIC_API_BASE_URL');
   }
 

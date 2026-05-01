@@ -61,9 +61,25 @@ export async function fetchCategories(): Promise<Category[]> {
     .filter((category) => category.id > 0);
 }
 
+const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
+
 export async function fetchProductsByCategory(
   categoryName: string,
 ): Promise<CategoryProduct[]> {
+  if (ALL_PRODUCTS_NAMES.includes(categoryName)) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, price, calories, protein, img, category, is_available, order')
+      .eq('is_available', true)
+      .order('order', { ascending: true });
+
+    if (error) throw error;
+
+    return (data ?? []).map((row) =>
+      mapCategoryProductRow(row as Record<string, unknown>),
+    );
+  }
+
   const categoryNames = [categoryName];
 
   const { data: parentRow } = await supabase

@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import * as Print from 'expo-print';
@@ -28,6 +28,7 @@ import { Circle, Svg, Polyline } from 'react-native-svg';
 import {ChartBar, CheckCircle, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, TrophyIcon} from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
+import AnimatedNumberText from '../components/AnimatedNumberText';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAuth } from '../context/AuthContext';
@@ -401,11 +402,11 @@ function BigCalorieRing({ current, target }: BigRingProps) {
           />
         </Svg>
         <View style={s.ringCenter}>
-          <Text style={s.ringKcal}>{displayKcal.toLocaleString()}</Text>
+          <AnimatedNumberText style={s.ringKcal} value={displayKcal.toLocaleString()} />
           <Text style={s.ringKcalLabel}>kcal tüketildi</Text>
           <View style={s.ringBadge}>
             {remaining > 0 ? (
-              <Text style={s.ringBadgeText}>{`${remaining} kcal kaldı`}</Text>
+              <AnimatedNumberText style={s.ringBadgeText} value={`${remaining} kcal kaldı`} />
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <TrophyIcon size={16} color="#A3E635" weight="fill" />
@@ -415,10 +416,10 @@ function BigCalorieRing({ current, target }: BigRingProps) {
           </View>
         </View>
       </View>
-      <Text style={s.ringTargetLabel}>
-        Günlük hedef:{' '}
-        <Text style={s.ringTargetBold}>{target.toLocaleString()} kcal</Text>
-      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'baseline' }}>
+        <Text style={s.ringTargetLabel}>Günlük hedef: </Text>
+        <AnimatedNumberText style={s.ringTargetBold} value={`${target.toLocaleString()} kcal`} />
+      </View>
     </View>
   );
 }
@@ -458,12 +459,12 @@ function MacroRing({ label, current, target, color, trackColor, unit, onPress }:
         </Svg>
         <View style={s.macroRingCenter}>
           <View style={[s.macroRingDot, { backgroundColor: color }]} />
-          <Text style={s.macroRingValue}>{Math.round(current)}</Text>
+          <AnimatedNumberText style={s.macroRingValue} value={Math.round(current)} />
         </View>
       </View>
       <View style={s.macroRingInfo}>
         <Text style={s.macroRingLabel}>{label}</Text>
-        <Text style={s.macroRingSubLabel}>{Math.round(current)}{unit} / {Math.round(target)}{unit}</Text>
+        <AnimatedNumberText style={s.macroRingSubLabel} value={`${Math.round(current)}${unit} / ${Math.round(target)}${unit}`} />
         <View style={[s.macroRingTrack, { backgroundColor: trackColor }]}>
           <View style={[s.macroRingFill, { width: `${pct * 100}%` as `${number}%`, backgroundColor: color }]} />
         </View>
@@ -923,6 +924,73 @@ export default function TrackerScreen() {
   useEffect(() => {
     fetchData(selectedFilter);
   }, [fetchData, selectedFilter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let cancelled = false;
+
+      const backfillPantry = async () => {
+        try {
+          const supabase = getSupabaseClient();
+          const since = new Date();
+          since.setDate(since.getDate() - 30);
+
+          const { data, error } = await supabase
+            .from('orders')
+            .select(
+              'id,order_code,delivered_at,order_items(id,product_id,product_name,quantity,products(name,calories,protein,carbs,fats,img))',
+            )
+            .eq('user_id', user.id)
+            .eq('status', 'delivered')
+            .not('delivered_at', 'is', null)
+            .gte('delivered_at', since.toISOString())
+            .order('delivered_at', { ascending: false });
+
+          if (cancelled || error || !Array.isArray(data)) return;
+
+          const candidates: Omit<PantryItem, 'id' | 'addedAt'>[] = [];
+          for (const order of data as any[]) {
+            const items = Array.isArray(order?.order_items) ? order.order_items : [];
+            for (const oi of items) {
+              const orderItemId = String(oi?.id ?? '').trim();
+              if (!orderItemId) continue;
+
+              const product = (oi?.products ?? {}) as Record<string, unknown>;
+              const name = String(oi?.product_name || product?.name || 'Ürün').trim();
+              const productId = String(oi?.product_id ?? (product as any)?.id ?? '');
+              const quantity = Math.max(1, Math.floor(Number(oi?.quantity) || 1));
+
+              candidates.push({
+                productId,
+                orderItemId,
+                name,
+                quantity,
+                calories: Number(product?.calories) || 0,
+                protein: Number(product?.protein) || 0,
+                carbs: Number(product?.carbs) || 0,
+                fat: Number((product as any)?.fats) || 0,
+                imageUrl: (product as any)?.img ? String((product as any).img) : undefined,
+              });
+            }
+          }
+
+          if (!cancelled && candidates.length > 0) {
+            usePantryStore.getState().addItemsFromOrders(candidates);
+          }
+        } catch (err) {
+          if (__DEV__) {
+            console.warn(`[tracker] pantry backfill failed: ${formatSupabaseErrorForDevLog(err)}`);
+          }
+        }
+      };
+
+      backfillPantry();
+      return () => {
+        cancelled = true;
+      };
+    }, [user]),
+  );
 
   const expandedItems = useMemo(() =>
     pantryItems.flatMap(item =>
@@ -1527,8 +1595,8 @@ const html = `
         {/* ── Header ── */}
         <View style={s.header}>
           <Image
-            source={require('../../assets/kcalculate-icon.png')}
-            style={{ height: 28, width: 120 }}
+            source={require('../../assets/kcalculate-logo.png')}
+            style={{ height: 56, width: 129 }}
             resizeMode="contain"
           />
           <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
@@ -1784,7 +1852,7 @@ const html = `
               <View style={s.waterHeader}>
                 <View style={s.waterTitleRow}>
                   <Text style={s.waterTitle}>Su Takibi</Text>
-                  <Text style={s.waterSub}>{waterCount} / 8 bardak · {waterCount * 250}ml</Text>
+                  <AnimatedNumberText style={s.waterSub} value={`${waterCount} / 8 bardak · ${waterCount * 250}ml`} />
                 </View>
                 <TouchableOpacity
                   style={s.waterPlusBtn}
@@ -1878,7 +1946,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.lg,
     paddingBottom: SPACING.md,
   },

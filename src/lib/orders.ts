@@ -51,6 +51,8 @@ const createOrderCode = () => {
   return `KCAL-${letter}${digits}`
 }
 
+const DEFAULT_BRANCH_ID = 'aa8ef65d-a9aa-42fb-bc55-016ba2249dbd';
+
 const toSafeNumber = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
@@ -211,6 +213,7 @@ export const createOrderFromCart = async ({
   const orderPayload: Record<string, unknown> = {
     status: 'pending',
     payment_status: 'pending',
+    branch_id: DEFAULT_BRANCH_ID,
     customer_name: customerName,
     customer_email: customerEmail,
     address: address.full_address,
@@ -362,6 +365,7 @@ export const createOrderDraftForPayment = async ({
   const orderPayload: Record<string, unknown> = {
     status: 'pending_payment',
     payment_status: 'pending',
+    branch_id: DEFAULT_BRANCH_ID,
     customer_name: customerName,
     customer_email: customerEmail,
     address: address.full_address,

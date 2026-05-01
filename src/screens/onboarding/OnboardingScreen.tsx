@@ -54,10 +54,6 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const ONBOARDING_FLAG = '@kcal_onboarding_done';
 
-type Gender = 'male' | 'female' | '';
-type Goal = 'lose' | 'maintain' | 'gain' | '';
-type Activity = 'sedentary' | 'light' | 'moderate' | 'very_active' | '';
-
 type AddressForm = {
   firstName: string;
   lastName: string;
@@ -249,14 +245,6 @@ export default function OnboardingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Step 5 state
-  const [gender, setGender] = useState<Gender>('');
-  const [age, setAge] = useState('');
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
-  const [goal, setGoal] = useState<Goal>('');
-  const [activity, setActivity] = useState<Activity>('');
-
   const refs = {
     lastName: useRef<TextInput>(null),
     email: useRef<TextInput>(null),
@@ -391,6 +379,17 @@ export default function OnboardingScreen() {
     }
   };
 
+  const isFormValid =
+    Boolean(form.firstName.trim()) &&
+    Boolean(form.lastName.trim()) &&
+    Boolean(form.email.trim()) &&
+    Boolean(form.password) && form.password.length >= 6 &&
+    Boolean(form.phone.trim()) &&
+    Boolean(form.district.trim()) &&
+    Boolean(form.neighbourhood.trim()) &&
+    Boolean(form.street.trim()) &&
+    Boolean(form.buildingNo.trim());
+
   const handleRegister = async () => {
     if (!form.firstName.trim()) return Alert.alert('Uyarı', 'Ad zorunludur.');
     if (!form.lastName.trim()) return Alert.alert('Uyarı', 'Soyad zorunludur.');
@@ -398,6 +397,10 @@ export default function OnboardingScreen() {
     if (!form.password || form.password.length < 6)
       return Alert.alert('Uyarı', 'Şifre en az 6 karakter olmalı.');
     if (!form.phone.trim()) return Alert.alert('Uyarı', 'Telefon zorunludur.');
+    if (!form.district.trim()) return Alert.alert('Uyarı', 'İlçe seçimi zorunludur.');
+    if (!form.neighbourhood.trim()) return Alert.alert('Uyarı', 'Mahalle seçimi zorunludur.');
+    if (!form.street.trim()) return Alert.alert('Uyarı', 'Cadde / Sokak zorunludur.');
+    if (!form.buildingNo.trim()) return Alert.alert('Uyarı', 'Bina No zorunludur.');
 
     setSubmitting(true);
     const supabase = getSupabaseClient();
@@ -462,41 +465,6 @@ export default function OnboardingScreen() {
       index: 0,
       routes: [{ name: 'EmailVerification', params: { email: form.email.trim() } }],
     });
-  };
-
-  const handleProfileSubmit = async () => {
-    if (!userId) {
-      await finishOnboarding();
-      return;
-    }
-    const supabase = getSupabaseClient();
-    const updates: Record<string, any> = {};
-    if (gender) updates.gender = gender;
-    if (age) updates.age = parseInt(age, 10);
-    if (height) updates.height = parseInt(height, 10);
-    if (weight) updates.weight = parseInt(weight, 10);
-    if (goal) updates.goal = goal;
-    if (activity) updates.activity_level = activity;
-
-    if (height && weight && age && gender && activity) {
-      const h = parseInt(height, 10);
-      const w = parseInt(weight, 10);
-      const a = parseInt(age, 10);
-      const bmr = gender === 'male'
-        ? 10 * w + 6.25 * h - 5 * a + 5
-        : 10 * w + 6.25 * h - 5 * a - 161;
-      const mult: Record<string, number> = {
-        sedentary: 1.2, light: 1.375, moderate: 1.55, very_active: 1.725,
-      };
-      const goalAdj: Record<string, number> = { lose: -500, maintain: 0, gain: 300 };
-      const tdee = bmr * (mult[activity] || 1.375);
-      updates.daily_calorie_goal = Math.round(tdee + (goalAdj[goal] ?? 0));
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await supabase.from('profiles').update(updates).eq('id', userId);
-    }
-    await finishOnboarding();
   };
 
   // ─── Step 0: Welcome ───
@@ -716,7 +684,7 @@ export default function OnboardingScreen() {
 
             <View style={{ marginTop: 12 }}>
               <FormField
-                label="İlçe"
+                label="İlçe *"
                 value={form.district}
                 onChangeText={(v) =>
                   setForm((f) => ({
@@ -734,7 +702,7 @@ export default function OnboardingScreen() {
 
             <View>
               <FormField
-                label="Mahalle"
+                label="Mahalle *"
                 value={form.neighbourhood}
                 onChangeText={(v) => setForm((f) => ({ ...f, neighbourhood: v }))}
                 placeholder="Mahalle seçin"
@@ -744,7 +712,7 @@ export default function OnboardingScreen() {
               />
             </View>
 
-            <Text style={styles.label}>Cadde / Sokak</Text>
+            <Text style={styles.label}>Cadde / Sokak *</Text>
             <TextInput
               ref={refs.street}
               style={styles.input}
@@ -771,7 +739,7 @@ export default function OnboardingScreen() {
 
             <View style={styles.row3}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>No</Text>
+                <Text style={styles.label}>No *</Text>
                 <TextInput
                   ref={refs.buildingNo}
                   style={styles.input}
@@ -813,9 +781,9 @@ export default function OnboardingScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.primaryBtn, submitting && { opacity: 0.6 }]}
+              style={[styles.primaryBtn, (submitting || !isFormValid) && { opacity: 0.5 }]}
               onPress={handleRegister}
-              disabled={submitting}
+              disabled={submitting || !isFormValid}
               activeOpacity={0.85}
             >
               {submitting ? (

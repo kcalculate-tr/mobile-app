@@ -185,12 +185,28 @@ export default function RegisterScreen() {
     }
   };
 
+  const isFormValid =
+    Boolean(form.firstName.trim()) &&
+    Boolean(form.lastName.trim()) &&
+    Boolean(form.email.trim()) &&
+    Boolean(form.password) && form.password.length >= 6 &&
+    Boolean(form.phone.trim()) &&
+    Boolean(form.district.trim()) &&
+    Boolean(form.neighbourhood.trim()) &&
+    Boolean(form.street.trim()) &&
+    Boolean(form.buildingNo.trim()) &&
+    termsAccepted;
+
   const handleRegister = async () => {
     if (!form.firstName.trim()) return Alert.alert('Uyarı', 'Ad zorunludur.');
     if (!form.lastName.trim()) return Alert.alert('Uyarı', 'Soyad zorunludur.');
     if (!form.email.trim()) return Alert.alert('Uyarı', 'E-posta zorunludur.');
     if (!form.password || form.password.length < 6) return Alert.alert('Uyarı', 'Şifre en az 6 karakter olmalı.');
     if (!form.phone.trim()) return Alert.alert('Uyarı', 'Telefon zorunludur.');
+    if (!form.district.trim()) return Alert.alert('Uyarı', 'İlçe seçimi zorunludur.');
+    if (!form.neighbourhood.trim()) return Alert.alert('Uyarı', 'Mahalle seçimi zorunludur.');
+    if (!form.street.trim()) return Alert.alert('Uyarı', 'Cadde / Sokak zorunludur.');
+    if (!form.buildingNo.trim()) return Alert.alert('Uyarı', 'Bina No zorunludur.');
     if (!termsAccepted) return Alert.alert('Uyarı', 'Devam etmek için kullanım koşullarını kabul etmelisiniz.');
 
     setSubmitting(true);
@@ -378,7 +394,7 @@ export default function RegisterScreen() {
 
             <View style={{ marginTop: 12 }}>
               <FormField
-                label="İlçe"
+                label="İlçe *"
                 value={form.district}
                 onChangeText={(v) =>
                   setForm((f) => ({ ...f, district: v, neighbourhood: v !== f.district ? '' : f.neighbourhood }))
@@ -391,7 +407,7 @@ export default function RegisterScreen() {
             </View>
 
             <FormField
-              label="Mahalle"
+              label="Mahalle *"
               value={form.neighbourhood}
               onChangeText={(v) => setForm((f) => ({ ...f, neighbourhood: v }))}
               placeholder="Mahalle seçin"
@@ -400,7 +416,7 @@ export default function RegisterScreen() {
               editable={Boolean(form.district) && neighborhoodOptions.length > 0}
             />
 
-            <Text style={s.label}>Cadde / Sokak</Text>
+            <Text style={s.label}>Cadde / Sokak *</Text>
             <TextInput
               ref={refs.street}
               style={s.input}
@@ -426,7 +442,7 @@ export default function RegisterScreen() {
 
             <View style={s.row3}>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>No</Text>
+                <Text style={s.label}>No *</Text>
                 <TextInput
                   ref={refs.buildingNo}
                   style={s.input}
@@ -496,9 +512,9 @@ export default function RegisterScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[s.primaryBtn, submitting && { opacity: 0.6 }]}
+              style={[s.primaryBtn, (submitting || !isFormValid) && { opacity: 0.5 }]}
               onPress={handleRegister}
-              disabled={submitting}
+              disabled={submitting || !isFormValid}
               activeOpacity={0.85}
             >
               {submitting ? (

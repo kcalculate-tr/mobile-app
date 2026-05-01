@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
+import AnimatedNumberText from '../components/AnimatedNumberText'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Check, ArrowRight, Minus, Plus, CrownIcon } from 'phosphor-react-native'
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme'
@@ -202,18 +203,18 @@ export default function MacroScreen() {
                 {/* Balance badge */}
                 <View style={styles.balanceBadge}>
                   <Image source={MACRO_COIN} style={{ width: 18, height: 18 }} resizeMode="contain" fadeDuration={0} />
-                  <Text style={styles.balanceText}>{balance} Macro</Text>
+                  <AnimatedNumberText style={styles.balanceText} value={`${balance} Macro`} />
                   <View style={styles.balanceDivider} />
                   {privileged ? (
                     <View style={{ alignItems: 'center', gap: 2 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <CrownIcon size={12} color="#C6F04F" weight="fill" />
-                        <Text style={styles.privilegedTag}>Ayrıcalıklı Üye • {daysLeft} gün</Text>
+                        <AnimatedNumberText style={styles.privilegedTag} value={`Ayrıcalıklı Üye • ${daysLeft} gün`} />
                       </View>
                       <Text style={[styles.privilegedTag, { fontSize: 10, opacity: 0.8 }]}>{privilegedUntilFormatted(profile)}'a kadar</Text>
                     </View>
                   ) : (
-                    <Text style={styles.neededTag}>{neededForMembership} macro ile üye ol</Text>
+                    <AnimatedNumberText style={styles.neededTag} value={`${neededForMembership} macro ile üye ol`} />
                   )}
                 </View>
               </>
@@ -229,7 +230,7 @@ export default function MacroScreen() {
                 }]} />
               </View>
               <View style={styles.progressLabels}>
-                <Text style={styles.progressLabelLeft}>{balance}/{threshold} Macro</Text>
+                <AnimatedNumberText style={styles.progressLabelLeft} value={`${balance}/${threshold} Macro`} />
                 <Text style={styles.progressLabelRight}>Ayrıcalıklı Üyelik</Text>
               </View>
             </View>
@@ -274,7 +275,7 @@ export default function MacroScreen() {
               </TouchableOpacity>
               <View style={styles.qtyDisplay}>
                 <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" fadeDuration={0} />
-                <Text style={styles.qtyNumber}>{qty}</Text>
+                <AnimatedNumberText style={styles.qtyNumber} value={qty} />
               </View>
               <TouchableOpacity
                 onPress={() => setQty(q => q + 1)}
@@ -305,9 +306,10 @@ export default function MacroScreen() {
             ) : (
               <>
                 <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" fadeDuration={0} />
-                <Text style={styles.buyBtnText}>
-                  {qty} Macro Al — ₺{totalPrice.toLocaleString('tr-TR')}
-                </Text>
+                <AnimatedNumberText
+                  style={styles.buyBtnText}
+                  value={`${qty} Macro Al — ₺${totalPrice.toLocaleString('tr-TR')}`}
+                />
               </>
             )}
           </TouchableOpacity>

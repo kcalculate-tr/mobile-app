@@ -21,43 +21,23 @@ import { getSupabaseClient } from '../../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
+import {
+  ActivityLevel,
+  Gender,
+  Goal as GoalType,
+  ACTIVITY_LABELS,
+  ACTIVITY_ORDER,
+  calculateBMR,
+  calculateMacroTargets,
+  calculateTDEE,
+  migrateLegacyActivity,
+} from '../../lib/nutrition';
 
 type NutritionProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-type Gender = 'male' | 'female';
-type GoalType = 'lose_weight' | 'maintain' | 'gain_weight';
-type ActivityLevel = 'low' | 'medium' | 'high';
-
-const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
-  low: 1.2, medium: 1.55, high: 1.725,
-};
 
 const safeInt = (v: string, fallback: number): number => {
   const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
-};
-
-const clampPositive = (n: number): number => Math.max(0, Math.round(n));
-
-type CalculatedMacros = {
-  bmr: number; tdee: number; targetKcal: number;
-  protein: number; fat: number; carbs: number; targetWater: number;
-};
-
-const calculateMacros = (
-  gender: Gender, age: number, heightCm: number,
-  weightKg: number, goal: GoalType, activity: ActivityLevel,
-): CalculatedMacros => {
-  const bmr = gender === 'male'
-    ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
-    : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
-  const tdee = bmr * ACTIVITY_MULTIPLIERS[activity];
-  const targetKcal = goal === 'lose_weight' ? tdee - 500 : goal === 'gain_weight' ? tdee + 500 : tdee;
-  const protein = weightKg * 2;
-  const fat = clampPositive((targetKcal * 0.25) / 9);
-  const carbsKcal = targetKcal - protein * 4 - fat * 9;
-  const carbs = clampPositive(Math.max(0, carbsKcal) / 4);
-  const targetWater = Math.round(weightKg * 0.033 * 10) / 10;
-  return { bmr: Math.round(bmr), tdee: Math.round(tdee), targetKcal: Math.round(targetKcal), protein: clampPositive(protein), fat, carbs, targetWater };
 };
 
 const getBMICategory = (bmi: number) => {
@@ -107,11 +87,12 @@ const GOAL_OPTIONS: { key: GoalType; label: string }[] = [
   { key: 'maintain', label: 'Kiloyu Koru' },
   { key: 'gain_weight', label: 'Kilo Al' },
 ];
-const ACTIVITY_OPTIONS: { key: ActivityLevel; label: string; desc: string }[] = [
-  { key: 'low', label: 'Az Hareketli', desc: 'Masa başı, az egzersiz' },
-  { key: 'medium', label: 'Orta', desc: 'Hafta 3-4 gün egzersiz' },
-  { key: 'high', label: 'Aktif', desc: 'Her gün yoğun egzersiz' },
-];
+const ACTIVITY_OPTIONS: { key: ActivityLevel; label: string; desc: string }[] =
+  ACTIVITY_ORDER.map((key) => ({
+    key,
+    label: ACTIVITY_LABELS[key].title,
+    desc: ACTIVITY_LABELS[key].description,
+  }));
 
 export default function NutritionProfileScreen() {
   const navigation = useNavigation<NutritionProfileNavigationProp>();
@@ -124,7 +105,7 @@ export default function NutritionProfileScreen() {
   const [heightText, setHeightText] = useState('175');
   const [weightText, setWeightText] = useState('70');
   const [goal, setGoal] = useState<GoalType>('maintain');
-  const [activity, setActivity] = useState<ActivityLevel>('medium');
+  const [activity, setActivity] = useState<ActivityLevel>('moderate');
 
   // Beden ölçüleri
   const [waistText, setWaistText] = useState('');
@@ -160,7 +141,7 @@ export default function NutritionProfileScreen() {
           if (data.height) setHeightText(String(data.height));
           if (data.weight) setWeightText(String(data.weight));
           if (data.goal) setGoal(data.goal);
-          if (data.activity_level) setActivity(data.activity_level);
+          if (data.activity_level) setActivity(migrateLegacyActivity(data.activity_level));
           if (data.waist_cm) setWaistText(String(data.waist_cm));
           if (data.hip_cm) setHipText(String(data.hip_cm));
           if (data.chest_cm) setChestText(String(data.chest_cm));
@@ -182,10 +163,26 @@ export default function NutritionProfileScreen() {
     weight: safeInt(weightText, 70),
   }), [ageText, heightText, weightText]);
 
-  const macros = useMemo(
-    () => calculateMacros(gender, parsed.age, parsed.height, parsed.weight, goal, activity),
-    [gender, parsed, goal, activity],
-  );
+  const macros = useMemo(() => {
+    const input = {
+      gender,
+      age: parsed.age,
+      heightCm: parsed.height,
+      weightKg: parsed.weight,
+      goal,
+      activity,
+    };
+    const targets = calculateMacroTargets(input);
+    return {
+      bmr: Math.round(calculateBMR(input)),
+      tdee: Math.round(calculateTDEE(input)),
+      targetKcal: targets.calories,
+      protein: targets.protein,
+      carbs: targets.carbs,
+      fat: targets.fat,
+      targetWater: targets.water,
+    };
+  }, [gender, parsed, goal, activity]);
 
   const bmi = useMemo(() => {
     const h = parsed.height / 100;

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CachedImage } from '../components/CachedImage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag } from 'phosphor-react-native';
+import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag, ForkKnife } from 'phosphor-react-native';
 import { TAB_BAR_TOTAL } from '../constants/layout';
 import { haptic } from '../utils/haptics';
 import HowItWorksModal from '../components/modals/HowItWorksModal';
@@ -35,6 +35,8 @@ const PROMO_CELL_GAP = 8;
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
 
+const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
+
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const howItWorks = useModal();
@@ -62,7 +64,7 @@ export default function HomeScreen() {
   const [mealCalories, setMealCalories] = useState('');
   const [mealNote, setMealNote] = useState('');
   const [mealSaving, setMealSaving] = useState(false);
-  const [mealLogs, setMealLogs] = useState<{ id: string; meal_type: string; calories: number; date: string }[]>([]);
+  const [mealLogs, setMealLogs] = useState<{ id: string; meal_type: string; calories: number; date: string; note?: string | null; created_at?: string }[]>([]);
   const heroFlatListRef = useRef<FlatList>(null);
   const sheetTranslateY = useRef(new Animated.Value(400)).current;
   const activeDotWidth  = useRef(new Animated.Value(14)).current;
@@ -110,9 +112,10 @@ export default function HomeScreen() {
         fetchFeaturedProducts(),
         supabase
           .from('meal_logs')
-          .select('id,meal_type,calories,date')
+          .select('id,meal_type,calories,date,note,created_at')
           .eq('user_id', user?.id ?? '')
-          .eq('date', new Date().toISOString().split('T')[0]),
+          .eq('date', new Date().toISOString().split('T')[0])
+          .order('created_at', { ascending: false }),
       ]);
       setCategories(cats);
       setProducts(prods);
@@ -141,7 +144,7 @@ export default function HomeScreen() {
         note: mealNote || null,
       }).select().single();
       if (error) throw error;
-      setMealLogs(prev => [...prev, data as any]);
+      setMealLogs(prev => [data as any, ...prev]);
       setMealCalories('');
       setMealNote('');
       setMealModalVisible(false);
@@ -207,7 +210,12 @@ export default function HomeScreen() {
     setCardQuantities(prev => ({ ...prev, [product.id]: newQty }));
   };
 
-  const allCategoriesWithAll: Category[] = [...categories];
+  const allCategoriesWithAll: Category[] = useMemo(() => {
+    const allProducts = categories.find((c) => ALL_PRODUCTS_NAMES.includes(c.name));
+    if (!allProducts) return categories;
+    const others = categories.filter((c) => !ALL_PRODUCTS_NAMES.includes(c.name));
+    return [allProducts, ...others];
+  }, [categories]);
 
   const displayProducts = searchText.trim()
     ? products.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()))
@@ -634,6 +642,53 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Bugün Tüketilenler — manuel kalori girişleri (meal_logs) */}
+        <View style={styles.section}>
+          <View style={styles.consumedHeader}>
+            <Text style={styles.sectionTitle}>Bugün Tüketilenler</Text>
+            <View style={styles.soonBadge}>
+              <Text style={styles.soonBadgeText}>Yakında: dolaptan tüketim</Text>
+            </View>
+          </View>
+
+          <View style={styles.consumedCard}>
+            {mealLogs.length === 0 ? (
+              <View style={styles.consumedEmpty}>
+                <ForkKnife size={32} color={COLORS.text.tertiary} weight="duotone" />
+                <Text style={styles.consumedEmptyTitle}>Henüz bir şey eklemediniz</Text>
+                <Text style={styles.consumedEmptySub}>Sağ üstteki "Kalori Ekle" ile başla.</Text>
+              </View>
+            ) : (
+              <>
+                {mealLogs.map(log => {
+                  const label = log.meal_type === 'kahvalti' ? '🌅 Kahvaltı'
+                    : log.meal_type === 'ogle' ? '☀️ Öğle'
+                    : log.meal_type === 'aksam' ? '🌙 Akşam'
+                    : '🍎 Atıştırma';
+                  const note = (log.note ?? '').toString().trim();
+                  return (
+                    <View key={log.id} style={styles.consumedRow}>
+                      <View style={styles.consumedRowMain}>
+                        <Text style={styles.consumedType}>{label}</Text>
+                        <Text style={styles.consumedNote} numberOfLines={1}>
+                          {note || 'Manuel'}
+                        </Text>
+                      </View>
+                      <Text style={styles.consumedKcal}>{log.calories} kcal</Text>
+                    </View>
+                  );
+                })}
+                <View style={styles.consumedTotal}>
+                  <Text style={styles.consumedTotalLabel}>Toplam</Text>
+                  <Text style={styles.consumedTotalValue}>
+                    {mealLogs.reduce((sum, m) => sum + m.calories, 0)} kcal
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -777,7 +832,7 @@ const styles = StyleSheet.create({
   },
   categoryRow: {
     paddingHorizontal: SPACING.lg,
-    gap: SPACING.sm,
+    gap: SPACING.xs,
     paddingBottom: SPACING.xs,
   },
   categoryItem: {
@@ -1176,4 +1231,100 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
 fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   todayMealTotalValue: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.extrabold,
 fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.brand.green },
+
+  // Bugün Tüketilenler section
+  consumedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  soonBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: RADIUS.pill,
+    backgroundColor: '#f4f4f4',
+  },
+  soonBadgeText: {
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.tertiary,
+    letterSpacing: 0.2,
+  },
+  consumedCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    ...SHADOWS.sm,
+  },
+  consumedEmpty: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+    gap: SPACING.xs,
+  },
+  consumedEmptyTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    marginTop: SPACING.xs,
+  },
+  consumedEmptySub: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.text.tertiary,
+    textAlign: 'center',
+  },
+  consumedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+    gap: SPACING.sm,
+  },
+  consumedRowMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  consumedType: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  consumedNote: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.tertiary,
+    marginTop: 2,
+  },
+  consumedKcal: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    fontVariant: ['tabular-nums'],
+  },
+  consumedTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: SPACING.md,
+    marginTop: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  consumedTotalLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  consumedTotalValue: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.brand.green,
+  },
 });

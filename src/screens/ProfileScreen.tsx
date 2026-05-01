@@ -40,6 +40,7 @@ import {
   CameraIcon,
 } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import AnimatedNumberText from '../components/AnimatedNumberText';
 import { TAB_BAR_TOTAL } from '../constants/layout';
 import MacroPointModal from '../components/modals/MacroPointModal';
 import { fetchMacroProfile, isPrivileged, privilegedDaysLeft, privilegedUntilFormatted, MacroProfile, MEMBERSHIP_THRESHOLD } from '../lib/macros';
@@ -51,6 +52,7 @@ import { supabase } from '../lib/supabase';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { unregisterPushToken } from '../lib/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import { PAYMENT_PROVIDER } from '../config/payment';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -449,13 +451,16 @@ export default function ProfileScreen() {
                   </View>
                 )}
               </View>
-              <Text style={styles.macroCoinLabel}>
-                {macroProfile
-                  ? isPrivileged(macroProfile)
-                    ? `${privilegedDaysLeft(macroProfile)} gün (${privilegedUntilFormatted(macroProfile)}'a kadar)`
-                    : `Bu ay ${macroProfile.macro_balance} macro biriktirdin`
-                  : 'Macro Coin kazan'}
-              </Text>
+              <AnimatedNumberText
+                style={styles.macroCoinLabel}
+                value={
+                  macroProfile
+                    ? isPrivileged(macroProfile)
+                      ? `${privilegedDaysLeft(macroProfile)} gün (${privilegedUntilFormatted(macroProfile)}'a kadar)`
+                      : `Bu ay ${macroProfile.macro_balance} macro biriktirdin`
+                    : 'Macro Coin kazan'
+                }
+              />
             </View>
             <TouchableOpacity style={styles.macroInfoBtn} onPress={macroModal.open} activeOpacity={0.7}>
               <Info size={16} color="#E8431A" />
@@ -467,13 +472,15 @@ export default function ProfileScreen() {
             }]} />
           </View>
           <View style={styles.macroProgressLabels}>
-            <Text style={styles.macroProgressLeft}>
-              {macroProfile?.macro_balance ?? 0} / {MEMBERSHIP_THRESHOLD} — Ayrıcalıklı Üye
-            </Text>
+            <AnimatedNumberText
+              style={styles.macroProgressLeft}
+              value={`${macroProfile?.macro_balance ?? 0} / ${MEMBERSHIP_THRESHOLD} — Ayrıcalıklı Üye`}
+            />
             {!isPrivileged(macroProfile) && (
-              <Text style={styles.macroProgressRight}>
-                {Math.max(0, MEMBERSHIP_THRESHOLD - (macroProfile?.macro_balance ?? 0))} macro kaldı
-              </Text>
+              <AnimatedNumberText
+                style={styles.macroProgressRight}
+                value={`${Math.max(0, MEMBERSHIP_THRESHOLD - (macroProfile?.macro_balance ?? 0))} macro kaldı`}
+              />
             )}
           </View>
         </TouchableOpacity>
@@ -491,12 +498,14 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('Addresses')}
             showBorder
           />
-          <MenuItem
-            icon={<CreditCard color={COLORS.text.secondary} size={18} />}
-            title="Kayıtlı Kartlarım"
-            onPress={() => navigation.navigate('ProfileSavedCards')}
-            showBorder
-          />
+          {PAYMENT_PROVIDER !== 'paytr_iframe' && (
+            <MenuItem
+              icon={<CreditCard color={COLORS.text.secondary} size={18} />}
+              title="Kayıtlı Kartlarım"
+              onPress={() => navigation.navigate('ProfileSavedCards')}
+              showBorder
+            />
+          )}
           <MenuItem
             icon={<Tag color={COLORS.text.secondary} size={18} />}
             title="Kuponlarım"
@@ -562,7 +571,7 @@ export default function ProfileScreen() {
 
         <View style={styles.footerBrand}>
           <Image
-            source={require('../../assets/eatkcal-icon.png')}
+            source={require('../../assets/kcal-logo.png')}
             style={{ height: 24, width: 100 }}
             resizeMode="contain"
           />

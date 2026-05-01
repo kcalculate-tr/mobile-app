@@ -5,6 +5,7 @@ import { getSupabaseClient } from './supabase'
 export const FALLBACK_MACRO_PRICE = 1500      // TL / macro (admin default ile align)
 export const FALLBACK_THRESHOLD = 15          // macro → ayrıcalıklı üye
 export const FALLBACK_MEMBERSHIP_DAYS = 30    // gün
+export const MACRO_MEMBER_DISCOUNT_PERCENT = 20 // ayrıcalıklı üye sepet indirimi
 
 // Legacy isimler — mevcut consumer'lar kırılmadan yaşasın.
 // Yeni kod useMacroSettings() üzerinden canlı değer okusun.
@@ -33,6 +34,16 @@ export async function fetchMacroProfile(userId: string): Promise<MacroProfile | 
 export function isPrivileged(profile: MacroProfile | null): boolean {
   if (!profile?.privileged_until) return false
   return new Date(profile.privileged_until) > new Date()
+}
+
+export function isMacroMemberFromUntil(privilegedUntil: string | null | undefined): boolean {
+  if (!privilegedUntil) return false
+  return new Date(privilegedUntil) > new Date()
+}
+
+export function calculateMacroDiscount(subtotal: number, isMember: boolean): number {
+  if (!isMember || subtotal <= 0) return 0
+  return Number((subtotal * (MACRO_MEMBER_DISCOUNT_PERCENT / 100)).toFixed(2))
 }
 
 export function privilegedUntilFormatted(profile: MacroProfile | null): string {

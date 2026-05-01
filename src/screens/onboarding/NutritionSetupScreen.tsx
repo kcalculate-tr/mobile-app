@@ -18,6 +18,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../lib/supabase';
 import { RootStackParamList } from '../../navigation/types';
+import {
+  ActivityLevel,
+  ACTIVITY_LABELS,
+  ACTIVITY_ORDER,
+  calculateMacroTargets,
+} from '../../lib/nutrition';
 
 const BRAND = '#C6F04F';
 const BG = '#f6f6f6';
@@ -31,9 +37,7 @@ const TEXT_PRIMARY = '#1a1a1a';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Gender = 'male' | 'female' | '';
 type Goal = 'lose_weight' | 'maintain' | 'gain_weight' | '';
-type Activity = 'low' | 'medium' | 'high' | '';
-
-const ACTIVITY_MULT: Record<string, number> = { low: 1.2, medium: 1.55, high: 1.725 };
+type Activity = ActivityLevel | '';
 
 export default function NutritionSetupScreen() {
   const navigation = useNavigation<Nav>();
@@ -68,15 +72,19 @@ export default function NutritionSetupScreen() {
     if (activity) row.activity_level = activity;
 
     if (gender && age && height && weight && goal && activity) {
-      const h = parseInt(height, 10);
-      const w = parseInt(weight, 10);
-      const a = parseInt(age, 10);
-      const bmr = gender === 'male'
-        ? 10 * w + 6.25 * h - 5 * a + 5
-        : 10 * w + 6.25 * h - 5 * a - 161;
-      const tdee = bmr * (ACTIVITY_MULT[activity] ?? 1.55);
-      const target = goal === 'lose_weight' ? tdee - 500 : goal === 'gain_weight' ? tdee + 500 : tdee;
-      row.target_calories = Math.round(target);
+      const targets = calculateMacroTargets({
+        gender,
+        age: parseInt(age, 10),
+        heightCm: parseInt(height, 10),
+        weightKg: parseInt(weight, 10),
+        goal,
+        activity,
+      });
+      row.target_calories = targets.calories;
+      row.target_protein = targets.protein;
+      row.target_carbs = targets.carbs;
+      row.target_fat = targets.fat;
+      row.target_water = targets.water;
     }
 
     await supabase.from('user_nutrition_profiles').upsert(row);
@@ -174,20 +182,17 @@ export default function NutritionSetupScreen() {
             </View>
 
             <Text style={s.label}>Aktivite Seviyesi</Text>
-            {[
-              { v: 'low' as const, l: 'Az Hareketli', d: 'Masa başı, az egzersiz' },
-              { v: 'medium' as const, l: 'Orta', d: 'Hafta 3-4 gün egzersiz' },
-              { v: 'high' as const, l: 'Aktif', d: 'Her gün yoğun egzersiz' },
-            ].map((opt) => {
-              const active = activity === opt.v;
+            {ACTIVITY_ORDER.map((key) => {
+              const active = activity === key;
+              const { title, description } = ACTIVITY_LABELS[key];
               return (
                 <Pressable
-                  key={opt.v}
-                  onPress={() => setActivity(opt.v)}
+                  key={key}
+                  onPress={() => setActivity(key)}
                   style={[s.activityCard, active && s.activityCardActive]}
                 >
-                  <Text style={[s.activityLabel, active && { color: TEXT_PRIMARY }]}>{opt.l}</Text>
-                  <Text style={s.activityDesc}>{opt.d}</Text>
+                  <Text style={[s.activityLabel, active && { color: TEXT_PRIMARY }]}>{title}</Text>
+                  <Text style={s.activityDesc}>{description}</Text>
                 </Pressable>
               );
             })}

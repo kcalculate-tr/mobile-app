@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   KeyboardAvoidingView,
@@ -26,6 +27,12 @@ import { useCartStore } from '../store/cartStore';
 import { usePantryStore } from '../store/pantryStore';
 import { getSupabaseClient } from '../lib/supabase';
 import { COLORS } from '../constants/theme';
+import {
+  PAYMENT_PROVIDER,
+  PAYTR_FAIL_URL,
+  PAYTR_OK_URL,
+  PAYTR_INIT_URL,
+} from '../config/payment';
 
 type PaymentScreenRouteProp = RouteProp<RootStackParamList, 'PaymentScreen'>;
 type PaymentScreenNavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -46,6 +53,20 @@ function formatExpiry(value: string): string {
 }
 
 export default function PaymentScreen() {
+  const route = useRoute<PaymentScreenRouteProp>();
+  if (PAYMENT_PROVIDER === 'paytr_iframe') {
+    return (
+      <PaytrPaymentFlow
+        orderId={route.params.orderId}
+        orderCode={route.params.orderCode}
+        noticeMessage={route.params.noticeMessage}
+      />
+    );
+  }
+  return <ToslaPaymentFlow />;
+}
+
+function ToslaPaymentFlow() {
   const route = useRoute<PaymentScreenRouteProp>();
   const navigation = useNavigation<PaymentScreenNavProp>();
   const insets = useSafeAreaInsets();
@@ -625,6 +646,338 @@ const styles = StyleSheet.create({
   modalCloseText: {
     fontSize: 14,
     color: '#fff',
+    fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+});
+
+type PaytrFlowProps = {
+  orderId: string;
+  orderCode?: string;
+  noticeMessage?: string;
+};
+
+type PaytrInitResponse = {
+  success?: boolean;
+  token?: string;
+  iframeUrl?: string;
+  merchantOid?: string;
+  error?: string;
+  reason?: string;
+};
+
+const SUPABASE_ANON_KEY = 'sb_publishable_tjeQHxsEgZIObTyf1UHz5Q_Bh4jqS29';
+const POLL_MAX_ATTEMPTS = 5;
+const POLL_INTERVAL_MS = 1000;
+
+const matchesPayTRReturn = (url: string): { matches: boolean; success: boolean } => {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    if (host !== 'eatkcal.com') return { matches: false, success: false };
+    if (u.pathname === '/payment/success') return { matches: true, success: true };
+    if (u.pathname === '/payment/fail') return { matches: true, success: false };
+    return { matches: false, success: false };
+  } catch {
+    return { matches: false, success: false };
+  }
+};
+
+function PaytrPaymentFlow({ orderId, orderCode, noticeMessage }: PaytrFlowProps) {
+  const navigation = useNavigation<PaymentScreenNavProp>();
+  const insets = useSafeAreaInsets();
+  const clearCart = useCartStore((s) => s.clearCart);
+  const addToPantry = usePantryStore((s) => s.addItems);
+
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string>('');
+  const [verifying, setVerifying] = useState(false);
+  const handledRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (!cancelled) setInitError('Oturum bulunamadı.');
+          return;
+        }
+
+        const { data: order } = await supabase
+          .from('orders')
+          .select('customer_name, customer_email, phone, address, city, district')
+          .eq('id', orderId)
+          .maybeSingle();
+
+        const userEmail =
+          (typeof order?.customer_email === 'string' && order.customer_email.trim()) ||
+          session.user.email ||
+          '';
+        const userName =
+          (typeof order?.customer_name === 'string' && order.customer_name.trim()) ||
+          session.user.email ||
+          'Misafir';
+        const userPhone =
+          (typeof order?.phone === 'string' && order.phone.trim()) || '0000000000';
+        const userAddress =
+          [order?.address, order?.district, order?.city]
+            .filter((v) => typeof v === 'string' && v.trim())
+            .join(', ') || 'Adres belirtilmedi';
+
+        const res = await fetch(PAYTR_INIT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            orderId: String(orderId),
+            userEmail,
+            userName,
+            userPhone,
+            userAddress,
+          }),
+        });
+
+        const json = (await res.json().catch(() => ({}))) as PaytrInitResponse;
+        if (cancelled) return;
+
+        if (!res.ok || !json.success || !json.iframeUrl) {
+          setInitError(json.reason || json.error || 'Ödeme başlatılamadı.');
+          return;
+        }
+
+        setIframeUrl(json.iframeUrl);
+      } catch (err) {
+        if (!cancelled) setInitError(err instanceof Error ? err.message : 'Ödeme başlatılamadı.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [orderId]);
+
+  const pollOrderConfirmed = async (): Promise<boolean> => {
+    try {
+      const supabase = getSupabaseClient();
+      for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+        const { data } = await supabase
+          .from('orders')
+          .select('status, payment_status')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (data?.status === 'confirmed' || data?.payment_status === 'paid') return true;
+        if (attempt < POLL_MAX_ATTEMPTS - 1) {
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        }
+      }
+      return false;
+    } catch (err) {
+      console.warn('[paytr] poll error:', err);
+      handleFailure();
+      return false;
+    }
+  };
+
+  const handleSuccess = async () => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    setVerifying(true);
+    haptic.success();
+
+    await pollOrderConfirmed();
+
+    const cartItems = useCartStore.getState().items;
+    if (cartItems.length > 0) {
+      addToPantry(cartItems.map((item) => ({
+        productId: String(item.productId),
+        name: item.name,
+        calories: item.calories ?? 0,
+        protein: item.protein ?? 0,
+        carbs: item.carbs ?? 0,
+        fat: item.fats ?? 0,
+        quantity: item.quantity,
+        imageUrl: item.img ?? undefined,
+      })));
+      clearCart();
+    }
+
+    navigation.replace('OrderSuccess', {
+      orderCode: orderCode ?? String(orderId),
+      orderId: String(orderId),
+      noticeMessage,
+    });
+  };
+
+  const handleFailure = (reason?: string) => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
+      { text: 'Tamam', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  const handleNavigationCheck = (url: string): boolean => {
+    if (handledRef.current) return false;
+    const result = matchesPayTRReturn(url);
+    if (result.matches) {
+      if (result.success) handleSuccess();
+      else handleFailure();
+      return false;
+    }
+    return true;
+  };
+
+  const onShouldStartLoadWithRequest = (request: { url: string }) => {
+    const url = request.url || '';
+    if (__DEV__) console.log('[paytr] onShouldStartLoadWithRequest:', url);
+    return handleNavigationCheck(url);
+  };
+
+  const onNavStateChange = (state: { url?: string }) => {
+    const url = state.url || '';
+    if (__DEV__) console.log('[paytr] onNavigationStateChange:', url);
+    handleNavigationCheck(url);
+  };
+
+  const onLoadStart = (e: { nativeEvent: { url: string } }) => {
+    const url = e.nativeEvent.url || '';
+    if (__DEV__) console.log('[paytr] onLoadStart:', url);
+    handleNavigationCheck(url);
+  };
+
+  const onLoadEnd = (e: { nativeEvent: { url: string } }) => {
+    const url = e.nativeEvent.url || '';
+    if (__DEV__) console.log('[paytr] onLoadEnd:', url);
+    handleNavigationCheck(url);
+  };
+
+  const onWebViewError = (e: { nativeEvent: unknown }) => {
+    console.warn('[paytr] onError:', e.nativeEvent);
+  };
+
+  return (
+    <View style={[paytrStyles.container, { flex: 1 }]}>
+      <View style={[paytrStyles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={paytrStyles.backButton}
+          activeOpacity={0.8}
+        >
+          <ArrowLeft size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={paytrStyles.headerTitle}>Güvenli Ödeme</Text>
+        <View style={{ width: 42 }} />
+      </View>
+
+      <View style={paytrStyles.body}>
+        {iframeUrl ? (
+          <WebView
+            source={{ uri: iframeUrl }}
+            style={{ flex: 1, backgroundColor: '#fff' }}
+            originWhitelist={['*']}
+            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+            onNavigationStateChange={onNavStateChange}
+            onLoadStart={onLoadStart}
+            onLoadEnd={onLoadEnd}
+            onError={onWebViewError}
+            startInLoadingState
+          />
+        ) : (
+          <View style={paytrStyles.loaderWrap}>
+            {initError ? (
+              <>
+                <Text style={paytrStyles.errorText}>{initError}</Text>
+                <Pressable style={paytrStyles.retryBtn} onPress={() => navigation.goBack()}>
+                  <Text style={paytrStyles.retryText}>Geri Dön</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={COLORS.brand.green} />
+                <Text style={paytrStyles.loaderText}>Ödeme sayfası hazırlanıyor…</Text>
+              </>
+            )}
+          </View>
+        )}
+      </View>
+
+      {verifying ? (
+        <View style={paytrStyles.verifyingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={paytrStyles.verifyingText}>Ödeme onaylanıyor…</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const paytrStyles = StyleSheet.create({
+  container: { backgroundColor: '#000' },
+  body: { flex: 1, backgroundColor: '#fff' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: '#000',
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#fff',
+  },
+  loaderWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+  },
+  loaderText: {
+    marginTop: 12,
+    color: COLORS.text.secondary,
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 100,
+    backgroundColor: COLORS.brand.green,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#1a3d00',
+  },
+  verifyingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyingText: {
+    color: '#fff',
+    marginTop: 12,
+    fontSize: 14,
     fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },

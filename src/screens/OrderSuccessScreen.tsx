@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
@@ -27,6 +28,7 @@ export default function OrderSuccessScreen() {
   const navigation = useNavigation<OrderSuccessNavigation>();
   const route = useRoute<OrderSuccessRoute>();
   const { isAuthenticated, loading } = useRequireAuth();
+  const insets = useSafeAreaInsets();
   const [dots, setDots] = useState(1);
   const [macroPts, setMacroPts] = useState<number | null>(route.params.macro_points ?? null);
 
@@ -111,7 +113,7 @@ export default function OrderSuccessScreen() {
     <ScreenContainer style={styles.container}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], width: '100%', alignItems: 'center' }}>
