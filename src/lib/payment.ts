@@ -19,6 +19,10 @@ const readEnvValue = (key: string) =>
       process.env[key],
   );
 
+// GUVENLI FALLBACK: env okunamasa bile (EAS update / build cache / extra propagation
+// bug) PayTR yolu varsayilan olarak aktif kalsin. Iframe akisi tek aktif provider.
+const PAYMENT_PROVIDER_FALLBACK = 'paytr_iframe' as const;
+
 const normalizePath = (value: string) => {
   const trimmed = toSafeString(value);
   if (!trimmed) return '';
@@ -65,8 +69,17 @@ export type PaymentVerifyResult = {
   message: string;
 };
 
+let __paymentConfigLoggedOnce = false;
+
 export const getPaymentConfigStatus = (): PaymentConfigStatus => {
-  const provider = readEnvValue('EXPO_PUBLIC_PAYMENT_PROVIDER').toLowerCase();
+  const fromExtra = toSafeString(
+    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.EXPO_PUBLIC_PAYMENT_PROVIDER,
+  );
+  const fromProcess = toSafeString(process.env.EXPO_PUBLIC_PAYMENT_PROVIDER);
+  // Env okunabildiyse onu kullan; aksi halde guvenli fallback ('paytr_iframe').
+  const rawProvider = fromExtra || fromProcess || PAYMENT_PROVIDER_FALLBACK;
+  const provider = rawProvider.toLowerCase();
+
   const redirectUrl = Linking.createURL('payment-callback');
   const isPaymentEnabled = provider === 'tosla' || provider === 'paytr_iframe' || provider === 'paytr';
 
@@ -74,6 +87,18 @@ export const getPaymentConfigStatus = (): PaymentConfigStatus => {
   // PayTR iframe runs via dedicated edge function, not the legacy API base URL.
   if (provider === 'tosla' && !isApiBaseUrlConfigured()) {
     missingKeys.push('EXPO_PUBLIC_API_BASE_URL');
+  }
+
+  // Tek seferlik defansif log — production'da config sorunlarini tespit icin.
+  if (!__paymentConfigLoggedOnce) {
+    __paymentConfigLoggedOnce = true;
+    console.log('[PAYMENT] config', {
+      processEnv: fromProcess || null,
+      constantsExtra: fromExtra || null,
+      usedFallback: !fromExtra && !fromProcess,
+      finalProvider: provider,
+      isPaymentEnabled,
+    });
   }
 
   return {

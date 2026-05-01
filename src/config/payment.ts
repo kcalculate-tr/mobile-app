@@ -2,7 +2,9 @@ import Constants from 'expo-constants';
 
 type PaymentProvider = 'tosla' | 'paytr_iframe';
 
-const FALLBACK: PaymentProvider = 'tosla';
+// GUVENLI FALLBACK: env okunamasa bile PayTR iframe yolu varsayilan.
+// Bkz. src/lib/payment.ts PAYMENT_PROVIDER_FALLBACK ile aynidir.
+const FALLBACK: PaymentProvider = 'paytr_iframe';
 
 function readEnv(): string | undefined {
   const fromExtra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined)
