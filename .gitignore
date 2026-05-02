@@ -42,3 +42,17 @@ yarn-error.*
 admin-panel/.env
 admin-panel/.env.local
 admin-panel/node_modules/
+
+# Credentials - DO NOT COMMIT
+AuthKey_*.p8
+kcal-*.json
+google-services.json
+
+# Credentials - DO NOT COMMIT
+AuthKey_*.p8
+kcal-*.json
+google-services.json
+
+# Environment files - DO NOT COMMIT
+.env
+branch-panel/.env
