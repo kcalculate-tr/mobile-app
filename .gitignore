@@ -56,3 +56,7 @@ google-services.json
 # Environment files - DO NOT COMMIT
 .env
 branch-panel/.env
+
+# Environment files - DO NOT COMMIT
+.env
+branch-panel/.env
