@@ -152,7 +152,10 @@ type DataAction =
   | { type: 'SET_WEEKLY_CONSUMPTION'; payload: WeeklyDay[] }
   | { type: 'SET_TODAY_MACROS'; payload: MacroTotals }
   | { type: 'SET_WATER_COUNT'; payload: number }
-  | { type: 'SET_CONSUMED_INSTANCES'; payload: Set<string> };
+  | { type: 'SET_CONSUMED_INSTANCES'; payload: Set<string> }
+  | { type: 'ADD_CONSUMED_INSTANCE'; payload: string }
+  | { type: 'REMOVE_CONSUMED_INSTANCE'; payload: string }
+  | { type: 'REMOVE_CONSUMED_INSTANCES_BY_ITEM'; payload: string };
 function dataReducer(state: DataState, action: DataAction): DataState {
   switch (action.type) {
     case 'SET_ORDERS': return { ...state, orders: action.payload };
@@ -170,6 +173,26 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     case 'SET_TODAY_MACROS': return { ...state, todayMacros: action.payload };
     case 'SET_WATER_COUNT': return { ...state, waterCount: action.payload };
     case 'SET_CONSUMED_INSTANCES': return { ...state, consumedInstances: action.payload };
+    // Atomik tek-instance mutasyonları: rapid tap'lerde her handler kendi
+    // kapanışındaki bayat Set'i değil, canlı reducer state'ini baz alır —
+    // birbirini ezip tüketilen kartların geri gelmesini engeller (root fix).
+    case 'ADD_CONSUMED_INSTANCE': {
+      if (state.consumedInstances.has(action.payload)) return state;
+      const next = new Set(state.consumedInstances);
+      next.add(action.payload);
+      return { ...state, consumedInstances: next };
+    }
+    case 'REMOVE_CONSUMED_INSTANCE': {
+      if (!state.consumedInstances.has(action.payload)) return state;
+      const next = new Set(state.consumedInstances);
+      next.delete(action.payload);
+      return { ...state, consumedInstances: next };
+    }
+    case 'REMOVE_CONSUMED_INSTANCES_BY_ITEM': {
+      const next = new Set<string>();
+      state.consumedInstances.forEach(k => { if (!k.startsWith(action.payload)) next.add(k); });
+      return { ...state, consumedInstances: next };
+    }
     default: return state;
   }
 }
@@ -836,6 +859,10 @@ export default function TrackerScreen() {
     opacity: Animated.Value;
   }>>(new Map());
 
+  // Aynı instance için eşzamanlı ikinci insert/delete'i engeller (genuine
+  // çift-tap / retry savunması). Ref → her zaman güncel, kapanış bayatlamaz.
+  const consumeInFlightRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     return () => {
       if (animValuesRef.current) {
@@ -1136,18 +1163,18 @@ export default function TrackerScreen() {
 
   const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
     if (!user) return;
+    // In-flight guard: aynı instance için ikinci eşzamanlı işlemi at.
+    // (handleTukettim ~550ms animasyondan SONRA çağırıyor; bayat kapanışlar
+    // yüzünden aynı instance birden çok kez işlenebiliyordu — BUG.)
+    if (consumeInFlightRef.current.has(instanceId)) return;
+    consumeInFlightRef.current.add(instanceId);
+
     const isCurrentlyConsumed = consumedInstances.has(instanceId);
-
-    // Optimistic update (UI Set)
-    const optimistic = new Set(consumedInstances);
-    if (isCurrentlyConsumed) optimistic.delete(instanceId);
-    else optimistic.add(instanceId);
-    dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: optimistic });
-
     const supabase = getSupabaseClient();
 
     if (isCurrentlyConsumed) {
-      // Untoggle: DB'den sil + listeden kaldır
+      // Untoggle: optimistik atomik çıkar + DB'den sil
+      dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
       dispatchData({
         type: 'REMOVE_CONSUMED_BY_REF',
         payload: { source: 'pantry', source_ref: instanceId },
@@ -1158,15 +1185,16 @@ export default function TrackerScreen() {
         .eq('user_id', user.id)
         .eq('source', 'pantry')
         .eq('source_ref', instanceId);
+      consumeInFlightRef.current.delete(instanceId);
       if (error) {
-        if (__DEV__) console.warn('untoggle consume error:', error);
-        // Rollback Set
-        const rollback = new Set(consumedInstances);
-        rollback.add(instanceId);
-        dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: rollback });
+        console.error('[consume] untoggle error:', formatSupabaseErrorForDevLog(error));
+        // Atomik rollback (bayat full-Set replace YOK)
+        dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
+        Alert.alert('Hata', 'Tüketim geri alınamadı. İnternet bağlantını kontrol edip tekrar dene.');
       }
     } else {
-      // Toggle: DB'ye ekle
+      // Consume: optimistik atomik ekle + DB'ye yaz
+      dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
       const payload = {
         user_id: user.id,
         source: 'pantry' as const,
@@ -1185,12 +1213,19 @@ export default function TrackerScreen() {
         .insert(payload)
         .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
         .single();
+      consumeInFlightRef.current.delete(instanceId);
       if (error) {
-        if (__DEV__) console.warn('toggle consume error:', error);
-        // Rollback Set
-        const rollback = new Set(consumedInstances);
-        rollback.delete(instanceId);
-        dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: rollback });
+        // 23505 = unique_violation: bu source_ref zaten kayıtlı → tüketim
+        // ZATEN işlenmiş demektir. Idempotent: optimistik state'i koru,
+        // hata gösterme, rollback yapma. (source_ref deterministik olduğu
+        // için untoggle/identity semantiği bozulmasın diye randomize ETMİYORUZ.)
+        if ((error as any)?.code === '23505') {
+          if (__DEV__) console.warn('[consume] duplicate source_ref, already recorded:', instanceId);
+        } else {
+          console.error('[consume] insert error:', formatSupabaseErrorForDevLog(error));
+          dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
+          Alert.alert('Hata', 'Tüketim kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene.');
+        }
       } else if (row) {
         dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
       }
@@ -1243,15 +1278,11 @@ export default function TrackerScreen() {
           text: 'Kaldır',
           style: 'destructive',
           onPress: async () => {
-            const next = new Set(consumedInstances);
             const removedRefs: string[] = [];
-            for (const key of next) {
-              if (key.startsWith(itemId)) {
-                next.delete(key);
-                removedRefs.push(key);
-              }
-            }
-            dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: next });
+            consumedInstances.forEach(key => { if (key.startsWith(itemId)) removedRefs.push(key); });
+            // Atomik: bayat full-Set replace yerine reducer canlı state'ten
+            // bu item'ın tüm instance'larını çıkarır (eşzamanlı consume'ları ezmez).
+            dispatchData({ type: 'REMOVE_CONSUMED_INSTANCES_BY_ITEM', payload: itemId });
             for (const ref of removedRefs) {
               dispatchData({
                 type: 'REMOVE_CONSUMED_BY_REF',
@@ -1267,8 +1298,8 @@ export default function TrackerScreen() {
                 .eq('user_id', user.id)
                 .eq('source', 'pantry')
                 .in('source_ref', removedRefs);
-              if (error && __DEV__) {
-                console.warn('pantry delete cascade error:', error);
+              if (error) {
+                console.error('[consume] pantry delete cascade error:', formatSupabaseErrorForDevLog(error));
               }
             }
           },
