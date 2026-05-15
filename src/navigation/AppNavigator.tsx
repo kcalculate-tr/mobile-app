@@ -111,6 +111,7 @@ export default function AppNavigator() {
   const [needsNutrition, setNeedsNutrition] = useState<boolean | null>(null);
   const navVersion = useNavGate((s) => s.version);
   const pendingRoute = useNavGate((s) => s.pendingRoute);
+  const registering = useNavGate((s) => s.registering);
 
   useEffect(() => {
     Promise.all([
@@ -123,7 +124,12 @@ export default function AppNavigator() {
   }, [user?.id, navVersion]);
 
   const resolving = onboardingDone === null || needsNutrition === null || authLoading;
-  const inOnboardingStack = USE_NEW_AUTH && (!onboardingDone || !user || needsNutrition);
+  // `registering`: kayıt alt-akışı sürüyorken VerifyOtp session yaratıp
+  // user'ı set edince gate'in OnboardingStack'i söküp kullanıcıyı kayıt
+  // akışından atmasını engeller (FIX 7 sınıfı). RegisterAddress bitince
+  // setRegistering(false) + refresh ile temizlenir.
+  const inOnboardingStack =
+    USE_NEW_AUTH && (registering || !onboardingDone || !user || needsNutrition);
   const inMainStack = !resolving && !inOnboardingStack;
 
   // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).

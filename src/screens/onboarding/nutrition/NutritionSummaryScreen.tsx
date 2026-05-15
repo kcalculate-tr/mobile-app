@@ -75,6 +75,8 @@ export default function NutritionSummaryScreen() {
       // MainStack'e (Tabs) geçer. Imperative nav.reset YOK — OnboardingStack
       // unmount olacağı için draft.reset() de burada çağrılmıyor (targets'ı
       // null'layıp "Bilgiler eksik" fallback'ini bir kare gösteriyordu).
+      // Kayıt alt-akışından gelindiyse `registering`'i temizle (BUG B).
+      useNavGate.getState().setRegistering(false);
       useNavGate.getState().refresh();
     } catch (err: any) {
       Alert.alert('Hata', err?.message ?? 'Kayıt başarısız.');
@@ -92,6 +94,8 @@ export default function NutritionSummaryScreen() {
         ['@kcal_onboarding_done', 'true'],
         ['@kcal_needs_nutrition_profile', 'false'],
       ]);
+      // Kayıt alt-akışından gelindiyse `registering`'i temizle (BUG B).
+      useNavGate.getState().setRegistering(false);
       useNavGate.getState().setPendingRoute('NutritionProfile');
       useNavGate.getState().refresh();
     } catch (err) {
