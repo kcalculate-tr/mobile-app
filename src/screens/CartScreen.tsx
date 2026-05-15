@@ -169,16 +169,16 @@ export default function CartScreen() {
           <View style={styles.emptyIconWrap}>
             <ShoppingCart size={64} color={COLORS.brand.green} weight="bold" />
           </View>
-          <Text style={styles.emptyTitle}>Sepetiniz Boş</Text>
+          <Text style={styles.emptyTitle}>Sepetin boş</Text>
           <Text style={styles.emptySubtitle}>
-            Ürün eklemek için menüyü inceleyin.
+            Hadi sağlıklı bir öğün ekle!
           </Text>
           <TouchableOpacity
             style={styles.browseButton}
             onPress={() => navigation.navigate('Categories')}
             activeOpacity={0.85}
           >
-            <Text style={styles.browseButtonText}>Menüye Git</Text>
+            <Text style={styles.browseButtonText}>Menüye Göz At</Text>
           </TouchableOpacity>
         </View>
         <DeliveryInfoModal visible={deliveryModal.visible} onClose={deliveryModal.close} />

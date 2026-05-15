@@ -230,8 +230,8 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
       ) : orders.length === 0 ? (
         <View style={s.centered}>
           <ShoppingBag size={48} color="#e0e0e0" weight="thin" />
-          <Text style={s.emptyTitle}>Sipariş Bulunamadı</Text>
-          <Text style={s.emptySub}>Bu kategoride sipariş yok</Text>
+          <Text style={s.emptyTitle}>Henüz sipariş yok</Text>
+          <Text style={s.emptySub}>İlk siparişini ver, burada görünsün.</Text>
           {selectedTab === 'active' || selectedTab === 'all' ? (
             <TouchableOpacity
               onPress={() => navigation.navigate('Tabs')}
