@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Alert, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackgroundLayer } from '../../../components/onboarding/BackgroundLayer';
 import { TopBar } from '../../../components/onboarding/TopBar';
@@ -7,6 +7,7 @@ import { PrimaryCTA } from '../../../components/onboarding/PrimaryCTA';
 import { sportive } from '../../../theme/sportive';
 import { useNutritionDraft } from '../../../store/nutritionDraftStore';
 import { useNavGate } from '../../../store/navGateStore';
+import { useSkipNutrition } from '../../../hooks/useSkipNutrition';
 import { calculateMacroTargets } from '../../../lib/nutrition';
 import { getSupabaseClient } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
@@ -24,6 +25,7 @@ export default function NutritionSummaryScreen() {
   const { user } = useAuth();
   const draft = useNutritionDraft();
   const [loading, setLoading] = useState(false);
+  const { skip, loading: skipping } = useSkipNutrition();
 
   const targets = useMemo(() => {
     if (!draft.gender || !draft.age || !draft.height || !draft.weight || !draft.goal || !draft.activity) {
@@ -121,6 +123,9 @@ export default function NutritionSummaryScreen() {
         </View>
         <View style={styles.footer}>
           <PrimaryCTA label="Tamamla" loading={loading} onPress={handleComplete} />
+          <Pressable onPress={skip} disabled={skipping} style={styles.skipLink}>
+            <Text style={styles.skipText}>Şimdilik Geç</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     </BackgroundLayer>
@@ -159,4 +164,6 @@ const styles = StyleSheet.create({
   macroUnit: { fontFamily: 'PlusJakartaSans_400Regular', fontSize: 14, color: sportive.colors.textTertiary },
   macroLabel: { ...sportive.type.tactical, color: sportive.colors.textSecondary, marginTop: 4 },
   footer: { paddingHorizontal: 24, paddingBottom: 16 },
+  skipLink: { marginTop: 16, alignItems: 'center', padding: 12 },
+  skipText: { fontFamily: sportive.type.body.fontFamily, fontSize: 15, color: sportive.colors.textSecondary },
 });
