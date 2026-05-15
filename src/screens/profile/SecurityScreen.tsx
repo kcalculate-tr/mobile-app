@@ -144,7 +144,8 @@ export default function SecurityScreen() {
                   onPress: async () => {
                     await unregisterPushToken();
                     await signOut();
-                    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+                    // Imperative reset YOK — signOut user'ı null yapınca
+                    // AppNavigator state-driven olarak Auth akışına geçer.
                   },
                 },
               ],

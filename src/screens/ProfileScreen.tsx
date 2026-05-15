@@ -48,6 +48,7 @@ import { useModal } from '../hooks/useModal';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
+import { useNavGate } from '../store/navGateStore';
 import { supabase } from '../lib/supabase';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { unregisterPushToken } from '../lib/notifications';
@@ -235,9 +236,12 @@ export default function ProfileScreen() {
     // Push token'ı önce deaktive et — signOut'tan sonra auth.uid() kaybolur
     await unregisterPushToken();
     await signOut();
-    await AsyncStorage.removeItem('@kcal_onboarding_done');
-    await AsyncStorage.removeItem('@kcal_needs_nutrition_profile');
-    navigation.navigate('Tabs', { screen: 'Home' });
+    // Onboarding bayraklarını temizle, sonra AppNavigator'ı yeniden
+    // değerlendirmeye zorla. Imperative navigate YOK — signOut user'ı null
+    // yapınca AppNavigator state-driven olarak AuthGateway/Welcome'a geçer.
+    // (FIX 7 prensibi: stack scope dışına çıkan nav.navigate patlıyordu.)
+    await AsyncStorage.multiRemove(['@kcal_onboarding_done', '@kcal_needs_nutrition_profile']);
+    useNavGate.getState().refresh();
   };
 
   // BMI
