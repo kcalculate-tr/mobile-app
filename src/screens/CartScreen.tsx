@@ -214,6 +214,14 @@ export default function CartScreen() {
             <View key={item.lineKey} style={styles.itemCard}>
               {/* Main row */}
               <View style={styles.itemRow}>
+                <TouchableOpacity
+                  style={styles.itemTapZone}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    haptic.selection();
+                    navigation.navigate('ProductDetail', { productId: item.productId });
+                  }}
+                >
                 <View style={styles.itemImage}>
                   {item.img ? (
                     <CachedImage uri={transformImageUrl(item.img, ImagePreset.productCard) ?? item.img} style={{ width: 76, height: 76, borderRadius: RADIUS.sm }} />
@@ -267,6 +275,7 @@ export default function CartScreen() {
                     <AnimatedNumberText style={styles.itemPrice} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
                   )}
                 </View>
+                </TouchableOpacity>
 
                 <View style={styles.itemActions}>
                   <TouchableOpacity
@@ -657,6 +666,12 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
     ...SHADOWS.sm,
   },
   itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  itemTapZone: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
