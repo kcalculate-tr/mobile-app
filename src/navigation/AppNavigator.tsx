@@ -4,10 +4,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
-import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen_legacy';
+import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen_legacy';
+import OnboardingStack from './OnboardingStack';
+
+// QA bitince true yap → yeni sportif auth/onboarding flow aktifleşir.
+// Mevcut: false (eski 3 ekran onboarding + tek ekran register/login kullanılıyor).
+const USE_NEW_AUTH = true;
 import { haptic } from '../utils/haptics';
 import { CustomTabBar } from './CustomTabBar';
+import { navigationRef } from './navigationRef';
+import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -25,9 +32,9 @@ import OffersScreen from '../screens/OffersScreen';
 import OrderSuccessScreen from '../screens/OrderSuccessScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
-import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen';
+import LoginScreen from '../screens/auth/LoginScreen_legacy';
+import RegisterScreen from '../screens/auth/RegisterScreen_legacy';
+import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen_legacy';
 import NutritionProfileScreen from '../screens/tracker/NutritionProfileScreen';
 import MeasurementHistoryScreen from '../screens/tracker/MeasurementHistoryScreen';
 
@@ -102,6 +109,8 @@ export default function AppNavigator() {
   const { user, authLoading } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [needsNutrition, setNeedsNutrition] = useState<boolean | null>(null);
+  const navVersion = useNavGate((s) => s.version);
+  const pendingRoute = useNavGate((s) => s.pendingRoute);
 
   useEffect(() => {
     Promise.all([
@@ -111,14 +120,38 @@ export default function AppNavigator() {
       setOnboardingDone(done === 'true');
       setNeedsNutrition(needs === 'true');
     });
-  }, [user?.id]);
+  }, [user?.id, navVersion]);
 
-  if (onboardingDone === null || needsNutrition === null || authLoading) {
+  const resolving = onboardingDone === null || needsNutrition === null || authLoading;
+  const inOnboardingStack = USE_NEW_AUTH && (!onboardingDone || !user || needsNutrition);
+  const inMainStack = !resolving && !inOnboardingStack;
+
+  // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).
+  // State-driven geçiş MainStack'i mount eder; sonra hedef route'a git.
+  useEffect(() => {
+    if (!inMainStack || !pendingRoute || !navigationRef.isReady()) return;
+    const target = pendingRoute;
+    useNavGate.getState().setPendingRoute(null);
+    requestAnimationFrame(() => {
+      if (navigationRef.isReady()) navigationRef.navigate(target as never);
+    });
+  }, [inMainStack, pendingRoute]);
+
+  if (resolving) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f6f6' }}>
         <ActivityIndicator color="#C6F04F" />
       </View>
     );
+  }
+
+  if (inOnboardingStack) {
+    const newInitial = !onboardingDone
+      ? 'Welcome'
+      : !user
+      ? 'AuthGateway'
+      : 'NutritionGender';
+    return <OnboardingStack initialRouteName={newInitial} />;
   }
 
   const initial = !onboardingDone

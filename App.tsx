@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Text, TextInput } from 'react-native';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PortalProvider } from '@gorhom/portal';
@@ -22,12 +22,10 @@ import {
   registerForPushNotifications,
   setupNotificationListeners,
 } from './src/lib/notifications';
-import { RootStackParamList } from './src/navigation/types';
+import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
-
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 setupGlobalErrorHandler();
 
