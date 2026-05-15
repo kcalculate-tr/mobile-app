@@ -20,6 +20,7 @@ import { haptic } from '../utils/haptics';
 import { useAnimatedPress } from '../utils/useAnimatedPress';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedNumberText from '../components/AnimatedNumberText';
+import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { getSupabaseClient } from '../lib/supabase';
 import {
   fetchProductOptionGroups,
@@ -581,8 +582,18 @@ export default function ProductDetailScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { flex: 1, paddingTop: insets.top }]}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={COLORS.brand.green} size="large" />
+        <SkeletonLoader height={320} borderRadius={0} />
+        <View style={{ padding: 16, gap: 14 }}>
+          <SkeletonLoader height={26} width="70%" />
+          <SkeletonLoader height={18} width="35%" />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+            <SkeletonLoader height={56} width="31%" borderRadius={14} />
+            <SkeletonLoader height={56} width="31%" borderRadius={14} />
+            <SkeletonLoader height={56} width="31%" borderRadius={14} />
+          </View>
+          <SkeletonLoader height={14} width="100%" style={{ marginTop: 8 }} />
+          <SkeletonLoader height={14} width="90%" />
+          <SkeletonLoader height={14} width="60%" />
         </View>
       </View>
     );
