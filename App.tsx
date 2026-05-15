@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, TextInput, View, Image } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { PortalProvider } from '@gorhom/portal';
@@ -29,6 +29,13 @@ import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliab
 
 setupGlobalErrorHandler();
 
+// Tüm navigation katmanının arka planı sportive dark (#0A0A0A). Theme'siz
+// NavigationContainer DefaultTheme'in açık gri (~#f2f2f2) background'ını
+// kullanıyordu → OnboardingStack↔MainStack switch'inde beyaz flash.
+const navDarkTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: '#0A0A0A' },
+};
 
 function AppContent() {
   const { session } = useAuth();
@@ -105,15 +112,15 @@ export default function App() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <SafeAreaProvider>
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
         <PortalProvider>
           <AuthProvider>
-            <NavigationContainer ref={navigationRef}>
+            <NavigationContainer ref={navigationRef} theme={navDarkTheme}>
               <AppContent />
             </NavigationContainer>
           </AuthProvider>
           <KeyboardToolbar />
-          <StatusBar style="auto" />
+          <StatusBar style="light" />
         </PortalProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

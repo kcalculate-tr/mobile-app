@@ -58,7 +58,7 @@ function TabNavigator() {
   return (
     <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{ headerShown: false }}
+        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: '#0A0A0A' } }}
       >
       <Tab.Screen
         name="Home"
@@ -145,7 +145,7 @@ export default function AppNavigator() {
 
   if (resolving) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f6f6f6' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0A0A' }}>
         <ActivityIndicator color="#C6F04F" />
       </View>
     );
@@ -176,6 +176,7 @@ export default function AppNavigator() {
         gestureEnabled: true,
         animation: 'slide_from_right',
         animationDuration: 280,
+        contentStyle: { backgroundColor: '#0A0A0A' },
       }}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
