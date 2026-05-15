@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { getSupabaseClient } from '../lib/supabase';
+import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import {
   fetchProductOptionGroups,
   getGroupSelectionLimits,
@@ -149,7 +150,7 @@ export default function ProductDetailScreen() {
         if (!mounted) return;
         console.error('Ürün detayı alınamadı:', error);
         setProduct(null);
-        setErrorMessage('Ürün bilgisi alınamadı.');
+        setErrorMessage(mapSupabaseErrorToUserMessage(error, 'Ürün bilgisi alınamadı.'));
       } finally {
         if (mounted) {
           setLoading(false);

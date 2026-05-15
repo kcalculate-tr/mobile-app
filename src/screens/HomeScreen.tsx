@@ -18,6 +18,7 @@ import { RootStackParamList } from '../navigation/types';
 import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
 import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
+import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
@@ -57,6 +58,7 @@ export default function HomeScreen() {
   const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchText, setSearchText] = useState('');
   const heroFlatListRef = useRef<FlatList>(null);
   const activeDotWidth  = useRef(new Animated.Value(14)).current;
@@ -86,6 +88,7 @@ export default function HomeScreen() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [cats, prods, bannerData, featured] = await Promise.all([
         fetchCategories(),
@@ -98,7 +101,9 @@ export default function HomeScreen() {
       setHeroRows(bannerData.hero);
       setPromoRows(bannerData.promo);
       setFeaturedProducts(featured);
-    } catch {}
+    } catch (e) {
+      setLoadError(mapSupabaseErrorToUserMessage(e, 'İçerikler yüklenemedi. Lütfen tekrar deneyin.'));
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -317,7 +322,7 @@ export default function HomeScreen() {
         {!loading && products.length === 0 && categories.length === 0 && (
           <View style={{ alignItems: 'center', paddingTop: 80 }}>
             <Text style={{ fontSize: 16, color: '#878787', marginBottom: 16, fontFamily: 'PlusJakartaSans_500Medium' }}>
-              İçerikler yüklenemedi
+              {loadError || 'İçerikler yüklenemedi. Lütfen tekrar deneyin.'}
             </Text>
             <TouchableOpacity onPress={fetchData} style={{ backgroundColor: '#C6F04F', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 100 }}>
               <Text style={{ fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000' }}>Tekrar Dene</Text>

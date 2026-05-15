@@ -34,7 +34,7 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { getSupabaseClient } from '../lib/supabase';
-import { formatSupabaseErrorForDevLog } from '../lib/supabaseErrors';
+import { formatSupabaseErrorForDevLog, mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { RootStackParamList } from '../navigation/types';
 import { usePantryStore, PantryItem } from '../store/pantryStore';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
@@ -1017,7 +1017,7 @@ export default function TrackerScreen() {
         if (__DEV__) {
           console.warn(`[tracker] fetchData error: ${formatSupabaseErrorForDevLog(error)}`);
         }
-        dispatchUI({ type: 'SET_ERROR_MESSAGE', payload: 'Veriler yüklenemedi. Lütfen tekrar deneyin.' });
+        dispatchUI({ type: 'SET_ERROR_MESSAGE', payload: mapSupabaseErrorToUserMessage(error, 'Veriler yüklenemedi. Lütfen tekrar deneyin.') });
       } finally {
         dispatchUI({ type: 'SET_DATA_LOADING', payload: false });
       }
