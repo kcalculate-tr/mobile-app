@@ -16,11 +16,13 @@ import { useToast } from '../hooks/useToast';
 import DeliveryInfoModal from '../components/modals/DeliveryInfoModal';
 import { useModal } from '../hooks/useModal';
 import { useCartStore } from '../store/cartStore';
+import { getEffectivePrice, hasDiscount } from '../utils/price';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getSupabaseClient } from '../lib/supabase';
 import { fetchCrosssellProducts } from '../lib/products';
+import { getCampaignUseCount } from '../lib/offers';
 import {
   fetchMacroProfile,
   isPrivileged,
@@ -82,16 +84,34 @@ export default function CartScreen() {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('campaigns')
-      .select('id,title,code,discount_type,discount_value,min_cart_total,max_discount,end_date,is_active')
+      .select('id,title,code,discount_type,discount_value,min_cart_total,max_discount,end_date,is_active,max_uses_per_user')
       .eq('code', code)
       .eq('is_active', true)
       .maybeSingle();
-    setCouponLoading(false);
-    if (error || !data) { setCouponError('Geçersiz veya süresi dolmuş kupon.'); return; }
-    if (data.end_date && new Date(data.end_date) < new Date()) { setCouponError('Bu kuponun süresi dolmuş.'); return; }
-    if (data.min_cart_total > 0 && subtotal < data.min_cart_total) {
-      setCouponError(`Min. sepet tutarı ₺${data.min_cart_total} olmalı.`); return;
+    if (error || !data) {
+      setCouponLoading(false);
+      setCouponError('Geçersiz veya süresi dolmuş kupon.');
+      return;
     }
+    if (data.end_date && new Date(data.end_date) < new Date()) {
+      setCouponLoading(false);
+      setCouponError('Bu kuponun süresi dolmuş.');
+      return;
+    }
+    if (data.min_cart_total > 0 && subtotal < data.min_cart_total) {
+      setCouponLoading(false);
+      setCouponError(`Min. sepet tutarı ₺${data.min_cart_total} olmalı.`);
+      return;
+    }
+    if (data.max_uses_per_user != null) {
+      const used = await getCampaignUseCount(String(data.id));
+      if (used >= Number(data.max_uses_per_user)) {
+        setCouponLoading(false);
+        setCouponError('Bu kuponun kullanım limitine ulaştınız.');
+        return;
+      }
+    }
+    setCouponLoading(false);
     haptic.success();
     setCoupon({
       code: data.code,
@@ -211,7 +231,41 @@ export default function CartScreen() {
                       {item.selectedOptions.labels.join(', ')}
                     </Text>
                   ) : null}
-                  <AnimatedNumberText style={styles.itemPrice} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
+                  {item.selected_options && item.selected_options.length > 0 ? (
+                    <View style={styles.itemTemplateOptions}>
+                      {Object.values(
+                        item.selected_options.reduce<
+                          Record<number, { name: string; values: typeof item.selected_options }>
+                        >((acc, opt) => {
+                          const key = opt.template_id;
+                          if (!acc[key]) acc[key] = { name: opt.template_name, values: [] };
+                          acc[key].values.push(opt);
+                          return acc;
+                        }, {}),
+                      ).map((group, idx) => (
+                        <Text key={`${group.name}-${idx}`} style={styles.itemTemplateOption} numberOfLines={2}>
+                          {group.name}: {group.values
+                            .map((v) =>
+                              `${v.value_name}${v.price_modifier !== 0 ? ` (${v.price_modifier > 0 ? '+' : ''}₺${Number(v.price_modifier).toFixed(0)})` : ''}`,
+                            )
+                            .join(', ')}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  {item.originalUnitPrice && item.originalUnitPrice > item.unitPrice ? (
+                    <View style={styles.itemPriceRow}>
+                      <AnimatedNumberText style={styles.itemPriceDiscounted} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
+                      <Text style={styles.itemPriceStrike}>₺{(item.originalUnitPrice * item.quantity).toFixed(2)}</Text>
+                      {item.discountType ? (
+                        <Text style={styles.itemPriceBadge}>
+                          {item.discountType === 'percent' ? `-%${item.discountValue}` : `-₺${item.discountValue}`}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : (
+                    <AnimatedNumberText style={styles.itemPrice} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
+                  )}
                 </View>
 
                 <View style={styles.itemActions}>
@@ -308,7 +362,14 @@ export default function CartScreen() {
                       {product.name}
                     </Text>
                     <View style={styles.crosssellBottomRow}>
-                      <Text style={styles.crosssellPrice}>₺{product.price.toFixed(2)}</Text>
+                      {hasDiscount(product) ? (
+                        <View style={styles.crosssellPriceCol}>
+                          <Text style={styles.crosssellPriceStrike}>₺{Number(product.price).toFixed(2)}</Text>
+                          <Text style={styles.crosssellPriceDiscounted}>₺{getEffectivePrice(product).toFixed(2)}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.crosssellPrice}>₺{product.price.toFixed(2)}</Text>
+                      )}
                       <TouchableOpacity
                         style={styles.crosssellPlusBtn}
                         activeOpacity={0.7}
@@ -626,8 +687,16 @@ fontFamily: 'PlusJakartaSans_600SemiBold'},
   itemName: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 18 },
   itemOptions: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.size.xs, lineHeight: 15 },
+  itemTemplateOptions: { marginTop: 2, gap: 1 },
+  itemTemplateOption: { color: COLORS.text.secondary, fontSize: TYPOGRAPHY.size.xs, lineHeight: 16 },
   itemPrice: { color: COLORS.text.primary, fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold', marginTop: SPACING.xs },
+  itemPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACING.xs, flexWrap: 'wrap' },
+  itemPriceDiscounted: { color: '#dc2626', fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.bold,
+fontFamily: 'PlusJakartaSans_700Bold' },
+  itemPriceStrike: { color: '#9ca3af', fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_700Bold',
+textDecorationLine: 'line-through' },
+  itemPriceBadge: { color: '#dc2626', fontSize: 10, fontFamily: 'PlusJakartaSans_700Bold' },
   itemActions: {
     alignItems: 'center',
     gap: SPACING.sm,
@@ -725,6 +794,23 @@ fontFamily: 'PlusJakartaSans_700Bold', marginTop: SPACING.xs },
     fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
+  },
+  crosssellPriceCol: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  crosssellPriceStrike: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  crosssellPriceDiscounted: {
+    fontSize: 13,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#dc2626',
   },
   crosssellPlusBtn: {
     width: 24,
