@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Text, TextInput } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Text, TextInput, View, Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -71,15 +71,37 @@ export default function App() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
+  // Premium intro: fontlar hazır olunca native splash'ı gizle, ~1.2s siyah
+  // + KCAL logosu overlay göster, sonra gerçek app'e geç. fontsLoaded zaten
+  // "hazır" sinyali — ayrı appReady state'i gereksiz olurdu.
+  const [introVisible, setIntroVisible] = useState(true);
+
+  useEffect(() => {
+    if (!fontsLoaded) return;
+    SplashScreen.hideAsync().catch(() => {});
+    const timer = setTimeout(() => setIntroVisible(false), 1200);
+    return () => clearTimeout(timer);
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
-  SplashScreen.hideAsync();
 
   // Global font override — tüm Text bileşenleri Plus Jakarta Sans kullanır
   (Text as any).defaultProps = (Text as any).defaultProps ?? {};
   (Text as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
   (TextInput as any).defaultProps = (TextInput as any).defaultProps ?? {};
   (TextInput as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
+
+  if (introVisible) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' }}>
+        <Image
+          source={require('./assets/kcal-onboard-logo.png')}
+          style={{ width: 200, height: 76 }}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  }
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>

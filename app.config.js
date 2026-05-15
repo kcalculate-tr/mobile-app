@@ -1,26 +1,25 @@
 module.exports = {
   expo: {
-    name: 'KCAL',
+    name: 'Kcalculate',
     slug: 'kcal-mobile',
-    version: '1.0.0',
+    version: '1.0.2',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     scheme: 'kcal',
     jsEngine: 'hermes',
     splash: {
-      image: './assets/splash-icon.png',
+      image: './assets/kcal-onboard-logo.png',
       resizeMode: 'contain',
-      backgroundColor: '#000000',
+      backgroundColor: '#0A0A0A',
     },
     assetBundlePatterns: ['**/*'],
     notification: {
-      // TODO: monokrom 256×256 notification-icon.png hazırlanınca değiştir
-      icon: './assets/icon.png',
+      icon: './assets/notification-icon.png',
       color: '#C6F04F',
       iosDisplayInForeground: true,
       androidMode: 'default',
-      androidCollapsedTitle: 'KCAL',
+      androidCollapsedTitle: 'Kcalculate',
     },
     ios: {
       supportsTablet: false,
@@ -40,7 +39,7 @@ module.exports = {
       },
     },
     android: {
-      package: 'com.kcal.mobile',
+      package: 'com.kcalmobile.app',
       versionCode: 1,
       userInterfaceStyle: 'light',
       adaptiveIcon: {
@@ -62,6 +61,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     updates: {
+      enabled: true,
       url: 'https://u.expo.dev/5a65d66c-617a-423a-8346-d6a19e1bfca8',
       fallbackToCacheTimeout: 0,
     },
@@ -98,8 +98,7 @@ module.exports = {
       [
         'expo-notifications',
         {
-          // TODO: monokrom 256×256 notification-icon.png hazırlanınca değiştir
-          icon: './assets/icon.png',
+          icon: './assets/notification-icon.png',
           color: '#C6F04F',
           defaultChannel: 'default',
           sounds: [],
