@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TrendDown, Minus, TrendUp } from 'phosphor-react-native';
 import { BackgroundLayer } from '../../../components/onboarding/BackgroundLayer';
 import { TopBar } from '../../../components/onboarding/TopBar';
@@ -9,7 +8,6 @@ import { ChoiceCard } from '../../../components/onboarding/ChoiceCard';
 import { PrimaryCTA } from '../../../components/onboarding/PrimaryCTA';
 import { sportive } from '../../../theme/sportive';
 import { useNutritionDraft } from '../../../store/nutritionDraftStore';
-import { useNavGate } from '../../../store/navGateStore';
 import { useSkipNutrition } from '../../../hooks/useSkipNutrition';
 import type { Goal } from '../../../lib/nutrition';
 
@@ -23,17 +21,6 @@ export default function NutritionGoalScreen() {
   const nav = useNavigation();
   const { goal, set } = useNutritionDraft();
   const { skip, loading: skipping } = useSkipNutrition();
-
-  // "Makrolarımı kendim gireceğim": 5-adım akışı kes, onboarding'i bitir,
-  // MainStack'e geç ve Beslenme Profili (NutritionProfile) ekranına yönlendir.
-  const handleManualMacros = async () => {
-    await AsyncStorage.multiSet([
-      ['@kcal_onboarding_done', 'true'],
-      ['@kcal_needs_nutrition_profile', 'false'],
-    ]);
-    useNavGate.getState().setPendingRoute('NutritionProfile');
-    useNavGate.getState().refresh();
-  };
 
   return (
     <BackgroundLayer mode="blur">
@@ -56,12 +43,6 @@ export default function NutritionGoalScreen() {
               />
             ))}
           </View>
-
-          <View style={styles.manualWrap}>
-            <Pressable onPress={handleManualMacros} hitSlop={8}>
-              <Text style={styles.manualText}>Makrolarımı kendim gireceğim →</Text>
-            </Pressable>
-          </View>
         </View>
         <View style={styles.footer}>
           <PrimaryCTA label="Devam" showArrow disabled={!goal} onPress={() => nav.navigate('NutritionActivity' as never)} />
@@ -79,13 +60,6 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, paddingTop: 12, flex: 1 },
   h1: { ...sportive.type.h1, color: sportive.colors.textPrimary, marginBottom: 8 },
   sub: { ...sportive.type.body, color: sportive.colors.textSecondary },
-  manualWrap: { marginTop: 24, alignItems: 'center' },
-  manualText: {
-    fontFamily: sportive.type.body.fontFamily,
-    fontSize: 15,
-    color: sportive.colors.textSecondary,
-    textDecorationLine: 'underline',
-  },
   footer: { paddingHorizontal: 24, paddingBottom: 16 },
   skipLink: { marginTop: 16, alignItems: 'center', padding: 12 },
   skipText: { fontFamily: sportive.type.body.fontFamily, fontSize: 15, color: sportive.colors.textSecondary },

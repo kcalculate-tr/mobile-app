@@ -83,6 +83,22 @@ export default function NutritionSummaryScreen() {
     }
   };
 
+  // "Makrolarımı kendim gireceğim": önerilen kalorileri gördükten sonra
+  // manuel giriş. Onboarding'i bitir, MainStack'e geç ve Beslenme Profili
+  // (NutritionProfile) ekranına yönlendir.
+  const handleManualMacros = async () => {
+    try {
+      await AsyncStorage.multiSet([
+        ['@kcal_onboarding_done', 'true'],
+        ['@kcal_needs_nutrition_profile', 'false'],
+      ]);
+      useNavGate.getState().setPendingRoute('NutritionProfile');
+      useNavGate.getState().refresh();
+    } catch (err) {
+      console.error('Manual macros error:', err);
+    }
+  };
+
   if (!targets) {
     const missing = MISSING_LABELS.filter((m) => !draft[m.key]).map((m) => m.label);
     const detail =
@@ -126,6 +142,9 @@ export default function NutritionSummaryScreen() {
           <Pressable onPress={skip} disabled={skipping} style={styles.skipLink}>
             <Text style={styles.skipText}>Şimdilik Geç</Text>
           </Pressable>
+          <Pressable onPress={handleManualMacros} style={styles.manualLink}>
+            <Text style={styles.skipText}>Makrolarımı kendim gireceğim →</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     </BackgroundLayer>
@@ -165,5 +184,6 @@ const styles = StyleSheet.create({
   macroLabel: { ...sportive.type.tactical, color: sportive.colors.textSecondary, marginTop: 4 },
   footer: { paddingHorizontal: 24, paddingBottom: 16 },
   skipLink: { marginTop: 16, alignItems: 'center', padding: 12 },
+  manualLink: { marginTop: 8, alignItems: 'center', padding: 12 },
   skipText: { fontFamily: sportive.type.body.fontFamily, fontSize: 15, color: sportive.colors.textSecondary },
 });
