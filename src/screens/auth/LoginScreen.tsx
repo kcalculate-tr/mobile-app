@@ -8,6 +8,7 @@ import { GlassInput } from '../../components/onboarding/GlassInput';
 import { GlassButton } from '../../components/onboarding/GlassButton';
 import { PrimaryCTA } from '../../components/onboarding/PrimaryCTA';
 import { sportive } from '../../theme/sportive';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useNavGate } from '../../store/navGateStore';
 
@@ -36,10 +37,27 @@ export default function LoginScreen() {
       setErrors({ general: error });
       return;
     }
-    // Yarım kalan bir kayıt akışından Login'e geçilmiş olabilir; `registering`
-    // stuck kalmasın — login her zaman normal gate'ten geçmeli (BUG B edge).
+    // ROOT CAUSE: AppNavigator gate'i
+    //   inOnboardingStack = registering || !onboardingDone || !user || needsNutrition
+    // `@kcal_onboarding_done` false iken auth olmuş kullanıcıyı bile
+    // OnboardingStack'te kilitliyordu. Bu bayrak fresh install'da yok,
+    // ve logout (BUG A multiRemove) onu siliyor → dönen kullanıcı login
+    // olduğunda signIn BAŞARILI ama gate hiç açılmıyor, ekran Login'de
+    // kalıyor → "Giriş Yap'a basınca hiçbir şey olmuyor". Buton bind
+    // sorunu DEĞİL (aynı stack'teki diğer PrimaryCTA'lar çalışıyor);
+    // sorun success sonrası state-driven geçişin hiç tetiklenmemesi.
+    //
+    // Onboarding intro AUTH ÖNCESİ yeni kullanıcı içindir; hesabı olup
+    // login olan biri için bitmiştir. Bayrakları kalıcılaştır, kayıt
+    // alt-akışı bayrağını temizle, AppNavigator'ı yeniden değerlendir.
+    // Imperative nav YOK (FIX 7 prensibi) — gate state-driven MainStack'e
+    // geçer.
+    await AsyncStorage.multiSet([
+      ['@kcal_onboarding_done', 'true'],
+      ['@kcal_needs_nutrition_profile', 'false'],
+    ]);
     useNavGate.getState().setRegistering(false);
-    // success: AuthContext.onAuthStateChange root navigator switch'i yapar
+    useNavGate.getState().refresh();
   };
 
   const handleSocialStub = (provider: string) => {
