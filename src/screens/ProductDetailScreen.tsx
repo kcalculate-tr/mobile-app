@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Animated,
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,7 +27,14 @@ import {
   mapProductRow,
 } from '../lib/products';
 import { RootStackParamList } from '../navigation/types';
-import { OptionGroup, Product } from '../types';
+import { OptionGroup, Product, ProductOptionLink, SelectedOption } from '../types';
+import { fetchProductOptionLinks } from '../lib/productOptions';
+import {
+  calculateOptionsPriceModifier,
+  getEffectivePrice,
+  hasDiscount,
+  formatDiscountBadge,
+} from '../utils/price';
 import { useCartStore } from '../store/cartStore';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import Svg, { Circle } from 'react-native-svg';
@@ -104,6 +112,9 @@ export default function ProductDetailScreen() {
   const [optionsError, setOptionsError] = useState('');
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const [optionLinks, setOptionLinks] = useState<ProductOptionLink[]>([]);
+  const [selectedByTemplate, setSelectedByTemplate] = useState<Record<number, number[]>>({});
+  const [selectedGramajIndex, setSelectedGramajIndex] = useState<number>(-1);
   const scrollViewRef = useRef<ScrollView>(null);
   const optionGroupsOffsetY = useRef(0);
   const groupPositions = useRef<Record<string, number>>({});
@@ -188,6 +199,179 @@ export default function ProductDetailScreen() {
     };
   }, [product?.id]);
 
+  useEffect(() => {
+    if (!product?.id) {
+      setOptionLinks([]);
+      setSelectedByTemplate({});
+      return;
+    }
+    let mounted = true;
+    (async () => {
+      const links = await fetchProductOptionLinks(Number(product.id));
+      if (!mounted) return;
+      setOptionLinks(links);
+
+      const initial: Record<number, number[]> = {};
+      links.forEach((link) => {
+        const tpl = link.template;
+        if (!tpl) return;
+        if (tpl.selection_type === 'single') {
+          const def = tpl.values.find((v) => v.is_default) ?? tpl.values[0];
+          initial[tpl.id] = def ? [def.id] : [];
+        } else {
+          initial[tpl.id] = tpl.values.filter((v) => v.is_default).map((v) => v.id);
+        }
+      });
+      setSelectedByTemplate(initial);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [product?.id]);
+
+  const toggleTemplateOption = (link: ProductOptionLink, valueId: number) => {
+    const tpl = link.template;
+    if (!tpl) return;
+    setSelectedByTemplate((prev) => {
+      const current = prev[tpl.id] || [];
+      if (tpl.selection_type === 'single') {
+        return { ...prev, [tpl.id]: [valueId] };
+      }
+      if (current.includes(valueId)) {
+        return { ...prev, [tpl.id]: current.filter((id) => id !== valueId) };
+      }
+      if (link.effective_max != null && current.length >= link.effective_max) {
+        return prev;
+      }
+      return { ...prev, [tpl.id]: [...current, valueId] };
+    });
+  };
+
+  const builtTemplateOptions = useMemo<SelectedOption[]>(() => {
+    const result: SelectedOption[] = [];
+    optionLinks.forEach((link) => {
+      const tpl = link.template;
+      if (!tpl) return;
+      const selectedIds = selectedByTemplate[tpl.id] || [];
+      selectedIds.forEach((vid) => {
+        const v = tpl.values.find((val) => val.id === vid);
+        if (!v) return;
+        result.push({
+          template_id: tpl.id,
+          template_name: tpl.name,
+          value_id: v.id,
+          value_name: v.name,
+          price_modifier: Number(v.price_modifier) || 0,
+          calorie_modifier: Number(v.calorie_modifier) || 0,
+          protein_modifier: Number(v.protein_modifier) || 0,
+          carbs_modifier: Number(v.carbs_modifier) || 0,
+          fats_modifier: Number(v.fats_modifier) || 0,
+        });
+      });
+    });
+    return result;
+  }, [optionLinks, selectedByTemplate]);
+
+  const templateOptionsPriceMod = useMemo(
+    () => calculateOptionsPriceModifier(builtTemplateOptions),
+    [builtTemplateOptions],
+  );
+
+  // ── Hooks MUST be above early returns (Rules of Hooks) ─────────────────────
+  // Dep on product?.id (stable across re-renders) instead of the array ref —
+  // prevents user gramaj selection from being reset by cart-store-triggered re-renders.
+  const gramajOptions = useMemo(() => {
+    const raw = Array.isArray(product?.gramaj_options) ? product.gramaj_options : [];
+    return raw
+      .map((g: any, idx: number) => ({
+        name: String(g?.name ?? '').trim(),
+        price_modifier: Number(g?.price_modifier) || 0,
+        calorie_modifier: Number(g?.calorie_modifier) || 0,
+        protein_modifier: Number(g?.protein_modifier) || 0,
+        carbs_modifier: Number(g?.carbs_modifier) || 0,
+        fats_modifier: Number(g?.fats_modifier) || 0,
+        is_default: Boolean(g?.is_default),
+        display_order: Number(g?.display_order) || idx,
+      }))
+      .filter((g) => g.name.length > 0)
+      .sort((a, b) => a.display_order - b.display_order);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
+  const selectedGramaj = useMemo(() => {
+    if (!Array.isArray(gramajOptions) || gramajOptions.length === 0) return null;
+    if (selectedGramajIndex < 0 || selectedGramajIndex >= gramajOptions.length) return null;
+    return gramajOptions[selectedGramajIndex] ?? null;
+  }, [gramajOptions, selectedGramajIndex]);
+
+  const gramajPriceMod = useMemo(
+    () => (selectedGramaj ? Number(selectedGramaj.price_modifier) || 0 : 0),
+    [selectedGramaj],
+  );
+
+  const effectiveMacros = useMemo(() => {
+    const base = {
+      calories: Number(product?.calories ?? product?.cal) || 0,
+      protein: Number(product?.protein) || 0,
+      carbs: Number(product?.carbs) || 0,
+      fats: Number(product?.fats) || 0,
+    };
+    if (selectedGramaj) {
+      base.calories += Number(selectedGramaj.calorie_modifier) || 0;
+      base.protein += Number(selectedGramaj.protein_modifier) || 0;
+      base.carbs += Number(selectedGramaj.carbs_modifier) || 0;
+      base.fats += Number(selectedGramaj.fats_modifier) || 0;
+    }
+    const opts = Array.isArray(builtTemplateOptions) ? builtTemplateOptions : [];
+    opts.forEach((opt) => {
+      base.calories += Number(opt?.calorie_modifier) || 0;
+      base.protein += Number(opt?.protein_modifier) || 0;
+      base.carbs += Number(opt?.carbs_modifier) || 0;
+      base.fats += Number(opt?.fats_modifier) || 0;
+    });
+    base.calories = Math.max(0, Math.round(base.calories));
+    base.protein = Math.max(0, base.protein);
+    base.carbs = Math.max(0, base.carbs);
+    base.fats = Math.max(0, base.fats);
+    return base;
+  }, [product, builtTemplateOptions, selectedGramaj]);
+
+  const secondaryOptionLinks = useMemo(() => {
+    return Array.isArray(optionLinks) ? optionLinks : [];
+  }, [optionLinks]);
+
+  // Initialize gramaj selection ONLY when product changes — preserve user
+  // choice across re-renders triggered by cart store / focus / etc.
+  useEffect(() => {
+    if (!Array.isArray(gramajOptions) || gramajOptions.length === 0) {
+      setSelectedGramajIndex(-1);
+      return;
+    }
+    setSelectedGramajIndex((prev) => {
+      if (prev >= 0 && prev < gramajOptions.length) return prev;
+      const defaultIdx = gramajOptions.findIndex((g) => g.is_default);
+      return defaultIdx >= 0 ? defaultIdx : 0;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
+  const validateTemplateSelections = (): { valid: boolean; missing: string[] } => {
+    const missing: string[] = [];
+    optionLinks.forEach((link) => {
+      const tpl = link.template;
+      if (!tpl) return;
+      const selected = selectedByTemplate[tpl.id] || [];
+      if (link.effective_required && selected.length === 0) {
+        missing.push(tpl.name);
+        return;
+      }
+      if (tpl.selection_type === 'multiple' && link.effective_min > 0 && selected.length < link.effective_min) {
+        missing.push(`${tpl.name} (en az ${link.effective_min})`);
+      }
+    });
+    return { valid: missing.length === 0, missing };
+  };
+
   const scrollToNextRequiredGroup = (currentGroupId: string) => {
     setTimeout(() => {
       const currentIndex = optionGroups.findIndex((g) => g.id === currentGroupId);
@@ -271,14 +455,42 @@ export default function ProductDetailScreen() {
     return labels;
   }, [optionGroups, selections]);
 
-  const totalUnitPrice = Number(((product?.price || 0) + extraPrice).toFixed(2));
+  const effectiveBasePrice = useMemo(() => getEffectivePrice(product), [product]);
+  const productHasDiscount = useMemo(() => hasDiscount(product), [product]);
+  const totalUnitPrice = Number(
+    (effectiveBasePrice + extraPrice + templateOptionsPriceMod + gramajPriceMod).toFixed(2),
+  );
+  const originalUnitPrice = Number(
+    ((product?.price || 0) + extraPrice + templateOptionsPriceMod + gramajPriceMod).toFixed(2),
+  );
 
   // Bu varyant sepette mi?
   const currentLineKey = useMemo(() => {
     if (!product) return null;
-    const normalized = normalizeSelectedOptions({ byGroup: selections });
-    return buildCartLineKey(String(product.id), normalized.byGroup);
-  }, [product, selections]);
+    const lineTemplateOptions: SelectedOption[] = [...builtTemplateOptions];
+    if (selectedGramaj) {
+      lineTemplateOptions.unshift({
+        template_id: 0,
+        template_name: 'Et Gramajı',
+        value_id: selectedGramajIndex,
+        value_name: selectedGramaj.name,
+        price_modifier: Number(selectedGramaj.price_modifier) || 0,
+        calorie_modifier: Number(selectedGramaj.calorie_modifier) || 0,
+        protein_modifier: Number(selectedGramaj.protein_modifier) || 0,
+        carbs_modifier: Number(selectedGramaj.carbs_modifier) || 0,
+        fats_modifier: Number(selectedGramaj.fats_modifier) || 0,
+      });
+    }
+    const normalized = normalizeSelectedOptions({
+      byGroup: selections,
+      templateOptions: lineTemplateOptions,
+    });
+    return buildCartLineKey(
+      String(product.id),
+      normalized.byGroup,
+      normalized.templateOptions,
+    );
+  }, [product, selections, builtTemplateOptions, selectedGramaj, selectedGramajIndex]);
 
   const cartEntry = useMemo(
     () => (currentLineKey ? cartItems.find((i) => i.lineKey === currentLineKey) ?? null : null),
@@ -322,6 +534,34 @@ export default function ProductDetailScreen() {
       haptic.error();
       return;
     }
+    const { valid: tplValid, missing } = validateTemplateSelections();
+    const fullMissing = [...missing];
+    if (gramajOptions.length > 0 && !selectedGramaj) {
+      fullMissing.unshift('Et Gramajı');
+    }
+    if (!tplValid || fullMissing.length > 0) {
+      haptic.error();
+      Alert.alert(
+        'Eksik Seçim',
+        `Lütfen şunları seçin:\n${fullMissing.map((m) => `• ${m}`).join('\n')}`,
+      );
+      return;
+    }
+
+    const cartTemplateOptions: SelectedOption[] = [...builtTemplateOptions];
+    if (selectedGramaj) {
+      cartTemplateOptions.unshift({
+        template_id: 0,
+        template_name: 'Et Gramajı',
+        value_id: selectedGramajIndex,
+        value_name: selectedGramaj.name,
+        price_modifier: Number(selectedGramaj.price_modifier) || 0,
+        calorie_modifier: Number(selectedGramaj.calorie_modifier) || 0,
+        protein_modifier: Number(selectedGramaj.protein_modifier) || 0,
+        carbs_modifier: Number(selectedGramaj.carbs_modifier) || 0,
+        fats_modifier: Number(selectedGramaj.fats_modifier) || 0,
+      });
+    }
 
     addItem(
       product,
@@ -329,6 +569,7 @@ export default function ProductDetailScreen() {
         byGroup: selections,
         extraPrice,
         labels: optionLabels,
+        templateOptions: cartTemplateOptions.length > 0 ? cartTemplateOptions : undefined,
       },
       1,
     );
@@ -365,42 +606,42 @@ export default function ProductDetailScreen() {
   }
 
   const totalCalMacros =
-    ((product?.carbs ?? 0) * 4) +
-    ((product?.protein ?? 0) * 4) +
-    ((product?.fats ?? 0) * 9) || 1;
+    (effectiveMacros.carbs * 4) +
+    (effectiveMacros.protein * 4) +
+    (effectiveMacros.fats * 9) || 1;
 
   const macros = [
     {
       label: 'Kalori',
-      value: product?.calories ?? product?.cal,
+      value: effectiveMacros.calories,
       unit: 'kcal',
       color: MACRO_COLORS.calories.main,
       trackColor: MACRO_COLORS.calories.track,
-      percentage: Math.min(((product?.calories ?? product?.cal ?? 0) / 2000), 1),
+      percentage: Math.min(effectiveMacros.calories / 2000, 1),
     },
     {
       label: 'Karb.',
-      value: product?.carbs,
+      value: effectiveMacros.carbs,
       unit: 'g',
       color: MACRO_COLORS.carbs.main,
       trackColor: MACRO_COLORS.carbs.track,
-      percentage: ((product?.carbs ?? 0) * 4) / totalCalMacros,
+      percentage: (effectiveMacros.carbs * 4) / totalCalMacros,
     },
     {
       label: 'Protein',
-      value: product?.protein,
+      value: effectiveMacros.protein,
       unit: 'g',
       color: MACRO_COLORS.protein.main,
       trackColor: MACRO_COLORS.protein.track,
-      percentage: ((product?.protein ?? 0) * 4) / totalCalMacros,
+      percentage: (effectiveMacros.protein * 4) / totalCalMacros,
     },
     {
       label: 'Yağ',
-      value: product?.fats,
+      value: effectiveMacros.fats,
       unit: 'g',
       color: MACRO_COLORS.fat.main,
       trackColor: MACRO_COLORS.fat.track,
-      percentage: ((product?.fats ?? 0) * 9) / totalCalMacros,
+      percentage: (effectiveMacros.fats * 9) / totalCalMacros,
     },
   ];
 
@@ -452,15 +693,6 @@ export default function ProductDetailScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.productTitle}>{product.name}</Text>
 
-          {/* Macro Badges */}
-          {(product.calories ?? product.cal) != null && (
-            <View style={styles.macroContainer}>
-              {macros.map((m) => (
-                <MacroBadge key={m.label} {...m} />
-              ))}
-            </View>
-          )}
-
           {/* Description */}
           {product.desc ? (
             <View style={styles.descriptionSection}>
@@ -468,6 +700,41 @@ export default function ProductDetailScreen() {
               <Text style={styles.descriptionText}>{product.desc}</Text>
             </View>
           ) : null}
+
+          {/* Et Gramajı — equal-width pill tab row (product.gramaj_options) */}
+          {gramajOptions.length > 0 ? (
+            <View style={styles.primaryTabSection}>
+              <Text style={styles.primaryTabLabel}>
+                Et Gramajı
+                <Text style={styles.primaryTabRequiredStar}> *</Text>
+              </Text>
+              <View style={styles.gramajRow}>
+                {gramajOptions.map((g, idx) => {
+                  const isSelected = selectedGramajIndex === idx;
+                  return (
+                    <Pressable
+                      key={`${g.name}-${idx}`}
+                      onPress={() => setSelectedGramajIndex(idx)}
+                      style={[styles.tabPill, isSelected && styles.tabPillSelected]}
+                    >
+                      <Text style={[styles.tabPillText, isSelected && styles.tabPillTextSelected]}>
+                        {g.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Macro Badges (effectiveMacros — opsiyon farkları dahil) */}
+          {(product.calories ?? product.cal) != null && (
+            <View style={styles.macroContainer}>
+              {macros.map((m) => (
+                <MacroBadge key={m.label} {...m} />
+              ))}
+            </View>
+          )}
         </View>
 
         {optionsLoading ? (
@@ -578,6 +845,79 @@ export default function ProductDetailScreen() {
             <Text style={styles.errorBoxText}>{optionsError}</Text>
           </View>
         ) : null}
+
+        {secondaryOptionLinks.length > 0
+          ? secondaryOptionLinks.map((link) => {
+              const tpl = link.template;
+              if (!tpl) return null;
+              const selectedIds = selectedByTemplate[tpl.id] || [];
+              const isMulti = tpl.selection_type === 'multiple';
+              return (
+                <View key={link.id} style={styles.optionGroupCard}>
+                  <View style={styles.optionGroupHeader}>
+                    <Text style={styles.optionGroupTitle}>{tpl.name}</Text>
+                    {link.effective_required ? (
+                      <View style={styles.requiredPill}>
+                        <Text style={styles.requiredPillText}>Zorunlu</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {tpl.description ? (
+                    <Text style={styles.optionGroupDesc}>{tpl.description}</Text>
+                  ) : null}
+                  <View style={styles.optionList}>
+                    {tpl.values.map((value, idx) => {
+                      const isSelected = selectedIds.includes(value.id);
+                      const isDisabled =
+                        isMulti &&
+                        !isSelected &&
+                        link.effective_max != null &&
+                        selectedIds.length >= link.effective_max;
+                      const isLast = idx === tpl.values.length - 1;
+                      return (
+                        <Pressable
+                          key={value.id}
+                          onPress={() => toggleTemplateOption(link, value.id)}
+                          disabled={isDisabled}
+                          style={({ pressed }) => [
+                            styles.optionRow,
+                            !isLast && styles.optionRowDivider,
+                            isDisabled && styles.optionRowDisabled,
+                            pressed && !isDisabled && styles.optionRowPressed,
+                          ]}
+                        >
+                          {isMulti ? (
+                            <View
+                              style={[
+                                styles.checkbox,
+                                isSelected && styles.checkboxSelected,
+                              ]}
+                            >
+                              {isSelected ? (
+                                <CheckIcon size={14} color="#000000" weight="bold" />
+                              ) : null}
+                            </View>
+                          ) : (
+                            <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                              {isSelected ? <View style={styles.radioInner} /> : null}
+                            </View>
+                          )}
+                          <View style={styles.optionLabelRow}>
+                            <Text style={styles.optionName}>{value.name}</Text>
+                            {Number(value.price_modifier) !== 0 ? (
+                              <Text style={styles.optionPriceInline}>
+                                {`(${value.price_modifier > 0 ? '+' : ''}₺${Number(value.price_modifier).toFixed(0)})`}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })
+          : null}
       </ScrollView>
 
       {/* Bottom Bar — iki varyant crossfade ile yer değiştirir */}
@@ -594,7 +934,17 @@ export default function ProductDetailScreen() {
           >
             <View style={styles.priceSection}>
               <Text style={styles.priceLabel}>Toplam Tutar</Text>
-              <Text style={styles.priceValue}>{toCurrency(totalUnitPrice)}</Text>
+              {productHasDiscount ? (
+                <View style={styles.priceRowDiscount}>
+                  <Text style={styles.priceValueDiscounted}>{toCurrency(totalUnitPrice)}</Text>
+                  <View style={styles.priceMetaCol}>
+                    <Text style={styles.priceOriginalStrike}>{toCurrency(originalUnitPrice)}</Text>
+                    <Text style={styles.priceDiscountBadge}>{formatDiscountBadge(product?.discount_type, product?.discount_value)}</Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.priceValue}>{toCurrency(totalUnitPrice)}</Text>
+              )}
             </View>
             <Animated.View style={{ transform: [{ scale: addButtonScale }] }}>
               <TouchableOpacity
@@ -916,7 +1266,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
     backgroundColor: 'transparent',
@@ -1054,6 +1404,34 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
+  priceRowDiscount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  priceValueDiscounted: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#dc2626',
+  },
+  priceMetaCol: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  priceOriginalStrike: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  priceDiscountBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#dc2626',
+  },
   addToCartButton: {
     height: 52,
     borderRadius: 100,
@@ -1104,5 +1482,49 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 14,
+  },
+  primaryTabSection: {
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  primaryTabLabel: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#0f172a',
+    marginBottom: 10,
+  },
+  primaryTabRequiredStar: {
+    color: '#dc2626',
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  gramajRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tabPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#ffffff',
+  },
+  tabPillSelected: {
+    borderColor: '#C6F04F',
+    backgroundColor: '#C6F04F',
+  },
+  tabPillText: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#475569',
+  },
+  tabPillTextSelected: {
+    color: '#0F172A',
+    fontFamily: 'PlusJakartaSans_700Bold',
   },
 });
