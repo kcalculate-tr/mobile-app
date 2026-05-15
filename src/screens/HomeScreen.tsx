@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image as ExpoImage } from 'expo-image';
 import { CachedImage } from '../components/CachedImage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +16,7 @@ import { useCartStore } from '../store/cartStore';
 import { Category, fetchCategories } from '../lib/categories';
 import { RootStackParamList } from '../navigation/types';
 import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
+import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
 import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
@@ -23,13 +25,12 @@ import { useAddressStore } from '../store/addressStore';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SLIDE_W = SCREEN_W - 32 + 12;
+const HERO_SIDE_PADDING = 16;
 const CARD_GAP = 12;
 const CARD_PADDING = 16;
 const CARD_WIDTH = (SCREEN_W - CARD_PADDING * 2 - CARD_GAP) / 2;
 const BANNER_PADDING = 16;
 const FULL_BANNER_WIDTH = SCREEN_W - BANNER_PADDING * 2;
-const BANNER_HEIGHT = 155;
 const PROMO_CELL_GAP = 8;
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -76,7 +77,7 @@ export default function HomeScreen() {
     const interval = setInterval(() => {
       setActiveHero((prev) => {
         const next = prev + 1 >= heroCells.length ? 0 : prev + 1;
-        heroFlatListRef.current?.scrollToOffset({ offset: next * SLIDE_W, animated: true });
+        heroFlatListRef.current?.scrollToOffset({ offset: next * SCREEN_W, animated: true });
         return next;
       });
     }, 3000);
@@ -104,6 +105,42 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Premium "anında render": Home verisi gelince kritik (above-the-fold)
+  // görselleri arka planda memory-disk cache'e ısıt. Prefetch URL'leri
+  // render'la BİREBİR aynı transformlu URL olmalı — expo-image cache'i
+  // URL ile key'lenir; ham URL prefetch edip transformlu render edersek
+  // cache miss olur. İlk paint + tekrar ziyaret + restart sonrası anında.
+  useEffect(() => {
+    if (loading) return;
+    const urls = new Set<string>();
+    heroCells.forEach((c) => {
+      const u = transformImageUrl(c.image_url ?? '', ImagePreset.bannerLarge);
+      if (u) urls.add(u);
+    });
+    promoRows.forEach((r) =>
+      r.cells.forEach((c) => {
+        const u = transformImageUrl(
+          c.image_url ?? '',
+          r.grid_size === 1 ? ImagePreset.bannerLarge : ImagePreset.bannerMedium,
+        );
+        if (u) urls.add(u);
+      }),
+    );
+    categories.slice(0, 10).forEach((cat) => {
+      const u = transformImageUrl(cat.img, ImagePreset.categoryIcon);
+      if (u) urls.add(u);
+    });
+    const cards = featuredProducts.length > 0 ? featuredProducts : products;
+    cards.slice(0, 8).forEach((p) => {
+      const u = transformImageUrl(p.img, ImagePreset.productCard);
+      if (u) urls.add(u);
+    });
+    if (urls.size > 0) {
+      // default cachePolicy 'memory-disk' — CachedImage ile birebir aynı.
+      ExpoImage.prefetch(Array.from(urls)).catch(() => {});
+    }
+  }, [loading, heroCells, promoRows, categories, featuredProducts, products]);
 
   const handleCategoryPress = (cat: Category) => {
     haptic.selection();
@@ -177,11 +214,13 @@ export default function HomeScreen() {
       activeOpacity={0.95}
       onPress={() => resolveNavigation(navigation, cell.navigate_to)}
     >
-      <CachedImage
-        uri={transformImageUrl(cell.image_url ?? '', ImagePreset.bannerLarge) ?? (cell.image_url ?? '')}
-        style={styles.heroImage}
-        priority="high"
-      />
+      <View style={styles.heroSlideInner}>
+        <CachedImage
+          uri={transformImageUrl(cell.image_url ?? '', ImagePreset.bannerLarge) ?? (cell.image_url ?? '')}
+          style={styles.heroImage}
+          priority="high"
+        />
+      </View>
     </TouchableOpacity>
   ), [navigation]);
 
@@ -296,13 +335,9 @@ export default function HomeScreen() {
               keyExtractor={(item) => item.id}
               horizontal
               pagingEnabled
-              snapToAlignment="start"
-              snapToInterval={SLIDE_W}
-              decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: SPACING.md, paddingHorizontal: SPACING.lg }}
               onMomentumScrollEnd={(e) => {
-                const idx = Math.round(e.nativeEvent.contentOffset.x / SLIDE_W);
+                const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
                 setActiveHero(idx);
               }}
               renderItem={renderHeroBanner}
@@ -368,7 +403,7 @@ export default function HomeScreen() {
                         styles.promoCell,
                         {
                           width: cellWidth,
-                          height: BANNER_HEIGHT,
+                          aspectRatio: row.grid_size === 1 ? 2 : 1,
                           marginRight: idx < row.cells.length - 1 ? PROMO_CELL_GAP : 0,
                         },
                       ]}
@@ -438,7 +473,17 @@ export default function HomeScreen() {
                     {product.name}
                   </Text>
                   <View style={styles.productFooter}>
-                    <Text style={styles.productPrice}>₺{product.price.toFixed(2)}</Text>
+                    {hasDiscount(product) ? (
+                      <View style={styles.priceColumn}>
+                        <View style={styles.discountRow}>
+                          <Text style={styles.priceStrikethrough}>₺{Number(product.price).toFixed(2)}</Text>
+                          <Text style={styles.discountBadge}>{formatDiscountBadge(product.discount_type, product.discount_value)}</Text>
+                        </View>
+                        <Text style={styles.productPriceDiscounted}>₺{getEffectivePrice(product).toFixed(2)}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.productPrice}>₺{product.price.toFixed(2)}</Text>
+                    )}
                     {cardQuantities[product.id] ? (
                       <View style={styles.qtyControl}>
                         <TouchableOpacity
@@ -827,6 +872,32 @@ fontFamily: 'PlusJakartaSans_700Bold'},
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
+  priceColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  discountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  priceStrikethrough: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  discountBadge: {
+    fontSize: 10,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#dc2626',
+  },
+  productPriceDiscounted: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#dc2626',
+  },
   addButton: {
     width: 32,
     height: 32,
@@ -845,11 +916,16 @@ fontFamily: 'PlusJakartaSans_700Bold'},
     marginBottom: SPACING.md,
   },
   heroSlide: {
-    width: SCREEN_W - 32,
+    width: SCREEN_W,
     aspectRatio: 2,
+    paddingHorizontal: HERO_SIDE_PADDING,
+  },
+  heroSlideInner: {
+    width: '100%',
+    height: '100%',
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f1f5f9',
   },
   heroImage: {
     width: '100%',
