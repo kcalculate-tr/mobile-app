@@ -18,7 +18,7 @@ import { FLOATING_PILL_GAP, FLOATING_PILL_HEIGHT } from '../constants/layout';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../context/AuthContext';
-import { Campaign, fetchCampaigns } from '../lib/offers';
+import { Campaign, fetchAvailableCampaigns } from '../lib/offers';
 import { BannerCell, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
 import { getSupabaseClient } from '../lib/supabase';
@@ -158,7 +158,7 @@ export default function OffersAndCouponsScreen() {
   const loadOffers = useCallback(async () => {
     setOffersLoading(true); setOffersError('');
     try {
-      const [bannerData, c] = await Promise.all([fetchBannerRows(), fetchCampaigns()]);
+      const [bannerData, c] = await Promise.all([fetchBannerRows(), fetchAvailableCampaigns()]);
       setBanners(bannerData.hero.flatMap((r) => r.cells));
       setCampaigns(c);
     } catch (err: unknown) {
@@ -169,15 +169,8 @@ export default function OffersAndCouponsScreen() {
   const loadCoupons = useCallback(async () => {
     setCouponsLoading(true);
     try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('id,code,title,discount_value,discount_type,end_date')
-        .eq('is_active', true)
-        .not('code', 'is', null)
-        .order('order', { ascending: true });
-      if (error && __DEV__) console.warn('[coupons]', formatSupabaseErrorForDevLog(error));
-      setCoupons((Array.isArray(data) ? data : []).filter(row => row.code).map(row => ({
+      const all = await fetchAvailableCampaigns();
+      setCoupons(all.filter(row => row.code).map(row => ({
         id: String(row.id ?? ''),
         code: String(row.code ?? '').toUpperCase(),
         description: row.title ? String(row.title) : null,
