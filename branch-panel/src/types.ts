@@ -35,9 +35,38 @@ export interface Order {
   scheduled_date?: string | null
   scheduled_time?: string
   address?: string | null
+  address_id?: string | null
+  // addresses tablosundan JOIN sonucu (orders.address_id FK ile bağlı)
+  address_record?: {
+    id: string
+    title?: string | null
+    full_address?: string | null
+    neighbourhood?: string | null
+    district?: string | null
+    city?: string | null
+    street?: string | null
+    building_no?: string | null
+    floor?: string | null
+    apartment_no?: string | null
+    building_name?: string | null
+    contact_name?: string | null
+    contact_phone?: string | null
+  } | null
   created_at: string
   updated_at: string
   delivered_at?: string | null
+}
+
+export interface SelectedOptionSnapshot {
+  template_id: number
+  template_name: string
+  value_id: number
+  value_name: string
+  price_modifier?: number
+  calorie_modifier?: number
+  protein_modifier?: number
+  carbs_modifier?: number
+  fats_modifier?: number
 }
 
 export interface OrderItem {
@@ -50,6 +79,7 @@ export interface OrderItem {
   unit_price?: number
   selectedOptions?: { labels?: string[] }
   options?: string[]
+  selected_options?: SelectedOptionSnapshot[]
 }
 
 export interface Product {

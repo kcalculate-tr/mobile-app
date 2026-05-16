@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarClock, CheckCircle, ClipboardList, History, Loader2, Truck, XCircle, BellRing } from 'lucide-react'
+import { CalendarClock, CheckCircle, ClipboardList, History, Loader2, Printer, Truck, XCircle, BellRing } from 'lucide-react'
 import { supabase } from '../supabase'
-import type { Order, OrderItem } from '../types'
+import type { Order } from '../types'
+import {
+  parseItems,
+  itemLabel,
+  ItemOptions,
+  orderCode,
+  formatTime,
+  formatDateTime,
+  AddressBlock,
+  printReceipt,
+  ORDERS_WITH_ADDRESS_SELECT,
+} from '../lib/orderHelpers'
 
 // Yeni: ödenmiş sipariş kontrolü — payment_status='paid' veya legacy paytr_oid dolu
 function isOrderPaid(o: Order): boolean {
@@ -38,23 +49,8 @@ const MOD_TYPE_LABEL: Record<ModType, string> = {
   address_change: 'Adres Değişikliği',
 }
 
-// ── Yardımcılar ───────────────────────────────────────────────────────────────
-function parseItems(raw: unknown): OrderItem[] {
-  if (!raw) return []
-  if (Array.isArray(raw)) return raw as OrderItem[]
-  try { return JSON.parse(raw as string) as OrderItem[] } catch { return [] }
-}
-function itemLabel(item: OrderItem) { return item.name || 'Ürün' }
-function orderCode(order: Order) {
-  return order.paytr_oid || `#${String(order.id).slice(-6).toUpperCase()}`
-}
-function formatDate(iso: string) {
-  try { return new Date(iso).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }) } catch { return "" }
-}
-function formatDateTime(iso: string) { return `${formatDate(iso)} ${formatTime(iso)}` }
-function formatTime(iso: string) {
-  try { return new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) } catch { return '--:--' }
-}
+// ── Yardımcılar — orderCode/parseItems/format* artık ../lib/orderHelpers'ta ───
+// (DRY: KitchenScreen ile paylaşılan tek kaynak)
 
 // ── Web Audio — 2 tonlu bip (randevulu) ───────────────────────────────────────
 function playScheduledBeep() {
@@ -115,49 +111,108 @@ function CancelModal({ code, onConfirm, onClose, loading }: {
   )
 }
 
-// ── Hazırlık Listesi ──────────────────────────────────────────────────────────
-function PrepList({ orders }: { orders: Order[] }) {
-  const prepList = useMemo(() => {
-    const map = new Map<string, number>()
-    orders.forEach(o => parseItems(o.items).forEach(item => {
-      const name = itemLabel(item)
-      map.set(name, (map.get(name) ?? 0) + (item.quantity ?? 1))
-    }))
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1])
-  }, [orders])
-
-  const slots = useMemo(() => {
-    const map = new Map<string, number>()
-    orders.forEach(o => {
-      const key = [o.scheduled_date, (o.scheduled_time || '').slice(0, 5)].filter(Boolean).join(' ')
-      if (key) map.set(key, (map.get(key) ?? 0) + 1)
+// ── Hazırlık Listesi (tarih+saat sütunlu grid) ────────────────────────────────
+function formatScheduledDateLabel(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
+  try {
+    return new Date(dateStr).toLocaleDateString('tr-TR', {
+      day: '2-digit',
+      month: 'short',
+      weekday: 'short',
     })
-    return Array.from(map.entries()).sort()
+  } catch { return String(dateStr) }
+}
+
+interface PrepGroup {
+  key: string
+  date: string | null
+  time: string
+  orders: Order[]
+  itemCounts: Array<[string, number]>  // [name, qty] desc
+}
+
+function PrepList({ orders }: { orders: Order[] }) {
+  const groups = useMemo<PrepGroup[]>(() => {
+    const map = new Map<string, { date: string | null; time: string; orders: Order[]; counts: Map<string, number> }>()
+
+    orders.forEach(o => {
+      const date = o.scheduled_date ?? null
+      const time = (o.scheduled_time || '').slice(0, 5)
+      const key = `${date ?? ''}|${time}`
+
+      let g = map.get(key)
+      if (!g) {
+        g = { date, time, orders: [], counts: new Map<string, number>() }
+        map.set(key, g)
+      }
+      g.orders.push(o)
+
+      parseItems(o.items).forEach(item => {
+        const name = itemLabel(item)
+        g!.counts.set(name, (g!.counts.get(name) ?? 0) + (item.quantity ?? 1))
+      })
+    })
+
+    return Array.from(map.entries())
+      .map(([key, g]) => ({
+        key,
+        date: g.date,
+        time: g.time,
+        orders: g.orders,
+        itemCounts: Array.from(g.counts.entries()).sort((a, b) => b[1] - a[1]),
+      }))
+      .sort((a, b) => {
+        const ka = `${a.date ?? '9999-99-99'} ${a.time}`
+        const kb = `${b.date ?? '9999-99-99'} ${b.time}`
+        return ka.localeCompare(kb)
+      })
   }, [orders])
 
-  if (prepList.length === 0) return null
+  if (groups.length === 0) return null
 
   return (
     <div className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <ClipboardList size={16} className="text-indigo-500" />
         <p className="text-sm font-bold text-indigo-800">Mutfak Hazırlık Listesi</p>
         <span className="ml-auto text-xs text-indigo-400">{orders.length} sipariş toplamı</span>
       </div>
-      {slots.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {slots.map(([slot, count]) => (
-            <span key={slot} className="rounded-full border border-indigo-200 bg-white px-2.5 py-1 text-xs font-semibold text-indigo-700">
-              🕐 {slot} — {count} sipariş
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-        {prepList.map(([name, qty]) => (
-          <div key={name} className="flex items-center gap-3 rounded-xl border border-indigo-100 bg-white px-3 py-2">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-sm font-black text-indigo-700">{qty}</span>
-            <span className="text-sm font-semibold text-brand-dark leading-tight">{name}</span>
+
+      <div
+        className="grid gap-3"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
+      >
+        {groups.map(group => (
+          <div
+            key={group.key}
+            className="overflow-hidden rounded-xl border-2 border-indigo-200 bg-white"
+          >
+            {/* Sütun başlığı: tarih + saat + sipariş sayısı */}
+            <div className="border-b border-indigo-200 bg-indigo-100 px-3 py-2">
+              {group.date && (
+                <p className="text-xs font-medium text-indigo-600">
+                  🗓️ {formatScheduledDateLabel(group.date)}
+                </p>
+              )}
+              <p className="text-base font-bold text-indigo-900">
+                🕐 {group.time || '—'}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                {group.orders.length} sipariş
+              </p>
+            </div>
+
+            {/* Ürün listesi: en çok adetten az adete */}
+            <div className="space-y-2 p-3">
+              {group.itemCounts.map(([name, count]) => (
+                <div key={name} className="flex items-start gap-2">
+                  <span className="inline-flex h-7 min-w-[28px] flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-sm font-bold text-white">
+                    {count}
+                  </span>
+                  <span className="pt-0.5 text-sm leading-tight text-slate-800">{name}</span>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -205,8 +260,6 @@ function OrderCard({ order, saving, pendingMod, onAccept, onReady, onDeliver, on
           <p className="text-lg font-black text-brand-dark tracking-tight">{code}</p>
           {order.customer_name && <p className="mt-0.5 text-xs font-semibold text-slate-600">{order.customer_name}</p>}
           <p className="mt-0.5 text-[11px] text-slate-300 tabular-nums">{formatDateTime(order.created_at)}</p>
-          {(order as any).phone && <p className="mt-0.5 text-xs text-slate-400">📞 {(order as any).phone}</p>}
-          {(order as any).address && <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">📍 {(order as any).address}</p>}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="text-xs text-slate-400">{formatTime(order.created_at)}</span>
@@ -229,6 +282,9 @@ function OrderCard({ order, saving, pendingMod, onAccept, onReady, onDeliver, on
         </div>
       )}
 
+      {/* Teslimat bilgileri — kurye için kritik */}
+      <AddressBlock order={order} />
+
       {/* Müşteri notu */}
       {note && (
         <div className="mx-4 mb-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5">
@@ -242,20 +298,29 @@ function OrderCard({ order, saving, pendingMod, onAccept, onReady, onDeliver, on
         {items.length === 0
           ? <p className="text-xs italic text-slate-300">Ürün bilgisi yok</p>
           : items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-xs font-black text-indigo-700">{item.quantity}</span>
-              <span className="text-sm font-semibold text-brand-dark leading-tight">{itemLabel(item)}</span>
+            <div key={i}>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-xs font-black text-indigo-700">{item.quantity}</span>
+                <span className="text-sm font-semibold text-brand-dark leading-tight">{itemLabel(item)}</span>
+              </div>
+              <ItemOptions item={item} />
             </div>
           ))
         }
       </div>
 
-      {/* Toplam */}
-      {order.total_price && (
-        <div className="mx-4 mb-2">
+      {/* Toplam + Fiş */}
+      <div className="mx-4 mb-2 flex items-center justify-between">
+        {order.total_price ? (
           <p className="text-sm font-black text-brand-dark">₺{Number(order.total_price).toFixed(2)}</p>
-        </div>
-      )}
+        ) : <span />}
+        <button
+          onClick={() => printReceipt(order)}
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:bg-gray-50"
+        >
+          <Printer size={12} /> Fiş
+        </button>
+      </div>
 
       {/* Butonlar */}
       {!isCompleted && (
@@ -327,7 +392,7 @@ export default function ScheduledScreen() {
   const fetchOrders = useCallback(async () => {
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select(ORDERS_WITH_ADDRESS_SELECT)
       .eq('delivery_type', 'scheduled')
       .in('status', ['pending', 'confirmed', 'preparing', 'on_way', 'delivered', 'cancelled'])
       .order('scheduled_date', { ascending: true })

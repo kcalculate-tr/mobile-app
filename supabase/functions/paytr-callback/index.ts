@@ -1,4 +1,6 @@
 import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { Resend } from 'npm:resend@4.0.0'
+import { layout, highlightCard, orderRow, escapeHtml } from '../_shared/email-templates.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,7 +92,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, user_id, total_price, type, macro_quantity, status, payment_status')
+      .select('id, user_id, total_price, type, macro_quantity, status, payment_status, order_code, delivery_type, scheduled_date, scheduled_slot')
       .eq('merchant_oid', merchantOid)
       .maybeSingle()
 
@@ -144,6 +146,12 @@ Deno.serve(async (req: Request) => {
         } catch (macroErr) {
           console.error('[paytr-callback] completeMacroPurchase failed for', order.id, macroErr)
         }
+      } else {
+        try {
+          await sendOrderConfirmationEmail(supabase, order)
+        } catch (mailErr) {
+          console.error('[paytr-callback] confirmation email failed for', order.id, mailErr)
+        }
       }
     } else {
       const failureReason =
@@ -182,6 +190,89 @@ Deno.serve(async (req: Request) => {
     return okPlain()
   }
 })
+
+type ConfirmableOrder = {
+  id: number | string
+  user_id: string
+  total_price: number | null
+  order_code: string | null
+  delivery_type: string | null
+  scheduled_date: string | null
+  scheduled_slot: string | null
+}
+
+async function sendOrderConfirmationEmail(
+  supabase: SupabaseClient,
+  order: ConfirmableOrder,
+): Promise<void> {
+  const apiKey = Deno.env.get('RESEND_API_KEY') ?? ''
+  if (!apiKey) {
+    console.warn('[paytr-callback] RESEND_API_KEY missing — skipping confirmation email')
+    return
+  }
+
+  const { data: userRes } = await supabase.auth.admin.getUserById(order.user_id)
+  const recipientEmail = userRes?.user?.email
+  if (!recipientEmail) {
+    console.warn('[paytr-callback] no email for user', order.user_id)
+    return
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name')
+    .eq('id', order.user_id)
+    .maybeSingle()
+
+  const firstName = profile?.first_name ?? 'merhaba'
+  const orderCode = order.order_code ?? `#${order.id}`
+  const totalText = `${Number(order.total_price ?? 0).toFixed(2)} ₺`
+  const eta = order.delivery_type === 'scheduled' && order.scheduled_date
+    ? `${order.scheduled_date}${order.scheduled_slot ? ` · ${order.scheduled_slot}` : ''}`
+    : 'Yaklaşık 90 dakika'
+
+  const body = `
+    <div style="color:#FFFFFF;font-size:24px;font-weight:500;letter-spacing:-0.8px;margin-bottom:8px;">
+      Siparişin onaylandı.
+    </div>
+    <div style="color:rgba(255,255,255,0.7);font-size:14px;line-height:22px;margin-bottom:32px;">
+      Merhaba ${escapeHtml(firstName)}, mutfağımız siparişini hazırlamaya başladı.
+    </div>
+
+    ${highlightCard('Sipariş kodu', orderCode)}
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:24px;">
+      ${orderRow('Toplam', totalText)}
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1A1A1A;border-radius:12px;">
+      <tr><td style="padding:16px 20px;">
+        <div style="color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:1.2px;font-weight:500;text-transform:uppercase;margin-bottom:4px;">
+          Tahmini teslimat
+        </div>
+        <div style="color:#FFFFFF;font-size:14px;font-weight:500;">${escapeHtml(eta)}</div>
+      </td></tr>
+    </table>
+  `
+
+  const html = layout({
+    preheader: `Sipariş ${orderCode} onaylandı — ${eta} içinde kapında.`,
+    body,
+    recipientEmail,
+  })
+
+  const resend = new Resend(apiKey)
+  const { error: sendErr } = await resend.emails.send({
+    from: 'KCAL <hello@eatkcal.com>',
+    to: recipientEmail,
+    subject: `Siparişin onaylandı — ${orderCode}`,
+    html,
+  })
+
+  if (sendErr) {
+    console.error('[paytr-callback] resend send failed', sendErr)
+  }
+}
 
 type MacroOrder = {
   id: number | string
