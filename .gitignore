@@ -60,3 +60,9 @@ branch-panel/.env
 # Environment files - DO NOT COMMIT
 .env
 branch-panel/.env
+.vercel
+
+# Build artifacts
+*.aab
+icon-512.png
+supabase/.temp/cli-latest

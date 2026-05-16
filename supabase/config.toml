@@ -26,3 +26,11 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-notification/deno.json"
 entrypoint = "./functions/send-notification/index.ts"
+
+[functions.paytr-callback]
+enabled = true
+verify_jwt = false
+
+[functions.adisyo-webhook-receiver]
+enabled = true
+verify_jwt = false

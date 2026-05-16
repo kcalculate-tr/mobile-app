@@ -18,7 +18,14 @@
     h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
     .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 40px; }
     h2 { font-size: 16px; font-weight: 700; margin: 32px 0 10px; color: var(--green); }
+    h3 { font-size: 14px; font-weight: 700; margin: 20px 0 6px; color: var(--text); }
     p { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+    p strong, li strong { color: var(--text); }
+    ul { font-size: 14px; color: var(--muted); margin: 0 0 12px 22px; }
+    ul li { margin-bottom: 6px; }
+    ul li::marker { color: var(--green); }
+    main a { color: var(--green); text-decoration: none; }
+    main a:hover { text-decoration: underline; }
     .info-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; margin: 32px 0; }
     .info-box p { margin: 0; line-height: 1.8; }
     .info-box strong { color: var(--text); }
@@ -34,7 +41,7 @@
 </header>
 <main>
   <h1>Gizlilik Politikası</h1>
-  <p class="subtitle">Son güncelleme: Mart 2026</p>
+  <p class="subtitle">Son güncelleme: Mayıs 2026</p>
 
   <p>Bu Gizlilik Politikası, <strong>Sekülart Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.</strong> ("KCAL" / "Kcalculate", "biz", "bizim") tarafından işletilen KCAL (Kcalculate) uygulaması ve web sitesi aracılığıyla toplanan kişisel verilerin nasıl işlendiğini açıklamaktadır.</p>
 
@@ -54,10 +61,47 @@
   <h2>4. Çerezler</h2>
   <p>Web sitemiz, kullanıcı deneyimini iyileştirmek amacıyla çerezler kullanabilir. Tarayıcı ayarlarınızdan çerezleri devre dışı bırakabilirsiniz.</p>
 
-  <h2>5. Haklarınız</h2>
+  <h2>5. Veri Saklama Süreleri (Data Retention)</h2>
+  <p>Topladığımız kişisel verileri yasal yükümlülükler ve hizmet kalitesi gereği aşağıdaki sürelerle saklamaktayız:</p>
+
+  <h3>Hesap ve Profil Bilgileri</h3>
+  <p>Adınız, telefon numaranız, e-posta adresiniz ve diğer hesap bilgileriniz, hesabınız aktif olduğu sürece saklanır. Hesabınızı sildiğinizde bu veriler <strong>30 gün</strong> içinde sistemlerimizden kalıcı olarak silinir.</p>
+
+  <h3>Sipariş ve Fatura Bilgileri</h3>
+  <p>Türk Ticaret Kanunu (TTK Madde 82) ve Vergi Usul Kanunu (VUK Madde 253) gereği sipariş kayıtları, fatura bilgileri ve muhasebe kayıtları <strong>10 yıl</strong> süreyle saklanmaktadır. Bu süre, hesap silme talebinizden bağımsız olarak yasal yükümlülüğümüzdür.</p>
+
+  <h3>Ödeme Bilgileri</h3>
+  <p>Kredi kartı bilgileriniz uygulamamızda <strong>saklanmamaktadır</strong>. Ödeme yalnızca PCI-DSS sertifikalı PayTR ödeme sağlayıcısı üzerinden işlenir. Sipariş referans numaraları ve ödeme tutarı kayıtları <strong>10 yıl</strong> süreyle saklanır (yasal yükümlülük).</p>
+
+  <h3>Beslenme ve Sağlık Verileri</h3>
+  <p>Kalori takibi, makro hedefleri ve beslenme profili gibi veriler, hesabınız aktif olduğu sürece saklanır. Hesap silme talebinizden sonra <strong>30 gün</strong> içinde silinir. İstatistiksel analizler için anonim hale getirilebilir (kişi tanımlanamaz).</p>
+
+  <h3>Teslimat Adresleri ve Konum Verileri</h3>
+  <p>Kayıtlı teslimat adresleriniz, hesabınız aktif olduğu sürece saklanır ve hesap silme sonrası <strong>30 gün</strong> içinde silinir. Anlık konum bilgileri <strong>kayıt edilmez</strong>; yalnızca teslimat anında tek seferlik kullanılır.</p>
+
+  <h3>Müşteri Destek Kayıtları</h3>
+  <p>Mobil uygulama içi destek talepleri, telefon görüşmeleri ve WhatsApp yazışmaları, hizmet kalitesi denetimi ve yasal mevzuat gereği <strong>2 yıl</strong> süreyle saklanır.</p>
+
+  <h3>Bildirim ve Cihaz Bilgileri</h3>
+  <p>Push bildirim token'ları ve cihaz tanımlayıcıları, uygulamayı kaldırdığınızda veya hesabınızı sildiğinizde otomatik olarak silinir. Uygulama içi davranış logları (analitik amaçlı) <strong>90 gün</strong> sonra anonim hale getirilir.</p>
+
+  <h3>Çerezler ve Üçüncü Taraf Analitikler</h3>
+  <p>Web sitemizde (eatkcal.com) kullanılan çerezler tarayıcı ayarlarınızla yönetilir. Üçüncü taraf analitik hizmetler (Google Analytics vb.) için <strong>26 ay</strong> varsayılan saklama süresi uygulanır.</p>
+
+  <h3>Veri Silme Talebi</h3>
+  <p>KVKK kapsamındaki silme hakkınızı aşağıdaki kanallardan kullanabilirsiniz:</p>
+  <ul>
+    <li>Mobil uygulama: <strong>Profil → Hesabımı Sil</strong></li>
+    <li>E-posta: <a href="mailto:noreply@eatkcal.com">noreply@eatkcal.com</a></li>
+    <li>Web: <a href="/account-deletion">eatkcal.com/account-deletion</a></li>
+    <li>Telefon: 0232 33 22 100</li>
+  </ul>
+  <p>Talebiniz <strong>30 gün</strong> içinde işleme alınır. Yasal yükümlülük gerektiren veriler (sipariş, fatura, muhasebe kayıtları) yukarıda belirtilen süreler boyunca saklanmaya devam eder.</p>
+
+  <h2>6. Haklarınız</h2>
   <p>KVKK kapsamında verilerinize erişim, düzeltme, silme ve taşıma haklarına sahipsiniz. Bu haklarınızı kullanmak için aşağıdaki iletişim bilgilerinden bize ulaşabilirsiniz.</p>
 
-  <h2>6. İletişim</h2>
+  <h2>7. İletişim</h2>
   <div class="info-box">
     <p>
       <strong>Sekülart Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.</strong><br/>
