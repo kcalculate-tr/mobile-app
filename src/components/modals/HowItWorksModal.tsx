@@ -69,7 +69,7 @@ const FAQ_DATA: FaqSection[] = [
   },
   {
     key: 'products',
-    category: 'Ürünler ve Isıtma',
+    category: 'Ürünler ve Tüketim',
     Icon: CookingPotIcon,
     items: [
       {

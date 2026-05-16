@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
+import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
 
 export const useCartStore = create<CartState>()(
@@ -12,8 +13,45 @@ export const useCartStore = create<CartState>()(
 
       addItem: (product: Product, options: Partial<CartSelectedOptions>, quantity = 1) => {
         const normalizedOptions = normalizeSelectedOptions(options);
-        const lineKey = buildCartLineKey(String(product.id), normalizedOptions.byGroup);
-        const unitPrice = Number((product.price + normalizedOptions.extraPrice).toFixed(2));
+        const templateOptions = normalizedOptions.templateOptions;
+        const lineKey = buildCartLineKey(
+          String(product.id),
+          normalizedOptions.byGroup,
+          templateOptions,
+        );
+        const effectivePrice = getEffectivePrice(product);
+        const templateModifier = calculateOptionsPriceModifier(templateOptions);
+        const unitPrice = Number(
+          (effectivePrice + normalizedOptions.extraPrice + templateModifier).toFixed(2),
+        );
+
+        const productHasDiscount = hasDiscount(product);
+        const originalUnitPrice = productHasDiscount
+          ? Number(
+              ((Number(product.price) || 0) + normalizedOptions.extraPrice + templateModifier).toFixed(2),
+            )
+          : undefined;
+
+        const calorieMod = (templateOptions ?? []).reduce(
+          (s, o) => s + (Number(o.calorie_modifier) || 0),
+          0,
+        );
+        const proteinMod = (templateOptions ?? []).reduce(
+          (s, o) => s + (Number(o.protein_modifier) || 0),
+          0,
+        );
+        const carbsMod = (templateOptions ?? []).reduce(
+          (s, o) => s + (Number(o.carbs_modifier) || 0),
+          0,
+        );
+        const fatsMod = (templateOptions ?? []).reduce(
+          (s, o) => s + (Number(o.fats_modifier) || 0),
+          0,
+        );
+        const effectiveCalories = Math.max(0, Math.round((Number(product.calories) || 0) + calorieMod));
+        const effectiveProtein = Math.max(0, (Number(product.protein) || 0) + proteinMod);
+        const effectiveCarbs = Math.max(0, (Number(product.carbs) || 0) + carbsMod);
+        const effectiveFats = Math.max(0, (Number(product.fats) || 0) + fatsMod);
 
         set((state) => {
           const existingIndex = state.items.findIndex((item) => item.lineKey === lineKey);
@@ -33,12 +71,20 @@ export const useCartStore = create<CartState>()(
             name: product.name,
             quantity,
             unitPrice,
+            originalUnitPrice,
+            discountType: productHasDiscount ? (product.discount_type ?? null) : null,
+            discountValue: productHasDiscount ? (product.discount_value ?? null) : null,
             calories: product.calories,
             protein: product.protein,
             carbs: product.carbs,
             fats: product.fats,
             img: product.img ?? undefined,
             selectedOptions: normalizedOptions,
+            selected_options: templateOptions,
+            effective_calories: effectiveCalories,
+            effective_protein: effectiveProtein,
+            effective_carbs: effectiveCarbs,
+            effective_fats: effectiveFats,
           };
 
           return { items: [...state.items, newItem] };
@@ -91,10 +137,10 @@ export const useCartStore = create<CartState>()(
         const { items } = get();
         return items.reduce(
           (acc, item) => ({
-            kcal: acc.kcal + (item.calories ?? 0) * item.quantity,
-            protein: acc.protein + (item.protein ?? 0) * item.quantity,
-            carbs: acc.carbs + (item.carbs ?? 0) * item.quantity,
-            fats: acc.fats + (item.fats ?? 0) * item.quantity,
+            kcal: acc.kcal + (item.effective_calories ?? item.calories ?? 0) * item.quantity,
+            protein: acc.protein + (item.effective_protein ?? item.protein ?? 0) * item.quantity,
+            carbs: acc.carbs + (item.effective_carbs ?? item.carbs ?? 0) * item.quantity,
+            fats: acc.fats + (item.effective_fats ?? item.fats ?? 0) * item.quantity,
           }),
           { kcal: 0, protein: 0, carbs: 0, fats: 0 },
         );
@@ -103,6 +149,11 @@ export const useCartStore = create<CartState>()(
     {
       name: 'kcal-cart',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 4,
+      migrate: (_persistedState, _version) => ({
+        items: [],
+        appliedCoupon: null,
+      }) as Partial<CartState>,
     },
   ),
 );

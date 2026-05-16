@@ -1,5 +1,16 @@
 // ─── Product ─────────────────────────────────────────────────────────────────
 
+export interface GramajOption {
+  name: string;
+  price_modifier: number;
+  calorie_modifier: number;
+  protein_modifier: number;
+  carbs_modifier: number;
+  fats_modifier: number;
+  is_default: boolean;
+  display_order: number;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -19,6 +30,9 @@ export interface Product {
   order?: number;
   is_favorite?: boolean;
   favorite_order?: number;
+  discount_type?: 'percent' | 'fixed' | string | null;
+  discount_value?: number | null;
+  gramaj_options?: GramajOption[];
 }
 
 export interface OptionItem {
@@ -41,12 +55,65 @@ export interface OptionGroup {
   items: OptionItem[];
 }
 
+// ─── Option Templates (new reusable model) ───────────────────────────────────
+
+export interface OptionTemplateValue {
+  id: number;
+  template_id: number;
+  name: string;
+  price_modifier: number;
+  calorie_modifier: number;
+  protein_modifier: number;
+  carbs_modifier: number;
+  fats_modifier: number;
+  is_default: boolean;
+  display_order: number;
+}
+
+export interface OptionTemplate {
+  id: number;
+  name: string;
+  description?: string | null;
+  selection_type: 'single' | 'multiple';
+  is_required_default: boolean;
+  min_selections: number;
+  max_selections: number | null;
+  values: OptionTemplateValue[];
+}
+
+export interface ProductOptionLink {
+  id: number;
+  product_id: number;
+  template_id: number;
+  is_required_override: boolean | null;
+  min_selections_override: number | null;
+  max_selections_override: number | null;
+  display_order: number;
+  template?: OptionTemplate;
+  effective_required: boolean;
+  effective_min: number;
+  effective_max: number | null;
+}
+
+export interface SelectedOption {
+  template_id: number;
+  template_name: string;
+  value_id: number;
+  value_name: string;
+  price_modifier: number;
+  calorie_modifier: number;
+  protein_modifier: number;
+  carbs_modifier: number;
+  fats_modifier: number;
+}
+
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 
 export interface CartSelectedOptions {
   byGroup: Record<string, string[]>;
   extraPrice: number;
   labels: string[];
+  templateOptions?: SelectedOption[];
 }
 
 export interface CartItem {
@@ -55,12 +122,20 @@ export interface CartItem {
   name: string;
   quantity: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  discountType?: string | null;
+  discountValue?: number | null;
   calories?: number;
   protein?: number;
   carbs?: number;
   fats?: number;
   img?: string;
   selectedOptions: CartSelectedOptions;
+  selected_options?: SelectedOption[];
+  effective_calories?: number;
+  effective_protein?: number;
+  effective_carbs?: number;
+  effective_fats?: number;
 }
 
 export interface CartMacros {

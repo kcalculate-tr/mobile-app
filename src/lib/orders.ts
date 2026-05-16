@@ -58,6 +58,27 @@ const toSafeNumber = (value: unknown) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Pickup synthetic address (`id: 'pickup'`) ya da geçersiz id durumunda
+// orders.address_id NULL kalır (FK constraint patlamasın). Diğer her durumda
+// gerçek UUID gönderilir — kurye/Edge Function fallback'i devre dışı kalır
+// ve doğru adres garanti edilir.
+const resolveAddressId = (
+  address: Address,
+  deliveryMethod: 'delivery' | 'pickup',
+): string | null => {
+  if (deliveryMethod === 'pickup') return null;
+  const id = String(address?.id ?? '').trim();
+  if (!id || id === 'pickup' || !UUID_REGEX.test(id)) {
+    if (__DEV__) {
+      console.warn('[orders] resolveAddressId: address.id not a valid UUID', { id });
+    }
+    return null;
+  }
+  return id;
+};
+
 const insertOrderWithFallback = async (
   supabase: SupabaseClient,
   payload: Record<string, unknown>,
@@ -167,6 +188,7 @@ export const createOrderFromCart = async ({
   deliveryFee,
   discountAmount,
   couponCode,
+  couponId,
   deliveryMethod = 'delivery',
   orderNote,
   deliveryType,
@@ -184,6 +206,7 @@ export const createOrderFromCart = async ({
   deliveryFee: number;
   discountAmount: number;
   couponCode?: string | null;
+  couponId?: string | null;
   deliveryMethod?: 'delivery' | 'pickup';
   orderNote?: string | null;
   deliveryType?: 'immediate' | 'scheduled' | null;
@@ -210,11 +233,12 @@ export const createOrderFromCart = async ({
     quantity: item.quantity,
     unit_price: item.unitPrice,
     total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
-    calories: item.calories,
-    protein: item.protein,
-    carbs: item.carbs,
-    fats: item.fats,
-    selected_options: item.selectedOptions,
+    calories: item.effective_calories ?? item.calories,
+    protein: item.effective_protein ?? item.protein,
+    carbs: item.effective_carbs ?? item.carbs,
+    fats: item.effective_fats ?? item.fats,
+    selected_options: item.selected_options ?? [],
+    legacy_selected_options: item.selectedOptions,
   }));
 
   const orderPayload: Record<string, unknown> = {
@@ -224,6 +248,7 @@ export const createOrderFromCart = async ({
     customer_name: customerName,
     customer_email: customerEmail,
     address: address.full_address,
+    address_id: resolveAddressId(address, deliveryMethod),
     city: address.city || 'İzmir',
     district: address.district,
     phone: customerPhone,
@@ -238,6 +263,7 @@ export const createOrderFromCart = async ({
     order_code: orderCode,
     delivery_method: deliveryMethod,
     coupon_code: couponCode || null,
+    coupon_id: couponId || null,
     order_note: orderNote || null,
     delivery_type: deliveryType || 'immediate',
     scheduled_date: scheduledDate || null,
@@ -265,6 +291,11 @@ export const createOrderFromCart = async ({
     unit_price: Number(item.unitPrice.toFixed(2)),
     total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
     product_name: item.name,
+    selected_options: item.selected_options ?? [],
+    calories: item.effective_calories ?? item.calories ?? null,
+    protein: item.effective_protein ?? item.protein ?? null,
+    carbs: item.effective_carbs ?? item.carbs ?? null,
+    fat: item.effective_fats ?? item.fats ?? null,
   }));
 
   if (orderItemsPayload.length > 0) {
@@ -319,6 +350,7 @@ export const createOrderDraftForPayment = async ({
   deliveryFee,
   discountAmount,
   couponCode,
+  couponId,
   deliveryMethod = 'delivery',
   orderNote,
   deliveryType,
@@ -336,6 +368,7 @@ export const createOrderDraftForPayment = async ({
   deliveryFee: number;
   discountAmount: number;
   couponCode?: string | null;
+  couponId?: string | null;
   deliveryMethod?: 'delivery' | 'pickup';
   orderNote?: string | null;
   deliveryType?: 'immediate' | 'scheduled' | null;
@@ -362,11 +395,12 @@ export const createOrderDraftForPayment = async ({
     quantity: item.quantity,
     unit_price: item.unitPrice,
     total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
-    calories: item.calories,
-    protein: item.protein,
-    carbs: item.carbs,
-    fats: item.fats,
-    selected_options: item.selectedOptions,
+    calories: item.effective_calories ?? item.calories,
+    protein: item.effective_protein ?? item.protein,
+    carbs: item.effective_carbs ?? item.carbs,
+    fats: item.effective_fats ?? item.fats,
+    selected_options: item.selected_options ?? [],
+    legacy_selected_options: item.selectedOptions,
   }));
 
   const orderPayload: Record<string, unknown> = {
@@ -376,6 +410,7 @@ export const createOrderDraftForPayment = async ({
     customer_name: customerName,
     customer_email: customerEmail,
     address: address.full_address,
+    address_id: resolveAddressId(address, deliveryMethod),
     city: address.city || 'İzmir',
     district: address.district,
     phone: customerPhone,
@@ -390,6 +425,7 @@ export const createOrderDraftForPayment = async ({
     order_code: orderCode,
     delivery_method: deliveryMethod,
     coupon_code: couponCode || null,
+    coupon_id: couponId || null,
     order_note: orderNote || null,
     delivery_type: deliveryType || 'immediate',
     scheduled_date: scheduledDate || null,
@@ -416,6 +452,11 @@ export const createOrderDraftForPayment = async ({
     unit_price: Number(item.unitPrice.toFixed(2)),
     total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
     product_name: item.name,
+    selected_options: item.selected_options ?? [],
+    calories: item.effective_calories ?? item.calories ?? null,
+    protein: item.effective_protein ?? item.protein ?? null,
+    carbs: item.effective_carbs ?? item.carbs ?? null,
+    fat: item.effective_fats ?? item.fats ?? null,
   }));
 
   if (orderItemsPayload.length > 0) {

@@ -50,6 +50,22 @@ export const mapProductRow = (row: Record<string, unknown>): Product => {
     order: row.order != null ? toNumber(row.order, 0) : undefined,
     is_favorite: row.is_favorite != null ? Boolean(row.is_favorite) : undefined,
     favorite_order: row.favorite_order != null ? toNumber(row.favorite_order, 0) : undefined,
+    discount_type: typeof row.discount_type === 'string' && row.discount_type ? row.discount_type : null,
+    discount_value: row.discount_value != null ? toNumber(row.discount_value, 0) : null,
+    gramaj_options: Array.isArray(row.gramaj_options)
+      ? (row.gramaj_options as Array<Record<string, unknown>>)
+          .filter((g) => g && typeof g === 'object')
+          .map((g, idx) => ({
+            name: toSafeString(g.name),
+            price_modifier: toNumber(g.price_modifier, 0),
+            calorie_modifier: toNumber(g.calorie_modifier, 0),
+            protein_modifier: toNumber(g.protein_modifier, 0),
+            carbs_modifier: toNumber(g.carbs_modifier, 0),
+            fats_modifier: toNumber(g.fats_modifier, 0),
+            is_default: Boolean(g.is_default),
+            display_order: g.display_order != null ? toNumber(g.display_order, idx) : idx,
+          }))
+      : [],
   };
 };
 

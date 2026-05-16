@@ -1143,6 +1143,7 @@ export default function CheckoutScreen() {
           deliveryFee,
           discountAmount,
           couponCode: appliedCoupon?.code || appliedCoupon?.campaign?.code || null,
+          couponId: appliedCoupon?.campaignId || appliedCoupon?.campaign?.id || null,
           deliveryMethod: orderDeliveryMethod,
           orderNote: orderNote.trim() || null,
           deliveryType: scheduledFields.delivery_type,
@@ -1742,9 +1743,33 @@ export default function CheckoutScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Sepet Özeti</Text>
             {items.map((item) => (
-              <View key={item.lineKey} style={styles.summaryRow}>
-                <Text style={styles.summaryLabel} numberOfLines={1}>{item.name} ×{item.quantity}</Text>
-                <AnimatedNumberText style={styles.summaryValue} value={toCurrency(item.unitPrice * item.quantity)} />
+              <View key={item.lineKey} style={styles.summaryItemBlock}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel} numberOfLines={1}>{item.name} ×{item.quantity}</Text>
+                  <AnimatedNumberText style={styles.summaryValue} value={toCurrency(item.unitPrice * item.quantity)} />
+                </View>
+                {item.selected_options && item.selected_options.length > 0 ? (
+                  <View style={styles.summaryItemOptions}>
+                    {Object.values(
+                      item.selected_options.reduce<
+                        Record<number, { name: string; values: typeof item.selected_options }>
+                      >((acc, opt) => {
+                        const key = opt.template_id;
+                        if (!acc[key]) acc[key] = { name: opt.template_name, values: [] };
+                        acc[key].values.push(opt);
+                        return acc;
+                      }, {}),
+                    ).map((group, idx) => (
+                      <Text key={`${group.name}-${idx}`} style={styles.summaryItemOption} numberOfLines={2}>
+                        {group.name}: {group.values
+                          .map((v) =>
+                            `${v.value_name}${v.price_modifier !== 0 ? ` (${v.price_modifier > 0 ? '+' : ''}₺${Number(v.price_modifier).toFixed(0)})` : ''}`,
+                          )
+                          .join(', ')}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             ))}
             <View style={styles.divider} />
@@ -2182,6 +2207,19 @@ const styles = StyleSheet.create({
   },
 
   // Summary
+  summaryItemBlock: {
+    marginBottom: 4,
+  },
+  summaryItemOptions: {
+    marginTop: 2,
+    paddingLeft: 8,
+    gap: 1,
+  },
+  summaryItemOption: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.secondary,
+    lineHeight: 16,
+  },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

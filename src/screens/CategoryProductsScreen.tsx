@@ -26,6 +26,7 @@ import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { CategoryProduct, fetchProductsByCategory } from '../lib/categories';
 import { fetchProductOptionGroups } from '../lib/products';
+import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
 import { useCartStore } from '../store/cartStore';
 import { RootStackParamList } from '../navigation/types';
@@ -95,6 +96,8 @@ export default function CategoryProductsScreen() {
           calories: item.calories ?? undefined,
           protein: item.protein ?? undefined,
           is_available: true,
+          discount_type: item.discount_type ?? null,
+          discount_value: item.discount_value ?? null,
         },
         {},
         1,
@@ -193,9 +196,19 @@ export default function CategoryProductsScreen() {
                   {item.name}
                 </Text>
                 <View style={styles.productFooter}>
-                  <Text style={styles.productPrice}>
-                    ₺{Number(item.price || 0).toFixed(2)}
-                  </Text>
+                  {hasDiscount(item) ? (
+                    <View style={styles.priceColumn}>
+                      <View style={styles.discountRow}>
+                        <Text style={styles.priceStrikethrough}>₺{Number(item.price || 0).toFixed(2)}</Text>
+                        <Text style={styles.discountBadge}>{formatDiscountBadge(item.discount_type, item.discount_value)}</Text>
+                      </View>
+                      <Text style={styles.productPriceDiscounted}>₺{getEffectivePrice(item).toFixed(2)}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.productPrice}>
+                      ₺{Number(item.price || 0).toFixed(2)}
+                    </Text>
+                  )}
                   {(() => {
                     const numericId =
                       typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
@@ -379,6 +392,34 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     color: '#000000',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  priceColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  discountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  priceStrikethrough: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  discountBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#dc2626',
+  },
+  productPriceDiscounted: {
+    color: '#dc2626',
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
