@@ -29,7 +29,7 @@ import {
   mapProductRow,
 } from '../lib/products';
 import { RootStackParamList } from '../navigation/types';
-import { BundleSelection, OptionGroup, Product, ProductOptionLink, SelectedOption } from '../types';
+import { BundleSelection, OptionGroup, OptionItem, Product, ProductOptionLink, SelectedOption } from '../types';
 import { fetchProductOptionLinks } from '../lib/productOptions';
 import {
   calculateOptionsPriceModifier,
@@ -475,20 +475,40 @@ export default function ProductDetailScreen() {
     return Number(total.toFixed(2));
   }, [optionGroups, selections]);
 
-  const optionLabels = useMemo(() => {
-    const labels: string[] = [];
-
+  // ── FIX 5: tekli üründe linked_product_id'li seçili opsiyonlar AYRI
+  // cart_item olur (her biri kendi fiyatı + makrosu, ayrı silinebilir).
+  // Sade opsiyonlar (linkedProductId yok) ve bundle bu mantığın DIŞINDA —
+  // mevcut davranışları korunur.
+  const splitSelectedItems = useMemo<{ groupId: string; item: OptionItem }[]>(() => {
+    if (isBundle) return [];
+    const out: { groupId: string; item: OptionItem }[] = [];
     optionGroups.forEach((group) => {
       const selectedIds = new Set(selections[group.id] || []);
       group.items.forEach((item) => {
-        if (selectedIds.has(item.id)) {
-          labels.push(`${group.name}: ${item.name}`);
+        if (selectedIds.has(item.id) && item.linkedProductId != null) {
+          out.push({ groupId: group.id, item });
         }
       });
     });
+    return out;
+  }, [isBundle, optionGroups, selections]);
 
-    return labels;
-  }, [optionGroups, selections]);
+  const splitItemIdSet = useMemo(
+    () => new Set(splitSelectedItems.map((s) => s.item.id)),
+    [splitSelectedItems],
+  );
+
+  // Ana cart_item'ın taşıyacağı seçimler = split EDİLMEYEN opsiyonlar.
+  // currentLineKey ve ana addItem çağrısı bunu kullanır ki split sonrası
+  // inCart/stepper tutarlı kalsın ve mükerrer ekleme olmasın.
+  const nonSplitByGroup = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    Object.entries(selections).forEach(([gid, ids]) => {
+      const kept = ids.filter((id) => !splitItemIdSet.has(id));
+      if (kept.length > 0) out[gid] = kept;
+    });
+    return out;
+  }, [selections, splitItemIdSet]);
 
   const effectiveBasePrice = useMemo(() => getEffectivePrice(product), [product]);
   const productHasDiscount = useMemo(() => hasDiscount(product), [product]);
@@ -517,7 +537,7 @@ export default function ProductDetailScreen() {
       });
     }
     const normalized = normalizeSelectedOptions({
-      byGroup: selections,
+      byGroup: nonSplitByGroup,
       templateOptions: lineTemplateOptions,
     });
     return buildCartLineKey(
@@ -525,7 +545,7 @@ export default function ProductDetailScreen() {
       normalized.byGroup,
       normalized.templateOptions,
     );
-  }, [product, selections, builtTemplateOptions, selectedGramaj, selectedGramajIndex]);
+  }, [product, nonSplitByGroup, builtTemplateOptions, selectedGramaj, selectedGramajIndex]);
 
   const cartEntry = useMemo(
     () => (currentLineKey ? cartItems.find((i) => i.lineKey === currentLineKey) ?? null : null),
@@ -619,17 +639,48 @@ export default function ProductDetailScreen() {
         })
       : [];
 
+    // FIX 5: split EDİLEN opsiyonlar ana item'a girmesin — ana item yalnız
+    // base (+ sade opsiyonlar + eski template/gramaj). Split opsiyonlar
+    // aşağıda ayrı cart_item olarak eklenir. Bundle bu mantığın dışında.
+    let mainExtraPrice = 0;
+    const mainLabels: string[] = [];
+    optionGroups.forEach((group) => {
+      const selectedIds = new Set(selections[group.id] || []);
+      group.items.forEach((item) => {
+        if (!selectedIds.has(item.id) || splitItemIdSet.has(item.id)) return;
+        mainExtraPrice += item.priceAdjustment;
+        mainLabels.push(`${group.name}: ${item.name}`);
+      });
+    });
+
     addItem(
       product,
       {
-        byGroup: selections,
-        extraPrice,
-        labels: optionLabels,
+        byGroup: nonSplitByGroup,
+        extraPrice: Number(mainExtraPrice.toFixed(2)),
+        labels: mainLabels,
         templateOptions: cartTemplateOptions.length > 0 ? cartTemplateOptions : undefined,
         bundleSelections: bundleSelections.length > 0 ? bundleSelections : undefined,
       },
       1,
     );
+
+    // Her linked opsiyon = bağlı gerçek ürün gibi AYRI cart_item.
+    // id = linked_product_id (cart satırına tıklayınca o ürünün detayına
+    // gider), fiyat = price_adjustment, makro = option_item (linked product).
+    splitSelectedItems.forEach(({ item }) => {
+      const optProduct: Product = {
+        id: item.linkedProductId as number,
+        name: item.name,
+        price: Number(item.priceAdjustment) || 0,
+        calories: Number(item.calories) || 0,
+        protein: Number(item.protein) || 0,
+        carbs: Number(item.carbs) || 0,
+        fats: Number(item.fats) || 0,
+        is_bundle: false,
+      };
+      addItem(optProduct, {}, 1);
+    });
 
     haptic.light();
     animateAddToCart();
