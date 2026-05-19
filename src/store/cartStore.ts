@@ -21,14 +21,29 @@ export const useCartStore = create<CartState>()(
         );
         const effectivePrice = getEffectivePrice(product);
         const templateModifier = calculateOptionsPriceModifier(templateOptions);
+
+        // Bundle kalemi: slot ekstraları fiyata ETKİ ETMEZ (tek bundle fiyatı),
+        // makrolar seçilen öğünlerin TOPLAMI. Normal ürün davranışı değişmez.
+        const bundleSelections =
+          product.is_bundle && Array.isArray(normalizedOptions.bundleSelections)
+            ? normalizedOptions.bundleSelections
+            : undefined;
+        const isBundleItem = !!bundleSelections && bundleSelections.length > 0;
+
         const unitPrice = Number(
-          (effectivePrice + normalizedOptions.extraPrice + templateModifier).toFixed(2),
+          (isBundleItem
+            ? effectivePrice
+            : effectivePrice + normalizedOptions.extraPrice + templateModifier
+          ).toFixed(2),
         );
 
         const productHasDiscount = hasDiscount(product);
         const originalUnitPrice = productHasDiscount
           ? Number(
-              ((Number(product.price) || 0) + normalizedOptions.extraPrice + templateModifier).toFixed(2),
+              (
+                (Number(product.price) || 0) +
+                (isBundleItem ? 0 : normalizedOptions.extraPrice + templateModifier)
+              ).toFixed(2),
             )
           : undefined;
 
@@ -48,10 +63,29 @@ export const useCartStore = create<CartState>()(
           (s, o) => s + (Number(o.fats_modifier) || 0),
           0,
         );
-        const effectiveCalories = Math.max(0, Math.round((Number(product.calories) || 0) + calorieMod));
-        const effectiveProtein = Math.max(0, (Number(product.protein) || 0) + proteinMod);
-        const effectiveCarbs = Math.max(0, (Number(product.carbs) || 0) + carbsMod);
-        const effectiveFats = Math.max(0, (Number(product.fats) || 0) + fatsMod);
+
+        const bundleTotals = (bundleSelections ?? []).reduce(
+          (acc, b) => ({
+            calories: acc.calories + (Number(b.calories) || 0),
+            protein: acc.protein + (Number(b.protein) || 0),
+            carbs: acc.carbs + (Number(b.carbs) || 0),
+            fat: acc.fat + (Number(b.fat) || 0),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        );
+
+        const effectiveCalories = isBundleItem
+          ? Math.max(0, Math.round(bundleTotals.calories))
+          : Math.max(0, Math.round((Number(product.calories) || 0) + calorieMod));
+        const effectiveProtein = isBundleItem
+          ? Math.max(0, bundleTotals.protein)
+          : Math.max(0, (Number(product.protein) || 0) + proteinMod);
+        const effectiveCarbs = isBundleItem
+          ? Math.max(0, bundleTotals.carbs)
+          : Math.max(0, (Number(product.carbs) || 0) + carbsMod);
+        const effectiveFats = isBundleItem
+          ? Math.max(0, bundleTotals.fat)
+          : Math.max(0, (Number(product.fats) || 0) + fatsMod);
 
         set((state) => {
           const existingIndex = state.items.findIndex((item) => item.lineKey === lineKey);
@@ -74,13 +108,16 @@ export const useCartStore = create<CartState>()(
             originalUnitPrice,
             discountType: productHasDiscount ? (product.discount_type ?? null) : null,
             discountValue: productHasDiscount ? (product.discount_value ?? null) : null,
-            calories: product.calories,
-            protein: product.protein,
-            carbs: product.carbs,
-            fats: product.fats,
+            // Bundle'da taban makro alanları da toplamı taşısın (CartScreen
+            // item.calories'i okuyor); normal üründe ürünün kendi makrosu.
+            calories: isBundleItem ? effectiveCalories : product.calories,
+            protein: isBundleItem ? effectiveProtein : product.protein,
+            carbs: isBundleItem ? effectiveCarbs : product.carbs,
+            fats: isBundleItem ? effectiveFats : product.fats,
             img: product.img ?? undefined,
             selectedOptions: normalizedOptions,
             selected_options: templateOptions,
+            bundle_selections: bundleSelections,
             effective_calories: effectiveCalories,
             effective_protein: effectiveProtein,
             effective_carbs: effectiveCarbs,

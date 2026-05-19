@@ -1,4 +1,4 @@
-import { CartSelectedOptions, SelectedOption } from '../types';
+import { BundleSelection, CartSelectedOptions, SelectedOption } from '../types';
 
 const toSafeString = (value: unknown) => String(value ?? '').trim();
 
@@ -49,6 +49,32 @@ const normalizeTemplateOptions = (
   return cleaned;
 };
 
+const normalizeBundleSelections = (
+  raw: unknown,
+): BundleSelection[] | undefined => {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const cleaned: BundleSelection[] = [];
+  raw.forEach((entry: any) => {
+    if (!entry || typeof entry !== 'object') return;
+    const optionItemId = toSafeString(entry.option_item_id);
+    const name = toSafeString(entry.name);
+    if (!optionItemId || !name) return;
+    const linkedRaw = entry.linked_product_id;
+    cleaned.push({
+      slot_name: toSafeString(entry.slot_name),
+      option_item_id: optionItemId,
+      linked_product_id:
+        linkedRaw == null ? null : toFiniteNumber(linkedRaw, NaN) || null,
+      name,
+      calories: Math.max(0, toFiniteNumber(entry.calories, 0)),
+      protein: Math.max(0, toFiniteNumber(entry.protein, 0)),
+      carbs: Math.max(0, toFiniteNumber(entry.carbs, 0)),
+      fat: Math.max(0, toFiniteNumber(entry.fat, 0)),
+    });
+  });
+  return cleaned.length > 0 ? cleaned : undefined;
+};
+
 export const normalizeSelectedOptions = (
   input?: Partial<CartSelectedOptions>,
 ): CartSelectedOptions => {
@@ -68,6 +94,7 @@ export const normalizeSelectedOptions = (
     : [];
 
   const templateOptions = normalizeTemplateOptions(input?.templateOptions);
+  const bundleSelections = normalizeBundleSelections(input?.bundleSelections);
 
   const result: CartSelectedOptions = {
     byGroup: normalizedByGroup,
@@ -75,6 +102,7 @@ export const normalizeSelectedOptions = (
     labels,
   };
   if (templateOptions) result.templateOptions = templateOptions;
+  if (bundleSelections) result.bundleSelections = bundleSelections;
   return result;
 };
 

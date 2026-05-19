@@ -66,6 +66,20 @@ export interface OptionGroup {
   items: OptionItem[];
 }
 
+// Bundle (çoklu ürün) sepet kalemindeki tek bir slot seçimi. Self-contained:
+// isim + makro burada saklanır ki sipariş kaydından (order_items.selected_options)
+// pantry'ye genişletme ekstra sorgu gerektirmesin.
+export interface BundleSelection {
+  slot_name: string; // "1. Öğün Seçimi"
+  option_item_id: string; // option_items.id (uuid)
+  linked_product_id: number | null;
+  name: string; // "Basmati Üzeri Tavuk Fileto ve Brokoli"
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 // ─── Option Templates (new reusable model) ───────────────────────────────────
 
 export interface OptionTemplateValue {
@@ -125,6 +139,8 @@ export interface CartSelectedOptions {
   extraPrice: number;
   labels: string[];
   templateOptions?: SelectedOption[];
+  // Bundle ürünlerde her slot için seçilen öğünler (FIX: bundle pantry akışı).
+  bundleSelections?: BundleSelection[];
 }
 
 export interface CartItem {
@@ -143,6 +159,8 @@ export interface CartItem {
   img?: string;
   selectedOptions: CartSelectedOptions;
   selected_options?: SelectedOption[];
+  // Bundle parent kalemin slot kırılımı (boşsa normal ürün davranışı).
+  bundle_selections?: BundleSelection[];
   effective_calories?: number;
   effective_protein?: number;
   effective_carbs?: number;
