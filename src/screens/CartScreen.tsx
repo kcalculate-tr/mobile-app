@@ -327,6 +327,50 @@ export default function CartScreen() {
                   ) : null}
                 </View>
               ) : null}
+
+              {/* Bundle slot kırılımı — ana satırın altında indent edilmiş
+                  alt satırlar; fiyat yok ("Dahil"), her öğünün makrosu küçük */}
+              {item.bundle_selections && item.bundle_selections.length > 0 ? (
+                <View style={styles.bundleChildrenWrap}>
+                  {item.bundle_selections.map((sel, idx) => (
+                    <View
+                      key={`${item.lineKey}-bsel-${idx}`}
+                      style={[
+                        styles.bundleChildRow,
+                        idx < item.bundle_selections!.length - 1 && styles.bundleChildRowDivider,
+                      ]}
+                    >
+                      <View style={styles.bundleChildInfo}>
+                        {sel.slot_name ? (
+                          <Text style={styles.bundleSlotName} numberOfLines={1}>
+                            {sel.slot_name}
+                          </Text>
+                        ) : null}
+                        <Text style={styles.bundleChildName} numberOfLines={2}>
+                          {sel.name}
+                        </Text>
+                        <View style={styles.bundleChildMacros}>
+                          <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.calories.main }]}>
+                            {Math.round(sel.calories)} kcal
+                          </Text>
+                          <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.protein.main }]}>
+                            {sel.protein % 1 === 0 ? sel.protein : sel.protein.toFixed(1)}g P
+                          </Text>
+                          <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.carbs.main }]}>
+                            {sel.carbs % 1 === 0 ? sel.carbs : sel.carbs.toFixed(1)}g K
+                          </Text>
+                          <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.fat.main }]}>
+                            {sel.fat % 1 === 0 ? sel.fat : sel.fat.toFixed(1)}g Y
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.bundleDahilBadge}>
+                        <Text style={styles.bundleDahilText}>Dahil</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
           );
         })}
@@ -680,6 +724,59 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   macroPill: { borderRadius: RADIUS.pill, paddingHorizontal: SPACING.sm, paddingVertical: 3 },
   macroPillText: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.semibold,
 fontFamily: 'PlusJakartaSans_600SemiBold'},
+  bundleChildrenWrap: {
+    marginTop: SPACING.sm,
+    marginLeft: SPACING.md,
+    paddingLeft: SPACING.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.border.medium,
+    backgroundColor: '#F7F7F7',
+    borderRadius: RADIUS.sm,
+  },
+  bundleChildRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+  },
+  bundleChildRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E0E0E0',
+  },
+  bundleChildInfo: { flex: 1, paddingRight: SPACING.sm },
+  bundleSlotName: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
+    marginBottom: 1,
+  },
+  bundleChildName: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.primary,
+    marginBottom: 3,
+  },
+  bundleChildMacros: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  bundleChildMacro: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  bundleDahilBadge: {
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    backgroundColor: MACRO_COLORS.protein.track,
+  },
+  bundleDahilText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: MACRO_COLORS.protein.main,
+  },
   itemImage: {
     width: 76,
     height: 76,
