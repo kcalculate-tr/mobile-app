@@ -24,7 +24,6 @@ import { initPayment } from '../lib/payment';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
-import { usePantryStore } from '../store/pantryStore';
 import { getSupabaseClient } from '../lib/supabase';
 import { COLORS } from '../constants/theme';
 import {
@@ -71,7 +70,6 @@ function ToslaPaymentFlow() {
   const navigation = useNavigation<PaymentScreenNavProp>();
   const insets = useSafeAreaInsets();
   const clearCart = useCartStore((s) => s.clearCart);
-  const addToPantry = usePantryStore((s) => s.addItems);
   const { orderId, amount, orderCode, noticeMessage } = route.params;
 
   const [cardHolder, setCardHolder] = useState('');
@@ -362,17 +360,8 @@ function ToslaPaymentFlow() {
                   setWebViewHtml(null);
                   await completeOrder();
                   haptic.success();
-                  const { items: cartItems } = useCartStore.getState();
-                  addToPantry(cartItems.map((item) => ({
-                    productId: String(item.productId),
-                    name: item.name,
-                    calories: item.calories ?? 0,
-                    protein: item.protein ?? 0,
-                    carbs: item.carbs ?? 0,
-                    fat: item.fats ?? 0,
-                    quantity: item.quantity,
-                    imageUrl: item.img ?? undefined,
-                  })));
+                  // Pantry tek kaynak = TrackerScreen backfill (delivered +
+                  // orderItemId dedup + bundle expansion). Anında ekleme yok.
                   clearCart();
                   navigation.replace('OrderSuccess', {
                     orderCode: orderCode ?? String(orderId),
@@ -687,7 +676,6 @@ function PaytrPaymentFlow({ orderId, orderCode, noticeMessage }: PaytrFlowProps)
   const navigation = useNavigation<PaymentScreenNavProp>();
   const insets = useSafeAreaInsets();
   const clearCart = useCartStore((s) => s.clearCart);
-  const addToPantry = usePantryStore((s) => s.addItems);
 
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [initError, setInitError] = useState<string>('');
@@ -788,18 +776,11 @@ function PaytrPaymentFlow({ orderId, orderCode, noticeMessage }: PaytrFlowProps)
 
     await pollOrderConfirmed();
 
-    const cartItems = useCartStore.getState().items;
-    if (cartItems.length > 0) {
-      addToPantry(cartItems.map((item) => ({
-        productId: String(item.productId),
-        name: item.name,
-        calories: item.calories ?? 0,
-        protein: item.protein ?? 0,
-        carbs: item.carbs ?? 0,
-        fat: item.fats ?? 0,
-        quantity: item.quantity,
-        imageUrl: item.img ?? undefined,
-      })));
+    // Pantry artık TEK kaynaktan dolar: TrackerScreen backfill (sipariş
+    // delivered olunca, order_items'tan, orderItemId ile dedup'lı, bundle
+    // 6 öğüne açılır). Buradaki anında ekleme kaldırıldı (çift-add + bundle
+    // genişletme tutarsızlığı). Sepeti boşaltma davranışı korunur.
+    if (useCartStore.getState().items.length > 0) {
       clearCart();
     }
 

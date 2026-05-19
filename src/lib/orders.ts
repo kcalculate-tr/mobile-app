@@ -19,6 +19,16 @@ const fetchMacroDiscountForUser = async (
   return calculateMacroDiscount(subtotal, isMember);
 };
 
+// Bundle parent kalemde order_items.selected_options'a SelectedOption[]
+// yerine self-contained slot kırılımını (BundleSelection[]) yaz —
+// TrackerScreen backfill bunu okuyup pantry'ye N öğün olarak açar
+// (migration / backend gerektirmez, mevcut jsonb kolonu). Normal ürün:
+// mevcut selected_options davranışı korunur.
+const buildOrderItemSelectedOptions = (item: CartItem): unknown =>
+  Array.isArray(item.bundle_selections) && item.bundle_selections.length > 0
+    ? item.bundle_selections
+    : item.selected_options ?? [];
+
 export type OrderCreateWarning = {
   code: 'ORDER_ITEMS_FALLBACK';
   message: string;
@@ -291,7 +301,7 @@ export const createOrderFromCart = async ({
     unit_price: Number(item.unitPrice.toFixed(2)),
     total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
     product_name: item.name,
-    selected_options: item.selected_options ?? [],
+    selected_options: buildOrderItemSelectedOptions(item),
     calories: item.effective_calories ?? item.calories ?? null,
     protein: item.effective_protein ?? item.protein ?? null,
     carbs: item.effective_carbs ?? item.carbs ?? null,
@@ -452,7 +462,7 @@ export const createOrderDraftForPayment = async ({
     unit_price: Number(item.unitPrice.toFixed(2)),
     total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
     product_name: item.name,
-    selected_options: item.selected_options ?? [],
+    selected_options: buildOrderItemSelectedOptions(item),
     calories: item.effective_calories ?? item.calories ?? null,
     protein: item.effective_protein ?? item.protein ?? null,
     carbs: item.effective_carbs ?? item.carbs ?? null,

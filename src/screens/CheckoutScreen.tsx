@@ -67,7 +67,6 @@ import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvai
 import { fetchBranches, Branch } from '../lib/branches';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
-import { usePantryStore } from '../store/pantryStore';
 import { useAddressStore } from '../store/addressStore';
 import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
@@ -377,7 +376,6 @@ export default function CheckoutScreen() {
     callback();
   };
 
-  const addToPantry = usePantryStore((s) => s.addItems);
   const setSelectedAddress = useAddressStore((s) => s.setSelectedAddress);
 
   const apiConfigured = isApiBaseUrlConfigured();
@@ -2007,17 +2005,9 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
 
                     if (orderData?.payment_status === 'paid') {
                       haptic.success();
-                      const { items: cartItems } = useCartStore.getState();
-                      addToPantry(cartItems.map((item) => ({
-                        productId: String(item.productId),
-                        name: item.name,
-                        calories: item.calories ?? 0,
-                        protein: item.protein ?? 0,
-                        carbs: item.carbs ?? 0,
-                        fat: item.fats ?? 0,
-                        quantity: item.quantity,
-                        imageUrl: item.img ?? undefined,
-                      })));
+                      // Pantry tek kaynak = TrackerScreen backfill (delivered
+                      // + orderItemId dedup + bundle 6 öğüne açılır). Anında
+                      // ekleme kaldırıldı; sepet temizliği korunur.
                       clearCart();
                       navigation.replace('OrderSuccess', {
                         orderCode: orderData.order_code ?? pendingPaymentOrder?.orderCode ?? orderId,

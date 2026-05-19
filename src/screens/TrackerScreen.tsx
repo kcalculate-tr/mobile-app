@@ -1052,7 +1052,7 @@ export default function TrackerScreen() {
           const { data, error } = await supabase
             .from('orders')
             .select(
-              'id,order_code,delivered_at,order_items(id,product_id,product_name,quantity,products(name,calories,protein,carbs,fats,img))',
+              'id,order_code,delivered_at,order_items(id,product_id,product_name,quantity,selected_options,products(name,calories,protein,carbs,fats,img,is_bundle))',
             )
             .eq('user_id', user.id)
             .eq('status', 'delivered')
@@ -1073,6 +1073,40 @@ export default function TrackerScreen() {
               const name = String(oi?.product_name || product?.name || 'Ürün').trim();
               const productId = String(oi?.product_id ?? (product as any)?.id ?? '');
               const quantity = Math.max(1, Math.floor(Number(oi?.quantity) || 1));
+
+              // Bundle siparişi → her slot seçimi AYRI pantry öğesi.
+              // Kaynak: order_items.selected_options (orders.ts'in yazdığı
+              // self-contained BundleSelection[]). Dedup için child başına
+              // sabit sentetik id (`${orderItemId}#idx`) — normal ürün
+              // davranışı ve mevcut removedOrderItemIds etkilenmez.
+              const sel = oi?.selected_options;
+              const isBundleOrderItem =
+                Boolean((product as any)?.is_bundle) &&
+                Array.isArray(sel) &&
+                sel.length > 0 &&
+                sel.every(
+                  (s: any) =>
+                    s && typeof s === 'object' && s.option_item_id != null && s.name != null,
+                );
+
+              if (isBundleOrderItem) {
+                (sel as any[]).forEach((s, idx) => {
+                  const childName = String(s?.name || 'Öğün').trim();
+                  if (!childName) return;
+                  candidates.push({
+                    productId,
+                    orderItemId: `${orderItemId}#${idx}`,
+                    name: childName,
+                    quantity,
+                    calories: Number(s?.calories) || 0,
+                    protein: Number(s?.protein) || 0,
+                    carbs: Number(s?.carbs) || 0,
+                    fat: Number(s?.fat) || 0,
+                    imageUrl: undefined,
+                  });
+                });
+                continue;
+              }
 
               candidates.push({
                 productId,
