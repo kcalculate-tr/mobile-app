@@ -400,22 +400,29 @@ export default function ProductDetailScreen() {
     return { valid: missing.length === 0, missing };
   };
 
-  const scrollToNextRequiredGroup = (currentGroupId: string) => {
+  // Bir seçim yapıldığında SADECE bir sonraki opsiyon section'ına kaydır.
+  // Atlama (sıradaki "doldurulmamış zorunlu") YOK — bu kullanıcıyı çok
+  // aşağı atıyordu. Son grup seçildiyse alt bar görünür olsun diye sona kaydır.
+  // ScrollView header'ın ALTINDA ayrı bir bölge; groupPositions içerik
+  // koordinatı olduğundan header/safe-area eklemeye gerek yok, sadece
+  // küçük bir nefes payı bırakıyoruz.
+  const NEXT_SECTION_TOP_GAP = 16;
+  const scrollToNextGroup = (currentGroupId: string) => {
     setTimeout(() => {
       const currentIndex = optionGroups.findIndex((g) => g.id === currentGroupId);
       if (currentIndex === -1) return;
-      for (let i = currentIndex + 1; i < optionGroups.length; i++) {
-        const g = optionGroups[i];
-        const { min } = getGroupSelectionLimits(g);
-        const selectedCount = (selections[g.id] || []).length;
-        if (min > 0 && selectedCount < min) {
-          const y = groupPositions.current[g.id];
-          if (y === undefined) return;
-          scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
-          return;
-        }
+      const nextGroup = optionGroups[currentIndex + 1];
+      if (!nextGroup) {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+        return;
       }
-    }, 200);
+      const y = groupPositions.current[nextGroup.id];
+      if (y === undefined) return;
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(0, y - NEXT_SECTION_TOP_GAP),
+        animated: true,
+      });
+    }, 250);
   };
 
   const toggleSelection = (group: OptionGroup, itemId: string) => {
@@ -441,7 +448,7 @@ export default function ProductDetailScreen() {
     setSelections((prev) => ({ ...prev, [group.id]: nextSelection }));
 
     if (shouldAdvance) {
-      scrollToNextRequiredGroup(group.id);
+      scrollToNextGroup(group.id);
     }
   };
 
