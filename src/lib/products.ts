@@ -52,6 +52,7 @@ export const mapProductRow = (row: Record<string, unknown>): Product => {
     favorite_order: row.favorite_order != null ? toNumber(row.favorite_order, 0) : undefined,
     discount_type: typeof row.discount_type === 'string' && row.discount_type ? row.discount_type : null,
     discount_value: row.discount_value != null ? toNumber(row.discount_value, 0) : null,
+    is_bundle: row.is_bundle != null ? Boolean(row.is_bundle) : undefined,
     gramaj_options: Array.isArray(row.gramaj_options)
       ? (row.gramaj_options as Array<Record<string, unknown>>)
           .filter((g) => g && typeof g === 'object')
@@ -124,14 +125,42 @@ export const fetchCrosssellProducts = async (limit = 10): Promise<Product[]> => 
     .filter((product) => product.is_available !== false && product.in_stock !== false);
 };
 
-const mapOptionItemRow = (row: Record<string, unknown>): OptionItem => ({
-  id: toSafeString(row.id),
-  groupId: toSafeString(row.group_id),
-  name: toSafeString(row.name) || 'Seçenek',
-  priceAdjustment: Math.max(0, toNumber(row.price_adjustment, 0)),
-  sortOrder: Math.max(0, Math.floor(toNumber(row.sort_order, 0))),
-  isAvailable: row.is_available !== false,
-});
+// Bundle makrosu için: önce linked product'ın gerçek makrosu, yoksa
+// option_items üzerindeki manuel makro kolonu. İkisi de yoksa undefined
+// (tekli ürün opsiyonları — mevcut davranış korunur).
+const pickMacro = (linkedValue: unknown, ownValue: unknown): number | undefined => {
+  if (linkedValue != null) {
+    const l = Number(linkedValue);
+    if (Number.isFinite(l)) return Math.max(0, l);
+  }
+  if (ownValue != null) {
+    const o = Number(ownValue);
+    if (Number.isFinite(o)) return Math.max(0, o);
+  }
+  return undefined;
+};
+
+const mapOptionItemRow = (row: Record<string, unknown>): OptionItem => {
+  const linked =
+    row.products && typeof row.products === 'object' && !Array.isArray(row.products)
+      ? (row.products as Record<string, unknown>)
+      : null;
+
+  return {
+    id: toSafeString(row.id),
+    groupId: toSafeString(row.group_id),
+    name: toSafeString(row.name) || 'Seçenek',
+    priceAdjustment: Math.max(0, toNumber(row.price_adjustment, 0)),
+    sortOrder: Math.max(0, Math.floor(toNumber(row.sort_order, 0))),
+    isAvailable: row.is_available !== false,
+    calories: pickMacro(linked?.calories, row.calories),
+    protein: pickMacro(linked?.protein, row.protein),
+    carbs: pickMacro(linked?.carbs, row.carbs),
+    fats: pickMacro(linked?.fats, row.fats),
+    linkedProductId:
+      row.linked_product_id != null ? toNumber(row.linked_product_id, 0) : null,
+  };
+};
 
 const mapOptionGroupRow = (
   row: Record<string, unknown>,
@@ -204,17 +233,33 @@ export const fetchProductOptionGroups = async (
 
   const groupIds = Array.from(new Set(normalizedLinks.map((row) => row.groupId)));
 
+  // Bundle makro kolonları + linked product join. Eski şemada (kolonlar
+  // yoksa) temel select'e düşer — tekli ürün opsiyonları regresyona uğramaz.
+  const fetchOptionItemRows = async () => {
+    const extended = await supabase
+      .from('option_items')
+      .select(
+        'id,group_id,name,price_adjustment,is_available,sort_order,calories,protein,carbs,fats,linked_product_id,products:linked_product_id(id,name,calories,protein,carbs,fats)',
+      )
+      .in('group_id', groupIds)
+      .order('sort_order', { ascending: true });
+
+    if (!extended.error) return extended;
+
+    return supabase
+      .from('option_items')
+      .select('id,group_id,name,price_adjustment,is_available,sort_order')
+      .in('group_id', groupIds)
+      .order('sort_order', { ascending: true });
+  };
+
   const [{ data: groupRows, error: groupError }, { data: itemRows, error: itemError }] =
     await Promise.all([
       supabase
         .from('option_groups')
         .select('id,name,description,min_selection,max_selection,is_required')
         .in('id', groupIds),
-      supabase
-        .from('option_items')
-        .select('id,group_id,name,price_adjustment,is_available,sort_order')
-        .in('group_id', groupIds)
-        .order('sort_order', { ascending: true }),
+      fetchOptionItemRows(),
     ]);
 
   if (groupError) throw groupError;

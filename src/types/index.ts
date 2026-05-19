@@ -33,6 +33,9 @@ export interface Product {
   discount_type?: 'percent' | 'fixed' | string | null;
   discount_value?: number | null;
   gramaj_options?: GramajOption[];
+  // Bundle (çoklu ürün) ürünü mü — true ise makrolar seçilen
+  // option_items'lardan runtime toplanır (YENİ uuid opsiyon sistemi).
+  is_bundle?: boolean;
 }
 
 export interface OptionItem {
@@ -42,6 +45,14 @@ export interface OptionItem {
   priceAdjustment: number;
   sortOrder: number;
   isAvailable: boolean;
+  // Bundle senaryosu: bu opsiyon gerçek bir ürünü temsil ediyorsa,
+  // makrolar linked product'tan (yoksa option_items kolonlarından) gelir.
+  // Tekli ürün opsiyonlarında undefined kalır, mevcut davranış korunur.
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  linkedProductId?: number | null;
 }
 
 export interface OptionGroup {

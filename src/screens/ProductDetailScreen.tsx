@@ -338,6 +338,32 @@ export default function ProductDetailScreen() {
     return base;
   }, [product, builtTemplateOptions, selectedGramaj]);
 
+  // ── Bundle (çoklu ürün) canlı makro toplamı ────────────────────────────────
+  // Bundle ürünlerde manuel makro kolonları yoktur; toplam, her slot'ta
+  // (option_group) seçilen option_items'ların makrolarından canlı hesaplanır.
+  // Tekli ürünlerde bu blok devreye girmez (effectiveMacros korunur).
+  const isBundle = Boolean(product?.is_bundle);
+
+  const bundleMacros = useMemo(() => {
+    const total = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    if (!isBundle) return total;
+    optionGroups.forEach((group) => {
+      const selectedIds = new Set(selections[group.id] || []);
+      group.items.forEach((item) => {
+        if (!selectedIds.has(item.id)) return;
+        total.calories += Number(item.calories) || 0;
+        total.protein += Number(item.protein) || 0;
+        total.carbs += Number(item.carbs) || 0;
+        total.fats += Number(item.fats) || 0;
+      });
+    });
+    total.calories = Math.max(0, Math.round(total.calories));
+    total.protein = Math.max(0, total.protein);
+    total.carbs = Math.max(0, total.carbs);
+    total.fats = Math.max(0, total.fats);
+    return total;
+  }, [isBundle, optionGroups, selections]);
+
   const secondaryOptionLinks = useMemo(() => {
     return Array.isArray(optionLinks) ? optionLinks : [];
   }, [optionLinks]);
@@ -617,43 +643,47 @@ export default function ProductDetailScreen() {
     );
   }
 
+  // Bundle ise canlı toplam, değilse mevcut effectiveMacros (tekli ürün
+  // davranışı birebir korunur — bundleMacros bundle değilse hep 0 döner).
+  const displayMacros = isBundle ? bundleMacros : effectiveMacros;
+
   const totalCalMacros =
-    (effectiveMacros.carbs * 4) +
-    (effectiveMacros.protein * 4) +
-    (effectiveMacros.fats * 9) || 1;
+    (displayMacros.carbs * 4) +
+    (displayMacros.protein * 4) +
+    (displayMacros.fats * 9) || 1;
 
   const macros = [
     {
       label: 'Kalori',
-      value: effectiveMacros.calories,
+      value: displayMacros.calories,
       unit: 'kcal',
       color: MACRO_COLORS.calories.main,
       trackColor: MACRO_COLORS.calories.track,
-      percentage: Math.min(effectiveMacros.calories / 2000, 1),
+      percentage: Math.min(displayMacros.calories / 2000, 1),
     },
     {
       label: 'Karb.',
-      value: effectiveMacros.carbs,
+      value: displayMacros.carbs,
       unit: 'g',
       color: MACRO_COLORS.carbs.main,
       trackColor: MACRO_COLORS.carbs.track,
-      percentage: (effectiveMacros.carbs * 4) / totalCalMacros,
+      percentage: (displayMacros.carbs * 4) / totalCalMacros,
     },
     {
       label: 'Protein',
-      value: effectiveMacros.protein,
+      value: displayMacros.protein,
       unit: 'g',
       color: MACRO_COLORS.protein.main,
       trackColor: MACRO_COLORS.protein.track,
-      percentage: (effectiveMacros.protein * 4) / totalCalMacros,
+      percentage: (displayMacros.protein * 4) / totalCalMacros,
     },
     {
       label: 'Yağ',
-      value: effectiveMacros.fats,
+      value: displayMacros.fats,
       unit: 'g',
       color: MACRO_COLORS.fat.main,
       trackColor: MACRO_COLORS.fat.track,
-      percentage: (effectiveMacros.fats * 9) / totalCalMacros,
+      percentage: (displayMacros.fats * 9) / totalCalMacros,
     },
   ];
 
@@ -739,8 +769,9 @@ export default function ProductDetailScreen() {
             </View>
           ) : null}
 
-          {/* Macro Badges (effectiveMacros — opsiyon farkları dahil) */}
-          {(product.calories ?? product.cal) != null && (
+          {/* Macro Badges — tekli: effectiveMacros (opsiyon farkları dahil);
+              bundle: seçilen öğünlerin canlı toplamı, panel hep açık (0'dan başlar) */}
+          {(isBundle || (product.calories ?? product.cal) != null) && (
             <View style={styles.macroContainer}>
               {macros.map((m) => (
                 <MacroBadge key={m.label} {...m} />
