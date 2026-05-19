@@ -29,7 +29,7 @@ import {
   mapProductRow,
 } from '../lib/products';
 import { RootStackParamList } from '../navigation/types';
-import { OptionGroup, Product, ProductOptionLink, SelectedOption } from '../types';
+import { BundleSelection, OptionGroup, Product, ProductOptionLink, SelectedOption } from '../types';
 import { fetchProductOptionLinks } from '../lib/productOptions';
 import {
   calculateOptionsPriceModifier,
@@ -598,6 +598,27 @@ export default function ProductDetailScreen() {
       });
     }
 
+    // Bundle: her slot'ta seçilen öğünü self-contained (isim + makro) olarak
+    // sepete taşı. Makro kaynağı OptionItem (linked product / kolon) — Bug 1
+    // ile aynı veri. Tekli ürün için bu dizi boş kalır, davranış değişmez.
+    const bundleSelections: BundleSelection[] = isBundle
+      ? optionGroups.flatMap((group) => {
+          const selectedIds = new Set(selections[group.id] || []);
+          return group.items
+            .filter((item) => selectedIds.has(item.id))
+            .map((item) => ({
+              slot_name: group.name,
+              option_item_id: item.id,
+              linked_product_id: item.linkedProductId ?? null,
+              name: item.name,
+              calories: Number(item.calories) || 0,
+              protein: Number(item.protein) || 0,
+              carbs: Number(item.carbs) || 0,
+              fat: Number(item.fats) || 0,
+            }));
+        })
+      : [];
+
     addItem(
       product,
       {
@@ -605,6 +626,7 @@ export default function ProductDetailScreen() {
         extraPrice,
         labels: optionLabels,
         templateOptions: cartTemplateOptions.length > 0 ? cartTemplateOptions : undefined,
+        bundleSelections: bundleSelections.length > 0 ? bundleSelections : undefined,
       },
       1,
     );
