@@ -479,14 +479,16 @@ export default function ProductDetailScreen() {
   // cart_item olur (her biri kendi fiyatı + makrosu, ayrı silinebilir).
   // Sade opsiyonlar (linkedProductId yok) ve bundle bu mantığın DIŞINDA —
   // mevcut davranışları korunur.
-  const splitSelectedItems = useMemo<{ groupId: string; item: OptionItem }[]>(() => {
+  const splitSelectedItems = useMemo<
+    { groupId: string; groupName: string; item: OptionItem }[]
+  >(() => {
     if (isBundle) return [];
-    const out: { groupId: string; item: OptionItem }[] = [];
+    const out: { groupId: string; groupName: string; item: OptionItem }[] = [];
     optionGroups.forEach((group) => {
       const selectedIds = new Set(selections[group.id] || []);
       group.items.forEach((item) => {
         if (selectedIds.has(item.id) && item.linkedProductId != null) {
-          out.push({ groupId: group.id, item });
+          out.push({ groupId: group.id, groupName: group.name, item });
         }
       });
     });
@@ -665,10 +667,12 @@ export default function ProductDetailScreen() {
       1,
     );
 
-    // Her linked opsiyon = bağlı gerçek ürün gibi AYRI cart_item.
-    // id = linked_product_id (cart satırına tıklayınca o ürünün detayına
-    // gider), fiyat = price_adjustment, makro = option_item (linked product).
-    splitSelectedItems.forEach(({ item }) => {
+    // Her linked opsiyon = bağlı gerçek ürün gibi AYRI cart_item, ama
+    // ana ürüne parentLineKey ile bağlanır → CartScreen'de parent altında
+    // indent grup olarak görünür (bundle UI pattern reuse). slot adı
+    // child.selectedOptions.labels[0]'a yazılır.
+    const parentKey = currentLineKey ?? undefined;
+    splitSelectedItems.forEach(({ groupName, item }) => {
       const optProduct: Product = {
         id: item.linkedProductId as number,
         name: item.name,
@@ -679,7 +683,7 @@ export default function ProductDetailScreen() {
         fats: Number(item.fats) || 0,
         is_bundle: false,
       };
-      addItem(optProduct, {}, 1);
+      addItem(optProduct, { labels: [groupName] }, 1, parentKey);
     });
 
     haptic.light();

@@ -203,11 +203,25 @@ export default function CartScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Items */}
-        {items.map((item) => {
-          const itemKcal = Math.round((item.calories ?? 0) * item.quantity);
-          const itemProtein = (item.protein ?? 0) * item.quantity;
-          const itemCarbs = (item.carbs ?? 0) * item.quantity;
-          const itemFats = (item.fats ?? 0) * item.quantity;
+        {items.filter((it) => !it.parentLineKey).map((item) => {
+          // FIX 5 grup: bu parent'a bağlı ekstra (child) kalemler. Top-level
+          // listeden filtrelendi; burada parent altında indent gösterilir.
+          const childItems = items.filter((c) => c.parentLineKey === item.lineKey);
+          const childKcal = childItems.reduce((s, c) => s + (c.effective_calories ?? c.calories ?? 0) * c.quantity, 0);
+          const childProtein = childItems.reduce((s, c) => s + (c.effective_protein ?? c.protein ?? 0) * c.quantity, 0);
+          const childCarbs = childItems.reduce((s, c) => s + (c.effective_carbs ?? c.carbs ?? 0) * c.quantity, 0);
+          const childFats = childItems.reduce((s, c) => s + (c.effective_fats ?? c.fats ?? 0) * c.quantity, 0);
+          const extrasPrice = childItems.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
+
+          // Parent satırı base + ekstraların TOPLAMINI gösterir (sepet
+          // geneli zaten ayrı kalemlerden doğru toplanır; bu sadece görsel).
+          const displayTotal = item.unitPrice * item.quantity + extrasPrice;
+          const displayOriginal = (item.originalUnitPrice ?? item.unitPrice) * item.quantity + extrasPrice;
+
+          const itemKcal = Math.round((item.calories ?? 0) * item.quantity + childKcal);
+          const itemProtein = (item.protein ?? 0) * item.quantity + childProtein;
+          const itemCarbs = (item.carbs ?? 0) * item.quantity + childCarbs;
+          const itemFats = (item.fats ?? 0) * item.quantity + childFats;
           const itemHasMacros = itemKcal > 0 || itemProtein > 0 || itemCarbs > 0 || itemFats > 0;
 
           return (
@@ -263,8 +277,8 @@ export default function CartScreen() {
                   ) : null}
                   {item.originalUnitPrice && item.originalUnitPrice > item.unitPrice ? (
                     <View style={styles.itemPriceRow}>
-                      <AnimatedNumberText style={styles.itemPriceDiscounted} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
-                      <Text style={styles.itemPriceStrike}>₺{(item.originalUnitPrice * item.quantity).toFixed(2)}</Text>
+                      <AnimatedNumberText style={styles.itemPriceDiscounted} value={`₺${displayTotal.toFixed(2)}`} />
+                      <Text style={styles.itemPriceStrike}>₺{displayOriginal.toFixed(2)}</Text>
                       {item.discountType ? (
                         <Text style={styles.itemPriceBadge}>
                           {item.discountType === 'percent' ? `-%${item.discountValue}` : `-₺${item.discountValue}`}
@@ -272,7 +286,7 @@ export default function CartScreen() {
                       ) : null}
                     </View>
                   ) : (
-                    <AnimatedNumberText style={styles.itemPrice} value={`₺${(item.unitPrice * item.quantity).toFixed(2)}`} />
+                    <AnimatedNumberText style={styles.itemPrice} value={`₺${displayTotal.toFixed(2)}`} />
                   )}
                 </View>
                 </TouchableOpacity>
@@ -369,6 +383,60 @@ export default function CartScreen() {
                       </View>
                     </View>
                   ))}
+                </View>
+              ) : null}
+
+              {/* FIX 5 grup: tekli ürün ekstraları parent altında indent —
+                  bundle child UI pattern reuse (aynı stiller). Fiyat görünür
+                  (+₺X Dahil). Stepper/silme yok; parent silinince cascade. */}
+              {childItems.length > 0 ? (
+                <View style={styles.bundleChildrenWrap}>
+                  {childItems.map((c, idx) => {
+                    const cKcal = Math.round(c.effective_calories ?? c.calories ?? 0);
+                    const cP = c.effective_protein ?? c.protein ?? 0;
+                    const cK = c.effective_carbs ?? c.carbs ?? 0;
+                    const cF = c.effective_fats ?? c.fats ?? 0;
+                    const slot = c.selectedOptions.labels[0];
+                    return (
+                      <View
+                        key={c.lineKey}
+                        style={[
+                          styles.bundleChildRow,
+                          idx < childItems.length - 1 && styles.bundleChildRowDivider,
+                        ]}
+                      >
+                        <View style={styles.bundleChildInfo}>
+                          {slot ? (
+                            <Text style={styles.bundleSlotName} numberOfLines={1}>
+                              {slot}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.bundleChildName} numberOfLines={2}>
+                            {c.name}
+                          </Text>
+                          <View style={styles.bundleChildMacros}>
+                            <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.calories.main }]}>
+                              {cKcal} kcal
+                            </Text>
+                            <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.protein.main }]}>
+                              {cP % 1 === 0 ? cP : cP.toFixed(1)}g P
+                            </Text>
+                            <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.carbs.main }]}>
+                              {cK % 1 === 0 ? cK : cK.toFixed(1)}g K
+                            </Text>
+                            <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.fat.main }]}>
+                              {cF % 1 === 0 ? cF : cF.toFixed(1)}g Y
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.bundleDahilBadge}>
+                          <Text style={styles.bundleDahilText}>
+                            +₺{(c.unitPrice * c.quantity).toFixed(0)} · Dahil
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : null}
             </View>

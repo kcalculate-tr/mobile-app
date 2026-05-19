@@ -11,14 +11,24 @@ export const useCartStore = create<CartState>()(
       items: [],
       appliedCoupon: null,
 
-      addItem: (product: Product, options: Partial<CartSelectedOptions>, quantity = 1) => {
+      addItem: (
+        product: Product,
+        options: Partial<CartSelectedOptions>,
+        quantity = 1,
+        parentLineKey?: string,
+      ) => {
         const normalizedOptions = normalizeSelectedOptions(options);
         const templateOptions = normalizedOptions.templateOptions;
-        const lineKey = buildCartLineKey(
-          String(product.id),
-          normalizedOptions.byGroup,
-          templateOptions,
-        );
+        // FIX 5 grup: ekstra (child) kalemin lineKey'i parent + ürün ile
+        // namespace'lenir → standalone aynı ürünle MERGE olmaz, parent
+        // başına ayrışır, cascade silme parentLineKey üzerinden çalışır.
+        const lineKey = parentLineKey
+          ? `${parentLineKey}::x::${product.id}`
+          : buildCartLineKey(
+              String(product.id),
+              normalizedOptions.byGroup,
+              templateOptions,
+            );
         const effectivePrice = getEffectivePrice(product);
         const templateModifier = calculateOptionsPriceModifier(templateOptions);
 
@@ -91,6 +101,11 @@ export const useCartStore = create<CartState>()(
           const existingIndex = state.items.findIndex((item) => item.lineKey === lineKey);
 
           if (existingIndex >= 0) {
+            // Ekstra (child) kalemler sabit x1 kalır — parent miktarı
+            // artsa/ tekrar eklense bile child çoğalmaz (basit UX).
+            if (parentLineKey) {
+              return { items: state.items };
+            }
             const updatedItems = [...state.items];
             updatedItems[existingIndex] = {
               ...updatedItems[existingIndex],
@@ -118,6 +133,7 @@ export const useCartStore = create<CartState>()(
             selectedOptions: normalizedOptions,
             selected_options: templateOptions,
             bundle_selections: bundleSelections,
+            parentLineKey,
             effective_calories: effectiveCalories,
             effective_protein: effectiveProtein,
             effective_carbs: effectiveCarbs,
@@ -130,7 +146,10 @@ export const useCartStore = create<CartState>()(
 
       removeItem: (lineKey: string) => {
         set((state) => ({
-          items: state.items.filter((item) => item.lineKey !== lineKey),
+          // Parent silinince ekstra (child) kalemleri de cascade sil.
+          items: state.items.filter(
+            (item) => item.lineKey !== lineKey && item.parentLineKey !== lineKey,
+          ),
         }));
       },
 

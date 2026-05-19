@@ -161,6 +161,10 @@ export interface CartItem {
   selected_options?: SelectedOption[];
   // Bundle parent kalemin slot kırılımı (boşsa normal ürün davranışı).
   bundle_selections?: BundleSelection[];
+  // FIX 5 grup UI: bu kalem bir ana kalemin ekstrası ise, ana kalemin
+  // lineKey'i. Doluysa CartScreen'de top-level değil, parent altında
+  // indent child olarak render edilir; parent silinince cascade silinir.
+  parentLineKey?: string;
   effective_calories?: number;
   effective_protein?: number;
   effective_carbs?: number;
@@ -195,7 +199,12 @@ export interface AppliedCoupon {
 export interface CartState {
   items: CartItem[];
   appliedCoupon: AppliedCoupon | null;
-  addItem: (product: Product, options: Partial<CartSelectedOptions>, quantity?: number) => void;
+  addItem: (
+    product: Product,
+    options: Partial<CartSelectedOptions>,
+    quantity?: number,
+    parentLineKey?: string,
+  ) => void;
   removeItem: (lineKey: string) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
