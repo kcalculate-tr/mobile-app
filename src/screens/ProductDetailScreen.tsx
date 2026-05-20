@@ -805,6 +805,7 @@ export default function ProductDetailScreen() {
               uri={transformImageUrl(product.img, ImagePreset.productDetail) ?? product.img}
               style={styles.image}
               priority="high"
+              contentFit="contain"
               onError={() => setImageLoadError(true)}
             />
           ) : (
@@ -1199,6 +1200,7 @@ const styles = StyleSheet.create({
     // Ürün görseli kaynak boyutu 1350x1080 (5:4). Container aspect'i
     // kaynakla eşleşince cover/contain fark etmez, üst/alt kırpma olmaz.
     aspectRatio: 1350 / 1080,
+    padding: 16,
   },
   image: {
     width: '100%',
