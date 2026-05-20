@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Animated,
   ActivityIndicator,
   Alert,
+  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,8 @@ import { Animated,
   View,
   Image,
 } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -805,7 +808,7 @@ export default function ProductDetailScreen() {
               uri={transformImageUrl(product.img, ImagePreset.productDetail) ?? product.img}
               style={styles.image}
               priority="high"
-              contentFit="contain"
+              contentFit="cover"
               onError={() => setImageLoadError(true)}
             />
           ) : (
@@ -1192,7 +1195,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageContainer: {
-    marginHorizontal: 16,
+    width: SCREEN_WIDTH - 32,
+    alignSelf: 'center',
     marginBottom: 16,
     borderRadius: 24,
     overflow: 'hidden',
@@ -1200,7 +1204,6 @@ const styles = StyleSheet.create({
     // Ürün görseli kaynak boyutu 1350x1080 (5:4). Container aspect'i
     // kaynakla eşleşince cover/contain fark etmez, üst/alt kırpma olmaz.
     aspectRatio: 1350 / 1080,
-    padding: 16,
   },
   image: {
     width: '100%',
