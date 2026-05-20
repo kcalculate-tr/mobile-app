@@ -1196,7 +1196,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: COLORS.white,
-    height: 260,
+    // Ürün görseli kaynak boyutu 1350x1080 (5:4). Container aspect'i
+    // kaynakla eşleşince cover/contain fark etmez, üst/alt kırpma olmaz.
+    aspectRatio: 1350 / 1080,
   },
   image: {
     width: '100%',
