@@ -1192,9 +1192,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageContainer: {
-    marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: COLORS.white,
     // Ürün görseli kaynak boyutu 1350x1080 (5:4). Container aspect'i
