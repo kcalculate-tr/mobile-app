@@ -25,6 +25,7 @@ import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
 import { getSupabaseClient } from '../lib/supabase';
+import { logEvent } from '../lib/analytics';
 import { COLORS } from '../constants/theme';
 import {
   PAYMENT_PROVIDER,
@@ -57,6 +58,7 @@ export default function PaymentScreen() {
     return (
       <PaytrPaymentFlow
         orderId={route.params.orderId}
+        amount={route.params.amount}
         orderCode={route.params.orderCode}
         noticeMessage={route.params.noticeMessage}
       />
@@ -332,6 +334,7 @@ function ToslaPaymentFlow() {
                 hasNavigated.current = true;
                 setWebViewHtml(null);
                 await completeOrder();
+                logEvent.purchase(String(orderId), Number(amount) || 0);
                 navigation.replace('OrderSuccess', {
                   orderCode: orderCode ?? String(orderId),
                   orderId: String(orderId),
@@ -360,6 +363,7 @@ function ToslaPaymentFlow() {
                   setWebViewHtml(null);
                   await completeOrder();
                   haptic.success();
+                  logEvent.purchase(String(orderId), Number(amount) || 0);
                   // Pantry tek kaynak = TrackerScreen backfill (delivered +
                   // orderItemId dedup + bundle expansion). Anında ekleme yok.
                   clearCart();
@@ -642,6 +646,7 @@ const styles = StyleSheet.create({
 
 type PaytrFlowProps = {
   orderId: string;
+  amount: number;
   orderCode?: string;
   noticeMessage?: string;
 };
@@ -672,7 +677,7 @@ const matchesPayTRReturn = (url: string): { matches: boolean; success: boolean }
   }
 };
 
-function PaytrPaymentFlow({ orderId, orderCode, noticeMessage }: PaytrFlowProps) {
+function PaytrPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaytrFlowProps) {
   const navigation = useNavigation<PaymentScreenNavProp>();
   const insets = useSafeAreaInsets();
   const clearCart = useCartStore((s) => s.clearCart);
@@ -773,6 +778,8 @@ function PaytrPaymentFlow({ orderId, orderCode, noticeMessage }: PaytrFlowProps)
     handledRef.current = true;
     setVerifying(true);
     haptic.success();
+
+    logEvent.purchase(String(orderId), Number(amount) || 0);
 
     await pollOrderConfirmed();
 

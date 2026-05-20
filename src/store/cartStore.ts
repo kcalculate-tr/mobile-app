@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
+import { logEvent } from '../lib/analytics';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
 
 export const useCartStore = create<CartState>()(
@@ -142,6 +143,12 @@ export const useCartStore = create<CartState>()(
 
           return { items: [...state.items, newItem] };
         });
+
+        // Sadece parent kalem için AddToCart event'i (child ekstralar
+        // parent ile birlikte zaten sayıldı — çift event olmasın).
+        if (!parentLineKey) {
+          logEvent.addToCart(String(product.id), unitPrice, quantity);
+        }
       },
 
       removeItem: (lineKey: string) => {

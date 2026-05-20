@@ -26,6 +26,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
+import { initFBSDK } from './src/lib/analytics';
 
 setupGlobalErrorHandler();
 
@@ -45,6 +46,12 @@ function AppContent() {
   useEffect(() => {
     const cleanup = setupNotificationListeners(navigationRef);
     return cleanup;
+  }, []);
+
+  useEffect(() => {
+    initFBSDK().catch((err) => {
+      console.warn('[App] FB SDK init failed:', err);
+    });
   }, []);
 
   useEffect(() => {

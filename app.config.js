@@ -105,6 +105,23 @@ module.exports = {
         },
       ],
       'expo-video',
+      [
+        'react-native-fbsdk-next',
+        {
+          // TODO(meta): META_APP_ID + CLIENT_TOKEN gerçek değerlerle değiştir.
+          // Meta Business Suite → App Settings → Basic'ten alınacak.
+          // scheme: "fb<META_APP_ID>" (fb prefix zorunlu) — iOS deep link.
+          appID: 'META_APP_ID_PLACEHOLDER',
+          clientToken: 'CLIENT_TOKEN_PLACEHOLDER',
+          displayName: 'KCAL',
+          scheme: 'fbMETA_APP_ID_PLACEHOLDER',
+          advertiserIDCollectionEnabled: true,
+          autoLogAppEventsEnabled: true,
+          isAutoInitEnabled: true,
+          iosUserTrackingPermission:
+            'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
+        },
+      ],
     ],
   },
 };

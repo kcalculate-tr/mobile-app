@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useOnboardingStore } from '../../store/onboardingStore';
 import { useNavGate } from '../../store/navGateStore';
 import { getSupabaseClient } from '../../lib/supabase';
+import { logEvent } from '../../lib/analytics';
 
 const norm = (s: string) => s.trim().toLocaleLowerCase('tr');
 
@@ -151,6 +152,8 @@ export default function RegisterAddressScreen() {
         contact_email: email,
       });
       if (addressError) throw addressError;
+
+      logEvent.completeRegistration('email');
 
       reset();
       // Kayıt bitti, beslenme adımına geçiyoruz. needsNutrition='true' yap

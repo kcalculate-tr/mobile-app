@@ -42,6 +42,7 @@ import {
 } from '../utils/price';
 import { useCartStore } from '../store/cartStore';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
+import { logEvent } from '../lib/analytics';
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '../constants/theme';
 
@@ -167,6 +168,15 @@ export default function ProductDetailScreen() {
       mounted = false;
     };
   }, [route.params.productId]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+    logEvent.viewContent(
+      String(product.id),
+      product.name ?? '',
+      Number(getEffectivePrice(product)) || 0,
+    );
+  }, [product?.id]);
 
   useEffect(() => {
     if (!product?.id) return;
