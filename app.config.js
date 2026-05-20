@@ -111,10 +111,10 @@ module.exports = {
           // TODO(meta): META_APP_ID + CLIENT_TOKEN gerçek değerlerle değiştir.
           // Meta Business Suite → App Settings → Basic'ten alınacak.
           // scheme: "fb<META_APP_ID>" (fb prefix zorunlu) — iOS deep link.
-          appID: 'META_APP_ID_PLACEHOLDER',
-          clientToken: 'CLIENT_TOKEN_PLACEHOLDER',
+          appID: '4403872953189106',
+          clientToken: '99ec21a60f8699f2534e3aaa52951f73',
           displayName: 'KCAL',
-          scheme: 'fbMETA_APP_ID_PLACEHOLDER',
+          scheme: 'fb4403872953189106',
           advertiserIDCollectionEnabled: true,
           autoLogAppEventsEnabled: true,
           isAutoInitEnabled: true,
