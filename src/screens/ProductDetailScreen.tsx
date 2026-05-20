@@ -805,6 +805,7 @@ export default function ProductDetailScreen() {
               uri={transformImageUrl(product.img, ImagePreset.productDetail) ?? product.img}
               style={styles.image}
               priority="high"
+              contentFit="contain"
               onError={() => setImageLoadError(true)}
             />
           ) : (
