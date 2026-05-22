@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'Kcalculate',
     slug: 'kcal-mobile',
-    version: '1.0.3',
+    version: '1.0.4',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -105,6 +105,13 @@ module.exports = {
         },
       ],
       'expo-video',
+      [
+        'expo-tracking-transparency',
+        {
+          userTrackingPermission:
+            'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
+        },
+      ],
       [
         'react-native-fbsdk-next',
         {

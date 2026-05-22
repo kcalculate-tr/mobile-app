@@ -1,23 +1,22 @@
 import { Platform } from 'react-native';
 import { AppEventsLogger, Settings } from 'react-native-fbsdk-next';
+import * as TrackingTransparency from 'expo-tracking-transparency';
 
 let initialized = false;
 
 export const initFBSDK = async (): Promise<void> => {
   if (initialized) return;
   try {
-    Settings.initializeSDK();
+    // Önemli sıra: iOS'ta ATT prompt'unu explicit tetikle ve advertiser
+    // tracking durumunu set et, SDK init'i ondan SONRA çağır. Tersi sırada
+    // Meta IDFA'yı izin gelmeden okumaya çalışır.
     if (Platform.OS === 'ios') {
-      // ATT izni alındıysa IDFA toplama açılır. İzin akışını ayrı bir
-      // pakete (expo-tracking-transparency) bağlamadan sadece mevcut
-      // durumu yansıtıyoruz; izin yoksa Meta limited-data moduna düşer.
-      try {
-        const enabled = await Settings.getAdvertiserTrackingEnabled();
-        await Settings.setAdvertiserTrackingEnabled(!!enabled);
-      } catch {
-        // sessiz: ATT API mevcut değilse (eski iOS) atla
-      }
+      const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
+      const granted = status === 'granted';
+      await Settings.setAdvertiserTrackingEnabled(granted);
+      if (__DEV__) console.log('[analytics] ATT status:', status);
     }
+    Settings.initializeSDK();
     initialized = true;
     if (__DEV__) console.log('[analytics] FB SDK initialized');
   } catch (err) {
