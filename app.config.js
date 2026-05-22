@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'Kcalculate',
     slug: 'kcal-mobile',
-    version: '1.0.2',
+    version: '1.0.3',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -40,7 +40,7 @@ module.exports = {
     },
     android: {
       package: 'com.kcalmobile.app',
-      versionCode: 1,
+      versionCode: 9,
       userInterfaceStyle: 'light',
       adaptiveIcon: {
         backgroundColor: '#000000',
