@@ -92,13 +92,15 @@ serve(async (req) => {
 
   const productIds = items.map(it => parseInt(it.id, 10)).filter(n => !Number.isNaN(n));
   const { data: products, error: prodErr } = await supabase
-    .from("products").select("id, name, adisyo_product_unit_id").in("id", productIds);
+    .from("products").select("id, name, price, adisyo_product_unit_id").in("id", productIds);
 
   if (prodErr) return await fail(supabase, orderId, `products_fetch: ${prodErr.message}`, null);
 
   const unitIdMap = new Map<number, number>();
+  const priceMap = new Map<number, number>();
   for (const p of products ?? []) {
     if (p.adisyo_product_unit_id) unitIdMap.set(p.id as number, p.adisyo_product_unit_id as number);
+    if (p.price != null) priceMap.set(p.id as number, Number(p.price));
   }
 
   const orderDetails: Array<{ ProductUnitId: number; Quantity: number; UnitPrice: number; OrderDetailNote?: string }> = [];
@@ -108,12 +110,17 @@ serve(async (req) => {
     const pid = parseInt(it.id, 10);
     const unitId = unitIdMap.get(pid);
     if (!unitId) { unmapped.push(`${it.name} (id=${it.id})`); continue; }
-    const labels = it.selected_options?.labels ?? [];
+    const adisyoPrice = priceMap.get(pid);
+    if (adisyoPrice == null) { unmapped.push(`${it.name} (id=${it.id}) – DB.price yok`); continue; }
+    const note = buildOrderDetailNote(it);
+    // Adisyo'nun 715 validation'ı kendi kayıtlı ürün fiyatını kullanıyor.
+    // UnitPrice = products.price (v4 sync ile Adisyo'ya push edilen fiyat).
+    // Gramaj modifier / per-product discount / kupon hepsi order-level Discount'a toplanır.
     orderDetails.push({
       ProductUnitId: unitId,
       Quantity: it.quantity,
-      UnitPrice: Number(it.unit_price ?? 0) + Number(it.selected_options?.extraPrice ?? 0),
-      ...(labels.length > 0 ? { OrderDetailNote: labels.join(", ") } : {}),
+      UnitPrice: adisyoPrice,
+      ...(note ? { OrderDetailNote: note } : {}),
     });
   }
 
@@ -134,20 +141,23 @@ serve(async (req) => {
   const phoneValue = (addr?.contact_phone ?? dbOrder.phone ?? "").toString().trim();
 
   // === 6. Tutarlar
-  // Adisyo formülü: items_sum = OrderTotal + Discount - DeliveryFee
-  // → OrderTotal = items_sum + DeliveryFee - Discount = müşterinin ödediği net tutar
-  // total_amount zaten net tutar olduğu için onu kullanıyoruz.
+  // Adisyo formülü: items_sum + DeliveryFee - Discount = OrderTotal
+  // UnitPrice'lar Adisyo'nun saved fiyatı olduğu için, app-side tüm farklar
+  // (per-product discount, gramaj modifier, kupon, macro discount) bu tek
+  // Discount alanında toplanır. Böylece 715 ("items toplamı eşleşmiyor") elenir.
   const deliveryFee = Number(dbOrder.delivery_fee ?? 0);
-  const discount = Number(dbOrder.discount_amount ?? 0) + Number(dbOrder.macro_discount_amount ?? 0);
   const orderTotal = Number(dbOrder.total_amount ?? 0);
-
-  // Sanity check: total_amount ile hesaplanan tutar uyuşmuyorsa warning log at, devam et
   const itemsSum = orderDetails.reduce((s, d) => s + d.UnitPrice * d.Quantity, 0);
-  const calculatedTotal = itemsSum + deliveryFee - discount;
-  if (Math.abs(orderTotal - calculatedTotal) > 0.01) {
-    const warnMsg = `OrderTotal mismatch: total_amount=${orderTotal}, calculated=${calculatedTotal} (items=${itemsSum}, delivery=${deliveryFee}, discount=${discount})`;
+  const discount = +(itemsSum + deliveryFee - orderTotal).toFixed(2);
+
+  if (discount < 0) {
+    // items_sum < orderTotal → customer kayıtlı fiyattan FAZLA ödedi
+    // (örn. gramaj +modifier var ama kupon yok). Adisyo negative discount kabul
+    // etmiyorsa burada bail edip mesajı netleştirmek lazım — şimdilik yine
+    // gönderiyoruz, sonraki 715 cevabı ile karar veririz.
+    const warnMsg = `negative_discount: items_sum=${itemsSum}, fee=${deliveryFee}, total=${orderTotal} → ${discount} (gramaj/option surcharge?)`;
     console.warn(`[adisyo-save-order] order=${orderId} ${warnMsg}`);
-    await logEvent(supabase, orderId, "warning", { warnMsg, orderTotal, calculatedTotal, itemsSum, deliveryFee, discount }, null, null, warnMsg, null);
+    await logEvent(supabase, orderId, "warning", { warnMsg, itemsSum, deliveryFee, orderTotal, discount }, null, null, warnMsg, null);
   }
 
   // === 7. Sipariş notu
@@ -316,6 +326,49 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+// Mutfak fişinde görünmesi için tüm seçim verisini tek bir string'e topla.
+// items[i] şu formatlarda gelebilir:
+//   - selected_options: ARRAY of {template_name, value_name, ...}  (yeni)
+//   - selected_options: OBJECT {labels?, templateOptions?, byGroup?}  (eski)
+//   - legacy_selected_options: aynı şekilde fallback
+//   - bundle_selections: ARRAY (bundle ürününün seçilen alt ürünleri)
+function buildOrderDetailNote(it: any): string | undefined {
+  const parts: string[] = [];
+
+  const collectTemplateOpts = (arr: any[]) => {
+    for (const opt of arr) {
+      const tn = (opt?.template_name ?? "").toString().trim();
+      const vn = (opt?.value_name ?? "").toString().trim();
+      if (tn && vn) parts.push(`${tn}: ${vn}`);
+      else if (vn) parts.push(vn);
+    }
+  };
+
+  const so = it?.selected_options;
+  if (Array.isArray(so)) {
+    collectTemplateOpts(so);
+  } else if (so && typeof so === "object") {
+    if (Array.isArray(so.labels)) parts.push(...so.labels);
+    if (Array.isArray(so.templateOptions)) collectTemplateOpts(so.templateOptions);
+  }
+
+  const lso = it?.legacy_selected_options;
+  if (lso && typeof lso === "object") {
+    if (Array.isArray(lso.labels)) parts.push(...lso.labels);
+    if (Array.isArray(lso.templateOptions)) collectTemplateOpts(lso.templateOptions);
+  }
+
+  if (Array.isArray(it?.bundle_selections)) {
+    for (const b of it.bundle_selections) {
+      const name = (b?.name ?? b?.product_name ?? "").toString().trim();
+      if (name) parts.push(`• ${name}`);
+    }
+  }
+
+  const unique = [...new Set(parts.map(s => s.trim()).filter(Boolean))];
+  return unique.length > 0 ? unique.join(" · ") : undefined;
 }
 
 // --- adres zenginleştirme ---
