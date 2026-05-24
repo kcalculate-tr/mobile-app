@@ -39,8 +39,19 @@ export function isoWeekday(date: Date): number {
   return d === 0 ? 7 : d
 }
 
+// Local-timezone YYYY-MM-DD. Use this for any DATE column or local-day match
+// (closed_dates, scheduled_date, etc.). Avoid toISOString() — it shifts to UTC
+// and rolls back one day for local-midnight Date instances in UTC+3.
+export function toLocalDateStr(date: Date): string {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+/** @deprecated Use toLocalDateStr — toDateStr now aliases to it for backwards compat. */
 export function toDateStr(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  return toLocalDateStr(date)
 }
 
 // Şu an mağaza açık mı? (hemen/gel-al için)

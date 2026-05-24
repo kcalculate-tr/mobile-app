@@ -63,7 +63,7 @@ import {
   DeliveryGlobals,
   DeliveryZoneRow,
 } from '../lib/delivery';
-import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvailableScheduledDates, formatTime, BusinessHours } from '../lib/businessHours';
+import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvailableScheduledDates, formatTime, toLocalDateStr, BusinessHours } from '../lib/businessHours';
 import { fetchBranches, Branch } from '../lib/branches';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
@@ -1092,7 +1092,7 @@ export default function CheckoutScreen() {
         deliveryTimeType === 'scheduled' && selectedScheduledDate && selectedTimeSlot
           ? {
               delivery_type: 'scheduled' as const,
-              scheduled_date: selectedScheduledDate.toISOString().slice(0, 10), // YYYY-MM-DD
+              scheduled_date: toLocalDateStr(selectedScheduledDate), // YYYY-MM-DD (local TZ — UTC shifted 1 day back)
               scheduled_time: selectedTimeSlot.start,                            // e.g. '13:30'
             }
           : {
