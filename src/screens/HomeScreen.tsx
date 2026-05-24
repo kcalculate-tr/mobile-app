@@ -23,6 +23,7 @@ import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
+import { fetchBusinessHours, BusinessHours } from '../lib/businessHours';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -58,6 +59,7 @@ export default function HomeScreen() {
   const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null);
   const [loadError, setLoadError] = useState('');
   const [searchText, setSearchText] = useState('');
   const heroFlatListRef = useRef<FlatList>(null);
@@ -90,17 +92,19 @@ export default function HomeScreen() {
     setLoading(true);
     setLoadError('');
     try {
-      const [cats, prods, bannerData, featured] = await Promise.all([
+      const [cats, prods, bannerData, featured, bh] = await Promise.all([
         fetchCategories(),
         fetchProducts(),
         fetchBannerRows(),
         fetchFeaturedProducts(),
+        fetchBusinessHours(),
       ]);
       setCategories(cats);
       setProducts(prods);
       setHeroRows(bannerData.hero);
       setPromoRows(bannerData.promo);
       setFeaturedProducts(featured);
+      setBusinessHours(bh);
     } catch (e) {
       setLoadError(mapSupabaseErrorToUserMessage(e, 'İçerikler yüklenemedi. Lütfen tekrar deneyin.'));
     }
@@ -317,6 +321,13 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Bayram / tatil banner — settings.holiday_banner_active=TRUE iken görünür */}
+        {businessHours?.holiday_banner_active && businessHours.holiday_banner_message ? (
+          <View style={styles.holidayBanner}>
+            <Text style={styles.holidayBannerText}>{businessHours.holiday_banner_message}</Text>
+          </View>
+        ) : null}
 
         {/* Empty/Retry State */}
         {!loading && products.length === 0 && categories.length === 0 && (
@@ -625,6 +636,23 @@ const styles = StyleSheet.create({
     color: '#555555',
     textAlign: 'center',
     lineHeight: 11,
+  },
+  holidayBanner: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    backgroundColor: '#FFF9E6',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: '#F8C90E',
+  },
+  holidayBannerText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: '#7A5C00',
+    lineHeight: 20,
   },
   helpButton: {
     width: 36,

@@ -6,6 +6,8 @@ export interface BusinessHours {
   close_time: string          // '21:00'
   closed_dates: string[]      // ['2026-01-01', ...]
   closed_dates_note: Record<string, string> // {'2026-01-01': 'Yılbaşı'}
+  holiday_banner_active: boolean
+  holiday_banner_message: string | null
 }
 
 const DEFAULT: BusinessHours = {
@@ -14,13 +16,15 @@ const DEFAULT: BusinessHours = {
   close_time: '21:00',
   closed_dates: [],
   closed_dates_note: {},
+  holiday_banner_active: false,
+  holiday_banner_message: null,
 }
 
 export async function fetchBusinessHours(): Promise<BusinessHours> {
   const supabase = getSupabaseClient()
   const { data } = await supabase
     .from('settings')
-    .select('working_days, open_time, close_time, closed_dates, closed_dates_note')
+    .select('working_days, open_time, close_time, closed_dates, closed_dates_note, holiday_banner_active, holiday_banner_message')
     .eq('id', 1)
     .maybeSingle()
   if (!data) return DEFAULT
@@ -30,6 +34,8 @@ export async function fetchBusinessHours(): Promise<BusinessHours> {
     close_time:   data.close_time   ?? DEFAULT.close_time,
     closed_dates: data.closed_dates ?? [],
     closed_dates_note: data.closed_dates_note ?? {},
+    holiday_banner_active: data.holiday_banner_active ?? false,
+    holiday_banner_message: data.holiday_banner_message ?? null,
   }
 }
 
@@ -70,11 +76,12 @@ export function isShopOpenNow(bh: BusinessHours): boolean {
 }
 
 // Belirli bir tarih randevulu teslimat için geçerli mi?
+// working_days (settings.working_days, ISO 1=Pzt..7=Paz) tek otorite — admin
+// hafta sonunu açabilir. Tatil günleri closed_dates'ten kontrol edilir.
 export function isDateAvailableForScheduled(date: Date, bh: BusinessHours): boolean {
   const day = isoWeekday(date)
-  if (day === 6 || day === 7) return false              // Hafta sonu yasak
-  if (!bh.working_days.includes(day)) return false     // Çalışma günü değil
-  if (bh.closed_dates.includes(toDateStr(date))) return false // Tatil
+  if (!bh.working_days.includes(day)) return false           // Çalışma günü değil
+  if (bh.closed_dates.includes(toLocalDateStr(date))) return false // Tatil
   return true
 }
 
