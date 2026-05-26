@@ -82,6 +82,7 @@ const normalizeAddress = (row: Record<string, unknown>): Address => ({
     String(
       row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '',
     ).trim() || null,
+  street: String(row.street ?? '').trim() || undefined,
   building_no: String(row.building_no ?? '').trim() || undefined,
   floor: String(row.floor ?? '').trim() || undefined,
   apartment_no: String(row.apartment_no ?? '').trim() || undefined,
@@ -327,7 +328,7 @@ export default function AddressesScreen() {
       contact_email: address.contact_email || user?.email || '',
       district: address.district || '',
       neighborhood: address.neighbourhood || '',
-      street: (address as any).street || '',
+      street: address.street || '',
       building_no: address.building_no || '',
       floor: address.floor || '',
       apartment_no: address.apartment_no || '',

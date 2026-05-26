@@ -232,6 +232,7 @@ export interface Address {
   city: string;
   district: string;
   neighbourhood: string | null;
+  street?: string;
   building_no?: string;
   floor?: string;
   apartment_no?: string;
