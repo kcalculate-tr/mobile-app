@@ -24,10 +24,13 @@ export default function RegisterAddressScreen() {
   const [ilce, setIlce] = useState('');
   const [mahalle, setMahalle] = useState('');
   const [street, setStreet] = useState('');
-  const [fullAddress, setFullAddress] = useState('');
+  const [buildingNo, setBuildingNo] = useState('');
+  const [floor, setFloor] = useState('');
+  const [apartmentNo, setApartmentNo] = useState('');
+  const [buildingName, setBuildingName] = useState('');
   const [districtOptions, setDistrictOptions] = useState<PickerOption[]>([]);
   const [neighborhoodMap, setNeighborhoodMap] = useState<Record<string, PickerOption[]>>({});
-  const [errors, setErrors] = useState<{ ilce?: string; mahalle?: string; street?: string; fullAddress?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{ ilce?: string; mahalle?: string; street?: string; buildingNo?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
 
@@ -106,16 +109,24 @@ export default function RegisterAddressScreen() {
     Boolean(ilce.trim()) &&
     Boolean(mahalle.trim()) &&
     Boolean(street.trim()) &&
-    Boolean(fullAddress.trim());
+    Boolean(buildingNo.trim());
 
   const handleSubmit = async () => {
     const e: typeof errors = {};
     if (!ilce.trim()) e.ilce = 'Bu alan zorunlu.';
     if (!mahalle.trim()) e.mahalle = 'Bu alan zorunlu.';
     if (!street.trim()) e.street = 'Bu alan zorunlu.';
-    if (!fullAddress.trim()) e.fullAddress = 'Bu alan zorunlu.';
+    if (!buildingNo.trim()) e.buildingNo = 'Bu alan zorunlu.';
     setErrors(e);
     if (Object.keys(e).length > 0) return;
+
+    const composedFullAddress = [
+      street.trim(),
+      buildingNo.trim() ? `No:${buildingNo.trim()}` : '',
+      floor.trim() ? `Kat:${floor.trim()}` : '',
+      apartmentNo.trim() ? `D:${apartmentNo.trim()}` : '',
+      buildingName.trim(),
+    ].filter(Boolean).join(' ');
 
     setLoading(true);
     try {
@@ -127,7 +138,7 @@ export default function RegisterAddressScreen() {
         return;
       }
 
-      setAddress({ il: 'İzmir', ilce: ilce.trim(), mahalle: mahalle.trim(), street: street.trim(), fullAddress: fullAddress.trim() });
+      setAddress({ il: 'İzmir', ilce: ilce.trim(), mahalle: mahalle.trim(), street: street.trim(), fullAddress: composedFullAddress });
 
       const { error: profileError } = await supabase
         .from('profiles')
@@ -146,7 +157,11 @@ export default function RegisterAddressScreen() {
         district: ilce.trim(),
         neighbourhood: mahalle.trim(),
         street: street.trim(),
-        full_address: fullAddress.trim(),
+        building_no: buildingNo.trim(),
+        floor: floor.trim(),
+        apartment_no: apartmentNo.trim(),
+        building_name: buildingName.trim() || null,
+        full_address: composedFullAddress,
         contact_name: `${firstName} ${lastName}`,
         contact_phone: phone,
         contact_email: email,
@@ -218,14 +233,42 @@ export default function RegisterAddressScreen() {
                   placeholder="Cadde veya sokak adı"
                   error={errors.street}
                 />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <GlassInput
+                      label="BİNA NO"
+                      value={buildingNo}
+                      onChangeText={setBuildingNo}
+                      keyboardType="number-pad"
+                      placeholder="8"
+                      error={errors.buildingNo}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <GlassInput
+                      label="KAT"
+                      value={floor}
+                      onChangeText={setFloor}
+                      keyboardType="number-pad"
+                      placeholder="3"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <GlassInput
+                      label="DAİRE"
+                      value={apartmentNo}
+                      onChangeText={setApartmentNo}
+                      keyboardType="number-pad"
+                      placeholder="10"
+                    />
+                  </View>
+                </View>
                 <GlassInput
-                  label="AÇIK ADRES"
-                  value={fullAddress}
-                  onChangeText={setFullAddress}
-                  multiline
-                  numberOfLines={3}
-                  placeholder="Bina no, daire no, kat…"
-                  error={errors.fullAddress}
+                  label="APARTMAN ADI (OPSİYONEL)"
+                  value={buildingName}
+                  onChangeText={setBuildingName}
+                  autoCapitalize="words"
+                  placeholder="Örn: Karabağlar Apt."
                 />
                 {errors.general ? <Text style={styles.errorText}>{errors.general}</Text> : null}
               </View>
