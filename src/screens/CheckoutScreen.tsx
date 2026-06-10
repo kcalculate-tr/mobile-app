@@ -24,6 +24,7 @@ import Constants from 'expo-constants';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
 import { useAuth } from '../context/AuthContext';
@@ -1991,6 +1992,9 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
         </View>
 
       </KeyboardAvoidingView>
+
+      {/* iOS native "Kapat" aksesuarı — ekran hiyerarşisinde lokal mount. */}
+      <KeyboardAccessory />
 
       {/* ── 3D Secure Modal ── */}
       <Modal visible={!!webViewHtml} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null })}>

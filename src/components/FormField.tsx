@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Portal } from '@gorhom/portal';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import KeyboardAccessory from './KeyboardAccessory';
 
 export interface FormFieldOption {
   label: string;
@@ -224,6 +225,9 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
       )}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {/* iOS native "Kapat" aksesuarı, input ile aynı hiyerarşide (lokal çözüm).
+          Select alanlarında TextInput yok → mount etme. */}
+      {type !== 'select' && <KeyboardAccessory />}
     </View>
   );
 });

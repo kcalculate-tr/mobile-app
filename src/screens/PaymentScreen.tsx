@@ -21,6 +21,7 @@ import { WebView } from 'react-native-webview';
 import * as Updates from 'expo-updates';
 import { CreditCard, Lock, ArrowLeft } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import KeyboardAccessory from '../components/KeyboardAccessory';
 import { initPayment } from '../lib/payment';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
@@ -325,6 +326,9 @@ function ToslaPaymentFlow() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {/* iOS native "Kapat" aksesuarı — ekran hiyerarşisinde lokal mount. */}
+      <KeyboardAccessory />
 
       {/* 3D Secure WebView Modal */}
       <Modal visible={!!webViewHtml} animationType="slide" onRequestClose={() => setWebViewHtml(null)}>

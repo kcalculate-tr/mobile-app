@@ -27,7 +27,7 @@ import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
-import KeyboardAccessory, { DEFAULT_ACCESSORY_ID } from './src/components/KeyboardAccessory';
+import { DEFAULT_ACCESSORY_ID } from './src/components/KeyboardAccessory';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK } from './src/lib/analytics';
 
@@ -139,10 +139,12 @@ export default function App() {
               <AppContent />
             </NavigationContainer>
           </AuthProvider>
-          {/* Android: native InputAccessoryView yok → eski JS dismiss barı korunur. */}
+          {/* Android: native InputAccessoryView yok → eski JS dismiss barı korunur.
+              iOS: <KeyboardAccessory /> artık lokal olarak (FormField/GlassInput/ekran
+              hiyerarşilerinde) mount ediliyor — root mount React Navigation stack'i
+              yüzünden iOS tarafından çözülemiyordu. defaultProps global ID enjeksiyonu
+              korunuyor (yukarıda). */}
           {Platform.OS === 'android' && <KeyboardToolbar />}
-          {/* iOS: paylaşılan native InputAccessoryView host — bir kez mount. */}
-          <KeyboardAccessory />
           <StatusBar style="light" />
         </PortalProvider>
       </SafeAreaProvider>

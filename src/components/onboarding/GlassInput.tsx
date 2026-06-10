@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps } from 'react-native';
 import { Eye, EyeSlash } from 'phosphor-react-native';
 import { sportive } from '../../theme/sportive';
+import KeyboardAccessory from '../KeyboardAccessory';
 
 interface Props extends TextInputProps {
   label: string;
@@ -55,6 +56,8 @@ export const GlassInput: React.FC<Props> = ({ label, secure, error, ...rest }) =
         )}
       </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {/* iOS native "Kapat" aksesuarı, input ile aynı hiyerarşide (lokal çözüm). */}
+      <KeyboardAccessory />
     </View>
   );
 };

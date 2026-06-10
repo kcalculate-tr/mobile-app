@@ -18,7 +18,7 @@ type Props = { nativeID?: string };
 // iOS-only: klavyeye native (UI thread) yapışık "Kapat" barı. Android'de null
 // döner — Android'de InputAccessoryView yoktur, oradaki dismiss akışı App.tsx'te
 // Platform.OS==='android' koşuluyla korunan eski JS KeyboardToolbar'dan gelir.
-export default function KeyboardAccessory({ nativeID = DEFAULT_ACCESSORY_ID }: Props) {
+export function KeyboardAccessory({ nativeID = DEFAULT_ACCESSORY_ID }: Props) {
   if (Platform.OS !== 'ios') return null;
 
   return (
@@ -35,6 +35,8 @@ export default function KeyboardAccessory({ nativeID = DEFAULT_ACCESSORY_ID }: P
     </InputAccessoryView>
   );
 }
+
+export default KeyboardAccessory;
 
 const styles = StyleSheet.create({
   bar: {
