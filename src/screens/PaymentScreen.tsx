@@ -262,11 +262,9 @@ function ToslaPaymentFlow() {
                 placeholder="AD SOYAD"
                 value={cardHolder}
                 onChangeText={(v) => setCardHolder(v.toUpperCase())}
-                autoCapitalize="characters"
+                autoCapitalize="words"
                 autoCorrect={false}
                 spellCheck={false}
-                textContentType="none"
-                autoComplete="off"
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
