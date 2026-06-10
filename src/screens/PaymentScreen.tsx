@@ -18,6 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';
+import * as Updates from 'expo-updates';
 import { CreditCard, Lock, ArrowLeft } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import { initPayment } from '../lib/payment';
@@ -231,7 +232,13 @@ function ToslaPaymentFlow() {
 
           {/* Form */}
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Kart Bilgileri</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.formTitle}>Kart Bilgileri</Text>
+              {/* DEBUG: OTA update marker — fix'in cihaza ulaşıp ulaşmadığını kanıtlar. Çözüm onaylanınca silinecek. */}
+              <Text style={{ fontSize: 10, color: '#9CA3AF' }}>
+                b:{Updates.updateId ? Updates.updateId.slice(0, 8) : 'embedded'}
+              </Text>
+            </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Kart Numarası</Text>
