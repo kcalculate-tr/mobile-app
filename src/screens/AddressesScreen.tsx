@@ -87,6 +87,7 @@ const normalizeAddress = (row: Record<string, unknown>): Address => ({
   floor: String(row.floor ?? '').trim() || undefined,
   apartment_no: String(row.apartment_no ?? '').trim() || undefined,
   building_name: String(row.building_name ?? '').trim() || undefined,
+  is_default: Boolean(row.is_default),
   created_at: String(row.created_at ?? '').trim() || undefined,
   updated_at: String(row.updated_at ?? '').trim() || undefined,
 });
@@ -158,6 +159,37 @@ export default function AddressesScreen() {
     if (address) setSelectedAddress(address);
   };
 
+  // "Varsayılan Yap": seçimi DB'ye is_default olarak yazar (tek doğruluk kaynağı).
+  // Tek kullanıcıda tek default — önce hepsi false, sonra seçilen true.
+  const handleSetDefault = async (id: string) => {
+    if (!user) return;
+
+    // Optimistic local state: badge anında doğru adrese geçsin.
+    setAddresses((prev) => prev.map((a) => ({ ...a, is_default: a.id === id })));
+    setSelectedAddressId(id);
+    const address = addresses.find((a) => a.id === id);
+    if (address) setSelectedAddress({ ...address, is_default: true });
+
+    try {
+      const supabase = getSupabaseClient();
+      await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('user_id', user.id);
+      await supabase
+        .from('addresses')
+        .update({ is_default: true })
+        .eq('id', id)
+        .eq('user_id', user.id);
+    } catch (error: unknown) {
+      // is_default kolonu henüz yoksa (migration deploy edilmediyse) ya da yazım
+      // hatasında local seçim yine de korunur; bir sonraki açılışta DB'den okunur.
+      if (__DEV__) {
+        console.warn(`[addresses] set default error: ${formatSupabaseErrorForDevLog(error)}`);
+      }
+    }
+  };
+
   const neighborhoodOptions = useMemo(() => {
     const district = form.district.trim();
     if (!district) return [];
@@ -215,10 +247,14 @@ export default function AddressesScreen() {
         setAddresses(normalized);
 
         if (normalized.length > 0) {
+          // Varsayılan seçim DB'den (is_default=true) — tek doğruluk kaynağı.
+          // is_default yoksa: mevcut in-session seçim, o da yoksa en yeni adres.
+          const defaultAddr = normalized.find((a) => a.is_default);
           const resolvedId =
-            selectedAddressId && normalized.some((item) => item.id === selectedAddressId)
+            defaultAddr?.id ??
+            (selectedAddressId && normalized.some((item) => item.id === selectedAddressId)
               ? selectedAddressId
-              : normalized[0].id;
+              : normalized[0].id);
           const resolvedAddress = normalized.find((a) => a.id === resolvedId) ?? null;
           setSelectedAddressId(resolvedId);
           setSelectedAddress(resolvedAddress);
@@ -464,6 +500,11 @@ export default function AddressesScreen() {
         setInfoMessage('Adres güncellendi.');
       } else {
         const workingPayload = { ...payload };
+        // İlk adres otomatik varsayılan olsun — kullanıcı elle "Varsayılan Yap"
+        // demek zorunda kalmasın. Sonraki adresler is_default göndermez (false).
+        if (addresses.length === 0) {
+          workingPayload.is_default = true;
+        }
         const droppedColumns = new Set<string>();
         let insertedData: Address | null = null;
         let lastError: unknown = null;
@@ -664,7 +705,7 @@ export default function AddressesScreen() {
                       {!isActive && (
                         <TouchableOpacity
                           style={s.defaultBtn}
-                          onPress={() => handleSelectAddress(address.id)}
+                          onPress={() => handleSetDefault(address.id)}
                           activeOpacity={0.8}
                         >
                           <Text style={s.defaultBtnText}>Varsayılan Yap</Text>

@@ -23,6 +23,8 @@ Deno.serve(async (req: Request) => {
     let data: any = {}
     let bankResponseCode = ''
     let mdStatus = ''
+    let bankResponseMessage = ''
+    let transactionId = ''
 
     const contentType = req.headers.get('content-type') ?? ''
 
@@ -35,6 +37,8 @@ Deno.serve(async (req: Request) => {
       }
       bankResponseCode = String(data.BankResponseCode ?? data.bankResponseCode ?? '')
       mdStatus = String(data.MdStatus ?? data.mdStatus ?? '')
+      bankResponseMessage = String(data.BankResponseMessage ?? data.bankResponseMessage ?? '')
+      transactionId = String(data.TransactionId ?? data.transactionId ?? '')
     } else {
       // Form-data (Tosla'nın gönderdiği callback formatı)
       const formData = await req.formData()
@@ -43,6 +47,8 @@ Deno.serve(async (req: Request) => {
       })
       bankResponseCode = String(data.BankResponseCode ?? '')
       mdStatus = String(data.MdStatus ?? '')
+      bankResponseMessage = String(data.BankResponseMessage ?? '')
+      transactionId = String(data.TransactionId ?? '')
     }
 
     const rawOrderId = data.OrderId ?? data.orderId
@@ -53,18 +59,28 @@ Deno.serve(async (req: Request) => {
       return new Response('OK', { status: 200 })
     }
 
-    // Tosla: BankResponseCode "00" VEYA MdStatus "1" başarı anlamına gelir
-    const isSuccess = bankResponseCode === '00' || mdStatus === '1'
+    // Tosla: yalnızca BankResponseCode "00" finansal onaydır (para çekildi).
+    // MdStatus sadece 3DS doğrulama sonucudur, ödeme onayı DEĞİLDİR.
+    const isSuccess = bankResponseCode === '00'
 
     // Order'ı type + macro_quantity ile birlikte çek (macro_purchase branch için).
     const { data: order, error: orderFetchErr } = await supabase
       .from('orders')
-      .select('id, user_id, total_price, type, macro_quantity, status')
+      .select('id, user_id, total_price, type, macro_quantity, status, payment_status')
       .eq('id', orderId)
       .maybeSingle()
 
     if (orderFetchErr) {
       console.error('Order fetch error:', orderFetchErr)
+    }
+
+    // IDEMPOTENCY: Order zaten 'paid' ise tekrar işleme. Tosla callback'i retry
+    // edebilir veya çift POST gelebilir; çift macro credit / tekrar update olmasın.
+    if (order?.payment_status === 'paid') {
+      console.log('[PAYMENT-VERIFY] already paid, skipping orderId:', orderId)
+      return new Response('OK', {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      })
     }
 
     // Status + payment_status güncelle
@@ -73,6 +89,8 @@ Deno.serve(async (req: Request) => {
       isSuccess,
       bankResponseCode,
       mdStatus,
+      bankResponseMessage,
+      transactionId,
       previousStatus: order?.status ?? null,
       nextStatus: isSuccess ? 'confirmed' : 'payment_failed',
       nextPaymentStatus: isSuccess ? 'paid' : 'failed',
@@ -88,6 +106,32 @@ Deno.serve(async (req: Request) => {
 
     if (updateError) {
       console.error('Order update error:', updateError)
+    }
+
+    // FAILED_PAYMENTS audit — başarısız ödemede (bankResponseCode !== '00') Tosla
+    // red sebebini kalıcı kaydet. admin-panel ile aynı tablo/şema kullanılıyor
+    // (user_id, error_message, amount, payment_method, order_data jsonb, created_at).
+    // INSERT try/catch ile sarılı: başarısız olsa bile Tosla'ya 200 OK dönmeli.
+    if (!isSuccess && order?.user_id) {
+      try {
+        await supabase.from('failed_payments').insert([{
+          user_id: order.user_id,
+          error_message: bankResponseMessage || `Ödeme başarısız (${bankResponseCode || 'bilinmiyor'})`,
+          amount: 0,
+          payment_method: 'kredi-karti',
+          order_data: {
+            orderId,
+            bankResponseCode,
+            bankResponseMessage,
+            transactionId,
+            mdStatus,
+            raw: data,
+          },
+          created_at: new Date().toISOString(),
+        }])
+      } catch (failedInsertErr) {
+        console.error('[PAYMENT-VERIFY] failed_payments insert error:', failedInsertErr)
+      }
     }
 
     // Macro purchase tamamlama — ödeme başarılıysa VE order bir macro alımı ise.

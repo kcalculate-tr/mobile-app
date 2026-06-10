@@ -1,0 +1,13 @@
+{
+  "name": "adisyo-price-update",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node update-prices.mjs",
+    "dry": "node update-prices.mjs --dry-run"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

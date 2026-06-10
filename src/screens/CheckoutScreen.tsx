@@ -22,7 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, CaretRight, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
+import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import FormField from '../components/FormField';
@@ -120,6 +120,7 @@ const normalizeAddress = (row: Record<string, unknown>): Address => ({
     String(
       row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '',
     ).trim() || null,
+  is_default: Boolean(row.is_default),
   created_at: String(row.created_at ?? '').trim() || undefined,
   updated_at: String(row.updated_at ?? '').trim() || undefined,
 });
@@ -208,7 +209,12 @@ type DeliveryAction =
   | { type: 'SET_BUSINESS_HOURS'; payload: BusinessHours | null };
 function deliveryReducer(state: DeliveryState, action: DeliveryAction): DeliveryState {
   switch (action.type) {
-    case 'SET_DELIVERY_METHOD': return { ...state, deliveryMethod: action.payload };
+    case 'SET_DELIVERY_METHOD':
+      return {
+        ...state,
+        deliveryMethod: action.payload,
+        deliveryTimeType: action.payload === 'pickup' ? 'immediate' : state.deliveryTimeType,
+      };
     case 'SET_DELIVERY_TIME_TYPE': return { ...state, deliveryTimeType: action.payload };
     case 'SET_SCHEDULED_DATE': return { ...state, selectedScheduledDate: action.payload };
     case 'SET_TIME_SLOT': return { ...state, selectedTimeSlot: action.payload };
@@ -369,6 +375,14 @@ export default function CheckoutScreen() {
   }, [businessHours]);
 
   const sectionOpacity = useRef(new Animated.Value(1)).current;
+  // Tosla 3DS WebView: onNavigationStateChange aynı URL için birden çok kez
+  // tetiklenebilir → başarı bloğu tek sefer çalışsın diye guard. Hata olursa
+  // false'a çekilir (kullanıcı tekrar deneyebilsin).
+  const paymentHandledRef = useRef(false);
+  // 3DS sonrası callback POST'u arka planda payment-verify'a ulaşırken WebView
+  // CANLI kalmalı (kapatırsak POST abort olur). Bu süre boyunca ham "OK" sayfasını
+  // maskelemek için WebView üstüne "doğrulanıyor" overlay'i gösterilir.
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const animateSection = (callback: () => void) => {
     Animated.sequence([
       Animated.timing(sectionOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
@@ -550,8 +564,8 @@ export default function CheckoutScreen() {
   const isCheckoutDisabled = useMemo(() => {
     if (placingOrder) return true;
 
-    // Randevulu teslimat için tarih ve saat zorunlu
-    if (deliveryTimeType === 'scheduled' && (!selectedScheduledDate || !selectedTimeSlot)) {
+    // Randevulu teslimat için tarih ve saat zorunlu (sadece eve teslim)
+    if (deliveryMethod === 'home_delivery' && deliveryTimeType === 'scheduled' && (!selectedScheduledDate || !selectedTimeSlot)) {
       return true;
     }
 
@@ -763,9 +777,12 @@ export default function CheckoutScreen() {
         dispatchAddr({ type: 'SET_ADDRESSES', payload: normalized });
 
         if (normalized.length > 0) {
+          // Öncelik: route param (bu sipariş için seçilen) → DB varsayılanı
+          // (is_default=true) → fallback en yeni adres.
           const targetId = route.params?.selectedAddressId;
           const hasTarget = normalized.some((item) => item.id === targetId);
-          const id = hasTarget && targetId ? targetId : normalized[0].id;
+          const defaultAddr = normalized.find((a) => a.is_default);
+          const id = hasTarget && targetId ? targetId : (defaultAddr?.id ?? normalized[0].id);
           dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: id });
           const address = normalized.find((a) => a.id === id);
           if (address) setSelectedAddress(address);
@@ -1879,7 +1896,7 @@ export default function CheckoutScreen() {
               <Text style={styles.cardTitle}>Kart Bilgileri</Text>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Numarası</Text>
-                <TextInput style={styles.cardInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_NUMBER', payload: formatCardNumber(v) })} keyboardType="number-pad" maxLength={19} returnKeyType="next" placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_NUMBER', payload: formatCardNumber(v) })} keyboardType="number-pad" maxLength={19} returnKeyType="next" textContentType="creditCardNumber" autoComplete="cc-number" placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
@@ -1888,24 +1905,14 @@ export default function CheckoutScreen() {
               <View style={{ flexDirection: 'row', gap: SPACING.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Son Kullanım</Text>
-                  <TextInput style={styles.cardInput} placeholder="AA/YY" value={expiry} onChangeText={(v) => dispatchPay({ type: 'SET_EXPIRY', payload: formatExpiry(v) })} keyboardType="number-pad" maxLength={5} returnKeyType="next" placeholderTextColor={COLORS.text.tertiary} />
+                  <TextInput style={styles.cardInput} placeholder="AA/YY" value={expiry} onChangeText={(v) => dispatchPay({ type: 'SET_EXPIRY', payload: formatExpiry(v) })} keyboardType="number-pad" maxLength={5} returnKeyType="next" autoComplete="cc-exp" placeholderTextColor={COLORS.text.tertiary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>CVV</Text>
-                  <TextInput style={styles.cardInput} placeholder="•••" value={cvv} onChangeText={(v) => dispatchPay({ type: 'SET_CVV', payload: v.replace(/\D/g, '').slice(0, 3) })} keyboardType="number-pad" maxLength={3} secureTextEntry returnKeyType="done" placeholderTextColor={COLORS.text.tertiary} />
+                  <TextInput style={styles.cardInput} placeholder="•••" value={cvv} onChangeText={(v) => dispatchPay({ type: 'SET_CVV', payload: v.replace(/\D/g, '').slice(0, 3) })} keyboardType="number-pad" maxLength={3} secureTextEntry returnKeyType="done" textContentType="creditCardSecurityCode" autoComplete="cc-csc" placeholderTextColor={COLORS.text.tertiary} />
                 </View>
               </View>
             </View>
-
-            {/* ── Kayıtlı Kart ── */}
-            <TouchableOpacity style={styles.savedCardsBtn} onPress={() => navigation.navigate('ProfileSavedCards')} activeOpacity={0.8}>
-              <View style={{ width: 36, height: 36, borderRadius: RADIUS.xs, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
-                <CreditCard size={16} color="#000000" />
-              </View>
-              <Text style={{ flex: 1, fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.semibold,
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary }}>Kayıtlı Kart Kullan</Text>
-              <CaretRight size={16} color={COLORS.text.tertiary} />
-            </TouchableOpacity>
 
             {/* ── Güvenli ödeme ── */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, marginTop: SPACING.xs }}>
@@ -1994,15 +2001,50 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
           <WebView
-            source={{ html: webViewHtml ?? '' }}
+            source={{ html: webViewHtml ?? '', baseUrl: 'https://entegrasyon.tosla.com' }}
             style={{ flex: 1 }}
             onNavigationStateChange={(state) => {
-              if ((state.url?.includes('tosla-callback') || state.url?.includes('payment-success') || state.url?.includes('kcal://')) && state.loading === false) {
-                setTimeout(async () => {
-                  const orderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;
-                  dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null });
+              if ((state.url?.includes('payment-verify') || state.url?.includes('tosla-callback') || state.url?.includes('payment-success') || state.url?.includes('kcal://')) && state.loading === false) {
+                // Tekrarlanan tetiklemelere karşı tek-sefer guard.
+                if (paymentHandledRef.current) return;
+                paymentHandledRef.current = true;
 
-                  // Supabase'den ödeme durumunu kontrol et
+                // KRİTİK: WebView'i HEMEN KAPATMA. Callback POST'u arka planda
+                // payment-verify'a ulaşırken WebView canlı kalmalı; kapatırsak
+                // uçuştaki POST abort olur ve callback hiç gelmez. Bunun yerine
+                // overlay göster ("Ödemeniz doğrulanıyor…") ve DB'yi poll et.
+                setVerifyingPayment(true);
+
+                const orderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;
+                const POLL_INTERVAL_MS = 1500;
+                const POLL_MAX_ATTEMPTS = 8; // ~12 sn
+
+                const finishSuccess = (orderCode: string) => {
+                  setVerifyingPayment(false);
+                  dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null });
+                  haptic.success();
+                  // Pantry tek kaynak = TrackerScreen backfill (delivered +
+                  // orderItemId dedup + bundle 6 öğüne açılır). Anında ekleme yok.
+                  clearCart();
+                  navigation.replace('OrderSuccess', {
+                    orderCode,
+                    orderId,
+                    noticeMessage: undefined,
+                  });
+                };
+
+                const finishFailure = (message: string) => {
+                  setVerifyingPayment(false);
+                  dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null });
+                  haptic.error();
+                  dispatchPay({ type: 'SET_PAY_ERROR', payload: message });
+                  dispatchPay({ type: 'SET_STEP', payload: 'payment' });
+                  paymentHandledRef.current = false; // tekrar denenebilsin
+                };
+
+                // Callback'in payment-verify'a ulaşıp DB'yi 'paid' yazması için
+                // kısa aralıklarla order durumunu poll et.
+                const poll = async (attempt: number) => {
                   try {
                     const supabase = getSupabaseClient();
                     const { data: orderData } = await supabase
@@ -2012,30 +2054,30 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
                       .maybeSingle();
 
                     if (orderData?.payment_status === 'paid') {
-                      haptic.success();
-                      // Pantry tek kaynak = TrackerScreen backfill (delivered
-                      // + orderItemId dedup + bundle 6 öğüne açılır). Anında
-                      // ekleme kaldırıldı; sepet temizliği korunur.
-                      clearCart();
-                      navigation.replace('OrderSuccess', {
-                        orderCode: orderData.order_code ?? pendingPaymentOrder?.orderCode ?? orderId,
-                        orderId,
-                        noticeMessage: undefined,
-                      });
-                    } else {
-                      haptic.error();
-                      dispatchPay({ type: 'SET_PAY_ERROR', payload: 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.' });
-                      dispatchPay({ type: 'SET_STEP', payload: 'payment' });
+                      finishSuccess(orderData.order_code ?? pendingPaymentOrder?.orderCode ?? orderId);
+                      return;
                     }
                   } catch {
-                    haptic.error();
-                    dispatchPay({ type: 'SET_PAY_ERROR', payload: 'Ödeme durumu kontrol edilemedi. Lütfen tekrar deneyin.' });
-                    dispatchPay({ type: 'SET_STEP', payload: 'payment' });
+                    // geçici sorgu hatası — sonraki denemede tekrar denenecek
                   }
-                }, 2000);
+
+                  if (attempt < POLL_MAX_ATTEMPTS) {
+                    setTimeout(() => poll(attempt + 1), POLL_INTERVAL_MS);
+                  } else {
+                    finishFailure('Ödeme tamamlanamadı. Lütfen tekrar deneyin.');
+                  }
+                };
+
+                poll(1);
               }
             }}
           />
+          {verifyingPayment && (
+            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(248,249,250,0.97)', alignItems: 'center', justifyContent: 'center', gap: SPACING.md }}>
+              <ActivityIndicator size="large" color={COLORS.brand.green} />
+              <Text style={{ fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.semibold, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary }}>Ödemeniz doğrulanıyor…</Text>
+            </View>
+          )}
           </View>
         </View>
       </Modal>
@@ -2477,15 +2519,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.text.primary,
-  },
-  savedCardsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.sm,
-    padding: SPACING.md,
-    marginTop: SPACING.xs,
   },
   deliveryRow: {
     flexDirection: 'row',

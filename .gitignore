@@ -66,3 +66,9 @@ branch-panel/.env
 *.aab
 icon-512.png
 supabase/.temp/cli-latest
+
+# Untracked sensitive files (eklendi 23 May 2026)
+credentials.json
+app.config.js.save
+app.config.js.bak
+.claude/settings.json

@@ -24,6 +24,8 @@ import {
 } from './src/lib/notifications';
 import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorFallback } from './src/components/ErrorBoundary';
+import ForceUpdateModal from './src/components/ForceUpdateModal';
+import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK } from './src/lib/analytics';
@@ -40,6 +42,20 @@ const navDarkTheme = {
 
 function AppContent() {
   const { session } = useAuth();
+
+  // Zorunlu güncelleme kontrolü — açılışta settings.min_supported_version'a göre.
+  // Fail-open: kontrol başarısızsa kullanıcı kilitlenmez (checkForceUpdate içinde).
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [forceUpdateMessage, setForceUpdateMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkForceUpdate().then((res) => {
+      if (res.required) {
+        setForceUpdate(true);
+        setForceUpdateMessage(res.message);
+      }
+    });
+  }, []);
 
   // Notification listener'ı session'dan bağımsız mount et — cold-start'taki
   // tap response'unu yakalayabilmek için. Token register'ı session olunca yap.
@@ -74,7 +90,12 @@ function AppContent() {
     return cleanup;
   }, []);
 
-  return <AppNavigator />;
+  return (
+    <>
+      <AppNavigator />
+      <ForceUpdateModal visible={forceUpdate} message={forceUpdateMessage} />
+    </>
+  );
 }
 
 export default function App() {
@@ -107,10 +128,10 @@ export default function App() {
 
   if (introVisible) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
         <Image
-          source={require('./assets/kcal-onboard-logo.png')}
-          style={{ width: 200, height: 76 }}
+          source={require('./assets/icon.png')}
+          style={{ width: 170, height: 170 }}
           resizeMode="contain"
         />
       </View>

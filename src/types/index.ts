@@ -237,6 +237,7 @@ export interface Address {
   floor?: string;
   apartment_no?: string;
   building_name?: string;
+  is_default?: boolean;
   created_at?: string;
   updated_at?: string;
 }

@@ -18,7 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';
-import { CreditCard, Lock, CaretRight, ArrowLeft } from 'phosphor-react-native';
+import { CreditCard, Lock, ArrowLeft } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import { initPayment } from '../lib/payment';
 import { RootStackParamList } from '../navigation/types';
@@ -242,6 +242,8 @@ function ToslaPaymentFlow() {
                 onChangeText={(v) => setCardNumber(formatCardNumber(v))}
                 keyboardType="number-pad"
                 maxLength={19}
+                textContentType="creditCardNumber"
+                autoComplete="cc-number"
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
@@ -254,6 +256,8 @@ function ToslaPaymentFlow() {
                 value={cardHolder}
                 onChangeText={(v) => setCardHolder(v.toUpperCase())}
                 autoCapitalize="characters"
+                textContentType="name"
+                autoComplete="cc-name"
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
@@ -268,6 +272,7 @@ function ToslaPaymentFlow() {
                   onChangeText={(v) => setExpiry(formatExpiry(v))}
                   keyboardType="number-pad"
                   maxLength={5}
+                  autoComplete="cc-exp"
                   placeholderTextColor={COLORS.text.tertiary}
                 />
               </View>
@@ -281,24 +286,13 @@ function ToslaPaymentFlow() {
                   keyboardType="number-pad"
                   maxLength={3}
                   secureTextEntry
+                  textContentType="creditCardSecurityCode"
+                  autoComplete="cc-csc"
                   placeholderTextColor={COLORS.text.tertiary}
                 />
               </View>
             </View>
           </View>
-
-          {/* Saved Cards */}
-          <TouchableOpacity
-            style={styles.savedCardsButton}
-            onPress={() => navigation.navigate('ProfileSavedCards')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.savedCardsIcon}>
-              <CreditCard size={16} color="#1a3d00" />
-            </View>
-            <Text style={styles.savedCardsText}>Kayıtlı Kart Kullan</Text>
-            <CaretRight size={16} color={COLORS.text.tertiary} />
-          </TouchableOpacity>
 
           {/* Security Badge */}
           <View style={styles.securityBadge}>
@@ -347,7 +341,7 @@ function ToslaPaymentFlow() {
             </TouchableOpacity>
           </View>
           <WebView
-            source={{ html: webViewHtml ?? '' }}
+            source={{ html: webViewHtml ?? '', baseUrl: 'https://entegrasyon.tosla.com' }}
             style={{ flex: 1 }}
             onShouldStartLoadWithRequest={(request) => {
               return true;
@@ -530,39 +524,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   inputHalf: {
-    flex: 1,
-  },
-
-  // Saved Cards Button
-  savedCardsButton: {
-    width: '100%',
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  savedCardsIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  savedCardsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#1a3d00',
     flex: 1,
   },
 

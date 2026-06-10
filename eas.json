@@ -20,7 +20,7 @@
       "channel": "preview",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_PAYMENT_PROVIDER": "paytr_iframe"
+        "EXPO_PUBLIC_PAYMENT_PROVIDER": "tosla"
       },
       "ios": {
         "simulator": false
@@ -34,7 +34,7 @@
       "channel": "production",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_PAYMENT_PROVIDER": "paytr_iframe"
+        "EXPO_PUBLIC_PAYMENT_PROVIDER": "tosla"
       }
     }
   },

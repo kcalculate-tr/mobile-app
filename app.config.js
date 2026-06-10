@@ -2,17 +2,12 @@ module.exports = {
   expo: {
     name: 'Kcalculate',
     slug: 'kcal-mobile',
-    version: '1.0.4',
+    version: '1.0.5',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     scheme: 'kcal',
     jsEngine: 'hermes',
-    splash: {
-      image: './assets/kcal-onboard-logo.png',
-      resizeMode: 'contain',
-      backgroundColor: '#0A0A0A',
-    },
     assetBundlePatterns: ['**/*'],
     notification: {
       icon: './assets/notification-icon.png',
@@ -79,6 +74,19 @@ module.exports = {
     plugins: [
       'expo-asset',
       'expo-font',
+      [
+        'expo-splash-screen',
+        {
+          // Splash = app icon (icon.png, tek kare amblem) → ana ekran ikonuyla
+          // tutarlı. imageWidth ekranı kaplamayan, kenar boşluklu makul boyut.
+          // backgroundColor icon.png'nin zemini (#000000) ile aynı → görünür
+          // kare kenar oluşmaz. adaptiveIcon backgroundColor da #000000 (eşit).
+          image: './assets/icon.png',
+          imageWidth: 170,
+          resizeMode: 'contain',
+          backgroundColor: '#000000',
+        },
+      ],
       [
         'expo-image-picker',
         {

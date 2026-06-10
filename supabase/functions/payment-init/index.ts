@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const TOSLA_API_URL = 'https://prepentegrasyon.tosla.com/api/Payment'
+const TOSLA_API_URL = 'https://entegrasyon.tosla.com/api/Payment'
 const CLIENT_ID = Deno.env.get('TOSLA_CLIENT_ID') ?? '1000000494'
 const API_USER = Deno.env.get('TOSLA_API_USER') ?? ''
 const API_PASS = Deno.env.get('TOSLA_API_PASS') ?? ''
@@ -88,16 +88,16 @@ Deno.serve(async (req: Request) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clientId: Number(CLIENT_ID),
-        apiUser: API_USER,
-        rnd,
-        timeSpan,
-        hash,
-        orderId: String(orderId),
-        amount: toslaAmount,
-        currency: 949,
-        installmentCount: 0,
-        callbackUrl: cbUrl,
+        ClientId: Number(CLIENT_ID),
+        ApiUser: API_USER,
+        Rnd: rnd,
+        TimeSpan: timeSpan,
+        Hash: hash,
+        OrderId: String(orderId),
+        Amount: toslaAmount,
+        Currency: 949,
+        InstallmentCount: 0,
+        CallbackUrl: cbUrl,
       })
     })
 

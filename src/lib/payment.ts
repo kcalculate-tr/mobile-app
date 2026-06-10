@@ -31,7 +31,7 @@ const normalizePath = (value: string) => {
 
 const INIT_PATH = '/payment-init';
 const VERIFY_PATH = '/payment-verify';
-const PAYMENT_INIT_URL = 'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/tosla-payment-init';
+const PAYMENT_INIT_URL = 'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/payment-init';
 
 export type PaymentConfigStatus = {
   provider: string;
