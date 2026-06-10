@@ -11,6 +11,28 @@ interface Props extends TextInputProps {
 
 export const GlassInput: React.FC<Props> = ({ label, secure, error, ...rest }) => {
   const [hidden, setHidden] = useState(secure);
+
+  // QuickType predictive bar'ı ("Ben/Tamam/Sen") tüm alanlarda kapat; ama email,
+  // şifre (Keychain) ve telefon autofill'ini KORU. Caller bir prop verdiyse (??)
+  // ona saygı gösterilir — sadece eksik olanlara güvenli default uygulanır.
+  const isSecureField = secure === true;
+  const isEmailField = rest.keyboardType === 'email-address' || rest.autoComplete === 'email';
+  const isPhoneField = rest.keyboardType === 'phone-pad' || rest.autoComplete === 'tel';
+  const resolvedAutoCorrect = rest.autoCorrect ?? false;
+  const resolvedSpellCheck = rest.spellCheck ?? false;
+  const resolvedAutoComplete =
+    rest.autoComplete ??
+    (isSecureField ? 'password' : isEmailField ? 'email' : isPhoneField ? 'tel' : 'off');
+  const resolvedTextContentType =
+    rest.textContentType ??
+    (isSecureField
+      ? (rest.autoComplete === 'password-new' ? 'newPassword' : 'password')
+      : isEmailField
+        ? 'emailAddress'
+        : isPhoneField
+          ? 'telephoneNumber'
+          : 'none');
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
@@ -18,6 +40,10 @@ export const GlassInput: React.FC<Props> = ({ label, secure, error, ...rest }) =
         <TextInput
           {...rest}
           secureTextEntry={hidden}
+          autoCorrect={resolvedAutoCorrect}
+          spellCheck={resolvedSpellCheck}
+          autoComplete={resolvedAutoComplete}
+          textContentType={resolvedTextContentType}
           style={styles.input}
           placeholderTextColor={sportive.colors.textMuted}
           selectionColor={sportive.colors.accent}

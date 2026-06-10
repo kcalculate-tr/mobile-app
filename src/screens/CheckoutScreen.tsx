@@ -25,7 +25,6 @@ import { WebView } from 'react-native-webview';
 import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
-import FormField from '../components/FormField';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
@@ -1904,7 +1903,7 @@ export default function CheckoutScreen() {
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
-                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={{ flexDirection: 'row', gap: SPACING.md }}>
                 <View style={{ flex: 1 }}>

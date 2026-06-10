@@ -256,6 +256,8 @@ function ToslaPaymentFlow() {
                 value={cardHolder}
                 onChangeText={(v) => setCardHolder(v.toUpperCase())}
                 autoCapitalize="characters"
+                autoCorrect={false}
+                spellCheck={false}
                 textContentType="name"
                 autoComplete="cc-name"
                 placeholderTextColor={COLORS.text.tertiary}
