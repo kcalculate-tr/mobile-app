@@ -334,6 +334,9 @@ const payInitial: PayState = {
 };
 
 export default function CheckoutScreen() {
+  // Ekran-seviyesi benzersiz aksesuar ID'si (tek InputAccessoryView, çakışma yok).
+  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
+  const iosAccId = Platform.OS === 'ios' ? accId : undefined;
   const navigation = useNavigation<CheckoutNavigationProp>();
   const route = useRoute<CheckoutRouteProp>();
   const insets = useSafeAreaInsets();
@@ -1750,6 +1753,7 @@ export default function CheckoutScreen() {
               spellCheck={false}
               autoComplete="off"
               textContentType="none"
+              inputAccessoryViewID={iosAccId}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -1900,20 +1904,20 @@ export default function CheckoutScreen() {
               <Text style={styles.cardTitle}>Kart Bilgileri</Text>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Numarası</Text>
-                <TextInput style={styles.cardInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_NUMBER', payload: formatCardNumber(v) })} keyboardType="number-pad" maxLength={19} returnKeyType="next" textContentType="creditCardNumber" autoComplete="cc-number" placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_NUMBER', payload: formatCardNumber(v) })} keyboardType="number-pad" maxLength={19} returnKeyType="next" textContentType="creditCardNumber" autoComplete="cc-number" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
-                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} autoComplete="off" textContentType="oneTimeCode" placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} autoComplete="off" textContentType="oneTimeCode" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={{ flexDirection: 'row', gap: SPACING.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Son Kullanım</Text>
-                  <TextInput style={styles.cardInput} placeholder="AA/YY" value={expiry} onChangeText={(v) => dispatchPay({ type: 'SET_EXPIRY', payload: formatExpiry(v) })} keyboardType="number-pad" maxLength={5} returnKeyType="next" autoComplete="cc-exp" placeholderTextColor={COLORS.text.tertiary} />
+                  <TextInput style={styles.cardInput} placeholder="AA/YY" value={expiry} onChangeText={(v) => dispatchPay({ type: 'SET_EXPIRY', payload: formatExpiry(v) })} keyboardType="number-pad" maxLength={5} returnKeyType="next" autoComplete="cc-exp" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>CVV</Text>
-                  <TextInput style={styles.cardInput} placeholder="•••" value={cvv} onChangeText={(v) => dispatchPay({ type: 'SET_CVV', payload: v.replace(/\D/g, '').slice(0, 3) })} keyboardType="number-pad" maxLength={3} secureTextEntry returnKeyType="done" textContentType="creditCardSecurityCode" autoComplete="cc-csc" placeholderTextColor={COLORS.text.tertiary} />
+                  <TextInput style={styles.cardInput} placeholder="•••" value={cvv} onChangeText={(v) => dispatchPay({ type: 'SET_CVV', payload: v.replace(/\D/g, '').slice(0, 3) })} keyboardType="number-pad" maxLength={3} secureTextEntry returnKeyType="done" textContentType="creditCardSecurityCode" autoComplete="cc-csc" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
                 </View>
               </View>
             </View>
@@ -1993,8 +1997,8 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
 
       </KeyboardAvoidingView>
 
-      {/* iOS native "Kapat" aksesuarı — ekran hiyerarşisinde lokal mount. */}
-      <KeyboardAccessory />
+      {/* iOS native "Kapat" aksesuarı — ekran-seviyesi benzersiz ID. */}
+      <KeyboardAccessory nativeID={accId} />
 
       {/* ── 3D Secure Modal ── */}
       <Modal visible={!!webViewHtml} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null })}>

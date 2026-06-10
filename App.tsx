@@ -27,7 +27,6 @@ import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
-import { DEFAULT_ACCESSORY_ID } from './src/components/KeyboardAccessory';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK } from './src/lib/analytics';
 
@@ -122,13 +121,9 @@ export default function App() {
   (Text as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
   (TextInput as any).defaultProps = (TextInput as any).defaultProps ?? {};
   (TextInput as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
-  // Global iOS native "Kapat" aksesuarı: her TextInput tek paylaşılan
-  // InputAccessoryView'ı (App tree'de bir kez mount edilen <KeyboardAccessory />)
-  // referanslar. Böylece hiçbir alan — özellikle return tuşu olmayan number-pad
-  // alanları — dismiss aksesuarsız kalmaz. Bir alan kendi inputAccessoryViewID'sini
-  // verirse o ezilir. Android'de undefined (orada eski JS KeyboardToolbar devrede).
-  (TextInput as any).defaultProps.inputAccessoryViewID =
-    Platform.OS === 'ios' ? DEFAULT_ACCESSORY_ID : undefined;
+  // NOT: inputAccessoryViewID artık global defaultProps ile DEĞİL, her input'un
+  // kendi benzersiz nativeID'siyle lokalde veriliyor (React 19/Fabric'te defaultProps
+  // enjeksiyonu güvenilmez + duplicate ID çakışması). Bkz. FormField/GlassInput + ekranlar.
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>

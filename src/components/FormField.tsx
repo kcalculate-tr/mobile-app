@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -67,6 +68,8 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
   const [sheetOpen, setSheetOpen] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  // Bu instance'a özel benzersiz aksesuar ID'si (duplicate nativeID çakışması yok).
+  const uniqueAccessoryId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
 
   const selectedLabel = useMemo(() => {
     if (type !== 'select') return '';
@@ -217,6 +220,7 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
           autoComplete={resolvedAutoComplete}
           textContentType={resolvedTextContentType}
           returnKeyType={returnKeyType}
+          inputAccessoryViewID={Platform.OS === 'ios' ? uniqueAccessoryId : undefined}
           multiline={type === 'textarea'}
           onFocus={() => { setFocused(true); onFocusProp?.(); }}
           onBlur={() => setFocused(false)}
@@ -227,7 +231,7 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {/* iOS native "Kapat" aksesuarı, input ile aynı hiyerarşide (lokal çözüm).
           Select alanlarında TextInput yok → mount etme. */}
-      {type !== 'select' && <KeyboardAccessory />}
+      {type !== 'select' && <KeyboardAccessory nativeID={uniqueAccessoryId} />}
     </View>
   );
 });

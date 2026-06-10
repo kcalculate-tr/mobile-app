@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -85,6 +85,10 @@ function ToslaPaymentFlow() {
   const [webViewHtml, setWebViewHtml] = useState<string | null>(null);
   const hasNavigated = useRef(false);
   const paymentTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Ekran-seviyesi benzersiz aksesuar ID'si: bu ekrandaki tüm input'lar referanslar,
+  // tek InputAccessoryView mount edilir → duplicate nativeID çakışması yok.
+  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
+  const iosAccId = Platform.OS === 'ios' ? accId : undefined;
 
   useEffect(() => {
     return () => {
@@ -252,6 +256,7 @@ function ToslaPaymentFlow() {
                 maxLength={19}
                 textContentType="creditCardNumber"
                 autoComplete="cc-number"
+                inputAccessoryViewID={iosAccId}
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
@@ -268,6 +273,7 @@ function ToslaPaymentFlow() {
                 spellCheck={false}
                 autoComplete="off"
                 textContentType="oneTimeCode"
+                inputAccessoryViewID={iosAccId}
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
@@ -283,6 +289,7 @@ function ToslaPaymentFlow() {
                   keyboardType="number-pad"
                   maxLength={5}
                   autoComplete="cc-exp"
+                  inputAccessoryViewID={iosAccId}
                   placeholderTextColor={COLORS.text.tertiary}
                 />
               </View>
@@ -298,6 +305,7 @@ function ToslaPaymentFlow() {
                   secureTextEntry
                   textContentType="creditCardSecurityCode"
                   autoComplete="cc-csc"
+                  inputAccessoryViewID={iosAccId}
                   placeholderTextColor={COLORS.text.tertiary}
                 />
               </View>
@@ -327,8 +335,8 @@ function ToslaPaymentFlow() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* iOS native "Kapat" aksesuarı — ekran hiyerarşisinde lokal mount. */}
-      <KeyboardAccessory />
+      {/* iOS native "Kapat" aksesuarı — ekran-seviyesi benzersiz ID. */}
+      <KeyboardAccessory nativeID={accId} />
 
       {/* 3D Secure WebView Modal */}
       <Modal visible={!!webViewHtml} animationType="slide" onRequestClose={() => setWebViewHtml(null)}>
