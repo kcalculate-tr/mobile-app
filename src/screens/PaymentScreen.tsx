@@ -258,8 +258,8 @@ function ToslaPaymentFlow() {
                 autoCapitalize="characters"
                 autoCorrect={false}
                 spellCheck={false}
-                textContentType="name"
-                autoComplete="cc-name"
+                textContentType="none"
+                autoComplete="off"
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
