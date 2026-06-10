@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextInputProps,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
@@ -31,6 +32,13 @@ type FormFieldProps = {
   type?: 'input' | 'textarea' | 'select';
   options?: FormFieldOption[];
   onFocus?: () => void;
+  // iOS QuickType ("Ben/Tamam/Sen") + autofill/"Geç" toolbar'ını serbest-metin
+  // alanlarda bastırmak için. Default'lar aşağıda; gerekirse override edilebilir.
+  autoCorrect?: boolean;
+  spellCheck?: boolean;
+  autoComplete?: TextInputProps['autoComplete'];
+  textContentType?: TextInputProps['textContentType'];
+  returnKeyType?: TextInputProps['returnKeyType'];
 };
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('screen');
@@ -48,6 +56,11 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
   type = 'input',
   options = [],
   onFocus: onFocusProp,
+  autoCorrect,
+  spellCheck,
+  autoComplete,
+  textContentType,
+  returnKeyType,
 }: FormFieldProps, ref) {
   const [focused, setFocused] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -103,6 +116,18 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
     Boolean(error) && styles.inputError,
     !editable && styles.inputDisabled,
   ];
+
+  // QuickType ("Ben/Tamam/Sen") şeridini ve iOS autofill/"Geç" toolbar'ını
+  // serbest-metin alanlarda bastır. Email/telefon alanlarında autofill faydalı
+  // olduğu için orada açık bırak (sadece otomatik düzeltme/öneri kapalı).
+  const isEmailField = keyboardType === 'email-address';
+  const isPhoneField = keyboardType === 'phone-pad';
+  const resolvedAutoCorrect = autoCorrect ?? false;
+  const resolvedSpellCheck = spellCheck ?? false;
+  const resolvedAutoComplete =
+    autoComplete ?? (isEmailField ? 'email' : isPhoneField ? 'tel' : 'off');
+  const resolvedTextContentType =
+    textContentType ?? (isEmailField ? 'emailAddress' : isPhoneField ? 'telephoneNumber' : 'none');
 
   return (
     <View style={styles.fieldContainer}>
@@ -186,6 +211,11 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          autoCorrect={resolvedAutoCorrect}
+          spellCheck={resolvedSpellCheck}
+          autoComplete={resolvedAutoComplete}
+          textContentType={resolvedTextContentType}
+          returnKeyType={returnKeyType}
           multiline={type === 'textarea'}
           onFocus={() => { setFocused(true); onFocusProp?.(); }}
           onBlur={() => setFocused(false)}

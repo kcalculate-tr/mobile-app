@@ -1746,6 +1746,10 @@ export default function CheckoutScreen() {
               onChangeText={(v) => v.length <= 300 && dispatchOrder({ type: 'SET_ORDER_NOTE', payload: v })}
               placeholder="Notunuzu yazın..."
               placeholderTextColor={COLORS.text.tertiary}
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="off"
+              textContentType="none"
               multiline
               numberOfLines={3}
               textAlignVertical="top"
