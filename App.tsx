@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, TextInput } from 'react-native';
+import { Platform, Text, TextInput } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -27,6 +27,7 @@ import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
+import KeyboardAccessory, { DEFAULT_ACCESSORY_ID } from './src/components/KeyboardAccessory';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK } from './src/lib/analytics';
 
@@ -121,6 +122,13 @@ export default function App() {
   (Text as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
   (TextInput as any).defaultProps = (TextInput as any).defaultProps ?? {};
   (TextInput as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
+  // Global iOS native "Kapat" aksesuarı: her TextInput tek paylaşılan
+  // InputAccessoryView'ı (App tree'de bir kez mount edilen <KeyboardAccessory />)
+  // referanslar. Böylece hiçbir alan — özellikle return tuşu olmayan number-pad
+  // alanları — dismiss aksesuarsız kalmaz. Bir alan kendi inputAccessoryViewID'sini
+  // verirse o ezilir. Android'de undefined (orada eski JS KeyboardToolbar devrede).
+  (TextInput as any).defaultProps.inputAccessoryViewID =
+    Platform.OS === 'ios' ? DEFAULT_ACCESSORY_ID : undefined;
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -131,7 +139,10 @@ export default function App() {
               <AppContent />
             </NavigationContainer>
           </AuthProvider>
-          <KeyboardToolbar />
+          {/* Android: native InputAccessoryView yok → eski JS dismiss barı korunur. */}
+          {Platform.OS === 'android' && <KeyboardToolbar />}
+          {/* iOS: paylaşılan native InputAccessoryView host — bir kez mount. */}
+          <KeyboardAccessory />
           <StatusBar style="light" />
         </PortalProvider>
       </SafeAreaProvider>

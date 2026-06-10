@@ -1903,7 +1903,7 @@ export default function CheckoutScreen() {
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
-                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} autoComplete="off" textContentType="oneTimeCode" placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={{ flexDirection: 'row', gap: SPACING.md }}>
                 <View style={{ flex: 1 }}>

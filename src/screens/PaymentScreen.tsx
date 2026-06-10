@@ -265,6 +265,8 @@ function ToslaPaymentFlow() {
                 autoCapitalize="words"
                 autoCorrect={false}
                 spellCheck={false}
+                autoComplete="off"
+                textContentType="oneTimeCode"
                 placeholderTextColor={COLORS.text.tertiary}
               />
             </View>
