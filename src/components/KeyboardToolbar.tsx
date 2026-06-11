@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Keyboard,
   KeyboardEvent,
+  LayoutAnimation,
   Platform,
   StyleSheet,
   Text,
@@ -25,8 +26,26 @@ export default function KeyboardToolbar() {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const onShow = (e: KeyboardEvent) => setKbHeight(e.endCoordinates?.height ?? 0);
-    const onHide = () => setKbHeight(0);
+    // iOS native klavye ivmesini (e.duration) birebir kopyalayan donanım ivmeli
+    // animasyon → bar klavyeyle senkron yükselir/iner (JS lag'i maskeler).
+    const onShow = (e: KeyboardEvent) => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext({
+          duration: e.duration || 250,
+          update: { type: LayoutAnimation.Types.keyboard },
+        });
+      }
+      setKbHeight(e.endCoordinates?.height ?? 0);
+    };
+    const onHide = (e: KeyboardEvent) => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext({
+          duration: e.duration || 250,
+          update: { type: LayoutAnimation.Types.keyboard },
+        });
+      }
+      setKbHeight(0);
+    };
 
     const showSub = Keyboard.addListener(showEvt, onShow);
     const hideSub = Keyboard.addListener(hideEvt, onHide);
