@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Dimensions,
   Keyboard,
   KeyboardEvent,
-  LayoutAnimation,
   Platform,
   StyleSheet,
   Text,
@@ -11,13 +11,11 @@ import {
 } from 'react-native';
 
 /**
- * Global "Kapat" barı — klavye yüksekliğini milimetrik takip eden, absolute
- * konumlu JS overlay. iOS native InputAccessoryView (RN 0.81 / Fabric) cihazda
- * render OLMADIĞI için kanıtlanmış çalışan bu yaklaşıma dönüldü. Tek component
- * tüm ekranları (kart formu dahil) kapsar; per-screen aksesuar gerekmez.
- *
- * Bar, klavyenin tam üstüne (bottom: kbHeight) oturur; full genişlik, siyah
- * "Kapat". iOS'ta keyboardWillShow ile klavye animasyonuyla senkron belirir.
+ * Global "Kapat" barı — temiz, yüksek performanslı conditional absolute overlay.
+ * Klavye yüksekliğini takip eder, klavyenin tam üstüne (bottom: kbHeight) oturur.
+ * Klavye yokken render OLMAZ (return null) → boşuna layout/bellek yükü yok.
+ * (LayoutAnimation + sürekli-mount varyantı ağır ekranlarda JS thread darboğazı
+ *  yaptığı için bu sade modele dönüldü.)
  */
 export default function KeyboardToolbar() {
   const [kbHeight, setKbHeight] = useState(0);
@@ -26,26 +24,8 @@ export default function KeyboardToolbar() {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    // iOS native klavye ivmesini (e.duration) birebir kopyalayan donanım ivmeli
-    // animasyon → bar klavyeyle senkron yükselir/iner (JS lag'i maskeler).
-    const onShow = (e: KeyboardEvent) => {
-      if (Platform.OS === 'ios') {
-        LayoutAnimation.configureNext({
-          duration: e.duration || 250,
-          update: { type: LayoutAnimation.Types.keyboard },
-        });
-      }
-      setKbHeight(e.endCoordinates?.height ?? 0);
-    };
-    const onHide = (e: KeyboardEvent) => {
-      if (Platform.OS === 'ios') {
-        LayoutAnimation.configureNext({
-          duration: e.duration || 250,
-          update: { type: LayoutAnimation.Types.keyboard },
-        });
-      }
-      setKbHeight(0);
-    };
+    const onShow = (e: KeyboardEvent) => setKbHeight(e.endCoordinates?.height ?? 0);
+    const onHide = () => setKbHeight(0);
 
     const showSub = Keyboard.addListener(showEvt, onShow);
     const hideSub = Keyboard.addListener(hideEvt, onHide);
@@ -56,17 +36,10 @@ export default function KeyboardToolbar() {
     };
   }, []);
 
-  // Kalıcı mount: component her zaman render olur. Klavye kapalıyken ekran dışında
-  // (bottom:-60, opacity:0), açılınca bottom:kbHeight'e UPDATE olur — böylece
-  // LayoutAnimation.keyboard her hareketi (mount değil, update) klavyeyle senkron
-  // animasyonlar; ilk-kare "pop" ortadan kalkar. Gizliyken pointerEvents none.
-  const visible = kbHeight > 0;
+  if (kbHeight <= 0) return null;
 
   return (
-    <View
-      style={[styles.bar, visible ? { bottom: kbHeight } : styles.hidden]}
-      pointerEvents={visible ? 'auto' : 'none'}
-    >
+    <View style={[styles.bar, { bottom: kbHeight }]}>
       <TouchableOpacity
         style={styles.dismissBtn}
         onPress={() => Keyboard.dismiss()}
@@ -83,6 +56,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    width: Dimensions.get('window').width,
     height: 44,
     backgroundColor: '#F6F6F6',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -91,11 +65,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 16,
+    alignSelf: 'center',
     zIndex: 9999,
-  },
-  hidden: {
-    bottom: -60,
-    opacity: 0,
   },
   dismissBtn: {
     paddingHorizontal: 8,
