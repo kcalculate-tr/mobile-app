@@ -56,10 +56,17 @@ export default function KeyboardToolbar() {
     };
   }, []);
 
-  if (kbHeight <= 0) return null;
+  // Kalıcı mount: component her zaman render olur. Klavye kapalıyken ekran dışında
+  // (bottom:-60, opacity:0), açılınca bottom:kbHeight'e UPDATE olur — böylece
+  // LayoutAnimation.keyboard her hareketi (mount değil, update) klavyeyle senkron
+  // animasyonlar; ilk-kare "pop" ortadan kalkar. Gizliyken pointerEvents none.
+  const visible = kbHeight > 0;
 
   return (
-    <View style={[styles.bar, { bottom: kbHeight }]}>
+    <View
+      style={[styles.bar, visible ? { bottom: kbHeight } : styles.hidden]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
       <TouchableOpacity
         style={styles.dismissBtn}
         onPress={() => Keyboard.dismiss()}
@@ -85,6 +92,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     zIndex: 9999,
+  },
+  hidden: {
+    bottom: -60,
+    opacity: 0,
   },
   dismissBtn: {
     paddingHorizontal: 8,
