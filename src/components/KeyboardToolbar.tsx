@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
+  KeyboardEvent,
   Platform,
   StyleSheet,
   Text,
@@ -9,15 +9,27 @@ import {
   View,
 } from 'react-native';
 
+/**
+ * Global "Kapat" barı — klavye yüksekliğini milimetrik takip eden, absolute
+ * konumlu JS overlay. iOS native InputAccessoryView (RN 0.81 / Fabric) cihazda
+ * render OLMADIĞI için kanıtlanmış çalışan bu yaklaşıma dönüldü. Tek component
+ * tüm ekranları (kart formu dahil) kapsar; per-screen aksesuar gerekmez.
+ *
+ * Bar, klavyenin tam üstüne (bottom: kbHeight) oturur; full genişlik, siyah
+ * "Kapat". iOS'ta keyboardWillShow ile klavye animasyonuyla senkron belirir.
+ */
 export default function KeyboardToolbar() {
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+    const onShow = (e: KeyboardEvent) => setKbHeight(e.endCoordinates?.height ?? 0);
+    const onHide = () => setKbHeight(0);
+
+    const showSub = Keyboard.addListener(showEvt, onShow);
+    const hideSub = Keyboard.addListener(hideEvt, onHide);
 
     return () => {
       showSub.remove();
@@ -25,55 +37,43 @@ export default function KeyboardToolbar() {
     };
   }, []);
 
+  if (kbHeight <= 0) return null;
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.wrapper}
-      pointerEvents="box-none"
-    >
-      {isKeyboardVisible && (
-        <View style={styles.bar}>
-          <TouchableOpacity
-            style={styles.dismissBtn}
-            onPress={() => Keyboard.dismiss()}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.dismissText}>Kapat</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </KeyboardAvoidingView>
+    <View style={[styles.bar, { bottom: kbHeight }]}>
+      <TouchableOpacity
+        style={styles.dismissBtn}
+        onPress={() => Keyboard.dismiss()}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.dismissText}>Kapat</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  bar: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 9999,
-  },
-  bar: {
     height: 44,
-    backgroundColor: '#F8F9FA',
-    borderTopWidth: 0.5,
-    borderTopColor: '#D0D0D0',
+    backgroundColor: '#F6F6F6',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#D1D1D6',
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 16,
+    zIndex: 9999,
   },
   dismissBtn: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#E5E7EB',
   },
   dismissText: {
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

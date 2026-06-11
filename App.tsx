@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Text, TextInput } from 'react-native';
+import { Text, TextInput } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -134,12 +134,10 @@ export default function App() {
               <AppContent />
             </NavigationContainer>
           </AuthProvider>
-          {/* Android: native InputAccessoryView yok → eski JS dismiss barı korunur.
-              iOS: <KeyboardAccessory /> artık lokal olarak (FormField/GlassInput/ekran
-              hiyerarşilerinde) mount ediliyor — root mount React Navigation stack'i
-              yüzünden iOS tarafından çözülemiyordu. defaultProps global ID enjeksiyonu
-              korunuyor (yukarıda). */}
-          {Platform.OS === 'android' && <KeyboardToolbar />}
+          {/* Global "Kapat" barı — her iki platformda. Klavye yüksekliğini takip
+              eden absolute JS overlay (native InputAccessoryView Fabric'te render
+              olmadığı için kanıtlanmış çalışan yola dönüldü). Tüm ekranları kapsar. */}
+          <KeyboardToolbar />
           <StatusBar style="light" />
         </PortalProvider>
       </SafeAreaProvider>
