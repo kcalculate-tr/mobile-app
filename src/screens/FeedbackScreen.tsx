@@ -1,5 +1,6 @@
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import KeyboardAccessory from '../components/KeyboardAccessory'
 import { Animated,
   ActivityIndicator, Alert, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
@@ -27,6 +28,7 @@ const CATEGORIES = [
 ]
 
 export default function FeedbackScreen() {
+  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, [])
   const navigation = useNavigation<Nav>()
   const insets     = useSafeAreaInsets()
   const { user }   = useAuth()
@@ -187,6 +189,7 @@ export default function FeedbackScreen() {
             numberOfLines={5}
             textAlignVertical="top"
             maxLength={500}
+            inputAccessoryViewID={accId}
           />
           <Text style={s.charCount}>{message.length}/500</Text>
         </View>
@@ -206,6 +209,7 @@ export default function FeedbackScreen() {
           }
         </TouchableOpacity>
       </Animated.ScrollView>
+      <KeyboardAccessory nativeID={accId} />
     </ScreenContainer>
   )
 }

@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import KeyboardAccessory from '../../components/KeyboardAccessory';
 import {
   ActivityIndicator,
   Alert,
@@ -68,6 +69,7 @@ type Ticket = {
 };
 
 export default function SupportScreen() {
+  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -290,6 +292,7 @@ export default function SupportScreen() {
                   placeholder="Örn: KCAL-AB12CD"
                   placeholderTextColor={COLORS.text.tertiary}
                   autoCapitalize="characters"
+                  inputAccessoryViewID={accId}
                 />
               </View>
 
@@ -305,6 +308,7 @@ export default function SupportScreen() {
                   multiline
                   numberOfLines={5}
                   textAlignVertical="top"
+                  inputAccessoryViewID={accId}
                 />
               </View>
 
@@ -422,6 +426,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Destek Talebiniz Yok</Te
           )}
         </View>
       </ScrollView>
+      <KeyboardAccessory nativeID={accId} />
     </View>
   );
 }

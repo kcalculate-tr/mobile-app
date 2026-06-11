@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Pressable, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
 import { BackgroundLayer } from '../../components/onboarding/BackgroundLayer';
@@ -68,7 +68,10 @@ export default function LoginScreen() {
     <BackgroundLayer mode="blur">
       <SafeAreaView style={styles.safe}>
         <TopBar showBack />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        {/* behavior kapalı: klavye açılınca alttaki "Kayıt ol" linki yukarı
+            fırlamasın (input'ların üstüne tırmanmasın); altta gizli kalır.
+            Input'lar ekranın üst kısmında olduğu için klavye onları örtmez. */}
+        <KeyboardAvoidingView behavior={undefined} style={{ flex: 1 }}>
           <View style={styles.content}>
             <Text style={styles.h1}>Tekrar hoş geldin.</Text>
             <Text style={styles.sub}>E-posta ve şifrenle devam et.</Text>

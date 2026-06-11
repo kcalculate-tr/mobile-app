@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Dimensions,
   InputAccessoryView,
   Keyboard,
   Platform,
@@ -40,6 +41,9 @@ export default KeyboardAccessory;
 
 const styles = StyleSheet.create({
   bar: {
+    // Tam pencere genişliği + alignSelf:center → köşe sızıntısı/kayma sıfır.
+    width: Dimensions.get('window').width,
+    alignSelf: 'center',
     height: 44,
     backgroundColor: '#F6F6F6',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -54,7 +58,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dismissText: {
-    color: '#007AFF',
+    color: '#000000',
     fontSize: 16,
     fontWeight: '600',
   },

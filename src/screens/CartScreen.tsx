@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import KeyboardAccessory from '../components/KeyboardAccessory';
 import { Animated, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -35,6 +36,8 @@ import type { Product } from '../types';
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function CartScreen() {
+  // Benzersiz aksesuar ID'si — Android'de inputAccessoryViewID yok sayılır, KeyboardAccessory null döner.
+  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
   const navigation = useNavigation<CartNavProp>();
   const insets = useSafeAreaInsets();
   const deliveryModal = useModal();
@@ -535,6 +538,7 @@ export default function CartScreen() {
                 placeholderTextColor={COLORS.text.tertiary}
                 autoCapitalize="characters"
                 autoCorrect={false}
+                inputAccessoryViewID={accId}
                 autoFocus
               />
               <TouchableOpacity style={styles.couponApplyBtn} onPress={applyCoupon} disabled={couponLoading} activeOpacity={0.85}>
@@ -660,6 +664,7 @@ export default function CartScreen() {
 
       <DeliveryInfoModal visible={deliveryModal.visible} onClose={deliveryModal.close} />
       <Toast {...toast} onHide={hideToast} />
+      <KeyboardAccessory nativeID={accId} />
     </ScreenContainer>
   );
 }
