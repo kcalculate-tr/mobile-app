@@ -31,6 +31,18 @@ entrypoint = "./functions/send-notification/index.ts"
 enabled = true
 verify_jwt = false
 
+[functions.paynkolay-payment-init]
+enabled = true
+verify_jwt = true
+import_map = "./functions/paynkolay-payment-init/deno.json"
+entrypoint = "./functions/paynkolay-payment-init/index.ts"
+
+[functions.paynkolay-callback]
+enabled = true
+verify_jwt = false
+import_map = "./functions/paynkolay-callback/deno.json"
+entrypoint = "./functions/paynkolay-callback/index.ts"
+
 [functions.adisyo-webhook-receiver]
 enabled = true
 verify_jwt = false
