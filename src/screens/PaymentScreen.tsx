@@ -906,7 +906,9 @@ type PaynkolayInitResponse = {
   error?: string;
 };
 
-const PAYNKOLAY_POLL_MAX_ATTEMPTS = 8;
+// 16×1500ms = 24sn marj. Callback dönüş zincirinde senkron koştuğu için normalde
+// 1. denemede paid görülür; bu sadece gateway timing varyansına karşı sigorta.
+const PAYNKOLAY_POLL_MAX_ATTEMPTS = 16;
 const PAYNKOLAY_POLL_INTERVAL_MS = 1500;
 
 const matchesPaynkolayReturn = (url: string): { matches: boolean; success: boolean } => {
