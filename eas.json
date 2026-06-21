@@ -34,11 +34,16 @@
       "channel": "production",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_PAYMENT_PROVIDER": "tosla"
+        "EXPO_PUBLIC_PAYMENT_PROVIDER": "paynkolay"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6763964912",
+        "appleTeamId": "A63MT69ASR"
+      }
+    }
   }
 }
