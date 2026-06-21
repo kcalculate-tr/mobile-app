@@ -126,14 +126,19 @@ Deno.serve(async (req: Request) => {
     const maskedPan = pick(data, 'maskedPan', 'MASKED_PAN', 'maskedCardNo', 'CARD_NO')
     const cardBrand = pick(data, 'cardBrand', 'CARD_BRAND', 'cardProgram')
 
-    // ── 3) clientRefCode -> order'i merchant_oid uzerinden bul (SADECE OKUMA).
+    // ── 3) clientRefCode'dan orderId'yi PARSE et -> orders.id ile bul (SADECE OKUMA).
+    //    Format: KCAL{orderId}T{timestamp} (init uretir; Paynkolay AYNEN echo'lar:
+    //    CLIENT_REFERENCE_CODE). order_id ile lookup, merchant_oid exact-match DEGIL:
+    //    init merchant_oid'i her denemede ezse bile (eski BUG) dogru order bulunur.
     //    Hash dogrulanana kadar order'a DOKUNULMAZ.
     let order: any = null
-    if (clientRefCode) {
+    const refMatch = /^KCAL(\d+)T/.exec(clientRefCode)
+    const parsedOrderId = refMatch ? Number(refMatch[1]) : null
+    if (parsedOrderId) {
       const { data: o } = await supabase
         .from('orders')
         .select('id, user_id, total_price, type, macro_quantity, status, payment_status')
-        .eq('merchant_oid', clientRefCode)
+        .eq('id', parsedOrderId)
         .maybeSingle()
       order = o
     }
@@ -210,6 +215,46 @@ Deno.serve(async (req: Request) => {
       referenceCode,
       previousStatus: order.status ?? null,
     })
+
+    // ── 6b) TUTAR DOGRULAMA (replay / cross-order koruması) — sadece basari kodunda.
+    //    Hash clientRefCode'u BAGLAMAZ; teorik olarak biri Paynkolay-imzali gecerli
+    //    bir callback'i baska order'a yonlendirebilir. authorizationAmount hash'e
+    //    DAHIL (Paynkolay imzaladi) -> onu order.total_price ile KURUS hassasiyetinde
+    //    karsilastir. Uymuyorsa order'a DOKUNMA, reddet + audit. Format Paynkolay'dan
+    //    ondalik TL string ("1132.00") olarak gelir (test verisiyle dogrulandi).
+    if (isSuccess) {
+      const incomingCents = Math.round(parseFloat(String(authorizationAmount || '0')) * 100)
+      const orderCents = Math.round(Number(order.total_price ?? 0) * 100)
+      if (!incomingCents || incomingCents !== orderCents) {
+        console.error('[paynkolay-callback] AMOUNT MISMATCH — reddedildi', {
+          orderId: order.id,
+          authorizationAmount,
+          orderTotal: order.total_price,
+        })
+        if (order.user_id) {
+          try {
+            await supabase.from('failed_payments').insert([{
+              user_id: order.user_id,
+              error_message: `Paynkolay tutar uyusmazligi (gelen=${authorizationAmount}, beklenen=${order.total_price})`,
+              amount: 0,
+              payment_method: 'kredi-karti',
+              order_data: {
+                reason: 'amount_mismatch',
+                orderId: order.id,
+                authorizationAmount,
+                orderTotal: order.total_price,
+                clientRefCode,
+                referenceCode,
+              },
+              created_at: new Date().toISOString(),
+            }])
+          } catch (e) {
+            console.error('[paynkolay-callback] amount-mismatch log error:', e)
+          }
+        }
+        return htmlResponse(redirectHtml(FAIL_REDIRECT))
+      }
+    }
 
     // ── 7) Orders update.
     const updatePayload: Record<string, unknown> = {

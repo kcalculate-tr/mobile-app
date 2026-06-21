@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderErr } = await admin
       .from('orders')
-      .select('id, user_id, total_price, total_amount, phone')
+      .select('id, user_id, total_price, total_amount, phone, merchant_oid')
       .eq('id', orderId)
       .maybeSingle()
 
@@ -248,14 +248,20 @@ Deno.serve(async (req: Request) => {
 
     const formHtml = buildAutoSubmitForm(VPOS_URL, fields)
 
-    // ── merchant_oid = clientRefCode (callback'te lookup icin).
+    // ── merchant_oid: callback artik orderId'yi clientRefCode'dan parse ediyor;
+    //    lookup buna BAGIMLI DEGIL. Yine de ILK ref'i audit icin sakla: sadece
+    //    null ise yaz, sonraki denemelerde KORU (eski overwrite bug'inin temizligi
+    //    — her init merchant_oid'i ezip eski callback'leri eslesmez yapiyordu).
+    const orderUpdate: Record<string, unknown> = {
+      payment_provider: 'paynkolay',
+      updated_at: new Date().toISOString(),
+    }
+    if (!order.merchant_oid) {
+      orderUpdate.merchant_oid = clientRefCode
+    }
     const { error: updErr } = await admin
       .from('orders')
-      .update({
-        payment_provider: 'paynkolay',
-        merchant_oid: clientRefCode,
-        updated_at: new Date().toISOString(),
-      })
+      .update(orderUpdate)
       .eq('id', order.id)
     if (updErr) {
       console.error('[paynkolay-init] order update failed:', updErr.message)
