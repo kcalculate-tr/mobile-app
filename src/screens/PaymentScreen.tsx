@@ -33,6 +33,8 @@ import {
   PAYTR_FAIL_URL,
   PAYTR_OK_URL,
   PAYTR_INIT_URL,
+  PAYNKOLAY_INIT_URL,
+  PAYNKOLAY_VPOS_ORIGIN,
 } from '../config/payment';
 
 type PaymentScreenRouteProp = RouteProp<RootStackParamList, 'PaymentScreen'>;
@@ -55,6 +57,16 @@ function formatExpiry(value: string): string {
 
 export default function PaymentScreen() {
   const route = useRoute<PaymentScreenRouteProp>();
+  if (PAYMENT_PROVIDER === 'paynkolay') {
+    return (
+      <PaynkolayPaymentFlow
+        orderId={route.params.orderId}
+        amount={route.params.amount}
+        orderCode={route.params.orderCode}
+        noticeMessage={route.params.noticeMessage}
+      />
+    );
+  }
   if (PAYMENT_PROVIDER === 'paytr_iframe') {
     return (
       <PaytrPaymentFlow
@@ -844,6 +856,227 @@ function PaytrPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaytrFl
             onNavigationStateChange={onNavStateChange}
             onLoadStart={onLoadStart}
             onLoadEnd={onLoadEnd}
+            onError={onWebViewError}
+            startInLoadingState
+          />
+        ) : (
+          <View style={paytrStyles.loaderWrap}>
+            {initError ? (
+              <>
+                <Text style={paytrStyles.errorText}>{initError}</Text>
+                <Pressable style={paytrStyles.retryBtn} onPress={() => navigation.goBack()}>
+                  <Text style={paytrStyles.retryText}>Geri Dön</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={COLORS.brand.green} />
+                <Text style={paytrStyles.loaderText}>Ödeme sayfası hazırlanıyor…</Text>
+              </>
+            )}
+          </View>
+        )}
+      </View>
+
+      {verifying ? (
+        <View style={paytrStyles.verifyingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={paytrStyles.verifyingText}>Ödeme onaylanıyor…</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ── Paynkolay hosted (Ortak Odeme) akisi ────────────────────────────────────
+// PaytrPaymentFlow deseninden turetildi. Tek farklar:
+//  - init -> paynkolay-payment-init { orderId, amount } -> { success, formHtml }
+//  - WebView source = { html: formHtml, baseUrl } (form-POST; PayTR uri: GET'ti)
+//  - donus URL'leri ayni: callback eatkcal.com/payment/success|fail'e redirect eder
+type PaynkolayFlowProps = {
+  orderId: string;
+  amount: number;
+  orderCode?: string;
+  noticeMessage?: string;
+};
+
+type PaynkolayInitResponse = {
+  success?: boolean;
+  formHtml?: string;
+  error?: string;
+};
+
+const PAYNKOLAY_POLL_MAX_ATTEMPTS = 8;
+const PAYNKOLAY_POLL_INTERVAL_MS = 1500;
+
+const matchesPaynkolayReturn = (url: string): { matches: boolean; success: boolean } => {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    const resultParam = u.searchParams.get('result');
+    // callback redirect: eatkcal.com/payment/success?result=success (veya /fail)
+    if (host === 'eatkcal.com') {
+      if (u.pathname === '/payment/success') return { matches: true, success: true };
+      if (u.pathname === '/payment/fail') return { matches: true, success: false };
+    }
+    // ek guvence: result= query parametresi (baseUrl farkli olsa bile)
+    if (resultParam === 'success') return { matches: true, success: true };
+    if (resultParam === 'fail') return { matches: true, success: false };
+    return { matches: false, success: false };
+  } catch {
+    return { matches: false, success: false };
+  }
+};
+
+function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaynkolayFlowProps) {
+  const navigation = useNavigation<PaymentScreenNavProp>();
+  const insets = useSafeAreaInsets();
+  const clearCart = useCartStore((s) => s.clearCart);
+
+  const [formHtml, setFormHtml] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string>('');
+  const [verifying, setVerifying] = useState(false);
+  // ERKEN KAPATMA GUARD: donus URL'i bir kez islensin; WebView poll bitene kadar
+  // MOUNTED kalir (callback POST'u ucustayken kapanmaz — Tosla'daki notla ayni).
+  const handledRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (!cancelled) setInitError('Oturum bulunamadı.');
+          return;
+        }
+        // Kart saklama YOK (flag kapali) -> saveCard gonderilmez; backend customerKey bos.
+        const res = await fetch(PAYNKOLAY_INIT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ orderId: String(orderId), amount }),
+        });
+        const json = (await res.json().catch(() => ({}))) as PaynkolayInitResponse;
+        if (cancelled) return;
+        if (!res.ok || !json.success || !json.formHtml) {
+          setInitError(json.error || 'Ödeme başlatılamadı.');
+          return;
+        }
+        setFormHtml(json.formHtml);
+      } catch (err) {
+        if (!cancelled) setInitError(err instanceof Error ? err.message : 'Ödeme başlatılamadı.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [orderId]);
+
+  const pollOrderConfirmed = async (): Promise<boolean> => {
+    const supabase = getSupabaseClient();
+    for (let attempt = 0; attempt < PAYNKOLAY_POLL_MAX_ATTEMPTS; attempt++) {
+      const { data } = await supabase
+        .from('orders')
+        .select('status, payment_status')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (data?.status === 'confirmed' || data?.payment_status === 'paid') return true;
+      if (attempt < PAYNKOLAY_POLL_MAX_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, PAYNKOLAY_POLL_INTERVAL_MS));
+      }
+    }
+    return false;
+  };
+
+  const handleSuccess = async () => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    setVerifying(true);
+    haptic.success();
+    logEvent.purchase(String(orderId), Number(amount) || 0);
+
+    const paid = await pollOrderConfirmed();
+    if (!paid) {
+      // callback'in order'i guncellemesi gecikmis olabilir; yanlis "basarili"
+      // ekrani gostermek yerine kullaniciyi siparislere yonlendir.
+      setVerifying(false);
+      Alert.alert(
+        'Ödeme doğrulanıyor',
+        'Ödemeniz işleniyor olabilir. Siparişlerim sayfasından durumu kontrol edebilirsiniz.',
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }],
+      );
+      return;
+    }
+
+    if (useCartStore.getState().items.length > 0) clearCart();
+    navigation.replace('OrderSuccess', {
+      orderCode: orderCode ?? String(orderId),
+      orderId: String(orderId),
+      noticeMessage,
+    });
+  };
+
+  const handleFailure = (reason?: string) => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
+      { text: 'Tamam', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  const handleNavigationCheck = (url: string): boolean => {
+    if (handledRef.current) return false;
+    const result = matchesPaynkolayReturn(url);
+    if (result.matches) {
+      if (result.success) handleSuccess();
+      else handleFailure();
+      return false; // eatkcal.com'a gercek navigasyonu engelle (WebView mounted kalir)
+    }
+    return true;
+  };
+
+  const onShouldStartLoadWithRequest = (request: { url: string }) => {
+    const url = request.url || '';
+    if (__DEV__) console.log('[paynkolay] onShouldStartLoadWithRequest:', url);
+    return handleNavigationCheck(url);
+  };
+  const onNavStateChange = (state: { url?: string }) => {
+    const url = state.url || '';
+    if (__DEV__) console.log('[paynkolay] onNavigationStateChange:', url);
+    handleNavigationCheck(url);
+  };
+  const onLoadStart = (e: { nativeEvent: { url: string } }) => {
+    handleNavigationCheck(e.nativeEvent.url || '');
+  };
+  const onWebViewError = (e: { nativeEvent: unknown }) => {
+    console.warn('[paynkolay] onError:', e.nativeEvent);
+  };
+
+  return (
+    <View style={[paytrStyles.container, { flex: 1 }]}>
+      <View style={[paytrStyles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={paytrStyles.backButton}
+          activeOpacity={0.8}
+        >
+          <ArrowLeft size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={paytrStyles.headerTitle}>Güvenli Ödeme</Text>
+        <View style={{ width: 42 }} />
+      </View>
+
+      <View style={paytrStyles.body}>
+        {formHtml ? (
+          <WebView
+            source={{ html: formHtml, baseUrl: PAYNKOLAY_VPOS_ORIGIN }}
+            style={{ flex: 1, backgroundColor: '#fff' }}
+            originWhitelist={['*']}
+            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+            onNavigationStateChange={onNavStateChange}
+            onLoadStart={onLoadStart}
             onError={onWebViewError}
             startInLoadingState
           />

@@ -1205,7 +1205,7 @@ export default function CheckoutScreen() {
         });
       }
 
-      if (PAYMENT_PROVIDER === 'paytr_iframe' && paymentOrderId) {
+      if ((PAYMENT_PROVIDER === 'paytr_iframe' || PAYMENT_PROVIDER === 'paynkolay') && paymentOrderId) {
         console.log('[CHECKOUT] navigate to payment', {
           paymentOrderId,
           paymentOrderCode,
@@ -1291,16 +1291,16 @@ export default function CheckoutScreen() {
   const handlePay = async () => {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: '' });
 
-    // PayTR iframe akışı: kart bilgileri PayTR sayfasında girilir.
-    // Burada kart formu doğrulamasını atla ve PaymentScreen router'a yönlendir.
-    if (PAYMENT_PROVIDER === 'paytr_iframe') {
-      const paytrOrderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;
-      if (!paytrOrderId) {
+    // Hosted akis (PayTR iframe / Paynkolay Ortak Odeme): kart bilgileri saglayicinin
+    // sayfasinda girilir. Inline kart formu dogrulamasini atla, PaymentScreen router'a yonlendir.
+    if (PAYMENT_PROVIDER === 'paytr_iframe' || PAYMENT_PROVIDER === 'paynkolay') {
+      const hostedOrderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;
+      if (!hostedOrderId) {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: 'Sipariş bulunamadı.' });
         return;
       }
       navigation.navigate('PaymentScreen', {
-        orderId: String(paytrOrderId),
+        orderId: String(hostedOrderId),
         amount: pendingPaymentOrder?.totalAmount || totalAmount,
         orderCode: pendingPaymentOrder?.orderCode,
       });
@@ -1874,7 +1874,7 @@ export default function CheckoutScreen() {
               <Text style={styles.errorBoxText}>{screenError}</Text>
             </View>
           ) : null}
-          </>) : (PAYMENT_PROVIDER !== 'paytr_iframe' ? (<>
+          </>) : (PAYMENT_PROVIDER === 'tosla' ? (<>
             {/* ── Kart Görseli ── */}
             <View style={styles.cardVisual}>
               <View style={styles.cardDeco1} />

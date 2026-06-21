@@ -81,7 +81,8 @@ export const getPaymentConfigStatus = (): PaymentConfigStatus => {
   const provider = rawProvider.toLowerCase();
 
   const redirectUrl = Linking.createURL('payment-callback');
-  const isPaymentEnabled = provider === 'tosla' || provider === 'paytr_iframe' || provider === 'paytr';
+  const isPaymentEnabled =
+    provider === 'tosla' || provider === 'paytr_iframe' || provider === 'paytr' || provider === 'paynkolay';
 
   const missingKeys: string[] = [];
   // PayTR iframe runs via dedicated edge function, not the legacy API base URL.

@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 
-type PaymentProvider = 'tosla' | 'paytr_iframe';
+type PaymentProvider = 'tosla' | 'paytr_iframe' | 'paynkolay';
 
 // GUVENLI FALLBACK: env okunamasa bile PayTR iframe yolu varsayilan.
 // Bkz. src/lib/payment.ts PAYMENT_PROVIDER_FALLBACK ile aynidir.
@@ -17,6 +17,7 @@ function readEnv(): string | undefined {
 
 function resolveProvider(): PaymentProvider {
   const raw = readEnv()?.toLowerCase();
+  if (raw === 'paynkolay') return 'paynkolay';
   if (raw === 'paytr_iframe' || raw === 'paytr') return 'paytr_iframe';
   if (raw === 'tosla') return 'tosla';
   return FALLBACK;
@@ -29,3 +30,9 @@ export const PAYTR_INIT_URL =
 
 export const PAYTR_OK_URL = 'https://eatkcal.com/payment/success';
 export const PAYTR_FAIL_URL = 'https://eatkcal.com/payment/fail';
+
+// Paynkolay hosted (Ortak Odeme) — init Edge Function + WebView baseUrl.
+export const PAYNKOLAY_INIT_URL =
+  'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/paynkolay-payment-init';
+// TEST ortami VPOS origin'i (formHtml form-POST baseUrl'i). Faz 3'te production'a.
+export const PAYNKOLAY_VPOS_ORIGIN = 'https://paynkolaytest.nkolayislem.com.tr';
