@@ -195,8 +195,13 @@ Deno.serve(async (req: Request) => {
     const clientRefCode = `KCAL${order.id}T${Date.now()}`
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const successUrl = `${supabaseUrl}/functions/v1/paynkolay-callback?result=success`
-    const failUrl = `${supabaseUrl}/functions/v1/paynkolay-callback?result=fail`
+    // Query key 'pk' (result DEGIL): mobil WebView 'result=' query'sini "donus" sayip
+    // callback URL'ine navigasyonu kesiyordu -> callback hic kosmuyordu. 'pk' ile
+    // callback URL'i mobilin yakalama desenine takilmaz; callback calisir, ardindan
+    // eatkcal.com/payment/success'e redirect eder, mobil ASIL donusu orada yakalar.
+    // Callback bu query'yi OKUMAZ; basari/fail RESPONSE_CODE==='2' ile belirlenir.
+    const successUrl = `${supabaseUrl}/functions/v1/paynkolay-callback?pk=success`
+    const failUrl = `${supabaseUrl}/functions/v1/paynkolay-callback?pk=fail`
     const rnd = getRnd() // "dd.MM.yyyy HH:mm:ss" — hem form hem hash AYNI deger
     const cardHolderIP = clientIpFromRequest(req)
 
