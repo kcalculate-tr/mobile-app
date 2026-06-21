@@ -913,15 +913,15 @@ const matchesPaynkolayReturn = (url: string): { matches: boolean; success: boole
   try {
     const u = new URL(url);
     const host = u.hostname.replace(/^www\./, '');
-    const resultParam = u.searchParams.get('result');
-    // callback redirect: eatkcal.com/payment/success?result=success (veya /fail)
+    // SADECE callback'in ASIL redirect'ini (eatkcal.com/payment/success|fail) yakala.
+    // 'result='/'pk=' gibi query fallback'i KULLANMA: callback URL'inin KENDISI query
+    // tasidigi icin (successUrl=.../paynkolay-callback?...), fallback o ara duragi
+    // "donus" sanip navigasyonu keserdi -> callback HIC kosmaz, order pending kalir,
+    // polling timeout olurdu. Final-redirect host'una kilitleyince callback once kosar.
     if (host === 'eatkcal.com') {
       if (u.pathname === '/payment/success') return { matches: true, success: true };
       if (u.pathname === '/payment/fail') return { matches: true, success: false };
     }
-    // ek guvence: result= query parametresi (baseUrl farkli olsa bile)
-    if (resultParam === 'success') return { matches: true, success: true };
-    if (resultParam === 'fail') return { matches: true, success: false };
     return { matches: false, success: false };
   } catch {
     return { matches: false, success: false };
