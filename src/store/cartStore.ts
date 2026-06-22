@@ -41,11 +41,12 @@ export const useCartStore = create<CartState>()(
             : undefined;
         const isBundleItem = !!bundleSelections && bundleSelections.length > 0;
 
+        // FIX: ekstra/gramaj farkı HER ZAMAN fiyata eklenir (bundle dahil).
+        // Önceden is_bundle'da extraPrice atılıyordu → ücretli ekstralar
+        // (protein gramaj, ekstra garnitür, legacy paket premium'ları) sepete
+        // taşınmıyordu (gelir kaybı). makro/bundleSelections mantığı korunur.
         const unitPrice = Number(
-          (isBundleItem
-            ? effectivePrice
-            : effectivePrice + normalizedOptions.extraPrice + templateModifier
-          ).toFixed(2),
+          (effectivePrice + normalizedOptions.extraPrice + templateModifier).toFixed(2),
         );
 
         const productHasDiscount = hasDiscount(product);
@@ -53,7 +54,7 @@ export const useCartStore = create<CartState>()(
           ? Number(
               (
                 (Number(product.price) || 0) +
-                (isBundleItem ? 0 : normalizedOptions.extraPrice + templateModifier)
+                normalizedOptions.extraPrice + templateModifier
               ).toFixed(2),
             )
           : undefined;
