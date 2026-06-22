@@ -193,7 +193,17 @@ export default function ProductDetailScreen() {
         if (!mounted) return;
         setOptionGroups(groups);
 
-        setSelections({});
+        // Tek-item zorunlu grupları otomatik seç (örn. BF "Ekmek", legacy bundle
+        // slot'ları). Tek seçenek olduğu için ön-seçmek sonucu değiştirmez,
+        // gereksiz tıklamayı atlar. Çok-item gruplar boş kalır → kullanıcı seçer.
+        const initialSelections: Record<string, string[]> = {};
+        groups.forEach((grp) => {
+          const required = grp.isRequired || (grp.minSelection ?? 0) >= 1;
+          if (required && grp.items.length === 1) {
+            initialSelections[grp.id] = [grp.items[0].id];
+          }
+        });
+        setSelections(initialSelections);
       } catch (error: unknown) {
         if (!mounted) return;
         console.error('Ürün opsiyonları alınamadı:', error);
