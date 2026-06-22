@@ -897,6 +897,12 @@ export default function ProductDetailScreen() {
               const isGroupInvalid = validationAttempted && selectedCount < min;
               const isMulti = max > 1;
 
+              // Başlık altı gri ipucu (Getir tarzı): zorunluluk + seçim limiti.
+              const hintParts: string[] = [];
+              hintParts.push(group.isRequired || min > 0 ? 'Zorunlu seçim' : 'İsteğe bağlı');
+              if (max > 1) hintParts.push(`En fazla ${max} seçim`);
+              const selectionHint = hintParts.join(' · ');
+
               return (
                 <View
                   key={group.id}
@@ -908,14 +914,10 @@ export default function ProductDetailScreen() {
                 >
                   <View style={styles.optionGroupHeader}>
                     <Text style={styles.optionGroupTitle}>{group.name}</Text>
-                    {min > 0 && (
-                      <View style={[styles.requiredPill, isGroupInvalid && styles.requiredPillError]}>
-                        <Text style={[styles.requiredPillText, isGroupInvalid && styles.requiredPillTextError]}>
-                          Zorunlu
-                        </Text>
-                      </View>
-                    )}
                   </View>
+                  <Text style={[styles.optionGroupHint, isGroupInvalid && styles.optionGroupHintError]}>
+                    {selectionHint}
+                  </Text>
                   {group.description ? (
                     <Text style={styles.optionGroupDesc}>{group.description}</Text>
                   ) : null}
@@ -1362,6 +1364,15 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#EF4444',
     marginTop: 6,
+  },
+  optionGroupHint: {
+    marginTop: 3,
+    color: '#999999',
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+  optionGroupHintError: {
+    color: '#EF4444',
   },
   optionGroupDesc: {
     marginTop: 3,
