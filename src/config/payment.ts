@@ -34,5 +34,6 @@ export const PAYTR_FAIL_URL = 'https://eatkcal.com/payment/fail';
 // Paynkolay hosted (Ortak Odeme) — init Edge Function + WebView baseUrl.
 export const PAYNKOLAY_INIT_URL =
   'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/paynkolay-payment-init';
-// TEST ortami VPOS origin'i (formHtml form-POST baseUrl'i). Faz 3'te production'a.
-export const PAYNKOLAY_VPOS_ORIGIN = 'https://paynkolaytest.nkolayislem.com.tr';
+// PRODUCTION VPOS origin'i (formHtml form-POST baseUrl'i). Server PAYNKOLAY_VPOS_URL
+// (https://paynkolay.nkolayislem.com.tr/Vpos) ile AYNI ortam — origin = scheme+host.
+export const PAYNKOLAY_VPOS_ORIGIN = 'https://paynkolay.nkolayislem.com.tr';

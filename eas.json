@@ -20,7 +20,7 @@
       "channel": "preview",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_PAYMENT_PROVIDER": "tosla"
+        "EXPO_PUBLIC_PAYMENT_PROVIDER": "paynkolay"
       },
       "ios": {
         "simulator": false

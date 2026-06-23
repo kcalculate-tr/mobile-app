@@ -27,9 +27,10 @@ const CARD_SAVE_ENABLED =
 
 // Resmi ornek formdaki ek zorunlu alanlar (hash'e DAHIL DEGIL, sadece form alani).
 const CURRENCY_CODE = '949' // TRY
-// agentCode merchant hesabina ozgu. Test icin resmi ornekteki '1236' fallback;
-// production'da PAYNKOLAY_AGENT_CODE secret'i ile gercek deger verilmeli.
-const AGENT_CODE = Deno.env.get('PAYNKOLAY_AGENT_CODE') ?? '1236'
+// agentCode SADECE sub-merchant hesaplari icindir. KCAL tek merchant -> YOK.
+// '1236' (resmi ornek degeri) KALDIRILDI: prod'da yanlis merchant'a yonlenme riski.
+// Secret set EDILMEMISSE alan forma HIC eklenmez (asagidaki fields blogu).
+const AGENT_CODE = (Deno.env.get('PAYNKOLAY_AGENT_CODE') ?? '').trim()
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -225,7 +226,7 @@ Deno.serve(async (req: Request) => {
     ])
 
     // ── VPOS'a gidecek form alanlari (resmi ornek formla hizalandi).
-    //    currencyCode/agentCode/instalments: sadece form alani — HASH'E DAHIL DEGIL.
+    //    currencyCode/instalments: sadece form alani — HASH'E DAHIL DEGIL.
     const fields: Record<string, string> = {
       sx: SX,
       clientRefCode,
@@ -234,12 +235,16 @@ Deno.serve(async (req: Request) => {
       successUrl,
       failUrl,
       rnd,
-      agentCode: AGENT_CODE,
       use3D: 'true',
       transactionType: 'sales',
       instalments: '',
       cardHolderIP,
       hashDataV2,
+    }
+    // agentCode: yalnizca sub-merchant secret'i tanimliysa gonderilir.
+    // KCAL tek merchant -> secret yok -> alan forma hic eklenmez.
+    if (AGENT_CODE) {
+      fields.agentCode = AGENT_CODE
     }
     if (useCardSave) {
       fields.csCustomerKey = customerKey
