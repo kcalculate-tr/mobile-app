@@ -25,7 +25,7 @@ const REPORT_URL = VPOS_URL ? `${VPOS_URL}/Payment/PfTransactionReportList` : ''
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cache-control, pragma',
 }
 
 const jsonResponse = (body: unknown, status = 200) =>
