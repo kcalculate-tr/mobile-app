@@ -70,6 +70,21 @@ function pick(data: Record<string, unknown>, ...keys: string[]): string {
   return ''
 }
 
+// Paynkolay callback TIMESTAMP -> CancelRefundPayment trxDate formati (yyyy.mm.dd).
+// TIMESTAMP: "2022-02-24" (non-3D) veya "2022-02-24 13:58:36.353" (3D). Ilk 10 hane
+// (YYYY-MM-DD) -> "-" yerine "." . Bos/gecersizse callback anindaki TR (GMT+3)
+// tarihine dusulur (odeme ile ayni gun oldugu icin guvenli fallback).
+function toTrxDate(raw: string): string {
+  const datePart = String(raw ?? '').trim().slice(0, 10) // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return datePart.replace(/-/g, '.') // yyyy.mm.dd
+  }
+  const now = new Date()
+  const tr = new Date(now.getTime() + 3 * 60 * 60 * 1000)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${tr.getUTCFullYear()}.${pad(tr.getUTCMonth() + 1)}.${pad(tr.getUTCDate())}`
+}
+
 // Mobil WebView'in yakalayacagi son URL'e yonlendiren basit HTML.
 function redirectHtml(url: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8" />
@@ -120,6 +135,8 @@ Deno.serve(async (req: Request) => {
     const incomingHash = pick(data, 'hashDataV2', 'HASHDATAV2', 'hashData')
     const clientRefCode = pick(data, 'clientRefCode', 'CLIENT_REFERENCE_CODE', 'clientReferenceCode')
     const responseMessage = pick(data, 'RESPONSE_MESSAGE', 'responseMessage', 'RESPONSE_DATA')
+    // Paynkolay islem tarihi (iade/CancelRefundPayment trxDate kaynagi).
+    const txnTimestamp = pick(data, 'TIMESTAMP', 'timestamp', 'TRANSACTION_DATE')
 
     // Kart saklama alanlari (flag aciksa + RESPONSE_CODE==='2' iken kullanilir).
     const cardToken = pick(data, 'CardToken', 'cardToken', 'csCardToken', 'CS_CARD_TOKEN')
@@ -266,6 +283,12 @@ Deno.serve(async (req: Request) => {
     if (!isSuccess) {
       updatePayload.payment_failure_reason =
         responseMessage || `Paynkolay red (RESPONSE_CODE=${responseCode || 'bilinmiyor'})`
+    }
+    // Basari: ileride iade (CancelRefundPayment) icin Paynkolay referansi + islem
+    // tarihini sakla. Refsiz eski order'larda paynkolay-query fallback ile cozulur.
+    if (isSuccess) {
+      updatePayload.paynkolay_reference_code = referenceCode || null
+      updatePayload.paynkolay_trx_date = toTrxDate(txnTimestamp)
     }
     const { error: updateError } = await supabase
       .from('orders')
