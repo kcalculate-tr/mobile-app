@@ -41,6 +41,9 @@ interface OrderItem {
   unit_price: number;
   total_price: number;
   selected_options?: { labels?: string[]; extraPrice?: number };
+  // Bundle ürünlerde mobil app seçimleri yalnızca buraya yazıyor;
+  // selected_options boş kalıyor → not için fallback bu alandan okunur.
+  legacy_selected_options?: { labels?: string[] };
 }
 
 serve(async (req) => {
@@ -108,12 +111,17 @@ serve(async (req) => {
     const pid = parseInt(it.id, 10);
     const unitId = unitIdMap.get(pid);
     if (!unitId) { unmapped.push(`${it.name} (id=${it.id})`); continue; }
-    const labels = it.selected_options?.labels ?? [];
+    // Kaynak fallback: bundle siparişlerde labels legacy_selected_options'ta;
+    // selected_options boş kalıyor (gerçek app siparişleri). Dolu olandan oku.
+    const labels = it.selected_options?.labels
+                ?? it.legacy_selected_options?.labels
+                ?? [];
     orderDetails.push({
       ProductUnitId: unitId,
       Quantity: it.quantity,
       UnitPrice: Number(it.unit_price ?? 0) + Number(it.selected_options?.extraPrice ?? 0),
-      ...(labels.length > 0 ? { OrderDetailNote: labels.join(", ") } : {}),
+      // Her seçim ayrı satır: Adisyo fişte \n'i satır sonu olarak basıyor (test edildi).
+      ...(labels.length > 0 ? { OrderDetailNote: labels.join("\n") } : {}),
     });
   }
 
