@@ -116,12 +116,18 @@ serve(async (req) => {
     const labels = it.selected_options?.labels
                 ?? it.legacy_selected_options?.labels
                 ?? [];
+    // Adisyo fişinde grup öneğini ("Baz Seçimi: ") soy → sadece seçilen değer kalsın
+    // ("Basmati"). ":" yoksa label'ı olduğu gibi bırak (güvenli). Fiş daha kısa/temiz.
+    const cleanLabels = labels.map((l) => {
+      const i = l.indexOf(":");
+      return i >= 0 ? l.slice(i + 1).trim() : l;
+    });
     orderDetails.push({
       ProductUnitId: unitId,
       Quantity: it.quantity,
       UnitPrice: Number(it.unit_price ?? 0) + Number(it.selected_options?.extraPrice ?? 0),
       // Her seçim ayrı satır: Adisyo fişte \n'i satır sonu olarak basıyor (test edildi).
-      ...(labels.length > 0 ? { OrderDetailNote: labels.join("\n") } : {}),
+      ...(cleanLabels.length > 0 ? { OrderDetailNote: cleanLabels.join("\n") } : {}),
     });
   }
 
