@@ -75,7 +75,7 @@ export function renderReceiptItemOptions(item: OrderItem): string {
   return lines
     .map(
       (line) =>
-        `<tr><td colspan="2" style="padding-left:6mm;font-size:18pt;font-weight:700;line-height:1.25">• ${escapeHtml(line)}</td></tr>`,
+        `<tr class="opt-row"><td colspan="2" style="padding-left:5mm">• ${escapeHtml(line)}</td></tr>`,
     )
     .join('')
 }
@@ -251,7 +251,9 @@ export function renderReceiptAddressBlock(order: Order): string {
   `
 }
 
-// ── Termal fiş CSS — Adisyo pattern (büyük punto, saf siyah, Trebuchet MS) ────
+// ── Termal fiş CSS — kompakt (saf siyah, Trebuchet MS) ───────────────────────
+// Sipariş kodu + ürün adı vurgulu kalır; adres/tel/müşteri/opsiyon standart
+// küçük puntoya çekildi (fiş gereksiz uzamasın).
 const RECEIPT_PRINT_CSS = `
   @page { size: 80mm auto; margin: 0; }
   * { box-sizing: border-box; color: #000 !important; }
@@ -259,8 +261,8 @@ const RECEIPT_PRINT_CSS = `
   body {
     font-family: 'Trebuchet MS','Helvetica Bold',Arial,sans-serif;
     font-weight: 700;
-    font-size: 16pt;
-    line-height: 1.35;
+    font-size: 11pt;
+    line-height: 1.3;
     color: #000;
     margin: 0;
     padding: 3mm 1mm;
@@ -270,64 +272,65 @@ const RECEIPT_PRINT_CSS = `
   .center  { text-align: center; }
   .right   { text-align: right; }
   .bold    { font-weight: 900; }
-  .small   { font-size: 12pt; font-weight: 700; }
-  .divider { border: none; border-top: 2px dashed #000; margin: 3mm 0; }
-  .label   { font-size: 11pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1mm; }
+  .small   { font-size: 9pt; font-weight: 700; }
+  .divider { border: none; border-top: 2px dashed #000; margin: 2mm 0; }
+  .label   { font-size: 9pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1mm; }
   table    { width: 100%; border-collapse: collapse; }
 
-  .logo-wrap     { text-align: center; margin-bottom: 3mm; }
-  .logo-wrap img { max-height: 60px; max-width: 70mm; object-fit: contain; }
+  .logo-wrap     { text-align: center; margin-bottom: 2mm; }
+  .logo-wrap img { max-height: 48px; max-width: 60mm; object-fit: contain; }
 
   .order-code-box {
     text-align: center;
-    font-size: 26pt;
+    font-size: 20pt;
     font-weight: 900;
     margin: 2mm 0;
-    padding: 2mm 0;
+    padding: 1.5mm 0;
     border-top: 2px solid #000;
     border-bottom: 2px solid #000;
   }
 
-  .customer-name { font-size: 20pt; font-weight: 900; margin-bottom: 1mm; }
-  .item-row td   { padding: 1.5mm 0; font-size: 23pt; font-weight: 900; line-height: 1.2; }
-  .total-row td  { font-size: 26pt; font-weight: 900; padding: 2mm 0; border-top: 2px solid #000; }
+  .customer-name { font-size: 12pt; font-weight: 700; margin-bottom: 1mm; }
+  .item-row td   { padding: 1mm 0; font-size: 14pt; font-weight: 900; line-height: 1.2; }
+  .opt-row td    { padding: 0 0 0.5mm; font-size: 11pt; font-weight: 600; line-height: 1.25; }
+  .total-row td  { font-size: 16pt; font-weight: 900; padding: 1.5mm 0; border-top: 2px solid #000; }
 
-  .macro-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 2px; margin: 3mm 0; }
-  .macro-box  { border: 2px solid #000; padding: 2mm 1mm; text-align: center; }
-  .macro-val  { font-size: 14pt; font-weight: 900; }
-  .macro-lbl  { font-size: 9pt; font-weight: 700; }
+  .macro-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 2px; margin: 2mm 0; }
+  .macro-box  { border: 2px solid #000; padding: 1.5mm 1mm; text-align: center; }
+  .macro-val  { font-size: 12pt; font-weight: 900; }
+  .macro-lbl  { font-size: 8pt; font-weight: 700; }
 
-  .qr-wrap        { text-align: center; margin: 4mm 0 2mm; }
-  .qr-wrap img    { width: 90px; height: 90px; }
-  .receipt-footer { text-align: center; font-size: 18pt; font-weight: 900; margin-top: 3mm; }
-  .privileged     { font-weight: 900; font-size: 18pt; text-align: center; margin: 3mm 0; border: 2px solid #000; padding: 2mm 4mm; }
+  .qr-wrap        { text-align: center; margin: 3mm 0 2mm; }
+  .qr-wrap img    { width: 80px; height: 80px; }
+  .receipt-footer { text-align: center; font-size: 11pt; font-weight: 900; margin-top: 2mm; }
+  .privileged     { font-weight: 900; font-size: 11pt; text-align: center; margin: 2mm 0; border: 2px solid #000; padding: 1.5mm 4mm; }
 
   /* Randevulu sipariş bayrağı — mutfakta hızlı ayırt etmek için siyah üstü beyaz */
   .scheduled-banner {
     background: #000;
-    padding: 3mm;
-    margin: 3mm 0;
+    padding: 2mm;
+    margin: 2mm 0;
     text-align: center;
-    font-size: 22pt;
+    font-size: 14pt;
     font-weight: 900;
     line-height: 1.2;
   }
   .scheduled-banner * { color: #fff !important; }
 
-  /* Kurye/teslimat bloğu */
-  .kurye-block     { border: 2px solid #000; padding: 3mm; margin: 3mm 0; }
-  .kurye-label     { font-size: 11pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2mm; }
-  .kurye-phone     { font-family: 'Trebuchet MS','Helvetica Bold',Arial,sans-serif; font-size: 24pt; font-weight: 900; margin-bottom: 3mm; line-height: 1.1; }
-  .kurye-addr-1    { font-size: 22pt; font-weight: 900; line-height: 1.2; margin-bottom: 2mm; }
-  .kurye-addr-2    { font-size: 18pt; font-weight: 900; line-height: 1.2; margin-bottom: 1mm; }
-  .kurye-addr-meta { font-size: 14pt; font-weight: 700; margin-top: 2mm; }
-  .kurye-name      { font-size: 14pt; font-weight: 700; margin-top: 2mm; }
+  /* Kurye/teslimat bloğu — standart küçük punto */
+  .kurye-block     { border: 2px solid #000; padding: 2mm; margin: 2mm 0; }
+  .kurye-label     { font-size: 8pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1mm; }
+  .kurye-phone     { font-family: 'Trebuchet MS','Helvetica Bold',Arial,sans-serif; font-size: 13pt; font-weight: 900; margin-bottom: 1.5mm; line-height: 1.15; }
+  .kurye-addr-1    { font-size: 11pt; font-weight: 700; line-height: 1.25; margin-bottom: 1mm; }
+  .kurye-addr-2    { font-size: 10pt; font-weight: 600; line-height: 1.25; margin-bottom: 0.5mm; }
+  .kurye-addr-meta { font-size: 9pt; font-weight: 600; margin-top: 1mm; }
+  .kurye-name      { font-size: 9pt; font-weight: 600; margin-top: 1mm; }
 
   /* Müşteri notu */
-  .receipt-note     { background: #000; padding: 3mm; margin: 3mm 0; }
+  .receipt-note     { background: #000; padding: 2mm; margin: 2mm 0; }
   .receipt-note *   { color: #fff !important; }
-  .note-label       { font-size: 14pt; font-weight: 900; margin-bottom: 1mm; }
-  .note-text        { font-size: 16pt; font-weight: 900; }
+  .note-label       { font-size: 10pt; font-weight: 900; margin-bottom: 1mm; }
+  .note-text        { font-size: 12pt; font-weight: 900; }
 `
 
 // ── Termal fiş yazdırma ───────────────────────────────────────────────────────
