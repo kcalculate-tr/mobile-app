@@ -80,6 +80,12 @@ export interface OrderItem {
   selectedOptions?: { labels?: string[] }
   options?: string[]
   selected_options?: SelectedOptionSnapshot[]
+  // Bundle ürünlerde mobil app seçimleri yalnızca buraya yazıyor;
+  // selected_options boş kalıyor. Panel fallback bu alandan okur.
+  legacy_selected_options?: {
+    labels?: string[]
+    bundleSelections?: Array<{ slot_name?: string; name?: string }>
+  }
 }
 
 export interface Product {

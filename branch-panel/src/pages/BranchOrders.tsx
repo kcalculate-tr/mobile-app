@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle, Clock, Loader2, Truck, X } from 'lucide-react'
 import { supabase } from '../supabase'
 import { useBranch } from '../context/BranchContext'
+import { optionLines } from '../lib/orderHelpers'
 import type { Order, OrderItem } from '../types'
 
 const COLUMNS: { statuses: Order['status'][]; label: string; dot: string; headerCls: string }[] = [
@@ -69,10 +70,10 @@ function itemLabel(item: OrderItem): string {
   return item.name || (item as any).product_name || 'Ürün'
 }
 
+// Bundle ürünlerde selected_options boş kalabiliyor; optionLines
+// legacy_selected_options.labels'a düşerek seçimleri her zaman gösterir.
 function itemOptions(item: OrderItem): string[] {
-  if (item.selectedOptions?.labels?.length) return item.selectedOptions.labels
-  if (Array.isArray(item.options) && item.options.length) return item.options
-  return []
+  return optionLines(item)
 }
 
 function OrderCard({
@@ -110,14 +111,16 @@ function OrderCard({
           <li className="text-xs italic text-slate-300">Ürün bilgisi yok</li>
         ) : (
           items.map((item, i) => (
-            <li key={i} className="flex items-start justify-between gap-2">
+            <li key={i} className="border-t border-gray-50 pt-1 first:border-t-0 first:pt-0">
               <span className="text-sm font-medium text-slate-700">
                 {item.quantity}× {itemLabel(item)}
               </span>
               {itemOptions(item).length > 0 && (
-                <span className="shrink-0 text-right text-[11px] text-slate-400">
-                  {itemOptions(item).join(', ')}
-                </span>
+                <ul className="mt-0.5 ml-5 space-y-0.5">
+                  {itemOptions(item).map((opt, oi) => (
+                    <li key={oi} className="text-[11px] leading-snug text-slate-500">• {opt}</li>
+                  ))}
+                </ul>
               )}
             </li>
           ))

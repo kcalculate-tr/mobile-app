@@ -19,49 +19,65 @@ export function parseItems(raw: unknown): OrderItem[] {
 
 export function itemLabel(item: OrderItem): string { return item.name || 'Ürün' }
 
-// ── Selected options (template_id ile gruplanmış) ─────────────────────────────
-export function groupSelectedOptions(item: OrderItem): Array<{ name: string; values: string[] }> {
-  const list = Array.isArray(item.selected_options) ? item.selected_options : []
-  if (list.length === 0) return []
-  const buckets = new Map<string, { name: string; values: string[] }>()
-  for (const opt of list) {
-    if (!opt) continue
-    const key = String(opt.template_id ?? '?')
-    if (!buckets.has(key)) buckets.set(key, { name: opt.template_name || 'Seçim', values: [] })
-    buckets.get(key)!.values.push(opt.value_name || '')
+// ── Selected options → tek-tek, alt alta satır listesi ────────────────────────
+// Her opsiyon ayrı satır ("Slot: Değer"). Öncelik sırası:
+//   1) selected_options snapshot (yeni standart alan)
+//   2) legacy_selected_options.labels (bundle ürünler buraya yazıyor)
+//   3) legacy_selected_options.bundleSelections (labels yoksa slot+name'den üret)
+//   4) selectedOptions.labels / options[] (eski formatlar)
+// Bundle siparişlerde 1) boş kalıyor; fallback geçmiş siparişleri de gösterir.
+export function optionLines(item: OrderItem): string[] {
+  const snap = Array.isArray(item.selected_options) ? item.selected_options : []
+  if (snap.length > 0) {
+    return snap
+      .filter(Boolean)
+      .map((o) => {
+        const name = (o.template_name || '').trim()
+        const val = (o.value_name || '').trim()
+        return name ? `${name}: ${val}`.trim() : val
+      })
+      .filter(Boolean)
   }
-  return Array.from(buckets.values()).map((g) => ({
-    name: g.name,
-    values: g.values.filter(Boolean),
-  })).filter((g) => g.values.length > 0)
+  const legacy = item.legacy_selected_options
+  if (legacy?.labels?.length) return legacy.labels.filter(Boolean)
+  if (legacy?.bundleSelections?.length) {
+    return legacy.bundleSelections
+      .filter(Boolean)
+      .map((b) => {
+        const slot = (b.slot_name || '').trim()
+        const name = (b.name || '').trim()
+        return slot ? `${slot}: ${name}`.trim() : name
+      })
+      .filter(Boolean)
+  }
+  if (item.selectedOptions?.labels?.length) return item.selectedOptions.labels.filter(Boolean)
+  if (Array.isArray(item.options) && item.options.length) return item.options.filter(Boolean)
+  return []
 }
 
-// Sipariş kartı için seçilen opsiyonları render et (React component)
+// Sipariş kartı için seçilen opsiyonları render et — her opsiyon ayrı satır
 export function ItemOptions({ item }: { item: OrderItem }) {
-  const groups = groupSelectedOptions(item)
-  if (groups.length === 0) return null
+  const lines = optionLines(item)
+  if (lines.length === 0) return null
   return (
     <div className="ml-8 mt-0.5 space-y-0.5">
-      {groups.map((g, idx) => (
-        <div key={idx} className="text-[11px] leading-snug text-slate-500">
-          <span className="font-semibold text-slate-700">{g.name}:</span> {g.values.join(', ')}
-        </div>
+      {lines.map((line, idx) => (
+        <div key={idx} className="text-[11px] leading-snug text-slate-600">• {line}</div>
       ))}
     </div>
   )
 }
 
-// Termal fiş için seçilen opsiyon HTML satırları (XSS-safe)
+// Termal fiş için seçilen opsiyon HTML satırları — her opsiyon ayrı satır (XSS-safe)
 export function renderReceiptItemOptions(item: OrderItem): string {
-  const groups = groupSelectedOptions(item)
-  if (groups.length === 0) return ''
-  const rows = groups
+  const lines = optionLines(item)
+  if (lines.length === 0) return ''
+  return lines
     .map(
-      (g) =>
-        `<tr><td colspan="2" style="padding-left:6mm;font-size:18pt;font-weight:700;line-height:1.2">${escapeHtml(g.name)}: ${escapeHtml(g.values.join(', '))}</td></tr>`,
+      (line) =>
+        `<tr><td colspan="2" style="padding-left:6mm;font-size:18pt;font-weight:700;line-height:1.25">• ${escapeHtml(line)}</td></tr>`,
     )
     .join('')
-  return rows
 }
 
 export function orderCode(order: Order): string {
