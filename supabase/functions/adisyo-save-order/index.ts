@@ -126,8 +126,9 @@ serve(async (req) => {
       ProductUnitId: unitId,
       Quantity: it.quantity,
       UnitPrice: Number(it.unit_price ?? 0) + Number(it.selected_options?.extraPrice ?? 0),
-      // Her seçim ayrı satır: Adisyo fişte \n'i satır sonu olarak basıyor (test edildi).
-      ...(cleanLabels.length > 0 ? { OrderDetailNote: cleanLabels.join("\n") } : {}),
+      // Ayraç " | ": \n Adisyo word-wrap'iyle çakışıp satırları üst üste bindiriyordu;
+      // pipe ile tek akan satır, Adisyo kendi sarmasını düzgün yapıyor.
+      ...(cleanLabels.length > 0 ? { OrderDetailNote: cleanLabels.join(" | ") } : {}),
     });
   }
 
