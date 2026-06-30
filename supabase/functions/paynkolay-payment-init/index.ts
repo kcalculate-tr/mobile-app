@@ -165,7 +165,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderErr } = await admin
       .from('orders')
-      .select('id, user_id, total_price, total_amount, phone, merchant_oid')
+      .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code')
       .eq('id', orderId)
       .maybeSingle()
 
@@ -177,11 +177,109 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'Unauthorized' }, 403)
     }
 
-    const amountNum = Number(order.total_price ?? order.total_amount ?? 0)
+    let amountNum = Number(order.total_price ?? order.total_amount ?? 0)
     if (!amountNum || amountNum <= 0) {
       return jsonResponse({ error: 'Siparis tutari gecersiz' }, 400)
     }
-    const amount = toDecimalTL(amountNum) // "150.00"
+
+    // ── A-BACKSTOP: charge'dan ONCE tutari GUNCEL products.price'tan yeniden hesapla.
+    // Sadece BAZ fiyat duzeltilir; gramaj/opsiyon modifier'lari order item'indan
+    // (selected_options price_modifier + legacy_selected_options.extraPrice) AYNEN korunur.
+    // -> idempotent + fiyat formulunu yeniden replike etme riski YOK. Bayat sepetten
+    // gelen eski fiyat (stale-cache) burada duzeltilir; Paynkolay tutari DB'den okur.
+    // Hata olursa stored total'a duser -> odeme akisi BOZULMAZ.
+    const recomputeUpdate: Record<string, unknown> = {}
+    try {
+      const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
+      const effPrice = (price: unknown, type: unknown, value: unknown) => {
+        const base = Number(price) || 0
+        const v = Number(value)
+        if (!type || !Number.isFinite(v) || v <= 0) return base
+        if (type === 'percent' || type === 'percentage') return Math.max(0, base * (1 - v / 100))
+        if (type === 'fixed') return Math.max(0, base - v)
+        return base
+      }
+      const items: any[] = Array.isArray(order.items) ? order.items : []
+      if (items.length > 0) {
+        const productIds = items
+          .map((it) => parseInt(String(it?.id), 10))
+          .filter((n) => Number.isFinite(n))
+        const { data: prods } = await admin
+          .from('products')
+          .select('id, price, discount_type, discount_value')
+          .in('id', productIds)
+        const pmap = new Map<number, any>((prods ?? []).map((p: any) => [Number(p.id), p]))
+
+        let changed = false
+        const newItems = items.map((it) => {
+          const p = pmap.get(parseInt(String(it?.id), 10))
+          if (!p) return it // urun bulunamadi -> dokunma (defansif)
+          const baseServer = effPrice(p.price, p.discount_type, p.discount_value)
+          const tplMod = Array.isArray(it?.selected_options)
+            ? it.selected_options.reduce((s: number, o: any) => s + (Number(o?.price_modifier) || 0), 0)
+            : 0
+          const extra = Number(it?.legacy_selected_options?.extraPrice) || 0
+          const correctUnit = round2(baseServer + tplMod + extra)
+          const qty = Number(it?.quantity) || 1
+          if (round2(Number(it?.unit_price)) !== correctUnit) changed = true
+          return { ...it, unit_price: correctUnit, total_price: round2(correctUnit * qty) }
+        })
+
+        const newSubtotal = round2(newItems.reduce((s, it) => s + (Number(it?.total_price) || 0), 0))
+
+        // macro: profiles.privileged_until > now -> %20, degilse 0 (server-truth)
+        let macroDiscount = 0
+        const { data: prof } = await admin
+          .from('profiles').select('privileged_until').eq('id', order.user_id).maybeSingle()
+        const pu = prof?.privileged_until ? new Date(prof.privileged_until) : null
+        if (pu && pu.getTime() > Date.now()) macroDiscount = round2(newSubtotal * 0.20)
+
+        // kupon: campaigns'tan yeniden hesapla; bulunamaz/pasifse stored discount KORUNUR (defansif)
+        let discount = Number(order.discount_amount) || 0
+        if (order.coupon_id || order.coupon_code) {
+          const campQuery = admin
+            .from('campaigns')
+            .select('discount_type, discount_value, min_cart_total, max_discount, is_active')
+          const { data: camp } = order.coupon_id
+            ? await campQuery.eq('id', order.coupon_id).maybeSingle()
+            : await campQuery.eq('code', order.coupon_code).maybeSingle()
+          if (camp && camp.is_active !== false) {
+            const minCart = Number(camp.min_cart_total) || 0
+            if (newSubtotal >= minCart) {
+              const v = Number(camp.discount_value) || 0
+              let d = (camp.discount_type === 'percent' || camp.discount_type === 'percentage')
+                ? Math.floor(newSubtotal * (v / 100))
+                : Math.min(v, newSubtotal)
+              const maxD = Number(camp.max_discount) || 0
+              if (maxD > 0) d = Math.min(d, maxD)
+              discount = round2(d)
+            } else {
+              discount = 0 // sepet min altina dustu
+            }
+          }
+        }
+
+        const deliveryFee = Number(order.delivery_fee) || 0
+        const newTotal = round2(Math.max(0, newSubtotal + deliveryFee - discount - macroDiscount))
+
+        if (newTotal > 0) {
+          if (changed || round2(amountNum) !== newTotal) {
+            console.log('[paynkolay-init] price recompute', { orderId: order.id, oldTotal: amountNum, newTotal })
+          }
+          amountNum = newTotal
+          recomputeUpdate.items = newItems
+          recomputeUpdate.subtotal_amount = newSubtotal
+          recomputeUpdate.discount_amount = discount
+          recomputeUpdate.macro_discount_amount = macroDiscount
+          recomputeUpdate.total_amount = newTotal
+          recomputeUpdate.total_price = newTotal
+        }
+      }
+    } catch (e) {
+      console.error('[paynkolay-init] recompute failed, stored total kullanilacak:', (e as Error).message)
+    }
+
+    const amount = toDecimalTL(amountNum) // "150.00" (recompute sonrasi guncel tutar)
 
     // ── Telefon (customerKey kaynagi): profiles.phone, fallback orders.phone.
     let phone = ''
@@ -260,6 +358,8 @@ Deno.serve(async (req: Request) => {
     const orderUpdate: Record<string, unknown> = {
       payment_provider: 'paynkolay',
       updated_at: new Date().toISOString(),
+      // A-backstop: yeniden hesaplanan tutar/kalemler (bossa varsa). Bos ise no-op.
+      ...recomputeUpdate,
     }
     if (!order.merchant_oid) {
       orderUpdate.merchant_oid = clientRefCode
