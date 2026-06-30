@@ -95,22 +95,30 @@ serve(async (req) => {
 
   const productIds = items.map(it => parseInt(it.id, 10)).filter(n => !Number.isNaN(n));
   const { data: products, error: prodErr } = await supabase
-    .from("products").select("id, name, adisyo_product_unit_id").in("id", productIds);
+    .from("products").select("id, name, price, adisyo_product_unit_id").in("id", productIds);
 
   if (prodErr) return await fail(supabase, orderId, `products_fetch: ${prodErr.message}`, null);
 
   const unitIdMap = new Map<number, number>();
+  // Adisyo, satır toplamını KENDİ katalog/liste fiyatından doğrular (gönderdiğimiz UnitPrice'ı
+  // yok sayar — kanıt: order #41). Bu yüzden UnitPrice olarak DÜZ katalog fiyatı (products.price)
+  // yollarız; products.price Adisyo kataloğuyla senkron tutulur (update-prices-v4).
+  const catalogPriceMap = new Map<number, number>();
   for (const p of products ?? []) {
     if (p.adisyo_product_unit_id) unitIdMap.set(p.id as number, p.adisyo_product_unit_id as number);
+    if (p.price != null) catalogPriceMap.set(p.id as number, Number(p.price));
   }
 
   const orderDetails: Array<{ ProductUnitId: number; Quantity: number; UnitPrice: number; OrderDetailNote?: string }> = [];
   const unmapped: string[] = [];
+  const noPrice: string[] = [];
 
   for (const it of items) {
     const pid = parseInt(it.id, 10);
     const unitId = unitIdMap.get(pid);
     if (!unitId) { unmapped.push(`${it.name} (id=${it.id})`); continue; }
+    const catalogPrice = catalogPriceMap.get(pid);
+    if (catalogPrice == null) { noPrice.push(`${it.name} (id=${it.id})`); continue; }
     // Kaynak fallback: bundle siparişlerde labels legacy_selected_options'ta;
     // selected_options boş kalıyor (gerçek app siparişleri). Dolu olandan oku.
     const labels = it.selected_options?.labels
@@ -125,7 +133,10 @@ serve(async (req) => {
     orderDetails.push({
       ProductUnitId: unitId,
       Quantity: it.quantity,
-      UnitPrice: Number(it.unit_price ?? 0) + Number(it.selected_options?.extraPrice ?? 0),
+      // DÜZ katalog fiyatı (indirimsiz, extraPrice HARİÇ). %5 ürün indirimi + kupon + opsiyon
+      // farkları aşağıda toplu Discount'a yıkılır. extraPrice'ı buraya eklemek Adisyo'nun
+      // düz katalog kontrolünü aşar → 715 (bkz. order #41).
+      UnitPrice: catalogPrice,
       // Ayraç " | ": \n Adisyo word-wrap'iyle çakışıp satırları üst üste bindiriyordu;
       // pipe ile tek akan satır, Adisyo kendi sarmasını düzgün yapıyor.
       ...(cleanLabels.length > 0 ? { OrderDetailNote: cleanLabels.join(" | ") } : {}),
@@ -134,6 +145,9 @@ serve(async (req) => {
 
   if (unmapped.length > 0) {
     return await fail(supabase, orderId, `unmapped_products: ${unmapped.join("; ")}`, null);
+  }
+  if (noPrice.length > 0) {
+    return await fail(supabase, orderId, `no_catalog_price: ${noPrice.join("; ")}`, null);
   }
 
   // === 5. Adres zenginleştirme (addresses tablosundan) + müşteri ad/soyad
@@ -149,21 +163,23 @@ serve(async (req) => {
   const phoneValue = (addr?.contact_phone ?? dbOrder.phone ?? "").toString().trim();
 
   // === 6. Tutarlar
-  // Adisyo formülü: items_sum = OrderTotal + Discount - DeliveryFee
-  // → OrderTotal = items_sum + DeliveryFee - Discount = müşterinin ödediği net tutar
-  // total_amount zaten net tutar olduğu için onu kullanıyoruz.
+  // Adisyo kontrolü: Σ(katalog_fiyatı × qty) == OrderTotal + Discount − DeliveryFee.
+  // UnitPrice = düz katalog fiyatı (yukarıda), OrderTotal = net ödenen (total_amount).
+  // Discount = TÜM indirimi tek kalemde topla (ürün %5 + kupon + opsiyon farkları):
+  //   Discount = items_sum(katalog) + DeliveryFee − OrderTotal
+  // Böylece denklem inşa gereği kapanır. Premium opsiyon net>katalog yaparsa Discount
+  // negatif olur (Adisyo kabul ediyor — kanıt: order #45).
   const deliveryFee = Number(dbOrder.delivery_fee ?? 0);
-  const discount = Number(dbOrder.discount_amount ?? 0) + Number(dbOrder.macro_discount_amount ?? 0);
   const orderTotal = Number(dbOrder.total_amount ?? 0);
-
-  // Sanity check: total_amount ile hesaplanan tutar uyuşmuyorsa warning log at, devam et
   const itemsSum = orderDetails.reduce((s, d) => s + d.UnitPrice * d.Quantity, 0);
-  const calculatedTotal = itemsSum + deliveryFee - discount;
-  if (Math.abs(orderTotal - calculatedTotal) > 0.01) {
-    const warnMsg = `OrderTotal mismatch: total_amount=${orderTotal}, calculated=${calculatedTotal} (items=${itemsSum}, delivery=${deliveryFee}, discount=${discount})`;
-    console.warn(`[adisyo-save-order] order=${orderId} ${warnMsg}`);
-    await logEvent(supabase, orderId, "warning", { warnMsg, orderTotal, calculatedTotal, itemsSum, deliveryFee, discount }, null, null, warnMsg, null);
-  }
+  const discount = Math.round((itemsSum + deliveryFee - orderTotal) * 100) / 100;
+
+  // Gözlemlenebilirlik: hesaplanan Discount, DB'deki bilinen indirimlerden (kupon + makro)
+  // beklenenden çok saparsa logla (katalog fiyatı bayatsa burada yakalanmasa da iz kalır).
+  const knownDiscount = Number(dbOrder.discount_amount ?? 0) + Number(dbOrder.macro_discount_amount ?? 0);
+  await logEvent(supabase, orderId, "info",
+    { itemsSum, orderTotal, deliveryFee, computedDiscount: discount, knownDiscount }, null, null,
+    `discount_calc: items_sum(katalog)=${itemsSum} net=${orderTotal} → Discount=${discount} (kupon/makro=${knownDiscount})`, null);
 
   // === 7. Sipariş notu
   const noteParts: string[] = [];
