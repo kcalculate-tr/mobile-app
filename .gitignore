@@ -76,3 +76,6 @@ app.config.js.bak
 # Google Play service account (ASLA commit etme)
 google-play-key.json
 .secrets/
+
+# env yedekleri (ASLA commit etme)
+*.env.bak
