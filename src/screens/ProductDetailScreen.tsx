@@ -44,6 +44,7 @@ import { useCartStore } from '../store/cartStore';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { logEvent } from '../lib/analytics';
 import Svg, { Circle } from 'react-native-svg';
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { COLORS } from '../constants/theme';
 
 type ProductDetailRoute = RouteProp<RootStackParamList, 'ProductDetail'>;
@@ -60,20 +61,30 @@ interface MacroBadgeProps {
   percentage: number;
 }
 
-const MacroBadge: React.FC<MacroBadgeProps> = ({ label, value, unit, color, trackColor, percentage }) => {
+const MacroBadge: React.FC<MacroBadgeProps> = React.memo(({ label, value, unit, color, trackColor, percentage }) => {
   const v = value ?? 0;
   const size = 72;
   const stroke = 6;
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
-  const pct = Math.min(percentage, 1);
+  const animPct = useRef(new Animated.Value(Math.min(percentage, 1))).current;
+
+  useEffect(() => {
+    Animated.timing(animPct, {
+      toValue: Math.min(percentage, 1),
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+  }, [percentage]);
+
+  const dashoffset = animPct.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
 
   return (
     <View style={styles.macroBadge}>
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
           <Circle cx={size / 2} cy={size / 2} r={r} stroke={trackColor} strokeWidth={stroke} fill="none" />
-          <Circle
+          <AnimatedCircle
             cx={size / 2}
             cy={size / 2}
             r={r}
@@ -81,19 +92,65 @@ const MacroBadge: React.FC<MacroBadgeProps> = ({ label, value, unit, color, trac
             strokeWidth={stroke}
             fill="none"
             strokeDasharray={circ}
-            strokeDashoffset={circ * (1 - pct)}
+            strokeDashoffset={dashoffset}
             strokeLinecap="round"
           />
         </Svg>
         <View style={styles.macroCenter}>
-          <Text style={[styles.macroValue, { color }]}>{v}</Text>
+          <AnimatedNumberText style={[styles.macroValue, { color }]} value={v} />
           <Text style={styles.macroUnit}>{unit}</Text>
         </View>
       </View>
       <Text style={styles.macroLabel}>{label}</Text>
     </View>
   );
-};
+});
+MacroBadge.displayName = 'MacroBadge';
+
+const MiniMacroBadge: React.FC<MacroBadgeProps> = React.memo(({ value, unit, color, trackColor, percentage }) => {
+  const v = value ?? 0;
+  const size = 34;
+  const stroke = 4;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const animPct = useRef(new Animated.Value(Math.min(percentage, 1))).current;
+
+  useEffect(() => {
+    Animated.timing(animPct, {
+      toValue: Math.min(percentage, 1),
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+  }, [percentage]);
+
+  const dashoffset = animPct.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
+
+  return (
+    <View style={styles.miniMacroItem}>
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke={trackColor} strokeWidth={stroke} fill="none" />
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={circ}
+            strokeDashoffset={dashoffset}
+            strokeLinecap="round"
+          />
+        </Svg>
+        <View style={styles.macroCenter}>
+          <AnimatedNumberText style={[styles.miniMacroValue, { color }]} value={v} />
+        </View>
+      </View>
+      <Text style={styles.miniMacroUnit}>{unit}</Text>
+    </View>
+  );
+});
+MiniMacroBadge.displayName = 'MiniMacroBadge';
 
 export default function ProductDetailScreen() {
   const route = useRoute<ProductDetailRoute>();
@@ -124,6 +181,39 @@ export default function ProductDetailScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const optionGroupsOffsetY = useRef(0);
   const groupPositions = useRef<Record<string, number>>({});
+
+  const [showMiniMacros, setShowMiniMacros] = useState(false);
+  const shownRef = useRef(false);
+  const infoCardTopRef = useRef(0);
+  const macroBottomRef = useRef(0);
+  const miniOpacity = useRef(new Animated.Value(0)).current;
+
+  const macroCardEnabled = Boolean(product?.is_bundle) || (product?.calories ?? product?.cal) != null;
+
+  const onInfoCardLayout = (e: any) => {
+    infoCardTopRef.current = e.nativeEvent.layout.y;
+  };
+  const onMacroLayout = (e: any) => {
+    macroBottomRef.current = e.nativeEvent.layout.y + e.nativeEvent.layout.height;
+  };
+  const handleScroll = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (macroBottomRef.current <= 0) return;
+    const threshold = infoCardTopRef.current + macroBottomRef.current;
+    const shouldShow = y > threshold;
+    if (shouldShow !== shownRef.current) {
+      shownRef.current = shouldShow;
+      setShowMiniMacros(shouldShow);
+    }
+  };
+
+  useEffect(() => {
+    if (showMiniMacros) {
+      Animated.timing(miniOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    } else {
+      miniOpacity.setValue(0);
+    }
+  }, [showMiniMacros]);
 
   useEffect(() => {
     let mounted = true;
@@ -355,9 +445,9 @@ export default function ProductDetailScreen() {
       base.fats += Number(opt?.fats_modifier) || 0;
     });
     base.calories = Math.max(0, Math.round(base.calories));
-    base.protein = Math.max(0, base.protein);
-    base.carbs = Math.max(0, base.carbs);
-    base.fats = Math.max(0, base.fats);
+    base.protein = Math.max(0, Math.round(base.protein * 10) / 10);
+    base.carbs   = Math.max(0, Math.round(base.carbs   * 10) / 10);
+    base.fats    = Math.max(0, Math.round(base.fats    * 10) / 10);
     return base;
   }, [product, builtTemplateOptions, selectedGramaj]);
 
@@ -381,9 +471,9 @@ export default function ProductDetailScreen() {
       });
     });
     total.calories = Math.max(0, Math.round(total.calories));
-    total.protein = Math.max(0, total.protein);
-    total.carbs = Math.max(0, total.carbs);
-    total.fats = Math.max(0, total.fats);
+    total.protein = Math.max(0, Math.round(total.protein * 10) / 10);
+    total.carbs   = Math.max(0, Math.round(total.carbs   * 10) / 10);
+    total.fats    = Math.max(0, Math.round(total.fats    * 10) / 10);
     return total;
   }, [isBundle, optionGroups, selections]);
 
@@ -820,6 +910,8 @@ export default function ProductDetailScreen() {
           paddingBottom: Math.max(180, insets.bottom + 140),
         }}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {/* Main Image */}
         <View style={styles.imageContainer}>
@@ -840,7 +932,7 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
+        <View style={styles.infoCard} onLayout={onInfoCardLayout}>
           <Text style={styles.productTitle}>{product.name}</Text>
 
           {/* Description */}
@@ -880,7 +972,7 @@ export default function ProductDetailScreen() {
           {/* Macro Badges — tekli: effectiveMacros (opsiyon farkları dahil);
               bundle: seçilen öğünlerin canlı toplamı, panel hep açık (0'dan başlar) */}
           {(isBundle || (product.calories ?? product.cal) != null) && (
-            <View style={styles.macroContainer}>
+            <View style={styles.macroContainer} onLayout={onMacroLayout}>
               {macros.map((m) => (
                 <MacroBadge key={m.label} {...m} />
               ))}
@@ -1075,6 +1167,13 @@ export default function ProductDetailScreen() {
 
       {/* Bottom Bar — iki varyant crossfade ile yer değiştirir */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(14, insets.bottom) }]}>
+        {macroCardEnabled && showMiniMacros && (
+          <Animated.View style={[styles.miniMacroBar, { opacity: miniOpacity }]}>
+            {macros.map((m) => (
+              <MiniMacroBadge key={m.label} {...m} />
+            ))}
+          </Animated.View>
+        )}
         <View style={styles.bottomBarContent}>
           {/* Varyant A: sepette yok → Toplam Tutar + Sepete Ekle */}
           <Animated.View
@@ -1303,6 +1402,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.tertiary,
+  },
+  miniMacroBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: 10,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  miniMacroItem: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  miniMacroValue: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    lineHeight: 12,
+  },
+  miniMacroUnit: {
+    fontSize: 8,
+    fontWeight: '500',
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
+    lineHeight: 9,
   },
   descriptionSection: {
     marginBottom: 4,
