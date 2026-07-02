@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
+import { supabase } from '../lib/supabase';
 import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
 import { logEvent } from '../lib/analytics';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
@@ -208,6 +209,52 @@ export const useCartStore = create<CartState>()(
           }),
           { kcal: 0, protein: 0, carbs: 0, fats: 0 },
         );
+      },
+
+      refreshPrices: async (): Promise<{ changed: boolean; names: string[] }> => {
+        const items = get().items;
+        if (!items || items.length === 0) return { changed: false, names: [] };
+        const ids = Array.from(new Set(items.map((i) => i.productId)));
+        const numIds = ids.map((x) => Number(x)).filter((n) => Number.isFinite(n));
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, price, discount_type, discount_value')
+          .in('id', numIds);
+        if (error || !Array.isArray(data)) return { changed: false, names: [] };
+        const byId = new Map(data.map((r: any) => [String(r.id), r]));
+
+        let changed = false;
+        const names: string[] = [];
+        const nextItems = items.map((item) => {
+          const raw = byId.get(String(item.productId));
+          if (!raw) return item; // ürün bulunamadı → dokunma
+          const p = {
+            price: Number(raw.price) || 0,
+            discount_type: raw.discount_type ?? null,
+            discount_value: raw.discount_value == null ? null : Number(raw.discount_value),
+          };
+          const effectiveBase = getEffectivePrice(p);
+          const extraPrice = item.selectedOptions?.extraPrice ?? 0;
+          const templateModifier = calculateOptionsPriceModifier(item.selected_options ?? []);
+          const newUnit = Number((effectiveBase + extraPrice + templateModifier).toFixed(2));
+          const disc = hasDiscount(p);
+          const newOriginal = disc
+            ? Number((p.price + extraPrice + templateModifier).toFixed(2))
+            : undefined;
+          if (Math.abs(newUnit - Number(item.unitPrice || 0)) > 0.009) {
+            changed = true;
+            names.push(item.name);
+          }
+          return {
+            ...item,
+            unitPrice: newUnit,
+            originalUnitPrice: newOriginal,
+            discountType: disc ? p.discount_type : null,
+            discountValue: disc ? p.discount_value : null,
+          };
+        });
+        if (changed) set({ items: nextItems });
+        return { changed, names };
       },
     }),
     {

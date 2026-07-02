@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import { Animated, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
@@ -52,8 +52,21 @@ export default function CartScreen() {
   const setCoupon = useCartStore(s => s.setCoupon);
   const clearCoupon = useCartStore(s => s.clearCoupon);
   const getDiscountAmount = useCartStore(s => s.getDiscountAmount);
+  const refreshPrices = useCartStore(s => s.refreshPrices);
   const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
+  const [priceUpdated, setPriceUpdated] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const res = await refreshPrices();
+        if (active && res.changed) setPriceUpdated(true);
+      })();
+      return () => { active = false; };
+    }, [refreshPrices])
+  );
 
   useEffect(() => {
     fetchCrosssellProducts().then(setCrosssellProducts).catch(() => {});
@@ -157,6 +170,12 @@ export default function CartScreen() {
   const isMacroMember = isPrivileged(macroProfile);
   const macroDiscount = calculateMacroDiscount(subtotal, isMacroMember);
   const total = Math.max(0, subtotal - couponDiscount - macroDiscount);
+
+  const handleContinue = async () => {
+    const res = await refreshPrices();
+    if (res.changed) { setPriceUpdated(true); return; } // müşteri yeni tutarı görsün, tekrar bassın
+    navigation.navigate('Checkout');
+  };
 
   if (items.length === 0) {
     return (
@@ -621,6 +640,14 @@ export default function CartScreen() {
             );
           })() : null}
 
+          {priceUpdated && (
+            <View style={styles.priceUpdateBanner}>
+              <Text style={styles.priceUpdateText}>Bazı ürünlerin fiyatı güncellendi. Güncel tutar aşağıda.</Text>
+              <TouchableOpacity onPress={() => setPriceUpdated(false)}>
+                <Text style={styles.priceUpdateDismiss}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Ara Toplam</Text>
             <AnimatedNumberText style={styles.summaryValue} value={`₺${subtotal.toFixed(2)}`} />
@@ -648,7 +675,7 @@ export default function CartScreen() {
         <Animated.View style={{ transform: [{ scale: checkoutScale }] }}>
           <TouchableOpacity
             style={styles.checkoutBtn}
-            onPress={() => { haptic.success(); navigation.navigate('Checkout'); }}
+            onPress={() => { haptic.success(); handleContinue(); }}
             onPressIn={checkoutPressIn}
             onPressOut={checkoutPressOut}
             activeOpacity={1}
@@ -1086,6 +1113,11 @@ fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
 fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   macroLegendLabel: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.medium,
 fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.secondary, marginTop: 1 },
+
+  priceUpdateBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    backgroundColor: '#FEF9E7', borderWidth: 1, borderColor: '#F8C90E', borderRadius: 12, padding: 12, marginBottom: 12 },
+  priceUpdateText: { flex: 1, fontSize: 13, color: '#7A5B00', fontFamily: 'PlusJakartaSans_500Medium' },
+  priceUpdateDismiss: { fontSize: 13, fontWeight: '700', color: '#7A5B00', fontFamily: 'PlusJakartaSans_700Bold' },
 
   checkoutBtn: {
     backgroundColor: '#000000',

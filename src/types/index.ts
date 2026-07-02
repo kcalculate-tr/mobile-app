@@ -213,6 +213,7 @@ export interface CartState {
   setCoupon: (coupon: AppliedCoupon) => void;
   clearCoupon: () => void;
   getDiscountAmount: (subtotal: number) => number;
+  refreshPrices: () => Promise<{ changed: boolean; names: string[] }>;
 }
 
 // ─── Address ──────────────────────────────────────────────────────────────────
