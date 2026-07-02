@@ -1052,7 +1052,7 @@ export default function TrackerScreen() {
           const { data, error } = await supabase
             .from('orders')
             .select(
-              'id,order_code,delivered_at,order_items(id,product_id,product_name,quantity,selected_options,products(name,calories,protein,carbs,fats,img,is_bundle))',
+              'id,order_code,delivered_at,order_items(id,product_id,product_name,quantity,calories,protein,carbs,fat,products(name,calories,protein,carbs,fats,img))',
             )
             .eq('user_id', user.id)
             .eq('status', 'delivered')
@@ -1074,55 +1074,29 @@ export default function TrackerScreen() {
               const productId = String(oi?.product_id ?? (product as any)?.id ?? '');
               const quantity = Math.max(1, Math.floor(Number(oi?.quantity) || 1));
 
-              // Bundle siparişi → her slot seçimi AYRI pantry öğesi.
-              // Kaynak: order_items.selected_options (orders.ts'in yazdığı
-              // self-contained BundleSelection[]). Dedup için child başına
-              // sabit sentetik id (`${orderItemId}#idx`) — normal ürün
-              // davranışı ve mevcut removedOrderItemIds etkilenmez.
-              const sel = oi?.selected_options;
-              const isBundleOrderItem =
-                Boolean((product as any)?.is_bundle) &&
-                Array.isArray(sel) &&
-                sel.length > 0 &&
-                sel.every(
-                  (s: any) =>
-                    s && typeof s === 'object' && s.option_item_id != null && s.name != null,
-                );
-
-              if (isBundleOrderItem) {
-                (sel as any[]).forEach((s, idx) => {
-                  const childName = String(s?.name || 'Öğün').trim();
-                  if (!childName) return;
-                  candidates.push({
-                    productId,
-                    orderItemId: `${orderItemId}#${idx}`,
-                    name: childName,
-                    quantity,
-                    calories: Number(s?.calories) || 0,
-                    protein: Number(s?.protein) || 0,
-                    carbs: Number(s?.carbs) || 0,
-                    fat: Number(s?.fat) || 0,
-                    imageUrl: undefined,
-                  });
-                });
-                continue;
-              }
-
+              // Satır başına TEK item — bundle bölme yok. Kalori/makro önce
+              // order_items'ta SAKLI birleşik değerden (bowl/wrap opsiyonları
+              // dahil), yoksa products join'inden fallback (products'ta "fats").
               candidates.push({
                 productId,
                 orderItemId,
                 name,
                 quantity,
-                calories: Number(product?.calories) || 0,
-                protein: Number(product?.protein) || 0,
-                carbs: Number(product?.carbs) || 0,
-                fat: Number((product as any)?.fats) || 0,
+                calories: Number(oi?.calories ?? (product as any)?.calories ?? 0),
+                protein: Number(oi?.protein ?? (product as any)?.protein ?? 0),
+                carbs: Number(oi?.carbs ?? (product as any)?.carbs ?? 0),
+                fat: Number(oi?.fat ?? (product as any)?.fats ?? 0),
                 imageUrl: (product as any)?.img ? String((product as any).img) : undefined,
               });
             }
           }
 
           if (!cancelled && candidates.length > 0) {
+            // Migration: eski bundle-split ('#'li) pantry kalıntılarını at —
+            // artık üretilmiyor, yoksa yeni birleşik item ile çift görünür.
+            usePantryStore.setState((s) => ({
+              items: s.items.filter((i) => !String(i.orderItemId || '').includes('#')),
+            }));
             usePantryStore.getState().addItemsFromOrders(candidates);
           }
         } catch (err) {
@@ -1180,19 +1154,18 @@ export default function TrackerScreen() {
   }, [todayConsumed]);
 
   const displayMacros = useMemo(() => {
-    const base = selectedFilter === 'today'
-      ? calculateTotalMacros(orders)
-      : calculateAverageMacros(orders, selectedFilter);
-
+    // Bugün: sayaç = YALNIZ tüketilen öğeler (pantry "Tükettim" + manuel).
+    // calculateTotalMacros(orders) ÇIKARILDI — teslim edilen ama tüketilmeyen
+    // siparişlerin otomatik sayımı + pantry ile çift sayım biter.
     if (selectedFilter === 'today') {
       return {
-        kcal: base.kcal + pantryConsumedMacros.kcal + manualConsumedTotals.kcal,
-        protein: base.protein + pantryConsumedMacros.protein + manualConsumedTotals.protein,
-        carbs: base.carbs + pantryConsumedMacros.carbs + manualConsumedTotals.carbs,
-        fat: base.fat + pantryConsumedMacros.fat + manualConsumedTotals.fat,
+        kcal: pantryConsumedMacros.kcal + manualConsumedTotals.kcal,
+        protein: pantryConsumedMacros.protein + manualConsumedTotals.protein,
+        carbs: pantryConsumedMacros.carbs + manualConsumedTotals.carbs,
+        fat: pantryConsumedMacros.fat + manualConsumedTotals.fat,
       };
     }
-    return base;
+    return calculateAverageMacros(orders, selectedFilter);
   }, [orders, selectedFilter, pantryConsumedMacros, manualConsumedTotals]);
 
   const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
@@ -1244,9 +1217,9 @@ export default function TrackerScreen() {
       };
       const { data: row, error } = await supabase
         .from('meal_consumptions')
-        .insert(payload)
+        .upsert(payload, { onConflict: 'user_id,source,source_ref', ignoreDuplicates: true })
         .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
-        .single();
+        .maybeSingle();
       consumeInFlightRef.current.delete(instanceId);
       if (error) {
         // 23505 = unique_violation: bu source_ref zaten kayıtlı → tüketim

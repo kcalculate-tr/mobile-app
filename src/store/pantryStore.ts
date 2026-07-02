@@ -63,7 +63,9 @@ export const usePantryStore = create<PantryState>()(
         const now = new Date().toISOString();
         const pantryItems: PantryItem[] = fresh.map((item) => ({
           ...item,
-          id: makeId(item.orderItemId ?? item.productId),
+          // Deterministik: order line başına stabil id (storage yeniden kurulsa
+          // da aynı) → instanceId=`${id}-${i}` = source_ref deterministik.
+          id: item.orderItemId ?? makeId(item.productId),
           addedAt: now,
         }));
         set((s) => ({ items: [...s.items, ...pantryItems] }));
