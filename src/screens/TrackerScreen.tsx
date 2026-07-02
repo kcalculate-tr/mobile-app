@@ -1124,49 +1124,22 @@ export default function TrackerScreen() {
     [pantryItems]
   );
 
-  const pantryConsumedMacros = useMemo(() =>
-    expandedItems
-      .filter(i => consumedInstances.has(i.instanceId))
-      .reduce(
-        (acc, i) => ({
-          kcal: acc.kcal + i.calories,
-          protein: acc.protein + i.protein,
-          carbs: acc.carbs + i.carbs,
-          fat: acc.fat + i.fat,
-        }),
-        { kcal: 0, protein: 0, carbs: 0, fat: 0 }
-      ),
-    [expandedItems, consumedInstances]
-  );
-
-  const manualConsumedTotals = useMemo(() => {
-    return todayConsumed
-      .filter(c => c.source === 'manual')
-      .reduce(
-        (acc, c) => ({
-          kcal: acc.kcal + c.calories,
-          protein: acc.protein + c.protein,
-          carbs: acc.carbs + c.carbs,
-          fat: acc.fat + c.fat,
-        }),
-        { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-      );
-  }, [todayConsumed]);
+  const consumedTodayMacros = useMemo(() => todayConsumed.reduce((t, r) => ({
+    kcal:    t.kcal    + (Number(r.calories)||0),
+    protein: t.protein + (Number(r.protein)||0),
+    carbs:   t.carbs   + (Number(r.carbs)||0),
+    fat:     t.fat     + (Number(r.fat)||0),
+  }), { kcal:0, protein:0, carbs:0, fat:0 }), [todayConsumed]);
 
   const displayMacros = useMemo(() => {
-    // Bugün: sayaç = YALNIZ tüketilen öğeler (pantry "Tükettim" + manuel).
-    // calculateTotalMacros(orders) ÇIKARILDI — teslim edilen ama tüketilmeyen
-    // siparişlerin otomatik sayımı + pantry ile çift sayım biter.
+    // Bugün: sayaç = "Bugün Tüketilenler" (meal_consumptions bugün) toplamı —
+    // pantry "Tükettim" + manuel, hepsi todayConsumed'dan tek kaynaktan. Böylece
+    // sayaç ile liste birebir tutar; çift sayım + otomatik teslim sayımı biter.
     if (selectedFilter === 'today') {
-      return {
-        kcal: pantryConsumedMacros.kcal + manualConsumedTotals.kcal,
-        protein: pantryConsumedMacros.protein + manualConsumedTotals.protein,
-        carbs: pantryConsumedMacros.carbs + manualConsumedTotals.carbs,
-        fat: pantryConsumedMacros.fat + manualConsumedTotals.fat,
-      };
+      return consumedTodayMacros;
     }
     return calculateAverageMacros(orders, selectedFilter);
-  }, [orders, selectedFilter, pantryConsumedMacros, manualConsumedTotals]);
+  }, [orders, selectedFilter, consumedTodayMacros]);
 
   const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
     if (!user) return;
@@ -1233,8 +1206,23 @@ export default function TrackerScreen() {
           dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
           Alert.alert('Hata', 'Tüketim kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene.');
         }
-      } else if (row) {
-        dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
+      } else {
+        // upsert başarılı — row null olabilir (ignoreDuplicates conflict'i atlar).
+        // Sayaç todayConsumed'dan okunduğu için anında + kalıcı olarak prepend et
+        // (gerçek row varsa onu, yoksa sentetik kaydı normalize ederek).
+        dispatchData({
+          type: 'PREPEND_CONSUMED',
+          payload: normalizeConsumedRow(row ?? {
+            source: 'pantry',
+            source_ref: instanceId,
+            name: item.name,
+            calories: Math.round(item.calories || 0),
+            protein: item.protein || 0,
+            carbs: item.carbs || 0,
+            fat: item.fat || 0,
+            consumed_at: new Date().toISOString(),
+          }),
+        });
       }
     }
   };
