@@ -52,6 +52,7 @@ export const mapProductRow = (row: Record<string, unknown>): Product => {
     favorite_order: row.favorite_order != null ? toNumber(row.favorite_order, 0) : undefined,
     discount_type: typeof row.discount_type === 'string' && row.discount_type ? row.discount_type : null,
     discount_value: row.discount_value != null ? toNumber(row.discount_value, 0) : null,
+    brand: typeof row.brand === 'string' && row.brand ? row.brand : null,
     is_bundle: row.is_bundle != null ? Boolean(row.is_bundle) : undefined,
     gramaj_options: Array.isArray(row.gramaj_options)
       ? (row.gramaj_options as Array<Record<string, unknown>>)

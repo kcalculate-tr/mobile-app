@@ -20,6 +20,7 @@ export interface CategoryProduct {
   order?: number | null;
   discount_type?: string | null;
   discount_value?: number | null;
+  brand?: string | null;
   gramaj_options?: Array<Record<string, unknown>>;
 }
 
@@ -51,6 +52,7 @@ const mapCategoryProductRow = (
   order: row.order != null ? toNumber(row.order, 0) : null,
   discount_type: typeof row.discount_type === 'string' && row.discount_type ? row.discount_type : null,
   discount_value: row.discount_value != null ? toNumber(row.discount_value, 0) : null,
+  brand: typeof row.brand === 'string' && row.brand ? row.brand : null,
   gramaj_options: Array.isArray(row.gramaj_options) ? (row.gramaj_options as Array<Record<string, unknown>>) : [],
 });
 
@@ -75,7 +77,7 @@ export async function fetchProductsByCategory(
   if (ALL_PRODUCTS_NAMES.includes(categoryName)) {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, gramaj_options')
+      .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
       .eq('is_available', true)
       .order('order', { ascending: true });
 
@@ -107,8 +109,25 @@ export async function fetchProductsByCategory(
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, gramaj_options')
+    .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
     .in('category', categoryNames)
+    .eq('is_available', true)
+    .order('order', { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) =>
+    mapCategoryProductRow(row as Record<string, unknown>),
+  );
+}
+
+export async function fetchProductsByBrand(
+  brandKey: string,
+): Promise<CategoryProduct[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
+    .eq('brand', brandKey)
     .eq('is_available', true)
     .order('order', { ascending: true });
 

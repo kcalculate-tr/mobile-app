@@ -26,6 +26,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import AddressesScreen from '../screens/AddressesScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CategoryProductsScreen from '../screens/CategoryProductsScreen';
+import BrandLandingScreen from '../screens/BrandLandingScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import DevDiagnosticsScreen from '../screens/DevDiagnosticsScreen';
 import OffersScreen from '../screens/OffersScreen';
@@ -184,6 +185,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Tabs" component={TabNavigator} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
+      <Stack.Screen name="BrandLanding" component={BrandLandingScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom', animationDuration: 320 }} />
       <Stack.Screen name="Addresses" component={AddressesScreen} />

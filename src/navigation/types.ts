@@ -15,6 +15,7 @@ export type RootStackParamList = {
   Categories: undefined;
   Offers: undefined;
   CategoryProducts: { categoryName: string };
+  BrandLanding: { brandKey: string };
   ProductDetail: { productId: string };
   Checkout:
     | { selectedAddressId?: string; pendingPaymentOrderId?: string }

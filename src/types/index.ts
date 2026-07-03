@@ -32,6 +32,7 @@ export interface Product {
   favorite_order?: number;
   discount_type?: 'percent' | 'fixed' | string | null;
   discount_value?: number | null;
+  brand?: string | null;
   gramaj_options?: GramajOption[];
   // Bundle (çoklu ürün) ürünü mü — true ise makrolar seçilen
   // option_items'lardan runtime toplanır (YENİ uuid opsiyon sistemi).

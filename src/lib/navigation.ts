@@ -22,6 +22,14 @@ export function resolveNavigation(
     return;
   }
 
+  if (target.startsWith('BrandLanding:')) {
+    const brandKey = target.substring('BrandLanding:'.length).trim();
+    if (brandKey) {
+      navigation.navigate('BrandLanding', { brandKey });
+    }
+    return;
+  }
+
   try {
     navigation.navigate(target as any);
   } catch {
