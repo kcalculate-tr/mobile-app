@@ -135,11 +135,11 @@ export default function BrandLandingScreen() {
   const renderHero = () => {
     if (!brand) return null;
     const accent = brand.accent_color || BRAND_ACCENT;
-    const heroUri = transformImageUrl(brand.hero_image_url, ImagePreset.bannerLarge);
+    const heroUri = transformImageUrl(brand.hero_image_url, ImagePreset.brandHero);
     return (
       <View style={styles.hero}>
         {heroUri ? (
-          <CachedImage uri={heroUri} style={styles.heroImage} priority="high" />
+          <CachedImage uri={heroUri} style={styles.heroImage} contentFit="cover" priority="high" />
         ) : (
           <View style={[styles.heroFallback, { backgroundColor: accent }]}>
             <Text style={styles.heroFallbackText} numberOfLines={2}>
@@ -147,15 +147,6 @@ export default function BrandLandingScreen() {
             </Text>
           </View>
         )}
-        <Text style={styles.heroName}>{brand.name}</Text>
-        {brand.tagline ? (
-          <Text style={[styles.heroTagline, { color: accent }]}>{brand.tagline}</Text>
-        ) : null}
-        {brand.description ? (
-          <Text style={styles.heroDescription} numberOfLines={3}>
-            {brand.description}
-          </Text>
-        ) : null}
       </View>
     );
   };
@@ -338,44 +329,23 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: '100%',
-    height: 200,
+    aspectRatio: 2.5,
     borderRadius: 16,
-    marginBottom: 12,
   },
   heroFallback: {
     width: '100%',
-    height: 200,
+    aspectRatio: 2.5,
     borderRadius: 16,
-    marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   heroFallbackText: {
     color: '#000000',
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     textAlign: 'center',
-  },
-  heroName: {
-    color: '#000000',
-    fontSize: 26,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    marginBottom: 4,
-  },
-  heroTagline: {
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    marginBottom: 6,
-  },
-  heroDescription: {
-    color: '#6b7280',
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: 'PlusJakartaSans_500Medium',
   },
   filterButton: {
     width: 42,
