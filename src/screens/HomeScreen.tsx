@@ -228,6 +228,7 @@ export default function HomeScreen() {
           uri={transformImageUrl(cell.image_url ?? '', ImagePreset.bannerLarge) ?? (cell.image_url ?? '')}
           style={styles.heroImage}
           priority="high"
+          pointerEvents="none"
         />
       </View>
     </TouchableOpacity>
@@ -434,6 +435,7 @@ export default function HomeScreen() {
                           ) ?? (cell.image_url ?? '')
                         }
                         style={styles.promoImage}
+                        pointerEvents="none"
                       />
                     </TouchableOpacity>
                   ))}

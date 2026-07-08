@@ -9,9 +9,10 @@ interface Props {
   priority?: 'high' | 'normal' | 'low';
   contentFit?: ImageContentFit;
   onError?: () => void;
+  pointerEvents?: 'auto' | 'none' | 'box-none' | 'box-only';
 }
 
-export function CachedImage({ uri, style, placeholder, priority = 'normal', contentFit = 'cover', onError }: Props) {
+export function CachedImage({ uri, style, placeholder, priority = 'normal', contentFit = 'cover', onError, pointerEvents }: Props) {
   return (
     <Image
       source={{ uri }}
@@ -24,6 +25,7 @@ export function CachedImage({ uri, style, placeholder, priority = 'normal', cont
       priority={priority}
       recyclingKey={uri}
       onError={onError}
+      pointerEvents={pointerEvents}
     />
   );
 }
