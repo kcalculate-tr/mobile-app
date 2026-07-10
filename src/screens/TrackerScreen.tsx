@@ -365,17 +365,6 @@ const calculateTotalMacros = (orders: Order[]): MacroTotals => {
   return t;
 };
 
-const calculateAverageMacros = (orders: Order[], filter: FilterType): MacroTotals => {
-  const totals = calculateTotalMacros(orders);
-  const days = getDayCount(filter);
-  return {
-    kcal: Math.round(totals.kcal / days),
-    protein: Math.round(totals.protein / days),
-    carbs: Math.round(totals.carbs / days),
-    fat: Math.round(totals.fat / days),
-  };
-};
-
 const formatDayKey = (d: Date): string => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -564,6 +553,11 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
   const targetFat = nutritionProfile?.target_fat ?? 65;
 
   const weeklyData = weeklyConsumption;
+  // Bar sayısı = geçirilen dilim uzunluğu (7 / 14 / 30). Etiketleri seyreklet:
+  // 7 gün → hepsi (haftagünü), >7 → ayın günü, her labelStep barda bir.
+  const n = weeklyData.length;
+  const labelStep = n <= 7 ? 1 : n <= 14 ? 2 : 5;
+  const periodLabel = n === 7 ? 'Bu hafta' : `Son ${n} gün`;
 
   const macroConsistency = useMemo(() => {
     let proteinDays = 0, carbsDays = 0, fatDays = 0;
@@ -625,20 +619,23 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
             </View>
           )}
         </View>
-        <View style={s.barChartRow}>
+        <View style={[s.barChartRow, n > 10 && { gap: 2 }]}>
           {weeklyData.map((day, i) => {
             const barH = (day.kcal / maxKcal) * 80;
-            const isToday = i === 6;
+            const isToday = i === n - 1;
             const overTarget = day.kcal > targetKcal * 1.1;
             const onTarget = day.kcal >= targetKcal * 0.9 && day.kcal <= targetKcal * 1.1;
             const barColor = day.kcal === 0 ? '#e8e8e8' : overTarget ? '#FCA5A5' : onTarget ? COLORS.brand.green : '#93C5FD';
+            // 7 gün → haftagünü; daha fazlası → ayın günü, seyrek (her labelStep + son bar).
+            const showLabel = isToday || i % labelStep === 0;
+            const labelText = n <= 7 ? day.label : day.date.slice(8, 10);
             return (
               <View key={i} style={s.barCol}>
                 <View style={s.barBg}>
                   <View style={[s.barTargetLine, { bottom: (targetKcal / maxKcal) * 80 }]} />
                   {barH > 0 && <View style={[s.barFill, { height: barH, backgroundColor: barColor }]} />}
                 </View>
-                <Text style={[s.barLabel, isToday && s.barLabelToday]}>{day.label}</Text>
+                <Text style={[s.barLabel, isToday && s.barLabelToday]} numberOfLines={1}>{showLabel ? labelText : ''}</Text>
               </View>
             );
           })}
@@ -654,7 +651,7 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
       <View style={s.twoColRow}>
         <View style={[s.grafikCard, { flex: 1 }]}>
           <Text style={s.grafikTitle}>Hedefe Uyum</Text>
-          <Text style={s.grafikSub}>Bu hafta</Text>
+          <Text style={s.grafikSub}>{periodLabel}</Text>
           {adherenceScore === null ? (
             <View style={s.noDataBox}><Text style={s.noDataText}>Henüz tüketim yok</Text></View>
           ) : (
@@ -673,7 +670,7 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
 
         <View style={[s.grafikCard, { flex: 1 }]}>
           <Text style={s.grafikTitle}>Makro Tutarlılık</Text>
-          <Text style={s.grafikSub}>7 günde kaç gün</Text>
+          <Text style={s.grafikSub}>{n} günde kaç gün</Text>
           <View style={s.macroConsistencyList}>
             {[
               { label: 'Protein', days: macroConsistency.proteinDays, color: MACRO_COLORS.protein.main },
@@ -684,9 +681,9 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
                 <View style={[s.macroConsistencyDot, { backgroundColor: m.color }]} />
                 <Text style={s.macroConsistencyLabel}>{m.label}</Text>
                 <View style={s.macroConsistencyTrack}>
-                  <View style={[s.macroConsistencyFill, { width: `${(m.days / 7) * 100}%` as any, backgroundColor: m.color }]} />
+                  <View style={[s.macroConsistencyFill, { width: `${(m.days / n) * 100}%` as any, backgroundColor: m.color }]} />
                 </View>
-                <Text style={s.macroConsistencyDays}>{m.days}/7</Text>
+                <Text style={s.macroConsistencyDays}>{m.days}/{n}</Text>
               </View>
             ))}
           </View>
@@ -696,7 +693,7 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
       {/* 3. Makro Dağılımı */}
       <View style={s.grafikCard}>
         <Text style={s.grafikTitle}>Makro Dağılımı</Text>
-        <Text style={s.grafikSub}>Bu haftaki kalori dağılımı</Text>
+        <Text style={s.grafikSub}>{periodLabel} kalori dağılımı</Text>
         <View style={[s.macroBar, { marginTop: SPACING.sm, height: 14, borderRadius: RADIUS.xs }]}>
           <View style={[s.macroBarSegment, { flex: pK / tot, backgroundColor: MACRO_COLORS.protein.main }]} />
           <View style={[s.macroBarSegment, { flex: cK / tot, backgroundColor: MACRO_COLORS.carbs.main }]} />
@@ -704,9 +701,9 @@ function GrafikView({ weeklyConsumption, nutritionProfile, measurements, onExpor
         </View>
         <View style={s.macroDagRow}>
           {[
-            { label: 'Protein', g: Math.round(weekTotals.protein), pct: Math.round((pK / tot) * 100), color: MACRO_COLORS.protein.main, target: targetProtein * 7 },
-            { label: 'Karb', g: Math.round(weekTotals.carbs), pct: Math.round((cK / tot) * 100), color: MACRO_COLORS.carbs.main, target: targetCarbs * 7 },
-            { label: 'Yağ', g: Math.round(weekTotals.fat), pct: Math.round((fK / tot) * 100), color: MACRO_COLORS.fat.main, target: targetFat * 7 },
+            { label: 'Protein', g: Math.round(weekTotals.protein), pct: Math.round((pK / tot) * 100), color: MACRO_COLORS.protein.main, target: targetProtein * n },
+            { label: 'Karb', g: Math.round(weekTotals.carbs), pct: Math.round((cK / tot) * 100), color: MACRO_COLORS.carbs.main, target: targetCarbs * n },
+            { label: 'Yağ', g: Math.round(weekTotals.fat), pct: Math.round((fK / tot) * 100), color: MACRO_COLORS.fat.main, target: targetFat * n },
           ].map(m => (
             <View key={m.label} style={s.macroDagCell}>
               <Text style={[s.macroDagPct, { color: m.color }]}>%{m.pct}</Text>
@@ -915,7 +912,7 @@ export default function TrackerScreen() {
         const { start, end } = getFilterRange(filter);
         const todayStartISO = startOfTodayISO();
         const tomorrowStartISO = startOfTomorrowISO();
-        const sevenDaysAgoISO = startOfDaysAgoISO(6);
+        const thirtyDaysAgoISO = startOfDaysAgoISO(29);
 
         const [profileRes, ordersRes, measurementRes, todayConsumedRes, weeklyConsumedRes] = await Promise.all([
           supabase
@@ -948,7 +945,7 @@ export default function TrackerScreen() {
             .from('meal_consumptions')
             .select('calories,protein,carbs,fat,consumed_at')
             .eq('user_id', user.id)
-            .gte('consumed_at', sevenDaysAgoISO)
+            .gte('consumed_at', thirtyDaysAgoISO)
             .lt('consumed_at', tomorrowStartISO),
         ]);
 
@@ -988,7 +985,7 @@ export default function TrackerScreen() {
 
         if (Array.isArray(weeklyConsumedRes.data)) {
           const days: WeeklyDay[] = [];
-          for (let i = 6; i >= 0; i--) {
+          for (let i = 29; i >= 0; i--) {
             const d = new Date();
             d.setHours(0, 0, 0, 0);
             d.setDate(d.getDate() - i);
@@ -1131,15 +1128,43 @@ export default function TrackerScreen() {
     fat:     t.fat     + (Number(r.fat)||0),
   }), { kcal:0, protein:0, carbs:0, fat:0 }), [todayConsumed]);
 
+  // Historical (today dışı) sayaç: meal_consumptions'tan seçili filtre aralığının
+  // günlük ortalaması. weeklyConsumption artık 30 günlük bucket (date=YYYY-MM-DD,
+  // yerel). getFilterRange sınırlarına göre dilimle, topla, getDayCount'a böl.
+  const historicalConsumedMacros = useMemo(() => {
+    const { start, end } = getFilterRange(selectedFilter);
+    const startStr = formatDayKey(start);
+    const endStr = formatDayKey(end);
+    const slice = weeklyConsumption.filter(d => d.date >= startStr && d.date <= endStr);
+    const sum = slice.reduce((a, d) => ({
+      kcal: a.kcal + d.kcal, protein: a.protein + d.protein, carbs: a.carbs + d.carbs, fat: a.fat + d.fat,
+    }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    const days = getDayCount(selectedFilter);
+    return {
+      kcal: Math.round(sum.kcal / days),
+      protein: Math.round(sum.protein / days),
+      carbs: Math.round(sum.carbs / days),
+      fat: Math.round(sum.fat / days),
+    };
+  }, [weeklyConsumption, selectedFilter]);
+
   const displayMacros = useMemo(() => {
     // Bugün: sayaç = "Bugün Tüketilenler" (meal_consumptions bugün) toplamı —
     // pantry "Tükettim" + manuel, hepsi todayConsumed'dan tek kaynaktan. Böylece
     // sayaç ile liste birebir tutar; çift sayım + otomatik teslim sayımı biter.
+    // Today dışı: yine meal_consumptions'tan (historicalConsumedMacros), orders DEĞİL.
     if (selectedFilter === 'today') {
       return consumedTodayMacros;
     }
-    return calculateAverageMacros(orders, selectedFilter);
-  }, [orders, selectedFilter, consumedTodayMacros]);
+    return historicalConsumedMacros;
+  }, [selectedFilter, consumedTodayMacros, historicalConsumedMacros]);
+
+  // Grafik sekmesi filtreye duyarlı: week=7, last14=14, last30=30 barlık dilim.
+  // today/yesterday tek gün olduğundan grafik yine son 7 günü gösterir.
+  const graphData = useMemo(() => {
+    const n = (selectedFilter === 'today' || selectedFilter === 'yesterday') ? 7 : getDayCount(selectedFilter);
+    return weeklyConsumption.slice(-n);
+  }, [weeklyConsumption, selectedFilter]);
 
   const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
     if (!user) return;
@@ -1340,7 +1365,7 @@ export default function TrackerScreen() {
     }
   };
 
-  const weeklyData7 = weeklyConsumption;
+  const weeklyData7 = weeklyConsumption.slice(-7);
 
   const handleExportPDF = async () => {
     dispatchUI({ type: 'SET_EXPORTING_PDF', payload: true });
@@ -1818,23 +1843,21 @@ const html = `
           ))}
         </View>
 
-        {/* ── Filter pills (sadece özet modda) ── */}
-        {viewMode === 'ozet' && (
-          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
-            {FILTER_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.key}
-                style={[s.filterBtn, selectedFilter === opt.key && s.filterBtnActive]}
-                onPress={() => dispatchFilter({ type: 'SET_SELECTED_FILTER', payload: opt.key })}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.filterText, selectedFilter === opt.key && s.filterTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+        {/* ── Filter pills (her iki modda: Özet + Grafik) ── */}
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
+          {FILTER_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[s.filterBtn, selectedFilter === opt.key && s.filterBtnActive]}
+              onPress={() => dispatchFilter({ type: 'SET_SELECTED_FILTER', payload: opt.key })}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.filterText, selectedFilter === opt.key && s.filterTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {dataLoading ? (
           <View style={s.centered}>
@@ -1850,7 +1873,7 @@ const html = `
         ) : viewMode === 'grafik' ? (
           <>
             <GrafikView
-              weeklyConsumption={weeklyConsumption}
+              weeklyConsumption={graphData}
               nutritionProfile={nutritionProfile}
               measurements={measurements}
               onExportPDF={handleExportPDF}
