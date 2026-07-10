@@ -1,19 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
 import { BackgroundLayer } from '../../components/onboarding/BackgroundLayer';
 import { TopBar } from '../../components/onboarding/TopBar';
-import { GlassButton } from '../../components/onboarding/GlassButton';
 import { PrimaryCTA } from '../../components/onboarding/PrimaryCTA';
 import { sportive } from '../../theme/sportive';
 
 export default function AuthGatewayScreen() {
   const nav = useNavigation();
-
-  const handleSocialStub = (provider: string) => {
-    Alert.alert(`${provider} ile giriş`, 'Yakında.', [{ text: 'Tamam' }]);
-  };
 
   return (
     <BackgroundLayer mode="blur">
@@ -23,30 +17,13 @@ export default function AuthGatewayScreen() {
           <Text style={styles.h1}>Başlayalım.</Text>
           <Text style={styles.sub}>30 saniyede hesabını oluştur.</Text>
 
-          <View style={{ marginTop: 28, gap: 10 }}>
-            <GlassButton
-              label="Apple ile devam et"
-              icon={<AppleLogo size={16} color="#FFF" weight="fill" />}
-              onPress={() => handleSocialStub('Apple')}
-            />
-            <GlassButton
-              label="Google ile devam et"
-              icon={<GoogleLogo size={16} color="#FFF" weight="bold" />}
-              onPress={() => handleSocialStub('Google')}
+          <View style={{ marginTop: 28 }}>
+            <PrimaryCTA
+              label="E-posta ile devam et"
+              showArrow
+              onPress={() => nav.navigate('RegisterEmail' as never)}
             />
           </View>
-
-          <View style={styles.divider}>
-            <View style={styles.line} />
-            <Text style={styles.dividerText}>VEYA</Text>
-            <View style={styles.line} />
-          </View>
-
-          <PrimaryCTA
-            label="E-posta ile devam et"
-            showArrow
-            onPress={() => nav.navigate('RegisterEmail' as never)}
-          />
         </View>
 
         <View style={styles.footer}>

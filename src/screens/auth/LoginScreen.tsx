@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
 import { BackgroundLayer } from '../../components/onboarding/BackgroundLayer';
 import { TopBar } from '../../components/onboarding/TopBar';
 import { GlassInput } from '../../components/onboarding/GlassInput';
-import { GlassButton } from '../../components/onboarding/GlassButton';
 import { PrimaryCTA } from '../../components/onboarding/PrimaryCTA';
 import { sportive } from '../../theme/sportive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -60,10 +58,6 @@ export default function LoginScreen() {
     useNavGate.getState().refresh();
   };
 
-  const handleSocialStub = (provider: string) => {
-    Alert.alert(`${provider} ile giriş`, 'Yakında.', [{ text: 'Tamam' }]);
-  };
-
   return (
     <BackgroundLayer mode="blur">
       <SafeAreaView style={styles.safe}>
@@ -103,25 +97,6 @@ export default function LoginScreen() {
 
             <View style={{ marginTop: 20 }}>
               <PrimaryCTA label="Giriş Yap" showArrow loading={loading} onPress={handleLogin} />
-            </View>
-
-            <View style={styles.divider}>
-              <View style={styles.line} />
-              <Text style={styles.dividerText}>VEYA</Text>
-              <View style={styles.line} />
-            </View>
-
-            <View style={{ gap: 10 }}>
-              <GlassButton
-                label="Apple ile giriş yap"
-                icon={<AppleLogo size={16} color="#FFF" weight="fill" />}
-                onPress={() => handleSocialStub('Apple')}
-              />
-              <GlassButton
-                label="Google ile giriş yap"
-                icon={<GoogleLogo size={16} color="#FFF" weight="bold" />}
-                onPress={() => handleSocialStub('Google')}
-              />
             </View>
           </View>
           <View style={styles.footer}>
