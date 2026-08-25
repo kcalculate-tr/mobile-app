@@ -183,12 +183,10 @@ export const useCartStore = create<CartState>()(
       getDiscountAmount: (subtotal: number) => {
         const { appliedCoupon } = get();
         if (!appliedCoupon) return 0;
-        if (subtotal < (appliedCoupon.minOrderAmount || 0)) return 0;
-        const type = appliedCoupon.discountType;
-        if (type === 'percent' || type === 'percentage') {
-          return Math.floor(subtotal * (appliedCoupon.discountValue / 100));
-        }
-        return Math.min(appliedCoupon.discountValue, subtotal);
+        // discount_amount validate_coupon RPC tarafından apply anında
+        // hesaplanır (max_discount dahil); burada yalnız subtotal'ı aşmasın
+        // diye clamp ediyoruz.
+        return Math.min(appliedCoupon.discountAmount, subtotal);
       },
 
       getSubtotal: () => {
@@ -260,7 +258,10 @@ export const useCartStore = create<CartState>()(
     {
       name: 'kcal-cart',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 4,
+      // v5: AppliedCoupon şeması validate_coupon RPC sözleşmesine göre değişti
+      // (discountAmount eklendi, minOrderAmount/campaign kaldırıldı) — eski
+      // persisted appliedCoupon şekli uyumsuz, sürüm atlanarak temizleniyor.
+      version: 5,
       migrate: (_persistedState, _version) => ({
         items: [],
         appliedCoupon: null,

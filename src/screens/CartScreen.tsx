@@ -21,9 +21,8 @@ import { getEffectivePrice, hasDiscount } from '../utils/price';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
-import { getSupabaseClient } from '../lib/supabase';
 import { fetchCrosssellProducts } from '../lib/products';
-import { getCampaignUseCount } from '../lib/offers';
+import { validateCoupon, getCouponErrorMessage } from '../lib/offers';
 import {
   fetchMacroProfile,
   isPrivileged,
@@ -97,58 +96,24 @@ export default function CartScreen() {
     const code = couponInput.trim().toUpperCase();
     if (!code) { setCouponError('Kupon kodu girin.'); return; }
     setCouponLoading(true); setCouponError('');
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from('campaigns')
-      .select('id,title,code,discount_type,discount_value,min_cart_total,max_discount,end_date,is_active,max_uses_per_user')
-      .eq('code', code)
-      .eq('is_active', true)
-      .maybeSingle();
-    if (error || !data) {
-      setCouponLoading(false);
-      setCouponError('Geçersiz veya süresi dolmuş kupon.');
-      return;
-    }
-    if (data.end_date && new Date(data.end_date) < new Date()) {
-      setCouponLoading(false);
-      setCouponError('Bu kuponun süresi dolmuş.');
-      return;
-    }
-    if (data.min_cart_total > 0 && subtotal < data.min_cart_total) {
-      setCouponLoading(false);
-      setCouponError(`Min. sepet tutarı ₺${data.min_cart_total} olmalı.`);
-      return;
-    }
-    if (data.max_uses_per_user != null) {
-      const used = await getCampaignUseCount(String(data.id));
-      if (used >= Number(data.max_uses_per_user)) {
-        setCouponLoading(false);
-        setCouponError('Bu kuponun kullanım limitine ulaştınız.');
-        return;
-      }
-    }
+    const result = await validateCoupon(code, subtotal);
     setCouponLoading(false);
+    if (!result.valid) {
+      setCouponError(getCouponErrorMessage(result));
+      return;
+    }
     haptic.success();
     setCoupon({
-      code: data.code,
-      campaignId: String(data.id),
-      discountType: data.discount_type,
-      discountValue: Number(data.discount_value),
-      minOrderAmount: Number(data.min_cart_total || 0),
-      title: data.title,
-      campaign: {
-        id: String(data.id),
-        code: data.code,
-        title: data.title,
-        discount_type: data.discount_type,
-        discount_value: Number(data.discount_value),
-        max_discount: Number(data.max_discount || 0),
-        min_cart_total: Number(data.min_cart_total || 0),
-      },
+      code: result.code,
+      campaignId: String(result.campaign_id),
+      discountType: result.discount_type,
+      discountValue: Number(result.discount_value),
+      discountAmount: Number(result.discount_amount),
+      title: result.title,
     });
     setCouponOpen(false);
     setCouponError('');
-    showToast(`${code} kuponu uygulandı!`, 'success');
+    showToast(`${result.code} kuponu uygulandı!`, 'success');
   };
 
   const removeCoupon = () => { clearCoupon(); setCouponInput(''); };

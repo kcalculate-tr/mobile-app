@@ -184,17 +184,10 @@ export interface AppliedCoupon {
   campaignId: string;
   discountType: string;
   discountValue: number;
-  minOrderAmount: number;
+  // validate_coupon RPC tarafından cart_total'a göre hesaplanır (max_discount
+  // dahil); cüzdanda sabit tutulur, sepet değişse bile yeniden hesaplanmaz.
+  discountAmount: number;
   title?: string;
-  campaign: {
-    id?: string;
-    code?: string;
-    title?: string;
-    discount_type?: string;
-    discount_value?: number;
-    max_discount?: number;
-    min_cart_total?: number;
-  };
 }
 
 export interface CartState {

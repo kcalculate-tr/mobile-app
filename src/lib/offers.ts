@@ -36,47 +36,75 @@ export async function fetchCampaigns(): Promise<Campaign[]> {
   return data ?? [];
 }
 
-// Kişi başı kullanım sınırına ulaşan kampanyaları kullanıcı listesinden çıkarır.
-// Login değilse hepsini döner (filter uygulanamaz).
+// Hedef kitle (herkese / kayıtlı kullanıcı / kayıtlı olmayan) ve kullanılmış
+// tek-seferlik kuponlar RLS tarafından zaten filtreleniyor — client'ta ekstra
+// filtre gerekmez. `supabase` auth'lu client olduğu için auth.uid()/jwt email
+// RLS policy'sinde otomatik çalışır.
 export async function fetchAvailableCampaigns(): Promise<Campaign[]> {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes?.user?.id;
-
-  const all = await fetchCampaigns();
-  if (!userId) return all;
-
-  const { data: uses, error: usesErr } = await supabase
-    .rpc('get_user_campaign_uses', { p_user_id: userId });
-
-  if (usesErr) {
-    console.error('[campaigns] get_user_campaign_uses failed', usesErr);
-    return all;
-  }
-
-  const useCounts = new Map<string, number>();
-  (uses ?? []).forEach((u: { campaign_id: string; use_count: number }) => {
-    useCounts.set(String(u.campaign_id), Number(u.use_count) || 0);
-  });
-
-  return all.filter((c) => {
-    const max = c.max_uses_per_user;
-    if (max == null) return true;
-    const count = useCounts.get(String(c.id)) ?? 0;
-    return count < max;
-  });
+  return fetchCampaigns();
 }
 
-// Kupon kodu girince limit kontrolü için: kullanıcının bu kampanyayı
-// kaç kez kullandığını döner (RPC ile). Login değilse 0.
-export async function getCampaignUseCount(campaignId: string): Promise<number> {
-  const { data: userRes } = await supabase.auth.getUser();
-  const userId = userRes?.user?.id;
-  if (!userId) return 0;
+// ─── Kupon doğrulama (validate_coupon RPC) ─────────────────────────────────
 
-  const { data, error } = await supabase
-    .rpc('get_user_campaign_uses', { p_user_id: userId });
-  if (error) return 0;
+export type CouponValidationReason =
+  | 'not_found'
+  | 'inactive'
+  | 'not_started'
+  | 'expired'
+  | 'not_yours'
+  | 'min_cart'
+  | 'user_limit_reached'
+  | 'total_limit_reached'
+  | 'auth_required';
 
-  const row = (data ?? []).find((u: { campaign_id: string }) => String(u.campaign_id) === String(campaignId));
-  return row ? Number(row.use_count) || 0 : 0;
+export interface CouponValidationSuccess {
+  valid: true;
+  campaign_id: string;
+  code: string;
+  title?: string;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
+  discount_amount: number;
+  remaining_uses_for_user?: number | null;
+}
+
+export interface CouponValidationFailure {
+  valid: false;
+  reason: CouponValidationReason;
+  min_cart_total?: number;
+}
+
+export type CouponValidationResponse = CouponValidationSuccess | CouponValidationFailure;
+
+const COUPON_ERROR_MESSAGES: Record<CouponValidationReason, string> = {
+  not_found: 'Kupon bulunamadı',
+  inactive: 'Kupon aktif değil',
+  expired: 'Kuponun süresi doldu',
+  not_started: 'Kupon henüz başlamadı',
+  not_yours: 'Bu kupon size tanımlı değil',
+  min_cart: 'Minimum sepet tutarı sağlanmadı',
+  user_limit_reached: 'Bu kuponu zaten kullandınız',
+  total_limit_reached: 'Kupon kullanım limiti doldu',
+  auth_required: 'Giriş yapmalısınız',
+};
+
+export function getCouponErrorMessage(result: CouponValidationFailure): string {
+  if (result.reason === 'min_cart' && result.min_cart_total != null) {
+    return `Minimum sepet tutarı: ${result.min_cart_total} TL`;
+  }
+  return COUPON_ERROR_MESSAGES[result.reason] ?? 'Kupon uygulanamadı';
+}
+
+export async function validateCoupon(
+  code: string,
+  cartTotal: number,
+): Promise<CouponValidationResponse> {
+  const { data, error } = await supabase.rpc('validate_coupon', {
+    p_code: code,
+    p_cart_total: cartTotal,
+  });
+  if (error || !data) {
+    return { valid: false, reason: 'not_found' };
+  }
+  return data as CouponValidationResponse;
 }
