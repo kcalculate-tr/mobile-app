@@ -1168,6 +1168,12 @@ export default function TrackerScreen() {
 
   const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
     if (!user) return;
+    // TEŞHİS LOGU (geçici) — token bayatlama şüphesi: auth.uid() gerçekten
+    // dolu mu, yoksa AuthContext'teki `user` stale iken session/JWT mi geçersiz.
+    // hasSession catch bloğunda Alert'e "session yok" ipucu eklemek için taşınıyor.
+    const { data: sessionData } = await getSupabaseClient().auth.getSession();
+    const hasSession = !!sessionData?.session;
+    console.log('[consume] session?', hasSession, 'uid', sessionData?.session?.user?.id);
     // In-flight guard: aynı instance için ikinci eşzamanlı işlemi at.
     // (handleTukettim ~550ms animasyondan SONRA çağırıyor; bayat kapanışlar
     // yüzünden aynı instance birden çok kez işlenebiliyordu — BUG.)
@@ -1177,78 +1183,99 @@ export default function TrackerScreen() {
     const isCurrentlyConsumed = consumedInstances.has(instanceId);
     const supabase = getSupabaseClient();
 
-    if (isCurrentlyConsumed) {
-      // Untoggle: optimistik atomik çıkar + DB'den sil
-      dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
-      dispatchData({
-        type: 'REMOVE_CONSUMED_BY_REF',
-        payload: { source: 'pantry', source_ref: instanceId },
-      });
-      const { error } = await supabase
-        .from('meal_consumptions')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('source', 'pantry')
-        .eq('source_ref', instanceId);
-      consumeInFlightRef.current.delete(instanceId);
-      if (error) {
-        console.error('[consume] untoggle error:', formatSupabaseErrorForDevLog(error));
-        // Atomik rollback (bayat full-Set replace YOK)
+    // NOT: handleTukettim bu fonksiyonu `void handleToggleConsumed(...)` ile
+    // fire-and-forget çağırıyor (animasyon callback'i .catch() eklemiyor).
+    // Önceden try/catch YOKTU — await edilen çağrı reject olursa (network
+    // throw, auth/refresh hatası vb.; Supabase her zaman {error} DÖNMEZ,
+    // bazı durumlarda promise reject de eder) exception hiçbir yere
+    // yakalanmadan sessizce kayboluyordu: optimistik state kalıcı kalıyor
+    // (DB'ye hiç yazılmamış "tüketim" ekranda duruyor, restart'ta kayboluyor),
+    // consumeInFlightRef hiç temizlenmiyor (o instance bir daha tıklanamıyor)
+    // ve konsola HİÇBİR log düşmüyordu. try/catch/finally bunu kapatır.
+    try {
+      if (isCurrentlyConsumed) {
+        // Untoggle: optimistik atomik çıkar + DB'den sil
+        dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
+        dispatchData({
+          type: 'REMOVE_CONSUMED_BY_REF',
+          payload: { source: 'pantry', source_ref: instanceId },
+        });
+        const { error } = await supabase
+          .from('meal_consumptions')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('source', 'pantry')
+          .eq('source_ref', instanceId);
+        if (error) throw error;
+      } else {
+        // Consume: optimistik atomik ekle + DB'ye yaz
         dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
-        Alert.alert('Hata', 'Tüketim geri alınamadı. İnternet bağlantını kontrol edip tekrar dene.');
-      }
-    } else {
-      // Consume: optimistik atomik ekle + DB'ye yaz
-      dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
-      const payload = {
-        user_id: user.id,
-        source: 'pantry' as const,
-        source_ref: instanceId,
-        name: item.name,
-        meal_type: null,
-        calories: Math.round(item.calories || 0),
-        protein: item.protein || 0,
-        carbs: item.carbs || 0,
-        fat: item.fat || 0,
-        note: null,
-        consumed_at: new Date().toISOString(),
-      };
-      const { data: row, error } = await supabase
-        .from('meal_consumptions')
-        .upsert(payload, { onConflict: 'user_id,source,source_ref', ignoreDuplicates: true })
-        .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
-        .maybeSingle();
-      consumeInFlightRef.current.delete(instanceId);
-      if (error) {
+        const payload = {
+          user_id: user.id,
+          source: 'pantry' as const,
+          source_ref: instanceId,
+          name: item.name,
+          meal_type: null,
+          calories: Math.round(item.calories || 0),
+          protein: item.protein || 0,
+          carbs: item.carbs || 0,
+          fat: item.fat || 0,
+          note: null,
+          consumed_at: new Date().toISOString(),
+        };
+        const { data: row, error } = await supabase
+          .from('meal_consumptions')
+          .upsert(payload, { onConflict: 'user_id,source,source_ref', ignoreDuplicates: true })
+          .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+          .maybeSingle();
+
         // 23505 = unique_violation: bu source_ref zaten kayıtlı → tüketim
         // ZATEN işlenmiş demektir. Idempotent: optimistik state'i koru,
         // hata gösterme, rollback yapma. (source_ref deterministik olduğu
         // için untoggle/identity semantiği bozulmasın diye randomize ETMİYORUZ.)
-        if ((error as any)?.code === '23505') {
+        if (error && (error as any)?.code === '23505') {
           if (__DEV__) console.warn('[consume] duplicate source_ref, already recorded:', instanceId);
+        } else if (error) {
+          throw error;
         } else {
-          console.error('[consume] insert error:', formatSupabaseErrorForDevLog(error));
-          dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
-          Alert.alert('Hata', 'Tüketim kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene.');
+          // upsert başarılı — row null olabilir (ignoreDuplicates conflict'i atlar).
+          // Sayaç todayConsumed'dan okunduğu için anında + kalıcı olarak prepend et
+          // (gerçek row varsa onu, yoksa sentetik kaydı normalize ederek).
+          dispatchData({
+            type: 'PREPEND_CONSUMED',
+            payload: normalizeConsumedRow(row ?? {
+              source: 'pantry',
+              source_ref: instanceId,
+              name: item.name,
+              calories: Math.round(item.calories || 0),
+              protein: item.protein || 0,
+              carbs: item.carbs || 0,
+              fat: item.fat || 0,
+              consumed_at: new Date().toISOString(),
+            }),
+          });
         }
-      } else {
-        // upsert başarılı — row null olabilir (ignoreDuplicates conflict'i atlar).
-        // Sayaç todayConsumed'dan okunduğu için anında + kalıcı olarak prepend et
-        // (gerçek row varsa onu, yoksa sentetik kaydı normalize ederek).
-        dispatchData({
-          type: 'PREPEND_CONSUMED',
-          payload: normalizeConsumedRow(row ?? {
-            source: 'pantry',
-            source_ref: instanceId,
-            name: item.name,
-            calories: Math.round(item.calories || 0),
-            protein: item.protein || 0,
-            carbs: item.carbs || 0,
-            fat: item.fat || 0,
-            consumed_at: new Date().toISOString(),
-          }),
-        });
       }
+    } catch (e) {
+      console.error(
+        `[consume] ${isCurrentlyConsumed ? 'untoggle' : 'insert'} error:`,
+        formatSupabaseErrorForDevLog(e),
+      );
+      // TEŞHİS (geçici): gerçek hatayı cihazda görünür kıl — genel mesaj
+      // gizliyordu. session yoksa Alert'e ayrıca işaret et.
+      const errCode = (e as any)?.code ?? '-';
+      const errMsg = (e as any)?.message ?? String(e);
+      const sessionNote = hasSession ? '' : '\n(session yok)';
+      // Atomik rollback (bayat full-Set replace YOK)
+      if (isCurrentlyConsumed) {
+        dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
+        Alert.alert('Tüketim geri alınamadı', `code: ${errCode}\n${errMsg}${sessionNote}`);
+      } else {
+        dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
+        Alert.alert('Tüketim kaydedilemedi', `code: ${errCode}\n${errMsg}${sessionNote}`);
+      }
+    } finally {
+      consumeInFlightRef.current.delete(instanceId);
     }
   };
 
