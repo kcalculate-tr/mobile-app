@@ -44,7 +44,14 @@ type Order = {
 };
 
 const ACTIVE_STATUSES = ['pending', 'pending_payment', 'confirmed', 'preparing', 'on_way', 'ready'];
-const PAST_STATUSES = ['delivered', 'cancelled', 'payment_failed', 'refunded'];
+// 'cancelled' buradan bilerek çıkarıldı — "Tümü" sekmesinde artık gizli,
+// sadece kullanıcı bilinçli olarak "İptal" sekmesine geçerse görünür (satır
+// ~115'teki ayrı sorgu). Admin/boss panel bu dosyaya dokunmuyor, etkilenmez.
+const PAST_STATUSES = ['delivered', 'payment_failed', 'refunded'];
+// Müşteriye HİÇBİR sekmede gösterilmeyecek statüler (admin/boss panel ayrı —
+// orada expired görünmeye devam eder). 'expired' bugün yukarıdaki listelerde
+// zaten yok ama ileride eklenirse de bu güvenlik ağı yakalar.
+const HIDDEN_FROM_CUSTOMER_HISTORY = ['expired'];
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Beklemede',
@@ -114,6 +121,8 @@ export default function OrdersScreen() {
       else if (selectedTab === 'past') statuses = ['delivered'];
       else if (selectedTab === 'cancelled') statuses = ['cancelled', 'payment_failed', 'refunded'];
       else statuses = [...ACTIVE_STATUSES, ...PAST_STATUSES];
+      // Güvenlik ağı: hangi sekme olursa olsun 'expired' asla listeye girmesin.
+      statuses = statuses.filter((s) => !HIDDEN_FROM_CUSTOMER_HISTORY.includes(s));
 
       const { data, error } = await supabase
         .from('orders')
