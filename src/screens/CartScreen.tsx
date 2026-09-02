@@ -118,6 +118,44 @@ export default function CartScreen() {
 
   const removeCoupon = () => { clearCoupon(); setCouponInput(''); };
 
+  // Yüzde kuponda discount_amount apply anındaki subtotal'a göre sabitlenmişti —
+  // sepet sonradan değişirse (ürün eklendi/çıkarıldı) bayat kalırdı. Sabit
+  // tutarlı kuponda sorun yok (Math.min ile zaten subtotal'ı aşmıyor), ama
+  // yüzdelik indirim yeni subtotal'a göre yeniden hesaplanmalı — bunun için
+  // validate_coupon'ı yeniden çağırıyoruz (max_discount/min_cart/limit gibi
+  // sunucu kurallarını da güncel tutar). 400ms debounce ile art arda
+  // miktar +/- tıklamalarında spam RPC çağrısı yapmıyoruz.
+  useEffect(() => {
+    if (!appliedCoupon || appliedCoupon.discountType !== 'percent') return;
+    const code = appliedCoupon.code;
+    let active = true;
+    const t = setTimeout(async () => {
+      const result = await validateCoupon(code, subtotal);
+      if (!active) return;
+      if (result.valid) {
+        setCoupon({
+          code: result.code,
+          campaignId: String(result.campaign_id),
+          discountType: result.discount_type,
+          discountValue: Number(result.discount_value),
+          discountAmount: Number(result.discount_amount),
+          title: result.title,
+        });
+      } else {
+        // Sepet değişimi kuponu artık geçersiz kıldı (ör. min. sepet altına
+        // düştü, süresi doldu, limit doldu) — sessizce eski/bayat tutarla
+        // bırakmak yerine kaldır + bilgilendir.
+        clearCoupon();
+        showToast(getCouponErrorMessage(result), 'error');
+      }
+    }, 400);
+    return () => { active = false; clearTimeout(t); };
+    // appliedCoupon'ın kendisini deps'e almıyoruz: bu efektin setCoupon
+    // çağrısı appliedCoupon referansını değiştirir ve kod/tip aynı kaldığı
+    // sürece tekrar tetiklenmesini İSTEMİYORUZ (sonsuz döngü riski).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal, appliedCoupon?.code, appliedCoupon?.discountType]);
+
   useEffect(() => {
     if (appliedCoupon) {
       Animated.parallel([

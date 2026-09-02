@@ -65,6 +65,7 @@ export interface CouponValidationSuccess {
   discount_type: 'percent' | 'fixed';
   discount_value: number;
   discount_amount: number;
+  final_total?: number;
   remaining_uses_for_user?: number | null;
 }
 

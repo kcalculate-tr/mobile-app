@@ -134,6 +134,20 @@ const fallbackOrderCodeFromId = (orderId: string) =>
 const RULES_FETCH_ERROR_MESSAGE =
   'Teslimat kuralları yüklenemedi. Lütfen tekrar deneyin.';
 
+// free-order-complete Edge Function: 0 TL sipariş (hedefli %100 sponsor kupon)
+// ödeme alınmadan tamamlanır. reason → TR mesaj.
+const FREE_ORDER_ERROR_MESSAGES: Record<string, string> = {
+  coupon_invalid: 'Kupon geçersiz',
+  free_requires_full_coupon: 'Bu kupon ücretsiz siparişe uygun değil',
+  free_requires_targeted_coupon: 'Bu kupon ücretsiz siparişe uygun değil',
+  not_your_order: 'Sipariş bulunamadı',
+  wrong_status: 'Sipariş zaten işlenmiş',
+};
+
+const resolveFreeOrderErrorMessage = (reason: unknown) =>
+  FREE_ORDER_ERROR_MESSAGES[String(reason || '')] ??
+  'Sipariş tamamlanamadı. Lütfen tekrar deneyin.';
+
 const toNormalizedText = (value: unknown) =>
   String(value ?? '').trim().toLocaleLowerCase('tr-TR');
 
@@ -1203,6 +1217,33 @@ export default function CheckoutScreen() {
           paymentStatus: 'pending',
           paymentErrorMessage: null,
         });
+      }
+
+      // 0 TL sipariş (hedefli %100 sponsor kupon ile sepet tamamen karşılandı):
+      // ödeme gateway'ine hiç girme — free-order-complete Edge Function
+      // (kullanıcı session'ıyla, RLS + kupon kurallarını sunucuda tekrar
+      // doğrulayarak) siparişi ödeme almadan onaylar.
+      if (paymentOrderId && (paymentOrderAmount ?? totalAmount) <= 0) {
+        console.log('[CHECKOUT] free order (0 TL) — free-order-complete', { paymentOrderId });
+        const { data: freeResult, error: freeError } = await supabase.functions.invoke(
+          'free-order-complete',
+          { body: { orderId: paymentOrderId } },
+        );
+        if (!freeError && freeResult?.ok) {
+          haptic.success();
+          clearCart();
+          navigation.replace('OrderSuccess', {
+            orderCode: paymentOrderCode,
+            orderId: paymentOrderId,
+            noticeMessage: undefined,
+          });
+          return;
+        }
+        const reason = freeResult?.reason ?? freeError?.message;
+        haptic.error();
+        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: resolveFreeOrderErrorMessage(reason) });
+        dispatchPay({ type: 'SET_RETRY_PAYMENT_ORDER_ID', payload: paymentOrderId });
+        return;
       }
 
       if ((PAYMENT_PROVIDER === 'paytr_iframe' || PAYMENT_PROVIDER === 'paynkolay') && paymentOrderId) {
