@@ -943,7 +943,7 @@ export default function TrackerScreen() {
             .order('consumed_at', { ascending: false }),
           supabase
             .from('meal_consumptions')
-            .select('calories,protein,carbs,fat,consumed_at')
+            .select('source,source_ref,calories,protein,carbs,fat,consumed_at')
             .eq('user_id', user.id)
             .gte('consumed_at', thirtyDaysAgoISO)
             .lt('consumed_at', tomorrowStartISO),
@@ -975,15 +975,26 @@ export default function TrackerScreen() {
         if (Array.isArray(todayConsumedRes.data)) {
           const rows = todayConsumedRes.data.map(normalizeConsumedRow);
           dispatchData({ type: 'SET_TODAY_CONSUMED', payload: rows });
-          const pantryRefs = new Set(
-            rows
-              .filter(r => r.source === 'pantry' && r.source_ref)
-              .map(r => r.source_ref as string),
-          );
-          dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: pantryRefs });
         }
 
         if (Array.isArray(weeklyConsumedRes.data)) {
+          // BUG FIX: dolap "tüketildi" işareti (consumedInstances) daha önce
+          // SADECE todayConsumedRes'ten (bugünün penceresi) hesaplanıyordu.
+          // Pantry item'ın kendisi backfillPantry ile son 30 gün boyunca
+          // dolapta kalıyor (bkz. aşağıdaki useFocusEffect) — yani dün (veya
+          // gece yarısını geçmiş herhangi bir gün) tüketilen bir ürün, ertesi
+          // gün/restart sonrası "bugün" sorgusunda artık görünmediği için
+          // tekrar "tüketilmemiş" gibi geri geliyordu (DB'de satır dururken).
+          // weeklyConsumedRes zaten backfillPantry ile AYNI ~30 günlük
+          // pencereyi kapsıyor — pantryRefs'i buradan türetmek bu iki pencereyi
+          // hizalar ve restart sonrası kaybolma sorununu kapatır.
+          const pantryRefs = new Set(
+            (weeklyConsumedRes.data as Array<{ source?: string; source_ref?: string | null }>)
+              .filter((r) => r.source === 'pantry' && r.source_ref)
+              .map((r) => r.source_ref as string),
+          );
+          dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: pantryRefs });
+
           const days: WeeklyDay[] = [];
           for (let i = 29; i >= 0; i--) {
             const d = new Date();
