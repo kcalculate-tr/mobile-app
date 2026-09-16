@@ -70,7 +70,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAddressStore } from '../store/addressStore';
 import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
-import { logEvent } from '../lib/analytics';
+import { logEvent, track } from '../lib/analytics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../utils/deliveryDays';
@@ -1109,6 +1109,11 @@ export default function CheckoutScreen() {
     if (!retryPaymentOrderId && !pendingPaymentOrderIdFromRoute) {
       const numItems = items.reduce((sum, item) => sum + item.quantity, 0);
       logEvent.initiateCheckout(totalAmount, numItems);
+      track('begin_checkout', {
+        price: totalAmount,
+        num_items: numItems,
+        coupon_id: appliedCoupon?.campaignId ?? undefined,
+      });
     }
 
     let paymentOrderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;

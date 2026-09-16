@@ -26,7 +26,7 @@ import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
 import { getSupabaseClient } from '../lib/supabase';
-import { logEvent } from '../lib/analytics';
+import { logEvent, track } from '../lib/analytics';
 import { COLORS } from '../constants/theme';
 import {
   PAYMENT_PROVIDER,
@@ -158,10 +158,12 @@ function ToslaPaymentFlow() {
     if (cvv.length < 3) { setError('CVV girin.'); return; }
 
     setLoading(true);
+    track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
     try {
       const initResult = await initPayment(orderId, amount);
       if (!initResult.success || !initResult.threeDSessionId) {
         setError(initResult.error ?? 'Ödeme başlatılamadı.');
+        track('payment_failed', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER, reason: 'init_failed' });
         return;
       }
 
@@ -189,6 +191,7 @@ function ToslaPaymentFlow() {
       console.error('PaymentScreen HATA:', String(err));
       Alert.alert('Hata', String(err));
       setError(String(err));
+      track('payment_failed', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER, reason: 'network_error' });
     } finally {
       setLoading(false);
     }
@@ -355,6 +358,7 @@ function ToslaPaymentFlow() {
                 setWebViewHtml(null);
                 await completeOrder();
                 logEvent.purchase(String(orderId), Number(amount) || 0);
+                track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
                 navigation.replace('OrderSuccess', {
                   orderCode: orderCode ?? String(orderId),
                   orderId: String(orderId),
@@ -384,6 +388,7 @@ function ToslaPaymentFlow() {
                   await completeOrder();
                   haptic.success();
                   logEvent.purchase(String(orderId), Number(amount) || 0);
+                  track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
                   // Pantry tek kaynak = TrackerScreen backfill (delivered +
                   // orderItemId dedup + bundle expansion). Anında ekleme yok.
                   clearCart();
@@ -706,6 +711,8 @@ function PaytrPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaytrFl
             .filter((v) => typeof v === 'string' && v.trim())
             .join(', ') || 'Adres belirtilmedi';
 
+        track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
+
         const res = await fetch(PAYTR_INIT_URL, {
           method: 'POST',
           headers: {
@@ -727,12 +734,14 @@ function PaytrPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaytrFl
 
         if (!res.ok || !json.success || !json.iframeUrl) {
           setInitError(json.reason || json.error || 'Ödeme başlatılamadı.');
+          track('payment_failed', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER, reason: 'init_failed' });
           return;
         }
 
         setIframeUrl(json.iframeUrl);
       } catch (err) {
         if (!cancelled) setInitError(err instanceof Error ? err.message : 'Ödeme başlatılamadı.');
+        track('payment_failed', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER, reason: 'network_error' });
       }
     })();
     return () => { cancelled = true; };
@@ -767,6 +776,7 @@ function PaytrPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaytrFl
     haptic.success();
 
     logEvent.purchase(String(orderId), Number(amount) || 0);
+    track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
 
     await pollOrderConfirmed();
 
@@ -788,6 +798,7 @@ function PaytrPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaytrFl
   const handleFailure = (reason?: string) => {
     if (handledRef.current) return;
     handledRef.current = true;
+    track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: reason ?? 'psp_declined' });
     Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
       { text: 'Tamam', onPress: () => navigation.goBack() },
     ]);
@@ -952,6 +963,8 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
           if (!cancelled) setInitError('Oturum bulunamadı.');
           return;
         }
+        track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
+
         // Kart saklama YOK (flag kapali) -> saveCard gonderilmez; backend customerKey bos.
         const res = await fetch(PAYNKOLAY_INIT_URL, {
           method: 'POST',
@@ -966,11 +979,13 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
         if (cancelled) return;
         if (!res.ok || !json.success || !json.formHtml) {
           setInitError(json.error || 'Ödeme başlatılamadı.');
+          track('payment_failed', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER, reason: 'init_failed' });
           return;
         }
         setFormHtml(json.formHtml);
       } catch (err) {
         if (!cancelled) setInitError(err instanceof Error ? err.message : 'Ödeme başlatılamadı.');
+        track('payment_failed', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER, reason: 'network_error' });
       }
     })();
     return () => { cancelled = true; };
@@ -998,6 +1013,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
     setVerifying(true);
     haptic.success();
     logEvent.purchase(String(orderId), Number(amount) || 0);
+    track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
 
     const paid = await pollOrderConfirmed();
     if (!paid) {
@@ -1023,6 +1039,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
   const handleFailure = (reason?: string) => {
     if (handledRef.current) return;
     handledRef.current = true;
+    track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: reason ?? 'psp_declined' });
     Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
       { text: 'Tamam', onPress: () => navigation.goBack() },
     ]);

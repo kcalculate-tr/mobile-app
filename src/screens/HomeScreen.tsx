@@ -25,6 +25,7 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
 import { fetchBusinessHours, BusinessHours } from '../lib/businessHours';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import { track } from '../lib/analytics';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const HERO_SIDE_PADDING = 16;
@@ -64,6 +65,10 @@ export default function HomeScreen() {
   const [searchText, setSearchText] = useState('');
   const heroFlatListRef = useRef<FlatList>(null);
   const activeDotWidth  = useRef(new Animated.Value(14)).current;
+
+  useEffect(() => {
+    track('home_view');
+  }, []);
 
 // Active dot expand animation
   useEffect(() => {

@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { supabase } from '../lib/supabase';
 import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
-import { logEvent } from '../lib/analytics';
+import { logEvent, track } from '../lib/analytics';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
 
 export const useCartStore = create<CartState>()(
@@ -150,16 +150,36 @@ export const useCartStore = create<CartState>()(
         // parent ile birlikte zaten sayıldı — çift event olmasın).
         if (!parentLineKey) {
           logEvent.addToCart(String(product.id), unitPrice, quantity);
+          track('add_to_cart', {
+            product_id: String(product.id),
+            price: unitPrice,
+            quantity,
+            brand: product.brand ?? undefined,
+            category: product.category ?? undefined,
+          });
         }
       },
 
       removeItem: (lineKey: string) => {
+        // Silmeden önce oku — cascade filtreleme sonrası item referansı kaybolur.
+        const removed = get().items.find((i) => i.lineKey === lineKey);
+
         set((state) => ({
           // Parent silinince ekstra (child) kalemleri de cascade sil.
           items: state.items.filter(
             (item) => item.lineKey !== lineKey && item.parentLineKey !== lineKey,
           ),
         }));
+
+        // addToCart ile simetrik: yalnızca parent kalem için event (child cascade
+        // silmeler ayrı sayılmasın).
+        if (removed && !removed.parentLineKey) {
+          track('remove_from_cart', {
+            product_id: removed.productId,
+            price: removed.unitPrice,
+            quantity: removed.quantity,
+          });
+        }
       },
 
       updateQuantity: (lineKey: string, quantity: number) => {

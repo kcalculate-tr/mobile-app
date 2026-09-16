@@ -42,7 +42,7 @@ import {
 } from '../utils/price';
 import { useCartStore } from '../store/cartStore';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
-import { logEvent } from '../lib/analytics';
+import { logEvent, track } from '../lib/analytics';
 import Svg, { Circle } from 'react-native-svg';
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { COLORS } from '../constants/theme';
@@ -261,11 +261,14 @@ export default function ProductDetailScreen() {
 
   useEffect(() => {
     if (!product?.id) return;
-    logEvent.viewContent(
-      String(product.id),
-      product.name ?? '',
-      Number(getEffectivePrice(product)) || 0,
-    );
+    const price = Number(getEffectivePrice(product)) || 0;
+    logEvent.viewContent(String(product.id), product.name ?? '', price);
+    track('product_view', {
+      product_id: String(product.id),
+      price,
+      category: product.category ?? undefined,
+      brand: product.brand ?? undefined,
+    });
   }, [product?.id]);
 
   useEffect(() => {

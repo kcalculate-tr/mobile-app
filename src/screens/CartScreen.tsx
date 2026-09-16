@@ -31,6 +31,7 @@ import {
   MacroProfile,
 } from '../lib/macros';
 import type { Product } from '../types';
+import { track } from '../lib/analytics';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -58,6 +59,9 @@ export default function CartScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // getState() ile okunuyor ki callback yeniden oluşmadan (deps: refreshPrices)
+      // her fokusta güncel sepet uzunluğu loglansın.
+      track('cart_view', { item_count: useCartStore.getState().items.length });
       let active = true;
       (async () => {
         const res = await refreshPrices();

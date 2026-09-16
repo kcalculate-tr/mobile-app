@@ -28,7 +28,7 @@ import ForceUpdateModal from './src/components/ForceUpdateModal';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
-import { initFBSDK } from './src/lib/analytics';
+import { initFBSDK, track } from './src/lib/analytics';
 
 setupGlobalErrorHandler();
 
@@ -68,6 +68,10 @@ function AppContent() {
     initFBSDK().catch((err) => {
       console.warn('[App] FB SDK init failed:', err);
     });
+  }, []);
+
+  useEffect(() => {
+    track('app_open');
   }, []);
 
   useEffect(() => {
