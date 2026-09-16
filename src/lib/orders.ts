@@ -41,6 +41,28 @@ export type PendingPaymentOrder = {
   status: string;
   paymentStatus: string;
   updatedAt: string;
+  cartSignature: string;
+};
+
+// Basit sepet "hash"i — draft oluşturulduğundaki sepetle ödeme anındaki
+// güncel sepeti karşılaştırmak için (ürün ekle/çıkar, kupon değişimi vb.
+// gerçek bir içerik değişikliğini yakalamaya yeter, aynı toplam tutarlı bir
+// ürün-ürün takası gibi çok nadir edge case'leri kasıtlı olarak atlıyor).
+export const computeCartSignature = (
+  totalQuantity: number,
+  subtotal: number,
+  couponCode: string | null | undefined,
+): string => `${totalQuantity}|${subtotal.toFixed(2)}|${couponCode || 'none'}`;
+
+const cartSignatureFromOrderRow = (row: Record<string, unknown>): string => {
+  const items = Array.isArray(row.items) ? row.items : [];
+  const totalQuantity = items.reduce(
+    (sum: number, it: unknown) => sum + (Number((it as Record<string, unknown>)?.quantity) || 0),
+    0,
+  );
+  const subtotal = toSafeNumber(row.subtotal_amount) || 0;
+  const couponCode = row.coupon_code ? String(row.coupon_code) : null;
+  return computeCartSignature(totalQuantity, subtotal, couponCode);
 };
 
 type OrderInsertResult = {
@@ -501,11 +523,14 @@ export const createOrderDraftForPayment = async ({
     }
   }
 
+  const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   return {
     orderId: finalOrderId,
     orderCode: String(insertedOrder.order_code || orderCode),
     totalAmount,
     warnings,
+    cartSignature: computeCartSignature(totalQuantity, safeSubtotal, couponCode),
   };
 };
 
@@ -556,6 +581,32 @@ export const updateOrderPaymentStatus = async ({
   throw new Error('Sipariş ödeme durumu güncellenemedi.');
 };
 
+// Checkout'a dönülüp sepet değiştirildiğinde (ürün/kupon), eski pending_payment
+// taslağı artık geçersiz — 'cancelled' işaretlenir (orders_guard_protected_cols
+// bu geçişi engellemiyor, yalnızca confirmed/preparing/on_way/delivered korunuyor)
+// ve çağıran taraf yeni bir draft oluşturur. Hata olursa sessizce yutulur —
+// eski taslağın cancelled kalması ödeme akışını bloklamamalı.
+export const cancelStaleOrderDraft = async ({
+  supabase,
+  orderId,
+  userId,
+}: {
+  supabase: SupabaseClient;
+  orderId: string;
+  userId: string;
+}): Promise<void> => {
+  try {
+    await supabase
+      .from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .eq('status', 'pending_payment');
+  } catch (err) {
+    if (__DEV__) console.warn('[orders] cancelStaleOrderDraft failed:', err);
+  }
+};
+
 const mapOrderSummary = (row: Record<string, unknown>): PendingPaymentOrder => ({
   id: String(row.id ?? '').trim(),
   orderCode:
@@ -570,7 +621,11 @@ const mapOrderSummary = (row: Record<string, unknown>): PendingPaymentOrder => (
     String(row.updated_at ?? '').trim() ||
     String(row.created_at ?? '').trim() ||
     '',
+  cartSignature: cartSignatureFromOrderRow(row),
 });
+
+const PENDING_ORDER_SELECT =
+  'id,order_code,total_amount,total_price,status,payment_status,updated_at,created_at,items,subtotal_amount,coupon_code';
 
 export const fetchPendingPaymentOrderById = async ({
   supabase,
@@ -583,9 +638,7 @@ export const fetchPendingPaymentOrderById = async ({
 }) => {
   const { data, error } = await supabase
     .from('orders')
-    .select(
-      'id,order_code,total_amount,total_price,status,payment_status,updated_at,created_at',
-    )
+    .select(PENDING_ORDER_SELECT)
     .eq('id', orderId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -605,9 +658,7 @@ export const fetchLatestPendingPaymentOrder = async ({
 }) => {
   const { data, error } = await supabase
     .from('orders')
-    .select(
-      'id,order_code,total_amount,total_price,status,payment_status,updated_at,created_at',
-    )
+    .select(PENDING_ORDER_SELECT)
     .eq('user_id', userId)
     .or('status.eq.pending_payment,status.eq.payment_failed')
     .order('updated_at', { ascending: false })

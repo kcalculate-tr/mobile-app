@@ -39,6 +39,8 @@ import {
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { isApiBaseUrlConfigured } from '../lib/api';
 import {
+  cancelStaleOrderDraft,
+  computeCartSignature,
   createOrderDraftForPayment,
   fetchPendingPaymentOrderById,
   PendingPaymentOrder,
@@ -1126,6 +1128,30 @@ export default function CheckoutScreen() {
     try {
       const supabase = getSupabaseClient();
 
+      // Mevcut bir taslak varsa (retry/resume), sepetin draft oluşturulduğundan
+      // beri değişip değişmediğini basit bir imza (ürün adedi+ara toplam+kupon)
+      // ile kontrol et. Değiştiyse eski taslak 'cancelled' yapılır (guard buna
+      // izin veriyor — yalnızca confirmed/preparing/on_way/delivered korunuyor)
+      // ve aşağıdaki `if (!paymentOrderId)` bloğu YENİ, güncel sepetle bir draft
+      // oluşturur — böylece ödeme her zaman ekranda görünen güncel tutar/içerik
+      // üzerinden başlar.
+      if (paymentOrderId && pendingPaymentOrder) {
+        const currentQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+        const currentSignature = computeCartSignature(
+          currentQuantity,
+          subtotal,
+          appliedCoupon?.code ?? null,
+        );
+        if (currentSignature !== pendingPaymentOrder.cartSignature) {
+          await cancelStaleOrderDraft({ supabase, orderId: paymentOrderId, userId: user.id });
+          paymentOrderId = '';
+          paymentOrderCode = '';
+          paymentOrderAmount = totalAmount;
+          dispatchPay({ type: 'SET_RETRY_PAYMENT_ORDER_ID', payload: '' });
+          dispatchPay({ type: 'SET_PENDING_PAYMENT_ORDER', payload: null });
+        }
+      }
+
       // Build scheduled delivery fields
       const scheduledFields =
         deliveryTimeType === 'scheduled' && selectedScheduledDate && selectedTimeSlot
@@ -1207,6 +1233,7 @@ export default function CheckoutScreen() {
           status: 'pending_payment',
           paymentStatus: 'pending',
           updatedAt: new Date().toISOString(),
+          cartSignature: draftResult.cartSignature,
         } });
         if (draftResult.warnings.length > 0) {
           noticeMessages.push(
