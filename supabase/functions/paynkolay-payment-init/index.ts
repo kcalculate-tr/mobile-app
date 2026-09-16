@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { isAllowlistedAdmin } from '../_shared/paynkolay-cards.ts'
 
 // ── Paynkolay Ortak Odeme Sayfasi (hosted) init ─────────────────────────────
 // Mobil yalnizca { orderId, amount } gonderir; KART/CVV mobilde toplanmaz (PCI
@@ -327,8 +328,11 @@ Deno.serve(async (req: Request) => {
     const cardHolderIP = clientIpFromRequest(req)
 
     // ── Kart saklama feature-flag: KAPALIYKEN customerKey BOS, customerKey/csAutoSave YOK.
+    //    Test asamasi: flag kapali olsa da admin_allowlist'teki kullanicilarda calisir
+    //    (2026-09-16, kullanici talebi — canli testi yalnizca allowlist yapabilsin).
     //    Hash formulunde customerKey bos string olarak yer alir.
-    const useCardSave = CARD_SAVE_ENABLED && paymentCustomerKey.length > 0 && userConsentedToSaveCard
+    const cardSaveAllowedForUser = CARD_SAVE_ENABLED || await isAllowlistedAdmin(admin, user.id, user.email ?? undefined)
+    const useCardSave = cardSaveAllowedForUser && paymentCustomerKey.length > 0 && userConsentedToSaveCard
     const customerKey = useCardSave ? paymentCustomerKey : ''
 
     // ── Request hash (secret ASLA response'a girmez).

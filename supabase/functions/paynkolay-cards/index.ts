@@ -1,35 +1,45 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import {
+  CardStorageEntry,
+  completePaynkolayResult,
+  fetchCardStorageList,
+  generatePaynkolayHash,
+  isAllowlistedAdmin,
+  pick,
+  upsertUserCard,
+} from '../_shared/paynkolay-cards.ts'
 
 // ── Paynkolay "Saklı Kart" yönetimi (sync/pay/delete/set_default) ──────────
-// Kart Saklama dokümanı (Postman collection "Kart Saklama" klasörü) referans:
+// Kart Saklama API'leri (2026-09-16 canli test ile dogrulandi):
 //   - Kayıtlı Kartları Listele: POST {VPOS_URL}/Payment/CardStorageCardList
-//       hash: sx | customerKey | secret
+//       hash: sx | customerKey | secret — PAYNKOLAY_SX ile calisir (ayri "kart" sx'i YOK).
 //   - Kayıtlı Kartı Sil:        POST {VPOS_URL}/Payment/CardStorageCardDelete
 //       hash: sx | customerKey | tranId | token | secret
 //   - Saklı Kart ile Ödeme Al:  POST {VPOS_URL}/v1/Payment
 //       hash: sx | clientRefCode | amount | successUrl | failUrl | rnd | csCustomerKey | secret
-//       (BU alan adı csCustomerKey — paynkolay-payment-init'teki hosted akışın
-//        "customerKey" düzeltmesinden AYRI/BAĞIMSIZ; farklı bir endpoint/ürün.)
+//
+// Odeme sonucu tamamlama (hash dogrulama, basari kurali, order update, kart
+// kaydetme, macro purchase) _shared/paynkolay-cards.ts::completePaynkolayResult
+// icinde — paynkolay-callback ile PAYLASILIR, burada kopyalanmaz.
 //
 // JWT ZORUNLU (verify_jwt=true, config.toml). Kullanıcı SADECE kendi kartını
 // görebilir/kullanabilir/silebilir — her sorguda user_id = auth.uid() teyidi var.
 //
+// TEST ASAMASI: PAYNKOLAY_CARD_SAVE kapaliyken bu fonksiyonun TUM action'lari
+// (sync/pay/delete/set_default) yalnizca admin_allowlist'teki kullanicilara acik.
+//
 // GÜVENLİK: token / card_token / secret / kart numarası LOGLANMAZ. Client'a da
 // (sync/list yanıtlarında) token dönülmez — yalnızca last4/brand/bank/is_default.
 
-const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim() // "Saklı Kart ile Ödeme" (v1/Payment) — normal satışla aynı sx
-// PAYNKOLAY_CARD_SX: Kart Saklama API ailesi (List/Delete) için AYRI sx olabilir
-// (reporting/cancel'da da ayrı sx var — bkz. PAYNKOLAY_REPORT_SX/PAYNKOLAY_CANCEL_SX).
-// Bu secret HENÜZ TANIMLI DEĞİL — test öncesi `supabase secrets set PAYNKOLAY_CARD_SX=...`.
-const CARD_SX = (Deno.env.get('PAYNKOLAY_CARD_SX') ?? '').trim()
+const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
 const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim() // ".../Vpos"
+const CARD_SAVE_ENABLED = (Deno.env.get('PAYNKOLAY_CARD_SAVE') ?? 'false').toLowerCase() === 'true'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-const LIST_URL = VPOS_URL ? `${VPOS_URL}/Payment/CardStorageCardList` : ''
 const DELETE_URL = VPOS_URL ? `${VPOS_URL}/Payment/CardStorageCardDelete` : ''
 const PAY_URL = VPOS_URL ? `${VPOS_URL}/v1/Payment` : ''
 const CALLBACK_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/paynkolay-callback` : ''
@@ -47,17 +57,6 @@ const jsonResponse = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-
-// ── Hash: parts.join('|') -> UTF-8 -> SHA-512 (binary) -> base64 (diğer paynkolay-* ile AYNI).
-async function generatePaynkolayHash(parts: string[]): Promise<string> {
-  const hashString = parts.join('|')
-  const data = new TextEncoder().encode(hashString)
-  const hashBuffer = await crypto.subtle.digest('SHA-512', data)
-  const bytes = new Uint8Array(hashBuffer)
-  let bin = ''
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
-  return btoa(bin)
-}
 
 // Paynkolay rnd = "dd.MM.yyyy HH:mm:ss" (payment-init ile AYNI, GMT+3).
 function getRnd(): string {
@@ -78,25 +77,6 @@ function clientIpFromRequest(req: Request): string {
 // amount -> ondalik TL string ("150.00"). payment-init ile AYNI.
 function toDecimalTL(value: number): string {
   return Number(value || 0).toFixed(2)
-}
-
-// Callback'in toTrxDate'i ile AYNI (relayToCallback icin degil, referans icin).
-function toTrxDate(raw: string): string {
-  const datePart = String(raw ?? '').trim().slice(0, 10)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart.replace(/-/g, '.')
-  const now = new Date()
-  const tr = new Date(now.getTime() + 3 * 60 * 60 * 1000)
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${tr.getUTCFullYear()}.${pad(tr.getUTCMonth() + 1)}.${pad(tr.getUTCDate())}`
-}
-
-// Birden fazla olasi alan adindan ilk dolu degeri al (paynkolay-callback'teki pick ile AYNI desen).
-function pick(data: Record<string, unknown>, ...keys: string[]): string {
-  for (const k of keys) {
-    const v = data?.[k]
-    if (v !== undefined && v !== null && String(v) !== '') return String(v)
-  }
-  return ''
 }
 
 type OrderRow = {
@@ -236,6 +216,13 @@ Deno.serve(async (req: Request) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
+    // ── TEST ASAMASI GUARD: flag kapaliyken ozellik SADECE admin_allowlist'e
+    //    acik (2026-09-16, kullanici talebi). Flag acilinca herkese acilir.
+    const featureAllowed = CARD_SAVE_ENABLED || await isAllowlistedAdmin(admin, user.id, user.email ?? undefined)
+    if (!featureAllowed) {
+      return jsonResponse({ error: 'Bu özellik şu anda test aşamasında.' }, 403)
+    }
+
     let body: any = {}
     try {
       const text = await req.text()
@@ -278,84 +265,30 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
     .maybeSingle()
   const customerKey = String(profile?.payment_customer_key ?? '')
 
-  if (!customerKey || !CARD_SX || !SECRET_KEY || !LIST_URL) {
+  if (!customerKey) {
     const cards = await fetchLocalCards(admin, userId)
     return jsonResponse({ success: true, cards, synced: false })
   }
 
-  let listJson: any = null
-  try {
-    const hash = await generatePaynkolayHash([CARD_SX, customerKey, SECRET_KEY])
-    const form = new FormData()
-    form.set('sx', CARD_SX)
-    form.set('customerKey', customerKey)
-    form.set('hashDatav2', hash)
-    const res = await fetch(LIST_URL, { method: 'POST', body: form })
-    const raw = await res.text()
-    if (res.ok) {
-      try { listJson = JSON.parse(raw) } catch { listJson = null }
-    } else {
-      console.error('[paynkolay-cards] sync HTTP', res.status)
-    }
-  } catch (e) {
-    console.error('[paynkolay-cards] sync fetch error:', e)
-  }
+  const remoteList = await fetchCardStorageList(VPOS_URL, SX, SECRET_KEY, customerKey)
 
-  const remoteList: any[] = Array.isArray(listJson?.List) ? listJson.List
-    : Array.isArray(listJson?.list) ? listJson.list
-    : Array.isArray(listJson) ? listJson
-    : []
-
-  if (remoteList.length > 0) {
+  if (remoteList && remoteList.length > 0) {
     const { data: existingCards } = await admin.from('user_cards').select('id').eq('user_id', userId)
     const existingIds = (existingCards ?? []).map((c: { id: string }) => c.id)
     const { data: existingSecrets } = existingIds.length > 0
       ? await admin.from('user_card_secrets').select('card_id, card_token').in('card_id', existingIds)
       : { data: [] as { card_id: string; card_token: string }[] }
     const knownTokens = new Set((existingSecrets ?? []).map((s) => s.card_token))
-    let hasAny = existingIds.length > 0
 
-    for (const item of remoteList) {
-      const token = pick(item, 'token', 'Token', 'CardToken', 'cardToken')
-      if (!token || knownTokens.has(token)) continue
-
-      const tranId = pick(item, 'tranId', 'TranId', 'csTranId')
-      const maskedPan = pick(item, 'maskedPan', 'cardNo', 'CardNo', 'maskedCardNo')
-      const brand = pick(item, 'cardBrand', 'brand', 'cardProgram')
-      const bank = pick(item, 'bankName', 'bank', 'BankName')
-      const last4 = maskedPan.replace(/\D/g, '').slice(-4)
-
-      const { data: newCard, error: cardErr } = await admin
-        .from('user_cards')
-        .insert([{
-          user_id: userId,
-          paynkolay_customer_key: customerKey,
-          last4: last4 || null,
-          brand: brand || null,
-          bank_name: bank || null,
-          is_default: !hasAny,
-        }])
-        .select('id')
-        .single()
-      if (cardErr || !newCard) {
-        console.error('[paynkolay-cards] sync insert user_cards failed:', cardErr)
-        continue
-      }
-      const { error: secretErr } = await admin
-        .from('user_card_secrets')
-        .insert([{ card_id: newCard.id, card_token: token, cs_tran_id: tranId || null }])
-      if (secretErr) {
-        console.error('[paynkolay-cards] sync insert user_card_secrets failed:', secretErr)
-        await admin.from('user_cards').delete().eq('id', newCard.id)
-        continue
-      }
-      knownTokens.add(token)
-      hasAny = true
+    for (const entry of remoteList as CardStorageEntry[]) {
+      if (!entry.token || knownTokens.has(entry.token)) continue
+      await upsertUserCard(admin, userId, customerKey, entry)
+      knownTokens.add(entry.token)
     }
   }
 
   const cards = await fetchLocalCards(admin, userId)
-  return jsonResponse({ success: true, cards, synced: listJson !== null })
+  return jsonResponse({ success: true, cards, synced: remoteList !== null })
 }
 
 async function handleSetDefault(admin: SupabaseClient, userId: string, body: any): Promise<Response> {
@@ -390,22 +323,21 @@ async function handleDelete(admin: SupabaseClient, userId: string, body: any): P
     .eq('card_id', cardId)
     .maybeSingle()
 
-  if (CARD_SX && SECRET_KEY && DELETE_URL && secret?.card_token) {
+  if (SX && SECRET_KEY && DELETE_URL && secret?.card_token) {
     const customerKey = String(card.paynkolay_customer_key ?? '')
     const tranId = String(secret.cs_tran_id ?? '')
     const token = String(secret.card_token ?? '')
     try {
-      const hash = await generatePaynkolayHash([CARD_SX, customerKey, tranId, token, SECRET_KEY])
+      const hash = await generatePaynkolayHash([SX, customerKey, tranId, token, SECRET_KEY])
       const form = new FormData()
-      form.set('sx', CARD_SX)
+      form.set('sx', SX)
       form.set('customerKey', customerKey)
       form.set('tranId', tranId)
       form.set('token', token)
       form.set('hashDatav2', hash)
       const res = await fetch(DELETE_URL, { method: 'POST', body: form })
-      // NOT: CardStorageCardDelete'in kesin basari/response-code semasi resmi
-      // dokumanda yok — sadece HTTP 200'e bakiliyor. Ilk gercek testte
-      // (kullanici tarafindan) yanit gozlenip bu kontrol siki hale getirilmeli.
+      // NOT: CardStorageCardDelete'in kesin basari/response-code semasi henuz
+      // gercek testle dogrulanmadi — sadece HTTP 200'e bakiliyor.
       if (!res.ok) {
         console.error('[paynkolay-cards] delete HTTP', res.status)
         return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
@@ -465,7 +397,7 @@ async function handlePay(
   if (orderErr || !order) return jsonResponse({ error: 'Siparis bulunamadi' }, 404)
   if (order.user_id && order.user_id !== userId) return jsonResponse({ error: 'Unauthorized' }, 403)
 
-  // Idempotency: zaten odenmis siparis tekrar tahsil edilmez (callback ile AYNI kural).
+  // Idempotency: zaten odenmis siparis tekrar tahsil edilmez.
   if (order.payment_status === 'paid') {
     return jsonResponse({ success: true, alreadyPaid: true })
   }
@@ -512,8 +444,8 @@ async function handlePay(
   }
   const use3D = amountNum > THREE_D_AMOUNT_THRESHOLD || isNewDevice
 
-  // KCAL{orderId}T... prefix'i callback'in regex'i (/^KCAL(\d+)T/) ile uyumlu
-  // kalsin diye korunuyor; CARD son eki sadece ayirt edici/teshis amacli.
+  // KCAL{orderId}T... prefix'i callback'in/completePaynkolayResult'in regex'i
+  // (/^KCAL(\d+)T/) ile uyumlu kalsin diye korunuyor.
   const clientRefCode = `KCAL${order.id}T${Date.now()}CARD`
   const successUrl = `${CALLBACK_URL}?pk=success`
   const failUrl = `${CALLBACK_URL}?pk=fail`
@@ -530,7 +462,7 @@ async function handlePay(
   form.set('successUrl', successUrl)
   form.set('failUrl', failUrl)
   form.set('amount', amount)
-  form.set('installmentNo', '')
+  form.set('installmentNo', '1')
   form.set('use3D', use3D ? 'true' : 'false')
   form.set('transactionType', 'SALES')
   form.set('rnd', rnd)
@@ -569,8 +501,10 @@ async function handlePay(
     return jsonResponse({ success: true, requires3D: true, formHtml: raw })
   }
 
-  // ── Non-3D: yanit senkron (JSON/duz metin) gelir. Alan adlari resmi dokumanda
-  //    tam netlestirilmedi -> pick() ile cok-varyant toleransli parse.
+  // ── Non-3D: yanit senkron gelir. Alan adlarini pick() ile cok-varyant
+  //    toleransli parse edip AYNI tamamlama fonksiyonuna (completePaynkolayResult)
+  //    gonderiyoruz — hash dogrulama + basari kurali + order update + kart
+  //    kaydetme + macro purchase TEK YERDEN (paynkolay-callback ile PAYLASILI).
   let providerJson: Record<string, unknown> | null = null
   try { providerJson = JSON.parse(raw) } catch { providerJson = null }
   const flat: Record<string, unknown> = providerJson ?? {}
@@ -582,69 +516,37 @@ async function handlePay(
     }
   }
 
-  const responseCode = pick(flat, 'RESPONSE_CODE', 'responseCode')
-  const authCode = pick(flat, 'AUTH_CODE', 'authCode').trim()
-  const referenceCode = pick(flat, 'REFERENCE_CODE', 'referenceCode')
-  const merchantNo = pick(flat, 'MERCHANT_NO', 'merchantNo')
-  const rndOut = pick(flat, 'RND', 'rnd') || rnd
-  const installment = pick(flat, 'INSTALLMENT', 'installment') || '1'
-  const authorizationAmount = pick(flat, 'AUTHORIZATION_AMOUNT', 'authorizationAmount') || amount
-  const timestamp = pick(flat, 'TIMESTAMP', 'timestamp') || new Date().toISOString()
-  const responseMessage = pick(flat, 'RESPONSE_DATA', 'RESPONSE_MESSAGE', 'responseMessage')
+  const result = await completePaynkolayResult(
+    admin,
+    {
+      merchantNo: pick(flat, 'MERCHANT_NO', 'merchantNo'),
+      referenceCode: pick(flat, 'REFERENCE_CODE', 'referenceCode'),
+      authCode: pick(flat, 'AUTH_CODE', 'authCode'),
+      responseCode: pick(flat, 'RESPONSE_CODE', 'responseCode'),
+      use3D: 'false',
+      rnd: pick(flat, 'RND', 'rnd') || rnd,
+      installment: pick(flat, 'INSTALLMENT', 'installment') || '1',
+      authorizationAmount: pick(flat, 'AUTHORIZATION_AMOUNT', 'authorizationAmount') || amount,
+      currencyCode: pick(flat, 'CURRENCY_CODE', 'currencyCode') || CURRENCY_CODE,
+      incomingHash: pick(flat, 'hashDataV2', 'HASHDATAV2', 'hashData'),
+      clientRefCode,
+      responseMessage: pick(flat, 'RESPONSE_DATA', 'RESPONSE_MESSAGE', 'responseMessage'),
+      txnTimestamp: pick(flat, 'TIMESTAMP', 'timestamp') || new Date().toISOString(),
+      tranId: pick(flat, 'TRAN_ID', 'TranId', 'tranId', 'csTranId'),
+    },
+    { secretKey: SECRET_KEY, vposUrl: VPOS_URL, sx: SX },
+  )
 
-  // Basari kurali (resmi "Ödeme Sonucu" dokumanindaki TEK kural): RESPONSE_CODE
-  // === '2' VE AUTH_CODE bos/0/00 degil. (paynkolay-callback'te bu AUTH_CODE
-  // kontrolu yok — burada dokuman netligiyle dogru uygulaniyor.)
-  const isSuccess = responseCode === '2' && !['', '0', '00'].includes(authCode)
-
-  if (!isSuccess) {
-    try {
-      await admin.from('failed_payments').insert([{
-        user_id: userId,
-        error_message: responseMessage || `Saklı kart odemesi basarisiz (RESPONSE_CODE=${responseCode || 'bilinmiyor'})`,
-        amount: 0,
-        payment_method: 'kredi-karti-saklı',
-        order_data: { orderId: order.id, clientRefCode, responseCode, authCode, raw: flat },
-        created_at: new Date().toISOString(),
-      }])
-    } catch (e) {
-      console.error('[paynkolay-cards] failed_payments insert error:', e)
-    }
-    return jsonResponse({ success: false, error: responseMessage || 'Odeme basarisiz' }, 402)
+  if (!result.hashValid) {
+    console.error('[paynkolay-cards] pay sonucu hash dogrulanamadi', { orderId: order.id })
+    return jsonResponse({ error: 'Odeme sonucu dogrulanamadi' }, 502)
   }
-
-  // ── Basarili non-3D sonucu paynkolay-callback'e RÖLE et: order tamamlama
-  //    (macro purchase dahil) TEK kaynaktan (callback) yürür, burada kopyalanmaz.
-  //    Hash'i SECRET_KEY ile biz de hesaplayabiliyoruz (callback'in beklediği ile
-  //    AYNI formül) -> callback'in kendi hash dogrulamasini gecer.
-  const relayHash = await generatePaynkolayHash([
-    merchantNo, referenceCode, authCode, responseCode, 'false', rndOut,
-    installment, authorizationAmount, CURRENCY_CODE, SECRET_KEY,
-  ])
-  const relayForm = new FormData()
-  relayForm.set('MERCHANT_NO', merchantNo)
-  relayForm.set('REFERENCE_CODE', referenceCode)
-  relayForm.set('AUTH_CODE', authCode)
-  relayForm.set('RESPONSE_CODE', responseCode)
-  relayForm.set('USE_3D', 'false')
-  relayForm.set('RND', rndOut)
-  relayForm.set('INSTALLMENT', installment)
-  relayForm.set('AUTHORIZATION_AMOUNT', authorizationAmount)
-  relayForm.set('CURRENCY_CODE', CURRENCY_CODE)
-  relayForm.set('hashDataV2', relayHash)
-  relayForm.set('clientRefCode', clientRefCode)
-  relayForm.set('TIMESTAMP', String(timestamp))
-  relayForm.set('RESPONSE_MESSAGE', responseMessage)
-
-  try {
-    const relayRes = await fetch(CALLBACK_URL, { method: 'POST', body: relayForm })
-    if (!relayRes.ok) {
-      console.error('[paynkolay-cards] callback relay HTTP', relayRes.status)
-      return jsonResponse({ error: 'Odeme onaylandi ama siparis tamamlanamadi — destek ile iletisime gecin' }, 502)
-    }
-  } catch (e) {
-    console.error('[paynkolay-cards] callback relay error:', e)
-    return jsonResponse({ error: 'Odeme onaylandi ama siparis tamamlanamadi — destek ile iletisime gecin' }, 502)
+  if (!result.matched) {
+    console.error('[paynkolay-cards] pay sonucu siparisle eslesmedi', { orderId: order.id, clientRefCode })
+    return jsonResponse({ error: 'Siparis eslesmedi' }, 502)
+  }
+  if (!result.isSuccess && !result.alreadyPaid) {
+    return jsonResponse({ success: false, error: result.responseMessage || 'Odeme basarisiz' }, 402)
   }
 
   // Basarili odeme + yeni cihazsa artik "bilinen" isaretle (upsert, best-effort).

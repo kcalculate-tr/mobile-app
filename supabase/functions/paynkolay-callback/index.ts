@@ -5,15 +5,17 @@
 // Paynkolay form-data POST atar; gelen verinin GERCEKTEN Paynkolay'dan geldigini
 // hash ile dogrulariz. Hash tutmazsa order'a DOKUNULMAZ, sahte callback olarak
 // reddedilir. Bu, saldirganin sahte "basarili odeme" callback'i gondermesini onler.
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+//
+// Odeme sonucu tamamlama mantigi (hash dogrulama, basari kurali, order update,
+// kart saklama, macro purchase) _shared/paynkolay-cards.ts::completePaynkolayResult
+// icinde — paynkolay-cards (pay, non-3D) ile PAYLASILIR. Degisiklik gerekiyorsa
+// ORADAN yapilmali (burada kopyalanmaz).
+import { createClient } from '@supabase/supabase-js'
+import { completePaynkolayResult, pick } from '../_shared/paynkolay-cards.ts'
 
-const SECRET_KEY = Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? ''
-// Kart saklama yetkisi su an YOK -> default KAPALI. init ile ayni flag.
-const CARD_SAVE_ENABLED =
-  (Deno.env.get('PAYNKOLAY_CARD_SAVE') ?? 'false').toLowerCase() === 'true'
-
-const FALLBACK_THRESHOLD = 15
-const FALLBACK_MEMBERSHIP_DAYS = 30
+const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
+const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
+const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim()
 
 // Mobil WebView'in onNavigationStateChange ile yakalayacagi son URL'ler.
 // Mobil (Faz 2E) bu URL'lerde 'result=success' / 'result=fail' arayacak.
@@ -23,57 +25,6 @@ const FAIL_REDIRECT = 'https://eatkcal.com/payment/fail?result=fail'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// ── Hash: parts.join('|') -> UTF-8 -> SHA-512 (binary) -> base64 (init ile AYNI).
-async function generatePaynkolayHash(parts: string[]): Promise<string> {
-  const hashString = parts.join('|')
-  const data = new TextEncoder().encode(hashString) // UTF-8 byte
-  const hashBuffer = await crypto.subtle.digest('SHA-512', data) // binary digest
-  const bytes = new Uint8Array(hashBuffer)
-  let bin = ''
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
-  return btoa(bin) // base64
-}
-
-// SABIT-ZAMAN string karsilastirma (timing attack korumasi).
-// Uzunluk farkliysa bile tum karakterleri gezer; erken cikmaz.
-function constantTimeEqual(a: string, b: string): boolean {
-  const aBytes = new TextEncoder().encode(a)
-  const bBytes = new TextEncoder().encode(b)
-  // Uzunluk farki tek basina bilgi sizdirmasin diye sabit uzunlukta gez.
-  const len = Math.max(aBytes.length, bBytes.length)
-  let diff = aBytes.length ^ bBytes.length
-  for (let i = 0; i < len; i++) {
-    const x = i < aBytes.length ? aBytes[i] : 0
-    const y = i < bBytes.length ? bBytes[i] : 0
-    diff |= x ^ y
-  }
-  return diff === 0
-}
-
-// Birden fazla olasi alan adindan ilk dolu degeri al (UPPER + camelCase tolerans).
-function pick(data: Record<string, unknown>, ...keys: string[]): string {
-  for (const k of keys) {
-    const v = data[k]
-    if (v !== undefined && v !== null && String(v) !== '') return String(v)
-  }
-  return ''
-}
-
-// Paynkolay callback TIMESTAMP -> CancelRefundPayment trxDate formati (yyyy.mm.dd).
-// TIMESTAMP: "2022-02-24" (non-3D) veya "2022-02-24 13:58:36.353" (3D). Ilk 10 hane
-// (YYYY-MM-DD) -> "-" yerine "." . Bos/gecersizse callback anindaki TR (GMT+3)
-// tarihine dusulur (odeme ile ayni gun oldugu icin guvenli fallback).
-function toTrxDate(raw: string): string {
-  const datePart = String(raw ?? '').trim().slice(0, 10) // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-    return datePart.replace(/-/g, '.') // yyyy.mm.dd
-  }
-  const now = new Date()
-  const tr = new Date(now.getTime() + 3 * 60 * 60 * 1000)
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${tr.getUTCFullYear()}.${pad(tr.getUTCMonth() + 1)}.${pad(tr.getUTCDate())}`
 }
 
 // Mobil WebView'in yakalayacagi son URL'e yonlendiren basit HTML.
@@ -100,7 +51,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    // ── 1) Form-data (Paynkolay) / JSON parse (payment-verify deseni).
+    // ── Form-data (Paynkolay) / JSON parse (payment-verify deseni).
     let data: Record<string, unknown> = {}
     const contentType = req.headers.get('content-type') ?? ''
     if (contentType.includes('application/json')) {
@@ -113,397 +64,38 @@ Deno.serve(async (req: Request) => {
       formData.forEach((value, key) => { data[key] = value })
     }
 
-    // ── 2) Alanlari cek (UPPER_CASE + camelCase tolerans).
-    const merchantNo = pick(data, 'MERCHANT_NO', 'merchantNo')
-    const referenceCode = pick(data, 'REFERENCE_CODE', 'referenceCode')
-    const authCode = pick(data, 'AUTH_CODE', 'authCode')
-    const responseCode = pick(data, 'RESPONSE_CODE', 'responseCode')
-    const use3D = pick(data, 'USE_3D', 'use3D')
-    const rnd = pick(data, 'RND', 'rnd')
-    const installment = pick(data, 'INSTALLMENT', 'installment')
-    const authorizationAmount = pick(data, 'AUTHORIZATION_AMOUNT', 'authorizationAmount')
-    const currencyCode = pick(data, 'CURRENCY_CODE', 'currencyCode')
-    const incomingHash = pick(data, 'hashDataV2', 'HASHDATAV2', 'hashData')
-    const clientRefCode = pick(data, 'clientRefCode', 'CLIENT_REFERENCE_CODE', 'clientReferenceCode')
-    const responseMessage = pick(data, 'RESPONSE_MESSAGE', 'responseMessage', 'RESPONSE_DATA')
-    // Paynkolay islem tarihi (iade/CancelRefundPayment trxDate kaynagi).
-    const txnTimestamp = pick(data, 'TIMESTAMP', 'timestamp', 'TRANSACTION_DATE')
+    // ── Alanlari cek (UPPER_CASE + camelCase tolerans). TRAN_ID: hosted donuste
+    //    Token YOK, sadece TRAN_ID var (2026-09-16 canli testte dogrulandi) —
+    //    kart-kaydetme tetikleyicisi artik bu.
+    const result = await completePaynkolayResult(
+      supabase,
+      {
+        merchantNo: pick(data, 'MERCHANT_NO', 'merchantNo'),
+        referenceCode: pick(data, 'REFERENCE_CODE', 'referenceCode'),
+        authCode: pick(data, 'AUTH_CODE', 'authCode'),
+        responseCode: pick(data, 'RESPONSE_CODE', 'responseCode'),
+        use3D: pick(data, 'USE_3D', 'use3D'),
+        rnd: pick(data, 'RND', 'rnd'),
+        installment: pick(data, 'INSTALLMENT', 'installment'),
+        authorizationAmount: pick(data, 'AUTHORIZATION_AMOUNT', 'authorizationAmount'),
+        currencyCode: pick(data, 'CURRENCY_CODE', 'currencyCode'),
+        incomingHash: pick(data, 'hashDataV2', 'HASHDATAV2', 'hashData'),
+        clientRefCode: pick(data, 'clientRefCode', 'CLIENT_REFERENCE_CODE', 'clientReferenceCode'),
+        responseMessage: pick(data, 'RESPONSE_MESSAGE', 'responseMessage', 'RESPONSE_DATA'),
+        txnTimestamp: pick(data, 'TIMESTAMP', 'timestamp', 'TRANSACTION_DATE'),
+        tranId: pick(data, 'TRAN_ID', 'TranId', 'tranId', 'csTranId', 'CS_TRAN_ID'),
+      },
+      { secretKey: SECRET_KEY, vposUrl: VPOS_URL, sx: SX },
+    )
 
-    // Kart saklama alanlari (flag aciksa + RESPONSE_CODE==='2' iken kullanilir).
-    const cardToken = pick(data, 'CardToken', 'cardToken', 'csCardToken', 'CS_CARD_TOKEN')
-    const cardTranId = pick(data, 'TranId', 'tranId', 'csTranId', 'CS_TRAN_ID', 'CardTranId')
-    const maskedPan = pick(data, 'maskedPan', 'MASKED_PAN', 'maskedCardNo', 'CARD_NO')
-    const cardBrand = pick(data, 'cardBrand', 'CARD_BRAND', 'cardProgram')
-    const cardBankName = pick(data, 'bankName', 'BANK_NAME', 'cardBank', 'CARD_BANK', 'issuerBank', 'ISSUER_BANK')
-
-    // ── 3) clientRefCode'dan orderId'yi PARSE et -> orders.id ile bul (SADECE OKUMA).
-    //    Format: KCAL{orderId}T{timestamp} (init uretir; Paynkolay AYNEN echo'lar:
-    //    CLIENT_REFERENCE_CODE). order_id ile lookup, merchant_oid exact-match DEGIL:
-    //    init merchant_oid'i her denemede ezse bile (eski BUG) dogru order bulunur.
-    //    Hash dogrulanana kadar order'a DOKUNULMAZ.
-    let order: any = null
-    const refMatch = /^KCAL(\d+)T/.exec(clientRefCode)
-    const parsedOrderId = refMatch ? Number(refMatch[1]) : null
-    if (parsedOrderId) {
-      const { data: o } = await supabase
-        .from('orders')
-        .select('id, user_id, total_price, type, macro_quantity, status, payment_status')
-        .eq('id', parsedOrderId)
-        .maybeSingle()
-      order = o
-    }
-
-    // ── 4) RESPONSE HASH DOGRULAMA (sahte callback korumasi).
-    //    Sira: MERCHANT_NO|REFERENCE_CODE|AUTH_CODE|RESPONSE_CODE|USE_3D|RND|
-    //          INSTALLMENT|AUTHORIZATION_AMOUNT|CURRENCY_CODE|merchantSecretKey
-    const expectedHash = await generatePaynkolayHash([
-      merchantNo,
-      referenceCode,
-      authCode,
-      responseCode,
-      use3D,
-      rnd,
-      installment,
-      authorizationAmount,
-      currencyCode,
-      SECRET_KEY,
-    ])
-
-    const hashValid = !!incomingHash && constantTimeEqual(expectedHash, incomingHash)
-
-    if (!hashValid) {
-      // SAHTE / BOZUK CALLBACK: order'a DOKUNMA. Audit'e logla, reddet.
-      console.error('[paynkolay-callback] HASH MISMATCH — sahte callback reddedildi', {
-        clientRefCode,
-        referenceCode,
-        responseCode,
-        hasIncomingHash: !!incomingHash,
-      })
-      if (order?.user_id) {
-        try {
-          await supabase.from('failed_payments').insert([{
-            user_id: order.user_id,
-            error_message: 'Paynkolay hash mismatch — sahte/bozuk callback reddedildi',
-            amount: 0,
-            payment_method: 'kredi-karti',
-            order_data: {
-              reason: 'hash_mismatch',
-              clientRefCode,
-              referenceCode,
-              responseCode,
-              raw: data,
-            },
-            created_at: new Date().toISOString(),
-          }])
-        } catch (e) {
-          console.error('[paynkolay-callback] failed_payments insert error (hash):', e)
-        }
-      }
+    if (!result.hashValid || !result.matched) {
       return htmlResponse(redirectHtml(FAIL_REDIRECT))
     }
 
-    // ── Hash GECERLI. Bundan sonra order guncellemesi guvenli.
-    if (!order) {
-      // Test islemi veya bilinmeyen ref — DB'de eslesme yok.
-      console.log('[paynkolay-callback] order bulunamadi, clientRefCode:', clientRefCode)
-      return htmlResponse(redirectHtml(FAIL_REDIRECT))
-    }
-
-    // ── 5) IDEMPOTENCY: zaten paid ise tekrar isleme (cift callback guvenligi).
-    if (order.payment_status === 'paid') {
-      console.log('[paynkolay-callback] already paid, skipping order:', order.id)
-      return htmlResponse(redirectHtml(SUCCESS_REDIRECT))
-    }
-
-    // ── 6) Basari kodu: Paynkolay'da RESPONSE_CODE === '2' finansal onaydir.
-    const isSuccess = responseCode === '2'
-
-    console.log('[paynkolay-callback] order transition', {
-      orderId: order.id,
-      isSuccess,
-      responseCode,
-      referenceCode,
-      previousStatus: order.status ?? null,
-    })
-
-    // ── 6b) TUTAR DOGRULAMA (replay / cross-order koruması) — sadece basari kodunda.
-    //    Hash clientRefCode'u BAGLAMAZ; teorik olarak biri Paynkolay-imzali gecerli
-    //    bir callback'i baska order'a yonlendirebilir. authorizationAmount hash'e
-    //    DAHIL (Paynkolay imzaladi) -> onu order.total_price ile KURUS hassasiyetinde
-    //    karsilastir. Uymuyorsa order'a DOKUNMA, reddet + audit. Format Paynkolay'dan
-    //    ondalik TL string ("1132.00") olarak gelir (test verisiyle dogrulandi).
-    if (isSuccess) {
-      const incomingCents = Math.round(parseFloat(String(authorizationAmount || '0')) * 100)
-      const orderCents = Math.round(Number(order.total_price ?? 0) * 100)
-      if (!incomingCents || incomingCents !== orderCents) {
-        console.error('[paynkolay-callback] AMOUNT MISMATCH — reddedildi', {
-          orderId: order.id,
-          authorizationAmount,
-          orderTotal: order.total_price,
-        })
-        if (order.user_id) {
-          try {
-            await supabase.from('failed_payments').insert([{
-              user_id: order.user_id,
-              error_message: `Paynkolay tutar uyusmazligi (gelen=${authorizationAmount}, beklenen=${order.total_price})`,
-              amount: 0,
-              payment_method: 'kredi-karti',
-              order_data: {
-                reason: 'amount_mismatch',
-                orderId: order.id,
-                authorizationAmount,
-                orderTotal: order.total_price,
-                clientRefCode,
-                referenceCode,
-              },
-              created_at: new Date().toISOString(),
-            }])
-          } catch (e) {
-            console.error('[paynkolay-callback] amount-mismatch log error:', e)
-          }
-        }
-        return htmlResponse(redirectHtml(FAIL_REDIRECT))
-      }
-    }
-
-    // ── 7) Orders update.
-    const updatePayload: Record<string, unknown> = {
-      status: isSuccess ? 'confirmed' : 'payment_failed',
-      payment_status: isSuccess ? 'paid' : 'failed',
-      payment_provider: 'paynkolay',
-      updated_at: new Date().toISOString(),
-    }
-    if (!isSuccess) {
-      updatePayload.payment_failure_reason =
-        responseMessage || `Paynkolay red (RESPONSE_CODE=${responseCode || 'bilinmiyor'})`
-    }
-    // Basari: ileride iade (CancelRefundPayment) icin Paynkolay referansi + islem
-    // tarihini sakla. Refsiz eski order'larda paynkolay-query fallback ile cozulur.
-    if (isSuccess) {
-      updatePayload.paynkolay_reference_code = referenceCode || null
-      updatePayload.paynkolay_trx_date = toTrxDate(txnTimestamp)
-    }
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update(updatePayload)
-      .eq('id', order.id)
-    if (updateError) {
-      console.error('[paynkolay-callback] order update error:', updateError)
-    }
-
-    // ── 8) FAILED_PAYMENTS audit (basarisiz odeme).
-    if (!isSuccess && order.user_id) {
-      try {
-        await supabase.from('failed_payments').insert([{
-          user_id: order.user_id,
-          error_message: responseMessage || `Odeme basarisiz (RESPONSE_CODE=${responseCode || 'bilinmiyor'})`,
-          amount: 0,
-          payment_method: 'kredi-karti',
-          order_data: {
-            orderId: order.id,
-            clientRefCode,
-            referenceCode,
-            authCode,
-            responseCode,
-            raw: data,
-          },
-          created_at: new Date().toISOString(),
-        }])
-      } catch (e) {
-        console.error('[paynkolay-callback] failed_payments insert error:', e)
-      }
-    }
-
-    // ── 9) KART SAKLAMA (flag aciksa + basari + CardToken geldiyse).
-    //    Flag KAPALIYKEN bu blok hic calismaz (CardToken zaten gelmez).
-    if (CARD_SAVE_ENABLED && isSuccess && cardToken && order.user_id) {
-      try {
-        await saveUserCard(supabase, order.user_id, cardToken, cardTranId, maskedPan, cardBrand, cardBankName)
-      } catch (e) {
-        // Odeme zaten gecti; kart kaydi best-effort. Rollback yok.
-        console.error('[paynkolay-callback] saveUserCard failed for order', order.id, e)
-      }
-    }
-
-    // ── 10) Macro purchase tamamlama (payment-verify deseni).
-    if (isSuccess && order.type === 'macro_purchase' && order.status !== 'confirmed') {
-      try {
-        await completeMacroPurchase(supabase, order)
-      } catch (macroErr) {
-        console.error('[macro] completeMacroPurchase FAILED for order', order.id, macroErr)
-      }
-    }
-
-    // ── 11) Mobil WebView'i yakalayacagi son URL'e yonlendir.
-    return htmlResponse(redirectHtml(isSuccess ? SUCCESS_REDIRECT : FAIL_REDIRECT))
+    return htmlResponse(redirectHtml(result.isSuccess || result.alreadyPaid ? SUCCESS_REDIRECT : FAIL_REDIRECT))
   } catch (err) {
     console.error('[paynkolay-callback] error:', err)
     // Paynkolay'a hata patlatma; fail sayfasina yonlendir.
     return htmlResponse(redirectHtml(FAIL_REDIRECT))
   }
 })
-
-// ── Kart kaydet (Sprint 2 / Görev 2.0 sonrası şema): token artık user_cards'ta
-//    DEĞİL, ayrı user_card_secrets tablosunda (RLS: yalnızca service_role).
-//    customerKey = profiles.payment_customer_key (sabit) — artık telefon değil.
-async function saveUserCard(
-  supabase: SupabaseClient,
-  userId: string,
-  cardToken: string,
-  cardTranId: string,
-  maskedPan: string,
-  cardBrand: string,
-  bankName: string,
-): Promise<void> {
-  // Bu kullanıcının mevcut kartları arasında aynı token zaten var mı?
-  const { data: existingCards } = await supabase
-    .from('user_cards')
-    .select('id')
-    .eq('user_id', userId)
-  const existingIds = (existingCards ?? []).map((c: { id: string }) => c.id)
-  if (existingIds.length > 0) {
-    const { data: existingSecret } = await supabase
-      .from('user_card_secrets')
-      .select('card_id')
-      .in('card_id', existingIds)
-      .eq('card_token', cardToken)
-      .maybeSingle()
-    if (existingSecret) return
-  }
-
-  const isFirstCard = existingIds.length === 0
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('payment_customer_key')
-    .eq('id', userId)
-    .maybeSingle()
-  const customerKey = String(profile?.payment_customer_key ?? '')
-
-  // Mevcut tablo semasi: last4 (varchar) + brand (varchar) — masked_pan/card_brand YOK.
-  // Paynkolay masked PAN'inin son 4 hanesini last4'e yaz.
-  const last4 = String(maskedPan ?? '').replace(/\D/g, '').slice(-4)
-
-  const { data: newCard, error: cardErr } = await supabase
-    .from('user_cards')
-    .insert([{
-      user_id: userId,
-      paynkolay_customer_key: customerKey,
-      last4: last4 || null,
-      brand: cardBrand || null,
-      bank_name: bankName || null,
-      is_default: isFirstCard,
-    }])
-    .select('id')
-    .single()
-  if (cardErr || !newCard) {
-    console.error('[paynkolay-callback] user_cards insert failed:', cardErr)
-    return
-  }
-
-  const { error: secretErr } = await supabase
-    .from('user_card_secrets')
-    .insert([{ card_id: newCard.id, card_token: cardToken, cs_tran_id: cardTranId || null }])
-  if (secretErr) {
-    console.error('[paynkolay-callback] user_card_secrets insert failed:', secretErr)
-    // Token'sız bir kart satırı yararsız/yanıltıcı — geri al.
-    await supabase.from('user_cards').delete().eq('id', newCard.id)
-  }
-}
-
-type MacroOrder = {
-  id: number | string
-  user_id: string
-  total_price: number | null
-  type: string
-  macro_quantity: number | null
-}
-
-async function completeMacroPurchase(
-  supabase: SupabaseClient,
-  order: MacroOrder,
-): Promise<void> {
-  const macroQty = Number(order.macro_quantity ?? 0)
-  if (!macroQty || macroQty <= 0) {
-    console.warn('[macro] macro_purchase order without macro_quantity', order.id)
-    return
-  }
-  if (!order.user_id) {
-    console.warn('[macro] macro_purchase order without user_id', order.id)
-    return
-  }
-
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('macro_threshold, macro_membership_days')
-    .eq('id', 1)
-    .maybeSingle()
-
-  const threshold = Number(settings?.macro_threshold ?? FALLBACK_THRESHOLD)
-  const membershipDays = Number(settings?.macro_membership_days ?? FALLBACK_MEMBERSHIP_DAYS)
-
-  const { data: profile, error: profileErr } = await supabase
-    .from('profiles')
-    .select('macro_balance, total_macros_purchased, privileged_until')
-    .eq('id', order.user_id)
-    .maybeSingle()
-
-  if (profileErr || !profile) {
-    console.error('[macro] profile not found for order', order.id, profileErr)
-    return
-  }
-
-  const newBalance = Number(profile.macro_balance ?? 0) + macroQty
-  const newTotal = Number(profile.total_macros_purchased ?? 0) + macroQty
-
-  const wasPrivilegedActive =
-    !!profile.privileged_until && new Date(profile.privileged_until) > new Date()
-
-  let privilegedUntil: string | null = profile.privileged_until
-  let unlockedMembership = false
-
-  if (newBalance >= threshold) {
-    const base = wasPrivilegedActive
-      ? new Date(profile.privileged_until as string)
-      : new Date()
-    base.setDate(base.getDate() + membershipDays)
-    privilegedUntil = base.toISOString()
-    if (!wasPrivilegedActive) unlockedMembership = true
-  }
-
-  const update: Record<string, unknown> = {
-    macro_balance: newBalance,
-    total_macros_purchased: newTotal,
-  }
-  if (privilegedUntil !== profile.privileged_until) {
-    update.privileged_until = privilegedUntil
-  }
-
-  const { error: updateErr } = await supabase
-    .from('profiles')
-    .update(update)
-    .eq('id', order.user_id)
-
-  if (updateErr) {
-    console.error('[macro] profile update failed for order', order.id, updateErr)
-    return
-  }
-
-  await supabase.from('macro_transactions').insert({
-    user_id: order.user_id,
-    type: 'purchase',
-    amount: macroQty,
-    price_paid: Number(order.total_price ?? 0),
-    order_id: typeof order.id === 'number' ? order.id : Number(order.id),
-    note: `${macroQty} Macro Coin satin alindi`,
-  })
-
-  if (unlockedMembership) {
-    await supabase.from('macro_transactions').insert({
-      user_id: order.user_id,
-      type: 'membership_unlock',
-      amount: 0,
-      note: `Ayricalikli uyelik aktiflesti — ${membershipDays} gun`,
-    })
-  }
-}

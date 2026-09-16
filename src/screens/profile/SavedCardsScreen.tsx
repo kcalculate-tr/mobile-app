@@ -180,8 +180,8 @@ export default function SavedCardsScreen() {
         <View style={s.securityNote}>
           <Lock size={14} color={COLORS.text.secondary} />
           <Text style={s.securityText}>
-            Kartlarınız 256-bit SSL şifrelemesiyle güvenle saklanır.
-            Kart bilgilerinize yalnızca siz erişebilirsiniz.
+            Kart bilgileriniz KCAL'da saklanmaz; lisanslı ödeme kuruluşu
+            PaynKolay'ın altyapısında tutulur.
           </Text>
         </View>
       </ScrollView>
