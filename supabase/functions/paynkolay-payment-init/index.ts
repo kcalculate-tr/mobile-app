@@ -165,7 +165,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderErr } = await admin
       .from('orders')
-      .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code')
+      .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code, type, macro_quantity')
       .eq('id', orderId)
       .maybeSingle()
 
@@ -182,13 +182,40 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'Siparis tutari gecersiz' }, 400)
     }
 
+    // recomputeUpdate: satır ~385'te asıl orders UPDATE'ine spread edilir.
+    // macro_purchase dalında boş kalır (o dal kendi update'ini ayrıca yapıyor).
+    const recomputeUpdate: Record<string, unknown> = {}
+
+    // ── MACRO PAKET BACKSTOP: type='macro_purchase' siparişlerde tutar, ürün
+    // sepeti değil "macro_quantity x settings.macro_price" formülüyle belirlenir.
+    // ESKİ DAVRANIŞ (düzeltildi): bu order tipi hiç tanınmıyordu, A-backstop'un
+    // `items.length > 0` şartı macro paket item formatında eşleşmediği için
+    // recompute'un tamamı sessizce atlanıyordu — amountNum stored (client-yazdığı)
+    // total_price'ta kalıyordu, hiç doğrulanmıyordu.
+    if (order.type === 'macro_purchase') {
+      const qty = Number(order.macro_quantity) || 0
+      if (qty <= 0) {
+        return jsonResponse({ error: 'Gecersiz macro miktari' }, 400)
+      }
+      const { data: settingsRow } = await admin
+        .from('settings')
+        .select('macro_price')
+        .eq('id', 1)
+        .maybeSingle()
+      const macroPrice = Number(settingsRow?.macro_price) || 1500 // FALLBACK_MACRO_PRICE ile hizalı
+      const expected = Math.round(qty * macroPrice * 100) / 100
+      if (Math.round(amountNum * 100) / 100 !== expected) {
+        console.log('[paynkolay-init] macro price recompute', { orderId: order.id, oldTotal: amountNum, expected })
+      }
+      amountNum = expected
+      await admin.from('orders').update({ total_price: expected, total_amount: expected }).eq('id', order.id)
+    } else {
     // ── A-BACKSTOP: charge'dan ONCE tutari GUNCEL products.price'tan yeniden hesapla.
     // Sadece BAZ fiyat duzeltilir; gramaj/opsiyon modifier'lari order item'indan
     // (selected_options price_modifier + legacy_selected_options.extraPrice) AYNEN korunur.
     // -> idempotent + fiyat formulunu yeniden replike etme riski YOK. Bayat sepetten
     // gelen eski fiyat (stale-cache) burada duzeltilir; Paynkolay tutari DB'den okur.
     // Hata olursa stored total'a duser -> odeme akisi BOZULMAZ.
-    const recomputeUpdate: Record<string, unknown> = {}
     try {
       const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
       const effPrice = (price: unknown, type: unknown, value: unknown) => {
@@ -234,28 +261,27 @@ Deno.serve(async (req: Request) => {
         const pu = prof?.privileged_until ? new Date(prof.privileged_until) : null
         if (pu && pu.getTime() > Date.now()) macroDiscount = round2(newSubtotal * 0.20)
 
-        // kupon: campaigns'tan yeniden hesapla; bulunamaz/pasifse stored discount KORUNUR (defansif)
-        let discount = Number(order.discount_amount) || 0
-        if (order.coupon_id || order.coupon_code) {
-          const campQuery = admin
-            .from('campaigns')
-            .select('discount_type, discount_value, min_cart_total, max_discount, is_active')
-          const { data: camp } = order.coupon_id
-            ? await campQuery.eq('id', order.coupon_id).maybeSingle()
-            : await campQuery.eq('code', order.coupon_code).maybeSingle()
-          if (camp && camp.is_active !== false) {
-            const minCart = Number(camp.min_cart_total) || 0
-            if (newSubtotal >= minCart) {
-              const v = Number(camp.discount_value) || 0
-              let d = (camp.discount_type === 'percent' || camp.discount_type === 'percentage')
-                ? Math.floor(newSubtotal * (v / 100))
-                : Math.min(v, newSubtotal)
-              const maxD = Number(camp.max_discount) || 0
-              if (maxD > 0) d = Math.min(d, maxD)
-              discount = round2(d)
-            } else {
-              discount = 0 // sepet min altina dustu
-            }
+        // kupon: validate_coupon RPC ile doğrula (kullanıcının kendi JWT'siyle,
+        // authedClient — auth.uid() içeride buna göre çözülüyor). Kurallar
+        // CartScreen/checkout'taki istemci doğrulamasıyla BİREBİR aynı (aktiflik,
+        // başlangıç/bitiş tarihi, hedef kitle, min sepet, kullanım limiti, max
+        // indirim — hepsi RPC içinde). ESKİ DAVRANIŞ (düzeltildi): kupon
+        // bulunamaz/pasif/süresi dolmuş/hedef dışı/limit dolmuşsa `discount`
+        // stored order.discount_amount'a (istemcinin draft'a yazdığı, doğrulanmamış
+        // bir değer) düşüyordu — sahte coupon_code + discount_amount enjekte edilip
+        // gerçek indirim atlatılabiliyordu. Artık geçersiz kupon = indirim 0.
+        let discount = 0
+        if (order.coupon_code) {
+          const { data: cv, error: cvErr } = await authedClient.rpc('validate_coupon', {
+            p_code: order.coupon_code,
+            p_cart_total: newSubtotal,
+          })
+          if (cvErr) {
+            console.error('[paynkolay-init] validate_coupon error:', cvErr.message)
+          } else if (cv?.valid) {
+            discount = round2(Number(cv.discount_amount) || 0)
+          } else {
+            console.log('[paynkolay-init] coupon rejected:', order.coupon_code, cv?.reason)
           }
         }
 
@@ -278,6 +304,7 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       console.error('[paynkolay-init] recompute failed, stored total kullanilacak:', (e as Error).message)
     }
+    } // else (type !== 'macro_purchase') sonu
 
     const amount = toDecimalTL(amountNum) // "150.00" (recompute sonrasi guncel tutar)
 
