@@ -38,6 +38,10 @@ async function hmacSha256Base64(message: string, secret: string): Promise<string
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  // GEÇİCİ OLARAK KAPALI (2026-09-16): paytr-payment-init ile birlikte
+  // kapatıldı — son 90 günde 0 PayTR işlemi. Kod silinmedi.
+  return new Response('PAYMENT_METHOD_DISABLED', { status: 410, headers: corsHeaders })
+
   try {
     if (!MERCHANT_KEY || !MERCHANT_SALT) {
       console.error('[paytr-callback] credentials missing')

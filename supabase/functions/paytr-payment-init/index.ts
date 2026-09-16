@@ -104,6 +104,11 @@ function clientIpFromRequest(req: Request): string {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  // GEÇİCİ OLARAK KAPALI (2026-09-16): son 90 günde 0 PayTR işlemi + sunucu
+  // tarafında tutar/kupon yeniden hesaplaması yok (bkz. güvenlik incelemesi).
+  // Aktif provider Paynkolay. Kod silinmedi, düzeltilip yeniden açılabilir.
+  return jsonResponse({ error: 'PAYMENT_METHOD_DISABLED', message: 'Bu ödeme yöntemi geçici olarak kapalı.' }, 410)
+
   try {
     if (!MERCHANT_ID || !MERCHANT_KEY || !MERCHANT_SALT) {
       return jsonResponse({ error: 'PayTR credentials missing' }, 500)

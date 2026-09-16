@@ -14,6 +14,13 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // GEÇİCİ OLARAK KAPALI (2026-09-16): payment-init (Tosla) ile birlikte
+  // kapatıldı — bkz. o dosyadaki not. Kod silinmedi.
+  return new Response(
+    JSON.stringify({ error: 'PAYMENT_METHOD_DISABLED', message: 'Bu ödeme yöntemi geçici olarak kapalı.' }),
+    { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+  )
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
