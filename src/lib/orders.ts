@@ -288,6 +288,8 @@ export const createOrderFromCart = async ({
   const orderPayload: Record<string, unknown> = {
     status: 'pending',
     payment_status: 'pending',
+    // branch_id: sunucu (trg_orders_assign_branch_insert) district/neighbourhood'a
+    // bakarak HER ZAMAN yeniden hesaplar — bu deger yok sayilir/ezilir.
     branch_id: DEFAULT_BRANCH_ID,
     customer_name: customerName,
     customer_email: customerEmail,
@@ -295,6 +297,7 @@ export const createOrderFromCart = async ({
     address_id: resolveAddressId(address, deliveryMethod),
     city: address.city || 'İzmir',
     district: address.district,
+    neighbourhood: address.neighbourhood,
     phone: customerPhone,
     items: itemsPayload,
     user_id: userId,
@@ -450,6 +453,8 @@ export const createOrderDraftForPayment = async ({
   const orderPayload: Record<string, unknown> = {
     status: 'pending_payment',
     payment_status: 'pending',
+    // branch_id: sunucu (trg_orders_assign_branch_insert) district/neighbourhood'a
+    // bakarak HER ZAMAN yeniden hesaplar — bu deger yok sayilir/ezilir.
     branch_id: DEFAULT_BRANCH_ID,
     customer_name: customerName,
     customer_email: customerEmail,
@@ -457,6 +462,7 @@ export const createOrderDraftForPayment = async ({
     address_id: resolveAddressId(address, deliveryMethod),
     city: address.city || 'İzmir',
     district: address.district,
+    neighbourhood: address.neighbourhood,
     phone: customerPhone,
     items: itemsPayload,
     user_id: userId,
