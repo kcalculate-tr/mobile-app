@@ -15,7 +15,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowRight,
@@ -45,6 +45,7 @@ import { TAB_BAR_TOTAL } from '../constants/layout';
 import MacroPointModal from '../components/modals/MacroPointModal';
 import { fetchMacroProfile, isPrivileged, privilegedDaysLeft, privilegedUntilFormatted, MacroProfile, MEMBERSHIP_THRESHOLD } from '../lib/macros';
 import { useModal } from '../hooks/useModal';
+import { useNutritionSummary } from '../hooks/useNutritionSummary';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
@@ -61,7 +62,6 @@ type NutritionProfile = {
   height_cm: number | null;
   weight_kg: number | null;
   age: number | null;
-  daily_calories_goal: number | null;
 };
 
 type DayCalorie = {
@@ -113,12 +113,13 @@ export default function ProfileScreen() {
     });
   }, [user?.id]);
 
+  const { summary: nutritionSummary, refetch: refetchNutritionSummary } = useNutritionSummary();
+
   const [dataLoading, setDataLoading] = useState(true);
   const [nutrition, setNutrition] = useState<NutritionProfile>({
     height_cm: null,
     weight_kg: null,
     age: null,
-    daily_calories_goal: null,
   });
   const [weeklyKcal, setWeeklyKcal] = useState<DayCalorie[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -196,27 +197,33 @@ export default function ProfileScreen() {
     try {
       const sevenDaysAgo = getLast7Days()[0];
 
-      const [nutritionRes, mealLogsRes] = await Promise.all([
+      const [nutritionRes, consumptionsRes] = await Promise.all([
         supabase
           .from('user_nutrition_profiles')
-          .select('height_cm, weight_kg, age, daily_calories_goal')
+          .select('height, weight, age')
           .eq('user_id', user.id)
-          .single(),
+          .maybeSingle(),
         supabase
-          .from('meal_logs')
-          .select('logged_at, calories')
+          .from('meal_consumptions')
+          .select('consumed_at, calories')
           .eq('user_id', user.id)
-          .gte('logged_at', sevenDaysAgo)
-          .order('logged_at', { ascending: true }),
+          .gte('consumed_at', `${sevenDaysAgo}T00:00:00.000Z`)
+          .order('consumed_at', { ascending: true }),
       ]);
 
-      if (nutritionRes.data) setNutrition(nutritionRes.data);
+      if (nutritionRes.data) {
+        setNutrition({
+          height_cm: nutritionRes.data.height,
+          weight_kg: nutritionRes.data.weight,
+          age: nutritionRes.data.age,
+        });
+      }
 
-      if (mealLogsRes.data) {
+      if (consumptionsRes.data) {
         const map: Record<string, number> = {};
-        for (const log of mealLogsRes.data) {
-          const date = String(log.logged_at).split('T')[0];
-          map[date] = (map[date] ?? 0) + (log.calories ?? 0);
+        for (const row of consumptionsRes.data) {
+          const date = String(row.consumed_at).split('T')[0];
+          map[date] = (map[date] ?? 0) + (row.calories ?? 0);
         }
         const days = getLast7Days();
         setWeeklyKcal(days.map(date => ({ date, kcal: map[date] ?? 0 })));
@@ -228,9 +235,15 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Ekran her odaklandığında (ilk açılış dahil) hem beden ölçüleri/haftalık
+  // grafik hem de günlük özet yeniden çekilir — profil güncellenip geri
+  // dönüldüğünde rakamlar tazelenir.
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+      refetchNutritionSummary();
+    }, [fetchData, refetchNutritionSummary]),
+  );
 
   const handleLogout = async () => {
     // Push token'ı önce deaktive et — signOut'tan sonra auth.uid() kaybolur
@@ -261,7 +274,7 @@ export default function ProfileScreen() {
         )
       : null;
 
-  const goal = nutrition.daily_calories_goal ?? 2000;
+  const goal = nutritionSummary?.targetKcal || 2000;
   const hasWeekData = weeklyKcal.some(d => d.kcal > 0);
 
   if (loading) return null;
@@ -333,7 +346,7 @@ export default function ProfileScreen() {
               <View style={styles.statDivider} />
               <View style={styles.statCol}>
                 <Text style={styles.statValue}>
-                  {nutrition.daily_calories_goal ? `${nutrition.daily_calories_goal}` : '—'}
+                  {nutritionSummary?.targetKcal ? `${nutritionSummary.targetKcal}` : '—'}
                 </Text>
                 <Text style={styles.statLabel}>Günlük Hedef</Text>
               </View>

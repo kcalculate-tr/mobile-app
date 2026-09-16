@@ -33,6 +33,7 @@ import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import { useNutritionSummary } from '../hooks/useNutritionSummary';
 import { getSupabaseClient } from '../lib/supabase';
 import { formatSupabaseErrorForDevLog, mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { RootStackParamList } from '../navigation/types';
@@ -835,6 +836,7 @@ export default function TrackerScreen() {
 
   const { user } = useAuth();
   const { isAuthenticated, loading } = useRequireAuth();
+  const { summary: nutritionSummary, refetch: refetchNutritionSummary } = useNutritionSummary();
 
   const [ui, dispatchUI] = useReducer(uiReducer, uiInitial);
   const [data, dispatchData] = useReducer(dataReducer, dataInitial);
@@ -1045,6 +1047,14 @@ export default function TrackerScreen() {
   useEffect(() => {
     fetchData(selectedFilter);
   }, [fetchData, selectedFilter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Profil (hedef) NutritionProfileScreen'de güncellenip buraya dönüldüğünde
+      // günlük özet (hedef/tüketilen/kalan) tazelensin.
+      refetchNutritionSummary();
+    }, [refetchNutritionSummary]),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -1745,11 +1755,14 @@ const html = `
     }
   };
 
+  // Görev 1.1: hedefler artık tek sunucu kaynağından (get_nutrition_summary RPC,
+  // bkz. useNutritionSummary) okunuyor — Profil ekranıyla birebir aynı değer.
+  // nutritionProfile (ayrı sorgu) sadece hook henüz dönmemişken fallback.
   const targets = {
-    kcal: nutritionProfile?.target_calories ?? 2000,
-    protein: nutritionProfile?.target_protein ?? 120,
-    carbs: nutritionProfile?.target_carbs ?? 250,
-    fat: nutritionProfile?.target_fat ?? 65,
+    kcal: nutritionSummary?.targetKcal || nutritionProfile?.target_calories || 2000,
+    protein: nutritionSummary?.targetProtein || nutritionProfile?.target_protein || 120,
+    carbs: nutritionSummary?.targetCarb || nutritionProfile?.target_carbs || 250,
+    fat: nutritionSummary?.targetFat || nutritionProfile?.target_fat || 65,
   };
 
   if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
