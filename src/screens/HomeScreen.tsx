@@ -20,6 +20,7 @@ import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/pr
 import { getSupabaseClient } from '../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
+import { AppBanner, fetchActiveAppBanner } from '../lib/appBanners';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
@@ -56,6 +57,7 @@ export default function HomeScreen() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [heroRows, setHeroRows] = useState<BannerRow[]>([]);
   const [promoRows, setPromoRows] = useState<BannerRow[]>([]);
+  const [appBanner, setAppBanner] = useState<AppBanner | null>(null);
   const [activeHero, setActiveHero] = useState(0);
   const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
@@ -69,6 +71,17 @@ export default function HomeScreen() {
   useEffect(() => {
     track('home_view');
   }, []);
+
+  useEffect(() => {
+    if (!appBanner) return;
+    track('banner_view', { banner_id: appBanner.id, source: 'home' });
+  }, [appBanner?.id]);
+
+  const handleAppBannerPress = useCallback(() => {
+    if (!appBanner) return;
+    track('banner_click', { banner_id: appBanner.id, deeplink: appBanner.deeplink ?? undefined, source: 'home' });
+    resolveNavigation(navigation, appBanner.deeplink);
+  }, [appBanner, navigation]);
 
 // Active dot expand animation
   useEffect(() => {
@@ -97,12 +110,13 @@ export default function HomeScreen() {
     setLoading(true);
     setLoadError('');
     try {
-      const [cats, prods, bannerData, featured, bh] = await Promise.all([
+      const [cats, prods, bannerData, featured, bh, banner] = await Promise.all([
         fetchCategories(),
         fetchProducts(),
         fetchBannerRows(),
         fetchFeaturedProducts(),
         fetchBusinessHours(),
+        fetchActiveAppBanner(getSupabaseClient()),
       ]);
       setCategories(cats);
       setProducts(prods);
@@ -110,6 +124,7 @@ export default function HomeScreen() {
       setPromoRows(bannerData.promo);
       setFeaturedProducts(featured);
       setBusinessHours(bh);
+      setAppBanner(banner);
     } catch (e) {
       setLoadError(mapSupabaseErrorToUserMessage(e, 'İçerikler yüklenemedi. Lütfen tekrar deneyin.'));
     }
@@ -377,6 +392,27 @@ export default function HomeScreen() {
                 ))}
               </View>
             )}
+          </View>
+        )}
+
+        {/* Görev 1.3: tek slotluk app_banners — en yüksek priority'li aktif
+            banner, tablo boşsa (appBanner null) hiç render edilmez. */}
+        {appBanner && appBanner.imageUrl && (
+          <View style={styles.heroWrapper}>
+            <TouchableOpacity
+              style={styles.heroSlide}
+              activeOpacity={0.95}
+              onPress={handleAppBannerPress}
+            >
+              <View style={styles.heroSlideInner}>
+                <CachedImage
+                  uri={transformImageUrl(appBanner.imageUrl, ImagePreset.bannerLarge) ?? appBanner.imageUrl}
+                  style={styles.heroImage}
+                  priority="high"
+                  pointerEvents="none"
+                />
+              </View>
+            </TouchableOpacity>
           </View>
         )}
 
