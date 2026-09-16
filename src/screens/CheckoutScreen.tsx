@@ -1322,18 +1322,6 @@ export default function CheckoutScreen() {
     }
   };
 
-  const completeOrder = async (orderId: string) => {
-    try {
-      const supabase = getSupabaseClient();
-      await supabase
-        .from('orders')
-        .update({ status: 'confirmed', payment_status: 'paid' })
-        .eq('id', orderId);
-    } catch (err) {
-      console.error('Order update error:', err);
-    }
-  };
-
   const handlePay = async () => {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: '' });
 

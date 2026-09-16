@@ -132,21 +132,6 @@ function ToslaPaymentFlow() {
     return [padded.slice(0, 4), padded.slice(4, 8), padded.slice(8, 12), padded.slice(12, 16)].join(' ');
   };
 
-  const completeOrder = async () => {
-    try {
-      const supabase = getSupabaseClient();
-      await supabase
-        .from('orders')
-        .update({
-          status: 'confirmed',
-          payment_status: 'paid',
-        })
-        .eq('id', orderId);
-    } catch (err) {
-      console.error('Order update error:', err);
-    }
-  };
-
   const handlePay = async () => {
     setError('');
     const cardDigits = cardNumber.replace(/\D/g, '');
@@ -356,7 +341,11 @@ function ToslaPaymentFlow() {
                 if (hasNavigated.current) return;
                 hasNavigated.current = true;
                 setWebViewHtml(null);
-                await completeOrder();
+                // NOT: orders.status/payment_status'u client'tan doğrudan yazmıyoruz
+                // artık — orders_guard_protected_cols trigger'ı bunu zaten reddediyor
+                // (yalnızca sunucu/admin). Bu akış (Tosla) şu an hiçbir build
+                // profilinde aktif değil (dormant); yeniden aktifleştirilirse
+                // PayTR/Paynkolay'daki gibi sunucu-taraflı bir callback gerekir.
                 logEvent.purchase(String(orderId), Number(amount) || 0);
                 track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
                 navigation.replace('OrderSuccess', {
@@ -385,7 +374,6 @@ function ToslaPaymentFlow() {
                   if (hasNavigated.current) return;
                   hasNavigated.current = true;
                   setWebViewHtml(null);
-                  await completeOrder();
                   haptic.success();
                   logEvent.purchase(String(orderId), Number(amount) || 0);
                   track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
