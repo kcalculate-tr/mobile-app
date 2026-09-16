@@ -905,6 +905,7 @@ type PaynkolayInitResponse = {
   success?: boolean;
   formHtml?: string;
   error?: string;
+  pending?: boolean;
 };
 
 // 16×1500ms = 24sn marj. Callback dönüş zincirinde senkron koştuğu için normalde
@@ -932,8 +933,9 @@ const matchesPaynkolayReturn = (url: string): { matches: boolean; success: boole
 };
 
 // Ödeme ekranı hangi aşamada: kart listesi yükleniyor / kayıtlı karttan seç /
-// yeni kart (hosted) / sonuç bekleniyor (WebView veya senkron non-3D sonucu).
-type PaynkolayStage = 'loading_cards' | 'choose_card' | 'new_card' | 'processing';
+// yeni kart (hosted) / sonuç bekleniyor (WebView veya senkron non-3D sonucu) /
+// bu sipariş için önceki bir ödeme hâlâ inceleniyor (yeni deneme başlatılmaz).
+type PaynkolayStage = 'loading_cards' | 'choose_card' | 'new_card' | 'processing' | 'review_pending';
 
 function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaynkolayFlowProps) {
   const navigation = useNavigation<PaymentScreenNavProp>();
@@ -956,7 +958,11 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
   // bu durumda kart seçimi/kaydetme UI'sı HİÇ gösterilmez, normal akış değişmez.
   const [cardsFeatureEnabled, setCardsFeatureEnabled] = useState(false);
 
-  // Once ozellik acik mi diye sor (403 almadan). KAPALIYSA: kart secimi/onay
+  // Once bu siparis icin bekleyen bir inceleme var mi diye bak — varsa HIC
+  // odeme denemesi baslatilmaz, kalici "kontrol ediliyor" ekrani gosterilir
+  // (tek seferlik alert DEGIL — kullanici bu siparise her donuste ayni ekranı
+  // gorur, "tekrar ode" butonu YOK).
+  // Sonra ozellik acik mi diye sor (403 almadan). KAPALIYSA: kart secimi/onay
   // kutusu UI'si HIC gosterilmez, ORIJINAL davranis gibi dogrudan hosted init
   // baslatilir (normal odeme akisi degismez — 0 dokunuşla WebView acilir).
   // ACIKSA (allowlist test): kayitli kart senkronize edilir, secim ekrani gosterilir.
@@ -964,6 +970,18 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
     let cancelled = false;
     (async () => {
       try {
+        const supabase = getSupabaseClient();
+        const { data: orderRow } = await supabase
+          .from('orders')
+          .select('payment_review_pending')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (orderRow?.payment_review_pending) {
+          setStage('review_pending');
+          return;
+        }
+
         const status = await getCardsFeatureStatus();
         if (cancelled) return;
         setCardsFeatureEnabled(status.enabled);
@@ -1013,6 +1031,10 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
         body: JSON.stringify({ orderId: String(orderId), amount, saveCard: shouldSaveCard }),
       });
       const json = (await res.json().catch(() => ({}))) as PaynkolayInitResponse;
+      if (json.pending) {
+        handlePendingReview(json.error);
+        return;
+      }
       if (!res.ok || !json.success || !json.formHtml) {
         const message = json.error || 'Ödeme başlatılamadı.';
         setInitError(message);
@@ -1268,6 +1290,18 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
               </TouchableOpacity>
             ) : null}
           </ScrollView>
+        ) : stage === 'review_pending' ? (
+          <View style={paytrStyles.loaderWrap}>
+            <ActivityIndicator size="large" color={COLORS.brand.green} />
+            <Text style={paytrStyles.loaderText}>Ödemen kontrol ediliyor…</Text>
+            <Text style={[paytrStyles.errorText, { color: COLORS.text.secondary, marginTop: 8 }]}>
+              Bu sipariş için önceki ödemen inceleniyor. Sonucu birkaç dakika
+              içinde bildireceğiz — şimdi yeni bir ödeme denemesi başlatılamaz.
+            </Text>
+            <Pressable style={paytrStyles.retryBtn} onPress={() => navigation.goBack()}>
+              <Text style={paytrStyles.retryText}>Geri Dön</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={paytrStyles.loaderWrap}>
             {initError ? (

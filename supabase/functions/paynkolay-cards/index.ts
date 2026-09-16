@@ -5,9 +5,10 @@ import {
   fetchCardStorageList,
   generatePaynkolayHash,
   isAllowlistedAdmin,
+  markOrderPendingReview,
   pick,
+  resolvePendingPaymentViaReport,
   upsertUserCard,
-  verifyAndFinalizeViaReport,
 } from '../_shared/paynkolay-cards.ts'
 
 // ── Paynkolay "Saklı Kart" yönetimi (sync/pay/delete/set_default) ──────────
@@ -99,6 +100,7 @@ type OrderRow = {
   macro_quantity: number | null
   status: string | null
   payment_status: string | null
+  payment_review_pending?: boolean | null
 }
 
 // ── Tutarı sunucuda yeniden hesapla — paynkolay-payment-init'teki mantığın
@@ -416,7 +418,7 @@ async function handlePay(
 
   const { data: order, error: orderErr } = await admin
     .from('orders')
-    .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code, type, macro_quantity, status, payment_status')
+    .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code, type, macro_quantity, status, payment_status, payment_review_pending')
     .eq('id', orderId)
     .maybeSingle()
   if (orderErr || !order) return jsonResponse({ error: 'Siparis bulunamadi' }, 404)
@@ -425,6 +427,16 @@ async function handlePay(
   // Idempotency: zaten odenmis siparis tekrar tahsil edilmez.
   if (order.payment_status === 'paid') {
     return jsonResponse({ success: true, alreadyPaid: true })
+  }
+
+  // Bu siparis icin bir odeme sonucu hala incelemede (needs_manual_review) —
+  // yeni bir tahsilat denemesi BASLATILMAZ (cift tahsilat riski).
+  if (order.payment_review_pending) {
+    return jsonResponse({
+      success: false,
+      pending: true,
+      error: 'Bu siparişin ödemesi hâlâ kontrol ediliyor, lütfen bekleyin.',
+    }, 202)
   }
 
   // Kart: SADECE kendi karti kullanabilir.
@@ -564,11 +576,9 @@ async function handlePay(
 
   if (!result.hashValid) {
     // Hash yok/uyusmuyor ama HTTP 200 geldi -> raporlama (PfTransactionReportList)
-    // ile AYNI clientRefCode uzerinden yedek dogrulama dene (task: hash adimi
-    // HARIC completePaynkolayResult'taki adimlarla tamamlanir, kaynak
-    // 'report_verified' olarak loglanir).
+    // ile AYNI clientRefCode uzerinden yedek dogrulama dene.
     console.error('[paynkolay-cards] pay sonucu hash dogrulanamadi, rapor fallback deneniyor', { orderId: order.id, clientRefCode })
-    const reportOutcome = await verifyAndFinalizeViaReport(
+    const outcome = await resolvePendingPaymentViaReport(
       admin,
       order as OrderRow,
       clientRefCode,
@@ -576,28 +586,27 @@ async function handlePay(
       { secretKey: SECRET_KEY, vposUrl: VPOS_URL, sx: SX },
     )
 
-    if (!reportOutcome.verified) {
-      // Ne hash ne rapor teyit edebildi -> siparis durumu DEGISTIRILMEZ,
-      // manuel inceleme icin loglanir.
-      try {
-        await admin.from('failed_payments').insert([{
-          user_id: userId,
-          error_message: 'Paynkolay saklı kart odemesi dogrulanamadi (hash gecersiz + rapor teyit edemedi)',
-          amount: 0,
-          payment_method: 'kredi-karti-saklı',
-          order_data: { reason: 'needs_manual_review', orderId: order.id, clientRefCode },
-          created_at: new Date().toISOString(),
-        }])
-      } catch (e) {
-        console.error('[paynkolay-cards] needs_manual_review log error:', e)
-      }
+    if (outcome === 'failed') {
+      // Rapor KESIN basarisiz dedi (ERROR) -> siparis payment_failed yapildi.
+      return jsonResponse({ success: false, error: 'Ödeme başarısız.' }, 402)
+    }
+    if (outcome === 'still_pending') {
+      // Ne hash ne rapor hemen teyit edebildi -> siparis durumu DEGISTIRILMEZ,
+      // payment_review_pending=true isaretlenir; pg_cron sweep 24 saat boyunca
+      // 5dk'da bir tekrar dener.
+      await markOrderPendingReview(
+        admin,
+        order as OrderRow,
+        clientRefCode,
+        'Paynkolay saklı kart odemesi dogrulanamadi (hash gecersiz + rapor teyit edemedi)',
+      )
       return jsonResponse({
         success: false,
         pending: true,
         error: 'Ödemeniz kontrol ediliyor, birkaç dakika içinde bilgilendireceğiz.',
       }, 202)
     }
-    // Rapor ile dogrulandi -> basarili sayilir, asagida devam eder.
+    // 'success': rapor ile dogrulandi, asagida devam eder.
   } else {
     if (!result.matched) {
       console.error('[paynkolay-cards] pay sonucu siparisle eslesmedi', { orderId: order.id, clientRefCode })

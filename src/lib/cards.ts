@@ -17,20 +17,29 @@ type CardsAction = 'status' | 'sync' | 'pay' | 'delete' | 'set_default';
 async function callCards<T>(
   action: CardsAction,
   params: Record<string, unknown> = {},
-  opts: { throwOnFailure?: boolean } = {},
+  opts: { throwOnFailure?: boolean; timeoutMs?: number } = {},
 ): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Oturum bulunamadı');
 
-  const res = await fetch(CARDS_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ action, ...params }),
-  });
+  const controller = opts.timeoutMs ? new AbortController() : undefined;
+  const timer = opts.timeoutMs ? setTimeout(() => controller!.abort(), opts.timeoutMs) : undefined;
+
+  let res: Response;
+  try {
+    res = await fetch(CARDS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ action, ...params }),
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 
   let json: any;
   try {
@@ -48,8 +57,11 @@ async function callCards<T>(
   return json as T;
 }
 
+// 3sn timeout: yavas ag/soguk-baslangicta status cevabi geciktirmesin —
+// timeout/hata durumunda caller (try/catch ile) enabled=false varsayip
+// normal odemeyi HEMEN baslatir.
 export const getCardsFeatureStatus = () =>
-  callCards<{ enabled: boolean }>('status');
+  callCards<{ enabled: boolean }>('status', {}, { timeoutMs: 3000 });
 
 export const syncSavedCards = () =>
   callCards<{ success: true; cards: SavedCard[] }>('sync');

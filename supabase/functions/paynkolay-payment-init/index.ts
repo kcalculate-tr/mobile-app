@@ -157,7 +157,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderErr } = await admin
       .from('orders')
-      .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code, type, macro_quantity')
+      .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code, type, macro_quantity, payment_review_pending')
       .eq('id', orderId)
       .maybeSingle()
 
@@ -167,6 +167,14 @@ Deno.serve(async (req: Request) => {
     // Baska kullanicinin siparisi icin odeme baslatilamaz.
     if (order.user_id && order.user_id !== user.id) {
       return jsonResponse({ error: 'Unauthorized' }, 403)
+    }
+    // Bu siparis icin onceki bir odeme sonucu hala incelemede — cift tahsilat
+    // riskine karsi yeni bir deneme BASLATILMAZ.
+    if (order.payment_review_pending) {
+      return jsonResponse({
+        pending: true,
+        error: 'Bu siparişin ödemesi hâlâ kontrol ediliyor, lütfen bekleyin.',
+      }, 202)
     }
 
     let amountNum = Number(order.total_price ?? order.total_amount ?? 0)

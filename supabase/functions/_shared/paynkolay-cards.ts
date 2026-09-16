@@ -495,7 +495,7 @@ export interface ApplyOutcomeParams {
   source: 'hash_verified' | 'report_verified'
 }
 
-type OrderForOutcome = {
+export type OrderForOutcome = {
   id: number
   user_id: string | null
   total_price: number | null
@@ -526,6 +526,10 @@ async function applyPaynkolayOutcome(
     status: isSuccess ? 'confirmed' : 'payment_failed',
     payment_status: isSuccess ? 'paid' : 'failed',
     payment_provider: 'paynkolay',
+    // Bu fonksiyon her cagrildiginda kesin bir sonuca ulasilmis olur (basari/
+    // basarisizlik) -> "belirsiz, incelemede" bayragi artik gecerli degil.
+    // hash/pay yolunda zaten false'tur (no-op); sweep/report yolunda gercekten temizler.
+    payment_review_pending: false,
     updated_at: new Date().toISOString(),
   }
   if (!isSuccess) {
@@ -702,47 +706,137 @@ export async function queryPaynkolayTransactionReport(
   }
 }
 
-// ── pay (non-3D) icin yedek dogrulama: hash gecersiz/eksik ama HTTP 200 geldiyse
-//    PfTransactionReportList'ten AYNI clientRefCode'u sorgular. Rapor basarili
-//    (status===SUCCESS) VE tutar >= beklenense siparisi "report_verified"
-//    kaynagiyla tamamlar; degilse siparise DOKUNMAZ (caller needs_manual_review
-//    loglar). TranId rapor yanitinda YOK -> bu yoldan kart kaydi denenmez.
-export async function verifyAndFinalizeViaReport(
+// ── Bekleyen (hash/HTTP ile hemen teyit edilemeyen) bir odemeyi PfTransactionReportList
+//    ile yeniden dener. paynkolay-cards pay (hash gecersiz/eksik ama HTTP 200
+//    geldiyse ANINDA) VE paynkolay-review-sweep (5dk cron, needs_manual_review
+//    siparisler icin TEKRAR) ORTAK kullanir.
+//    - 'success': rapor status===SUCCESS + tutar >= beklenen -> siparis
+//      "report_verified" kaynagiyla BASARILI tamamlandi (order update + kart
+//      kaydetme + macro purchase applyPaynkolayOutcome uzerinden).
+//    - 'failed': rapor status===ERROR -> siparis KESIN BASARISIZ tamamlandi
+//      (order'a dokunulur, payment_failed/failed).
+//    - 'still_pending': rapor bulunamadi VEYA status NEW/bilinmiyor VEYA
+//      SUCCESS ama tutar tutmuyor -> siparise DOKUNULMAZ, caller bekler/loglar.
+//    TranId rapor yanitinda YOK -> bu yoldan YENI kart kaydi denenmez.
+export type ReviewSweepOutcome = 'success' | 'failed' | 'still_pending'
+
+export async function resolvePendingPaymentViaReport(
   admin: SupabaseClient,
   order: OrderForOutcome,
   clientRefCode: string,
   reportCfg: ReportConfig,
   cfg: CompletionConfig,
-): Promise<{ verified: boolean }> {
+): Promise<ReviewSweepOutcome> {
   let report: ReportedTransaction
   try {
     report = await queryPaynkolayTransactionReport(reportCfg, clientRefCode, new Date())
   } catch (e) {
-    console.error('[paynkolay-complete] report fallback error:', e)
-    return { verified: false }
+    console.error('[paynkolay-complete] report sorgu hatasi:', e)
+    return 'still_pending'
   }
-  if (!report.found) return { verified: false }
+  if (!report.found) return 'still_pending'
 
-  const statusOk = report.status.toUpperCase() === 'SUCCESS'
-  const incomingCents = Math.round(parseFloat(String(report.amount || '0')) * 100)
-  const orderCents = Math.round(Number(order.total_price ?? 0) * 100)
-  const amountOk = !!incomingCents && incomingCents >= orderCents
-  if (!statusOk || !amountOk) {
-    console.error('[paynkolay-complete] report dogrulamasi basarisiz', {
-      orderId: order.id, status: report.status, incomingCents, orderCents,
-    })
-    return { verified: false }
+  const statusUpper = report.status.toUpperCase()
+
+  if (statusUpper === 'SUCCESS') {
+    const incomingCents = Math.round(parseFloat(String(report.amount || '0')) * 100)
+    const orderCents = Math.round(Number(order.total_price ?? 0) * 100)
+    const amountOk = !!incomingCents && incomingCents >= orderCents
+    if (!amountOk) {
+      // SUCCESS ama tutar tutmuyor -> otomatik BASARISIZ SAYMA (para hareketi
+      // olmus olabilir), insana birak; sweep 24h icinde tekrar deneyecek.
+      console.error('[paynkolay-complete] report SUCCESS ama tutar uyusmuyor', {
+        orderId: order.id, incomingCents, orderCents,
+      })
+      return 'still_pending'
+    }
+    await applyPaynkolayOutcome(admin, order, {
+      isSuccess: true,
+      referenceCode: report.referenceCode,
+      txnTimestamp: report.trxDateRaw,
+      responseMessage: 'report_verified',
+      tranId: '',
+      clientRefCode,
+      source: 'report_verified',
+    }, cfg)
+    await markHashMismatchResolvedByReport(admin, order, clientRefCode)
+    return 'success'
   }
 
-  await applyPaynkolayOutcome(admin, order, {
-    isSuccess: true,
-    referenceCode: report.referenceCode,
-    txnTimestamp: report.trxDateRaw,
-    responseMessage: 'report_verified',
-    tranId: '',
-    clientRefCode,
-    source: 'report_verified',
-  }, cfg)
+  if (statusUpper === 'ERROR') {
+    await applyPaynkolayOutcome(admin, order, {
+      isSuccess: false,
+      referenceCode: report.referenceCode,
+      txnTimestamp: report.trxDateRaw,
+      responseMessage: 'Paynkolay raporu: islem basarisiz (report_verified)',
+      tranId: '',
+      clientRefCode,
+      source: 'report_verified',
+    }, cfg)
+    return 'failed'
+  }
 
-  return { verified: true }
+  // NEW veya bilinmeyen status -> Paynkolay tarafinda hala islemde, bekle.
+  return 'still_pending'
+}
+
+// ── Kozmetik duzeltme: rapor SONRADAN basariyi dogrularsa, ANINDA yazilmis
+//    olan 'hash_mismatch' failed_payments kaydini "aslinda basariliydi" diye
+//    isaretle (silmez — audit trail korunur, sadece not eklenir).
+async function markHashMismatchResolvedByReport(
+  admin: SupabaseClient,
+  order: OrderForOutcome,
+  clientRefCode: string,
+): Promise<void> {
+  if (!order.user_id) return
+  try {
+    const { data: rows } = await admin
+      .from('failed_payments')
+      .select('id, order_data')
+      .eq('user_id', order.user_id)
+      .contains('order_data', { reason: 'hash_mismatch', clientRefCode })
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const row = rows?.[0]
+    if (!row) return
+    const nextData = { ...(row.order_data as Record<string, unknown>), resolved_by_report: true }
+    await admin.from('failed_payments').update({ order_data: nextData }).eq('id', row.id)
+  } catch (e) {
+    console.error('[paynkolay-complete] markHashMismatchResolvedByReport error:', e)
+  }
+}
+
+// ── Siparisi "belirsiz, incelemede" isaretle: ne hash ne rapor hemen teyit
+//    edemedi. Order'a DOKUNULMAZ (status/payment_status ayni kalir) — sadece
+//    payment_review_pending=true + needs_manual_review audit. merchant_oid
+//    bos ise BU denemenin clientRefCode'u ile doldurulur (sweep'in rapor
+//    sorgusu icin gerekli — init'teki "ilk ref'i sakla" davranisiyla AYNI).
+export async function markOrderPendingReview(
+  admin: SupabaseClient,
+  order: OrderForOutcome,
+  clientRefCode: string,
+  errorMessage: string,
+): Promise<void> {
+  const updatePayload: Record<string, unknown> = {
+    payment_review_pending: true,
+    payment_review_started_at: new Date().toISOString(),
+  }
+  if (!order.merchant_oid) updatePayload.merchant_oid = clientRefCode
+  const { error } = await admin.from('orders').update(updatePayload).eq('id', order.id)
+  if (error) console.error('[paynkolay-complete] markOrderPendingReview update error:', error)
+
+  if (order.user_id) {
+    try {
+      await admin.from('failed_payments').insert([{
+        user_id: order.user_id,
+        error_message: errorMessage,
+        amount: 0,
+        payment_method: 'kredi-karti-saklı',
+        order_data: { reason: 'needs_manual_review', orderId: order.id, clientRefCode },
+        created_at: new Date().toISOString(),
+      }])
+    } catch (e) {
+      console.error('[paynkolay-complete] needs_manual_review log error:', e)
+    }
+  }
 }
