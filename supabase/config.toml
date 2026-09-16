@@ -67,6 +67,12 @@ verify_jwt = true
 import_map = "./functions/paynkolay-review-sweep/deno.json"
 entrypoint = "./functions/paynkolay-review-sweep/index.ts"
 
+[functions.order-alert]
+enabled = true
+verify_jwt = true
+import_map = "./functions/order-alert/deno.json"
+entrypoint = "./functions/order-alert/index.ts"
+
 [functions.adisyo-webhook-receiver]
 enabled = true
 verify_jwt = false
