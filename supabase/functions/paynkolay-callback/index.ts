@@ -64,6 +64,10 @@ Deno.serve(async (req: Request) => {
       formData.forEach((value, key) => { data[key] = value })
     }
 
+    // TESHIS: PaynKolay'in bu istekte GERCEKTEN hangi alan adlarini gonderdigini
+    // gor — degerler ASLA loglanmaz, sadece anahtar (key) adlari.
+    console.log('[paynkolay-callback] incoming field names:', Object.keys(data))
+
     // ── Alanlari cek (UPPER_CASE + camelCase tolerans). TRAN_ID: hosted donuste
     //    Token YOK, sadece TRAN_ID var (2026-09-16 canli testte dogrulandi) —
     //    kart-kaydetme tetikleyicisi artik bu.

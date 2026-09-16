@@ -949,6 +949,10 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
   // MOUNTED kalir (callback POST'u ucustayken kapanmaz — Tosla'daki notla ayni).
   const handledRef = useRef(false);
 
+  // StrictMode/yeniden-render'a karsi guard: mount-baslatma effect'i ekran
+  // basina EN FAZLA 1 kez gercekten calisir (syncSavedCards 8 kez cagrilmis
+  // gozlemi — 2026-09-16 canli test — buna karsi eklendi).
+  const initStartedRef = useRef(false);
   const [stage, setStage] = useState<PaynkolayStage>('loading_cards');
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -967,6 +971,8 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
   // baslatilir (normal odeme akisi degismez — 0 dokunuşla WebView acilir).
   // ACIKSA (allowlist test): kayitli kart senkronize edilir, secim ekrani gosterilir.
   useEffect(() => {
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
     let cancelled = false;
     (async () => {
       try {

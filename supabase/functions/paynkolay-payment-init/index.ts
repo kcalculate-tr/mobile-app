@@ -381,6 +381,7 @@ Deno.serve(async (req: Request) => {
     if (useCardSave) {
       fields.customerKey = customerKey
       fields.csAutoSave = 'true'
+      fields.csCardAlias = 'KCAL kartım'
     }
 
     const formHtml = buildAutoSubmitForm(VPOS_URL, fields)
@@ -408,12 +409,15 @@ Deno.serve(async (req: Request) => {
 
     // GUVENLI LOG: secret/sx DEGERI yok. sxLen tam sx kontrolu icin (~250 beklenir;
     // 26 ise secret kisaltilmis demektir). Deger sizmaz, sadece uzunluk.
+    // TESHIS: fieldNames -> PaynKolay'a GERCEKTEN customerKey/csAutoSave/
+    // csCardAlias gitti mi gor (alan ADLARI, degerleri degil).
     console.log('[paynkolay-init]', {
       orderId: order.id,
       clientRefCode,
       amount,
       cardSave: useCardSave,
       sxLen: SX.length,
+      fieldNames: Object.keys(fields),
     })
 
     return jsonResponse({ success: true, formHtml })

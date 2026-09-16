@@ -123,7 +123,11 @@ export async function fetchCardStorageList(
     let json: any = null
     try { json = JSON.parse(raw) } catch { return null }
     if (!isCardStorageListSuccess(json)) {
-      console.error('[paynkolay-shared] CardStorageCardList ProcReturnCode != 00')
+      // TESHIS: sadece hata kodu/mesaji — token/kart/customerKey ASLA loglanmaz.
+      console.error('[paynkolay-shared] CardStorageCardList ProcReturnCode != 00', {
+        procReturnCode: json?.ProcReturnCode,
+        errMsg: json?.ErrMsg,
+      })
       return null
     }
     return parseCardStorageList(json)
@@ -164,6 +168,7 @@ export async function upsertUserCard(
       last4: entry.last4 || null,
       brand: entry.brand || null,
       bank_name: entry.bank || null,
+      card_alias: entry.alias || null,
       is_default: isFirst,
     }])
     .select('id')

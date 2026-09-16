@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -53,8 +53,15 @@ export default function SavedCardsScreen() {
     }
   }, []);
 
+  // StrictMode/yeniden-render'a karsi guard: ekran mount'unda syncSavedCards
+  // EN FAZLA 1 kez otomatik cagrilir (manuel "asagi cekip yenile" bu guard'in
+  // disinda, her zaman calisir).
+  const autoLoadedRef = useRef(false);
   useEffect(() => {
-    if (isAuthenticated) load();
+    if (isAuthenticated && !autoLoadedRef.current) {
+      autoLoadedRef.current = true;
+      load();
+    }
   }, [isAuthenticated, load]);
 
   const handleSetDefault = async (card: SavedCard) => {
