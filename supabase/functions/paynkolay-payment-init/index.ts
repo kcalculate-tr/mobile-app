@@ -61,18 +61,6 @@ async function generatePaynkolayHash(parts: string[]): Promise<string> {
   return btoa(bin) // base64
 }
 
-// Telefonu Paynkolay customerKey formatina normalize et:
-// bosluk/parantez/tire/+90/90 onekini temizle -> 10 haneli 5XXXXXXXXX.
-// NOT: Paynkolay'in kabul ettigi kesin format ilk testte netlesecek (90... gerekirse
-//      burasi tek noktadan ayarlanir).
-function normalizePhone(raw: unknown): string {
-  let s = String(raw ?? '').replace(/[\s()\-]/g, '')
-  if (s.startsWith('+90')) s = s.slice(3)
-  else if (s.startsWith('90') && s.length === 12) s = s.slice(2)
-  if (s.startsWith('0')) s = s.slice(1)
-  return s // beklenen: 5XXXXXXXXX (10 hane)
-}
-
 // amount -> ondalik TL string ("150.00"). KURUS DEGIL (×100 YOK).
 function toDecimalTL(value: number): string {
   return Number(value || 0).toFixed(2)
@@ -308,14 +296,18 @@ Deno.serve(async (req: Request) => {
 
     const amount = toDecimalTL(amountNum) // "150.00" (recompute sonrasi guncel tutar)
 
-    // ── Telefon (customerKey kaynagi): profiles.phone, fallback orders.phone.
-    let phone = ''
+    // ── customerKey kaynağı: profiles.payment_customer_key (Sprint 2 / Görev 2.0
+    //    — sabit, 11 haneli rastgele sayısal, kullanıcı başına bir kez üretilir).
+    //    ESKİ DAVRANIŞ: customerKey = telefon numarasıydı; kullanıcı telefonunu
+    //    değiştirirse eski kayıtlı kartlar Paynkolay tarafında erişilemez hale
+    //    geliyordu (bkz. Sprint 2 hazırlık raporu). payment_customer_key asla
+    //    değişmediği için bu risk ortadan kalktı.
     const { data: profile } = await admin
       .from('profiles')
-      .select('phone')
+      .select('payment_customer_key')
       .eq('id', user.id)
       .maybeSingle()
-    phone = normalizePhone(profile?.phone ?? order.phone ?? '')
+    const paymentCustomerKey = String(profile?.payment_customer_key ?? '')
 
     // ── clientRefCode: orderId'yi gomer (callback'te map icin) + benzersizlik.
     const clientRefCode = `KCAL${order.id}T${Date.now()}`
@@ -333,8 +325,8 @@ Deno.serve(async (req: Request) => {
 
     // ── Kart saklama feature-flag: KAPALIYKEN customerKey BOS, csCustomerKey/csAutoSave YOK.
     //    Hash formulunde customerKey bos string olarak yer alir.
-    const useCardSave = CARD_SAVE_ENABLED && phone.length > 0
-    const customerKey = useCardSave ? phone : ''
+    const useCardSave = CARD_SAVE_ENABLED && paymentCustomerKey.length > 0
+    const customerKey = useCardSave ? paymentCustomerKey : ''
 
     // ── Request hash (secret ASLA response'a girmez).
     // PHP/Python 8-parca varyant (baseline). "Gecersiz anahtar" sx kaynakli

@@ -52,15 +52,6 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0
 }
 
-// Telefon normalize (init ile ayni) — kart saklamada customerKey kaynagi.
-function normalizePhone(raw: unknown): string {
-  let s = String(raw ?? '').replace(/[\s()\-]/g, '')
-  if (s.startsWith('+90')) s = s.slice(3)
-  else if (s.startsWith('90') && s.length === 12) s = s.slice(2)
-  if (s.startsWith('0')) s = s.slice(1)
-  return s
-}
-
 // Birden fazla olasi alan adindan ilk dolu degeri al (UPPER + camelCase tolerans).
 function pick(data: Record<string, unknown>, ...keys: string[]): string {
   for (const k of keys) {
@@ -350,7 +341,9 @@ Deno.serve(async (req: Request) => {
   }
 })
 
-// ── Kart kaydet: UNIQUE(user_id, card_token) catismasini yut; ilk kartsa default.
+// ── Kart kaydet (Sprint 2 / Görev 2.0 sonrası şema): token artık user_cards'ta
+//    DEĞİL, ayrı user_card_secrets tablosunda (RLS: yalnızca service_role).
+//    customerKey = profiles.payment_customer_key (sabit) — artık telefon değil.
 async function saveUserCard(
   supabase: SupabaseClient,
   userId: string,
@@ -358,42 +351,59 @@ async function saveUserCard(
   maskedPan: string,
   cardBrand: string,
 ): Promise<void> {
-  // Zaten kayitliysa atla (UNIQUE(user_id, card_token)).
-  const { data: existing } = await supabase
+  // Bu kullanıcının mevcut kartları arasında aynı token zaten var mı?
+  const { data: existingCards } = await supabase
     .from('user_cards')
     .select('id')
     .eq('user_id', userId)
-    .eq('card_token', cardToken)
-    .maybeSingle()
-  if (existing) return
+  const existingIds = (existingCards ?? []).map((c: { id: string }) => c.id)
+  if (existingIds.length > 0) {
+    const { data: existingSecret } = await supabase
+      .from('user_card_secrets')
+      .select('card_id')
+      .in('card_id', existingIds)
+      .eq('card_token', cardToken)
+      .maybeSingle()
+    if (existingSecret) return
+  }
 
-  // Kullanicinin baska karti var mi? Yoksa bu kart default olsun.
-  const { count } = await supabase
-    .from('user_cards')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-  const isFirstCard = (count ?? 0) === 0
+  const isFirstCard = existingIds.length === 0
 
-  // customerKey = normalize telefon (init'te de bu gonderildi).
   const { data: profile } = await supabase
     .from('profiles')
-    .select('phone')
+    .select('payment_customer_key')
     .eq('id', userId)
     .maybeSingle()
-  const customerKey = normalizePhone(profile?.phone ?? '')
+  const customerKey = String(profile?.payment_customer_key ?? '')
 
   // Mevcut tablo semasi: last4 (varchar) + brand (varchar) — masked_pan/card_brand YOK.
   // Paynkolay masked PAN'inin son 4 hanesini last4'e yaz.
   const last4 = String(maskedPan ?? '').replace(/\D/g, '').slice(-4)
 
-  await supabase.from('user_cards').insert([{
-    user_id: userId,
-    paynkolay_customer_key: customerKey,
-    card_token: cardToken,
-    last4: last4 || null,
-    brand: cardBrand || null,
-    is_default: isFirstCard,
-  }])
+  const { data: newCard, error: cardErr } = await supabase
+    .from('user_cards')
+    .insert([{
+      user_id: userId,
+      paynkolay_customer_key: customerKey,
+      last4: last4 || null,
+      brand: cardBrand || null,
+      is_default: isFirstCard,
+    }])
+    .select('id')
+    .single()
+  if (cardErr || !newCard) {
+    console.error('[paynkolay-callback] user_cards insert failed:', cardErr)
+    return
+  }
+
+  const { error: secretErr } = await supabase
+    .from('user_card_secrets')
+    .insert([{ card_id: newCard.id, card_token: cardToken }])
+  if (secretErr) {
+    console.error('[paynkolay-callback] user_card_secrets insert failed:', secretErr)
+    // Token'sız bir kart satırı yararsız/yanıltıcı — geri al.
+    await supabase.from('user_cards').delete().eq('id', newCard.id)
+  }
 }
 
 type MacroOrder = {
