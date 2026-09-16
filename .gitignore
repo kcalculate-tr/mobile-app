@@ -79,3 +79,17 @@ google-play-key.json
 
 # env yedekleri (ASLA commit etme)
 *.env.bak
+
+# Supabase CLI local link metadata (proje/environment'a özel, repo'da gerekmiyor)
+supabase/.temp/
+
+# Claude Code local tooling config (kullanıcıya özel, repo içeriği değil)
+.claude/
+
+# Dev-only "Demo Scroll" debug aracı (#if DEBUG altında, production'a sızmıyor
+# ama henüz repo'nun parçası değil — src/dev/ + Expo config plugin'i)
+src/dev/
+plugins/
+
+# Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
+tools/**/.env
