@@ -3,6 +3,16 @@ import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
 import { getSupabaseClient } from './supabase';
 import { calculateMacroDiscount, isMacroMemberFromUntil } from './macros';
+import {
+  buildCartSignatureLines,
+  buildOptionsSignature,
+  CartSignatureLine,
+  computeCartSignature,
+} from './cartSignature';
+
+// CheckoutScreen vb. bu iki fonksiyonu '../lib/orders'tan import ediyor —
+// gerçek tanımları bağımsız/test edilebilir src/lib/cartSignature.ts'te.
+export { buildCartSignatureLines, computeCartSignature } from './cartSignature';
 
 const fetchMacroDiscountForUser = async (
   supabase: SupabaseClient,
@@ -44,25 +54,27 @@ export type PendingPaymentOrder = {
   cartSignature: string;
 };
 
-// Basit sepet "hash"i — draft oluşturulduğundaki sepetle ödeme anındaki
-// güncel sepeti karşılaştırmak için (ürün ekle/çıkar, kupon değişimi vb.
-// gerçek bir içerik değişikliğini yakalamaya yeter, aynı toplam tutarlı bir
-// ürün-ürün takası gibi çok nadir edge case'leri kasıtlı olarak atlıyor).
-export const computeCartSignature = (
-  totalQuantity: number,
-  subtotal: number,
-  couponCode: string | null | undefined,
-): string => `${totalQuantity}|${subtotal.toFixed(2)}|${couponCode || 'none'}`;
-
+// DB'den okunan bir sipariş satırından (items jsonb + address_id/delivery_*/
+// coupon_code kolonları) aynı imzayı üretir — hem taze oluşturulan hem
+// route'tan resume edilen taslaklar için karşılaştırılabilir olsun diye.
 const cartSignatureFromOrderRow = (row: Record<string, unknown>): string => {
   const items = Array.isArray(row.items) ? row.items : [];
-  const totalQuantity = items.reduce(
-    (sum: number, it: unknown) => sum + (Number((it as Record<string, unknown>)?.quantity) || 0),
-    0,
-  );
-  const subtotal = toSafeNumber(row.subtotal_amount) || 0;
-  const couponCode = row.coupon_code ? String(row.coupon_code) : null;
-  return computeCartSignature(totalQuantity, subtotal, couponCode);
+  const lines: CartSignatureLine[] = items.map((it) => {
+    const rec = (it ?? {}) as Record<string, unknown>;
+    return {
+      productId: String(rec.id ?? ''),
+      optionsSignature: buildOptionsSignature(rec.selected_options),
+      quantity: Number(rec.quantity) || 0,
+    };
+  });
+  return computeCartSignature(lines, {
+    couponCode: row.coupon_code ? String(row.coupon_code) : null,
+    addressId: row.address_id ? String(row.address_id) : null,
+    deliveryMethod: row.delivery_method ? String(row.delivery_method) : null,
+    deliveryType: row.delivery_type ? String(row.delivery_type) : null,
+    scheduledDate: row.scheduled_date ? String(row.scheduled_date) : null,
+    scheduledTime: row.scheduled_time ? String(row.scheduled_time) : null,
+  });
 };
 
 type OrderInsertResult = {
@@ -96,7 +108,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 // orders.address_id NULL kalır (FK constraint patlamasın). Diğer her durumda
 // gerçek UUID gönderilir — kurye/Edge Function fallback'i devre dışı kalır
 // ve doğru adres garanti edilir.
-const resolveAddressId = (
+export const resolveAddressId = (
   address: Address,
   deliveryMethod: 'delivery' | 'pickup',
 ): string | null => {
@@ -523,14 +535,19 @@ export const createOrderDraftForPayment = async ({
     }
   }
 
-  const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
   return {
     orderId: finalOrderId,
     orderCode: String(insertedOrder.order_code || orderCode),
     totalAmount,
     warnings,
-    cartSignature: computeCartSignature(totalQuantity, safeSubtotal, couponCode),
+    cartSignature: computeCartSignature(buildCartSignatureLines(cartItems), {
+      couponCode: orderPayload.coupon_code as string | null,
+      addressId: orderPayload.address_id as string | null,
+      deliveryMethod: orderPayload.delivery_method as string | null,
+      deliveryType: orderPayload.delivery_type as string | null,
+      scheduledDate: orderPayload.scheduled_date as string | null,
+      scheduledTime: orderPayload.scheduled_time as string | null,
+    }),
   };
 };
 
@@ -625,7 +642,7 @@ const mapOrderSummary = (row: Record<string, unknown>): PendingPaymentOrder => (
 });
 
 const PENDING_ORDER_SELECT =
-  'id,order_code,total_amount,total_price,status,payment_status,updated_at,created_at,items,subtotal_amount,coupon_code';
+  'id,order_code,total_amount,total_price,status,payment_status,updated_at,created_at,items,subtotal_amount,coupon_code,address_id,delivery_method,delivery_type,scheduled_date,scheduled_time';
 
 export const fetchPendingPaymentOrderById = async ({
   supabase,

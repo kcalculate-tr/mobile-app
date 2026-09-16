@@ -39,11 +39,13 @@ import {
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { isApiBaseUrlConfigured } from '../lib/api';
 import {
+  buildCartSignatureLines,
   cancelStaleOrderDraft,
   computeCartSignature,
   createOrderDraftForPayment,
   fetchPendingPaymentOrderById,
   PendingPaymentOrder,
+  resolveAddressId,
   updateOrderPaymentStatus,
 } from '../lib/orders';
 import {
@@ -1128,30 +1130,6 @@ export default function CheckoutScreen() {
     try {
       const supabase = getSupabaseClient();
 
-      // Mevcut bir taslak varsa (retry/resume), sepetin draft oluşturulduğundan
-      // beri değişip değişmediğini basit bir imza (ürün adedi+ara toplam+kupon)
-      // ile kontrol et. Değiştiyse eski taslak 'cancelled' yapılır (guard buna
-      // izin veriyor — yalnızca confirmed/preparing/on_way/delivered korunuyor)
-      // ve aşağıdaki `if (!paymentOrderId)` bloğu YENİ, güncel sepetle bir draft
-      // oluşturur — böylece ödeme her zaman ekranda görünen güncel tutar/içerik
-      // üzerinden başlar.
-      if (paymentOrderId && pendingPaymentOrder) {
-        const currentQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-        const currentSignature = computeCartSignature(
-          currentQuantity,
-          subtotal,
-          appliedCoupon?.code ?? null,
-        );
-        if (currentSignature !== pendingPaymentOrder.cartSignature) {
-          await cancelStaleOrderDraft({ supabase, orderId: paymentOrderId, userId: user.id });
-          paymentOrderId = '';
-          paymentOrderCode = '';
-          paymentOrderAmount = totalAmount;
-          dispatchPay({ type: 'SET_RETRY_PAYMENT_ORDER_ID', payload: '' });
-          dispatchPay({ type: 'SET_PENDING_PAYMENT_ORDER', payload: null });
-        }
-      }
-
       // Build scheduled delivery fields
       const scheduledFields =
         deliveryTimeType === 'scheduled' && selectedScheduledDate && selectedTimeSlot
@@ -1179,6 +1157,32 @@ export default function CheckoutScreen() {
       };
       const effectiveAddress = deliveryMethod === 'pickup' ? pickupAddress : selectedAddress!;
       const orderDeliveryMethod = deliveryMethod === 'home_delivery' ? 'delivery' : 'pickup';
+
+      // Mevcut bir taslak varsa (retry/resume), sepetin draft oluşturulduğundan
+      // beri değişip değişmediğini satır bazlı (ürün+opsiyon+adet) + teslimat
+      // bağlamı (adres/yöntem/tip/randevu) + kupon imzasıyla kontrol et.
+      // Değiştiyse eski taslak 'cancelled' yapılır (guard buna izin veriyor —
+      // yalnızca confirmed/preparing/on_way/delivered korunuyor) ve aşağıdaki
+      // `if (!paymentOrderId)` bloğu YENİ, güncel sepetle bir draft oluşturur —
+      // böylece ödeme her zaman ekranda görünen güncel tutar/içerik üzerinden başlar.
+      if (paymentOrderId && pendingPaymentOrder) {
+        const currentSignature = computeCartSignature(buildCartSignatureLines(items), {
+          couponCode: appliedCoupon?.code ?? null,
+          addressId: resolveAddressId(effectiveAddress, orderDeliveryMethod),
+          deliveryMethod: orderDeliveryMethod,
+          deliveryType: scheduledFields.delivery_type,
+          scheduledDate: scheduledFields.scheduled_date,
+          scheduledTime: scheduledFields.scheduled_time,
+        });
+        if (currentSignature !== pendingPaymentOrder.cartSignature) {
+          await cancelStaleOrderDraft({ supabase, orderId: paymentOrderId, userId: user.id });
+          paymentOrderId = '';
+          paymentOrderCode = '';
+          paymentOrderAmount = totalAmount;
+          dispatchPay({ type: 'SET_RETRY_PAYMENT_ORDER_ID', payload: '' });
+          dispatchPay({ type: 'SET_PENDING_PAYMENT_ORDER', payload: null });
+        }
+      }
 
       if (!isPaymentFeatureEnabled) {
         // GUVENLIK: Daha once bu kosulda createOrderFromCart cagrilarak siparis

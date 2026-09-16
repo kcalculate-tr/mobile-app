@@ -10,7 +10,8 @@
     "hygiene": "node ./scripts/hygiene-check.js",
     "typecheck": "npm run hygiene && tsc --noEmit",
     "doctor": "npx expo-doctor",
-    "lint": "npm run hygiene && eslint . --ext .ts,.tsx"
+    "lint": "npm run hygiene && eslint . --ext .ts,.tsx",
+    "test:unit": "tsx --test \"src/**/__tests__/**/*.test.ts\""
   },
   "engines": {
     "node": ">=20 <23"
@@ -65,6 +66,7 @@
     "@types/react": "~19.1.10",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~10.0.0",
+    "tsx": "^4.23.13",
     "typescript": "~5.9.2"
   },
   "private": true
