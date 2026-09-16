@@ -1278,22 +1278,20 @@ export default function TrackerScreen() {
         }
       }
     } catch (e) {
+      // Teknik hata kodu/mesajı yalnızca console'a gider (__DEV__ dışında da) —
+      // kullanıcıya code/message gösterilmez, genel bir mesajla yetinilir.
       console.error(
         `[consume] ${isCurrentlyConsumed ? 'untoggle' : 'insert'} error:`,
         formatSupabaseErrorForDevLog(e),
+        { code: (e as any)?.code, message: (e as any)?.message, hasSession },
       );
-      // TEŞHİS (geçici): gerçek hatayı cihazda görünür kıl — genel mesaj
-      // gizliyordu. session yoksa Alert'e ayrıca işaret et.
-      const errCode = (e as any)?.code ?? '-';
-      const errMsg = (e as any)?.message ?? String(e);
-      const sessionNote = hasSession ? '' : '\n(session yok)';
       // Atomik rollback (bayat full-Set replace YOK)
       if (isCurrentlyConsumed) {
         dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
-        Alert.alert('Tüketim geri alınamadı', `code: ${errCode}\n${errMsg}${sessionNote}`);
+        Alert.alert('Kaydedilemedi', 'Lütfen tekrar deneyin.');
       } else {
         dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: instanceId });
-        Alert.alert('Tüketim kaydedilemedi', `code: ${errCode}\n${errMsg}${sessionNote}`);
+        Alert.alert('Kaydedilemedi', 'Lütfen tekrar deneyin.');
       }
     } finally {
       consumeInFlightRef.current.delete(instanceId);
