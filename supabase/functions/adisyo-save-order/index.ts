@@ -29,6 +29,32 @@ const ADISYO_PAYMENT_METHOD_ID = parseInt(Deno.env.get("ADISYO_PAYMENT_METHOD_ID
 const SUPABASE_URL        = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+interface AdisyoCreds {
+  apiKey: string;
+  apiSecret: string;
+  apiConsumer: string;
+}
+
+const GLOBAL_ADISYO_CREDS: AdisyoCreds = {
+  apiKey: ADISYO_API_KEY,
+  apiSecret: ADISYO_API_SECRET,
+  apiConsumer: ADISYO_API_CONSUMER,
+};
+
+// FAZ B (çok-şube): Adisyo şimdilik TEK hesap — ama kod ileride şubeye özel
+// kimlik bilgisine hazır. branches.adisyo_config doluysa (örn.
+// { apiKey, apiSecret, apiConsumer }) onu kullanır; boşsa (bugünkü durum,
+// TÜM şubeler için) global secret'lara düşer.
+function resolveAdisyoCreds(adisyoConfig: unknown): AdisyoCreds {
+  if (adisyoConfig && typeof adisyoConfig === "object") {
+    const cfg = adisyoConfig as Partial<AdisyoCreds>;
+    if (cfg.apiKey && cfg.apiSecret && cfg.apiConsumer) {
+      return { apiKey: cfg.apiKey, apiSecret: cfg.apiSecret, apiConsumer: cfg.apiConsumer };
+    }
+  }
+  return GLOBAL_ADISYO_CREDS;
+}
+
 const ADISYO_BASE = "https://ext.adisyo.com/api/External/v2";
 const PREPARED_DELAY_MS = 1500;
 
@@ -181,8 +207,28 @@ serve(async (req) => {
     { itemsSum, orderTotal, deliveryFee, computedDiscount: discount, knownDiscount }, null, null,
     `discount_calc: items_sum(katalog)=${itemsSum} net=${orderTotal} → Discount=${discount} (kupon/makro=${knownDiscount})`, null);
 
+  // === 6b. Şube bilgisi (FAZ B) — Adisyo hâlâ TEK hesap/lokasyon; mutfak siparişin
+  // hangi şubeye ait olduğunu not'un başındaki etiketten ayırt eder. Merkez
+  // (is_default) için etiket YOK (mevcut davranış aynen korunur — regresyon yok).
+  let branchTag = "";
+  let adisyoCreds = GLOBAL_ADISYO_CREDS;
+  if (dbOrder.branch_id) {
+    const { data: branchRow } = await supabase
+      .from("branches")
+      .select("name, is_default, adisyo_config")
+      .eq("id", dbOrder.branch_id)
+      .maybeSingle();
+    if (branchRow) {
+      adisyoCreds = resolveAdisyoCreds(branchRow.adisyo_config);
+      if (!branchRow.is_default && branchRow.name) {
+        branchTag = `[${String(branchRow.name).toLocaleUpperCase("tr-TR")}]`;
+      }
+    }
+  }
+
   // === 7. Sipariş notu
   const noteParts: string[] = [];
+  if (branchTag) noteParts.push(branchTag);
   if (dbOrder.delivery_type === "scheduled" && dbOrder.scheduled_date) {
     const time = dbOrder.scheduled_time ? ` ${String(dbOrder.scheduled_time).substring(0, 5)}` : "";
     noteParts.push(`[Randevulu: ${dbOrder.scheduled_date}${time}]`);
@@ -213,7 +259,7 @@ serve(async (req) => {
   };
 
   // === 9. SaveOrder POST + log
-  const saveOrderRes = await callAdisyo(supabase, orderId, "SaveOrder", `${ADISYO_BASE}/SaveOrder`, saveOrderPayload);
+  const saveOrderRes = await callAdisyo(supabase, orderId, "SaveOrder", `${ADISYO_BASE}/SaveOrder`, saveOrderPayload, adisyoCreds);
   if (!saveOrderRes.ok) {
     return await fail(supabase, orderId, saveOrderRes.errorMsg, saveOrderPayload);
   }
@@ -229,7 +275,7 @@ serve(async (req) => {
   //
   // await new Promise(r => setTimeout(r, PREPARED_DELAY_MS));
   // const preparedPayload = { orderId: adisyoOrderId };
-  // const preparedRes = await callAdisyo(supabase, orderId, "Prepared", `${ADISYO_BASE}/Prepared`, preparedPayload);
+  // const preparedRes = await callAdisyo(supabase, orderId, "Prepared", `${ADISYO_BASE}/Prepared`, preparedPayload, adisyoCreds);
   // if (!preparedRes.ok) {
   //   return await fail(supabase, orderId, `prepared_failed: ${preparedRes.errorMsg}`, preparedPayload);
   // }
@@ -258,6 +304,7 @@ async function callAdisyo(
   eventName: string,
   url: string,
   body: unknown,
+  creds: AdisyoCreds = GLOBAL_ADISYO_CREDS,
 ): Promise<{ ok: boolean; body?: any; errorMsg: string }> {
   const t0 = Date.now();
   await logEvent(supabase, orderId, `${eventName}.request`, body, null, null, null, null);
@@ -270,9 +317,9 @@ async function callAdisyo(
     const resp = await fetch(url, {
       method: "POST",
       headers: {
-        "x-api-key": ADISYO_API_KEY,
-        "x-api-secret": ADISYO_API_SECRET,
-        "x-api-consumer": ADISYO_API_CONSUMER,
+        "x-api-key": creds.apiKey,
+        "x-api-secret": creds.apiSecret,
+        "x-api-consumer": creds.apiConsumer,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
