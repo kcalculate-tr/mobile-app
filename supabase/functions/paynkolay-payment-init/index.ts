@@ -140,10 +140,13 @@ Deno.serve(async (req: Request) => {
       if (text) body = JSON.parse(text)
     } catch { body = {} }
 
-    const { orderId } = body ?? {}
+    const { orderId, saveCard } = body ?? {}
     if (!orderId) {
       return jsonResponse({ error: 'orderId zorunlu' }, 400)
     }
+    // Kullanici onayi (Checkout "Kartımı kaydet" onay kutusu, varsayilan ISARETSIZ).
+    // CARD_SAVE_ENABLED acilsa bile bu true gelmeden kart saklanmaz.
+    const userConsentedToSaveCard = saveCard === true
 
     // ── Order'i service-role ile cek; tutari ve telefonu DB'den al (mobile'a guvenme).
     const admin = createClient(
@@ -323,9 +326,9 @@ Deno.serve(async (req: Request) => {
     const rnd = getRnd() // "dd.MM.yyyy HH:mm:ss" — hem form hem hash AYNI deger
     const cardHolderIP = clientIpFromRequest(req)
 
-    // ── Kart saklama feature-flag: KAPALIYKEN customerKey BOS, csCustomerKey/csAutoSave YOK.
+    // ── Kart saklama feature-flag: KAPALIYKEN customerKey BOS, customerKey/csAutoSave YOK.
     //    Hash formulunde customerKey bos string olarak yer alir.
-    const useCardSave = CARD_SAVE_ENABLED && paymentCustomerKey.length > 0
+    const useCardSave = CARD_SAVE_ENABLED && paymentCustomerKey.length > 0 && userConsentedToSaveCard
     const customerKey = useCardSave ? paymentCustomerKey : ''
 
     // ── Request hash (secret ASLA response'a girmez).
@@ -364,7 +367,7 @@ Deno.serve(async (req: Request) => {
       fields.agentCode = AGENT_CODE
     }
     if (useCardSave) {
-      fields.csCustomerKey = customerKey
+      fields.customerKey = customerKey
       fields.csAutoSave = 'true'
     }
 

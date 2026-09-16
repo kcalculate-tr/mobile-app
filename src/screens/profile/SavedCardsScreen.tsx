@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,26 +11,98 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CaretLeft, CreditCard, Lock, Plus } from 'phosphor-react-native';
+import { CaretLeft, CreditCard, Lock, Star, Trash } from 'phosphor-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
+import { deleteSavedCard, setDefaultCard, SavedCard, syncSavedCards } from '../../lib/cards';
+import { haptic } from '../../utils/haptics';
 
 type SavedCardsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function cardLabel(card: SavedCard): string {
+  const brand = card.brand?.trim() || 'Kart';
+  const bank = card.bank_name?.trim();
+  return bank ? `${bank} ${brand}` : brand;
+}
 
 export default function SavedCardsScreen() {
   const navigation = useNavigation<SavedCardsNavigationProp>();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, loading } = useRequireAuth();
+  const { isAuthenticated, loading: authLoading } = useRequireAuth();
 
-  if (loading) return <ActivityIndicator />;
+  const [cards, setCards] = useState<SavedCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    setError('');
+    try {
+      const result = await syncSavedCards();
+      setCards(result.cards ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kartlar yüklenemedi.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) load();
+  }, [isAuthenticated, load]);
+
+  const handleSetDefault = async (card: SavedCard) => {
+    if (card.is_default || busyId) return;
+    setBusyId(card.id);
+    try {
+      await setDefaultCard(card.id);
+      haptic.success();
+      setCards((prev) => prev.map((c) => ({ ...c, is_default: c.id === card.id })));
+    } catch (err) {
+      Alert.alert('Hata', err instanceof Error ? err.message : 'İşlem başarısız.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = (card: SavedCard) => {
+    if (busyId) return;
+    Alert.alert(
+      'Kartı sil',
+      `${cardLabel(card)} •••• ${card.last4 ?? ''} kartını silmek istediğinize emin misiniz?`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            setBusyId(card.id);
+            try {
+              await deleteSavedCard(card.id);
+              haptic.success();
+              setCards((prev) => prev.filter((c) => c.id !== card.id));
+            } catch (err) {
+              Alert.alert('Hata', err instanceof Error ? err.message : 'Kart silinemedi.');
+            } finally {
+              setBusyId(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  if (authLoading) return <ActivityIndicator />;
   if (!isAuthenticated) return null;
 
   return (
     <ScreenContainer edges={['top']} style={s.root}>
-      {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
           <CaretLeft size={22} color="#000000" />
@@ -41,44 +115,68 @@ export default function SavedCardsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.content, { paddingBottom: Math.max(32, insets.bottom + 24) }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
       >
-        {/* Coming soon badge */}
-        <View style={s.comingBadge}>
-          <Text style={s.comingBadgeText}>Yakında Aktif Olacak</Text>
-        </View>
-
-        {/* Empty state — dark card preview */}
-        <View style={s.mockCard}>
-          <View style={s.mockCardCircle1} />
-          <View style={s.mockCardCircle2} />
-          <CreditCard size={28} color="rgba(255,255,255,0.4)" />
-          <Text style={s.mockCardLabel}>Kart Eklenmemiş</Text>
-          <Text style={s.mockCardSub}>Kartlarınız buraya eklenecek</Text>
-          <View style={s.mockCardDots}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <View key={i} style={s.mockDotGroup}>
-                {Array.from({ length: 4 }).map((__, j) => (
-                  <View key={j} style={s.mockDot} />
-                ))}
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.brand.green} />
+        ) : cards.length === 0 ? (
+          <>
+            <View style={s.mockCard}>
+              <View style={s.mockCardCircle1} />
+              <View style={s.mockCardCircle2} />
+              <CreditCard size={28} color="rgba(255,255,255,0.4)" />
+              <Text style={s.mockCardLabel}>Kart Eklenmemiş</Text>
+              <Text style={s.mockCardSub}>Ödeme sırasında "Kartımı kaydet" seçeneğiyle kart ekleyebilirsiniz</Text>
+            </View>
+            <Text style={s.emptyTitle}>Kayıtlı kart bulunmuyor</Text>
+            <Text style={s.emptySub}>
+              Ödeme kartlarınızı ekleyerek hızlıca ödeme yapabilirsiniz.
+            </Text>
+            {error ? <Text style={s.errorText}>{error}</Text> : null}
+          </>
+        ) : (
+          <View style={{ width: '100%', gap: 12 }}>
+            {cards.map((card) => (
+              <View key={card.id} style={s.cardRow}>
+                <View style={s.cardIconWrap}>
+                  <CreditCard size={20} color="#000000" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.cardTitle}>{cardLabel(card)}</Text>
+                  <Text style={s.cardSub}>•••• {card.last4 ?? '----'}</Text>
+                </View>
+                {card.is_default ? (
+                  <View style={s.defaultBadge}>
+                    <Star size={12} color="#1a3d00" weight="fill" />
+                    <Text style={s.defaultBadgeText}>Varsayılan</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleSetDefault(card)}
+                    disabled={busyId === card.id}
+                    style={s.actionBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={s.actionBtnText}>Varsayılan Yap</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => handleDelete(card)}
+                  disabled={busyId === card.id}
+                  style={s.deleteBtn}
+                  activeOpacity={0.7}
+                >
+                  {busyId === card.id ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <Trash size={18} color="#EF4444" />
+                  )}
+                </TouchableOpacity>
               </View>
             ))}
           </View>
-        </View>
+        )}
 
-        <Text style={s.emptyTitle}>Kayıtlı kart bulunmuyor</Text>
-        <Text style={s.emptySub}>
-          Ödeme kartlarınızı ekleyerek hızlıca ödeme yapabilirsiniz.
-        </Text>
-
-        {/* Add card button (disabled) */}
-        <TouchableOpacity style={s.addCardBtn} disabled activeOpacity={0.6}>
-          <View style={s.addCardIconWrap}>
-            <Plus size={18} color={COLORS.text.tertiary} />
-          </View>
-          <Text style={s.addCardText}>Yeni Kart Ekle</Text>
-        </TouchableOpacity>
-
-        {/* Security note */}
         <View style={s.securityNote}>
           <Lock size={14} color={COLORS.text.secondary} />
           <Text style={s.securityText}>
@@ -107,16 +205,9 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   content: { paddingHorizontal: 16, paddingTop: 8, alignItems: 'center', gap: 14 },
 
-  comingBadge: {
-    backgroundColor: COLORS.brand.green, borderRadius: 100,
-    paddingHorizontal: 16, paddingVertical: 7,
-  },
-  comingBadgeText: { fontSize: 12, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-
-  // Mock card
+  // Mock card (empty state)
   mockCard: {
-    width: '100%', height: 180, borderRadius: 20,
+    width: '100%', height: 160, borderRadius: 20,
     backgroundColor: '#1a1a1a', overflow: 'hidden',
     alignItems: 'flex-start', justifyContent: 'flex-end',
     padding: 20, gap: 4, marginTop: 4,
@@ -132,31 +223,46 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   mockCardLabel: { fontSize: 16, fontWeight: '700',
 fontFamily: 'PlusJakartaSans_700Bold', color: 'rgba(255,255,255,0.6)' },
   mockCardSub: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 12 },
-  mockCardDots: { flexDirection: 'row', gap: 8 },
-  mockDotGroup: { flexDirection: 'row', gap: 4 },
-  mockDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)' },
 
   emptyTitle: { fontSize: 16, fontWeight: '700',
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', textAlign: 'center' },
   emptySub: { fontSize: 13, color: COLORS.text.secondary, textAlign: 'center', lineHeight: 19, paddingHorizontal: 12 },
+  errorText: { fontSize: 13, color: '#EF4444', textAlign: 'center' },
 
-  addCardBtn: {
-    width: '100%', height: 56, borderRadius: 16,
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(0,0,0,0.15)',
-    backgroundColor: '#ffffff', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 10,
+  // Card row (populated state)
+  cardRow: {
+    width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#ffffff', borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
   },
-  addCardIconWrap: {
-    width: 28, height: 28, borderRadius: 100,
+  cardIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
     backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center',
   },
-  addCardText: { fontSize: 14, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.tertiary },
+  cardTitle: { fontSize: 14, fontWeight: '700',
+fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  cardSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
+  defaultBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.brand.green, borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  defaultBadgeText: { fontSize: 11, fontWeight: '700',
+fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
+  actionBtn: {
+    borderRadius: 100, paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: '#f0f0f0',
+  },
+  actionBtnText: { fontSize: 11, fontWeight: '600',
+fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
+  deleteBtn: {
+    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+  },
 
   securityNote: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     backgroundColor: '#ffffff', borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)', width: '100%',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)', width: '100%', marginTop: 8,
   },
   securityText: { flex: 1, fontSize: 12, color: COLORS.text.secondary, lineHeight: 18 },
 });

@@ -55,6 +55,12 @@ verify_jwt = true
 import_map = "./functions/paynkolay-refund/deno.json"
 entrypoint = "./functions/paynkolay-refund/index.ts"
 
+[functions.paynkolay-cards]
+enabled = true
+verify_jwt = true
+import_map = "./functions/paynkolay-cards/deno.json"
+entrypoint = "./functions/paynkolay-cards/index.ts"
+
 [functions.adisyo-webhook-receiver]
 enabled = true
 verify_jwt = false

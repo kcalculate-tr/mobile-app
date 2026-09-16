@@ -131,8 +131,10 @@ Deno.serve(async (req: Request) => {
 
     // Kart saklama alanlari (flag aciksa + RESPONSE_CODE==='2' iken kullanilir).
     const cardToken = pick(data, 'CardToken', 'cardToken', 'csCardToken', 'CS_CARD_TOKEN')
+    const cardTranId = pick(data, 'TranId', 'tranId', 'csTranId', 'CS_TRAN_ID', 'CardTranId')
     const maskedPan = pick(data, 'maskedPan', 'MASKED_PAN', 'maskedCardNo', 'CARD_NO')
     const cardBrand = pick(data, 'cardBrand', 'CARD_BRAND', 'cardProgram')
+    const cardBankName = pick(data, 'bankName', 'BANK_NAME', 'cardBank', 'CARD_BANK', 'issuerBank', 'ISSUER_BANK')
 
     // ── 3) clientRefCode'dan orderId'yi PARSE et -> orders.id ile bul (SADECE OKUMA).
     //    Format: KCAL{orderId}T{timestamp} (init uretir; Paynkolay AYNEN echo'lar:
@@ -316,7 +318,7 @@ Deno.serve(async (req: Request) => {
     //    Flag KAPALIYKEN bu blok hic calismaz (CardToken zaten gelmez).
     if (CARD_SAVE_ENABLED && isSuccess && cardToken && order.user_id) {
       try {
-        await saveUserCard(supabase, order.user_id, cardToken, maskedPan, cardBrand)
+        await saveUserCard(supabase, order.user_id, cardToken, cardTranId, maskedPan, cardBrand, cardBankName)
       } catch (e) {
         // Odeme zaten gecti; kart kaydi best-effort. Rollback yok.
         console.error('[paynkolay-callback] saveUserCard failed for order', order.id, e)
@@ -348,8 +350,10 @@ async function saveUserCard(
   supabase: SupabaseClient,
   userId: string,
   cardToken: string,
+  cardTranId: string,
   maskedPan: string,
   cardBrand: string,
+  bankName: string,
 ): Promise<void> {
   // Bu kullanıcının mevcut kartları arasında aynı token zaten var mı?
   const { data: existingCards } = await supabase
@@ -387,6 +391,7 @@ async function saveUserCard(
       paynkolay_customer_key: customerKey,
       last4: last4 || null,
       brand: cardBrand || null,
+      bank_name: bankName || null,
       is_default: isFirstCard,
     }])
     .select('id')
@@ -398,7 +403,7 @@ async function saveUserCard(
 
   const { error: secretErr } = await supabase
     .from('user_card_secrets')
-    .insert([{ card_id: newCard.id, card_token: cardToken }])
+    .insert([{ card_id: newCard.id, card_token: cardToken, cs_tran_id: cardTranId || null }])
   if (secretErr) {
     console.error('[paynkolay-callback] user_card_secrets insert failed:', secretErr)
     // Token'sız bir kart satırı yararsız/yanıltıcı — geri al.
