@@ -5,8 +5,14 @@
 alter table orders
   add column if not exists coupon_id uuid references campaigns(id) on delete set null;
 
-create index if not exists orders_coupon_id_idx on orders (coupon_id);
+-- NOT (2026-09-16 db push repair): canlıda bu isimle değil, aşağıdaki isim/
+-- tanımla mevcut — muhtemelen elle uygulanmıştı. Dosya canlı gerçeğe göre
+-- güncellendi (drift kapatıldı), efekt aynı (coupon_id dolu satırlarda hızlı arama).
+create index if not exists idx_orders_coupon_id
+  on orders (coupon_id) where coupon_id is not null;
 
 -- campaign_uses unique constraint (yoksa) — trigger'ın ON CONFLICT için lazım.
-create unique index if not exists campaign_uses_campaign_id_order_id_uniq
+-- NOT: canlıda "unique_campaign_order" adıyla mevcut (aynı kolonlar) — ON
+-- CONFLICT (campaign_id, order_id) isme değil kolonlara bakar, sorun yok.
+create unique index if not exists unique_campaign_order
   on campaign_uses (campaign_id, order_id);
