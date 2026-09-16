@@ -7,6 +7,7 @@ import {
   isAllowlistedAdmin,
   pick,
   upsertUserCard,
+  verifyAndFinalizeViaReport,
 } from '../_shared/paynkolay-cards.ts'
 
 // ── Paynkolay "Saklı Kart" yönetimi (sync/pay/delete/set_default) ──────────
@@ -32,6 +33,7 @@ import {
 // (sync/list yanıtlarında) token dönülmez — yalnızca last4/brand/bank/is_default.
 
 const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
+const REPORT_SX = (Deno.env.get('PAYNKOLAY_REPORT_SX') ?? '').trim()
 const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim() // ".../Vpos"
 const CARD_SAVE_ENABLED = (Deno.env.get('PAYNKOLAY_CARD_SAVE') ?? 'false').toLowerCase() === 'true'
@@ -216,13 +218,6 @@ Deno.serve(async (req: Request) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
-    // ── TEST ASAMASI GUARD: flag kapaliyken ozellik SADECE admin_allowlist'e
-    //    acik (2026-09-16, kullanici talebi). Flag acilinca herkese acilir.
-    const featureAllowed = CARD_SAVE_ENABLED || await isAllowlistedAdmin(admin, user.id, user.email ?? undefined)
-    if (!featureAllowed) {
-      return jsonResponse({ error: 'Bu özellik şu anda test aşamasında.' }, 403)
-    }
-
     let body: any = {}
     try {
       const text = await req.text()
@@ -231,12 +226,26 @@ Deno.serve(async (req: Request) => {
 
     const action = String(body?.action ?? '')
 
+    // ── TEST ASAMASI: flag kapaliyken ozellik SADECE admin_allowlist'e acik
+    //    (2026-09-16, kullanici talebi). 'status' action'i bu guard'in DISINDA —
+    //    mobil, kullaniciya kart UI'sini gostermeden once bunu sorup ogrenir;
+    //    403 ALMAZ.
+    const featureAllowed = CARD_SAVE_ENABLED || await isAllowlistedAdmin(admin, user.id, user.email ?? undefined)
+
+    if (action === 'status') {
+      return jsonResponse({ enabled: featureAllowed })
+    }
+
+    if (!featureAllowed) {
+      return jsonResponse({ error: 'Bu özellik şu anda test aşamasında.' }, 403)
+    }
+
     if (action === 'sync') return await handleSync(admin, user.id)
     if (action === 'pay') return await handlePay(req, admin, authedClient, user.id, body)
     if (action === 'delete') return await handleDelete(admin, user.id, body)
     if (action === 'set_default') return await handleSetDefault(admin, user.id, body)
 
-    return jsonResponse({ error: 'Gecersiz action (sync|pay|delete|set_default bekleniyor)' }, 400)
+    return jsonResponse({ error: 'Gecersiz action (status|sync|pay|delete|set_default bekleniyor)' }, 400)
   } catch (err) {
     console.error('[paynkolay-cards] error:', String(err))
     return jsonResponse({ error: 'Islem tamamlanamadi' }, 500)
@@ -336,10 +345,26 @@ async function handleDelete(admin: SupabaseClient, userId: string, body: any): P
       form.set('token', token)
       form.set('hashDatav2', hash)
       const res = await fetch(DELETE_URL, { method: 'POST', body: form })
-      // NOT: CardStorageCardDelete'in kesin basari/response-code semasi henuz
-      // gercek testle dogrulanmadi — sadece HTTP 200'e bakiliyor.
+      const raw = await res.text()
       if (!res.ok) {
         console.error('[paynkolay-cards] delete HTTP', res.status)
+        return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
+      }
+      let json: any = null
+      try { json = JSON.parse(raw) } catch { json = null }
+      if (!json) {
+        // JSON parse edilemedi -> lokal kaydi SILME. Token icermiyorsa ham
+        // yaniti logla (icerirse token sizmasin diye loglanmaz).
+        if (raw.includes(token)) {
+          console.error('[paynkolay-cards] delete yaniti JSON degil (token icerdigi icin ham yanit loglanmadi)')
+        } else {
+          console.error('[paynkolay-cards] delete yaniti JSON degil:', raw)
+        }
+        return jsonResponse({ error: 'Kart silme yaniti anlasilamadi' }, 502)
+      }
+      const procCode = String(json?.ProcReturnCode ?? '')
+      if (procCode !== '00') {
+        console.error('[paynkolay-cards] delete ProcReturnCode != 00:', procCode)
         return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
       }
     } catch (e) {
@@ -538,15 +563,49 @@ async function handlePay(
   )
 
   if (!result.hashValid) {
-    console.error('[paynkolay-cards] pay sonucu hash dogrulanamadi', { orderId: order.id })
-    return jsonResponse({ error: 'Odeme sonucu dogrulanamadi' }, 502)
-  }
-  if (!result.matched) {
-    console.error('[paynkolay-cards] pay sonucu siparisle eslesmedi', { orderId: order.id, clientRefCode })
-    return jsonResponse({ error: 'Siparis eslesmedi' }, 502)
-  }
-  if (!result.isSuccess && !result.alreadyPaid) {
-    return jsonResponse({ success: false, error: result.responseMessage || 'Odeme basarisiz' }, 402)
+    // Hash yok/uyusmuyor ama HTTP 200 geldi -> raporlama (PfTransactionReportList)
+    // ile AYNI clientRefCode uzerinden yedek dogrulama dene (task: hash adimi
+    // HARIC completePaynkolayResult'taki adimlarla tamamlanir, kaynak
+    // 'report_verified' olarak loglanir).
+    console.error('[paynkolay-cards] pay sonucu hash dogrulanamadi, rapor fallback deneniyor', { orderId: order.id, clientRefCode })
+    const reportOutcome = await verifyAndFinalizeViaReport(
+      admin,
+      order as OrderRow,
+      clientRefCode,
+      { reportSx: REPORT_SX, secretKey: SECRET_KEY, vposUrl: VPOS_URL },
+      { secretKey: SECRET_KEY, vposUrl: VPOS_URL, sx: SX },
+    )
+
+    if (!reportOutcome.verified) {
+      // Ne hash ne rapor teyit edebildi -> siparis durumu DEGISTIRILMEZ,
+      // manuel inceleme icin loglanir.
+      try {
+        await admin.from('failed_payments').insert([{
+          user_id: userId,
+          error_message: 'Paynkolay saklı kart odemesi dogrulanamadi (hash gecersiz + rapor teyit edemedi)',
+          amount: 0,
+          payment_method: 'kredi-karti-saklı',
+          order_data: { reason: 'needs_manual_review', orderId: order.id, clientRefCode },
+          created_at: new Date().toISOString(),
+        }])
+      } catch (e) {
+        console.error('[paynkolay-cards] needs_manual_review log error:', e)
+      }
+      return jsonResponse({
+        success: false,
+        pending: true,
+        error: 'Ödemeniz kontrol ediliyor, birkaç dakika içinde bilgilendireceğiz.',
+      }, 202)
+    }
+    // Rapor ile dogrulandi -> basarili sayilir, asagida devam eder.
+  } else {
+    if (!result.matched) {
+      console.error('[paynkolay-cards] pay sonucu siparisle eslesmedi', { orderId: order.id, clientRefCode })
+      return jsonResponse({ error: 'Siparis eslesmedi' }, 502)
+    }
+    if (!result.isSuccess && !result.alreadyPaid) {
+      return jsonResponse({ success: false, error: result.responseMessage || 'Odeme basarisiz' }, 402)
+    }
   }
 
   // Basarili odeme + yeni cihazsa artik "bilinen" isaretle (upsert, best-effort).

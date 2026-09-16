@@ -55,6 +55,7 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { unregisterPushToken } from '../lib/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { PAYMENT_PROVIDER } from '../config/payment';
+import { getCardsFeatureStatus } from '../lib/cards';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -98,6 +99,23 @@ export default function ProfileScreen() {
   const macroModal = useModal();
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   const macroProgressAnim = useRef(new Animated.Value(0)).current;
+  // Kayıtlı Kartlarım menü satırı: özellik test aşamasında (admin_allowlist
+  // dışı + flag kapalı) false gelir — bu durumda satır HİÇ gösterilmez.
+  const [savedCardsEnabled, setSavedCardsEnabled] = useState(false);
+
+  useEffect(() => {
+    if (PAYMENT_PROVIDER === 'paytr_iframe') return; // satir zaten gizli, istek atmaya gerek yok
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await getCardsFeatureStatus();
+        if (!cancelled) setSavedCardsEnabled(status.enabled);
+      } catch {
+        if (!cancelled) setSavedCardsEnabled(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -515,7 +533,7 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('Addresses')}
             showBorder
           />
-          {PAYMENT_PROVIDER !== 'paytr_iframe' && (
+          {PAYMENT_PROVIDER !== 'paytr_iframe' && savedCardsEnabled && (
             <MenuItem
               icon={<CreditCard color={COLORS.text.secondary} size={18} />}
               title="Kayıtlı Kartlarım"

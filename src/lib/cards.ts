@@ -12,9 +12,13 @@ export type SavedCard = {
   created_at: string;
 };
 
-type CardsAction = 'sync' | 'pay' | 'delete' | 'set_default';
+type CardsAction = 'status' | 'sync' | 'pay' | 'delete' | 'set_default';
 
-async function callCards<T>(action: CardsAction, params: Record<string, unknown> = {}): Promise<T> {
+async function callCards<T>(
+  action: CardsAction,
+  params: Record<string, unknown> = {},
+  opts: { throwOnFailure?: boolean } = {},
+): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Oturum bulunamadı');
 
@@ -27,12 +31,25 @@ async function callCards<T>(action: CardsAction, params: Record<string, unknown>
     },
     body: JSON.stringify({ action, ...params }),
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json?.success === false) {
+
+  let json: any;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error('Sunucudan geçersiz yanıt alındı.');
+  }
+
+  // pay: business-logic sonuçları (basarisiz/pending) exception DEGIL, veri
+  // olarak dondurulur — caller .success/.pending/.error'a bakarak karar verir.
+  const throwOnFailure = opts.throwOnFailure ?? true;
+  if (throwOnFailure && (!res.ok || json?.success === false)) {
     throw new Error(json?.error || 'İşlem tamamlanamadı.');
   }
   return json as T;
 }
+
+export const getCardsFeatureStatus = () =>
+  callCards<{ enabled: boolean }>('status');
 
 export const syncSavedCards = () =>
   callCards<{ success: true; cards: SavedCard[] }>('sync');
@@ -48,8 +65,13 @@ export type PayWithSavedCardResult = {
   requires3D?: boolean;
   formHtml?: string;
   alreadyPaid?: boolean;
+  pending?: boolean;
   error?: string;
 };
 
 export const payWithSavedCard = (orderId: string | number, cardId: string, deviceId: string) =>
-  callCards<PayWithSavedCardResult>('pay', { orderId: String(orderId), cardId, deviceId });
+  callCards<PayWithSavedCardResult>(
+    'pay',
+    { orderId: String(orderId), cardId, deviceId },
+    { throwOnFailure: false },
+  );

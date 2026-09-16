@@ -367,7 +367,7 @@ export async function completePaynkolayResult(
   if (parsedOrderId) {
     const { data: o } = await admin
       .from('orders')
-      .select('id, user_id, total_price, type, macro_quantity, status, payment_status')
+      .select('id, user_id, total_price, type, macro_quantity, status, payment_status, merchant_oid')
       .eq('id', parsedOrderId)
       .maybeSingle()
     order = o
@@ -464,12 +464,64 @@ export async function completePaynkolayResult(
     }
   }
 
+  await applyPaynkolayOutcome(admin, order, {
+    isSuccess,
+    referenceCode: fields.referenceCode,
+    txnTimestamp: fields.txnTimestamp,
+    responseMessage: fields.responseMessage,
+    tranId: fields.tranId,
+    clientRefCode: fields.clientRefCode,
+    authCode: fields.authCode,
+    responseCodeRaw: fields.responseCode,
+    source: 'hash_verified',
+  }, cfg)
+
+  return { matched: true, hashValid: true, isSuccess, alreadyPaid: false, orderId: order.id, responseMessage: fields.responseMessage }
+}
+
+// ── Odeme sonucu ORTAK uygulama adimi: orders update + failed_payments audit +
+//    kart kaydetme + macro purchase. completePaynkolayResult (hash-dogrulanmis
+//    yol) VE verifyAndFinalizeViaReport (rapor-dogrulanmis fallback yolu) ORTAK
+//    kullanir — isSuccess kararini caller verir, bu fonksiyon SADECE uygular.
+export interface ApplyOutcomeParams {
+  isSuccess: boolean
+  referenceCode: string
+  txnTimestamp: string
+  responseMessage: string
+  tranId: string
+  clientRefCode: string
+  authCode?: string
+  responseCodeRaw?: string
+  source: 'hash_verified' | 'report_verified'
+}
+
+type OrderForOutcome = {
+  id: number
+  user_id: string | null
+  total_price: number | null
+  type: string | null
+  macro_quantity: number | null
+  status: string | null
+  payment_status: string | null
+  merchant_oid?: string | null
+}
+
+async function applyPaynkolayOutcome(
+  admin: SupabaseClient,
+  order: OrderForOutcome,
+  params: ApplyOutcomeParams,
+  cfg: CompletionConfig,
+): Promise<void> {
+  const { isSuccess } = params
+
   console.log('[paynkolay-complete] order transition', {
-    orderId: order.id, isSuccess, responseCode: fields.responseCode,
-    referenceCode: fields.referenceCode, previousStatus: order.status ?? null,
+    orderId: order.id, isSuccess, source: params.source, previousStatus: order.status ?? null,
   })
 
-  // ── Orders update.
+  // ── Orders update. merchant_oid: bos ise BU denemenin clientRefCode'unu
+  //    dolduruyor (init'teki "ilk ref'i sakla, ezme" davranisiyla AYNI) —
+  //    saklı-kart odemeleri de boylece iade akisinda "merchant_oid yok" guard'ina
+  //    carpmaz.
   const updatePayload: Record<string, unknown> = {
     status: isSuccess ? 'confirmed' : 'payment_failed',
     payment_status: isSuccess ? 'paid' : 'failed',
@@ -478,11 +530,12 @@ export async function completePaynkolayResult(
   }
   if (!isSuccess) {
     updatePayload.payment_failure_reason =
-      fields.responseMessage || `Paynkolay red (RESPONSE_CODE=${fields.responseCode || 'bilinmiyor'})`
+      params.responseMessage || `Paynkolay red (RESPONSE_CODE=${params.responseCodeRaw || 'bilinmiyor'})`
   }
   if (isSuccess) {
-    updatePayload.paynkolay_reference_code = fields.referenceCode || null
-    updatePayload.paynkolay_trx_date = toTrxDate(fields.txnTimestamp)
+    updatePayload.paynkolay_reference_code = params.referenceCode || null
+    updatePayload.paynkolay_trx_date = toTrxDate(params.txnTimestamp)
+    if (!order.merchant_oid) updatePayload.merchant_oid = params.clientRefCode
   }
   const { error: updateError } = await admin.from('orders').update(updatePayload).eq('id', order.id)
   if (updateError) console.error('[paynkolay-complete] order update error:', updateError)
@@ -492,12 +545,12 @@ export async function completePaynkolayResult(
     try {
       await admin.from('failed_payments').insert([{
         user_id: order.user_id,
-        error_message: fields.responseMessage || `Odeme basarisiz (RESPONSE_CODE=${fields.responseCode || 'bilinmiyor'})`,
+        error_message: params.responseMessage || `Odeme basarisiz (RESPONSE_CODE=${params.responseCodeRaw || 'bilinmiyor'})`,
         amount: 0,
         payment_method: 'kredi-karti',
         order_data: {
-          orderId: order.id, clientRefCode: fields.clientRefCode, referenceCode: fields.referenceCode,
-          authCode: fields.authCode, responseCode: fields.responseCode,
+          orderId: order.id, clientRefCode: params.clientRefCode, referenceCode: params.referenceCode,
+          authCode: params.authCode, responseCode: params.responseCodeRaw, source: params.source,
         },
         created_at: new Date().toISOString(),
       }])
@@ -508,11 +561,11 @@ export async function completePaynkolayResult(
 
   // ── KART SAKLAMA: flag acik VEYA kullanici admin_allowlist'te + basari +
   //    TranId geldiyse (hosted donuste Token YOK, sadece TranId var).
-  if (isSuccess && fields.tranId && order.user_id) {
+  if (isSuccess && params.tranId && order.user_id) {
     try {
       const allowed = CARD_SAVE_ENABLED || await isAllowlistedAdmin(admin, order.user_id)
       if (allowed) {
-        await saveCardFromTranId(admin, cfg, order.user_id, fields.tranId)
+        await saveCardFromTranId(admin, cfg, order.user_id, params.tranId)
       }
     } catch (e) {
       console.error('[paynkolay-complete] saveCardFromTranId failed for order', order.id, e)
@@ -522,11 +575,174 @@ export async function completePaynkolayResult(
   // ── Macro purchase tamamlama.
   if (isSuccess && order.type === 'macro_purchase' && order.status !== 'confirmed') {
     try {
-      await completeMacroPurchase(admin, order)
+      await completeMacroPurchase(admin, order as MacroOrder)
     } catch (macroErr) {
       console.error('[macro] completeMacroPurchase FAILED for order', order.id, macroErr)
     }
   }
+}
 
-  return { matched: true, hashValid: true, isSuccess, alreadyPaid: false, orderId: order.id, responseMessage: fields.responseMessage }
+// ── Raporlama (PfTransactionReportList) sorgusu — paynkolay-query'den TASINDI.
+//    paynkolay-query (admin diagnostik/iade fallback) VE paynkolay-cards (pay
+//    non-3D hash dogrulanamazsa yedek dogrulama) ORTAK kullanir.
+export class PaynkolayReportError extends Error {
+  httpStatus?: number
+  detail?: unknown
+  constructor(message: string, httpStatus?: number, detail?: unknown) {
+    super(message)
+    this.httpStatus = httpStatus
+    this.detail = detail
+  }
+}
+
+export interface ReportConfig {
+  reportSx: string
+  secretKey: string
+  vposUrl: string
+}
+
+export interface ReportedTransaction {
+  found: boolean
+  referenceCode: string
+  status: string // SUCCESS | ERROR | NEW
+  transactionType: string
+  trxDate: string // yyyy.mm.dd (normalize)
+  trxDateRaw: string
+  amount: string
+  clientReferenceCode: string
+  range: { startDate: string; endDate: string }
+}
+
+// Reporting startDate/endDate formati: DD.MM.YYYY (UTC tabanli; ±3 gun marji
+// timezone farkini zaten yutar).
+function fmtDDMMYYYY(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`
+}
+
+// Reporting trxDate -> orders.paynkolay_trx_date formati (yyyy.mm.dd) normalize.
+function toYmdDots(raw: string): string {
+  const s = String(raw ?? '').trim()
+  let m = /^(\d{4})[.\-](\d{2})[.\-](\d{2})/.exec(s)
+  if (m) return `${m[1]}.${m[2]}.${m[3]}`
+  m = /^(\d{2})[.\-](\d{2})[.\-](\d{4})/.exec(s)
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`
+  return ''
+}
+
+// clientRefCode'a gore PfTransactionReportList'ten islem sorgula. referenceDate
+// merkez tarih, ±3 gun pencere (paynkolay-query'nin ORIJINAL mantigi ile AYNI).
+// Hard-failure'da (config eksik/fetch hatasi/HTTP hata) PaynkolayReportError
+// FIRLATIR; "bulunamadi" (found:false) normal bir sonuctur, hata DEGILDIR.
+export async function queryPaynkolayTransactionReport(
+  cfg: ReportConfig,
+  clientRefCode: string,
+  referenceDate: Date,
+): Promise<ReportedTransaction> {
+  if (!cfg.reportSx || !cfg.secretKey || !cfg.vposUrl) {
+    throw new PaynkolayReportError('Paynkolay reporting yapilandirmasi eksik')
+  }
+  const reportUrl = `${cfg.vposUrl}/Payment/PfTransactionReportList`
+
+  const start = new Date(referenceDate.getTime() - 3 * 86400000)
+  let end = new Date(referenceDate.getTime() + 3 * 86400000)
+  const now = new Date()
+  if (end.getTime() > now.getTime()) end = now
+  const startDate = fmtDDMMYYYY(start)
+  const endDate = fmtDDMMYYYY(end)
+  const range = { startDate, endDate }
+
+  // Hash: sx | startDate | endDate | clientReferenceCode | referenceCode | secret
+  const hash = await generatePaynkolayHash([cfg.reportSx, startDate, endDate, clientRefCode, '', cfg.secretKey])
+  const form = new FormData()
+  form.set('sx', cfg.reportSx)
+  form.set('startDate', startDate)
+  form.set('endDate', endDate)
+  form.set('clientReferenceCode', clientRefCode)
+  form.set('referenceCode', '')
+  form.set('hashDatav2', hash)
+
+  let res: Response
+  try {
+    res = await fetch(reportUrl, { method: 'POST', body: form })
+  } catch {
+    throw new PaynkolayReportError('Paynkolay reporting API erisilemedi')
+  }
+  const raw = await res.text()
+  let json: any = null
+  try { json = JSON.parse(raw) } catch { json = { raw } }
+  if (!res.ok) {
+    console.error('[paynkolay-shared] reporting HTTP', res.status)
+    throw new PaynkolayReportError('Paynkolay reporting API hatasi', res.status, json)
+  }
+
+  const list: any[] = Array.isArray(json?.List) ? json.List
+    : Array.isArray(json?.list) ? json.list
+    : []
+  const matches = list.filter((t) => String(t?.clientReferenceCode ?? '') === clientRefCode)
+  const sale = matches.find((t) => String(t?.transactionType ?? '').toUpperCase() === 'SALES')
+    ?? matches[0]
+    ?? null
+
+  if (!sale) {
+    return { found: false, referenceCode: '', status: '', transactionType: '', trxDate: '', trxDateRaw: '', amount: '', clientReferenceCode: clientRefCode, range }
+  }
+
+  const trxDateRaw = String(sale.trxDate ?? '')
+  return {
+    found: true,
+    referenceCode: String(sale.referenceCode ?? ''),
+    status: String(sale.status ?? ''),
+    transactionType: String(sale.transactionType ?? ''),
+    trxDate: toYmdDots(trxDateRaw),
+    trxDateRaw,
+    amount: pick(sale, 'amount', 'Amount', 'AMOUNT', 'transactionAmount', 'TRANSACTION_AMOUNT', 'authorizationAmount', 'AUTHORIZATION_AMOUNT'),
+    clientReferenceCode: clientRefCode,
+    range,
+  }
+}
+
+// ── pay (non-3D) icin yedek dogrulama: hash gecersiz/eksik ama HTTP 200 geldiyse
+//    PfTransactionReportList'ten AYNI clientRefCode'u sorgular. Rapor basarili
+//    (status===SUCCESS) VE tutar >= beklenense siparisi "report_verified"
+//    kaynagiyla tamamlar; degilse siparise DOKUNMAZ (caller needs_manual_review
+//    loglar). TranId rapor yanitinda YOK -> bu yoldan kart kaydi denenmez.
+export async function verifyAndFinalizeViaReport(
+  admin: SupabaseClient,
+  order: OrderForOutcome,
+  clientRefCode: string,
+  reportCfg: ReportConfig,
+  cfg: CompletionConfig,
+): Promise<{ verified: boolean }> {
+  let report: ReportedTransaction
+  try {
+    report = await queryPaynkolayTransactionReport(reportCfg, clientRefCode, new Date())
+  } catch (e) {
+    console.error('[paynkolay-complete] report fallback error:', e)
+    return { verified: false }
+  }
+  if (!report.found) return { verified: false }
+
+  const statusOk = report.status.toUpperCase() === 'SUCCESS'
+  const incomingCents = Math.round(parseFloat(String(report.amount || '0')) * 100)
+  const orderCents = Math.round(Number(order.total_price ?? 0) * 100)
+  const amountOk = !!incomingCents && incomingCents >= orderCents
+  if (!statusOk || !amountOk) {
+    console.error('[paynkolay-complete] report dogrulamasi basarisiz', {
+      orderId: order.id, status: report.status, incomingCents, orderCents,
+    })
+    return { verified: false }
+  }
+
+  await applyPaynkolayOutcome(admin, order, {
+    isSuccess: true,
+    referenceCode: report.referenceCode,
+    txnTimestamp: report.trxDateRaw,
+    responseMessage: 'report_verified',
+    tranId: '',
+    clientRefCode,
+    source: 'report_verified',
+  }, cfg)
+
+  return { verified: true }
 }

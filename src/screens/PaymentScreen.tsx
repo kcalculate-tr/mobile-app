@@ -22,7 +22,7 @@ import { CreditCard, Lock, ArrowLeft } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import { initPayment } from '../lib/payment';
-import { payWithSavedCard, SavedCard, syncSavedCards } from '../lib/cards';
+import { getCardsFeatureStatus, payWithSavedCard, SavedCard, syncSavedCards } from '../lib/cards';
 import { getOrCreateDeviceId } from '../lib/deviceId';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
@@ -952,13 +952,25 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [saveNewCard, setSaveNewCard] = useState(false); // "Kartımı kaydet" — varsayılan İŞARETSİZ
   const [payBusy, setPayBusy] = useState(false);
+  // Özellik test aşamasında (admin_allowlist dışı + flag kapalı) false gelir —
+  // bu durumda kart seçimi/kaydetme UI'sı HİÇ gösterilmez, normal akış değişmez.
+  const [cardsFeatureEnabled, setCardsFeatureEnabled] = useState(false);
 
-  // Kayıtlı kartları bir kez çek; varsa varsayılan kartı seçili göster, yoksa
-  // doğrudan yeni-kart (hosted) adımına düş.
+  // Once ozellik acik mi diye sor (403 almadan). KAPALIYSA: kart secimi/onay
+  // kutusu UI'si HIC gosterilmez, ORIJINAL davranis gibi dogrudan hosted init
+  // baslatilir (normal odeme akisi degismez — 0 dokunuşla WebView acilir).
+  // ACIKSA (allowlist test): kayitli kart senkronize edilir, secim ekrani gosterilir.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        const status = await getCardsFeatureStatus();
+        if (cancelled) return;
+        setCardsFeatureEnabled(status.enabled);
+        if (!status.enabled) {
+          await startHostedInit(false);
+          return;
+        }
         const result = await syncSavedCards();
         if (cancelled) return;
         const cards = result.cards ?? [];
@@ -971,7 +983,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
           setStage('new_card');
         }
       } catch {
-        if (!cancelled) setStage('new_card');
+        if (!cancelled) { setCardsFeatureEnabled(false); await startHostedInit(false); }
       }
     })();
     return () => { cancelled = true; };
@@ -1024,6 +1036,10 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
       track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
       const deviceId = await getOrCreateDeviceId();
       const result = await payWithSavedCard(orderId, cardId, deviceId);
+      if (result.pending) {
+        handlePendingReview(result.error);
+        return;
+      }
       if (!result.success && !result.alreadyPaid) {
         const message = result.error || 'Ödeme başlatılamadı.';
         setInitError(message);
@@ -1101,6 +1117,20 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
     Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
       { text: 'Tamam', onPress: () => navigation.goBack() },
     ]);
+  };
+
+  // Saklı kart odemesi ne hash ne raporla teyit edilebildiginde (needs_manual_review):
+  // siparis durumu SUNUCUDA degistirilmedi — kullaniciya kesin basarisiz demek yerine
+  // kontrol edildigini bildiriyoruz.
+  const handlePendingReview = (message?: string) => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    track('payment_pending', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
+    Alert.alert(
+      'Ödemen kontrol ediliyor',
+      message || 'Ödemeniz kontrol ediliyor, birkaç dakika içinde bilgilendireceğiz.',
+      [{ text: 'Tamam', onPress: () => navigation.goBack() }],
+    );
   };
 
   const handleNavigationCheck = (url: string): boolean => {
@@ -1206,17 +1236,19 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
               Kart bilgilerinizi PaynKolay'ın güvenli sayfasında gireceksiniz.
             </Text>
 
-            <TouchableOpacity
-              style={cardChoiceStyles.checkboxRow}
-              onPress={() => setSaveNewCard((v) => !v)}
-              activeOpacity={0.7}
-              disabled={payBusy}
-            >
-              <View style={[cardChoiceStyles.checkbox, saveNewCard && cardChoiceStyles.checkboxChecked]}>
-                {saveNewCard ? <Text style={cardChoiceStyles.checkboxMark}>✓</Text> : null}
-              </View>
-              <Text style={cardChoiceStyles.checkboxLabel}>Kartımı sonraki ödemeler için kaydet</Text>
-            </TouchableOpacity>
+            {cardsFeatureEnabled ? (
+              <TouchableOpacity
+                style={cardChoiceStyles.checkboxRow}
+                onPress={() => setSaveNewCard((v) => !v)}
+                activeOpacity={0.7}
+                disabled={payBusy}
+              >
+                <View style={[cardChoiceStyles.checkbox, saveNewCard && cardChoiceStyles.checkboxChecked]}>
+                  {saveNewCard ? <Text style={cardChoiceStyles.checkboxMark}>✓</Text> : null}
+                </View>
+                <Text style={cardChoiceStyles.checkboxLabel}>Kartımı sonraki ödemeler için kaydet</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <Pressable
               style={[cardChoiceStyles.payBtn, payBusy && cardChoiceStyles.payBtnDisabled]}
