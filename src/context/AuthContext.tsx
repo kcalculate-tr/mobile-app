@@ -6,8 +6,39 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { Session, User } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { getSupabaseClient } from '../lib/supabase';
+
+const readEnvValue = (key: string): string =>
+  (
+    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.[key] ??
+    process.env[key] ??
+    ''
+  ).toString().trim();
+
+let googleConfigured = false;
+const ensureGoogleConfigured = () => {
+  if (googleConfigured) return;
+  const iosClientId = readEnvValue('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID');
+  const webClientId = readEnvValue('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
+  GoogleSignin.configure({
+    iosClientId: iosClientId || undefined,
+    webClientId: webClientId || undefined,
+  });
+  googleConfigured = true;
+};
+
+export type SocialSignInResult = {
+  error: string | null;
+  cancelled?: boolean;
+  email?: string;
+  givenName?: string;
+  familyName?: string;
+};
 
 type AuthContextValue = {
   user: User | null;
@@ -17,6 +48,8 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
+  signInWithApple: () => Promise<SocialSignInResult>;
+  signInWithGoogle: () => Promise<SocialSignInResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -125,6 +158,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithApple = useCallback(async (): Promise<SocialSignInResult> => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        return { error: 'Apple ile giriş başarısız oldu (token alınamadı).' };
+      }
+      const supabase = getSupabaseClient();
+      // Supabase'in kendi resmi expo-apple-authentication örneği nonce
+      // GÖNDERMİYOR (ne Apple isteğine ne signInWithIdToken'a) — Apple'ın native
+      // isteği nonce parametresi verilmediğinde token'a nonce claim'i hiç
+      // eklemiyor, dolayısıyla eşleştirilecek bir şey olmuyor. Bilinçli olarak
+      // aynı deseni izliyoruz (ekstra expo-crypto bağımlılığı gerekmiyor).
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+      if (error) return { error: error.message };
+
+      const givenName = credential.fullName?.givenName ?? undefined;
+      const familyName = credential.fullName?.familyName ?? undefined;
+      // Apple ad/soyadı SADECE bu hesabın Apple ile İLK girişinde verir; sonraki
+      // girişlerde credential.fullName tamamen boş gelir ve Apple bunu bir daha
+      // asla göndermez — bu yüzden ilk seferinde user_metadata'ya kalıcı yazıyoruz.
+      if (givenName || familyName) {
+        await supabase.auth.updateUser({
+          data: {
+            given_name: givenName,
+            family_name: familyName,
+            full_name: [givenName, familyName].filter(Boolean).join(' '),
+          },
+        });
+      }
+      return { error: null, email: credential.email ?? undefined, givenName, familyName };
+    } catch (err: any) {
+      if (err?.code === 'ERR_REQUEST_CANCELED') {
+        return { error: null, cancelled: true };
+      }
+      console.error('[Auth] Apple sign-in error:', err);
+      return { error: err?.message ?? 'Apple ile giriş başarısız oldu' };
+    }
+  }, []);
+
+  const signInWithGoogle = useCallback(async (): Promise<SocialSignInResult> => {
+    try {
+      ensureGoogleConfigured();
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices();
+      }
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) {
+        return { error: null, cancelled: true };
+      }
+      const { idToken, user: gUser } = response.data;
+      if (!idToken) {
+        return { error: 'Google ile giriş başarısız oldu (token alınamadı).' };
+      }
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+      if (error) return { error: error.message };
+      return {
+        error: null,
+        email: gUser.email,
+        givenName: gUser.givenName ?? undefined,
+        familyName: gUser.familyName ?? undefined,
+      };
+    } catch (err: any) {
+      if (isErrorWithCode(err) && err.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { error: null, cancelled: true };
+      }
+      console.error('[Auth] Google sign-in error:', err);
+      return { error: err?.message ?? 'Google ile giriş başarısız oldu' };
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -134,8 +249,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      signInWithApple,
+      signInWithGoogle,
     }),
-    [user, session, authLoading, signIn, signUp, signOut],
+    [user, session, authLoading, signIn, signUp, signOut, signInWithApple, signInWithGoogle],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
