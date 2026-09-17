@@ -7,13 +7,17 @@ import { deleteCardFromPaynkolay } from '../_shared/paynkolay-cards.ts'
 // kullanıcı, body'den bir id ALINMAZ).
 //
 // Sıra:
-//  0) Aktif siparişi varsa (delivered/cancelled/refunded DIŞINDA herhangi bir
-//     durum) reddedilir — hem "hesap silindi ama teslimat/mutfak süreci
-//     ortada kaldı" operasyonel riskini, hem de "sil, tekrar kayıt ol"
-//     yoluyla kupon/limit atlatmayı önler.
-//  1) Silinme öncesi profiles.phone + auth email normalize edilip hash'lenir,
-//     deleted_account_fingerprints'e yazılır (validate_coupon first_order_only
-//     kontrolü buna bakar — orders anonimleştirmesi bu izi SİLMEZ).
+//  0) Gerçekten süren bir sipariş varsa (pending/confirmed/preparing/on_way,
+//     veya payment_review_pending=true, veya pending_payment VE 1 saatten
+//     TAZE) reddedilir. delivered/cancelled/refunded/expired/payment_failed
+//     ENGELLEMEZ. 1 saatten ESKİ pending_payment taslakları (ödeme hiç
+//     başlamamış/tamamlanmamış zombi kayıtlar) engel SAYILMAZ — silme
+//     sırasında 'cancelled' yapılıp temizlenir.
+//  1) Silinme öncesi profiles.phone + auth.users.phone + kullanıcının TÜM
+//     siparişlerindeki phone değerleri (normalize, son 10 hane, tekrarsız)
+//     — her biri için AYRI bir deleted_account_fingerprints satırı; e-posta
+//     için de ayrıca bir satır. validate_coupon first_order_only kontrolü
+//     buna bakar — orders anonimleştirmesi bu izi SİLMEZ.
 //  2) Apple ile bağlanmışsa (user_apple_tokens'ta refresh_token varsa) Apple'a
 //     revoke isteği — best-effort, başarısız olsa da silme durmaz.
 //  3) Saklı kart varsa PaynKolay'dan da silinir (best-effort — başarısız olsa
@@ -35,7 +39,8 @@ const PAYNKOLAY_SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
 const PAYNKOLAY_SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const PAYNKOLAY_VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim()
 
-const ACTIVE_STATUSES_EXCLUDED = ['delivered', 'cancelled', 'refunded']
+const BLOCKING_ACTIVE_STATUSES = ['pending', 'confirmed', 'preparing', 'on_way']
+const STALE_DRAFT_MS = 60 * 60 * 1000 // 1 saat
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,18 +76,31 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
     const userId = user.id
 
-    // 0) Aktif sipariş kontrolü.
-    const { data: activeOrders, error: activeErr } = await admin
+    // 0) Gerçekten süren sipariş kontrolü (+ eski pending_payment taslaklarını
+    //    tespit et — engel değiller, ama aşağıda 'cancelled' yapılacaklar).
+    const { data: userOrders, error: ordersErr } = await admin
       .from('orders')
-      .select('id')
+      .select('id, status, payment_review_pending, created_at, phone')
       .eq('user_id', userId)
-      .not('status', 'in', `(${ACTIVE_STATUSES_EXCLUDED.join(',')})`)
-      .limit(1)
-    if (activeErr) {
-      console.error('[delete-account] active order check failed:', activeErr.message)
+    if (ordersErr) {
+      console.error('[delete-account] order fetch failed:', ordersErr.message)
       return jsonResponse({ error: 'Hesap silinemedi, lütfen tekrar deneyin.' }, 500)
     }
-    if (activeOrders && activeOrders.length > 0) {
+
+    const now = Date.now()
+    const staleDraftIds: number[] = []
+    const hasBlocking = (userOrders ?? []).some((o) => {
+      if (BLOCKING_ACTIVE_STATUSES.includes(o.status)) return true
+      if (o.payment_review_pending) return true
+      if (o.status === 'pending_payment') {
+        const ageMs = now - new Date(o.created_at).getTime()
+        if (ageMs < STALE_DRAFT_MS) return true
+        staleDraftIds.push(o.id)
+      }
+      return false
+    })
+
+    if (hasBlocking) {
       // 200 ile döner (409 DEĞİL): supabase-js functions.invoke() non-2xx
       // yanıtlarda body'yi PARSE ETMEZ (data:null, error:FunctionsHttpError,
       // ham Response error.context'te) — istemci sadece 200 + {ok:false,
@@ -90,22 +108,44 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: 'Aktif siparişin tamamlandıktan sonra hesabını silebilirsin.' })
     }
 
+    if (staleDraftIds.length > 0) {
+      const { error: staleErr } = await admin
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .in('id', staleDraftIds)
+      if (staleErr) console.error('[delete-account] stale draft cancel failed:', staleErr.message)
+    }
+
     // 1) Silinen-hesap izi (fingerprint) — orders anonimleştirmesinden
     //    ETKİLENMEZ, tekrar kayıt olup aynı telefon/e-posta ile ilk-sipariş
-    //    kuponunu tekrar kullanmayı engeller.
+    //    kuponunu tekrar kullanmayı engeller. Her ayrı telefon için AYRI satır
+    //    (profil, auth.users, ve TÜM siparişlerdeki telefonlar) + e-posta için
+    //    bir satır daha.
     try {
       const { data: profile } = await admin
         .from('profiles')
         .select('phone')
         .eq('id', userId)
         .maybeSingle()
-      const phoneNorm = String(profile?.phone ?? '').replace(/\D/g, '').slice(-10)
+      const rawPhones = [
+        profile?.phone,
+        user.phone,
+        ...(userOrders ?? []).map((o) => o.phone),
+      ]
+      const normalizedPhones = Array.from(
+        new Set(
+          rawPhones
+            .map((p) => String(p ?? '').replace(/\D/g, '').slice(-10))
+            .filter((p) => p.length > 0),
+        ),
+      )
       const emailNorm = String(user.email ?? '').trim().toLowerCase()
-      if (phoneNorm || emailNorm) {
-        await admin.from('deleted_account_fingerprints').insert({
-          phone_hash: phoneNorm ? await sha256Hex(phoneNorm) : null,
-          email_hash: emailNorm ? await sha256Hex(emailNorm) : null,
-        })
+
+      for (const phoneNorm of normalizedPhones) {
+        await admin.from('deleted_account_fingerprints').insert({ phone_hash: await sha256Hex(phoneNorm) })
+      }
+      if (emailNorm) {
+        await admin.from('deleted_account_fingerprints').insert({ email_hash: await sha256Hex(emailNorm) })
       }
     } catch (e) {
       console.error('[delete-account] fingerprint step error:', String(e))
