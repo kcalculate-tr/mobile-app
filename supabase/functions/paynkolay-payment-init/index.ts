@@ -275,6 +275,7 @@ Deno.serve(async (req: Request) => {
           const { data: cv, error: cvErr } = await authedClient.rpc('validate_coupon', {
             p_code: order.coupon_code,
             p_cart_total: newSubtotal,
+            p_phone: order.phone,
           })
           if (cvErr) {
             console.error('[paynkolay-init] validate_coupon error:', cvErr.message)
