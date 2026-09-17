@@ -76,3 +76,15 @@ entrypoint = "./functions/order-alert/index.ts"
 [functions.adisyo-webhook-receiver]
 enabled = true
 verify_jwt = false
+
+[functions.apple-link-token]
+enabled = true
+verify_jwt = true
+import_map = "./functions/apple-link-token/deno.json"
+entrypoint = "./functions/apple-link-token/index.ts"
+
+[functions.delete-account]
+enabled = true
+verify_jwt = true
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"
