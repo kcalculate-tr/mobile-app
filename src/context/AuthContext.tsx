@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { getSupabaseClient } from '../lib/supabase';
 
@@ -160,24 +161,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithApple = useCallback(async (): Promise<SocialSignInResult> => {
     try {
+      // Hash Apple'a gidiyor, raw Supabase'e — Apple identityToken'ın nonce
+      // claim'i hash'i taşır; signInWithIdToken kendi tarafında aynı hash'i
+      // üretip claim'le karşılaştırmak için raw değeri ister.
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
       if (!credential.identityToken) {
         return { error: 'Apple ile giriş başarısız oldu (token alınamadı).' };
       }
       const supabase = getSupabaseClient();
-      // Supabase'in kendi resmi expo-apple-authentication örneği nonce
-      // GÖNDERMİYOR (ne Apple isteğine ne signInWithIdToken'a) — Apple'ın native
-      // isteği nonce parametresi verilmediğinde token'a nonce claim'i hiç
-      // eklemiyor, dolayısıyla eşleştirilecek bir şey olmuyor. Bilinçli olarak
-      // aynı deseni izliyoruz (ekstra expo-crypto bağımlılığı gerekmiyor).
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
+        nonce: rawNonce,
       });
       if (error) return { error: error.message };
 

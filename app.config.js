@@ -70,8 +70,11 @@ module.exports = {
       EXPO_PUBLIC_API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL,
       EXPO_PUBLIC_PAYMENT_PROVIDER: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
       EXPO_PUBLIC_GOOGLE_MAPS_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
-      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      // Google OAuth client ID'leri gizli değil (app bundle'ında zaten görünür) —
+      // .env yerine doğrudan burada. Web Client ID henüz verilmedi (TODO).
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:
+        '173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss.apps.googleusercontent.com',
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: '', // TODO: Google Cloud Console Web client ID
     },
     plugins: [
       'expo-asset',
