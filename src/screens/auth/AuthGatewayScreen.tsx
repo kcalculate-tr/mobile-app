@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BackgroundLayer } from '../../components/onboarding/BackgroundLayer';
 import { TopBar } from '../../components/onboarding/TopBar';
 import { PrimaryCTA } from '../../components/onboarding/PrimaryCTA';
 import { sportive } from '../../theme/sportive';
+import { SocialAuthButtons } from '../../components/onboarding/SocialAuthButtons';
 
 export default function AuthGatewayScreen() {
   const nav = useNavigation();
+  const [socialError, setSocialError] = useState('');
 
   return (
     <BackgroundLayer mode="blur">
@@ -24,6 +26,12 @@ export default function AuthGatewayScreen() {
               onPress={() => nav.navigate('RegisterEmail' as never)}
             />
           </View>
+
+          <SocialAuthButtons
+            onNewUser={() => nav.navigate('RegisterIdentity' as never)}
+            onError={setSocialError}
+          />
+          {socialError ? <Text style={styles.errorText}>{socialError}</Text> : null}
         </View>
 
         <View style={styles.footer}>
@@ -47,6 +55,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, paddingTop: 12, flex: 1 },
   h1: { ...sportive.type.h1, color: sportive.colors.textPrimary, marginBottom: 8 },
   sub: { ...sportive.type.body, color: sportive.colors.textSecondary },
+  errorText: { ...sportive.type.caption, color: sportive.colors.error, marginTop: 12, textAlign: 'center' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: sportive.colors.glassBorder },
   dividerText: { ...sportive.type.tactical, color: sportive.colors.textTertiary },

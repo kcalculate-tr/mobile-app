@@ -20,9 +20,12 @@ const phoneDigits = (raw: string): string => raw.replace(/\D/g, '');
 
 export default function RegisterIdentityScreen() {
   const nav = useNavigation();
-  const { setIdentity } = useOnboardingStore();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const { firstName: storedFirstName, lastName: storedLastName, setIdentity } = useOnboardingStore();
+  // Apple/Google girişi sağlayıcıdan ad/soyad verdiyse (yalnızca Apple'ın İLK
+  // girişinde, Google'da her zaman) store'a önceden yazılır — burada sadece
+  // formu önceden doldurmak için okunur, kullanıcı isterse değiştirebilir.
+  const [firstName, setFirstName] = useState(storedFirstName);
+  const [lastName, setLastName] = useState(storedLastName);
   const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; phone?: string }>({});
 
