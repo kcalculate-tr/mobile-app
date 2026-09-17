@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'Kcalculate',
     slug: 'kcal-mobile',
-    version: '1.0.5',
+    version: '1.0.6',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
