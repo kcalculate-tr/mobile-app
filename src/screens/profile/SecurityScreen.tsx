@@ -282,9 +282,10 @@ export default function SecurityScreen() {
           <View style={s.dangerCard}>
             <Text style={s.dangerTitle}>Tehlikeli Bölge</Text>
             <Text style={s.dangerSub}>
-              Hesabınızı silerseniz profil, adres ve kayıtlı kart bilgileriniz kalıcı olarak
-              silinir. Sipariş geçmişiniz yasal saklama zorunluluğu nedeniyle kimliğinizden
-              ayrıştırılarak (isim/telefon/adres maskelenerek) tutulur. Bu işlem geri alınamaz.
+              Hesabınızı silerseniz profil, adres, kayıtlı kart ve Macro Coin bakiyeniz kalıcı
+              olarak silinir. Sipariş geçmişiniz yasal saklama zorunluluğu nedeniyle kimliğinizden
+              ayrıştırılarak (isim/telefon/adres maskelenerek) tutulur. Aktif bir siparişiniz
+              varsa, tamamlanmadan hesabınızı silemezsiniz. Bu işlem geri alınamaz.
             </Text>
             <TouchableOpacity
               style={[s.deleteBtn, deletingAccount && { opacity: 0.6 }]}
