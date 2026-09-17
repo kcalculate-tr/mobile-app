@@ -9,7 +9,6 @@ import { sportive } from '../../theme/sportive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useNavGate } from '../../store/navGateStore';
-import { SocialAuthButtons } from '../../components/onboarding/SocialAuthButtons';
 
 export default function LoginScreen() {
   const nav = useNavigation();
@@ -99,11 +98,6 @@ export default function LoginScreen() {
             <View style={{ marginTop: 20 }}>
               <PrimaryCTA label="Giriş Yap" showArrow loading={loading} onPress={handleLogin} />
             </View>
-
-            <SocialAuthButtons
-              onNewUser={() => nav.navigate('RegisterIdentity' as never)}
-              onError={(message) => setErrors({ general: message })}
-            />
           </View>
           <View style={styles.footer}>
             <Text style={styles.bottomLink}>
