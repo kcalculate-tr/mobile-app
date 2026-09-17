@@ -7,12 +7,14 @@ interface Props extends PressableProps {
   icon?: React.ReactNode;
 }
 
-export const GlassButton: React.FC<Props> = ({ label, icon, ...rest }) => (
+export const GlassButton: React.FC<Props> = ({ label, icon, disabled, ...rest }) => (
   <Pressable
     style={({ pressed }) => [
       styles.btn,
       pressed && { backgroundColor: sportive.colors.glassActive },
+      disabled && { opacity: 0.5 },
     ]}
+    disabled={disabled}
     {...rest}
   >
     {icon && <View style={styles.icon}>{icon}</View>}
