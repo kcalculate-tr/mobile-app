@@ -199,6 +199,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         });
       }
+      // authorizationCode HER girişte gelir (fullName/email'in aksine) —
+      // sunucuda Apple refresh_token'a çevrilip saklanır (bkz. apple-link-token),
+      // hesap silmede Apple'a token iptali göndermek için. Best-effort: bu adım
+      // başarısız olsa da giriş tamamlanmıştır, kullanıcıya hata gösterilmez.
+      if (credential.authorizationCode) {
+        try {
+          await supabase.functions.invoke('apple-link-token', {
+            body: { authorizationCode: credential.authorizationCode },
+          });
+        } catch (linkErr) {
+          console.error('[Auth] apple-link-token invoke failed:', linkErr);
+        }
+      }
+
       return { error: null, email: credential.email ?? undefined, givenName, familyName };
     } catch (err: any) {
       if (err?.code === 'ERR_REQUEST_CANCELED') {

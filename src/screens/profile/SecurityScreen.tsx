@@ -72,6 +72,7 @@ export default function SecurityScreen() {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleChangePassword = async () => {
     setSuccessMessage('');
@@ -142,10 +143,28 @@ export default function SecurityScreen() {
                   text: 'Evet, Sil',
                   style: 'destructive',
                   onPress: async () => {
-                    await unregisterPushToken();
-                    await signOut();
-                    // Imperative reset YOK — signOut user'ı null yapınca
-                    // AppNavigator state-driven olarak Auth akışına geçer.
+                    if (deletingAccount) return;
+                    setDeletingAccount(true);
+                    try {
+                      const supabase = getSupabaseClient();
+                      const { data, error } = await supabase.functions.invoke('delete-account');
+                      if (error || !data?.ok) {
+                        Alert.alert(
+                          'Hata',
+                          (data as any)?.error || 'Hesap silinemedi, lütfen tekrar deneyin.',
+                        );
+                        return;
+                      }
+                      await unregisterPushToken();
+                      await signOut();
+                      // Imperative reset YOK — signOut (ve zaten silinmiş
+                      // olan) user'ı null yapınca AppNavigator state-driven
+                      // olarak Auth akışına geçer.
+                    } catch (e: any) {
+                      Alert.alert('Hata', e?.message || 'Hesap silinemedi, lütfen tekrar deneyin.');
+                    } finally {
+                      setDeletingAccount(false);
+                    }
                   },
                 },
               ],
@@ -263,11 +282,21 @@ export default function SecurityScreen() {
           <View style={s.dangerCard}>
             <Text style={s.dangerTitle}>Tehlikeli Bölge</Text>
             <Text style={s.dangerSub}>
-              Hesabınızı silerseniz tüm verileriniz, siparişleriniz ve adres bilgileriniz kalıcı
-              olarak silinir. Bu işlem geri alınamaz.
+              Hesabınızı silerseniz profil, adres ve kayıtlı kart bilgileriniz kalıcı olarak
+              silinir. Sipariş geçmişiniz yasal saklama zorunluluğu nedeniyle kimliğinizden
+              ayrıştırılarak (isim/telefon/adres maskelenerek) tutulur. Bu işlem geri alınamaz.
             </Text>
-            <TouchableOpacity style={s.deleteBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
-              <Text style={s.deleteBtnText}>Hesabımı Sil</Text>
+            <TouchableOpacity
+              style={[s.deleteBtn, deletingAccount && { opacity: 0.6 }]}
+              onPress={handleDeleteAccount}
+              disabled={deletingAccount}
+              activeOpacity={0.85}
+            >
+              {deletingAccount ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <Text style={s.deleteBtnText}>Hesabımı Sil</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
