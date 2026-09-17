@@ -70,8 +70,6 @@ module.exports = {
       EXPO_PUBLIC_API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL,
       EXPO_PUBLIC_PAYMENT_PROVIDER: process.env.EXPO_PUBLIC_PAYMENT_PROVIDER,
       EXPO_PUBLIC_GOOGLE_MAPS_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
-      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     },
     plugins: [
       'expo-asset',
@@ -115,16 +113,6 @@ module.exports = {
         },
       ],
       'expo-video',
-      'expo-apple-authentication',
-      [
-        '@react-native-google-signin/google-signin',
-        {
-          // REVERSED_CLIENT_ID (Google iOS OAuth client) — iOS deep link geri
-          // dönüşü için gerekli. EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ile eşleşir.
-          iosUrlScheme:
-            'com.googleusercontent.apps.173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss',
-        },
-      ],
       [
         'expo-tracking-transparency',
         {
