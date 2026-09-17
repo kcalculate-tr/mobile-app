@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import {
   CardStorageEntry,
   completePaynkolayResult,
+  deleteCardFromPaynkolay,
   fetchCardStorageList,
   generatePaynkolayHash,
   isAllowlistedAdmin,
@@ -43,7 +44,6 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-const DELETE_URL = VPOS_URL ? `${VPOS_URL}/Payment/CardStorageCardDelete` : ''
 const PAY_URL = VPOS_URL ? `${VPOS_URL}/v1/Payment` : ''
 const CALLBACK_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/paynkolay-callback` : ''
 
@@ -334,44 +334,20 @@ async function handleDelete(admin: SupabaseClient, userId: string, body: any): P
     .eq('card_id', cardId)
     .maybeSingle()
 
-  if (SX && SECRET_KEY && DELETE_URL && secret?.card_token) {
-    const customerKey = String(card.paynkolay_customer_key ?? '')
-    const tranId = String(secret.cs_tran_id ?? '')
-    const token = String(secret.card_token ?? '')
-    try {
-      const hash = await generatePaynkolayHash([SX, customerKey, tranId, token, SECRET_KEY])
-      const form = new FormData()
-      form.set('sx', SX)
-      form.set('customerKey', customerKey)
-      form.set('tranId', tranId)
-      form.set('token', token)
-      form.set('hashDatav2', hash)
-      const res = await fetch(DELETE_URL, { method: 'POST', body: form })
-      const raw = await res.text()
-      if (!res.ok) {
-        console.error('[paynkolay-cards] delete HTTP', res.status)
-        return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
-      }
-      let json: any = null
-      try { json = JSON.parse(raw) } catch { json = null }
-      if (!json) {
-        // JSON parse edilemedi -> lokal kaydi SILME. Token icermiyorsa ham
-        // yaniti logla (icerirse token sizmasin diye loglanmaz).
-        if (raw.includes(token)) {
-          console.error('[paynkolay-cards] delete yaniti JSON degil (token icerdigi icin ham yanit loglanmadi)')
-        } else {
-          console.error('[paynkolay-cards] delete yaniti JSON degil:', raw)
-        }
-        return jsonResponse({ error: 'Kart silme yaniti anlasilamadi' }, 502)
-      }
-      const procCode = String(json?.ProcReturnCode ?? '')
-      if (procCode !== '00') {
-        console.error('[paynkolay-cards] delete ProcReturnCode != 00:', procCode)
-        return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
-      }
-    } catch (e) {
-      console.error('[paynkolay-cards] delete fetch error:', e)
-      return jsonResponse({ error: 'Paynkolay kart silme servisine erisilemedi' }, 502)
+  if (secret?.card_token) {
+    const result = await deleteCardFromPaynkolay({
+      vposUrl: VPOS_URL,
+      sx: SX,
+      secretKey: SECRET_KEY,
+      customerKey: String(card.paynkolay_customer_key ?? ''),
+      tranId: String(secret.cs_tran_id ?? ''),
+      token: String(secret.card_token ?? ''),
+    })
+    if (!result.ok) {
+      // JSON parse edilemedi / HTTP hata / ProcReturnCode != 00 -> lokal kaydi
+      // SILME (kullanıcı elle sildiği için burada gerçek bir hata gösterilir;
+      // delete-account'un aksine best-effort DEĞİL).
+      return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
     }
   }
 

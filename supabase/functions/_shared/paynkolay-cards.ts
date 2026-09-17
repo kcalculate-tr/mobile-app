@@ -216,6 +216,62 @@ export async function saveCardFromTranId(
   await upsertUserCard(admin, userId, customerKey, match)
 }
 
+// ── Kayıtlı kartı Paynkolay tarafında sil (CardStorageCardDelete). paynkolay-
+//    cards (kullanıcı elle siler) VE delete-account (hesap silme) TARAFINDAN
+//    PAYLAŞILIR — hash/endpoint TEK YERDE. sx/secretKey/vposUrl veya token
+//    boşsa (yapılandırma eksik ya da hiç saklanmamış) sessizce { ok: true }
+//    döner (yapılacak bir şey yok, hata değil) — çağıran taraf local silmeye
+//    devam eder.
+export async function deleteCardFromPaynkolay(params: {
+  vposUrl: string
+  sx: string
+  secretKey: string
+  customerKey: string
+  tranId: string
+  token: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const { vposUrl, sx, secretKey, customerKey, tranId, token } = params
+  if (!sx || !secretKey || !vposUrl || !token) {
+    return { ok: true }
+  }
+  const deleteUrl = `${vposUrl}/Payment/CardStorageCardDelete`
+  try {
+    const hash = await generatePaynkolayHash([sx, customerKey, tranId, token, secretKey])
+    const form = new FormData()
+    form.set('sx', sx)
+    form.set('customerKey', customerKey)
+    form.set('tranId', tranId)
+    form.set('token', token)
+    form.set('hashDatav2', hash)
+    const res = await fetch(deleteUrl, { method: 'POST', body: form })
+    const raw = await res.text()
+    if (!res.ok) {
+      console.error('[paynkolay-shared] delete HTTP', res.status)
+      return { ok: false, error: `HTTP ${res.status}` }
+    }
+    let json: any = null
+    try { json = JSON.parse(raw) } catch { json = null }
+    if (!json) {
+      // GÜVENLİK: token içeriyorsa ham yanıt loglanmaz.
+      if (raw.includes(token)) {
+        console.error('[paynkolay-shared] delete yaniti JSON degil (token icerdigi icin ham yanit loglanmadi)')
+      } else {
+        console.error('[paynkolay-shared] delete yaniti JSON degil:', raw)
+      }
+      return { ok: false, error: 'Yanit anlasilamadi' }
+    }
+    const procCode = String(json?.ProcReturnCode ?? '')
+    if (procCode !== '00') {
+      console.error('[paynkolay-shared] delete ProcReturnCode != 00:', procCode)
+      return { ok: false, error: `ProcReturnCode ${procCode}` }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('[paynkolay-shared] delete fetch error:', e)
+    return { ok: false, error: String(e) }
+  }
+}
+
 // ── Odeme sonucu tamamlama — paynkolay-callback (hosted donus) VE
 //    paynkolay-cards (pay, non-3D senkron yanit) ORTAK kullanir. clientRefCode
 //    formati her ikisinde de "KCAL{orderId}T..." (regex ile orderId cozulur).
