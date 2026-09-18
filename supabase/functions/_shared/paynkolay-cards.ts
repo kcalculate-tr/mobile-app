@@ -98,6 +98,54 @@ export function parseCardStorageList(json: any): CardStorageEntry[] {
     .filter((e) => e.tranId || e.token)
 }
 
+export interface CardStorageListDiag {
+  ok: boolean
+  httpStatus: number
+  procReturnCode: string
+  errMsg: string
+  entries: CardStorageEntry[] | null
+}
+
+// ── fetchCardStorageList ile AYNI cagri, ama procReturnCode/errMsg'i (token/
+//    kart/customerKey HARIC — bunlar hicbir zaman donulmez) cagirana da verir.
+//    Yetki durumu teshisi icin (bkz. paynkolay-cards action=sync yaniti) —
+//    fetchCardStorageList'in davranisini DEGISTIRMEZ, ayri fonksiyon.
+export async function fetchCardStorageListDiag(
+  vposUrl: string,
+  sx: string,
+  secretKey: string,
+  customerKey: string,
+): Promise<CardStorageListDiag> {
+  if (!vposUrl || !sx || !secretKey || !customerKey) {
+    return { ok: false, httpStatus: 0, procReturnCode: '', errMsg: 'Yapilandirma eksik (vposUrl/sx/secretKey/customerKey)', entries: null }
+  }
+  const listUrl = `${vposUrl}/Payment/CardStorageCardList`
+  try {
+    const hash = await generatePaynkolayHash([sx, customerKey, secretKey])
+    const form = new FormData()
+    form.set('sx', sx)
+    form.set('customerKey', customerKey)
+    form.set('hashDatav2', hash)
+    const res = await fetch(listUrl, { method: 'POST', body: form })
+    const raw = await res.text()
+    if (!res.ok) {
+      return { ok: false, httpStatus: res.status, procReturnCode: '', errMsg: `HTTP ${res.status}`, entries: null }
+    }
+    let json: any = null
+    try { json = JSON.parse(raw) } catch {
+      return { ok: false, httpStatus: res.status, procReturnCode: '', errMsg: 'Yanit JSON degil', entries: null }
+    }
+    const procReturnCode = String(json?.ProcReturnCode ?? '')
+    const errMsg = String(json?.ErrMsg ?? '')
+    if (!isCardStorageListSuccess(json)) {
+      return { ok: false, httpStatus: res.status, procReturnCode, errMsg, entries: null }
+    }
+    return { ok: true, httpStatus: res.status, procReturnCode, errMsg, entries: parseCardStorageList(json) }
+  } catch (e) {
+    return { ok: false, httpStatus: 0, procReturnCode: '', errMsg: String((e as Error)?.message ?? e), entries: null }
+  }
+}
+
 // ── Kayitli kartlari Paynkolay'dan cek (CardStorageCardList). PAYNKOLAY_SX ile
 //    calisir — ayri bir "kart" sx'i YOK (2026-09-16 canli testte dogrulandi).
 export async function fetchCardStorageList(
