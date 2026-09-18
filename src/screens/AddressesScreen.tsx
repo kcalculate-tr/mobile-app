@@ -195,6 +195,21 @@ export default function AddressesScreen() {
     [addresses, selectedAddressId],
   );
 
+  // FAZ L madde 3 — form üstündeki konum önizleme kartı için: bu oturumda
+  // yeni onaylanmış bir coords varsa onu, yoksa (edit modunda) düzenlenen
+  // adresin DB'deki mevcut coords'unu gösterir. saveAddress SADECE
+  // pendingCoords doluysa latitude/longitude/verified_at yazar — sadece
+  // önizleme amaçlı bu türetilmiş değer DB'ye asla yazılmaz.
+  const editingAddress = useMemo(
+    () => (editingId ? addresses.find((a) => a.id === editingId) || null : null),
+    [editingId, addresses],
+  );
+  const previewCoords =
+    pendingCoords ||
+    (editingAddress?.latitude != null && editingAddress?.longitude != null
+      ? { latitude: editingAddress.latitude, longitude: editingAddress.longitude }
+      : null);
+
   const handleSelectAddress = (id: string) => {
     setSelectedAddressId(id);
     const address = addresses.find((a) => a.id === id);
@@ -434,6 +449,13 @@ export default function AddressesScreen() {
   };
 
   const handleLocationPermissionDenied = () => {
+    // Edit sırasında "Konumu Düzenle" tıklanıp izin reddedilirse sadece sheet'i
+    // kapat — mevcut düzenleme formunu (ad/telefon/kat/daire vs) SIFIRLAMA.
+    // Yeni adres akışında (editingId boş) manuel forma düş.
+    if (editingId) {
+      setShowLocationSheet(false);
+      return;
+    }
     openManualForm();
   };
 
@@ -448,12 +470,36 @@ export default function AddressesScreen() {
     // seçer. "Hizmet Bölgesi Dışı" uyarısı burada DEĞİL, kayıt anında (seçili
     // ilçe/mahalle GERÇEKTEN belliyken) gösterilir — bkz. saveAddress.
     const matchedDistrict = matchToOption(reverseGeo?.district, districtOptions);
+    const districtNeighborhoods = matchedDistrict ? neighborhoodOptionsByDistrict[matchedDistrict] || [] : [];
+    // Apple'ın mahallesi delivery_zones'da yoksa Google'ın adayını dener —
+    // aynı koordinat için ikisi FARKLI (ama her ikisi de geçerli) mahalle
+    // sınırı verebiliyor, sadece biri resmi listede olabilir.
     const matchedNeighborhood = matchedDistrict
-      ? matchToOption(reverseGeo?.neighbourhood, neighborhoodOptionsByDistrict[matchedDistrict] || [])
+      ? matchToOption(reverseGeo?.neighbourhood, districtNeighborhoods) ||
+        matchToOption(reverseGeo?.neighbourhoodAlt, districtNeighborhoods)
       : null;
+    const neighborhoodHint =
+      matchedDistrict && !matchedNeighborhood
+        ? 'Mahalleni listeden seçmeni rica ediyoruz — konumundan otomatik eşleşen bir mahalle bulamadık.'
+        : '';
+
+    // "Konumu düzenle" mevcut bir adresi düzenlerken tıklandıysa (editingId
+    // dolu): formun geri kalanını (ad/telefon/kat/daire vs) BOZMADAN sadece
+    // konum alanlarını güncelle. Yeni adres akışında (editingId boş) form
+    // sıfırdan dolduruluyor.
+    if (editingId) {
+      setForm((prev) => ({
+        ...prev,
+        district: matchedDistrict || prev.district,
+        neighborhood: matchedNeighborhood || prev.neighborhood,
+        street: reverseGeo?.street || prev.street,
+        building_no: reverseGeo?.streetNumber || prev.building_no,
+      }));
+      setInfoMessage(neighborhoodHint);
+      return;
+    }
 
     const { first, last } = hasProfileContact ? splitName(profileContact!.fullName) : { first: '', last: '' };
-    setEditingId('');
     setForm({
       ...INITIAL_FORM,
       contact_email: user?.email || '',
@@ -463,9 +509,10 @@ export default function AddressesScreen() {
       district: matchedDistrict || '',
       neighborhood: matchedNeighborhood || '',
       street: reverseGeo?.street || '',
+      building_no: reverseGeo?.streetNumber || '',
     });
     setErrorMessage('');
-    setInfoMessage('');
+    setInfoMessage(neighborhoodHint);
     setFormOpen(true);
   };
 
@@ -912,6 +959,34 @@ export default function AddressesScreen() {
                     {editingId ? 'Adresi Düzenle' : 'Yeni Adres'}
                   </Text>
 
+                  {/* FAZ L madde 3 — konum önizleme kartı, hem yeni hem düzenleme modunda */}
+                  <TouchableOpacity
+                    style={s.locationPreviewCard}
+                    activeOpacity={0.85}
+                    onPress={() => setShowLocationSheet(true)}
+                  >
+                    {previewCoords ? (
+                      <>
+                        <Image
+                          source={{
+                            uri: `https://maps.googleapis.com/maps/api/staticmap?center=${previewCoords.latitude},${previewCoords.longitude}&zoom=16&size=800x280&scale=2&markers=color:0xC6F04F%7C${previewCoords.latitude},${previewCoords.longitude}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}`,
+                          }}
+                          style={s.locationPreviewImg}
+                          resizeMode="cover"
+                        />
+                        <View style={s.locationPreviewBadge}>
+                          <MapPin size={11} color="#000" />
+                          <Text style={s.locationPreviewBadgeText}>Konumu Düzenle</Text>
+                        </View>
+                      </>
+                    ) : (
+                      <View style={s.locationPreviewEmpty}>
+                        <MapPin size={20} color={COLORS.text.tertiary} />
+                        <Text style={s.locationPreviewEmptyText}>Konum Seç</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
                   <FormField label="Başlık" value={form.title}
                     onChangeText={(v) => setForm((p) => ({ ...p, title: v }))}
                     placeholder="Ev / İş" />
@@ -1009,7 +1084,7 @@ export default function AddressesScreen() {
       <AddressVerificationSheet
         visible={showLocationSheet}
         mode="create"
-        initialCoords={null}
+        initialCoords={previewCoords}
         onClose={() => setShowLocationSheet(false)}
         onConfirm={handleLocationConfirm}
         onPermissionDenied={handleLocationPermissionDenied}
@@ -1139,4 +1214,25 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   mapBadge: { position: 'absolute', bottom: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.brand.green, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   mapBadgeText: { fontSize: 11, fontWeight: '700',
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+
+  // FAZ L madde 3 — form içi konum önizleme kartı
+  locationPreviewCard: {
+    height: 140,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+    marginBottom: 14,
+  },
+  locationPreviewImg: { width: '100%', height: '100%' },
+  locationPreviewBadge: {
+    position: 'absolute', bottom: 8, right: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.brand.green, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  locationPreviewBadgeText: { fontSize: 11, fontWeight: '700',
+fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  locationPreviewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  locationPreviewEmptyText: { fontSize: 13, fontWeight: '600',
+fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.tertiary },
 });

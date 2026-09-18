@@ -14,8 +14,16 @@ const IZMIR_CENTER = { latitude: 38.4237, longitude: 27.1428 };
 
 export type ReverseGeoResult = {
   district?: string;
+  /** Native (Apple/Android) sonucu — birincil aday. */
   neighbourhood?: string;
+  /** Google sonucu — Apple'ın mahallesi delivery_zones'da eşleşmezse ikinci
+   * deneme. İkisi FARKLI mahalle sınırları kullanabilir (aynı koordinat için
+   * Apple "Yeşilyurt", Google "Salih Omurtak" dönebiliyor — biri delivery_zones'da
+   * olup diğeri olmayabilir), tek kaynağa güvenmek yetersiz kaldığı için ikisi de taşınır. */
+  neighbourhoodAlt?: string;
   street?: string;
+  streetNumber?: string;
+  postalCode?: string;
 };
 
 const getGoogleMapsKey = (): string => {
@@ -24,10 +32,18 @@ const getGoogleMapsKey = (): string => {
   return String((typeof fromConfig === 'string' ? fromConfig : '') || process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY || '').trim();
 };
 
-// Apple/native reverse-geocode boş/eksik dönerse (bazı simülatör/kırsal
-// konumlarda olur) Google Geocoding API'ye düşer — aynı key zaten
-// forward-geocode'da (adres→koordinat) kullanılıyor ve aktif.
-const reverseGeocodeWithGoogle = async (lat: number, lng: number): Promise<ReverseGeoResult | null> => {
+type GoogleReverseResult = {
+  district?: string;
+  neighbourhood?: string;
+  street?: string;
+  streetNumber?: string;
+  postalCode?: string;
+};
+
+// Google'ın reverse-geocode'da mahalleyi taşıdığı tip TR'de tutarlı değil —
+// gözlemde "administrative_area_level_4" geldi, dokümantasyonda "neighborhood"/
+// "sublocality" da mümkün; hepsini dener.
+const reverseGeocodeWithGoogle = async (lat: number, lng: number): Promise<GoogleReverseResult | null> => {
   const key = getGoogleMapsKey();
   if (!key) return null;
   try {
@@ -42,8 +58,10 @@ const reverseGeocodeWithGoogle = async (lat: number, lng: number): Promise<Rever
     const find = (type: string) => components.find((c) => c.types.includes(type))?.long_name;
     return {
       district: find('administrative_area_level_2'),
-      neighbourhood: find('sublocality') || find('neighborhood'),
+      neighbourhood: find('administrative_area_level_4') || find('neighborhood') || find('sublocality'),
       street: find('route'),
+      streetNumber: find('street_number'),
+      postalCode: find('postal_code'),
     };
   } catch {
     return null;
@@ -171,20 +189,36 @@ export default function AddressVerificationSheet({
     if (!region) return null;
     setChecking(true);
     try {
-      const results = await Location.reverseGeocodeAsync({ latitude: region.latitude, longitude: region.longitude });
+      const nativePromise = Location.reverseGeocodeAsync({ latitude: region.latitude, longitude: region.longitude });
+      // create modunda HER ZAMAN Google'ı da paralel çağırıyoruz (sadece native
+      // tamamen boşsa değil) — gözlemde Apple mahalleyi BOŞ değil YANLIŞ/farklı
+      // sınırla dönebiliyor (aynı koordinat: Apple "Yeşilyurt", Google "Salih
+      // Omurtak" — sadece ikincisi delivery_zones'da). AddressesScreen ikisini
+      // de dener, ilk eşleşeni kullanır. verify modunda (mismatch kontrolü
+      // native veriyle yeterli) gereksiz API çağrısından kaçınılır.
+      const googlePromise = mode === 'create' ? reverseGeocodeWithGoogle(region.latitude, region.longitude) : Promise.resolve(null);
+      const [results, googleResult] = await Promise.all([nativePromise, googlePromise]);
       const geo = results?.[0];
+
       let resolved: ReverseGeoResult | null = geo
         ? {
             district: geo.subregion || geo.district || undefined,
             neighbourhood: geo.district || geo.name || undefined,
             street: geo.street || geo.name || undefined,
+            streetNumber: geo.streetNumber || undefined,
+            postalCode: geo.postalCode || undefined,
           }
         : null;
 
-      // Native sonuç boş/eksikse (ör. bazı simülatör/kırsal konumlar) Google'a düş.
-      if (!resolved?.district && !resolved?.neighbourhood) {
-        const googleResult = await reverseGeocodeWithGoogle(region.latitude, region.longitude);
-        if (googleResult) resolved = googleResult;
+      if (googleResult) {
+        resolved = {
+          district: resolved?.district || googleResult.district,
+          neighbourhood: resolved?.neighbourhood,
+          neighbourhoodAlt: googleResult.neighbourhood,
+          street: resolved?.street || googleResult.street,
+          streetNumber: resolved?.streetNumber || googleResult.streetNumber,
+          postalCode: resolved?.postalCode || googleResult.postalCode,
+        };
       }
 
       setReverseGeo(resolved);
