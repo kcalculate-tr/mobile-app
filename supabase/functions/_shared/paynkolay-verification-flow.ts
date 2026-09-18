@@ -554,3 +554,42 @@ export async function runVerificationSweep<C extends ListedCardLike>(deps: Sweep
     await deps.releaseLock()
   }
 }
+
+// ══ Boss panel: TEK satır için "İadeyi tekrar dene" (elle) ═══════════════════════
+export type ManualRetryResult =
+  | { kind: 'not_found' }
+  | { kind: 'not_retryable'; status: string }
+  | { kind: 'no_reference' }
+  | { kind: 'busy' }
+  | { kind: 'done'; status: VStatus }
+
+export interface ManualRetryDeps<C extends ListedCardLike> extends VerificationDeps<C> {
+  getById(id: string): Promise<VerificationRow | null>
+  /** Koşullu UPDATE (status + gözlenen last_refund_at eşleşmeli): sweep/callback ile yarışta yalnız BİRİ kazanır. */
+  claimManualRetry(id: string, status: string, observedLastRefundAt: string | null): Promise<boolean>
+}
+
+/**
+ * Yalnız refund_pending / refund_failed satırlar yeniden denenebilir (refunded/failed/initiated/succeeded ASLA
+ * — çift iade ve yanlış satıra iade engeli). Referans/işlem tarihi yoksa denenmez (sweep rapordan çözer).
+ * Aynı iade akışı (finalizeRefund): başarı -> refunded; hata -> refund_pending; MAX denemede -> refund_failed.
+ * card_saved/note DEĞİŞTİRİLMEZ. Yapan admin audit'e yazılır (kart/token YOK).
+ */
+export async function retryRefundManually<C extends ListedCardLike>(
+  deps: ManualRetryDeps<C>,
+  id: string,
+  actorId: string,
+): Promise<ManualRetryResult> {
+  const row = await deps.getById(id)
+  if (!row) return { kind: 'not_found' }
+  if (row.status !== 'refund_pending' && row.status !== 'refund_failed') return { kind: 'not_retryable', status: row.status }
+  const referenceCode = row.paynkolay_reference_code ?? ''
+  const trxDate = row.paynkolay_trx_date ?? ''
+  if (!referenceCode || !trxDate) return { kind: 'no_reference' }
+  if (!(await deps.claimManualRetry(row.id, row.status, row.last_refund_at ?? null))) return { kind: 'busy' }
+
+  const cents = Math.round(Number(row.charged_amount ?? row.amount) * 100)
+  const status = await finalizeRefund(deps, row, { referenceCode, trxDate, refundCents: cents })
+  await deps.audit('manual_refund_retry', { verificationId: row.id, actor: actorId, previousStatus: row.status, result: status }, row.user_id)
+  return { kind: 'done', status }
+}

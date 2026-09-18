@@ -15,6 +15,7 @@ import { cancelOrRefundTransaction } from './paynkolay-refund.ts'
 import {
   CallbackFields,
   CallbackOutcome,
+  ManualRetryResult,
   SweepDeps,
   SweepSummary,
   VerificationDeps,
@@ -22,6 +23,7 @@ import {
   countAttemptsToday,
   planStart,
   processVerificationCallback,
+  retryRefundManually,
   runVerificationSweep,
 } from './paynkolay-verification-flow.ts'
 import { lookupSales } from './paynkolay-report.ts'
@@ -315,4 +317,39 @@ export async function runSweep(admin: SupabaseClient, cfg: SweepConfig): Promise
   // GÜVENLİ LOG: yalnız sayaçlar ve rapor durum dağılımı (kart/token/secret/referans YOK).
   console.log('[paynkolay-verification-sweep] summary', summary)
   return summary
+}
+
+// ══ Boss panel: elle "İadeyi tekrar dene" (paynkolay-card-verification-refund-retry) ══
+export async function runManualRefundRetry(
+  admin: SupabaseClient,
+  cfg: VerificationConfig,
+  id: string,
+  actorId: string,
+): Promise<ManualRetryResult> {
+  const base = buildVerificationDeps(admin, cfg)
+  return await retryRefundManually(
+    {
+      ...base,
+      async getById(rowId) {
+        const { data } = await admin.from('card_verifications').select(SWEEP_COLS).eq('id', rowId).maybeSingle()
+        return (data as unknown as VerificationRow | null) ?? null
+      },
+      async claimManualRetry(rowId, status, observedLastRefundAt) {
+        let q = admin
+          .from('card_verifications')
+          .update({ last_refund_at: new Date().toISOString() })
+          .eq('id', rowId)
+          .eq('status', status)
+        q = observedLastRefundAt === null ? q.is('last_refund_at', null) : q.eq('last_refund_at', observedLastRefundAt)
+        const { data, error } = await q.select('id')
+        if (error) {
+          console.error('[card-verification-refund-retry] claim hatası:', error.message)
+          return false
+        }
+        return (data?.length ?? 0) > 0
+      },
+    },
+    id,
+    actorId,
+  )
 }

@@ -94,3 +94,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/delete-account/deno.json"
 entrypoint = "./functions/delete-account/index.ts"
+
+[functions.card-verification-refund-retry]
+enabled = true
+verify_jwt = true
+import_map = "./functions/card-verification-refund-retry/deno.json"
+entrypoint = "./functions/card-verification-refund-retry/index.ts"
