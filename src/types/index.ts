@@ -233,6 +233,10 @@ export interface Address {
   apartment_no?: string;
   building_name?: string;
   is_default?: boolean;
+  // FAZ L — checkout'ta harita pin onayı
+  latitude?: number | null;
+  longitude?: number | null;
+  verified_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

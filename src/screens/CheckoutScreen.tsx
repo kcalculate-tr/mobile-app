@@ -27,6 +27,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
+import AddressVerificationSheet from '../components/checkout/AddressVerificationSheet';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
 import {
@@ -383,6 +384,8 @@ export default function CheckoutScreen() {
   const { step, cardHolder, cardNumber, expiry, cvv, payLoading, payError, webViewHtml, pendingPaymentOrder, loadingPendingOrder, retryPaymentOrderId } = pay;
 
   const [showZonesSheet, setShowZonesSheet] = useState(false);
+  const [showVerifySheet, setShowVerifySheet] = useState(false);
+  const [verifyingAddressId, setVerifyingAddressId] = useState<string | null>(null);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
   const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
 
@@ -1048,6 +1051,26 @@ export default function CheckoutScreen() {
     dispatchOrder({ type: 'SET_RULES_REFRESH_KEY', payload: rulesRefreshKey + 1 });
   };
 
+  // FAZ L — harita pin onayı: addresses.latitude/longitude/verified_at
+  // güncellenir, adres tekrar doğrulama istemez (verified_at doluyken bu
+  // sheet hiç açılmaz — bkz. render'daki koşul).
+  const handleAddressVerified = async (coords: { latitude: number; longitude: number }) => {
+    const addressId = verifyingAddressId;
+    setShowVerifySheet(false);
+    setVerifyingAddressId(null);
+    if (!addressId) return;
+    const verifiedAt = new Date().toISOString();
+    const updated = addresses.map((a) =>
+      a.id === addressId ? { ...a, latitude: coords.latitude, longitude: coords.longitude, verified_at: verifiedAt } : a,
+    );
+    dispatchAddr({ type: 'SET_ADDRESSES', payload: updated });
+    const { error } = await getSupabaseClient()
+      .from('addresses')
+      .update({ latitude: coords.latitude, longitude: coords.longitude, verified_at: verifiedAt })
+      .eq('id', addressId);
+    if (error) console.error('[Checkout] adres doğrulama güncellemesi başarısız:', error.message);
+  };
+
   const handleCreateOrder = async () => {
     dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
     dispatchOrder({ type: 'SET_PAYMENT_NOTICE', payload: '' });
@@ -1541,6 +1564,27 @@ export default function CheckoutScreen() {
                 <View style={[styles.mapPreview, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
                   <ActivityIndicator color={COLORS.text.secondary} size="small" />
                 </View>
+              ) : null}
+              {/* FAZ L — konum doğrulama: doğrulanmışsa rozet, değilse doğrulama daveti */}
+              {selectedAddress ? (
+                selectedAddress.verified_at ? (
+                  <View style={styles.verifiedBadgeRow}>
+                    <MapPin size={12} color={COLORS.brand.green} weight="fill" />
+                    <Text style={styles.verifiedBadgeText}>Konum doğrulandı</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.verifyPromptRow}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setVerifyingAddressId(selectedAddress.id);
+                      setShowVerifySheet(true);
+                    }}
+                  >
+                    <MapPin size={12} color="#C2410C" />
+                    <Text style={styles.verifyPromptText}>Konumu haritada doğrula</Text>
+                  </TouchableOpacity>
+                )
               ) : null}
               {addresses.length > 0 ? (
                 <TouchableOpacity
@@ -2208,6 +2252,23 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
         </View>
       </Modal>
       <DeliveryZonesSheet visible={showZonesSheet} onClose={() => setShowZonesSheet(false)} />
+      <AddressVerificationSheet
+        visible={showVerifySheet}
+        addressDistrict={selectedAddress?.district || ''}
+        addressNeighbourhood={selectedAddress?.neighbourhood ?? null}
+        initialCoords={
+          selectedAddress?.latitude != null && selectedAddress?.longitude != null
+            ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
+            : mapCoords
+            ? { latitude: mapCoords.lat, longitude: mapCoords.lng }
+            : null
+        }
+        onClose={() => {
+          setShowVerifySheet(false);
+          setVerifyingAddressId(null);
+        }}
+        onConfirm={handleAddressVerified}
+      />
     </ScreenContainer>
   );
 }
@@ -2829,5 +2890,31 @@ const styles = StyleSheet.create({
   mapPreviewImg: {
     width: '100%',
     height: '100%',
+  },
+  // FAZ L — konum doğrulama rozeti/daveti
+  verifiedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: SPACING.xs,
+  },
+  verifiedBadgeText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
+  },
+  verifyPromptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: SPACING.xs,
+  },
+  verifyPromptText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#C2410C',
+    textDecorationLine: 'underline',
   },
 });

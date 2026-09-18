@@ -51,6 +51,15 @@ module.exports = {
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
       ],
+      // FAZ L — react-native-maps (Android zorunlu; bu key "Maps SDK for
+      // Android"da etkin değilse harita boş/gri gelir, Google Cloud
+      // Console'da kontrol edilmeli). iOS PROVIDER_DEFAULT (Apple Maps)
+      // kullanıyor, ek key gerekmiyor.
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
+        },
+      },
     },
     web: {
       favicon: './assets/favicon.png',
