@@ -125,6 +125,9 @@ const normalizeAddress = (row: Record<string, unknown>): Address => ({
       row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '',
     ).trim() || null,
   is_default: Boolean(row.is_default),
+  latitude: typeof row.latitude === 'number' ? row.latitude : row.latitude != null ? Number(row.latitude) : null,
+  longitude: typeof row.longitude === 'number' ? row.longitude : row.longitude != null ? Number(row.longitude) : null,
+  verified_at: row.verified_at ? String(row.verified_at) : null,
   created_at: String(row.created_at ?? '').trim() || undefined,
   updated_at: String(row.updated_at ?? '').trim() || undefined,
 });

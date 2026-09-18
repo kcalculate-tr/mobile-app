@@ -23,3 +23,39 @@ export function distanceInMeters(
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   return EARTH_RADIUS_METERS * c;
 }
+
+/**
+ * Türkçe karakter/büyük-küçük harf/noktalama farklarını yutar — ters-geocode
+ * (Apple/Google) sonucunu `delivery_zones`'daki resmi mahalle yazımıyla
+ * (örn. "B.hayrettin Paşa") eşleştirmek için. `toLocaleLowerCase('tr')` İ→i,
+ * I→ı dönüşümünü doğru yapar; ayrıca nokta/apostrof/çoklu boşluk atılır.
+ */
+export function normalizeTurkishText(v: string | null | undefined): string {
+  return (v || '')
+    .toLocaleLowerCase('tr')
+    .replace(/[.'’]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Ters-geocode'dan gelen ham ilçe/mahalle adını `delivery_zones` listesiyle
+ * eşleştirir. Önce tam eşleşme, olmazsa bir yöndeki "içeriyor" eşleşmesi
+ * denenir (örn. Apple "Karşıyaka" derken liste "Karşıyaka Mahallesi" gibi
+ * farklı bir sonek taşıyorsa). Eşleşme yoksa null — kullanıcı listeden
+ * elle seçer, otomatik doldurma sadece bir öneridir.
+ */
+export function matchToOption(
+  raw: string | null | undefined,
+  options: { label: string; value: string }[],
+): string | null {
+  const target = normalizeTurkishText(raw);
+  if (!target) return null;
+  const exact = options.find((o) => normalizeTurkishText(o.value) === target);
+  if (exact) return exact.value;
+  const partial = options.find((o) => {
+    const norm = normalizeTurkishText(o.value);
+    return norm.includes(target) || target.includes(norm);
+  });
+  return partial ? partial.value : null;
+}

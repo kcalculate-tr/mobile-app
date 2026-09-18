@@ -19,12 +19,14 @@ import Constants from 'expo-constants';
 import { CaretLeft, PencilSimple, MapPin, Plus, Trash } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import FormField, { FormFieldOption } from '../components/FormField';
+import AddressVerificationSheet, { ReverseGeoResult } from '../components/checkout/AddressVerificationSheet';
 import { useAuth } from '../context/AuthContext';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
 import { getSupabaseClient } from '../lib/supabase';
+import { matchToOption } from '../lib/geo';
 import { RootStackParamList } from '../navigation/types';
 import { Address } from '../types';
 import { useAddressStore } from '../store/addressStore';
@@ -87,6 +89,9 @@ const normalizeAddress = (row: Record<string, unknown>): Address => ({
   apartment_no: String(row.apartment_no ?? '').trim() || undefined,
   building_name: String(row.building_name ?? '').trim() || undefined,
   is_default: Boolean(row.is_default),
+  latitude: typeof row.latitude === 'number' ? row.latitude : row.latitude != null ? Number(row.latitude) : null,
+  longitude: typeof row.longitude === 'number' ? row.longitude : row.longitude != null ? Number(row.longitude) : null,
+  verified_at: row.verified_at ? String(row.verified_at) : null,
   created_at: String(row.created_at ?? '').trim() || undefined,
   updated_at: String(row.updated_at ?? '').trim() || undefined,
 });
@@ -148,6 +153,28 @@ export default function AddressesScreen() {
 
   const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geocoding, setGeocoding] = useState(false);
+
+  // FAZ L — "Yeni Adres Ekle" artık önce harita adımı açıyor.
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+  const [pendingCoords, setPendingCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Profilde ad/soyad/telefon zaten varsa formda tekrar sorulmaz, otomatik dolar.
+  const [profileContact, setProfileContact] = useState<{ fullName: string; phone: string } | null>(null);
+  const hasProfileContact = Boolean(profileContact?.fullName && profileContact?.phone);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let mounted = true;
+    getSupabaseClient()
+      .from('profiles')
+      .select('full_name, phone')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!mounted || !data) return;
+        setProfileContact({ fullName: String(data.full_name || ''), phone: String(data.phone || '') });
+      });
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   const selectMode = Boolean(route.params?.selectMode);
 
@@ -349,9 +376,68 @@ export default function AddressesScreen() {
     return () => { mounted = false; };
   }, [selectedAddressId, addresses]);
 
+  // FAZ L — "Yeni Adres Ekle" artık önce harita adımını açar (AddressVerificationSheet,
+  // mode="create"). Konum izni reddedilirse handleLocationPermissionDenied eski
+  // manuel formu (ilçe/mahalle seçimiyle) açar.
   const openCreateForm = () => {
     setEditingId('');
-    setForm({ ...INITIAL_FORM, contact_email: user?.email || '' });
+    setPendingCoords(null);
+    setErrorMessage('');
+    setInfoMessage('');
+    setShowLocationSheet(true);
+  };
+
+  const openManualForm = () => {
+    setShowLocationSheet(false);
+    setEditingId('');
+    setPendingCoords(null);
+    setForm({
+      ...INITIAL_FORM,
+      contact_email: user?.email || '',
+      first_name: hasProfileContact ? profileContact!.fullName.split(' ')[0] || '' : '',
+      last_name: hasProfileContact ? profileContact!.fullName.split(' ').slice(1).join(' ') : '',
+      contact_phone: hasProfileContact ? profileContact!.phone : '',
+    });
+    setErrorMessage('');
+    setInfoMessage('');
+    setFormOpen(true);
+  };
+
+  const handleLocationPermissionDenied = () => {
+    openManualForm();
+  };
+
+  const handleLocationConfirm = (
+    coords: { latitude: number; longitude: number },
+    reverseGeo?: ReverseGeoResult,
+  ) => {
+    setShowLocationSheet(false);
+    setPendingCoords(coords);
+
+    const matchedDistrict = matchToOption(reverseGeo?.district, districtOptions);
+    const matchedNeighborhood = matchedDistrict
+      ? matchToOption(reverseGeo?.neighbourhood, neighborhoodOptionsByDistrict[matchedDistrict] || [])
+      : null;
+
+    if (!matchedDistrict) {
+      // FAZ L madde 7 — hizmet bölgesi dışı: kaydetmeyi engellemiyoruz, sadece uyarıyoruz.
+      Alert.alert(
+        'Hizmet Bölgesi Dışı',
+        'Bu adrese şu an teslimat yapamıyoruz. Yine de kaydedebilirsiniz.',
+      );
+    }
+
+    setEditingId('');
+    setForm({
+      ...INITIAL_FORM,
+      contact_email: user?.email || '',
+      first_name: hasProfileContact ? profileContact!.fullName.split(' ')[0] || '' : '',
+      last_name: hasProfileContact ? profileContact!.fullName.split(' ').slice(1).join(' ') : '',
+      contact_phone: hasProfileContact ? profileContact!.phone : '',
+      district: matchedDistrict || '',
+      neighborhood: matchedNeighborhood || '',
+      street: reverseGeo?.street || '',
+    });
     setErrorMessage('');
     setInfoMessage('');
     setFormOpen(true);
@@ -359,6 +445,7 @@ export default function AddressesScreen() {
 
   const openEditForm = (address: Address) => {
     setEditingId(address.id);
+    setPendingCoords(null);
     setForm({
       title: address.title || '',
       first_name: address.first_name || '',
@@ -383,6 +470,7 @@ export default function AddressesScreen() {
     setFormOpen(false);
     setEditingId('');
     setForm(INITIAL_FORM);
+    setPendingCoords(null);
   };
 
   const saveAddress = async () => {
@@ -457,6 +545,31 @@ export default function AddressesScreen() {
         full_address: form.full_address.trim() || fullAddressAuto,
         city: 'İzmir',
       };
+
+      // FAZ L — harita adımından geldiyse koordinat + doğrulama zaman damgası
+      // yazılır; bu adres checkout'ta tekrar doğrulama istemez.
+      if (pendingCoords) {
+        payload.latitude = pendingCoords.latitude;
+        payload.longitude = pendingCoords.longitude;
+        payload.verified_at = new Date().toISOString();
+      }
+
+      // Profilde ad/soyad/telefon yoksa burada toplanan bilgi profile de yazılır
+      // (best-effort, adres kaydını bloklamaz) — bir daha sorulmasın.
+      if (!hasProfileContact) {
+        getSupabaseClient()
+          .from('profiles')
+          .update({
+            full_name: `${form.first_name.trim()} ${form.last_name.trim()}`.trim(),
+            first_name: form.first_name.trim() || null,
+            last_name: form.last_name.trim() || null,
+            phone: form.contact_phone.trim(),
+          })
+          .eq('id', user.id)
+          .then(({ error }) => {
+            if (error) console.error('[Addresses] profil iletişim güncellemesi başarısız:', error.message);
+          });
+      }
 
       if (editingId) {
         const workingPayload = { ...payload };
@@ -770,23 +883,27 @@ export default function AddressesScreen() {
                     onChangeText={(v) => setForm((p) => ({ ...p, title: v }))}
                     placeholder="Ev / İş" />
 
-                  {/* Ad - Soyad yan yana */}
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <FormField label="Ad *" value={form.first_name}
-                        onChangeText={(v) => setForm((p) => ({ ...p, first_name: v }))}
-                        placeholder="Adınız" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <FormField label="Soyad *" value={form.last_name}
-                        onChangeText={(v) => setForm((p) => ({ ...p, last_name: v }))}
-                        placeholder="Soyadınız" />
-                    </View>
-                  </View>
+                  {/* FAZ L — profilde ad/soyad/telefon varsa formda tekrar sorulmaz */}
+                  {!(editingId ? false : hasProfileContact) && (
+                    <>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <FormField label="Ad *" value={form.first_name}
+                            onChangeText={(v) => setForm((p) => ({ ...p, first_name: v }))}
+                            placeholder="Adınız" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <FormField label="Soyad *" value={form.last_name}
+                            onChangeText={(v) => setForm((p) => ({ ...p, last_name: v }))}
+                            placeholder="Soyadınız" />
+                        </View>
+                      </View>
 
-                  <FormField label="Telefon *" value={form.contact_phone}
-                    onChangeText={(v) => setForm((p) => ({ ...p, contact_phone: v }))}
-                    placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
+                      <FormField label="Telefon *" value={form.contact_phone}
+                        onChangeText={(v) => setForm((p) => ({ ...p, contact_phone: v }))}
+                        placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
+                    </>
+                  )}
 
                   <FormField label="İlçe *" value={form.district}
                     onChangeText={handleDistrictChange}
@@ -856,6 +973,14 @@ export default function AddressesScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+      <AddressVerificationSheet
+        visible={showLocationSheet}
+        mode="create"
+        initialCoords={null}
+        onClose={() => setShowLocationSheet(false)}
+        onConfirm={handleLocationConfirm}
+        onPermissionDenied={handleLocationPermissionDenied}
+      />
     </ScreenContainer>
   );
 }
