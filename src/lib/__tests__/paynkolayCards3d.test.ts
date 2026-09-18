@@ -21,7 +21,18 @@ test('pay: tutar/yeni-cihaz risk kuralı geri gelmemeli', () => {
   assert.doesNotMatch(source, /user_known_devices/);
 });
 
-test('pay: yanıt her zaman 3D form HTML\'i (non-3D senkron dal yok)', () => {
-  assert.match(source, /requires3D: true, formHtml: raw/);
+test('pay: ham gövde ASLA istemciye geçmez — ayrıştırılmış HTML döner', () => {
+  assert.match(source, /parsePay3DResponse\(raw\)/);
+  assert.match(source, /formHtml: parsed\.html/);
+  assert.doesNotMatch(source, /formHtml:\s*raw/);
   assert.doesNotMatch(source, /completePaynkolayResult\(/);
+});
+
+test('pay: kullanılamayan yanıtta failed_payments kaydı + kullanıcı dostu hata', () => {
+  assert.match(source, /reason: '3d_response_unusable'/);
+  assert.match(source, /parsed\.kind === 'error'/);
+});
+
+test('pay: merchant_oid boşsa clientRefCode ile doldurulur (sweep/iade için)', () => {
+  assert.match(source, /merchant_oid: clientRefCode/);
 });

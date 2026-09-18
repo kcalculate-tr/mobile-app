@@ -7,6 +7,7 @@ import {
   isAllowlistedAdmin,
   upsertUserCard,
 } from '../_shared/paynkolay-cards.ts'
+import { parsePay3DResponse } from '../_shared/paynkolay-3d.ts'
 
 // ── Paynkolay "Saklı Kart" yönetimi (sync/pay/delete/set_default) ──────────
 // Kart Saklama API'leri (2026-09-16 canli test ile dogrulandi):
@@ -460,6 +461,17 @@ async function handlePay(
   // KCAL{orderId}T... prefix'i callback'in/completePaynkolayResult'in regex'i
   // (/^KCAL(\d+)T/) ile uyumlu kalsin diye korunuyor.
   const clientRefCode = `KCAL${order.id}T${Date.now()}CARD`
+
+  // merchant_oid: callback siparişi CLIENT_REFERENCE_CODE'dan (KCAL{id}T...) eşler,
+  // merchant_oid'e BAĞIMLI DEĞİL — ama review-sweep'in rapor sorgusu ve iade akışı
+  // buna bakar; init'teki gibi "ilk ref'i sakla, ezme" (sadece boşsa yaz).
+  if (!order.merchant_oid) {
+    const { error: oidErr } = await admin
+      .from('orders')
+      .update({ merchant_oid: clientRefCode, payment_provider: 'paynkolay', updated_at: new Date().toISOString() })
+      .eq('id', order.id)
+    if (oidErr) console.error('[paynkolay-cards] merchant_oid yazılamadı:', oidErr.message)
+  }
   const successUrl = `${CALLBACK_URL}?pk=success`
   const failUrl = `${CALLBACK_URL}?pk=fail`
   const rnd = getRnd()
@@ -505,10 +517,55 @@ async function handlePay(
     return jsonResponse({ error: 'Paynkolay odeme servisi hata dondu', httpStatus }, 502)
   }
 
-  console.log('[paynkolay-cards] pay', { orderId: order.id, amount, use3D: true })
+  // ── /v1/Payment (use3D=true) yanıtı HAM JSON'dur (USE_3D, BANK_REQUEST_MESSAGE,
+  //    REFERENCE_CODE, sessionId...). 3D sayfası JSON'un kendisi değil,
+  //    BANK_REQUEST_MESSAGE'ın içindedir — çıkarıp WebView'in render edeceği
+  //    HTML'e çeviriyoruz. Ham gövde ASLA istemciye geçmez.
+  const parsed = parsePay3DResponse(raw)
+  // GÜVENLİ LOG: içerik/token YOK — sadece biçim, anahtar adları, uzunluk.
+  console.log('[paynkolay-cards] pay 3D yanıtı', {
+    orderId: order.id,
+    amount,
+    use3D: true,
+    kind: parsed.kind,
+    format: parsed.format,
+    keys: parsed.keys,
+    rawLen: raw.length,
+  })
 
-  // 3D: yanit bankaya yonlendiren HTML sayfasi — mobil WebView'de render edilir.
-  // Sonuc PaynKolay tarafindan successUrl/failUrl'e (paynkolay-callback) POST
-  // edilir; tamamlama (macro purchase dahil) ORADA, tek kaynaktan olur.
-  return jsonResponse({ success: true, requires3D: true, formHtml: raw })
+  if (parsed.kind === 'error') {
+    console.error('[paynkolay-cards] pay 3D yanıtı işlenemedi', {
+      orderId: order.id,
+      reason: parsed.reason,
+      format: parsed.format,
+      providerError: parsed.providerError.slice(0, 200),
+    })
+    try {
+      await admin.from('failed_payments').insert([{
+        user_id: userId,
+        error_message: `Saklı kart 3D yanıtı işlenemedi (${parsed.reason})`,
+        amount: 0,
+        payment_method: 'kredi-karti-saklı',
+        order_data: {
+          reason: '3d_response_unusable',
+          orderId: order.id,
+          clientRefCode,
+          format: parsed.format,
+          keys: parsed.keys,
+          providerError: parsed.providerError.slice(0, 200),
+        },
+        created_at: new Date().toISOString(),
+      }])
+    } catch (e) {
+      console.error('[paynkolay-cards] failed_payments insert error (3d):', e)
+    }
+    return jsonResponse({
+      success: false,
+      error: 'Kayıtlı kartla ödeme başlatılamadı. Lütfen tekrar deneyin ya da yeni kart ile ödeyin.',
+    }, 502)
+  }
+
+  // 3D: WebView'de render edilir. Sonuç PaynKolay tarafından successUrl/failUrl'e
+  // (paynkolay-callback) POST edilir; tamamlama (macro purchase dahil) ORADA olur.
+  return jsonResponse({ success: true, requires3D: true, formHtml: parsed.html })
 }

@@ -23,6 +23,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import { initPayment } from '../lib/payment';
 import { payWithSavedCard } from '../lib/cards';
+import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../lib/paymentHtml';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
@@ -1026,7 +1027,14 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
         handleFailure(message);
         return;
       }
-      setFormHtml(json.formHtml);
+      const safeHtml = toRenderableFormHtml(json.formHtml);
+      if (!safeHtml) {
+        track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: 'invalid_form_html' });
+        setInitError(PAYMENT_PAGE_ERROR_MESSAGE);
+        handleFailure(PAYMENT_PAGE_ERROR_MESSAGE);
+        return;
+      }
+      setFormHtml(safeHtml);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ödeme başlatılamadı.';
       setInitError(message);
@@ -1053,12 +1061,16 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
         handleSuccess();
         return;
       }
-      if (result.requires3D && result.formHtml) {
-        setFormHtml(result.formHtml);
+      // Saklı kart ödemesi HER ZAMAN 3D'li: geçerli bir form HTML'i yoksa (beklenmeyen
+      // yanıt) ham içerik ASLA gösterilmez ve "başarılı" varsayılmaz — kontrollü hata.
+      const safeHtml = result.requires3D ? toRenderableFormHtml(result.formHtml) : null;
+      if (!safeHtml) {
+        track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: 'invalid_form_html' });
+        setInitError(PAYMENT_PAGE_ERROR_MESSAGE);
+        handleFailure(PAYMENT_PAGE_ERROR_MESSAGE);
         return;
       }
-      // Non-3D: paynkolay-cards zaten callback'e röle etti, order tamamlandı.
-      handleSuccess();
+      setFormHtml(safeHtml);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ödeme başlatılamadı.';
       setInitError(message);
