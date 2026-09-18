@@ -124,7 +124,7 @@ export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser,
 
       <GlassButton
         label={loadingGoogle ? 'Bağlanıyor…' : 'Google ile devam et'}
-        icon={<GoogleGLogo size={18} />}
+        icon={<GoogleGLogo size={16} />}
         onPress={handleGoogle}
         disabled={loadingApple || loadingGoogle}
       />

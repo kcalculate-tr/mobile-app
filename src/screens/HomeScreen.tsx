@@ -5,7 +5,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { CachedImage } from '../components/CachedImage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MagnifyingGlass, MapPin, CaretDown, Question, CaretRight, Plus, Minus, Tag } from 'phosphor-react-native';
+import { MagnifyingGlass, MapPin, CaretDown, Question, Plus, Minus, Tag } from 'phosphor-react-native';
 import { TAB_BAR_TOTAL } from '../constants/layout';
 import { haptic } from '../utils/haptics';
 import HowItWorksModal from '../components/modals/HowItWorksModal';
@@ -311,17 +311,26 @@ export default function HomeScreen() {
             />
           </View>
 
-          {/* Adres - tam merkez */}
+          {/* Adres - tam merkez. Oturum yoksa useAddressStore'un kalıcı
+              (AsyncStorage) verisi hiç okunmaz/gösterilmez — bir önceki
+              kullanıcının adresi kalsa bile burada asla görünmez; yerine
+              giriş daveti gösterilir. */}
           <TouchableOpacity
             style={styles.addressButton}
-            onPress={() => navigation.navigate('Addresses')}
+            onPress={() => navigation.navigate(session ? 'Addresses' : 'Login')}
             activeOpacity={0.8}
           >
-            <MapPin size={13} color="#000000" />
-            <Text style={styles.addressText} numberOfLines={1}>
-              {selectedAddress?.neighbourhood || selectedAddress?.district || 'Adres seçin'}
-            </Text>
-            <CaretDown size={12} color="#000000" />
+            {session ? (
+              <>
+                <MapPin size={13} color="#000000" />
+                <Text style={styles.addressText} numberOfLines={1}>
+                  {selectedAddress?.neighbourhood || selectedAddress?.district || 'Adres seçin'}
+                </Text>
+                <CaretDown size={12} color="#000000" />
+              </>
+            ) : (
+              <Text style={styles.addressText} numberOfLines={1}>Giriş yap / Kaydol</Text>
+            )}
           </TouchableOpacity>
 
           {/* Sağ butonlar */}
@@ -344,21 +353,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Oturumsuz kullanıcı için kompakt giriş satırı — değer önerisi
-            metinleri artık WelcomeGateScreen'de (soğuk başlatmada bir kez
-            gösteriliyor); burada ürünlerin önüne geçmeyen tek satırlık bir
-            hatırlatma yeterli. */}
-        {!session ? (
-          <TouchableOpacity
-            style={styles.loginRow}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.loginRowText}>Giriş yap / Hesap oluştur</Text>
-            <CaretRight size={16} color="#000000" />
-          </TouchableOpacity>
-        ) : null}
 
         {/* Bayram / tatil banner — settings.holiday_banner_active=TRUE iken görünür */}
         {businessHours?.holiday_banner_active && businessHours.holiday_banner_message ? (
@@ -797,24 +791,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     flexWrap: 'wrap',
     maxWidth: 68,
-  },
-  // Oturumsuz Home — kompakt giriş satırı (değer önerisi WelcomeGate'te)
-  loginRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#C6F04F',
-    borderRadius: RADIUS.lg,
-    paddingVertical: SPACING.sm + 2,
-    paddingHorizontal: SPACING.lg,
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.lg,
-  },
-  loginRowText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#000000',
   },
   // Section
   section: {

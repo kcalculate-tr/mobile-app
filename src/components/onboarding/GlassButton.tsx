@@ -28,6 +28,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    minHeight: 48,
     backgroundColor: sportive.colors.glassBg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: sportive.colors.glassBorder,
@@ -35,6 +36,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
   },
-  icon: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+  // Apple'ın resmi AppleAuthenticationButton'ı (SocialAuthButtons) kendi
+  // logosunu optik olarak biraz küçük çiziyor (Apple'ın stil kuralı,
+  // özelleştirilemez) — Google "G" ikonu 18x18 olunca yanında büyük
+  // duruyordu, 16x16 ile görsel ağırlık dengelendi.
+  icon: { width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   label: { ...sportive.type.button, color: sportive.colors.textPrimary },
 });
