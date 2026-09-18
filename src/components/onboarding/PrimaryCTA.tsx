@@ -21,7 +21,7 @@ export const PrimaryCTA: React.FC<Props> = ({ label, showArrow, loading, disable
   >
     <Text style={styles.label}>{loading ? 'Yükleniyor…' : label}</Text>
     {showArrow && !loading && (
-      <View style={{ marginLeft: 6 }}>
+      <View>
         <ArrowRight size={16} color={sportive.colors.accentText} weight="bold" />
       </View>
     )}
@@ -33,6 +33,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    // GlassButton (Apple/Google) ile birebir aynı ikon-metin boşluğu —
+    // önceden buradaki ok ikonu marginLeft:6 ile ayrı hizalanıyordu.
+    gap: 8,
     minHeight: 48,
     backgroundColor: sportive.colors.accent,
     borderRadius: sportive.radius.button,

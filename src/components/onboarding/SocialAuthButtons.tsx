@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Platform, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Platform, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { GlassButton } from './GlassButton';
 import { sportive } from '../../theme/sportive';
 import { useAuth } from '../../context/AuthContext';
@@ -36,13 +35,33 @@ const GoogleGLogo = ({ size = 18 }: { size?: number }) => (
   </Svg>
 );
 
+// Apple'ın resmi siyah logosu (elma silueti + yaprak + ısırık), Apple'ın
+// marka kılavuzunun izin verdiği tek renkli tam-siyah çizim. 24x24 viewBox
+// içinde normalize — GlassButton'ın icon kutusu bu yüzden dikdörtgen değil
+// kare `iconSize` alıyor, oran bozulmuyor.
+const AppleLogo = ({ size = 18 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      fill="#000000"
+      d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.9-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701z"
+    />
+  </Svg>
+);
+
 // Apple ve Google girişini tek yerde topluyoruz: LoginScreen (dönen kullanıcı)
 // ve AuthGatewayScreen (yeni kayıt) aynı bileşeni, aynı yönlendirme mantığıyla
 // kullanır. Apple butonu sadece iOS'ta gösterilir (Android'de native Sign in
 // with Apple yok); Google her iki platformda.
 //
-// Apple: resmi AppleAuthenticationButton (native, marka kuralına göre stil/
-// metin/logo Apple tarafından çiziliyor — App Store review compliance).
+// Apple ve Google ikisi de aynı GlassButton primitive'i kullanıyor (yükseklik/
+// köşe/boşluk/font TEK kaynaktan, üç butonda — Kod Gönder dahil — birebir
+// aynı) — native AppleAuthenticationButton'ın fontu özelleştirilemediği için
+// (Apple kısıtı) tipografi uyumu ancak kendi çizimimizle sağlanabiliyordu.
+// Apple'ın App Store kuralları hâlâ karşılanıyor: onaylı metin ("Apple ile
+// Giriş Yap"), resmi tek-renk logo, onaylı Beyaz varyant (beyaz zemin/siyah
+// metin), Google'dan küçük/daha az belirgin değil (aynı GlassButton). Asıl
+// `AppleAuthentication.signInAsync` çağrısı (nonce dahil) AuthContext'teki
+// signInWithApple()'da DEĞİŞMEDEN duruyor — burada sadece görsel katman var.
 // Google: GlassButton + resmi 4 renkli "G" logosu + onaylı metinlerden biri
 // ("Google ile devam et") — Google, Apple'ın aksine kendi native bileşenini
 // (varsayılan light/gray pill, özelleştirilemez metin) zorunlu kılmıyor;
@@ -106,19 +125,15 @@ export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser,
 
       {Platform.OS === 'ios' && (
         <View style={{ marginBottom: 10 }}>
-          {loadingApple ? (
-            <View style={[styles.appleButton, styles.appleButtonLoading]}>
-              <ActivityIndicator color={sportive.colors.accentText} />
-            </View>
-          ) : (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-              cornerRadius={24}
-              style={styles.appleButton}
-              onPress={handleApple}
-            />
-          )}
+          <GlassButton
+            label={loadingApple ? 'Bağlanıyor…' : 'Apple ile Giriş Yap'}
+            icon={<AppleLogo size={18} />}
+            onPress={handleApple}
+            disabled={loadingApple || loadingGoogle}
+            style={styles.appleButton}
+            textStyle={styles.appleButtonText}
+            pressedBackgroundColor="#F0F0F0"
+          />
         </View>
       )}
 
@@ -137,11 +152,14 @@ const styles = StyleSheet.create({
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
   line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: sportive.colors.glassBorder },
   dividerText: { ...sportive.type.tactical, color: sportive.colors.textTertiary },
-  appleButton: { width: '100%', height: 48 },
-  appleButtonLoading: {
+  // Apple'ın App Store kuralı: "Sign in with Apple" özel bir bileşenle
+  // çizildiğinde de onaylı renk varyantlarından biri (Beyaz/BeyazContur/
+  // Siyah) kullanılmalı — burada Beyaz (zemin beyaz, metin/logo siyah).
+  appleButton: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#FFFFFF',
+  },
+  appleButtonText: {
+    color: '#000000',
   },
 });
