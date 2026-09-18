@@ -3,7 +3,7 @@ import {
   CardStorageEntry,
   completePaynkolayResult,
   deleteCardFromPaynkolay,
-  fetchCardStorageList,
+  fetchCardStorageListDiag,
   generatePaynkolayHash,
   isAllowlistedAdmin,
   markOrderPendingReview,
@@ -281,7 +281,10 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
     return jsonResponse({ success: true, cards, synced: false })
   }
 
-  const remoteList = await fetchCardStorageList(VPOS_URL, SX, SECRET_KEY, customerKey)
+  // Teshis alanlari (procReturnCode/errMsg) SADECE bilgi amacli — token/kart/
+  // customerKey burada da ASLA donulmez (bkz. fetchCardStorageListDiag).
+  const diag = await fetchCardStorageListDiag(VPOS_URL, SX, SECRET_KEY, customerKey)
+  const remoteList = diag.entries
 
   if (remoteList && remoteList.length > 0) {
     const { data: existingCards } = await admin.from('user_cards').select('id').eq('user_id', userId)
@@ -299,7 +302,13 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
   }
 
   const cards = await fetchLocalCards(admin, userId)
-  return jsonResponse({ success: true, cards, synced: remoteList !== null })
+  return jsonResponse({
+    success: true,
+    cards,
+    synced: remoteList !== null,
+    procReturnCode: diag.procReturnCode,
+    errMsg: diag.errMsg,
+  })
 }
 
 async function handleSetDefault(admin: SupabaseClient, userId: string, body: any): Promise<Response> {

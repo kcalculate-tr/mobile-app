@@ -45,6 +45,16 @@ export default function SavedCardsScreen() {
     try {
       const result = await syncSavedCards();
       setCards(result.cards ?? []);
+      // TEST ASAMASI TESHISI: CardStorageCardList yetkisinin ("00" mi degil mi)
+      // gozle kontrolu icin — token/kart bilgisi YOK, sadece durum kodu.
+      if (__DEV__) {
+        console.log('[SavedCards] sync', {
+          synced: result.synced,
+          procReturnCode: result.procReturnCode,
+          errMsg: result.errMsg,
+          cardCount: result.cards?.length ?? 0,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kartlar yüklenemedi.');
     } finally {

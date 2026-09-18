@@ -64,7 +64,7 @@ export const getCardsFeatureStatus = () =>
   callCards<{ enabled: boolean }>('status', {}, { timeoutMs: 3000 });
 
 export const syncSavedCards = () =>
-  callCards<{ success: true; cards: SavedCard[] }>('sync');
+  callCards<{ success: true; cards: SavedCard[]; synced: boolean; procReturnCode?: string; errMsg?: string }>('sync');
 
 export const setDefaultCard = (cardId: string) =>
   callCards<{ success: true }>('set_default', { cardId });
