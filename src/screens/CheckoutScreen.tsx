@@ -376,7 +376,14 @@ export default function CheckoutScreen() {
   const subtotal = useCartStore((state) => state.getSubtotal());
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
-  const totalMacros = useCartStore((state) => state.getTotalMacros());
+  // KÖK NEDEN (Maximum update depth exceeded, 6af7e9e): getTotalMacros()
+  // her çağrıda YENİ bir nesne döner (getSubtotal()'un aksine — o primitive
+  // sayı döndüğü için Object.is ile stabil). Selector İÇİNDE çağrılırsa
+  // useSyncExternalStore her render'da "değişti" sanır → sonsuz render
+  // döngüsü. Fonksiyonun kendisini (stabil referans) seçip render
+  // gövdesinde çağırmak gerekir — CartScreen'deki desenle AYNI.
+  const getTotalMacros = useCartStore((state) => state.getTotalMacros);
+  const totalMacros = getTotalMacros();
 
   const [addr, dispatchAddr] = useReducer(addressReducer, addressInitial);
   const [delivery, dispatchDelivery] = useReducer(deliveryReducer, deliveryInitial);
