@@ -15,11 +15,15 @@ import { cancelOrRefundTransaction } from './paynkolay-refund.ts'
 import {
   CallbackFields,
   CallbackOutcome,
+  SweepDeps,
+  SweepSummary,
   VerificationDeps,
   VerificationRow,
   planStart,
   processVerificationCallback,
+  runVerificationSweep,
 } from './paynkolay-verification-flow.ts'
+import { lookupSales } from './paynkolay-report.ts'
 import { VERIFICATION_AMOUNT, newVerificationRefCode, trDayStartUtcIso } from './paynkolay-verification.ts'
 
 export interface VerificationConfig {
@@ -202,4 +206,109 @@ export async function insertVerification(
     return { ok: false, conflict: (error as { code?: string }).code === '23505' }
   }
   return { ok: true, id, clientRefCode }
+}
+
+// ══ SWEEP (aşama 4) ═══════════════════════════════════════════════════════════
+const SWEEP_LOCK = 'card-verification-sweep'
+const SWEEP_LOCK_TTL_SECONDS = 480 // çökerse 8 dk sonra kendiliğinden açılır (cron 5 dk'da bir)
+const SWEEP_COLS =
+  'id, user_id, client_ref_code, amount, status, note, refund_attempts, created_at, updated_at, ' +
+  'paynkolay_reference_code, paynkolay_trx_date, charged_amount, last_refund_at, report_check_count, report_checked_at'
+
+export interface SweepConfig extends VerificationConfig {
+  reportSx: string
+}
+
+export function buildSweepDeps(admin: SupabaseClient, cfg: SweepConfig): SweepDeps<CardStorageEntry> {
+  const base = buildVerificationDeps(admin, cfg)
+  const owner = crypto.randomUUID()
+  return {
+    ...base,
+
+    async acquireLock() {
+      const { data, error } = await admin.rpc('acquire_sweep_lock', {
+        p_name: SWEEP_LOCK, p_ttl_seconds: SWEEP_LOCK_TTL_SECONDS, p_owner: owner,
+      })
+      if (error) {
+        console.error('[paynkolay-verification-sweep] kilit hatası:', error.message)
+        return false
+      }
+      return data === true
+    },
+
+    async releaseLock() {
+      const { error } = await admin.rpc('release_sweep_lock', { p_name: SWEEP_LOCK, p_owner: owner })
+      if (error) console.error('[paynkolay-verification-sweep] kilit bırakma hatası:', error.message)
+    },
+
+    // Sweep'in ilgilenebileceği satırların ÜST KÜMESİ (cron'daki WHERE EXISTS ile aynı koşullar).
+    async listCandidates() {
+      const now = Date.now()
+      const iso = (msAgo: number) => new Date(now - msAgo).toISOString()
+      const MIN = 60 * 1000
+      const HOUR = 60 * MIN
+      const [initiated, watched, pending, stuck] = await Promise.all([
+        admin.from('card_verifications').select(SWEEP_COLS).eq('status', 'initiated').lt('created_at', iso(15 * MIN)).limit(200),
+        admin.from('card_verifications').select(SWEEP_COLS).eq('status', 'failed').in('note', ['timeout', 'cancelled'])
+          .gt('created_at', iso(24 * HOUR)).lt('report_check_count', 6).limit(200),
+        admin.from('card_verifications').select(SWEEP_COLS).eq('status', 'refund_pending').limit(200),
+        admin.from('card_verifications').select(SWEEP_COLS).eq('status', 'succeeded').eq('refund_attempts', 0)
+          .lt('updated_at', iso(5 * MIN)).limit(200),
+      ])
+      for (const r of [initiated, watched, pending, stuck]) {
+        if (r.error) throw new Error(`aday satırlar okunamadı: ${r.error.message}`)
+      }
+      return [...(initiated.data ?? []), ...(watched.data ?? []), ...(pending.data ?? []), ...(stuck.data ?? [])] as unknown as VerificationRow[]
+    },
+
+    // GRUPLU rapor sorgusu (tek çağrı); güvenilmezse sınırlı, aralıklı tekil sorgu.
+    async lookupSales(rows) {
+      const { count } = await admin
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('payment_provider', 'paynkolay')
+        .eq('payment_status', 'paid')
+        .gte('updated_at', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+      return await lookupSales({
+        cfg: { reportSx: cfg.reportSx, secretKey: cfg.secretKey, vposUrl: cfg.vposUrl },
+        refs: Array.from(new Set(rows.map((r) => r.client_ref_code))),
+        now: new Date(),
+        expectNonEmpty: (count ?? 0) > 0,
+      })
+    },
+
+    async markReportChecked(items) {
+      const nowIso = new Date().toISOString()
+      for (const it of items) {
+        const { error } = await admin
+          .from('card_verifications')
+          .update({ report_checked_at: nowIso, report_check_count: it.nextCount })
+          .eq('id', it.id)
+        if (error) console.error('[paynkolay-verification-sweep] rapor sayacı hatası:', error.message)
+      }
+    },
+
+    async claimRefundAttempt(id, dueBeforeIso) {
+      const { data, error } = await admin
+        .from('card_verifications')
+        .update({ last_refund_at: new Date().toISOString() })
+        .eq('id', id)
+        .in('status', ['refund_pending', 'succeeded'])
+        .or(`last_refund_at.is.null,last_refund_at.lt.${dueBeforeIso}`)
+        .select('id')
+      if (error) {
+        console.error('[paynkolay-verification-sweep] claim hatası:', error.message)
+        return false
+      }
+      return (data?.length ?? 0) > 0
+    },
+  }
+}
+
+/** Sweep turu: kilitle -> tara/mutabık ol -> iade yeniden dene -> kilidi bırak; özet döner + loglanır. */
+export async function runSweep(admin: SupabaseClient, cfg: SweepConfig): Promise<SweepSummary> {
+  const summary = await runVerificationSweep(buildSweepDeps(admin, cfg))
+  // GÜVENLİ LOG: yalnız sayaçlar ve rapor durum dağılımı (kart/token/secret/referans YOK).
+  console.log('[paynkolay-verification-sweep] summary', summary)
+  return summary
 }
