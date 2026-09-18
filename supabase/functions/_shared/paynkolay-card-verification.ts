@@ -19,6 +19,7 @@ import {
   SweepSummary,
   VerificationDeps,
   VerificationRow,
+  countAttemptsToday,
   planStart,
   processVerificationCallback,
   runVerificationSweep,
@@ -172,14 +173,17 @@ export async function prepareVerificationStart(admin: SupabaseClient, userId: st
     .select('id, created_at')
     .eq('user_id', userId)
     .eq('status', 'initiated')
-  const { count, error: countErr } = await admin
+  // Bugünün kayıtları (durum+not) — kendi iptal ettiği kayıtlar limite sayılmaz
+  // (countsTowardDailyLimit); sayım saf fonksiyonda, testlenebilir.
+  const { data: today, error: countErr } = await admin
     .from('card_verifications')
-    .select('id', { count: 'exact', head: true })
+    .select('status, note')
     .eq('user_id', userId)
     .gte('created_at', trDayStartUtcIso(now))
+    .limit(1000)
   if (openErr || countErr) throw new Error('doğrulama kayıtları okunamadı')
 
-  const plan = planStart(open ?? [], count ?? 0, now)
+  const plan = planStart(open ?? [], countAttemptsToday(today ?? []), now)
   if (plan.timeoutIds.length > 0) {
     // Zaman aşımı: 'failed' + note='timeout'. Geç gelen "ödeme alındı" callback'i yine de
     // işlenir (claim 'failed' satırı da alır) — para hareketi iade edilmeden kalmaz.

@@ -267,6 +267,21 @@ export function planStart(
   return { decision: 'proceed', timeoutIds }
 }
 
+/**
+ * Günlük deneme limitine (3) SAYILIR mı? Kullanıcının kendi iptal ettiği (verify_cancel:
+ * failed + note='cancelled') kayıt sayılmaz — para çekilmedi varsayımı. Sonradan ödeme
+ * bulunursa (sweep report_recovered / geç callback) satır succeeded/refund_*'a geçer ve
+ * note yeniden yazılır → otomatik olarak sayılmaya başlar. declined, timeout, succeeded
+ * vb. diğer tüm durumlar sayılır.
+ */
+export function countsTowardDailyLimit(row: { status: string; note: string | null }): boolean {
+  return !(row.status === 'failed' && row.note === 'cancelled')
+}
+
+export function countAttemptsToday(rows: Array<{ status: string; note: string | null }>): number {
+  return rows.filter(countsTowardDailyLimit).length
+}
+
 /** verify_status yanıtı: SADECE bu alanlar (token/kart/referans bilgisi YOK). */
 export function toPublicStatus(row: { status: string; card_saved: boolean; note: string | null }) {
   return {
