@@ -1088,26 +1088,71 @@ export default function CheckoutScreen() {
 
   // "Siparişi Ver" anında uzak-konum teyidi — hiçbir koşulda siparişi
   // ENGELLEMEZ: izin yoksa/istenmemişse, koordinat yoksa, konum alınamazsa
-  // veya 3 sn'de gelmezse sessizce `false` (devam et) döner.
+  // veya zaman aşımına uğrarsa sessizce `false` (devam et) döner.
+  //
+  // Konum stratejisi: önce getLastKnownPositionAsync() (cihazın son bilinen
+  // konumu, ANINDA döner — simülatörde/soğuk GPS'te getCurrentPositionAsync'in
+  // ilk "fix"i alması saniyeler sürebiliyordu, önceki 3 sn'lik sabit timeout
+  // bu yüzden hep tetiklenmiş olabilir). Son bilinen konum yoksa (ör. cihaz
+  // hiç konum sorgulamadıysa) Balanced hassasiyetle 6 sn'lik bir deneme daha
+  // yapılır; o da yoksa/gecikirse sessizce vazgeçilir.
   const shouldConfirmFarFromAddress = async (): Promise<boolean> => {
-    if (deliveryMethod !== 'home_delivery' || deliveryTimeType !== 'immediate') return false;
-    if (addressConfirmedForOrder) return false;
-    if (selectedAddress?.latitude == null || selectedAddress?.longitude == null) return false;
+    if (deliveryMethod !== 'home_delivery' || deliveryTimeType !== 'immediate') {
+      if (__DEV__) console.log('[FarAddress] atlandı — teslimat yöntemi/zamanı uygun değil', { deliveryMethod, deliveryTimeType });
+      return false;
+    }
+    if (addressConfirmedForOrder) {
+      if (__DEV__) console.log('[FarAddress] atlandı — bu sipariş oturumunda zaten onaylanmış');
+      return false;
+    }
+    const hasCoords = selectedAddress?.latitude != null && selectedAddress?.longitude != null;
+    if (!hasCoords) {
+      if (__DEV__) console.log('[FarAddress] atlandı — seçili adresin koordinatı yok', { addressId: selectedAddress?.id });
+      return false;
+    }
 
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
+      if (__DEV__) console.log('[FarAddress] konum izni durumu:', status);
       if (status !== 'granted') return false;
 
-      const position = await Promise.race([
-        Location.getCurrentPositionAsync({}),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
-      ]);
+      let position = await Location.getLastKnownPositionAsync();
+      let source: 'lastKnown' | 'current' = 'lastKnown';
+      if (!position) {
+        source = 'current';
+        try {
+          position = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
+          ]);
+        } catch (e) {
+          if (__DEV__) console.log('[FarAddress] getCurrentPositionAsync başarısız/zaman aşımı:', String(e));
+          return false;
+        }
+      }
+      if (!position) {
+        if (__DEV__) console.log('[FarAddress] konum alınamadı (lastKnown ve current ikisi de boş), sessizce devam');
+        return false;
+      }
+
       const distance = distanceInMeters(
         { latitude: position.coords.latitude, longitude: position.coords.longitude },
-        { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude },
+        { latitude: selectedAddress!.latitude!, longitude: selectedAddress!.longitude! },
       );
-      return distance >= ORDER_ADDRESS_DISTANCE_WARNING_METERS;
-    } catch {
+      const shouldShow = distance >= ORDER_ADDRESS_DISTANCE_WARNING_METERS;
+      if (__DEV__) {
+        console.log('[FarAddress] sonuç:', {
+          konumKaynağı: source,
+          cihazKonumu: { lat: position.coords.latitude, lng: position.coords.longitude },
+          adresKonumu: { lat: selectedAddress!.latitude, lng: selectedAddress!.longitude },
+          mesafeMetre: Math.round(distance),
+          eşik: ORDER_ADDRESS_DISTANCE_WARNING_METERS,
+          dialogGösterildi: shouldShow,
+        });
+      }
+      return shouldShow;
+    } catch (e) {
+      if (__DEV__) console.log('[FarAddress] beklenmeyen hata:', String(e));
       // Konum alınamadı/zaman aşımı — siparişi bekletme.
       return false;
     }
