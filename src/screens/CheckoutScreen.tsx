@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
+import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon, WarningCircle } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
@@ -391,10 +391,12 @@ export default function CheckoutScreen() {
   const [showZonesSheet, setShowZonesSheet] = useState(false);
   const [showVerifySheet, setShowVerifySheet] = useState(false);
   const [verifyingAddressId, setVerifyingAddressId] = useState<string | null>(null);
-  // "Siparişi Ver" anındaki uzak-konum teyidi — aynı sipariş oturumunda bir
-  // kez sorulur (adres değişince sıfırlanır, bkz. aşağıdaki useEffect).
-  const [showFarFromAddressConfirm, setShowFarFromAddressConfirm] = useState(false);
-  const [addressConfirmedForOrder, setAddressConfirmedForOrder] = useState(false);
+  // Uzak-konum: Getir tarzı kalıcı uyarı satırı için — sipariş akışını hiç
+  // kesmez, sadece bilgilendirir. Aynı state en-yakın-adres otomatik
+  // seçiminde de (bkz. aşağıdaki effect'ler) kullanılır.
+  const [deviceCoords, setDeviceCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const userManuallySelectedAddressRef = useRef(false);
+  const autoSelectedNearestRef = useRef(false);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
   const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
 
@@ -455,11 +457,72 @@ export default function CheckoutScreen() {
     [addresses, selectedAddressId],
   );
 
-  // Adres değişince uzak-konum teyidi tekrar sorulabilsin — "aynı sipariş
-  // oturumunda bir kez" kuralı, seçili adres değiştiğinde sıfırlanır.
+  // Getir tarzı kalıcı uyarı satırı — sipariş akışını hiç kesmez, sadece
+  // bilgilendirir. Adres değişince (selectedAddress'in koordinatları
+  // değişince) otomatik yeniden hesaplanır. Konum yoksa (izin verilmemiş,
+  // henüz alınamamış) hiç gösterilmez.
+  const farFromAddressWarning = useMemo(() => {
+    if (deliveryMethod !== 'home_delivery' || deliveryTimeType !== 'immediate') return false;
+    if (!deviceCoords) return false;
+    if (selectedAddress?.latitude == null || selectedAddress?.longitude == null) return false;
+    const distance = distanceInMeters(deviceCoords, {
+      latitude: selectedAddress.latitude,
+      longitude: selectedAddress.longitude,
+    });
+    return distance >= ORDER_ADDRESS_DISTANCE_WARNING_METERS;
+  }, [deliveryMethod, deliveryTimeType, deviceCoords, selectedAddress?.latitude, selectedAddress?.longitude]);
+
   useEffect(() => {
-    setAddressConfirmedForOrder(false);
-  }, [selectedAddressId]);
+    if (!__DEV__ || !deviceCoords || selectedAddress?.latitude == null || selectedAddress?.longitude == null) return;
+    const distance = distanceInMeters(deviceCoords, {
+      latitude: selectedAddress.latitude,
+      longitude: selectedAddress.longitude,
+    });
+    console.log('[FarAddress] uyarı satırı:', {
+      seçiliAdres: selectedAddress.title,
+      cihazKonumu: deviceCoords,
+      adresKonumu: { lat: selectedAddress.latitude, lng: selectedAddress.longitude },
+      mesafeMetre: Math.round(distance),
+      eşik: ORDER_ADDRESS_DISTANCE_WARNING_METERS,
+      gösterildi: farFromAddressWarning,
+    });
+  }, [farFromAddressWarning]);
+
+  // Cihaz konumunu bir kez al (izin zaten verilmişse — İSTEME). Hem uzak-
+  // konum uyarı satırı hem en-yakın-adres otomatik seçimi bunu paylaşır,
+  // ayrı ayrı konum sorgusu atılmaz.
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (__DEV__) console.log('[FarAddress] konum izni durumu:', status);
+        if (status !== 'granted') return;
+
+        let position = await Location.getLastKnownPositionAsync();
+        let source: 'lastKnown' | 'current' = 'lastKnown';
+        if (!position) {
+          source = 'current';
+          try {
+            position = await Promise.race([
+              Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
+            ]);
+          } catch (e) {
+            if (__DEV__) console.log('[FarAddress] getCurrentPositionAsync başarısız/zaman aşımı:', String(e));
+            return;
+          }
+        }
+        if (!mounted || !position) return;
+        if (__DEV__) console.log('[FarAddress] cihaz konumu alındı:', { kaynak: source, lat: position.coords.latitude, lng: position.coords.longitude });
+        setDeviceCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      } catch (e) {
+        if (__DEV__) console.log('[FarAddress] cihaz konumu alınamadı:', String(e));
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user]);
 
   const rulesFetchFailed =
     settingsFetchStatus === 'error' || deliveryRuleStatus.status === 'error';
@@ -853,6 +916,51 @@ export default function CheckoutScreen() {
     };
   }, [user, route.params?.selectedAddressId]);
 
+  // En yakın kayıtlı adresi otomatik seç — SADECE kullanıcı bu checkout
+  // oturumunda henüz elle bir adres seçmediyse (Adreslerim'den "Bu Adresi
+  // Seç" ile gelinmediyse, listede kendi tıklamadıysa) ve bir kez. Koordinatı
+  // olmayan adresler hesaba katılmaz; hiçbirinde koordinat yoksa mevcut
+  // varsayılan/en-yeni-adres davranışı olduğu gibi kalır (bkz. loadAddresses).
+  useEffect(() => {
+    if (autoSelectedNearestRef.current) return;
+    if (userManuallySelectedAddressRef.current) return;
+    if (route.params?.selectedAddressId) return;
+    if (deliveryMethod !== 'home_delivery') return;
+    if (!deviceCoords) return;
+    if (addresses.length === 0) return;
+
+    const withCoords = addresses.filter(
+      (a): a is Address & { latitude: number; longitude: number } => a.latitude != null && a.longitude != null,
+    );
+    if (withCoords.length === 0) return;
+
+    // Adaylar (koordinatsız olsa bile) belirlendiğine göre bir daha denenmesin.
+    autoSelectedNearestRef.current = true;
+
+    let nearest = withCoords[0];
+    let nearestDistance = distanceInMeters(deviceCoords, nearest);
+    const candidates = [{ title: nearest.title, distanceMeters: Math.round(nearestDistance) }];
+    for (const addr of withCoords.slice(1)) {
+      const d = distanceInMeters(deviceCoords, addr);
+      candidates.push({ title: addr.title, distanceMeters: Math.round(d) });
+      if (d < nearestDistance) {
+        nearest = addr;
+        nearestDistance = d;
+      }
+    }
+
+    if (__DEV__) {
+      console.log('[FarAddress] en yakın adres otomatik seçimi:', {
+        adaylar: candidates,
+        seçilenAdres: nearest.title,
+        mesafeMetre: Math.round(nearestDistance),
+      });
+    }
+
+    dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: nearest.id });
+    setSelectedAddress(nearest);
+  }, [addresses, deviceCoords, deliveryMethod, route.params?.selectedAddressId]);
+
   useEffect(() => {
     if (!selectedAddress) return;
 
@@ -1086,78 +1194,6 @@ export default function CheckoutScreen() {
     if (error) console.error('[Checkout] adres doğrulama güncellemesi başarısız:', error.message);
   };
 
-  // "Siparişi Ver" anında uzak-konum teyidi — hiçbir koşulda siparişi
-  // ENGELLEMEZ: izin yoksa/istenmemişse, koordinat yoksa, konum alınamazsa
-  // veya zaman aşımına uğrarsa sessizce `false` (devam et) döner.
-  //
-  // Konum stratejisi: önce getLastKnownPositionAsync() (cihazın son bilinen
-  // konumu, ANINDA döner — simülatörde/soğuk GPS'te getCurrentPositionAsync'in
-  // ilk "fix"i alması saniyeler sürebiliyordu, önceki 3 sn'lik sabit timeout
-  // bu yüzden hep tetiklenmiş olabilir). Son bilinen konum yoksa (ör. cihaz
-  // hiç konum sorgulamadıysa) Balanced hassasiyetle 6 sn'lik bir deneme daha
-  // yapılır; o da yoksa/gecikirse sessizce vazgeçilir.
-  const shouldConfirmFarFromAddress = async (): Promise<boolean> => {
-    if (deliveryMethod !== 'home_delivery' || deliveryTimeType !== 'immediate') {
-      if (__DEV__) console.log('[FarAddress] atlandı — teslimat yöntemi/zamanı uygun değil', { deliveryMethod, deliveryTimeType });
-      return false;
-    }
-    if (addressConfirmedForOrder) {
-      if (__DEV__) console.log('[FarAddress] atlandı — bu sipariş oturumunda zaten onaylanmış');
-      return false;
-    }
-    const hasCoords = selectedAddress?.latitude != null && selectedAddress?.longitude != null;
-    if (!hasCoords) {
-      if (__DEV__) console.log('[FarAddress] atlandı — seçili adresin koordinatı yok', { addressId: selectedAddress?.id });
-      return false;
-    }
-
-    try {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (__DEV__) console.log('[FarAddress] konum izni durumu:', status);
-      if (status !== 'granted') return false;
-
-      let position = await Location.getLastKnownPositionAsync();
-      let source: 'lastKnown' | 'current' = 'lastKnown';
-      if (!position) {
-        source = 'current';
-        try {
-          position = await Promise.race([
-            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
-          ]);
-        } catch (e) {
-          if (__DEV__) console.log('[FarAddress] getCurrentPositionAsync başarısız/zaman aşımı:', String(e));
-          return false;
-        }
-      }
-      if (!position) {
-        if (__DEV__) console.log('[FarAddress] konum alınamadı (lastKnown ve current ikisi de boş), sessizce devam');
-        return false;
-      }
-
-      const distance = distanceInMeters(
-        { latitude: position.coords.latitude, longitude: position.coords.longitude },
-        { latitude: selectedAddress!.latitude!, longitude: selectedAddress!.longitude! },
-      );
-      const shouldShow = distance >= ORDER_ADDRESS_DISTANCE_WARNING_METERS;
-      if (__DEV__) {
-        console.log('[FarAddress] sonuç:', {
-          konumKaynağı: source,
-          cihazKonumu: { lat: position.coords.latitude, lng: position.coords.longitude },
-          adresKonumu: { lat: selectedAddress!.latitude, lng: selectedAddress!.longitude },
-          mesafeMetre: Math.round(distance),
-          eşik: ORDER_ADDRESS_DISTANCE_WARNING_METERS,
-          dialogGösterildi: shouldShow,
-        });
-      }
-      return shouldShow;
-    } catch (e) {
-      if (__DEV__) console.log('[FarAddress] beklenmeyen hata:', String(e));
-      // Konum alınamadı/zaman aşımı — siparişi bekletme.
-      return false;
-    }
-  };
-
   const handleCreateOrder = async () => {
     dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
     dispatchOrder({ type: 'SET_PAYMENT_NOTICE', payload: '' });
@@ -1232,11 +1268,6 @@ export default function CheckoutScreen() {
 
       if (deliveryTimeType === 'scheduled' && (!selectedScheduledDate || !selectedTimeSlot)) {
         dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen teslimat tarihi ve saatini seçin.' });
-        return;
-      }
-
-      if (await shouldConfirmFarFromAddress()) {
-        setShowFarFromAddressConfirm(true);
         return;
       }
     } else if (!pendingPaymentOrder) {
@@ -1612,6 +1643,7 @@ export default function CheckoutScreen() {
                   <Pressable
                     key={address.id}
                     onPress={() => {
+                      userManuallySelectedAddressRef.current = true;
                       dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: address.id });
                       setSelectedAddress(address);
                     }}
@@ -1677,6 +1709,16 @@ export default function CheckoutScreen() {
                     <Text style={styles.verifyPromptText}>Konumu haritada doğrula</Text>
                   </TouchableOpacity>
                 )
+              ) : null}
+              {/* Getir tarzı kalıcı uzak-konum uyarısı — akışı hiç kesmez, sadece
+                  bilgilendirir; "Konum doğrulandı"nın YERİNE değil, altında. */}
+              {farFromAddressWarning ? (
+                <View style={styles.farAddressWarningRow}>
+                  <WarningCircle size={14} color="#991B1B" weight="fill" />
+                  <Text style={styles.farAddressWarningText}>
+                    Seçtiğin adres şu anki konumundan uzakta görünüyor. Doğru adresi seçtiğinden emin ol.
+                  </Text>
+                </View>
               ) : null}
               {addresses.length > 0 ? (
                 <TouchableOpacity
@@ -2361,39 +2403,6 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
         }}
         onConfirm={handleAddressVerified}
       />
-      <Modal
-        visible={showFarFromAddressConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowFarFromAddressConfirm(false)}
-      >
-        <View style={styles.farConfirmBackdrop}>
-          <View style={styles.farConfirmCard}>
-            <Text style={styles.farConfirmTitle}>Adresini kontrol et</Text>
-            <Text style={styles.farConfirmText}>
-              Sipariş {selectedAddress?.title ? `"${selectedAddress.title}"` : 'seçili'} adresine gelecek. Doğru mu?
-            </Text>
-            <TouchableOpacity
-              style={styles.farConfirmPrimaryBtn}
-              activeOpacity={0.85}
-              onPress={() => {
-                setAddressConfirmedForOrder(true);
-                setShowFarFromAddressConfirm(false);
-                handleCreateOrder();
-              }}
-            >
-              <Text style={styles.farConfirmPrimaryBtnText}>Evet, devam et</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.farConfirmSecondaryBtn}
-              activeOpacity={0.7}
-              onPress={() => setShowFarFromAddressConfirm(false)}
-            >
-              <Text style={styles.farConfirmSecondaryBtnText}>Adresi değiştir</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </ScreenContainer>
   );
 }
@@ -3042,58 +3051,21 @@ const styles = StyleSheet.create({
     color: '#C2410C',
     textDecorationLine: 'underline',
   },
-  // Uzak-konum sipariş teyidi
-  farConfirmBackdrop: {
+  // Uzak-konum kalıcı uyarı satırı (Getir tarzı — akışı kesmez)
+  farAddressWarningRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEE2E2',
+    borderRadius: RADIUS.sm,
+    padding: SPACING.sm,
+    marginTop: SPACING.xs,
+  },
+  farAddressWarningText: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-  farConfirmCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  farConfirmTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-    textAlign: 'center',
-  },
-  farConfirmText: {
-    fontSize: TYPOGRAPHY.size.sm,
+    fontSize: TYPOGRAPHY.size.xs,
     fontFamily: 'PlusJakartaSans_500Medium',
-    color: COLORS.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  farConfirmPrimaryBtn: {
-    height: 52,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.brand.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  farConfirmPrimaryBtnText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#000',
-  },
-  farConfirmSecondaryBtn: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  farConfirmSecondaryBtnText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
+    color: '#991B1B',
+    lineHeight: 17,
   },
 });
