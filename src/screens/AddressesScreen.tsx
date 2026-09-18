@@ -26,7 +26,7 @@ import {
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
 import { getSupabaseClient } from '../lib/supabase';
-import { matchToOption } from '../lib/geo';
+import { matchToOption, normalizeTurkishText } from '../lib/geo';
 import { RootStackParamList } from '../navigation/types';
 import { Address } from '../types';
 import { useAddressStore } from '../store/addressStore';
@@ -150,6 +150,9 @@ export default function AddressesScreen() {
   const [districtOptions, setDistrictOptions] = useState<FormFieldOption[]>([]);
   const [neighborhoodOptionsByDistrict, setNeighborhoodOptionsByDistrict] =
     useState<Record<string, FormFieldOption[]>>({});
+  // FAZ L madde 7 — "district/mahalle mah" anahtarları (normalize edilmiş),
+  // delivery_zones.is_active=false olanlar hariç. saveAddress'te kullanılır.
+  const [activeZoneKeys, setActiveZoneKeys] = useState<Set<string>>(new Set());
 
   const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geocoding, setGeocoding] = useState(false);
@@ -158,21 +161,30 @@ export default function AddressesScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [pendingCoords, setPendingCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   // Profilde ad/soyad/telefon zaten varsa formda tekrar sorulmaz, otomatik dolar.
+  // full_name boş ama first_name/last_name doluysa da (ya da tersi) geçerli sayılır.
   const [profileContact, setProfileContact] = useState<{ fullName: string; phone: string } | null>(null);
+  const [profileContactLoaded, setProfileContactLoaded] = useState(false);
   const hasProfileContact = Boolean(profileContact?.fullName && profileContact?.phone);
+
+  const loadProfileContact = async (userId: string) => {
+    const { data } = await getSupabaseClient()
+      .from('profiles')
+      .select('full_name, first_name, last_name, phone')
+      .eq('id', userId)
+      .maybeSingle();
+    const fullName =
+      String(data?.full_name || '').trim() ||
+      [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim();
+    const contact = { fullName, phone: String(data?.phone || '').trim() };
+    setProfileContact(contact);
+    setProfileContactLoaded(true);
+    return contact;
+  };
 
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
-    getSupabaseClient()
-      .from('profiles')
-      .select('full_name, phone')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!mounted || !data) return;
-        setProfileContact({ fullName: String(data.full_name || ''), phone: String(data.phone || '') });
-      });
+    loadProfileContact(user.id).catch(() => { if (mounted) setProfileContactLoaded(true); });
     return () => { mounted = false; };
   }, [user?.id]);
 
@@ -301,6 +313,7 @@ export default function AddressesScreen() {
         } else {
           const districtSet = new Set<string>();
           const neighborhoodMap = new Map<string, Set<string>>();
+          const activeKeys = new Set<string>();
 
           (Array.isArray(districtsRes.data) ? districtsRes.data : []).forEach((row) => {
             const zoneRow = row as Record<string, unknown>;
@@ -312,6 +325,10 @@ export default function AddressesScreen() {
             const existing = neighborhoodMap.get(district) || new Set<string>();
             existing.add(neighborhood);
             neighborhoodMap.set(district, existing);
+            // is_active açıkça false değilse hizmet veriliyor sayılır.
+            if (zoneRow.is_active !== false) {
+              activeKeys.add(`${normalizeTurkishText(district)}|${normalizeTurkishText(neighborhood)}`);
+            }
           });
 
           const normalizedDistrictOptions = Array.from(districtSet)
@@ -327,6 +344,7 @@ export default function AddressesScreen() {
 
           setDistrictOptions(normalizedDistrictOptions);
           setNeighborhoodOptionsByDistrict(normalizedNeighborhoodMap);
+          setActiveZoneKeys(activeKeys);
         }
       } catch (error: unknown) {
         if (!mounted) return;
@@ -379,11 +397,22 @@ export default function AddressesScreen() {
   // FAZ L — "Yeni Adres Ekle" artık önce harita adımını açar (AddressVerificationSheet,
   // mode="create"). Konum izni reddedilirse handleLocationPermissionDenied eski
   // manuel formu (ilçe/mahalle seçimiyle) açar.
-  const openCreateForm = () => {
+  const splitName = (full: string) => {
+    const parts = full.trim().split(/\s+/).filter(Boolean);
+    return { first: parts[0] || '', last: parts.slice(1).join(' ') };
+  };
+
+  // FAZ L — "Yeni Adres Ekle" her basıldığında profil bilgisini TAZE alır
+  // (component mount'taki ilk sorgu henüz dönmemiş olabilir — hızlı tıklamada
+  // Ad/Soyad/Telefon'un gizlenmemesine yol açan asıl sebep buydu).
+  const openCreateForm = async () => {
     setEditingId('');
     setPendingCoords(null);
     setErrorMessage('');
     setInfoMessage('');
+    if (user?.id && !profileContactLoaded) {
+      await loadProfileContact(user.id).catch(() => {});
+    }
     setShowLocationSheet(true);
   };
 
@@ -391,11 +420,12 @@ export default function AddressesScreen() {
     setShowLocationSheet(false);
     setEditingId('');
     setPendingCoords(null);
+    const { first, last } = hasProfileContact ? splitName(profileContact!.fullName) : { first: '', last: '' };
     setForm({
       ...INITIAL_FORM,
       contact_email: user?.email || '',
-      first_name: hasProfileContact ? profileContact!.fullName.split(' ')[0] || '' : '',
-      last_name: hasProfileContact ? profileContact!.fullName.split(' ').slice(1).join(' ') : '',
+      first_name: first,
+      last_name: last,
       contact_phone: hasProfileContact ? profileContact!.phone : '',
     });
     setErrorMessage('');
@@ -414,25 +444,21 @@ export default function AddressesScreen() {
     setShowLocationSheet(false);
     setPendingCoords(coords);
 
+    // FAZ L madde 3 — eşleşme bulunamazsa sessizce boş bırak, kullanıcı listeden
+    // seçer. "Hizmet Bölgesi Dışı" uyarısı burada DEĞİL, kayıt anında (seçili
+    // ilçe/mahalle GERÇEKTEN belliyken) gösterilir — bkz. saveAddress.
     const matchedDistrict = matchToOption(reverseGeo?.district, districtOptions);
     const matchedNeighborhood = matchedDistrict
       ? matchToOption(reverseGeo?.neighbourhood, neighborhoodOptionsByDistrict[matchedDistrict] || [])
       : null;
 
-    if (!matchedDistrict) {
-      // FAZ L madde 7 — hizmet bölgesi dışı: kaydetmeyi engellemiyoruz, sadece uyarıyoruz.
-      Alert.alert(
-        'Hizmet Bölgesi Dışı',
-        'Bu adrese şu an teslimat yapamıyoruz. Yine de kaydedebilirsiniz.',
-      );
-    }
-
+    const { first, last } = hasProfileContact ? splitName(profileContact!.fullName) : { first: '', last: '' };
     setEditingId('');
     setForm({
       ...INITIAL_FORM,
       contact_email: user?.email || '',
-      first_name: hasProfileContact ? profileContact!.fullName.split(' ')[0] || '' : '',
-      last_name: hasProfileContact ? profileContact!.fullName.split(' ').slice(1).join(' ') : '',
+      first_name: first,
+      last_name: last,
       contact_phone: hasProfileContact ? profileContact!.phone : '',
       district: matchedDistrict || '',
       neighborhood: matchedNeighborhood || '',
@@ -513,6 +539,13 @@ export default function AddressesScreen() {
     if (!validNeighborhood) {
       setErrorMessage('Lütfen listeden geçerli bir mahalle seçin.');
       return;
+    }
+
+    // FAZ L madde 7 — ilçe/mahalle GERÇEKTEN seçiliyken (burada, form validasyonu
+    // geçtikten sonra) delivery_zones'da pasifse uyar; kaydetmeyi engellemez.
+    const zoneKey = `${normalizeTurkishText(selectedDistrict)}|${normalizeTurkishText(selectedNeighborhood)}`;
+    if (!activeZoneKeys.has(zoneKey)) {
+      Alert.alert('Hizmet Bölgesi Dışı', 'Bu adrese şu an teslimat yapamıyoruz. Yine de kaydedebilirsiniz.');
     }
 
     setSaving(true);

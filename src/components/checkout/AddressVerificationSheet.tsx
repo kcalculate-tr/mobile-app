@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import MapView, { Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { MapPin, X, Check, NavigationArrow } from 'phosphor-react-native';
@@ -15,6 +16,38 @@ export type ReverseGeoResult = {
   district?: string;
   neighbourhood?: string;
   street?: string;
+};
+
+const getGoogleMapsKey = (): string => {
+  const fromConfig =
+    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+  return String((typeof fromConfig === 'string' ? fromConfig : '') || process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY || '').trim();
+};
+
+// Apple/native reverse-geocode boş/eksik dönerse (bazı simülatör/kırsal
+// konumlarda olur) Google Geocoding API'ye düşer — aynı key zaten
+// forward-geocode'da (adres→koordinat) kullanılıyor ve aktif.
+const reverseGeocodeWithGoogle = async (lat: number, lng: number): Promise<ReverseGeoResult | null> => {
+  const key = getGoogleMapsKey();
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}&language=tr`,
+    );
+    const data = await res.json();
+    const components = data?.results?.[0]?.address_components as
+      | { long_name: string; types: string[] }[]
+      | undefined;
+    if (!components) return null;
+    const find = (type: string) => components.find((c) => c.types.includes(type))?.long_name;
+    return {
+      district: find('administrative_area_level_2'),
+      neighbourhood: find('sublocality') || find('neighborhood'),
+      street: find('route'),
+    };
+  } catch {
+    return null;
+  }
 };
 
 interface Props {
@@ -130,21 +163,35 @@ export default function AddressVerificationSheet({
     setRegion(r);
   };
 
-  const runReverseGeocode = async () => {
-    if (!region) return;
+  // React state güncellemeleri asenkron uygulanır — çağıran taraf (handleConfirm)
+  // setReverseGeo sonrası HEMEN reverseGeo'yu okursa hâlâ eski değeri görür
+  // (bir sonraki render'a kadar). Bu yüzden sonucu hem state'e yazıyoruz
+  // (UI için) hem de doğrudan döndürüyoruz (çağıran taze veriyi garanti alsın).
+  const runReverseGeocode = async (): Promise<ReverseGeoResult | null> => {
+    if (!region) return null;
     setChecking(true);
     try {
       const results = await Location.reverseGeocodeAsync({ latitude: region.latitude, longitude: region.longitude });
       const geo = results?.[0];
-      if (geo) {
-        setReverseGeo({
-          district: geo.subregion || geo.district || undefined,
-          neighbourhood: geo.district || geo.name || undefined,
-          street: geo.street || geo.name || undefined,
-        });
+      let resolved: ReverseGeoResult | null = geo
+        ? {
+            district: geo.subregion || geo.district || undefined,
+            neighbourhood: geo.district || geo.name || undefined,
+            street: geo.street || geo.name || undefined,
+          }
+        : null;
+
+      // Native sonuç boş/eksikse (ör. bazı simülatör/kırsal konumlar) Google'a düş.
+      if (!resolved?.district && !resolved?.neighbourhood) {
+        const googleResult = await reverseGeocodeWithGoogle(region.latitude, region.longitude);
+        if (googleResult) resolved = googleResult;
       }
+
+      setReverseGeo(resolved);
+      return resolved;
     } catch {
       // sessiz — sadece öneri amaçlı, engel değil
+      return null;
     } finally {
       setChecking(false);
     }
@@ -172,10 +219,11 @@ export default function AddressVerificationSheet({
     if (!region) return;
     haptic.selection();
     // create modunda son bir reverse-geocode ile forma aktarılacak veriyi taze al.
-    if (mode === 'create') {
-      await runReverseGeocode();
-    }
-    onConfirm({ latitude: region.latitude, longitude: region.longitude }, reverseGeo || undefined);
+    // DİKKAT: runReverseGeocode'un DÖNÜŞ DEĞERİNİ kullanıyoruz, `reverseGeo`
+    // state'ini değil — setReverseGeo bu fonksiyonun içinde çağrılıyor ama state
+    // güncellemesi bir sonraki render'a kadar burada görünmez (stale closure).
+    const freshReverseGeo = mode === 'create' ? await runReverseGeocode() : reverseGeo;
+    onConfirm({ latitude: region.latitude, longitude: region.longitude }, freshReverseGeo || undefined);
   };
 
   if (!visible) return null;

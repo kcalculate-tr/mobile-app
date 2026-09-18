@@ -28,12 +28,19 @@ export function distanceInMeters(
  * Türkçe karakter/büyük-küçük harf/noktalama farklarını yutar — ters-geocode
  * (Apple/Google) sonucunu `delivery_zones`'daki resmi mahalle yazımıyla
  * (örn. "B.hayrettin Paşa") eşleştirmek için. `toLocaleLowerCase('tr')` İ→i,
- * I→ı dönüşümünü doğru yapar; ayrıca nokta/apostrof/çoklu boşluk atılır.
+ * I→ı dönüşümünü doğru yapar; "/İzmir" gibi il ekini, "Mahallesi"/"Mah."/
+ * "İlçesi" gibi idari sonekleri ve noktalama/çoklu boşluğu atar.
  */
 export function normalizeTurkishText(v: string | null | undefined): string {
   return (v || '')
+    .split('/')[0] // "Balçova/İzmir" → "Balçova"
     .toLocaleLowerCase('tr')
     .replace(/[.'’]/g, '')
+    .replace(/\bmahallesi\b/g, '')
+    .replace(/\bmahalle\b/g, '')
+    .replace(/\bmah\b/g, '')
+    .replace(/\bilçesi\b/g, '')
+    .replace(/\bilçe\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
