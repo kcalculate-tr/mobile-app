@@ -24,6 +24,7 @@ import KeyboardAccessory from '../components/KeyboardAccessory';
 import { initPayment } from '../lib/payment';
 import { payWithSavedCard } from '../lib/cards';
 import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../lib/paymentHtml';
+import { matchesPaynkolayReturn } from '../lib/paynkolayReturn';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
@@ -921,25 +922,6 @@ type PaynkolayInitResponse = {
 // 1. denemede paid görülür; bu sadece gateway timing varyansına karşı sigorta.
 const PAYNKOLAY_POLL_MAX_ATTEMPTS = 16;
 const PAYNKOLAY_POLL_INTERVAL_MS = 1500;
-
-const matchesPaynkolayReturn = (url: string): { matches: boolean; success: boolean } => {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, '');
-    // SADECE callback'in ASIL redirect'ini (eatkcal.com/payment/success|fail) yakala.
-    // 'result='/'pk=' gibi query fallback'i KULLANMA: callback URL'inin KENDISI query
-    // tasidigi icin (successUrl=.../paynkolay-callback?...), fallback o ara duragi
-    // "donus" sanip navigasyonu keserdi -> callback HIC kosmaz, order pending kalir,
-    // polling timeout olurdu. Final-redirect host'una kilitleyince callback once kosar.
-    if (host === 'eatkcal.com') {
-      if (u.pathname === '/payment/success') return { matches: true, success: true };
-      if (u.pathname === '/payment/fail') return { matches: true, success: false };
-    }
-    return { matches: false, success: false };
-  } catch {
-    return { matches: false, success: false };
-  }
-};
 
 // Ödeme ekranı hangi aşamada: başlatılıyor / sonuç bekleniyor (WebView) /
 // bu sipariş için önceki bir ödeme hâlâ inceleniyor (yeni deneme başlatılmaz).

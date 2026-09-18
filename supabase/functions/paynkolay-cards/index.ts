@@ -251,8 +251,9 @@ Deno.serve(async (req: Request) => {
     if (action === 'set_default') return await handleSetDefault(admin, user.id, body)
     if (action === 'verify_start') return await handleVerifyStart(req, admin, user.id)
     if (action === 'verify_status') return await handleVerifyStatus(admin, user.id, body)
+    if (action === 'verify_cancel') return await handleVerifyCancel(admin, user.id, body)
 
-    return jsonResponse({ error: 'Gecersiz action (status|sync|pay|delete|set_default|verify_start|verify_status bekleniyor)' }, 400)
+    return jsonResponse({ error: 'Gecersiz action (status|sync|pay|delete|set_default|verify_start|verify_status|verify_cancel bekleniyor)' }, 400)
   } catch (err) {
     console.error('[paynkolay-cards] error:', String(err))
     return jsonResponse({ error: 'Islem tamamlanamadi' }, 500)
@@ -420,6 +421,44 @@ async function handleVerifyStatus(admin: SupabaseClient, userId: string, body: a
     .maybeSingle()
   if (!row) return jsonResponse({ error: 'Kayit bulunamadi' }, 404)
   return jsonResponse({ success: true, ...toPublicStatus(row) })
+}
+
+// ── verify_cancel: kullanıcı KENDİ açık (initiated) doğrulamasını iptal eder
+//    ("İptal et ve yeniden dene"). Kayıt failed/cancelled olur; PARA çekilmiş olabilir
+//    (3D tamamlandı ama callback gelmedi / WebView kapatıldı) — bu yüzden 'cancelled'
+//    satırlar sweep'in rapor kontrolüne dahildir ve geç gelen callback'te claim
+//    'failed' satırı da alır (iade edilmeden kalmaz). Yalnız kendi kaydı; id verilmezse
+//    kendi açık kaydı (kullanıcı başına en fazla 1 tane — kısmi unique).
+//    Kayıt artık açık değilse (ör. bu arada tamamlandı) durum DEĞİŞTİRİLMEZ, gerçek
+//    durum döner ki mobil doğru sonucu göstersin.
+async function handleVerifyCancel(admin: SupabaseClient, userId: string, body: any): Promise<Response> {
+  const rawId = body?.verificationId
+  const id = rawId === undefined || rawId === null || rawId === '' ? null : String(rawId)
+  if (id !== null && !/^[0-9a-fA-F-]{36}$/.test(id)) return jsonResponse({ error: 'verificationId geçersiz' }, 400)
+
+  let upd = admin
+    .from('card_verifications')
+    .update({ status: 'failed', note: 'cancelled' })
+    .eq('user_id', userId)
+    .eq('status', 'initiated')
+  if (id) upd = upd.eq('id', id)
+  const { data: cancelledRows, error } = await upd.select('id')
+  if (error) {
+    console.error('[paynkolay-cards] verify_cancel hatası:', error.message)
+    return jsonResponse({ error: 'Islem tamamlanamadi' }, 500)
+  }
+  const cancelled = (cancelledRows ?? []).length > 0
+  console.log('[paynkolay-cards] verify_cancel', { verificationId: id, cancelled })
+  if (cancelled || !id) return jsonResponse({ success: true, cancelled })
+
+  const { data: row } = await admin
+    .from('card_verifications')
+    .select('status, card_saved, note')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!row) return jsonResponse({ error: 'Kayit bulunamadi' }, 404)
+  return jsonResponse({ success: true, cancelled: false, ...toPublicStatus(row) })
 }
 
 async function handleSetDefault(admin: SupabaseClient, userId: string, body: any): Promise<Response> {

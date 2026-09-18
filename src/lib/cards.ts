@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { VerificationStatus } from './cardVerification';
 
 const SUPABASE_ANON_KEY = 'sb_publishable_tjeQHxsEgZIObTyf1UHz5Q_Bh4jqS29';
 const CARDS_URL = 'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/paynkolay-cards';
@@ -12,7 +13,7 @@ export type SavedCard = {
   created_at: string;
 };
 
-type CardsAction = 'status' | 'sync' | 'pay' | 'delete' | 'set_default';
+type CardsAction = 'status' | 'sync' | 'pay' | 'delete' | 'set_default' | 'verify_start' | 'verify_status' | 'verify_cancel';
 
 async function callCards<T>(
   action: CardsAction,
@@ -86,4 +87,46 @@ export const payWithSavedCard = (orderId: string | number, cardId: string) =>
     'pay',
     { orderId: String(orderId), cardId },
     { throwOnFailure: false },
+  );
+
+// ── Kart Ekle (1 TL doğrulama + iade) ─────────────────────────────────────────
+export type StartVerificationResult =
+  | { kind: 'started'; verificationId: string; formHtml: string }
+  | { kind: 'in_progress'; verificationId?: string; retryAfterSeconds?: number }
+  | { kind: 'limit' }
+  | { kind: 'error'; message: string };
+
+/** 409/429 iş kuralı yanıtları exception DEĞİL, veri olarak döner. */
+export async function startCardVerification(): Promise<StartVerificationResult> {
+  const json = await callCards<{
+    success?: boolean;
+    verificationId?: string;
+    formHtml?: string;
+    inProgress?: boolean;
+    limitReached?: boolean;
+    retryAfterSeconds?: number;
+    error?: string;
+  }>('verify_start', {}, { throwOnFailure: false, timeoutMs: 20000 });
+  if (json.inProgress) {
+    return { kind: 'in_progress', verificationId: json.verificationId, retryAfterSeconds: json.retryAfterSeconds };
+  }
+  if (json.limitReached) return { kind: 'limit' };
+  if (json.success === true && json.verificationId && typeof json.formHtml === 'string') {
+    return { kind: 'started', verificationId: json.verificationId, formHtml: json.formHtml };
+  }
+  return { kind: 'error', message: json.error || 'İşlem başlatılamadı. Lütfen tekrar dene.' };
+}
+
+export const getVerificationStatus = (verificationId: string) =>
+  callCards<{ success: true } & VerificationStatus>('verify_status', { verificationId }, { timeoutMs: 10000 });
+
+/**
+ * Kendi açık doğrulamasını iptal eder (kayıt failed/cancelled olur). Kayıt bu arada
+ * tamamlandıysa `cancelled=false` ve gerçek durum alanları döner.
+ */
+export const cancelCardVerification = (verificationId?: string) =>
+  callCards<{ success: true; cancelled: boolean } & Partial<VerificationStatus>>(
+    'verify_cancel',
+    verificationId ? { verificationId } : {},
+    { timeoutMs: 10000 },
   );

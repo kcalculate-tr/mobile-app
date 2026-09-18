@@ -11,13 +11,14 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CaretLeft, CreditCard, Lock, Star, Trash } from 'phosphor-react-native';
+import { CaretLeft, CreditCard, Lock, Plus, Star, Trash } from 'phosphor-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
-import { deleteSavedCard, setDefaultCard, SavedCard, syncSavedCards } from '../../lib/cards';
+import { deleteSavedCard, getCardsFeatureStatus, setDefaultCard, SavedCard, syncSavedCards } from '../../lib/cards';
+import { consumeCardsStale } from '../../lib/cardVerification';
 import { haptic } from '../../utils/haptics';
 
 type SavedCardsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -38,6 +39,8 @@ export default function SavedCardsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // "+ Kart Ekle" yalnız kart özelliği bu kullanıcıya AÇIKSA görünür (kapı kapalı/hata = gizli).
+  const [canAddCard, setCanAddCard] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -73,6 +76,24 @@ export default function SavedCardsScreen() {
       load();
     }
   }, [isAuthenticated, load]);
+
+  // Kart Ekle'den dönüşte (buton/geri hareketi/donanım geri tuşu) listeyi tazele:
+  // doğrulama sonucu (yeni kart) hemen görünsün.
+  useEffect(() => {
+    const unsub = navigation.addListener('focus', () => {
+      if (consumeCardsStale()) load(true);
+    });
+    return unsub;
+  }, [navigation, load]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    getCardsFeatureStatus()
+      .then((r) => { if (!cancelled) setCanAddCard(r?.enabled === true); })
+      .catch(() => { if (!cancelled) setCanAddCard(false); });
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
 
   const handleSetDefault = async (card: SavedCard) => {
     if (card.is_default || busyId) return;
@@ -194,6 +215,17 @@ export default function SavedCardsScreen() {
           </View>
         )}
 
+        {canAddCard ? (
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => navigation.navigate('ProfileAddCard')}
+            activeOpacity={0.85}
+          >
+            <Plus size={18} weight="bold" color="#1a3d00" />
+            <Text style={s.addBtnText}>Kart Ekle</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <View style={s.securityNote}>
           <Lock size={14} color={COLORS.text.secondary} />
           <Text style={s.securityText}>
@@ -275,6 +307,12 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
   deleteBtn: {
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
   },
+
+  addBtn: {
+    width: '100%', height: 50, borderRadius: 100, backgroundColor: COLORS.brand.green,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  addBtnText: { fontSize: 15, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
 
   securityNote: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,

@@ -43,6 +43,7 @@ import CouponsScreen from '../screens/profile/CouponsScreen';
 import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
 import OrdersScreen from '../screens/profile/OrdersScreen';
 import SavedCardsScreen from '../screens/profile/SavedCardsScreen';
+import AddCardScreen from '../screens/profile/AddCardScreen';
 import SecurityScreen from '../screens/profile/SecurityScreen';
 import NotificationPreferencesScreen from '../screens/profile/NotificationPreferencesScreen';
 import SupportScreen from '../screens/profile/SupportScreen';
@@ -172,6 +173,7 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileOrders" component={OrdersScreen} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
       <Stack.Screen name="ProfileSavedCards" component={SavedCardsScreen} />
+      <Stack.Screen name="ProfileAddCard" component={AddCardScreen} />
       <Stack.Screen name="ProfileCoupons" component={CouponsScreen} />
       <Stack.Screen name="ProfileSupport" component={SupportScreen} />
       <Stack.Screen name="ProfileSecurity" component={SecurityScreen} />

@@ -32,6 +32,7 @@ export type RootStackParamList = {
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };
   ProfileSavedCards: undefined;
+  ProfileAddCard: undefined;
   ProfileCoupons: undefined;
   ProfileSupport: undefined;
   ProfileSecurity: undefined;
