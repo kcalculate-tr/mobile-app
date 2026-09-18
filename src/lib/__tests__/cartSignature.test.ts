@@ -102,3 +102,22 @@ test('adres değişimi -> farklı imza', () => {
   const addr2 = computeCartSignature(lines, { ...baseCtx, addressId: 'addr-2' });
   assert.notEqual(addr1, addr2, 'farklı adres aynı imzayı üretmemeli');
 });
+
+test('makro tazeleme (refreshMacros) sepet imzasını/ödeme akışını BOZMAMALI', () => {
+  // Aynı ürün+opsiyon+adet, farklı calories/protein (ör. refreshMacros DB'den
+  // taze değer getirdi) -> imza AYNI kalmalı, çünkü imza yalnızca
+  // productId+optionsSignature+quantity + sipariş bağlamına bakar.
+  const before = computeCartSignature(
+    buildCartSignatureLines([
+      makeItem({ productId: '6', quantity: 1, calories: 0, protein: 0, carbs: 0, fats: 0 }),
+    ]),
+    baseCtx,
+  );
+  const after = computeCartSignature(
+    buildCartSignatureLines([
+      makeItem({ productId: '6', quantity: 1, calories: 820, protein: 57, carbs: 104, fats: 19 }),
+    ]),
+    baseCtx,
+  );
+  assert.equal(before, after, 'makro alanlarındaki değişiklik sepet imzasını etkilememeli');
+});

@@ -30,6 +30,7 @@ import {
   MACRO_MEMBER_DISCOUNT_PERCENT,
   MacroProfile,
 } from '../lib/macros';
+import { addMacros, computeLineMacros, formatMacroGrams, formatMacroKcal, ItemMacros } from '../lib/itemMacros';
 import type { Product } from '../types';
 import { track } from '../lib/analytics';
 
@@ -53,6 +54,7 @@ export default function CartScreen() {
   const clearCoupon = useCartStore(s => s.clearCoupon);
   const getDiscountAmount = useCartStore(s => s.getDiscountAmount);
   const refreshPrices = useCartStore(s => s.refreshPrices);
+  const refreshMacros = useCartStore(s => s.refreshMacros);
   const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   const [priceUpdated, setPriceUpdated] = useState(false);
@@ -66,9 +68,12 @@ export default function CartScreen() {
       (async () => {
         const res = await refreshPrices();
         if (active && res.changed) setPriceUpdated(true);
+        // Makro da fiyat gibi sepete girişte tazelenir — "fotoğraflanmış"
+        // eski değerler DB'de düzeltilmişse ekranda güncel görünsün.
+        refreshMacros();
       })();
       return () => { active = false; };
-    }, [refreshPrices])
+    }, [refreshPrices, refreshMacros])
   );
 
   useEffect(() => {
@@ -181,6 +186,7 @@ export default function CartScreen() {
   const handleContinue = async () => {
     const res = await refreshPrices();
     if (res.changed) { setPriceUpdated(true); return; } // müşteri yeni tutarı görsün, tekrar bassın
+    await refreshMacros();
     navigation.navigate('Checkout');
   };
 
@@ -236,10 +242,6 @@ export default function CartScreen() {
           // FIX 5 grup: bu parent'a bağlı ekstra (child) kalemler. Top-level
           // listeden filtrelendi; burada parent altında indent gösterilir.
           const childItems = items.filter((c) => c.parentLineKey === item.lineKey);
-          const childKcal = childItems.reduce((s, c) => s + (c.effective_calories ?? c.calories ?? 0) * c.quantity, 0);
-          const childProtein = childItems.reduce((s, c) => s + (c.effective_protein ?? c.protein ?? 0) * c.quantity, 0);
-          const childCarbs = childItems.reduce((s, c) => s + (c.effective_carbs ?? c.carbs ?? 0) * c.quantity, 0);
-          const childFats = childItems.reduce((s, c) => s + (c.effective_fats ?? c.fats ?? 0) * c.quantity, 0);
           const extrasPrice = childItems.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
 
           // Parent satırı base + ekstraların TOPLAMINI gösterir (sepet
@@ -247,11 +249,19 @@ export default function CartScreen() {
           const displayTotal = item.unitPrice * item.quantity + extrasPrice;
           const displayOriginal = (item.originalUnitPrice ?? item.unitPrice) * item.quantity + extrasPrice;
 
-          const itemKcal = Math.round((item.calories ?? 0) * item.quantity + childKcal);
-          const itemProtein = (item.protein ?? 0) * item.quantity + childProtein;
-          const itemCarbs = (item.carbs ?? 0) * item.quantity + childCarbs;
-          const itemFats = (item.fats ?? 0) * item.quantity + childFats;
-          const itemHasMacros = itemKcal > 0 || itemProtein > 0 || itemCarbs > 0 || itemFats > 0;
+          // Tek paylaşılan makro kaynağı: item zaten birim başı nihai değeri
+          // taşıyor (bkz. cartStore.addItem/refreshMacros), burada sadece
+          // adetle çarpılıp ekstraların toplamıyla birleştiriliyor.
+          const parentMacros = computeLineMacros({
+            product: item,
+            quantity: item.quantity,
+            bundleSelections: item.bundle_selections,
+          });
+          const childMacros = childItems.reduce<ItemMacros>(
+            (acc, c) => addMacros(acc, computeLineMacros({ product: c, quantity: c.quantity })),
+            { kcal: null, protein: null, carbs: null, fat: null },
+          );
+          const itemMacros = addMacros(parentMacros, childMacros);
 
           return (
             <View key={item.lineKey} style={styles.itemCard}>
@@ -345,31 +355,30 @@ export default function CartScreen() {
                 </View>
               </View>
 
-              {/* Macro pills */}
-              {itemHasMacros ? (
-                <View style={styles.macroPills}>
-                  {itemKcal > 0 ? (
-                    <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.calories.track }]}>
-                      <Text style={[styles.macroPillText, { color: MACRO_COLORS.calories.main }]}>{itemKcal} kcal</Text>
-                    </View>
-                  ) : null}
-                  {itemProtein > 0 ? (
-                    <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.protein.track }]}>
-                      <Text style={[styles.macroPillText, { color: MACRO_COLORS.protein.main }]}>{itemProtein % 1 === 0 ? itemProtein : itemProtein.toFixed(1)}g P</Text>
-                    </View>
-                  ) : null}
-                  {itemCarbs > 0 ? (
-                    <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.carbs.track }]}>
-                      <Text style={[styles.macroPillText, { color: MACRO_COLORS.carbs.main }]}>{itemCarbs % 1 === 0 ? itemCarbs : itemCarbs.toFixed(1)}g K</Text>
-                    </View>
-                  ) : null}
-                  {itemFats > 0 ? (
-                    <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.fat.track }]}>
-                      <Text style={[styles.macroPillText, { color: MACRO_COLORS.fat.main }]}>{itemFats % 1 === 0 ? itemFats : itemFats.toFixed(1)}g Y</Text>
-                    </View>
-                  ) : null}
+              {/* Macro pills — 4 değer her zaman gösterilir, veri yoksa "—"
+                  (gizlenmez, bkz. src/lib/itemMacros) */}
+              <View style={styles.macroPills}>
+                <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.calories.track }]}>
+                  <Text style={[styles.macroPillText, { color: MACRO_COLORS.calories.main }]}>
+                    {formatMacroKcal(itemMacros.kcal)} kcal
+                  </Text>
                 </View>
-              ) : null}
+                <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.protein.track }]}>
+                  <Text style={[styles.macroPillText, { color: MACRO_COLORS.protein.main }]}>
+                    {formatMacroGrams(itemMacros.protein)} P
+                  </Text>
+                </View>
+                <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.carbs.track }]}>
+                  <Text style={[styles.macroPillText, { color: MACRO_COLORS.carbs.main }]}>
+                    {formatMacroGrams(itemMacros.carbs)} K
+                  </Text>
+                </View>
+                <View style={[styles.macroPill, { backgroundColor: MACRO_COLORS.fat.track }]}>
+                  <Text style={[styles.macroPillText, { color: MACRO_COLORS.fat.main }]}>
+                    {formatMacroGrams(itemMacros.fat)} Y
+                  </Text>
+                </View>
+              </View>
 
               {/* Bundle slot kırılımı — ana satırın altında indent edilmiş
                   alt satırlar; fiyat yok ("Dahil"), her öğünün makrosu küçük */}
@@ -394,16 +403,16 @@ export default function CartScreen() {
                         </Text>
                         <View style={styles.bundleChildMacros}>
                           <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.calories.main }]}>
-                            {Math.round(sel.calories)} kcal
+                            {formatMacroKcal(sel.calories || null)} kcal
                           </Text>
                           <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.protein.main }]}>
-                            {sel.protein % 1 === 0 ? sel.protein : sel.protein.toFixed(1)}g P
+                            {formatMacroGrams(sel.protein || null)} P
                           </Text>
                           <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.carbs.main }]}>
-                            {sel.carbs % 1 === 0 ? sel.carbs : sel.carbs.toFixed(1)}g K
+                            {formatMacroGrams(sel.carbs || null)} K
                           </Text>
                           <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.fat.main }]}>
-                            {sel.fat % 1 === 0 ? sel.fat : sel.fat.toFixed(1)}g Y
+                            {formatMacroGrams(sel.fat || null)} Y
                           </Text>
                         </View>
                       </View>
@@ -421,10 +430,7 @@ export default function CartScreen() {
               {childItems.length > 0 ? (
                 <View style={styles.bundleChildrenWrap}>
                   {childItems.map((c, idx) => {
-                    const cKcal = Math.round(c.effective_calories ?? c.calories ?? 0);
-                    const cP = c.effective_protein ?? c.protein ?? 0;
-                    const cK = c.effective_carbs ?? c.carbs ?? 0;
-                    const cF = c.effective_fats ?? c.fats ?? 0;
+                    const cMacros = computeLineMacros({ product: c, quantity: c.quantity });
                     const slot = c.selectedOptions.labels[0];
                     return (
                       <View
@@ -445,16 +451,16 @@ export default function CartScreen() {
                           </Text>
                           <View style={styles.bundleChildMacros}>
                             <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.calories.main }]}>
-                              {cKcal} kcal
+                              {formatMacroKcal(cMacros.kcal)} kcal
                             </Text>
                             <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.protein.main }]}>
-                              {cP % 1 === 0 ? cP : cP.toFixed(1)}g P
+                              {formatMacroGrams(cMacros.protein)} P
                             </Text>
                             <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.carbs.main }]}>
-                              {cK % 1 === 0 ? cK : cK.toFixed(1)}g K
+                              {formatMacroGrams(cMacros.carbs)} K
                             </Text>
                             <Text style={[styles.bundleChildMacro, { color: MACRO_COLORS.fat.main }]}>
-                              {cF % 1 === 0 ? cF : cF.toFixed(1)}g Y
+                              {formatMacroGrams(cMacros.fat)} Y
                             </Text>
                           </View>
                         </View>

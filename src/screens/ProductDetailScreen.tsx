@@ -43,6 +43,7 @@ import {
 import { useCartStore } from '../store/cartStore';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { logEvent, track } from '../lib/analytics';
+import { computeBundleUnitMacros, computeProductUnitMacros } from '../lib/itemMacros';
 import Svg, { Circle } from 'react-native-svg';
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { COLORS } from '../constants/theme';
@@ -427,31 +428,19 @@ export default function ProductDetailScreen() {
     [selectedGramaj],
   );
 
+  // Tek paylaşılan makro kaynağı (src/lib/itemMacros) — sepet/checkout/
+  // tracker'la aynı hesap. Gramaj da bir "modifikatör" (aynı alan adları),
+  // template opsiyonlarıyla birlikte tek listede uygulanır.
   const effectiveMacros = useMemo(() => {
-    const base = {
-      calories: Number(product?.calories ?? product?.cal) || 0,
-      protein: Number(product?.protein) || 0,
-      carbs: Number(product?.carbs) || 0,
-      fats: Number(product?.fats) || 0,
-    };
-    if (selectedGramaj) {
-      base.calories += Number(selectedGramaj.calorie_modifier) || 0;
-      base.protein += Number(selectedGramaj.protein_modifier) || 0;
-      base.carbs += Number(selectedGramaj.carbs_modifier) || 0;
-      base.fats += Number(selectedGramaj.fats_modifier) || 0;
-    }
     const opts = Array.isArray(builtTemplateOptions) ? builtTemplateOptions : [];
-    opts.forEach((opt) => {
-      base.calories += Number(opt?.calorie_modifier) || 0;
-      base.protein += Number(opt?.protein_modifier) || 0;
-      base.carbs += Number(opt?.carbs_modifier) || 0;
-      base.fats += Number(opt?.fats_modifier) || 0;
-    });
-    base.calories = Math.max(0, Math.round(base.calories));
-    base.protein = Math.max(0, Math.round(base.protein * 10) / 10);
-    base.carbs   = Math.max(0, Math.round(base.carbs   * 10) / 10);
-    base.fats    = Math.max(0, Math.round(base.fats    * 10) / 10);
-    return base;
+    const modifiers = selectedGramaj ? [selectedGramaj, ...opts] : opts;
+    const m = computeProductUnitMacros(product, modifiers);
+    return {
+      calories: m.kcal ?? 0,
+      protein: m.protein ?? 0,
+      carbs: m.carbs ?? 0,
+      fats: m.fat ?? 0,
+    };
   }, [product, builtTemplateOptions, selectedGramaj]);
 
   // ── Bundle (çoklu ürün) canlı makro toplamı ────────────────────────────────
@@ -461,23 +450,21 @@ export default function ProductDetailScreen() {
   const isBundle = Boolean(product?.is_bundle);
 
   const bundleMacros = useMemo(() => {
-    const total = { calories: 0, protein: 0, carbs: 0, fats: 0 };
-    if (!isBundle) return total;
+    if (!isBundle) return { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    const selectedItems: OptionItem[] = [];
     optionGroups.forEach((group) => {
       const selectedIds = new Set(selections[group.id] || []);
       group.items.forEach((item) => {
-        if (!selectedIds.has(item.id)) return;
-        total.calories += Number(item.calories) || 0;
-        total.protein += Number(item.protein) || 0;
-        total.carbs += Number(item.carbs) || 0;
-        total.fats += Number(item.fats) || 0;
+        if (selectedIds.has(item.id)) selectedItems.push(item);
       });
     });
-    total.calories = Math.max(0, Math.round(total.calories));
-    total.protein = Math.max(0, Math.round(total.protein * 10) / 10);
-    total.carbs   = Math.max(0, Math.round(total.carbs   * 10) / 10);
-    total.fats    = Math.max(0, Math.round(total.fats    * 10) / 10);
-    return total;
+    const m = computeBundleUnitMacros(selectedItems);
+    return {
+      calories: m.kcal ?? 0,
+      protein: m.protein ?? 0,
+      carbs: m.carbs ?? 0,
+      fats: m.fat ?? 0,
+    };
   }, [isBundle, optionGroups, selections]);
 
   const secondaryOptionLinks = useMemo(() => {

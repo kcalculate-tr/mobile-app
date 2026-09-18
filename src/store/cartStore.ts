@@ -5,6 +5,7 @@ import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { supabase } from '../lib/supabase';
 import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
 import { logEvent, track } from '../lib/analytics';
+import { computeLineMacros, computeUnitMacros } from '../lib/itemMacros';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
 
 export const useCartStore = create<CartState>()(
@@ -40,7 +41,6 @@ export const useCartStore = create<CartState>()(
           product.is_bundle && Array.isArray(normalizedOptions.bundleSelections)
             ? normalizedOptions.bundleSelections
             : undefined;
-        const isBundleItem = !!bundleSelections && bundleSelections.length > 0;
 
         // FIX: ekstra/gramaj farkı HER ZAMAN fiyata eklenir (bundle dahil).
         // Önceden is_bundle'da extraPrice atılıyordu → ücretli ekstralar
@@ -60,45 +60,14 @@ export const useCartStore = create<CartState>()(
             )
           : undefined;
 
-        const calorieMod = (templateOptions ?? []).reduce(
-          (s, o) => s + (Number(o.calorie_modifier) || 0),
-          0,
-        );
-        const proteinMod = (templateOptions ?? []).reduce(
-          (s, o) => s + (Number(o.protein_modifier) || 0),
-          0,
-        );
-        const carbsMod = (templateOptions ?? []).reduce(
-          (s, o) => s + (Number(o.carbs_modifier) || 0),
-          0,
-        );
-        const fatsMod = (templateOptions ?? []).reduce(
-          (s, o) => s + (Number(o.fats_modifier) || 0),
-          0,
-        );
-
-        const bundleTotals = (bundleSelections ?? []).reduce(
-          (acc, b) => ({
-            calories: acc.calories + (Number(b.calories) || 0),
-            protein: acc.protein + (Number(b.protein) || 0),
-            carbs: acc.carbs + (Number(b.carbs) || 0),
-            fat: acc.fat + (Number(b.fat) || 0),
-          }),
-          { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        );
-
-        const effectiveCalories = isBundleItem
-          ? Math.max(0, Math.round(bundleTotals.calories))
-          : Math.max(0, Math.round((Number(product.calories) || 0) + calorieMod));
-        const effectiveProtein = isBundleItem
-          ? Math.max(0, bundleTotals.protein)
-          : Math.max(0, (Number(product.protein) || 0) + proteinMod);
-        const effectiveCarbs = isBundleItem
-          ? Math.max(0, bundleTotals.carbs)
-          : Math.max(0, (Number(product.carbs) || 0) + carbsMod);
-        const effectiveFats = isBundleItem
-          ? Math.max(0, bundleTotals.fat)
-          : Math.max(0, (Number(product.fats) || 0) + fatsMod);
+        // Tek paylaşılan makro kaynağı (src/lib/itemMacros) — bundle ise alt
+        // ürün seçimlerinin toplamı, değilse ürün + seçili opsiyon/gramaj
+        // modifikatörleri. Sepet/ürün detayı/checkout/tracker hep bunu kullanır.
+        const unitMacros = computeUnitMacros({
+          product,
+          templateOptions,
+          bundleSelections,
+        });
 
         set((state) => {
           const existingIndex = state.items.findIndex((item) => item.lineKey === lineKey);
@@ -126,21 +95,18 @@ export const useCartStore = create<CartState>()(
             originalUnitPrice,
             discountType: productHasDiscount ? (product.discount_type ?? null) : null,
             discountValue: productHasDiscount ? (product.discount_value ?? null) : null,
-            // Bundle'da taban makro alanları da toplamı taşısın (CartScreen
-            // item.calories'i okuyor); normal üründe ürünün kendi makrosu.
-            calories: isBundleItem ? effectiveCalories : product.calories,
-            protein: isBundleItem ? effectiveProtein : product.protein,
-            carbs: isBundleItem ? effectiveCarbs : product.carbs,
-            fats: isBundleItem ? effectiveFats : product.fats,
+            // Birim başı, modifikatör/bundle toplamı DAHİL edilmiş nihai değer
+            // (bkz. computeUnitMacros) — CartScreen/orders.ts bunu tekrar
+            // modifikatörlerle işlemeden, sadece adetle çarpar.
+            calories: unitMacros.kcal ?? undefined,
+            protein: unitMacros.protein ?? undefined,
+            carbs: unitMacros.carbs ?? undefined,
+            fats: unitMacros.fat ?? undefined,
             img: product.img ?? undefined,
             selectedOptions: normalizedOptions,
             selected_options: templateOptions,
             bundle_selections: bundleSelections,
             parentLineKey,
-            effective_calories: effectiveCalories,
-            effective_protein: effectiveProtein,
-            effective_carbs: effectiveCarbs,
-            effective_fats: effectiveFats,
           };
 
           return { items: [...state.items, newItem] };
@@ -219,12 +185,22 @@ export const useCartStore = create<CartState>()(
       getTotalMacros: () => {
         const { items } = get();
         return items.reduce(
-          (acc, item) => ({
-            kcal: acc.kcal + (item.effective_calories ?? item.calories ?? 0) * item.quantity,
-            protein: acc.protein + (item.effective_protein ?? item.protein ?? 0) * item.quantity,
-            carbs: acc.carbs + (item.effective_carbs ?? item.carbs ?? 0) * item.quantity,
-            fats: acc.fats + (item.effective_fats ?? item.fats ?? 0) * item.quantity,
-          }),
+          (acc, item) => {
+            // item zaten birim başı, modifikatör/bundle toplamı dahil nihai
+            // değeri taşıyor (bkz. computeUnitMacros çağrıldığı yerler) —
+            // burada sadece adetle çarpıp topluyoruz.
+            const line = computeLineMacros({
+              product: item,
+              quantity: item.quantity,
+              bundleSelections: item.bundle_selections,
+            });
+            return {
+              kcal: acc.kcal + (line.kcal ?? 0),
+              protein: acc.protein + (line.protein ?? 0),
+              carbs: acc.carbs + (line.carbs ?? 0),
+              fats: acc.fats + (line.fat ?? 0),
+            };
+          },
           { kcal: 0, protein: 0, carbs: 0, fats: 0 },
         );
       },
@@ -273,6 +249,71 @@ export const useCartStore = create<CartState>()(
         });
         if (changed) set({ items: nextItems });
         return { changed, names };
+      },
+
+      // Fiyat tazelemeyle AYNI prensip: sepete eklenirken hesaplanan makro
+      // bir "fotoğraf"tır, DB sonradan düzeltilirse bayatlar. Bu, o fotoğrafı
+      // günceller — ürünün kendisi ve (varsa) bundle alt ürünleri (linked
+      // product) için DB'den taze calories/protein/carbs/fats çekip
+      // computeUnitMacros ile yeniden hesaplar. Fiyat/adet/opsiyon seçimi/
+      // sepet imzasına dokunmaz.
+      refreshMacros: async (): Promise<void> => {
+        const items = get().items;
+        if (!items || items.length === 0) return;
+
+        const productIdSet = new Set<string>();
+        items.forEach((item) => {
+          productIdSet.add(item.productId);
+          (item.bundle_selections ?? []).forEach((sel) => {
+            if (sel.linked_product_id != null) {
+              productIdSet.add(String(sel.linked_product_id));
+            }
+          });
+        });
+        const numIds = Array.from(productIdSet)
+          .map((x) => Number(x))
+          .filter((n) => Number.isFinite(n));
+        if (numIds.length === 0) return;
+
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, calories, cal, protein, carbs, fats')
+          .in('id', numIds);
+        if (error || !Array.isArray(data)) return;
+        const byId = new Map(data.map((r: any) => [String(r.id), r]));
+
+        const nextItems = items.map((item) => {
+          const freshBundleSelections = item.bundle_selections?.map((sel) => {
+            if (sel.linked_product_id == null) return sel;
+            const fresh = byId.get(String(sel.linked_product_id));
+            if (!fresh) return sel;
+            return {
+              ...sel,
+              calories: Number(fresh.calories ?? fresh.cal) || 0,
+              protein: Number(fresh.protein) || 0,
+              carbs: Number(fresh.carbs) || 0,
+              fat: Number(fresh.fats) || 0,
+            };
+          });
+
+          const freshProduct = byId.get(item.productId);
+          const unitMacros = computeUnitMacros({
+            product: freshProduct ?? item,
+            templateOptions: item.selected_options,
+            bundleSelections: freshBundleSelections ?? item.bundle_selections,
+          });
+
+          return {
+            ...item,
+            bundle_selections: freshBundleSelections ?? item.bundle_selections,
+            calories: unitMacros.kcal ?? undefined,
+            protein: unitMacros.protein ?? undefined,
+            carbs: unitMacros.carbs ?? undefined,
+            fats: unitMacros.fat ?? undefined,
+          };
+        });
+
+        set({ items: nextItems });
       },
     }),
     {

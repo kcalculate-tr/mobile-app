@@ -3,12 +3,21 @@ import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
 import { getSupabaseClient } from './supabase';
 import { calculateMacroDiscount, isMacroMemberFromUntil } from './macros';
+import { computeUnitMacros } from './itemMacros';
 import {
   buildCartSignatureLines,
   buildOptionsSignature,
   CartSignatureLine,
   computeCartSignature,
 } from './cartSignature';
+
+// Tek paylaşılan makro kaynağı (src/lib/itemMacros) — item zaten birim başı
+// nihai değeri taşıyor (bkz. cartStore.addItem/refreshMacros); burada sadece
+// bundle/normal ayrımını tekrar yapmadan okunuyor. CheckoutScreen, sipariş
+// oluşturmadan hemen önce cartStore.refreshMacros() çağırarak bu değerlerin
+// DB ile güncel olduğundan emin olur.
+const orderItemUnitMacros = (item: CartItem) =>
+  computeUnitMacros({ product: item, bundleSelections: item.bundle_selections });
 
 // CheckoutScreen vb. bu iki fonksiyonu '../lib/orders'tan import ediyor —
 // gerçek tanımları bağımsız/test edilebilir src/lib/cartSignature.ts'te.
@@ -270,20 +279,23 @@ export const createOrderFromCart = async ({
     Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount - macroDiscount).toFixed(2),
   );
 
-  const itemsPayload = cartItems.map((item) => ({
-    line_key: item.lineKey,
-    id: item.productId,
-    name: item.name,
-    quantity: item.quantity,
-    unit_price: item.unitPrice,
-    total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
-    calories: item.effective_calories ?? item.calories,
-    protein: item.effective_protein ?? item.protein,
-    carbs: item.effective_carbs ?? item.carbs,
-    fats: item.effective_fats ?? item.fats,
-    selected_options: item.selected_options ?? [],
-    legacy_selected_options: item.selectedOptions,
-  }));
+  const itemsPayload = cartItems.map((item) => {
+    const macros = orderItemUnitMacros(item);
+    return {
+      line_key: item.lineKey,
+      id: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
+      calories: macros.kcal,
+      protein: macros.protein,
+      carbs: macros.carbs,
+      fats: macros.fat,
+      selected_options: item.selected_options ?? [],
+      legacy_selected_options: item.selectedOptions,
+    };
+  });
 
   const orderPayload: Record<string, unknown> = {
     status: 'pending',
@@ -331,19 +343,22 @@ export const createOrderFromCart = async ({
   const finalOrderId = String(insertedOrder.id);
   const warnings: OrderCreateWarning[] = [];
 
-  const orderItemsPayload = cartItems.map((item) => ({
-    order_id: finalOrderId,
-    product_id: Number(item.productId),
-    quantity: item.quantity,
-    unit_price: Number(item.unitPrice.toFixed(2)),
-    total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
-    product_name: item.name,
-    selected_options: buildOrderItemSelectedOptions(item),
-    calories: item.effective_calories ?? item.calories ?? null,
-    protein: item.effective_protein ?? item.protein ?? null,
-    carbs: item.effective_carbs ?? item.carbs ?? null,
-    fat: item.effective_fats ?? item.fats ?? null,
-  }));
+  const orderItemsPayload = cartItems.map((item) => {
+    const macros = orderItemUnitMacros(item);
+    return {
+      order_id: finalOrderId,
+      product_id: Number(item.productId),
+      quantity: item.quantity,
+      unit_price: Number(item.unitPrice.toFixed(2)),
+      total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
+      product_name: item.name,
+      selected_options: buildOrderItemSelectedOptions(item),
+      calories: macros.kcal,
+      protein: macros.protein,
+      carbs: macros.carbs,
+      fat: macros.fat,
+    };
+  });
 
   if (orderItemsPayload.length > 0) {
     const { error: orderItemsError } = await supabase
@@ -435,20 +450,23 @@ export const createOrderDraftForPayment = async ({
     Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount - macroDiscount).toFixed(2),
   );
 
-  const itemsPayload = cartItems.map((item) => ({
-    line_key: item.lineKey,
-    id: item.productId,
-    name: item.name,
-    quantity: item.quantity,
-    unit_price: item.unitPrice,
-    total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
-    calories: item.effective_calories ?? item.calories,
-    protein: item.effective_protein ?? item.protein,
-    carbs: item.effective_carbs ?? item.carbs,
-    fats: item.effective_fats ?? item.fats,
-    selected_options: item.selected_options ?? [],
-    legacy_selected_options: item.selectedOptions,
-  }));
+  const itemsPayload = cartItems.map((item) => {
+    const macros = orderItemUnitMacros(item);
+    return {
+      line_key: item.lineKey,
+      id: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
+      calories: macros.kcal,
+      protein: macros.protein,
+      carbs: macros.carbs,
+      fats: macros.fat,
+      selected_options: item.selected_options ?? [],
+      legacy_selected_options: item.selectedOptions,
+    };
+  });
 
   const orderPayload: Record<string, unknown> = {
     status: 'pending_payment',
@@ -495,19 +513,22 @@ export const createOrderDraftForPayment = async ({
   const finalOrderId = String(insertedOrder.id);
   const warnings: OrderCreateWarning[] = [];
 
-  const orderItemsPayload = cartItems.map((item) => ({
-    order_id: finalOrderId,
-    product_id: Number(item.productId),
-    quantity: item.quantity,
-    unit_price: Number(item.unitPrice.toFixed(2)),
-    total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
-    product_name: item.name,
-    selected_options: buildOrderItemSelectedOptions(item),
-    calories: item.effective_calories ?? item.calories ?? null,
-    protein: item.effective_protein ?? item.protein ?? null,
-    carbs: item.effective_carbs ?? item.carbs ?? null,
-    fat: item.effective_fats ?? item.fats ?? null,
-  }));
+  const orderItemsPayload = cartItems.map((item) => {
+    const macros = orderItemUnitMacros(item);
+    return {
+      order_id: finalOrderId,
+      product_id: Number(item.productId),
+      quantity: item.quantity,
+      unit_price: Number(item.unitPrice.toFixed(2)),
+      total_price: Number((item.unitPrice * item.quantity).toFixed(2)),
+      product_name: item.name,
+      selected_options: buildOrderItemSelectedOptions(item),
+      calories: macros.kcal,
+      protein: macros.protein,
+      carbs: macros.carbs,
+      fat: macros.fat,
+    };
+  });
 
   if (orderItemsPayload.length > 0) {
     const { error: orderItemsError } = await supabase

@@ -166,10 +166,6 @@ export interface CartItem {
   // lineKey'i. Doluysa CartScreen'de top-level değil, parent altında
   // indent child olarak render edilir; parent silinince cascade silinir.
   parentLineKey?: string;
-  effective_calories?: number;
-  effective_protein?: number;
-  effective_carbs?: number;
-  effective_fats?: number;
 }
 
 export interface CartMacros {
@@ -208,6 +204,10 @@ export interface CartState {
   clearCoupon: () => void;
   getDiscountAmount: (subtotal: number) => number;
   refreshPrices: () => Promise<{ changed: boolean; names: string[] }>;
+  // Makro artık sepette "fotoğraflanmıyor" — fiyat tazeleme mekanizmasıyla
+  // aynı prensip: ürün/bundle-alt-ürün DB'de güncellenmişse sepetteki satır
+  // bir sonraki tazelemede güncel değeri yansıtır.
+  refreshMacros: () => Promise<void>;
 }
 
 // ─── Address ──────────────────────────────────────────────────────────────────

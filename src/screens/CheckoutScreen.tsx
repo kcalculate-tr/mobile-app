@@ -376,6 +376,7 @@ export default function CheckoutScreen() {
   const subtotal = useCartStore((state) => state.getSubtotal());
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
+  const totalMacros = useCartStore((state) => state.getTotalMacros());
 
   const [addr, dispatchAddr] = useReducer(addressReducer, addressInitial);
   const [delivery, dispatchDelivery] = useReducer(deliveryReducer, deliveryInitial);
@@ -1374,11 +1375,16 @@ export default function CheckoutScreen() {
 
       if (!paymentOrderId) {
         console.log('[CHECKOUT] creating draft', { scheduledFields });
+        // Makro artık sepette "fotoğraflanmıyor" — sipariş/tracker kaydına
+        // yazılmadan hemen önce DB'den taze değerle tazelenir (fiyatın aynı
+        // prensibi, bkz. cartStore.refreshMacros). Fiyat/imza/ödeme akışına
+        // dokunmaz.
+        await useCartStore.getState().refreshMacros();
         const draftResult = await createOrderDraftForPayment({
           supabase,
           userId: user.id,
           address: effectiveAddress,
-          cartItems: items,
+          cartItems: useCartStore.getState().items,
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim(),
           customerPhone: customerPhone.trim(),
@@ -2090,6 +2096,16 @@ export default function CheckoutScreen() {
                 ) : null}
               </View>
             ))}
+            {totalMacros.kcal > 0 || totalMacros.protein > 0 ? (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Toplam Besin Değeri</Text>
+                <Text style={styles.summaryValue}>
+                  {totalMacros.kcal > 0 ? `${Math.round(totalMacros.kcal)} kcal` : '—'}
+                  {' • P '}
+                  {totalMacros.protein > 0 ? `${totalMacros.protein % 1 === 0 ? totalMacros.protein : totalMacros.protein.toFixed(1)}g` : '—'}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Ara Toplam</Text>
