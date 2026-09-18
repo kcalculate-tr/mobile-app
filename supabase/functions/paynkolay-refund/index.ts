@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
+import { cancelOrRefundTransaction, chooseRefundType } from '../_shared/paynkolay-refund.ts'
 
 // ── Paynkolay İptal/İade (CancelRefundPayment) ──────────────────────────────
 // ASIL PARA İADESİ. KRİTİK işlem -> sıkı guard'lar + admin auth.
 //
 // type OTOMATİK: trxDate == bugün (TR) -> 'cancel' (aynı gün), değilse -> 'refund'.
+// YEDEK: aynı gün 'cancel' PaynKolay'ca reddedilirse (ör. gün sonu kesintisi) 'refund' denenir
+// (ağ hatası/zaman aşımı gibi BELİRSİZ durumda denenmez). Çağrı/hash/başarı kuralı
+// _shared/paynkolay-refund.ts'te — Kart Ekle doğrulama iadesiyle ORTAK.
 // referenceCode/trxDate order'da yoksa -> paynkolay-query'yi HTTP ile ÇAĞIR
 // (hash mantığı TEK kaynakta = query/init/callback; burada KOPYALANMAZ).
 //
@@ -17,10 +21,6 @@ import { createClient } from '@supabase/supabase-js'
 const CANCEL_SX = (Deno.env.get('PAYNKOLAY_CANCEL_SX') ?? '').trim()
 const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim() // ".../Vpos"
-// CancelRefundPayment endpoint VPOS_URL'den türetilir (test/prod otomatik takip).
-//   prod: https://paynkolay.nkolayislem.com.tr/Vpos/v1/CancelRefundPayment
-const CANCEL_URL = VPOS_URL ? `${VPOS_URL}/v1/CancelRefundPayment` : ''
-
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -35,25 +35,6 @@ const jsonResponse = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-
-// ── Hash: parts.join('|') -> UTF-8 -> SHA-512 (binary) -> base64 (init/callback/query AYNI).
-async function generatePaynkolayHash(parts: string[]): Promise<string> {
-  const hashString = parts.join('|')
-  const data = new TextEncoder().encode(hashString)
-  const hashBuffer = await crypto.subtle.digest('SHA-512', data)
-  const bytes = new Uint8Array(hashBuffer)
-  let bin = ''
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
-  return btoa(bin)
-}
-
-// Bugün TR (GMT+3) tarihi yyyy.mm.dd — type (cancel/refund) kararı için.
-function todayTR(): string {
-  const now = new Date()
-  const tr = new Date(now.getTime() + 3 * 60 * 60 * 1000)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${tr.getUTCFullYear()}.${pad(tr.getUTCMonth() + 1)}.${pad(tr.getUTCDate())}`
-}
 
 // admin_allowlist teyidi (service-role; user_id, fallback email) — query ile AYNI.
 async function isAllowlistedAdmin(
@@ -104,7 +85,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    if (!CANCEL_SX || !SECRET_KEY || !CANCEL_URL) {
+    if (!CANCEL_SX || !SECRET_KEY || !VPOS_URL) {
       return jsonResponse({ error: 'Paynkolay iade yapilandirmasi eksik' }, 500)
     }
 
@@ -191,48 +172,50 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'Paynkolay referenceCode/trxDate cozulemedi — iade yapilamaz' }, 422)
     }
 
-    // ── type OTOMATİK: aynı gün -> cancel, değilse -> refund
-    const type = trxDate === todayTR() ? 'cancel' : 'refund'
+    // ── type OTOMATİK: aynı gün -> cancel, değilse -> refund (yedek: cancel reddedilirse refund)
+    const plannedType = chooseRefundType(trxDate)
 
-    // ── Hash: sx(cancel) | referenceCode | type | amount | trxDate | secret
-    const cancelHash = await generatePaynkolayHash([
-      CANCEL_SX,
-      referenceCode,
-      type,
-      amountStr,
-      trxDate,
-      SECRET_KEY,
-    ])
-
-    // ── CancelRefundPayment çağrısı (multipart/form-data, hashDatav2 küçük v)
-    const form = new FormData()
-    form.set('sx', CANCEL_SX)
-    form.set('referenceCode', referenceCode)
-    form.set('type', type)
-    form.set('amount', amountStr)
-    form.set('trxDate', trxDate)
-    form.set('hashDatav2', cancelHash)
-
-    let providerJson: any = null
-    let providerRaw = ''
-    let httpOk = false
-    let httpStatus = 0
-    try {
-      const res = await fetch(CANCEL_URL, { method: 'POST', body: form })
-      httpStatus = res.status
-      httpOk = res.ok
-      providerRaw = await res.text()
-      try { providerJson = JSON.parse(providerRaw) } catch { providerJson = { raw: providerRaw } }
-    } catch (e) {
-      console.error('[paynkolay-refund] CancelRefund fetch error:', e)
-      return jsonResponse({ error: 'Paynkolay iade API erisilemedi' }, 502)
+    // ── DRY-RUN (regresyon/teşhis): guard'lar + referenceCode/trxDate çözümü + tip seçimi
+    //    çalışır, PaynKolay'a HİÇ çağrı yapılmaz, DB'ye HİÇ yazılmaz.
+    if (body?.dryRun === true) {
+      return jsonResponse({
+        success: true,
+        dryRun: true,
+        plan: {
+          orderId: order.id,
+          type: plannedType,
+          fallbackType: plannedType === 'cancel' ? 'refund' : null,
+          amount: amountStr,
+          referenceCode,
+          trxDate,
+        },
+      })
     }
 
-    const responseCode = String(providerJson?.responseCode ?? providerJson?.RESPONSE_CODE ?? '')
-    const responseMessage = String(
-      providerJson?.responseData ?? providerJson?.responseMessage ?? providerJson?.RESPONSE_MESSAGE ?? '',
+    // ── CancelRefundPayment (ortak servis)
+    const result = await cancelOrRefundTransaction(
+      { cancelSx: CANCEL_SX, secretKey: SECRET_KEY, vposUrl: VPOS_URL },
+      { referenceCode, trxDate, amount: amountStr },
     )
-    const isSuccess = httpOk && responseCode === '2'
+    // Ağ hatası/zaman aşımı (PaynKolay'a hiç ulaşılamadı / belirsiz): eski davranış —
+    // audit satırı yazmadan 502 (iade gerçekleşmiş olabilir, "reddedildi" denmez).
+    if (result.attempts[result.attempts.length - 1]?.networkError) {
+      console.error('[paynkolay-refund] CancelRefund fetch error:', result.attempts[result.attempts.length - 1]?.message)
+      return jsonResponse({ error: 'Paynkolay iade API erisilemedi' }, 502)
+    }
+    const type = result.type // başarılıysa başarılı olan tip; değilse son denenen
+    const isSuccess = result.ok
+    const responseCode = result.responseCode
+    const responseMessage = result.message
+    const httpStatus = result.attempts[result.attempts.length - 1]?.httpStatus ?? 0
+    const providerJson: Record<string, unknown> =
+      result.raw && typeof result.raw === 'object' && !Array.isArray(result.raw)
+        ? { ...(result.raw as Record<string, unknown>) }
+        : { raw: result.raw }
+    // Denemeler (tip/kod/HTTP) audit'e eklenir — secret/sx/hash YOK.
+    providerJson.attempts = result.attempts.map((a) => ({
+      type: a.type, ok: a.ok, httpStatus: a.httpStatus, responseCode: a.responseCode, networkError: a.networkError,
+    }))
 
     if (!isSuccess) {
       // ── BAŞARISIZ: order'a DOKUNMA. Sadece audit (refunds status='failed').
@@ -251,13 +234,14 @@ Deno.serve(async (req: Request) => {
         console.error('[paynkolay-refund] failed-audit insert error:', e)
       }
       console.error('[paynkolay-refund] iade reddedildi', {
-        orderId: order.id, type, responseCode, httpStatus,
+        orderId: order.id, type, responseCode, httpStatus, attempts: result.attempts.length,
       })
       return jsonResponse({
         success: false,
         error: 'Iade Paynkolay tarafindan onaylanmadi — order degismedi',
         responseCode,
         reason: responseMessage || undefined,
+        attemptedTypes: result.attempts.map((a) => a.type),
       }, 502)
     }
 
@@ -293,13 +277,14 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[paynkolay-refund] iade BAŞARILI', {
-      orderId: order.id, type, amount: amountStr,
+      orderId: order.id, type, amount: amountStr, fellBack: result.fellBack,
     })
 
     return jsonResponse({
       success: true,
       orderId: order.id,
-      type,                 // cancel | refund
+      type,                 // cancel | refund (başarılı olan)
+      fellBack: result.fellBack, // cancel reddedildi, refund ile tamamlandı
       amount: requested,
       referenceCode,
       trxDate,
