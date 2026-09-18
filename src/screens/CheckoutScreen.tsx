@@ -73,6 +73,8 @@ import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvai
 import { fetchBranches, Branch } from '../lib/branches';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
+import { getCardsFeatureStatus, syncSavedCards, SavedCard } from '../lib/cards';
+import { buildPaymentNavParams, paymentActionVerb, pickInitialCardId } from '../lib/checkoutPayment';
 import { useAddressStore } from '../store/addressStore';
 import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
@@ -376,14 +378,6 @@ export default function CheckoutScreen() {
   const subtotal = useCartStore((state) => state.getSubtotal());
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
-  // KÖK NEDEN (Maximum update depth exceeded, 6af7e9e): getTotalMacros()
-  // her çağrıda YENİ bir nesne döner (getSubtotal()'un aksine — o primitive
-  // sayı döndüğü için Object.is ile stabil). Selector İÇİNDE çağrılırsa
-  // useSyncExternalStore her render'da "değişti" sanır → sonsuz render
-  // döngüsü. Fonksiyonun kendisini (stabil referans) seçip render
-  // gövdesinde çağırmak gerekir — CartScreen'deki desenle AYNI.
-  const getTotalMacros = useCartStore((state) => state.getTotalMacros);
-  const totalMacros = getTotalMacros();
 
   const [addr, dispatchAddr] = useReducer(addressReducer, addressInitial);
   const [delivery, dispatchDelivery] = useReducer(deliveryReducer, deliveryInitial);
@@ -407,6 +401,38 @@ export default function CheckoutScreen() {
   const autoSelectedNearestRef = useRef(false);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
   const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
+
+  // Ödeme Yöntemi kartı (Paynkolay kart saklama). Özellik kapalıysa
+  // (allowlist dışı) cardsEnabled=false kalır → kart HİÇ görünmez, akış aynı.
+  const [cardsEnabled, setCardsEnabled] = useState(false);
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [selectedPayCardId, setSelectedPayCardId] = useState<string | null>(null); // null = yeni kart
+  const [saveNewCard, setSaveNewCard] = useState(false); // varsayılan İŞARETSİZ
+  const cardsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (PAYMENT_PROVIDER !== 'paynkolay' || !user?.id) return;
+    if (cardsLoadedRef.current) return;
+    cardsLoadedRef.current = true;
+    // mounted bayrağı YOK: ref guard StrictMode'da 2. çalışmayı atladığı için
+    // cleanup'ta iptal edilen bir istek sonucu asla uygulanmazdı.
+    (async () => {
+      try {
+        const status = await getCardsFeatureStatus();
+        if (!status.enabled) return;
+        const result = await syncSavedCards();
+        const cards = result.cards ?? [];
+        setSavedCards(cards);
+        setSelectedPayCardId(pickInitialCardId(cards));
+        setCardsEnabled(true);
+      } catch {
+        // status/sync başarısızsa kart UI'ı gösterilmez, normal akış
+      }
+    })();
+  }, [user?.id]);
+  const paymentNavParams = useMemo(
+    () => buildPaymentNavParams({ cardsEnabled, selectedCardId: selectedPayCardId, saveNewCard }),
+    [cardsEnabled, selectedPayCardId, saveNewCard],
+  );
 
   const scheduledDates = useMemo(() =>
     businessHours ? getAvailableScheduledDates(businessHours, 21) : [],
@@ -732,7 +758,7 @@ export default function CheckoutScreen() {
           pendingPaymentOrder?.totalAmount || totalAmount,
         )}`;
       }
-      return `Ödemeye Geç • ${toCurrency(totalAmount)}`;
+      return `${paymentActionVerb({ cardsEnabled, selectedCardId: selectedPayCardId })} • ${toCurrency(totalAmount)}`;
     }
 
     return `Siparişi Oluştur • ${toCurrency(totalAmount)}`;
@@ -744,6 +770,8 @@ export default function CheckoutScreen() {
     retryPaymentOrderId,
     pendingPaymentOrder?.totalAmount,
     totalAmount,
+    cardsEnabled,
+    selectedPayCardId,
   ]);
 
   useEffect(() => {
@@ -1474,6 +1502,7 @@ export default function CheckoutScreen() {
           orderId: String(paymentOrderId),
           amount: paymentOrderAmount ?? totalAmount,
           orderCode: paymentOrderCode,
+          ...paymentNavParams,
         });
       } else {
         console.log('[CHECKOUT] legacy payment step', { paymentOrderId, PAYMENT_PROVIDER });
@@ -1549,6 +1578,7 @@ export default function CheckoutScreen() {
         orderId: String(hostedOrderId),
         amount: pendingPaymentOrder?.totalAmount || totalAmount,
         orderCode: pendingPaymentOrder?.orderCode,
+        ...paymentNavParams,
       });
       return;
     }
@@ -2070,6 +2100,53 @@ export default function CheckoutScreen() {
             />
           ) : null}
 
+          {/* ── Ödeme Yöntemi (sadece kart saklama açık kullanıcı) ── */}
+          {cardsEnabled ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Ödeme Yöntemi</Text>
+              {savedCards.map((card) => {
+                const active = selectedPayCardId === card.id;
+                const brand = card.brand?.trim() || 'Kart';
+                return (
+                  <Pressable
+                    key={card.id}
+                    onPress={() => setSelectedPayCardId(card.id)}
+                    style={[styles.addressRow, styles.payMethodRow, active && styles.addressRowActive]}
+                  >
+                    <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
+                      {active ? <View style={styles.radioInner} /> : null}
+                    </View>
+                    <Text style={styles.addressTitle}>•••• {card.last4 ?? '----'}</Text>
+                    <Text style={styles.payMethodMeta}>
+                      {brand}{card.is_default ? ' · Varsayılan' : ''}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => setSelectedPayCardId(null)}
+                style={[styles.addressRow, styles.payMethodRow, selectedPayCardId === null && styles.addressRowActive]}
+              >
+                <View style={[styles.radioOuter, selectedPayCardId === null && styles.radioOuterActive]}>
+                  {selectedPayCardId === null ? <View style={styles.radioInner} /> : null}
+                </View>
+                <Text style={styles.addressTitle}>+ Yeni kart ile öde</Text>
+              </Pressable>
+              {selectedPayCardId === null ? (
+                <TouchableOpacity
+                  style={styles.payCheckboxRow}
+                  onPress={() => setSaveNewCard((v) => !v)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.payCheckbox, saveNewCard && styles.payCheckboxChecked]}>
+                    {saveNewCard ? <Text style={styles.payCheckboxMark}>✓</Text> : null}
+                  </View>
+                  <Text style={styles.payCheckboxLabel}>Kartımı sonraki ödemeler için kaydet</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+
           {/* ── Sepet Özeti ── */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Sepet Özeti</Text>
@@ -2103,16 +2180,6 @@ export default function CheckoutScreen() {
                 ) : null}
               </View>
             ))}
-            {totalMacros.kcal > 0 || totalMacros.protein > 0 ? (
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Toplam Besin Değeri</Text>
-                <Text style={styles.summaryValue}>
-                  {totalMacros.kcal > 0 ? `${Math.round(totalMacros.kcal)} kcal` : '—'}
-                  {' • P '}
-                  {totalMacros.protein > 0 ? `${totalMacros.protein % 1 === 0 ? totalMacros.protein : totalMacros.protein.toFixed(1)}g` : '—'}
-                </Text>
-              </View>
-            ) : null}
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Ara Toplam</Text>
@@ -2502,6 +2569,44 @@ const styles = StyleSheet.create({
   addressRowActive: {
     borderColor: '#000000',
     backgroundColor: COLORS.white,
+  },
+  payMethodRow: {
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  payMethodMeta: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: '#555555',
+  },
+  payCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.sm,
+  },
+  payCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payCheckboxChecked: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
+  },
+  payCheckboxMark: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  payCheckboxLabel: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.text.primary,
   },
   radioOuter: {
     width: 20,

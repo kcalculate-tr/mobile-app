@@ -22,8 +22,7 @@ import { CreditCard, Lock, ArrowLeft } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import { initPayment } from '../lib/payment';
-import { getCardsFeatureStatus, payWithSavedCard, SavedCard, syncSavedCards } from '../lib/cards';
-import { getOrCreateDeviceId } from '../lib/deviceId';
+import { payWithSavedCard } from '../lib/cards';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
@@ -66,6 +65,9 @@ export default function PaymentScreen() {
         amount={route.params.amount}
         orderCode={route.params.orderCode}
         noticeMessage={route.params.noticeMessage}
+        payMode={route.params.payMode}
+        cardId={route.params.cardId}
+        saveCard={route.params.saveCard}
       />
     );
   }
@@ -899,6 +901,12 @@ type PaynkolayFlowProps = {
   amount: number;
   orderCode?: string;
   noticeMessage?: string;
+  // Ödeme yöntemi Sipariş Özeti'nde (CheckoutScreen) seçilir; bu ekran ara
+  // seçim ekranı göstermeden doğrudan başlatır. payMode yoksa (ör. Macro
+  // satın alma) yeni kart / hosted akışı kartı KAYDETMEDEN başlar.
+  payMode?: 'saved_card' | 'new_card';
+  cardId?: string;
+  saveCard?: boolean;
 };
 
 type PaynkolayInitResponse = {
@@ -932,12 +940,11 @@ const matchesPaynkolayReturn = (url: string): { matches: boolean; success: boole
   }
 };
 
-// Ödeme ekranı hangi aşamada: kart listesi yükleniyor / kayıtlı karttan seç /
-// yeni kart (hosted) / sonuç bekleniyor (WebView veya senkron non-3D sonucu) /
+// Ödeme ekranı hangi aşamada: başlatılıyor / sonuç bekleniyor (WebView) /
 // bu sipariş için önceki bir ödeme hâlâ inceleniyor (yeni deneme başlatılmaz).
-type PaynkolayStage = 'loading_cards' | 'choose_card' | 'new_card' | 'processing' | 'review_pending';
+type PaynkolayStage = 'processing' | 'review_pending';
 
-function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: PaynkolayFlowProps) {
+function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMode, cardId, saveCard }: PaynkolayFlowProps) {
   const navigation = useNavigation<PaymentScreenNavProp>();
   const insets = useSafeAreaInsets();
   const clearCart = useCartStore((s) => s.clearCart);
@@ -953,27 +960,16 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
   // basina EN FAZLA 1 kez gercekten calisir (syncSavedCards 8 kez cagrilmis
   // gozlemi — 2026-09-16 canli test — buna karsi eklendi).
   const initStartedRef = useRef(false);
-  const [stage, setStage] = useState<PaynkolayStage>('loading_cards');
-  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [saveNewCard, setSaveNewCard] = useState(false); // "Kartımı kaydet" — varsayılan İŞARETSİZ
-  const [payBusy, setPayBusy] = useState(false);
-  // Özellik test aşamasında (admin_allowlist dışı + flag kapalı) false gelir —
-  // bu durumda kart seçimi/kaydetme UI'sı HİÇ gösterilmez, normal akış değişmez.
-  const [cardsFeatureEnabled, setCardsFeatureEnabled] = useState(false);
+  const [stage, setStage] = useState<PaynkolayStage>('processing');
 
-  // Once bu siparis icin bekleyen bir inceleme var mi diye bak — varsa HIC
-  // odeme denemesi baslatilmaz, kalici "kontrol ediliyor" ekrani gosterilir
-  // (tek seferlik alert DEGIL — kullanici bu siparise her donuste ayni ekranı
-  // gorur, "tekrar ode" butonu YOK).
-  // Sonra ozellik acik mi diye sor (403 almadan). KAPALIYSA: kart secimi/onay
-  // kutusu UI'si HIC gosterilmez, ORIJINAL davranis gibi dogrudan hosted init
-  // baslatilir (normal odeme akisi degismez — 0 dokunuşla WebView acilir).
-  // ACIKSA (allowlist test): kayitli kart senkronize edilir, secim ekrani gosterilir.
+  // Önce bu sipariş için bekleyen bir inceleme var mı diye bak — varsa HİÇ ödeme
+  // denemesi başlatılmaz, kalıcı "kontrol ediliyor" ekranı gösterilir. Yoksa
+  // Checkout'ta seçilen yönteme göre DOĞRUDAN başlar (ara ekran yok):
+  //   saved_card -> paynkolay-cards pay (her zaman 3D),
+  //   diğer      -> hosted init (saveCard: "Kartımı kaydet" işaretliyse true).
   useEffect(() => {
     if (initStartedRef.current) return;
     initStartedRef.current = true;
-    let cancelled = false;
     (async () => {
       try {
         const supabase = getSupabaseClient();
@@ -982,40 +978,23 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
           .select('payment_review_pending')
           .eq('id', orderId)
           .maybeSingle();
-        if (cancelled) return;
         if (orderRow?.payment_review_pending) {
           setStage('review_pending');
           return;
         }
-
-        const status = await getCardsFeatureStatus();
-        if (cancelled) return;
-        setCardsFeatureEnabled(status.enabled);
-        if (!status.enabled) {
-          await startHostedInit(false);
-          return;
-        }
-        const result = await syncSavedCards();
-        if (cancelled) return;
-        const cards = result.cards ?? [];
-        setSavedCards(cards);
-        if (cards.length > 0) {
-          const def = cards.find((c) => c.is_default) ?? cards[0];
-          setSelectedCardId(def.id);
-          setStage('choose_card');
-        } else {
-          setStage('new_card');
-        }
       } catch {
-        if (!cancelled) { setCardsFeatureEnabled(false); await startHostedInit(false); }
+        // inceleme kontrolü başarısız olsa da ödeme akışı kilitlenmesin
+      }
+      if (payMode === 'saved_card' && cardId) {
+        await startSavedCardPay(cardId);
+      } else {
+        await startHostedInit(payMode === 'new_card' && saveCard === true);
       }
     })();
-    return () => { cancelled = true; };
   }, []);
 
   const startHostedInit = async (shouldSaveCard: boolean) => {
     setStage('processing');
-    setPayBusy(true);
     try {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -1052,18 +1031,14 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
       const message = err instanceof Error ? err.message : 'Ödeme başlatılamadı.';
       setInitError(message);
       handleFailure(message);
-    } finally {
-      setPayBusy(false);
     }
   };
 
   const startSavedCardPay = async (cardId: string) => {
     setStage('processing');
-    setPayBusy(true);
     try {
       track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
-      const deviceId = await getOrCreateDeviceId();
-      const result = await payWithSavedCard(orderId, cardId, deviceId);
+      const result = await payWithSavedCard(orderId, cardId);
       if (result.pending) {
         handlePendingReview(result.error);
         return;
@@ -1088,8 +1063,6 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
       const message = err instanceof Error ? err.message : 'Ödeme başlatılamadı.';
       setInitError(message);
       handleFailure(message);
-    } finally {
-      setPayBusy(false);
     }
   };
 
@@ -1215,87 +1188,6 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage }: Pay
             onError={onWebViewError}
             startInLoadingState
           />
-        ) : stage === 'choose_card' ? (
-          <ScrollView contentContainerStyle={cardChoiceStyles.scroll} showsVerticalScrollIndicator={false}>
-            <Text style={cardChoiceStyles.title}>Ödeme Yöntemi</Text>
-            {savedCards.map((card) => {
-              const selected = card.id === selectedCardId;
-              const brand = card.brand?.trim() || 'Kart';
-              const bank = card.bank_name?.trim();
-              return (
-                <TouchableOpacity
-                  key={card.id}
-                  style={[cardChoiceStyles.cardRow, selected && cardChoiceStyles.cardRowSelected]}
-                  onPress={() => setSelectedCardId(card.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={cardChoiceStyles.radioOuter}>
-                    {selected ? <View style={cardChoiceStyles.radioInner} /> : null}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={cardChoiceStyles.cardTitle}>{bank ? `${bank} ${brand}` : brand}</Text>
-                    <Text style={cardChoiceStyles.cardSub}>•••• {card.last4 ?? '----'}</Text>
-                  </View>
-                  {card.is_default ? <Text style={cardChoiceStyles.defaultTag}>Varsayılan</Text> : null}
-                </TouchableOpacity>
-              );
-            })}
-
-            <Pressable
-              style={[cardChoiceStyles.payBtn, (!selectedCardId || payBusy) && cardChoiceStyles.payBtnDisabled]}
-              disabled={!selectedCardId || payBusy}
-              onPress={() => selectedCardId && startSavedCardPay(selectedCardId)}
-            >
-              {payBusy ? (
-                <ActivityIndicator color="#1a3d00" />
-              ) : (
-                <Text style={cardChoiceStyles.payBtnText}>Bu Kartla Öde</Text>
-              )}
-            </Pressable>
-
-            <TouchableOpacity onPress={() => setStage('new_card')} disabled={payBusy}>
-              <Text style={cardChoiceStyles.newCardLink}>Farklı / yeni kart ile öde</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        ) : stage === 'new_card' ? (
-          <ScrollView contentContainerStyle={cardChoiceStyles.scroll} showsVerticalScrollIndicator={false}>
-            <Text style={cardChoiceStyles.title}>Yeni Kart ile Ödeme</Text>
-            <Text style={cardChoiceStyles.subtitle}>
-              Kart bilgilerinizi PaynKolay'ın güvenli sayfasında gireceksiniz.
-            </Text>
-
-            {cardsFeatureEnabled ? (
-              <TouchableOpacity
-                style={cardChoiceStyles.checkboxRow}
-                onPress={() => setSaveNewCard((v) => !v)}
-                activeOpacity={0.7}
-                disabled={payBusy}
-              >
-                <View style={[cardChoiceStyles.checkbox, saveNewCard && cardChoiceStyles.checkboxChecked]}>
-                  {saveNewCard ? <Text style={cardChoiceStyles.checkboxMark}>✓</Text> : null}
-                </View>
-                <Text style={cardChoiceStyles.checkboxLabel}>Kartımı sonraki ödemeler için kaydet</Text>
-              </TouchableOpacity>
-            ) : null}
-
-            <Pressable
-              style={[cardChoiceStyles.payBtn, payBusy && cardChoiceStyles.payBtnDisabled]}
-              disabled={payBusy}
-              onPress={() => startHostedInit(saveNewCard)}
-            >
-              {payBusy ? (
-                <ActivityIndicator color="#1a3d00" />
-              ) : (
-                <Text style={cardChoiceStyles.payBtnText}>Ödemeye Geç</Text>
-              )}
-            </Pressable>
-
-            {savedCards.length > 0 ? (
-              <TouchableOpacity onPress={() => setStage('choose_card')} disabled={payBusy}>
-                <Text style={cardChoiceStyles.newCardLink}>Kayıtlı kartımla öde</Text>
-              </TouchableOpacity>
-            ) : null}
-          </ScrollView>
         ) : stage === 'review_pending' ? (
           <View style={paytrStyles.loaderWrap}>
             <ActivityIndicator size="large" color={COLORS.brand.green} />
@@ -1404,50 +1296,5 @@ const paytrStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
-  },
-});
-
-const cardChoiceStyles = StyleSheet.create({
-  scroll: { padding: 20, gap: 12, backgroundColor: '#fff' },
-  title: {
-    fontSize: 18, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#000000', marginBottom: 4,
-  },
-  subtitle: { fontSize: 13, color: COLORS.text.secondary, marginBottom: 8 },
-
-  cardRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)',
-    padding: 14,
-  },
-  cardRowSelected: { borderColor: COLORS.brand.green, backgroundColor: 'rgba(198,240,79,0.08)' },
-  radioOuter: {
-    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
-    borderColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center',
-  },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.brand.green },
-  cardTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  cardSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
-  defaultTag: { fontSize: 11, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.tertiary },
-
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 8 },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.25)', alignItems: 'center', justifyContent: 'center',
-  },
-  checkboxChecked: { backgroundColor: COLORS.brand.green, borderColor: COLORS.brand.green },
-  checkboxMark: { fontSize: 13, fontWeight: '700', color: '#1a3d00' },
-  checkboxLabel: { fontSize: 13, color: '#000000', flex: 1 },
-
-  payBtn: {
-    height: 54, borderRadius: 100, backgroundColor: COLORS.brand.green,
-    alignItems: 'center', justifyContent: 'center', marginTop: 8,
-  },
-  payBtnDisabled: { backgroundColor: '#d0e8a0' },
-  payBtnText: { fontSize: 15, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
-
-  newCardLink: {
-    fontSize: 13, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary, textAlign: 'center', marginTop: 12,
   },
 });

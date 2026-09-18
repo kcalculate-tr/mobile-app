@@ -81,9 +81,9 @@ export type PayWithSavedCardResult = {
   error?: string;
 };
 
-export const payWithSavedCard = (orderId: string | number, cardId: string, deviceId: string) =>
+export const payWithSavedCard = (orderId: string | number, cardId: string) =>
   callCards<PayWithSavedCardResult>(
     'pay',
-    { orderId: String(orderId), cardId, deviceId },
+    { orderId: String(orderId), cardId },
     { throwOnFailure: false },
   );

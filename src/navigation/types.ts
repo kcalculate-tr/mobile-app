@@ -41,6 +41,15 @@ export type RootStackParamList = {
   Feedback: undefined;
   NutritionProfile: undefined;
   MeasurementHistory: undefined;
-  PaymentScreen: { orderId: string; amount: number; orderCode?: string; noticeMessage?: string };
+  PaymentScreen: {
+    orderId: string;
+    amount: number;
+    orderCode?: string;
+    noticeMessage?: string;
+    // Sipariş Özeti'nde seçilen ödeme yöntemi (kart özelliği açık kullanıcı).
+    payMode?: 'saved_card' | 'new_card';
+    cardId?: string;
+    saveCard?: boolean;
+  };
   MacroSuccess: { quantity: number; newBalance: number; privileged: boolean } | undefined;
 };

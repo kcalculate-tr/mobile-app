@@ -1,14 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import {
   CardStorageEntry,
-  completePaynkolayResult,
   deleteCardFromPaynkolay,
   fetchCardStorageListDiag,
   generatePaynkolayHash,
   isAllowlistedAdmin,
-  markOrderPendingReview,
-  pick,
-  resolvePendingPaymentViaReport,
   upsertUserCard,
 } from '../_shared/paynkolay-cards.ts'
 
@@ -21,9 +17,11 @@ import {
 //   - Saklı Kart ile Ödeme Al:  POST {VPOS_URL}/v1/Payment
 //       hash: sx | clientRefCode | amount | successUrl | failUrl | rnd | csCustomerKey | secret
 //
-// Odeme sonucu tamamlama (hash dogrulama, basari kurali, order update, kart
-// kaydetme, macro purchase) _shared/paynkolay-cards.ts::completePaynkolayResult
-// icinde — paynkolay-callback ile PAYLASILIR, burada kopyalanmaz.
+// Saklı kartla ödeme HER ZAMAN 3D'li (use3D=true) — 3D'siz işlem yetkisi talep
+// edilmiyor (karar, 2026-09-18). Sonuç PaynKolay tarafından paynkolay-callback'e
+// POST edilir; odeme sonucu tamamlama (hash dogrulama, basari kurali, order
+// update, kart kaydetme, macro purchase) _shared/paynkolay-cards.ts::
+// completePaynkolayResult icinde, TEK YERDE (burada kopyalanmaz).
 //
 // JWT ZORUNLU (verify_jwt=true, config.toml). Kullanıcı SADECE kendi kartını
 // görebilir/kullanabilir/silebilir — her sorguda user_id = auth.uid() teyidi var.
@@ -35,7 +33,6 @@ import {
 // (sync/list yanıtlarında) token dönülmez — yalnızca last4/brand/bank/is_default.
 
 const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
-const REPORT_SX = (Deno.env.get('PAYNKOLAY_REPORT_SX') ?? '').trim()
 const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim() // ".../Vpos"
 const CARD_SAVE_ENABLED = (Deno.env.get('PAYNKOLAY_CARD_SAVE') ?? 'false').toLowerCase() === 'true'
@@ -48,7 +45,6 @@ const PAY_URL = VPOS_URL ? `${VPOS_URL}/v1/Payment` : ''
 const CALLBACK_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/paynkolay-callback` : ''
 
 const CURRENCY_CODE = '949' // TRY — payment-init ile aynı
-const THREE_D_AMOUNT_THRESHOLD = 1000 // TL — üstünde her zaman 3D
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -301,6 +297,15 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
     }
   }
 
+  // Yetki teşhisi için (token/kart/customerKey YOK): sadece durum kodu + mesaj.
+  console.log('[paynkolay-cards] sync CardStorageCardList', {
+    ok: diag.ok,
+    httpStatus: diag.httpStatus,
+    procReturnCode: diag.procReturnCode,
+    errMsg: diag.errMsg,
+    cardCount: remoteList?.length ?? null,
+  })
+
   const cards = await fetchLocalCards(admin, userId)
   return jsonResponse({
     success: true,
@@ -383,7 +388,7 @@ async function handleDelete(admin: SupabaseClient, userId: string, body: any): P
 }
 
 // ── pay: Saklı kart ile ödeme al. Tutar sunucuda hesaplanır (client'tan gelen
-//    tutara guvenilmez). 1.000 TL ustu veya yeni cihaz -> 3D.
+//    tutara guvenilmez). HER ZAMAN 3D.
 async function handlePay(
   req: Request,
   admin: SupabaseClient,
@@ -397,7 +402,6 @@ async function handlePay(
 
   const orderId = body?.orderId ? Number(body.orderId) : NaN
   const cardId = String(body?.cardId ?? '')
-  const deviceId = String(body?.deviceId ?? '').trim()
   if (!orderId || Number.isNaN(orderId)) return jsonResponse({ error: 'orderId zorunlu' }, 400)
   if (!cardId) return jsonResponse({ error: 'cardId zorunlu' }, 400)
 
@@ -453,19 +457,6 @@ async function handlePay(
   if (!amountNum || amountNum <= 0) return jsonResponse({ error: 'Siparis tutari gecersiz' }, 400)
   const amount = toDecimalTL(amountNum)
 
-  // Yeni cihaz kontrolü — deviceId yoksa/DB'de yoksa "yeni" say (guvenli varsayilan).
-  let isNewDevice = true
-  if (deviceId) {
-    const { data: known } = await admin
-      .from('user_known_devices')
-      .select('device_id')
-      .eq('user_id', userId)
-      .eq('device_id', deviceId)
-      .maybeSingle()
-    isNewDevice = !known
-  }
-  const use3D = amountNum > THREE_D_AMOUNT_THRESHOLD || isNewDevice
-
   // KCAL{orderId}T... prefix'i callback'in/completePaynkolayResult'in regex'i
   // (/^KCAL(\d+)T/) ile uyumlu kalsin diye korunuyor.
   const clientRefCode = `KCAL${order.id}T${Date.now()}CARD`
@@ -485,7 +476,7 @@ async function handlePay(
   form.set('failUrl', failUrl)
   form.set('amount', amount)
   form.set('installmentNo', '1')
-  form.set('use3D', use3D ? 'true' : 'false')
+  form.set('use3D', 'true')
   form.set('transactionType', 'SALES')
   form.set('rnd', rnd)
   form.set('hashDatav2', hashDatav2)
@@ -514,105 +505,10 @@ async function handlePay(
     return jsonResponse({ error: 'Paynkolay odeme servisi hata dondu', httpStatus }, 502)
   }
 
-  console.log('[paynkolay-cards] pay', { orderId: order.id, amount, use3D, isNewDevice })
+  console.log('[paynkolay-cards] pay', { orderId: order.id, amount, use3D: true })
 
-  // ── 3D: yanit bankaya yonlendiren HTML sayfasi — mobil WebView'de render
-  //    edilir. Sonuc PaynKolay tarafindan successUrl/failUrl'e (paynkolay-callback)
-  //    POST edilir; tamamlama (macro purchase dahil) ORADA, tek kaynaktan olur.
-  if (use3D) {
-    return jsonResponse({ success: true, requires3D: true, formHtml: raw })
-  }
-
-  // ── Non-3D: yanit senkron gelir. Alan adlarini pick() ile cok-varyant
-  //    toleransli parse edip AYNI tamamlama fonksiyonuna (completePaynkolayResult)
-  //    gonderiyoruz — hash dogrulama + basari kurali + order update + kart
-  //    kaydetme + macro purchase TEK YERDEN (paynkolay-callback ile PAYLASILI).
-  let providerJson: Record<string, unknown> | null = null
-  try { providerJson = JSON.parse(raw) } catch { providerJson = null }
-  const flat: Record<string, unknown> = providerJson ?? {}
-  if (!providerJson) {
-    // JSON degilse "KEY: value" / "KEY=value" satirlarini best-effort parse et.
-    for (const line of raw.split(/\r?\n/)) {
-      const m = /^\s*([A-Za-z0-9_]+)\s*[:=]\s*(.*)$/.exec(line)
-      if (m) flat[m[1]] = m[2].trim()
-    }
-  }
-
-  const result = await completePaynkolayResult(
-    admin,
-    {
-      merchantNo: pick(flat, 'MERCHANT_NO', 'merchantNo'),
-      referenceCode: pick(flat, 'REFERENCE_CODE', 'referenceCode'),
-      authCode: pick(flat, 'AUTH_CODE', 'authCode'),
-      responseCode: pick(flat, 'RESPONSE_CODE', 'responseCode'),
-      use3D: 'false',
-      rnd: pick(flat, 'RND', 'rnd') || rnd,
-      installment: pick(flat, 'INSTALLMENT', 'installment') || '1',
-      authorizationAmount: pick(flat, 'AUTHORIZATION_AMOUNT', 'authorizationAmount') || amount,
-      currencyCode: pick(flat, 'CURRENCY_CODE', 'currencyCode') || CURRENCY_CODE,
-      incomingHash: pick(flat, 'hashDataV2', 'HASHDATAV2', 'hashData'),
-      clientRefCode,
-      responseMessage: pick(flat, 'RESPONSE_DATA', 'RESPONSE_MESSAGE', 'responseMessage'),
-      txnTimestamp: pick(flat, 'TIMESTAMP', 'timestamp') || new Date().toISOString(),
-      tranId: pick(flat, 'TRAN_ID', 'TranId', 'tranId', 'csTranId'),
-    },
-    { secretKey: SECRET_KEY, vposUrl: VPOS_URL, sx: SX },
-  )
-
-  if (!result.hashValid) {
-    // Hash yok/uyusmuyor ama HTTP 200 geldi -> raporlama (PfTransactionReportList)
-    // ile AYNI clientRefCode uzerinden yedek dogrulama dene.
-    console.error('[paynkolay-cards] pay sonucu hash dogrulanamadi, rapor fallback deneniyor', { orderId: order.id, clientRefCode })
-    const outcome = await resolvePendingPaymentViaReport(
-      admin,
-      order as OrderRow,
-      clientRefCode,
-      { reportSx: REPORT_SX, secretKey: SECRET_KEY, vposUrl: VPOS_URL },
-      { secretKey: SECRET_KEY, vposUrl: VPOS_URL, sx: SX },
-    )
-
-    if (outcome === 'failed') {
-      // Rapor KESIN basarisiz dedi (ERROR) -> siparis payment_failed yapildi.
-      return jsonResponse({ success: false, error: 'Ödeme başarısız.' }, 402)
-    }
-    if (outcome === 'still_pending') {
-      // Ne hash ne rapor hemen teyit edebildi -> siparis durumu DEGISTIRILMEZ,
-      // payment_review_pending=true isaretlenir; pg_cron sweep 24 saat boyunca
-      // 5dk'da bir tekrar dener.
-      await markOrderPendingReview(
-        admin,
-        order as OrderRow,
-        clientRefCode,
-        'Paynkolay saklı kart odemesi dogrulanamadi (hash gecersiz + rapor teyit edemedi)',
-      )
-      return jsonResponse({
-        success: false,
-        pending: true,
-        error: 'Ödemeniz kontrol ediliyor, birkaç dakika içinde bilgilendireceğiz.',
-      }, 202)
-    }
-    // 'success': rapor ile dogrulandi, asagida devam eder.
-  } else {
-    if (!result.matched) {
-      console.error('[paynkolay-cards] pay sonucu siparisle eslesmedi', { orderId: order.id, clientRefCode })
-      return jsonResponse({ error: 'Siparis eslesmedi' }, 502)
-    }
-    if (!result.isSuccess && !result.alreadyPaid) {
-      return jsonResponse({ success: false, error: result.responseMessage || 'Odeme basarisiz' }, 402)
-    }
-  }
-
-  // Basarili odeme + yeni cihazsa artik "bilinen" isaretle (upsert, best-effort).
-  if (deviceId) {
-    try {
-      await admin.from('user_known_devices').upsert(
-        { user_id: userId, device_id: deviceId },
-        { onConflict: 'user_id,device_id', ignoreDuplicates: true },
-      )
-    } catch (e) {
-      console.error('[paynkolay-cards] user_known_devices upsert error:', e)
-    }
-  }
-
-  return jsonResponse({ success: true, requires3D: false })
+  // 3D: yanit bankaya yonlendiren HTML sayfasi — mobil WebView'de render edilir.
+  // Sonuc PaynKolay tarafindan successUrl/failUrl'e (paynkolay-callback) POST
+  // edilir; tamamlama (macro purchase dahil) ORADA, tek kaynaktan olur.
+  return jsonResponse({ success: true, requires3D: true, formHtml: raw })
 }

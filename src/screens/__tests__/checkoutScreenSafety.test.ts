@@ -32,17 +32,8 @@ test('KÖK NEDEN (6af7e9e): useCartStore selector\'ı içinde nesne döndüren b
       'Fonksiyonu bare seçip (useCartStore(s => s.getTotalMacros)) render gövdesinde ayrıca çağırın.',
   );
 
-  // Pozitif kontrol: güvenli iki-adımlı desen hâlâ yerinde mi?
-  assert.match(
-    source,
-    /const getTotalMacros = useCartStore\(\(state\) => state\.getTotalMacros\);/,
-    'Güvenli desen (fonksiyonu bare seç) bulunamadı — dosya beklenmedik şekilde değişmiş olabilir.',
-  );
-  assert.match(
-    source,
-    /const totalMacros = getTotalMacros\(\);/,
-    'getTotalMacros() render gövdesinde ayrıca çağrılmıyor.',
-  );
+  // Toplam Besin Değeri satırı kaldırıldı; getTotalMacros'a artık hiç ihtiyaç yok.
+  assert.doesNotMatch(source, /Toplam Besin Değeri/, 'Sepet Özeti\'nden kaldırılan satır geri gelmiş.');
 });
 
 test('En-yakın-adres otomatik seçim effect\'i, seçimden ÖNCE guard ref\'ini kilitliyor (sonsuz döngü koruması)', () => {
