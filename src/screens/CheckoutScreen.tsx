@@ -21,6 +21,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
@@ -48,6 +49,7 @@ import {
   resolveAddressId,
   updateOrderPaymentStatus,
 } from '../lib/orders';
+import { distanceInMeters, ORDER_ADDRESS_DISTANCE_WARNING_METERS } from '../lib/geo';
 import {
   getPaymentConfigStatus,
   initPayment,
@@ -389,6 +391,10 @@ export default function CheckoutScreen() {
   const [showZonesSheet, setShowZonesSheet] = useState(false);
   const [showVerifySheet, setShowVerifySheet] = useState(false);
   const [verifyingAddressId, setVerifyingAddressId] = useState<string | null>(null);
+  // "Siparişi Ver" anındaki uzak-konum teyidi — aynı sipariş oturumunda bir
+  // kez sorulur (adres değişince sıfırlanır, bkz. aşağıdaki useEffect).
+  const [showFarFromAddressConfirm, setShowFarFromAddressConfirm] = useState(false);
+  const [addressConfirmedForOrder, setAddressConfirmedForOrder] = useState(false);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
   const [deliveryGlobals, setDeliveryGlobals] = useState<DeliveryGlobals | null>(null);
 
@@ -448,6 +454,12 @@ export default function CheckoutScreen() {
     () => addresses.find((address) => address.id === selectedAddressId) || null,
     [addresses, selectedAddressId],
   );
+
+  // Adres değişince uzak-konum teyidi tekrar sorulabilsin — "aynı sipariş
+  // oturumunda bir kez" kuralı, seçili adres değiştiğinde sıfırlanır.
+  useEffect(() => {
+    setAddressConfirmedForOrder(false);
+  }, [selectedAddressId]);
 
   const rulesFetchFailed =
     settingsFetchStatus === 'error' || deliveryRuleStatus.status === 'error';
@@ -1074,6 +1086,33 @@ export default function CheckoutScreen() {
     if (error) console.error('[Checkout] adres doğrulama güncellemesi başarısız:', error.message);
   };
 
+  // "Siparişi Ver" anında uzak-konum teyidi — hiçbir koşulda siparişi
+  // ENGELLEMEZ: izin yoksa/istenmemişse, koordinat yoksa, konum alınamazsa
+  // veya 3 sn'de gelmezse sessizce `false` (devam et) döner.
+  const shouldConfirmFarFromAddress = async (): Promise<boolean> => {
+    if (deliveryMethod !== 'home_delivery' || deliveryTimeType !== 'immediate') return false;
+    if (addressConfirmedForOrder) return false;
+    if (selectedAddress?.latitude == null || selectedAddress?.longitude == null) return false;
+
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') return false;
+
+      const position = await Promise.race([
+        Location.getCurrentPositionAsync({}),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+      ]);
+      const distance = distanceInMeters(
+        { latitude: position.coords.latitude, longitude: position.coords.longitude },
+        { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude },
+      );
+      return distance >= ORDER_ADDRESS_DISTANCE_WARNING_METERS;
+    } catch {
+      // Konum alınamadı/zaman aşımı — siparişi bekletme.
+      return false;
+    }
+  };
+
   const handleCreateOrder = async () => {
     dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
     dispatchOrder({ type: 'SET_PAYMENT_NOTICE', payload: '' });
@@ -1148,6 +1187,11 @@ export default function CheckoutScreen() {
 
       if (deliveryTimeType === 'scheduled' && (!selectedScheduledDate || !selectedTimeSlot)) {
         dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen teslimat tarihi ve saatini seçin.' });
+        return;
+      }
+
+      if (await shouldConfirmFarFromAddress()) {
+        setShowFarFromAddressConfirm(true);
         return;
       }
     } else if (!pendingPaymentOrder) {
@@ -2272,6 +2316,39 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
         }}
         onConfirm={handleAddressVerified}
       />
+      <Modal
+        visible={showFarFromAddressConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFarFromAddressConfirm(false)}
+      >
+        <View style={styles.farConfirmBackdrop}>
+          <View style={styles.farConfirmCard}>
+            <Text style={styles.farConfirmTitle}>Adresini kontrol et</Text>
+            <Text style={styles.farConfirmText}>
+              Sipariş {selectedAddress?.title ? `"${selectedAddress.title}"` : 'seçili'} adresine gelecek. Doğru mu?
+            </Text>
+            <TouchableOpacity
+              style={styles.farConfirmPrimaryBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                setAddressConfirmedForOrder(true);
+                setShowFarFromAddressConfirm(false);
+                handleCreateOrder();
+              }}
+            >
+              <Text style={styles.farConfirmPrimaryBtnText}>Evet, devam et</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.farConfirmSecondaryBtn}
+              activeOpacity={0.7}
+              onPress={() => setShowFarFromAddressConfirm(false)}
+            >
+              <Text style={styles.farConfirmSecondaryBtnText}>Adresi değiştir</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -2919,5 +2996,59 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#C2410C',
     textDecorationLine: 'underline',
+  },
+  // Uzak-konum sipariş teyidi
+  farConfirmBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  farConfirmCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  farConfirmTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    textAlign: 'center',
+  },
+  farConfirmText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  farConfirmPrimaryBtn: {
+    height: 52,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.brand.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  farConfirmPrimaryBtnText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000',
+  },
+  farConfirmSecondaryBtn: {
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  farConfirmSecondaryBtnText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
   },
 });

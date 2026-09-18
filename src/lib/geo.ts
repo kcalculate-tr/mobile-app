@@ -3,6 +3,13 @@
 
 const EARTH_RADIUS_METERS = 6371000;
 
+/**
+ * Checkout'ta "Siparişi Ver" anında cihaz konumu ile seçili adres arasındaki
+ * fark bu eşiği (metre) aşarsa tek seferlik bir teyit penceresi çıkar.
+ * Kolayca değiştirilebilsin diye burada, tek yerde tutuluyor.
+ */
+export const ORDER_ADDRESS_DISTANCE_WARNING_METERS = 500;
+
 function toRadians(deg: number): number {
   return (deg * Math.PI) / 180;
 }
