@@ -36,7 +36,6 @@ import {
   MACRO_MEMBER_DISCOUNT_PERCENT,
   MacroProfile,
 } from '../lib/macros';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { isApiBaseUrlConfigured } from '../lib/api';
 import {
   buildCartSignatureLines,
@@ -360,7 +359,11 @@ export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
 
   const { user, authLoading } = useAuth();
-  const { isAuthenticated, loading } = useRequireAuth();
+  // FAZ G: useRequireAuth'un kendi navigate('Login') çağrısı (redirectTo YOK)
+  // aşağıdaki ekranın kendi guard'ıyla (redirectTo:'Checkout') çakışıyordu —
+  // tek guard burada, doğrudan useAuth üzerinden.
+  const isAuthenticated = !!user;
+  const loading = authLoading;
 
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -1083,9 +1086,28 @@ export default function CheckoutScreen() {
       if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
         dispatchOrder({
           type: 'SET_SCREEN_ERROR',
-          payload: 'İletişim bilgileriniz eksik. Profil ayarlarından ad soyad ve telefonunuzu tamamlayın.',
+          payload: 'Lütfen iletişim bilgileri bölümüne ad soyad ve telefon numaranızı girin.',
         });
         return;
+      }
+
+      // FAZ G: ad/telefon checkout'ta toplanır, profilde yoksa (veya
+      // değiştiyse) profiles'a yazılır — best-effort, siparişi bloklamaz.
+      if (user?.id) {
+        const trimmedName = customerName.trim();
+        const [firstName, ...restName] = trimmedName.split(/\s+/).filter(Boolean);
+        getSupabaseClient()
+          .from('profiles')
+          .update({
+            full_name: trimmedName,
+            first_name: firstName || null,
+            last_name: restName.join(' ') || null,
+            phone: customerPhone.trim(),
+          })
+          .eq('id', user.id)
+          .then(({ error }) => {
+            if (error) console.error('[Checkout] profil iletişim güncellemesi başarısız:', error.message);
+          });
       }
 
       if (!contractsAccepted) {
@@ -1803,6 +1825,34 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
+          </View>
+
+          {/* ── İletişim Bilgileri (FAZ G: ad/telefon checkout'ta toplanır) ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>İletişim Bilgileri</Text>
+            <TextInput
+              style={styles.cardInput}
+              value={customerName}
+              onChangeText={(v) => dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: v })}
+              placeholder="Ad Soyad"
+              placeholderTextColor={COLORS.text.tertiary}
+              autoCapitalize="words"
+              autoCorrect={false}
+              textContentType="name"
+              autoComplete="name"
+              inputAccessoryViewID={iosAccId}
+            />
+            <TextInput
+              style={styles.cardInput}
+              value={customerPhone}
+              onChangeText={(v) => dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: v.replace(/[^\d+ ]/g, '') })}
+              placeholder="Telefon Numarası"
+              placeholderTextColor={COLORS.text.tertiary}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              inputAccessoryViewID={iosAccId}
+            />
           </View>
 
           {/* ── Sipariş Notu ── */}

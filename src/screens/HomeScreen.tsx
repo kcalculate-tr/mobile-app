@@ -24,6 +24,7 @@ import { AppBanner, fetchActiveAppBanner } from '../lib/appBanners';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
+import { useAuth } from '../context/AuthContext';
 import { fetchBusinessHours, BusinessHours } from '../lib/businessHours';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { track } from '../lib/analytics';
@@ -43,6 +44,7 @@ const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
+  const { session } = useAuth();
   const howItWorks = useModal();
   const { popup, total, index, handleClose, handleNext } = usePopups();
   const insets = useSafeAreaInsets();
@@ -342,6 +344,36 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* FAZ G — Değer önerisi: eski zorunlu Welcome/ValuePropOrder onboarding
+            ekranlarının metinleri, sadece oturumsuz kullanıcıya, Home'un
+            üstünde bir bölüm olarak. Oturum açınca kaybolur, uygulamayı
+            kilitlemez. */}
+        {!session ? (
+          <View style={styles.valuePropSection}>
+            <View style={styles.valuePropCard}>
+              <Text style={styles.valuePropTitle}>Gün boyu ne yiyeceğim diye düşünme.</Text>
+              <Text style={styles.valuePropSub}>
+                KCAL günün temposuna göre premium öğününü hazırlar. İster hemen, ister randevulu sipariş ver.
+                Dilediğin zaman kapında olsun.
+              </Text>
+            </View>
+            <View style={styles.valuePropCard}>
+              <Text style={styles.valuePropTitle}>Öğünler kapında, makrolar cebinde.</Text>
+              <Text style={styles.valuePropSub}>
+                Sipariş verdiğin her öğün otomatik olarak takibine düşer. Manuel giriş yok — sadece beslen ve
+                kalorilerini analiz et.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.valuePropCta}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.valuePropCtaText}>Giriş yap / Hesap oluştur</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Bayram / tatil banner — settings.holiday_banner_active=TRUE iken görünür */}
         {businessHours?.holiday_banner_active && businessHours.holiday_banner_message ? (
@@ -780,6 +812,44 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     flexWrap: 'wrap',
     maxWidth: 68,
+  },
+  // FAZ G — Değer önerisi (oturumsuz Home)
+  valuePropSection: {
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  valuePropCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    gap: 6,
+  },
+  valuePropTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  valuePropSub: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 19,
+  },
+  valuePropCta: {
+    backgroundColor: '#C6F04F',
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  valuePropCtaText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
   },
   // Section
   section: {

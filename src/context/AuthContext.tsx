@@ -51,6 +51,8 @@ type AuthContextValue = {
   signOut: () => Promise<{ error: string | null }>;
   signInWithApple: () => Promise<SocialSignInResult>;
   signInWithGoogle: () => Promise<SocialSignInResult>;
+  signInWithOtp: (email: string) => Promise<{ error: string | null }>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -156,6 +158,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[Auth] SignOut error:', error);
       return { error: error instanceof Error ? error.message : 'Çıkış başarısız oldu' };
+    }
+  }, []);
+
+  // Şifresiz giriş — FAZ G: checkout ve genel giriş için tek e-posta yöntemi.
+  // shouldCreateUser: true → e-posta kayıtlı değilse Supabase yeni kullanıcı
+  // açar, kayıtlıysa aynı hesaba giriş kodu gönderir (ayrı bir "kayıt" akışı
+  // yok, tek mekanizma her iki durumu da kapsar).
+  const signInWithOtp = useCallback(async (email: string) => {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: true },
+      });
+      return { error: error?.message || null };
+    } catch (error) {
+      console.error('[Auth] signInWithOtp error:', error);
+      return { error: error instanceof Error ? error.message : 'Kod gönderilemedi.' };
+    }
+  }, []);
+
+  const verifyEmailOtp = useCallback(async (email: string, token: string) => {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+      return { error: error?.message || null };
+    } catch (error) {
+      console.error('[Auth] verifyEmailOtp error:', error);
+      return { error: error instanceof Error ? error.message : 'Kod doğrulanamadı.' };
     }
   }, []);
 
@@ -269,8 +300,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       signInWithApple,
       signInWithGoogle,
+      signInWithOtp,
+      verifyEmailOtp,
     }),
-    [user, session, authLoading, signIn, signUp, signOut, signInWithApple, signInWithGoogle],
+    [
+      user,
+      session,
+      authLoading,
+      signIn,
+      signUp,
+      signOut,
+      signInWithApple,
+      signInWithGoogle,
+      signInWithOtp,
+      verifyEmailOtp,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

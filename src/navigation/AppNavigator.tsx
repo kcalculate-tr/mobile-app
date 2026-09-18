@@ -1,16 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen_legacy';
 import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen_legacy';
-import OnboardingStack from './OnboardingStack';
 
-// QA bitince true yap → yeni sportif auth/onboarding flow aktifleşir.
-// Mevcut: false (eski 3 ekran onboarding + tek ekran register/login kullanılıyor).
-const USE_NEW_AUTH = true;
 import { haptic } from '../utils/haptics';
 import { CustomTabBar } from './CustomTabBar';
 import { navigationRef } from './navigationRef';
@@ -33,7 +28,7 @@ import OffersScreen from '../screens/OffersScreen';
 import OrderSuccessScreen from '../screens/OrderSuccessScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 
-import LoginScreen from '../screens/auth/LoginScreen_legacy';
+import UnifiedLoginScreen from '../screens/auth/UnifiedLoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen_legacy';
 import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen_legacy';
 import NutritionProfileScreen from '../screens/tracker/NutritionProfileScreen';
@@ -106,45 +101,26 @@ function TabNavigator() {
   );
 }
 
+// FAZ G — kayıtsız gezinme: zorunlu onboarding zinciri (Welcome→ValueProp→
+// AuthGateway) kalktı, uygulama her zaman doğrudan Tabs (Home) ile açılır.
+// Oturum sadece Checkout'ta (kendi guard'ı) ve Tracker/Profile sekmelerine
+// basınca (yukarıdaki tabPress guard) isteniyor — 'Login' route'u artık
+// UnifiedLoginScreen (Apple/Google/E-posta OTP), tek ekran, geri dönüşlü.
 export default function AppNavigator() {
-  const { user, authLoading } = useAuth();
-  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
-  const [needsNutrition, setNeedsNutrition] = useState<boolean | null>(null);
-  const navVersion = useNavGate((s) => s.version);
+  const { authLoading } = useAuth();
   const pendingRoute = useNavGate((s) => s.pendingRoute);
-  const registering = useNavGate((s) => s.registering);
-
-  useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem('@kcal_onboarding_done'),
-      AsyncStorage.getItem('@kcal_needs_nutrition_profile'),
-    ]).then(([done, needs]) => {
-      setOnboardingDone(done === 'true');
-      setNeedsNutrition(needs === 'true');
-    });
-  }, [user?.id, navVersion]);
-
-  const resolving = onboardingDone === null || needsNutrition === null || authLoading;
-  // `registering`: kayıt alt-akışı sürüyorken VerifyOtp session yaratıp
-  // user'ı set edince gate'in OnboardingStack'i söküp kullanıcıyı kayıt
-  // akışından atmasını engeller (FIX 7 sınıfı). RegisterAddress bitince
-  // setRegistering(false) + refresh ile temizlenir.
-  const inOnboardingStack =
-    USE_NEW_AUTH && (registering || !onboardingDone || !user || needsNutrition);
-  const inMainStack = !resolving && !inOnboardingStack;
 
   // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).
-  // State-driven geçiş MainStack'i mount eder; sonra hedef route'a git.
   useEffect(() => {
-    if (!inMainStack || !pendingRoute || !navigationRef.isReady()) return;
+    if (authLoading || !pendingRoute || !navigationRef.isReady()) return;
     const target = pendingRoute;
     useNavGate.getState().setPendingRoute(null);
     requestAnimationFrame(() => {
       if (navigationRef.isReady()) navigationRef.navigate(target as never);
     });
-  }, [inMainStack, pendingRoute]);
+  }, [authLoading, pendingRoute]);
 
-  if (resolving) {
+  if (authLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0A0A' }}>
         <ActivityIndicator color="#C6F04F" />
@@ -152,26 +128,9 @@ export default function AppNavigator() {
     );
   }
 
-  if (inOnboardingStack) {
-    const newInitial = !onboardingDone
-      ? 'Welcome'
-      : !user
-      ? 'AuthGateway'
-      : 'NutritionGender';
-    return <OnboardingStack initialRouteName={newInitial} />;
-  }
-
-  const initial = !onboardingDone
-    ? 'Onboarding'
-    : !user
-    ? 'Login'
-    : needsNutrition
-    ? 'NutritionSetup'
-    : 'Tabs';
-
   return (
     <Stack.Navigator
-      initialRouteName={initial}
+      initialRouteName="Tabs"
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
@@ -192,7 +151,7 @@ export default function AppNavigator() {
       <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ animation: 'slide_from_bottom', animationDuration: 320 }} />
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Login" component={UnifiedLoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileScreen} />
