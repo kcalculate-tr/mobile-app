@@ -150,8 +150,8 @@ module.exports = {
       [
         'react-native-fbsdk-next',
         {
-          // TODO(meta): META_APP_ID + CLIENT_TOKEN gerçek değerlerle değiştir.
-          // Meta Business Suite → App Settings → Basic'ten alınacak.
+          // Meta uygulaması "KCAL" (Graph API ile doğrulandı, 2026-09-19): appID ve clientToken
+          // gerçek değerler (clientToken istemci tarafı token'ıdır, bundle'da görünmesi normal).
           // scheme: "fb<META_APP_ID>" (fb prefix zorunlu) — iOS deep link.
           appID: '4403872953189106',
           clientToken: '99ec21a60f8699f2534e3aaa52951f73',
