@@ -8,6 +8,10 @@ import {
   upsertUserCard,
 } from '../_shared/paynkolay-cards.ts'
 import { parsePay3DResponse } from '../_shared/paynkolay-3d.ts'
+import { buildCardVerificationForm, getRnd as verifyRnd, toDecimalTL as verifyToDecimalTL } from '../_shared/paynkolay-hosted-form.ts'
+import { insertVerification, prepareVerificationStart } from '../_shared/paynkolay-card-verification.ts'
+import { toPublicStatus } from '../_shared/paynkolay-verification-flow.ts'
+import { VERIFICATION_AMOUNT } from '../_shared/paynkolay-verification.ts'
 
 // ── Paynkolay "Saklı Kart" yönetimi (sync/pay/delete/set_default) ──────────
 // Kart Saklama API'leri (2026-09-16 canli test ile dogrulandi):
@@ -37,6 +41,8 @@ const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
 const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim() // ".../Vpos"
 const CARD_SAVE_ENABLED = (Deno.env.get('PAYNKOLAY_CARD_SAVE') ?? 'false').toLowerCase() === 'true'
+// agentCode SADECE sub-merchant secret'ı tanımlıysa (payment-init ile aynı kural).
+const AGENT_CODE = (Deno.env.get('PAYNKOLAY_AGENT_CODE') ?? '').trim()
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -243,8 +249,10 @@ Deno.serve(async (req: Request) => {
     if (action === 'pay') return await handlePay(req, admin, authedClient, user.id, body)
     if (action === 'delete') return await handleDelete(admin, user.id, body)
     if (action === 'set_default') return await handleSetDefault(admin, user.id, body)
+    if (action === 'verify_start') return await handleVerifyStart(req, admin, user.id)
+    if (action === 'verify_status') return await handleVerifyStatus(admin, user.id, body)
 
-    return jsonResponse({ error: 'Gecersiz action (status|sync|pay|delete|set_default bekleniyor)' }, 400)
+    return jsonResponse({ error: 'Gecersiz action (status|sync|pay|delete|set_default|verify_start|verify_status bekleniyor)' }, 400)
   } catch (err) {
     console.error('[paynkolay-cards] error:', String(err))
     return jsonResponse({ error: 'Islem tamamlanamadi' }, 500)
@@ -315,6 +323,103 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
     procReturnCode: diag.procReturnCode,
     errMsg: diag.errMsg,
   })
+}
+
+// ── verify_start: "Kart Ekle" — 1 TL'lik doğrulama işlemini başlatır (SİPARİŞ DEĞİL).
+//    Kapı: yukarıdaki featureAllowed (PAYNKOLAY_CARD_SAVE veya admin_allowlist).
+//    Sıra: zaman aşımına uğrayan açık kayıtlar kapatılır -> hâlâ açık (<15 dk) kayıt
+//    varsa YENİSİ başlatılmaz (409, mevcut kaydın id'siyle) -> günlük 3 limit (429)
+//    -> kayıt + hosted form. Aynı anda tek açık kayıt DB'de de zorunlu (kısmi unique).
+async function handleVerifyStart(req: Request, admin: SupabaseClient, userId: string): Promise<Response> {
+  if (!SX || !SECRET_KEY || !VPOS_URL || !CALLBACK_URL) {
+    return jsonResponse({ error: 'Paynkolay kart-doğrulama yapilandirmasi eksik' }, 500)
+  }
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('payment_customer_key')
+    .eq('id', userId)
+    .maybeSingle()
+  const customerKey = String(profile?.payment_customer_key ?? '')
+  if (!customerKey) return jsonResponse({ error: 'Musteri anahtari bulunamadi' }, 400)
+
+  let plan
+  try {
+    plan = await prepareVerificationStart(admin, userId)
+  } catch (e) {
+    console.error('[paynkolay-cards] verify_start hazırlık hatası:', (e as Error).message)
+    return jsonResponse({ error: 'Islem baslatilamadi' }, 500)
+  }
+  if (plan.decision === 'in_progress') {
+    return jsonResponse({
+      success: false,
+      inProgress: true,
+      verificationId: plan.activeId,
+      retryAfterSeconds: plan.retryAfterSeconds,
+      error: 'Devam eden bir kart doğrulaman var. Birkaç dakika sonra tekrar dene.',
+    }, 409)
+  }
+  if (plan.decision === 'limit') {
+    return jsonResponse({
+      success: false,
+      limitReached: true,
+      error: 'Bugün en fazla 3 kart doğrulaması yapabilirsin. Yarın tekrar dene.',
+    }, 429)
+  }
+
+  const inserted = await insertVerification(admin, userId)
+  if (!inserted.ok) {
+    if (inserted.conflict) {
+      return jsonResponse({
+        success: false,
+        inProgress: true,
+        error: 'Devam eden bir kart doğrulaman var. Birkaç dakika sonra tekrar dene.',
+      }, 409)
+    }
+    return jsonResponse({ error: 'Islem baslatilamadi' }, 500)
+  }
+
+  try {
+    const { formHtml } = await buildCardVerificationForm({
+      sx: SX,
+      secretKey: SECRET_KEY,
+      vposUrl: VPOS_URL,
+      clientRefCode: inserted.clientRefCode,
+      amount: verifyToDecimalTL(VERIFICATION_AMOUNT),
+      successUrl: `${CALLBACK_URL}?pk=success`,
+      failUrl: `${CALLBACK_URL}?pk=fail`,
+      rnd: verifyRnd(),
+      customerKey,
+      cardHolderIP: clientIpFromRequest(req),
+      agentCode: AGENT_CODE || undefined,
+    })
+    // GÜVENLİ LOG: yalnız kayıt kimliği/tutar.
+    console.log('[paynkolay-cards] verify_start', { verificationId: inserted.id, amount: verifyToDecimalTL(VERIFICATION_AMOUNT) })
+    return jsonResponse({ success: true, verificationId: inserted.id, formHtml })
+  } catch (e) {
+    console.error('[paynkolay-cards] verify_start form hatası:', (e as Error).message)
+    await admin
+      .from('card_verifications')
+      .update({ status: 'failed', note: 'init_error' })
+      .eq('id', inserted.id)
+      .eq('status', 'initiated')
+    return jsonResponse({ error: 'Islem baslatilamadi' }, 500)
+  }
+}
+
+// ── verify_status: kullanıcı YALNIZ kendi kaydını sorgular; yanıt token/kart/
+//    referans bilgisi İÇERMEZ (sadece durum, kart_saved, note, refunded).
+async function handleVerifyStatus(admin: SupabaseClient, userId: string, body: any): Promise<Response> {
+  const id = String(body?.verificationId ?? '')
+  if (!/^[0-9a-fA-F-]{36}$/.test(id)) return jsonResponse({ error: 'verificationId zorunlu' }, 400)
+  const { data: row } = await admin
+    .from('card_verifications')
+    .select('status, card_saved, note')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!row) return jsonResponse({ error: 'Kayit bulunamadi' }, 404)
+  return jsonResponse({ success: true, ...toPublicStatus(row) })
 }
 
 async function handleSetDefault(admin: SupabaseClient, userId: string, body: any): Promise<Response> {

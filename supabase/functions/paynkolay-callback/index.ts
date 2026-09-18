@@ -12,10 +12,13 @@
 // ORADAN yapilmali (burada kopyalanmaz).
 import { createClient } from '@supabase/supabase-js'
 import { completePaynkolayResult, pick } from '../_shared/paynkolay-cards.ts'
+import { handleVerificationCallback } from '../_shared/paynkolay-card-verification.ts'
+import { isVerificationRefCode } from '../_shared/paynkolay-verification.ts'
 
 const SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
 const VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim()
+const CANCEL_SX = (Deno.env.get('PAYNKOLAY_CANCEL_SX') ?? '').trim()
 
 // Mobil WebView'in onNavigationStateChange ile yakalayacagi son URL'ler.
 // Mobil (Faz 2E) bu URL'lerde 'result=success' / 'result=fail' arayacak.
@@ -67,6 +70,16 @@ Deno.serve(async (req: Request) => {
     // TESHIS: PaynKolay'in bu istekte GERCEKTEN hangi alan adlarini gonderdigini
     // gor — degerler ASLA loglanmaz, sadece anahtar (key) adlari.
     console.log('[paynkolay-callback] incoming field names:', Object.keys(data))
+
+    // ── KART EKLE (1 TL doğrulama): clientRefCode 'KCALVER…' ise SİPARİŞ akışına HİÇ
+    //    girmeden ayrı dala gider (sipariş/orders'a dokunmaz). Aşağıdaki sipariş
+    //    callback'i BİREBİR aynı kalır.
+    if (isVerificationRefCode(pick(data, 'clientRefCode', 'CLIENT_REFERENCE_CODE', 'clientReferenceCode'))) {
+      const { redirectSuccess } = await handleVerificationCallback(supabase, data, {
+        secretKey: SECRET_KEY, sx: SX, vposUrl: VPOS_URL, cancelSx: CANCEL_SX,
+      })
+      return htmlResponse(redirectHtml(redirectSuccess ? SUCCESS_REDIRECT : FAIL_REDIRECT))
+    }
 
     // ── Alanlari cek (UPPER_CASE + camelCase tolerans). TRAN_ID: hosted donuste
     //    Token YOK, sadece TRAN_ID var (2026-09-16 canli testte dogrulandi) —
