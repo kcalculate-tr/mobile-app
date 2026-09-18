@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { CardStorageEntry, DeleteResult, ListOutcome, deleteCardVerified, fetchListOutcome } from './paynkolay-card-storage.ts'
 
 // ── Paynkolay "Saklı Kart" ortak mantığı ────────────────────────────────────
 // paynkolay-callback (hosted donus) VE paynkolay-cards (sync/pay) TARAFINDAN
@@ -59,131 +60,58 @@ export async function isAllowlistedAdmin(
   return false
 }
 
-// ── CardStorageCardList yaniti (2026-09-16 canli testte GERCEK dogrulandi):
-//   { ProcReturnCode: "00", Data: { cards: { Card: { CardFileds: { Detail: [
-//     { Token, TranId, Maskedpan, CARDISSUER, CARDTYPE, CARDBRAND, CARD_ALIACE }
-//   ] } } } } }
-// "CardFileds"/"CARD_ALIACE" upstream'in KENDI yazim hatasi — bizim tarafta duzeltilmez.
-// Detail tek kayitta da DIZI gelir; nesne gelirse de calisir (defensive).
-export interface CardStorageEntry {
-  token: string
-  tranId: string
-  maskedPan: string
-  last4: string
-  brand: string
-  bank: string
-  alias: string
-}
-
-export function isCardStorageListSuccess(json: any): boolean {
-  return String(json?.ProcReturnCode ?? '') === '00'
-}
-
-export function parseCardStorageList(json: any): CardStorageEntry[] {
-  const detail = json?.Data?.cards?.Card?.CardFileds?.Detail
-  const rows: any[] = Array.isArray(detail) ? detail : detail ? [detail] : []
-  return rows
-    .map((row: any) => {
-      const maskedPan = pick(row, 'Maskedpan', 'maskedPan', 'MASKEDPAN')
-      return {
-        token: pick(row, 'Token', 'token'),
-        tranId: pick(row, 'TranId', 'tranId'),
-        maskedPan,
-        last4: maskedPan.replace(/\D/g, '').slice(-4),
-        brand: pick(row, 'CARDBRAND', 'cardBrand'),
-        bank: pick(row, 'CARDISSUER', 'bankName'),
-        alias: pick(row, 'CARD_ALIACE', 'cardAlias'),
-      }
-    })
-    .filter((e) => e.tranId || e.token)
-}
+// ── CardStorage liste/silme: yanıt zarfları, başarı kuralları ve doğrulama mantığı
+//    paynkolay-card-storage.ts'te (import'suz, testli). Servis başına başarı kuralları
+//    orada belgelidir — BAŞKA servisten kopyalama.
+export type { CardStorageEntry, ListOutcome, DeleteResult } from './paynkolay-card-storage.ts'
+export { isCardStorageListSuccess, parseCardStorageList } from './paynkolay-card-storage.ts'
 
 export interface CardStorageListDiag {
   ok: boolean
   httpStatus: number
   procReturnCode: string
   errMsg: string
+  /** null = liste alınamadı (BELİRSİZ); [] = kart yok ("Gecerli Kart Yok") ya da boş liste. */
   entries: CardStorageEntry[] | null
+  outcome: ListOutcome
 }
 
-// ── fetchCardStorageList ile AYNI cagri, ama procReturnCode/errMsg'i (token/
-//    kart/customerKey HARIC — bunlar hicbir zaman donulmez) cagirana da verir.
-//    Yetki durumu teshisi icin (bkz. paynkolay-cards action=sync yaniti) —
-//    fetchCardStorageList'in davranisini DEGISTIRMEZ, ayri fonksiyon.
+// procReturnCode/errMsg (token/kart/customerKey HARIC) çağırana da verilir — yetki teşhisi
+// (bkz. paynkolay-cards action=sync). "02 Gecerli Kart Yok" artık hata DEĞİL, kesin boş liste.
 export async function fetchCardStorageListDiag(
   vposUrl: string,
   sx: string,
   secretKey: string,
   customerKey: string,
 ): Promise<CardStorageListDiag> {
-  if (!vposUrl || !sx || !secretKey || !customerKey) {
-    return { ok: false, httpStatus: 0, procReturnCode: '', errMsg: 'Yapilandirma eksik (vposUrl/sx/secretKey/customerKey)', entries: null }
-  }
-  const listUrl = `${vposUrl}/Payment/CardStorageCardList`
-  try {
-    const hash = await generatePaynkolayHash([sx, customerKey, secretKey])
-    const form = new FormData()
-    form.set('sx', sx)
-    form.set('customerKey', customerKey)
-    form.set('hashDatav2', hash)
-    const res = await fetch(listUrl, { method: 'POST', body: form })
-    const raw = await res.text()
-    if (!res.ok) {
-      return { ok: false, httpStatus: res.status, procReturnCode: '', errMsg: `HTTP ${res.status}`, entries: null }
-    }
-    let json: any = null
-    try { json = JSON.parse(raw) } catch {
-      return { ok: false, httpStatus: res.status, procReturnCode: '', errMsg: 'Yanit JSON degil', entries: null }
-    }
-    const procReturnCode = String(json?.ProcReturnCode ?? '')
-    const errMsg = String(json?.ErrMsg ?? '')
-    if (!isCardStorageListSuccess(json)) {
-      return { ok: false, httpStatus: res.status, procReturnCode, errMsg, entries: null }
-    }
-    return { ok: true, httpStatus: res.status, procReturnCode, errMsg, entries: parseCardStorageList(json) }
-  } catch (e) {
-    return { ok: false, httpStatus: 0, procReturnCode: '', errMsg: String((e as Error)?.message ?? e), entries: null }
+  const outcome = await fetchListOutcome({ vposUrl, sx, secretKey }, customerKey)
+  return {
+    ok: outcome.kind !== 'error',
+    httpStatus: outcome.httpStatus,
+    procReturnCode: outcome.procReturnCode,
+    errMsg: outcome.errMsg,
+    entries: outcome.kind === 'listed' ? outcome.entries : outcome.kind === 'empty' ? [] : null,
+    outcome,
   }
 }
 
 // ── Kayitli kartlari Paynkolay'dan cek (CardStorageCardList). PAYNKOLAY_SX ile
 //    calisir — ayri bir "kart" sx'i YOK (2026-09-16 canli testte dogrulandi).
+//    null = alinamadi; [] = kart yok.
 export async function fetchCardStorageList(
   vposUrl: string,
   sx: string,
   secretKey: string,
   customerKey: string,
 ): Promise<CardStorageEntry[] | null> {
-  if (!vposUrl || !sx || !secretKey || !customerKey) return null
-  const listUrl = `${vposUrl}/Payment/CardStorageCardList`
-  try {
-    const hash = await generatePaynkolayHash([sx, customerKey, secretKey])
-    const form = new FormData()
-    form.set('sx', sx)
-    form.set('customerKey', customerKey)
-    form.set('hashDatav2', hash)
-    const res = await fetch(listUrl, { method: 'POST', body: form })
-    const raw = await res.text()
-    if (!res.ok) {
-      console.error('[paynkolay-shared] CardStorageCardList HTTP', res.status)
-      return null
-    }
-    let json: any = null
-    try { json = JSON.parse(raw) } catch { return null }
-    if (!isCardStorageListSuccess(json)) {
-      // TESHIS: sadece hata kodu/mesaji — token/kart/customerKey ASLA loglanmaz.
-      console.error('[paynkolay-shared] CardStorageCardList ProcReturnCode != 00', {
-        procReturnCode: json?.ProcReturnCode,
-        errMsg: json?.ErrMsg,
-      })
-      return null
-    }
-    return parseCardStorageList(json)
-  } catch (e) {
-    console.error('[paynkolay-shared] CardStorageCardList fetch error:', e)
-    return null
+  const diag = await fetchCardStorageListDiag(vposUrl, sx, secretKey, customerKey)
+  if (diag.entries === null) {
+    // TESHIS: sadece hata kodu/mesaji — token/kart/customerKey ASLA loglanmaz.
+    console.error('[paynkolay-shared] CardStorageCardList alinamadi', { procReturnCode: diag.procReturnCode, errMsg: diag.errMsg })
   }
+  return diag.entries
 }
+
 
 // ── Kart kaydet/guncelle (token'a gore dedup). Hosted-callback kart-kaydetme
 //    VE sync ORTAK kullanir.
@@ -264,60 +192,20 @@ export async function saveCardFromTranId(
   await upsertUserCard(admin, userId, customerKey, match)
 }
 
-// ── Kayıtlı kartı Paynkolay tarafında sil (CardStorageCardDelete). paynkolay-
-//    cards (kullanıcı elle siler) VE delete-account (hesap silme) TARAFINDAN
-//    PAYLAŞILIR — hash/endpoint TEK YERDE. sx/secretKey/vposUrl veya token
-//    boşsa (yapılandırma eksik ya da hiç saklanmamış) sessizce { ok: true }
-//    döner (yapılacak bir şey yok, hata değil) — çağıran taraf local silmeye
-//    devam eder.
-export async function deleteCardFromPaynkolay(params: {
+// ── Kayıtlı kartı Paynkolay tarafında sil (CardStorageCardDelete) + LİSTEYLE DOĞRULA.
+//    paynkolay-cards (kullanıcı siler), delete-account ve Kart Ekle kopya-kart silmesi
+//    ORTAK kullanır. Silme yanıtı başarı kanıtı sayılmaz; ok=true YALNIZ "liste geldi ve
+//    token yok" (ya da kart/token zaten yok — `skipped`) iken. Liste alınamazsa
+//    ok=false/verify_unavailable: çağıran yerel kaydı SİLMEZ.
+export function deleteCardFromPaynkolay(params: {
   vposUrl: string
   sx: string
   secretKey: string
   customerKey: string
   tranId: string
   token: string
-}): Promise<{ ok: boolean; error?: string }> {
-  const { vposUrl, sx, secretKey, customerKey, tranId, token } = params
-  if (!sx || !secretKey || !vposUrl || !token) {
-    return { ok: true }
-  }
-  const deleteUrl = `${vposUrl}/Payment/CardStorageCardDelete`
-  try {
-    const hash = await generatePaynkolayHash([sx, customerKey, tranId, token, secretKey])
-    const form = new FormData()
-    form.set('sx', sx)
-    form.set('customerKey', customerKey)
-    form.set('tranId', tranId)
-    form.set('token', token)
-    form.set('hashDatav2', hash)
-    const res = await fetch(deleteUrl, { method: 'POST', body: form })
-    const raw = await res.text()
-    if (!res.ok) {
-      console.error('[paynkolay-shared] delete HTTP', res.status)
-      return { ok: false, error: `HTTP ${res.status}` }
-    }
-    let json: any = null
-    try { json = JSON.parse(raw) } catch { json = null }
-    if (!json) {
-      // GÜVENLİK: token içeriyorsa ham yanıt loglanmaz.
-      if (raw.includes(token)) {
-        console.error('[paynkolay-shared] delete yaniti JSON degil (token icerdigi icin ham yanit loglanmadi)')
-      } else {
-        console.error('[paynkolay-shared] delete yaniti JSON degil:', raw)
-      }
-      return { ok: false, error: 'Yanit anlasilamadi' }
-    }
-    const procCode = String(json?.ProcReturnCode ?? '')
-    if (procCode !== '00') {
-      console.error('[paynkolay-shared] delete ProcReturnCode != 00:', procCode)
-      return { ok: false, error: `ProcReturnCode ${procCode}` }
-    }
-    return { ok: true }
-  } catch (e) {
-    console.error('[paynkolay-shared] delete fetch error:', e)
-    return { ok: false, error: String(e) }
-  }
+}): Promise<DeleteResult> {
+  return deleteCardVerified(params)
 }
 
 // ── Odeme sonucu tamamlama — paynkolay-callback (hosted donus) VE

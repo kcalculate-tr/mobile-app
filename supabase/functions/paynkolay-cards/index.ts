@@ -5,8 +5,10 @@ import {
   fetchCardStorageListDiag,
   generatePaynkolayHash,
   isAllowlistedAdmin,
+  ListOutcome,
   upsertUserCard,
 } from '../_shared/paynkolay-cards.ts'
+import { planOrphans } from '../_shared/paynkolay-card-storage.ts'
 import { parsePay3DResponse } from '../_shared/paynkolay-3d.ts'
 import { buildCardVerificationForm, getRnd as verifyRnd, toDecimalTL as verifyToDecimalTL } from '../_shared/paynkolay-hosted-form.ts'
 import { insertVerification, prepareVerificationStart } from '../_shared/paynkolay-card-verification.ts'
@@ -213,13 +215,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401)
+    if (!authHeader) return jsonResponse({ error: 'Oturum doğrulanamadı' }, 401)
 
     const authedClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     })
     const { data: { user }, error: authError } = await authedClient.auth.getUser()
-    if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
+    if (authError || !user) return jsonResponse({ error: 'Oturum doğrulanamadı' }, 401)
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
@@ -253,10 +255,10 @@ Deno.serve(async (req: Request) => {
     if (action === 'verify_status') return await handleVerifyStatus(admin, user.id, body)
     if (action === 'verify_cancel') return await handleVerifyCancel(admin, user.id, body)
 
-    return jsonResponse({ error: 'Gecersiz action (status|sync|pay|delete|set_default|verify_start|verify_status|verify_cancel bekleniyor)' }, 400)
+    return jsonResponse({ error: 'Geçersiz action (status|sync|pay|delete|set_default|verify_start|verify_status|verify_cancel bekleniyor)' }, 400)
   } catch (err) {
     console.error('[paynkolay-cards] error:', String(err))
-    return jsonResponse({ error: 'Islem tamamlanamadi' }, 500)
+    return jsonResponse({ error: 'İşlem tamamlanamadı' }, 500)
   }
 })
 
@@ -289,6 +291,7 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
 
   // Teshis alanlari (procReturnCode/errMsg) SADECE bilgi amacli — token/kart/
   // customerKey burada da ASLA donulmez (bkz. fetchCardStorageListDiag).
+  const fetchStartedAtMs = Date.now()
   const diag = await fetchCardStorageListDiag(VPOS_URL, SX, SECRET_KEY, customerKey)
   const remoteList = diag.entries
 
@@ -307,8 +310,18 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
     }
   }
 
+  // YETİM TEMİZLİĞİ: PaynKolay listesinde olmayan yerel kartlar silinir. YALNIZ liste kesin
+  // geldiyse ("listed" ya da "Gecerli Kart Yok"); liste alınamadıysa HİÇBİR ŞEY silinmez.
+  let pruned = 0
+  try {
+    pruned = await pruneOrphanCards(admin, userId, customerKey, diag.outcome, fetchStartedAtMs)
+  } catch (e) {
+    console.error('[paynkolay-cards] sync yetim temizliği hatası:', (e as Error).message)
+  }
+
   // Yetki teşhisi için (token/kart/customerKey YOK): sadece durum kodu + mesaj.
   console.log('[paynkolay-cards] sync CardStorageCardList', {
+    pruned,
     ok: diag.ok,
     httpStatus: diag.httpStatus,
     procReturnCode: diag.procReturnCode,
@@ -333,7 +346,7 @@ async function handleSync(admin: SupabaseClient, userId: string): Promise<Respon
 //    -> kayıt + hosted form. Aynı anda tek açık kayıt DB'de de zorunlu (kısmi unique).
 async function handleVerifyStart(req: Request, admin: SupabaseClient, userId: string): Promise<Response> {
   if (!SX || !SECRET_KEY || !VPOS_URL || !CALLBACK_URL) {
-    return jsonResponse({ error: 'Paynkolay kart-doğrulama yapilandirmasi eksik' }, 500)
+    return jsonResponse({ error: 'PaynKolay kart doğrulama yapılandırması eksik' }, 500)
   }
 
   const { data: profile } = await admin
@@ -342,14 +355,14 @@ async function handleVerifyStart(req: Request, admin: SupabaseClient, userId: st
     .eq('id', userId)
     .maybeSingle()
   const customerKey = String(profile?.payment_customer_key ?? '')
-  if (!customerKey) return jsonResponse({ error: 'Musteri anahtari bulunamadi' }, 400)
+  if (!customerKey) return jsonResponse({ error: 'Müşteri anahtarı bulunamadı' }, 400)
 
   let plan
   try {
     plan = await prepareVerificationStart(admin, userId)
   } catch (e) {
     console.error('[paynkolay-cards] verify_start hazırlık hatası:', (e as Error).message)
-    return jsonResponse({ error: 'Islem baslatilamadi' }, 500)
+    return jsonResponse({ error: 'İşlem başlatılamadı' }, 500)
   }
   if (plan.decision === 'in_progress') {
     return jsonResponse({
@@ -377,7 +390,7 @@ async function handleVerifyStart(req: Request, admin: SupabaseClient, userId: st
         error: 'Devam eden bir kart doğrulaman var. Birkaç dakika sonra tekrar dene.',
       }, 409)
     }
-    return jsonResponse({ error: 'Islem baslatilamadi' }, 500)
+    return jsonResponse({ error: 'İşlem başlatılamadı' }, 500)
   }
 
   try {
@@ -404,7 +417,7 @@ async function handleVerifyStart(req: Request, admin: SupabaseClient, userId: st
       .update({ status: 'failed', note: 'init_error' })
       .eq('id', inserted.id)
       .eq('status', 'initiated')
-    return jsonResponse({ error: 'Islem baslatilamadi' }, 500)
+    return jsonResponse({ error: 'İşlem başlatılamadı' }, 500)
   }
 }
 
@@ -419,7 +432,7 @@ async function handleVerifyStatus(admin: SupabaseClient, userId: string, body: a
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle()
-  if (!row) return jsonResponse({ error: 'Kayit bulunamadi' }, 404)
+  if (!row) return jsonResponse({ error: 'Kayıt bulunamadı' }, 404)
   return jsonResponse({ success: true, ...toPublicStatus(row) })
 }
 
@@ -445,7 +458,7 @@ async function handleVerifyCancel(admin: SupabaseClient, userId: string, body: a
   const { data: cancelledRows, error } = await upd.select('id')
   if (error) {
     console.error('[paynkolay-cards] verify_cancel hatası:', error.message)
-    return jsonResponse({ error: 'Islem tamamlanamadi' }, 500)
+    return jsonResponse({ error: 'İşlem tamamlanamadı' }, 500)
   }
   const cancelled = (cancelledRows ?? []).length > 0
   console.log('[paynkolay-cards] verify_cancel', { verificationId: id, cancelled })
@@ -457,7 +470,7 @@ async function handleVerifyCancel(admin: SupabaseClient, userId: string, body: a
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle()
-  if (!row) return jsonResponse({ error: 'Kayit bulunamadi' }, 404)
+  if (!row) return jsonResponse({ error: 'Kayıt bulunamadı' }, 404)
   return jsonResponse({ success: true, cancelled: false, ...toPublicStatus(row) })
 }
 
@@ -466,14 +479,68 @@ async function handleSetDefault(admin: SupabaseClient, userId: string, body: any
   if (!cardId) return jsonResponse({ error: 'cardId zorunlu' }, 400)
 
   const { data: card } = await admin.from('user_cards').select('id, user_id').eq('id', cardId).maybeSingle()
-  if (!card || card.user_id !== userId) return jsonResponse({ error: 'Kart bulunamadi' }, 404)
+  if (!card || card.user_id !== userId) return jsonResponse({ error: 'Kart bulunamadı' }, 404)
 
   const { error: clearErr } = await admin.from('user_cards').update({ is_default: false }).eq('user_id', userId)
-  if (clearErr) return jsonResponse({ error: 'Guncelleme basarisiz' }, 500)
+  if (clearErr) return jsonResponse({ error: 'Güncelleme başarısız' }, 500)
   const { error: setErr } = await admin.from('user_cards').update({ is_default: true }).eq('id', cardId)
-  if (setErr) return jsonResponse({ error: 'Guncelleme basarisiz' }, 500)
+  if (setErr) return jsonResponse({ error: 'Güncelleme başarısız' }, 500)
 
   return jsonResponse({ success: true })
+}
+
+// PaynKolay'da olmayan (yetim) yerel kartları siler; silinen varsayılansa kalanlardan biri varsayılan olur.
+async function pruneOrphanCards(
+  admin: SupabaseClient,
+  userId: string,
+  customerKey: string,
+  outcome: ListOutcome,
+  fetchStartedAtMs: number,
+): Promise<number> {
+  if (outcome.kind === 'error') return 0
+  const { data: cards } = await admin
+    .from('user_cards')
+    .select('id, paynkolay_customer_key, created_at, is_default')
+    .eq('user_id', userId)
+  const rows = cards ?? []
+  if (rows.length === 0) return 0
+  const { data: secrets } = await admin
+    .from('user_card_secrets')
+    .select('card_id, card_token')
+    .in('card_id', rows.map((c: { id: string }) => c.id))
+  const tokenById = new Map((secrets ?? []).map((x: { card_id: string; card_token: string }) => [x.card_id, x.card_token]))
+  const orphanIds = planOrphans(
+    outcome,
+    rows.map((c: { id: string; paynkolay_customer_key: string | null; created_at: string }) => ({
+      id: c.id,
+      token: tokenById.get(c.id) ?? null,
+      customerKey: c.paynkolay_customer_key,
+      createdAt: c.created_at,
+    })),
+    customerKey,
+    fetchStartedAtMs,
+  )
+  if (!orphanIds || orphanIds.length === 0) return 0
+
+  const { error } = await admin.from('user_cards').delete().in('id', orphanIds)
+  if (error) {
+    console.error('[paynkolay-cards] yetim kart silinemedi:', error.message)
+    return 0
+  }
+  console.log('[paynkolay-cards] sync yetim kart temizlendi', { count: orphanIds.length })
+
+  const removedDefault = rows.some((c: { id: string; is_default: boolean }) => c.is_default && orphanIds.includes(c.id))
+  if (removedDefault) {
+    const { data: next } = await admin
+      .from('user_cards')
+      .select('id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (next) await admin.from('user_cards').update({ is_default: true }).eq('id', next.id)
+  }
+  return orphanIds.length
 }
 
 async function handleDelete(admin: SupabaseClient, userId: string, body: any): Promise<Response> {
@@ -485,7 +552,7 @@ async function handleDelete(admin: SupabaseClient, userId: string, body: any): P
     .select('id, user_id, paynkolay_customer_key, is_default')
     .eq('id', cardId)
     .maybeSingle()
-  if (!card || card.user_id !== userId) return jsonResponse({ error: 'Kart bulunamadi' }, 404)
+  if (!card || card.user_id !== userId) return jsonResponse({ error: 'Kart bulunamadı' }, 404)
 
   const { data: secret } = await admin
     .from('user_card_secrets')
@@ -503,10 +570,14 @@ async function handleDelete(admin: SupabaseClient, userId: string, body: any): P
       token: String(secret.card_token ?? ''),
     })
     if (!result.ok) {
-      // JSON parse edilemedi / HTTP hata / ProcReturnCode != 00 -> lokal kaydi
-      // SILME (kullanıcı elle sildiği için burada gerçek bir hata gösterilir;
-      // delete-account'un aksine best-effort DEĞİL).
-      return jsonResponse({ error: 'Kart Paynkolay tarafinda silinemedi' }, 502)
+      // Silme sonucu LİSTEYLE doğrulanır (bkz. paynkolay-card-storage.ts): yerel kayıt YALNIZ
+      // "liste geldi ve token yok" iken silinir. Liste alınamadıysa sonuç bilinmiyor → SİLME.
+      console.error('[paynkolay-cards] delete doğrulanamadı', { cardId, reason: result.reason })
+      return jsonResponse({
+        error: result.reason === 'verify_unavailable'
+          ? 'Şu an silinemedi, tekrar dene.'
+          : 'Kart PaynKolay tarafında silinemedi.',
+      }, 502)
     }
   }
 
@@ -542,7 +613,7 @@ async function handlePay(
   body: any,
 ): Promise<Response> {
   if (!SX || !SECRET_KEY || !PAY_URL) {
-    return jsonResponse({ error: 'Paynkolay kart-odeme yapilandirmasi eksik' }, 500)
+    return jsonResponse({ error: 'PaynKolay kart ödeme yapılandırması eksik' }, 500)
   }
 
   const orderId = body?.orderId ? Number(body.orderId) : NaN
@@ -555,8 +626,8 @@ async function handlePay(
     .select('id, user_id, total_price, total_amount, phone, merchant_oid, items, subtotal_amount, delivery_fee, discount_amount, macro_discount_amount, coupon_id, coupon_code, type, macro_quantity, status, payment_status, payment_review_pending')
     .eq('id', orderId)
     .maybeSingle()
-  if (orderErr || !order) return jsonResponse({ error: 'Siparis bulunamadi' }, 404)
-  if (order.user_id && order.user_id !== userId) return jsonResponse({ error: 'Unauthorized' }, 403)
+  if (orderErr || !order) return jsonResponse({ error: 'Sipariş bulunamadı' }, 404)
+  if (order.user_id && order.user_id !== userId) return jsonResponse({ error: 'Oturum doğrulanamadı' }, 403)
 
   // Idempotency: zaten odenmis siparis tekrar tahsil edilmez.
   if (order.payment_status === 'paid') {
@@ -579,7 +650,7 @@ async function handlePay(
     .select('id, user_id, paynkolay_customer_key')
     .eq('id', cardId)
     .maybeSingle()
-  if (!card || card.user_id !== userId) return jsonResponse({ error: 'Kart bulunamadi' }, 404)
+  if (!card || card.user_id !== userId) return jsonResponse({ error: 'Kart bulunamadı' }, 404)
 
   const { data: secret } = await admin
     .from('user_card_secrets')
@@ -587,7 +658,7 @@ async function handlePay(
     .eq('card_id', cardId)
     .maybeSingle()
   if (!secret?.card_token && !secret?.cs_tran_id) {
-    return jsonResponse({ error: 'Kart bilgisi eksik — yeniden ekleyin' }, 400)
+    return jsonResponse({ error: 'Kart bilgisi eksik — lütfen kartı yeniden ekle' }, 400)
   }
 
   const { data: profile } = await admin
@@ -596,10 +667,10 @@ async function handlePay(
     .eq('id', userId)
     .maybeSingle()
   const customerKey = String(profile?.payment_customer_key ?? card.paynkolay_customer_key ?? '')
-  if (!customerKey) return jsonResponse({ error: 'Musteri anahtari bulunamadi' }, 400)
+  if (!customerKey) return jsonResponse({ error: 'Müşteri anahtarı bulunamadı' }, 400)
 
   const amountNum = await recomputeOrderAmount(admin, authedClient, order as OrderRow)
-  if (!amountNum || amountNum <= 0) return jsonResponse({ error: 'Siparis tutari gecersiz' }, 400)
+  if (!amountNum || amountNum <= 0) return jsonResponse({ error: 'Sipariş tutarı geçersiz' }, 400)
   const amount = toDecimalTL(amountNum)
 
   // KCAL{orderId}T... prefix'i callback'in/completePaynkolayResult'in regex'i
@@ -653,12 +724,12 @@ async function handlePay(
     raw = await res.text()
   } catch (e) {
     console.error('[paynkolay-cards] pay fetch error:', e)
-    return jsonResponse({ error: 'Paynkolay odeme servisine erisilemedi' }, 502)
+    return jsonResponse({ error: 'PaynKolay ödeme servisine erişilemedi' }, 502)
   }
 
   if (!httpOk) {
     console.error('[paynkolay-cards] pay HTTP', httpStatus)
-    return jsonResponse({ error: 'Paynkolay odeme servisi hata dondu', httpStatus }, 502)
+    return jsonResponse({ error: 'PaynKolay ödeme servisi hata döndürdü', httpStatus }, 502)
   }
 
   // ── /v1/Payment (use3D=true) yanıtı HAM JSON'dur (USE_3D, BANK_REQUEST_MESSAGE,
