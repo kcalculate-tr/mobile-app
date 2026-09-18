@@ -1689,29 +1689,23 @@ export default function CheckoutScreen() {
                   <ActivityIndicator color={COLORS.text.secondary} size="small" />
                 </View>
               ) : null}
-              {/* FAZ L — konum doğrulama: doğrulanmışsa rozet, değilse doğrulama daveti */}
-              {selectedAddress ? (
-                selectedAddress.verified_at ? (
-                  <View style={styles.verifiedBadgeRow}>
-                    <MapPin size={12} color={COLORS.brand.green} weight="fill" />
-                    <Text style={styles.verifiedBadgeText}>Konum doğrulandı</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.verifyPromptRow}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setVerifyingAddressId(selectedAddress.id);
-                      setShowVerifySheet(true);
-                    }}
-                  >
-                    <MapPin size={12} color="#C2410C" />
-                    <Text style={styles.verifyPromptText}>Konumu haritada doğrula</Text>
-                  </TouchableOpacity>
-                )
+              {/* Koordinatı olmayan adres için harita doğrulama daveti — "Konum
+                  doğrulandı" rozeti kaldırıldı (kullanıcıya bir şey söylemiyordu). */}
+              {selectedAddress && (selectedAddress.latitude == null || selectedAddress.longitude == null) ? (
+                <TouchableOpacity
+                  style={styles.verifyPromptRow}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setVerifyingAddressId(selectedAddress.id);
+                    setShowVerifySheet(true);
+                  }}
+                >
+                  <MapPin size={12} color="#C2410C" />
+                  <Text style={styles.verifyPromptText}>Konumu haritada doğrula</Text>
+                </TouchableOpacity>
               ) : null}
               {/* Getir tarzı kalıcı uzak-konum uyarısı — akışı hiç kesmez, sadece
-                  bilgilendirir; "Konum doğrulandı"nın YERİNE değil, altında. */}
+                  bilgilendirir; koordinatın varlığına bağlı (verified_at'e değil). */}
               {farFromAddressWarning ? (
                 <View style={styles.farAddressWarningRow}>
                   <WarningCircle size={14} color="#991B1B" weight="fill" />
@@ -3025,19 +3019,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  // FAZ L — konum doğrulama rozeti/daveti
-  verifiedBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: SPACING.xs,
-  },
-  verifiedBadgeText: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
-  },
+  // Koordinatı olmayan adres için harita doğrulama daveti
   verifyPromptRow: {
     flexDirection: 'row',
     alignItems: 'center',
