@@ -7,6 +7,8 @@ import {
   CallbackFields,
   VerificationDeps,
   VerificationRow,
+  countAttemptsToday,
+  countsTowardDailyLimit,
   planStart,
   processVerificationCallback,
   toPublicStatus,
@@ -341,4 +343,35 @@ test('LOG güvenliği: flow/glue/verify_start log satırlarında secret/token/ka
   const logs = [flow, glue, cards.slice(cards.indexOf('async function handleVerifyStart'), cards.indexOf('async function handleSetDefault'))]
     .join('\n').split('\n').filter((l) => /console\.(log|error|warn)/.test(l)).join('\n');
   assert.doesNotMatch(logs, /SECRET_KEY|secretKey|cancelSx|CANCEL_SX|card_token|maskedPan|\.token|customerKey|hashDatav2/);
+});
+
+// ── Günlük limit: kendi iptal ettiği kayıt sayılmaz ───────────────────────────
+test('limit sayımı: failed+cancelled SAYILMAZ; declined/timeout/succeeded/refund_* SAYILIR', () => {
+  assert.equal(countsTowardDailyLimit({ status: 'failed', note: 'cancelled' }), false);
+  for (const [status, note] of [
+    ['failed', 'declined'], ['failed', 'timeout'], ['failed', 'init_error'], ['failed', null],
+    ['initiated', null], ['succeeded', null], ['refunded', 'duplicate_card'], ['refund_pending', null], ['refund_failed', null],
+  ] as const) {
+    assert.equal(countsTowardDailyLimit({ status, note }), true, `${status}/${note}`);
+  }
+});
+
+test('limit sayımı: cancelled sonradan ödeme bulunursa (report_recovered / geç callback) SAYILIR', () => {
+  assert.equal(countsTowardDailyLimit({ status: 'refunded', note: 'report_recovered' }), true);
+  assert.equal(countsTowardDailyLimit({ status: 'refund_pending', note: 'report_recovered' }), true);
+  assert.equal(countsTowardDailyLimit({ status: 'refunded', note: null }), true);
+});
+
+test('limit: 3 iptal + 1 gerçek deneme = 1 sayılır (proceed); 3 sayılan + iptaller = limit', () => {
+  const cancelled = { status: 'failed', note: 'cancelled' };
+  assert.equal(planStart([], countAttemptsToday([cancelled, cancelled, cancelled, { status: 'failed', note: 'declined' }]), NOW).decision, 'proceed');
+  const three = [{ status: 'failed', note: 'declined' }, { status: 'failed', note: 'timeout' }, { status: 'refunded', note: null }];
+  assert.equal(planStart([], countAttemptsToday([cancelled, cancelled, ...three]), NOW).decision, 'limit');
+});
+
+test('glue: verify_start limit sayımı countAttemptsToday ile (head-count değil)', () => {
+  const start = glue.slice(glue.indexOf('export async function prepareVerificationStart'), glue.indexOf('export async function insertVerification'));
+  assert.match(start, /countAttemptsToday\(today \?\? \[\]\)/);
+  assert.match(start, /\.select\('status, note'\)/);
+  assert.doesNotMatch(start, /head: true/);
 });

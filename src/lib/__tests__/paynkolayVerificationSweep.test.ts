@@ -9,6 +9,7 @@ import {
   SweepLookup,
   VerificationRow,
   classifyCandidate,
+  countsTowardDailyLimit,
   isReportCheckDue,
   runVerificationSweep,
 } from '../../../supabase/functions/_shared/paynkolay-verification-flow';
@@ -138,6 +139,20 @@ for (const [name, r] of [
     assert.equal(final.charged_amount, 1);
   });
 }
+
+test('LİMİT: iptal edilen kayıt sayılmaz; sweep raporda ödeme bulunca (report_recovered) SAYILIR', async () => {
+  const cancelled = row({ id: 'a', status: 'failed', note: 'cancelled' });
+  assert.equal(countsTowardDailyLimit(cancelled), false);
+  const { deps, st } = setup([cancelled], { sales: { a: sale('success') } });
+  await runVerificationSweep(deps);
+  const final = st.rows.get('a')!;
+  assert.equal(final.note, 'report_recovered');
+  assert.equal(countsTowardDailyLimit(final), true);
+  // rapor bulunamadı ise iptal kaydı sayılmamaya devam eder
+  const none = setup([row({ id: 'b', status: 'failed', note: 'cancelled' })], { sales: {} });
+  await runVerificationSweep(none.deps);
+  assert.equal(countsTowardDailyLimit(none.st.rows.get('b')!), false);
+});
 
 test('raporda SUCCESS ama iade başarısız -> refund_pending; 72. denemede refund_failed sayılır', async () => {
   const a = setup([row({ id: 'a' })], { sales: { a: sale('success') }, refundOk: false });
