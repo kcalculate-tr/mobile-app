@@ -12,6 +12,7 @@ import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
 
+import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -106,9 +107,20 @@ function TabNavigator() {
 // Oturum sadece Checkout'ta (kendi guard'ı) ve Tracker/Profile sekmelerine
 // basınca (yukarıdaki tabPress guard) isteniyor — 'Login' route'u artık
 // UnifiedLoginScreen (Apple/Google/E-posta OTP), tek ekran, geri dönüşlü.
+//
+// Tek istisna — WelcomeGate: oturum yoksa SOĞUK başlatmada (initialRouteName,
+// bir kez hesaplanır) tek ekranlı, bloklamayan bir karşılama gösterilir
+// (bkz. WelcomeGateScreen). "Aynı oturumda bir daha gösterilmesin" kuralı
+// EKSTRA STATE OLMADAN sağlanıyor: bu Stack.Navigator, `authLoading` true
+// olduğunda yukarıda erken return ile hiç mount edilmiyor ve authLoading
+// bu component'in ömrü boyunca bir daha true'ya dönmüyor (AuthContext'te
+// sadece başlangıçta false yapılıyor) — yani initialRouteName, process
+// başına TAM OLARAK BİR KEZ hesaplanır. App arka plana alınıp geri gelmek
+// aynı process'te kalır, Stack.Navigator'ı yeniden mount etmez.
 export default function AppNavigator() {
-  const { authLoading } = useAuth();
+  const { authLoading, session } = useAuth();
   const pendingRoute = useNavGate((s) => s.pendingRoute);
+  const initialRouteName = session ? 'Tabs' : 'WelcomeGate';
 
   // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).
   useEffect(() => {
@@ -130,7 +142,7 @@ export default function AppNavigator() {
 
   return (
     <Stack.Navigator
-      initialRouteName="Tabs"
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
@@ -139,6 +151,7 @@ export default function AppNavigator() {
         contentStyle: { backgroundColor: '#0A0A0A' },
       }}
     >
+      <Stack.Screen name="WelcomeGate" component={WelcomeGateScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="NutritionSetup" component={NutritionSetupScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Tabs" component={TabNavigator} />

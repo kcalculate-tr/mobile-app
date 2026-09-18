@@ -13,6 +13,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { getSupabaseClient } from '../lib/supabase';
+import { useAddressStore } from '../store/addressStore';
 
 const readEnvValue = (key: string): string =>
   (
@@ -93,12 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(null);
             setUser(null);
             setAuthLoading(false);
+            // Bir önceki kullanıcının adresi header'da ("Adres: X Mahallesi")
+            // takılı kalmasın — bkz. useAddressStore, oturumdan bağımsız
+            // AsyncStorage'da kalıcı, çıkışta temizlenmiyordu.
+            useAddressStore.getState().setSelectedAddress(null);
             return;
           }
           if (event === 'SIGNED_OUT') {
             setSession(null);
             setUser(null);
             setAuthLoading(false);
+            useAddressStore.getState().setSelectedAddress(null);
             return;
           }
           setSession(nextSession ?? null);

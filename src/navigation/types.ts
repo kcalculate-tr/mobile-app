@@ -11,6 +11,7 @@ export type TabParamList = {
 export type AuthRedirectTarget = 'Tabs' | 'Checkout' | 'Addresses';
 
 export type RootStackParamList = {
+  WelcomeGate: undefined;
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   Categories: undefined;
   Offers: undefined;
