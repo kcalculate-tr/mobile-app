@@ -30,7 +30,7 @@ module.exports = {
         NSPhotoLibraryAddUsageDescription:
           'Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir.',
         NSLocationWhenInUseUsageDescription:
-          'Teslimat adresinizi otomatik doldurmak için konumunuz kullanılır.',
+          'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
       },
     },
     android: {
@@ -51,13 +51,15 @@ module.exports = {
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
       ],
-      // FAZ L — react-native-maps (Android zorunlu; bu key "Maps SDK for
-      // Android"da etkin değilse harita boş/gri gelir, Google Cloud
-      // Console'da kontrol edilmeli). iOS PROVIDER_DEFAULT (Apple Maps)
+      // FAZ L — react-native-maps (Android zorunlu). Ayrı, kısıtlı bir Android
+      // key (sadece "Maps SDK for Android") kullanılır; tanımlı değilse genel
+      // EXPO_PUBLIC_GOOGLE_MAPS_KEY'e düşer. iOS PROVIDER_DEFAULT (Apple Maps)
       // kullanıyor, ek key gerekmiyor.
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
+          apiKey:
+            process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY ||
+            process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
         },
       },
     },
@@ -115,7 +117,7 @@ module.exports = {
         'expo-location',
         {
           locationAlwaysAndWhenInUsePermission:
-            'Teslimat adresinizi otomatik doldurmak için konumunuz kullanılır.',
+            'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
         },
       ],
       [
