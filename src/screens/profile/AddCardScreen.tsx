@@ -10,6 +10,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
 import { PAYNKOLAY_VPOS_ORIGIN } from '../../config/payment';
 import { cancelCardVerification, getVerificationStatus, startCardVerification } from '../../lib/cards';
+import { POLL_MAX_MS } from '../../lib/cardVerification';
 import {
   CLOSED_MESSAGE,
   LIMIT_MESSAGE,
@@ -23,14 +24,26 @@ import {
 } from '../../lib/cardVerification';
 import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../../lib/paymentHtml';
 import { matchesPaynkolayReturn } from '../../lib/paynkolayReturn';
+import {
+  LoadGuard,
+  PAGE_LOAD_FAILED_MESSAGE,
+  START_REQUEST_TIMEOUT_MS,
+  createLoadGuard,
+  isBenignWebViewError,
+  isFatalHttpError,
+  isProviderPageReady,
+  userMessageForError,
+  withDeadline,
+} from '../../lib/webviewResilience';
 import { haptic } from '../../utils/haptics';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 // info -> starting -> webview -> verifying -> result
 //                 \-> in_progress (409) | limit (429) | error
+// webview: 20 sn içinde açılmazsa ya da onError/onHttpError -> load_failed (kayıt OTOMATİK iptal)
 // webview kapatılırsa: closed (kayıt açık kalır) | verifying sonunda timeout
-type Stage = 'info' | 'starting' | 'webview' | 'verifying' | 'result' | 'in_progress' | 'limit' | 'closed' | 'timeout' | 'error';
+type Stage = 'info' | 'starting' | 'webview' | 'verifying' | 'result' | 'in_progress' | 'limit' | 'closed' | 'timeout' | 'load_failed' | 'error';
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -50,10 +63,22 @@ export default function AddCardScreen() {
   const returnHandledRef = useRef(false);
   const abortedRef = useRef(false);
   const startedRef = useRef(false); // bir doğrulama başlatıldıysa liste dönüşte yenilenir
+  const stageRef = useRef<Stage>('info');
+  const loadFailedRef = useRef(false);
+  const mainUrlRef = useRef<string>('');
+  const autoCancelRef = useRef<Promise<unknown> | null>(null);
+  const guardRef = useRef<LoadGuard | null>(null);
+  stageRef.current = stage;
 
   useEffect(() => () => {
     abortedRef.current = true;
+    guardRef.current?.stop();
     if (startedRef.current) markCardsStale();
+    // Ekran WebView açıkken kapandıysa (gezinme sıfırlama vb.) açık kayıt kilit bırakmasın.
+    const id = verificationIdRef.current;
+    if (id && stageRef.current === 'webview' && !returnHandledRef.current) {
+      cancelCardVerification(id).catch(() => undefined);
+    }
   }, []);
 
   // WebView/poll sürerken swipe-back kapalı (kayıt açık kalırdı); çıkış başlık düğmesiyle.
@@ -79,7 +104,8 @@ export default function AddCardScreen() {
 
   const beginVerifying = useCallback(async (id: string) => {
     setStage('verifying');
-    const outcome = await runPoll(id);
+    // Sert üst sınır: polling ~60 sn + son isteğin süresi; takılsa da "doğrulanıyor" bitmek ZORUNDA.
+    const outcome = await withDeadline(runPoll(id), POLL_MAX_MS + 15_000).catch(() => ({ kind: 'timeout' as const }));
     if (outcome.kind === 'aborted') return;
     if (outcome.kind === 'terminal') { showResult(outcome.result); return; }
     setMessage(TIMEOUT_MESSAGE);
@@ -89,9 +115,16 @@ export default function AddCardScreen() {
   const start = useCallback(async () => {
     setStage('starting');
     returnHandledRef.current = false;
+    loadFailedRef.current = false;
+    mainUrlRef.current = '';
     try {
-      const r = await startCardVerification();
-      if (abortedRef.current) return;
+      // Üst süre: sağlayıcı/sunucu takılsa da "hazırlanıyor" sonsuza kadar sürmez.
+      const r = await withDeadline(startCardVerification(), START_REQUEST_TIMEOUT_MS);
+      if (abortedRef.current) {
+        // Kullanıcı beklerken ekrandan çıktı: yeni açılan kayıt 15 dk kilit bırakmasın.
+        if (r.kind === 'started') cancelCardVerification(r.verificationId).catch(() => undefined);
+        return;
+      }
       if (r.kind === 'started') {
         const html = toRenderableFormHtml(r.formHtml);
         verificationIdRef.current = r.verificationId;
@@ -123,7 +156,7 @@ export default function AddCardScreen() {
       setStage('error');
     } catch (err) {
       if (abortedRef.current) return;
-      setMessage(err instanceof Error ? err.message : 'İşlem başlatılamadı. Lütfen tekrar dene.');
+      setMessage(userMessageForError(err, 'İşlem başlatılamadı. Lütfen tekrar dene.'));
       setStage('error');
     }
   }, []);
@@ -158,7 +191,7 @@ export default function AddCardScreen() {
       await start();
     } catch (err) {
       if (abortedRef.current) return;
-      setMessage(err instanceof Error ? err.message : 'İptal edilemedi. Lütfen tekrar dene.');
+      setMessage(userMessageForError(err, 'İptal edilemedi. Lütfen tekrar dene.'));
       setStage('error');
     } finally {
       setBusy(false);
@@ -175,13 +208,61 @@ export default function AddCardScreen() {
     const id = verificationIdRef.current;
     if (id) {
       setStage('verifying');
-      const once = await runPoll(id, 0);
+      const once = await withDeadline(runPoll(id, 0), 15_000).catch(() => ({ kind: 'timeout' as const }));
       if (abortedRef.current) return;
       if (once.kind === 'terminal') { showResult(once.result); return; }
     }
     setMessage(CLOSED_MESSAGE);
     setStage('closed');
   }, [runPoll, showResult]);
+
+  // Sayfa açılamadı (20 sn zaman aşımı / onError / onHttpError): WebView kaldırılır, açık kayıt
+  // OTOMATİK iptal edilir (kullanıcı 15 dk beklemesin). Sayfa hiç açılmadığı için para çekilmemiştir;
+  // yine de iptal edilen kayıt sweep'in rapor kontrolüne dahildir.
+  const handleLoadFailure = (reason: 'timeout' | 'error' | 'http_error', detail?: Record<string, unknown>) => {
+    if (loadFailedRef.current || returnHandledRef.current || abortedRef.current) return;
+    loadFailedRef.current = true;
+    guardRef.current?.stop();
+    console.warn('[add-card] sayfa açılamadı', { reason, ...detail });
+    setFormHtml(null);
+    setMessage(PAGE_LOAD_FAILED_MESSAGE);
+    setStage('load_failed');
+    const id = verificationIdRef.current;
+    if (id) {
+      autoCancelRef.current = cancelCardVerification(id)
+        .then((c) => {
+          // İptal edilemediyse kayıt bu arada tamamlanmış olabilir: gerçek sonucu göster.
+          if (abortedRef.current || stageRef.current !== 'load_failed') return;
+          if (c.cancelled === false && typeof c.status === 'string' && c.status !== 'failed') {
+            const finished = resultForStatus({ status: c.status, card_saved: !!c.card_saved, note: c.note ?? null, refunded: !!c.refunded });
+            if (finished) showResult(finished);
+          }
+        })
+        .catch(() => undefined); // iptal edilemezse "Tekrar dene" (cancelAndRetry) yeniden dener
+    }
+  };
+  const failRef = useRef(handleLoadFailure);
+  failRef.current = handleLoadFailure;
+
+  // WebView açıldığında 20 sn'lik "sayfa hazır olmalı" bekçisi başlar.
+  useEffect(() => {
+    if (stage !== 'webview' || !formHtml) return;
+    const guard = createLoadGuard({ onTimeout: () => failRef.current('timeout') });
+    guardRef.current = guard;
+    guard.start();
+    return () => guard.stop();
+  }, [stage, formHtml]);
+
+  const markProviderReady = (url?: string) => {
+    if (isProviderPageReady(url, PAYNKOLAY_VPOS_ORIGIN)) guardRef.current?.markReady();
+  };
+
+  const retryAfterLoadFailure = async () => {
+    if (busy) return;
+    await (autoCancelRef.current ?? Promise.resolve()).catch(() => undefined);
+    if (abortedRef.current || stageRef.current !== 'load_failed') return;
+    await cancelAndRetry();
+  };
 
   const handleNavigationCheck = (url: string): boolean => {
     if (returnHandledRef.current) return false;
@@ -235,10 +316,30 @@ export default function AddCardScreen() {
           source={{ html: formHtml, baseUrl: PAYNKOLAY_VPOS_ORIGIN }}
           style={s.webview}
           originWhitelist={['*']}
-          onShouldStartLoadWithRequest={(req) => handleNavigationCheck(req.url || '')}
-          onNavigationStateChange={(st) => { handleNavigationCheck(st.url || ''); }}
-          onLoadStart={(e) => { handleNavigationCheck(e.nativeEvent.url || ''); }}
-          onError={(e) => console.warn('[add-card] webview error:', e.nativeEvent)}
+          onShouldStartLoadWithRequest={(req) => {
+            if ((req as { isTopFrame?: boolean }).isTopFrame !== false) mainUrlRef.current = req.url || '';
+            return handleNavigationCheck(req.url || '');
+          }}
+          onNavigationStateChange={(st) => {
+            if (st.url) mainUrlRef.current = st.url;
+            if (!st.loading) markProviderReady(st.url);
+            handleNavigationCheck(st.url || '');
+          }}
+          onLoadStart={(e) => {
+            mainUrlRef.current = e.nativeEvent.url || mainUrlRef.current;
+            handleNavigationCheck(e.nativeEvent.url || '');
+          }}
+          onLoadEnd={(e) => markProviderReady(e.nativeEvent.url)}
+          onError={(e) => {
+            const ev = e.nativeEvent as { code?: number; description?: string };
+            if (isBenignWebViewError(ev)) return; // kendi engellediğimiz dönüş navigasyonu
+            handleLoadFailure('error', { code: ev.code, description: String(ev.description ?? '').slice(0, 120) });
+          }}
+          onHttpError={(e) => {
+            const ev = e.nativeEvent as { statusCode?: number; url?: string };
+            if (isFatalHttpError(ev, mainUrlRef.current)) handleLoadFailure('http_error', { statusCode: ev.statusCode });
+            else console.warn('[add-card] http hata (alt kaynak, yoksayıldı)', { statusCode: ev.statusCode });
+          }}
           startInLoadingState
         />
       ) : (
@@ -282,6 +383,16 @@ export default function AddCardScreen() {
               <ResultIcon tone="info" />
               <Text style={s.title}>{message}</Text>
               <PrimaryButton label="İptal et ve yeniden dene" onPress={cancelAndRetry} loading={busy} />
+              <SecondaryButton label="Vazgeç" onPress={goBackToCards} />
+            </>
+          )}
+
+          {stage === 'load_failed' && (
+            <>
+              <ResultIcon tone="error" />
+              <Text style={s.title}>{message}</Text>
+              <Text style={s.text}>Kayıt iptal edildi, 15 dakika beklemen gerekmez. Bir tutar çekildiyse otomatik olarak iade edilir.</Text>
+              <PrimaryButton label="Tekrar dene" onPress={retryAfterLoadFailure} loading={busy} />
               <SecondaryButton label="Vazgeç" onPress={goBackToCards} />
             </>
           )}

@@ -86,7 +86,8 @@ export const payWithSavedCard = (orderId: string | number, cardId: string) =>
   callCards<PayWithSavedCardResult>(
     'pay',
     { orderId: String(orderId), cardId },
-    { throwOnFailure: false },
+    // Üst süre: sağlayıcı takılırsa "ödeme sayfası hazırlanıyor" sonsuza kadar sürmez (AbortError -> Türkçe mesaj).
+    { throwOnFailure: false, timeoutMs: 25000 },
   );
 
 // ── Kart Ekle (1 TL doğrulama + iade) ─────────────────────────────────────────

@@ -25,6 +25,18 @@ import { initPayment } from '../lib/payment';
 import { payWithSavedCard } from '../lib/cards';
 import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../lib/paymentHtml';
 import { matchesPaynkolayReturn } from '../lib/paynkolayReturn';
+import {
+  LoadGuard,
+  PAYMENT_PAGE_LOAD_FAILED_MESSAGE,
+  START_REQUEST_TIMEOUT_MS,
+  createLoadGuard,
+  fetchWithTimeout,
+  isBenignWebViewError,
+  isFatalHttpError,
+  isProviderPageReady,
+  userMessageForError,
+  withDeadline,
+} from '../lib/webviewResilience';
 import { RootStackParamList } from '../navigation/types';
 import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
@@ -944,6 +956,12 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
   // gozlemi — 2026-09-16 canli test — buna karsi eklendi).
   const initStartedRef = useRef(false);
   const [stage, setStage] = useState<PaynkolayStage>('processing');
+  // SAĞLAYICI TAKILMASI: sayfa 20 sn içinde açılmazsa ya da onError/onHttpError gelirse WebView
+  // KAPATILMAZ (yavaş ama çalışan bir 3D sayfası yarıda kesilmesin) — üstünde "Tekrar dene /
+  // Geri Dön" bandı çıkar; sayfa sonradan açılırsa bant kalkar. Kullanıcı kilitli kalmaz.
+  const [stalled, setStalled] = useState<null | 'timeout' | 'error'>(null);
+  const guardRef = useRef<LoadGuard | null>(null);
+  const mainUrlRef = useRef('');
 
   // Önce bu sipariş için bekleyen bir inceleme var mı diye bak — varsa HİÇ ödeme
   // denemesi başlatılmaz, kalıcı "kontrol ediliyor" ekranı gösterilir. Yoksa
@@ -956,11 +974,16 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     (async () => {
       try {
         const supabase = getSupabaseClient();
-        const { data: orderRow } = await supabase
-          .from('orders')
-          .select('payment_review_pending')
-          .eq('id', orderId)
-          .maybeSingle();
+        const { data: orderRow } = await withDeadline(
+          Promise.resolve(
+            supabase
+              .from('orders')
+              .select('payment_review_pending')
+              .eq('id', orderId)
+              .maybeSingle(),
+          ),
+          8000,
+        );
         if (orderRow?.payment_review_pending) {
           setStage('review_pending');
           return;
@@ -989,7 +1012,8 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
       }
       track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
 
-      const res = await fetch(PAYNKOLAY_INIT_URL, {
+      // Üst süre: sağlayıcı/sunucu takılırsa "hazırlanıyor" sonsuza kadar sürmez.
+      const res = await fetchWithTimeout(PAYNKOLAY_INIT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -997,7 +1021,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
           'apikey': SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ orderId: String(orderId), amount, saveCard: shouldSaveCard }),
-      });
+      }, START_REQUEST_TIMEOUT_MS);
       const json = (await res.json().catch(() => ({}))) as PaynkolayInitResponse;
       if (json.pending) {
         handlePendingReview(json.error);
@@ -1018,7 +1042,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
       }
       setFormHtml(safeHtml);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Ödeme başlatılamadı.';
+      const message = userMessageForError(err, PAYMENT_PAGE_LOAD_FAILED_MESSAGE);
       setInitError(message);
       handleFailure(message);
     }
@@ -1054,7 +1078,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
       }
       setFormHtml(safeHtml);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Ödeme başlatılamadı.';
+      const message = userMessageForError(err, PAYMENT_PAGE_LOAD_FAILED_MESSAGE);
       setInitError(message);
       handleFailure(message);
     }
@@ -1063,11 +1087,16 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
   const pollOrderConfirmed = async (): Promise<boolean> => {
     const supabase = getSupabaseClient();
     for (let attempt = 0; attempt < PAYNKOLAY_POLL_MAX_ATTEMPTS; attempt++) {
-      const { data } = await supabase
-        .from('orders')
-        .select('status, payment_status')
-        .eq('id', orderId)
-        .maybeSingle();
+      const { data } = await withDeadline(
+        Promise.resolve(
+          supabase
+            .from('orders')
+            .select('status, payment_status')
+            .eq('id', orderId)
+            .maybeSingle(),
+        ),
+        8000,
+      ).catch(() => ({ data: null }));
       if (data?.status === 'confirmed' || data?.payment_status === 'paid') return true;
       if (attempt < PAYNKOLAY_POLL_MAX_ATTEMPTS - 1) {
         await new Promise((resolve) => setTimeout(resolve, PAYNKOLAY_POLL_INTERVAL_MS));
@@ -1139,21 +1168,66 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     return true;
   };
 
-  const onShouldStartLoadWithRequest = (request: { url: string }) => {
+  const markProviderReady = (url?: string) => {
+    if (isProviderPageReady(url, PAYNKOLAY_VPOS_ORIGIN)) {
+      guardRef.current?.markReady();
+      setStalled((cur) => (cur === 'timeout' ? null : cur)); // yavaş açıldı: bant kalksın
+    }
+  };
+  const onShouldStartLoadWithRequest = (request: { url: string; isTopFrame?: boolean }) => {
     const url = request.url || '';
     if (__DEV__) console.log('[paynkolay] onShouldStartLoadWithRequest:', url);
+    if (request.isTopFrame !== false) mainUrlRef.current = url;
     return handleNavigationCheck(url);
   };
-  const onNavStateChange = (state: { url?: string }) => {
+  const onNavStateChange = (state: { url?: string; loading?: boolean }) => {
     const url = state.url || '';
     if (__DEV__) console.log('[paynkolay] onNavigationStateChange:', url);
+    if (url) mainUrlRef.current = url;
+    if (!state.loading) markProviderReady(url);
     handleNavigationCheck(url);
   };
   const onLoadStart = (e: { nativeEvent: { url: string } }) => {
+    mainUrlRef.current = e.nativeEvent.url || mainUrlRef.current;
     handleNavigationCheck(e.nativeEvent.url || '');
   };
-  const onWebViewError = (e: { nativeEvent: unknown }) => {
-    console.warn('[paynkolay] onError:', e.nativeEvent);
+  const onLoadEnd = (e: { nativeEvent: { url: string } }) => markProviderReady(e.nativeEvent.url);
+  const onWebViewError = (e: { nativeEvent: { code?: number; description?: string } }) => {
+    const ev = e.nativeEvent;
+    // Kendi engellediğimiz dönüş navigasyonu (iOS -999 / ERR_ABORTED) gerçek hata değil.
+    if (isBenignWebViewError(ev) || handledRef.current) return;
+    console.warn('[paynkolay] onError:', { code: ev.code, description: String(ev.description ?? '').slice(0, 120) });
+    setStalled('error');
+  };
+  const onWebViewHttpError = (e: { nativeEvent: { statusCode?: number; url?: string } }) => {
+    const ev = e.nativeEvent;
+    if (handledRef.current) return;
+    if (isFatalHttpError(ev, mainUrlRef.current)) {
+      console.warn('[paynkolay] onHttpError:', { statusCode: ev.statusCode });
+      setStalled('error');
+    }
+  };
+
+  // WebView (form) her açıldığında 20 sn'lik "sağlayıcı sayfası hazır olmalı" bekçisi.
+  useEffect(() => {
+    if (!formHtml) return;
+    setStalled(null);
+    const guard = createLoadGuard({
+      onTimeout: () => { if (!handledRef.current) setStalled((cur) => cur ?? 'timeout'); },
+    });
+    guardRef.current = guard;
+    guard.start();
+    return () => guard.stop();
+  }, [formHtml]);
+
+  // "Tekrar dene": takılan sayfayı bırakıp ödeme başlatmayı baştan yapar (yeni form).
+  const retryAfterStall = () => {
+    guardRef.current?.stop();
+    setStalled(null);
+    setFormHtml(null);
+    setInitError('');
+    if (payMode === 'saved_card' && cardId) startSavedCardPay(cardId);
+    else startHostedInit(payMode === 'new_card' && saveCard === true);
   };
 
   return (
@@ -1179,7 +1253,9 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
             onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
             onNavigationStateChange={onNavStateChange}
             onLoadStart={onLoadStart}
+            onLoadEnd={onLoadEnd}
             onError={onWebViewError}
+            onHttpError={onWebViewHttpError}
             startInLoadingState
           />
         ) : stage === 'review_pending' ? (
@@ -1213,6 +1289,20 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
         )}
       </View>
 
+      {stalled && formHtml && !verifying ? (
+        <View style={paytrStyles.stallBanner}>
+          <Text style={paytrStyles.stallText}>{PAYMENT_PAGE_LOAD_FAILED_MESSAGE}</Text>
+          <View style={paytrStyles.stallRow}>
+            <Pressable style={paytrStyles.stallPrimary} onPress={retryAfterStall}>
+              <Text style={paytrStyles.stallPrimaryText}>Tekrar dene</Text>
+            </Pressable>
+            <Pressable style={paytrStyles.stallSecondary} onPress={() => navigation.goBack()}>
+              <Text style={paytrStyles.stallSecondaryText}>Geri Dön</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       {verifying ? (
         <View style={paytrStyles.verifyingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
@@ -1225,6 +1315,17 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
 
 const paytrStyles = StyleSheet.create({
   container: { backgroundColor: '#000' },
+  stallBanner: {
+    position: 'absolute', left: 16, right: 16, bottom: 32,
+    backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 12,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8,
+  },
+  stallText: { fontSize: 14, color: '#111', textAlign: 'center', lineHeight: 20 },
+  stallRow: { flexDirection: 'row', gap: 10 },
+  stallPrimary: { flex: 1, height: 44, borderRadius: 100, backgroundColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center' },
+  stallPrimaryText: { fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
+  stallSecondary: { flex: 1, height: 44, borderRadius: 100, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
+  stallSecondaryText: { fontSize: 14, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', color: '#333' },
   body: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
