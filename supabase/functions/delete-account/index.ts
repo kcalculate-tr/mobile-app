@@ -65,13 +65,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401)
+    if (!authHeader) return jsonResponse({ error: 'Oturum doğrulanamadı' }, 401)
 
     const authedClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     })
     const { data: { user }, error: authError } = await authedClient.auth.getUser()
-    if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
+    if (authError || !user) return jsonResponse({ error: 'Oturum doğrulanamadı' }, 401)
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
     const userId = user.id
@@ -199,7 +199,7 @@ Deno.serve(async (req: Request) => {
           token: String(secret.card_token ?? ''),
         })
         if (!result.ok) {
-          console.error(`[delete-account] paynkolay card delete failed for card ${card.id}:`, result.error)
+          console.error(`[delete-account] paynkolay card delete doğrulanamadı for card ${card.id}:`, result.reason)
         }
       }
     } catch (e) {
