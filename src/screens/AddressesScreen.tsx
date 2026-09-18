@@ -20,7 +20,6 @@ import { CaretLeft, PencilSimple, MapPin, Plus, Trash } from 'phosphor-react-nat
 import ScreenContainer from '../components/ScreenContainer';
 import FormField, { FormFieldOption } from '../components/FormField';
 import { useAuth } from '../context/AuthContext';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
@@ -122,7 +121,11 @@ export default function AddressesScreen() {
   const insets = useSafeAreaInsets();
 
   const { user, authLoading } = useAuth();
-  const { isAuthenticated, loading } = useRequireAuth();
+  // FAZ G: useRequireAuth'un kendi navigate('Login') çağrısı (redirectTo YOK)
+  // aşağıdaki ekranın kendi guard'ıyla (redirectTo:'Addresses') çakışıyordu —
+  // CheckoutScreen'deki aynı düzeltme (bkz. FIX notu orada).
+  const isAuthenticated = !!user;
+  const loading = authLoading;
 
   const [dataLoading, setDataLoading] = useState(true);
   const [saving, setSaving] = useState(false);
