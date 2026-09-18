@@ -314,8 +314,12 @@ test('CALLBACK REGRESYONU: KCALVER dalı sipariş akışından ÖNCE ve ayrı; s
 
 test('doğrulama kodu orders/refunds tablolarına YAZMAZ', () => {
   for (const [name, src] of [['flow', flow], ['glue', glue]] as const) {
-    assert.doesNotMatch(src, /from\('orders'\)/, name);
     assert.doesNotMatch(src, /from\('refunds'\)/, name);
+    // orders'a yalnız OKUMA (sweep: rapor güvenilirliği için ödenmiş sipariş sayısı) — yazma yok.
+    for (const m of src.matchAll(/from\('orders'\)([\s\S]{0,200})/g)) {
+      assert.match(m[1], /^\s*\.select\(/, `${name}: orders yalnız select`);
+      assert.doesNotMatch(m[1].split(';')[0], /\.(insert|update|upsert|delete)\(/, `${name}: orders'a yazma`);
+    }
   }
 });
 

@@ -87,6 +87,14 @@ export interface VerificationRow {
   note: string | null
   refund_attempts: number
   created_at: string
+  // Sweep alanları (opsiyonel: callback yolu bunları okumaz)
+  updated_at?: string
+  paynkolay_reference_code?: string | null
+  paynkolay_trx_date?: string | null
+  charged_amount?: number | string | null
+  last_refund_at?: string | null
+  report_check_count?: number
+  report_checked_at?: string | null
 }
 
 export interface ListedCardLike { token: string; tranId: string; maskedPan: string }
@@ -171,6 +179,7 @@ export async function processVerificationCallback<C extends ListedCardLike>(
     paynkolay_reference_code: f.referenceCode || null,
     paynkolay_trx_date: trxDate,
     tran_id: f.tranId || null,
+    charged_amount: refundCents / 100,
     note: null,
   })
   if (!claimed) {
@@ -207,39 +216,12 @@ export async function processVerificationCallback<C extends ListedCardLike>(
   }
 
   // ── İade (tek sefer; başarısızsa sweep tekrar dener) ──────────────────────────
-  const refundAmount = (refundCents / 100).toFixed(2)
-  let refundOk = false
-  let refundError = ''
-  let refundResponse: Record<string, unknown> | null = null
-  if (!f.referenceCode) {
-    refundError = 'referenceCode yok'
-  } else {
-    try {
-      const r = await deps.refund({ referenceCode: f.referenceCode, trxDate, amount: refundAmount })
-      refundOk = r.ok
-      refundError = r.ok ? '' : (r.message || `iade reddedildi (${r.responseCode || 'kod yok'})`)
-      refundResponse = {
-        attempts: r.attempts.map((a) => ({ type: a.type, ok: a.ok, httpStatus: a.httpStatus, responseCode: a.responseCode, networkError: a.networkError })),
-        fellBack: r.fellBack,
-        message: redact(r.message),
-      }
-    } catch (e) {
-      refundError = redact((e as Error)?.message ?? e)
-    }
-  }
-
-  const attempts = row.refund_attempts + 1
-  const nowIso = deps.now().toISOString()
-  const status: VStatus = refundOk ? 'refunded' : attempts >= MAX_REFUND_ATTEMPTS ? 'refund_failed' : 'refund_pending'
-  await deps.updateRow(row.id, {
-    status,
-    card_saved: cardSaved,
+  const status = await finalizeRefund(deps, row, {
+    referenceCode: f.referenceCode,
+    trxDate,
+    refundCents,
+    cardSaved,
     note,
-    refund_attempts: attempts,
-    last_refund_error: refundOk ? null : (redact(refundError) || 'bilinmeyen hata'),
-    last_refund_at: nowIso,
-    refund_response: refundResponse,
-    refunded_at: refundOk ? nowIso : null,
   })
 
   return { kind: 'succeeded', status, cardSaved, note }
@@ -292,5 +274,268 @@ export function toPublicStatus(row: { status: string; card_saved: boolean; note:
     card_saved: !!row.card_saved,
     note: row.note ?? null,
     refunded: row.status === 'refunded',
+  }
+}
+
+// ══ İade sonlandırma (callback + sweep ORTAK) ═════════════════════════════════
+/**
+ * Tek bir iade denemesi yapar ve satırı günceller: başarı -> refunded; hata ->
+ * refund_pending, deneme sayısı MAX'a ulaştıysa refund_failed. card_saved/note
+ * yalnız verilirse yazılır (sweep yeniden denemesi bunları EZMEZ).
+ */
+async function finalizeRefund<C extends ListedCardLike>(
+  deps: VerificationDeps<C>,
+  row: VerificationRow,
+  p: { referenceCode: string; trxDate: string; refundCents: number; cardSaved?: boolean; note?: string | null },
+): Promise<VStatus> {
+  const refundAmount = (p.refundCents / 100).toFixed(2)
+  let refundOk = false
+  let refundError = ''
+  let refundResponse: Record<string, unknown> | null = null
+  if (!p.referenceCode) {
+    refundError = 'referenceCode yok'
+  } else {
+    try {
+      const r = await deps.refund({ referenceCode: p.referenceCode, trxDate: p.trxDate, amount: refundAmount })
+      refundOk = r.ok
+      refundError = r.ok ? '' : (r.message || `iade reddedildi (${r.responseCode || 'kod yok'})`)
+      refundResponse = {
+        attempts: r.attempts.map((a) => ({ type: a.type, ok: a.ok, httpStatus: a.httpStatus, responseCode: a.responseCode, networkError: a.networkError })),
+        fellBack: r.fellBack,
+        message: redact(r.message),
+      }
+    } catch (e) {
+      refundError = redact((e as Error)?.message ?? e)
+    }
+  }
+
+  const attempts = row.refund_attempts + 1
+  const nowIso = deps.now().toISOString()
+  const status: VStatus = refundOk ? 'refunded' : attempts >= MAX_REFUND_ATTEMPTS ? 'refund_failed' : 'refund_pending'
+  const patch: Record<string, unknown> = {
+    status,
+    refund_attempts: attempts,
+    last_refund_error: refundOk ? null : (redact(refundError) || 'bilinmeyen hata'),
+    last_refund_at: nowIso,
+    refund_response: refundResponse,
+    refunded_at: refundOk ? nowIso : null,
+  }
+  if (p.cardSaved !== undefined) patch.card_saved = p.cardSaved
+  if (p.note !== undefined) patch.note = p.note
+  await deps.updateRow(row.id, patch)
+  return status
+}
+
+// ══ SWEEP (aşama 4) ══════════════════════════════════════════════════════════
+export const REFUND_RETRY_INTERVAL_MIN = 60 // saatlik yeniden deneme
+export const STUCK_SUCCEEDED_MIN = 5
+export const REPORT_DELAYS_MIN = [0, 5, 15, 30, 60, 120] // rapor kontrolleri arası geri çekilme
+export const MAX_REPORT_CHECKS = REPORT_DELAYS_MIN.length
+export const REPORT_WINDOW_HOURS = 24
+export const NOT_FOUND_TIMEOUT_MIN = 30
+export const MAX_ROWS_PER_RUN = 50
+
+export interface SaleInfoLike {
+  kind: 'success' | 'error' | 'pending' | 'unknown'
+  referenceCode: string
+  trxDate: string
+  amountCents: number
+  rawStatus: string
+  rawType: string
+}
+
+export interface SweepLookup {
+  sales: Map<string, SaleInfoLike | null>
+  trustedNotFound: Set<string>
+  batchUsed: boolean
+  fallbackCalls: number
+  skippedByCap: number
+  statusCounts: Record<string, number>
+}
+
+export interface SweepDeps<C extends ListedCardLike> extends VerificationDeps<C> {
+  acquireLock(): Promise<boolean>
+  releaseLock(): Promise<void>
+  /** Sweep'in ilgilenebileceği satırların ÜST KÜMESİ (akış kendi zamanlama kurallarını uygular). */
+  listCandidates(): Promise<VerificationRow[]>
+  /** GRUPLU rapor sorgusu (tek çağrı; güvenilmezse sınırlı tekil sorgu). */
+  lookupSales(rows: VerificationRow[]): Promise<SweepLookup>
+  /** Rapor kontrolü yapılan satırların sayacını/zamanını günceller (geri çekilmeli aralık için). */
+  markReportChecked(items: Array<{ id: string; nextCount: number }>): Promise<void>
+  /** Koşullu UPDATE: last_refund_at yoksa/`dueBeforeIso`'dan eskiyse now yaz; alındıysa true (satır başına atomik). */
+  claimRefundAttempt(id: string, dueBeforeIso: string): Promise<boolean>
+}
+
+const minutesBetween = (fromIso: string | null | undefined, now: Date): number =>
+  fromIso ? (now.getTime() - Date.parse(fromIso)) / 60000 : Number.POSITIVE_INFINITY
+
+export function isReportCheckDue(row: VerificationRow, now: Date): boolean {
+  const count = row.report_check_count ?? 0
+  if (count >= MAX_REPORT_CHECKS) return false
+  if (!row.report_checked_at) return true
+  return minutesBetween(row.report_checked_at, now) >= REPORT_DELAYS_MIN[count]
+}
+
+export type CandidateKind = 'report' | 'refund' | null
+
+/** Bir satırın bu turda hangi işe konu olduğu (saf). */
+export function classifyCandidate(row: VerificationRow, now: Date): CandidateKind {
+  const ageMin = minutesBetween(row.created_at, now)
+  if (row.status === 'initiated') {
+    return ageMin >= INITIATED_TIMEOUT_MINUTES && isReportCheckDue(row, now) ? 'report' : null
+  }
+  if (row.status === 'failed') {
+    const watched = row.note === 'timeout' || row.note === 'cancelled'
+    return watched && ageMin < REPORT_WINDOW_HOURS * 60 && isReportCheckDue(row, now) ? 'report' : null
+  }
+  if (row.status === 'refund_pending') {
+    return minutesBetween(row.last_refund_at, now) >= REFUND_RETRY_INTERVAL_MIN ? 'refund' : null
+  }
+  if (row.status === 'succeeded') {
+    return row.refund_attempts === 0 && minutesBetween(row.updated_at ?? row.created_at, now) >= STUCK_SUCCEEDED_MIN ? 'refund' : null
+  }
+  return null
+}
+
+/** Rapor bulunan (success) satışı olan, callback'i hiç gelmemiş kaydı işler: claim -> iade. */
+export async function processReportedSuccess<C extends ListedCardLike>(
+  deps: VerificationDeps<C>,
+  row: VerificationRow,
+  sale: SaleInfoLike,
+): Promise<VStatus | null> {
+  const expectedCents = Math.round(Number(row.amount) * 100)
+  const cents = sale.amountCents > 0 ? sale.amountCents : expectedCents
+  const trxDate = sale.trxDate || toTrxDate(row.created_at, deps.now())
+  const claimed = await deps.claimSucceeded(row.id, {
+    status: 'succeeded',
+    paynkolay_reference_code: sale.referenceCode || null,
+    paynkolay_trx_date: trxDate,
+    charged_amount: cents / 100,
+    note: 'report_recovered',
+  })
+  if (!claimed) return null // callback araya girdi / başka worker aldı: çift iade YOK
+  // Callback kaybolduğundan TranId yok: kart eşleştirilemez — kart, kullanıcı bir sonraki
+  // "sync"te PaynKolay'dan içeri alınır. Kayıt 1 TL'yi iade etmeye devam eder.
+  return await finalizeRefund(deps, row, {
+    referenceCode: sale.referenceCode,
+    trxDate,
+    refundCents: cents,
+    cardSaved: false,
+    note: 'report_recovered',
+  })
+}
+
+export interface SweepSummary {
+  skippedLocked: boolean
+  scanned: number
+  reportChecked: number
+  recoveredFromReport: number
+  markedFailed: number
+  refundAttempted: number
+  refundSucceeded: number
+  refundFailed: number
+  refundFailedFinal: number
+  refundSkipped: number
+  errors: number
+  report: { batchUsed: boolean; fallbackCalls: number; skippedByCap: number; statusCounts: Record<string, number> } | null
+}
+
+const emptySummary = (): SweepSummary => ({
+  skippedLocked: false, scanned: 0, reportChecked: 0, recoveredFromReport: 0, markedFailed: 0,
+  refundAttempted: 0, refundSucceeded: 0, refundFailed: 0, refundFailedFinal: 0, refundSkipped: 0, errors: 0, report: null,
+})
+
+export async function runVerificationSweep<C extends ListedCardLike>(deps: SweepDeps<C>): Promise<SweepSummary> {
+  const sum = emptySummary()
+  if (!(await deps.acquireLock())) {
+    sum.skippedLocked = true
+    return sum
+  }
+  try {
+    const now = deps.now()
+    const all = await deps.listCandidates()
+    const work = all
+      .map((row) => ({ row, kind: classifyCandidate(row, now) }))
+      .filter((x) => x.kind !== null)
+      .sort((a, b) => Date.parse(a.row.created_at) - Date.parse(b.row.created_at))
+      .slice(0, MAX_ROWS_PER_RUN)
+    sum.scanned = work.length
+
+    const reportRows = work.filter((x) => x.kind === 'report').map((x) => x.row)
+    const refundRows = work.filter((x) => x.kind === 'refund').map((x) => x.row)
+    // İade satırlarından referenceCode/trxDate'i olmayanlar için de rapor gerekir.
+    const needsReportRef = refundRows.filter((r) => !r.paynkolay_reference_code || !r.paynkolay_trx_date)
+    const lookupRows = [...reportRows, ...needsReportRef]
+
+    let lookup: SweepLookup | null = null
+    if (lookupRows.length > 0) {
+      lookup = await deps.lookupSales(lookupRows)
+      sum.report = {
+        batchUsed: lookup.batchUsed, fallbackCalls: lookup.fallbackCalls,
+        skippedByCap: lookup.skippedByCap, statusCounts: lookup.statusCounts,
+      }
+    }
+
+    // 1) Rapor mutabakatı: callback'i hiç gelmemiş / zaman aşımı / iptal edilmiş kayıtlar
+    const checked: Array<{ id: string; nextCount: number }> = []
+    for (const row of reportRows) {
+      try {
+        if (!lookup || !lookup.sales.has(row.client_ref_code)) continue // sorgulanamadı: durum DEĞİŞMEZ
+        checked.push({ id: row.id, nextCount: (row.report_check_count ?? 0) + 1 })
+        sum.reportChecked++
+        const sale = lookup.sales.get(row.client_ref_code) ?? null
+        if (sale?.kind === 'success') {
+          const st = await processReportedSuccess(deps, row, sale)
+          if (st) {
+            sum.recoveredFromReport++
+            sum.refundAttempted++
+            if (st === 'refunded') sum.refundSucceeded++
+            else { sum.refundFailed++; if (st === 'refund_failed') sum.refundFailedFinal++ }
+          }
+        } else if (sale?.kind === 'error') {
+          if (row.status === 'initiated' && (await deps.markFailed(row.id, 'declined'))) sum.markedFailed++
+        } else if (sale === null && lookup.trustedNotFound.has(row.client_ref_code)) {
+          if (row.status === 'initiated' && minutesBetween(row.created_at, now) >= NOT_FOUND_TIMEOUT_MIN) {
+            if (await deps.markFailed(row.id, 'timeout')) sum.markedFailed++
+          }
+        }
+        // pending/unknown: PaynKolay tarafında hâlâ işlemde olabilir — dokunma, sonra tekrar bak
+      } catch (e) {
+        sum.errors++
+        await deps.audit('sweep_report_error', { verificationId: row.id, error: redact((e as Error)?.message ?? e) }, row.user_id)
+      }
+    }
+    if (checked.length > 0) await deps.markReportChecked(checked)
+
+    // 2) İade yeniden denemeleri (refund_pending saatlik; takılı succeeded)
+    for (const row of refundRows) {
+      try {
+        let ref = row.paynkolay_reference_code ?? ''
+        let trxDate = row.paynkolay_trx_date ?? ''
+        if (!ref || !trxDate) {
+          const sale = lookup?.sales.get(row.client_ref_code) ?? null
+          if (sale?.kind === 'success' && sale.referenceCode) {
+            ref = sale.referenceCode
+            trxDate = sale.trxDate || toTrxDate(row.created_at, now)
+          }
+        }
+        if (!ref || !trxDate) { sum.refundSkipped++; continue } // referans çözülemedi: bir sonraki turda tekrar
+
+        const dueBefore = new Date(now.getTime() - (row.status === 'succeeded' ? STUCK_SUCCEEDED_MIN : REFUND_RETRY_INTERVAL_MIN) * 60000).toISOString()
+        if (!(await deps.claimRefundAttempt(row.id, dueBefore))) { sum.refundSkipped++; continue } // başka worker/callback
+
+        const cents = Math.round(Number(row.charged_amount ?? row.amount) * 100)
+        sum.refundAttempted++
+        const st = await finalizeRefund(deps, row, { referenceCode: ref, trxDate, refundCents: cents })
+        if (st === 'refunded') sum.refundSucceeded++
+        else { sum.refundFailed++; if (st === 'refund_failed') sum.refundFailedFinal++ }
+      } catch (e) {
+        sum.errors++
+        await deps.audit('sweep_refund_error', { verificationId: row.id, error: redact((e as Error)?.message ?? e) }, row.user_id)
+      }
+    }
+    return sum
+  } finally {
+    await deps.releaseLock()
   }
 }
