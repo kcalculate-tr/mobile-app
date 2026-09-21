@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -30,7 +31,7 @@ import { matchToOption, normalizeTurkishText } from '../lib/geo';
 import { RootStackParamList } from '../navigation/types';
 import { Address } from '../types';
 import { useAddressStore } from '../store/addressStore';
-import { COLORS } from '../constants/theme';
+import { ANIMATION, COLORS } from '../constants/theme';
 import { Toast } from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { haptic } from '../utils/haptics';
@@ -148,6 +149,38 @@ export default function AddressesScreen() {
   const [editingId, setEditingId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Liste <-> form gecisi, navigator'in "slide_from_right" diline oykunur:
+  // acilis sagdan, kapanis soldan kayar. Ayri bir ekran olmadigi icin
+  // navigator gecisi devreye girmiyordu; icerik anlik yer degistiriyordu.
+  const pageAnim = useRef(new Animated.Value(1)).current;
+  const isFirstPageRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      return;
+    }
+    pageAnim.setValue(0);
+    const anim = Animated.timing(pageAnim, {
+      toValue: 1,
+      duration: ANIMATION.duration.normal,
+      useNativeDriver: true,
+    });
+    anim.start();
+    // Yarida kalirsa icerik saydam/kaymis kalmasin.
+    return () => { anim.stop(); pageAnim.setValue(1); };
+  }, [formOpen, pageAnim]);
+
+  const pageStyle = {
+    opacity: pageAnim,
+    transform: [{
+      translateX: pageAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [formOpen ? 40 : -40, 0],
+      }),
+    }],
+  };
   const [form, setForm] = useState<AddressForm>(INITIAL_FORM);
 
 
@@ -908,6 +941,7 @@ export default function AddressesScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <Animated.View style={pageStyle}>
           {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
           {infoMessage ? <Text style={s.infoText}>{infoMessage}</Text> : null}
 
@@ -928,7 +962,7 @@ export default function AddressesScreen() {
                   >
                     <View style={s.addressCardInner}>
                       <View style={[s.addressIcon, isActive && s.addressCardActiveIcon]}>
-                        <MapPin size={18} color={isActive ? COLORS.white : COLORS.text.secondary} />
+                        <MapPin size={18} color={isActive ? COLORS.text.primary : COLORS.text.secondary} />
                       </View>
                       <View style={s.addressInfo}>
                         <View style={s.addressTitleRow}>
@@ -961,14 +995,14 @@ export default function AddressesScreen() {
                         onPress={() => openEditForm(address)}
                         activeOpacity={0.8}
                       >
-                        <PencilSimple size={14} color={isActive ? COLORS.white : '#000000'} />
+                        <PencilSimple size={14} color="#000000" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[s.iconBtnDanger, isActive && s.iconBtnDangerOnFill]}
                         onPress={() => deleteAddress(address.id)}
                         activeOpacity={0.8}
                       >
-                        <Trash size={14} color={isActive ? '#ff8a9b' : '#d4183d'} />
+                        <Trash size={14} color="#d4183d" />
                       </TouchableOpacity>
                     </View>
 
@@ -1127,6 +1161,7 @@ export default function AddressesScreen() {
               )}
             </React.Fragment>
           )}
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
       <AddressVerificationSheet
@@ -1178,25 +1213,26 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     shadowRadius: 10,
     elevation: 2,
   },
-  // Secili adres DOLGULU, ama marka yesiliyle degil.
+  // Secili adres marka yesili DOLGU; ustundeki kaplar BEYAZ.
   //
-  // #B9EF14 kucuk chip'lerde ise yariyor; kart boyutunda genis bir alani
-  // kapladiginda goz yoruyor ve icindeki kirmizi silme butonuyla carpisiyor.
-  // Uygulamada "secili konum" dili ZATEN siyah: ana sayfadaki adres hapi da
-  // siyah zemin + beyaz yazi. Kart da ona hizalandi; marka yesili vurgu
-  // ogesi olarak (rozet) kaliyor.
+  // Yazi rengi SIYAH kaliyor, beyaz degil: #B9EF14 uzerinde beyaz metnin
+  // kontrasti 1,4:1 — okunmaz. Ayni yesil uzerinde siyah 14,8:1 veriyor.
+  // Uygulamanin her yerinde bu yesil zemine siyah yazi kullaniliyor
+  // (chip'ler, "Ucretsiz" rozeti, birincil butonlar); kart da ayni dilde.
   addressCardActive: {
-    backgroundColor: COLORS.text.primary,
+    backgroundColor: COLORS.brand.green,
     borderColor: 'transparent',
   },
-  addressCardActiveIcon: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  addressTitleOnFill: { color: COLORS.white },
-  defaultBadgeOnFill: { backgroundColor: COLORS.brand.green },
+  addressCardActiveIcon: { backgroundColor: COLORS.white },
+  defaultBadgeOnFill: { backgroundColor: COLORS.white },
   defaultBadgeTextOnFill: { color: COLORS.text.primary },
-  addressLineOnFill: { color: COLORS.white },
-  addressTextOnFill: { color: 'rgba(255,255,255,0.62)' },
-  iconBtnOnFill: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  iconBtnDangerOnFill: { backgroundColor: 'rgba(255,255,255,0.10)' },
+  // Ikincil satir: yesil uzerinde gri kayboluyor, siyahin yumusatilmisi
+  // hem okunuyor hem hiyerarsiyi koruyor.
+  addressTextOnFill: { color: 'rgba(0,0,0,0.66)' },
+  addressLineOnFill: { color: COLORS.text.primary },
+  addressTitleOnFill: { color: COLORS.text.primary },
+  iconBtnOnFill: { backgroundColor: COLORS.white },
+  iconBtnDangerOnFill: { backgroundColor: COLORS.white },
   addressCardInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   addressIcon: {
     width: 42, height: 42,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   ImageBackground,
   KeyboardAvoidingView,
   ScrollView,
@@ -20,6 +21,17 @@ import type { FeedbackItem, ItemFeedbackMap } from '../lib/orderFeedback';
 import { fetchBrand } from '../lib/brands';
 
 const RATING_LABELS = ['', 'Çok kötü', 'Kötü', 'İdare eder', 'İyi', 'Harika'];
+
+// Serit genisligi ACIKCA hesaplaniyor.
+//
+// Once alignSelf:'stretch' + negatif margin ile tam genislik hedeflenmisti,
+// ama Yoga'da aspectRatio ile stretch birlikte kullanilinca genislik
+// stretch'ten degil orandan cozuluyor ve serit, sheet'in padding'i kadar
+// (her yandan 20px) iceride kaliyordu — ekranda beyaz seritler olarak
+// goruluyordu. Genislik sabit verilince belirsizlik kalmiyor.
+const SHEET_WIDTH = Dimensions.get('window').width - SPACING.xl * 2;
+// Marka gorseli 1200x400 = tam 3:1.
+const BANNER_HEIGHT = Math.round(SHEET_WIDTH / 3);
 
 interface OrderFeedbackModalProps {
   visible: boolean;
@@ -218,15 +230,12 @@ const styles = StyleSheet.create({
   },
   closeBtn: { position: 'absolute', top: SPACING.md, right: SPACING.md, padding: 4, zIndex: 2 },
   brandBanner: {
-    alignSelf: 'stretch',
+    width: SHEET_WIDTH,
+    height: BANNER_HEIGHT,
     // Sheet'in padding'ini geri alip serit kenarlara TASIYOR.
     marginTop: -SPACING.xl,
     marginHorizontal: -SPACING.xl,
     marginBottom: SPACING.lg,
-    // Marka gorseli 1200x400, yani TAM 3:1. Sabit yukseklik verilince
-    // resizeMode="cover" kenarlardan kirpiyordu; aspectRatio ile serit
-    // gorselin kendi oranini aliyor ve tamami sigiyor.
-    aspectRatio: 3,
     backgroundColor: COLORS.brand.green,
   },
   brandBannerImg: {
