@@ -302,3 +302,36 @@ export const getGroupSelectionLimits = (group: OptionGroup) => {
   const max = Math.max(min, Math.floor(toNumber(group.maxSelection, 1)));
   return { min, max };
 };
+
+/**
+ * Ürün adı → görsel URL eşlemesi.
+ *
+ * `meal_consumptions` satırlarında ürün kimliği tutulmuyor, yalnızca ad
+ * var; tüketim listesinde görseli gösterebilmek için ada göre eşleştirmek
+ * tek yol. Elle girilen kalorilerde karşılık çıkmaz — çağıran taraf o
+ * durumda kendi yedeğine düşer.
+ */
+export const fetchProductImagesByName = async (
+  names: string[],
+): Promise<Record<string, string>> => {
+  const wanted = Array.from(
+    new Set(names.map((n) => (n ?? '').trim()).filter(Boolean)),
+  );
+  if (wanted.length === 0) return {};
+
+  const { getSupabaseClient } = await import('./supabase');
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('name, img')
+    .in('name', wanted);
+  if (error || !Array.isArray(data)) return {};
+
+  const map: Record<string, string> = {};
+  for (const row of data as Array<Record<string, unknown>>) {
+    const name = typeof row.name === 'string' ? row.name.trim().toLowerCase() : '';
+    const url = typeof row.img === 'string' ? row.img.trim() : '';
+    if (name && url && !map[name]) map[name] = url;
+  }
+  return map;
+};

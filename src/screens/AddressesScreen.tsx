@@ -1002,7 +1002,10 @@ export default function AddressesScreen() {
                         onPress={() => deleteAddress(address.id)}
                         activeOpacity={0.8}
                       >
-                        <Trash size={14} color="#d4183d" />
+                        {/* Yesil zeminde #d4183d bulaniklasip griye caliyor;
+                            koyu kirmizi hem okunuyor hem "sil" isaretini
+                            koruyor. Beyaz kart uzerinde eski ton kaliyor. */}
+                        <Trash size={14} color={isActive ? '#7A0F22' : '#d4183d'} />
                       </TouchableOpacity>
                     </View>
 
@@ -1219,20 +1222,43 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   // kontrasti 1,4:1 — okunmaz. Ayni yesil uzerinde siyah 14,8:1 veriyor.
   // Uygulamanin her yerinde bu yesil zemine siyah yazi kullaniliyor
   // (chip'ler, "Ucretsiz" rozeti, birincil butonlar); kart da ayni dilde.
+  // Yesil dolgunun ICINDE artik beyaz kap YOK.
+  //
+  // Onceki halde ikon kutusu, rozet ve iki eylem dugmesi beyaz dolguluydu:
+  // tek kartta bes ayri dolgu birikiyor, kart hem kalabalik hem sekilsiz
+  // duruyordu. Hepsi ince cizgiye (stroke) cevrildi — zemin tek parca
+  // yesil kaliyor, elemanlar cizgiyle ayriliyor. Karta da hafif bir
+  // kenarlik verildi ki acik zeminde sinirlari belli olsun.
   addressCardActive: {
     backgroundColor: COLORS.brand.green,
-    borderColor: 'transparent',
+    borderColor: 'rgba(0,0,0,0.14)',
   },
-  addressCardActiveIcon: { backgroundColor: COLORS.white },
-  defaultBadgeOnFill: { backgroundColor: COLORS.white },
+  addressCardActiveIcon: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.45)',
+  },
+  defaultBadgeOnFill: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.45)',
+  },
   defaultBadgeTextOnFill: { color: COLORS.text.primary },
   // Ikincil satir: yesil uzerinde gri kayboluyor, siyahin yumusatilmisi
   // hem okunuyor hem hiyerarsiyi koruyor.
   addressTextOnFill: { color: 'rgba(0,0,0,0.66)' },
   addressLineOnFill: { color: COLORS.text.primary },
   addressTitleOnFill: { color: COLORS.text.primary },
-  iconBtnOnFill: { backgroundColor: COLORS.white },
-  iconBtnDangerOnFill: { backgroundColor: COLORS.white },
+  iconBtnOnFill: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.45)',
+  },
+  iconBtnDangerOnFill: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(122,15,34,0.55)',
+  },
   addressCardInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   addressIcon: {
     width: 42, height: 42,

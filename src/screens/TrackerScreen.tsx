@@ -31,6 +31,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
+import { fetchProductImagesByName } from '../lib/products';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
@@ -1142,6 +1143,34 @@ export default function TrackerScreen() {
     [pantryItems]
   );
 
+  // "Bugun Tuketilenler" satirlarinin urun gorselleri.
+  //
+  // meal_consumptions'ta urun kimligi tutulmuyor (yalnizca ad), bu yuzden
+  // gorsel ada gore eslestiriliyor. Kozmetik bir veri: hata yutulur, satir
+  // yedek ikonla cizilir. Ayni adlar icin tekrar tekrar sorgu atmamak adina
+  // sonuc birikimli tutuluyor.
+  const [consumedImages, setConsumedImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const missing = todayConsumed
+      .map((r) => (r.name ?? '').trim())
+      .filter((n) => n && consumedImages[n.toLowerCase()] === undefined);
+    if (missing.length === 0) return;
+
+    let alive = true;
+    fetchProductImagesByName(missing)
+      .then((map) => {
+        if (!alive) return;
+        // Karsiligi CIKMAYAN adlar da '' olarak isaretlenir; aksi halde
+        // her render'da ayni basarisiz sorgu tekrar atilirdi.
+        const next: Record<string, string> = {};
+        for (const n of missing) next[n.toLowerCase()] = map[n.toLowerCase()] ?? '';
+        setConsumedImages((prev) => ({ ...prev, ...next }));
+      })
+      .catch(() => { /* gorsel kozmetik */ });
+    return () => { alive = false; };
+  }, [todayConsumed, consumedImages]);
+
   const consumedTodayMacros = useMemo(() => todayConsumed.reduce((t, r) => ({
     kcal:    t.kcal    + (Number(r.calories)||0),
     protein: t.protein + (Number(r.protein)||0),
@@ -2152,16 +2181,23 @@ const html = `
                 <Text style={s.sectionTitle}>Bugün Tüketilenler</Text>
                 <View style={s.consumedCard}>
                   {todayConsumed.map((row) => {
-                    const emoji = row.source === 'pantry'
-                      ? '🥗'
-                      : row.meal_type === 'kahvalti' ? '🌅'
-                      : row.meal_type === 'ogle' ? '☀️'
-                      : row.meal_type === 'aksam' ? '🌙'
-                      : '🍎';
+                    const img = consumedImages[(row.name ?? '').trim().toLowerCase()];
                     const note = (row.note ?? '').trim();
                     return (
                       <View key={row.id} style={s.consumedRow}>
-                        <Text style={s.consumedEmoji}>{emoji}</Text>
+                        {img ? (
+                          <CachedImage
+                            uri={transformImageUrl(img, ImagePreset.productCard) ?? img}
+                            style={s.consumedThumb}
+                          />
+                        ) : (
+                          // Elle girilen kalorilerde urun karsiligi yok.
+                          // Emoji yerine ikon: bazi cihazlarda emoji glifi
+                          // bulunamayip bos kutu olarak ciziliyordu.
+                          <View style={[s.consumedThumb, s.consumedThumbFallback]}>
+                            <ForkKnife size={18} color={COLORS.text.tertiary} weight="duotone" />
+                          </View>
+                        )}
                         <View style={s.consumedRowMain}>
                           <Text style={s.consumedName} numberOfLines={1}>{row.name}</Text>
                           {note ? (
@@ -2524,7 +2560,8 @@ fontFamily: 'PlusJakartaSans_700Bold'},
     borderBottomColor: '#f5f5f5',
     gap: SPACING.sm,
   },
-  consumedEmoji: { fontSize: 22, width: 28, textAlign: 'center' },
+  consumedThumb: { width: 40, height: 40, borderRadius: RADIUS.sm, backgroundColor: '#f1f1f1' },
+  consumedThumbFallback: { alignItems: 'center', justifyContent: 'center' },
   consumedRowMain: { flex: 1, minWidth: 0 },
   consumedName: {
     fontSize: TYPOGRAPHY.size.sm,

@@ -582,7 +582,7 @@ export default function ProfileScreen() {
         {/* ─── Çıkış / Auth ─── */}
         {user ? (
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-            <SignOut color="#0A1F0F" size={18} />
+            <SignOut color="#FFFFFF" size={18} />
             <Text style={styles.logoutText}>Çıkış Yap</Text>
           </TouchableOpacity>
         ) : (
@@ -1032,15 +1032,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: SPACING.lg,
     marginHorizontal: SPACING.lg,
-    backgroundColor: 'transparent',
+    backgroundColor: '#0A1F0F',
     borderRadius: RADIUS.md,
     paddingVertical: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#0A1F0F',
     gap: SPACING.sm,
   },
   logoutText: {
-    color: '#0A1F0F',
+    color: '#FFFFFF',
     fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: TYPOGRAPHY.size.md,

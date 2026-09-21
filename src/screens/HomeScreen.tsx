@@ -414,11 +414,11 @@ export default function HomeScreen() {
           >
             {session ? (
               <>
-                <MapPin size={13} color="#FFFFFF" weight="fill" />
+                <MapPin size={13} color={COLORS.text.primary} weight="fill" />
                 <Text style={styles.addressText} numberOfLines={1}>
                   {selectedAddress?.neighbourhood || selectedAddress?.district || 'Adres seçin'}
                 </Text>
-                <CaretDown size={12} color="#FFFFFF" />
+                <CaretDown size={12} color={COLORS.text.primary} />
               </>
             ) : (
               <Text style={styles.addressText} numberOfLines={1}>Giriş yap / Kaydol</Text>
@@ -794,8 +794,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    // Siyah dolgu — açık gri header üzerinde adres seçimi net ayrışsın.
-    backgroundColor: '#000000',
+    // Marka yesili dolgu — acik gri header uzerinde adres secimi net ayrisir.
+    backgroundColor: COLORS.brand.green,
     borderRadius: RADIUS.pill,
     paddingVertical: 7,
     paddingHorizontal: SPACING.md,
@@ -805,7 +805,10 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#FFFFFF',
+    // Yesil uzerinde SIYAH. Beyaz yazi #B9EF14 uzerinde 1.4:1 kaliyor —
+    // gun isiginda okunmuyor. Siyah 14.8:1; "Ucretsiz" rozeti ve Gonder
+    // butonu da ayni kurali izliyor.
+    color: COLORS.text.primary,
   },
   headerActionBtn: {
     alignItems: 'center',
