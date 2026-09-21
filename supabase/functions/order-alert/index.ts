@@ -34,7 +34,7 @@ function itemsHtml(o: any): string {
 }
 
 // Siparişin şubesine kayıtlı personelin e-postalarını bul. Kimse yoksa (veya
-// branch_id yoksa) bos dizi döner -> caller GLOBAL_TO'ya düşer.
+// branch_id yoksa) bos dizi döner -> caller yalnizca GLOBAL_TO'ya gonderir.
 async function resolveBranchRecipients(
   admin: SupabaseClient,
   branchId: string | null | undefined,
@@ -82,7 +82,12 @@ Deno.serve(async (req) => {
   if (error || !o) return json({ error: 'order_not_found', detail: error?.message }, 404)
 
   const { emails: branchEmails, branchName } = await resolveBranchRecipients(admin, o.branch_id)
-  const to = branchEmails.length > 0 ? branchEmails : [GLOBAL_TO]
+  // ALICI = sube personeli + GLOBAL_TO (isletme sahibi) BIRLIKTE.
+  // ESKI DAVRANIS (hata): sube personeli varsa GLOBAL_TO listeden DUSUYORDU —
+  // 16.09.2026'daki sube bazli bildirim degisikliginden sonra tum siparis
+  // bildirimleri yalnizca sube adresine gitti, isletme sahibi hicbir sipariste
+  // haberdar olmadi (stuck_alert dahil). Artik ikisi birden, tekrarsiz.
+  const to = Array.from(new Set([...branchEmails, GLOBAL_TO].filter(Boolean)))
   const branchLabel = branchName ? ` — ${branchName}` : ''
 
   if (type === 'new_order') {

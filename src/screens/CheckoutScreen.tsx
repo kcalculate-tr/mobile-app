@@ -1328,7 +1328,7 @@ export default function CheckoutScreen() {
     let paymentOrderCode =
       pendingPaymentOrder?.orderCode ||
       (paymentOrderId ? fallbackOrderCodeFromId(paymentOrderId) : '');
-    let paymentOrderAmount = pendingPaymentOrder?.totalAmount || totalAmount;
+    let paymentOrderAmount = pendingPaymentOrder?.totalAmount ?? totalAmount;
     const noticeMessages: string[] = [];
 
     try {
@@ -1574,9 +1574,46 @@ export default function CheckoutScreen() {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: 'Sipariş bulunamadı.' });
         return;
       }
+      const hostedAmount = pendingPaymentOrder?.totalAmount ?? totalAmount;
+
+      // 0 TL siparis (hedefli %100 sponsor kupon): odeme gateway'i 0 TL islemi
+      // KABUL ETMEZ (paynkolay-payment-init -> 400 "Siparis tutari gecersiz").
+      // handleCreateOrder'daki ayni dal burada da olmak zorunda; aksi halde
+      // Ozet ekranindan gelen kullanici odeme ekranina dusup siparisi
+      // tamamlayamiyor (bkz. KCAL-P420, 21.09.2026).
+      if (hostedAmount <= 0) {
+        console.log('[CHECKOUT] free order (0 TL) — handlePay', { hostedOrderId });
+        dispatchPay({ type: 'SET_PAY_LOADING', payload: true });
+        try {
+          const supabase = getSupabaseClient();
+          const { data: freeResult, error: freeError } = await supabase.functions.invoke(
+            'free-order-complete',
+            { body: { orderId: hostedOrderId } },
+          );
+          if (!freeError && freeResult?.ok) {
+            haptic.success();
+            clearCart();
+            navigation.replace('OrderSuccess', {
+              orderCode: pendingPaymentOrder?.orderCode ?? fallbackOrderCodeFromId(hostedOrderId),
+              orderId: String(hostedOrderId),
+              noticeMessage: undefined,
+            });
+            return;
+          }
+          haptic.error();
+          dispatchPay({
+            type: 'SET_PAY_ERROR',
+            payload: resolveFreeOrderErrorMessage(freeResult?.reason ?? freeError?.message),
+          });
+        } finally {
+          dispatchPay({ type: 'SET_PAY_LOADING', payload: false });
+        }
+        return;
+      }
+
       navigation.navigate('PaymentScreen', {
         orderId: String(hostedOrderId),
-        amount: pendingPaymentOrder?.totalAmount || totalAmount,
+        amount: hostedAmount,
         orderCode: pendingPaymentOrder?.orderCode,
         ...paymentNavParams,
       });
@@ -1696,9 +1733,9 @@ export default function CheckoutScreen() {
                       {active ? <View style={styles.radioInner} /> : null}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.addressTitle}>{address.title || 'Adres'}</Text>
-                      <Text style={styles.addressText} numberOfLines={2}>{address.full_address}</Text>
-                      <Text style={styles.addressMeta}>{address.district} • {address.contact_name}</Text>
+                      <Text style={[styles.addressTitle, active && styles.addressTitleActive]}>{address.title || 'Adres'}</Text>
+                      <Text style={[styles.addressText, active && styles.addressTextActive]} numberOfLines={2}>{address.full_address}</Text>
+                      <Text style={[styles.addressMeta, active && styles.addressMetaActive]}>{address.district} • {address.contact_name}</Text>
                     </View>
                   </Pressable>
                 );
@@ -2116,8 +2153,8 @@ export default function CheckoutScreen() {
                     <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
                       {active ? <View style={styles.radioInner} /> : null}
                     </View>
-                    <Text style={styles.addressTitle}>•••• {card.last4 ?? '----'}</Text>
-                    <Text style={styles.payMethodMeta}>
+                    <Text style={[styles.addressTitle, active && styles.addressTitleActive]}>•••• {card.last4 ?? '----'}</Text>
+                    <Text style={[styles.payMethodMeta, active && styles.addressMetaActive]}>
                       {brand}{card.is_default ? ' · Varsayılan' : ''}
                     </Text>
                   </Pressable>
@@ -2130,7 +2167,7 @@ export default function CheckoutScreen() {
                 <View style={[styles.radioOuter, selectedPayCardId === null && styles.radioOuterActive]}>
                   {selectedPayCardId === null ? <View style={styles.radioInner} /> : null}
                 </View>
-                <Text style={styles.addressTitle}>+ Yeni kart ile öde</Text>
+                <Text style={[styles.addressTitle, selectedPayCardId === null && styles.addressTitleActive]}>+ Yeni kart ile öde</Text>
               </Pressable>
               {selectedPayCardId === null ? (
                 <TouchableOpacity
@@ -2566,9 +2603,21 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border.medium,
     backgroundColor: COLORS.background,
   },
+  // Secim dili TEK duzlem: Yontem/Zaman chip'leri gibi secili satir da marka
+  // yesili DOLGU (21.09.2026). Onceki hal siyah stroke + beyaz zemin idi ve
+  // ayni ekranda iki farkli secim gorunumu olusturuyordu.
   addressRowActive: {
-    borderColor: '#000000',
-    backgroundColor: COLORS.white,
+    borderColor: 'transparent',
+    backgroundColor: COLORS.brand.green,
+  },
+  addressTitleActive: {
+    color: COLORS.text.primary,
+  },
+  addressTextActive: {
+    color: 'rgba(0,0,0,0.72)',
+  },
+  addressMetaActive: {
+    color: 'rgba(0,0,0,0.62)',
   },
   payMethodRow: {
     alignItems: 'center',
@@ -2611,7 +2660,7 @@ const styles = StyleSheet.create({
   radioOuter: {
     width: 20,
     height: 20,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.circle,
     borderWidth: 2,
     borderColor: '#d1d5db',
     alignItems: 'center',
@@ -2624,7 +2673,7 @@ const styles = StyleSheet.create({
   radioInner: {
     width: 10,
     height: 10,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.circle,
     backgroundColor: '#000000',
   },
   addressTitle: {
