@@ -72,6 +72,17 @@ interface OrderItem {
   legacy_selected_options?: { labels?: string[] };
 }
 
+// Telefonu Adisyo'nun beklediği 10 haneli ulusal formata indirger (başındaki
+// 0090/90/0 önekleri soyulur). Format tanınmazsa (beklenmeyen uzunluk) rakamlar
+// olduğu gibi bırakılır — Adisyo tarafında görünür kalsın, sessizce boşalmasın.
+function normalizePhoneTR(raw: string): string {
+  let d = (raw ?? "").toString().replace(/\D/g, "");
+  if (d.startsWith("0090")) d = d.slice(4);
+  else if (d.length === 12 && d.startsWith("90")) d = d.slice(2);
+  if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return d;
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
@@ -186,7 +197,7 @@ serve(async (req) => {
   const cityValue = (addr?.city ?? dbOrder.city ?? "İzmir").toString().trim() || "İzmir";
   const regionValue = (addr?.district ?? dbOrder.district ?? "").toString().trim();
   const neighborhoodValue = (addr?.neighbourhood ?? addr?.neighborhood ?? "").toString().trim();
-  const phoneValue = (addr?.contact_phone ?? dbOrder.phone ?? "").toString().trim();
+  const phoneValue = normalizePhoneTR((addr?.contact_phone ?? dbOrder.phone ?? "").toString());
 
   // === 6. Tutarlar
   // Adisyo kontrolü: Σ(katalog_fiyatı × qty) == OrderTotal + Discount − DeliveryFee.
@@ -237,6 +248,13 @@ serve(async (req) => {
   const orderNote = noteParts.join(" ");
 
   // === 8. Adisyo SaveOrder payload
+  // WebOrderId: order_code aynı gün içinde yeniden kullanılabildiği (ör. iptal edilip
+  // yeniden oluşturulan sipariş) durumlarda Adisyo'nun 713/712 idempotent eşleşmesini
+  // yanlış siparişe bağlamasını önlemek için orderId ile benzersizleştirilir.
+  const webOrderId = `${dbOrder.order_code ?? ("KCAL-" + orderId)}-${orderId}`;
+  // OrderType: teslimat → 2 (Paket), gel-al → 3. Önceden sabit 3 gönderiliyordu →
+  // tüm web siparişleri (teslimatlı olanlar dahil) Adisyo'da gel-al düşüyordu.
+  const isPickup = String(dbOrder.delivery_method ?? "").toLowerCase() === "pickup";
   const saveOrderPayload = {
     CustomerName: customerName,
     CustomerSurname: customerSurname,
@@ -253,8 +271,8 @@ serve(async (req) => {
     OrderTotal: orderTotal,
     DeliveryFee: deliveryFee,
     OrderNote: orderNote,
-    WebOrderId: dbOrder.order_code ?? `KCAL-${orderId}`,
-    OrderType: 3,
+    WebOrderId: webOrderId,
+    OrderType: isPickup ? 3 : 2,
     OrderDetails: orderDetails,
   };
 
@@ -265,8 +283,8 @@ serve(async (req) => {
   }
 
   const adisyoOrderId = saveOrderRes.body?.orderId ?? null;
-  // status 100 = başarılı; 713 = "bu sipariş numarası zaten mevcut" (idempotent)
-  const isDuplicate = saveOrderRes.body?.status === 713;
+  // status 100 = başarılı; 713/712 = "bu sipariş numarası zaten mevcut" (idempotent)
+  const isDuplicate = saveOrderRes.body?.status === 713 || saveOrderRes.body?.status === 712;
 
   // === 10. Başarı: SaveOrder yeterli, Prepared geçici olarak devre dışı
   // Hipotez: Prepared çağrısı Adisyo'da "Hazırlandı"ya geçiriyor; sipariş "Hazırlanıyor"
@@ -335,9 +353,9 @@ async function callAdisyo(
 
   if (errMsg) return { ok: false, errorMsg: errMsg };
 
-  // Adisyo "status": 100 = başarılı, 713 = duplicate (idempotent başarı)
+  // Adisyo "status": 100 = başarılı, 713/712 = duplicate (idempotent başarı)
   const adisyoStatus = respBody?.status;
-  const isOk = adisyoStatus === 100 || adisyoStatus === 713;
+  const isOk = adisyoStatus === 100 || adisyoStatus === 713 || adisyoStatus === 712;
 
   if (!isOk) {
     return {
