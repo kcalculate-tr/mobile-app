@@ -195,7 +195,7 @@ export default function HomeScreen() {
     if (activeOrder?.status !== 'delivered') return;
     const timer = setInterval(() => {
       setActiveOrder((cur) => (cur && isDeliveredExpired(cur) ? null : cur));
-    }, 60_000);
+    }, 20_000);
     return () => clearInterval(timer);
   }, [activeOrder?.status]);
 
@@ -403,11 +403,11 @@ export default function HomeScreen() {
           >
             {session ? (
               <>
-                <MapPin size={13} color="#000000" />
+                <MapPin size={13} color="#FFFFFF" weight="fill" />
                 <Text style={styles.addressText} numberOfLines={1}>
                   {selectedAddress?.neighbourhood || selectedAddress?.district || 'Adres seçin'}
                 </Text>
-                <CaretDown size={12} color="#000000" />
+                <CaretDown size={12} color="#FFFFFF" />
               </>
             ) : (
               <Text style={styles.addressText} numberOfLines={1}>Giriş yap / Kaydol</Text>
@@ -783,7 +783,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: COLORS.white,
+    // Siyah dolgu — açık gri header üzerinde adres seçimi net ayrışsın.
+    backgroundColor: '#000000',
     borderRadius: RADIUS.pill,
     paddingVertical: 7,
     paddingHorizontal: SPACING.md,
@@ -793,7 +794,7 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   headerActionBtn: {
     alignItems: 'center',

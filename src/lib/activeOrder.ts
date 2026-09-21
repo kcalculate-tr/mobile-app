@@ -27,7 +27,9 @@ export const stepIndexOf = (status: ActiveOrderStatus): number =>
 
 // Teslim edildikten sonra kart hemen kaybolmuyor: müşteri son kademeyi
 // görebilsin diye kısa bir süre daha duruyor, sonra kendiliğinden gidiyor.
-export const DELIVERED_VISIBLE_MINUTES = 15;
+// 15 dk fazla uzun geldi (kart teslimattan sonra ekranda takılı duruyor gibi
+// hissettiriyordu) → 3 dk.
+export const DELIVERED_VISIBLE_MINUTES = 3;
 
 const ACTIVE_STATUSES: ActiveOrderStatus[] = ['confirmed', 'preparing', 'on_way', 'delivered'];
 
