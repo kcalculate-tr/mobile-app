@@ -18,15 +18,24 @@ export type PaymentNavParams = {
 /**
  * PaymentScreen'e geçirilecek yöntem parametreleri. Kart özelliği kapalıysa
  * (allowlist dışı) HİÇBİR şey eklenmez → mevcut akış birebir aynı kalır.
+ *
+ * `saveCard` artık HER ZAMAN true: bu bayrak yalnızca PaynKolay'a customerKey
+ * gönderilip gönderilmeyeceğini belirliyor. Kartın gerçekten saklanması için
+ * kullanıcının PaynKolay sayfasında "Öde ve Kartı Kayıt Et" butonuna basması
+ * gerekiyor (backend, ödeme sonrası PaynKolay'daki kart listesini TranId ile
+ * sorgulayıp aynalıyor — bkz. _shared/paynkolay-cards.ts::saveCardFromTranId).
+ *
+ * ESKİ DAVRANIŞ (hata): app'teki onay kutusu işaretsizken customerKey boş
+ * gidiyordu; kullanıcı PaynKolay'da "Öde ve Kartı Kayıt Et"e bassa bile kart
+ * SESSİZCE kaydedilmiyordu. İki ayrı onay noktası birbiriyle çelişiyordu.
  */
 export function buildPaymentNavParams(input: {
   cardsEnabled: boolean;
   selectedCardId: string | null;
-  saveNewCard: boolean;
 }): PaymentNavParams {
   if (!input.cardsEnabled) return {};
   if (input.selectedCardId) return { payMode: 'saved_card', cardId: input.selectedCardId };
-  return { payMode: 'new_card', saveCard: input.saveNewCard };
+  return { payMode: 'new_card', saveCard: true };
 }
 
 /** Ana buton: kayıtlı kart seçiliyse "Siparişi Ver" (doğrudan 3D), yoksa "Ödemeye Geç" (PaynKolay sayfası). */

@@ -12,23 +12,19 @@ test('varsayılan yoksa ilk kart; hiç kart yoksa null (yeni kart)', () => {
 });
 
 test('kart özelliği kapalıysa (allowlist dışı) navigasyon parametresi EKLENMEZ — mevcut akış aynı', () => {
-  assert.deepEqual(buildPaymentNavParams({ cardsEnabled: false, selectedCardId: 'a', saveNewCard: true }), {});
+  assert.deepEqual(buildPaymentNavParams({ cardsEnabled: false, selectedCardId: 'a' }), {});
 });
 
 test('kayıtlı kart seçiliyse saved_card + cardId, kaydet bayrağı taşınmaz', () => {
   assert.deepEqual(
-    buildPaymentNavParams({ cardsEnabled: true, selectedCardId: 'a', saveNewCard: true }),
+    buildPaymentNavParams({ cardsEnabled: true, selectedCardId: 'a' }),
     { payMode: 'saved_card', cardId: 'a' },
   );
 });
 
-test('yeni kart: onay kutusu varsayılan işaretsiz -> saveCard false; işaretliyse true', () => {
+test('yeni kart: customerKey HER ZAMAN gönderilir (saveCard true) — asıl karar PaynKolay sayfasında', () => {
   assert.deepEqual(
-    buildPaymentNavParams({ cardsEnabled: true, selectedCardId: null, saveNewCard: false }),
-    { payMode: 'new_card', saveCard: false },
-  );
-  assert.deepEqual(
-    buildPaymentNavParams({ cardsEnabled: true, selectedCardId: null, saveNewCard: true }),
+    buildPaymentNavParams({ cardsEnabled: true, selectedCardId: null }),
     { payMode: 'new_card', saveCard: true },
   );
 });

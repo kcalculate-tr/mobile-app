@@ -424,7 +424,6 @@ export default function CheckoutScreen() {
   const [cardsEnabled, setCardsEnabled] = useState(false);
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [selectedPayCardId, setSelectedPayCardId] = useState<string | null>(null); // null = yeni kart
-  const [saveNewCard, setSaveNewCard] = useState(false); // varsayılan İŞARETSİZ
   const cardsLoadedRef = useRef(false);
   useEffect(() => {
     if (PAYMENT_PROVIDER !== 'paynkolay' || !user?.id) return;
@@ -447,8 +446,8 @@ export default function CheckoutScreen() {
     })();
   }, [user?.id]);
   const paymentNavParams = useMemo(
-    () => buildPaymentNavParams({ cardsEnabled, selectedCardId: selectedPayCardId, saveNewCard }),
-    [cardsEnabled, selectedPayCardId, saveNewCard],
+    () => buildPaymentNavParams({ cardsEnabled, selectedCardId: selectedPayCardId }),
+    [cardsEnabled, selectedPayCardId],
   );
 
   const scheduledDates = useMemo(() =>
@@ -2209,17 +2208,15 @@ export default function CheckoutScreen() {
                 </View>
                 <Text style={[styles.addressTitle, selectedPayCardId === null && styles.addressTitleActive]}>+ Yeni kart ile öde</Text>
               </Pressable>
+              {/* Kart saklama kararı TEK yerde veriliyor: PaynKolay ödeme
+                  sayfasındaki "Öde" / "Öde ve Kartı Kayıt Et" butonları.
+                  Buradaki onay kutusu kaldırıldı — iki ayrı onay noktası
+                  birbiriyle çelişebiliyordu (bkz. commit mesajı). */}
               {selectedPayCardId === null ? (
-                <TouchableOpacity
-                  style={styles.payCheckboxRow}
-                  onPress={() => setSaveNewCard((v) => !v)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.payCheckbox, saveNewCard && styles.payCheckboxChecked]}>
-                    {saveNewCard ? <Text style={styles.payCheckboxMark}>✓</Text> : null}
-                  </View>
-                  <Text style={styles.payCheckboxLabel}>Kartımı sonraki ödemeler için kaydet</Text>
-                </TouchableOpacity>
+                <Text style={styles.payHintText}>
+                  Kartını ödeme adımında “Öde ve Kartı Kayıt Et” ile
+                  kaydedebilirsin; istemezsen sadece “Öde” de.
+                </Text>
               ) : null}
 
               <TrustBadges />
@@ -2313,10 +2310,17 @@ export default function CheckoutScreen() {
 
           {/* ── Bekleyen ödeme ── */}
           {isPaymentFeatureEnabled && pendingPaymentOrder ? (
-            <View style={[styles.card, { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a' }]}>
-              <Text style={styles.cardTitle}>Bekleyen Sipariş</Text>
-              <Text style={styles.addressTitle}>{pendingPaymentOrder.orderCode}</Text>
-              <Text style={styles.addressText}>Tutar: {toCurrency(pendingPaymentOrder.totalAmount)}</Text>
+            <View style={styles.pendingPayCard}>
+              <View style={styles.pendingPayHead}>
+                <WarningCircle size={18} color="#B91C1C" weight="fill" />
+                <Text style={styles.pendingPayTitle}>Ödemen tamamlanmadı</Text>
+              </View>
+              <Text style={styles.pendingPayBody}>
+                <Text style={styles.pendingPayCode}>{pendingPaymentOrder.orderCode}</Text>
+                {' '}numaralı siparişin için henüz ödeme alınamadı. Aşağıdan ödemeyi
+                tamamlamazsan sipariş mutfağa iletilmez.
+              </Text>
+              <Text style={styles.pendingPayAmount}>{toCurrency(pendingPaymentOrder.totalAmount)}</Text>
             </View>
           ) : null}
 
@@ -2752,34 +2756,41 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     color: '#555555',
   },
-  payCheckboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
-  },
-  payCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#d1d5db',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  payCheckboxChecked: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
-  },
-  payCheckboxMark: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  payCheckboxLabel: {
-    flex: 1,
+  payHintText: {
     fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+    lineHeight: 18,
+    marginTop: SPACING.xs,
+  },
+  // Ödemesi yarım kalan sipariş — sarı "bilgi" tonu yerine kırmızı UYARI.
+  pendingPayCard: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  pendingPayHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  pendingPayTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#B91C1C',
+  },
+  pendingPayBody: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: '#7F1D1D',
+    lineHeight: 19,
+  },
+  pendingPayCode: { fontFamily: 'PlusJakartaSans_700Bold' },
+  pendingPayAmount: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#B91C1C',
   },
   radioOuter: {
     width: 20,
