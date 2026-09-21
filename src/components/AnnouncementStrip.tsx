@@ -11,7 +11,10 @@ interface AnnouncementStripProps {
   onPress?: () => void;
 }
 
-const SEPARATOR = '  ▲  ';
+// Tekrarlar arasindaki ayrac. Simge YOK: ucgen (21.09.2026) marka diline
+// ait degildi ve kucuk puntoda kirli bir leke gibi duruyordu. Genis bosluk
+// hem nefes aldiriyor hem tekrarin nerede bittigini gosteriyor.
+const SEPARATOR = '      ';
 
 /**
  * Sürekli akan tek satırlık duyuru şeridi.
