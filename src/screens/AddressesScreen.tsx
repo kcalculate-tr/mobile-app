@@ -907,20 +907,22 @@ export default function AddressesScreen() {
                     activeOpacity={0.85}
                   >
                     <View style={s.addressCardInner}>
-                      <View style={[s.addressIcon, isActive && s.addressIconActive]}>
+                      <View style={[s.addressIcon, isActive && s.addressCardActiveIcon]}>
                         <MapPin size={18} color={isActive ? '#000000' : COLORS.text.secondary} />
                       </View>
                       <View style={s.addressInfo}>
                         <View style={s.addressTitleRow}>
                           <Text style={s.addressTitle}>{address.title || 'Adres'}</Text>
                           {isActive && (
-                            <View style={s.defaultBadge}>
-                              <Text style={s.defaultBadgeText}>Varsayılan</Text>
+                            <View style={[s.defaultBadge, isActive && s.defaultBadgeOnFill]}>
+                              <Text style={[s.defaultBadgeText, isActive && s.defaultBadgeTextOnFill]}>Varsayılan</Text>
                             </View>
                           )}
                         </View>
-                        <Text style={s.addressLine}>{address.full_address}</Text>
-                        <Text style={s.addressMeta}>{address.district} • {address.contact_name}</Text>
+                        <Text style={[s.addressLine, isActive && s.addressLineOnFill]}>{address.full_address}</Text>
+                        <Text style={[s.addressMeta, isActive && s.addressTextOnFill]}>
+                          {address.district} • {address.contact_name}
+                        </Text>
                       </View>
                     </View>
 
@@ -935,7 +937,7 @@ export default function AddressesScreen() {
                         </TouchableOpacity>
                       )}
                       <TouchableOpacity
-                        style={s.iconBtn}
+                        style={[s.iconBtn, isActive && s.iconBtnOnFill]}
                         onPress={() => openEditForm(address)}
                         activeOpacity={0.8}
                       >
@@ -1157,7 +1159,21 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     shadowRadius: 10,
     elevation: 2,
   },
-  addressCardActive: { borderColor: COLORS.brand.green },
+  // Secim dili TEK duzlem: checkout chip'leri, adres ve odeme satirlari gibi
+  // secili adres karti da marka yesili DOLGU. Stroke + beyaz zemin ayni
+  // uygulamada ikinci bir secim gorunumu olusturuyordu.
+  addressCardActive: {
+    backgroundColor: COLORS.brand.green,
+    borderColor: 'transparent',
+  },
+  // Yesil zemin uzerinde: ikon kabi beyaz, rozet siyah, ikincil yazi
+  // siyahin yumusatilmisi. Hepsi AA esigini asiyor.
+  addressCardActiveIcon: { backgroundColor: COLORS.white },
+  defaultBadgeOnFill: { backgroundColor: COLORS.text.primary },
+  defaultBadgeTextOnFill: { color: COLORS.white },
+  addressTextOnFill: { color: 'rgba(0,0,0,0.72)' },
+  addressLineOnFill: { color: COLORS.text.primary },
+  iconBtnOnFill: { backgroundColor: COLORS.white },
   addressCardInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   addressIcon: {
     width: 42, height: 42,
@@ -1165,7 +1181,6 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     backgroundColor: '#f0f0f0',
     alignItems: 'center', justifyContent: 'center',
   },
-  addressIconActive: { backgroundColor: COLORS.brand.green },
   addressInfo: { flex: 1 },
   addressTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   addressTitle: { fontSize: 15, fontWeight: '700',

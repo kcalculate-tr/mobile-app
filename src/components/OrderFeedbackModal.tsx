@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -17,6 +17,7 @@ import { COLORS, RADIUS, SPACING, SURFACE, TYPOGRAPHY } from '../constants/theme
 import { haptic } from '../utils/haptics';
 import { animateListChange } from '../utils/layoutAnimation';
 import type { FeedbackItem, ItemFeedbackMap } from '../lib/orderFeedback';
+import { fetchBrand } from '../lib/brands';
 
 const RATING_LABELS = ['', 'Çok kötü', 'Kötü', 'İdare eder', 'İyi', 'Harika'];
 
@@ -24,7 +25,7 @@ interface OrderFeedbackModalProps {
   visible: boolean;
   /** Siparişteki ürünler; her biri için ayrı beğeni sorulur. */
   items: FeedbackItem[];
-  /** Ana sayfa banner görseli — başlık arka planı. Yoksa marka yeşiline düşer. */
+  /** Görsel şeridi için dışarıdan URL; verilmezse kcalculate marka görseli çekilir. */
   bannerUrl?: string | null;
   submitting: boolean;
   onClose: () => void;
@@ -46,6 +47,21 @@ export default function OrderFeedbackModal({
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [itemFeedback, setItemFeedback] = useState<ItemFeedbackMap>({});
+  // Görsel şerit: markalar listesindeki kcalculate banner'ı. Ana sayfa hero'su
+  // kampanya metinleriyle dolu olduğu için pop-up başlığının altında karışık
+  // duruyordu; marka görseli sade ve her kampanyada aynı kalıyor.
+  const [brandHero, setBrandHero] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible || bannerUrl || brandHero) return;
+    let mounted = true;
+    fetchBrand('kcalculate')
+      .then((b) => { if (mounted) setBrandHero(b?.hero_image_url ?? null); })
+      .catch(() => { /* gorsel kozmetik: hata yutulur, yesil zemin kalir */ });
+    return () => { mounted = false; };
+  }, [visible, bannerUrl, brandHero]);
+
+  const heroUri = bannerUrl || brandHero;
 
   const handleClose = () => {
     setRating(0);
@@ -75,20 +91,18 @@ export default function OrderFeedbackModal({
               <X size={18} color={COLORS.text.primary} weight="bold" />
             </TouchableOpacity>
 
-            {/* Başlık bandı: ana sayfa banner'ı kırpılarak arka plan olur.
-                Görsel yüklenemezse marka yeşili zemin kalır — pop-up hiçbir
-                durumda boş bir dikdörtgenle açılmaz. */}
+            {/* Görsel şerit — ÜZERİNDE yazı yok. Başlık beyaz alana alındı:
+                fotoğrafın üstüne yazı bindirmek her kampanyada farklı bir
+                kontrast sorunu üretiyordu. Görsel yüklenemezse marka yeşili
+                zemin kalır, pop-up hiçbir durumda boş açılmaz. */}
             <ImageBackground
-              source={bannerUrl ? { uri: bannerUrl } : undefined}
+              source={heroUri ? { uri: heroUri } : undefined}
               style={styles.brandBanner}
               imageStyle={styles.brandBannerImg}
               resizeMode="cover"
-            >
-              {/* Koyu perde: banner'ın parlak bölgelerinde de beyaz yazı okunur. */}
-              <View style={styles.brandScrim} />
-              <Text style={styles.bannerTitle}>Deneyimin nasıldı?</Text>
-            </ImageBackground>
+            />
 
+            <Text style={styles.title}>Deneyimin nasıldı?</Text>
             <Text style={styles.sub}>
               Görüşlerine önem veriyoruz. Hizmet kalitemizi artırmak için önerilerini ve
               deneyimini bekliyoruz.
@@ -205,30 +219,17 @@ const styles = StyleSheet.create({
   closeBtn: { position: 'absolute', top: SPACING.md, right: SPACING.md, padding: 4, zIndex: 2 },
   brandBanner: {
     alignSelf: 'stretch',
-    // Sheet'in padding'ini geri alip bandi kenarlara TASIYOR.
+    // Sheet'in padding'ini geri alip serit kenarlara TASIYOR.
     marginTop: -SPACING.xl,
     marginHorizontal: -SPACING.xl,
-    marginBottom: SPACING.md,
-    height: 132,
+    marginBottom: SPACING.lg,
+    // 2:1 oranina yakin sade bir serit; marka gorseli bu oranda cekilmis.
+    height: 116,
     backgroundColor: COLORS.brand.green,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: SPACING.lg,
-    paddingHorizontal: SPACING.xl,
   },
   brandBannerImg: {
     borderTopLeftRadius: RADIUS.lg,
     borderTopRightRadius: RADIUS.lg,
-  },
-  brandScrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-  },
-  bannerTitle: {
-    fontSize: TYPOGRAPHY.size['2xl'],
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: COLORS.white,
-    textAlign: 'center',
   },
   itemsBlock: {
     alignSelf: 'stretch',
@@ -289,13 +290,15 @@ const styles = StyleSheet.create({
     color: COLORS.text.primary,
     minHeight: 18,
   },
+  // Gri dolgu kaldirildi: pasif yuzey dili beyaz zemin + net kenarlik
+  // (bkz. SURFACE, constants/theme). Gri dolgu alani "devre disi" gosteriyordu.
   input: {
     width: '100%',
     minHeight: 76,
     borderRadius: RADIUS.sm,
     borderWidth: 1,
-    borderColor: COLORS.border.medium,
-    backgroundColor: '#f6f6f6',
+    borderColor: SURFACE.inputBorder,
+    backgroundColor: SURFACE.inputBg,
     padding: SPACING.md,
     fontSize: TYPOGRAPHY.size.sm,
     fontFamily: 'PlusJakartaSans_500Medium',
