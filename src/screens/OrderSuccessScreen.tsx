@@ -71,22 +71,14 @@ export default function OrderSuccessScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  // macro_points params'da yoksa Supabase'den çek
-  useEffect(() => {
-    let mounted = true;
-    const { macro_points, orderId } = route.params;
-    if ((macro_points === undefined || macro_points === null) && orderId) {
-      supabase
-        .from('orders')
-        .select('macro_points')
-        .eq('id', orderId)
-        .single()
-        .then(({ data }) => {
-          if (mounted) setMacroPts(data?.macro_points ?? 0);
-        });
-    }
-    return () => { mounted = false; };
-  }, []);
+  // 21.09.2026 — Buradaki "orders.macro_points" sorgusu KALDIRILDI.
+  // orders tablosunda boyle bir kolon hic olmadi (yalniz macro_quantity ve
+  // macro_discount_amount var), dolayisiyla istek her seferinde 400 doneriyor,
+  // macroPts 0'a dusuyor ve musteriye HER siparişte "Macro Coin Kazanilamadi
+  // / Yeterli siparis tutarina ulasilamadi" yaziliyordu. Uydurma bir gerekce.
+  // Siparis basina makro odulu henuz hicbir yerde uretilmiyor
+  // (macro_transactions'ta order_id dolu tek satir yok), bu yuzden veri
+  // gelene kadar kart hic gosterilmiyor — yanlis bilgi vermektense sessiz kal.
 
   if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
     <ActivityIndicator color={COLORS.brand.green} size="large" />
@@ -108,6 +100,8 @@ export default function OrderSuccessScreen() {
   ];
 
   const hasMacroPts = macroPts !== null && macroPts > 0;
+  // Veri YOKSA kart hic cizilmez; "kazanilamadi" iddiasi dogrulanamaz.
+  const showMacroCard = macroPts !== null;
 
   return (
     <ScreenContainer style={styles.container}>
@@ -187,7 +181,8 @@ export default function OrderSuccessScreen() {
             </View>
           ) : null}
 
-          {/* Macro Coin Card — her zaman göster, sadece içerik değişir */}
+          {/* Macro Coin Card — yalnızca gerçek veri varken */}
+          {showMacroCard ? (
           <TouchableOpacity
             style={styles.macroCoinCard}
             onPress={() => navigation.navigate('ProfileOrders')}
@@ -210,6 +205,7 @@ export default function OrderSuccessScreen() {
             </View>
             <ArrowRight size={18} color="#ffffff" />
           </TouchableOpacity>
+          ) : null}
 
           {/* Buton 1 — Siparişimi Takip Et (siyah) */}
           <TouchableOpacity
