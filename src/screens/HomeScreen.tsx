@@ -21,6 +21,8 @@ import { getSupabaseClient } from '../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
 import { AppBanner, fetchActiveAppBanner } from '../lib/appBanners';
+import { AnnouncementStrip as AnnouncementStripData, fetchActiveAnnouncementStrip } from '../lib/announcementStrip';
+import AnnouncementStrip from '../components/AnnouncementStrip';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
@@ -60,6 +62,7 @@ export default function HomeScreen() {
   const [heroRows, setHeroRows] = useState<BannerRow[]>([]);
   const [promoRows, setPromoRows] = useState<BannerRow[]>([]);
   const [appBanner, setAppBanner] = useState<AppBanner | null>(null);
+  const [strip, setStrip] = useState<AnnouncementStripData | null>(null);
   const [activeHero, setActiveHero] = useState(0);
   const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
@@ -112,13 +115,14 @@ export default function HomeScreen() {
     setLoading(true);
     setLoadError('');
     try {
-      const [cats, prods, bannerData, featured, bh, banner] = await Promise.all([
+      const [cats, prods, bannerData, featured, bh, banner, stripRow] = await Promise.all([
         fetchCategories(),
         fetchProducts(),
         fetchBannerRows(),
         fetchFeaturedProducts(),
         fetchBusinessHours(),
         fetchActiveAppBanner(getSupabaseClient()),
+        fetchActiveAnnouncementStrip(getSupabaseClient()),
       ]);
       setCategories(cats);
       setProducts(prods);
@@ -127,6 +131,7 @@ export default function HomeScreen() {
       setFeaturedProducts(featured);
       setBusinessHours(bh);
       setAppBanner(banner);
+      setStrip(stripRow);
     } catch (e) {
       setLoadError(mapSupabaseErrorToUserMessage(e, 'İçerikler yüklenemedi. Lütfen tekrar deneyin.'));
     }
@@ -455,6 +460,27 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* Duyuru şeridi — Boss panel > Vitrin > Grid Yönetimi'nden yönetilir.
+            Satır yoksa (strip null) hiç render edilmez. */}
+        {strip ? (
+          <View style={styles.stripWrapper}>
+            <AnnouncementStrip
+              message={strip.message}
+              speedMs={strip.speedMs}
+              bgColor={strip.bgColor}
+              textColor={strip.textColor}
+              onPress={
+                strip.navigateTo
+                  ? () => {
+                      track('announcement_strip_click', { strip_id: strip.id, deeplink: strip.navigateTo ?? undefined });
+                      resolveNavigation(navigation, strip.navigateTo);
+                    }
+                  : undefined
+              }
+            />
+          </View>
+        ) : null}
 
         {/* Bu Hafta Popüler — banner_rows promo grid */}
         {promoRows.length > 0 && (
@@ -792,6 +818,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     maxWidth: 68,
   },
+  // Duyuru seridi: kenardan kenara (tam genislik), bolumlerden once
+  stripWrapper: { marginBottom: SPACING.xl },
   // Section
   section: {
     paddingHorizontal: SPACING.lg,

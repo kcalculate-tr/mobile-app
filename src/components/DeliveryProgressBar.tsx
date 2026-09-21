@@ -30,9 +30,28 @@ export default function DeliveryProgressBar({
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const progressPercentage = freeDeliveryThreshold > 0
-    ? Math.min((cartTotal / freeDeliveryThreshold) * 100, 100)
-    : 0;
+  // Esik 0 ise (teslimat her zaman ucretsiz) ilerleme kavrami yok: bar DOLU
+  // gosterilir. Eski davranis 0% birakip "Ucretsiz teslimat kazandiniz!"
+  // yaziyordu -> bos bar + sola yapisik kamyon (21.09.2026 tasarim notu).
+  const hasFreeThreshold = freeDeliveryThreshold > 0;
+
+  const belowMin = minOrderAmount > 0 && cartTotal < minOrderAmount;
+  const belowFree = hasFreeThreshold && !belowMin && cartTotal < freeDeliveryThreshold;
+  const isFree = !belowMin && !belowFree;
+
+  const progressPercentage = belowMin
+    ? Math.min((cartTotal / minOrderAmount) * 100, 100)
+    : belowFree
+      ? Math.min((cartTotal / freeDeliveryThreshold) * 100, 100)
+      : 100;
+
+  const mainText = belowMin
+    ? `Minimum sipariş tutarı için ₺${Math.ceil(minOrderAmount - cartTotal)} kaldı!`
+    : belowFree
+      ? `Ücretsiz teslimat için ₺${Math.ceil(freeDeliveryThreshold - cartTotal)} kaldı!`
+      : hasFreeThreshold
+        ? 'Ücretsiz teslimat kazandınız!'
+        : 'Teslimat ücretsiz.';
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -41,16 +60,6 @@ export default function DeliveryProgressBar({
       useNativeDriver: false,
     }).start();
   }, [progressPercentage, progressAnim]);
-
-  const belowMin = cartTotal < minOrderAmount;
-  const belowFree = cartTotal >= minOrderAmount && cartTotal < freeDeliveryThreshold;
-  const isFree = cartTotal >= freeDeliveryThreshold;
-
-  const mainText = belowMin
-    ? `Minimum sipariş tutarı için ₺${Math.ceil(minOrderAmount - cartTotal)} kaldı!`
-    : belowFree
-      ? `Ücretsiz teslimat için ₺${Math.ceil(freeDeliveryThreshold - cartTotal)} kaldı!`
-      : 'Ücretsiz teslimat kazandınız!';
 
   const animatedWidth = progressAnim.interpolate({
     inputRange: [0, 100],

@@ -4,10 +4,11 @@ import { Animated, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, T
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
+import {ArrowCounterClockwise, CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
+import MacroRing from '../components/MacroRing';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { haptic } from '../utils/haptics';
@@ -21,7 +22,13 @@ import { getEffectivePrice, hasDiscount } from '../utils/price';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
-import { fetchCrosssellProducts } from '../lib/products';
+import {
+  SUGGESTION_BADGES,
+  buildCartSuggestions,
+  fetchOrderedProductIds,
+  fetchSuggestionPool,
+} from '../lib/cartSuggestions';
+import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
 import { validateCoupon, getCouponErrorMessage } from '../lib/offers';
 import {
   fetchMacroProfile,
@@ -55,7 +62,15 @@ export default function CartScreen() {
   const getDiscountAmount = useCartStore(s => s.getDiscountAmount);
   const refreshPrices = useCartStore(s => s.refreshPrices);
   const refreshMacros = useCartStore(s => s.refreshMacros);
-  const [crosssellProducts, setCrosssellProducts] = useState<Product[]>([]);
+  // Öneri havuzu (is_crosssell + tüm içecekler) ve kullanıcının geçmişte
+  // sipariş ettiği ürünler — ikisi birlikte "sepetinde ne yoksa onu öner"
+  // kuralını besliyor (bkz. src/lib/cartSuggestions.ts).
+  const [suggestionPool, setSuggestionPool] = useState<Product[]>([]);
+  const [orderedProductIds, setOrderedProductIds] = useState<Set<string>>(new Set());
+  // Bos sepet: "gecmis siparislerin" + tek dokunusla tekrarla (21.09.2026).
+  const [pastOrders, setPastOrders] = useState<PastOrder[]>([]);
+  const [pastLoading, setPastLoading] = useState(false);
+  const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   const [priceUpdated, setPriceUpdated] = useState(false);
 
@@ -77,8 +92,17 @@ export default function CartScreen() {
   );
 
   useEffect(() => {
-    fetchCrosssellProducts().then(setCrosssellProducts).catch(() => {});
+    fetchSuggestionPool().then(setSuggestionPool).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) { setOrderedProductIds(new Set()); return; }
+    let mounted = true;
+    fetchOrderedProductIds(user.id)
+      .then((ids) => { if (mounted) setOrderedProductIds(ids); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) { setMacroProfile(null); return; }
@@ -86,6 +110,21 @@ export default function CartScreen() {
     fetchMacroProfile(user.id).then(p => { if (mounted) setMacroProfile(p); }).catch(() => {});
     return () => { mounted = false; };
   }, [user?.id]);
+
+  // Gecmis siparisler yalnizca sepet BOSKEN ve oturum acikken cekilir —
+  // dolu sepette gorunmedigi icin bos yere sorgu atilmaz.
+  const cartIsEmpty = items.length === 0;
+  useEffect(() => {
+    if (!cartIsEmpty || !user?.id) { setPastOrders([]); return; }
+    let mounted = true;
+    setPastLoading(true);
+    fetchPastOrders(user.id, 3)
+      .then((orders) => { if (mounted) setPastOrders(orders); })
+      .catch(() => { if (mounted) setPastOrders([]); })
+      .finally(() => { if (mounted) setPastLoading(false); });
+    return () => { mounted = false; };
+  }, [cartIsEmpty, user?.id]);
+
   const subtotal = getSubtotal();
   const totalMacros = getTotalMacros();
   const hasTotalMacros = totalMacros.kcal > 0 || totalMacros.protein > 0;
@@ -97,6 +136,29 @@ export default function CartScreen() {
   const couponSlideY   = useRef(new Animated.Value(-20)).current
   const couponOpacity  = useRef(new Animated.Value(0)).current
   const { toast, show: showToast, hide: hideToast } = useToast()
+
+  const handleReorder = useCallback(async (order: PastOrder) => {
+    setReorderingId(order.id);
+    try {
+      const res = await reorderToCart(order, addItem);
+      haptic.success();
+      if (res.added === 0) {
+        showToast('Bu siparişteki ürünler şu an satışta değil.', 'error');
+        return;
+      }
+      if (res.unavailable.length > 0) {
+        showToast(`${res.unavailable.length} ürün satışta olmadığı için eklenemedi.`, 'info');
+      } else {
+        showToast('Sipariş sepete eklendi.', 'success');
+      }
+      track('reorder_from_empty_cart', { order_id: order.id, added: res.added });
+    } catch {
+      haptic.error();
+      showToast('Sipariş tekrarlanamadı, tekrar dene.', 'error');
+    } finally {
+      setReorderingId(null);
+    }
+  }, [addItem, showToast]);
   const { animatedScale: checkoutScale, onPressIn: checkoutPressIn, onPressOut: checkoutPressOut } = useAnimatedPress(0.97)
 
 
@@ -190,7 +252,8 @@ export default function CartScreen() {
     navigation.navigate('Checkout');
   };
 
-  if (items.length === 0) {
+  if (cartIsEmpty) {
+    const hasPast = pastOrders.length > 0;
     return (
       <ScreenContainer edges={['top']}>
         <View style={styles.header}>
@@ -200,22 +263,85 @@ export default function CartScreen() {
             <Text style={styles.deliveryBtnText}>Teslimat Nasıl Olur?</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconWrap}>
-            <ShoppingCart size={64} color={COLORS.brand.green} weight="bold" />
+
+        <ScrollView
+          contentContainerStyle={[styles.emptyScroll, { paddingBottom: insets.bottom + 120 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <ShoppingCart size={56} color={COLORS.brand.green} weight="bold" />
+            </View>
+            <Text style={styles.emptyTitle}>Sepetin boş</Text>
+            <Text style={styles.emptySubtitle}>
+              {hasPast ? 'Geçen siparişini tek dokunuşla tekrarlayabilirsin.' : 'Hadi sağlıklı bir öğün ekle!'}
+            </Text>
+            <TouchableOpacity
+              style={styles.browseButton}
+              onPress={() => navigation.navigate('Categories')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.browseButtonText}>Menüye Göz At</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.emptyTitle}>Sepetin boş</Text>
-          <Text style={styles.emptySubtitle}>
-            Hadi sağlıklı bir öğün ekle!
-          </Text>
-          <TouchableOpacity
-            style={styles.browseButton}
-            onPress={() => navigation.navigate('Categories')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.browseButtonText}>Menüye Göz At</Text>
-          </TouchableOpacity>
-        </View>
+
+          {pastLoading ? (
+            <View style={styles.pastLoading}>
+              <ActivityIndicator color={COLORS.brand.green} />
+            </View>
+          ) : hasPast ? (
+            <View style={styles.pastSection}>
+              <View style={styles.pastHeaderRow}>
+                <Text style={styles.pastHeaderTitle}>Geçmiş Siparişlerin</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('ProfileOrders')} activeOpacity={0.7}>
+                  <Text style={styles.pastHeaderLink}>Tümü</Text>
+                </TouchableOpacity>
+              </View>
+
+              {pastOrders.map((order) => {
+                const itemCount = order.items.reduce((n, it) => n + it.quantity, 0);
+                const summary = order.items
+                  .map((it) => (it.quantity > 1 ? `${it.quantity}× ${it.name}` : it.name))
+                  .join(', ');
+                const dateLabel = new Date(order.createdAt).toLocaleDateString('tr-TR', {
+                  day: 'numeric', month: 'long',
+                });
+                const busy = reorderingId === order.id;
+                return (
+                  <View key={order.id} style={styles.pastCard}>
+                    <View style={styles.pastCardTop}>
+                      <Text style={styles.pastCardDate}>{dateLabel}</Text>
+                      <Text style={styles.pastCardTotal}>₺{order.totalAmount.toFixed(2)}</Text>
+                    </View>
+                    <Text style={styles.pastCardItems} numberOfLines={2}>{summary}</Text>
+                    <View style={styles.pastCardBottom}>
+                      <Text style={styles.pastCardMeta}>
+                        {itemCount} ürün{order.orderCode ? ` • ${order.orderCode}` : ''}
+                      </Text>
+                      <TouchableOpacity
+                        style={[styles.reorderBtn, busy && styles.reorderBtnBusy]}
+                        onPress={() => handleReorder(order)}
+                        disabled={busy}
+                        activeOpacity={0.85}
+                      >
+                        {busy
+                          ? <ActivityIndicator size="small" color="#000000" />
+                          : (
+                            <>
+                              <ArrowCounterClockwise size={15} color="#000000" weight="bold" />
+                              <Text style={styles.reorderBtnText}>Siparişi Tekrarla</Text>
+                            </>
+                          )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+        </ScrollView>
+
+        <Toast {...toast} onHide={hideToast} />
         <DeliveryInfoModal visible={deliveryModal.visible} onClose={deliveryModal.close} />
       </ScreenContainer>
     );
@@ -480,10 +606,13 @@ export default function CartScreen() {
 
         {/* Cross-sell: Bunlar da ilgini çekebilir */}
         {(() => {
-          const availableCrosssell = crosssellProducts.filter(
-            (p) => !items.some((item) => item.productId === String(p.id)),
-          );
-          if (availableCrosssell.length === 0) return null;
+          const suggestions = buildCartSuggestions({
+            cartItems: items,
+            pool: suggestionPool,
+            orderedProductIds,
+            limit: 10,
+          });
+          if (suggestions.length === 0) return null;
           return (
             <View style={styles.crosssellSection}>
               <Text style={styles.crosssellTitle}>Bunlar da ilgini çekebilir</Text>
@@ -492,7 +621,7 @@ export default function CartScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.crosssellScroll}
               >
-                {availableCrosssell.map((product) => (
+                {suggestions.map(({ product, reason }) => (
                   <TouchableOpacity
                     key={product.id}
                     style={styles.crosssellCard}
@@ -502,6 +631,9 @@ export default function CartScreen() {
                       navigation.navigate('ProductDetail', { productId: String(product.id) });
                     }}
                   >
+                    <View style={styles.crosssellBadge}>
+                      <Text style={styles.crosssellBadgeText}>{SUGGESTION_BADGES[reason]}</Text>
+                    </View>
                     <View style={styles.crosssellImageWrap}>
                       {product.img ? (
                         <CachedImage
@@ -598,56 +730,43 @@ export default function CartScreen() {
 
           {hasTotalMacros ? (() => {
             const macroTotal = totalMacros.protein + totalMacros.carbs + totalMacros.fats;
-            const proteinRatio = macroTotal > 0 ? totalMacros.protein / macroTotal : 0;
-            const carbsRatio = macroTotal > 0 ? totalMacros.carbs / macroTotal : 0;
-            const fatsRatio = macroTotal > 0 ? totalMacros.fats / macroTotal : 0;
-            const fmtG = (v: number) => v % 1 === 0 ? `${v}g` : `${v.toFixed(1)}g`;
+            const ratio = (v: number) => (macroTotal > 0 ? v / macroTotal : 0);
+            const fmtG = (v: number) => (v % 1 === 0 ? `${v}g` : `${v.toFixed(1)}g`);
             return (
               <View style={styles.macroBlock}>
-                <Text style={styles.macroBlockTitle}>Sepet Besin Değerleri</Text>
-
-                {/* Calorie headline */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.xs }}>
-                  <Flame size={22} color="#111111" weight="fill" />
-                  <Text style={styles.macroKcalHeadline}>{Math.round(totalMacros.kcal).toLocaleString('tr-TR')} kcal</Text>
+                <View style={styles.macroHeadRow}>
+                  <View style={styles.macroKcalGroup}>
+                    <Flame size={20} color={COLORS.text.primary} weight="fill" />
+                    <Text style={styles.macroKcalHeadline}>
+                      {Math.round(totalMacros.kcal).toLocaleString('tr-TR')}
+                    </Text>
+                    <Text style={styles.macroKcalUnit}>kcal</Text>
+                  </View>
+                  <Text style={styles.macroBlockTitle}>Sepet besin değerleri</Text>
                 </View>
 
-                {/* Stacked bar */}
-                <View style={styles.macroBar}>
-                  {proteinRatio > 0 && (
-                    <View style={[styles.macroBarSegment, { flex: proteinRatio, backgroundColor: MACRO_COLORS.protein.main, borderTopLeftRadius: 99, borderBottomLeftRadius: 99, borderTopRightRadius: carbsRatio === 0 && fatsRatio === 0 ? 99 : 0, borderBottomRightRadius: carbsRatio === 0 && fatsRatio === 0 ? 99 : 0 }]} />
-                  )}
-                  {carbsRatio > 0 && (
-                    <View style={[styles.macroBarSegment, { flex: carbsRatio, backgroundColor: MACRO_COLORS.carbs.main, borderTopLeftRadius: proteinRatio === 0 ? 99 : 0, borderBottomLeftRadius: proteinRatio === 0 ? 99 : 0, borderTopRightRadius: fatsRatio === 0 ? 99 : 0, borderBottomRightRadius: fatsRatio === 0 ? 99 : 0 }]} />
-                  )}
-                  {fatsRatio > 0 && (
-                    <View style={[styles.macroBarSegment, { flex: fatsRatio, backgroundColor: MACRO_COLORS.fat.main, borderTopRightRadius: 99, borderBottomRightRadius: 99, borderTopLeftRadius: proteinRatio === 0 && carbsRatio === 0 ? 99 : 0, borderBottomLeftRadius: proteinRatio === 0 && carbsRatio === 0 ? 99 : 0 }]} />
-                  )}
-                </View>
-
-                {/* Legend */}
-                <View style={styles.macroLegend}>
-                  <View style={styles.macroLegendItem}>
-                    <View style={[styles.macroLegendDot, { backgroundColor: MACRO_COLORS.protein.main }]} />
-                    <View>
-                      <Text style={styles.macroLegendValue}>{fmtG(totalMacros.protein)}</Text>
-                      <Text style={styles.macroLegendLabel}>Protein</Text>
-                    </View>
-                  </View>
-                  <View style={styles.macroLegendItem}>
-                    <View style={[styles.macroLegendDot, { backgroundColor: MACRO_COLORS.carbs.main }]} />
-                    <View>
-                      <Text style={styles.macroLegendValue}>{fmtG(totalMacros.carbs)}</Text>
-                      <Text style={styles.macroLegendLabel}>Karb</Text>
-                    </View>
-                  </View>
-                  <View style={styles.macroLegendItem}>
-                    <View style={[styles.macroLegendDot, { backgroundColor: MACRO_COLORS.fat.main }]} />
-                    <View>
-                      <Text style={styles.macroLegendValue}>{fmtG(totalMacros.fats)}</Text>
-                      <Text style={styles.macroLegendLabel}>Yağ</Text>
-                    </View>
-                  </View>
+                <View style={styles.macroRingRow}>
+                  <MacroRing
+                    ratio={ratio(totalMacros.protein)}
+                    color={MACRO_COLORS.protein.main}
+                    trackColor={MACRO_COLORS.protein.track}
+                    value={fmtG(totalMacros.protein)}
+                    label="Protein"
+                  />
+                  <MacroRing
+                    ratio={ratio(totalMacros.carbs)}
+                    color={MACRO_COLORS.carbs.main}
+                    trackColor={MACRO_COLORS.carbs.track}
+                    value={fmtG(totalMacros.carbs)}
+                    label="Karb"
+                  />
+                  <MacroRing
+                    ratio={ratio(totalMacros.fats)}
+                    color={MACRO_COLORS.fat.main}
+                    trackColor={MACRO_COLORS.fat.track}
+                    value={fmtG(totalMacros.fats)}
+                    label="Yağ"
+                  />
                 </View>
               </View>
             );
@@ -748,11 +867,98 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   },
 
   // Empty
+  emptyScroll: {
+    flexGrow: 1,
+    paddingTop: SPACING.xl,
+  },
+  // Bos sepet artik kaydirilabilir (altinda gecmis siparisler var) — bu yuzden
+  // flex:1 ile dikey ortalama yerine sabit dolgu kullaniyoruz.
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING['3xl'],
+    paddingVertical: SPACING['2xl'],
+  },
+  pastLoading: { paddingVertical: SPACING.xl, alignItems: 'center' },
+  pastSection: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    gap: SPACING.md,
+  },
+  pastHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pastHeaderTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  pastHeaderLink: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
+  },
+  pastCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border.medium,
+    gap: SPACING.sm,
+  },
+  pastCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pastCardDate: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
+  },
+  pastCardTotal: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  pastCardItems: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.primary,
+    lineHeight: 19,
+  },
+  pastCardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  pastCardMeta: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.tertiary,
+  },
+  reorderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minWidth: 152,
+    height: 38,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.brand.green,
+  },
+  reorderBtnBusy: { opacity: 0.7 },
+  reorderBtnText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
   },
   emptyIconWrap: { marginBottom: SPACING.lg },
   emptyTitle: { fontSize: TYPOGRAPHY.size['2xl'], fontWeight: TYPOGRAPHY.weight.bold,
@@ -984,6 +1190,21 @@ textDecorationLine: 'line-through' },
     padding: SPACING.sm,
     ...SHADOWS.sm,
   },
+  // Oneri gerekcesi rozeti — kullanici NEDEN bu urunu gordugunu bilsin
+  // ("Yanina icecek" / "Hic denemedin" / "Sepetini tamamla").
+  crosssellBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.brand.green,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    marginBottom: SPACING.xs,
+  },
+  crosssellBadgeText: {
+    fontSize: 10,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
+  },
   crosssellImageWrap: {
     width: '100%',
     height: 100,
@@ -1105,27 +1326,47 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
 fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
 
   // Macro summary block
+  // Eski hal: #f8fef0 zemin + yesil stroke'lu kart icinde yigin bar.
+  // 21.09.2026: dusuk-opakliktaki yesil katman kaldirildi, makrolar halka
+  // (MacroRing) olarak gosteriliyor — Siparis Ozeti karti tek duzlem.
   macroBlock: {
-    backgroundColor: '#f8fef0',
-    borderRadius: RADIUS.sm,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(198,240,79,0.4)',
-    gap: SPACING.sm,
+    paddingBottom: SPACING.md,
+    marginBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border.light,
+    gap: SPACING.md,
   },
-  macroBlockTitle: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#5a7a00', textTransform: 'uppercase', letterSpacing: 0.5 },
-  macroKcalHeadline: { fontSize: TYPOGRAPHY.size['3xl'], fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
-  macroBar: { flexDirection: 'row', height: 9, borderRadius: 99, overflow: 'hidden' },
-  macroBarSegment: { height: '100%' },
-  macroLegend: { flexDirection: 'row', justifyContent: 'space-between' },
-  macroLegendItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
-  macroLegendDot: { width: 8, height: 8, borderRadius: 4 },
-  macroLegendValue: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
-  macroLegendLabel: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.medium,
-fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.secondary, marginTop: 1 },
+  // Alev ikonu + sayi tek grup icinde DIKEY ORTALI; 'baseline' kullanildiginda
+  // SVG ikonun baseline'i olmadigi icin ikon sayiya gore asagi kayiyordu.
+  macroHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  macroKcalGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  macroBlockTitle: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.medium,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
+  },
+  macroKcalHeadline: {
+    fontSize: TYPOGRAPHY.size['3xl'],
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  macroKcalUnit: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+    // Optik hiza: 'kcal' buyuk sayinin tabanina yakin dursun
+    alignSelf: 'flex-end',
+    paddingBottom: 5,
+  },
+  macroRingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
 
   priceUpdateBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
     backgroundColor: '#FEF9E7', borderWidth: 1, borderColor: '#F8C90E', borderRadius: 12, padding: 12, marginBottom: 12 },

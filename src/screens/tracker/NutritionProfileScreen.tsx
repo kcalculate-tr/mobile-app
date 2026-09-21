@@ -21,6 +21,7 @@ import { getSupabaseClient } from '../../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
+import MacroRing from '../../components/MacroRing';
 import {
   ActivityLevel,
   Gender,
@@ -48,6 +49,15 @@ const getBMICategory = (bmi: number) => {
 };
 
 const getBMIProgress = (bmi: number) => Math.min(1, Math.max(0, (bmi - 10) / 30));
+
+// BMI olcegi 10–40 alani uzerinde ORANTILI bolunur; eski tasarimda 4 etiket
+// esit araliklarla diziliyordu ve isaretci ile etiketler ortusmuyordu.
+const BMI_SEGMENTS = [
+  { label: 'Zayıf', range: '<18.5', flex: 8.5, color: '#06B6D4' },
+  { label: 'Normal', range: '18.5–25', flex: 6.5, color: '#16A34A' },
+  { label: 'Fazla', range: '25–30', flex: 5, color: '#F59E0B' },
+  { label: 'Obez', range: '30+', flex: 10, color: '#DC2626' },
+];
 
 function ToggleGroup<T extends string>({ options, selected, onSelect }: {
   options: { key: T; label: string }[];
@@ -283,17 +293,37 @@ export default function NutritionProfileScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* BMR Kartı */}
-          <View style={s.bmrCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.bmrLabel}>Bazal Metabolizma (BMR)</Text>
-              <Text style={s.bmrValue}>{macros.bmr} <Text style={s.bmrUnit}>kcal</Text></Text>
-              <Text style={s.tdeeText}>Günlük yakım: {macros.tdee} kcal</Text>
+          {/* Hero — asil sayi HEDEF; BMR/TDEE onu besleyen ikincil metrikler */}
+          <View style={s.hero}>
+            <View style={s.heroTopRow}>
+              <Text style={s.heroEyebrow}>GÜNLÜK HEDEFİN</Text>
+              <View style={s.heroGoalChip}>
+                <Text style={s.heroGoalChipText}>
+                  {GOAL_OPTIONS.find((g) => g.key === goal)?.label ?? 'Hedef'}
+                </Text>
+              </View>
             </View>
-            <View style={s.targetKcalBox}>
-              <Text style={s.targetKcalLabel}>Hedef</Text>
-              <Text style={s.targetKcalValue}>{displayMacros.targetKcal}</Text>
-              <Text style={s.targetKcalUnit}>kcal/gün</Text>
+
+            <View style={s.heroValueRow}>
+              <Text style={s.heroValue}>{displayMacros.targetKcal.toLocaleString('tr-TR')}</Text>
+              <Text style={s.heroUnit}>kcal/gün</Text>
+            </View>
+
+            <View style={s.heroStatsRow}>
+              <View style={s.heroStat}>
+                <Text style={s.heroStatValue}>{macros.bmr.toLocaleString('tr-TR')}</Text>
+                <Text style={s.heroStatLabel}>Bazal metabolizma</Text>
+              </View>
+              <View style={s.heroStatDivider} />
+              <View style={s.heroStat}>
+                <Text style={s.heroStatValue}>{macros.tdee.toLocaleString('tr-TR')}</Text>
+                <Text style={s.heroStatLabel}>Günlük yakım</Text>
+              </View>
+              <View style={s.heroStatDivider} />
+              <View style={s.heroStat}>
+                <Text style={s.heroStatValue}>{macros.targetWater}L</Text>
+                <Text style={s.heroStatLabel}>Su hedefi</Text>
+              </View>
             </View>
           </View>
 
@@ -309,14 +339,40 @@ export default function NutritionProfileScreen() {
               <Text style={[s.bmiValue, { color: bmiCategory.color }]}>{bmi}</Text>
               <Text style={s.bmiUnit}>kg/m²</Text>
             </View>
+            {/* Segmentli olcek + isaretci: duz tek renkli doluluk yerine
+                kullanicinin hangi bantta oldugunu dogrudan gosterir. */}
             <View style={s.bmiTrack}>
-              <View style={[s.bmiFill, { width: `${bmiProgress * 100}%` as any, backgroundColor: bmiCategory.color }]} />
+              {BMI_SEGMENTS.map((seg, i) => (
+                <View
+                  key={seg.label}
+                  style={[
+                    s.bmiSegment,
+                    {
+                      flex: seg.flex,
+                      backgroundColor: seg.color,
+                      opacity: seg.label === bmiCategory.label ? 1 : 0.28,
+                      borderTopLeftRadius: i === 0 ? 5 : 0,
+                      borderBottomLeftRadius: i === 0 ? 5 : 0,
+                      borderTopRightRadius: i === BMI_SEGMENTS.length - 1 ? 5 : 0,
+                      borderBottomRightRadius: i === BMI_SEGMENTS.length - 1 ? 5 : 0,
+                    },
+                  ]}
+                />
+              ))}
+              <View
+                style={[
+                  s.bmiMarker,
+                  { left: `${bmiProgress * 100}%` as any, borderColor: bmiCategory.color },
+                ]}
+              />
             </View>
             <View style={s.bmiScale}>
-              <Text style={s.bmiScaleText}>Zayıf{'\n'}&lt;18.5</Text>
-              <Text style={s.bmiScaleText}>Normal{'\n'}18.5–25</Text>
-              <Text style={s.bmiScaleText}>Fazla{'\n'}25–30</Text>
-              <Text style={s.bmiScaleText}>Obez{'\n'}30+</Text>
+              {BMI_SEGMENTS.map((seg) => (
+                <View key={seg.label} style={{ flex: seg.flex }}>
+                  <Text style={s.bmiScaleText}>{seg.label}</Text>
+                  <Text style={s.bmiScaleRange}>{seg.range}</Text>
+                </View>
+              ))}
             </View>
           </View>
 
@@ -389,8 +445,23 @@ export default function NutritionProfileScreen() {
                     {activity === opt.key && <View style={s.activityRadioDot} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.activityLabel}>{opt.label}</Text>
-                    <Text style={s.activityDesc}>{opt.desc}</Text>
+                    <Text style={[s.activityLabel, activity === opt.key && s.activityLabelActive]}>{opt.label}</Text>
+                    <Text style={[s.activityDesc, activity === opt.key && s.activityDescActive]}>{opt.desc}</Text>
+                  </View>
+                  {/* Yogunluk gostergesi: 5 kademe, secili kademeye kadar dolu */}
+                  <View style={s.intensityRow}>
+                    {ACTIVITY_OPTIONS.map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          s.intensityDot,
+                          { height: 5 + i * 3 },
+                          i <= ACTIVITY_OPTIONS.findIndex((o) => o.key === opt.key) && s.intensityDotOn,
+                          activity === opt.key && i <= ACTIVITY_OPTIONS.findIndex((o) => o.key === opt.key)
+                            && s.intensityDotOnActive,
+                        ]}
+                      />
+                    ))}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -431,22 +502,43 @@ export default function NutritionProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            {!useCustomMacros && (
-              <View style={s.macroGrid}>
-                {[
-                  { label: 'Protein', value: macros.protein, unit: 'g', color: MACRO_COLORS.protein.main, bg: MACRO_COLORS.protein.track },
-                  { label: 'Karb', value: macros.carbs, unit: 'g', color: MACRO_COLORS.carbs.main, bg: MACRO_COLORS.carbs.track },
-                  { label: 'Yağ', value: macros.fat, unit: 'g', color: MACRO_COLORS.fat.main, bg: MACRO_COLORS.fat.track },
-                  { label: 'Su', value: macros.targetWater, unit: 'L', color: '#06B6D4', bg: '#ECFEFF' },
-                ].map((m) => (
-                  <View key={m.label} style={[s.macroCell, { backgroundColor: m.bg }]}>
-                    <Text style={[s.macroCellValue, { color: m.color }]}>{m.value}</Text>
-                    <Text style={[s.macroCellUnit, { color: m.color }]}>{m.unit}</Text>
-                    <Text style={s.macroCellLabel}>{m.label}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+            {!useCustomMacros && (() => {
+              // Halkalarin dolulugu makronun toplam gram icindeki PAYI
+              // (sepetteki gosterimle ayni dil) — duz pastel kutular yerine.
+              const gramTotal = macros.protein + macros.carbs + macros.fat;
+              const share = (v: number) => (gramTotal > 0 ? v / gramTotal : 0);
+              return (
+                <View style={s.macroRingRow}>
+                  <MacroRing
+                    ratio={share(macros.protein)}
+                    color={MACRO_COLORS.protein.main}
+                    trackColor={MACRO_COLORS.protein.track}
+                    value={`${macros.protein}g`}
+                    label="Protein"
+                    size={72}
+                    stroke={7}
+                  />
+                  <MacroRing
+                    ratio={share(macros.carbs)}
+                    color={MACRO_COLORS.carbs.main}
+                    trackColor={MACRO_COLORS.carbs.track}
+                    value={`${macros.carbs}g`}
+                    label="Karb"
+                    size={72}
+                    stroke={7}
+                  />
+                  <MacroRing
+                    ratio={share(macros.fat)}
+                    color={MACRO_COLORS.fat.main}
+                    trackColor={MACRO_COLORS.fat.track}
+                    value={`${macros.fat}g`}
+                    label="Yağ"
+                    size={72}
+                    stroke={7}
+                  />
+                </View>
+              );
+            })()}
             {useCustomMacros && (
               <View style={s.customMacroGrid}>
                 {[
@@ -500,24 +592,41 @@ const s = StyleSheet.create({
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   content: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
 
-  bmrCard: {
-    backgroundColor: '#1a1a1a', borderRadius: 20, padding: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 16,
+  // Hero — eski "BMR + kucuk hedef kutusu" duzeni hiyerarsiyi ters
+  // kuruyordu (BMR buyuk, asil hedef kucuk). 21.09.2026: hedef basrolde.
+  hero: {
+    backgroundColor: '#101010',
+    borderRadius: 24,
+    padding: 20,
+    gap: 14,
   },
-  bmrLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6 },
-  bmrValue: { fontSize: 32, fontWeight: '800',
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.brand.green },
-  bmrUnit: { fontSize: 16, fontWeight: '400',
-fontFamily: 'PlusJakartaSans_400Regular', color: 'rgba(255,255,255,0.6)' },
-  tdeeText: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 },
-  targetKcalBox: {
-    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 14,
-    alignItems: 'center', minWidth: 80,
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroEyebrow: {
+    fontSize: 11, letterSpacing: 1.2, color: 'rgba(255,255,255,0.45)',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
-  targetKcalLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 4 },
-  targetKcalValue: { fontSize: 24, fontWeight: '800',
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#ffffff' },
-  targetKcalUnit: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  heroGoalChip: {
+    backgroundColor: COLORS.brand.green, borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  heroGoalChipText: {
+    fontSize: 11, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  heroValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  heroValue: {
+    fontSize: 46, lineHeight: 50, color: COLORS.brand.green,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+  },
+  heroUnit: { fontSize: 14, color: 'rgba(255,255,255,0.55)', fontFamily: 'PlusJakartaSans_500Medium' },
+  heroStatsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16,
+    paddingVertical: 12,
+  },
+  heroStat: { flex: 1, alignItems: 'center', gap: 2 },
+  heroStatValue: { fontSize: 16, color: '#ffffff', fontFamily: 'PlusJakartaSans_700Bold' },
+  heroStatLabel: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
+  heroStatDivider: { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.10)' },
 
   card: {
     backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 12,
@@ -537,11 +646,22 @@ fontFamily: 'PlusJakartaSans_700Bold'},
 fontFamily: 'PlusJakartaSans_800ExtraBold'},
   bmiUnit: { fontSize: 13, color: COLORS.text.tertiary, marginBottom: 6 },
   bmiTrack: {
-    height: 8, borderRadius: 4, backgroundColor: '#f0f0f0', overflow: 'hidden',
+    height: 10, borderRadius: 5, flexDirection: 'row', gap: 2,
+    marginTop: 4, marginBottom: 10,
   },
-  bmiFill: { height: '100%', borderRadius: 4 },
-  bmiScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  bmiScaleText: { fontSize: 9, color: COLORS.text.tertiary, textAlign: 'center' },
+  bmiSegment: { height: '100%' },
+  bmiMarker: {
+    position: 'absolute', top: -4, width: 18, height: 18, borderRadius: 9,
+    marginLeft: -9, backgroundColor: '#ffffff', borderWidth: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18, shadowRadius: 3, elevation: 3,
+  },
+  bmiScale: { flexDirection: 'row', gap: 2 },
+  bmiScaleText: {
+    fontSize: 10, color: COLORS.text.secondary, textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  bmiScaleRange: { fontSize: 9, color: COLORS.text.tertiary, textAlign: 'center' },
 
   triRow: { flexDirection: 'row', gap: 8 },
   triCell: { flex: 1, gap: 6 },
@@ -560,40 +680,36 @@ fontFamily: 'PlusJakartaSans_600SemiBold'},
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12,
     borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.08)', backgroundColor: '#f9f9f9',
   },
-  activityRowActive: { borderColor: COLORS.brand.green, backgroundColor: '#f7fce6' },
+  // Secim dili tek duzlem: secili satir marka yesili DOLGU (checkout
+  // chip'leri ve adres/odeme satirlariyla ayni).
+  activityRowActive: { borderColor: 'transparent', backgroundColor: COLORS.brand.green },
   activityRadio: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 2,
     borderColor: '#d0d0d0', alignItems: 'center', justifyContent: 'center',
   },
-  activityRadioActive: { borderColor: COLORS.brand.green },
-  activityRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.brand.green },
+  activityRadioActive: { borderColor: '#000000' },
+  activityRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#000000' },
   activityLabel: { fontSize: 14, fontWeight: '600',
 fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  activityLabelActive: { fontFamily: 'PlusJakartaSans_700Bold' },
   activityDesc: { fontSize: 11, color: COLORS.text.tertiary, marginTop: 1 },
+  activityDescActive: { color: 'rgba(0,0,0,0.62)' },
+  intensityRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
+  intensityDot: { width: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.12)' },
+  intensityDotOn: { backgroundColor: 'rgba(0,0,0,0.25)' },
+  intensityDotOnActive: { backgroundColor: '#000000' },
 
   macroCard: {
     backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  macroGrid: {
+  macroRingRow: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 8,
-  },
-  macroCell: {
-    flex: 1,
-    borderRadius: 14,
-    padding: 10,
+    justifyContent: 'space-around',
     alignItems: 'center',
-    gap: 2,
-    minWidth: 0,
+    paddingVertical: 4,
   },
-  macroCellValue: { fontSize: 15, fontWeight: '800',
-fontFamily: 'PlusJakartaSans_800ExtraBold'},
-  macroCellUnit: { fontSize: 10, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold'},
-  macroCellLabel: { fontSize: 10, color: COLORS.text.tertiary, marginTop: 2 },
 
   macroToggleRow: {
     flexDirection: 'row',

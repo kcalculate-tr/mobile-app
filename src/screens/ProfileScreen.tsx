@@ -765,7 +765,9 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    // Kart arka plani #000 — acik gri ayirici burada beyaz bir cizgi gibi
+    // patliyordu; koyu zeminde dogru olan dusuk-opaklikli beyaz.
+    backgroundColor: 'rgba(255,255,255,0.10)',
     marginBottom: SPACING.lg,
   },
   statsRow: {
@@ -781,17 +783,19 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xl,
     fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#111111',
+    // Siyah kart uzerinde #111 pratikte gorunmuyordu (BMI / Gunluk Hedef /
+    // Bu Hafta Ort. okunmuyordu) — 21.09.2026 kontrast duzeltmesi.
+    color: '#FFFFFF',
   },
   statLabel: {
     fontSize: TYPOGRAPHY.size.xs,
-    color: '#9CA3AF',
+    color: 'rgba(255,255,255,0.55)',
     textAlign: 'center',
   },
   statDivider: {
     width: 1,
     height: 32,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   bmiBadge: {
     borderRadius: RADIUS.xs,
