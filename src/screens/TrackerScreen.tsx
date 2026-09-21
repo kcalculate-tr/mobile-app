@@ -25,7 +25,7 @@ import { KCALCULATE_LOGO_B64 } from '../constants/kcalculateLogo';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import { Circle, Svg, Polyline } from 'react-native-svg';
-import {ChartBar, CheckCircle, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, TrophyIcon} from 'phosphor-react-native';
+import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, Target, TrophyIcon} from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
@@ -1856,20 +1856,25 @@ const html = `
             style={{ height: 56, width: 129 }}
             resizeMode="contain"
           />
-          <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
+          {/* Anasayfa header'ıyla aynı dil: dolgusuz, ikon + küçük etiket.
+              Önceki hal (gri pill + büyük yeşil pill) sayfanın geri kalanına
+              göre fazla baskındı. */}
+          <View style={s.headerActions}>
             <TouchableOpacity
-              style={s.historyBtn}
+              style={s.headerActionBtn}
               onPress={() => navigation.navigate('MeasurementHistory')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Text style={s.historyBtnText}>Geçmiş</Text>
+              <ClockCounterClockwise size={16} color="#000000" />
+              <Text style={s.headerActionText}>Geçmiş</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={s.editBtn}
+              style={s.headerActionBtn}
               onPress={() => navigation.navigate('NutritionProfile')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Text style={s.editBtnText}>Hedef Düzenle</Text>
+              <Target size={16} color="#000000" />
+              <Text style={s.headerActionText}>Hedef Düzenle</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2199,22 +2204,24 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: TYPOGRAPHY.size['3xl'], fontWeight: TYPOGRAPHY.weight.extrabold,
 fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#000000' },
-  editBtn: {
-    backgroundColor: COLORS.brand.green,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+  // Anasayfa header'ındaki (Kuponlar / Nasıl Çalışır?) desenle birebir aynı.
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  headerActionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.xs,
+    width: 54,
   },
-  editBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  historyBtn: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+  headerActionText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#555555',
+    textAlign: 'center',
+    lineHeight: 11,
   },
-  historyBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   // View mode toggle
   toggleRow: {
