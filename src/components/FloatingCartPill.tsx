@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   pill: {
     height: FLOATING_PILL_HEIGHT,
     borderRadius: 999,
-    backgroundColor: '#C6F04F',
+    backgroundColor: '#B9EF14',
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',

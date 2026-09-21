@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: '#C6F04F',
+    borderColor: '#B9EF14',
     alignSelf: 'flex-start',
   },
   badgeSm: {

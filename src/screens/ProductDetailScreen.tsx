@@ -1466,7 +1466,7 @@ const styles = StyleSheet.create({
   requiredPill: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#C6F04F',
+    borderColor: '#B9EF14',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 100,
@@ -1534,8 +1534,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   radioSelected: {
-    borderColor: '#C6F04F',
-    backgroundColor: '#C6F04F',
+    borderColor: '#B9EF14',
+    backgroundColor: '#B9EF14',
   },
   radioInner: {
     width: 8,
@@ -1555,8 +1555,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   checkboxSelected: {
-    borderColor: '#C6F04F',
-    backgroundColor: '#C6F04F',
+    borderColor: '#B9EF14',
+    backgroundColor: '#B9EF14',
   },
   optionLabelRow: {
     flex: 1,
@@ -1795,8 +1795,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   tabPillSelected: {
-    borderColor: '#C6F04F',
-    backgroundColor: '#C6F04F',
+    borderColor: '#B9EF14',
+    backgroundColor: '#B9EF14',
   },
   tabPillText: {
     fontSize: 13,

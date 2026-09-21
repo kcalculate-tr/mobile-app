@@ -14,7 +14,7 @@ interface ToastProps {
 }
 
 const CONFIGS = {
-  success: { bg: '#C6F04F', color: '#000', Icon: CheckCircle },
+  success: { bg: '#B9EF14', color: '#000', Icon: CheckCircle },
   error:   { bg: '#DC2626', color: '#fff', Icon: WarningCircle },
   info:    { bg: '#0f172a', color: '#fff', Icon: Info },
 };

@@ -208,7 +208,7 @@ export default function MacroScreen() {
                   {privileged ? (
                     <View style={{ alignItems: 'center', gap: 2 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <CrownIcon size={12} color="#C6F04F" weight="fill" />
+                        <CrownIcon size={12} color="#B9EF14" weight="fill" />
                         <AnimatedNumberText style={styles.privilegedTag} value={`Ayrıcalıklı Üye • ${daysLeft} gün`} />
                       </View>
                       <Text style={[styles.privilegedTag, { fontSize: 10, opacity: 0.8 }]}>{privilegedUntilFormatted(profile)}'a kadar</Text>

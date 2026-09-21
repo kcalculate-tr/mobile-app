@@ -54,7 +54,7 @@ export default function AnnouncementStrip({
 
   const body = (
     <View
-      style={[styles.strip, { backgroundColor: bgColor || COLORS.brand.green }]}
+      style={[styles.strip, { backgroundColor: bgColor || COLORS.brand.greenTicker }]}
       pointerEvents={onPress ? 'auto' : 'none'}
     >
       <Animated.View style={[styles.row, { transform: [{ translateX }] }]}>

@@ -15,7 +15,7 @@ interface DeliveryProgressBarProps {
   freeDeliveryThreshold?: number;
 }
 
-const SUCCESS_GREEN = '#C6F04F';
+const SUCCESS_GREEN = '#B9EF14';
 const TRACK_COLOR = '#333333';
 const CARD_BG = '#000000';
 const TRUCK_SIZE = 22;

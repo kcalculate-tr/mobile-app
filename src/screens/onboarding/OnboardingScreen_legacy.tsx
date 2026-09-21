@@ -40,7 +40,7 @@ const onboardingImage1 = require('../../assets/onboarding/onboarding-flow-1.webp
 const onboardingVideo2 = require('../../assets/onboarding/onboarding-flow-2.mp4');
 const onboardingImage3 = require('../../assets/onboarding/onboarding-flow-3.webp');
 
-const BRAND = '#C6F04F';
+const BRAND = '#B9EF14';
 const BG = '#f6f6f6';
 const BLACK = '#000000';
 const WHITE = '#ffffff';

@@ -969,7 +969,7 @@ export default function AddressesScreen() {
                       <>
                         <Image
                           source={{
-                            uri: `https://maps.googleapis.com/maps/api/staticmap?center=${previewCoords.latitude},${previewCoords.longitude}&zoom=16&size=800x280&scale=2&markers=color:0xC6F04F%7C${previewCoords.latitude},${previewCoords.longitude}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}`,
+                            uri: `https://maps.googleapis.com/maps/api/staticmap?center=${previewCoords.latitude},${previewCoords.longitude}&zoom=16&size=800x280&scale=2&markers=color:0xB9EF14%7C${previewCoords.latitude},${previewCoords.longitude}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}`,
                           }}
                           style={s.locationPreviewImg}
                           resizeMode="cover"

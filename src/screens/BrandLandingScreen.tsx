@@ -33,7 +33,7 @@ import { useCartStore } from '../store/cartStore';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
 
-const BRAND_ACCENT = '#C6F04F';
+const BRAND_ACCENT = '#B9EF14';
 
 type BrandLandingRouteProp = RouteProp<RootStackParamList, 'BrandLanding'>;
 type BrandLandingNavigationProp = NativeStackNavigationProp<RootStackParamList>;

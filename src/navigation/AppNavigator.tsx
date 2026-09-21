@@ -136,7 +136,7 @@ export default function AppNavigator() {
   if (authLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0A0A' }}>
-        <ActivityIndicator color="#C6F04F" />
+        <ActivityIndicator color="#B9EF14" />
       </View>
     );
   }

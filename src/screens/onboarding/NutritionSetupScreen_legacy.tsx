@@ -25,7 +25,7 @@ import {
   calculateMacroTargets,
 } from '../../lib/nutrition';
 
-const BRAND = '#C6F04F';
+const BRAND = '#B9EF14';
 const BG = '#f6f6f6';
 const WHITE = '#ffffff';
 const GRAY_200 = '#e4e4e7';

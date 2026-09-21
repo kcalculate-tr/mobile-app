@@ -107,6 +107,6 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 3 },
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#000000',
   },
-  closeActionText: { color: '#C6F04F', fontSize: 15, fontWeight: '800',
+  closeActionText: { color: '#B9EF14', fontSize: 15, fontWeight: '800',
 fontFamily: 'PlusJakartaSans_800ExtraBold'},
 });

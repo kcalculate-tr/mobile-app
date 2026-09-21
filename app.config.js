@@ -11,7 +11,7 @@ module.exports = {
     assetBundlePatterns: ['**/*'],
     notification: {
       icon: './assets/notification-icon.png',
-      color: '#C6F04F',
+      color: '#B9EF14',
       iosDisplayInForeground: true,
       androidMode: 'default',
       androidCollapsedTitle: 'Kcalculate',
@@ -124,7 +124,7 @@ module.exports = {
         'expo-notifications',
         {
           icon: './assets/notification-icon.png',
-          color: '#C6F04F',
+          color: '#B9EF14',
           defaultChannel: 'default',
           sounds: [],
         },

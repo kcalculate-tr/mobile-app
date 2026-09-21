@@ -3,10 +3,15 @@
 
 export const COLORS = {
   // Brand
+  // MARKA YEŞİLİ — tek kaynak. Eylül 2026'da #B9EF14'ten daha doygun/neon
+  // #B9EF14'e çekildi (referans: Mac sRGB ekran görüntüsü). Tüm UI bu
+  // token'ları kullanır; koddaki düz hex'ler de aynı değere güncellendi.
   brand: {
-    green: '#C6F04F',
-    greenLight: '#daef72',
-    greenBright: '#C6F04F',
+    green: '#B9EF14',
+    greenLight: '#D2F55E',
+    greenBright: '#B9EF14',
+    // Kayan kampanya bandı referansta yarım ton daha yeşil ölçüldü.
+    greenTicker: '#BAF112',
   },
   
   // Neutrals

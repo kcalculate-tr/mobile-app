@@ -448,7 +448,7 @@ export default function HomeScreen() {
             <Text style={{ fontSize: 16, color: '#878787', marginBottom: 16, fontFamily: 'PlusJakartaSans_500Medium' }}>
               {loadError || 'İçerikler yüklenemedi. Lütfen tekrar deneyin.'}
             </Text>
-            <TouchableOpacity onPress={fetchData} style={{ backgroundColor: '#C6F04F', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 100 }}>
+            <TouchableOpacity onPress={fetchData} style={{ backgroundColor: '#B9EF14', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 100 }}>
               <Text style={{ fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000' }}>Tekrar Dene</Text>
             </TouchableOpacity>
           </View>
@@ -478,7 +478,7 @@ export default function HomeScreen() {
                     key={i}
                     style={[
                       styles.bannerDot,
-                      i === activeHero && { backgroundColor: '#C6F04F', width: activeDotWidth },
+                      i === activeHero && { backgroundColor: '#B9EF14', width: activeDotWidth },
                     ]}
                   />
                 ))}

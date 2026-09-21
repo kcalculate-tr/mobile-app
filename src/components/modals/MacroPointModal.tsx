@@ -18,7 +18,7 @@ type Props = {
 };
 
 const BENEFITS = [
-  { Icon: ShoppingCart,         color: '#C6F04F', bg: 'rgba(198,240,79,0.1)',  title: `Her ${ORDER_EARN_THRESHOLD.toLocaleString('tr-TR')}₺ harcama`, desc: '1 Macro kazanırsın (birikimli)' },
+  { Icon: ShoppingCart,         color: '#B9EF14', bg: 'rgba(198,240,79,0.1)',  title: `Her ${ORDER_EARN_THRESHOLD.toLocaleString('tr-TR')}₺ harcama`, desc: '1 Macro kazanırsın (birikimli)' },
   { Icon: Crown,                color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', title: `${MEMBERSHIP_THRESHOLD} Macro → Ayrıcalıklı Üye`, desc: '30 gün boyunca tüm ayrıcalıklardan yararlan' },
   { Icon: Lightning,            color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', title: 'Ayrıcalıklı üye avantajları', desc: 'Öncelikli teslimat & özel indirimler' },
   { Icon: CurrencyCircleDollar, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Macro satın al', desc: `${MACRO_PRICE.toLocaleString('tr-TR')}₺/adet — anında bakiye yükle` },

@@ -33,7 +33,7 @@ export async function setupAndroidChannel(): Promise<void> {
     name: 'Default',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#C6F04F',
+    lightColor: '#B9EF14',
     sound: 'default',
   });
 }

@@ -11,13 +11,13 @@ export const sportive = {
     // Glass (over hero image)
     glassBg:       'rgba(255, 255, 255, 0.10)',
     glassBorder:   'rgba(255, 255, 255, 0.18)',
-    glassActive:   'rgba(200, 240, 60, 0.15)',
+    glassActive:   'rgba(185, 239, 20, 0.15)',
     glassInputBg:  'rgba(255, 255, 255, 0.06)',
 
     // Borders
     border:        '#232323',
     borderHover:   '#2E2E2E',
-    borderActive:  '#C8F03C',
+    borderActive:  '#B9EF14',
 
     // Text
     textPrimary:    '#FFFFFF',
@@ -26,12 +26,12 @@ export const sportive = {
     textMuted:      'rgba(255, 255, 255, 0.35)',
 
     // Brand
-    accent:        '#C8F03C',
+    accent:        '#B9EF14',
     accentDark:    '#A8D830',
     accentText:    '#0A0A0A',
 
     // Semantic
-    success:       '#C8F03C',
+    success:       '#B9EF14',
     error:         '#FF6B6B',
     warning:       '#FFB84D',
 
