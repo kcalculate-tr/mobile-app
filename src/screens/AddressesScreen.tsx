@@ -956,32 +956,37 @@ export default function AddressesScreen() {
                 return (
                   <TouchableOpacity
                     key={address.id}
-                    style={[s.addressCard, isActive && s.addressCardActive]}
+                    style={s.addressCard}
                     onPress={() => handleSelectAddress(address.id)}
                     activeOpacity={0.85}
                   >
                     <View style={s.addressCardInner}>
-                      <View style={[s.addressIcon, isActive && s.addressCardActiveIcon]}>
-                        <MapPin size={18} color={isActive ? COLORS.text.primary : COLORS.text.secondary} />
+                      <View style={s.addressIcon}>
+                        <MapPin size={18} color={COLORS.text.secondary} />
                       </View>
                       <View style={s.addressInfo}>
+                        {/* Varsayilan isareti YALNIZCA asagidaki yesil
+                            butonda. Basliktaki kucuk rozet kaldirildi:
+                            ayni bilgiyi iki yerde tekrar ediyordu. */}
                         <View style={s.addressTitleRow}>
-                          <Text style={[s.addressTitle, isActive && s.addressTitleOnFill]}>{address.title || 'Adres'}</Text>
-                          {isActive && (
-                            <View style={[s.defaultBadge, isActive && s.defaultBadgeOnFill]}>
-                              <Text style={[s.defaultBadgeText, isActive && s.defaultBadgeTextOnFill]}>Varsayılan</Text>
-                            </View>
-                          )}
+                          <Text style={s.addressTitle}>{address.title || 'Adres'}</Text>
                         </View>
-                        <Text style={[s.addressLine, isActive && s.addressLineOnFill]}>{address.full_address}</Text>
-                        <Text style={[s.addressMeta, isActive && s.addressTextOnFill]}>
+                        <Text style={s.addressLine}>{address.full_address}</Text>
+                        <Text style={s.addressMeta}>
                           {address.district} • {address.contact_name}
                         </Text>
                       </View>
                     </View>
 
                     <View style={s.addressActions}>
-                      {!isActive && (
+                      {isActive ? (
+                        // Ayni yerde duran, ayni olcudeki DURUM gostergesi.
+                        // "Varsayilan Yap" ile yer degistirdigi icin kartlar
+                        // arasinda hicbir seyin kaymasi gerekmiyor.
+                        <View style={s.defaultBtnActive}>
+                          <Text style={s.defaultBtnActiveText}>Varsayılan Adres</Text>
+                        </View>
+                      ) : (
                         <TouchableOpacity
                           style={s.defaultBtn}
                           onPress={() => handleSetDefault(address.id)}
@@ -991,21 +996,18 @@ export default function AddressesScreen() {
                         </TouchableOpacity>
                       )}
                       <TouchableOpacity
-                        style={[s.iconBtn, isActive && s.iconBtnOnFill]}
+                        style={s.iconBtn}
                         onPress={() => openEditForm(address)}
                         activeOpacity={0.8}
                       >
                         <PencilSimple size={14} color="#000000" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[s.iconBtnDanger, isActive && s.iconBtnDangerOnFill]}
+                        style={s.iconBtnDanger}
                         onPress={() => deleteAddress(address.id)}
                         activeOpacity={0.8}
                       >
-                        {/* Yesil zeminde #d4183d bulaniklasip griye caliyor;
-                            koyu kirmizi hem okunuyor hem "sil" isaretini
-                            koruyor. Beyaz kart uzerinde eski ton kaliyor. */}
-                        <Trash size={14} color={isActive ? '#7A0F22' : '#d4183d'} />
+                        <Trash size={14} color="#d4183d" />
                       </TouchableOpacity>
                     </View>
 
@@ -1216,49 +1218,12 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     shadowRadius: 10,
     elevation: 2,
   },
-  // Secili adres marka yesili DOLGU; ustundeki kaplar BEYAZ.
+  // Kartlarin HEPSI beyaz — secili olan da dahil.
   //
-  // Yazi rengi SIYAH kaliyor, beyaz degil: #B9EF14 uzerinde beyaz metnin
-  // kontrasti 1,4:1 — okunmaz. Ayni yesil uzerinde siyah 14,8:1 veriyor.
-  // Uygulamanin her yerinde bu yesil zemine siyah yazi kullaniliyor
-  // (chip'ler, "Ucretsiz" rozeti, birincil butonlar); kart da ayni dilde.
-  // Yesil dolgunun ICINDE artik beyaz kap YOK.
-  //
-  // Onceki halde ikon kutusu, rozet ve iki eylem dugmesi beyaz dolguluydu:
-  // tek kartta bes ayri dolgu birikiyor, kart hem kalabalik hem sekilsiz
-  // duruyordu. Hepsi ince cizgiye (stroke) cevrildi — zemin tek parca
-  // yesil kaliyor, elemanlar cizgiyle ayriliyor. Karta da hafif bir
-  // kenarlik verildi ki acik zeminde sinirlari belli olsun.
-  addressCardActive: {
-    backgroundColor: COLORS.brand.green,
-    borderColor: 'rgba(0,0,0,0.14)',
-  },
-  addressCardActiveIcon: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.45)',
-  },
-  defaultBadgeOnFill: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.45)',
-  },
-  defaultBadgeTextOnFill: { color: COLORS.text.primary },
-  // Ikincil satir: yesil uzerinde gri kayboluyor, siyahin yumusatilmisi
-  // hem okunuyor hem hiyerarsiyi koruyor.
-  addressTextOnFill: { color: 'rgba(0,0,0,0.66)' },
-  addressLineOnFill: { color: COLORS.text.primary },
-  addressTitleOnFill: { color: COLORS.text.primary },
-  iconBtnOnFill: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.45)',
-  },
-  iconBtnDangerOnFill: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'rgba(122,15,34,0.55)',
-  },
+  // Once secili kart bastan asagi yesil dolguydu, sonra icindeki kaplar
+  // cizgiye cevrildi; ikisi de kalabalik durdu. Tek isaret yetiyor:
+  // asagidaki yesil "Varsayilan Adres" butonu. Kartin geri kalani diger
+  // kartlarla birebir ayni kaliyor.
   addressCardInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   addressIcon: {
     width: 42, height: 42,
@@ -1269,9 +1234,6 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   addressInfo: { flex: 1 },
   addressTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   addressTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
-  defaultBadge: { backgroundColor: COLORS.brand.green, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
-  defaultBadgeText: { fontSize: 10, fontWeight: '700',
 fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   addressLine: { fontSize: 13, color: '#000000', marginBottom: 2, lineHeight: 18 },
   addressMeta: { fontSize: 12, color: COLORS.text.tertiary },
@@ -1286,6 +1248,16 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   },
   defaultBtnText: { fontSize: 12, fontWeight: '600',
 fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  // defaultBtn ile AYNI olculer: iki kartta da ayni yerde, ayni
+  // yuksekliginde duruyor, aralarinda gecerken hicbir sey kaymiyor.
+  defaultBtnActive: {
+    flex: 1, height: 36, borderRadius: 100,
+    backgroundColor: COLORS.brand.green,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // Yesil uzerinde siyah: beyaz yazi bu yesilde 1,4:1 kaliyor.
+  defaultBtnActiveText: { fontSize: 12, fontWeight: '700',
+fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
   iconBtnDanger: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(212,24,61,0.1)', alignItems: 'center', justifyContent: 'center' },
   selectBtn: {
