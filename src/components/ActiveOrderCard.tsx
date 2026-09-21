@@ -1,16 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CheckCircle, CookingPot, Package, Receipt, Scooter } from 'phosphor-react-native';
+import { CaretRight, CheckCircle, CookingPot, Package, Receipt, Scooter } from 'phosphor-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { ORDER_STEPS, stepIndexOf, type ActiveOrder } from '../lib/activeOrder';
 
 const STEP_ICONS = [Receipt, CookingPot, Scooter, Package];
 
-const STEP_HEADLINE: Record<string, { title: string; sub: string }> = {
-  confirmed: { title: 'Siparişin onaylandı', sub: 'Mutfağa iletildi, birazdan hazırlanmaya başlıyor.' },
-  preparing: { title: 'Siparişin hazırlanıyor', sub: 'Mutfağımız senin için çalışıyor.' },
-  on_way:    { title: 'Siparişin yolda', sub: 'Kuryemiz siparişinle birlikte yola çıktı.' },
-  delivered: { title: 'Afiyet olsun!', sub: 'Siparişin teslim edildi.' },
+// Kompakt kartta tek satır başlık — açıklama satırı kaldırıldı (yer kaplıyordu).
+const STEP_HEADLINE: Record<string, { title: string }> = {
+  confirmed: { title: 'Siparişin onaylandı' },
+  preparing: { title: 'Siparişin hazırlanıyor' },
+  on_way:    { title: 'Siparişin yolda' },
+  delivered: { title: 'Siparişin teslim edildi' },
 };
 
 interface ActiveOrderCardProps {
@@ -59,20 +60,9 @@ export default function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps
   return (
     <TouchableOpacity activeOpacity={onPress ? 0.92 : 1} onPress={onPress} style={styles.card}>
       <View style={styles.headRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.eyebrow}>
-            {isDelivered ? 'TESLİM EDİLDİ' : 'SİPARİŞİN HAZIRLANIYOR'}
-            {order.orderCode ? ` · ${order.orderCode}` : ''}
-          </Text>
-          <Text style={styles.title}>{headline.title}</Text>
-          <Text style={styles.sub}>{headline.sub}</Text>
-        </View>
-        {!isDelivered ? (
-          <View style={styles.livePill}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>CANLI</Text>
-          </View>
-        ) : null}
+        <Text style={styles.title} numberOfLines={1}>{headline.title}</Text>
+        <Text style={styles.meta}>₺{order.totalAmount.toFixed(2)}</Text>
+        <CaretRight size={13} color="rgba(255,255,255,0.45)" weight="bold" />
       </View>
 
       {/* Kademeler */}
@@ -96,12 +86,12 @@ export default function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps
                   ]}
                 >
                   {done ? (
-                    <CheckCircle size={16} color="#000000" weight="fill" />
+                    <CheckCircle size={12} color="#000000" weight="fill" />
                   ) : (
-                    <Icon size={16} color={reached ? '#000000' : 'rgba(255,255,255,0.45)'} weight="bold" />
+                    <Icon size={12} color={reached ? '#000000' : 'rgba(255,255,255,0.45)'} weight="bold" />
                   )}
                 </Animated.View>
-                <Text style={[styles.stepLabel, reached && styles.stepLabelReached]} numberOfLines={2}>
+                <Text style={[styles.stepLabel, reached && styles.stepLabelReached]} numberOfLines={1}>
                   {step.label}
                 </Text>
               </View>
@@ -109,88 +99,60 @@ export default function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps
           })}
         </View>
       </View>
-
-      <View style={styles.footRow}>
-        <Text style={styles.footMeta}>
-          {order.itemCount} ürün · ₺{order.totalAmount.toFixed(2)}
-        </Text>
-        <Text style={styles.footLink}>Detay →</Text>
-      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  // Kompakt kart — duyuru şeridinin hemen üstünde, anasayfada yer kaplamasın.
   card: {
     backgroundColor: '#101010',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
-    gap: SPACING.lg,
+    gap: SPACING.sm,
   },
-  headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
-  eyebrow: {
-    fontSize: 10,
-    letterSpacing: 1,
-    color: 'rgba(255,255,255,0.45)',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    marginBottom: 4,
-  },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   title: {
-    fontSize: TYPOGRAPHY.size.xl,
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.md,
     color: '#ffffff',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
-  sub: {
+  meta: {
     fontSize: TYPOGRAPHY.size.sm,
     color: 'rgba(255,255,255,0.55)',
-    marginTop: 2,
-  },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(198,240,79,0.14)',
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.brand.green },
-  liveText: {
-    fontSize: 9,
-    letterSpacing: 0.8,
-    color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: 'PlusJakartaSans_500Medium',
   },
 
   stepsWrap: { position: 'relative', justifyContent: 'center' },
-  // Çizgi, ilk ve son dairenin MERKEZLERİ arasında durmalı: her iki uçta
-  // yarım daire (16px) + yatay iç boşluk kadar geri çekiliyor.
+  // Çizgi ilk ve son dairenin MERKEZLERİ arasında durur (her uçta 1/8 kolon).
   track: {
     position: 'absolute',
-    top: 16,
+    top: 12,
     left: '12.5%',
     right: '12.5%',
-    height: 3,
-    borderRadius: 2,
+    height: 2,
+    borderRadius: 1,
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   trackFill: {
     position: 'absolute',
-    top: 16,
+    top: 12,
     left: '12.5%',
     maxWidth: '75%',
-    height: 3,
-    borderRadius: 2,
+    height: 2,
+    borderRadius: 1,
     backgroundColor: COLORS.brand.green,
   },
   stepsRow: { flexDirection: 'row' },
-  step: { flex: 1, alignItems: 'center', gap: 8 },
+  step: { flex: 1, alignItems: 'center', gap: 5 },
   stepCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#1d1d1d',
@@ -202,7 +164,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.brand.green,
   },
   stepLabel: {
-    fontSize: 10,
+    fontSize: 9,
     textAlign: 'center',
     color: 'rgba(255,255,255,0.40)',
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -210,20 +172,5 @@ const styles = StyleSheet.create({
   stepLabelReached: {
     color: '#ffffff',
     fontFamily: 'PlusJakartaSans_600SemiBold',
-  },
-
-  footRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: SPACING.md,
-  },
-  footMeta: { fontSize: TYPOGRAPHY.size.sm, color: 'rgba(255,255,255,0.55)' },
-  footLink: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

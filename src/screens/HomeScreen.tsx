@@ -442,15 +442,6 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* Canlı sipariş takibi — sipariş verildikten teslimata kadar burada.
-            Teslimattan kısa süre sonra kendiliğinden kaybolur. */}
-        {activeOrder ? (
-          <ActiveOrderCard
-            order={activeOrder}
-            onPress={() => navigation.navigate('ProfileOrders')}
-          />
-        ) : null}
-
         {/* Empty/Retry State */}
         {!loading && products.length === 0 && categories.length === 0 && (
           <View style={{ alignItems: 'center', paddingTop: 80 }}>
@@ -545,6 +536,15 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* Canlı sipariş takibi — duyuru şeridinin hemen üstünde, kompakt.
+            Teslimattan kısa süre sonra kendiliğinden kaybolur. */}
+        {activeOrder ? (
+          <ActiveOrderCard
+            order={activeOrder}
+            onPress={() => navigation.navigate('ProfileOrders')}
+          />
+        ) : null}
 
         {/* Duyuru şeridi — Boss panel > Vitrin > Grid Yönetimi'nden yönetilir.
             Satır yoksa (strip null) hiç render edilmez. */}
