@@ -38,7 +38,30 @@ export interface DeliveryZoneRow {
   free_shipping_above_scheduled?: number | null;
   allow_immediate?: boolean | null;
   allow_scheduled?: boolean | null;
+  // Tahmini teslimat süresi aralığı (dk). max null ise tek sayı gösterilir.
+  estimated_delivery_minutes?: number | null;
+  estimated_delivery_minutes_max?: number | null;
   [key: string]: unknown;
+}
+
+/**
+ * Bölgenin tahmini teslimat süresini müşteriye gösterilecek metne çevirir.
+ * "30-45 dk" | "~45 dk" | null (veri yoksa hiçbir şey gösterme — uydurma tahmin
+ * vermektense sessiz kalmak doğru).
+ */
+export function formatEstimatedDelivery(
+  zone: DeliveryZoneRow | null | undefined,
+): string | null {
+  if (!zone) return null;
+  const min = Number(zone.estimated_delivery_minutes);
+  const max = Number(zone.estimated_delivery_minutes_max);
+  const hasMin = Number.isFinite(min) && min > 0;
+  const hasMax = Number.isFinite(max) && max > 0;
+
+  if (hasMin && hasMax && max > min) return `${min}-${max} dk`;
+  if (hasMin) return `~${min} dk`;
+  if (hasMax) return `~${max} dk`;
+  return null;
 }
 
 // ─── Paginated zone fetcher ─────────────────────────────────────────────────

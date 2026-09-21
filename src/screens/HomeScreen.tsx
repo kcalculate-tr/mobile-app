@@ -3,7 +3,7 @@ import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ScrollView, S
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
 import { CachedImage } from '../components/CachedImage';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MagnifyingGlass, MapPin, CaretDown, Question, Plus, Minus, Tag } from 'phosphor-react-native';
 import { TAB_BAR_TOTAL } from '../constants/layout';
@@ -23,6 +23,15 @@ import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
 import { AppBanner, fetchActiveAppBanner } from '../lib/appBanners';
 import { AnnouncementStrip as AnnouncementStripData, fetchActiveAnnouncementStrip } from '../lib/announcementStrip';
 import AnnouncementStrip from '../components/AnnouncementStrip';
+import ActiveOrderCard from '../components/ActiveOrderCard';
+import OrderFeedbackModal from '../components/OrderFeedbackModal';
+import {
+  fetchActiveOrder,
+  isDeliveredExpired,
+  subscribeToOrder,
+  type ActiveOrder,
+} from '../lib/activeOrder';
+import { fetchPendingFeedbackOrder, submitOrderReview, type PendingFeedbackOrder } from '../lib/orderFeedback';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
@@ -63,6 +72,10 @@ export default function HomeScreen() {
   const [promoRows, setPromoRows] = useState<BannerRow[]>([]);
   const [appBanner, setAppBanner] = useState<AppBanner | null>(null);
   const [strip, setStrip] = useState<AnnouncementStripData | null>(null);
+  // Canlı sipariş takibi + teslimat sonrası geri bildirim istemi
+  const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
+  const [feedbackOrder, setFeedbackOrder] = useState<PendingFeedbackOrder | null>(null);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [activeHero, setActiveHero] = useState(0);
   const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
   const [checkingOptions, setCheckingOptions] = useState<Record<string, boolean>>({});
@@ -141,6 +154,69 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── Canlı sipariş takibi ───────────────────────────────────────────────
+  // Ekran her odaklandığında taze çekilir (sipariş verip geri dönünce kart
+  // anında görünsün); ardından o siparişin satırı Realtime ile dinlenir.
+  const refreshActiveOrder = useCallback(async () => {
+    if (!session?.user?.id) { setActiveOrder(null); return; }
+    try {
+      setActiveOrder(await fetchActiveOrder(session.user.id));
+    } catch { /* sessiz — kart yoksa anasayfa normal görünür */ }
+  }, [session?.user?.id]);
+
+  const refreshFeedbackPrompt = useCallback(async () => {
+    if (!session?.user?.id) { setFeedbackOrder(null); return; }
+    try {
+      setFeedbackOrder(await fetchPendingFeedbackOrder(session.user.id));
+    } catch { /* sessiz */ }
+  }, [session?.user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshActiveOrder();
+      refreshFeedbackPrompt();
+    }, [refreshActiveOrder, refreshFeedbackPrompt]),
+  );
+
+  useEffect(() => {
+    if (!activeOrder) return;
+    const unsubscribe = subscribeToOrder(activeOrder.id, (next) => {
+      // Teslim edildikten sonra kart kısa süre daha durur, sonra kaybolur.
+      if (!next || isDeliveredExpired(next)) { setActiveOrder(null); return; }
+      setActiveOrder(next);
+      if (next.status === 'delivered') haptic.success();
+    });
+    return unsubscribe;
+  }, [activeOrder?.id]);
+
+  // Teslim edilmiş kartın görünme süresi dolduğunda kendiliğinden kaybolsun.
+  useEffect(() => {
+    if (activeOrder?.status !== 'delivered') return;
+    const timer = setInterval(() => {
+      setActiveOrder((cur) => (cur && isDeliveredExpired(cur) ? null : cur));
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [activeOrder?.status]);
+
+  const handleSubmitFeedback = useCallback(async (rating: number, comment: string) => {
+    if (!feedbackOrder || !session?.user?.id) return;
+    setSubmittingFeedback(true);
+    const res = await submitOrderReview({
+      orderId: feedbackOrder.id,
+      userId: session.user.id,
+      rating,
+      comment,
+    });
+    setSubmittingFeedback(false);
+    if (res.ok) {
+      haptic.success();
+      track('order_review_submitted', { order_id: feedbackOrder.id, rating });
+      setFeedbackOrder(null);
+    } else {
+      haptic.error();
+    }
+  }, [feedbackOrder, session?.user?.id]);
 
   // Premium "anında render": Home verisi gelince kritik (above-the-fold)
   // görselleri arka planda memory-disk cache'e ısıt. Prefetch URL'leri
@@ -364,6 +440,15 @@ export default function HomeScreen() {
           <View style={styles.holidayBanner}>
             <Text style={styles.holidayBannerText}>{businessHours.holiday_banner_message}</Text>
           </View>
+        ) : null}
+
+        {/* Canlı sipariş takibi — sipariş verildikten teslimata kadar burada.
+            Teslimattan kısa süre sonra kendiliğinden kaybolur. */}
+        {activeOrder ? (
+          <ActiveOrderCard
+            order={activeOrder}
+            onPress={() => navigation.navigate('ProfileOrders')}
+          />
         ) : null}
 
         {/* Empty/Retry State */}
@@ -630,6 +715,15 @@ export default function HomeScreen() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Teslimattan 30 dk sonra tek seferlik değerlendirme istemi */}
+      <OrderFeedbackModal
+        visible={!!feedbackOrder}
+        orderCode={feedbackOrder?.orderCode ?? null}
+        submitting={submittingFeedback}
+        onClose={() => setFeedbackOrder(null)}
+        onSubmit={handleSubmitFeedback}
+      />
 
       <HowItWorksModal visible={howItWorks.visible} onClose={howItWorks.close} />
       {popup && (

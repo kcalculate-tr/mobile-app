@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon, WarningCircle } from 'phosphor-react-native';
+import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon, WarningCircle } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
@@ -66,6 +66,7 @@ import {
   resolveMinOrder,
   resolveShippingFee,
   resolveFreeShippingAbove,
+  formatEstimatedDelivery,
   DeliveryGlobals,
   DeliveryZoneRow,
 } from '../lib/delivery';
@@ -585,6 +586,9 @@ export default function CheckoutScreen() {
       ? ((deliveryRuleStatus.data.zoneRow as DeliveryZoneRow | undefined) ?? null)
       : null;
 
+  // Bölgeye göre tahmini teslimat süresi (delivery_zones.estimated_delivery_minutes[_max]).
+  // Veri yoksa null döner ve satır hiç gösterilmez — uydurma tahmin verilmez.
+  const estimatedDeliveryLabel = formatEstimatedDelivery(activeZoneRow);
   const resolvedMinOrder = resolveMinOrder(activeZoneRow, deliveryGlobals, deliveryTimeType);
   const freeShippingAbove = resolveFreeShippingAbove(
     activeZoneRow,
@@ -1980,6 +1984,18 @@ export default function CheckoutScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
+
+                  {/* Bölgeye göre tahmini teslimat süresi — sadece "Hemen"
+                      teslimatta anlamlı (randevuluda saat zaten seçiliyor). */}
+                  {estimatedDeliveryLabel && deliveryTimeType === 'immediate' && deliveryMethod === 'home_delivery' ? (
+                    <View style={styles.etaRow}>
+                      <Clock size={15} color={COLORS.text.primary} weight="bold" />
+                      <Text style={styles.etaText}>
+                        Tahmini teslimat <Text style={styles.etaStrong}>{estimatedDeliveryLabel}</Text>
+                        {selectedAddress?.district ? ` · ${selectedAddress.district}` : ''}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* ── Randevulu tarih seçici ── */}
@@ -2664,6 +2680,27 @@ const styles = StyleSheet.create({
   payMethodRow: {
     alignItems: 'center',
     marginTop: SPACING.xs,
+  },
+  // Tahmini teslimat suresi satiri — Yontem/Zaman kartinin altinda
+  etaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.xs,
+    backgroundColor: '#f5f5f5',
+  },
+  etaText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+  },
+  etaStrong: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
   },
   payTitleRow: {
     flexDirection: 'row',
