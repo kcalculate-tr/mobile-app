@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   StyleSheet,
   Text,
@@ -20,6 +21,11 @@ import {
 } from '../lib/delivery';
 
 type Tab = 'immediate' | 'scheduled';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'immediate', label: 'Hemen Teslim' },
+  { key: 'scheduled', label: 'Randevulu Teslim' },
+];
 
 type ZoneRow = {
   id: string;
@@ -94,6 +100,31 @@ type Props = {
 
 const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('immediate');
+  const [barWidth, setBarWidth] = useState(0);
+  const indicatorX = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+
+  // Sekme degisince: gosterge kayar, icerik kisa bir capraz gecisle yenilenir.
+  // Ikisi de native driver — JS thread mesgul olsa bile akiciligi bozulmaz.
+  useEffect(() => {
+    if (barWidth <= 0) return;
+    const index = TABS.findIndex((t) => t.key === tab);
+    Animated.spring(indicatorX, {
+      toValue: (barWidth / TABS.length) * Math.max(index, 0),
+      useNativeDriver: true,
+      speed: 18,
+      bounciness: 4,
+    }).start();
+  }, [tab, barWidth, indicatorX]);
+
+  useEffect(() => {
+    contentOpacity.setValue(0.35);
+    Animated.timing(contentOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [tab, contentOpacity]);
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [globals, setGlobals] = useState<DeliveryGlobals | null>(null);
   const [loading, setLoading] = useState(false);
@@ -164,42 +195,58 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
       showCloseButton
       contentStyle={s.contentReset}
     >
-      {/* Tabs */}
-      <View style={s.tabBar}>
-        {([
-          { key: 'immediate' as Tab, label: 'Hemen Teslim' },
-          { key: 'scheduled' as Tab, label: 'Randevulu Teslim' },
-        ]).map(t => (
+      {/* Tabs — alt cizgi sekmeden sekmeye KAYAR (onceki hal: anlik
+          yer degistirme). Iki sekme esit genislikte oldugu icin gosterge
+          genisligi bar'in yarisi; olculen genislik gelene kadar (barWidth=0)
+          gosterge gorunmez, ziplama olmaz. */}
+      <View
+        style={s.tabBar}
+        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+      >
+        {TABS.map(t => (
           <TouchableOpacity
             key={t.key}
-            style={[s.tab, tab === t.key && s.tabActive]}
+            style={s.tab}
             onPress={() => setTab(t.key)}
             activeOpacity={0.7}
           >
             <Text style={[s.tabText, tab === t.key && s.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            s.tabIndicator,
+            {
+              width: barWidth / TABS.length,
+              opacity: barWidth > 0 ? 1 : 0,
+              transform: [{ translateX: indicatorX }],
+            },
+          ]}
+        />
       </View>
 
       {/* Content */}
-      {loading ? (
-        <View style={s.center}>
-          <ActivityIndicator size="small" color={COLORS.brand.green} />
-        </View>
-      ) : grouped.length === 0 ? (
-        <View style={s.center}>
-          <Text style={s.emptyText}>Bu teslimat türü için henüz bölge tanımlanmamıştır.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={grouped}
-          keyExtractor={(item) => item.district}
-          renderItem={renderItem}
-          ItemSeparatorComponent={() => <View style={s.separator} />}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={false}
-        />
-      )}
+      <Animated.View style={{ opacity: contentOpacity }}>
+        {loading ? (
+          <View style={s.center}>
+            <ActivityIndicator size="small" color={COLORS.brand.green} />
+          </View>
+        ) : grouped.length === 0 ? (
+          <View style={s.center}>
+            <Text style={s.emptyText}>Bu teslimat türü için henüz bölge tanımlanmamıştır.</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={grouped}
+            keyExtractor={(item) => item.district}
+            renderItem={renderItem}
+            ItemSeparatorComponent={() => <View style={s.separator} />}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
+          />
+        )}
+      </Animated.View>
 
       {/* Footer */}
       <Text style={s.footer}>
@@ -227,11 +274,15 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: SPACING.sm,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
   },
-  tabActive: {
-    borderBottomColor: '#F97316',
+  // Kayan gosterge: bar'in ALT kenarina oturur, tabBar'in 1px cizgisini orter.
+  tabIndicator: {
+    position: 'absolute',
+    left: 0,
+    bottom: -1,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: '#F97316',
   },
   tabText: {
     fontSize: 14,
