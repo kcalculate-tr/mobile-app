@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { COLORS } from '../constants/theme';
+import { COLORS, TYPOGRAPHY } from '../constants/theme';
 
 interface AnnouncementStripProps {
   message: string;
@@ -83,15 +83,16 @@ export default function AnnouncementStrip({
 
 const styles = StyleSheet.create({
   strip: {
-    height: 34,
+    height: 32,
     justifyContent: 'center',
     overflow: 'hidden',
   },
   row: { flexDirection: 'row' },
   text: {
-    fontSize: 12,
-    letterSpacing: 0.6,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    // Kategori/menu tipografisiyle ayni aile ve olcek; genis harf araligi
+    // (letterSpacing 0.6) seridi ekranin geri kalanindan kopariyordu.
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     // KRITIK: satir icinde Text varsayilan olarak KUCULUR (flexShrink:1) ve
     // numberOfLines=1 ile kirpilir -> marquee calismaz. 0 yaparak metnin
     // kendi dogal genisligine ulasmasini ve tasmasini sagliyoruz.

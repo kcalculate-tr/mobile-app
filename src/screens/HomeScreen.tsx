@@ -819,7 +819,9 @@ const styles = StyleSheet.create({
     maxWidth: 68,
   },
   // Duyuru seridi: kenardan kenara (tam genislik), bolumlerden once
-  stripWrapper: { marginBottom: SPACING.xl },
+  // Serit ustundeki (kategori seridinin marginBottom'u) ve altindaki bosluk
+  // daraltildi — serit iki bolumu birbirine baglayan ince bir bant gibi dursun.
+  stripWrapper: { marginTop: -SPACING.sm, marginBottom: SPACING.md },
   // Section
   section: {
     paddingHorizontal: SPACING.lg,

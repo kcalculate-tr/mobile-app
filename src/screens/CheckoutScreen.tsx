@@ -358,6 +358,22 @@ const payInitial: PayState = {
   pendingPaymentOrder: null, loadingPendingOrder: false, retryPaymentOrderId: '',
 };
 
+/**
+ * Ödeme güven rozetleri — PCI DSS uyumu + kabul edilen kart şemaları.
+ * Ödeme altyapısı PaynKolay; kartlar 3D Secure ile doğrulanıyor.
+ */
+function TrustBadges({ divider = true }: { divider?: boolean }) {
+  return (
+    <View style={[styles.trustRow, !divider && styles.trustRowNoDivider]}>
+      <Image source={require('../../assets/payment/pci-dss.png')} style={styles.trustPci} resizeMode="contain" />
+      <View style={styles.trustDivider} />
+      <Image source={require('../../assets/payment/visa.png')} style={styles.trustVisa} resizeMode="contain" />
+      <Image source={require('../../assets/payment/mastercard.png')} style={styles.trustMastercard} resizeMode="contain" />
+      <Text style={styles.trustNote}>3D Secure ile korunur</Text>
+    </View>
+  );
+}
+
 export default function CheckoutScreen() {
   // Ekran-seviyesi benzersiz aksesuar ID'si (tek InputAccessoryView, çakışma yok).
   const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
@@ -2140,7 +2156,15 @@ export default function CheckoutScreen() {
           {/* ── Ödeme Yöntemi (sadece kart saklama açık kullanıcı) ── */}
           {cardsEnabled ? (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Ödeme Yöntemi</Text>
+              <View style={styles.payTitleRow}>
+                <Text style={styles.cardTitle}>Ödeme Yöntemi</Text>
+                {/* Ödeme altyapısı sağlayıcısı — güven sinyali */}
+                <Image
+                  source={require('../../assets/payment/paynkolay-logo.png')}
+                  style={styles.paynkolayLogo}
+                  resizeMode="contain"
+                />
+              </View>
               {savedCards.map((card) => {
                 const active = selectedPayCardId === card.id;
                 const brand = card.brand?.trim() || 'Kart';
@@ -2181,6 +2205,24 @@ export default function CheckoutScreen() {
                   <Text style={styles.payCheckboxLabel}>Kartımı sonraki ödemeler için kaydet</Text>
                 </TouchableOpacity>
               ) : null}
+
+              <TrustBadges />
+            </View>
+          ) : null}
+
+          {/* Kart saklama kapalı kullanıcıda yukarıdaki kart hiç render edilmiyor;
+              güven rozetleri HERKESE görünsün diye burada tek başına gösterilir. */}
+          {!cardsEnabled ? (
+            <View style={styles.trustStandalone}>
+              <View style={styles.payTitleRow}>
+                <Text style={styles.trustStandaloneTitle}>Güvenli Ödeme</Text>
+                <Image
+                  source={require('../../assets/payment/paynkolay-logo.png')}
+                  style={styles.paynkolayLogo}
+                  resizeMode="contain"
+                />
+              </View>
+              <TrustBadges divider={false} />
             </View>
           ) : null}
 
@@ -2622,6 +2664,51 @@ const styles = StyleSheet.create({
   payMethodRow: {
     alignItems: 'center',
     marginTop: SPACING.xs,
+  },
+  payTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  paynkolayLogo: { width: 82, height: 16 },
+  // Guven rozetleri: PCI DSS + kabul edilen kart semalari
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border.light,
+  },
+  trustRowNoDivider: {
+    marginTop: SPACING.sm,
+    paddingTop: 0,
+    borderTopWidth: 0,
+  },
+  trustStandalone: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
+  },
+  trustStandaloneTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  trustPci: { width: 38, height: 30 },
+  trustDivider: { width: 1, height: 18, backgroundColor: COLORS.border.strong },
+  trustVisa: { width: 42, height: 22 },
+  trustMastercard: { width: 30, height: 22 },
+  trustNote: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
   },
   payMethodMeta: {
     flex: 1,
