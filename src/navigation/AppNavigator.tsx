@@ -56,7 +56,9 @@ function TabNavigator() {
   return (
     <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: '#0A0A0A' } }}
+        // Sahne zemini uygulamanin ACIK temasiyla ayni olmali; #0A0A0A
+        // sekme gecislerinde bir kare siyah parlama birakiyordu.
+        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: '#f6f6f6' } }}
       >
       <Tab.Screen
         name="Home"
@@ -149,10 +151,19 @@ export default function AppNavigator() {
         gestureEnabled: true,
         animation: 'slide_from_right',
         animationDuration: 280,
-        contentStyle: { backgroundColor: '#0A0A0A' },
+        // Bu stack'teki ekranlarin HEPSI acik temali (#f6f6f6). Varsayilan
+        // #0A0A0A idi: ekran kendi zeminini boyayana kadar gecis boyunca
+        // siyah bir kare goruluyordu ("Hedef Duzenle"ye basinca siyah ekran).
+        // Koyu zeminli tek ekran WelcomeGate — o kendi options'inda tanimli.
+        contentStyle: { backgroundColor: '#f6f6f6' },
       }}
     >
-      <Stack.Screen name="WelcomeGate" component={WelcomeGateScreen} options={{ gestureEnabled: false }} />
+      {/* Tam ekran fotograf zeminli tek ekran — acik zemin burada parlama yapardi. */}
+      <Stack.Screen
+        name="WelcomeGate"
+        component={WelcomeGateScreen}
+        options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#0A0A0A' } }}
+      />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="NutritionSetup" component={NutritionSetupScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Tabs" component={TabNavigator} />

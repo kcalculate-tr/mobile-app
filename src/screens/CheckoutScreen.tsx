@@ -614,8 +614,34 @@ export default function CheckoutScreen() {
       : activeZoneRow.allow_scheduled !== false;
   const canPickImmediate = allowImmediateByZone && shopOpenNow;
   const canPickScheduled = allowScheduledByZone;
+
+  // ── Ara durumlarda OLUMSUZ mesaj gösterme ──────────────────────────────
+  // Bölge kuralları ve çalışma saatleri ayrı ayrı, asenkron geliyor. İkisi
+  // de oturmadan önce türetilen değerler geçici olarak "teslimat yok"
+  // gösterebiliyor: businessHours gelmeden shopOpenNow=true varsayılıyor,
+  // geldiğinde dükkan kapalıysa canPickImmediate tek karede false'a düşüyor.
+  // useEffect boyamadan SONRA çalıştığı için bu tek kare gerçekten ekrana
+  // basılıyor — kırmızı "Bu bölgeye teslimat yapılmıyor" bandı ve "Hemen
+  // yok" etiketi belirip kayboluyor.
+  //
+  // Çözüm: uyarıcı metin/renkler yalnızca veri OTURDUKTAN sonra gösterilir.
+  // Oturmadan önce nötr etiketler görünür; kullanıcı yanlış bilgi görmez.
+  const deliveryRulesSettled =
+    !rulesLoading
+    && businessHours !== null
+    && (deliveryMethod === 'pickup' || deliveryRuleStatus.status !== 'idle');
+
+  // Kirmizi etiket/kenarlik da ayni kapidan gecer: veri otururken chip
+  // notr gorunur, "Hemen yok"/"Kapali" ancak kesinlestiginde yazilir.
+  const showImmediateBlocked = deliveryRulesSettled && !canPickImmediate;
+  const showScheduledBlocked = deliveryRulesSettled && !canPickScheduled;
+  // Gel-Al yalnizca dukkan saatlerine bagli; businessHours gelmeden "Kapali"
+  // yazilmaz (null iken shopOpenNow=true varsayiliyor).
+  const showPickupClosed = businessHours !== null && !shopOpenNow;
+
   const zoneBlocksDelivery =
-    deliveryMethod === 'home_delivery'
+    deliveryRulesSettled
+      && deliveryMethod === 'home_delivery'
       && !!activeZoneRow
       && !canPickImmediate
       && !canPickScheduled;
@@ -1898,20 +1924,20 @@ export default function CheckoutScreen() {
                   overlayInset={-1}
                   onPress={() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'home_delivery' })}
                 >
-                  <House size={14} color={deliveryMethod === 'home_delivery' ? '#000' : COLORS.text.secondary} />
+                  <House size={14} color={deliveryMethod === 'home_delivery' ? '#000' : SURFACE.unselectedText} />
                   <Text style={[styles.chipText, deliveryMethod === 'home_delivery' && styles.chipTextActive]}>Eve Teslim</Text>
                 </Selectable>
                 <Selectable
                   selected={deliveryMethod === 'pickup'}
                   disabled={!shopOpenNow}
-                  style={[styles.chip, !shopOpenNow && styles.chipDisabled]}
+                  style={[styles.chip, showPickupClosed && styles.chipDisabled]}
                   selectedStyle={styles.chipActive}
                   borderRadius={RADIUS.xs}
                   overlayInset={-1}
                   onPress={() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' })}
                 >
-                  <Storefront size={14} color={deliveryMethod === 'pickup' ? '#000' : COLORS.text.secondary} />
-                  <Text style={[styles.chipText, deliveryMethod === 'pickup' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>{shopOpenNow ? 'Gel-Al' : 'Kapalı'}</Text>
+                  <Storefront size={14} color={deliveryMethod === 'pickup' ? '#000' : SURFACE.unselectedText} />
+                  <Text style={[styles.chipText, deliveryMethod === 'pickup' && styles.chipTextActive, showPickupClosed && { color: '#dc2626' }]}>{showPickupClosed ? 'Kapalı' : 'Gel-Al'}</Text>
                 </Selectable>
               </View>
             </View>
@@ -1933,7 +1959,7 @@ export default function CheckoutScreen() {
                   <View style={styles.chipRow}>
                     <Selectable
                       selected={deliveryTimeType === 'immediate'}
-                      style={[styles.chip, !canPickImmediate && styles.chipDisabled]}
+                      style={[styles.chip, showImmediateBlocked && styles.chipDisabled]}
                       selectedStyle={styles.chipActive}
                       borderRadius={RADIUS.xs}
                       overlayInset={-1}
@@ -1944,23 +1970,26 @@ export default function CheckoutScreen() {
                         size={14}
                         color={
                           deliveryTimeType === 'immediate' ? '#000'
-                          : !canPickImmediate ? '#dc2626'
-                          : COLORS.text.secondary
+                          : showImmediateBlocked ? '#dc2626'
+                          : SURFACE.unselectedText
                         }
                       />
                       <Text
                         style={[
                           styles.chipText,
                           deliveryTimeType === 'immediate' && styles.chipTextActive,
-                          !canPickImmediate && { color: '#dc2626' },
+                          showImmediateBlocked && { color: '#dc2626' },
                         ]}
                       >
-                        {!allowImmediateByZone ? 'Hemen yok' : !shopOpenNow ? 'Kapalı' : 'Hemen'}
+                        {!deliveryRulesSettled ? 'Hemen'
+                          : !allowImmediateByZone ? 'Hemen yok'
+                          : !shopOpenNow ? 'Kapalı'
+                          : 'Hemen'}
                       </Text>
                     </Selectable>
                     <Selectable
                       selected={deliveryTimeType === 'scheduled'}
-                      style={[styles.chip, !canPickScheduled && styles.chipDisabled]}
+                      style={[styles.chip, showScheduledBlocked && styles.chipDisabled]}
                       selectedStyle={styles.chipActive}
                       borderRadius={RADIUS.xs}
                       overlayInset={-1}
@@ -1971,18 +2000,18 @@ export default function CheckoutScreen() {
                         size={14}
                         color={
                           deliveryTimeType === 'scheduled' ? '#000'
-                          : !canPickScheduled ? '#dc2626'
-                          : COLORS.text.secondary
+                          : showScheduledBlocked ? '#dc2626'
+                          : SURFACE.unselectedText
                         }
                       />
                       <Text
                         style={[
                           styles.chipText,
                           deliveryTimeType === 'scheduled' && styles.chipTextActive,
-                          !canPickScheduled && { color: '#dc2626' },
+                          showScheduledBlocked && { color: '#dc2626' },
                         ]}
                       >
-                        {!allowScheduledByZone ? 'Randevulu yok' : 'Randevulu'}
+                        {!deliveryRulesSettled || allowScheduledByZone ? 'Randevulu' : 'Randevulu yok'}
                       </Text>
                     </Selectable>
                   </View>
