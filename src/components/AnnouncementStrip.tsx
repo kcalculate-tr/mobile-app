@@ -55,23 +55,46 @@ export default function AnnouncementStrip({
   const repeatCount = Math.max(2, Math.ceil(40 / Math.max(1, unit.length)));
   const track = unit.repeat(repeatCount);
 
+  // Olculen dogal genislik verilene kadar kopyalar dogal akisinda kalir.
+  const copyStyle = trackWidth > 0 ? { width: trackWidth } : null;
+  const copy = (
+    <Text
+      numberOfLines={1}
+      // clip: metin tam kendi genisliginde oldugu icin zaten kirpilmaz;
+      // varsayilan 'tail' olsaydi bir piksellik yuvarlama farki bile
+      // sonuna ucnokta koyardi.
+      ellipsizeMode="clip"
+      style={[styles.text, { color: textColor || '#000000' }, copyStyle]}
+    >
+      {track}
+    </Text>
+  );
+
   const body = (
     <View
       style={[styles.strip, { backgroundColor: bgColor || COLORS.brand.greenTicker }]}
       pointerEvents={onPress ? 'auto' : 'none'}
     >
-      <Animated.View style={[styles.row, { transform: [{ translateX }] }]}>
+      {/* Olcum kopyasi: GORUNMEZ ve genisligi sinirsiz bir kapta.
+          Sebep: numberOfLines=1 olan bir Text, kullanilabilir genislige
+          gore olculur; serit ekran genisliginde oldugu icin metin ekranda
+          kirpilip sonuna ucnokta koyuluyordu (21.09.2026). Burada kap cok
+          genis oldugundan metin kendi DOGAL genisligini bildiriyor. */}
+      <View style={styles.measureHost} pointerEvents="none">
         <Text
           numberOfLines={1}
-          style={[styles.text, { color: textColor || '#000000' }]}
+          ellipsizeMode="clip"
+          style={styles.text}
           onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
         >
           {track}
         </Text>
+      </View>
+
+      <Animated.View style={[styles.row, { transform: [{ translateX }] }]}>
+        {copy}
         {/* Dikişsiz döngü için birebir ikinci kopya */}
-        <Text numberOfLines={1} style={[styles.text, { color: textColor || '#000000' }]}>
-          {track}
-        </Text>
+        {copy}
       </Animated.View>
     </View>
   );
@@ -91,6 +114,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   row: { flexDirection: 'row' },
+  // Sadece olcum icin; ekranda gorunmez. Genislik, en uzun duyurunun bile
+  // altinda kalmayacak kadar buyuk secildi.
+  measureHost: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 10000,
+    opacity: 0,
+    // KRITIK: row olmali. Sutun yonunde cocuk capraz eksende STRETCH eder,
+    // yani metin 10000px genisligi rapor eder ve olcum anlamsizlasir.
+    flexDirection: 'row',
+  },
   text: {
     // Kategori/menu tipografisiyle ayni aile ve olcek; genis harf araligi
     // (letterSpacing 0.6) seridi ekranin geri kalanindan kopariyordu.

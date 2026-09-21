@@ -101,7 +101,7 @@ export default function OrderFeedbackModal({
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.centerWrap}>
           <View style={styles.sheet}>
             <TouchableOpacity style={styles.closeBtn} onPress={handleClose} hitSlop={10}>
-              <X size={18} color={COLORS.text.primary} weight="bold" />
+              <X size={18} color="#FFFFFF" weight="bold" />
             </TouchableOpacity>
 
             {/* Görsel şerit — ÜZERİNDE yazı yok. Başlık beyaz alana alındı:
@@ -234,7 +234,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
   },
-  closeBtn: { position: 'absolute', top: SPACING.md, right: SPACING.md, padding: 4, zIndex: 2 },
+  // Ikon serit gorselinin uzerinde duruyor. Duz beyaz ikon acik bir
+  // banner'da kayboldugu icin altina hafif koyu bir daire konuldu:
+  // gorsel hangi kampanyaya ait olursa olsun carpi okunur kaliyor.
+  closeBtn: {
+    position: 'absolute',
+    top: SPACING.md,
+    right: SPACING.md,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
   brandBanner: {
     width: '100%',
     aspectRatio: BANNER_ASPECT,
