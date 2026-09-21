@@ -186,7 +186,7 @@ export default function OrderFeedbackModal({
               style={styles.input}
               value={comment}
               onChangeText={setComment}
-              placeholder="Eklemek istediğin bir şey var mı? (opsiyonel)"
+              placeholder="Yorumlarını duymak için sabırsızlanıyoruz, görüşlerin bizim için çok önemli."
               placeholderTextColor={COLORS.text.tertiary}
               multiline
               numberOfLines={3}

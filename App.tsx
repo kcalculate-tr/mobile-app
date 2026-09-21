@@ -142,7 +142,12 @@ export default function App() {
               eden absolute JS overlay (native InputAccessoryView Fabric'te render
               olmadığı için kanıtlanmış çalışan yola dönüldü). Tüm ekranları kapsar. */}
           <KeyboardToolbar />
-          <StatusBar style="light" />
+          {/* Uygulamanin zemini acik (#f6f6f6 / beyaz). "light" = BEYAZ ikon
+              demek; saat, pil ve wifi acik zeminde kayboluyordu. Varsayilan
+              artik "dark". Koyu zeminli ekranlar (BackgroundLayer kullanan
+              auth/onboarding ekranlari ve MacroScreen) kendi StatusBar'larini
+              "light" olarak tanimliyor. */}
+          <StatusBar style="dark" />
         </PortalProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

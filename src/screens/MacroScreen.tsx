@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { Animated, StatusBar } from 'react-native'
+import { Animated } from 'react-native'
+import { StatusBar } from 'expo-status-bar';
 import {
   ActivityIndicator,
   Image,
@@ -175,7 +176,10 @@ export default function MacroScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: safeArea.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      {/* Hero zemini siyah. expo-status-bar kullaniliyor: RN'in StatusBar'i
+          ile karisik kullanim, ekrandan cikildiginda cubugun yanlis stilde
+          takili kalmasina yol aciyordu. */}
+      <StatusBar style="light" />
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: safeArea.bottom + 120, backgroundColor: '#fafafa' }}

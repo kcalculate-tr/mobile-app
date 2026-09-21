@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ImageBackground, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { sportive } from '../../theme/sportive';
 
@@ -27,6 +28,10 @@ export const BackgroundLayer: React.FC<Props> = ({ mode, children }) => {
       ) : (
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: sportive.colors.blurTint }]} />
       )}
+      {/* Bu katmani kullanan 19 ekranin hepsinde zemin KOYU (overlay
+          rgba(10,10,10,0.55-0.88)). Durum cubugu tek tek her ekrana
+          eklenmek yerine burada tanimlaniyor. */}
+      <StatusBar style="light" />
       {children}
     </ImageBackground>
   );
