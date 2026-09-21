@@ -112,6 +112,17 @@ export default function HomeScreen() {
     [heroRows],
   );
 
+  // Geri bildirim pop-up'inin baslik arka plani. Ana sayfadaki banner'in
+  // KAYNAGI hero cell'ler (banner_rows/banner_cells); app_banners tablosu su
+  // an bos oldugu icin oradan okumak her zaman null donuyordu. Once gercekten
+  // gosterilen hero gorseli, yoksa app_banners, o da yoksa null -> pop-up
+  // marka yesili zemine duser.
+  const feedbackBannerUrl = useMemo(() => {
+    const raw = heroCells.find((c) => c.image_url)?.image_url || appBanner?.imageUrl || '';
+    if (!raw) return null;
+    return transformImageUrl(raw, ImagePreset.bannerLarge) ?? raw;
+  }, [heroCells, appBanner?.imageUrl]);
+
   useEffect(() => {
     if (heroCells.length <= 1) return;
     const interval = setInterval(() => {
@@ -730,7 +741,7 @@ export default function HomeScreen() {
       <OrderFeedbackModal
         visible={!!feedbackOrder}
         items={feedbackOrder?.items ?? []}
-        bannerUrl={appBanner?.imageUrl ?? null}
+        bannerUrl={feedbackBannerUrl}
         submitting={submittingFeedback}
         onClose={() => setFeedbackOrder(null)}
         onSubmit={handleSubmitFeedback}
