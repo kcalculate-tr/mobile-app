@@ -9,6 +9,8 @@ export type SavedCard = {
   last4: string | null;
   brand: string | null;
   bank_name: string | null;
+  /** Kullanicinin PaynKolay sayfasinda verdigi kart adi ("Enpara", "Bonus garanti"). */
+  card_alias: string | null;
   is_default: boolean;
   created_at: string;
 };

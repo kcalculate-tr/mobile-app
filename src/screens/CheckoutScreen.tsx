@@ -25,6 +25,7 @@ import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon, WarningCircle } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
+import Selectable from '../components/ui/Selectable';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
@@ -370,7 +371,8 @@ function TrustBadges({ divider = true }: { divider?: boolean }) {
       <View style={styles.trustDivider} />
       <Image source={require('../../assets/payment/visa.png')} style={styles.trustVisa} resizeMode="contain" />
       <Image source={require('../../assets/payment/mastercard.png')} style={styles.trustMastercard} resizeMode="contain" />
-      <Text style={styles.trustNote}>3D Secure ile korunur</Text>
+      <Image source={require('../../assets/payment/troy.png')} style={styles.trustTroy} resizeMode="contain" />
+      <Text style={styles.trustNote} numberOfLines={1}>3D Secure ile korunur</Text>
     </View>
   );
 }
@@ -471,12 +473,25 @@ export default function CheckoutScreen() {
   // CANLI kalmalı (kapatırsak POST abort olur). Bu süre boyunca ham "OK" sayfasını
   // maskelemek için WebView üstüne "doğrulanıyor" overlay'i gösterilir.
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  // Onceki hal: fade-out/fade-in sirasi baslatilir, callback ANINDA cagrilirdi.
+  // Sonuc, icerik t=0'da zipliyor, uzerine alakasiz bir flash oynuyordu — capraz
+  // gecis degil, goz kirpmasi. Artik icerik opacity 0'a ULASINCA degisiyor.
+  // Fade-out 90ms: gecikme olarak hissedilmeyecek kadar kisa, gecisi ortecek
+  // kadar uzun.
   const animateSection = (callback: () => void) => {
-    Animated.sequence([
-      Animated.timing(sectionOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
-      Animated.timing(sectionOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
-    callback();
+    Animated.timing(sectionOpacity, {
+      toValue: 0,
+      duration: 90,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      callback();
+      if (!finished) { sectionOpacity.setValue(1); return; }
+      Animated.timing(sectionOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
   };
 
   const setSelectedAddress = useAddressStore((s) => s.setSelectedAddress);
@@ -1739,14 +1754,18 @@ export default function CheckoutScreen() {
               {addresses.map((address) => {
                 const active = selectedAddressId === address.id;
                 return (
-                  <Pressable
+                  <Selectable
                     key={address.id}
+                    selected={active}
+                    style={styles.addressRow}
+                    selectedStyle={styles.addressRowActive}
+                    borderRadius={RADIUS.sm}
+                    overlayInset={-1.5}
                     onPress={() => {
                       userManuallySelectedAddressRef.current = true;
                       dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: address.id });
                       setSelectedAddress(address);
                     }}
-                    style={[styles.addressRow, active && styles.addressRowActive]}
                   >
                     <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
                       {active ? <View style={styles.radioInner} /> : null}
@@ -1756,7 +1775,7 @@ export default function CheckoutScreen() {
                       <Text style={[styles.addressText, active && styles.addressTextActive]} numberOfLines={2}>{address.full_address}</Text>
                       <Text style={[styles.addressMeta, active && styles.addressMetaActive]}>{address.district} • {address.contact_name}</Text>
                     </View>
-                  </Pressable>
+                  </Selectable>
                 );
               })}
               {mapCoords ? (
@@ -1886,22 +1905,29 @@ export default function CheckoutScreen() {
             <View>
               <Text style={styles.deliveryGroupLabel}>Yöntem</Text>
               <View style={styles.chipRow}>
-                <TouchableOpacity
-                  style={[styles.chip, deliveryMethod === 'home_delivery' && styles.chipActive]}
+                <Selectable
+                  selected={deliveryMethod === 'home_delivery'}
+                  style={styles.chip}
+                  selectedStyle={styles.chipActive}
+                  borderRadius={RADIUS.xs}
+                  overlayInset={-1}
                   onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'home_delivery' }))}
-                  activeOpacity={0.8}
                 >
                   <House size={14} color={deliveryMethod === 'home_delivery' ? '#000' : COLORS.text.secondary} />
                   <Text style={[styles.chipText, deliveryMethod === 'home_delivery' && styles.chipTextActive]}>Eve Teslim</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.chip, deliveryMethod === 'pickup' && styles.chipActive, !shopOpenNow && styles.chipDisabled]}
-                  onPress={() => shopOpenNow && animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' }))}
-                  activeOpacity={0.8}
+                </Selectable>
+                <Selectable
+                  selected={deliveryMethod === 'pickup'}
+                  disabled={!shopOpenNow}
+                  style={[styles.chip, !shopOpenNow && styles.chipDisabled]}
+                  selectedStyle={styles.chipActive}
+                  borderRadius={RADIUS.xs}
+                  overlayInset={-1}
+                  onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' }))}
                 >
                   <Storefront size={14} color={deliveryMethod === 'pickup' ? '#000' : COLORS.text.secondary} />
                   <Text style={[styles.chipText, deliveryMethod === 'pickup' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>{shopOpenNow ? 'Gel-Al' : 'Kapalı'}</Text>
-                </TouchableOpacity>
+                </Selectable>
               </View>
             </View>
 
@@ -1920,18 +1946,16 @@ export default function CheckoutScreen() {
                     </View>
                   )}
                   <View style={styles.chipRow}>
-                    <TouchableOpacity
-                      style={[
-                        styles.chip,
-                        deliveryTimeType === 'immediate' && styles.chipActive,
-                        !canPickImmediate && styles.chipDisabled,
-                      ]}
+                    <Selectable
+                      selected={deliveryTimeType === 'immediate'}
+                      style={[styles.chip, !canPickImmediate && styles.chipDisabled]}
+                      selectedStyle={styles.chipActive}
+                      borderRadius={RADIUS.xs}
+                      overlayInset={-1}
                       disabled={!canPickImmediate}
-                      onPress={() => {
-                        if (!canPickImmediate) return;
-                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }));
-                      }}
-                      activeOpacity={0.8}
+                      onPress={() =>
+                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }))
+                      }
                     >
                       <Lightning
                         size={14}
@@ -1950,19 +1974,17 @@ export default function CheckoutScreen() {
                       >
                         {!allowImmediateByZone ? 'Hemen yok' : !shopOpenNow ? 'Kapalı' : 'Hemen'}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.chip,
-                        deliveryTimeType === 'scheduled' && styles.chipActive,
-                        !canPickScheduled && styles.chipDisabled,
-                      ]}
+                    </Selectable>
+                    <Selectable
+                      selected={deliveryTimeType === 'scheduled'}
+                      style={[styles.chip, !canPickScheduled && styles.chipDisabled]}
+                      selectedStyle={styles.chipActive}
+                      borderRadius={RADIUS.xs}
+                      overlayInset={-1}
                       disabled={!canPickScheduled}
-                      onPress={() => {
-                        if (!canPickScheduled) return;
-                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }));
-                      }}
-                      activeOpacity={0.8}
+                      onPress={() =>
+                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }))
+                      }
                     >
                       <CalendarBlank
                         size={14}
@@ -1981,7 +2003,7 @@ export default function CheckoutScreen() {
                       >
                         {!allowScheduledByZone ? 'Randevulu yok' : 'Randevulu'}
                       </Text>
-                    </TouchableOpacity>
+                    </Selectable>
                   </View>
 
                   {/* Bölgeye göre tahmini teslimat süresi — sadece "Hemen"
@@ -2182,32 +2204,47 @@ export default function CheckoutScreen() {
               </View>
               {savedCards.map((card) => {
                 const active = selectedPayCardId === card.id;
-                const brand = card.brand?.trim() || 'Kart';
+                // Iki karti da MASTERCARD olan kullanici icin marka ayirt edici
+                // DEGIL; PaynKolay'da verdigi ad ("Enpara") ayirt edici. Alias
+                // varsa meta'da o gosterilir, yoksa markaya dusulur.
+                const alias = card.card_alias?.trim();
+                const label = alias || card.brand?.trim() || 'Kart';
                 return (
-                  <Pressable
+                  <Selectable
                     key={card.id}
+                    selected={active}
+                    style={[styles.addressRow, styles.payMethodRow]}
+                    selectedStyle={styles.addressRowActive}
+                    borderRadius={RADIUS.sm}
+                    overlayInset={-1.5}
                     onPress={() => setSelectedPayCardId(card.id)}
-                    style={[styles.addressRow, styles.payMethodRow, active && styles.addressRowActive]}
                   >
                     <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
                       {active ? <View style={styles.radioInner} /> : null}
                     </View>
                     <Text style={[styles.addressTitle, active && styles.addressTitleActive]}>•••• {card.last4 ?? '----'}</Text>
-                    <Text style={[styles.payMethodMeta, active && styles.addressMetaActive]}>
-                      {brand}{card.is_default ? ' · Varsayılan' : ''}
+                    <Text
+                      style={[styles.payMethodMeta, active && styles.addressMetaActive]}
+                      numberOfLines={1}
+                    >
+                      {label}{card.is_default ? ' · Varsayılan' : ''}
                     </Text>
-                  </Pressable>
+                  </Selectable>
                 );
               })}
-              <Pressable
+              <Selectable
+                selected={selectedPayCardId === null}
+                style={[styles.addressRow, styles.payMethodRow]}
+                selectedStyle={styles.addressRowActive}
+                borderRadius={RADIUS.sm}
+                overlayInset={-1.5}
                 onPress={() => setSelectedPayCardId(null)}
-                style={[styles.addressRow, styles.payMethodRow, selectedPayCardId === null && styles.addressRowActive]}
               >
                 <View style={[styles.radioOuter, selectedPayCardId === null && styles.radioOuterActive]}>
                   {selectedPayCardId === null ? <View style={styles.radioInner} /> : null}
                 </View>
                 <Text style={[styles.addressTitle, selectedPayCardId === null && styles.addressTitleActive]}>+ Yeni kart ile öde</Text>
-              </Pressable>
+              </Selectable>
               {/* Kart saklama kararı TEK yerde veriliyor: PaynKolay ödeme
                   sayfasındaki "Öde" / "Öde ve Kartı Kayıt Et" butonları.
                   Buradaki onay kutusu kaldırıldı — iki ayrı onay noktası
@@ -2747,6 +2784,9 @@ const styles = StyleSheet.create({
   trustDivider: { width: 1, height: 18, backgroundColor: COLORS.border.strong },
   trustVisa: { width: 42, height: 22 },
   trustMastercard: { width: 30, height: 22 },
+  // Troy kelime markasi 74x31 (2.39:1) — Visa/Mastercard ile optik agirligi
+  // esitlemek icin yuksekligi daha kisa, genisligi orana sadik.
+  trustTroy: { width: 33, height: 14 },
   trustNote: {
     flex: 1,
     textAlign: 'right',

@@ -265,7 +265,7 @@ Deno.serve(async (req: Request) => {
 async function fetchLocalCards(admin: SupabaseClient, userId: string) {
   const { data } = await admin
     .from('user_cards')
-    .select('id, last4, brand, bank_name, is_default, created_at')
+    .select('id, last4, brand, bank_name, card_alias, is_default, created_at')
     .eq('user_id', userId)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: false })

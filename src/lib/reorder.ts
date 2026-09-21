@@ -9,6 +9,12 @@ export type PastOrderItem = {
   quantity: number;
   /** Siparis anindaki normalize edilmis secenekler (cartStore.addItem'e geri verilir) */
   options: Partial<CartSelectedOptions>;
+  /**
+   * Guncel katalogdan gelen urun gorseli. orders.items JSON'i gorsel TASIMAZ
+   * (bkz. createOrderFromCart) — bu yuzden products'tan ayri cekilip
+   * eslestiriliyor. Urun katalogdan kalkmissa null.
+   */
+  imageUrl: string | null;
 };
 
 export type PastOrder = {
@@ -37,6 +43,7 @@ const toItems = (raw: unknown): PastOrderItem[] => {
         // createOrderFromCart, normalize edilmis CartSelectedOptions'i
         // legacy_selected_options alanina yaziyor (bkz. src/lib/orders.ts).
         options: (r.legacy_selected_options ?? {}) as Partial<CartSelectedOptions>,
+        imageUrl: null,
       } as PastOrderItem;
     })
     .filter((it): it is PastOrderItem => it !== null);
@@ -58,7 +65,7 @@ export const fetchPastOrders = async (
 
   if (error) throw error;
 
-  return (Array.isArray(data) ? data : [])
+  const orders = (Array.isArray(data) ? data : [])
     .map((row) => ({
       id: Number(row.id),
       orderCode: (row.order_code as string | null) ?? null,
@@ -67,6 +74,54 @@ export const fetchPastOrders = async (
       items: toItems(row.items),
     }))
     .filter((o) => o.items.length > 0);
+
+  await attachImages(supabase, orders);
+  return orders;
+};
+
+/**
+ * Gorselleri TEK sorguda cekip siparis kalemlerine yazar (siparis basina sorgu
+ * degil). Gorsel kozmetik oldugu icin hata yutulur: sorgu duserse kartlar
+ * gorselsiz ama calisir halde kalir, "Siparisi Tekrarla" etkilenmez.
+ */
+const attachImages = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  orders: PastOrder[],
+): Promise<void> => {
+  const ids = Array.from(
+    new Set(
+      orders
+        .flatMap((o) => o.items.map((it) => parseInt(it.id, 10)))
+        .filter((n) => !Number.isNaN(n)),
+    ),
+  );
+  if (ids.length === 0) return;
+
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, image_url, image')
+      .in('id', ids);
+    if (error) return;
+
+    const byId = new Map<number, string>();
+    for (const row of Array.isArray(data) ? data : []) {
+      const r = row as Record<string, unknown>;
+      const url =
+        (typeof r.image_url === 'string' && r.image_url.trim()) ||
+        (typeof r.image === 'string' && r.image.trim()) ||
+        '';
+      if (url) byId.set(Number(r.id), url);
+    }
+
+    for (const order of orders) {
+      for (const item of order.items) {
+        item.imageUrl = byId.get(parseInt(item.id, 10)) ?? null;
+      }
+    }
+  } catch {
+    // yut: gorsel yoksa kart yine calisir
+  }
 };
 
 export type ReorderResult = {

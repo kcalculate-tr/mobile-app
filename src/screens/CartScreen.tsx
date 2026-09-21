@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import KeyboardAccessory from '../components/KeyboardAccessory';
-import { Animated, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -307,13 +307,42 @@ export default function CartScreen() {
                   day: 'numeric', month: 'long',
                 });
                 const busy = reorderingId === order.id;
+                // En fazla 3 gorsel yan yana; kalanlar "+N" ile ozetlenir —
+                // 4+ urunlu siparislerde satir tasmasin.
+                const thumbs = order.items.slice(0, 3);
+                const extraCount = order.items.length - thumbs.length;
                 return (
                   <View key={order.id} style={styles.pastCard}>
                     <View style={styles.pastCardTop}>
                       <Text style={styles.pastCardDate}>{dateLabel}</Text>
                       <Text style={styles.pastCardTotal}>₺{order.totalAmount.toFixed(2)}</Text>
                     </View>
-                    <Text style={styles.pastCardItems} numberOfLines={2}>{summary}</Text>
+                    <View style={styles.pastCardBody}>
+                      <View style={styles.pastThumbs}>
+                        {thumbs.map((it, i) => (
+                          <View key={`${order.id}_${it.id}_${i}`} style={styles.pastThumbWrap}>
+                            {it.imageUrl ? (
+                              <Image source={{ uri: it.imageUrl }} style={styles.pastThumb} resizeMode="cover" />
+                            ) : (
+                              <View style={[styles.pastThumb, styles.pastThumbEmpty]}>
+                                <ShoppingCart size={18} color={COLORS.text.tertiary} />
+                              </View>
+                            )}
+                            {it.quantity > 1 ? (
+                              <View style={styles.pastThumbQty}>
+                                <Text style={styles.pastThumbQtyText}>{it.quantity}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        ))}
+                        {extraCount > 0 ? (
+                          <View style={[styles.pastThumb, styles.pastThumbMore]}>
+                            <Text style={styles.pastThumbMoreText}>+{extraCount}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.pastCardItems} numberOfLines={3}>{summary}</Text>
+                    </View>
                     <View style={styles.pastCardBottom}>
                       <Text style={styles.pastCardMeta}>
                         {itemCount} ürün{order.orderCode ? ` • ${order.orderCode}` : ''}
@@ -925,7 +954,53 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
+  pastCardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  pastThumbs: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  pastThumbWrap: { position: 'relative' },
+  pastThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.gray[100],
+  },
+  pastThumbEmpty: { alignItems: 'center', justifyContent: 'center' },
+  // Adet rozeti gorselin KOSESINDE durur; "2x Tavuk" metnini tekrar etmeden
+  // coklu adedi gosterir.
+  pastThumbQty: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 19,
+    height: 19,
+    borderRadius: 10,
+    paddingHorizontal: 4,
+    backgroundColor: COLORS.text.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  pastThumbQtyText: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.white,
+  },
+  pastThumbMore: { alignItems: 'center', justifyContent: 'center' },
+  pastThumbMoreText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.secondary,
+  },
   pastCardItems: {
+    flex: 1,
     fontSize: TYPOGRAPHY.size.sm,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.primary,

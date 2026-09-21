@@ -29,6 +29,11 @@ function cardLabel(card: SavedCard): string {
   return bank ? `${bank} ${brand}` : brand;
 }
 
+/** Kullanicinin PaynKolay'da verdigi ad varsa baslik odur; banka/marka alta duser. */
+function cardTitle(card: SavedCard): string {
+  return card.card_alias?.trim() || cardLabel(card);
+}
+
 export default function SavedCardsScreen() {
   const navigation = useNavigation<SavedCardsNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -180,8 +185,11 @@ export default function SavedCardsScreen() {
                   <CreditCard size={20} color="#000000" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.cardTitle}>{cardLabel(card)}</Text>
-                  <Text style={s.cardSub}>•••• {card.last4 ?? '----'}</Text>
+                  <Text style={s.cardTitle} numberOfLines={1}>{cardTitle(card)}</Text>
+                  <Text style={s.cardSub} numberOfLines={1}>
+                    •••• {card.last4 ?? '----'}
+                    {card.card_alias?.trim() ? ` · ${cardLabel(card)}` : ''}
+                  </Text>
                 </View>
                 {card.is_default ? (
                   <View style={s.defaultBadge}>
