@@ -141,3 +141,21 @@ export const submitOrderReview = async ({
  * sahte kayıt ATMIYORUZ — bunun yerine çağıran taraf oturum içinde saklıyor.
  * (Kalıcı erteleme gerekirse reviews'a değil ayrı bir tabloya yazılmalı.)
  */
+
+/**
+ * Değerlendirme pop-up'ının üst görseli.
+ *
+ * Ayrı bir alan: daha önce ana sayfadaki kcalculate marka banner'ı
+ * kullanılıyordu, o yüzden markalar bölümündeki görsel her değiştiğinde
+ * pop-up da değişiyordu. Alan boşsa çağıran taraf marka görseline düşer.
+ */
+export async function fetchReviewBannerUrl(): Promise<string | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('settings')
+    .select('review_banner_url')
+    .maybeSingle();
+  if (error || !data) return null;
+  const url = typeof data.review_banner_url === 'string' ? data.review_banner_url.trim() : '';
+  return url || null;
+}

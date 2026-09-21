@@ -16,6 +16,7 @@ import { Star, ThumbsDown, ThumbsUp, X } from 'phosphor-react-native';
 import { COLORS, RADIUS, SPACING, SURFACE, TYPOGRAPHY } from '../constants/theme';
 import { haptic } from '../utils/haptics';
 import { animateListChange } from '../utils/layoutAnimation';
+import { fetchReviewBannerUrl } from '../lib/orderFeedback';
 import type { FeedbackItem, ItemFeedbackMap } from '../lib/orderFeedback';
 import { fetchBrand } from '../lib/brands';
 
@@ -57,21 +58,23 @@ export default function OrderFeedbackModal({
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [itemFeedback, setItemFeedback] = useState<ItemFeedbackMap>({});
-  // Görsel şerit: markalar listesindeki kcalculate banner'ı. Ana sayfa hero'su
-  // kampanya metinleriyle dolu olduğu için pop-up başlığının altında karışık
-  // duruyordu; marka görseli sade ve her kampanyada aynı kalıyor.
-  const [brandHero, setBrandHero] = useState<string | null>(null);
+  // Gorsel serit: once settings.review_banner_url (pop-up'a ozel, boss
+  // panelinden degistirilebilir), o bossa kcalculate marka banner'i.
+  // Ayri alan olmasinin sebebi: markalar bolumundeki gorsel degisince
+  // pop-up'in gorseli de degisiyordu.
+  const [remoteBanner, setRemoteBanner] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!visible || bannerUrl || brandHero) return;
+    if (!visible || bannerUrl || remoteBanner) return;
     let mounted = true;
-    fetchBrand('kcalculate')
-      .then((b) => { if (mounted) setBrandHero(b?.hero_image_url ?? null); })
+    fetchReviewBannerUrl()
+      .then((url) => (url ? url : fetchBrand('kcalculate').then((b) => b?.hero_image_url ?? null)))
+      .then((url) => { if (mounted) setRemoteBanner(url); })
       .catch(() => { /* gorsel kozmetik: hata yutulur, yesil zemin kalir */ });
     return () => { mounted = false; };
-  }, [visible, bannerUrl, brandHero]);
+  }, [visible, bannerUrl, remoteBanner]);
 
-  const heroUri = bannerUrl || brandHero;
+  const heroUri = bannerUrl || remoteBanner;
 
   const handleClose = () => {
     setRating(0);
