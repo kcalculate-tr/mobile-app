@@ -878,7 +878,9 @@ const styles = StyleSheet.create({
   },
   // Categories
   categoryScroll: {
-    marginBottom: SPACING.lg,
+    // Kategorilerin altindaki temel bosluk; canli siparis karti ve duyuru
+    // seridi kendi marjlarini buna EKLER (bkz. ActiveOrderCard / stripWrapper).
+    marginBottom: SPACING.sm,
   },
   categoryRow: {
     paddingHorizontal: SPACING.lg,
@@ -913,9 +915,10 @@ const styles = StyleSheet.create({
     maxWidth: 68,
   },
   // Duyuru seridi: kenardan kenara (tam genislik), bolumlerden once
-  // Serit ustundeki (kategori seridinin marginBottom'u) ve altindaki bosluk
-  // daraltildi — serit iki bolumu birbirine baglayan ince bir bant gibi dursun.
-  stripWrapper: { marginTop: -SPACING.sm, marginBottom: SPACING.md },
+  // Duyuru seridi: kenardan kenara. Ust bosluk YOK — ustundeki eleman
+  // (kategori seridi veya canli siparis karti) kendi alt marjiyla mesafeyi
+  // belirliyor; boylece kartin iki yanindaki bosluk esit kaliyor.
+  stripWrapper: { marginBottom: SPACING.md },
   // Section
   section: {
     paddingHorizontal: SPACING.lg,

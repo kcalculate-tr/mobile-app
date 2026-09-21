@@ -111,7 +111,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.lg,
+    // Kategori seridinin alt marji (8) + bu (4) = ustte 12; altta da 12 →
+    // kart iki bolumun tam ortasinda duruyor.
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
     gap: SPACING.sm,
   },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
