@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   ImageBackground,
   KeyboardAvoidingView,
   ScrollView,
@@ -22,16 +21,15 @@ import { fetchBrand } from '../lib/brands';
 
 const RATING_LABELS = ['', 'Çok kötü', 'Kötü', 'İdare eder', 'İyi', 'Harika'];
 
-// Serit genisligi ACIKCA hesaplaniyor.
+// Serit, sheet'in TAM genisligini kaplar.
 //
-// Once alignSelf:'stretch' + negatif margin ile tam genislik hedeflenmisti,
-// ama Yoga'da aspectRatio ile stretch birlikte kullanilinca genislik
-// stretch'ten degil orandan cozuluyor ve serit, sheet'in padding'i kadar
-// (her yandan 20px) iceride kaliyordu — ekranda beyaz seritler olarak
-// goruluyordu. Genislik sabit verilince belirsizlik kalmiyor.
-const SHEET_WIDTH = Dimensions.get('window').width - SPACING.xl * 2;
+// Daha once sheet'in kendi padding'i vardi ve serit negatif margin +
+// Dimensions'tan hesaplanan sabit bir genislikle disari tasitiliyordu;
+// iki ayri kaynaktan gelen olcu birbirini tutmayinca kenarlarda beyaz
+// seritler kaliyordu. Artik padding sheet'te degil icerik sarmalayicida:
+// serit width:'100%' ile dogal olarak kenara oturuyor, hesap yok.
 // Marka gorseli 1200x400 = tam 3:1.
-const BANNER_HEIGHT = Math.round(SHEET_WIDTH / 3);
+const BANNER_ASPECT = 3;
 
 interface OrderFeedbackModalProps {
   visible: boolean;
@@ -114,6 +112,7 @@ export default function OrderFeedbackModal({
               resizeMode="cover"
             />
 
+            <View style={styles.body}>
             <Text style={styles.title}>Deneyimin nasıldı?</Text>
             <Text style={styles.sub}>
               Görüşlerine önem veriyoruz. Hizmet kalitemizi artırmak için önerilerini ve
@@ -208,6 +207,7 @@ export default function OrderFeedbackModal({
             <TouchableOpacity onPress={handleClose} activeOpacity={0.7}>
               <Text style={styles.laterText}>Şimdi değil</Text>
             </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -221,24 +221,26 @@ const styles = StyleSheet.create({
   sheet: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg,
-    // Marka bandi negatif margin ile kenarlara tasiyor; kirpilmazsa
-    // yuvarlak koselerin disina sizar.
+    // Serit sheet'in tam genisligini kapliyor; kirpilmazsa yuvarlak
+    // koselerin disina sizar.
     overflow: 'hidden',
+  },
+  // Padding sheet'te DEGIL burada: serit kenara tam otursun diye.
+  body: {
     padding: SPACING.xl,
     alignItems: 'center',
     gap: SPACING.sm,
   },
   closeBtn: { position: 'absolute', top: SPACING.md, right: SPACING.md, padding: 4, zIndex: 2 },
   brandBanner: {
-    width: SHEET_WIDTH,
-    height: BANNER_HEIGHT,
-    // Sheet'in padding'ini geri alip serit kenarlara TASIYOR.
-    marginTop: -SPACING.xl,
-    marginHorizontal: -SPACING.xl,
-    marginBottom: SPACING.lg,
+    width: '100%',
+    aspectRatio: BANNER_ASPECT,
     backgroundColor: COLORS.brand.green,
   },
   brandBannerImg: {
+    // Kutu ne olursa olsun bosluk birakmadan doldur.
+    width: '100%',
+    height: '100%',
     borderTopLeftRadius: RADIUS.lg,
     borderTopRightRadius: RADIUS.lg,
   },
