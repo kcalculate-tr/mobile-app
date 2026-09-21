@@ -31,6 +31,9 @@ import { RootStackParamList } from '../navigation/types';
 import { Address } from '../types';
 import { useAddressStore } from '../store/addressStore';
 import { COLORS } from '../constants/theme';
+import { Toast } from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
+import { haptic } from '../utils/haptics';
 
 type AddressesRouteProp = RouteProp<RootStackParamList, 'Addresses'>;
 type AddressesNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -218,10 +221,13 @@ export default function AddressesScreen() {
 
   // "Varsayılan Yap": seçimi DB'ye is_default olarak yazar (tek doğruluk kaynağı).
   // Tek kullanıcıda tek default — önce hepsi false, sonra seçilen true.
+  const { toast, show: showToast, hide: hideToast } = useToast();
+
   const handleSetDefault = async (id: string) => {
     if (!user) return;
 
     // Optimistic local state: badge anında doğru adrese geçsin.
+    const previous = addresses;
     setAddresses((prev) => prev.map((a) => ({ ...a, is_default: a.id === id })));
     setSelectedAddressId(id);
     const address = addresses.find((a) => a.id === id);
@@ -229,18 +235,39 @@ export default function AddressesScreen() {
 
     try {
       const supabase = getSupabaseClient();
-      await supabase
+      const clearRes = await supabase
         .from('addresses')
         .update({ is_default: false })
         .eq('user_id', user.id);
-      await supabase
+      if (clearRes.error) throw clearRes.error;
+
+      const setRes = await supabase
         .from('addresses')
         .update({ is_default: true })
         .eq('id', id)
         .eq('user_id', user.id);
+      if (setRes.error) throw setRes.error;
+
+      // Değişim SESSİZ olmamalı: rozetin yer değiştirmesi kolayca gözden
+      // kaçıyor ve müşteri hangi adrese sipariş vereceğini bilemiyor.
+      haptic.success();
+      showToast(
+        address?.title
+          ? `Varsayılan adres: ${address.title}`
+          : 'Varsayılan adres güncellendi',
+      );
     } catch (error: unknown) {
-      // is_default kolonu henüz yoksa (migration deploy edilmediyse) ya da yazım
-      // hatasında local seçim yine de korunur; bir sonraki açılışta DB'den okunur.
+      // Önceki hal geri alınır — aksi halde ekranda yazılmamış bir değişiklik
+      // yazılmış gibi durur ve müşteri yanlış adrese sipariş verdiğini
+      // anlamaz. Sessizce yutmak burada en tehlikeli seçenekti.
+      setAddresses(previous);
+      const prevDefault = previous.find((a) => a.is_default);
+      if (prevDefault) {
+        setSelectedAddressId(prevDefault.id);
+        setSelectedAddress(prevDefault);
+      }
+      haptic.error();
+      showToast('Varsayılan adres değiştirilemedi. Tekrar dene.', 'error');
       if (__DEV__) {
         console.warn(`[addresses] set default error: ${formatSupabaseErrorForDevLog(error)}`);
       }
@@ -1089,6 +1116,7 @@ export default function AddressesScreen() {
         onConfirm={handleLocationConfirm}
         onPermissionDenied={handleLocationPermissionDenied}
       />
+      <Toast {...toast} onHide={hideToast} />
     </ScreenContainer>
   );
 }

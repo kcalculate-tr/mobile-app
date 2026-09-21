@@ -1,9 +1,38 @@
 import { getSupabaseClient } from './supabase';
 
+export type FeedbackItem = {
+  productId: number;
+  name: string;
+};
+
 export type PendingFeedbackOrder = {
   id: number;
   orderCode: string | null;
   deliveredAt: string;
+  /** Siparişteki ürünler — tek tek beğenilip beğenilmediği sorulur. */
+  items: FeedbackItem[];
+};
+
+/** productId -> beğenildi mi (true/false). Dokunulmayan ürün hiç yazılmaz. */
+export type ItemFeedbackMap = Record<number, boolean>;
+
+// orders.items JSON'undan ürün listesi. Aynı ürün birden çok satırdaysa
+// (farklı seçeneklerle) tek kez sorulur — musteri urune oy veriyor, satira degil.
+const parseItems = (raw: unknown): FeedbackItem[] => {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<number>();
+  const out: FeedbackItem[] = [];
+  for (const row of raw) {
+    const r = (row ?? {}) as Record<string, unknown>;
+    const productId = Number(r.id);
+    if (!Number.isFinite(productId) || productId <= 0 || seen.has(productId)) continue;
+    seen.add(productId);
+    out.push({
+      productId,
+      name: typeof r.name === 'string' && r.name.trim() ? r.name : 'Ürün',
+    });
+  }
+  return out;
 };
 
 // Teslimattan bu kadar sonra sorulur (push cron'u ile aynı eşik).
@@ -27,7 +56,7 @@ export const fetchPendingFeedbackOrder = async (
 
   const { data, error } = await supabase
     .from('orders')
-    .select('id, order_code, updated_at')
+    .select('id, order_code, updated_at, items')
     .eq('user_id', userId)
     .eq('status', 'delivered')
     .lte('updated_at', notAfter)
@@ -52,31 +81,58 @@ export const fetchPendingFeedbackOrder = async (
     id: Number(pending.id),
     orderCode: (pending.order_code as string | null) ?? null,
     deliveredAt: String(pending.updated_at),
+    items: parseItems(pending.items),
   };
 };
 
-/** Puan + (opsiyonel) yorum kaydeder. */
+/** Puan + (opsiyonel) yorum + (opsiyonel) ürün bazında beğeni kaydeder. */
 export const submitOrderReview = async ({
   orderId,
   userId,
   rating,
   comment,
+  items,
+  itemFeedback,
 }: {
   orderId: number;
   userId: string;
   rating: number;
   comment?: string;
+  items?: FeedbackItem[];
+  itemFeedback?: ItemFeedbackMap;
 }): Promise<{ ok: boolean; error?: string }> => {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.from('reviews').insert({
-    order_id: orderId,
-    user_id: userId,
-    rating: Math.max(1, Math.min(5, Math.round(rating))),
-    comment: comment?.trim() || null,
-    // Yorumlar moderasyondan geçtikten sonra yayınlanır.
-    is_approved: false,
-  });
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert({
+      order_id: orderId,
+      user_id: userId,
+      rating: Math.max(1, Math.min(5, Math.round(rating))),
+      comment: comment?.trim() || null,
+      // Yorumlar moderasyondan geçtikten sonra yayınlanır.
+      is_approved: false,
+    })
+    .select('id')
+    .single();
   if (error) return { ok: false, error: error.message };
+
+  // Ürün oyları BEST-EFFORT: burada bir hata olursa asıl değerlendirme yine
+  // kaydedilmiş sayılır. Müşteriye "gönderilemedi" demek, gönderilmiş bir
+  // puanı yok saymak olurdu.
+  const votes = Object.entries(itemFeedback ?? {});
+  if (votes.length > 0) {
+    const byId = new Map((items ?? []).map((it) => [it.productId, it.name]));
+    const rows = votes.map(([productId, liked]) => ({
+      review_id: data?.id ?? null,
+      order_id: orderId,
+      user_id: userId,
+      product_id: Number(productId),
+      product_name: byId.get(Number(productId)) ?? null,
+      liked,
+    }));
+    await supabase.from('review_item_feedback').insert(rows);
+  }
+
   return { ok: true };
 };
 

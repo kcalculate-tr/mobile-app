@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  ImageBackground,
   KeyboardAvoidingView,
+  ScrollView,
   Modal,
   Platform,
   StyleSheet,
@@ -11,18 +12,23 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Star, X } from 'phosphor-react-native';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { Star, ThumbsDown, ThumbsUp, X } from 'phosphor-react-native';
+import { COLORS, RADIUS, SPACING, SURFACE, TYPOGRAPHY } from '../constants/theme';
 import { haptic } from '../utils/haptics';
+import { animateListChange } from '../utils/layoutAnimation';
+import type { FeedbackItem, ItemFeedbackMap } from '../lib/orderFeedback';
 
 const RATING_LABELS = ['', 'Çok kötü', 'Kötü', 'İdare eder', 'İyi', 'Harika'];
 
 interface OrderFeedbackModalProps {
   visible: boolean;
-  orderCode: string | null;
+  /** Siparişteki ürünler; her biri için ayrı beğeni sorulur. */
+  items: FeedbackItem[];
+  /** Ana sayfa banner görseli — başlık arka planı. Yoksa marka yeşiline düşer. */
+  bannerUrl?: string | null;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (rating: number, comment: string) => void;
+  onSubmit: (rating: number, comment: string, itemFeedback: ItemFeedbackMap) => void;
 }
 
 /**
@@ -31,18 +37,33 @@ interface OrderFeedbackModalProps {
  */
 export default function OrderFeedbackModal({
   visible,
-  orderCode,
+  items,
+  bannerUrl,
   submitting,
   onClose,
   onSubmit,
 }: OrderFeedbackModalProps) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [itemFeedback, setItemFeedback] = useState<ItemFeedbackMap>({});
 
   const handleClose = () => {
     setRating(0);
     setComment('');
+    setItemFeedback({});
     onClose();
+  };
+
+  // Aynı butona tekrar basmak oyu GERİ ALIR — yanlışlıkla dokunan kullanıcı
+  // kilitlenmesin.
+  const toggleItem = (productId: number, liked: boolean) => {
+    haptic.selection();
+    setItemFeedback((prev) => {
+      const next = { ...prev };
+      if (next[productId] === liked) delete next[productId];
+      else next[productId] = liked;
+      return next;
+    });
   };
 
   return (
@@ -54,21 +75,23 @@ export default function OrderFeedbackModal({
               <X size={18} color={COLORS.text.primary} weight="bold" />
             </TouchableOpacity>
 
-            {/* Marka bandı — pop-up bir sistem uyarısı değil, KCAL'ın
-                müşteriye seslenişi; kimliğin görünmesi bunu belli eder. */}
-            <View style={styles.brandBanner}>
-              <Image
-                source={require('../../assets/kcalculate-logo.png')}
-                style={styles.brandLogo}
-                resizeMode="contain"
-              />
-            </View>
+            {/* Başlık bandı: ana sayfa banner'ı kırpılarak arka plan olur.
+                Görsel yüklenemezse marka yeşili zemin kalır — pop-up hiçbir
+                durumda boş bir dikdörtgenle açılmaz. */}
+            <ImageBackground
+              source={bannerUrl ? { uri: bannerUrl } : undefined}
+              style={styles.brandBanner}
+              imageStyle={styles.brandBannerImg}
+              resizeMode="cover"
+            >
+              {/* Koyu perde: banner'ın parlak bölgelerinde de beyaz yazı okunur. */}
+              <View style={styles.brandScrim} />
+              <Text style={styles.bannerTitle}>Deneyimin nasıldı?</Text>
+            </ImageBackground>
 
-            <Text style={styles.title}>Deneyimin nasıldı?</Text>
             <Text style={styles.sub}>
               Görüşlerine önem veriyoruz. Hizmet kalitemizi artırmak için önerilerini ve
               deneyimini bekliyoruz.
-              {orderCode ? `\n${orderCode}` : ''}
             </Text>
 
             <View style={styles.starsRow}>
@@ -89,6 +112,50 @@ export default function OrderFeedbackModal({
             </View>
             <Text style={styles.ratingLabel}>{rating > 0 ? RATING_LABELS[rating] : ' '}</Text>
 
+            {items.length > 0 ? (
+              <View style={styles.itemsBlock}>
+                <Text style={styles.itemsTitle}>Ürünler nasıldı?</Text>
+                <ScrollView
+                  style={styles.itemsScroll}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {items.map((it) => {
+                    const vote = itemFeedback[it.productId];
+                    return (
+                      <View key={it.productId} style={styles.itemRow}>
+                        <Text style={styles.itemName} numberOfLines={2}>{it.name}</Text>
+                        <TouchableOpacity
+                          style={[styles.voteBtn, vote === true && styles.voteBtnUp]}
+                          onPress={() => toggleItem(it.productId, true)}
+                          activeOpacity={0.7}
+                          hitSlop={6}
+                        >
+                          <ThumbsUp
+                            size={17}
+                            weight={vote === true ? 'fill' : 'regular'}
+                            color={vote === true ? '#000000' : COLORS.gray[500]}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.voteBtn, vote === false && styles.voteBtnDown]}
+                          onPress={() => toggleItem(it.productId, false)}
+                          activeOpacity={0.7}
+                          hitSlop={6}
+                        >
+                          <ThumbsDown
+                            size={17}
+                            weight={vote === false ? 'fill' : 'regular'}
+                            color={vote === false ? '#ffffff' : COLORS.gray[500]}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
+
             <TextInput
               style={styles.input}
               value={comment}
@@ -103,7 +170,7 @@ export default function OrderFeedbackModal({
 
             <TouchableOpacity
               style={[styles.submitBtn, (rating === 0 || submitting) && styles.submitBtnDisabled]}
-              onPress={() => onSubmit(rating, comment)}
+              onPress={() => onSubmit(rating, comment, itemFeedback)}
               disabled={rating === 0 || submitting}
               activeOpacity={0.85}
             >
@@ -138,20 +205,70 @@ const styles = StyleSheet.create({
   closeBtn: { position: 'absolute', top: SPACING.md, right: SPACING.md, padding: 4, zIndex: 2 },
   brandBanner: {
     alignSelf: 'stretch',
-    // Sheet'in kendi padding'ini geri alip bandi kenarlara TASIYOR; yarim
-    // yamalak bir kutu yerine gercek bir baslik seridi olusuyor.
+    // Sheet'in padding'ini geri alip bandi kenarlara TASIYOR.
     marginTop: -SPACING.xl,
     marginHorizontal: -SPACING.xl,
-    marginBottom: SPACING.xs,
-    paddingVertical: SPACING.lg,
-    borderTopLeftRadius: RADIUS.lg,
-    borderTopRightRadius: RADIUS.lg,
+    marginBottom: SPACING.md,
+    height: 132,
     backgroundColor: COLORS.brand.green,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
   },
-  // Logo 592x256 (2.31:1) — yukseklikten olculup oranina sadik kaliyor.
-  brandLogo: { width: 139, height: 60 },
+  brandBannerImg: {
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+  },
+  brandScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  bannerTitle: {
+    fontSize: TYPOGRAPHY.size['2xl'],
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.white,
+    textAlign: 'center',
+  },
+  itemsBlock: {
+    alignSelf: 'stretch',
+    marginTop: SPACING.xs,
+    gap: SPACING.xs,
+  },
+  itemsTitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  // Cok urunlu siparislerde pop-up ekrani asmasin diye liste kendi icinde kayar.
+  itemsScroll: { maxHeight: 168 },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border.light,
+  },
+  itemName: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.primary,
+    lineHeight: 18,
+  },
+  voteBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: SURFACE.unselectedBorder,
+    backgroundColor: SURFACE.unselectedBg,
+  },
+  voteBtnUp: { backgroundColor: COLORS.brand.green, borderColor: 'transparent' },
+  voteBtnDown: { backgroundColor: COLORS.text.primary, borderColor: 'transparent' },
   title: {
     fontSize: TYPOGRAPHY.size['2xl'],
     fontFamily: 'PlusJakartaSans_800ExtraBold',

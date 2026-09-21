@@ -31,7 +31,7 @@ import {
   subscribeToOrder,
   type ActiveOrder,
 } from '../lib/activeOrder';
-import { fetchPendingFeedbackOrder, submitOrderReview, type PendingFeedbackOrder } from '../lib/orderFeedback';
+import { fetchPendingFeedbackOrder, submitOrderReview, type ItemFeedbackMap, type PendingFeedbackOrder } from '../lib/orderFeedback';
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
@@ -199,7 +199,11 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, [activeOrder?.status]);
 
-  const handleSubmitFeedback = useCallback(async (rating: number, comment: string) => {
+  const handleSubmitFeedback = useCallback(async (
+    rating: number,
+    comment: string,
+    itemFeedback: ItemFeedbackMap,
+  ) => {
     if (!feedbackOrder || !session?.user?.id) return;
     setSubmittingFeedback(true);
     const res = await submitOrderReview({
@@ -207,11 +211,17 @@ export default function HomeScreen() {
       userId: session.user.id,
       rating,
       comment,
+      items: feedbackOrder.items,
+      itemFeedback,
     });
     setSubmittingFeedback(false);
     if (res.ok) {
       haptic.success();
-      track('order_review_submitted', { order_id: feedbackOrder.id, rating });
+      track('order_review_submitted', {
+        order_id: feedbackOrder.id,
+        rating,
+        item_votes: Object.keys(itemFeedback).length,
+      });
       setFeedbackOrder(null);
     } else {
       haptic.error();
@@ -719,7 +729,8 @@ export default function HomeScreen() {
       {/* Teslimattan 30 dk sonra tek seferlik değerlendirme istemi */}
       <OrderFeedbackModal
         visible={!!feedbackOrder}
-        orderCode={feedbackOrder?.orderCode ?? null}
+        items={feedbackOrder?.items ?? []}
+        bannerUrl={appBanner?.imageUrl ?? null}
         submitting={submittingFeedback}
         onClose={() => setFeedbackOrder(null)}
         onSubmit={handleSubmitFeedback}
