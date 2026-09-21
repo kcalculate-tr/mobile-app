@@ -223,8 +223,10 @@ const styles = StyleSheet.create({
     marginTop: -SPACING.xl,
     marginHorizontal: -SPACING.xl,
     marginBottom: SPACING.lg,
-    // 2:1 oranina yakin sade bir serit; marka gorseli bu oranda cekilmis.
-    height: 116,
+    // Marka gorseli 1200x400, yani TAM 3:1. Sabit yukseklik verilince
+    // resizeMode="cover" kenarlardan kirpiyordu; aspectRatio ile serit
+    // gorselin kendi oranini aliyor ve tamami sigiyor.
+    aspectRatio: 3,
     backgroundColor: COLORS.brand.green,
   },
   brandBannerImg: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -147,6 +147,7 @@ export default function AddressesScreen() {
 
   const [editingId, setEditingId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const [form, setForm] = useState<AddressForm>(INITIAL_FORM);
 
 
@@ -472,6 +473,7 @@ export default function AddressesScreen() {
     });
     setErrorMessage('');
     setInfoMessage('');
+    scrollToTop();
     setFormOpen(true);
   };
 
@@ -540,6 +542,7 @@ export default function AddressesScreen() {
     });
     setErrorMessage('');
     setInfoMessage(neighborhoodHint);
+    scrollToTop();
     setFormOpen(true);
   };
 
@@ -563,10 +566,17 @@ export default function AddressesScreen() {
     });
     setErrorMessage('');
     setInfoMessage('');
+    scrollToTop();
     setFormOpen(true);
   };
 
+  // Form ve liste AYNI ScrollView'da yer degistirdigi icin gecislerde
+  // kaydirma konumu sifirlanmali: yoksa kullanici listenin ortasindan
+  // forma gectiginde formun ortasinda aciliyor.
+  const scrollToTop = () => scrollRef.current?.scrollTo({ y: 0, animated: false });
+
   const resetForm = () => {
+    scrollToTop();
     setFormOpen(false);
     setEditingId('');
     setForm(INITIAL_FORM);
@@ -834,15 +844,24 @@ export default function AddressesScreen() {
       >
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+          {/* Form acikken ekran tek ise odaklanir: liste, harita ve ekleme
+              butonu gizlenir, baslik ve geri tusu forma ait olur. Kullanici
+              ayri bir sayfadaymis gibi hisseder; geri/kaydet listeye doner. */}
+          <TouchableOpacity
+            onPress={() => (formOpen ? resetForm() : navigation.goBack())}
+            style={s.backBtn}
+            activeOpacity={0.7}
+          >
             <CaretLeft size={22} color="#000000" />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Adreslerim</Text>
+          <Text style={s.headerTitle}>
+            {formOpen ? (editingId ? 'Adresi Düzenle' : 'Yeni Adres') : 'Adreslerim'}
+          </Text>
           <View style={{ width: 36 }} />
         </View>
 
         {/* Sabit Harita */}
-        {addresses.length > 0 && (
+        {!formOpen && addresses.length > 0 && (
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
@@ -880,6 +899,7 @@ export default function AddressesScreen() {
         )}
 
         <ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={[
             s.scroll,
@@ -897,7 +917,7 @@ export default function AddressesScreen() {
             </View>
           ) : (
             <React.Fragment>
-              {addresses.map((address) => {
+              {!formOpen && addresses.map((address) => {
                 const isActive = selectedAddress?.id === address.id;
                 return (
                   <TouchableOpacity
@@ -908,11 +928,11 @@ export default function AddressesScreen() {
                   >
                     <View style={s.addressCardInner}>
                       <View style={[s.addressIcon, isActive && s.addressCardActiveIcon]}>
-                        <MapPin size={18} color={isActive ? '#000000' : COLORS.text.secondary} />
+                        <MapPin size={18} color={isActive ? COLORS.white : COLORS.text.secondary} />
                       </View>
                       <View style={s.addressInfo}>
                         <View style={s.addressTitleRow}>
-                          <Text style={s.addressTitle}>{address.title || 'Adres'}</Text>
+                          <Text style={[s.addressTitle, isActive && s.addressTitleOnFill]}>{address.title || 'Adres'}</Text>
                           {isActive && (
                             <View style={[s.defaultBadge, isActive && s.defaultBadgeOnFill]}>
                               <Text style={[s.defaultBadgeText, isActive && s.defaultBadgeTextOnFill]}>Varsayılan</Text>
@@ -941,14 +961,14 @@ export default function AddressesScreen() {
                         onPress={() => openEditForm(address)}
                         activeOpacity={0.8}
                       >
-                        <PencilSimple size={14} color="#000000" />
+                        <PencilSimple size={14} color={isActive ? COLORS.white : '#000000'} />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={s.iconBtnDanger}
+                        style={[s.iconBtnDanger, isActive && s.iconBtnDangerOnFill]}
                         onPress={() => deleteAddress(address.id)}
                         activeOpacity={0.8}
                       >
-                        <Trash size={14} color="#d4183d" />
+                        <Trash size={14} color={isActive ? '#ff8a9b' : '#d4183d'} />
                       </TouchableOpacity>
                     </View>
 
@@ -965,7 +985,7 @@ export default function AddressesScreen() {
                 );
               })}
 
-              {addresses.length === 0 && (
+              {!formOpen && addresses.length === 0 && (
                 <View style={s.emptyState}>
                   <MapPin size={48} color="#e0e0e0" weight="thin" />
                   <Text style={s.emptyTitle}>Henüz kayıtlı adresiniz yok</Text>
@@ -974,19 +994,18 @@ export default function AddressesScreen() {
               )}
 
               {/* Add address button */}
-              <TouchableOpacity style={s.addAddressBtn} onPress={openCreateForm} activeOpacity={0.8}>
-                <View style={s.addAddressIcon}>
-                  <Plus size={16} color="#000000" />
-                </View>
-                <Text style={s.addAddressBtnText}>Yeni Adres Ekle</Text>
-              </TouchableOpacity>
+              {!formOpen && (
+                <TouchableOpacity style={s.addAddressBtn} onPress={openCreateForm} activeOpacity={0.8}>
+                  <View style={s.addAddressIcon}>
+                    <Plus size={16} color="#000000" />
+                  </View>
+                  <Text style={s.addAddressBtnText}>Yeni Adres Ekle</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Form */}
               {formOpen && (
                 <View style={s.formCard}>
-                  <Text style={s.formTitle}>
-                    {editingId ? 'Adresi Düzenle' : 'Yeni Adres'}
-                  </Text>
 
                   {/* FAZ L madde 3 — konum önizleme kartı, hem yeni hem düzenleme modunda */}
                   <TouchableOpacity
@@ -1159,21 +1178,25 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     shadowRadius: 10,
     elevation: 2,
   },
-  // Secim dili TEK duzlem: checkout chip'leri, adres ve odeme satirlari gibi
-  // secili adres karti da marka yesili DOLGU. Stroke + beyaz zemin ayni
-  // uygulamada ikinci bir secim gorunumu olusturuyordu.
+  // Secili adres DOLGULU, ama marka yesiliyle degil.
+  //
+  // #B9EF14 kucuk chip'lerde ise yariyor; kart boyutunda genis bir alani
+  // kapladiginda goz yoruyor ve icindeki kirmizi silme butonuyla carpisiyor.
+  // Uygulamada "secili konum" dili ZATEN siyah: ana sayfadaki adres hapi da
+  // siyah zemin + beyaz yazi. Kart da ona hizalandi; marka yesili vurgu
+  // ogesi olarak (rozet) kaliyor.
   addressCardActive: {
-    backgroundColor: COLORS.brand.green,
+    backgroundColor: COLORS.text.primary,
     borderColor: 'transparent',
   },
-  // Yesil zemin uzerinde: ikon kabi beyaz, rozet siyah, ikincil yazi
-  // siyahin yumusatilmisi. Hepsi AA esigini asiyor.
-  addressCardActiveIcon: { backgroundColor: COLORS.white },
-  defaultBadgeOnFill: { backgroundColor: COLORS.text.primary },
-  defaultBadgeTextOnFill: { color: COLORS.white },
-  addressTextOnFill: { color: 'rgba(0,0,0,0.72)' },
-  addressLineOnFill: { color: COLORS.text.primary },
-  iconBtnOnFill: { backgroundColor: COLORS.white },
+  addressCardActiveIcon: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  addressTitleOnFill: { color: COLORS.white },
+  defaultBadgeOnFill: { backgroundColor: COLORS.brand.green },
+  defaultBadgeTextOnFill: { color: COLORS.text.primary },
+  addressLineOnFill: { color: COLORS.white },
+  addressTextOnFill: { color: 'rgba(255,255,255,0.62)' },
+  iconBtnOnFill: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  iconBtnDangerOnFill: { backgroundColor: 'rgba(255,255,255,0.10)' },
   addressCardInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   addressIcon: {
     width: 42, height: 42,
