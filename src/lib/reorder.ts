@@ -98,19 +98,21 @@ const attachImages = async (
   if (ids.length === 0) return;
 
   try {
+    // Gorsel kolonunun adi `img`. 21.09.2026'da burasi `image_url, image`
+    // seciyordu — products'ta ikisi de YOK, dolayisiyla select 400 doneriyor,
+    // catch yutuyor ve kartlar hep gorselsiz kaliyordu. Kolon adi semadan
+    // dogrulandi; mapProductRow'un fallback zincirine guvenmek yanilticiydi
+    // (o zincir baska kaynaklardan gelen satirlar icin yazilmis).
     const { data, error } = await supabase
       .from('products')
-      .select('id, image_url, image')
+      .select('id, img')
       .in('id', ids);
     if (error) return;
 
     const byId = new Map<number, string>();
     for (const row of Array.isArray(data) ? data : []) {
       const r = row as Record<string, unknown>;
-      const url =
-        (typeof r.image_url === 'string' && r.image_url.trim()) ||
-        (typeof r.image === 'string' && r.image.trim()) ||
-        '';
+      const url = typeof r.img === 'string' ? r.img.trim() : '';
       if (url) byId.set(Number(r.id), url);
     }
 

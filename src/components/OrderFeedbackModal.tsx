@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -50,8 +51,18 @@ export default function OrderFeedbackModal({
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.centerWrap}>
           <View style={styles.sheet}>
             <TouchableOpacity style={styles.closeBtn} onPress={handleClose} hitSlop={10}>
-              <X size={18} color={COLORS.text.tertiary} weight="bold" />
+              <X size={18} color={COLORS.text.primary} weight="bold" />
             </TouchableOpacity>
+
+            {/* Marka bandı — pop-up bir sistem uyarısı değil, KCAL'ın
+                müşteriye seslenişi; kimliğin görünmesi bunu belli eder. */}
+            <View style={styles.brandBanner}>
+              <Image
+                source={require('../../assets/kcalculate-logo.png')}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
+            </View>
 
             <Text style={styles.title}>Deneyimin nasıldı?</Text>
             <Text style={styles.sub}>
@@ -117,11 +128,30 @@ const styles = StyleSheet.create({
   sheet: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg,
+    // Marka bandi negatif margin ile kenarlara tasiyor; kirpilmazsa
+    // yuvarlak koselerin disina sizar.
+    overflow: 'hidden',
     padding: SPACING.xl,
     alignItems: 'center',
     gap: SPACING.sm,
   },
   closeBtn: { position: 'absolute', top: SPACING.md, right: SPACING.md, padding: 4, zIndex: 2 },
+  brandBanner: {
+    alignSelf: 'stretch',
+    // Sheet'in kendi padding'ini geri alip bandi kenarlara TASIYOR; yarim
+    // yamalak bir kutu yerine gercek bir baslik seridi olusuyor.
+    marginTop: -SPACING.xl,
+    marginHorizontal: -SPACING.xl,
+    marginBottom: SPACING.xs,
+    paddingVertical: SPACING.lg,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    backgroundColor: COLORS.brand.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Logo 592x256 (2.31:1) — yukseklikten olculup oranina sadik kaliyor.
+  brandLogo: { width: 139, height: 60 },
   title: {
     fontSize: TYPOGRAPHY.size['2xl'],
     fontFamily: 'PlusJakartaSans_800ExtraBold',

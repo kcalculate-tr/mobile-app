@@ -29,6 +29,7 @@ import {
   fetchSuggestionPool,
 } from '../lib/cartSuggestions';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
+import { animateListChange } from '../utils/layoutAnimation';
 import { validateCoupon, getCouponErrorMessage } from '../lib/offers';
 import {
   fetchMacroProfile,
@@ -488,21 +489,21 @@ export default function CartScreen() {
                 <View style={styles.itemActions}>
                   <TouchableOpacity
                     style={styles.removeBtn}
-                    onPress={() => { haptic.medium(); removeItem(item.lineKey); }}
+                    onPress={() => { haptic.medium(); animateListChange(); removeItem(item.lineKey); }}
                   >
                     <Trash size={13} color="#FF3B30" />
                   </TouchableOpacity>
                   <View style={styles.qtyRow}>
                     <TouchableOpacity
                       style={styles.qtyBtn}
-                      onPress={() => { haptic.medium(); updateQuantity(item.lineKey, item.quantity - 1); }}
+                      onPress={() => { haptic.medium(); animateListChange(); updateQuantity(item.lineKey, item.quantity - 1); }}
                     >
                       <Minus size={13} color={COLORS.text.primary} />
                     </TouchableOpacity>
                     <AnimatedNumberText style={styles.qtyText} value={item.quantity} />
                     <TouchableOpacity
                       style={[styles.qtyBtn, styles.qtyBtnAdd]}
-                      onPress={() => { haptic.light(); updateQuantity(item.lineKey, item.quantity + 1); }}
+                      onPress={() => { haptic.light(); animateListChange(); updateQuantity(item.lineKey, item.quantity + 1); }}
                     >
                       <Plus size={13} color="#000000" />
                     </TouchableOpacity>
@@ -693,6 +694,10 @@ export default function CartScreen() {
                         onPress={(e) => {
                           e.stopPropagation();
                           haptic.medium();
+                          // Yeni satir listede yerini acarak gelsin; ayrica
+                          // eklenen urun onerilerden dustugu icin o serit de
+                          // kayarak kapansin.
+                          animateListChange();
                           addItem(product, {}, 1);
                         }}
                       >
