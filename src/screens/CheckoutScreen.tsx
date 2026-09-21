@@ -2214,8 +2214,7 @@ export default function CheckoutScreen() {
                   birbiriyle çelişebiliyordu (bkz. commit mesajı). */}
               {selectedPayCardId === null ? (
                 <Text style={styles.payHintText}>
-                  Kartını ödeme adımında “Öde ve Kartı Kayıt Et” ile
-                  kaydedebilirsin; istemezsen sadece “Öde” de.
+                  Kartını ödeme adımında “Öde ve Kartı Kayıt Et” ile kaydedebilirsin.
                 </Text>
               ) : null}
 
@@ -2280,13 +2279,17 @@ export default function CheckoutScreen() {
             {deliveryMethod === 'home_delivery' ? (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Teslimat</Text>
-                <AnimatedNumberText
-                  style={[
-                    styles.summaryValue,
-                    deliveryFee === 0 ? { color: '#16a34a' } : null,
-                  ]}
-                  value={deliveryFee === 0 ? 'Ücretsiz' : toCurrency(deliveryFee)}
-                />
+                {deliveryFee === 0 ? (
+                  // Marka yeşili (#B9EF14) beyaz üzerinde metin olarak 1,36:1
+                  // kontrast verir — okunmaz. Bu yüzden rengin kendisi ZEMİN
+                  // olarak kullanılıyor, yazı siyah: uygulamanın her yerindeki
+                  // "yeşil dolgu + siyah metin" diliyle aynı ve erişilebilir.
+                  <View style={styles.freeBadge}>
+                    <Text style={styles.freeBadgeText}>Ücretsiz</Text>
+                  </View>
+                ) : (
+                  <AnimatedNumberText style={styles.summaryValue} value={toCurrency(deliveryFee)} />
+                )}
               </View>
             ) : null}
             {discountAmount > 0 ? (
@@ -2755,6 +2758,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: TYPOGRAPHY.size.sm,
     color: '#555555',
+  },
+  freeBadge: {
+    backgroundColor: COLORS.brand.green,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+  },
+  freeBadgeText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#000000',
   },
   payHintText: {
     fontSize: TYPOGRAPHY.size.sm,

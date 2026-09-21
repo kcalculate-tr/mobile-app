@@ -2,9 +2,12 @@ import Constants from 'expo-constants';
 
 type PaymentProvider = 'tosla' | 'paytr_iframe' | 'paynkolay';
 
-// GUVENLI FALLBACK: env okunamasa bile PayTR iframe yolu varsayilan.
-// Bkz. src/lib/payment.ts PAYMENT_PROVIDER_FALLBACK ile aynidir.
-const FALLBACK: PaymentProvider = 'paytr_iframe';
+// 21.09.2026: PayTR ve Tosla ile calisma tamamen sona erdi — tek saglayici
+// PaynKolay. Env degeri artik OKUNMUYOR; EAS/eas.json arasindaki
+// EXPO_PUBLIC_PAYMENT_PROVIDER celiskisi build'i PayTR'ye dusuremez.
+// (Koddaki eski paytr/tosla dallari artik ulasilamaz; temizligi ayri bir
+// commit'te yapilacak — odeme mantiginda build oncesi churn istemiyoruz.)
+const FALLBACK: PaymentProvider = 'paynkolay';
 
 function readEnv(): string | undefined {
   const fromExtra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined)
@@ -16,10 +19,8 @@ function readEnv(): string | undefined {
 }
 
 function resolveProvider(): PaymentProvider {
-  const raw = readEnv()?.toLowerCase();
-  if (raw === 'paynkolay') return 'paynkolay';
-  if (raw === 'paytr_iframe' || raw === 'paytr') return 'paytr_iframe';
-  if (raw === 'tosla') return 'tosla';
+  // Env bilerek yok sayiliyor: saglayici tek ve sabit.
+  void readEnv;
   return FALLBACK;
 }
 
