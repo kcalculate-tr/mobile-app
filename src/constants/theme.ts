@@ -63,6 +63,33 @@ export const COLORS = {
   },
 } as const;
 
+/**
+ * Seçilebilir yüzeylerin PASİF hali.
+ *
+ * Eski dil gri dolgu (#f0f0f0 / #f5f5f5) + soluk yazı (text.secondary
+ * #878787) idi. İki sorunu vardı:
+ *   1. Kontrast 2.9:1 — WCAG AA eşiği 4.5:1'in altında.
+ *   2. Seçenek "devre dışı" gibi okunuyordu. Oysa seçili olmayan bir
+ *      seçenek devre dışı DEĞİL, sadece henüz seçilmemiş.
+ *
+ * Yeni dil: beyaz zemin + net kenarlık + tam güçte yazı. Gri yalnızca
+ * GERÇEKTEN kullanılamayan yüzeylere (Kapalı, Dolu, Hemen yok) ayrıldı —
+ * böylece gri tekrar anlam taşıyor.
+ */
+export const SURFACE = {
+  unselectedBg: COLORS.white,
+  unselectedBorder: 'rgba(0,0,0,0.12)',
+  /** Beyaz üzerinde 10.4:1 */
+  unselectedText: COLORS.gray[700],
+  /** Açıklama/ikincil satır — beyaz üzerinde 5.7:1 */
+  unselectedMutedText: COLORS.gray[500],
+  disabledBg: COLORS.gray[100],
+  disabledBorder: COLORS.border.medium,
+  disabledText: COLORS.gray[400],
+  inputBg: COLORS.white,
+  inputBorder: 'rgba(0,0,0,0.12)',
+} as const;
+
 export const SPACING = {
   // Base 4px grid
   xs: 4,

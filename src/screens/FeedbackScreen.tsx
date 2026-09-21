@@ -1,4 +1,4 @@
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../constants/theme';
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import KeyboardAccessory from '../components/KeyboardAccessory'
 import { Animated,
@@ -233,20 +233,21 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginBottom:
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
   catChip: {
     borderRadius: RADIUS.pill, borderWidth: 1, borderColor: COLORS.border.strong,
-    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    backgroundColor: SURFACE.unselectedBg,
   },
   catChipActive: { backgroundColor: COLORS.brand.green, borderColor: COLORS.brand.green },
   catChipText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.semibold,
-fontFamily: 'PlusJakartaSans_600SemiBold', color: '#555' },
+fontFamily: 'PlusJakartaSans_600SemiBold', color: SURFACE.unselectedText },
   catChipTextActive: { color: COLORS.text.primary, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold'},
   starRow: { flexDirection: 'row', gap: SPACING.sm, justifyContent: 'center', paddingVertical: SPACING.sm },
   ratingLabel: { textAlign: 'center', fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.bold,
 fontFamily: 'PlusJakartaSans_700Bold', color: '#F59E0B', marginTop: SPACING.xs },
   textarea: {
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)', borderRadius: RADIUS.sm,
+    borderWidth: 1, borderColor: SURFACE.inputBorder, borderRadius: RADIUS.sm,
     padding: SPACING.md, fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary, minHeight: 120,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: SURFACE.inputBg,
   },
   charCount: { fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.disabled, textAlign: 'right', marginTop: SPACING.xs },
   submitBtn: {

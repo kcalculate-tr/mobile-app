@@ -26,6 +26,7 @@ import { WebView } from 'react-native-webview';
 import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon, WarningCircle } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import Selectable from '../components/ui/Selectable';
+import { useSectionTransition } from '../hooks/useSectionTransition';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
@@ -81,7 +82,7 @@ import { useAddressStore } from '../store/addressStore';
 import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
 import { logEvent, track } from '../lib/analytics';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../constants/theme';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../utils/deliveryDays';
 
@@ -464,7 +465,7 @@ export default function CheckoutScreen() {
     }
   }, [businessHours]);
 
-  const sectionOpacity = useRef(new Animated.Value(1)).current;
+
   // Tosla 3DS WebView: onNavigationStateChange aynı URL için birden çok kez
   // tetiklenebilir → başarı bloğu tek sefer çalışsın diye guard. Hata olursa
   // false'a çekilir (kullanıcı tekrar deneyebilsin).
@@ -473,26 +474,10 @@ export default function CheckoutScreen() {
   // CANLI kalmalı (kapatırsak POST abort olur). Bu süre boyunca ham "OK" sayfasını
   // maskelemek için WebView üstüne "doğrulanıyor" overlay'i gösterilir.
   const [verifyingPayment, setVerifyingPayment] = useState(false);
-  // Onceki hal: fade-out/fade-in sirasi baslatilir, callback ANINDA cagrilirdi.
-  // Sonuc, icerik t=0'da zipliyor, uzerine alakasiz bir flash oynuyordu — capraz
-  // gecis degil, goz kirpmasi. Artik icerik opacity 0'a ULASINCA degisiyor.
-  // Fade-out 90ms: gecikme olarak hissedilmeyecek kadar kisa, gecisi ortecek
-  // kadar uzun.
-  const animateSection = (callback: () => void) => {
-    Animated.timing(sectionOpacity, {
-      toValue: 0,
-      duration: 90,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      callback();
-      if (!finished) { sectionOpacity.setValue(1); return; }
-      Animated.timing(sectionOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    });
-  };
+
+  // Yöntem/Zaman değişince bölüm çapraz geçer. Geçiş state'e TEPKİ verir;
+  // state geçişin içinde değişmez (bkz. useSectionTransition yorumu).
+  const sectionOpacity = useSectionTransition([deliveryMethod, deliveryTimeType]);
 
   const setSelectedAddress = useAddressStore((s) => s.setSelectedAddress);
 
@@ -1911,7 +1896,7 @@ export default function CheckoutScreen() {
                   selectedStyle={styles.chipActive}
                   borderRadius={RADIUS.xs}
                   overlayInset={-1}
-                  onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'home_delivery' }))}
+                  onPress={() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'home_delivery' })}
                 >
                   <House size={14} color={deliveryMethod === 'home_delivery' ? '#000' : COLORS.text.secondary} />
                   <Text style={[styles.chipText, deliveryMethod === 'home_delivery' && styles.chipTextActive]}>Eve Teslim</Text>
@@ -1923,7 +1908,7 @@ export default function CheckoutScreen() {
                   selectedStyle={styles.chipActive}
                   borderRadius={RADIUS.xs}
                   overlayInset={-1}
-                  onPress={() => animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' }))}
+                  onPress={() => dispatchDelivery({ type: 'SET_DELIVERY_METHOD', payload: 'pickup' })}
                 >
                   <Storefront size={14} color={deliveryMethod === 'pickup' ? '#000' : COLORS.text.secondary} />
                   <Text style={[styles.chipText, deliveryMethod === 'pickup' && styles.chipTextActive, !shopOpenNow && { color: '#dc2626' }]}>{shopOpenNow ? 'Gel-Al' : 'Kapalı'}</Text>
@@ -1953,9 +1938,7 @@ export default function CheckoutScreen() {
                       borderRadius={RADIUS.xs}
                       overlayInset={-1}
                       disabled={!canPickImmediate}
-                      onPress={() =>
-                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' }))
-                      }
+                      onPress={() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'immediate' })}
                     >
                       <Lightning
                         size={14}
@@ -1982,9 +1965,7 @@ export default function CheckoutScreen() {
                       borderRadius={RADIUS.xs}
                       overlayInset={-1}
                       disabled={!canPickScheduled}
-                      onPress={() =>
-                        animateSection(() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' }))
-                      }
+                      onPress={() => dispatchDelivery({ type: 'SET_DELIVERY_TIME_TYPE', payload: 'scheduled' })}
                     >
                       <CalendarBlank
                         size={14}
@@ -2684,7 +2665,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
-    color: COLORS.text.tertiary,
+    color: SURFACE.unselectedText,
   },
   cardTitle: {
     fontSize: TYPOGRAPHY.size.md,
@@ -2702,8 +2683,8 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     borderRadius: RADIUS.sm,
     borderWidth: 1.5,
-    borderColor: COLORS.border.medium,
-    backgroundColor: COLORS.background,
+    borderColor: SURFACE.unselectedBorder,
+    backgroundColor: SURFACE.unselectedBg,
   },
   // Secim dili TEK duzlem: Yontem/Zaman chip'leri gibi secili satir da marka
   // yesili DOLGU (21.09.2026). Onceki hal siyah stroke + beyaz zemin idi ve
@@ -3120,14 +3101,14 @@ const styles = StyleSheet.create({
 
   // Order note
   noteInput: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderWidth: 1,
+    borderColor: SURFACE.inputBorder,
     borderRadius: RADIUS.sm,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.text.primary,
-    backgroundColor: COLORS.background,
+    backgroundColor: SURFACE.inputBg,
     minHeight: 80,
   },
   noteCounter: {
@@ -3195,9 +3176,9 @@ const styles = StyleSheet.create({
   cardInput: {
     height: 52,
     borderRadius: RADIUS.sm,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.1)',
-    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: SURFACE.inputBorder,
+    backgroundColor: SURFACE.inputBg,
     paddingHorizontal: SPACING.md,
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.text.primary,
@@ -3230,7 +3211,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACING.xs,
     borderRadius: RADIUS.xs,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: SURFACE.unselectedBg,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
   },
@@ -3262,7 +3243,7 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
+    color: SURFACE.unselectedText,
   },
   chipTextActive: {
     color: COLORS.text.primary,
@@ -3278,7 +3259,9 @@ const styles = StyleSheet.create({
     width: 56,
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.sm,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: SURFACE.unselectedBg,
+    borderWidth: 1,
+    borderColor: SURFACE.unselectedBorder,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
@@ -3290,7 +3273,7 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
+    color: SURFACE.unselectedText,
     letterSpacing: 0.2,
   },
   dateDayNum: {
@@ -3304,7 +3287,7 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
+    color: SURFACE.unselectedText,
   },
   dateLabelActive: {
     color: COLORS.text.primary,
@@ -3322,9 +3305,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: RADIUS.xs,
-    borderWidth: 1.5,
-    borderColor: COLORS.border.medium,
-    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: SURFACE.unselectedBorder,
+    backgroundColor: SURFACE.unselectedBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3336,19 +3319,21 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
+    color: SURFACE.unselectedText,
   },
   timeSlotLabelActive: {
     color: COLORS.text.primary,
     fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
+  // Gri ARTIK yalnizca gercekten kullanilamayan yuzeylerin dili — opacity
+  // yerine acik token'lar, boylece "dolu" ile "secili degil" karismiyor.
   timeSlotCardDisabled: {
-    opacity: 0.5,
-    backgroundColor: '#e8e8e8',
+    backgroundColor: SURFACE.disabledBg,
+    borderColor: SURFACE.disabledBorder,
   },
   timeSlotLabelDisabled: {
-    color: '#999999',
+    color: SURFACE.disabledText,
   },
   timeSlotFullText: {
     marginTop: 2,

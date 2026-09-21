@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,7 +21,9 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { getSupabaseClient } from '../../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SURFACE } from '../../constants/theme';
+import Selectable from '../../components/ui/Selectable';
+import { useSectionTransition } from '../../hooks/useSectionTransition';
 import MacroRing from '../../components/MacroRing';
 import {
   ActivityLevel,
@@ -67,14 +70,17 @@ function ToggleGroup<T extends string>({ options, selected, onSelect }: {
   return (
     <View style={tg.row}>
       {options.map((opt) => (
-        <TouchableOpacity
+        <Selectable
           key={opt.key}
-          style={[tg.btn, selected === opt.key && tg.btnActive]}
+          selected={selected === opt.key}
+          style={tg.btn}
+          selectedStyle={tg.btnActive}
+          borderRadius={100}
+          overlayInset={-1}
           onPress={() => onSelect(opt.key)}
-          activeOpacity={0.8}
         >
           <Text style={[tg.text, selected === opt.key && tg.textActive]}>{opt.label}</Text>
-        </TouchableOpacity>
+        </Selectable>
       ))}
     </View>
   );
@@ -82,10 +88,14 @@ function ToggleGroup<T extends string>({ options, selected, onSelect }: {
 
 const tg = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8 },
-  btn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 100, backgroundColor: '#f0f0f0' },
+  btn: {
+    flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 100,
+    backgroundColor: SURFACE.unselectedBg,
+    borderWidth: 1, borderColor: SURFACE.unselectedBorder,
+  },
   btnActive: { backgroundColor: COLORS.brand.green },
   text: { fontSize: 13, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
+fontFamily: 'PlusJakartaSans_600SemiBold', color: SURFACE.unselectedText },
   textActive: { color: '#000000' },
 });
 
@@ -124,6 +134,10 @@ export default function NutritionProfileScreen() {
 
   // Özel makro
   const [useCustomMacros, setUseCustomMacros] = useState(false);
+
+  // Otomatik <-> Elle Duzenle arasi gecis: halkalar ile giris alanlari
+  // birbirinin yerine ANINDA gecmesin.
+  const macroOpacity = useSectionTransition([useCustomMacros]);
   const [customCalories, setCustomCalories] = useState('');
   const [customProtein, setCustomProtein] = useState('');
   const [customCarbs, setCustomCarbs] = useState('');
@@ -435,11 +449,14 @@ export default function NutritionProfileScreen() {
             <Text style={s.cardLabel}>Aktivite Seviyesi</Text>
             <View style={s.activityList}>
               {ACTIVITY_OPTIONS.map((opt) => (
-                <TouchableOpacity
+                <Selectable
                   key={opt.key}
-                  style={[s.activityRow, activity === opt.key && s.activityRowActive]}
+                  selected={activity === opt.key}
+                  style={s.activityRow}
+                  selectedStyle={s.activityRowActive}
+                  borderRadius={12}
+                  overlayInset={-1}
                   onPress={() => setActivity(opt.key)}
-                  activeOpacity={0.8}
                 >
                   <View style={[s.activityRadio, activity === opt.key && s.activityRadioActive]}>
                     {activity === opt.key && <View style={s.activityRadioDot} />}
@@ -463,7 +480,7 @@ export default function NutritionProfileScreen() {
                       />
                     ))}
                   </View>
-                </TouchableOpacity>
+                </Selectable>
               ))}
             </View>
           </View>
@@ -476,16 +493,21 @@ export default function NutritionProfileScreen() {
 
             {/* Toggle Bar */}
             <View style={s.macroToggleRow}>
-              <TouchableOpacity
-                style={[s.macroToggleBtn, !useCustomMacros && s.macroToggleBtnActive]}
+              <Selectable
+                selected={!useCustomMacros}
+                style={s.macroToggleBtn}
+                selectedStyle={s.macroToggleBtnActive}
+                borderRadius={100}
                 onPress={() => setUseCustomMacros(false)}
-                activeOpacity={0.8}
               >
-                <LockSimple size={13} color={!useCustomMacros ? '#000000' : COLORS.text.secondary} />
+                <LockSimple size={13} color={!useCustomMacros ? '#000000' : SURFACE.unselectedText} />
                 <Text style={[s.macroToggleBtnText, !useCustomMacros && s.macroToggleBtnTextActive]}>Otomatik</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.macroToggleBtn, useCustomMacros && s.macroToggleBtnActive]}
+              </Selectable>
+              <Selectable
+                selected={useCustomMacros}
+                style={s.macroToggleBtn}
+                selectedStyle={s.macroToggleBtnActive}
+                borderRadius={100}
                 onPress={() => {
                   if (!useCustomMacros) {
                     setCustomCalories(String(macros.targetKcal));
@@ -495,13 +517,13 @@ export default function NutritionProfileScreen() {
                   }
                   setUseCustomMacros(true);
                 }}
-                activeOpacity={0.8}
               >
-                <PencilSimple size={13} color={useCustomMacros ? '#000000' : COLORS.text.secondary} />
+                <PencilSimple size={13} color={useCustomMacros ? '#000000' : SURFACE.unselectedText} />
                 <Text style={[s.macroToggleBtnText, useCustomMacros && s.macroToggleBtnTextActive]}>Elle Düzenle</Text>
-              </TouchableOpacity>
+              </Selectable>
             </View>
 
+            <Animated.View style={{ opacity: macroOpacity }}>
             {!useCustomMacros && (() => {
               // Halkalarin dolulugu makronun toplam gram icindeki PAYI
               // (sepetteki gosterimle ayni dil) — duz pastel kutular yerine.
@@ -559,6 +581,7 @@ export default function NutritionProfileScreen() {
                 ))}
               </View>
             )}
+            </Animated.View>
           </View>
 
           {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
@@ -669,7 +692,7 @@ fontFamily: 'PlusJakartaSans_800ExtraBold'},
 fontFamily: 'PlusJakartaSans_600SemiBold'},
   numInput: {
     height: 48, borderRadius: 12, borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.12)', backgroundColor: '#f6f6f6',
+    borderColor: SURFACE.inputBorder, backgroundColor: SURFACE.inputBg,
     paddingHorizontal: 10, fontSize: 18, fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000', textAlign: 'center',
@@ -678,7 +701,8 @@ fontFamily: 'PlusJakartaSans_600SemiBold'},
   activityList: { gap: 8 },
   activityRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12,
-    borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.08)', backgroundColor: '#f9f9f9',
+    borderRadius: 12, borderWidth: 1, borderColor: SURFACE.unselectedBorder,
+    backgroundColor: SURFACE.unselectedBg,
   },
   // Secim dili tek duzlem: secili satir marka yesili DOLGU (checkout
   // chip'leri ve adres/odeme satirlariyla ayni).
@@ -692,7 +716,7 @@ fontFamily: 'PlusJakartaSans_600SemiBold'},
   activityLabel: { fontSize: 14, fontWeight: '600',
 fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
   activityLabelActive: { fontFamily: 'PlusJakartaSans_700Bold' },
-  activityDesc: { fontSize: 11, color: COLORS.text.tertiary, marginTop: 1 },
+  activityDesc: { fontSize: 11, color: SURFACE.unselectedMutedText, marginTop: 1 },
   activityDescActive: { color: 'rgba(0,0,0,0.62)' },
   intensityRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
   intensityDot: { width: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.12)' },
@@ -729,7 +753,7 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
   },
   macroToggleBtnActive: { backgroundColor: COLORS.brand.green },
   macroToggleBtnText: { fontSize: 12, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
+fontFamily: 'PlusJakartaSans_600SemiBold', color: SURFACE.unselectedText },
   macroToggleBtnTextActive: { color: '#000000' },
 
   customMacroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
