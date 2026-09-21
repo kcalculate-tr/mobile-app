@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     // Kategori/menu tipografisiyle ayni aile ve olcek; genis harf araligi
     // (letterSpacing 0.6) seridi ekranin geri kalanindan kopariyordu.
     fontSize: TYPOGRAPHY.size.sm,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
     // KRITIK: satir icinde Text varsayilan olarak KUCULUR (flexShrink:1) ve
     // numberOfLines=1 ile kirpilir -> marquee calismaz. 0 yaparak metnin
     // kendi dogal genisligine ulasmasini ve tasmasini sagliyoruz.
