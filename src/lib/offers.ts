@@ -24,6 +24,12 @@ export interface Campaign {
   max_discount?: number;
   image_url?: string;
   max_uses_per_user?: number | null;
+  /** Kişiye özel atanmışsa dolu — "Kuponlarım" sekmesini ayırmak için. */
+  user_id?: string | null;
+  /** 'macro_reward' = Macro karşılığı üretilmiş ücretsiz öğün kuponu. */
+  source?: string | null;
+  /** free_item kuponunun geçmediği ürün kategorileri. */
+  excluded_categories?: string[] | null;
 }
 
 export async function fetchCampaigns(): Promise<Campaign[]> {

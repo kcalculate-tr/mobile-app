@@ -25,6 +25,7 @@ import {
 import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
+import PushPermissionPrompt from './src/components/modals/PushPermissionPrompt';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
@@ -98,6 +99,9 @@ function AppContent() {
     <>
       <AppNavigator />
       <ForceUpdateModal visible={forceUpdate} message={forceUpdateMessage} />
+      {/* Zorunlu guncelleme kilidi varken bildirim hatirlatmasini hic mount etme
+          — iki modal ust uste binmesin. */}
+      {!forceUpdate && <PushPermissionPrompt />}
     </>
   );
 }

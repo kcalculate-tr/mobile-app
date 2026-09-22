@@ -620,6 +620,7 @@ export default function ProfileScreen() {
         visible={macroModal.visible}
         onClose={macroModal.close}
         macroProfile={macroProfile}
+        macroSettings={macroSettings}
         onNavigateToProfile={() => {
           macroModal.close();
           navigation.navigate('NutritionProfile');
