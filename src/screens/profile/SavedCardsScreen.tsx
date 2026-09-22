@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -234,12 +235,33 @@ export default function SavedCardsScreen() {
           </TouchableOpacity>
         ) : null}
 
-        <View style={s.securityNote}>
-          <Lock size={14} color={COLORS.text.secondary} />
-          <Text style={s.securityText}>
-            Kart bilgileriniz KCAL'da saklanmaz; lisanslı ödeme kuruluşu
-            PaynKolay'ın altyapısında tutulur.
-          </Text>
+        {/* Guven rozetleri: Checkout ekranindaki TrustBadges ile ayni gorsel dil. */}
+        <View style={s.trustCard}>
+          <View style={s.trustHeader}>
+            <Text style={s.trustTitle}>Güvenli Ödeme</Text>
+            <Image
+              source={require('../../../assets/payment/paynkolay-logo.png')}
+              style={s.paynkolayLogo}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={s.trustRow}>
+            <Image source={require('../../../assets/payment/pci-dss.png')} style={s.trustPci} resizeMode="contain" />
+            <View style={s.trustDivider} />
+            <Image source={require('../../../assets/payment/visa.png')} style={s.trustVisa} resizeMode="contain" />
+            <Image source={require('../../../assets/payment/mastercard.png')} style={s.trustMastercard} resizeMode="contain" />
+            <Image source={require('../../../assets/payment/troy.png')} style={s.trustTroy} resizeMode="contain" />
+            <Text style={s.trustNote} numberOfLines={1}>3D Secure ile korunur</Text>
+          </View>
+
+          <View style={s.securityNoteRow}>
+            <Lock size={14} color={COLORS.text.secondary} />
+            <Text style={s.securityText}>
+              Kart bilgileriniz KCAL'da saklanmaz; lisanslı ödeme kuruluşu
+              PaynKolay'ın altyapısında tutulur.
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -322,10 +344,29 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
   },
   addBtnText: { fontSize: 15, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
 
-  securityNote: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: '#ffffff', borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)', width: '100%', marginTop: 8,
+  // ── Guvenli Odeme karti (PaynKolay + PCI DSS + kart semalari) ──
+  trustCard: {
+    width: '100%', backgroundColor: '#ffffff', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)', marginTop: 8, gap: 12,
   },
+  trustHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  trustTitle: { fontSize: 14, fontWeight: '700',
+fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  paynkolayLogo: { width: 82, height: 16 },
+  trustRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.07)',
+  },
+  trustPci: { width: 38, height: 30 },
+  trustDivider: { width: 1, height: 18, backgroundColor: 'rgba(0,0,0,0.12)' },
+  trustVisa: { width: 42, height: 22 },
+  trustMastercard: { width: 30, height: 22 },
+  // Troy kelime markasi 74x31 (2.39:1) — Visa/Mastercard ile optik agirligi esitle.
+  trustTroy: { width: 33, height: 14 },
+  trustNote: {
+    flex: 1, textAlign: 'right', fontSize: 11,
+    fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.tertiary,
+  },
+  securityNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   securityText: { flex: 1, fontSize: 12, color: COLORS.text.secondary, lineHeight: 18 },
 });
