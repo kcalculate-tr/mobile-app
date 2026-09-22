@@ -151,17 +151,29 @@ export function calculateMacroTargets(profile: NutritionProfileInput): MacroTarg
 // girilen değerleri olduğu gibi yazıyordu. Canlı veride iki sonucu görüldü —
 //  1) makro toplamı kalori hedefiyle tutmuyordu (bir profilde 325 kcal açık,
 //     bir başkasında 285 kcal fazla). Halkalar hiçbir zaman uzlaşmıyordu.
-//  2) bazal metabolizmanın ALTINDA hedefler kaydedilmişti (BMR 1628 olan
-//     normal kilolu bir kullanıcıda hedef 1250 kcal). Bir beslenme
-//     uygulamasının bunu sessizce kabul etmesi savunulabilir değil.
+//  2) aşırı düşük hedefler kaydedilmişti — BMI'si normal, TDEE'si 2523 olan
+//     18 yaşındaki bir kullanıcıda hedef 1250 kcal (%50 açık).
+//
+// Alt sınır BMR'ye göre DEĞİL, TDEE'ye göre kurulur. Kilo verme hedefinde
+// TDEE-500 zaten çoğu kullanıcıda BMR'nin altına düşer (BMR<2500 olan
+// herkeste) ve bu normaldir — harcama BMR değil TDEE'dir. BMR tabanı
+// koysaydık uygulamanın KENDİ önerisi reddedilirdi: canlı veride kilo
+// verme hedefli 237 profilin 81'i bu durumda.
 // ─────────────────────────────────────────────────────────────────────────
 
 /** Makro toplamının kalori hedefinden sapabileceği üst sınır (yuvarlama payı). */
 export const MACRO_TOLERANCE_KCAL = 50;
 
-/** Cinsiyete göre mutlak alt sınır — BMR okunamadığında devreye girer. */
+/** Cinsiyete göre mutlak alt sınır. */
 export const absoluteCalorieFloor = (gender: Gender): number =>
   gender === 'female' ? 1200 : 1500;
+
+/** TDEE'ye göre izin verilen en büyük açık: %35. Daha fazlası aşırı kısıtlama. */
+export const MAX_DEFICIT_RATIO = 0.65;
+
+/** Elle girilebilecek en düşük günlük kalori. */
+export const minimumCustomCalories = (tdee: number, gender: Gender): number =>
+  Math.max(absoluteCalorieFloor(gender), Math.round(tdee * MAX_DEFICIT_RATIO));
 
 /** Makroların karşılığı olan kalori. */
 export const macrosToKcal = (protein: number, carbs: number, fat: number): number =>
@@ -187,34 +199,33 @@ export interface CustomTargetInput {
   protein: number;
   carbs: number;
   fat: number;
-  /** Kullanıcının kendi BMR'si — alt sınır bundan hesaplanır. */
-  bmr: number;
+  /** Kullanıcının toplam günlük harcaması — alt sınır bundan hesaplanır. */
+  tdee: number;
   gender: Gender;
 }
 
 export type CustomTargetIssue =
   | { kind: 'ok' }
   | { kind: 'invalid'; message: string }
-  | { kind: 'below_bmr'; message: string; minimum: number }
+  | { kind: 'too_low'; message: string; minimum: number }
   | { kind: 'macro_mismatch'; message: string; diff: number };
 
 export function validateCustomTargets(input: CustomTargetInput): CustomTargetIssue {
-  const { calories, protein, carbs, fat, bmr, gender } = input;
+  const { calories, protein, carbs, fat, tdee, gender } = input;
 
   if ([calories, protein, carbs, fat].some((v) => !Number.isFinite(v) || v < 0)) {
     return { kind: 'invalid', message: 'Hedefler negatif ya da boş olamaz.' };
   }
 
-  // Alt sınır: BMR ve cinsiyete göre mutlak taban — hangisi büyükse o.
-  const taban = Math.max(Math.round(bmr), absoluteCalorieFloor(gender));
+  const taban = minimumCustomCalories(tdee, gender);
   if (calories < taban) {
     return {
-      kind: 'below_bmr',
+      kind: 'too_low',
       minimum: taban,
       message:
         `Günlük hedef ${taban} kcal'in altına indirilemez. ` +
-        `Bu, vücudunun dinlenme hâlinde harcadığı enerjiye denk geliyor; ` +
-        `altına inmek sağlıklı bir hedef değil.`,
+        `Günlük harcaman ${Math.round(tdee)} kcal; bunun üçte birinden ` +
+        `fazlasını kısmak sağlıklı bir hedef değil.`,
     };
   }
 

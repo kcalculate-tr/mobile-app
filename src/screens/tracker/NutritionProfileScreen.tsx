@@ -239,7 +239,7 @@ export default function NutritionProfileScreen() {
         protein: displayMacros.protein,
         carbs: displayMacros.carbs,
         fat: displayMacros.fat,
-        bmr: macros.bmr,
+        tdee: macros.tdee,
         gender,
       })
     : { kind: 'ok' as const };
