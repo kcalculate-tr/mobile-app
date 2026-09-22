@@ -43,7 +43,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import { TAB_BAR_TOTAL } from '../constants/layout';
 import MacroPointModal from '../components/modals/MacroPointModal';
-import { fetchMacroProfile, isPrivileged, privilegedDaysLeft, privilegedUntilFormatted, MacroProfile, MEMBERSHIP_THRESHOLD } from '../lib/macros';
+import { fetchMacroProfile, fetchMacroSettings, macroProgress, MacroProfile, MacroSettings, DEFAULT_MACRO_SETTINGS } from '../lib/macros';
 import { useModal } from '../hooks/useModal';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
 import { useAuth } from '../context/AuthContext';
@@ -98,6 +98,7 @@ export default function ProfileScreen() {
   const { isAuthenticated, loading } = useRequireAuth();
   const macroModal = useModal();
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
+  const [macroSettings, setMacroSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
   const macroProgressAnim = useRef(new Animated.Value(0)).current;
   // Kayıtlı Kartlarım menü satırı: özellik test aşamasında (admin_allowlist
   // dışı + flag kapalı) false gelir — bu durumda satır HİÇ gösterilmez.
@@ -119,16 +120,19 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetchMacroProfile(user.id).then(p => {
+    let cancelled = false;
+    Promise.all([fetchMacroProfile(user.id), fetchMacroSettings()]).then(([p, st]) => {
+      if (cancelled) return;
       setMacroProfile(p);
-      const progressValue = Math.min(((p?.macro_balance ?? 0) / MEMBERSHIP_THRESHOLD), 1);
+      setMacroSettings(st);
       Animated.spring(macroProgressAnim, {
-        toValue: progressValue,
+        toValue: macroProgress(p, st).mealProgress,
         useNativeDriver: false,
         speed: 8,
         bounciness: 2,
       }).start();
     });
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   const { summary: nutritionSummary, refetch: refetchNutritionSummary } = useNutritionSummary();
@@ -479,10 +483,12 @@ export default function ProfileScreen() {
             <View style={styles.macroCoinInfo}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flexWrap: 'wrap' }}>
                 <Text style={styles.macroCoinScore}>MACRO</Text>
-                {isPrivileged(macroProfile) && (
+                {macroProgress(macroProfile, macroSettings).balance > 0 && (
                   <View style={[styles.macroBadge, { flexShrink: 1 }]}>
                     <CrownSimpleIcon size={14} color="#1A1A1A" weight="fill" />
-                    <Text style={styles.macroBadgeText} numberOfLines={1}>Ayrıcalıklı Üye</Text>
+                    <Text style={styles.macroBadgeText} numberOfLines={1}>
+                      {`${macroProgress(macroProfile, macroSettings).balance} Macro`}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -490,10 +496,8 @@ export default function ProfileScreen() {
                 style={styles.macroCoinLabel}
                 value={
                   macroProfile
-                    ? isPrivileged(macroProfile)
-                      ? `${privilegedDaysLeft(macroProfile)} gün (${privilegedUntilFormatted(macroProfile)}'a kadar)`
-                      : `Bu ay ${macroProfile.macro_balance} macro biriktirdin`
-                    : 'Macro Coin kazan'
+                    ? `Bir sonraki Macro'ya ₺${macroProgress(macroProfile, macroSettings).liraToNextMacro}`
+                    : `Her ₺${macroSettings.earnThreshold} alışverişe 1 Macro`
                 }
               />
             </View>
@@ -509,14 +513,12 @@ export default function ProfileScreen() {
           <View style={styles.macroProgressLabels}>
             <AnimatedNumberText
               style={styles.macroProgressLeft}
-              value={`${macroProfile?.macro_balance ?? 0} / ${MEMBERSHIP_THRESHOLD} — Ayrıcalıklı Üye`}
+              value={`${macroProgress(macroProfile, macroSettings).balance % macroSettings.mealCost} / ${macroSettings.mealCost} — Ücretsiz Öğün`}
             />
-            {!isPrivileged(macroProfile) && (
-              <AnimatedNumberText
-                style={styles.macroProgressRight}
-                value={`${Math.max(0, MEMBERSHIP_THRESHOLD - (macroProfile?.macro_balance ?? 0))} macro kaldı`}
-              />
-            )}
+            <AnimatedNumberText
+              style={styles.macroProgressRight}
+              value={`${macroProgress(macroProfile, macroSettings).macrosToNextMeal} macro kaldı`}
+            />
           </View>
         </TouchableOpacity>
 

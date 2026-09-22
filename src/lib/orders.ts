@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
 import { getSupabaseClient } from './supabase';
-import { calculateMacroDiscount, isMacroMemberFromUntil } from './macros';
 import { computeUnitMacros } from './itemMacros';
 import {
   buildCartSignatureLines,
@@ -23,20 +22,11 @@ const orderItemUnitMacros = (item: CartItem) =>
 // gerçek tanımları bağımsız/test edilebilir src/lib/cartSignature.ts'te.
 export { buildCartSignatureLines, computeCartSignature } from './cartSignature';
 
-const fetchMacroDiscountForUser = async (
-  supabase: SupabaseClient,
-  userId: string,
-  subtotal: number,
-): Promise<number> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('privileged_until')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error || !data) return 0;
-  const isMember = isMacroMemberFromUntil((data as { privileged_until: string | null }).privileged_until);
-  return calculateMacroDiscount(subtotal, isMember);
-};
+// Macro modeli v2: "ayrıcalıklı üye %20 indirimi" kaldırıldı. Macro artık
+// sepette indirim olarak değil, ücretsiz öğün KUPONU olarak kullanılıyor
+// (bkz. src/lib/macros.ts). Sipariş hesabındaki macroDiscount kalemi 0'da
+// sabit — alan, geçmiş siparişlerle uyum için korunuyor.
+const MACRO_DISCOUNT_DISABLED = 0;
 
 // Bundle parent kalemde order_items.selected_options'a SelectedOption[]
 // yerine self-contained slot kırılımını (BundleSelection[]) yaz —
@@ -274,7 +264,7 @@ export const createOrderFromCart = async ({
   const safeSubtotal = Number(Math.max(0, subtotal).toFixed(2));
   const safeDeliveryFee = Number(Math.max(0, deliveryFee).toFixed(2));
   const safeDiscount = Number(Math.max(0, discountAmount).toFixed(2));
-  const macroDiscount = await fetchMacroDiscountForUser(supabase, userId, safeSubtotal);
+  const macroDiscount = MACRO_DISCOUNT_DISABLED;
   const totalAmount = Number(
     Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount - macroDiscount).toFixed(2),
   );
@@ -445,7 +435,7 @@ export const createOrderDraftForPayment = async ({
   const safeSubtotal = Number(Math.max(0, subtotal).toFixed(2));
   const safeDeliveryFee = Number(Math.max(0, deliveryFee).toFixed(2));
   const safeDiscount = Number(Math.max(0, discountAmount).toFixed(2));
-  const macroDiscount = await fetchMacroDiscountForUser(supabase, userId, safeSubtotal);
+  const macroDiscount = MACRO_DISCOUNT_DISABLED;
   const totalAmount = Number(
     Math.max(0, safeSubtotal + safeDeliveryFee - safeDiscount - macroDiscount).toFixed(2),
   );

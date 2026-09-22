@@ -5,9 +5,9 @@ import {
   View,
   Image,
 } from 'react-native';
-import { ShoppingCart, Crown, Lightning, CurrencyCircleDollar } from 'phosphor-react-native';
+import { ShoppingCart, ForkKnife, Ticket, CalendarX } from 'phosphor-react-native';
 
-import { MacroProfile, MACRO_PRICE, MEMBERSHIP_THRESHOLD, ORDER_EARN_THRESHOLD, isPrivileged, privilegedDaysLeft } from '../../lib/macros';
+import { MacroProfile, MacroSettings, DEFAULT_MACRO_SETTINGS, macroProgress } from '../../lib/macros';
 import BottomSheet from '../BottomSheet';
 
 type Props = {
@@ -15,16 +15,26 @@ type Props = {
   onClose: () => void;
   onNavigateToProfile: () => void;
   macroProfile?: MacroProfile | null;
+  macroSettings?: MacroSettings;
 };
 
-const BENEFITS = [
-  { Icon: ShoppingCart,         color: '#B9EF14', bg: 'rgba(198,240,79,0.1)',  title: `Her ${ORDER_EARN_THRESHOLD.toLocaleString('tr-TR')}₺ harcama`, desc: '1 Macro kazanırsın (birikimli)' },
-  { Icon: Crown,                color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', title: `${MEMBERSHIP_THRESHOLD} Macro → Ayrıcalıklı Üye`, desc: '30 gün boyunca tüm ayrıcalıklardan yararlan' },
-  { Icon: Lightning,            color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', title: 'Ayrıcalıklı üye avantajları', desc: 'Öncelikli teslimat & özel indirimler' },
-  { Icon: CurrencyCircleDollar, color: '#34D399', bg: 'rgba(52,211,153,0.1)', title: 'Macro satın al', desc: `${MACRO_PRICE.toLocaleString('tr-TR')}₺/adet — anında bakiye yükle` },
-];
+export default function MacroPointModal({
+  visible, onClose, macroProfile, macroSettings = DEFAULT_MACRO_SETTINGS,
+}: Props) {
+  const p = macroProgress(macroProfile ?? null, macroSettings);
+  const esik = macroSettings.earnThreshold.toLocaleString('tr-TR');
 
-export default function MacroPointModal({ visible, onClose, macroProfile }: Props) {
+  const BENEFITS = [
+    { Icon: ShoppingCart, color: '#B9EF14', bg: 'rgba(198,240,79,0.1)',
+      title: `Her ${esik}₺ harcama`, desc: '1 Macro kazanırsın — birikimli, küsurat kaybolmaz' },
+    { Icon: ForkKnife, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',
+      title: `${macroSettings.mealCost} Macro = 1 ücretsiz öğün`, desc: 'Otomatik olarak kupon şeklinde hesabına düşer' },
+    { Icon: Ticket, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',
+      title: 'Dilediğin öğünde kullan', desc: 'kcal., tera ve Breaking Fast farketmez — koli ve çoklu tabaklar hariç' },
+    { Icon: CalendarX, color: '#34D399', bg: 'rgba(52,211,153,0.1)',
+      title: `${macroSettings.rewardValidDays} gün geçerli`, desc: 'Kupon üretildiği tarihten itibaren' },
+  ];
+
   return (
     <BottomSheet
       visible={visible}
@@ -46,13 +56,13 @@ export default function MacroPointModal({ visible, onClose, macroProfile }: Prop
 
       <View style={styles.heroCard}>
         <View style={styles.heroLeft}>
-          <Text style={styles.heroNumber}>{ORDER_EARN_THRESHOLD.toLocaleString('tr-TR')}₺</Text>
+          <Text style={styles.heroNumber}>{esik}₺</Text>
           <Text style={styles.heroSub}>= 1 Macro</Text>
         </View>
         <View style={styles.heroDivider} />
         <View style={styles.heroRight}>
-          <Text style={styles.heroNumber}>{MEMBERSHIP_THRESHOLD}</Text>
-          <Text style={styles.heroSub}>Macro = Ayrıcalıklı Üye</Text>
+          <Text style={styles.heroNumber}>{macroSettings.mealCost}</Text>
+          <Text style={styles.heroSub}>Macro = 1 Ücretsiz Öğün</Text>
         </View>
       </View>
 
@@ -72,14 +82,12 @@ export default function MacroPointModal({ visible, onClose, macroProfile }: Prop
 
       <View style={styles.progressHint}>
         <View style={styles.progressHintBar}>
-          <View style={[styles.progressHintFill, { width: `${Math.min(((macroProfile?.macro_balance ?? 0) / MEMBERSHIP_THRESHOLD) * 100, 100)}%` as any }]} />
+          <View style={[styles.progressHintFill, { width: `${Math.round(p.mealProgress * 100)}%` as any }]} />
         </View>
         <Text style={styles.progressHintText}>
           {macroProfile
-            ? isPrivileged(macroProfile)
-              ? `Ayrıcalıklı Üye • ${privilegedDaysLeft(macroProfile)} gün kaldı`
-              : `${macroProfile.macro_balance} / ${MEMBERSHIP_THRESHOLD} Macro — ${Math.max(0, MEMBERSHIP_THRESHOLD - macroProfile.macro_balance)} tane daha al, Ayrıcalıklı Üye ol`
-            : `0 / ${MEMBERSHIP_THRESHOLD} Macro — Macro satın al, Ayrıcalıklı Üye ol`}
+            ? `${p.balance % p.mealCost} / ${p.mealCost} Macro — ücretsiz öğüne ${p.macrosToNextMeal} macro, bir sonraki macro'ya ₺${p.liraToNextMacro}`
+            : `0 / ${macroSettings.mealCost} Macro — ilk siparişinle biriktirmeye başla`}
         </Text>
       </View>
     </BottomSheet>

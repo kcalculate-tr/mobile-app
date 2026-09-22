@@ -1,793 +1,345 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { Animated } from 'react-native'
-import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Animated, Clipboard, Image, RefreshControl,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
+import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
+import { useFocusEffect } from '@react-navigation/native'
+import { CalendarBlank, Copy, ForkKnife, ShoppingCart, Ticket } from 'phosphor-react-native'
 import AnimatedNumberText from '../components/AnimatedNumberText'
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Check, ArrowRight, Minus, Plus, CrownIcon } from 'phosphor-react-native'
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme'
+import { Toast } from '../components/ui/Toast'
+import { useToast } from '../hooks/useToast'
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../constants/theme'
 import { useAuth } from '../context/AuthContext'
-import { RootStackParamList } from '../navigation/types'
 import {
-  FALLBACK_MACRO_PRICE,
-  FALLBACK_THRESHOLD,
-  MacroProfile,
-  MacroSettings,
-  fetchMacroProfile,
-  fetchMacroSettings,
-  isPrivileged,
-  privilegedDaysLeft,
-  privilegedUntilFormatted,
-  createMacroPurchaseOrder,
+  DEFAULT_MACRO_SETTINGS, MacroProfile, MacroSettings, MacroTransaction,
+  MealRewardCoupon, fetchMacroProfile, fetchMacroSettings, fetchMacroTransactions,
+  fetchMealRewardCoupons, macroProgress,
 } from '../lib/macros'
-import { useAnimatedPress } from '../utils/useAnimatedPress'
 
 const MACRO_COIN = require('../../assets/macro-coin.png')
-const RED = '#DC2626'
-const RED_DARK = '#991B1B'
-const RED_LIGHT = '#FEF2F2'
-const RED_MID = '#FCA5A5'
 
-type Nav = NativeStackNavigationProp<RootStackParamList>
+const formatDate = (iso: string) => {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
+}
 
-// Paket sayıları + etiket + "popular" badge sabit. Fiyat settings.macro_price'tan türetilir.
-const QUICK_PACK_SPECS = [
-  { qty: 15, label: '1 Ay', popular: false },
-  { qty: 30, label: '2 Ay', popular: false },
-  { qty: 45, label: '3 Ay', popular: true  },
-  { qty: 60, label: '4 Ay', popular: false },
-]
+const gunKaldi = (iso: string | null): number | null => {
+  if (!iso) return null
+  const diff = new Date(iso).getTime() - Date.now()
+  return Math.max(0, Math.ceil(diff / 86_400_000))
+}
 
-const BENEFITS = [
-  { title: 'Diyetisyen Görüşmesi',       desc: 'Online veya yüz yüze özel beslenme danışmanlığı' },
-  { title: 'Kişisel Beslenme Planı',       desc: 'Sana özel hazırlanmış haftalık beslenme ve takip programı' },
-  { title: 'Öncelikli & Hızlı Teslimat',  desc: '0-30 dakika içinde öncelikli teslimat garantisi' },
-  { title: 'Sonuç Raporlandırması',        desc: 'Aylık detaylı sağlık ve beslenme ilerleme raporu' },
-  { title: 'Tüm Siparişlerde İndirim',     desc: 'Her siparişte otomatik ekstra indirim fırsatı' },
-  { title: 'Özel Atıştırmalık Ara Öğün',  desc: 'Sana özel seçilmiş sağlıklı atıştırmalık hediyeler' },
-]
-
-
-
+/**
+ * Macro ekranı — model v2.
+ *
+ * Kazanım ve kupon üretimi sunucuda (orders trigger'ı). Bu ekran yalnızca
+ * durumu gösterir: bakiye, bir sonraki ücretsiz öğüne kalan yol, üretilmiş
+ * kuponlar ve hareket geçmişi. Burada hiçbir yazma işlemi YOK.
+ */
 export default function MacroScreen() {
-  const nav     = useNavigation<Nav>()
-  const safeArea = useSafeAreaInsets()
+  const insets = useSafeAreaInsets()
   const { user } = useAuth()
+  const { toast, show: showToast, hide: hideToast } = useToast()
 
-  const [profile,  setProfile]  = useState<MacroProfile | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [settings, setSettings] = useState<MacroSettings>({
-    macro_price: FALLBACK_MACRO_PRICE,
-    macro_threshold: FALLBACK_THRESHOLD,
-    macro_membership_days: 30,
-  })
-  const [qty,      setQty]      = useState(15)
-  const [buying,   setBuying]   = useState(false)
-  const { animatedScale: buyScale, onPressIn: buyPressIn, onPressOut: buyPressOut } = useAnimatedPress(0.96)
-  const [error,    setError]    = useState('')
+  const [profile, setProfile] = useState<MacroProfile | null>(null)
+  const [settings, setSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS)
+  const [coupons, setCoupons] = useState<MealRewardCoupon[]>([])
+  const [history, setHistory] = useState<MacroTransaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  // Pack selection bounce scales
-  const packScales = useRef(QUICK_PACK_SPECS.map(() => new Animated.Value(1))).current
-
-  const selectPack = (index: number, packQty: number) => {
-    setQty(packQty)
-    packScales.forEach((anim, i) => {
-      Animated.spring(anim, {
-        toValue: i === index ? 1.06 : 1,
-        useNativeDriver: true,
-        speed: 30,
-        bounciness: 8,
-      }).start(() => {
-        if (i === index) {
-          Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 4 }).start()
-        }
-      })
-    })
-  }
-
-  // Page entrance animation
-  const pageOpacity   = useRef(new Animated.Value(0)).current
-  const pageTranslateY = useRef(new Animated.Value(30)).current
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(pageOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.spring(pageTranslateY, { toValue: 0, useNativeDriver: true, speed: 15, bounciness: 4 }),
-    ]).start()
-  }, [])
-
-  // Animated progress bar
   const progressAnim = useRef(new Animated.Value(0)).current
 
-  const fetchProfile = useCallback(async () => {
+  const load = useCallback(async (isRefresh = false) => {
     if (!user?.id) { setLoading(false); return }
-    setLoading(true)
-    const [p, s] = await Promise.all([
+    if (isRefresh) setRefreshing(true); else setLoading(true)
+    const [p, s, c, h] = await Promise.all([
       fetchMacroProfile(user.id),
       fetchMacroSettings(),
+      fetchMealRewardCoupons(),
+      fetchMacroTransactions(user.id),
     ])
-    setProfile(p)
-    setSettings(s)
-    setLoading(false)
-  }, [user?.id])
-
-  useEffect(() => { fetchProfile() }, [fetchProfile])
-
-  const balance    = profile?.macro_balance ?? 0
-  const privileged = isPrivileged(profile)
-  const daysLeft   = privilegedDaysLeft(profile)
-  const threshold  = settings.macro_threshold
-  const macroPrice = settings.macro_price
-  const neededForMembership = Math.max(0, threshold - balance)
-
-  // Paketler settings'ten türetilir: paket fiyatı = qty * macroPrice
-  const quickPacks = useMemo(
-    () => QUICK_PACK_SPECS.map(spec => ({ ...spec, price: spec.qty * macroPrice })),
-    [macroPrice],
-  )
-  const selectedPack = quickPacks.find(p => p.qty === qty)
-  const totalPrice = selectedPack?.price ?? qty * macroPrice
-
-  useEffect(() => {
-    if (loading) return
-    const progressValue = Math.min(balance / threshold, 1)
+    setProfile(p); setSettings(s); setCoupons(c); setHistory(h)
     Animated.spring(progressAnim, {
-      toValue: progressValue,
-      useNativeDriver: false,
-      speed: 8,
-      bounciness: 2,
+      toValue: macroProgress(p, s).mealProgress,
+      useNativeDriver: false, speed: 10, bounciness: 3,
     }).start()
-  }, [balance, loading])
+    setLoading(false); setRefreshing(false)
+  }, [user?.id, progressAnim])
 
-  const handleBuy = async () => {
-    if (!user?.id) { nav.navigate('Login', {}); return }
-    setError('')
-    setBuying(true)
-    try {
-      const result = await createMacroPurchaseOrder({
-        userId: user.id,
-        quantity: qty,
-        totalAmount: totalPrice,
-      })
-      if (!result) { setError('Sipariş oluşturulamadı. Lütfen tekrar deneyin.'); return }
-      nav.navigate('PaymentScreen', {
-        orderId: result.orderId,
-        amount: totalPrice,
-        orderCode: result.orderCode,
-        noticeMessage: `${qty} Macro satın alınıyor`,
-      })
-    } catch (e) {
-      setError('Bir hata oluştu.')
-    } finally {
-      setBuying(false)
-    }
+  useEffect(() => { load() }, [load])
+  useFocusEffect(useCallback(() => { load(true) }, [load]))
+
+  const p = macroProgress(profile, settings)
+  const esik = settings.earnThreshold.toLocaleString('tr-TR')
+
+  const kopyala = (code: string) => {
+    Clipboard.setString(code)
+    showToast(`${code} kopyalandı`)
+  }
+
+  if (loading) {
+    return (
+      <View style={[s.root, s.centered]}>
+        <ActivityIndicator color={COLORS.brand.green} size="large" />
+      </View>
+    )
   }
 
   return (
-    <View style={[styles.root, { paddingTop: safeArea.top }]}>
-      {/* Hero zemini siyah. expo-status-bar kullaniliyor: RN'in StatusBar'i
-          ile karisik kullanim, ekrandan cikildiginda cubugun yanlis stilde
-          takili kalmasina yol aciyordu. */}
-      <StatusBar style="light" />
-      <Animated.ScrollView
+    <View style={[s.root, { paddingTop: insets.top }]}>
+      <StatusBar style="dark" />
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: safeArea.bottom + 120, backgroundColor: '#fafafa' }}
-        style={{ opacity: pageOpacity, transform: [{ translateY: pageTranslateY }] }}
+        contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 120 }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.brand.green} />
+        }
       >
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
-          {/* Glow */}
-          <View style={styles.glow} />
+        {/* ── Bakiye ── */}
+        <View style={s.heroCard}>
+          <Image source={MACRO_COIN} style={s.heroCoin} resizeMode="contain" />
+          <AnimatedNumberText style={s.heroBalance} value={String(p.balance)} />
+          <Text style={s.heroUnit}>Macro</Text>
+          <Text style={s.heroSub}>{`Her ₺${esik} alışveriş 1 Macro · ${settings.mealCost} Macro 1 ücretsiz öğün`}</Text>
+        </View>
 
-          {/* Balance ring */}
-          <View style={styles.heroContent}>
-            {loading ? (
-              <ActivityIndicator color={COLORS.brand.green} size="large" />
-            ) : (
-              <>
-                <View style={styles.coinWrapper}>
-                  <Image source={MACRO_COIN} style={styles.heroCoin} resizeMode="contain" fadeDuration={0} />
-                  <View style={styles.coinGlow} />
-                </View>
+        {/* ── Bir sonraki öğün ── */}
+        <View style={s.card}>
+          <View style={s.rowBetween}>
+            <Text style={s.cardTitle}>Bir sonraki ücretsiz öğün</Text>
+            <Text style={s.progressCount}>{`${p.balance % p.mealCost} / ${p.mealCost}`}</Text>
+          </View>
+          <View style={s.progressTrack}>
+            <Animated.View
+              style={[s.progressFill, {
+                width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+              }]}
+            />
+          </View>
+          <Text style={s.progressHint}>
+            {p.macrosToNextMeal === p.mealCost && p.balance === 0
+              ? `İlk siparişinle başlıyor — ₺${esik} harcama 1 Macro`
+              : `${p.macrosToNextMeal} macro kaldı · bir sonraki macro'ya ₺${p.liraToNextMacro}`}
+          </Text>
+        </View>
 
-                <Text style={styles.heroTitle}>MACRO</Text>
-                <Text style={styles.heroSub}>Her macro, sağlıklı yaşamında bir adım</Text>
-
-                {/* Balance badge */}
-                <View style={styles.balanceBadge}>
-                  <Image source={MACRO_COIN} style={{ width: 18, height: 18 }} resizeMode="contain" fadeDuration={0} />
-                  <AnimatedNumberText style={styles.balanceText} value={`${balance} Macro`} />
-                  <View style={styles.balanceDivider} />
-                  {privileged ? (
-                    <View style={{ alignItems: 'center', gap: 2 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <CrownIcon size={12} color="#B9EF14" weight="fill" />
-                        <AnimatedNumberText style={styles.privilegedTag} value={`Ayrıcalıklı Üye • ${daysLeft} gün`} />
-                      </View>
-                      <Text style={[styles.privilegedTag, { fontSize: 10, opacity: 0.8 }]}>{privilegedUntilFormatted(profile)}'a kadar</Text>
+        {/* ── Ücretsiz öğün kuponları ── */}
+        <Text style={s.sectionTitle}>Ücretsiz Öğün Kuponların</Text>
+        {coupons.length === 0 ? (
+          <View style={s.emptyCard}>
+            <View style={s.emptyIcon}><Ticket size={22} color={COLORS.text.tertiary} /></View>
+            <Text style={s.emptyTitle}>Henüz kuponun yok</Text>
+            <Text style={s.emptySub}>
+              {`${settings.mealCost} Macro biriktirdiğinde ücretsiz öğün kuponun otomatik olarak burada belirir.`}
+            </Text>
+          </View>
+        ) : (
+          coupons.map((c) => {
+            const kalan = gunKaldi(c.end_date)
+            return (
+              <View key={c.id} style={s.couponCard}>
+                <View style={s.couponIcon}><ForkKnife size={20} color="#000" weight="fill" /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.couponTitle}>1 Ücretsiz Öğün</Text>
+                  <Text style={s.couponDesc} numberOfLines={2}>
+                    {c.description ?? 'Tek öğün hediye. Koli ve çoklu tabaklarda geçerli değildir.'}
+                  </Text>
+                  {c.end_date && (
+                    <View style={s.couponMeta}>
+                      <CalendarBlank size={12} color={COLORS.text.tertiary} />
+                      <Text style={s.couponMetaText}>
+                        {kalan != null && kalan <= 14
+                          ? `Son ${kalan} gün · ${formatDate(c.end_date)}`
+                          : `${formatDate(c.end_date)} tarihine kadar`}
+                      </Text>
                     </View>
-                  ) : (
-                    <AnimatedNumberText style={styles.neededTag} value={`${neededForMembership} macro ile üye ol`} />
                   )}
                 </View>
-              </>
-            )}
-          </View>
-
-          {/* Progress bar */}
-          {!loading && !privileged && (
-            <View style={styles.progressWrapper}>
-              <View style={styles.progressTrack}>
-                <Animated.View style={[styles.progressFill, {
-                  width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-                }]} />
+                <TouchableOpacity onPress={() => kopyala(c.code)} style={s.couponCode} activeOpacity={0.8}>
+                  <Text style={s.couponCodeText}>{c.code}</Text>
+                  <Copy size={12} color="#000" />
+                </TouchableOpacity>
               </View>
-              <View style={styles.progressLabels}>
-                <AnimatedNumberText style={styles.progressLabelLeft} value={`${balance}/${threshold} Macro`} />
-                <Text style={styles.progressLabelRight}>Ayrıcalıklı Üyelik</Text>
+            )
+          })
+        )}
+
+        {/* ── Nasıl çalışır ── */}
+        <Text style={s.sectionTitle}>Nasıl çalışır?</Text>
+        <View style={s.card}>
+          {[
+            { Icon: ShoppingCart, t: `Her ₺${esik} harcama = 1 Macro`, d: 'Küsurat birikir, kaybolmaz. Macro siparişin teslim edilince yüklenir.' },
+            { Icon: Ticket, t: `${settings.mealCost} Macro = 1 kupon`, d: 'Eşiği doldurduğunda ücretsiz öğün kuponun otomatik üretilir.' },
+            { Icon: ForkKnife, t: 'Dilediğin öğünde kullan', d: 'kcal., tera ve Breaking Fast farketmez. Koli ve çoklu tabaklar hariç.' },
+          ].map((x, i, arr) => (
+            <View key={i} style={[s.stepRow, i < arr.length - 1 && s.stepDivider]}>
+              <View style={s.stepIcon}><x.Icon size={18} color="#000" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.stepTitle}>{x.t}</Text>
+                <Text style={s.stepDesc}>{x.d}</Text>
               </View>
             </View>
-          )}
+          ))}
         </View>
 
-        {/* ── Satın Alma ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Macro Satın Al</Text>
-          <Text style={styles.sectionSub}>Aylık paket seçin veya özel miktar belirleyin</Text>
-
-          {/* Quick packs */}
-          <View style={styles.packRow}>
-            {quickPacks.map((pack, index) => (
-              <Animated.View key={pack.qty} style={{ flex: 1, transform: [{ scale: packScales[index] }] }}>
-              <TouchableOpacity
-                onPress={() => selectPack(index, pack.qty)}
-                activeOpacity={0.8}
-                style={[styles.packCard, qty === pack.qty && styles.packCardActive]}
-              >
-                <Image source={MACRO_COIN} style={styles.packCoin} resizeMode="contain" fadeDuration={0} />
-                <Text style={[styles.packQty, qty === pack.qty && styles.packQtyActive]}>{pack.qty}</Text>
-                <Text style={[styles.packLabel, qty === pack.qty && styles.packLabelActive]}>{pack.label}</Text>
-                <Text style={[styles.packPrice, qty === pack.qty && styles.packPriceActive]}>
-                  ₺{pack.price.toLocaleString('tr-TR')}
-                </Text>
-              </TouchableOpacity>
-              </Animated.View>
-            ))}
-          </View>
-
-          {/* Custom qty */}
-          <View style={styles.customQtyCard}>
-            <Text style={styles.customQtyLabel}>Özel Miktar</Text>
-            <View style={styles.qtyControls}>
-              <TouchableOpacity
-                onPress={() => setQty(q => Math.max(1, q - 1))}
-                style={styles.qtyBtn}
-                activeOpacity={0.8}
-              >
-                <Minus size={18} color="#fff" weight="bold" />
-              </TouchableOpacity>
-              <View style={styles.qtyDisplay}>
-                <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" fadeDuration={0} />
-                <AnimatedNumberText style={styles.qtyNumber} value={qty} />
-              </View>
-              <TouchableOpacity
-                onPress={() => setQty(q => q + 1)}
-                style={styles.qtyBtn}
-                activeOpacity={0.8}
-              >
-                <Plus size={18} color="#fff" weight="bold" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Error */}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {/* Buy button */}
-          <Animated.View style={{ transform: [{ scale: buyScale }] }}>
-            <TouchableOpacity
-            onPress={handleBuy}
-            disabled={buying}
-            onPressIn={buyPressIn}
-            onPressOut={buyPressOut}
-            style={[styles.buyBtn, buying && { opacity: 0.6 }]}
-            activeOpacity={0.85}
-
-          >
-            {buying ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Image source={MACRO_COIN} style={{ width: 22, height: 22 }} resizeMode="contain" fadeDuration={0} />
-                <AnimatedNumberText
-                  style={styles.buyBtnText}
-                  value={`${qty} Macro Al — ₺${totalPrice.toLocaleString('tr-TR')}`}
-                />
-              </>
-            )}
-          </TouchableOpacity>
-          </Animated.View>
-        </View>
-
-        {/* ── Ayrıcalıklı Üyelik ── */}
-        <View style={styles.section}>
-          <View style={styles.membershipHeader}>
-            <View style={styles.membershipBadgeIcon}>
-              <Image source={MACRO_COIN} style={{ width: 28, height: 28 }} resizeMode="contain" fadeDuration={0} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.membershipTitle}>Ayrıcalıklı Üyelik</Text>
-              <Text style={styles.membershipDesc}>
-                Ayda {threshold} Macro topla, {settings.macro_membership_days} gün boyunca tüm ayrıcalıklardan yararlan
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.benefitsList}>
-            {BENEFITS.map((b, i) => (
-              <View key={i} style={styles.benefitRow}>
-                <View style={styles.benefitCheck}>
-                  <Check size={14} color={RED} weight="bold" />
+        {/* ── Hareketler ── */}
+        {history.length > 0 && (
+          <>
+            <Text style={s.sectionTitle}>Hareketler</Text>
+            <View style={s.card}>
+              {history.map((h, i) => (
+                <View key={h.id} style={[s.histRow, i < history.length - 1 && s.stepDivider]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.histNote} numberOfLines={2}>{h.note ?? h.type}</Text>
+                    <Text style={s.histDate}>{formatDate(h.created_at)}</Text>
+                  </View>
+                  <Text style={[s.histAmount, h.amount < 0 && s.histAmountNeg]}>
+                    {h.amount > 0 ? `+${h.amount}` : String(h.amount)}
+                  </Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.benefitTitle}>{b.title}</Text>
-                  <Text style={styles.benefitDesc}>{b.desc}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
 
-        {/* ── Macro nedir ── */}
-        <View style={[styles.section, styles.infoSection]}>
-          <Text style={styles.infoTitle}>Macro Coin Nedir?</Text>
-          <Text style={styles.infoText}>
-            Macro Coin, KCAL ekosisteminin özel dijital birimidir. Her sipariş sonrası Macro kazanır,
-            dilediğinde satın alabilirsin. Ayda 15 Macro biriktirdiğinde 30 gün boyunca tüm ayrıcalıklı
-            üyelik haklarından ücretsiz yararlanırsın.
-          </Text>
-          <View style={styles.infoRow}>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoCardNum}>₺{macroPrice.toLocaleString('tr-TR')}</Text>
-              <Text style={styles.infoCardLabel}>1 Macro Fiyatı</Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoCardNum}>{threshold}</Text>
-              <Text style={styles.infoCardLabel}>Üyelik İçin Macro</Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoCardNum}>30</Text>
-              <Text style={styles.infoCardLabel}>Üyelik Gün</Text>
-            </View>
-          </View>
-        </View>
-      </Animated.ScrollView>
+      <Toast visible={toast.visible} message={toast.message} onHide={hideToast} />
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F6F6F6' },
+  centered: { alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.md },
 
   // Hero
-  hero: {
-    backgroundColor: '#000000',
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING['2xl'],
-    paddingHorizontal: SPACING.xl,
-    overflow: 'hidden',
+  heroCard: {
+    backgroundColor: '#0D0D0D', borderRadius: RADIUS.lg,
+    alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg, gap: 2,
   },
-  glow: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: RED,
-    opacity: 0.08,
-    top: -100,
-    alignSelf: 'center',
+  heroCoin: { width: 56, height: 56, marginBottom: SPACING.sm },
+  heroBalance: {
+    fontSize: 48, lineHeight: 54, color: COLORS.brand.green,
+    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
   },
-  heroContent: {
-    alignItems: 'center',
-    paddingTop: SPACING.sm,
-  },
-  coinWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.lg,
-  },
-  heroCoin: {
-    width: 80,
-    height: 80,
-  },
-  coinGlow: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: RED,
-    opacity: 0.2,
-    zIndex: -1,
-  },
-  heroTitle: {
-    fontSize: TYPOGRAPHY.size['4xl'],
-    fontWeight: TYPOGRAPHY.weight.black,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#ffffff',
-    letterSpacing: -0.5,
+  heroUnit: {
+    fontSize: TYPOGRAPHY.size.sm, color: 'rgba(255,255,255,0.65)',
+    fontFamily: 'PlusJakartaSans_600SemiBold', letterSpacing: 1.5,
   },
   heroSub: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.xl,
-  },
-  balanceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: RADIUS.pill,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  balanceText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#ffffff',
-  },
-  balanceDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  privilegedTag: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#FCD34D',
-  },
-  neededTag: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: 'rgba(255,255,255,0.5)',
+    marginTop: SPACING.sm, fontSize: TYPOGRAPHY.size.xs, textAlign: 'center',
+    color: 'rgba(255,255,255,0.5)', fontFamily: 'PlusJakartaSans_500Medium', lineHeight: 17,
   },
 
-  // Progress
-  progressWrapper: {
-    marginTop: SPACING.xl,
+  // Ortak kart
+  card: {
+    backgroundColor: '#FFFFFF', borderRadius: RADIUS.md, padding: SPACING.lg,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', gap: SPACING.sm,
   },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: RED,
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SPACING.xs,
-  },
-  progressLabelLeft: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#fff',
-  },
-  progressLabelRight: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255,255,255,0.4)',
-  },
-
-  // Section
-  section: {
-    marginTop: SPACING.xl,
-    marginHorizontal: SPACING.lg,
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    ...SHADOWS.md,
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitle: {
+    fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#0f172a',
-    marginBottom: 2,
-  },
-  sectionSub: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: '#64748b',
-    marginBottom: SPACING.lg,
+    fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary, marginTop: SPACING.sm,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
 
-  // Packs
-  packRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
+  // İlerleme
+  progressCount: {
+    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.secondary,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
-  packCard: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: '#f8fafc',
-    gap: SPACING.xs,
-    position: 'relative',
-  },
-  packCardActive: {
-    borderColor: COLORS.brand.green,
-    borderWidth: 2,
-    backgroundColor: '#F7FEE7',
-  },
-  popularBadge: {
-    position: 'absolute',
-    top: -8,
-    backgroundColor: COLORS.brand.green,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: 2,
-    maxWidth: 70,
-  },
-  popularText: {
-    fontSize: 8,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#000',
-    letterSpacing: 0,
-  },
-  packCoin: {
-    width: 28,
-    height: 28,
-  },
-  packQty: {
-    fontSize: TYPOGRAPHY.size['2xl'],
-    fontWeight: TYPOGRAPHY.weight.black,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#0f172a',
-  },
-  packQtyActive: {
-    color: RED_DARK,
-  },
-  packLabel: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#94a3b8',
-  },
-  packLabelActive: {
-    color: RED,
-  },
-  packPrice: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#64748b',
-  },
-  packPriceActive: {
-    color: RED_DARK,
+  progressTrack: { height: 10, borderRadius: 100, backgroundColor: '#EFEFEF', overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 100, backgroundColor: COLORS.brand.green },
+  progressHint: {
+    fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary,
+    fontFamily: 'PlusJakartaSans_500Medium',
   },
 
-  // Custom qty
-  customQtyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
+  // Kupon
+  couponCard: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
+    backgroundColor: '#FFFFFF', borderRadius: RADIUS.md, padding: SPACING.md,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
   },
-  customQtyLabel: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#0f172a',
+  couponIcon: {
+    width: 40, height: 40, borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center',
   },
-  qtyControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
+  couponTitle: {
+    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
-  qtyBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.md,
-    backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
+  couponDesc: {
+    fontSize: 11, color: COLORS.text.tertiary, marginTop: 2,
+    fontFamily: 'PlusJakartaSans_500Medium', lineHeight: 15,
   },
-  qtyDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    minWidth: 60,
-    justifyContent: 'center',
+  couponMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  couponMetaText: {
+    fontSize: 11, color: COLORS.text.tertiary, fontFamily: 'PlusJakartaSans_500Medium',
   },
-  qtyNumber: {
-    fontSize: TYPOGRAPHY.size['2xl'],
-    fontWeight: TYPOGRAPHY.weight.black,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#0f172a',
+  couponCode: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#F2F2F2', borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 7,
+  },
+  couponCodeText: {
+    fontSize: 11, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
 
-  // Membership hint
-  membershipHint: {
-    backgroundColor: '#FEF9C3',
-    borderRadius: RADIUS.sm,
-    padding: SPACING.sm,
-    marginBottom: SPACING.md,
+  // Boş durum
+  emptyCard: {
+    backgroundColor: '#FFFFFF', borderRadius: RADIUS.md, padding: SPACING.lg,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', alignItems: 'center', gap: 6,
   },
-  membershipHintText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#854D0E',
-    textAlign: 'center',
+  emptyIcon: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#F2F2F2',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
   },
-
-  // Error
-  errorText: {
-    color: RED,
-    fontSize: TYPOGRAPHY.size.sm,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
+  emptyTitle: {
+    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
+  },
+  emptySub: {
+    fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary, textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_500Medium', lineHeight: 17,
   },
 
-  // Buy button
-  buyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.brand.green,
-    borderRadius: RADIUS.md,
-    minHeight: 56,
-    paddingVertical: SPACING.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 6,
+  // Adımlar
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md, paddingVertical: SPACING.sm },
+  stepDivider: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  stepIcon: {
+    width: 34, height: 34, borderRadius: RADIUS.sm, backgroundColor: '#F2FBE8',
+    alignItems: 'center', justifyContent: 'center',
   },
-  buyBtnText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.black,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#000000',
-    letterSpacing: -0.3,
+  stepTitle: {
+    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
+  },
+  stepDesc: {
+    fontSize: 11, color: COLORS.text.tertiary, marginTop: 2,
+    fontFamily: 'PlusJakartaSans_500Medium', lineHeight: 15,
   },
 
-  // Membership section
-  membershipHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.md,
-    marginBottom: SPACING.xl,
+  // Hareketler
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.sm },
+  histNote: {
+    fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_500Medium', lineHeight: 17,
   },
-  membershipBadgeIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: RADIUS.md,
-    backgroundColor: RED_LIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
+  histDate: {
+    fontSize: 11, color: COLORS.text.tertiary, marginTop: 2,
+    fontFamily: 'PlusJakartaSans_500Medium',
   },
-  membershipTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#0f172a',
+  histAmount: {
+    fontSize: TYPOGRAPHY.size.sm, color: '#16A34A',
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
-  membershipDesc: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: '#64748b',
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  benefitsList: {
-    gap: SPACING.md,
-  },
-  benefitRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.md,
-  },
-  benefitCheck: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.sm,
-    backgroundColor: RED_LIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-    flexShrink: 0,
-  },
-  benefitTitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#0f172a',
-  },
-  benefitDesc: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: '#64748b',
-    lineHeight: 17,
-    marginTop: 2,
-  },
-
-  // Info section
-  infoSection: {
-    backgroundColor: '#000000',
-  },
-  infoTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#fff',
-    marginBottom: SPACING.sm,
-  },
-  infoText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: 'rgba(255,255,255,0.6)',
-    lineHeight: 20,
-    marginBottom: SPACING.lg,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  infoCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: RADIUS.sm,
-    padding: SPACING.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  infoCardNum: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.black,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: RED,
-  },
-  infoCardLabel: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 2,
-    textAlign: 'center',
-  },
+  histAmountNeg: { color: COLORS.text.secondary },
 })

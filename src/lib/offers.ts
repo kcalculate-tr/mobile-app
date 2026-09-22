@@ -56,14 +56,16 @@ export type CouponValidationReason =
   | 'user_limit_reached'
   | 'total_limit_reached'
   | 'auth_required'
-  | 'first_order_only';
+  | 'first_order_only'
+  | 'items_required'
+  | 'no_eligible_item';
 
 export interface CouponValidationSuccess {
   valid: true;
   campaign_id: string;
   code: string;
   title?: string;
-  discount_type: 'percent' | 'fixed';
+  discount_type: 'percent' | 'fixed' | 'sponsor' | 'free_item';
   discount_value: number;
   discount_amount: number;
   final_total?: number;
@@ -89,6 +91,8 @@ const COUPON_ERROR_MESSAGES: Record<CouponValidationReason, string> = {
   total_limit_reached: 'Kupon kullanım limiti doldu',
   auth_required: 'Giriş yapmalısınız',
   first_order_only: 'Bu kupon yalnızca ilk siparişte geçerlidir.',
+  items_required: 'Bu kupon için sepetinde ürün olmalı.',
+  no_eligible_item: 'Ücretsiz öğün kuponu koli ve çoklu tabaklarda geçerli değil. Sepetine tekil bir öğün ekle.',
 };
 
 export function getCouponErrorMessage(result: CouponValidationFailure): string {
@@ -98,13 +102,29 @@ export function getCouponErrorMessage(result: CouponValidationFailure): string {
   return COUPON_ERROR_MESSAGES[result.reason] ?? 'Kupon uygulanamadı';
 }
 
+/**
+ * Sepet kalemi — yalnızca ürün kimliği ve adet gönderilir.
+ * Kategori ve fiyat SUNUCUDA products tablosundan okunur; istemcinin
+ * bildirdiği fiyata güvenilmez (free_item kuponunda indirim tutarını
+ * belirlediği için kritik).
+ */
+export interface CouponCartItem {
+  product_id: number;
+  quantity: number;
+}
+
 export async function validateCoupon(
   code: string,
   cartTotal: number,
+  items?: CouponCartItem[],
 ): Promise<CouponValidationResponse> {
-  const { data, error } = await supabase.rpc('validate_coupon', {
+  // validate_coupon_v2, tüm uygunluk kontrolünü validate_coupon'a devredip
+  // yalnızca free_item (ücretsiz öğün) kuponunda indirim tutarını sepetten
+  // hesaplar. Diğer kupon tipleri için davranış birebir aynı.
+  const { data, error } = await supabase.rpc('validate_coupon_v2', {
     p_code: code,
     p_cart_total: cartTotal,
+    p_items: items && items.length > 0 ? items : null,
   });
   if (error || !data) {
     return { valid: false, reason: 'not_found' };

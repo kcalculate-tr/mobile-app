@@ -1,251 +1,151 @@
 import { getSupabaseClient } from './supabase'
 
-// Fallback değerler — settings tablosundan okunamazsa kullanılır.
-// Admin BossMacro panelinden değiştirilir (settings.macro_price vs).
-export const FALLBACK_MACRO_PRICE = 1500      // TL / macro (admin default ile align)
-export const FALLBACK_THRESHOLD = 15          // macro → ayrıcalıklı üye
-export const FALLBACK_MEMBERSHIP_DAYS = 30    // gün
-export const MACRO_MEMBER_DISCOUNT_PERCENT = 20 // ayrıcalıklı üye sepet indirimi
+/**
+ * Macro modeli v2 — "harcadıkça kazan, öğün olarak kullan".
+ *
+ * Eski model (coin satın al → 15 coin → 30 gün %20 ayrıcalıklı üyelik) hiç
+ * kullanılmadı ve kaldırıldı. Yeni model:
+ *   • Her `earnThreshold` TL net ödeme = 1 Macro
+ *   • `mealCost` Macro birikince otomatik "Ücretsiz Öğün" kuponu üretilir
+ *
+ * KRİTİK: kazanım ve kupon üretimi TAMAMEN sunucuda. Sipariş 'delivered'
+ * olduğunda orders üzerindeki trg_grant_macros_on_delivery trigger'ı çalışır.
+ * İstemcinin profiles.macro_balance / macro_points üzerinde UPDATE yetkisi
+ * YOK (migration 20260922100000 kolon yetkisini kaldırdı). Bu dosya yalnızca
+ * OKUR ve gösterim mantığı üretir — buraya yazma fonksiyonu eklenmemeli.
+ */
 
-// Legacy isimler — mevcut consumer'lar kırılmadan yaşasın.
-// Yeni kod useMacroSettings() üzerinden canlı değer okusun.
-export const MACRO_PRICE = FALLBACK_MACRO_PRICE
-export const MEMBERSHIP_THRESHOLD = FALLBACK_THRESHOLD
-export const MEMBERSHIP_DAYS = FALLBACK_MEMBERSHIP_DAYS
+export const FALLBACK_EARN_THRESHOLD = 500      // TL → 1 Macro
+export const FALLBACK_MEAL_COST = 5             // Macro → 1 ücretsiz öğün
+export const FALLBACK_REWARD_VALID_DAYS = 90    // gün
 
 export interface MacroProfile {
+  /** Kullanılabilir Macro sayısı. */
   macro_balance: number
+  /** Eşiğe ulaşmayan birikmiş harcama (TL). */
   macro_points: number
-  privileged_until: string | null
-  total_macros_purchased: number
+}
+
+export interface MacroSettings {
+  earnThreshold: number
+  mealCost: number
+  rewardValidDays: number
+  /** Ücretsiz öğün kuponunun GEÇMEDİĞİ ürün kategorileri. */
+  excludedCategories: string[]
+}
+
+export const DEFAULT_MACRO_SETTINGS: MacroSettings = {
+  earnThreshold: FALLBACK_EARN_THRESHOLD,
+  mealCost: FALLBACK_MEAL_COST,
+  rewardValidDays: FALLBACK_REWARD_VALID_DAYS,
+  excludedCategories: ['Koliye Özel Fırsatlar'],
 }
 
 export async function fetchMacroProfile(userId: string): Promise<MacroProfile | null> {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
     .from('profiles')
-    .select('macro_balance, macro_points, privileged_until, total_macros_purchased')
+    .select('macro_balance, macro_points')
     .eq('id', userId)
     .maybeSingle()
   if (error || !data) return null
-  return data as MacroProfile
-}
-
-export function isPrivileged(profile: MacroProfile | null): boolean {
-  if (!profile?.privileged_until) return false
-  return new Date(profile.privileged_until) > new Date()
-}
-
-export function isMacroMemberFromUntil(privilegedUntil: string | null | undefined): boolean {
-  if (!privilegedUntil) return false
-  return new Date(privilegedUntil) > new Date()
-}
-
-export function calculateMacroDiscount(subtotal: number, isMember: boolean): number {
-  if (!isMember || subtotal <= 0) return 0
-  return Number((subtotal * (MACRO_MEMBER_DISCOUNT_PERCENT / 100)).toFixed(2))
-}
-
-export function privilegedUntilFormatted(profile: MacroProfile | null): string {
-  if (!profile?.privileged_until) return '';
-  return new Date(profile.privileged_until).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-export function privilegedDaysLeft(profile: MacroProfile | null): number {
-  if (!profile?.privileged_until) return 0
-  const diff = new Date(profile.privileged_until).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
-}
-
-export async function createMacroPurchaseOrder(params: {
-  userId: string
-  quantity: number
-  totalAmount: number
-}): Promise<{ orderId: string; orderCode: string } | null> {
-  const supabase = getSupabaseClient()
-  const orderCode = `MCR-${Date.now().toString(36).toUpperCase()}`
-
-  const { data, error } = await supabase
-    .from('orders')
-    .insert({
-      user_id: params.userId,
-      status: 'pending_payment',
-      payment_status: 'pending',
-      delivery_type: 'immediate',
-      total_price: params.totalAmount,
-      items: JSON.stringify([{
-        name: `Macro Coin x${params.quantity}`,
-        quantity: params.quantity,
-        unit_price: MACRO_PRICE,
-        price: MACRO_PRICE,
-        product_type: 'macro',
-      }]),
-      order_code: orderCode,
-      type: 'macro_purchase',
-      macro_quantity: params.quantity,
-    })
-    .select('id')
-    .single()
-
-  if (error || !data) {
-    console.error('Macro order create error:', error)
-    return null
+  return {
+    macro_balance: Number((data as any).macro_balance ?? 0),
+    macro_points: Number((data as any).macro_points ?? 0),
   }
-
-  return { orderId: String(data.id), orderCode }
-}
-
-export async function completeMacroPurchase(params: {
-  userId: string
-  orderId: string
-  quantity: number
-  pricePaid: number
-}): Promise<boolean> {
-  const supabase = getSupabaseClient()
-
-  // Mevcut profili çek
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('macro_balance, total_macros_purchased, privileged_until')
-    .eq('id', params.userId)
-    .maybeSingle()
-
-  if (!profile) return false
-
-  const newBalance = (profile.macro_balance || 0) + params.quantity
-  const newTotal   = (profile.total_macros_purchased || 0) + params.quantity
-
-  // Üyelik kontrolü
-  let privilegedUntil = profile.privileged_until
-  if (newBalance >= MEMBERSHIP_THRESHOLD) {
-    const base = privilegedUntil && new Date(privilegedUntil) > new Date()
-      ? new Date(privilegedUntil)
-      : new Date()
-    base.setDate(base.getDate() + MEMBERSHIP_DAYS)
-    privilegedUntil = base.toISOString()
-  }
-
-  // Profil güncelle
-  await supabase.from('profiles').update({
-    macro_balance: newBalance,
-    total_macros_purchased: newTotal,
-    ...(privilegedUntil !== profile.privileged_until ? { privileged_until: privilegedUntil } : {}),
-  }).eq('id', params.userId)
-
-  // Transaction kaydet
-  await supabase.from('macro_transactions').insert({
-    user_id: params.userId,
-    type: 'purchase',
-    amount: params.quantity,
-    price_paid: params.pricePaid,
-    order_id: Number(params.orderId),
-    note: `${params.quantity} Macro Coin satın alındı`,
-  })
-
-  if (privilegedUntil !== profile.privileged_until) {
-    await supabase.from('macro_transactions').insert({
-      user_id: params.userId,
-      type: 'membership_unlock',
-      amount: 0,
-      note: `Ayrıcalıklı üyelik aktifleşti — ${MEMBERSHIP_DAYS} gün`,
-    })
-  }
-
-  return true
-}
-
-export interface MacroSettings {
-  macro_price: number
-  macro_threshold: number
-  macro_membership_days: number
 }
 
 export async function fetchMacroSettings(): Promise<MacroSettings> {
   const supabase = getSupabaseClient()
   const { data } = await supabase
     .from('settings')
-    .select('macro_price, macro_threshold, macro_membership_days')
+    .select('macro_earn_threshold, macro_meal_cost, macro_reward_valid_days, macro_meal_excluded_categories')
     .eq('id', 1)
     .maybeSingle()
+  if (!data) return DEFAULT_MACRO_SETTINGS
+  const row = data as Record<string, unknown>
+  const threshold = Number(row.macro_earn_threshold)
+  const mealCost = Number(row.macro_meal_cost)
+  const validDays = Number(row.macro_reward_valid_days)
+  const excluded = row.macro_meal_excluded_categories
   return {
-    macro_price: data?.macro_price ?? FALLBACK_MACRO_PRICE,
-    macro_threshold: data?.macro_threshold ?? FALLBACK_THRESHOLD,
-    macro_membership_days: data?.macro_membership_days ?? FALLBACK_MEMBERSHIP_DAYS,
+    earnThreshold: Number.isFinite(threshold) && threshold > 0 ? threshold : FALLBACK_EARN_THRESHOLD,
+    mealCost: Number.isFinite(mealCost) && mealCost > 0 ? mealCost : FALLBACK_MEAL_COST,
+    rewardValidDays: Number.isFinite(validDays) && validDays > 0 ? validDays : FALLBACK_REWARD_VALID_DAYS,
+    excludedCategories: Array.isArray(excluded)
+      ? (excluded as unknown[]).map(String)
+      : DEFAULT_MACRO_SETTINGS.excludedCategories,
   }
 }
 
-// ─── Sipariş bazlı Macro kazanım ──────────────────────────────────────────────
-// Kural: Her 2500 TL harcamada 1 Macro kazanılır (geçmiş harcamalar birikir)
-// Örnek: 5 × 500 TL = 2500 TL → 1 Macro kazanılır
-export const ORDER_EARN_THRESHOLD = 2500 // TL
+export interface MacroProgress {
+  /** Kullanılabilir Macro. */
+  balance: number
+  /** Bir öğün için gereken Macro. */
+  mealCost: number
+  /** Bir sonraki ücretsiz öğüne kaç Macro kaldı. */
+  macrosToNextMeal: number
+  /** Bir sonraki Macro'ya kaç TL kaldı. */
+  liraToNextMacro: number
+  /** Öğün ilerlemesi 0..1 — halka/bar göstergesi için. */
+  mealProgress: number
+}
 
-export async function processOrderMacroEarn(params: {
-  userId: string
-  orderTotal: number   // Bu siparişin tutarı (TL)
-  orderId: string | number
-}): Promise<{ earnedMacros: number }> {
+export function macroProgress(
+  profile: MacroProfile | null,
+  settings: MacroSettings = DEFAULT_MACRO_SETTINGS,
+): MacroProgress {
+  const balance = Math.max(0, profile?.macro_balance ?? 0)
+  const points = Math.max(0, profile?.macro_points ?? 0)
+  const mealCost = Math.max(1, settings.mealCost)
+  // Bakiye mealCost'a ulaşınca sunucu kuponu üretip düşüyor; yine de savunmacı
+  // davran ve modülünü al ki UI hiçbir durumda 5/5 gibi takılı kalmasın.
+  const inCycle = balance % mealCost
+  return {
+    balance,
+    mealCost,
+    macrosToNextMeal: Math.max(0, mealCost - inCycle),
+    liraToNextMacro: Math.max(0, Math.ceil(settings.earnThreshold - points)),
+    mealProgress: inCycle / mealCost,
+  }
+}
+
+export interface MealRewardCoupon {
+  id: string
+  code: string
+  description: string | null
+  end_date: string | null
+}
+
+/** Macro karşılığı üretilmiş, henüz kullanılmamış ücretsiz öğün kuponları. */
+export async function fetchMealRewardCoupons(): Promise<MealRewardCoupon[]> {
   const supabase = getSupabaseClient()
+  // RLS zaten kullanıcıya ait ve limiti dolmamış kuponları filtreliyor.
+  const { data, error } = await supabase
+    .from('campaigns')
+    .select('id, code, description, end_date')
+    .eq('source', 'macro_reward')
+    .order('end_date', { ascending: true })
+  if (error || !data) return []
+  return data as MealRewardCoupon[]
+}
 
-  // Profil + birikmiş harcama çek
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('macro_balance, macro_points, total_macros_purchased, privileged_until')
-    .eq('id', params.userId)
-    .maybeSingle()
+export interface MacroTransaction {
+  id: number
+  type: string
+  amount: number
+  note: string | null
+  created_at: string
+}
 
-  if (!profile) return { earnedMacros: 0 }
-
-  // macro_points = birikmiş harcama (TL cinsinden, eşiğe ulaşmayan kısım)
-  const accumulated = (profile.macro_points || 0) + params.orderTotal
-  const earnedMacros = Math.floor(accumulated / ORDER_EARN_THRESHOLD)
-  const remainder    = accumulated % ORDER_EARN_THRESHOLD
-
-  if (earnedMacros === 0) {
-    // Henüz eşiğe ulaşmadı — sadece birikimi güncelle
-    await supabase.from('profiles')
-      .update({ macro_points: remainder })
-      .eq('id', params.userId)
-    return { earnedMacros: 0 }
-  }
-
-  // Macro kazanıldı — balance + points güncelle
-  const newBalance = (profile.macro_balance || 0) + earnedMacros
-  const newTotal   = (profile.total_macros_purchased || 0) + earnedMacros
-
-  let privilegedUntil = profile.privileged_until
-  if (newBalance >= MEMBERSHIP_THRESHOLD) {
-    const base = privilegedUntil && new Date(privilegedUntil) > new Date()
-      ? new Date(privilegedUntil)
-      : new Date()
-    base.setDate(base.getDate() + MEMBERSHIP_DAYS)
-    privilegedUntil = base.toISOString()
-  }
-
-  await supabase.from('profiles').update({
-    macro_balance: newBalance,
-    macro_points: remainder,
-    total_macros_purchased: newTotal,
-    ...(privilegedUntil !== profile.privileged_until ? { privileged_until: privilegedUntil } : {}),
-  }).eq('id', params.userId)
-
-  // Transaction kaydet
-  await supabase.from('macro_transactions').insert({
-    user_id: params.userId,
-    type: 'order_earn',
-    amount: earnedMacros,
-    price_paid: 0,
-    order_id: Number(params.orderId),
-    note: `Sipariş harcamasından ${earnedMacros} Macro kazanıldı (₺${params.orderTotal})`,
-  })
-
-  if (privilegedUntil !== profile.privileged_until) {
-    await supabase.from('macro_transactions').insert({
-      user_id: params.userId,
-      type: 'membership_unlock',
-      amount: 0,
-      note: `Ayrıcalıklı üyelik aktifleşti — ${MEMBERSHIP_DAYS} gün`,
-    })
-  }
-
-  return { earnedMacros }
+export async function fetchMacroTransactions(userId: string, limit = 30): Promise<MacroTransaction[]> {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from('macro_transactions')
+    .select('id, type, amount, note, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error || !data) return []
+  return data as MacroTransaction[]
 }

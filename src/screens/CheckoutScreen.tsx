@@ -35,9 +35,6 @@ import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
 import {
   fetchMacroProfile,
-  isPrivileged,
-  calculateMacroDiscount,
-  MACRO_MEMBER_DISCOUNT_PERCENT,
   MacroProfile,
 } from '../lib/macros';
 import { isApiBaseUrlConfigured } from '../lib/api';
@@ -499,8 +496,8 @@ export default function CheckoutScreen() {
     fetchMacroProfile(user.id).then(p => { if (mounted) setMacroProfile(p); }).catch(() => {});
     return () => { mounted = false; };
   }, [user?.id]);
-  const isMacroMember = isPrivileged(macroProfile);
-  const macroDiscount = calculateMacroDiscount(subtotal, isMacroMember);
+  // Macro modeli v2: sepette macro indirimi yok (bkz. src/lib/macros.ts).
+  const macroDiscount = 0;
 
   const selectedAddress = useMemo(
     () => addresses.find((address) => address.id === selectedAddressId) || null,
@@ -2343,12 +2340,6 @@ export default function CheckoutScreen() {
               <View style={styles.summaryRow}>
                 <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>İndirim</Text>
                 <AnimatedNumberText style={[styles.summaryValue, { color: '#16a34a' }]} value={`-${toCurrency(discountAmount)}`} />
-              </View>
-            ) : null}
-            {macroDiscount > 0 ? (
-              <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>{`Macro Üye İndirimi (%${MACRO_MEMBER_DISCOUNT_PERCENT})`}</Text>
-                <AnimatedNumberText style={[styles.summaryValue, { color: '#16a34a' }]} value={`-${toCurrency(macroDiscount)}`} />
               </View>
             ) : null}
             <View style={styles.divider} />

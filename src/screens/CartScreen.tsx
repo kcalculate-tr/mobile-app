@@ -30,12 +30,9 @@ import {
 } from '../lib/cartSuggestions';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
 import { animateListChange } from '../utils/layoutAnimation';
-import { validateCoupon, getCouponErrorMessage } from '../lib/offers';
+import { validateCoupon, getCouponErrorMessage, CouponCartItem } from '../lib/offers';
 import {
   fetchMacroProfile,
-  isPrivileged,
-  calculateMacroDiscount,
-  MACRO_MEMBER_DISCOUNT_PERCENT,
   MacroProfile,
 } from '../lib/macros';
 import { addMacros, computeLineMacros, formatMacroGrams, formatMacroKcal, ItemMacros } from '../lib/itemMacros';
@@ -127,6 +124,15 @@ export default function CartScreen() {
   }, [cartIsEmpty, user?.id]);
 
   const subtotal = getSubtotal();
+
+  // Kupon doğrulaması için sepet kalemleri. Yalnızca ürün kimliği + adet;
+  // fiyat ve kategori sunucuda okunuyor (bkz. src/lib/offers.ts).
+  const couponItems = useMemo<CouponCartItem[]>(
+    () => items
+      .map((i) => ({ product_id: Number(i.productId), quantity: i.quantity }))
+      .filter((i) => Number.isFinite(i.product_id) && i.product_id > 0),
+    [items],
+  );
   const totalMacros = getTotalMacros();
   const hasTotalMacros = totalMacros.kcal > 0 || totalMacros.protein > 0;
 
@@ -168,7 +174,7 @@ export default function CartScreen() {
     const code = couponInput.trim().toUpperCase();
     if (!code) { setCouponError('Kupon kodu girin.'); return; }
     setCouponLoading(true); setCouponError('');
-    const result = await validateCoupon(code, subtotal);
+    const result = await validateCoupon(code, subtotal, couponItems);
     setCouponLoading(false);
     if (!result.valid) {
       setCouponError(getCouponErrorMessage(result));
@@ -198,11 +204,15 @@ export default function CartScreen() {
   // sunucu kurallarını da güncel tutar). 400ms debounce ile art arda
   // miktar +/- tıklamalarında spam RPC çağrısı yapmıyoruz.
   useEffect(() => {
-    if (!appliedCoupon || appliedCoupon.discountType !== 'percent') return;
+    // Yüzdelik ve ücretsiz öğün kuponları sepet değişince yeniden
+    // hesaplanmalı: birinde oran subtotal'a, diğerinde indirim sepetteki
+    // en pahalı uygun öğüne bağlı.
+    if (!appliedCoupon) return;
+    if (appliedCoupon.discountType !== 'percent' && appliedCoupon.discountType !== 'free_item') return;
     const code = appliedCoupon.code;
     let active = true;
     const t = setTimeout(async () => {
-      const result = await validateCoupon(code, subtotal);
+      const result = await validateCoupon(code, subtotal, couponItems);
       if (!active) return;
       if (result.valid) {
         setCoupon({
@@ -226,7 +236,9 @@ export default function CartScreen() {
     // çağrısı appliedCoupon referansını değiştirir ve kod/tip aynı kaldığı
     // sürece tekrar tetiklenmesini İSTEMİYORUZ (sonsuz döngü riski).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subtotal, appliedCoupon?.code, appliedCoupon?.discountType]);
+    // couponItems deps'te: free_item kuponunda indirim sepetin BİLEŞİMİNE
+    // bağlı — subtotal aynı kalsa bile en pahalı uygun öğün değişebilir.
+  }, [subtotal, couponItems, appliedCoupon?.code, appliedCoupon?.discountType]);
 
   useEffect(() => {
     if (appliedCoupon) {
@@ -242,9 +254,9 @@ export default function CartScreen() {
 
   const couponDiscount = getDiscountAmount(subtotal);
 
-  const isMacroMember = isPrivileged(macroProfile);
-  const macroDiscount = calculateMacroDiscount(subtotal, isMacroMember);
-  const total = Math.max(0, subtotal - couponDiscount - macroDiscount);
+  // Macro modeli v2: sepette macro indirimi yok — macro, ücretsiz öğün
+  // kuponu olarak "Kuponlarım"a düşüyor ve normal kupon gibi uygulanıyor.
+  const total = Math.max(0, subtotal - couponDiscount);
 
   const handleContinue = async () => {
     const res = await refreshPrices();
@@ -822,12 +834,6 @@ export default function CartScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Kupon ({appliedCoupon.code})</Text>
               <AnimatedNumberText style={[styles.summaryValue, { color: '#16A34A' }]} value={`-₺${couponDiscount.toFixed(2)}`} />
-            </View>
-          )}
-          {macroDiscount > 0 && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{`Macro Üye İndirimi (%${MACRO_MEMBER_DISCOUNT_PERCENT})`}</Text>
-              <AnimatedNumberText style={[styles.summaryValue, { color: '#16A34A' }]} value={`-₺${macroDiscount.toFixed(2)}`} />
             </View>
           )}
           <View style={styles.summaryDivider} />
