@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { CrownSimple, Info } from 'phosphor-react-native'
 import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
+import SubscriptionBuilder from '../components/subscription/SubscriptionBuilder'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -169,7 +170,8 @@ export default function MacroScreen() {
           </View>
         </View>
 
-        {/* Buraya Macro ile öğün aboneliği bölümü gelecek. */}
+        {/* ── Öğün aboneliği (ilk şablon) ── */}
+        <SubscriptionBuilder />
       </ScrollView>
 
       <MacroPointModal
@@ -186,7 +188,8 @@ export default function MacroScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, gap: SPACING.md },
+  // Kart guvenli alanin hemen altinda baslasin — ustte bos bant kalmasin.
+  content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, gap: SPACING.md },
 
   // ── Kart: ProfileScreen.styles.macroCard ile birebir ──
   // (marginHorizontal orada; burada ScrollView'in paddingHorizontal'ı veriyor)
