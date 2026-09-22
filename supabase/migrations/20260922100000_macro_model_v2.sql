@@ -196,8 +196,13 @@ begin
   v_earned      := floor(v_accumulated / s.macro_earn_threshold)::int;
   v_remainder   := v_accumulated - (v_earned * s.macro_earn_threshold);
 
+  -- profiles_guard_protected_cols bu bayrağı görünce geçiş veriyor.
+  -- true = işlem-yerel; transaction bitince kendiliğinden düşer.
+  perform set_config('app.macro_engine', 'on', true);
+
   if v_earned <= 0 then
     update public.profiles set macro_points = v_remainder where id = new.user_id;
+    perform set_config('app.macro_engine', '', true);
     return new;
   end if;
 
@@ -243,6 +248,7 @@ begin
          total_macros_purchased = coalesce(total_macros_purchased, 0) + v_earned
    where id = new.user_id;
 
+  perform set_config('app.macro_engine', '', true);
   return new;
 end;
 $function$;
