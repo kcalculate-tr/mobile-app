@@ -543,7 +543,7 @@ export default function HomeScreen() {
                   </Text>
                 )}
               </View>
-              <Text style={styles.categoryName}>{cat.name}</Text>
+              <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
