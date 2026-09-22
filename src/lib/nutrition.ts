@@ -143,3 +143,92 @@ export function calculateMacroTargets(profile: NutritionProfileInput): MacroTarg
 
   return { calories, protein, carbs, fat, water };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Özel (elle girilen) hedeflerin doğrulanması.
+//
+// 21.09.2026'ya kadar bu yolda HİÇBİR kontrol yoktu: NutritionProfileScreen
+// girilen değerleri olduğu gibi yazıyordu. Canlı veride iki sonucu görüldü —
+//  1) makro toplamı kalori hedefiyle tutmuyordu (bir profilde 325 kcal açık,
+//     bir başkasında 285 kcal fazla). Halkalar hiçbir zaman uzlaşmıyordu.
+//  2) bazal metabolizmanın ALTINDA hedefler kaydedilmişti (BMR 1628 olan
+//     normal kilolu bir kullanıcıda hedef 1250 kcal). Bir beslenme
+//     uygulamasının bunu sessizce kabul etmesi savunulabilir değil.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Makro toplamının kalori hedefinden sapabileceği üst sınır (yuvarlama payı). */
+export const MACRO_TOLERANCE_KCAL = 50;
+
+/** Cinsiyete göre mutlak alt sınır — BMR okunamadığında devreye girer. */
+export const absoluteCalorieFloor = (gender: Gender): number =>
+  gender === 'female' ? 1200 : 1500;
+
+/** Makroların karşılığı olan kalori. */
+export const macrosToKcal = (protein: number, carbs: number, fat: number): number =>
+  protein * 4 + carbs * 4 + fat * 9;
+
+/**
+ * Protein ve yağ sabit tutulup karbonhidrat kalori hedefine oturtulur.
+ * Karbonhidrat esnek makro olduğu için dengeleme oradan yapılır.
+ * Protein + yağ zaten hedefi aşıyorsa null döner (dengelenemez).
+ */
+export const balanceCarbs = (
+  calories: number,
+  protein: number,
+  fat: number,
+): number | null => {
+  const kalan = calories - protein * 4 - fat * 9;
+  if (kalan < 0) return null;
+  return Math.round(kalan / 4);
+};
+
+export interface CustomTargetInput {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  /** Kullanıcının kendi BMR'si — alt sınır bundan hesaplanır. */
+  bmr: number;
+  gender: Gender;
+}
+
+export type CustomTargetIssue =
+  | { kind: 'ok' }
+  | { kind: 'invalid'; message: string }
+  | { kind: 'below_bmr'; message: string; minimum: number }
+  | { kind: 'macro_mismatch'; message: string; diff: number };
+
+export function validateCustomTargets(input: CustomTargetInput): CustomTargetIssue {
+  const { calories, protein, carbs, fat, bmr, gender } = input;
+
+  if ([calories, protein, carbs, fat].some((v) => !Number.isFinite(v) || v < 0)) {
+    return { kind: 'invalid', message: 'Hedefler negatif ya da boş olamaz.' };
+  }
+
+  // Alt sınır: BMR ve cinsiyete göre mutlak taban — hangisi büyükse o.
+  const taban = Math.max(Math.round(bmr), absoluteCalorieFloor(gender));
+  if (calories < taban) {
+    return {
+      kind: 'below_bmr',
+      minimum: taban,
+      message:
+        `Günlük hedef ${taban} kcal'in altına indirilemez. ` +
+        `Bu, vücudunun dinlenme hâlinde harcadığı enerjiye denk geliyor; ` +
+        `altına inmek sağlıklı bir hedef değil.`,
+    };
+  }
+
+  const fark = macrosToKcal(protein, carbs, fat) - calories;
+  if (Math.abs(fark) > MACRO_TOLERANCE_KCAL) {
+    return {
+      kind: 'macro_mismatch',
+      diff: fark,
+      message:
+        fark > 0
+          ? `Makroların kalori hedefini ${fark} kcal aşıyor. "Dengele"ye dokunarak düzeltebilirsin.`
+          : `Makroların kalori hedefinin ${Math.abs(fark)} kcal altında kalıyor. "Dengele"ye dokunarak düzeltebilirsin.`,
+    };
+  }
+
+  return { kind: 'ok' };
+}

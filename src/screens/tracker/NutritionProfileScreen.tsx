@@ -35,6 +35,9 @@ import {
   calculateMacroTargets,
   calculateTDEE,
   migrateLegacyActivity,
+  balanceCarbs,
+  macrosToKcal,
+  validateCustomTargets,
 } from '../../lib/nutrition';
 
 type NutritionProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -228,10 +231,47 @@ export default function NutritionProfileScreen() {
     fat: macros.fat,
   };
 
+  // Elle girilen hedeflerin canli dogrulamasi. Kaydetmeden ONCE ekranda
+  // gorunur; kullanici neyin yanlis oldugunu kaydete basmadan anlar.
+  const customIssue = useCustomMacros
+    ? validateCustomTargets({
+        calories: displayMacros.targetKcal,
+        protein: displayMacros.protein,
+        carbs: displayMacros.carbs,
+        fat: displayMacros.fat,
+        bmr: macros.bmr,
+        gender,
+      })
+    : { kind: 'ok' as const };
+
+  const customKcalToplam = macrosToKcal(
+    displayMacros.protein, displayMacros.carbs, displayMacros.fat,
+  );
+
+  // Karbonhidrati kalori hedefine oturtur (protein ve yag sabit).
+  const handleDengele = () => {
+    const yeni = balanceCarbs(
+      displayMacros.targetKcal, displayMacros.protein, displayMacros.fat,
+    );
+    if (yeni === null) {
+      setErrorMessage('Protein ve yağ tek başına kalori hedefini aşıyor. Önce onları düşür.');
+      return;
+    }
+    setErrorMessage('');
+    setCustomCarbs(String(yeni));
+  };
+
   const handleSave = async () => {
     if (!user) { setErrorMessage('Giriş yapmanız gerekiyor.'); return; }
     if (parsed.age <= 0 || parsed.height <= 0 || parsed.weight <= 0) {
       setErrorMessage('Lütfen geçerli değerler girin.'); return;
+    }
+    // Elle girilen hedefler tutarsizsa KAYDETME. Onceden bu kontrol yoktu ve
+    // makrolari kalori hedefiyle uyusmayan, hatta BMR'nin altinda kalan
+    // profiller veritabanina yaziliyordu.
+    if (customIssue.kind !== 'ok') {
+      setErrorMessage(customIssue.message);
+      return;
     }
     setErrorMessage('');
     setSuccessMessage('');
@@ -579,6 +619,31 @@ export default function NutritionProfileScreen() {
                     />
                   </View>
                 ))}
+                </View>
+            )}
+            {useCustomMacros && (
+              <View style={[
+                s.dengeKutu,
+                customIssue.kind === 'ok' ? s.dengeKutuOk : s.dengeKutuUyari,
+              ]}>
+                <View style={s.dengeSatir}>
+                  <Text style={s.dengeEtiket}>Makroların karşılığı</Text>
+                  <Text style={s.dengeDeger}>
+                    {customKcalToplam} / {displayMacros.targetKcal} kcal
+                  </Text>
+                </View>
+                {customIssue.kind !== 'ok' && (
+                  <Text style={s.dengeMesaj}>{customIssue.message}</Text>
+                )}
+                {customIssue.kind === 'macro_mismatch' && (
+                  <TouchableOpacity
+                    style={s.dengeBtn}
+                    onPress={handleDengele}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={s.dengeBtnText}>Dengele</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
             </Animated.View>
@@ -759,6 +824,28 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: SURFACE.unselectedText },
   customMacroGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   customMacroCell: { width: '47%' },
 
+  // Elle makro girisinde canli denge gostergesi.
+  dengeKutu: {
+    marginTop: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+  },
+  dengeKutuOk: { backgroundColor: '#F2FBE8', borderColor: '#CDEBA6' },
+  dengeKutuUyari: { backgroundColor: '#FFF6E9', borderColor: '#F3D2A0' },
+  dengeSatir: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dengeEtiket: { fontSize: 12, color: COLORS.text.secondary,
+fontFamily: 'PlusJakartaSans_600SemiBold' },
+  dengeDeger: { fontSize: 13, color: COLORS.text.primary,
+fontFamily: 'PlusJakartaSans_700Bold' },
+  dengeMesaj: { fontSize: 11.5, lineHeight: 17, color: '#8A5A12', marginTop: 6 },
+  dengeBtn: {
+    alignSelf: 'flex-start', marginTop: 10,
+    backgroundColor: COLORS.brand.green,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100,
+  },
+  dengeBtnText: { fontSize: 12, color: COLORS.text.primary,
+fontFamily: 'PlusJakartaSans_700Bold' },
   errorText: { fontSize: 13, color: MACRO_COLORS.fat.main, textAlign: 'center' },
   successText: { fontSize: 13, color: '#16A34A', textAlign: 'center', fontWeight: '600',
 fontFamily: 'PlusJakartaSans_600SemiBold'},
