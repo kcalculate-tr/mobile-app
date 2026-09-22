@@ -17,9 +17,11 @@ import {
 
 const MACRO_COIN = require('../../assets/macro-coin.png')
 
-/** Kazanılmış coin büyük, kazanılmamış küçük ve soluk. */
-const COIN_EARNED = 46
-const COIN_EMPTY = 28
+// Coin ölçüleri. SLOT, 5 yuva en dar telefonda (375pt) taşmasın diye üst
+// sınırdan hesaplandı: 375 − içerik(40) − kart(32) − panel(16) = 287; 5×56 = 280.
+const SLOT = 56
+const COIN_EARNED = 52
+const COIN_EMPTY = 34
 
 /**
  * Tek bir coin yuvası.
@@ -125,24 +127,36 @@ export default function MacroScreen() {
         {/* ── Macro bölümü ── */}
         <View style={s.card}>
           <View style={s.cardHeader}>
-            <View>
-              <Text style={s.title}>MACRO</Text>
-              <Text style={s.subtitle}>{`${p.mealCost} Macro = 1 ücretsiz öğün`}</Text>
-            </View>
+            <Text style={s.title}>MACRO</Text>
             <TouchableOpacity
               onPress={() => setInfoOpen(true)}
-              style={s.infoBtn}
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={s.howBtn}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Info size={18} color={COLORS.brand.green} weight="bold" />
+              <Info size={15} color={COLORS.brand.green} weight="bold" />
+              <Text style={s.howBtnText}>Nasıl çalışır?</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={s.coinRow}>
-            {yuvalar.map((earned, i) => (
-              <CoinSlot key={i} earned={earned} index={i} />
-            ))}
+          <View style={s.intro}>
+            <Text style={s.introTitle}>Kcalculate'in macro dünyasına hoş geldin.</Text>
+            <Text style={s.introBody}>
+              Sana özel indirim ve avantajlar burada birikecek. Her siparişin seni bir
+              sonraki ücretsiz öğüne yaklaştırır.
+            </Text>
+          </View>
+
+          <View style={s.coinPanel}>
+            <View style={s.coinRow}>
+              {yuvalar.map((earned, i) => (
+                <CoinSlot key={i} earned={earned} index={i} />
+              ))}
+            </View>
+            <Text style={s.coinCaption}>
+              <Text style={s.coinCaptionStrong}>{p.mealCost} Macro</Text>
+              <Text>{' topladığında bir öğün senden, biz ısmarlıyoruz.'}</Text>
+            </Text>
           </View>
 
           <View style={s.barGroup}>
@@ -191,58 +205,93 @@ const s = StyleSheet.create({
   card: {
     backgroundColor: '#0D0D0D',
     borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.md,
     paddingTop: SPACING.lg,
     paddingBottom: SPACING.lg,
     gap: SPACING.lg,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: {
-    fontSize: 22,
-    letterSpacing: 4,
+    fontSize: 26,
+    letterSpacing: 5,
     color: '#FFFFFF',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontWeight: '800',
   },
-  subtitle: {
-    marginTop: 3,
+  howBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    height: 32, paddingHorizontal: 12, borderRadius: 100,
+    backgroundColor: 'rgba(185,239,20,0.12)',
+    borderWidth: 1, borderColor: 'rgba(185,239,20,0.25)',
+  },
+  howBtnText: {
+    fontSize: 12, color: COLORS.brand.green,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
+  },
+
+  // ── Karşılama metni ──
+  intro: { marginTop: -SPACING.sm, gap: 4 },
+  introTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: '#FFFFFF',
+    lineHeight: 22,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
+  },
+  introBody: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: 'rgba(255,255,255,0.5)',
+    lineHeight: 18,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+
+  // ── Coin paneli ──
+  // Coin sırası, kartın içinde bir ton açık kendi panelinde dursun —
+  // metinden ayrışsın, "vitrin" hissi versin.
+  coinPanel: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  coinCaption: {
+    textAlign: 'center',
     fontSize: TYPOGRAPHY.size.xs,
     color: 'rgba(255,255,255,0.45)',
     fontFamily: 'PlusJakartaSans_500Medium',
   },
-  infoBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(185,239,20,0.12)',
-    alignItems: 'center', justifyContent: 'center',
+  coinCaptionStrong: {
+    color: COLORS.brand.green,
+    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
 
   // ── Coin yuvaları ──
   coinRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.xs,
+    justifyContent: 'space-around',
   },
   slot: {
-    width: COIN_EARNED + 8,
-    height: COIN_EARNED + 8,
+    width: SLOT,
+    height: SLOT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   // İki katmanlı hale: expo-blur olmadan yumuşak ışıma hissi verir.
   glowOuter: {
     position: 'absolute',
-    width: COIN_EARNED + 8, height: COIN_EARNED + 8, borderRadius: (COIN_EARNED + 8) / 2,
+    width: SLOT, height: SLOT, borderRadius: SLOT / 2,
     backgroundColor: 'rgba(185,239,20,0.10)',
   },
   glowInner: {
     position: 'absolute',
-    width: COIN_EARNED - 4, height: COIN_EARNED - 4, borderRadius: (COIN_EARNED - 4) / 2,
-    backgroundColor: 'rgba(185,239,20,0.20)',
+    width: COIN_EARNED - 6, height: COIN_EARNED - 6, borderRadius: (COIN_EARNED - 6) / 2,
+    backgroundColor: 'rgba(185,239,20,0.22)',
   },
   coinEarned: { width: COIN_EARNED, height: COIN_EARNED },
   slotEmpty: {
-    width: COIN_EMPTY + 12, height: COIN_EMPTY + 12, borderRadius: (COIN_EMPTY + 12) / 2,
+    width: COIN_EMPTY + 14, height: COIN_EMPTY + 14, borderRadius: (COIN_EMPTY + 14) / 2,
     borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center', justifyContent: 'center',
   },
