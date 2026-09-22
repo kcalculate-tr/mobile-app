@@ -6,7 +6,8 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
-import { Info } from 'phosphor-react-native'
+import { CrownSimple, Info } from 'phosphor-react-native'
+import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme'
 import { useAuth } from '../context/AuthContext'
@@ -17,50 +18,34 @@ import {
 
 const MACRO_COIN = require('../../assets/macro-coin.png')
 
-// Coin ölçüleri. SLOT, 5 yuva en dar telefonda (375pt) taşmasın diye üst
-// sınırdan hesaplandı: 375 − içerik(40) − kart(32) − panel(16) = 287; 5×56 = 280.
-const SLOT = 56
-const COIN_EARNED = 52
-const COIN_EMPTY = 34
+/** İlerleme çubuğunun üzerinde duran coin boyutu. */
+const DOT = 26
 
 /**
- * Tek bir coin yuvası.
+ * Çubuğun üzerindeki tek coin.
  *
- * Kazanılmışsa: tam boy, arkasında marka yeşili halesi, yaylı giriş animasyonu.
- * Kazanılmamışsa: küçük, soluk, kesikli çember — "burası dolacak" hissi.
+ * Kazanılmışsa tam renk + yeşil hale, sırayla yaylı giriş; değilse soluk.
+ * Profil kartındaki düz çubuğun Macro sayfasına özel zenginleştirilmiş hâli.
  */
-function CoinSlot({ earned, index }: { earned: boolean; index: number }) {
+function ProgressCoin({ earned, index }: { earned: boolean; index: number }) {
   const scale = useRef(new Animated.Value(earned ? 0.4 : 1)).current
-  const glow = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (!earned) return
     Animated.sequence([
-      Animated.delay(index * 90),
-      Animated.parallel([
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 12, bounciness: 10 }),
-        Animated.timing(glow, { toValue: 1, duration: 320, useNativeDriver: true }),
-      ]),
+      Animated.delay(index * 80),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 13, bounciness: 11 }),
     ]).start()
-  }, [earned, index, scale, glow])
+  }, [earned, index, scale])
 
   return (
-    <View style={s.slot}>
-      {earned ? (
-        <>
-          <Animated.View style={[s.glowOuter, { opacity: glow }]} />
-          <Animated.View style={[s.glowInner, { opacity: glow }]} />
-          <Animated.Image
-            source={MACRO_COIN}
-            style={[s.coinEarned, { transform: [{ scale }] }]}
-            resizeMode="contain"
-          />
-        </>
-      ) : (
-        <View style={s.slotEmpty}>
-          <Image source={MACRO_COIN} style={s.coinEmpty} resizeMode="contain" />
-        </View>
-      )}
+    <View style={s.dotCell}>
+      {earned && <View style={s.dotGlow} />}
+      <Animated.Image
+        source={MACRO_COIN}
+        resizeMode="contain"
+        style={[s.dotImg, !earned && s.dotImgOff, { transform: [{ scale }] }]}
+      />
     </View>
   )
 }
@@ -68,9 +53,11 @@ function CoinSlot({ earned, index }: { earned: boolean; index: number }) {
 /**
  * Macro ekranı.
  *
- * Bilerek tek bir bölüm: siyah kart içinde MACRO başlığı, 5 coin yuvası ve
- * ilerleme çubuğu. Detaylı anlatım "i" ile açılan alt sayfada (Profil
- * ekranındakiyle AYNI bileşen) — ekranın kendisi kısa kalsın diye.
+ * Kart, Profil ekranındaki Macro kartıyla birebir aynı: aynı ölçüler, aynı
+ * tipografi, aynı "i" butonu. Tek fark, ilerleme çubuğunun üzerinde duran
+ * macro coin'ler — bu sayfaya özel.
+ *
+ * Profil ekranına DOKUNULMAZ; oradaki kart düz çubuk olarak kalır.
  */
 export default function MacroScreen() {
   const insets = useSafeAreaInsets()
@@ -124,61 +111,61 @@ export default function MacroScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.brand.green} />
         }
       >
-        {/* ── Macro bölümü ── */}
-        <View style={s.card}>
-          <View style={s.cardHeader}>
-            <Text style={s.title}>MACRO</Text>
-            <TouchableOpacity
-              onPress={() => setInfoOpen(true)}
-              style={s.howBtn}
-              activeOpacity={0.75}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Info size={15} color={COLORS.brand.green} weight="bold" />
-              <Text style={s.howBtnText}>Nasıl çalışır?</Text>
+        {/* ── Macro kartı (Profil kartıyla birebir) ── */}
+        <View style={s.macroCard}>
+          <View style={s.macroCoinRow}>
+            <Image source={MACRO_COIN} style={s.macroCoinImg} resizeMode="contain" />
+
+            <View style={s.macroCoinInfo}>
+              <View style={s.macroTitleRow}>
+                <Text style={s.macroCoinScore}>MACRO</Text>
+                {p.balance > 0 && (
+                  <View style={[s.macroBadge, { flexShrink: 1 }]}>
+                    <CrownSimple size={14} color="#1A1A1A" weight="fill" />
+                    <Text style={s.macroBadgeText} numberOfLines={1}>{`${p.balance} Macro`}</Text>
+                  </View>
+                )}
+              </View>
+              <AnimatedNumberText
+                style={s.macroCoinLabel}
+                value={
+                  profile
+                    ? `Bir sonraki Macro'ya ₺${p.liraToNextMacro}`
+                    : `Her ₺${settings.earnThreshold} alışverişe 1 Macro`
+                }
+              />
+            </View>
+
+            <TouchableOpacity style={s.macroInfoBtn} onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
+              <Info size={16} color="#E8431A" />
             </TouchableOpacity>
           </View>
 
-          <View style={s.intro}>
-            <Text style={s.introTitle}>Kcalculate'in macro dünyasına hoş geldin.</Text>
-            <Text style={s.introBody}>
-              Sana özel indirim ve avantajlar burada birikecek. Her siparişin seni bir
-              sonraki ücretsiz öğüne yaklaştırır.
-            </Text>
-          </View>
-
-          <View style={s.coinPanel}>
-            <View style={s.coinRow}>
-              {yuvalar.map((earned, i) => (
-                <CoinSlot key={i} earned={earned} index={i} />
-              ))}
-            </View>
-            <Text style={s.coinCaption}>
-              <Text style={s.coinCaptionStrong}>{p.mealCost} Macro</Text>
-              <Text>{' topladığında bir öğün senden, biz ısmarlıyoruz.'}</Text>
-            </Text>
-          </View>
-
-          <View style={s.barGroup}>
-            <View style={s.barTrack}>
+          {/* Çubuk + üzerindeki coin'ler */}
+          <View style={s.progressWrap}>
+            <View style={s.macroProgressBg}>
               <Animated.View
-                style={[s.barFill, {
+                style={[s.macroProgressFill, {
                   width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
                 }]}
               />
             </View>
-
-            <View style={s.barMeta}>
-              <Text style={s.barCount}>
-                <Text style={s.barCountStrong}>{dolu}</Text>
-                <Text>{` / ${p.mealCost}`}</Text>
-              </Text>
-              <Text style={s.barHint}>
-                {p.balance === 0 && dolu === 0
-                  ? `Her ₺${settings.earnThreshold.toLocaleString('tr-TR')} alışveriş 1 Macro`
-                  : `Sıradaki Macro'ya ₺${p.liraToNextMacro.toLocaleString('tr-TR')}`}
-              </Text>
+            <View style={s.dotRow} pointerEvents="none">
+              {yuvalar.map((earned, i) => (
+                <ProgressCoin key={i} earned={earned} index={i} />
+              ))}
             </View>
+          </View>
+
+          <View style={s.macroProgressLabels}>
+            <AnimatedNumberText
+              style={s.macroProgressLeft}
+              value={`${dolu} / ${p.mealCost} — Ücretsiz Öğün`}
+            />
+            <AnimatedNumberText
+              style={s.macroProgressRight}
+              value={`${p.macrosToNextMeal} macro kaldı`}
+            />
           </View>
         </View>
 
@@ -199,131 +186,116 @@ export default function MacroScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.md },
+  content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, gap: SPACING.md },
 
-  // ── Siyah macro kartı ──
-  card: {
+  // ── Kart: ProfileScreen.styles.macroCard ile birebir ──
+  // (marginHorizontal orada; burada ScrollView'in paddingHorizontal'ı veriyor)
+  macroCard: {
     backgroundColor: '#0D0D0D',
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.lg,
-    gap: SPACING.lg,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: {
-    fontSize: 26,
-    letterSpacing: 5,
-    color: '#FFFFFF',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontWeight: '800',
-  },
-  howBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    height: 32, paddingHorizontal: 12, borderRadius: 100,
-    backgroundColor: 'rgba(185,239,20,0.12)',
-    borderWidth: 1, borderColor: 'rgba(185,239,20,0.25)',
-  },
-  howBtnText: {
-    fontSize: 12, color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
-
-  // ── Karşılama metni ──
-  intro: { marginTop: -SPACING.sm, gap: 4 },
-  introTitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: '#FFFFFF',
-    lineHeight: 22,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
-  introBody: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255,255,255,0.5)',
-    lineHeight: 18,
-    fontFamily: 'PlusJakartaSans_500Medium',
-  },
-
-  // ── Coin paneli ──
-  // Coin sırası, kartın içinde bir ton açık kendi panelinde dursun —
-  // metinden ayrışsın, "vitrin" hissi versin.
-  coinPanel: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: RADIUS.md,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    gap: SPACING.sm,
-  },
-  coinCaption: {
-    textAlign: 'center',
-    fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255,255,255,0.45)',
-    fontFamily: 'PlusJakartaSans_500Medium',
-  },
-  coinCaptionStrong: {
-    color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
-
-  // ── Coin yuvaları ──
-  coinRow: {
+  macroCoinRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: SPACING.lg,
+    marginBottom: SPACING.md,
   },
-  slot: {
-    width: SLOT,
-    height: SLOT,
+  macroCoinImg: { width: 72, height: 72 },
+  macroCoinInfo: { flex: 1, minWidth: 0, gap: SPACING.xs },
+  macroTitleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flexWrap: 'wrap',
+  },
+  macroCoinScore: {
+    fontSize: TYPOGRAPHY.size['3xl'],
+    fontWeight: TYPOGRAPHY.weight.black,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  macroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#A3E635',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  macroBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#1A1A1A',
+  },
+  macroCoinLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: TYPOGRAPHY.weight.medium,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+  macroInfoBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(232,67,26,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // İki katmanlı hale: expo-blur olmadan yumuşak ışıma hissi verir.
-  glowOuter: {
-    position: 'absolute',
-    width: SLOT, height: SLOT, borderRadius: SLOT / 2,
-    backgroundColor: 'rgba(185,239,20,0.10)',
-  },
-  glowInner: {
-    position: 'absolute',
-    width: COIN_EARNED - 6, height: COIN_EARNED - 6, borderRadius: (COIN_EARNED - 6) / 2,
-    backgroundColor: 'rgba(185,239,20,0.22)',
-  },
-  coinEarned: { width: COIN_EARNED, height: COIN_EARNED },
-  slotEmpty: {
-    width: COIN_EMPTY + 14, height: COIN_EMPTY + 14, borderRadius: (COIN_EMPTY + 14) / 2,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  coinEmpty: { width: COIN_EMPTY, height: COIN_EMPTY, opacity: 0.22 },
 
-  // ── İlerleme ──
-  // Çubuk ve altındaki iki etiket tek grup: kart genelindeki gap onları
-  // birbirinden ayırmasın, birlikte okunsunlar.
-  barGroup: { gap: SPACING.sm },
-  barTrack: {
-    height: 8, borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.09)',
+  // ── Çubuk + coin'ler ──
+  // Coin'ler çubuğun üstünde yüzer; sarmalayıcı coin yüksekliğinde, çubuk
+  // dikeyde ortalanır. Karta eklenen toplam yükseklik: DOT − çubuk = 20px.
+  progressWrap: {
+    height: DOT,
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  macroProgressBg: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
   },
-  barFill: { height: '100%', borderRadius: 100, backgroundColor: COLORS.brand.green },
-  barMeta: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  macroProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: COLORS.brand.green,
   },
-  barCount: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255,255,255,0.45)',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+  dotRow: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  barCountStrong: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontWeight: '800',
+  // Her coin eşit bölmenin ortasında: %10, %30, %50, %70, %90.
+  // Böylece sonuncusu çubuğun dışına taşmaz.
+  dotCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  dotGlow: {
+    position: 'absolute',
+    width: DOT + 6, height: DOT + 6, borderRadius: (DOT + 6) / 2,
+    backgroundColor: 'rgba(185,239,20,0.18)',
   },
-  barHint: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255,255,255,0.45)',
+  dotImg: { width: DOT, height: DOT },
+  dotImgOff: { opacity: 0.28 },
+
+  macroProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  macroProgressLeft: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: 'rgba(255,255,255,0.35)',
+    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
+  },
+  macroProgressRight: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.brand.green,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 })
