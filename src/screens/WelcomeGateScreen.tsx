@@ -13,9 +13,9 @@ import { track } from '../lib/analytics';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 // Oturumsuz kullanıcıya soğuk başlatmada bir kez gösterilen tek ekranlı
-// karşılama — eski zorunlu Welcome→ValueProp→AuthGateway zincirinin yerine
-// geçmez (o zincir hâlâ OnboardingStack'te duruyor ama buradan tetiklenmiyor);
-// bu ekran hiçbir akışı bloklamaz, her iki buton da doğrudan devam ettirir.
+// karşılama — eski zorunlu Welcome→ValueProp→AuthGateway zinciri 23.09.2026'da
+// tamamen silindi (ölü kod temizliği); bu ekran onun yerine geçmez, hiçbir akışı
+// bloklamaz, her iki buton da doğrudan devam ettirir.
 // "Aynı oturumda tekrar gösterilmemesi" AppNavigator'daki initialRouteName
 // mekanizmasıyla sağlanıyor (bkz. o dosyadaki yorum) — burada ekstra state
 // tutmuyoruz.
