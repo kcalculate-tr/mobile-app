@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
   Image,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -416,6 +417,50 @@ export default function CheckoutScreen() {
   // Gel-Al'da müşterinin teslim alacağı şube. Konum varsa en yakını
   // BranchPicker otomatik işaretler, kullanıcı değiştirebilir.
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+
+  // ── Zorunlu alan doğrulaması ────────────────────────────────────────────
+  // Eksik alan artık sayfanın en altında genel bir kutu olarak DEĞİL, kendi
+  // alanının altında gösteriliyor; ekran o alana kayıyor ve input odaklanıyor.
+  const scrollRef = useRef<ScrollView>(null);
+  const bolumY = useRef<Record<string, number>>({});
+  const adRef = useRef<TextInput>(null);
+  const telRef = useRef<TextInput>(null);
+  const epostaRef = useRef<TextInput>(null);
+  const [alanHatalari, setAlanHatalari] = useState<{
+    ad?: string;
+    tel?: string;
+    eposta?: string;
+    adres?: string;
+    zaman?: string;
+    sozlesme?: string;
+  }>({});
+
+  /** Bölümün y konumunu kaydeder (ScrollView içerik koordinatında). */
+  const bolumOlcu = (anahtar: string) => (e: LayoutChangeEvent) => {
+    bolumY.current[anahtar] = e.nativeEvent.layout.y;
+  };
+
+  /** Eksik alana kaydırır ve varsa input'u odaklar. */
+  const hataylaOdakla = (
+    anahtar: string,
+    hatalar: typeof alanHatalari,
+    inputRef?: React.RefObject<TextInput | null>,
+  ) => {
+    setAlanHatalari(hatalar);
+    dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
+    const y = bolumY.current[anahtar];
+    if (y != null) {
+      scrollRef.current?.scrollTo({ y: Math.max(y - SPACING.md, 0), animated: true });
+    }
+    if (inputRef) {
+      // Kaydırma bitmeden odaklanırsa klavye ekranı geri iter.
+      setTimeout(() => inputRef.current?.focus(), 350);
+    }
+  };
+
+  /** Kullanıcı alana dokununca o alanın hatası temizlenir. */
+  const hataTemizle = (anahtar: keyof typeof alanHatalari) =>
+    setAlanHatalari((onceki) => (onceki[anahtar] ? { ...onceki, [anahtar]: undefined } : onceki));
   const userManuallySelectedAddressRef = useRef(false);
   const autoSelectedNearestRef = useRef(false);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
@@ -1047,6 +1092,22 @@ export default function CheckoutScreen() {
     setSelectedAddress(nearest);
   }, [addresses, deviceCoords, deliveryMethod, route.params?.selectedAddressId]);
 
+  // Eksik alan uyarısı, alan dolunca kendiliğinden kalksın.
+  useEffect(() => {
+    if (selectedAddress) hataTemizle('adres');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddress]);
+
+  useEffect(() => {
+    if (selectedScheduledDate && selectedTimeSlot) hataTemizle('zaman');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedScheduledDate, selectedTimeSlot]);
+
+  useEffect(() => {
+    if (contractsAccepted) hataTemizle('sozlesme');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractsAccepted]);
+
   useEffect(() => {
     if (!selectedAddress) return;
 
@@ -1311,17 +1372,26 @@ export default function CheckoutScreen() {
 
     if (shouldValidateDraftForm) {
       if (deliveryMethod === 'home_delivery' && !selectedAddress) {
-        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen adres seçin.' });
+        hataylaOdakla('adres', { adres: 'Teslimat adresi seçin.' });
         return;
       }
 
-      if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
-        dispatchOrder({
-          type: 'SET_SCREEN_ERROR',
-          payload: 'Lütfen iletişim bilgileri bölümüne ad soyad ve telefon numaranızı girin.',
-        });
+      // Alanlar TEK TEK kontrol edilir: müşteri hangisini doldurması
+      // gerektiğini o alanın altında görür, ekran oraya kayar.
+      if (!customerName.trim()) {
+        hataylaOdakla('iletisim', { ad: 'Ad soyad girin.' }, adRef);
         return;
       }
+      if (!customerPhone.trim()) {
+        hataylaOdakla('iletisim', { tel: 'Telefon numarası girin.' }, telRef);
+        return;
+      }
+      if (!customerEmail.trim()) {
+        hataylaOdakla('iletisim', { eposta: 'E-posta adresi girin.' }, epostaRef);
+        return;
+      }
+
+      setAlanHatalari({});
 
       // FAZ G: ad/telefon checkout'ta toplanır, profilde yoksa (veya
       // değiştiyse) profiles'a yazılır — best-effort, siparişi bloklamaz.
@@ -1343,7 +1413,10 @@ export default function CheckoutScreen() {
       }
 
       if (!contractsAccepted) {
-        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen sözleşmeyi onaylayın.' });
+        // Sözleşme satırı zaten footer'da, hep ekranda: kaydırmaya gerek yok,
+        // kutunun kendisi kırmızıya döner.
+        setAlanHatalari({ sozlesme: 'Devam etmek için sözleşmeleri onaylayın.' });
+        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
         return;
       }
 
@@ -1353,7 +1426,9 @@ export default function CheckoutScreen() {
       }
 
       if (deliveryTimeType === 'scheduled' && (!selectedScheduledDate || !selectedTimeSlot)) {
-        dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: 'Lütfen teslimat tarihi ve saatini seçin.' });
+        hataylaOdakla('zaman', {
+          zaman: !selectedScheduledDate ? 'Teslimat tarihi seçin.' : 'Teslimat saati seçin.',
+        });
         return;
       }
     } else if (!pendingPaymentOrder) {
@@ -1742,6 +1817,7 @@ export default function CheckoutScreen() {
         </View>
 
         <ScrollView
+          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={{
             paddingHorizontal: SPACING.lg,
@@ -1755,8 +1831,11 @@ export default function CheckoutScreen() {
           {step === 'summary' ? (<>
           {/* ── 1. Teslimat Adresi (eve teslim) ── */}
           {deliveryMethod === 'home_delivery' ? (
-            <View style={styles.card}>
+            <View style={styles.card} onLayout={bolumOlcu('adres')}>
               <Text style={styles.cardTitle}>Teslimat Adresi</Text>
+              {alanHatalari.adres ? (
+                <Text style={styles.alanHataText}>{alanHatalari.adres}</Text>
+              ) : null}
               {loadingAddresses ? (
                 <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} />
               ) : null}
@@ -1909,6 +1988,7 @@ export default function CheckoutScreen() {
               deliveryMethod === 'home_delivery' && !isDeliverable ? styles.cardDisabled : null,
             ]}
             pointerEvents={deliveryMethod === 'home_delivery' && !isDeliverable ? 'none' : 'auto'}
+            onLayout={bolumOlcu('zaman')}
           >
             {/* Yöntem */}
             <View>
@@ -2031,6 +2111,11 @@ export default function CheckoutScreen() {
                     <View>
                       <View style={{ height: 8 }} />
                       <Text style={styles.deliveryGroupLabel}>Teslimat Tarihi</Text>
+                      {alanHatalari.zaman ? (
+                        <Text style={[styles.alanHataText, { marginTop: 0, marginBottom: SPACING.sm }]}>
+                          {alanHatalari.zaman}
+                        </Text>
+                      ) : null}
                       {deliveryDays && deliveryDays.length < 7 ? (
                         <InfoPill Icon={CalendarBlank} style={{ marginBottom: SPACING.md }}>
                           Bu bölgeye teslimat günleri:{' '}
@@ -2138,12 +2223,17 @@ export default function CheckoutScreen() {
           </View>
 
           {/* ── İletişim Bilgileri (FAZ G: ad/telefon checkout'ta toplanır) ── */}
-          <View style={styles.card}>
+          <View style={styles.card} onLayout={bolumOlcu('iletisim')}>
             <Text style={styles.cardTitle}>İletişim Bilgileri</Text>
+
             <TextInput
-              style={styles.cardInput}
+              ref={adRef}
+              style={[styles.cardInput, alanHatalari.ad && styles.cardInputHatali]}
               value={customerName}
-              onChangeText={(v) => dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: v })}
+              onChangeText={(v) => {
+                hataTemizle('ad');
+                dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: v });
+              }}
               placeholder="Ad Soyad"
               placeholderTextColor={COLORS.text.tertiary}
               autoCapitalize="words"
@@ -2152,10 +2242,16 @@ export default function CheckoutScreen() {
               autoComplete="name"
               inputAccessoryViewID={iosAccId}
             />
+            {alanHatalari.ad ? <Text style={styles.alanHataText}>{alanHatalari.ad}</Text> : null}
+
             <TextInput
-              style={styles.cardInput}
+              ref={telRef}
+              style={[styles.cardInput, alanHatalari.tel && styles.cardInputHatali]}
               value={customerPhone}
-              onChangeText={(v) => dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: v.replace(/[^\d+ ]/g, '') })}
+              onChangeText={(v) => {
+                hataTemizle('tel');
+                dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: v.replace(/[^\d+ ]/g, '') });
+              }}
               placeholder="Telefon Numarası"
               placeholderTextColor={COLORS.text.tertiary}
               keyboardType="phone-pad"
@@ -2163,6 +2259,29 @@ export default function CheckoutScreen() {
               autoComplete="tel"
               inputAccessoryViewID={iosAccId}
             />
+            {alanHatalari.tel ? <Text style={styles.alanHataText}>{alanHatalari.tel}</Text> : null}
+
+            {/* E-posta siparişin zorunlu alanıydı ama hiçbir yerde
+                sorulmuyordu: adreste/hesapta yoksa müşteri "ad soyad girin"
+                uyarısı alıp neyi eksik bıraktığını göremiyordu. */}
+            <TextInput
+              ref={epostaRef}
+              style={[styles.cardInput, alanHatalari.eposta && styles.cardInputHatali]}
+              value={customerEmail}
+              onChangeText={(v) => {
+                hataTemizle('eposta');
+                dispatchOrder({ type: 'SET_CUSTOMER_EMAIL', payload: v.trim() });
+              }}
+              placeholder="E-posta Adresi"
+              placeholderTextColor={COLORS.text.tertiary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="emailAddress"
+              autoComplete="email"
+              inputAccessoryViewID={iosAccId}
+            />
+            {alanHatalari.eposta ? <Text style={styles.alanHataText}>{alanHatalari.eposta}</Text> : null}
           </View>
 
           {/* ── Sipariş Notu ── */}
@@ -2354,6 +2473,9 @@ export default function CheckoutScreen() {
             </View>
           ) : null}
 
+          {/* Bu kutu ARTIK zorunlu alan uyarıları için kullanılmıyor — onlar
+              kendi alanlarının altında çıkıyor. Burada yalnızca sunucu/ödeme
+              kaynaklı hatalar kalır. */}
           {screenError ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorBoxText}>{screenError}</Text>
@@ -2459,6 +2581,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
               freeDeliveryThreshold={deliveryMethod === 'home_delivery' ? freeShippingAbove : 0}
               showContracts
               contractsAccepted={contractsAccepted}
+              contractsError={alanHatalari.sozlesme}
               onToggleContracts={() =>
                 dispatchOrder({ type: 'SET_CONTRACTS_ACCEPTED', payload: !contractsAccepted })
               }
@@ -3072,6 +3195,18 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.secondary,
+  },
+  cardInputHatali: {
+    borderColor: '#dc2626',
+    borderWidth: 1.5,
+    backgroundColor: '#fff5f5',
+  },
+  alanHataText: {
+    marginTop: -SPACING.xs,
+    marginLeft: SPACING.xs,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: '#dc2626',
   },
   cardInput: {
     height: 52,

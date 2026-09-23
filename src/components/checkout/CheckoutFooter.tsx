@@ -37,6 +37,8 @@ interface Props {
 
   showContracts?: boolean;
   contractsAccepted?: boolean;
+  /** Onaylanmadan sipariş denendiyse gösterilecek uyarı. */
+  contractsError?: string | null;
   onToggleContracts?: () => void;
   onPressTerms?: () => void;
   onPressDistanceSales?: () => void;
@@ -58,6 +60,7 @@ export default function CheckoutFooter({
   onAddProducts,
   showContracts = false,
   contractsAccepted = false,
+  contractsError,
   onToggleContracts,
   onPressTerms,
   onPressDistanceSales,
@@ -93,7 +96,11 @@ export default function CheckoutFooter({
       duration: 520,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
-    }).start();
+    }).start(({ finished }) => {
+      // Animasyon yarıda kesildiyse (ör. blok unmount olup değere bağlı son
+      // düğüm koptuysa) değer donmasın, hedefe otursun.
+      if (!finished) ilerleme.setValue(yuzde);
+    });
   }, [yuzde, showProgress, ilerleme]);
 
   const genislik = ilerleme.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
@@ -146,7 +153,13 @@ export default function CheckoutFooter({
           style={({ pressed }) => [s.sozlesmeSatir, pressed && { opacity: 0.75 }]}
           hitSlop={6}
         >
-          <View style={[s.kutu, contractsAccepted && s.kutuAktif]}>
+          <View
+            style={[
+              s.kutu,
+              contractsAccepted && s.kutuAktif,
+              !contractsAccepted && !!contractsError && s.kutuHatali,
+            ]}
+          >
             {contractsAccepted ? <Check size={13} color="#000000" weight="bold" /> : null}
           </View>
           <Text style={s.sozlesmeMetin}>
@@ -160,6 +173,10 @@ export default function CheckoutFooter({
             {"'ni"} okudum ve onaylıyorum.
           </Text>
         </Pressable>
+      ) : null}
+
+      {showContracts && !contractsAccepted && contractsError ? (
+        <Text style={s.sozlesmeHata}>{contractsError}</Text>
       ) : null}
 
       <TouchableOpacity
@@ -277,6 +294,18 @@ const s = StyleSheet.create({
     lineHeight: 17,
     fontFamily: 'PlusJakartaSans_400Regular',
     color: 'rgba(255,255,255,0.55)',
+  },
+  kutuHatali: {
+    borderColor: '#ff6b6b',
+    backgroundColor: 'rgba(255,107,107,0.14)',
+  },
+  sozlesmeHata: {
+    marginTop: -SPACING.sm,
+    marginBottom: SPACING.md,
+    marginLeft: 32,
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#ff8585',
   },
   sozlesmeLink: {
     fontFamily: 'PlusJakartaSans_700Bold',
