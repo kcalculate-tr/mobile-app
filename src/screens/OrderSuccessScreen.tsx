@@ -25,7 +25,6 @@ import {
   macroEarnedForOrder,
 } from '../lib/macros';
 import { useAuth } from '../context/AuthContext';
-import Svg, { Path } from 'react-native-svg';
 import { COLORS } from '../constants/theme';
 
 type OrderSuccessRoute = RouteProp<RootStackParamList, 'OrderSuccess'>;
@@ -161,24 +160,15 @@ export default function OrderSuccessScreen() {
         <Animated.View
           style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], width: '100%' }}
         >
-          {/* ── Onay şeridi ──
-              120px'lik tik dairesi ekranın yarısını yiyordu. Onay tek satıra
-              indi; sahne asıl ödüle, Macro kazancına bırakıldı. */}
+          {/* ── Başlık ──
+              120px'lik tik dairesi ekranın yarısını yiyordu; onay artık
+              başlığın kendisi. Siyah şerit kaldırıldı: bu bir bildirim değil,
+              sayfanın başlığı. */}
           <Animated.View
-            style={[styles.onayBar, { opacity: checkOpacity, transform: [{ scale: checkScale }] }]}
+            style={[styles.baslikBlok, { opacity: checkOpacity, transform: [{ scale: checkScale }] }]}
           >
-            <View style={styles.onayTik}>
-              <Svg width="12" height="12" viewBox="0 0 56 56" fill="none">
-                <Path
-                  d="M12 28L22 38L44 16"
-                  stroke="#B9EF14"
-                  strokeWidth="7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
-            </View>
-            <Text style={styles.onayText}>Siparişin alındı, hazırlanmaya başlandı</Text>
+            <Text style={styles.baslik}>Siparişin alındı</Text>
+            <Text style={styles.altBaslik}>Mutfak hazırlamaya başladı</Text>
           </Animated.View>
 
           {/* ── Sahne: Macro kazancı ── */}
@@ -336,31 +326,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  // ── Onay şeridi ──
-  onayBar: {
-    flexDirection: 'row',
+  // ── Başlık ──
+  baslikBlok: {
     alignItems: 'center',
-    alignSelf: 'center',
-    gap: 8,
-    paddingLeft: 6,
-    paddingRight: 14,
-    paddingVertical: 6,
-    borderRadius: 100,
-    backgroundColor: '#000000',
-    marginBottom: 20,
+    marginBottom: 22,
   },
-  onayTik: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(185,239,20,0.18)',
+  baslik: {
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.8,
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
   },
-  onayText: {
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#FFFFFF',
+  altBaslik: {
+    marginTop: 4,
+    fontSize: 14,
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
   },
 
   // ── Sahne ──
