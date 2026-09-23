@@ -6,10 +6,13 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
-import { CrownSimple, Info } from 'phosphor-react-native'
+import { CalendarCheck, CrownSimple, Info } from 'phosphor-react-native'
 import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
 import SubscriptionBuilder from '../components/subscription/SubscriptionBuilder'
+import MacroBenefits from '../components/macro/MacroBenefits'
+import CouponRail from '../components/macro/CouponRail'
+import { isAdminUser } from '../lib/admin'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -69,6 +72,10 @@ export default function MacroScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [tab, setTab] = useState<'macro' | 'subscription'>('macro')
+  // Öğün aboneliği herkese "Yakında" görünür; yalnızca admin_allowlist'teki
+  // hesap gerçek kurucuyu görüp arka planda düzenler.
+  const [canSeeBuilder, setCanSeeBuilder] = useState(false)
 
   const barAnim = useRef(new Animated.Value(0)).current
 
@@ -86,6 +93,12 @@ export default function MacroScreen() {
 
   useEffect(() => { load() }, [load])
   useFocusEffect(useCallback(() => { load(true) }, [load]))
+
+  useEffect(() => {
+    let cancelled = false
+    isAdminUser(user?.id).then((v) => { if (!cancelled) setCanSeeBuilder(v) })
+    return () => { cancelled = true }
+  }, [user?.id])
 
   const p = macroProgress(profile, settings)
   const dolu = p.balance % p.mealCost
@@ -105,6 +118,23 @@ export default function MacroScreen() {
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar style="dark" />
+
+      <View style={s.tabBar}>
+        {([
+          { key: 'macro' as const, label: 'Macro' },
+          { key: 'subscription' as const, label: 'Öğün Aboneliği' },
+        ]).map((t) => (
+          <TouchableOpacity
+            key={t.key}
+            onPress={() => setTab(t.key)}
+            activeOpacity={0.85}
+            style={[s.tabBtn, tab === t.key && s.tabBtnActive]}
+          >
+            <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 120 }]}
@@ -112,6 +142,8 @@ export default function MacroScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.brand.green} />
         }
       >
+        {tab === 'macro' ? (
+        <>
         {/* ── Macro kartı (Profil kartıyla birebir) ── */}
         <View style={s.macroCard}>
           <View style={s.macroCoinRow}>
@@ -151,9 +183,19 @@ export default function MacroScreen() {
                 }]}
               />
             </View>
-            <View style={s.dotRow} pointerEvents="none">
+            {/* Coin'ler çubuğun BAŞINDA (%0) ve SONUNDA (%100); aradakiler
+                eşit aralıklarla. 5 coin için: %0, %25, %50, %75, %100. */}
+            <View style={s.dotLayer} pointerEvents="none">
               {yuvalar.map((earned, i) => (
-                <ProgressCoin key={i} earned={earned} index={i} />
+                <View
+                  key={i}
+                  style={[
+                    s.dotAnchor,
+                    { left: `${yuvalar.length > 1 ? (i / (yuvalar.length - 1)) * 100 : 50}%` },
+                  ]}
+                >
+                  <ProgressCoin earned={earned} index={i} />
+                </View>
               ))}
             </View>
           </View>
@@ -170,8 +212,39 @@ export default function MacroScreen() {
           </View>
         </View>
 
-        {/* ── Öğün aboneliği (ilk şablon) ── */}
-        <SubscriptionBuilder />
+        <MacroBenefits earnThreshold={settings.earnThreshold} mealCost={settings.mealCost} />
+        <CouponRail />
+        </>
+        ) : canSeeBuilder ? (
+          // Yalnızca admin_allowlist'teki hesap gerçek kurucuyu görür.
+          <SubscriptionBuilder />
+        ) : (
+          <View style={s.yakinda}>
+            <View style={s.yakindaIkon}>
+              <CalendarCheck size={26} color={COLORS.brand.green} weight="fill" />
+            </View>
+            <View style={s.yakindaRozet}><Text style={s.yakindaRozetText}>YAKINDA</Text></View>
+            <Text style={s.yakindaBaslik}>Öğün Aboneliği</Text>
+            <Text style={s.yakindaMetin}>
+              Kaç gün, günde kaç öğün ve hangi saatlerde istediğini bir kez seç; gerisini
+              biz halledelim. Her günün öğünlerini kendi panelinden tek tek
+              düzenleyebileceksin.
+            </Text>
+            <View style={s.yakindaListe}>
+              {[
+                'Tek seferde öde, gün gün teslim al',
+                'Öğünlerini istediğin gibi değiştir',
+                'Gidemeyeceğin günü atla, aboneliğin uzasın',
+                'Macro bakiyeni abonelikte kullan',
+              ].map((x) => (
+                <View key={x} style={s.yakindaSatir}>
+                  <View style={s.yakindaNokta} />
+                  <Text style={s.yakindaSatirText}>{x}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       <MacroPointModal
@@ -190,6 +263,76 @@ const s = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   // Kart guvenli alanin hemen altinda baslasin — ustte bos bant kalmasin.
   content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, gap: SPACING.md },
+
+  // ── Sekmeler ──
+  tabBar: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xs,
+  },
+  tabBtn: {
+    flex: 1, height: 40, borderRadius: RADIUS.pill,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+  },
+  tabBtnActive: { backgroundColor: '#0D0D0D', borderColor: '#0D0D0D' },
+  tabLabel: {
+    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary,
+    fontFamily: 'PlusJakartaSans_600SemiBold', fontWeight: '600',
+  },
+  tabLabelActive: {
+    color: '#FFFFFF', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
+  },
+
+  // ── "Yakında" kartı (müşteriye görünen abonelik sekmesi) ──
+  yakinda: {
+    backgroundColor: '#0D0D0D',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+  },
+  yakindaIkon: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: 'rgba(185,239,20,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  yakindaRozet: {
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.brand.green, borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  yakindaRozetText: {
+    fontSize: 10, letterSpacing: 1, color: '#000000',
+    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
+  },
+  yakindaBaslik: {
+    marginTop: SPACING.sm,
+    fontSize: TYPOGRAPHY.size.lg, color: '#FFFFFF',
+    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
+  },
+  yakindaMetin: {
+    marginTop: 6, textAlign: 'center',
+    fontSize: TYPOGRAPHY.size.xs, color: 'rgba(255,255,255,0.5)', lineHeight: 19,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+  yakindaListe: {
+    marginTop: SPACING.lg, alignSelf: 'stretch', gap: SPACING.sm,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: SPACING.lg,
+  },
+  yakindaSatir: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  yakindaNokta: {
+    width: 5, height: 5, borderRadius: 3, backgroundColor: COLORS.brand.green,
+  },
+  yakindaSatirText: {
+    flex: 1, fontSize: TYPOGRAPHY.size.xs, color: 'rgba(255,255,255,0.7)', lineHeight: 18,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
 
   // ── Kart: ProfileScreen.styles.macroCard ile birebir ──
   // (marginHorizontal orada; burada ScrollView'in paddingHorizontal'ı veriyor)
@@ -269,14 +412,18 @@ const s = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: COLORS.brand.green,
   },
-  dotRow: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
+  dotLayer: { ...StyleSheet.absoluteFillObject },
+  // Yüzdelik konum + yarım coin kadar sola kaydırma = coin tam o noktada
+  // ortalanır. İlk coin çubuğun başında, son coin sonunda duruyor.
+  dotAnchor: {
+    position: 'absolute',
+    top: 0, bottom: 0,
+    width: DOT,
+    marginLeft: -DOT / 2,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  // Her coin eşit bölmenin ortasında: %10, %30, %50, %70, %90.
-  // Böylece sonuncusu çubuğun dışına taşmaz.
-  dotCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  dotCell: { alignItems: 'center', justifyContent: 'center' },
   dotGlow: {
     position: 'absolute',
     width: DOT + 6, height: DOT + 6, borderRadius: (DOT + 6) / 2,

@@ -24,6 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { Campaign, fetchAvailableCampaigns } from '../lib/offers';
 import { BannerCell, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
+import { formatDate, gradyan, gunKaldi, indirimEtiketi } from '../lib/campaignVisual';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
 
@@ -34,37 +35,6 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 const GRID_GAP = 12;
 const TILE_WIDTH = (SCREEN_WIDTH - SPACING.lg * 2 - GRID_GAP) / 2;
 
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
-};
-
-const gunKaldi = (iso?: string | null): number | null => {
-  if (!iso) return null;
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
-};
-
-/** Kartın üzerindeki büyük indirim yazısı. */
-const indirimEtiketi = (c: Campaign): string => {
-  if (c.discount_type === 'free_item') return 'ÜCRETSİZ\nÖĞÜN';
-  if (c.discount_value == null) return c.title.toUpperCase();
-  if (c.discount_type === 'percent') return `%${Number(c.discount_value)}\nİNDİRİM`;
-  return `${Number(c.discount_value)}₺\nİNDİRİM`;
-};
-
-/**
- * Görsel yoksa marka renklerinden kart üret. Kampanya görseli hazırlanana
- * kadar ekran boş/çirkin görünmesin diye: her kampanyanın en azından
- * okunabilir, markaya uygun bir kartı olur.
- */
-const gradyan = (c: Campaign): [string, string, string] => {
-  if (c.color_from && c.color_to) {
-    return [c.color_from, c.color_via ?? c.color_from, c.color_to];
-  }
-  if (c.source === 'macro_reward') return ['#0D0D0D', '#14260A', '#1F3D0C'];
-  if (c.discount_type === 'percent') return ['#0D0D0D', '#1A1A1A', '#2A2A2A'];
-  return ['#123F1E', '#1B5E2A', '#2E7D32'];
-};
 
 /** Koyu gradyan üzerinde neon, açık görselde siyah — okunaklılık için. */
 const METIN_RENGI = COLORS.brand.green;

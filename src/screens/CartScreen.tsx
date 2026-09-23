@@ -30,7 +30,8 @@ import {
 } from '../lib/cartSuggestions';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
 import { animateListChange } from '../utils/layoutAnimation';
-import { validateCoupon, getCouponErrorMessage, CouponCartItem } from '../lib/offers';
+import { validateCoupon, getCouponErrorMessage, CouponCartItem, CouponValidationSuccess } from '../lib/offers';
+import CouponPickerSheet from '../components/checkout/CouponPickerSheet';
 import {
   fetchMacroProfile,
   MacroProfile,
@@ -170,16 +171,8 @@ export default function CartScreen() {
 
 
 
-  const applyCoupon = async () => {
-    const code = couponInput.trim().toUpperCase();
-    if (!code) { setCouponError('Kupon kodu girin.'); return; }
-    setCouponLoading(true); setCouponError('');
-    const result = await validateCoupon(code, subtotal, couponItems);
-    setCouponLoading(false);
-    if (!result.valid) {
-      setCouponError(getCouponErrorMessage(result));
-      return;
-    }
+  // Kupon seçiciden gelen başarılı doğrulamayı cüzdana yaz.
+  const handleCouponApplied = (result: CouponValidationSuccess) => {
     haptic.success();
     setCoupon({
       code: result.code,
@@ -189,7 +182,6 @@ export default function CartScreen() {
       discountAmount: Number(result.discount_amount),
       title: result.title,
     });
-    setCouponOpen(false);
     setCouponError('');
     showToast(`${result.code} kuponu uygulandı!`, 'success');
   };
@@ -737,35 +729,10 @@ export default function CartScreen() {
               <Text style={styles.couponRemoveText}>Kaldır</Text>
             </TouchableOpacity>
           </Animated.View>
-        ) : couponOpen ? (
-          <View style={styles.couponInputCard}>
-            <View style={styles.couponInputRow}>
-              <TextInput
-                style={styles.couponInput}
-                value={couponInput}
-                onChangeText={v => setCouponInput(v.toUpperCase())}
-                placeholder="KUPON KODUNUZ"
-                placeholderTextColor={COLORS.text.tertiary}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                inputAccessoryViewID={accId}
-                autoFocus
-              />
-              <TouchableOpacity style={styles.couponApplyBtn} onPress={applyCoupon} disabled={couponLoading} activeOpacity={0.85}>
-                {couponLoading
-                  ? <ActivityIndicator size="small" color="#000" />
-                  : <Text style={styles.couponApplyBtnText}>Uygula</Text>}
-              </TouchableOpacity>
-            </View>
-            {couponError ? <Text style={styles.couponErrorText}>{couponError}</Text> : null}
-            <TouchableOpacity onPress={() => { setCouponOpen(false); setCouponError(''); }} style={{ marginTop: SPACING.xs }}>
-              <Text style={{ fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary }}>İptal</Text>
-            </TouchableOpacity>
-          </View>
         ) : (
           <TouchableOpacity style={styles.couponBtn} onPress={() => setCouponOpen(true)} activeOpacity={0.8}>
             <Tag size={16} color={COLORS.text.secondary} />
-            <Text style={styles.couponBtnText}>Kupon Kodu Ekle</Text>
+            <Text style={styles.couponBtnText}>Kupon Ekle</Text>
             <CaretRight size={14} color={COLORS.text.tertiary} />
           </TouchableOpacity>
         )}
@@ -862,6 +829,13 @@ export default function CartScreen() {
       </ScrollView>
 
       <DeliveryInfoModal visible={deliveryModal.visible} onClose={deliveryModal.close} />
+      <CouponPickerSheet
+        visible={couponOpen}
+        onClose={() => { setCouponOpen(false); setCouponError(''); }}
+        cartTotal={subtotal}
+        items={couponItems}
+        onApplied={handleCouponApplied}
+      />
       <Toast {...toast} onHide={hideToast} />
       <KeyboardAccessory nativeID={accId} />
     </ScreenContainer>
