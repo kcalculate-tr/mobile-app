@@ -90,7 +90,24 @@ module.exports = {
     },
     plugins: [
       'expo-asset',
-      'expo-font',
+      [
+        // Fontlar BUILD'e gömülür. Çıplak 'expo-font' ile yalnızca çalışma
+        // zamanında (useFonts) yükleniyorlardı; Android + Fabric'te metin
+        // typeface kaydolmadan ölçülebiliyor ve bazı OEM ROM'ları sonradan
+        // yeniden çizmediği için sistem fontuna düşüyordu. Gömülü fontta bu
+        // yarış hiç oluşmuyor. useFonts çağrısı aynı isimleri kullandığı
+        // için ikisi bir arada sorunsuz çalışır.
+        'expo-font',
+        {
+          fonts: [
+            './node_modules/@expo-google-fonts/plus-jakarta-sans/400Regular/PlusJakartaSans_400Regular.ttf',
+            './node_modules/@expo-google-fonts/plus-jakarta-sans/500Medium/PlusJakartaSans_500Medium.ttf',
+            './node_modules/@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf',
+            './node_modules/@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf',
+            './node_modules/@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf',
+          ],
+        },
+      ],
       [
         'expo-splash-screen',
         {
