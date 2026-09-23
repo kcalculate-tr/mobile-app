@@ -18,6 +18,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
+import {
+  DEFAULT_MACRO_SETTINGS,
+  fetchMacroProfile,
+  fetchMacroSettings,
+  macroEarnedForOrder,
+} from '../lib/macros';
+import { useAuth } from '../context/AuthContext';
 import Svg, { Path } from 'react-native-svg';
 import { COLORS } from '../constants/theme';
 
@@ -30,7 +37,15 @@ export default function OrderSuccessScreen() {
   const { isAuthenticated, loading } = useRequireAuth();
   const insets = useSafeAreaInsets();
   const [dots, setDots] = useState(1);
-  const [macroPts, setMacroPts] = useState<number | null>(route.params.macro_points ?? null);
+  const { user } = useAuth();
+
+  // Bu siparişin kazandıracağı Macro. Parametre olarak taşınmıyor: çağrı
+  // noktaları (checkout, ödeme, 3DS dönüşü) farklı yerlerde ve hepsinin
+  // profili bilmesi gerekmezdi. Ekran siparişin tutarını kendi okuyup
+  // sunucuyla AYNI formülü uyguluyor.
+  const [kazanilanMacro, setKazanilanMacro] = useState<number | null>(null);
+  const macroScale = useRef(new Animated.Value(0.6)).current;
+  const macroOpacity = useRef(new Animated.Value(0)).current;
 
   // Animasyonlar
   const orderCodeAnim = useRef(new Animated.Value(0)).current;
@@ -71,6 +86,42 @@ export default function OrderSuccessScreen() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const orderId = route.params.orderId;
+    if (!user?.id || !orderId) return;
+    let mounted = true;
+
+    (async () => {
+      try {
+        const [{ data: order }, profile, settings] = await Promise.all([
+          supabase.from('orders').select('total_price').eq('id', orderId).maybeSingle(),
+          fetchMacroProfile(user.id),
+          fetchMacroSettings().catch(() => DEFAULT_MACRO_SETTINGS),
+        ]);
+        if (!mounted) return;
+        const tutar = Number((order as { total_price?: number } | null)?.total_price ?? 0);
+        // Tutar okunamadıysa SESSİZ kal — "kazanamadın" demek yanlış olur.
+        if (!(tutar > 0)) return;
+        setKazanilanMacro(macroEarnedForOrder(tutar, profile, settings));
+      } catch {
+        /* sessiz: kazanım bilgisi gösterilmezse sipariş akışı etkilenmez */
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [user?.id, route.params.orderId]);
+
+  useEffect(() => {
+    if (!kazanilanMacro) return;
+    Animated.sequence([
+      Animated.delay(500),
+      Animated.parallel([
+        Animated.spring(macroScale, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 14 }),
+        Animated.timing(macroOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [kazanilanMacro, macroScale, macroOpacity]);
+
   // 21.09.2026 — Buradaki "orders.macro_points" sorgusu KALDIRILDI.
   // orders tablosunda boyle bir kolon hic olmadi (yalniz macro_quantity ve
   // macro_discount_amount var), dolayisiyla istek her seferinde 400 doneriyor,
@@ -99,9 +150,8 @@ export default function OrderSuccessScreen() {
     { icon: <House size={22} color={COLORS.text.tertiary} weight="fill" />, label: 'Teslim', active: false },
   ];
 
-  const hasMacroPts = macroPts !== null && macroPts > 0;
-  // Veri YOKSA kart hic cizilmez; "kazanilamadi" iddiasi dogrulanamaz.
-  const showMacroCard = macroPts !== null;
+  // Veri YOKSA kart hiç çizilmez; "kazanılamadı" iddiası doğrulanamaz.
+  const macroGoster = kazanilanMacro !== null && kazanilanMacro > 0;
 
   return (
     <ScreenContainer style={styles.container}>
@@ -181,30 +231,34 @@ export default function OrderSuccessScreen() {
             </View>
           ) : null}
 
-          {/* Macro Coin Card — yalnızca gerçek veri varken */}
-          {showMacroCard ? (
-          <TouchableOpacity
-            style={styles.macroCoinCard}
-            onPress={() => navigation.navigate('ProfileOrders')}
-            activeOpacity={0.85}
-          >
-            <Image
-              source={require('../../assets/macro-coin.png')}
-              style={[styles.macroCoinImg, !hasMacroPts && { opacity: 0.4 }]}
-              resizeMode="contain"
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.macroCoinTitle}>
-                {hasMacroPts ? `+${macroPts} Macro Coin Kazandın!` : 'Macro Coin Kazanılamadı'}
+          {/* ── Macro kazancı — yalnızca gerçek veri varken ── */}
+          {macroGoster ? (
+            <Animated.View
+              style={[
+                styles.macroHero,
+                { opacity: macroOpacity, transform: [{ scale: macroScale }] },
+              ]}
+            >
+              <Image
+                source={require('../../assets/macro-coin.png')}
+                style={styles.macroHeroCoin}
+                resizeMode="contain"
+              />
+              <Text style={styles.macroHeroSayi}>+{kazanilanMacro}</Text>
+              <Text style={styles.macroHeroBaslik}>MACRO KAZANDIN</Text>
+              <Text style={styles.macroHeroAlt}>
+                Teslimattan sonra hesabına eklenir.
               </Text>
-              <Text style={styles.macroCoinSub}>
-                {hasMacroPts
-                  ? 'Makro hedeflerine bir adım daha yaklaştın'
-                  : 'Yeterli sipariş tutarına ulaşılamadı'}
-              </Text>
-            </View>
-            <ArrowRight size={18} color="#ffffff" />
-          </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.macroHeroLink}
+                onPress={() => navigation.navigate('Tabs', { screen: 'Subscriptions' })}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.macroHeroLinkText}>{"Macro'larım"}</Text>
+                <ArrowRight size={13} color={COLORS.brand.green} weight="bold" />
+              </TouchableOpacity>
+            </Animated.View>
           ) : null}
 
           {/* Buton 1 — Siparişimi Takip Et (siyah) */}
@@ -224,7 +278,7 @@ export default function OrderSuccessScreen() {
             activeOpacity={0.8}
           >
             <ChartLineUp size={20} color="#111111" weight="bold" />
-            <Text style={styles.outlineButtonText}>Kcal Tracker'a Geç</Text>
+            <Text style={styles.outlineButtonText}>{"Kcal Tracker'a Geç"}</Text>
           </TouchableOpacity>
 
           {/* Buton 3 — Anasayfaya Dön (outline) */}
@@ -398,31 +452,57 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   // Macro Coin Card — siyah, her zaman gösterilir
-  macroCoinCard: {
+  // Kazanım sipariş başarı ekranının ikinci ödülü: küçük bir satır değil,
+  // kendi sahnesi olan bir blok.
+  macroHero: {
     width: '100%',
-    backgroundColor: '#111111',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    backgroundColor: '#000000',
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     marginBottom: 16,
+    alignItems: 'center',
+  },
+  macroHeroCoin: {
+    width: 56,
+    height: 56,
+    marginBottom: 10,
+  },
+  macroHeroSayi: {
+    fontSize: 52,
+    lineHeight: 58,
+    letterSpacing: -1.5,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.brand.green,
+  },
+  macroHeroBaslik: {
+    marginTop: 2,
+    fontSize: 13,
+    letterSpacing: 2.2,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#FFFFFF',
+  },
+  macroHeroAlt: {
+    marginTop: 8,
+    fontSize: 12,
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: 'rgba(255,255,255,0.55)',
+  },
+  macroHeroLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 5,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 100,
+    backgroundColor: 'rgba(185,239,20,0.14)',
   },
-  macroCoinImg: {
-    width: 40,
-    height: 40,
-  },
-  macroCoinTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#ffffff',
-  },
-  macroCoinSub: {
+  macroHeroLinkText: {
     fontSize: 12,
-    color: '#AAAAAA',
-    marginTop: 3,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.brand.green,
   },
   // Buton 1 — siyah (distinguish)
   trackButton: {

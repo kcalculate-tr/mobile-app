@@ -22,7 +22,9 @@ export type RootStackParamList = {
     | { selectedAddressId?: string; pendingPaymentOrderId?: string }
     | undefined;
   Addresses: { selectMode?: boolean } | undefined;
-  OrderSuccess: { orderCode: string; orderId?: string; noticeMessage?: string; macro_points?: number };
+  // macro_points parametresi kaldırıldı: kazanılan Macro artık ekranın
+  // kendisi tarafından siparişin tutarından hesaplanıyor (OrderSuccessScreen).
+  OrderSuccess: { orderCode: string; orderId?: string; noticeMessage?: string };
   DevDiagnostics: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
   Register: { redirectTo?: AuthRedirectTarget } | undefined;
