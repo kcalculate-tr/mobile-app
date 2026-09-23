@@ -24,7 +24,9 @@ import { useAuth } from '../context/AuthContext';
 import { Campaign, fetchAvailableCampaigns } from '../lib/offers';
 import { BannerCell, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
-import { formatDate, gradyan, gunKaldi, indirimEtiketi } from '../lib/campaignVisual';
+import { formatDate, gradyan, gunKaldi, indirimEtiketi, metinRengi } from '../lib/campaignVisual';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
+import FadeSwap from '../components/ui/FadeSwap';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
 
@@ -36,9 +38,6 @@ const GRID_GAP = 12;
 const TILE_WIDTH = (SCREEN_WIDTH - SPACING.lg * 2 - GRID_GAP) / 2;
 
 
-/** Koyu gradyan üzerinde neon, açık görselde siyah — okunaklılık için. */
-const METIN_RENGI = COLORS.brand.green;
-
 // ── Kampanya / kupon karosu ───────────────────────────────────────────────────
 function CampaignTile({ campaign, onPress }: { campaign: Campaign; onPress: () => void }) {
   const gorsel = campaign.image_url
@@ -46,6 +45,7 @@ function CampaignTile({ campaign, onPress }: { campaign: Campaign; onPress: () =
     : null;
   const kalan = gunKaldi(campaign.end_date);
   const odul = campaign.source === 'macro_reward';
+  const yazi = metinRengi(campaign);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [s.tile, pressed && s.tilePressed]}>
@@ -54,10 +54,10 @@ function CampaignTile({ campaign, onPress }: { campaign: Campaign; onPress: () =
           <CachedImage uri={gorsel} style={s.tileImage} />
         ) : (
           <LinearGradient colors={gradyan(campaign)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.tileImage}>
-            {odul && <ForkKnife size={22} color={METIN_RENGI} weight="fill" style={{ marginBottom: 6 }} />}
-            <Text style={s.tileDiscount} numberOfLines={2}>{indirimEtiketi(campaign)}</Text>
+            {odul && <ForkKnife size={22} color={yazi} weight="fill" style={{ marginBottom: 6 }} />}
+            <Text style={[s.tileDiscount, { color: yazi }]} numberOfLines={2}>{indirimEtiketi(campaign)}</Text>
             {campaign.min_cart_total != null && Number(campaign.min_cart_total) > 0 && (
-              <Text style={s.tileMinCart}>{`₺${Number(campaign.min_cart_total)} üzeri`}</Text>
+              <Text style={[s.tileMinCart, { color: yazi, opacity: 0.6 }]}>{`₺${Number(campaign.min_cart_total)} üzeri`}</Text>
             )}
           </LinearGradient>
         )}
@@ -94,7 +94,9 @@ function CampaignSheet({
           <CachedImage uri={gorsel} style={s.sheetImage} />
         ) : (
           <LinearGradient colors={gradyan(campaign)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.sheetImage}>
-            <Text style={s.sheetDiscount} numberOfLines={2}>{indirimEtiketi(campaign)}</Text>
+            <Text style={[s.sheetDiscount, { color: metinRengi(campaign) }]} numberOfLines={2}>
+              {indirimEtiketi(campaign)}
+            </Text>
           </LinearGradient>
         )}
       </View>
@@ -236,30 +238,15 @@ export default function OffersAndCouponsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <View style={s.tabBar}>
-        <TouchableOpacity
-          style={[s.tabBtn, tab === 'offers' && s.tabBtnActive]}
-          onPress={() => setTab('offers')}
-          activeOpacity={0.8}
-        >
-          <Tag size={14} color={tab === 'offers' ? '#000' : COLORS.text.tertiary} />
-          <Text style={[s.tabLabel, tab === 'offers' && s.tabLabelActive]}>Kampanyalar</Text>
-          {kampanyalar.length > 0 && (
-            <View style={s.tabBadge}><Text style={s.tabBadgeText}>{kampanyalar.length}</Text></View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.tabBtn, tab === 'coupons' && s.tabBtnActive]}
-          onPress={() => setTab('coupons')}
-          activeOpacity={0.8}
-        >
-          <Ticket size={14} color={tab === 'coupons' ? '#000' : COLORS.text.tertiary} />
-          <Text style={[s.tabLabel, tab === 'coupons' && s.tabLabelActive]}>Kuponlarım</Text>
-          {kuponlar.length > 0 && (
-            <View style={s.tabBadge}><Text style={s.tabBadgeText}>{kuponlar.length}</Text></View>
-          )}
-        </TouchableOpacity>
-      </View>
+      <SegmentedTabs<'offers' | 'coupons'>
+        items={[
+          { key: 'offers', label: 'Kampanyalar', Icon: Tag, badge: kampanyalar.length },
+          { key: 'coupons', label: 'Kuponlarım', Icon: Ticket, badge: kuponlar.length },
+        ]}
+        value={tab}
+        onChange={setTab}
+        style={{ marginBottom: SPACING.md }}
+      />
 
       {loading ? (
         <View style={s.centered}><ActivityIndicator color={COLORS.brand.green} size="large" /></View>
@@ -277,6 +264,7 @@ export default function OffersAndCouponsScreen() {
             { paddingBottom: insets.bottom + FLOATING_PILL_HEIGHT + FLOATING_PILL_GAP + 48 },
           ]}
         >
+          <FadeSwap swapKey={tab} style={{ gap: SPACING.md }}>
           {tab === 'offers' && banners.length > 0 && (
             <View style={s.bannerSection}>
               <FlatList
@@ -345,6 +333,7 @@ export default function OffersAndCouponsScreen() {
               }
             />
           ) : grid}
+          </FadeSwap>
         </ScrollView>
       )}
 
@@ -379,27 +368,6 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
   },
 
-  // Sekmeler
-  tabBar: {
-    flexDirection: 'row', gap: SPACING.sm,
-    paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md,
-  },
-  tabBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    height: 40, borderRadius: 100, backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
-  },
-  tabBtnActive: { backgroundColor: COLORS.brand.green, borderColor: COLORS.brand.green },
-  tabLabel: {
-    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary,
-    fontFamily: 'PlusJakartaSans_600SemiBold', fontWeight: '600',
-  },
-  tabLabelActive: { color: '#000000', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700' },
-  tabBadge: {
-    minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5,
-    backgroundColor: 'rgba(0,0,0,0.12)', alignItems: 'center', justifyContent: 'center',
-  },
-  tabBadgeText: { fontSize: 10, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700' },
 
   // Banner
   bannerSection: { gap: SPACING.sm },
@@ -427,11 +395,11 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', padding: SPACING.md,
   },
   tileDiscount: {
-    fontSize: 22, lineHeight: 26, textAlign: 'center', color: METIN_RENGI,
+    fontSize: 22, lineHeight: 26, textAlign: 'center',
     fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
   },
   tileMinCart: {
-    marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.6)',
+    marginTop: 6, fontSize: 11,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   tileBadge: {
@@ -484,7 +452,7 @@ const s = StyleSheet.create({
   sheetMedia: { width: '100%', aspectRatio: 16 / 9, borderRadius: RADIUS.md, overflow: 'hidden' },
   sheetImage: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   sheetDiscount: {
-    fontSize: 32, lineHeight: 36, textAlign: 'center', color: METIN_RENGI,
+    fontSize: 32, lineHeight: 36, textAlign: 'center',
     fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
   },
   sheetTitle: {

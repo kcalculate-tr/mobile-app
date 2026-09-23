@@ -6,9 +6,11 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
-import { CalendarCheck, CrownSimple, Info } from 'phosphor-react-native'
+import { CalendarCheck, CrownSimple, CurrencyCircleDollar, Info } from 'phosphor-react-native'
 import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
+import SegmentedTabs from '../components/ui/SegmentedTabs'
+import FadeSwap from '../components/ui/FadeSwap'
 import SubscriptionBuilder from '../components/subscription/SubscriptionBuilder'
 import MacroBenefits from '../components/macro/MacroBenefits'
 import CouponRail from '../components/macro/CouponRail'
@@ -119,21 +121,15 @@ export default function MacroScreen() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       <StatusBar style="dark" />
 
-      <View style={s.tabBar}>
-        {([
-          { key: 'macro' as const, label: 'Macro' },
-          { key: 'subscription' as const, label: 'Öğün Aboneliği' },
-        ]).map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            onPress={() => setTab(t.key)}
-            activeOpacity={0.85}
-            style={[s.tabBtn, tab === t.key && s.tabBtnActive]}
-          >
-            <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SegmentedTabs<'macro' | 'subscription'>
+        items={[
+          { key: 'macro', label: 'Macro', Icon: CurrencyCircleDollar },
+          { key: 'subscription', label: 'Öğün Aboneliği', Icon: CalendarCheck },
+        ]}
+        value={tab}
+        onChange={setTab}
+        style={{ marginTop: SPACING.sm, marginBottom: SPACING.xs }}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -143,7 +139,7 @@ export default function MacroScreen() {
         }
       >
         {tab === 'macro' ? (
-        <>
+        <FadeSwap swapKey="macro" style={{ gap: SPACING.md }}>
         {/* ── Macro kartı (Profil kartıyla birebir) ── */}
         <View style={s.macroCard}>
           <View style={s.macroCoinRow}>
@@ -169,8 +165,14 @@ export default function MacroScreen() {
               />
             </View>
 
-            <TouchableOpacity style={s.macroInfoBtn} onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
-              <Info size={16} color="#E8431A" />
+            <TouchableOpacity
+              style={s.macroInfoCol}
+              onPress={() => setInfoOpen(true)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={s.macroInfoBtn}><Info size={16} color="#E8431A" /></View>
+              <Text style={s.macroInfoLabel}>Nasıl çalışır</Text>
             </TouchableOpacity>
           </View>
 
@@ -214,12 +216,12 @@ export default function MacroScreen() {
 
         <MacroBenefits earnThreshold={settings.earnThreshold} mealCost={settings.mealCost} />
         <CouponRail />
-        </>
+        </FadeSwap>
         ) : canSeeBuilder ? (
           // Yalnızca admin_allowlist'teki hesap gerçek kurucuyu görür.
-          <SubscriptionBuilder />
+          <FadeSwap swapKey="builder"><SubscriptionBuilder /></FadeSwap>
         ) : (
-          <View style={s.yakinda}>
+          <FadeSwap swapKey="soon"><View style={s.yakinda}>
             <View style={s.yakindaIkon}>
               <CalendarCheck size={26} color={COLORS.brand.green} weight="fill" />
             </View>
@@ -243,7 +245,7 @@ export default function MacroScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </View></FadeSwap>
         )}
       </ScrollView>
 
@@ -263,29 +265,6 @@ const s = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   // Kart guvenli alanin hemen altinda baslasin — ustte bos bant kalmasin.
   content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, gap: SPACING.md },
-
-  // ── Sekmeler ──
-  tabBar: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.xs,
-  },
-  tabBtn: {
-    flex: 1, height: 40, borderRadius: RADIUS.pill,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
-  },
-  tabBtnActive: { backgroundColor: '#0D0D0D', borderColor: '#0D0D0D' },
-  tabLabel: {
-    fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary,
-    fontFamily: 'PlusJakartaSans_600SemiBold', fontWeight: '600',
-  },
-  tabLabelActive: {
-    color: '#FFFFFF', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
 
   // ── "Yakında" kartı (müşteriye görünen abonelik sekmesi) ──
   yakinda: {
@@ -384,6 +363,7 @@ const s = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
+  macroInfoCol: { alignItems: 'center', gap: 4 },
   macroInfoBtn: {
     width: 32,
     height: 32,
@@ -391,6 +371,11 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(232,67,26,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  macroInfoLabel: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.4)',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 
   // ── Çubuk + coin'ler ──
@@ -400,6 +385,9 @@ const s = StyleSheet.create({
     height: DOT,
     justifyContent: 'center',
     marginBottom: SPACING.sm,
+    // Çubuk kartın iki ucuna dayanmasın; coin'ler uçlarda durduğu için
+    // nefes alacak yer gerekiyor.
+    marginHorizontal: SPACING.md,
   },
   macroProgressBg: {
     height: 6,

@@ -26,6 +26,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import { Circle, Svg, Polyline } from 'react-native-svg';
 import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, Target, TrophyIcon} from 'phosphor-react-native';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
+import FadeSwap from '../components/ui/FadeSwap';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
@@ -1908,23 +1910,16 @@ const html = `
           </View>
         </View>
 
-        {/* ── View Mode Toggle ── */}
-        <View style={s.toggleRow}>
-          {([
-            { id: 'ozet' as ViewMode, label: 'Özet', Icon: SquaresFour },
-            { id: 'grafik' as ViewMode, label: 'Grafik', Icon: ChartBar },
-          ] as { id: ViewMode; label: string; Icon: typeof SquaresFour }[]).map(({ id, label, Icon }) => (
-            <TouchableOpacity
-              key={id}
-              style={[s.toggleBtn, viewMode === id && s.toggleBtnActive]}
-              onPress={() => dispatchUI({ type: 'SET_VIEW_MODE', payload: id })}
-              activeOpacity={0.8}
-            >
-              <Icon size={14} color="#000000" />
-              <Text style={s.toggleBtnText}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── View Mode Toggle — uygulamanın ortak sekme bileşeni ── */}
+        <SegmentedTabs<ViewMode>
+          items={[
+            { key: 'ozet', label: 'Özet', Icon: SquaresFour },
+            { key: 'grafik', label: 'Grafik', Icon: ChartBar },
+          ]}
+          value={viewMode}
+          onChange={(key) => dispatchUI({ type: 'SET_VIEW_MODE', payload: key })}
+          style={{ marginBottom: SPACING.md }}
+        />
 
         {/* ── Filter pills (her iki modda: Özet + Grafik) ── */}
         <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
@@ -1954,7 +1949,7 @@ const html = `
             </TouchableOpacity>
           </View>
         ) : viewMode === 'grafik' ? (
-          <>
+          <FadeSwap swapKey="grafik">
             <GrafikView
               weeklyConsumption={graphData}
               nutritionProfile={nutritionProfile}
@@ -1977,9 +1972,9 @@ const html = `
                 </>
               )}
             </TouchableOpacity>
-          </>
+          </FadeSwap>
         ) : (
-          <>
+          <FadeSwap swapKey="ozet">
             {/* ── Pantry ── */}
             <View style={s.pantrySection}>
               <View style={s.pantrySectionHeader}>
@@ -2217,7 +2212,7 @@ const html = `
                 </View>
               </View>
             )}
-          </>
+          </FadeSwap>
         )}
       </ScrollView>
 

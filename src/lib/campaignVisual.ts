@@ -37,3 +37,32 @@ export const formatDate = (iso: string): string => {
   const d = new Date(iso)
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
 }
+
+/**
+ * Gradyanın üzerindeki yazı rengi — zemin parlaklığına göre.
+ *
+ * Kampanyaların bir kısmında `color_from/to` açık yeşil. Bu zemine marka
+ * neonunu yazınca kontrast yok oluyordu (ekran görüntüsünde okunmuyordu).
+ * Zeminin göreli parlaklığını ölçüp açıkta siyah, koyuda neon yazıyoruz.
+ */
+const hexToRgb = (hex: string): [number, number, number] => {
+  const h = hex.replace('#', '').trim()
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  const n = parseInt(full.slice(0, 6), 16)
+  if (!Number.isFinite(n)) return [0, 0, 0]
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+/** WCAG göreli parlaklık (0 = siyah, 1 = beyaz). */
+const luminans = (hex: string): number => {
+  const [r, g, b] = hexToRgb(hex).map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+export const metinRengi = (c: Campaign): string => {
+  const [, orta] = gradyan(c)
+  return luminans(orta) > 0.4 ? '#0D0D0D' : '#B9EF14'
+}

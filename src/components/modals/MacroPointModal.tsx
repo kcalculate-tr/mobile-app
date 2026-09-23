@@ -25,14 +25,26 @@ export default function MacroPointModal({
   const esik = macroSettings.earnThreshold.toLocaleString('tr-TR');
 
   const BENEFITS = [
-    { Icon: ShoppingCart, color: '#B9EF14', bg: 'rgba(198,240,79,0.1)',
-      title: `Her ${esik}₺ harcama`, desc: '1 Macro kazanırsın — birikimli, küsurat kaybolmaz' },
-    { Icon: ForkKnife, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',
-      title: `${macroSettings.mealCost} Macro = 1 ücretsiz öğün`, desc: 'Otomatik olarak kupon şeklinde hesabına düşer' },
-    { Icon: Ticket, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',
-      title: 'Dilediğin öğünde kullan', desc: 'kcal., tera ve Breaking Fast farketmez — koli ve çoklu tabaklar hariç' },
-    { Icon: CalendarX, color: '#34D399', bg: 'rgba(52,211,153,0.1)',
-      title: `${macroSettings.rewardValidDays} gün geçerli`, desc: 'Kupon üretildiği tarihten itibaren' },
+    {
+      Icon: ShoppingCart, color: '#B9EF14', bg: 'rgba(198,240,79,0.1)',
+      title: `Her ${esik}₺ Harcama ile 1 Macro Kazan`,
+      desc: 'Birikimin küsuratlı bile olsa sistem toplam bakiyeni devamlı hesaplar. Harcamaların her zaman MACRO\u2019ya dönüşür.',
+    },
+    {
+      Icon: ForkKnife, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',
+      title: `${macroSettings.mealCost} MACRO = 1 Ücretsiz Öğün`,
+      desc: 'Biriken MACRO sepetindeki \u201Ckupon ekle\u201D bölümüne otomatik düşer.',
+    },
+    {
+      Icon: Ticket, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)',
+      title: 'Sepette 1 Ücretsiz Öğün',
+      desc: 'Dilediğin bir adet tekil öğünü ücretsiz olarak sepetine ekleyebilirsin.',
+    },
+    {
+      Icon: CalendarX, color: '#34D399', bg: 'rgba(52,211,153,0.1)',
+      title: `${macroSettings.rewardValidDays} Gün Geçerli`,
+      desc: `Biriktirdiğin MACRO ${macroSettings.rewardValidDays} gün boyunca kaybolmaz.`,
+    },
   ];
 
   return (
