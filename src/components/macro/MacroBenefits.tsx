@@ -17,7 +17,12 @@ type Avantaj = {
  * Dört avantaj, 2 sütun × 2 satır. Kartlar sayfanın gri zemini üzerinde
  * KENDİ beyaz kartları olarak duruyor — daha önce beyaz bir kabın içinde gri
  * kutular vardı, iki katmanlı zemin ekranın geri kalanıyla uyuşmuyordu.
- * Uygulamanın geri kalanı da gri sayfa + beyaz kart düzeninde.
+ *
+ * Başlık bilinçli olarak küçük ve sessiz: bu ekranda her şey bir kartın
+ * içinde, dolayısıyla çıplak zeminde duran büyük kalın bir başlık desteksiz
+ * görünüyordu ve hemen üstündeki siyah karttaki "MACRO" yazısıyla
+ * yarışıyordu. Harf aralıklı küçük etiket, içerik gibi değil AYRAÇ gibi
+ * okunur — kendi kartı olmasına gerek kalmaz.
  */
 export default function MacroBenefits({ earnThreshold, mealCost }: {
   earnThreshold: number
@@ -56,7 +61,10 @@ export default function MacroBenefits({ earnThreshold, mealCost }: {
 
   return (
     <View style={s.root}>
-      <Text style={s.baslik}>MACRO NEDİR?</Text>
+      <View style={s.basligSatir}>
+        <Text style={s.baslik}>MACRO NEDİR?</Text>
+        <View style={s.cizgi} />
+      </View>
 
       <View style={s.izgara}>
         {avantajlar.map((a) => (
@@ -74,13 +82,26 @@ export default function MacroBenefits({ earnThreshold, mealCost }: {
 }
 
 const s = StyleSheet.create({
-  root: { gap: SPACING.md },
+  root: { gap: SPACING.sm },
+  basligSatir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingHorizontal: 2,
+  },
   baslik: {
-    fontSize: TYPOGRAPHY.size.lg,
-    letterSpacing: 0.5,
-    color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: COLORS.text.tertiary,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontWeight: '700',
+  },
+  // Etiketin sağındaki saç teli çizgi, bölümün nerede başladığını
+  // başlığı büyütmeden gösteriyor.
+  cizgi: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.07)',
   },
 
   // 2 sütun × 2 satır — her kutu kendi beyaz kartı
