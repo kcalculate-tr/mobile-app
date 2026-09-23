@@ -240,8 +240,8 @@ export default function OffersAndCouponsScreen() {
 
       <SegmentedTabs<'offers' | 'coupons'>
         items={[
-          { key: 'offers', label: 'Kampanyalar', Icon: Tag, badge: kampanyalar.length },
-          { key: 'coupons', label: 'Kuponlarım', Icon: Ticket, badge: kuponlar.length },
+          { key: 'offers', label: 'Kampanyalar', Icon: Tag },
+          { key: 'coupons', label: 'Kuponlarım', Icon: Ticket },
         ]}
         value={tab}
         onChange={setTab}
