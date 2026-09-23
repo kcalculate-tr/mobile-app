@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, Info as InfoIcon, WarningCircle } from 'phosphor-react-native';
+import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, WarningCircle } from 'phosphor-react-native';
 import ScreenContainer from '../components/ScreenContainer';
 import Selectable from '../components/ui/Selectable';
 import { useSectionTransition } from '../hooks/useSectionTransition';
@@ -31,6 +31,8 @@ import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import DeliveryProgressBar from '../components/DeliveryProgressBar';
 import AddressVerificationSheet from '../components/checkout/AddressVerificationSheet';
+import BranchPicker from '../components/checkout/BranchPicker';
+import InfoPill from '../components/ui/InfoPill';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
 import {
@@ -164,8 +166,6 @@ const toNormalizedText = (value: unknown) =>
 
 const readZoneNeighborhood = (row: Record<string, unknown>) =>
   String(row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '').trim();
-
-const BRANCH_ADDRESS = 'Basın Sitesi Mah. 177/3. Sk. No:3A Karabağlar İzmir';
 
 const getGoogleMapsKey = (): string => {
   const fromConfig =
@@ -414,6 +414,9 @@ export default function CheckoutScreen() {
   // kesmez, sadece bilgilendirir. Aynı state en-yakın-adres otomatik
   // seçiminde de (bkz. aşağıdaki effect'ler) kullanılır.
   const [deviceCoords, setDeviceCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Gel-Al'da müşterinin teslim alacağı şube. Konum varsa en yakını
+  // BranchPicker otomatik işaretler, kullanıcı değiştirebilir.
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const userManuallySelectedAddressRef = useRef(false);
   const autoSelectedNearestRef = useRef(false);
   const [deliveryDays, setDeliveryDays] = useState<number[] | null>(null);
@@ -1390,13 +1393,18 @@ export default function CheckoutScreen() {
               scheduled_time: null,
             };
 
+      // Müşterinin işaretlediği şube sipariş adresine yazılır; mutfak hangi
+      // şubeden teslim edileceğini sipariş kaydından görür.
+      const pickupBranch = branches.find((b) => b.id === selectedBranchId) ?? null;
       const pickupAddress = {
         id: 'pickup',
         title: 'Gel-Al',
         contact_name: customerName.trim(),
         contact_phone: customerPhone.trim(),
         contact_email: customerEmail.trim(),
-        full_address: 'Gel-Al (Şubeden Teslim)',
+        full_address: pickupBranch
+          ? `Gel-Al · ${pickupBranch.name} — ${pickupBranch.address}`
+          : 'Gel-Al (Şubeden Teslim)',
         city: '',
         district: '',
         neighbourhood: null,
@@ -1854,36 +1862,24 @@ export default function CheckoutScreen() {
           {/* ── 1b. Gel-Al şube (pickup) ── */}
           {deliveryMethod === 'pickup' ? (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Şube Bilgisi</Text>
+              <Text style={styles.cardTitle}>Teslim Alınacak Şube</Text>
               {branchesLoading ? <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} /> : null}
               {branchesError ? <Text style={styles.errorText}>{branchesError}</Text> : null}
               {!branchesLoading && !branchesError && branches.length === 0 ? (
                 <Text style={styles.noteText}>Şube bilgisi bulunamadı.</Text>
               ) : null}
-              {branches.map((branch) => (
-                <View key={branch.id} style={{ gap: SPACING.sm }}>
-                  <Text style={styles.addressTitle}>{branch.name}</Text>
-                  <Text style={styles.addressText}>{branch.address}</Text>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(BRANCH_ADDRESS)}`)}
-                    style={styles.mapPreview}
-                  >
-                    <Image
-                      source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(BRANCH_ADDRESS)}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${encodeURIComponent(BRANCH_ADDRESS)}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}` }}
-                      style={styles.mapPreviewImg}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.mapPreviewBadge}>
-                      <MapPin size={11} color="#000" />
-                      <Text style={styles.mapPreviewBadgeText}>Haritada Aç</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <Text style={[styles.noteText, { marginTop: SPACING.xs }]}>
-                Siparişiniz hazır olduğunda şubemizden teslim alabilirsiniz.
-              </Text>
+              {!branchesLoading && branches.length > 0 ? (
+                <BranchPicker
+                  branches={branches}
+                  selectedId={selectedBranchId}
+                  onSelect={(branch) => setSelectedBranchId(branch.id)}
+                  deviceCoords={deviceCoords}
+                  googleMapsKey={getGoogleMapsKey()}
+                />
+              ) : null}
+              <InfoPill Icon={Storefront} style={{ marginTop: SPACING.md }}>
+                Siparişiniz hazır olduğunda <Text style={InfoPill.strong}>seçtiğiniz şubeden</Text> teslim alabilirsiniz.
+              </InfoPill>
             </View>
           ) : null}
 
@@ -2016,13 +2012,10 @@ export default function CheckoutScreen() {
                   {/* Bölgeye göre tahmini teslimat süresi — sadece "Hemen"
                       teslimatta anlamlı (randevuluda saat zaten seçiliyor). */}
                   {estimatedDeliveryLabel && deliveryTimeType === 'immediate' && deliveryMethod === 'home_delivery' ? (
-                    <View style={styles.etaRow}>
-                      <Clock size={15} color={COLORS.text.primary} weight="bold" />
-                      <Text style={styles.etaText}>
-                        Tahmini teslimat <Text style={styles.etaStrong}>{estimatedDeliveryLabel}</Text>
-                        {selectedAddress?.district ? ` · ${selectedAddress.district}` : ''}
-                      </Text>
-                    </View>
+                    <InfoPill Icon={Clock} style={{ marginTop: SPACING.md }}>
+                      Tahmini teslimat <Text style={InfoPill.strong}>{estimatedDeliveryLabel}</Text>
+                      {selectedAddress?.district ? ` · ${selectedAddress.district}` : ''}
+                    </InfoPill>
                   ) : null}
                 </View>
 
@@ -2034,12 +2027,10 @@ export default function CheckoutScreen() {
                       <View style={{ height: 8 }} />
                       <Text style={styles.deliveryGroupLabel}>Teslimat Tarihi</Text>
                       {deliveryDays && deliveryDays.length < 7 ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9E6', padding: 12, borderRadius: 12, marginBottom: 12 }}>
-                          <InfoIcon size={16} color="#F8C90E" weight="fill" style={{ marginRight: 8 }} />
-                          <Text style={{ fontSize: 13, color: '#666', fontFamily: 'PlusJakartaSans_400Regular', flex: 1 }}>
-                            Bu bölgeye teslimat günleri: {formatDeliveryDaysFull(deliveryDays)}
-                          </Text>
-                        </View>
+                        <InfoPill Icon={CalendarBlank} style={{ marginBottom: SPACING.md }}>
+                          Bu bölgeye teslimat günleri:{' '}
+                          <Text style={InfoPill.strong}>{formatDeliveryDaysFull(deliveryDays)}</Text>
+                        </InfoPill>
                       ) : null}
                       <FlatList
                         keyboardShouldPersistTaps="handled"
@@ -2093,16 +2084,18 @@ export default function CheckoutScreen() {
                               const isActive = selectedTimeSlot?.id === slot.id;
                               const isDisabled = slot.disabled;
                               return (
-                                <TouchableOpacity
+                                <Selectable
                                   key={slot.id}
-                                  activeOpacity={0.7}
+                                  selected={isActive}
                                   disabled={isDisabled}
-                                  onPress={() => dispatchDelivery({ type: 'SET_TIME_SLOT', payload: slot })}
                                   style={[
                                     styles.timeSlotCard,
-                                    isActive && styles.timeSlotCardActive,
                                     isDisabled && styles.timeSlotCardDisabled,
                                   ]}
+                                  selectedStyle={styles.timeSlotCardActive}
+                                  borderRadius={RADIUS.xs}
+                                  overlayInset={-1}
+                                  onPress={() => dispatchDelivery({ type: 'SET_TIME_SLOT', payload: slot })}
                                 >
                                   <Text
                                     style={[
@@ -2116,7 +2109,7 @@ export default function CheckoutScreen() {
                                   {isDisabled && (
                                     <Text style={styles.timeSlotFullText}>Dolu</Text>
                                   )}
-                                </TouchableOpacity>
+                                </Selectable>
                               );
                             })}
                           </View>
@@ -2727,26 +2720,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   // Tahmini teslimat suresi satiri — Yontem/Zaman kartinin altinda
-  etaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.md,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.xs,
-    backgroundColor: '#f5f5f5',
-  },
-  etaText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    fontFamily: 'PlusJakartaSans_500Medium',
-    color: COLORS.text.secondary,
-  },
-  etaStrong: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-  },
   payTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3331,9 +3304,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Seçili saat, chip ve tarih kartıyla AYNI dili konuşur: tam yeşil dolgu +
+  // siyah metin. Önceki %12 tint "seçili mi, pasif mi" ayrımını zayıflatıyordu.
   timeSlotCardActive: {
-    borderColor: COLORS.brand.green,
-    backgroundColor: 'rgba(198,240,79,0.12)',
+    borderColor: 'transparent',
+    backgroundColor: COLORS.brand.green,
   },
   timeSlotLabel: {
     fontSize: TYPOGRAPHY.size.sm,
@@ -3342,7 +3317,7 @@ const styles = StyleSheet.create({
     color: SURFACE.unselectedText,
   },
   timeSlotLabelActive: {
-    color: COLORS.text.primary,
+    color: '#000000',
     fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
