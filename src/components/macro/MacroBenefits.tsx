@@ -62,6 +62,7 @@ export default function MacroBenefits({ earnThreshold, mealCost }: {
   return (
     <View style={s.root}>
       <View style={s.basligSatir}>
+        <View style={s.cizgi} />
         <Text style={s.baslik}>MACRO NEDİR?</Text>
         <View style={s.cizgi} />
       </View>
@@ -96,8 +97,9 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '700',
   },
-  // Etiketin sağındaki saç teli çizgi, bölümün nerede başladığını
-  // başlığı büyütmeden gösteriyor.
+  // Etiketin iki yanındaki saç teli çizgiler: eşit flex olduğu için etiket
+  // tam ortada kalıyor, bölümün başladığı yer de başlığı büyütmeden belli
+  // oluyor.
   cizgi: {
     flex: 1,
     height: 1,
