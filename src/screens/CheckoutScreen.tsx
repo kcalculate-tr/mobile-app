@@ -2462,6 +2462,12 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
               onToggleContracts={() =>
                 dispatchOrder({ type: 'SET_CONTRACTS_ACCEPTED', payload: !contractsAccepted })
               }
+              // Hedefin altındaki müşterinin tek ihtiyacı ürün eklemek: tek
+              // dokunuşta "Tüm Ürünler" kataloğuna gider, geri döndüğünde
+              // sepet ve bu ekran olduğu gibi durur.
+              onAddProducts={() =>
+                navigation.navigate('CategoryProducts', { categoryName: 'Tüm Ürünler' })
+              }
               onPressTerms={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
               onPressDistanceSales={() =>
                 navigation.navigate('ProfileContracts', { slug: 'distance-sales' })

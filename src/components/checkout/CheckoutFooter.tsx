@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Check, Truck } from 'phosphor-react-native';
+import { ArrowRight, Check, Plus, Truck } from 'phosphor-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 
 const NEON = COLORS.brand.green;
@@ -32,6 +32,9 @@ interface Props {
   freeDeliveryThreshold?: number;
 
   /** Sözleşme onayı — yalnızca özet adımında gösterilir. */
+  /** Hedefin altındayken "Ürün Ekle" kısayolu. */
+  onAddProducts?: () => void;
+
   showContracts?: boolean;
   contractsAccepted?: boolean;
   onToggleContracts?: () => void;
@@ -52,6 +55,7 @@ export default function CheckoutFooter({
   cartTotal = 0,
   minOrderAmount = 0,
   freeDeliveryThreshold = 0,
+  onAddProducts,
   showContracts = false,
   contractsAccepted = false,
   onToggleContracts,
@@ -69,14 +73,28 @@ export default function CheckoutFooter({
   const kalan = Math.max(hedef - cartTotal, 0);
   const yuzde = kazanildi ? 100 : Math.min((cartTotal / Math.max(hedef, 1)) * 100, 100);
 
+  // Şerit gizliyken (ör. Gel-Al) animasyon çalıştırmanın anlamı yok ve
+  // blok yeniden mount olduğunda Animated.Value eski konumunda takılı
+  // kalıyordu — "Ücretsiz teslimat kazandınız" yazarken bar yarıda
+  // duruyordu. Gizliyken ve yeniden görünür olurken değer DOĞRUDAN yazılır;
+  // animasyon yalnızca şerit zaten ekrandayken çalışır.
+  const oncekiGorunurRef = useRef(showProgress);
   useEffect(() => {
+    const yenidenGorunur = showProgress && !oncekiGorunurRef.current;
+    oncekiGorunurRef.current = showProgress;
+
+    if (!showProgress || yenidenGorunur) {
+      ilerleme.setValue(yuzde);
+      return;
+    }
+
     Animated.timing(ilerleme, {
       toValue: yuzde,
       duration: 520,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [yuzde, ilerleme]);
+  }, [yuzde, showProgress, ilerleme]);
 
   const genislik = ilerleme.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
 
@@ -100,6 +118,21 @@ export default function CheckoutFooter({
                 <Text style={s.vurgu}>{lira(kalan)}</Text> kaldı
               </Text>
             )}
+
+            {/* Hedefin altındaki müşterinin tek ihtiyacı ürün eklemek —
+                kısayol mesajın yanında, tek dokunuşta katalog. */}
+            {!kazanildi && onAddProducts ? (
+              <TouchableOpacity
+                onPress={onAddProducts}
+                activeOpacity={0.75}
+                style={s.ekleBtn}
+                hitSlop={8}
+              >
+                <Plus size={11} color="#000000" weight="bold" />
+                <Text style={s.ekleBtnMetin}>Ürün Ekle</Text>
+                <ArrowRight size={11} color="#000000" weight="bold" />
+              </TouchableOpacity>
+            ) : null}
           </View>
           <View style={s.ray}>
             <Animated.View style={[s.dolgu, { width: genislik }]} />
@@ -143,11 +176,10 @@ export default function CheckoutFooter({
               {label}
             </Text>
             {priceText ? (
-              // Tutar kendi rozetinde durur; eskiden araya konan "•" ayracına
-              // gerek kalmıyor (23.09.2026 tasarım notu).
-              <View style={[s.tutarRozet, disabled && s.tutarRozetPasif]}>
-                <Text style={[s.tutarMetin, disabled && s.butonMetinPasif]}>{priceText}</Text>
-              </View>
+              // Tutar sağda, zemin katmanı OLMADAN durur: araya "•" ayracı
+              // koymaya da, arkasına rozet koymaya da gerek yok — hizalama
+              // ayrımı zaten yapıyor (23.09.2026 tasarım notu).
+              <Text style={[s.tutarMetin, disabled && s.butonMetinPasif]}>{priceText}</Text>
             ) : null}
           </View>
         )}
@@ -186,6 +218,21 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: 'rgba(255,255,255,0.62)',
+  },
+  ekleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+    backgroundColor: NEON,
+  },
+  ekleBtnMetin: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#000000',
+    letterSpacing: 0.2,
   },
   vurgu: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
@@ -262,19 +309,11 @@ const s = StyleSheet.create({
   butonMetinPasif: {
     color: 'rgba(255,255,255,0.45)',
   },
-  tutarRozet: {
-    marginLeft: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 5,
-    borderRadius: RADIUS.pill,
-    backgroundColor: 'rgba(0,0,0,0.12)',
-  },
-  tutarRozetPasif: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
   tutarMetin: {
-    fontSize: TYPOGRAPHY.size.md,
+    marginLeft: SPACING.md,
+    fontSize: 20,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#000000',
+    letterSpacing: -0.3,
   },
 });
