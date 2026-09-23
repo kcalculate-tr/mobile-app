@@ -36,7 +36,6 @@ export default function OrderSuccessScreen() {
   const route = useRoute<OrderSuccessRoute>();
   const { isAuthenticated, loading } = useRequireAuth();
   const insets = useSafeAreaInsets();
-  const [dots, setDots] = useState(1);
   const { user } = useAuth();
 
   // Bu siparişin kazandıracağı Macro. Parametre olarak taşınmıyor: çağrı
@@ -53,13 +52,6 @@ export default function OrderSuccessScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
   const checkOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots(d => d < 3 ? d + 1 : 1);
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -145,7 +137,10 @@ export default function OrderSuccessScreen() {
 
   const steps = [
     { Icon: CheckCircle, label: 'Onaylandı', active: true },
-    { Icon: Fire, label: 'Hazırlanıyor' + '.'.repeat(dots), active: true },
+    // Etiket SABİT: animasyonlu noktalar 60px'lik adım genişliğini taşırıp
+    // "Hazırlanıyor.." diye kırpılmasına yol açıyordu. Canlılık, dairenin
+    // neon dolgusu ve bağlantı çizgisiyle zaten veriliyor.
+    { Icon: Fire, label: 'Hazırlanıyor', active: true },
     { Icon: Truck, label: 'Yolda', active: false },
     { Icon: House, label: 'Teslim', active: false },
   ];
@@ -445,7 +440,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // 4 adım + 3 bağlantı kart genişliğine sığmalı: sabit genişlik büyürse
     // bağlantı çizgileri görünmez hale geliyor.
-    width: 58,
+    width: 60,
   },
   adimDaire: {
     width: 28,
