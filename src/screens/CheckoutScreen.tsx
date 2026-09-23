@@ -1854,159 +1854,11 @@ export default function CheckoutScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {step === 'summary' ? (<>
-          {/* ── 1. Teslimat Adresi (eve teslim) ── */}
-          {deliveryMethod === 'home_delivery' ? (
-            <View style={styles.card} onLayout={bolumOlcu('adres')}>
-              <Text style={styles.cardTitle}>Teslimat Adresi</Text>
-              {alanHatalari.adres ? (
-                <Text style={styles.alanHataText}>{alanHatalari.adres}</Text>
-              ) : null}
-              {loadingAddresses ? (
-                <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} />
-              ) : null}
-              {addressError ? <Text style={styles.errorText}>{addressError}</Text> : null}
-              {!loadingAddresses && addresses.length === 0 ? (
-                <View style={{ gap: SPACING.sm }}>
-                  <Text style={styles.noteText}>Kayıtlı adresiniz yok.</Text>
-                  <TouchableOpacity
-                    style={styles.outlineBtn}
-                    onPress={() => navigation.navigate('Addresses', { selectMode: true })}
-                  >
-                    <Text style={styles.outlineBtnText}>+ Adres Ekle</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-              {addresses.map((address) => {
-                const active = selectedAddressId === address.id;
-                return (
-                  <Selectable
-                    key={address.id}
-                    selected={active}
-                    style={styles.addressRow}
-                    selectedStyle={styles.addressRowActive}
-                    borderRadius={RADIUS.sm}
-                    overlayInset={-1.5}
-                    onPress={() => {
-                      userManuallySelectedAddressRef.current = true;
-                      dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: address.id });
-                      setSelectedAddress(address);
-                    }}
-                  >
-                    <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
-                      {active ? <View style={styles.radioInner} /> : null}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.addressTitle, active && styles.addressTitleActive]}>{address.title || 'Adres'}</Text>
-                      <Text style={[styles.addressText, active && styles.addressTextActive]} numberOfLines={2}>{address.full_address}</Text>
-                      <Text style={[styles.addressMeta, active && styles.addressMetaActive]}>{address.district} • {address.contact_name}</Text>
-                    </View>
-                  </Selectable>
-                );
-              })}
-              {mapCoords ? (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    const latLng = `${mapCoords.lat},${mapCoords.lng}`;
-                    const label = 'Teslimat Adresi';
-                    const url = Platform.select({
-                      ios: `maps:0,0?q=${label}@${latLng}`,
-                      android: `geo:0,0?q=${latLng}(${label})`,
-                    });
-                    Linking.openURL(url || `https://www.google.com/maps/search/?api=1&query=${latLng}`);
-                  }}
-                  style={styles.mapPreview}
-                >
-                  <Image
-                    source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${mapCoords.lat},${mapCoords.lng}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${mapCoords.lat},${mapCoords.lng}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}` }}
-                    style={styles.mapPreviewImg}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.mapPreviewBadge}>
-                    <MapPin size={11} color="#000" />
-                    <Text style={styles.mapPreviewBadgeText}>Haritada Aç</Text>
-                  </View>
-                </TouchableOpacity>
-              ) : geocoding ? (
-                <View style={[styles.mapPreview, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
-                  <ActivityIndicator color={COLORS.text.secondary} size="small" />
-                </View>
-              ) : null}
-              {/* Koordinatı olmayan adres için harita doğrulama daveti — "Konum
-                  doğrulandı" rozeti kaldırıldı (kullanıcıya bir şey söylemiyordu). */}
-              {selectedAddress && (selectedAddress.latitude == null || selectedAddress.longitude == null) ? (
-                <TouchableOpacity
-                  style={styles.verifyPromptRow}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setVerifyingAddressId(selectedAddress.id);
-                    setShowVerifySheet(true);
-                  }}
-                >
-                  <MapPin size={12} color="#C2410C" />
-                  <Text style={styles.verifyPromptText}>Konumu haritada doğrula</Text>
-                </TouchableOpacity>
-              ) : null}
-              {/* Getir tarzı kalıcı uzak-konum uyarısı — akışı hiç kesmez, sadece
-                  bilgilendirir; koordinatın varlığına bağlı (verified_at'e değil). */}
-              {farFromAddressWarning ? (
-                <View style={styles.farAddressWarningRow}>
-                  <WarningCircle size={14} color="#991B1B" weight="fill" />
-                  <Text style={styles.farAddressWarningText}>
-                    Seçtiğin adres şu anki konumundan uzakta görünüyor. Doğru adresi seçtiğinden emin ol.
-                  </Text>
-                </View>
-              ) : null}
-              {addresses.length > 0 ? (
-                <TouchableOpacity
-                  style={[styles.outlineBtn, { marginTop: SPACING.xs }]}
-                  onPress={() => navigation.navigate('Addresses', { selectMode: true })}
-                >
-                  <Text style={styles.outlineBtnText}>Adresleri Yönet</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ) : null}
-
-          {/* ── 1b. Gel-Al şube (pickup) ── */}
-          {deliveryMethod === 'pickup' ? (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Teslim Alınacak Şube</Text>
-              {branchesLoading ? <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} /> : null}
-              {branchesError ? <Text style={styles.errorText}>{branchesError}</Text> : null}
-              {!branchesLoading && !branchesError && branches.length === 0 ? (
-                <Text style={styles.noteText}>Şube bilgisi bulunamadı.</Text>
-              ) : null}
-              {!branchesLoading && branches.length > 0 ? (
-                <BranchPicker
-                  branches={branches}
-                  selectedId={selectedBranchId}
-                  onSelect={(branch) => setSelectedBranchId(branch.id)}
-                  deviceCoords={deviceCoords}
-                  googleMapsKey={getGoogleMapsKey()}
-                />
-              ) : null}
-              <InfoPill Icon={Storefront} style={{ marginTop: SPACING.md }}>
-                Siparişiniz hazır olduğunda <Text style={InfoPill.strong}>seçtiğiniz şubeden</Text> teslim alabilirsiniz.
-              </InfoPill>
-            </View>
-          ) : null}
-
-          {/* ── 2. Teslimat bölgesi uyarı + zones link (eve teslim) ── */}
-          {deliveryMethod === 'home_delivery' ? (
-            <View style={styles.zonesHintWrap}>
-              {selectedAddress && !isDeliverable ? (
-                <Text style={styles.zonesOutOfArea}>
-                  Seçtiğiniz adres için şu anda teslimatımız bulunmamaktadır.
-                </Text>
-              ) : null}
-              <TouchableOpacity onPress={() => setShowZonesSheet(true)} activeOpacity={0.7}>
-                <Text style={styles.zonesLinkText}>Teslimat bölgelerini gör →</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-
-          {/* ── 3-6. Teslimat Yöntemi + Zamanı (dimmed if !isDeliverable for eve teslim) ── */}
+          {/* ── 1. Teslimat Yöntemi + Zamanı ──
+              EN ÜSTTE: yöntem seçimi altındaki her şeyi belirliyor (Eve
+              Teslim'de adres kartı, Gel-Al'da şube kartı). Aşağıdayken
+              müşteri önce adres seçip sonra Gel-Al'a basınca o seçim
+              boşa gidiyordu. (dimmed if !isDeliverable for eve teslim) */}
           <View
             style={[
               styles.card,
@@ -2246,6 +2098,158 @@ export default function CheckoutScreen() {
               </View>
             ) : null}
           </View>
+
+          {/* ── 2. Teslimat Adresi (eve teslim) ── */}
+          {deliveryMethod === 'home_delivery' ? (
+            <View style={styles.card} onLayout={bolumOlcu('adres')}>
+              <Text style={styles.cardTitle}>Teslimat Adresi</Text>
+              {alanHatalari.adres ? (
+                <Text style={styles.alanHataText}>{alanHatalari.adres}</Text>
+              ) : null}
+              {loadingAddresses ? (
+                <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} />
+              ) : null}
+              {addressError ? <Text style={styles.errorText}>{addressError}</Text> : null}
+              {!loadingAddresses && addresses.length === 0 ? (
+                <View style={{ gap: SPACING.sm }}>
+                  <Text style={styles.noteText}>Kayıtlı adresiniz yok.</Text>
+                  <TouchableOpacity
+                    style={styles.outlineBtn}
+                    onPress={() => navigation.navigate('Addresses', { selectMode: true })}
+                  >
+                    <Text style={styles.outlineBtnText}>+ Adres Ekle</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {addresses.map((address) => {
+                const active = selectedAddressId === address.id;
+                return (
+                  <Selectable
+                    key={address.id}
+                    selected={active}
+                    style={styles.addressRow}
+                    selectedStyle={styles.addressRowActive}
+                    borderRadius={RADIUS.sm}
+                    overlayInset={-1.5}
+                    onPress={() => {
+                      userManuallySelectedAddressRef.current = true;
+                      dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: address.id });
+                      setSelectedAddress(address);
+                    }}
+                  >
+                    <View style={[styles.radioOuter, active && styles.radioOuterActive]}>
+                      {active ? <View style={styles.radioInner} /> : null}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.addressTitle, active && styles.addressTitleActive]}>{address.title || 'Adres'}</Text>
+                      <Text style={[styles.addressText, active && styles.addressTextActive]} numberOfLines={2}>{address.full_address}</Text>
+                      <Text style={[styles.addressMeta, active && styles.addressMetaActive]}>{address.district} • {address.contact_name}</Text>
+                    </View>
+                  </Selectable>
+                );
+              })}
+              {mapCoords ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    const latLng = `${mapCoords.lat},${mapCoords.lng}`;
+                    const label = 'Teslimat Adresi';
+                    const url = Platform.select({
+                      ios: `maps:0,0?q=${label}@${latLng}`,
+                      android: `geo:0,0?q=${latLng}(${label})`,
+                    });
+                    Linking.openURL(url || `https://www.google.com/maps/search/?api=1&query=${latLng}`);
+                  }}
+                  style={styles.mapPreview}
+                >
+                  <Image
+                    source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${mapCoords.lat},${mapCoords.lng}&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${mapCoords.lat},${mapCoords.lng}&style=feature:poi%7Cvisibility:off&key=${getGoogleMapsKey()}` }}
+                    style={styles.mapPreviewImg}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.mapPreviewBadge}>
+                    <MapPin size={11} color="#000" />
+                    <Text style={styles.mapPreviewBadgeText}>Haritada Aç</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : geocoding ? (
+                <View style={[styles.mapPreview, { backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }]}>
+                  <ActivityIndicator color={COLORS.text.secondary} size="small" />
+                </View>
+              ) : null}
+              {/* Koordinatı olmayan adres için harita doğrulama daveti — "Konum
+                  doğrulandı" rozeti kaldırıldı (kullanıcıya bir şey söylemiyordu). */}
+              {selectedAddress && (selectedAddress.latitude == null || selectedAddress.longitude == null) ? (
+                <TouchableOpacity
+                  style={styles.verifyPromptRow}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setVerifyingAddressId(selectedAddress.id);
+                    setShowVerifySheet(true);
+                  }}
+                >
+                  <MapPin size={12} color="#C2410C" />
+                  <Text style={styles.verifyPromptText}>Konumu haritada doğrula</Text>
+                </TouchableOpacity>
+              ) : null}
+              {/* Getir tarzı kalıcı uzak-konum uyarısı — akışı hiç kesmez, sadece
+                  bilgilendirir; koordinatın varlığına bağlı (verified_at'e değil). */}
+              {farFromAddressWarning ? (
+                <View style={styles.farAddressWarningRow}>
+                  <WarningCircle size={14} color="#991B1B" weight="fill" />
+                  <Text style={styles.farAddressWarningText}>
+                    Seçtiğin adres şu anki konumundan uzakta görünüyor. Doğru adresi seçtiğinden emin ol.
+                  </Text>
+                </View>
+              ) : null}
+              {addresses.length > 0 ? (
+                <TouchableOpacity
+                  style={[styles.outlineBtn, { marginTop: SPACING.xs }]}
+                  onPress={() => navigation.navigate('Addresses', { selectMode: true })}
+                >
+                  <Text style={styles.outlineBtnText}>Adresleri Yönet</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* ── 2b. Gel-Al şube (pickup) ── */}
+          {deliveryMethod === 'pickup' ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Teslim Alınacak Şube</Text>
+              {branchesLoading ? <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} /> : null}
+              {branchesError ? <Text style={styles.errorText}>{branchesError}</Text> : null}
+              {!branchesLoading && !branchesError && branches.length === 0 ? (
+                <Text style={styles.noteText}>Şube bilgisi bulunamadı.</Text>
+              ) : null}
+              {!branchesLoading && branches.length > 0 ? (
+                <BranchPicker
+                  branches={branches}
+                  selectedId={selectedBranchId}
+                  onSelect={(branch) => setSelectedBranchId(branch.id)}
+                  deviceCoords={deviceCoords}
+                  googleMapsKey={getGoogleMapsKey()}
+                />
+              ) : null}
+              <InfoPill Icon={Storefront} style={{ marginTop: SPACING.md }}>
+                Siparişiniz hazır olduğunda <Text style={InfoPill.strong}>seçtiğiniz şubeden</Text> teslim alabilirsiniz.
+              </InfoPill>
+            </View>
+          ) : null}
+
+          {/* ── 3. Teslimat bölgesi uyarı + zones link (eve teslim) ── */}
+          {deliveryMethod === 'home_delivery' ? (
+            <View style={styles.zonesHintWrap}>
+              {selectedAddress && !isDeliverable ? (
+                <Text style={styles.zonesOutOfArea}>
+                  Seçtiğiniz adres için şu anda teslimatımız bulunmamaktadır.
+                </Text>
+              ) : null}
+              <TouchableOpacity onPress={() => setShowZonesSheet(true)} activeOpacity={0.7}>
+                <Text style={styles.zonesLinkText}>Teslimat bölgelerini gör →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           {/* ── İletişim Bilgileri (FAZ G: ad/telefon checkout'ta toplanır) ── */}
           <View style={styles.card} onLayout={bolumOlcu('iletisim')}>
