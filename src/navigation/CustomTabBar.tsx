@@ -95,7 +95,6 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             <Icon size={20} weight={isActive ? "bold" : "regular"} color={isActive ? '#fff' : 'rgba(255,255,255,0.4)'} />
           )}
         </Animated.View>
-        {isActive && <View style={s.dot} />}
         <Text style={[s.label, isActive && s.labelActive]}>{label}</Text>
       </TouchableOpacity>
     );
@@ -168,14 +167,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 2,
-  },
-  dot: {
-    position: 'absolute',
-    bottom: 4,
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#fff',
   },
   label: {
     fontSize: 10,

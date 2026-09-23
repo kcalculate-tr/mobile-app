@@ -8,7 +8,6 @@ import {
   Linking,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,9 +28,9 @@ import Selectable from '../components/ui/Selectable';
 import { useSectionTransition } from '../hooks/useSectionTransition';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import AnimatedNumberText from '../components/AnimatedNumberText';
-import DeliveryProgressBar from '../components/DeliveryProgressBar';
 import AddressVerificationSheet from '../components/checkout/AddressVerificationSheet';
 import BranchPicker from '../components/checkout/BranchPicker';
+import CheckoutFooter from '../components/checkout/CheckoutFooter';
 import InfoPill from '../components/ui/InfoPill';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
@@ -794,19 +793,25 @@ export default function CheckoutScreen() {
     selectedTimeSlot,
   ]);
 
-  const actionButtonLabel = useMemo(() => {
+  // Etiket ve tutar AYRI döner: footer tutarı kendi rozetinde gösteriyor,
+  // aradaki "•" ayracı kalktı (23.09.2026 tasarım notu).
+  const actionButton = useMemo<{ label: string; price: string | null }>(() => {
     if (isPaymentFeatureEnabled) {
-      if (!isPaymentConfigured) return 'Ödeme Yapılandırılmadı';
-      if (placingOrder) return 'Ödeme İşleniyor...';
+      if (!isPaymentConfigured) return { label: 'Ödeme Yapılandırılmadı', price: null };
+      if (placingOrder) return { label: 'Ödeme İşleniyor...', price: null };
       if (hasPendingOrderRoute || retryPaymentOrderId) {
-        return `Ödemeyi Tamamla • ${toCurrency(
-          pendingPaymentOrder?.totalAmount || totalAmount,
-        )}`;
+        return {
+          label: 'Ödemeyi Tamamla',
+          price: toCurrency(pendingPaymentOrder?.totalAmount || totalAmount),
+        };
       }
-      return `${paymentActionVerb({ cardsEnabled, selectedCardId: selectedPayCardId })} • ${toCurrency(totalAmount)}`;
+      return {
+        label: paymentActionVerb({ cardsEnabled, selectedCardId: selectedPayCardId }),
+        price: toCurrency(totalAmount),
+      };
     }
 
-    return `Siparişi Oluştur • ${toCurrency(totalAmount)}`;
+    return { label: 'Siparişi Oluştur', price: toCurrency(totalAmount) };
   }, [
     isPaymentFeatureEnabled,
     isPaymentConfigured,
@@ -2181,15 +2186,6 @@ export default function CheckoutScreen() {
             <Text style={styles.noteCounter}>{orderNote.length}/300</Text>
           </View>
 
-          {/* ── 8. Teslimat İlerleme Çubuğu (sadece teslimat bölgesiyse) ── */}
-          {isDeliverable ? (
-            <DeliveryProgressBar
-              cartTotal={subtotal}
-              minOrderAmount={resolvedMinOrder}
-              freeDeliveryThreshold={freeShippingAbove}
-            />
-          ) : null}
-
           {/* ── Ödeme Yöntemi (sadece kart saklama açık kullanıcı) ── */}
           {cardsEnabled ? (
             <View style={styles.card}>
@@ -2358,27 +2354,6 @@ export default function CheckoutScreen() {
             </View>
           ) : null}
 
-          {/* ── Sözleşme ── */}
-          <View style={styles.contractRow}>
-            <Pressable onPress={() => dispatchOrder({ type: 'SET_CONTRACTS_ACCEPTED', payload: !contractsAccepted })} style={styles.checkboxWrap}>
-              <View style={[styles.checkbox, contractsAccepted && styles.checkboxActive]}>
-                {contractsAccepted ? <Text style={styles.checkmark}>✓</Text> : null}
-              </View>
-            </Pressable>
-            <Text style={styles.contractText}>
-              <Text
-                style={styles.contractLink}
-                onPress={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
-              >Kullanım Koşulları</Text>
-              {' '}ile{' '}
-              <Text
-                style={styles.contractLink}
-                onPress={() => navigation.navigate('ProfileContracts', { slug: 'distance-sales' })}
-              >Mesafeli Satış Sözleşmesi</Text>
-              {"'ni"} okudum ve onaylıyorum.
-            </Text>
-          </View>
-
           {screenError ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorBoxText}>{screenError}</Text>
@@ -2459,51 +2434,50 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
 
         </ScrollView>
 
-        {/* ── Footer ── */}
-        <View style={{ backgroundColor: COLORS.white }}>
-        <View style={[styles.footer, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
-          {step === 'summary' ? (() => {
-            const belowMinOrder = subtotal < resolvedMinOrder;
-            const buttonDisabled = isCheckoutDisabled || belowMinOrder || !isDeliverable;
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.orderBtn,
-                  buttonDisabled && styles.orderBtnDisabled,
-                  belowMinOrder && styles.orderBtnBelowMin,
-                ]}
-                onPress={handleCreateOrder}
-                disabled={buttonDisabled}
-                activeOpacity={0.85}
-              >
-                {placingOrder ? (
-                  <ActivityIndicator color={COLORS.brand.green} />
-                ) : (
-                  <Text style={[styles.orderBtnText, buttonDisabled && styles.orderBtnTextDisabled]}>
-                    {actionButtonLabel}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            );
-          })() : (
-            <TouchableOpacity
-              style={[styles.orderBtn, payLoading && styles.orderBtnDisabled]}
-              onPress={handlePay}
-              disabled={payLoading}
-              activeOpacity={0.85}
-            >
-              {payLoading ? (
-                <ActivityIndicator color={COLORS.brand.green} />
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.orderBtnText}>Ödemeyi Tamamla • </Text>
-                  <AnimatedNumberText style={styles.orderBtnText} value={toCurrency(totalAmount)} />
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-        </View>
+        {/* ── Footer ──
+            Sipariş butonu, sözleşme onayı ve teslimat ilerlemesi TEK siyah
+            panelde toplandı. İlerleme çubuğu eskiden sayfanın ortasında ayrı
+            bir karttı; ödeme kararının verildiği yere taşındı. */}
+        {step === 'summary' ? (() => {
+          const belowMinOrder = subtotal < resolvedMinOrder;
+          const buttonDisabled = isCheckoutDisabled || belowMinOrder || !isDeliverable;
+          return (
+            <CheckoutFooter
+              label={actionButton.label}
+              priceText={actionButton.price}
+              onPress={handleCreateOrder}
+              disabled={buttonDisabled}
+              loading={placingOrder}
+              bottomInset={insets.bottom}
+              // Gel-Al'da "ücretsiz teslimat" kavramı yok; orada şerit yalnızca
+              // minimum tutarın altındayken, minimum hedefiyle gösterilir.
+              showProgress={
+                isDeliverable && (deliveryMethod === 'home_delivery' || belowMinOrder)
+              }
+              cartTotal={subtotal}
+              minOrderAmount={resolvedMinOrder}
+              freeDeliveryThreshold={deliveryMethod === 'home_delivery' ? freeShippingAbove : 0}
+              showContracts
+              contractsAccepted={contractsAccepted}
+              onToggleContracts={() =>
+                dispatchOrder({ type: 'SET_CONTRACTS_ACCEPTED', payload: !contractsAccepted })
+              }
+              onPressTerms={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
+              onPressDistanceSales={() =>
+                navigation.navigate('ProfileContracts', { slug: 'distance-sales' })
+              }
+            />
+          );
+        })() : (
+          <CheckoutFooter
+            label="Ödemeyi Tamamla"
+            priceText={toCurrency(totalAmount)}
+            onPress={handlePay}
+            disabled={payLoading}
+            loading={payLoading}
+            bottomInset={insets.bottom}
+          />
+        )}
 
       </KeyboardAvoidingView>
 
@@ -2959,81 +2933,8 @@ const styles = StyleSheet.create({
   },
 
   // Contract
-  contractRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    paddingHorizontal: SPACING.xs,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.xs,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-    flexShrink: 0,
-  },
-  checkboxActive: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
-  },
-  checkmark: {
-    color: COLORS.brand.green,
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-  },
-  checkboxWrap: { paddingRight: 8 },
-  contractLink: { color: COLORS.text.primary, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', textDecorationLine: 'underline' },
-  contractText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    color: '#555555',
-    lineHeight: 19,
-  },
 
   // Footer
-  footer: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    zIndex: 10,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  orderBtn: {
-    height: 58,
-    borderRadius: RADIUS.pill,
-    backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderBtnDisabled: {
-    backgroundColor: '#d0d0d0',
-  },
-  orderBtnBelowMin: {
-    backgroundColor: '#9ca3af',
-    opacity: 0.4,
-  },
-  orderBtnText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.brand.green,
-    letterSpacing: 0.2,
-  },
-  orderBtnTextDisabled: {
-    color: '#9ca3af',
-  },
 
   // Feedback
   errorText: {
