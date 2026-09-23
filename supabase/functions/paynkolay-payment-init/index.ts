@@ -270,15 +270,35 @@ Deno.serve(async (req: Request) => {
         // stored order.discount_amount'a (istemcinin draft'a yazdığı, doğrulanmamış
         // bir değer) düşüyordu — sahte coupon_code + discount_amount enjekte edilip
         // gerçek indirim atlatılabiliyordu. Artık geçersiz kupon = indirim 0.
+        //
+        // 23.09.2026 — validate_coupon YERİNE validate_coupon_v2:
+        // free_item ("Ücretsiz Öğün", Macro ödülü) kuponlarında campaigns
+        // satırındaki discount_value 0'dır; indirim tutarı SEPETTEN hesaplanır
+        // (uygun kalemler içindeki en pahalı bir adedin katalog fiyatı). Eski
+        // çağrı bunu bilmediği için müşteri sepette "bedava öğün" görüp ödeme
+        // adımında TAM ÜCRET ödüyordu. Macro ödülleri (settings.macro_rewards_
+        // enabled) tam olarak bu yüzden kapalı tutuluyordu.
+        //
+        // v2 diğer kupon tiplerinde validate_coupon'a birebir devrediyor —
+        // davranış değişmiyor. p_items SUNUCUNUN yeniden hesapladığı newItems'tan
+        // üretiliyor; istemcinin bildirdiği fiyat/kategori kullanılmıyor.
         let discount = 0
         if (order.coupon_code) {
-          const { data: cv, error: cvErr } = await authedClient.rpc('validate_coupon', {
+          const couponItems = newItems
+            .map((it: any) => ({
+              product_id: parseInt(String(it?.id), 10),
+              quantity: Number(it?.quantity) || 1,
+            }))
+            .filter((x: { product_id: number }) => Number.isFinite(x.product_id))
+
+          const { data: cv, error: cvErr } = await authedClient.rpc('validate_coupon_v2', {
             p_code: order.coupon_code,
             p_cart_total: newSubtotal,
             p_phone: order.phone,
+            p_items: couponItems.length > 0 ? couponItems : null,
           })
           if (cvErr) {
-            console.error('[paynkolay-init] validate_coupon error:', cvErr.message)
+            console.error('[paynkolay-init] validate_coupon_v2 error:', cvErr.message)
           } else if (cv?.valid) {
             discount = round2(Number(cv.discount_amount) || 0)
           } else {

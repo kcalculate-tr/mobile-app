@@ -177,11 +177,26 @@ async function recomputeOrderAmount(
       const pu = prof?.privileged_until ? new Date(prof.privileged_until) : null
       if (pu && pu.getTime() > Date.now()) macroDiscount = round2(newSubtotal * 0.20)
 
+      // 23.09.2026 — validate_coupon_v2 + p_items + p_phone.
+      // Kayıtlı kartla ödeme yolu, paynkolay-payment-init ile AYNI hesabı
+      // yapmak zorunda: free_item (Ücretsiz Öğün) kuponunda indirim tutarı
+      // campaigns.discount_value'dan (0) değil, sepetteki uygun kalemlerin
+      // en pahalısından gelir. p_phone eksikti — first_order_only kontrolü
+      // siparişteki telefonu göremiyordu (init tarafında 21.09'da eklenmişti).
       let discount = 0
       if (order.coupon_code) {
-        const { data: cv } = await authedClient.rpc('validate_coupon', {
+        const couponItems = newItems
+          .map((it: any) => ({
+            product_id: parseInt(String(it?.id), 10),
+            quantity: Number(it?.quantity) || 1,
+          }))
+          .filter((x: { product_id: number }) => Number.isFinite(x.product_id))
+
+        const { data: cv } = await authedClient.rpc('validate_coupon_v2', {
           p_code: order.coupon_code,
           p_cart_total: newSubtotal,
+          p_phone: order.phone,
+          p_items: couponItems.length > 0 ? couponItems : null,
         })
         if (cv?.valid) discount = round2(Number(cv.discount_amount) || 0)
       }
