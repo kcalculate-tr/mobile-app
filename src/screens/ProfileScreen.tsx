@@ -89,7 +89,9 @@ function getLast7Days(): string[] {
 
 const DAY_SHORT = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
-const BAR_MAX_H = 44;
+const BAR_MAX_H = 92;
+/** Gün adı satırının yüksekliği — hedef çizgisi bu kadar yukarıdan başlar. */
+const LABEL_H = 18;
 
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -306,6 +308,16 @@ export default function ProfileScreen() {
 
   const goal = nutritionSummary?.targetKcal || 2000;
   const hasWeekData = weeklyKcal.some(d => d.kcal > 0);
+  const kayitliGun = weeklyKcal.filter(d => d.kcal > 0).length;
+
+  // Elde veri varken iskelet gösterme — bkz. fetchData'daki not.
+  const iskeletGoster = dataLoading && weeklyKcal.length === 0;
+
+  // Grafiğin tepesi: hedefin biraz üstü ya da en yüksek gün — hangisi
+  // büyükse. Hedef çizgisi hep tepeye yapışmasın diye 1.2 katsayısı var.
+  const tavan = Math.max(goal * 1.2, ...weeklyKcal.map(d => d.kcal), 1);
+  const hedefY = (goal / tavan) * BAR_MAX_H;
+  const hedefYuzdesi = goal > 0 && weekAvg ? Math.round((weekAvg / goal) * 100) : 0;
 
   if (loading) return null;
   if (!isAuthenticated) return null;
@@ -321,7 +333,11 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ─── Üst Profil Kartı ─── */}
-        {dataLoading ? (
+        {/* İskelet YALNIZCA elde hiç veri yokken. dataLoading tek başına
+            yeterli değil: ekran her odaklandığında tazelendiği için, veri
+            eldeyken de kısa bir an true olabiliyor ve kart "yükleniyor"
+            gibi yanıp sönüyordu. */}
+        {iskeletGoster ? (
           <View style={styles.skeletonCard} />
         ) : (
           <View style={styles.profileCard}>
@@ -397,52 +413,60 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {dataLoading ? (
+        {iskeletGoster ? (
           <View style={styles.skeletonWeek} />
         ) : (
           <View style={styles.weekCard}>
-            {!hasWeekData && (
+            {!hasWeekData ? (
               <Text style={styles.weekEmptyText}>
-                Henüz veri yok — sipariş ver veya kalori ekle
+                Henüz veri yok. Sipariş ver ya da Kcalculate'ten kalori ekle.
               </Text>
-            )}
-            <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekRow}>
+            ) : null}
+
+            <View style={styles.weekChart}>
+              {/* Hedef çizgisi — grafiğin tek başına anlattığı şey "şu gün şu
+                  kadar yedim" idi. Asıl merak edilen "hedefimin neresindeydim";
+                  çizgi bu karşılaştırmayı tek bakışta veriyor. */}
+              {hasWeekData ? (
+                <View pointerEvents="none" style={[styles.hedefCizgi, { bottom: LABEL_H + hedefY }]}>
+                  <View style={styles.hedefCizgiKesik} />
+                  <View style={styles.hedefRozet}><Text style={styles.hedefRozetText}>Hedef</Text></View>
+                </View>
+              ) : null}
+
               {weeklyKcal.map((day) => {
                 const dayObj = new Date(day.date + 'T00:00:00');
                 const dayName = DAY_SHORT[dayObj.getDay()];
-                const ratio = hasWeekData && day.kcal > 0 ? day.kcal / goal : 0;
-                const barH = hasWeekData
-                  ? day.kcal > 0
-                    ? Math.max(6, Math.min(BAR_MAX_H, ratio * BAR_MAX_H))
-                    : 8
-                  : BAR_MAX_H * 0.2;
+                const oran = day.kcal > 0 ? day.kcal / tavan : 0;
+                const barH = day.kcal > 0 ? Math.max(8, oran * BAR_MAX_H) : 4;
 
-                let barColor = '#D1D5DB';
+                const yuzde = goal > 0 ? day.kcal / goal : 0;
+                let barColor = '#EDEDED';
                 if (day.kcal > 0) {
-                  const pct = day.kcal / goal;
-                  if (pct < 0.85) barColor = '#3B82F6';
-                  else if (pct <= 1.15) barColor = '#22C55E';
-                  else barColor = '#EF4444';
+                  if (yuzde > 1.15) barColor = '#F59E0B';
+                  else if (yuzde >= 0.85) barColor = COLORS.brand.green;
+                  else barColor = '#DCEF9B';
                 }
 
                 return (
                   <View key={day.date} style={styles.dayCol}>
-                    <Text style={styles.dayKcal}>
-                      {day.kcal > 0 ? `${Math.round(day.kcal / 1000 * 10) / 10}k` : ''}
+                    <Text style={styles.dayKcal} numberOfLines={1}>
+                      {day.kcal > 0 ? `${(Math.round(day.kcal / 100) / 10).toFixed(1)}k` : ''}
                     </Text>
                     <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.bar,
-                          { height: barH, backgroundColor: barColor },
-                        ]}
-                      />
+                      <View style={[styles.bar, { height: barH, backgroundColor: barColor }]} />
                     </View>
                     <Text style={styles.dayName}>{dayName}</Text>
                   </View>
                 );
               })}
-            </ScrollView>
+            </View>
+
+            {hasWeekData ? (
+              <Text style={styles.weekOzet}>
+                {`${kayitliGun} günde kayıt · ortalama ${weekAvg?.toLocaleString('tr-TR')} kcal · hedefin %${hedefYuzdesi}'i`}
+              </Text>
+            ) : null}
           </View>
         )}
 
@@ -847,46 +871,91 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     marginHorizontal: SPACING.lg,
     paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.sm,
+    paddingHorizontal: SPACING.md,
     ...SHADOWS.sm,
   },
+  // Sütunlar flex:1 — 7 gün kartın genişliğini TAM doldurur. Eskiden sabit
+  // genişlikli sütunlar yatay ScrollView içindeydi ve sağda boşluk kalıyordu.
+  weekChart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: SPACING.xs,
+  },
+  dayCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  barTrack: {
+    height: BAR_MAX_H,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  bar: {
+    width: '62%',
+    maxWidth: 26,
+    borderRadius: 6,
+  },
+  dayKcal: {
+    fontSize: 11,
+    height: 14,
+    color: COLORS.text.tertiary,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  dayName: {
+    height: LABEL_H,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.tertiary,
+    fontWeight: TYPOGRAPHY.weight.medium,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+
+  // Hedef çizgisi
+  hedefCizgi: {
+    position: 'absolute',
+    left: SPACING.xs,
+    right: SPACING.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  hedefCizgiKesik: {
+    flex: 1,
+    height: 1,
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(0,0,0,0.18)',
+  },
+  hedefRozet: {
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 100,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  hedefRozetText: {
+    fontSize: 9,
+    color: COLORS.text.tertiary,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+
+  weekOzet: {
+    marginTop: SPACING.md,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    textAlign: 'center',
+    fontSize: 11,
+    color: COLORS.text.tertiary,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+
   weekEmptyText: {
     fontSize: TYPOGRAPHY.size.sm,
     color: '#9CA3AF',
     textAlign: 'center',
     marginBottom: SPACING.sm,
     paddingHorizontal: SPACING.sm,
-  },
-  weekRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-  },
-  dayCol: {
-    width: 36,
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  dayKcal: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: '#9CA3AF',
-    height: 12,
-  },
-  barTrack: {
-    height: BAR_MAX_H,
-    justifyContent: 'flex-end',
-  },
-  bar: {
-    width: 16,
-    borderRadius: 4,
-    minHeight: 6,
-  },
-  dayName: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: '#6B7280',
-    fontWeight: TYPOGRAPHY.weight.medium,
-    fontFamily: 'PlusJakartaSans_500Medium',
   },
 
   // ── Quick access grid ──
