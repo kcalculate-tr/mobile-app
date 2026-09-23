@@ -8,6 +8,8 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
 const BAND = 170
 /** Kaç kez geçsin. Sürekli döngü dikkati tutamaz, bir süre sonra göz görmez olur. */
 const SHIMMER_REPEAT = 5
+/** Bir geçişin süresi. Hızlı geçerse göz yakalayamıyor, efekt anlaşılmıyor. */
+const SHIMMER_MS = 1500
 
 /**
  * Sepette uygulanmış kupon kartı.
@@ -17,8 +19,8 @@ const SHIMMER_REPEAT = 5
  * özetinde zaten satır olarak duruyor, iki yerde göstermek ikisini de
  * zayıflatıyordu.
  *
- * Üzerinden sağ üst köşeden sol alt köşeye 45°'lik geniş bir ışık geçiyor.
- * Kupon uygulandığı anda 5 kez oynar ve durur.
+ * Üzerinden "/" biçiminde 45°'lik geniş bir ışık, SOLDAN SAĞA yürüyerek
+ * geçiyor. Kupon uygulandığı anda 5 kez oynar ve durur.
  */
 export default function AppliedCouponCard({ code, title, onRemove }: {
   code: string
@@ -40,11 +42,11 @@ export default function AppliedCouponCard({ code, title, onRemove }: {
       Animated.sequence([
         Animated.timing(shimmer, {
           toValue: 1,
-          duration: 850,
+          duration: SHIMMER_MS,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.delay(550),
+        Animated.delay(450),
       ]),
       { iterations: SHIMMER_REPEAT },
     ).start()
@@ -55,26 +57,29 @@ export default function AppliedCouponCard({ code, title, onRemove }: {
     if (width !== box.width || height !== box.height) setBox({ width, height })
   }
 
-  // Bandın kat etmesi gereken mesafe: köşegen + bant genişliği.
-  const yol = box.width + box.height + BAND
+  // Bant 45° eğik olduğu için yatayda kendi genişliğinden fazla yer kaplar;
+  // kartın iki yanından tamamen çıkabilmesi için yüksekliği de payda sayıyoruz.
+  const basla = -(BAND + box.height)
+  const bitir = box.width + box.height
 
   return (
     <Animated.View style={[s.card, { transform: [{ scale: girisScale }] }]} onLayout={onLayout}>
-      {/* Sağ üst köşeden sol alt köşeye 45°'lik ışık.
-          rotate ÖNCE uygulanıyor; translateX böylece döndürülmüş eksende,
-          yani çapraz yönde hareket ediyor. -45° + azalan X = sol alt yön. */}
+      {/* "/" biçiminde 45°'lik ışık, soldan sağa yürüyor.
+          Sıra kritik: translateX ÖNCE yazılıyor ki hareket kartın kendi
+          yatay ekseninde kalsın; rotate yalnızca bandın BİÇİMİNİ eğiyor.
+          (Ters sırada yazılırsa hareket de dönüyor ve ışık çapraz kayıyor.) */}
       {box.width > 0 && (
         <Animated.View
           pointerEvents="none"
           style={[
             s.band,
             {
-              left: (box.width - BAND) / 2,
+              left: 0,
               top: -box.height,
               height: box.height * 3,
               transform: [
+                { translateX: shimmer.interpolate({ inputRange: [0, 1], outputRange: [basla, bitir] }) },
                 { rotate: '-45deg' },
-                { translateX: shimmer.interpolate({ inputRange: [0, 1], outputRange: [yol, -yol] }) },
               ],
             },
           ]}
@@ -95,7 +100,7 @@ export default function AppliedCouponCard({ code, title, onRemove }: {
       )}
 
       <View style={s.ikon}>
-        <Percent size={20} color={COLORS.brand.green} weight="bold" />
+        <Percent size={20} color="#000000" weight="bold" />
       </View>
 
       <Text style={s.ad} numberOfLines={1}>{title?.trim() || code}</Text>
@@ -132,9 +137,7 @@ const s = StyleSheet.create({
   },
   ikon: {
     width: 40, height: 40, borderRadius: RADIUS.sm,
-    backgroundColor: '#000000',
-    borderWidth: 1,
-    borderColor: 'rgba(185,239,20,0.35)',
+    backgroundColor: COLORS.brand.green,
     alignItems: 'center', justifyContent: 'center',
   },
   ad: {

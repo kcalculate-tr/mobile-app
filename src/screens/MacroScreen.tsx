@@ -81,20 +81,34 @@ export default function MacroScreen() {
 
   const barAnim = useRef(new Animated.Value(0)).current
 
-  const load = useCallback(async (isRefresh = false) => {
+  /**
+   * mod:
+   *  - 'ilk'    : tam ekran yükleniyor göstergesi
+   *  - 'cekme'  : kullanıcı aşağı çekti, RefreshControl dönsün
+   *  - 'sessiz' : ekrana her girişte arka planda tazele, HİÇBİR gösterge yok
+   *
+   * 'sessiz' ayrımı şart: ekrana her girişte refreshing=true yapmak
+   * RefreshControl'ü açıyor, o da içeriği ~60px aşağı itiyordu. Veri gelince
+   * geri toplanıyordu — sekme ile kart arasında "önce boşluk, sonra düzelir"
+   * şeklinde görünen hata buydu.
+   */
+  const load = useCallback(async (mod: 'ilk' | 'cekme' | 'sessiz' = 'ilk') => {
     if (!user?.id) { setLoading(false); return }
-    if (isRefresh) setRefreshing(true); else setLoading(true)
+    if (mod === 'cekme') setRefreshing(true)
+    else if (mod === 'ilk') setLoading(true)
+
     const [p, st] = await Promise.all([fetchMacroProfile(user.id), fetchMacroSettings()])
     setProfile(p); setSettings(st)
     Animated.spring(barAnim, {
       toValue: macroProgress(p, st).mealProgress,
       useNativeDriver: false, speed: 9, bounciness: 2,
     }).start()
+
     setLoading(false); setRefreshing(false)
   }, [user?.id, barAnim])
 
-  useEffect(() => { load() }, [load])
-  useFocusEffect(useCallback(() => { load(true) }, [load]))
+  useEffect(() => { load('ilk') }, [load])
+  useFocusEffect(useCallback(() => { load('sessiz') }, [load]))
 
   useEffect(() => {
     let cancelled = false
@@ -135,7 +149,7 @@ export default function MacroScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 120 }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.brand.green} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => load('cekme')} tintColor={COLORS.brand.green} />
         }
       >
         {tab === 'macro' ? (
