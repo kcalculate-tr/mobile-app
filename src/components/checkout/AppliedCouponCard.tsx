@@ -1,31 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Animated, Easing, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Ticket } from 'phosphor-react-native'
+import { Percent } from 'phosphor-react-native'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
 
-const SHIMMER_WIDTH = 130
-/** Işık kaç kez geçsin — sonsuz döngü dikkat dağıtır, indirim gölgede kalır. */
-const SHIMMER_REPEAT = 3
+/** Işık bandının genişliği — geniş bant daha yumuşak, daha "parlama" hissi verir. */
+const BAND = 170
+/** Kaç kez geçsin. Sürekli döngü dikkati tutamaz, bir süre sonra göz görmez olur. */
+const SHIMMER_REPEAT = 5
 
 /**
  * Sepette uygulanmış kupon kartı.
  *
- * Tasarım kararı: kazanılan tutar kartın KAHRAMANI. Eskiden kupon kodu
- * büyüktü, indirim tutarı ise sipariş özetinin içinde küçük bir satırdı —
- * yani müşteri asıl kazandığı şeyi en son görüyordu. Burada sıralama tersine
- * çevrildi: koyu zemin, neon ve büyük rakam.
+ * Kart bilinçli olarak sade: solda indirim ikonu, ortada BÜYÜK puntoyla
+ * kuponun adı, sağda kaldır butonu. Tutar burada tekrar edilmiyor — sipariş
+ * özetinde zaten satır olarak duruyor, iki yerde göstermek ikisini de
+ * zayıflatıyordu.
  *
- * Üzerinden soldan sağa geçen ışık, kupon uygulandığı ANDA birkaç kez oynar
- * ve durur; sürekli dönen bir parıltı dikkati tutamaz, rahatsız eder.
+ * Üzerinden sağ üst köşeden sol alt köşeye 45°'lik geniş bir ışık geçiyor.
+ * Kupon uygulandığı anda 5 kez oynar ve durur.
  */
-export default function AppliedCouponCard({ code, title, discount, onRemove }: {
+export default function AppliedCouponCard({ code, title, onRemove }: {
   code: string
   title?: string
-  discount: number
   onRemove: () => void
 }) {
-  const [width, setWidth] = useState(0)
+  const [box, setBox] = useState({ width: 0, height: 0 })
   const shimmer = useRef(new Animated.Value(0)).current
   const girisScale = useRef(new Animated.Value(0.96)).current
 
@@ -34,47 +34,59 @@ export default function AppliedCouponCard({ code, title, discount, onRemove }: {
   }, [girisScale])
 
   useEffect(() => {
-    if (width <= 0) return
+    if (box.width <= 0) return
     shimmer.setValue(0)
     Animated.loop(
       Animated.sequence([
         Animated.timing(shimmer, {
           toValue: 1,
-          duration: 900,
+          duration: 850,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.delay(700),
+        Animated.delay(550),
       ]),
       { iterations: SHIMMER_REPEAT },
     ).start()
-  }, [width, shimmer])
+  }, [box.width, shimmer])
 
   const onLayout = (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width
-    if (w !== width) setWidth(w)
+    const { width, height } = e.nativeEvent.layout
+    if (width !== box.width || height !== box.height) setBox({ width, height })
   }
+
+  // Bandın kat etmesi gereken mesafe: köşegen + bant genişliği.
+  const yol = box.width + box.height + BAND
 
   return (
     <Animated.View style={[s.card, { transform: [{ scale: girisScale }] }]} onLayout={onLayout}>
-      {/* Soldan sağa geçen ışık */}
-      {width > 0 && (
+      {/* Sağ üst köşeden sol alt köşeye 45°'lik ışık.
+          rotate ÖNCE uygulanıyor; translateX böylece döndürülmüş eksende,
+          yani çapraz yönde hareket ediyor. -45° + azalan X = sol alt yön. */}
+      {box.width > 0 && (
         <Animated.View
           pointerEvents="none"
           style={[
-            s.shimmer,
+            s.band,
             {
-              transform: [{
-                translateX: shimmer.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-SHIMMER_WIDTH, width + SHIMMER_WIDTH],
-                }),
-              }],
+              left: (box.width - BAND) / 2,
+              top: -box.height,
+              height: box.height * 3,
+              transform: [
+                { rotate: '-45deg' },
+                { translateX: shimmer.interpolate({ inputRange: [0, 1], outputRange: [yol, -yol] }) },
+              ],
             },
           ]}
         >
           <LinearGradient
-            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']}
+            colors={[
+              'rgba(255,255,255,0)',
+              'rgba(255,255,255,0.10)',
+              'rgba(255,255,255,0.30)',
+              'rgba(255,255,255,0.10)',
+              'rgba(255,255,255,0)',
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFill}
@@ -83,20 +95,19 @@ export default function AppliedCouponCard({ code, title, discount, onRemove }: {
       )}
 
       <View style={s.ikon}>
-        <Ticket size={18} color="#000000" weight="fill" />
+        <Percent size={20} color={COLORS.brand.green} weight="bold" />
       </View>
 
-      <View style={s.orta}>
-        <Text style={s.etiket}>KUPON UYGULANDI</Text>
-        <Text style={s.kod} numberOfLines={1}>{title?.trim() || code}</Text>
-      </View>
+      <Text style={s.ad} numberOfLines={1}>{title?.trim() || code}</Text>
 
-      <View style={s.sag}>
-        <Text style={s.tutar} numberOfLines={1}>{`−₺${Math.round(discount).toLocaleString('tr-TR')}`}</Text>
-        <TouchableOpacity onPress={onRemove} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={s.kaldir}>Kaldır</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        onPress={onRemove}
+        activeOpacity={0.75}
+        style={s.kaldirBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Text style={s.kaldirText}>Kaldır</Text>
+      </TouchableOpacity>
     </Animated.View>
   )
 }
@@ -115,44 +126,37 @@ const s = StyleSheet.create({
     borderColor: 'rgba(185,239,20,0.25)',
     overflow: 'hidden',
   },
-  shimmer: {
+  band: {
     position: 'absolute',
-    top: 0, bottom: 0, left: 0,
-    width: SHIMMER_WIDTH,
+    width: BAND,
   },
   ikon: {
-    width: 38, height: 38, borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.brand.green,
+    width: 40, height: 40, borderRadius: RADIUS.sm,
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(185,239,20,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
-  orta: { flex: 1, minWidth: 0 },
-  etiket: {
-    fontSize: 9,
-    letterSpacing: 1.2,
-    color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontWeight: '700',
-  },
-  kod: {
-    marginTop: 2,
-    fontSize: TYPOGRAPHY.size.sm,
+  ad: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 20,
+    lineHeight: 26,
     color: '#FFFFFF',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontWeight: '700',
-  },
-  sag: { alignItems: 'flex-end' },
-  tutar: {
-    fontSize: 24,
-    lineHeight: 28,
-    color: COLORS.brand.green,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontWeight: '800',
   },
-  kaldir: {
-    marginTop: 1,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    textDecorationLine: 'underline',
+  kaldirBtn: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 7,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  kaldirText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: 'rgba(255,255,255,0.75)',
     fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontWeight: '600',
   },
 })

@@ -722,7 +722,6 @@ export default function CartScreen() {
             <AppliedCouponCard
               code={appliedCoupon.code}
               title={appliedCoupon.title}
-              discount={couponDiscount}
               onRemove={removeCoupon}
             />
           </Animated.View>
