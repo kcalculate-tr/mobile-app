@@ -2475,8 +2475,17 @@ export default function CheckoutScreen() {
             ) : null}
             {discountAmount > 0 ? (
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { color: '#16a34a' }]}>İndirim</Text>
-                <AnimatedNumberText style={[styles.summaryValue, { color: '#16a34a' }]} value={`-${toCurrency(discountAmount)}`} />
+                <Text style={styles.summaryLabel}>İndirim</Text>
+                {/* Marka yeşili (#B9EF14) beyaz üzerinde METİN olarak 1,36:1
+                    kontrast verir — okunmaz. Bir üstteki "Ücretsiz" rozetiyle
+                    aynı çözüm: renk ZEMİN, yazı siyah. Yabancı bir yeşil
+                    (#16a34a) yerine artık markanın kendi yeşili. */}
+                <View style={styles.freeBadge}>
+                  <AnimatedNumberText
+                    style={styles.freeBadgeText}
+                    value={`-${toCurrency(discountAmount)}`}
+                  />
+                </View>
               </View>
             ) : null}
             <View style={styles.divider} />
