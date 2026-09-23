@@ -116,7 +116,7 @@ const FAQ_DATA: FaqSection[] = [
     items: [
       {
         q: 'Hangi ödeme yöntemlerini kabul ediyorsunuz?',
-        a: 'Şu anda kredi kartı ve banka kartı ile 3D Secure güvenli ödeme kabul ediyoruz. Yakında Apple Pay, Google Pay ve kayıtlı kart ile ödeme seçenekleri de eklenecektir.',
+        a: 'Kredi kartı ve banka kartı ile 3D Secure güvenli ödeme kabul ediyoruz. Kartınızı dilerseniz güvenle kaydedebilir, sonraki siparişlerinizde tekrar kart bilgisi girmeden ödeyebilirsiniz.',
       },
       {
         q: 'İade politikanız nedir?',

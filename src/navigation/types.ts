@@ -54,5 +54,4 @@ export type RootStackParamList = {
     cardId?: string;
     saveCard?: boolean;
   };
-  MacroSuccess: { quantity: number; newBalance: number; privileged: boolean } | undefined;
 };
