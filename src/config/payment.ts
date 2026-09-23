@@ -5,8 +5,9 @@ type PaymentProvider = 'tosla' | 'paytr_iframe' | 'paynkolay';
 // 21.09.2026: PayTR ve Tosla ile calisma tamamen sona erdi — tek saglayici
 // PaynKolay. Env degeri artik OKUNMUYOR; EAS/eas.json arasindaki
 // EXPO_PUBLIC_PAYMENT_PROVIDER celiskisi build'i PayTR'ye dusuremez.
-// (Koddaki eski paytr/tosla dallari artik ulasilamaz; temizligi ayri bir
-// commit'te yapilacak — odeme mantiginda build oncesi churn istemiyoruz.)
+// 23.09.2026: PaymentScreen'deki PayTR/Tosla akislari ve PAYTR_* URL'leri
+// silindi. CheckoutScreen'deki inline kart formu + 3DS modali hala duruyor
+// (webViewHtml state'ine bagli); o temizlik ayri bir is olarak bekliyor.
 const FALLBACK: PaymentProvider = 'paynkolay';
 
 function readEnv(): string | undefined {
@@ -25,12 +26,6 @@ function resolveProvider(): PaymentProvider {
 }
 
 export const PAYMENT_PROVIDER: PaymentProvider = resolveProvider();
-
-export const PAYTR_INIT_URL =
-  'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/paytr-payment-init';
-
-export const PAYTR_OK_URL = 'https://eatkcal.com/payment/success';
-export const PAYTR_FAIL_URL = 'https://eatkcal.com/payment/fail';
 
 // Paynkolay hosted (Ortak Odeme) — init Edge Function + WebView baseUrl.
 export const PAYNKOLAY_INIT_URL =
