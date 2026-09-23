@@ -194,8 +194,7 @@ const s = StyleSheet.create({
   kodBtnPasif: { opacity: 0.4 },
   kodBtnText: {
     fontSize: TYPOGRAPHY.size.sm, color: '#000000',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   hata: {
     marginTop: SPACING.xs, fontSize: 12, color: '#DC2626',
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -209,8 +208,7 @@ const s = StyleSheet.create({
   },
   bosBaslik: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   bosMetin: {
     fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary, textAlign: 'center',
     lineHeight: 17, paddingHorizontal: SPACING.lg,
@@ -231,12 +229,10 @@ const s = StyleSheet.create({
   gorsel: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', padding: 4 },
   gorselYazi: {
     fontSize: 10, lineHeight: 12, textAlign: 'center', color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   satirBaslik: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary, lineHeight: 18,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   metaSatir: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginTop: 3 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: {
@@ -250,8 +246,7 @@ const s = StyleSheet.create({
   },
   uygulaBtnText: {
     fontSize: 12, color: '#000000',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   satirHata: {
     paddingBottom: SPACING.sm, fontSize: 11, color: '#DC2626',
     fontFamily: 'PlusJakartaSans_500Medium',

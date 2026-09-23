@@ -189,7 +189,6 @@ const s = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#1A1A1A',
     textAlign: 'center',
@@ -203,7 +202,6 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   emailBold: {
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#1A1A1A',
   },
@@ -230,7 +228,6 @@ const s = StyleSheet.create({
   },
   outlineBtnText: {
     fontSize: 15,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#1A1A1A',
   },
@@ -243,7 +240,6 @@ const s = StyleSheet.create({
   },
   filledBtnText: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -257,7 +253,6 @@ const s = StyleSheet.create({
   altLinkText: {
     fontSize: 14,
     color: '#666',
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     textDecorationLine: 'underline',
   },

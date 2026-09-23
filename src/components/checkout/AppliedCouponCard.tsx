@@ -148,7 +148,6 @@ const s = StyleSheet.create({
     lineHeight: 26,
     color: '#000000',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontWeight: '800',
   },
   kaldirBtn: {
     paddingHorizontal: SPACING.md,
@@ -161,6 +160,5 @@ const s = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     color: 'rgba(0,0,0,0.7)',
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontWeight: '600',
   },
 })

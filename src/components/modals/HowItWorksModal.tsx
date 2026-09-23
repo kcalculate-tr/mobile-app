@@ -205,7 +205,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -228,7 +227,6 @@ const styles = StyleSheet.create({
   question: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#111827',
     lineHeight: 20,

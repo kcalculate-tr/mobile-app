@@ -301,13 +301,11 @@ const s = StyleSheet.create({
   },
   yakindaRozetText: {
     fontSize: 10, letterSpacing: 1, color: '#000000',
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   yakindaBaslik: {
     marginTop: SPACING.sm,
     fontSize: TYPOGRAPHY.size.lg, color: '#FFFFFF',
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   yakindaMetin: {
     marginTop: 6, textAlign: 'center',
     fontSize: TYPOGRAPHY.size.xs, color: 'rgba(255,255,255,0.5)', lineHeight: 19,
@@ -349,7 +347,6 @@ const s = StyleSheet.create({
   },
   macroCoinScore: {
     fontSize: TYPOGRAPHY.size['3xl'],
-    fontWeight: TYPOGRAPHY.weight.black,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#ffffff',
     letterSpacing: 1,
@@ -367,14 +364,12 @@ const s = StyleSheet.create({
   },
   macroBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#1A1A1A',
   },
   macroCoinLabel: {
     fontSize: TYPOGRAPHY.size.sm,
     color: 'rgba(255,255,255,0.4)',
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   macroInfoCol: { alignItems: 'center', gap: 4 },
@@ -441,13 +436,11 @@ const s = StyleSheet.create({
   macroProgressLeft: {
     fontSize: TYPOGRAPHY.size.sm,
     color: 'rgba(255,255,255,0.35)',
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   macroProgressRight: {
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.brand.green,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 })

@@ -76,7 +76,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#202020',
     textAlign: 'center',
@@ -105,7 +104,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

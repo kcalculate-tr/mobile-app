@@ -10,7 +10,7 @@ import {
 import { MapPin } from 'phosphor-react-native';
 import { ActivityIndicator } from 'react-native';
 import BottomSheet from './BottomSheet';
-import { COLORS, TYPOGRAPHY, SPACING } from '../constants/theme';
+import { COLORS, SPACING } from '../constants/theme';
 import { formatDeliveryDaysFull } from '../utils/deliveryDays';
 import {
   fetchAllDeliveryZones,
@@ -286,12 +286,10 @@ const s = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontWeight: TYPOGRAPHY.weight.medium as '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: '#999',
   },
   tabTextActive: {
-    fontWeight: TYPOGRAPHY.weight.bold as '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -323,7 +321,6 @@ const s = StyleSheet.create({
   },
   districtText: {
     fontSize: 15,
-    fontWeight: TYPOGRAPHY.weight.medium as '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.primary,
   },
@@ -335,7 +332,6 @@ const s = StyleSheet.create({
   },
   minAmountText: {
     fontSize: 14,
-    fontWeight: TYPOGRAPHY.weight.semibold as '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#F97316',
     flexShrink: 0,

@@ -367,15 +367,13 @@ export default function SupportScreen() {
               ) : ticketsError ? (
                 <View style={{ alignItems: 'center', paddingVertical: 48, gap: 12 }}>
                   <WarningCircle size={48} color="#EF4444" weight="thin" />
-                  <Text style={{ fontSize: 16, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Bir Hata Oluştu</Text>
+                  <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Bir Hata Oluştu</Text>
                   <Text style={{ fontSize: 14, color: COLORS.text.tertiary, textAlign: 'center' }}>{ticketsError}</Text>
                 </View>
               ) : tickets.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 48, gap: 12 }}>
                   <ChatText size={48} color="#e0e0e0" weight="thin" />
-                  <Text style={{ fontSize: 16, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Destek Talebiniz Yok</Text>
+                  <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Destek Talebiniz Yok</Text>
                   <Text style={{ fontSize: 14, color: COLORS.text.tertiary, textAlign: 'center', lineHeight: 21 }}>Henüz bir destek talebi oluşturmadınız.</Text>
                 </View>
               ) : (
@@ -443,8 +441,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  headerTitle: { fontSize: 18, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   headerSub: { fontSize: 12, color: COLORS.text.secondary, marginTop: 1 },
   scroll: { paddingHorizontal: 16, paddingBottom: 40 },
   card: {
@@ -470,12 +467,10 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   },
   phoneText: {
     fontSize: 13,
-    fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: '#999999',
   },
-  badgeText: { fontSize: 12, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.brand.green },
+  badgeText: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.brand.green },
   infoRow: {
     flexDirection: 'row', gap: 8, alignItems: 'flex-start',
     backgroundColor: COLORS.background, borderRadius: 12,
@@ -489,13 +484,11 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.brand.green },
   },
   tab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
   tabActive: { backgroundColor: COLORS.brand.green },
-  tabText: { fontSize: 13, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
+  tabText: { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
   tabTextActive: { color: COLORS.text.primary },
   form: { marginTop: 12, gap: 14 },
   fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
+  fieldLabel: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
   input: {
     backgroundColor: COLORS.background, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12,
@@ -510,15 +503,13 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.secondary },
     borderWidth: 1, borderColor: COLORS.border.medium,
   },
   topicBtnActive: { backgroundColor: '#000000', borderColor: '#000000' },
-  topicBtnText: { fontSize: 12, fontWeight: '500',
-fontFamily: 'PlusJakartaSans_500Medium', color: '#555555' },
+  topicBtnText: { fontSize: 12, fontFamily: 'PlusJakartaSans_500Medium', color: '#555555' },
   topicBtnTextActive: { color: COLORS.brand.green },
   submitBtn: {
     backgroundColor: COLORS.brand.green, borderRadius: 100, height: 52,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  submitBtnText: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  submitBtnText: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   errorText: { fontSize: 12, color: '#EF4444' },
   infoGreen: { fontSize: 12, color: '#065F46' },
   emptyText: { fontSize: 13, color: COLORS.text.secondary, textAlign: 'center', marginTop: 20, marginBottom: 10 },
@@ -526,16 +517,13 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
     backgroundColor: COLORS.background, borderRadius: 14, padding: 12, marginBottom: 8,
   },
   ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  ticketSubject: { flex: 1, fontSize: 13, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary },
+  ticketSubject: { flex: 1, fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary },
   statusBadge: { borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 10, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold'},
+  statusText: { fontSize: 10, fontFamily: 'PlusJakartaSans_700Bold'},
   ticketMeta: { flexDirection: 'row', gap: 10, marginTop: 4, flexWrap: 'wrap' },
   ticketMetaText: { fontSize: 11, color: COLORS.text.secondary },
   ticketBody: { marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)', paddingTop: 12 },
-  ticketBodyLabel: { fontSize: 12, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary, marginBottom: 6 },
+  ticketBodyLabel: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary, marginBottom: 6 },
   ticketBodyBox: { backgroundColor: COLORS.white, borderRadius: 10, padding: 10 },
   ticketBodyText: { fontSize: 13, color: '#555555', lineHeight: 19 },
 });

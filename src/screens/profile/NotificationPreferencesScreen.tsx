@@ -287,7 +287,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -332,7 +331,6 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.primary,
   },
@@ -349,7 +347,6 @@ const styles = StyleSheet.create({
   },
   recommendedText: {
     fontSize: 10,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#1a1a1a',
     letterSpacing: 0.3,
@@ -375,7 +372,6 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#78350F',
   },
@@ -394,7 +390,6 @@ const styles = StyleSheet.create({
   bannerBtnText: {
     color: '#ffffff',
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

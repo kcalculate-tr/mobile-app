@@ -551,7 +551,6 @@ const s = StyleSheet.create({
   logoImg: { width: 100, height: 40, marginTop: 8, marginBottom: 12 },
   title: {
     fontSize: 24,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
     marginBottom: 6,
@@ -564,7 +563,6 @@ const s = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_700,
     marginTop: 12,
@@ -611,14 +609,12 @@ const s = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
   locationLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   locationLinkText: {
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_500,
   },
@@ -637,9 +633,9 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(0,0,0,0.2)',
   },
-  termsCheckMark: { fontSize: 12, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  termsCheckMark: { fontSize: 12, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   termsText: { flex: 1, fontSize: 13, color: GRAY_500, lineHeight: 19 },
-  termsLink: { color: TEXT_PRIMARY, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  termsLink: { color: TEXT_PRIMARY, fontFamily: 'PlusJakartaSans_600SemiBold' },
   primaryBtn: {
     height: 52,
     borderRadius: 14,
@@ -650,7 +646,6 @@ const s = StyleSheet.create({
   },
   primaryBtnText: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
@@ -658,7 +653,6 @@ const s = StyleSheet.create({
   loginText: { fontSize: 14, color: GRAY_500 },
   loginLink: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },

@@ -785,7 +785,6 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
     letterSpacing: -0.5,
@@ -803,7 +802,6 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     // Yesil uzerinde SIYAH. Beyaz yazi #B9EF14 uzerinde 1.4:1 kaliyor —
     // gun isiginda okunmuyor. Siyah 14.8:1; "Ucretsiz" rozeti ve Gonder
@@ -820,7 +818,6 @@ const styles = StyleSheet.create({
   },
   headerActionText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#555555',
     textAlign: 'center',
@@ -888,7 +885,6 @@ const styles = StyleSheet.create({
   searchButtonText: {
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.brand.green,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   // Categories
@@ -921,7 +917,6 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.primary,
     textAlign: 'center',
@@ -941,7 +936,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
     marginBottom: SPACING.md,
@@ -979,7 +973,6 @@ const styles = StyleSheet.create({
   },
   promoTitle: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.white,
     marginBottom: SPACING.xs,
@@ -992,12 +985,10 @@ const styles = StyleSheet.create({
   },
   promoActionText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.brand.green,
   },
-  badgeText: { color: 'white', fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold'},
+  badgeText: { color: 'white', fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_700Bold'},
   chipScroll: {
     maxHeight: 52,
     marginBottom: SPACING.md,
@@ -1017,7 +1008,6 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   },
   chipText: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.primary,
     opacity: 0.6,
@@ -1077,13 +1067,11 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   caloriesText: {
     color: '#1A1A1A',
     fontSize: 11,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     letterSpacing: 0.3,
   },
   productName: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.primary,
     marginBottom: 0,
@@ -1097,7 +1085,6 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   },
   productPrice: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -1123,7 +1110,6 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   },
   productPriceDiscounted: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#dc2626',
   },
@@ -1186,7 +1172,6 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   },
   privilegedBadgeText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#DC2626',
   },
@@ -1211,7 +1196,6 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   },
   qtyText: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
     minWidth: 16,

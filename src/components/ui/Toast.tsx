@@ -73,6 +73,5 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  text: { flex: 1, fontSize: 14, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 20 },
+  text: { flex: 1, fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 20 },
 });

@@ -435,7 +435,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -498,7 +497,6 @@ const styles = StyleSheet.create({
   },
   cardNumberDisplay: {
     fontSize: 18,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#ffffff',
     marginBottom: 16,
@@ -515,7 +513,6 @@ const styles = StyleSheet.create({
   },
   cardValueText: {
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#ffffff',
   },
@@ -529,7 +526,6 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: 15,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
     marginBottom: 16,
@@ -539,7 +535,6 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.secondary,
     marginBottom: 6,
@@ -607,7 +602,6 @@ const styles = StyleSheet.create({
   },
   payButtonText: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#1a3d00',
   },
@@ -627,7 +621,6 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#fff',
   },
@@ -637,7 +630,6 @@ const styles = StyleSheet.create({
   modalCloseText: {
     fontSize: 14,
     color: '#fff',
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });
@@ -1323,9 +1315,9 @@ const paytrStyles = StyleSheet.create({
   stallText: { fontSize: 14, color: '#111', textAlign: 'center', lineHeight: 20 },
   stallRow: { flexDirection: 'row', gap: 10 },
   stallPrimary: { flex: 1, height: 44, borderRadius: 100, backgroundColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center' },
-  stallPrimaryText: { fontSize: 14, fontWeight: '700', fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
+  stallPrimaryText: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#1a3d00' },
   stallSecondary: { flex: 1, height: 44, borderRadius: 100, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
-  stallSecondaryText: { fontSize: 14, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', color: '#333' },
+  stallSecondaryText: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#333' },
   body: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
@@ -1345,7 +1337,6 @@ const paytrStyles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#fff',
   },
@@ -1375,7 +1366,6 @@ const paytrStyles = StyleSheet.create({
   },
   retryText: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#1a3d00',
   },
@@ -1389,7 +1379,6 @@ const paytrStyles = StyleSheet.create({
     color: '#fff',
     marginTop: 12,
     fontSize: 14,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });

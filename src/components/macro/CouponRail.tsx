@@ -119,8 +119,7 @@ const s = StyleSheet.create({
   },
   baslik: {
     fontSize: TYPOGRAPHY.size.lg, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   altBaslik: {
     marginTop: 2, fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary,
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -128,8 +127,7 @@ const s = StyleSheet.create({
   tumu: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   tumuText: {
     fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
 
   rail: { paddingHorizontal: SPACING.lg, gap: SPACING.md },
   tile: { width: TILE },
@@ -143,22 +141,20 @@ const s = StyleSheet.create({
   },
   tileDiscount: {
     fontSize: 18, lineHeight: 22, textAlign: 'center', color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   badge: {
     position: 'absolute', top: 6, left: 6, maxWidth: '85%',
     backgroundColor: COLORS.brand.green, borderRadius: 100,
     paddingHorizontal: 7, paddingVertical: 2,
   },
-  badgeText: { fontSize: 9, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700' },
+  badgeText: { fontSize: 9, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold'},
   urgent: {
     position: 'absolute', bottom: 6, right: 6,
     backgroundColor: 'rgba(220,38,38,0.92)', borderRadius: 100,
     paddingHorizontal: 7, paddingVertical: 2,
   },
-  urgentText: { fontSize: 9, color: '#FFFFFF', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700' },
+  urgentText: { fontSize: 9, color: '#FFFFFF', fontFamily: 'PlusJakartaSans_700Bold'},
   tileTitle: {
     marginTop: SPACING.sm, fontSize: 12, lineHeight: 16, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
 })

@@ -865,7 +865,6 @@ const styles = StyleSheet.create({
   },
   infoTitleLg: {
     fontSize: 32,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
     textAlign: 'center',
@@ -887,7 +886,6 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 52,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: BLACK,
     letterSpacing: -1,
@@ -918,7 +916,6 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     fontSize: 24,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: BLACK,
     textAlign: 'center',
@@ -941,7 +938,6 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
@@ -955,7 +951,6 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: 16,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: WHITE,
   },
@@ -972,7 +967,6 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: 24,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: BLACK,
     marginBottom: 6,
@@ -1007,7 +1001,6 @@ const styles = StyleSheet.create({
   },
   locationTitle: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
@@ -1018,7 +1011,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_700,
     marginTop: 12,
@@ -1067,7 +1059,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
@@ -1086,7 +1077,6 @@ const styles = StyleSheet.create({
   },
   locationLinkText: {
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_500,
   },
@@ -1103,7 +1093,6 @@ const styles = StyleSheet.create({
   loginText: { fontSize: 14, color: GRAY_500 },
   loginLink: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
@@ -1123,13 +1112,11 @@ const styles = StyleSheet.create({
   },
   toggleBtnText: {
     fontSize: 14,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_500,
   },
   toggleBtnTextActive: {
     color: TEXT_PRIMARY,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   activityCard: {
@@ -1146,7 +1133,6 @@ const styles = StyleSheet.create({
   },
   activityLabel: {
     fontSize: 15,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
     marginBottom: 2,

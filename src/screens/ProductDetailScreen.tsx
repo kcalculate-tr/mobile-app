@@ -1291,7 +1291,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
     textAlign: 'center',
@@ -1333,7 +1332,6 @@ const styles = StyleSheet.create({
   imagePlaceholderText: {
     fontSize: 13,
     color: '#b0b0b0',
-    fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   infoCard: {
@@ -1346,7 +1344,6 @@ const styles = StyleSheet.create({
   },
   productTitle: {
     fontSize: 22,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
     lineHeight: 26,
@@ -1376,20 +1373,17 @@ const styles = StyleSheet.create({
   },
   macroValue: {
     fontSize: 15,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     lineHeight: 17,
   },
   macroUnit: {
     fontSize: 9,
-    fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.tertiary,
     lineHeight: 10,
   },
   macroLabel: {
     fontSize: 11,
-    fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.tertiary,
   },
@@ -1408,13 +1402,11 @@ const styles = StyleSheet.create({
   },
   miniMacroValue: {
     fontSize: 10.5,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     lineHeight: 12,
   },
   miniMacroUnit: {
     fontSize: 8,
-    fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.tertiary,
     lineHeight: 9,
@@ -1424,7 +1416,6 @@ const styles = StyleSheet.create({
   },
   descriptionTitle: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
     marginBottom: 6,
@@ -1459,7 +1450,6 @@ const styles = StyleSheet.create({
   },
   optionGroupTitle: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -1476,7 +1466,6 @@ const styles = StyleSheet.create({
   },
   requiredPillText: {
     fontSize: 9,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -1485,7 +1474,6 @@ const styles = StyleSheet.create({
   },
   groupValidationError: {
     fontSize: 12,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#EF4444',
     marginTop: 6,
@@ -1567,13 +1555,11 @@ const styles = StyleSheet.create({
   optionName: {
     color: '#000000',
     fontSize: 12,
-    fontWeight: '400',
     fontFamily: 'PlusJakartaSans_400Regular',
   },
   optionPriceInline: {
     color: '#878787',
     fontSize: 11,
-    fontWeight: '400',
     fontFamily: 'PlusJakartaSans_400Regular',
     marginLeft: 6,
   },
@@ -1626,7 +1612,6 @@ const styles = StyleSheet.create({
   },
   priceCompact: {
     fontSize: 18,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
@@ -1650,7 +1635,6 @@ const styles = StyleSheet.create({
     minWidth: 28,
     textAlign: 'center',
     fontSize: 15,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
@@ -1667,7 +1651,6 @@ const styles = StyleSheet.create({
   },
   goToCartText: {
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#0A1F0F',
   },
@@ -1680,7 +1663,6 @@ const styles = StyleSheet.create({
   },
   priceValue: {
     fontSize: 22,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
@@ -1691,7 +1673,6 @@ const styles = StyleSheet.create({
   },
   priceValueDiscounted: {
     fontSize: 22,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#dc2626',
   },
@@ -1701,14 +1682,12 @@ const styles = StyleSheet.create({
   },
   priceOriginalStrike: {
     fontSize: 12,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#9ca3af',
     textDecorationLine: 'line-through',
   },
   priceDiscountBadge: {
     fontSize: 11,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#dc2626',
   },
@@ -1726,7 +1705,6 @@ const styles = StyleSheet.create({
   },
   addToCartText: {
     fontSize: 15,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -1739,7 +1717,6 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 22,
     color: COLORS.text.primary,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     marginBottom: 8,
   },
@@ -1759,7 +1736,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: COLORS.text.primary,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 14,
   },

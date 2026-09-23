@@ -60,8 +60,7 @@ function DiffBadge({ value, inverse = false }: { value: number | null; inverse?:
 
 const b = StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 100, paddingHorizontal: 7, paddingVertical: 3 },
-  text: { fontSize: 10, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold'},
+  text: { fontSize: 10, fontFamily: 'PlusJakartaSans_700Bold'},
 });
 
 export default function MeasurementHistoryScreen() {
@@ -217,39 +216,32 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  headerTitle: { fontSize: 17, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   content: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
 
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
   emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 17, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  emptyTitle: { fontSize: 17, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   emptySub: { fontSize: 13, color: COLORS.text.tertiary, textAlign: 'center' },
 
   motivationCard: {
     backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16,
   },
-  motivationText: { fontSize: 15, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.brand.green, lineHeight: 22 },
+  motivationText: { fontSize: 15, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.brand.green, lineHeight: 22 },
 
   summaryCard: {
     backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  summaryTitle: { fontSize: 14, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  summaryTitle: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   summaryPeriod: { fontSize: 11, color: COLORS.text.tertiary },
   summaryRow: { flexDirection: 'row', gap: 8 },
   summaryCell: { flex: 1, alignItems: 'center', gap: 4 },
-  summaryCellLabel: { fontSize: 10, color: COLORS.text.tertiary, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold'},
-  summaryCellValue: { fontSize: 15, fontWeight: '800',
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#000000' },
+  summaryCellLabel: { fontSize: 10, color: COLORS.text.tertiary, fontFamily: 'PlusJakartaSans_600SemiBold'},
+  summaryCellValue: { fontSize: 15, fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#000000' },
 
-  listTitle: { fontSize: 13, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginTop: 4 },
+  listTitle: { fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginTop: 4 },
 
   row: {
     backgroundColor: '#ffffff', borderRadius: 14, padding: 14,
@@ -258,8 +250,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginTop: 4 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   rowLeft: { gap: 6, flex: 1 },
-  rowDate: { fontSize: 13, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  rowDate: { fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   rowMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   rowMetric: { fontSize: 11, color: COLORS.text.secondary },
 });

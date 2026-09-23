@@ -136,14 +136,12 @@ const s = StyleSheet.create({
   imagePassive: { opacity: 0.45 },
   text: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.tertiary,
   },
   textActive: {
     color: '#000000',
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontWeight: '700',
   },
   badge: {
     minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5,
@@ -153,7 +151,6 @@ const s = StyleSheet.create({
   badgeActive: { backgroundColor: COLORS.brand.green },
   badgeText: {
     fontSize: 10, color: COLORS.text.tertiary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   badgeTextActive: { color: '#000000' },
 })

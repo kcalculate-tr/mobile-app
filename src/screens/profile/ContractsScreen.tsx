@@ -106,7 +106,6 @@ const s = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -130,7 +129,6 @@ const s = StyleSheet.create({
   },
   tabTextActive: {
     color: '#1A1A1A',
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   tabIndicator: {
@@ -157,7 +155,6 @@ const s = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: '#1A1A1A',
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     marginBottom: 12,
     marginTop: 4,

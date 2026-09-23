@@ -48,7 +48,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#202020',
     marginBottom: 12,
@@ -76,7 +75,6 @@ const styles = StyleSheet.create({
   retryText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

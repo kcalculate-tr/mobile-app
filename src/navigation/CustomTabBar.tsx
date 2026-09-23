@@ -170,13 +170,11 @@ const s = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    fontWeight: '500',
     fontFamily: 'PlusJakartaSans_500Medium',
     color: 'rgba(255,255,255,0.4)',
     marginTop: 2,
   },
   labelActive: {
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#fff',
   },
@@ -212,7 +210,6 @@ const s = StyleSheet.create({
   badgeText: {
     color: '#B9EF14',
     fontSize: 8,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     lineHeight: 10,
   },

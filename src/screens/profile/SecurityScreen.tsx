@@ -317,8 +317,7 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  headerTitle: { fontSize: 17, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   content: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
 
@@ -331,8 +330,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.1)', alignItems: 'center', justifyContent: 'center',
   },
-  shieldTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  shieldTitle: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   shieldSub: { fontSize: 12, color: 'rgba(0,0,0,0.6)', marginTop: 2 },
 
   // Password card
@@ -341,13 +339,11 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  cardTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 4 },
+  cardTitle: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 4 },
 
   // Field
   fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: '500',
-fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
+  fieldLabel: { fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
   inputWrapper: { position: 'relative' },
   input: {
     height: 52, borderRadius: 100, borderWidth: 1,
@@ -364,8 +360,7 @@ fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
   strengthWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   strengthBars: { flex: 1, flexDirection: 'row', gap: 6 },
   strengthBar: { flex: 1, height: 4, borderRadius: 100 },
-  strengthLabel: { fontSize: 12, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', width: 40 },
+  strengthLabel: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', width: 40 },
 
   errorText: { fontSize: 13, color: '#EF4444' },
   successText: { fontSize: 13, color: '#16A34A' },
@@ -375,21 +370,18 @@ fontFamily: 'PlusJakartaSans_600SemiBold', width: 40 },
     alignItems: 'center', justifyContent: 'center', marginTop: 4,
   },
   saveBtnDisabled: { opacity: 0.7 },
-  saveBtnText: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  saveBtnText: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   // Danger
   dangerCard: {
     backgroundColor: '#FEF2F2', borderRadius: 16, padding: 16,
     borderWidth: 1, borderColor: '#FECACA', gap: 12,
   },
-  dangerTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#991B1B' },
+  dangerTitle: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#991B1B' },
   dangerSub: { fontSize: 13, color: '#7F1D1D', lineHeight: 19 },
   deleteBtn: {
     height: 48, borderRadius: 100, backgroundColor: '#EF4444',
     alignItems: 'center', justifyContent: 'center',
   },
-  deleteBtnText: { color: '#ffffff', fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14 },
+  deleteBtnText: { color: '#ffffff', fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14 },
 });

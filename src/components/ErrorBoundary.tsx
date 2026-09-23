@@ -70,7 +70,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: TYPOGRAPHY.weight.black as any,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
     textAlign: 'center',
@@ -78,7 +77,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '400',
     fontFamily: 'PlusJakartaSans_400Regular' as any,
     color: COLORS.text.secondary,
     textAlign: 'center',
@@ -95,7 +93,6 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold as any,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.error,
     marginBottom: SPACING.xs,
@@ -119,7 +116,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.black as any,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.black,
     textAlign: 'center',
@@ -131,7 +127,6 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 28,
-    fontWeight: TYPOGRAPHY.weight.black as any,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.brand.green,
     letterSpacing: 2,

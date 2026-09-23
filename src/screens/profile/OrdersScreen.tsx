@@ -224,16 +224,14 @@ export default function OrdersScreen() {
       ) : errorMessage ? (
         <View style={{ alignItems: 'center', paddingVertical: 48, gap: 12 }}>
           <WarningCircle size={48} color="#EF4444" weight="thin" />
-          <Text style={{ fontSize: 16, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Bir Hata Oluştu</Text>
+          <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Bir Hata Oluştu</Text>
           <Text style={{ fontSize: 14, color: COLORS.text.tertiary, textAlign: 'center' }}>{errorMessage}</Text>
           <TouchableOpacity
             onPress={loadOrders}
             style={{ backgroundColor: COLORS.brand.green, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 14, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
+            <Text style={{ fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#000' }}>Tekrar Dene</Text>
           </TouchableOpacity>
         </View>
       ) : orders.length === 0 ? (
@@ -339,8 +337,7 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: RADIUS.md,
     backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  headerTitle: { fontSize: TYPOGRAPHY.size.lg, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
 
   // Tabs
   tabsRow: { maxHeight: 50 },
@@ -350,24 +347,20 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
     backgroundColor: COLORS.white,
   },
   tabBtnActive: { backgroundColor: COLORS.brand.green },
-  tabText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.medium,
-fontFamily: 'PlusJakartaSans_500Medium', color: 'rgba(0,0,0,0.5)' },
-  tabTextActive: { color: COLORS.text.primary, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', opacity: 1 },
+  tabText: { fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_500Medium', color: 'rgba(0,0,0,0.5)' },
+  tabTextActive: { color: COLORS.text.primary, fontFamily: 'PlusJakartaSans_700Bold', opacity: 1 },
 
   // States
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING['2xl'], gap: SPACING.sm },
   errorText: { color: '#B91C1C', fontSize: TYPOGRAPHY.size.md, textAlign: 'center' },
   
-  emptyTitle: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, textAlign: 'center' },
+  emptyTitle: { fontSize: TYPOGRAPHY.size.lg, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, textAlign: 'center' },
   emptySub: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary, textAlign: 'center', marginBottom: SPACING.sm },
   actionBtn: {
     backgroundColor: COLORS.brand.green, borderRadius: RADIUS.pill,
     paddingHorizontal: SPACING['2xl'], paddingVertical: SPACING.md,
   },
-  actionBtnText: { color: COLORS.text.primary, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', fontSize: TYPOGRAPHY.size.md },
+  actionBtnText: { color: COLORS.text.primary, fontFamily: 'PlusJakartaSans_700Bold', fontSize: TYPOGRAPHY.size.md },
 
   // List
   list: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.xs, gap: SPACING.sm },
@@ -377,13 +370,11 @@ fontFamily: 'PlusJakartaSans_700Bold', fontSize: TYPOGRAPHY.size.md },
     ...SHADOWS.sm,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  orderCode: { fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginBottom: 3 },
+  orderCode: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginBottom: 3 },
   dateText: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary },
   badge: { borderRadius: RADIUS.pill, paddingHorizontal: SPACING.sm, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   badgeEmoji: { fontSize: TYPOGRAPHY.size.xs },
-  badgeText: { fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold'},
+  badgeText: { fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_700Bold'},
 
   modPill: {
     alignSelf: 'flex-start',
@@ -396,7 +387,6 @@ fontFamily: 'PlusJakartaSans_700Bold'},
   modPillText: {
     color: '#EA580C',
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 
@@ -408,8 +398,7 @@ fontFamily: 'PlusJakartaSans_700Bold'},
 
   // Bottom row
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  amountText: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
+  amountText: { fontSize: TYPOGRAPHY.size.lg, fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
   detayRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   detayText: { fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.secondary },
 });

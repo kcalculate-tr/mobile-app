@@ -2612,16 +2612,14 @@ export default function CheckoutScreen() {
             {/* ── Kart logoları ── */}
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: SPACING.sm, marginTop: SPACING.md }}>
               <View style={{ backgroundColor: COLORS.white, borderRadius: RADIUS.xs, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: COLORS.border.medium }}>
-                <Text style={{ fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#1a1f71' }}>VISA</Text>
+                <Text style={{ fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_800ExtraBold', color: '#1a1f71' }}>VISA</Text>
               </View>
               <View style={{ backgroundColor: COLORS.white, borderRadius: RADIUS.xs, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: COLORS.border.medium, flexDirection: 'row' }}>
                 <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#d4183d' }} />
                 <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#ff8c00', marginLeft: -8, opacity: 0.9 }} />
               </View>
 <View style={{ backgroundColor: COLORS.white, borderRadius: RADIUS.xs, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: COLORS.border.medium }}>
-                <Text style={{ fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
+                <Text style={{ fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
               </View>
             </View>
 
@@ -2704,10 +2702,10 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
       <Modal visible={!!webViewHtml} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null })}>
         <View style={{ flex: 1, backgroundColor: '#F8F9FA', paddingTop: Math.max(insets.top, 44) }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, backgroundColor: '#F8F9FA', minHeight: 52, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)' }}>
-            <Text numberOfLines={1} style={{ flex: 1, fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.bold, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginRight: SPACING.lg }}>3D Secure Doğrulama</Text>
+            <Text numberOfLines={1} style={{ flex: 1, fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary, marginRight: SPACING.lg }}>3D Secure Doğrulama</Text>
             <TouchableOpacity onPress={() => dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null })} style={{ height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 }}>
-              <Text style={{ fontSize: 16, color: COLORS.text.primary, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold' }}>✕</Text>
-              <Text style={{ fontSize: 16, color: COLORS.text.primary, fontWeight: '600', fontFamily: 'PlusJakartaSans_600SemiBold', marginLeft: 4 }}>Kapat</Text>
+              <Text style={{ fontSize: 16, color: COLORS.text.primary, fontFamily: 'PlusJakartaSans_600SemiBold' }}>✕</Text>
+              <Text style={{ fontSize: 16, color: COLORS.text.primary, fontFamily: 'PlusJakartaSans_600SemiBold', marginLeft: 4 }}>Kapat</Text>
             </TouchableOpacity>
           </View>
           <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
@@ -2786,7 +2784,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
           {verifyingPayment && (
             <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(248,249,250,0.97)', alignItems: 'center', justifyContent: 'center', gap: SPACING.md }}>
               <ActivityIndicator size="large" color={COLORS.brand.green} />
-              <Text style={{ fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.semibold, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary }}>Ödemeniz doğrulanıyor…</Text>
+              <Text style={{ fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.primary }}>Ödemeniz doğrulanıyor…</Text>
             </View>
           )}
           </View>
@@ -2836,7 +2834,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -2860,19 +2857,16 @@ const styles = StyleSheet.create({
   },
   zonesOutOfArea: {
     fontSize: 13,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#F97316',
   },
   zonesLinkText: {
     fontSize: 12,
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: SURFACE.unselectedText,
   },
   cardTitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
     marginBottom: 2,
@@ -2940,7 +2934,6 @@ const styles = StyleSheet.create({
   },
   trustStandaloneTitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -2971,7 +2964,6 @@ const styles = StyleSheet.create({
   },
   freeBadgeText: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },
@@ -2994,7 +2986,6 @@ const styles = StyleSheet.create({
   pendingPayHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   pendingPayTitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#B91C1C',
   },
@@ -3007,7 +2998,6 @@ const styles = StyleSheet.create({
   pendingPayCode: { fontFamily: 'PlusJakartaSans_700Bold' },
   pendingPayAmount: {
     fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#B91C1C',
   },
@@ -3032,7 +3022,6 @@ const styles = StyleSheet.create({
   },
   addressTitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -3059,7 +3048,6 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -3074,7 +3062,6 @@ const styles = StyleSheet.create({
   },
   outlineBtnText: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.primary,
   },
@@ -3087,7 +3074,6 @@ const styles = StyleSheet.create({
   },
   mapBtnText: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -3119,20 +3105,17 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.primary,
   },
   summaryLabelBold: {
     flex: 1,
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
   summaryValueBold: {
     fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
@@ -3178,7 +3161,6 @@ const styles = StyleSheet.create({
   errorBoxText: {
     fontSize: TYPOGRAPHY.size.sm,
     color: '#dc2626',
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   retryBtn: {
@@ -3191,7 +3173,6 @@ const styles = StyleSheet.create({
   retryBtnText: {
     color: COLORS.brand.green,
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   warningBox: {
@@ -3205,7 +3186,6 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: TYPOGRAPHY.size.sm,
     color: '#92400e',
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 
@@ -3257,7 +3237,6 @@ const styles = StyleSheet.create({
   },
   cardNumber: {
     fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.white,
     marginBottom: SPACING.lg,
@@ -3270,7 +3249,6 @@ const styles = StyleSheet.create({
   },
   cardValue: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.white,
   },
@@ -3279,7 +3257,6 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.secondary,
   },
@@ -3343,7 +3320,6 @@ const styles = StyleSheet.create({
   },
   deliveryGroupLabel: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.secondary,
     textTransform: 'uppercase' as const,
@@ -3383,7 +3359,6 @@ const styles = StyleSheet.create({
   zoneBlockBannerText: {
     color: '#b91c1c',
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   chipActive: {
@@ -3392,13 +3367,11 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: SURFACE.unselectedText,
   },
   chipTextActive: {
     color: COLORS.text.primary,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   // Scheduled date picker
@@ -3422,21 +3395,18 @@ const styles = StyleSheet.create({
   },
   dateDayName: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: SURFACE.unselectedText,
     letterSpacing: 0.2,
   },
   dateDayNum: {
     fontSize: TYPOGRAPHY.size['2xl'],
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
     lineHeight: 24,
   },
   dateMonth: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: SURFACE.unselectedText,
   },
@@ -3470,13 +3440,11 @@ const styles = StyleSheet.create({
   },
   timeSlotLabel: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: SURFACE.unselectedText,
   },
   timeSlotLabelActive: {
     color: '#000000',
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   // Gri ARTIK yalnizca gercekten kullanilamayan yuzeylerin dili — opacity
@@ -3491,7 +3459,6 @@ const styles = StyleSheet.create({
   timeSlotFullText: {
     marginTop: 2,
     fontSize: 11,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#C1282E',
   },
@@ -3516,7 +3483,6 @@ const styles = StyleSheet.create({
   },
   mapPreviewBadgeText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
   },
@@ -3533,7 +3499,6 @@ const styles = StyleSheet.create({
   },
   verifyPromptText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#C2410C',
     textDecorationLine: 'underline',

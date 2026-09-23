@@ -365,8 +365,7 @@ const s = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17, color: '#000000',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
 
 
   // Banner
@@ -379,8 +378,7 @@ const s = StyleSheet.create({
 
   sectionTitle: {
     fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary, marginTop: SPACING.xs,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
 
   // Izgara
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
@@ -396,8 +394,7 @@ const s = StyleSheet.create({
   },
   tileDiscount: {
     fontSize: 22, lineHeight: 26, textAlign: 'center',
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   tileMinCart: {
     marginTop: 6, fontSize: 11,
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -407,18 +404,17 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.brand.green, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  tileBadgeText: { fontSize: 10, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700' },
+  tileBadgeText: { fontSize: 10, color: '#000000', fontFamily: 'PlusJakartaSans_700Bold'},
   tileUrgent: {
     position: 'absolute', bottom: 8, right: 8,
     backgroundColor: 'rgba(220,38,38,0.92)', borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  tileUrgentText: { fontSize: 10, color: '#FFFFFF', fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700' },
+  tileUrgentText: { fontSize: 10, color: '#FFFFFF', fontFamily: 'PlusJakartaSans_700Bold'},
   tileFooter: { paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm, minHeight: 52 },
   tileTitle: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary, lineHeight: 18,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
 
   // Kod girişi
   codeCard: {
@@ -427,8 +423,7 @@ const s = StyleSheet.create({
   },
   codeCardTitle: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   inputRow: { flexDirection: 'row', gap: SPACING.sm },
   input: {
     flex: 1, height: 44, borderRadius: RADIUS.sm, paddingHorizontal: SPACING.md,
@@ -441,8 +436,7 @@ const s = StyleSheet.create({
   },
   applyBtnText: {
     fontSize: TYPOGRAPHY.size.sm, color: '#000000',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   hintText: {
     fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary, lineHeight: 17,
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -453,12 +447,10 @@ const s = StyleSheet.create({
   sheetImage: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   sheetDiscount: {
     fontSize: 32, lineHeight: 36, textAlign: 'center',
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   sheetTitle: {
     marginTop: SPACING.lg, fontSize: TYPOGRAPHY.size.lg, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   sheetDesc: {
     marginTop: 6, fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.secondary, lineHeight: 20,
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -482,8 +474,7 @@ const s = StyleSheet.create({
   },
   sheetCodeText: {
     marginTop: 2, fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary, letterSpacing: 1,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   sheetCopyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: COLORS.brand.green, borderRadius: 100,
@@ -491,8 +482,7 @@ const s = StyleSheet.create({
   },
   sheetCopyText: {
     fontSize: TYPOGRAPHY.size.xs, color: '#000000',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   sheetHint: {
     marginTop: SPACING.md, marginBottom: SPACING.lg,
     fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary, textAlign: 'center',

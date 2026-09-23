@@ -255,15 +255,13 @@ const s = StyleSheet.create({
   logoImg: { width: 120, height: 48, marginBottom: 48 },
 
   // Hero
-  title: { fontSize: 30, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 8, lineHeight: 36 },
+  title: { fontSize: 30, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 8, lineHeight: 36 },
   subtitle: { fontSize: 15, color: COLORS.text.secondary, marginBottom: 36, lineHeight: 22 },
 
   // Form
   form: { gap: 14 },
   fieldGroup: { gap: 8 },
-  fieldLabel: { fontSize: 13, fontWeight: '500',
-fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
+  fieldLabel: { fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
   input: {
     height: 56,
     borderRadius: 100,
@@ -287,8 +285,7 @@ fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
 
   // Forgot
   forgotRow: { alignItems: 'flex-end', marginTop: -4 },
-  forgotText: { fontSize: 13, fontWeight: '500',
-fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
+  forgotText: { fontSize: 13, fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
 
   // Error
   errorText: { fontSize: 13, color: '#EF4444', textAlign: 'center' },
@@ -305,8 +302,7 @@ fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
     marginTop: 8,
   },
   signInBtnDisabled: { opacity: 0.7 },
-  signInBtnText: { fontSize: 16, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  signInBtnText: { fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
 
   // Divider
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
@@ -325,12 +321,10 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
     alignItems: 'center',
     justifyContent: 'center',
   },
-  socialBtnText: { fontSize: 14, fontWeight: '500',
-fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
+  socialBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_500Medium', color: '#000000' },
 
   // Register
   registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
   registerText: { fontSize: 14, color: COLORS.text.secondary },
-  registerLink: { fontSize: 14, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  registerLink: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
 });

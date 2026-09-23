@@ -40,7 +40,6 @@ const styles = StyleSheet.create({
   iconSm: { width: 11, height: 11 },
   text: {
     fontSize: 11,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#000000',
   },

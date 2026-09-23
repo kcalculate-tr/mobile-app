@@ -77,7 +77,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
     marginBottom: 12,
@@ -101,7 +100,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#1a3d00',
   },

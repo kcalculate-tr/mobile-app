@@ -1194,8 +1194,7 @@ const s = StyleSheet.create({
     paddingVertical: 14,
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  headerTitle: { fontSize: 17, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   scroll: { paddingHorizontal: 16, paddingTop: 4 },
   centered: { paddingVertical: 40, alignItems: 'center' },
@@ -1233,8 +1232,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   },
   addressInfo: { flex: 1 },
   addressTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  addressTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  addressTitle: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   addressLine: { fontSize: 13, color: '#000000', marginBottom: 2, lineHeight: 18 },
   addressMeta: { fontSize: 12, color: COLORS.text.tertiary },
 
@@ -1246,8 +1244,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)',
     alignItems: 'center', justifyContent: 'center',
   },
-  defaultBtnText: { fontSize: 12, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  defaultBtnText: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
   // defaultBtn ile AYNI olculer: iki kartta da ayni yerde, ayni
   // yuksekliginde duruyor, aralarinda gecerken hicbir sey kaymiyor.
   defaultBtnActive: {
@@ -1256,8 +1253,7 @@ fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
     alignItems: 'center', justifyContent: 'center',
   },
   // Yesil uzerinde siyah: beyaz yazi bu yesilde 1,4:1 kaliyor.
-  defaultBtnActiveText: { fontSize: 12, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  defaultBtnActiveText: { fontSize: 12, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' },
   iconBtnDanger: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(212,24,61,0.1)', alignItems: 'center', justifyContent: 'center' },
   selectBtn: {
@@ -1267,13 +1263,11 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     backgroundColor: COLORS.brand.green,
     alignItems: 'center', justifyContent: 'center',
   },
-  selectBtnText: { fontSize: 14, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  selectBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   // Empty state
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  emptyTitle: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   emptySub: { fontSize: 13, color: COLORS.text.secondary },
 
   // Add address button
@@ -1284,36 +1278,31 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     marginBottom: 14,
   },
   addAddressIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center' },
-  addAddressBtnText: { fontSize: 14, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  addAddressBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
 
   // Form
   formCard: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 16 },
-  formTitle: { fontSize: 15, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 14 },
+  formTitle: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 14 },
   formBtnsRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   cancelBtn: {
     flex: 1, height: 48, borderRadius: 100,
     borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)',
     backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center',
   },
-  cancelBtnText: { fontSize: 14, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
+  cancelBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#000000' },
   saveBtn: {
     flex: 1, height: 48, borderRadius: 100,
     backgroundColor: COLORS.brand.green,
     alignItems: 'center', justifyContent: 'center',
   },
-  saveBtnText: { fontSize: 14, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  saveBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   noteText: { fontSize: 12, color: COLORS.text.secondary, marginTop: -6, marginBottom: 8 },
 
   // Map container
   mapContainer: { height: 180, marginHorizontal: 16, marginBottom: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f0f0f0' },
   mapContainerImg: { width: '100%', height: '100%' },
   mapBadge: { position: 'absolute', bottom: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.brand.green, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
-  mapBadgeText: { fontSize: 11, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  mapBadgeText: { fontSize: 11, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
 
   // FAZ L madde 3 — form içi konum önizleme kartı
   locationPreviewCard: {
@@ -1330,9 +1319,7 @@ fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
     backgroundColor: COLORS.brand.green, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 5,
   },
-  locationPreviewBadgeText: { fontSize: 11, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
+  locationPreviewBadgeText: { fontSize: 11, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000' },
   locationPreviewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  locationPreviewEmptyText: { fontSize: 13, fontWeight: '600',
-fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.tertiary },
+  locationPreviewEmptyText: { fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold', color: COLORS.text.tertiary },
 });

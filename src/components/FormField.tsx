@@ -245,7 +245,6 @@ const styles = StyleSheet.create({
   label: {
     color: COLORS.text.primary,
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     marginBottom: SPACING.sm,
   },
@@ -327,7 +326,6 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 18,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000',
     textAlign: 'center',
@@ -355,7 +353,6 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: COLORS.text.primary,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   optionDot: {

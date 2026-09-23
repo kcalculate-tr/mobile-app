@@ -145,8 +145,7 @@ const s = StyleSheet.create({
   },
   title: {
     fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary, textAlign: 'center',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   body: {
     marginTop: 6, fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.secondary,
     textAlign: 'center', lineHeight: 18, fontFamily: 'PlusJakartaSans_500Medium',
@@ -157,8 +156,7 @@ const s = StyleSheet.create({
   },
   primaryText: {
     fontSize: TYPOGRAPHY.size.sm, color: '#FFFFFF',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   secondary: { marginTop: 4, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md },
   secondaryText: {
     fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.tertiary,

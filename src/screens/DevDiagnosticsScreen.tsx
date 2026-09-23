@@ -198,7 +198,6 @@ const styles = StyleSheet.create({
   title: {
     color: 'white',
     fontSize: 28,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   subtitle: {
@@ -231,7 +230,6 @@ const styles = StyleSheet.create({
     color: COLORS.text.primary,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   footer: {
@@ -261,7 +259,6 @@ const styles = StyleSheet.create({
   refreshText: {
     color: 'white',
     fontSize: 15,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   errorText: {

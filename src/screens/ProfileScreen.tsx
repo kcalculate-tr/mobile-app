@@ -775,7 +775,6 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     fontSize: 26,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#000000',
   },
@@ -785,7 +784,6 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#ffffff',
   },
@@ -816,7 +814,6 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     // Siyah kart uzerinde #111 pratikte gorunmuyordu (BMI / Gunluk Hedef /
     // Bu Hafta Ort. okunmuyordu) — 21.09.2026 kontrast duzeltmesi.
@@ -839,7 +836,6 @@ const styles = StyleSheet.create({
   },
   bmiBadgeText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 
@@ -854,13 +850,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#111111',
   },
   sectionLink: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#1A1A1A',
   },
@@ -907,7 +901,6 @@ const styles = StyleSheet.create({
     height: LABEL_H,
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.text.tertiary,
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
 
@@ -986,7 +979,6 @@ const styles = StyleSheet.create({
   quickBtnText: {
     flex: 1,
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#111111',
   },
@@ -1026,7 +1018,6 @@ const styles = StyleSheet.create({
   },
   macroCoinScore: {
     fontSize: TYPOGRAPHY.size['3xl'],
-    fontWeight: TYPOGRAPHY.weight.black,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#ffffff',
     letterSpacing: 1,
@@ -1034,7 +1025,6 @@ const styles = StyleSheet.create({
   macroCoinLabel: {
     fontSize: TYPOGRAPHY.size.sm,
     color: 'rgba(255,255,255,0.4)',
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   macroProgressBg: {
@@ -1056,13 +1046,11 @@ const styles = StyleSheet.create({
   macroProgressLeft: {
     fontSize: TYPOGRAPHY.size.sm,
     color: 'rgba(255,255,255,0.35)',
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   macroProgressRight: {
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.brand.green,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 
@@ -1100,7 +1088,6 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#000000',
   },
@@ -1119,7 +1106,6 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#FFFFFF',
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: TYPOGRAPHY.size.md,
   },
@@ -1147,13 +1133,11 @@ const styles = StyleSheet.create({
   authButtonText: {
     color: '#000000',
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   authButtonTextSecondary: {
     color: '#374151',
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 
@@ -1167,7 +1151,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: TYPOGRAPHY.size.xs,
     color: '#000000',
-    fontWeight: TYPOGRAPHY.weight.medium,
     fontFamily: 'PlusJakartaSans_500Medium',
   },
   macroBadge: {
@@ -1183,7 +1166,6 @@ const styles = StyleSheet.create({
   },
   macroBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: '#1A1A1A',
   },

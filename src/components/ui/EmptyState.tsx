@@ -36,7 +36,6 @@ const styles = StyleSheet.create({
   title: {
     color: '#202020',
     fontSize: 22,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     textAlign: 'center',
   },

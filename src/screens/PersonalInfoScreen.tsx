@@ -235,8 +235,7 @@ function PhoneChangeSection({ currentPhone, onSaved }: { currentPhone: string; o
         <Text style={s.fieldLabel}>Doğrulama Kodu</Text>
         <Text style={s.fieldHint}>{newPhone} numarasına WhatsApp kodu gönderildi.</Text>
         <TextInput
-          style={[s.fieldInput, { marginTop: SPACING.sm, letterSpacing: 6, fontSize: TYPOGRAPHY.size['2xl'], fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold'}]}
+          style={[s.fieldInput, { marginTop: SPACING.sm, letterSpacing: 6, fontSize: TYPOGRAPHY.size['2xl'], fontFamily: 'PlusJakartaSans_800ExtraBold'}]}
           value={otp}
           onChangeText={setOtp}
           placeholder="000000"
@@ -394,8 +393,7 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: RADIUS.md,
     backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: TYPOGRAPHY.size.lg, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  headerTitle: { fontSize: TYPOGRAPHY.size.lg, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   saveBtn: {
     width: 36, height: 36, borderRadius: RADIUS.md,
     backgroundColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center',
@@ -415,14 +413,11 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
   },
   fieldBody: { flex: 1 },
   fieldLabel: {
-    fontSize: TYPOGRAPHY.size.xs, fontWeight: TYPOGRAPHY.weight.bold,
-    fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.tertiary,
+    fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.tertiary,
     marginBottom: SPACING.xs, textTransform: 'uppercase', letterSpacing: 0.5,
   },
-  fieldInput: { fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.medium,
-fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.primary, paddingVertical: 0 },
-  fieldReadOnly: { fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.medium,
-fontFamily: 'PlusJakartaSans_500Medium', color: '#555' },
+  fieldInput: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.primary, paddingVertical: 0 },
+  fieldReadOnly: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_500Medium', color: '#555' },
   fieldHint: { fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.disabled, marginTop: SPACING.xs, lineHeight: 15 },
 
   editIconBtn: {
@@ -435,13 +430,11 @@ fontFamily: 'PlusJakartaSans_500Medium', color: '#555' },
     borderRadius: RADIUS.pill, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
     backgroundColor: COLORS.background,
   },
-  miniBtnText: { fontSize: TYPOGRAPHY.size.sm, fontWeight: TYPOGRAPHY.weight.bold,
-fontFamily: 'PlusJakartaSans_700Bold'},
+  miniBtnText: { fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_700Bold'},
 
   saveFullBtn: {
     marginTop: SPACING.sm, backgroundColor: COLORS.brand.green, borderRadius: RADIUS.md,
     paddingVertical: SPACING.lg, alignItems: 'center',
   },
-  saveFullBtnText: { fontSize: TYPOGRAPHY.size.md, fontWeight: TYPOGRAPHY.weight.extrabold,
-fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
+  saveFullBtnText: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
 })

@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   value: {
     fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.extrabold,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
   },
   label: {

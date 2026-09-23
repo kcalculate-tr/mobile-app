@@ -229,7 +229,6 @@ const s = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
     marginTop: 16,
@@ -243,7 +242,6 @@ const s = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_700,
     marginTop: 12,
@@ -272,7 +270,6 @@ const s = StyleSheet.create({
   },
   primaryBtnText: {
     fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
   },
@@ -288,13 +285,11 @@ const s = StyleSheet.create({
   toggleBtnActive: { borderColor: BRAND, backgroundColor: BRAND },
   toggleBtnText: {
     fontSize: 14,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: GRAY_500,
   },
   toggleBtnTextActive: {
     color: TEXT_PRIMARY,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   activityCard: {
@@ -311,7 +306,6 @@ const s = StyleSheet.create({
   },
   activityLabel: {
     fontSize: 15,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: TEXT_PRIMARY,
     marginBottom: 2,

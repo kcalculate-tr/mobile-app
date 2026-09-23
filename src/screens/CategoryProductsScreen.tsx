@@ -291,7 +291,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#000000',
     fontSize: 20,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     textAlign: 'center',
   },
@@ -357,7 +356,6 @@ const styles = StyleSheet.create({
   productImageFallbackText: {
     color: COLORS.text.tertiary,
     fontSize: 32,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   caloriesBadge: {
@@ -373,14 +371,12 @@ const styles = StyleSheet.create({
   caloriesText: {
     color: '#1A1A1A',
     fontSize: 11,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     letterSpacing: 0.3,
   },
   productName: {
     color: '#000000',
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     lineHeight: 17,
     marginBottom: 6,
@@ -393,7 +389,6 @@ const styles = StyleSheet.create({
   productPrice: {
     color: '#000000',
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   priceColumn: {
@@ -407,21 +402,18 @@ const styles = StyleSheet.create({
   },
   priceStrikethrough: {
     fontSize: 11,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#9ca3af',
     textDecorationLine: 'line-through',
   },
   discountBadge: {
     fontSize: 10,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#dc2626',
   },
   productPriceDiscounted: {
     color: '#dc2626',
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   addBtn: {
@@ -449,7 +441,6 @@ const styles = StyleSheet.create({
   },
   qtyText: {
     fontSize: 13,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
     minWidth: 16,

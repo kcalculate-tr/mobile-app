@@ -266,16 +266,14 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   headerTitle: {
     fontSize: TYPOGRAPHY.size.lg, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   taslakRozet: {
     backgroundColor: '#F1F1F1', borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   taslakRozetText: {
     fontSize: 10, color: COLORS.text.tertiary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   headerSub: {
     marginTop: -SPACING.md,
     fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.secondary, lineHeight: 18,
@@ -290,8 +288,7 @@ const s = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   sectionHint: {
     fontSize: 11, color: COLORS.text.tertiary, marginTop: 1,
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -307,8 +304,7 @@ const s = StyleSheet.create({
   chipDisabled: { opacity: 0.35 },
   chipLabel: {
     fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
   chipLabelActive: { color: '#000000' },
   chipLabelDisabled: { color: COLORS.text.tertiary },
   chipSub: {
@@ -341,8 +337,7 @@ const s = StyleSheet.create({
   windowDotActive: { borderColor: COLORS.brand.green, backgroundColor: COLORS.brand.green },
   windowLabel: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.secondary,
-    fontFamily: 'PlusJakartaSans_600SemiBold', fontWeight: '600',
-  },
+    fontFamily: 'PlusJakartaSans_600SemiBold', },
   windowLabelActive: { color: COLORS.text.primary, fontFamily: 'PlusJakartaSans_700Bold' },
   windowRange: {
     flex: 1, fontSize: 11, color: COLORS.text.tertiary,
@@ -354,8 +349,7 @@ const s = StyleSheet.create({
   },
   windowCountText: {
     fontSize: 10, color: '#000000',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
 
   ozet: {
     backgroundColor: '#0D0D0D', borderRadius: RADIUS.md,
@@ -368,8 +362,7 @@ const s = StyleSheet.create({
   },
   ozetDeger: {
     fontSize: TYPOGRAPHY.size.xs, color: '#FFFFFF',
-    fontFamily: 'PlusJakartaSans_600SemiBold', fontWeight: '600',
-  },
+    fontFamily: 'PlusJakartaSans_600SemiBold', },
   ozetUstuCizili: {
     color: 'rgba(255,255,255,0.3)', textDecorationLine: 'line-through',
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -377,16 +370,13 @@ const s = StyleSheet.create({
   ozetAyrac: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 2 },
   toplamEtiket: {
     fontSize: TYPOGRAPHY.size.sm, color: '#FFFFFF',
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   tasarruf: {
     marginTop: 2, fontSize: 11, color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_600SemiBold', fontWeight: '600',
-  },
+    fontFamily: 'PlusJakartaSans_600SemiBold', },
   toplamDeger: {
     fontSize: 24, color: COLORS.brand.green,
-    fontFamily: 'PlusJakartaSans_800ExtraBold', fontWeight: '800',
-  },
+    fontFamily: 'PlusJakartaSans_800ExtraBold', },
 
   cta: {
     height: 50, borderRadius: 100, backgroundColor: '#E9E9E9',
@@ -394,8 +384,7 @@ const s = StyleSheet.create({
   },
   ctaText: {
     fontSize: TYPOGRAPHY.size.sm, color: COLORS.text.tertiary,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   ctaNot: {
     marginTop: -SPACING.md, textAlign: 'center',
     fontSize: 11, color: COLORS.text.tertiary, lineHeight: 16,

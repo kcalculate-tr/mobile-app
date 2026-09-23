@@ -1,7 +1,7 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Gift, Handshake, Sparkle, Ticket } from 'phosphor-react-native'
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
+import { COLORS, RADIUS, SPACING } from '../../constants/theme'
 
 type Avantaj = {
   Icon: typeof Gift
@@ -95,7 +95,6 @@ const s = StyleSheet.create({
     letterSpacing: 1.4,
     color: COLORS.text.tertiary,
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontWeight: '700',
   },
   // Etiketin iki yanındaki saç teli çizgiler: eşit flex olduğu için etiket
   // tam ortada kalıyor, bölümün başladığı yer de başlığı büyütmeden belli
@@ -129,8 +128,7 @@ const s = StyleSheet.create({
   },
   kartBaslik: {
     fontSize: 14, color: COLORS.text.primary, lineHeight: 18,
-    fontFamily: 'PlusJakartaSans_700Bold', fontWeight: '700',
-  },
+    fontFamily: 'PlusJakartaSans_700Bold', },
   kartMetin: {
     fontSize: 11.5, color: COLORS.text.secondary, lineHeight: 16,
     fontFamily: 'PlusJakartaSans_500Medium',

@@ -58,7 +58,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: COLORS.black,
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

@@ -99,14 +99,12 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
   },
   rowText: { flex: 1 },
-  rowLabel: { fontSize: 13, fontWeight: '700',
-fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 3 },
+  rowLabel: { fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', color: '#000000', marginBottom: 3 },
   rowValue: { fontSize: 12, color: '#4B5563', lineHeight: 18 },
   closeActionBtn: {
     borderRadius: 14, minHeight: 50,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#000000',
   },
-  closeActionText: { color: '#B9EF14', fontSize: 15, fontWeight: '800',
-fontFamily: 'PlusJakartaSans_800ExtraBold'},
+  closeActionText: { color: '#B9EF14', fontSize: 15, fontFamily: 'PlusJakartaSans_800ExtraBold'},
 });

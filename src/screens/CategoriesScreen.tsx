@@ -174,7 +174,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#000000',
     fontSize: 20,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     textAlign: 'center',
   },
@@ -243,7 +242,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#000000',
     fontSize: 14,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     textAlign: 'center',
     marginBottom: 2,

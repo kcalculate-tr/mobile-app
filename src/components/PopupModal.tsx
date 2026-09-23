@@ -138,7 +138,6 @@ const styles = StyleSheet.create({
   closeX: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   image: {
@@ -152,7 +151,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#0f172a',
     lineHeight: 24,
@@ -195,7 +193,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
   },
   skipBtn: {
@@ -205,7 +202,6 @@ const styles = StyleSheet.create({
   skipText: {
     color: '#94a3b8',
     fontSize: 13,
-    fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 })
