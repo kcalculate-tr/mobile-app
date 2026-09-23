@@ -6,6 +6,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { AppState, AppStateStatus } from 'react-native';
 import { Alert } from 'react-native';
+import { captureError } from './sentry';
 
 /**
  * Network Connectivity Check
@@ -166,7 +167,9 @@ export function setupGlobalErrorHandler() {
   ErrorUtils.setGlobalHandler((error, isFatal) => {
     console.error('[Unhandled Error]', isFatal ? '(fatal)' : '', error);
     if (!__DEV__) {
-      // TODO: Send to Sentry/Crashlytics
+      // Sentry başlatılmadıysa (DSN yok) captureError sessizce no-op —
+      // izleme yapılandırılmamış olsa bile handler zinciri bozulmaz.
+      captureError(error, { isFatal });
     }
     prevHandler?.(error, isFatal);
   });

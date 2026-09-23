@@ -1,8 +1,28 @@
+// Sentry kaynak haritasi yuklemesi yalnizca org + project tanimliysa devreye
+// girer. Tanimli degilse eklenti HIC eklenmez: build yesil kalir, yalnizca
+// stack trace'ler minified gorunur. SENTRY_AUTH_TOKEN'i EAS secret olarak ver.
+const sentryPlugin =
+  process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+    ? [
+        [
+          '@sentry/react-native/expo',
+          {
+            organization: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+            url: process.env.SENTRY_URL || 'https://sentry.io/',
+          },
+        ],
+      ]
+    : [];
+
 module.exports = {
   expo: {
     name: 'Kcalculate',
     slug: 'kcal-mobile',
-    version: '1.0.6',
+    // 1.0.7: Sentry native modulu geldi — OTA ile gidemez, yeni build sart.
+    // runtimeVersion policy 'appVersion' oldugu icin bu satir ayni zamanda
+    // 1.0.6 cihazlarin bu paketi ALMASINI engelleyen emniyet kilididir.
+    version: '1.0.7',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -87,8 +107,11 @@ module.exports = {
         '173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss.apps.googleusercontent.com',
       EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:
         '173333296344-vnu2l4uv6a71hsl26afltb5gpg0bl3jq.apps.googleusercontent.com',
+      // Bos birakilirsa Sentry hic baslatilmaz (bkz. src/lib/sentry.ts).
+      EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
     },
     plugins: [
+      ...sentryPlugin,
       'expo-asset',
       [
         // Fontlar BUILD'e gömülür. Çıplak 'expo-font' ile yalnızca çalışma

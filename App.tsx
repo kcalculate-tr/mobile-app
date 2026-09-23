@@ -28,9 +28,13 @@ import ForceUpdateModal from './src/components/ForceUpdateModal';
 import PushPermissionPrompt from './src/components/modals/PushPermissionPrompt';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
+import { initSentry, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK, track } from './src/lib/analytics';
 
+// Sentry ONCE baslatilmali: setupGlobalErrorHandler'in yakaladigi hatalar
+// captureError'a gidiyor ve o da Sentry hazir degilse sessizce yutuyor.
+initSentry();
 setupGlobalErrorHandler();
 
 // Tüm navigation katmanının arka planı sportive dark (#0A0A0A). Theme'siz
@@ -106,7 +110,7 @@ function AppContent() {
   );
 }
 
-export default function App() {
+function App() {
   const [fontsLoaded] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
@@ -162,3 +166,8 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
+// Sentry.wrap: React render hatalari, performans olcumu ve TTID/TTFD icin
+// kok bileseni sarmalamak gerekiyor. DSN yoksa init hic calismadigi icin
+// sarmalayici da pratikte etkisiz.
+export default Sentry.wrap(App);
