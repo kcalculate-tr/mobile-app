@@ -144,10 +144,10 @@ export default function OrderSuccessScreen() {
   });
 
   const steps = [
-    { icon: <CheckCircle size={22} color="#000000" weight="fill" />, label: 'Onaylandı', active: true },
-    { icon: <Fire size={22} color="#000000" weight="fill" />, label: 'Hazırlanıyor' + '.'.repeat(dots), active: true },
-    { icon: <Truck size={22} color={COLORS.text.tertiary} weight="fill" />, label: 'Yolda', active: false },
-    { icon: <House size={22} color={COLORS.text.tertiary} weight="fill" />, label: 'Teslim', active: false },
+    { Icon: CheckCircle, label: 'Onaylandı', active: true },
+    { Icon: Fire, label: 'Hazırlanıyor' + '.'.repeat(dots), active: true },
+    { Icon: Truck, label: 'Yolda', active: false },
+    { Icon: House, label: 'Teslim', active: false },
   ];
 
   // Veri YOKSA kart hiç çizilmez; "kazanılamadı" iddiası doğrulanamaz.
@@ -157,139 +157,174 @@ export default function OrderSuccessScreen() {
     <ScreenContainer style={styles.container}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 20 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], width: '100%', alignItems: 'center' }}>
-          {/* Success Checkmark */}
-          <Animated.View style={[styles.successCircle, { opacity: checkOpacity, transform: [{ scale: checkScale }] }]}>
-            <Svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-              <Path
-                d="M12 28L22 38L44 16"
-                stroke="#000000"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
+        <Animated.View
+          style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], width: '100%' }}
+        >
+          {/* ── Onay şeridi ──
+              120px'lik tik dairesi ekranın yarısını yiyordu. Onay tek satıra
+              indi; sahne asıl ödüle, Macro kazancına bırakıldı. */}
+          <Animated.View
+            style={[styles.onayBar, { opacity: checkOpacity, transform: [{ scale: checkScale }] }]}
+          >
+            <View style={styles.onayTik}>
+              <Svg width="12" height="12" viewBox="0 0 56 56" fill="none">
+                <Path
+                  d="M12 28L22 38L44 16"
+                  stroke="#B9EF14"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </View>
+            <Text style={styles.onayText}>Siparişin alındı, hazırlanmaya başlandı</Text>
           </Animated.View>
 
-          {/* Başlık */}
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>Sipariş Verildi!</Text>
-            <Confetti size={28} color={COLORS.brand.green} weight="fill" />
-          </View>
-          <Text style={styles.subtitle}>
-            Siparişiniz başarıyla alındı ve hazırlanmaya başlandı
-          </Text>
+          {/* ── Sahne: Macro kazancı ── */}
+          {macroGoster ? (
+            <Animated.View
+              style={[
+                styles.sahne,
+                { opacity: macroOpacity, transform: [{ scale: macroScale }] },
+              ]}
+            >
+              <Image
+                source={require('../../assets/macro-coin.png')}
+                style={styles.sahneCoin}
+                resizeMode="contain"
+              />
+              <Text style={styles.sahneSayi}>+{kazanilanMacro}</Text>
+              <Text style={styles.sahneBaslik}>MACRO KAZANDIN</Text>
+              <Text style={styles.sahneAlt}>Teslimattan sonra hesabına eklenir</Text>
+            </Animated.View>
+          ) : (
+            // Kazanım verisi yoksa sahne boş kalmasın — onay yine de kutlanır.
+            <View style={styles.sahne}>
+              <View style={styles.sahneKonfeti}>
+                <Confetti size={30} color={COLORS.brand.green} weight="fill" />
+              </View>
+              <Text style={styles.sahneBaslik}>SİPARİŞ VERİLDİ</Text>
+              <Text style={styles.sahneAlt}>Mutfak siparişini hazırlamaya başladı</Text>
+            </View>
+          )}
 
-          {/* Order Code Card */}
-          <View style={styles.orderCard}>
-            <Text style={styles.orderLabel}>SİPARİŞ NUMARASI</Text>
-            <Animated.Text style={[styles.orderCode, {
-              opacity: orderCodeAnim,
-              transform: [{ scale: orderCodeScale }],
-            }]}>
-              {orderCode}
-            </Animated.Text>
+          {/* ── Sipariş kartı: numara + durum + teslimat tek kartta ── */}
+          <View style={styles.kart}>
+            <View style={styles.kodSatir}>
+              <Text style={styles.kodLabel}>SİPARİŞ NO</Text>
+              <Animated.Text
+                style={[
+                  styles.kod,
+                  { opacity: orderCodeAnim, transform: [{ scale: orderCodeScale }] },
+                ]}
+              >
+                {orderCode}
+              </Animated.Text>
+            </View>
 
-            {/* Timeline */}
-            <View style={styles.timeline}>
+            <View style={styles.kartCizgi} />
+
+            <View style={styles.zamanCizgisi}>
               {steps.map((step, i) => (
-                <React.Fragment key={i}>
-                  <View style={styles.timelineStep}>
-                    <View style={[styles.stepCircle, step.active && styles.stepCircleActive]}>
-                      {step.icon}
+                <React.Fragment key={step.label}>
+                  <View style={styles.adim}>
+                    <View style={[styles.adimDaire, step.active && styles.adimDaireAktif]}>
+                      <step.Icon
+                        size={13}
+                        weight="fill"
+                        color={step.active ? '#000000' : COLORS.text.tertiary}
+                      />
                     </View>
-                    <Text style={[styles.stepLabel, step.active && styles.stepLabelActive]}>
+                    <Text
+                      style={[styles.adimLabel, step.active && styles.adimLabelAktif]}
+                      numberOfLines={1}
+                    >
                       {step.label}
                     </Text>
                   </View>
-                  {i < 3 && (
-                    <View style={[styles.timelineConnector, i < 1 && styles.timelineConnectorActive]} />
-                  )}
+                  {i < steps.length - 1 ? (
+                    <View style={[styles.baglanti, i < 1 && styles.baglantiAktif]} />
+                  ) : null}
                 </React.Fragment>
               ))}
             </View>
-          </View>
 
-          {/* Delivery Time */}
-          <View style={styles.deliveryCard}>
-            <View style={styles.deliveryIcon}>
-              <Timer size={28} color="#000000" weight="fill" />
-            </View>
-            <View style={styles.deliveryInfo}>
-              <Text style={styles.deliveryLabel}>Tahmini Teslimat</Text>
-              <Text style={styles.deliveryTime}>35-45 dakika</Text>
+            <View style={styles.kartCizgi} />
+
+            <View style={styles.teslimatSatir}>
+              <Timer size={16} color={COLORS.text.primary} weight="bold" />
+              <Text style={styles.teslimatLabel}>Tahmini teslimat</Text>
+              <Text style={styles.teslimatDeger}>35-45 dk</Text>
             </View>
           </View>
 
-          {/* Notice */}
           {noticeMessage ? (
             <View style={styles.noticeBox}>
               <Text style={styles.noticeText}>{noticeMessage}</Text>
             </View>
           ) : null}
 
-          {/* ── Macro kazancı — yalnızca gerçek veri varken ── */}
-          {macroGoster ? (
-            <Animated.View
-              style={[
-                styles.macroHero,
-                { opacity: macroOpacity, transform: [{ scale: macroScale }] },
-              ]}
-            >
-              <Image
-                source={require('../../assets/macro-coin.png')}
-                style={styles.macroHeroCoin}
-                resizeMode="contain"
-              />
-              <Text style={styles.macroHeroSayi}>+{kazanilanMacro}</Text>
-              <Text style={styles.macroHeroBaslik}>MACRO KAZANDIN</Text>
-              <Text style={styles.macroHeroAlt}>
-                Teslimattan sonra hesabına eklenir.
-              </Text>
-
-              <TouchableOpacity
-                style={styles.macroHeroLink}
-                onPress={() => navigation.navigate('Tabs', { screen: 'Subscriptions' })}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.macroHeroLinkText}>{"Macro'larım"}</Text>
-                <ArrowRight size={13} color={COLORS.brand.green} weight="bold" />
-              </TouchableOpacity>
-            </Animated.View>
-          ) : null}
-
-          {/* Buton 1 — Siparişimi Takip Et (siyah) */}
+          {/* ── Aksiyonlar: bir birincil + iki kompakt ikincil ── */}
           <TouchableOpacity
-            style={styles.trackButton}
+            style={styles.anaBtn}
             onPress={() => navigation.navigate('ProfileOrders')}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
-            <Package size={20} color="#ffffff" weight="bold" />
-            <Text style={styles.trackButtonText}>Siparişimi Takip Et</Text>
+            <Package size={18} color="#ffffff" weight="bold" />
+            <Text style={styles.anaBtnText}>Siparişimi Takip Et</Text>
           </TouchableOpacity>
 
-          {/* Buton 2 — Kcal Tracker'a Geç (outline) */}
-          <TouchableOpacity
-            style={styles.outlineButton}
-            onPress={() => navigation.navigate('Tabs', { screen: 'Tracker' })}
-            activeOpacity={0.8}
-          >
-            <ChartLineUp size={20} color="#111111" weight="bold" />
-            <Text style={styles.outlineButtonText}>{"Kcal Tracker'a Geç"}</Text>
-          </TouchableOpacity>
+          <View style={styles.ikiliSatir}>
+            {macroGoster ? (
+              <TouchableOpacity
+                style={styles.ikinciBtn}
+                onPress={() => navigation.navigate('Tabs', { screen: 'Subscriptions' })}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={require('../../assets/macro-coin.png')}
+                  style={styles.ikinciCoin}
+                  resizeMode="contain"
+                />
+                <Text style={styles.ikinciBtnText}>{"Macro'larım"}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.ikinciBtn}
+                onPress={() => navigation.navigate('Tabs', { screen: 'Tracker' })}
+                activeOpacity={0.8}
+              >
+                <ChartLineUp size={16} color="#111111" weight="bold" />
+                <Text style={styles.ikinciBtnText}>Tracker</Text>
+              </TouchableOpacity>
+            )}
 
-          {/* Buton 3 — Anasayfaya Dön (outline) */}
-          <TouchableOpacity
-            style={styles.outlineButton}
-            onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
-            activeOpacity={0.8}
-          >
-            <House size={20} color="#111111" weight="bold" />
-            <Text style={styles.outlineButtonText}>Anasayfaya Dön</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ikinciBtn}
+              onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
+              activeOpacity={0.8}
+            >
+              <House size={16} color="#111111" weight="bold" />
+              <Text style={styles.ikinciBtnText}>Anasayfa</Text>
+            </TouchableOpacity>
+          </View>
+
+          {macroGoster ? (
+            <TouchableOpacity
+              style={styles.duzLink}
+              onPress={() => navigation.navigate('Tabs', { screen: 'Tracker' })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.duzLinkText}>{"Kcal Tracker'a geç"}</Text>
+              <ArrowRight size={12} color={COLORS.text.secondary} weight="bold" />
+            </TouchableOpacity>
+          ) : null}
         </Animated.View>
       </ScrollView>
     </ScreenContainer>
@@ -303,243 +338,229 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: 20,
   },
-  successCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.brand.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-    shadowColor: COLORS.brand.green,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-  },
-  titleRow: {
+
+  // ── Onay şeridi ──
+  onayBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'center',
     gap: 8,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#000000',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: COLORS.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  orderCard: {
-    width: '100%',
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  orderLabel: {
-    fontSize: 12,
-    color: COLORS.text.tertiary,
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  orderCode: {
-    fontSize: 22,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: '#000000',
-    marginBottom: 16,
-    letterSpacing: 2,
-  },
-  timeline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 8,
-  },
-  timelineStep: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  stepCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepCircleActive: {
-    backgroundColor: COLORS.brand.green,
-  },
-  stepLabel: {
-    fontSize: 9,
-    color: COLORS.text.tertiary,
-    textAlign: 'center',
-  },
-  stepLabelActive: {
-    color: '#000000',
-    fontWeight: '600',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-  },
-  timelineConnector: {
-    flex: 1,
-    height: 2,
+    paddingLeft: 6,
+    paddingRight: 14,
+    paddingVertical: 6,
     borderRadius: 100,
-    backgroundColor: '#f0f0f0',
-    marginHorizontal: 4,
+    backgroundColor: '#000000',
     marginBottom: 20,
   },
-  timelineConnectorActive: {
-    backgroundColor: COLORS.brand.green,
-  },
-  deliveryCard: {
-    width: '100%',
-    backgroundColor: '#000000',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  deliveryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: COLORS.brand.green,
+  onayTik: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(185,239,20,0.18)',
   },
-  deliveryInfo: {
-    gap: 2,
-  },
-  deliveryLabel: {
+  onayText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-  },
-  deliveryTime: {
-    fontSize: 16,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.brand.green,
-  },
-  noticeBox: {
-    width: '100%',
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  noticeText: {
-    color: '#9A3412',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  // Macro Coin Card — siyah, her zaman gösterilir
-  // Kazanım sipariş başarı ekranının ikinci ödülü: küçük bir satır değil,
-  // kendi sahnesi olan bir blok.
-  macroHero: {
-    width: '100%',
-    backgroundColor: '#000000',
-    borderRadius: 24,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  macroHeroCoin: {
-    width: 56,
-    height: 56,
-    marginBottom: 10,
-  },
-  macroHeroSayi: {
-    fontSize: 52,
-    lineHeight: 58,
-    letterSpacing: -1.5,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    color: COLORS.brand.green,
-  },
-  macroHeroBaslik: {
-    marginTop: 2,
-    fontSize: 13,
-    letterSpacing: 2.2,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: '#FFFFFF',
   },
-  macroHeroAlt: {
-    marginTop: 8,
+
+  // ── Sahne ──
+  sahne: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 20,
+  },
+  sahneCoin: {
+    width: 52,
+    height: 52,
+    marginBottom: 6,
+  },
+  sahneKonfeti: {
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  sahneSayi: {
+    fontSize: 64,
+    lineHeight: 70,
+    letterSpacing: -3,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  sahneBaslik: {
+    marginTop: 2,
+    fontSize: 12,
+    letterSpacing: 2.6,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  sahneAlt: {
+    marginTop: 6,
     fontSize: 12,
     textAlign: 'center',
     fontFamily: 'PlusJakartaSans_500Medium',
-    color: 'rgba(255,255,255,0.55)',
+    color: COLORS.text.secondary,
   },
-  macroHeroLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 16,
+
+  // ── Sipariş kartı ──
+  kart: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 100,
-    backgroundColor: 'rgba(185,239,20,0.14)',
+    paddingVertical: 14,
   },
-  macroHeroLinkText: {
+  kodSatir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  kodLabel: {
+    fontSize: 10,
+    letterSpacing: 1.2,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.tertiary,
+  },
+  kod: {
+    fontSize: 17,
+    letterSpacing: 0.4,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  kartCizgi: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    marginVertical: 12,
+  },
+  zamanCizgisi: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  adim: {
+    alignItems: 'center',
+    // 4 adım + 3 bağlantı kart genişliğine sığmalı: sabit genişlik büyürse
+    // bağlantı çizgileri görünmez hale geliyor.
+    width: 58,
+  },
+  adimDaire: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f0f0',
+  },
+  adimDaireAktif: {
+    backgroundColor: COLORS.brand.green,
+  },
+  adimLabel: {
+    marginTop: 5,
+    fontSize: 9,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
+  },
+  adimLabelAktif: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  baglanti: {
+    flex: 1,
+    height: 2,
+    marginTop: 13,
+    borderRadius: 1,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  baglantiAktif: {
+    backgroundColor: COLORS.brand.green,
+  },
+  teslimatSatir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  teslimatLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+  },
+  teslimatDeger: {
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+
+  noticeBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#FFF7E6',
+  },
+  noticeText: {
     fontSize: 12,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.brand.green,
+    lineHeight: 18,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: '#8A6A00',
   },
-  // Buton 1 — siyah (distinguish)
-  trackButton: {
-    width: '100%',
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: '#111111',
+
+  // ── Aksiyonlar ──
+  anaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 10,
+    height: 54,
+    borderRadius: 100,
+    backgroundColor: '#000000',
+    marginTop: 16,
   },
-  trackButtonText: {
+  anaBtnText: {
     fontSize: 15,
-    fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#ffffff',
+    color: '#FFFFFF',
   },
-  // Butonlar 2 & 3 — outline
-  outlineButton: {
-    width: '100%',
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
+  ikiliSatir: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  ikinciBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 10,
+    gap: 7,
+    height: 48,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.10)',
+    backgroundColor: '#FFFFFF',
   },
-  outlineButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+  ikinciCoin: {
+    width: 16,
+    height: 16,
+  },
+  ikinciBtnText: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
     color: '#111111',
+  },
+  duzLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 5,
+    marginTop: 14,
+    paddingVertical: 6,
+  },
+  duzLinkText: {
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
   },
 });
