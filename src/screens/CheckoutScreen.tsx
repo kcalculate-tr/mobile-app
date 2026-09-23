@@ -36,8 +36,11 @@ import InfoPill from '../components/ui/InfoPill';
 import { useAuth } from '../context/AuthContext';
 import PrivilegedBadge from '../components/PrivilegedBadge';
 import {
+  DEFAULT_MACRO_SETTINGS,
   fetchMacroProfile,
+  fetchMacroSettings,
   MacroProfile,
+  MacroSettings,
 } from '../lib/macros';
 import { isApiBaseUrlConfigured } from '../lib/api';
 import {
@@ -543,6 +546,13 @@ export default function CheckoutScreen() {
     fetchMacroProfile(user.id).then(p => { if (mounted) setMacroProfile(p); }).catch(() => {});
     return () => { mounted = false; };
   }, [user?.id]);
+  const [macroSettings, setMacroSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
+  useEffect(() => {
+    let mounted = true;
+    fetchMacroSettings().then((m) => { if (mounted) setMacroSettings(m); }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
   // Macro modeli v2: sepette macro indirimi yok (bkz. src/lib/macros.ts).
   const macroDiscount = 0;
 
@@ -645,6 +655,30 @@ export default function CheckoutScreen() {
 
   const deliveryFee = resolvedShippingFee;
   const totalAmount = Math.max(0, subtotal + deliveryFee - discountAmount - macroDiscount);
+
+  /**
+   * Bu siparişin kazandıracağı Macro.
+   *
+   * Formül sunucudaki grant_macros_on_delivery() ile BİREBİR aynı olmalı:
+   *   kazanç = floor((profil.macro_points + sipariş tutarı) / eşik)
+   * Yani devreden bakiye (macro_points) hesaba katılır — bu yüzden ₺500'ün
+   * altındaki bir sipariş de Macro kazandırabilir. Kazanım sipariş
+   * 'delivered' + 'paid' olduğunda işlenir, sipariş anında değil.
+   */
+  const kazanilacakMacro = useMemo(() => {
+    if (!user?.id) return 0;
+    const esik = macroSettings.earnThreshold;
+    if (!(esik > 0) || totalAmount <= 0) return 0;
+    return Math.floor(((macroProfile?.macro_points ?? 0) + totalAmount) / esik);
+  }, [user?.id, macroSettings.earnThreshold, macroProfile?.macro_points, totalAmount]);
+
+  /** Bir sonraki Macro için gereken ek harcama (kazanç yoksa nudge olarak). */
+  const macroyaKalan = useMemo(() => {
+    const esik = macroSettings.earnThreshold;
+    if (!(esik > 0)) return 0;
+    const birikmis = (macroProfile?.macro_points ?? 0) + Math.max(totalAmount, 0);
+    return Math.max(0, Math.ceil(esik - (birikmis % esik)));
+  }, [macroSettings.earnThreshold, macroProfile?.macro_points, totalAmount]);
 
   // Zone flag guards — activeZoneRow.allow_immediate / allow_scheduled
   // UI chip'lerini + Ödemeye Geç butonunu bunlara göre disabled yap.
@@ -2455,6 +2489,34 @@ export default function CheckoutScreen() {
               <Text style={styles.summaryLabelBold}>Toplam</Text>
               <AnimatedNumberText style={styles.summaryValueBold} value={toCurrency(totalAmount)} />
             </View>
+
+            {/* ── Bu siparişin kazandıracağı Macro ──
+                Kazanım teslimattan sonra işlendiği için burada "kazanacaksın"
+                dili kullanılıyor; sipariş anında bakiyeye yazılmıyor. */}
+            {user?.id && totalAmount > 0 ? (
+              <View style={styles.macroKazanc}>
+                <Image
+                  source={require('../../assets/macro-coin.png')}
+                  style={styles.macroKazancIkon}
+                  resizeMode="contain"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.macroKazancBaslik}>
+                    {kazanilacakMacro > 0 ? 'Bu siparişten kazanacağın Macro' : 'Macro kazanmana az kaldı'}
+                  </Text>
+                  <Text style={styles.macroKazancAlt}>
+                    {kazanilacakMacro > 0
+                      ? 'Teslimattan sonra hesabına eklenir.'
+                      : `₺${macroyaKalan.toLocaleString('tr-TR')} daha harcarsan 1 Macro kazanırsın.`}
+                  </Text>
+                </View>
+                {kazanilacakMacro > 0 ? (
+                  <View style={styles.macroKazancRozet}>
+                    <Text style={styles.macroKazancRozetText}>+{kazanilacakMacro}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
           </View>
 
           {/* ── Bekleyen ödeme ── */}
@@ -3195,6 +3257,42 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weight.semibold,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.secondary,
+  },
+  macroKazanc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm + 2,
+    marginTop: SPACING.xs,
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(185,239,20,0.18)',
+  },
+  macroKazancIkon: {
+    width: 26,
+    height: 26,
+  },
+  macroKazancBaslik: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+  },
+  macroKazancAlt: {
+    marginTop: 1,
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+  },
+  macroKazancRozet: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.brand.green,
+  },
+  macroKazancRozetText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#000000',
   },
   cardInputHatali: {
     borderColor: '#dc2626',
