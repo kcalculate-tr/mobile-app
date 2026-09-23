@@ -11,7 +11,9 @@
     "typecheck": "npm run hygiene && tsc --noEmit",
     "doctor": "npx expo-doctor",
     "lint": "npm run hygiene && eslint . --ext .ts,.tsx",
-    "test:unit": "tsx --test \"src/**/__tests__/**/*.test.ts\""
+    "test:unit": "tsx --test \"src/**/__tests__/**/*.test.ts\"",
+    "test:components": "jest",
+    "test": "npm run test:unit && npm run test:components"
   },
   "engines": {
     "node": ">=20 <23"
@@ -68,9 +70,14 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~10.0.0",
+    "jest": "~29.7.0",
+    "jest-expo": "~54.0.18",
+    "react-test-renderer": "^19.1.0",
     "tsx": "^4.23.13",
     "typescript": "~5.9.2"
   },
@@ -90,5 +97,20 @@
     "metro-transform-plugins": "0.83.3",
     "metro-transform-worker": "0.83.3"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/src/**/__component_tests__/**/*.test.tsx"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/.*|sentry-expo|native-base|react-native-svg|@gorhom/.*|phosphor-react-native))"
+    ],
+    "fakeTimers": {
+      "enableGlobally": true
+    }
+  }
 }
