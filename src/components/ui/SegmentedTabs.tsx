@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Animated, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  Animated, Image, ImageSourcePropType, LayoutChangeEvent,
+  StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native'
 import { IconProps } from 'phosphor-react-native'
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme'
 
@@ -7,6 +10,8 @@ export type SegmentedTabItem<T extends string> = {
   key: T
   label: string
   Icon?: React.ComponentType<IconProps>
+  /** Phosphor ikonu yerine görsel (ör. macro coin). Icon ile birlikte verilmez. */
+  image?: ImageSourcePropType
   /** Etiketin sağında küçük sayı rozeti. */
   badge?: number
 }
@@ -80,7 +85,15 @@ export default function SegmentedTabs<T extends string>({
             onPress={() => onChange(item.key)}
             activeOpacity={0.8}
           >
-            {Icon ? <Icon size={14} color={active ? '#000000' : COLORS.text.tertiary} /> : null}
+            {item.image ? (
+              <Image
+                source={item.image}
+                style={[s.image, !active && s.imagePassive]}
+                resizeMode="contain"
+              />
+            ) : Icon ? (
+              <Icon size={14} color={active ? '#000000' : COLORS.text.tertiary} />
+            ) : null}
             <Text style={[s.text, active && s.textActive]} numberOfLines={1}>{item.label}</Text>
             {item.badge != null && item.badge > 0 ? (
               <View style={[s.badge, active && s.badgeActive]}>
@@ -118,6 +131,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACING.xs,
   },
+  image: { width: 18, height: 18 },
+  // Pasif sekmede coin de metinle birlikte geri çekilsin.
+  imagePassive: { opacity: 0.45 },
   text: {
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.semibold,

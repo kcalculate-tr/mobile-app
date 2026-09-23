@@ -6,7 +6,7 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
-import { CalendarCheck, CrownSimple, CurrencyCircleDollar, Info } from 'phosphor-react-native'
+import { CalendarCheck, CrownSimple, Info } from 'phosphor-react-native'
 import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
 import SegmentedTabs from '../components/ui/SegmentedTabs'
@@ -123,7 +123,7 @@ export default function MacroScreen() {
 
       <SegmentedTabs<'macro' | 'subscription'>
         items={[
-          { key: 'macro', label: 'Macro', Icon: CurrencyCircleDollar },
+          { key: 'macro', label: 'Macro', image: MACRO_COIN },
           { key: 'subscription', label: 'Öğün Aboneliği', Icon: CalendarCheck },
         ]}
         value={tab}
