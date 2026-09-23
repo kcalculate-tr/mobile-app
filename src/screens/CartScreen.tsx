@@ -32,6 +32,7 @@ import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
 import { animateListChange } from '../utils/layoutAnimation';
 import { validateCoupon, getCouponErrorMessage, CouponCartItem, CouponValidationSuccess } from '../lib/offers';
 import CouponPickerSheet from '../components/checkout/CouponPickerSheet';
+import AppliedCouponCard from '../components/checkout/AppliedCouponCard';
 import {
   fetchMacroProfile,
   MacroProfile,
@@ -717,17 +718,13 @@ export default function CartScreen() {
 
         {/* Coupon */}
         {appliedCoupon ? (
-          <Animated.View style={[styles.couponApplied, { opacity: couponOpacity, transform: [{ translateY: couponSlideY }] }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flex: 1 }}>
-              <View style={styles.couponAppliedIcon}><Tag size={14} color="#000" /></View>
-              <View>
-                <Text style={styles.couponAppliedCode}>{appliedCoupon.code}</Text>
-                <Text style={styles.couponAppliedDesc}>{appliedCoupon.title}</Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={removeCoupon} style={styles.couponRemoveBtn} activeOpacity={0.7}>
-              <Text style={styles.couponRemoveText}>Kaldır</Text>
-            </TouchableOpacity>
+          <Animated.View style={{ opacity: couponOpacity, transform: [{ translateY: couponSlideY }] }}>
+            <AppliedCouponCard
+              code={appliedCoupon.code}
+              title={appliedCoupon.title}
+              discount={couponDiscount}
+              onRemove={removeCoupon}
+            />
           </Animated.View>
         ) : (
           <TouchableOpacity style={styles.couponBtn} onPress={() => setCouponOpen(true)} activeOpacity={0.8}>
