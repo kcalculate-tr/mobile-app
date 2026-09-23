@@ -38,7 +38,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       Animated.spring(badgeScale, { toValue: 1.5, useNativeDriver: true, speed: 50, bounciness: 0 }),
       Animated.spring(badgeScale, { toValue: 1,   useNativeDriver: true, speed: 20, bounciness: 10 }),
     ]).start();
-  }, [cartCount]);
+  }, [cartCount, badgeScale]);
 
   const animateTab = (index: number) => {
     Animated.sequence([

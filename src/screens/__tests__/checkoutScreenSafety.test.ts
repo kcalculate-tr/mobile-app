@@ -37,7 +37,7 @@ test('KÖK NEDEN (6af7e9e): useCartStore selector\'ı içinde nesne döndüren b
 });
 
 test('En-yakın-adres otomatik seçim effect\'i, seçimden ÖNCE guard ref\'ini kilitliyor (sonsuz döngü koruması)', () => {
-  const effectMatch = /useEffect\(\(\) => \{\s*if \(autoSelectedNearestRef\.current\) return;[\s\S]*?\}, \[addresses, deviceCoords, deliveryMethod, route\.params\?\.selectedAddressId\]\);/.exec(
+  const effectMatch = /useEffect\(\(\) => \{\s*if \(autoSelectedNearestRef\.current\) return;[\s\S]*?\}, \[addresses, deviceCoords, deliveryMethod, route\.params\?\.selectedAddressId[^\]]*\]\);/.exec(
     source,
   );
   assert.ok(effectMatch, 'En-yakın-adres otomatik seçim effect\'i bulunamadı — dosya beklenmedik şekilde değişmiş olabilir.');

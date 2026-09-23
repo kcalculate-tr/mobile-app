@@ -131,6 +131,11 @@ export default function AddressVerificationSheet({
         setPermissionStep('intro');
       }
     })();
+    // requestDeviceLocation her render'da yeniden tanımlanıyor (useCallback
+    // değil), onPermissionDenied ise prop — ikisi de deps'e girerse sheet her
+    // render'da konum sorgusunu baştan başlatır. Bu efekt bilerek yalnız
+    // "sheet açıldı / mod değişti" anına bağlı.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialCoords, mode]);
 
   const requestDeviceLocation = async (recenter = false) => {

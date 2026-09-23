@@ -48,7 +48,7 @@ export default function FeedbackScreen() {
       Animated.timing(pageOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.spring(pageTranslateY, { toValue: 0, useNativeDriver: true, speed: 15, bounciness: 4 }),
     ]).start()
-  }, [])
+  }, [pageOpacity, pageTranslateY])
   const [message,   setMessage]   = useState('')
   const [saving,    setSaving]    = useState(false)
   const [submitted, setSubmitted] = useState(false)

@@ -292,6 +292,9 @@ export default function PersonalInfoScreen() {
         if (data) { setFullName(data.full_name || ''); setPhone(data.phone || '') }
         setLoading(false)
       })
+    // Profil bir kez, kullanıcı KİMLİĞİ değişince okunur; user.email yalnız
+    // ilk doldurma için. supabase modül seviyesinde sabit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   const handleSave = async () => {

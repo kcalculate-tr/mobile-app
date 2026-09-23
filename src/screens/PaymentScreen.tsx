@@ -155,6 +155,9 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
         await startHostedInit(payMode === 'new_card' && saveCard === true);
       }
     })();
+    // Ödeme başlatma mount'ta TAM OLARAK BİR KEZ çalışmalı. Herhangi bir
+    // bağımlılık eklenirse aynı sipariş için ikinci bir init isteği gidebilir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startHostedInit = async (shouldSaveCard: boolean) => {

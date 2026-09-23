@@ -59,6 +59,9 @@ export default function UnifiedLoginScreen() {
   // async); user değişince (bu ekran hâlâ mount'ken) hedefe geç.
   useEffect(() => {
     if (user) finishLogin();
+    // finishLogin aşağıda tanımlı (useCallback değil), her render'da yeni
+    // referans. Deps'e girerse yönlendirme döngüye girer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const finishLogin = async () => {

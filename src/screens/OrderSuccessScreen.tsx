@@ -82,7 +82,7 @@ export default function OrderSuccessScreen() {
       }).start();
     }, 600);
     return () => clearTimeout(timer);
-  }, []);
+  }, [checkOpacity, checkScale, fadeAnim, orderCodeAnim, slideAnim]);
 
   useEffect(() => {
     const orderId = route.params.orderId;

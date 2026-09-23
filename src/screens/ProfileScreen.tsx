@@ -135,7 +135,7 @@ export default function ProfileScreen() {
       }).start();
     });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, macroProgressAnim]);
 
   const { summary: nutritionSummary, refetch: refetchNutritionSummary } = useNutritionSummary();
 

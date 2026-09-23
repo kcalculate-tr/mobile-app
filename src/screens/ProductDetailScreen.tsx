@@ -76,7 +76,7 @@ const MacroBadge: React.FC<MacroBadgeProps> = React.memo(({ label, value, unit, 
       duration: 400,
       useNativeDriver: false,
     }).start();
-  }, [percentage]);
+  }, [percentage, animPct]);
 
   const dashoffset = animPct.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
 
@@ -122,7 +122,7 @@ const MiniMacroBadge: React.FC<MacroBadgeProps> = React.memo(({ value, unit, col
       duration: 400,
       useNativeDriver: false,
     }).start();
-  }, [percentage]);
+  }, [percentage, animPct]);
 
   const dashoffset = animPct.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
 
@@ -214,7 +214,7 @@ export default function ProductDetailScreen() {
     } else {
       miniOpacity.setValue(0);
     }
-  }, [showMiniMacros]);
+  }, [showMiniMacros, miniOpacity]);
 
   useEffect(() => {
     let mounted = true;
@@ -270,6 +270,9 @@ export default function ProductDetailScreen() {
       category: product.category ?? undefined,
       brand: product.brand ?? undefined,
     });
+    // Görüntülenme olayı ürün KİMLİĞİ başına bir kez; product nesnesi deps'e
+    // girerse her yeniden çizimde tekrar sayılır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
 
   useEffect(() => {

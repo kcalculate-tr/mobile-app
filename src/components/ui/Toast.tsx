@@ -25,6 +25,13 @@ export function Toast({ visible, message, type = 'success', onHide, duration = 2
   const opacity = useRef(new Animated.Value(0)).current;
   const { bg, color, Icon } = CONFIGS[type];
 
+  // onHide bağımlılık dizisine KONULMAZ: çağıranların çoğu inline ok
+  // fonksiyonu veriyor, her render'da kimliği değişir ve efekt yeniden
+  // kurulursa gizleme zamanlayıcısı sürekli sıfırlanıp toast hiç kapanmaz.
+  // En güncel referansı ref üzerinden okuyoruz.
+  const onHideRef = useRef(onHide);
+  onHideRef.current = onHide;
+
   useEffect(() => {
     if (visible) {
       Animated.parallel([
@@ -36,12 +43,12 @@ export function Toast({ visible, message, type = 'success', onHide, duration = 2
         Animated.parallel([
           Animated.timing(translateY, { toValue: -80, duration: 250, useNativeDriver: true }),
           Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
-        ]).start(() => onHide?.());
+        ]).start(() => onHideRef.current?.());
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
+  }, [visible, duration, opacity, translateY]);
 
   if (!visible) return null;
 

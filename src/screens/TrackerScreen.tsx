@@ -445,7 +445,7 @@ function BigCalorieRing({ current, target }: BigRingProps) {
     }).start();
     const id = animatedKcal.addListener(({ value }) => setDisplayKcal(Math.round(value)));
     return () => animatedKcal.removeListener(id);
-  }, [current]);
+  }, [current, animatedKcal]);
 
   return (
     <View style={s.ringWrapper}>
@@ -866,15 +866,20 @@ export default function TrackerScreen() {
   const consumeInFlightRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    // Map'in KİMLİĞİ sabit (useRef ile bir kez kuruluyor); cleanup'ta
+    // ref.current okumak yerine burada yakalıyoruz — React'in uyardığı
+    // "temizlik çalıştığında ref başka bir şeyi gösteriyor olabilir"
+    // sınıfı hata bu şekilde imkânsız hale geliyor.
+    const animValues = animValuesRef.current;
     return () => {
-      if (animValuesRef.current) {
-        animValuesRef.current.forEach(anim => {
+      if (animValues) {
+        animValues.forEach(anim => {
           anim.scale.stopAnimation();
           anim.bgFlash.stopAnimation();
           anim.translateY.stopAnimation();
           anim.opacity.stopAnimation();
         });
-        animValuesRef.current.clear();
+        animValues.clear();
       }
     };
   }, []);

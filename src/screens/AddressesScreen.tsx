@@ -145,6 +145,10 @@ export default function AddressesScreen() {
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
+  // loadData içinde "mevcut seçimi koru" kontrolü bunu OKUR ama seçim
+  // değiştiğinde adres listesi yeniden çekilmemeli — deps yerine ref.
+  const selectedAddressIdRef = useRef(selectedAddressId);
+  selectedAddressIdRef.current = selectedAddressId;
 
   const [editingId, setEditingId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -370,8 +374,8 @@ export default function AddressesScreen() {
           const defaultAddr = normalized.find((a) => a.is_default);
           const resolvedId =
             defaultAddr?.id ??
-            (selectedAddressId && normalized.some((item) => item.id === selectedAddressId)
-              ? selectedAddressId
+            (selectedAddressIdRef.current && normalized.some((item) => item.id === selectedAddressIdRef.current)
+              ? selectedAddressIdRef.current
               : normalized[0].id);
           const resolvedAddress = normalized.find((a) => a.id === resolvedId) ?? null;
           setSelectedAddressId(resolvedId);
@@ -437,7 +441,7 @@ export default function AddressesScreen() {
 
     loadData();
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, setSelectedAddress]);
 
   useEffect(() => {
     const address = addresses.find((a) => a.id === selectedAddressId);

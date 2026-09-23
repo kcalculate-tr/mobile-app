@@ -20,7 +20,7 @@ export function SkeletonLoader({ width = '100%', height = 16, borderRadius = 8, 
     );
     animation.start();
     return () => animation.stop();
-  }, []);
+  }, [shimmer]);
 
   const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.9] });
 

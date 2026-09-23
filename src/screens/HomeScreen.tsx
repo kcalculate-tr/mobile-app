@@ -93,6 +93,9 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!appBanner) return;
     track('banner_view', { banner_id: appBanner.id, source: 'home' });
+    // Görüntülenme olayı banner KİMLİĞİ değişince bir kez atılmalı; nesne
+    // referansı deps'e girerse her yenilemede tekrar sayılır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appBanner?.id]);
 
   const handleAppBannerPress = useCallback(() => {
@@ -105,7 +108,7 @@ export default function HomeScreen() {
   useEffect(() => {
     activeDotWidth.setValue(5);
     Animated.spring(activeDotWidth, { toValue: 14, useNativeDriver: false, speed: 20, bounciness: 4 }).start();
-  }, [activeHero]);
+  }, [activeHero, activeDotWidth]);
 
   const heroCells = useMemo(
     () => heroRows.flatMap((r) => r.cells),
@@ -189,6 +192,10 @@ export default function HomeScreen() {
       if (next.status === 'delivered') haptic.success();
     });
     return unsubscribe;
+    // Abonelik yalnız sipariş KİMLİĞİ değişince kurulmalı. activeOrder nesnesi
+    // her Realtime mesajında yenileniyor; deps'e girerse abonelik sürekli
+    // sökülüp yeniden kurulur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrder?.id]);
 
   // Teslim edilmiş kartın görünme süresi dolduğunda kendiliğinden kaybolsun.

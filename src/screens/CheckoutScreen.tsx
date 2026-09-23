@@ -592,6 +592,9 @@ export default function CheckoutScreen() {
       eşik: ORDER_ADDRESS_DISTANCE_WARNING_METERS,
       gösterildi: farFromAddressWarning,
     });
+    // Sadece __DEV__ teşhis logu; uyarı satırının GÖRÜNÜRLÜK değişimine
+    // bağlı, okuduğu adres/konum alanlarına değil.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [farFromAddressWarning]);
 
   // Cihaz konumunu bir kez al (izin zaten verilmişse — İSTEME). Hem uzak-
@@ -913,7 +916,11 @@ export default function CheckoutScreen() {
       const address = addresses.find((a) => a.id === id);
       if (address) setSelectedAddress(address);
     }
-  }, [route.params?.selectedAddressId]);
+    // `addresses` deps'te OLMAK ZORUNDA: Adreslerim'den "Bu Adresi Seç" ile
+    // dönüldüğünde liste henüz yüklenmemiş olabiliyor; o durumda find()
+    // undefined dönüyor ve efekt bir daha çalışmadığı için seçim hiç
+    // uygulanmıyordu. Liste gelince yeniden çalışsın.
+  }, [route.params?.selectedAddressId, addresses, setSelectedAddress]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -1082,7 +1089,7 @@ export default function CheckoutScreen() {
     return () => {
       mounted = false;
     };
-  }, [user, route.params?.selectedAddressId]);
+  }, [user, route.params?.selectedAddressId, setSelectedAddress]);
 
   // En yakın kayıtlı adresi otomatik seç — SADECE kullanıcı bu checkout
   // oturumunda henüz elle bir adres seçmediyse (Adreslerim'den "Bu Adresi
@@ -1127,7 +1134,7 @@ export default function CheckoutScreen() {
 
     dispatchAddr({ type: 'SET_SELECTED_ADDRESS_ID', payload: nearest.id });
     setSelectedAddress(nearest);
-  }, [addresses, deviceCoords, deliveryMethod, route.params?.selectedAddressId]);
+  }, [addresses, deviceCoords, deliveryMethod, route.params?.selectedAddressId, setSelectedAddress]);
 
   // Eksik alan uyarısı, alan dolunca kendiliğinden kalksın.
   useEffect(() => {
@@ -1151,6 +1158,10 @@ export default function CheckoutScreen() {
     dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: customerName || selectedAddress.contact_name || '' });
     dispatchOrder({ type: 'SET_CUSTOMER_EMAIL', payload: customerEmail || selectedAddress.contact_email || user?.email || '' });
     dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: customerPhone || selectedAddress.contact_phone || '' });
+    // customerName/Email/Phone burada "kullanıcı zaten yazdıysa DOKUNMA"
+    // kontrolü olarak okunuyor. Deps'e girerlerse her tuş vuruşunda efekt
+    // yeniden çalışır. Tetikleyici bilerek yalnız adres/e-posta değişimi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAddress, user?.email]);
 
   useEffect(() => {
@@ -1351,7 +1362,7 @@ export default function CheckoutScreen() {
     };
     run();
     return () => { mounted = false; };
-  }, [selectedAddress?.full_address, selectedAddress?.district]);
+  }, [selectedAddress?.full_address, selectedAddress?.district, selectedAddress?.city]);
 
   const handleRetryRules = () => {
     dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });

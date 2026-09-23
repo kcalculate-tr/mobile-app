@@ -228,9 +228,11 @@ export default function CartScreen() {
     // appliedCoupon'ın kendisini deps'e almıyoruz: bu efektin setCoupon
     // çağrısı appliedCoupon referansını değiştirir ve kod/tip aynı kaldığı
     // sürece tekrar tetiklenmesini İSTEMİYORUZ (sonsuz döngü riski).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // couponItems deps'te: free_item kuponunda indirim sepetin BİLEŞİMİNE
     // bağlı — subtotal aynı kalsa bile en pahalı uygun öğün değişebilir.
+    // (Direktif en alttaki yorum olmak ZORUNDA; araya yorum girerse yanlış
+    // satırı susturur ve uyarı geri gelir.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotal, couponItems, appliedCoupon?.code, appliedCoupon?.discountType]);
 
   useEffect(() => {
@@ -243,7 +245,7 @@ export default function CartScreen() {
       couponSlideY.setValue(-20)
       couponOpacity.setValue(0)
     }
-  }, [appliedCoupon])
+  }, [appliedCoupon, couponOpacity, couponSlideY])
 
   const couponDiscount = getDiscountAmount(subtotal);
 

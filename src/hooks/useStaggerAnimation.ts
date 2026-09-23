@@ -31,7 +31,7 @@ export function useStaggerAnimation(itemCount: number, delay = 60) {
       ])
     );
     Animated.stagger(delay, anims).start();
-  }, [itemCount]);
+  }, [itemCount, animations, delay]);
 
   const getStyle = (index: number) => {
     const anim = animations[index];
