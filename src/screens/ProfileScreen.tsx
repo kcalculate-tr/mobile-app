@@ -138,6 +138,8 @@ export default function ProfileScreen() {
   const { summary: nutritionSummary, refetch: refetchNutritionSummary } = useNutritionSummary();
 
   const [dataLoading, setDataLoading] = useState(true);
+  /** İlk veri geldi mi — iskelet yalnızca ilk yüklemede gösterilsin diye. */
+  const ilkVeriGeldi = useRef(false);
   const [nutrition, setNutrition] = useState<NutritionProfile>({
     height_cm: null,
     weight_kg: null,
@@ -215,7 +217,12 @@ export default function ProfileScreen() {
 
   const fetchData = useCallback(async () => {
     if (!user) return;
-    setDataLoading(true);
+    // İskelet YALNIZCA ilk yüklemede. Bu ekran her odaklandığında
+    // fetchData çağrılıyor; her seferinde dataLoading'i açmak profil
+    // kartını gri iskelete çeviriyor ve sekmeye her girişte "yükleniyor"
+    // hissi veriyordu. Sonraki tazelemeler sessiz yapılır: eldeki veri
+    // ekranda kalır, yenisi gelince yerine geçer.
+    if (!ilkVeriGeldi.current) setDataLoading(true);
     try {
       const sevenDaysAgo = getLast7Days()[0];
 
@@ -253,6 +260,7 @@ export default function ProfileScreen() {
         setWeeklyKcal(getLast7Days().map(date => ({ date, kcal: 0 })));
       }
     } finally {
+      ilkVeriGeldi.current = true;
       setDataLoading(false);
     }
   }, [user]);

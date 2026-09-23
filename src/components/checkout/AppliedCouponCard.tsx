@@ -87,9 +87,9 @@ export default function AppliedCouponCard({ code, title, onRemove }: {
           <LinearGradient
             colors={[
               'rgba(255,255,255,0)',
-              'rgba(255,255,255,0.10)',
-              'rgba(255,255,255,0.30)',
-              'rgba(255,255,255,0.10)',
+              'rgba(255,255,255,0.22)',
+              'rgba(255,255,255,0.60)',
+              'rgba(255,255,255,0.22)',
               'rgba(255,255,255,0)',
             ]}
             start={{ x: 0, y: 0 }}
@@ -122,22 +122,23 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    backgroundColor: '#0D0D0D',
+    // Barın tamamı marka yeşili; üzerindeki her şey siyah.
+    backgroundColor: COLORS.brand.green,
     borderRadius: RADIUS.xl,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(185,239,20,0.25)',
     overflow: 'hidden',
   },
   band: {
     position: 'absolute',
     width: BAND,
   },
+  // Yeşil zeminde yeşil kutu kaybolurdu; ikon hafif koyulaştırılmış bir
+  // kare içinde duruyor, böylece yapısı korunuyor.
   ikon: {
     width: 40, height: 40, borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.brand.green,
+    backgroundColor: 'rgba(0,0,0,0.10)',
     alignItems: 'center', justifyContent: 'center',
   },
   ad: {
@@ -145,7 +146,7 @@ const s = StyleSheet.create({
     minWidth: 0,
     fontSize: 20,
     lineHeight: 26,
-    color: '#FFFFFF',
+    color: '#000000',
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontWeight: '800',
   },
@@ -154,11 +155,11 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: RADIUS.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(0,0,0,0.22)',
   },
   kaldirText: {
     fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(0,0,0,0.7)',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontWeight: '600',
   },
