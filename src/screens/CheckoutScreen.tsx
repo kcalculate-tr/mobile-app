@@ -814,6 +814,18 @@ export default function CheckoutScreen() {
     selectedTimeSlot,
   ]);
 
+  /**
+   * Eve teslimde adres HİÇ seçilmemiş olması.
+   *
+   * Bu durumda yöntem/zaman kartı KİLİTLENMEZ. Eskiden kilitleniyordu ve
+   * kısır döngü oluşuyordu: kayıtlı adresi olmayan müşteri Gel-Al'a da
+   * geçemiyordu — oysa Gel-Al adres gerektirmiyor.
+   */
+  const adresEksik = deliveryMethod === 'home_delivery' && !selectedAddress;
+
+  /** Kart yalnızca adres SEÇİLİ ama bölge teslimata kapalıyken soluklaşır. */
+  const yontemKartiKapali = deliveryMethod === 'home_delivery' && !!selectedAddress && !isDeliverable;
+
   const isCheckoutDisabled = useMemo(() => {
     if (placingOrder) return true;
 
@@ -1397,7 +1409,11 @@ export default function CheckoutScreen() {
 
     if (shouldValidateDraftForm) {
       if (deliveryMethod === 'home_delivery' && !selectedAddress) {
-        hataylaOdakla('adres', { adres: 'Teslimat adresi seçin.' });
+        hataylaOdakla('adres', {
+          adres: addresses.length === 0
+            ? 'Devam etmek için bir teslimat adresi ekleyin.'
+            : 'Teslimat adresi seçin.',
+        });
         return;
       }
 
@@ -1860,11 +1876,8 @@ export default function CheckoutScreen() {
               müşteri önce adres seçip sonra Gel-Al'a basınca o seçim
               boşa gidiyordu. (dimmed if !isDeliverable for eve teslim) */}
           <View
-            style={[
-              styles.card,
-              deliveryMethod === 'home_delivery' && !isDeliverable ? styles.cardDisabled : null,
-            ]}
-            pointerEvents={deliveryMethod === 'home_delivery' && !isDeliverable ? 'none' : 'auto'}
+            style={[styles.card, yontemKartiKapali ? styles.cardDisabled : null]}
+            pointerEvents={yontemKartiKapali ? 'none' : 'auto'}
             onLayout={bolumOlcu('zaman')}
           >
             {/* Yöntem */}
@@ -2623,7 +2636,20 @@ fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary }}>TROY</Text>
             bir karttı; ödeme kararının verildiği yere taşındı. */}
         {step === 'summary' ? (() => {
           const belowMinOrder = subtotal < resolvedMinOrder;
-          const buttonDisabled = isCheckoutDisabled || belowMinOrder || !isDeliverable;
+
+          // Kullanıcının bu ekranda düzeltebileceği eksikler butonu
+          // KİLİTLEMEZ: basınca doğrulama çalışıp ilgili alana kaydırır ve
+          // uyarıyı gösterir. Kilitli buton hiçbir şey söylemiyordu —
+          // müşteri neden ilerleyemediğini göremiyordu.
+          //
+          // Minimum tutar istisna: onu footer'daki şerit "Ürün Ekle"
+          // kısayoluyla zaten anlatıyor.
+          const yonlendirilebilirEksik = adresEksik || !contractsAccepted;
+          const buttonDisabled =
+            placingOrder ||
+            items.length === 0 ||
+            belowMinOrder ||
+            ((isCheckoutDisabled || !isDeliverable) && !yonlendirilebilirEksik);
           return (
             <CheckoutFooter
               label={actionButton.label}
