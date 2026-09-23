@@ -114,12 +114,17 @@ export default function App() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
-  // Fontlar hazır olunca native splash'ı gizle ve doğrudan uygulamaya geç.
-  // Ayrı JS logo overlay yok → açılışta tek logo (native splash) görünür.
-  // hideAsync KRİTİK: çağrılmazsa native splash hiç gizlenmez, app takılır.
+  // Native splash'ı gizleme işi AppNavigator'a taşındı: oturum da çözülmeden
+  // gizlenirse araya bir "yükleniyor" karesi giriyordu. Açılışta tek görsel
+  // olsun diye splash, oturum hazır olana kadar açık kalıyor.
+  //
+  // EMNİYET AĞI: oturum çözümü takılırsa (ağ yok, Supabase yanıt vermiyor)
+  // splash sonsuza kadar açık kalmasın — fontlardan 8 sn sonra koşulsuz
+  // gizlenir. hideAsync KRİTİK: hiç çağrılmazsa app splash'ta kilitlenir.
   useEffect(() => {
     if (!fontsLoaded) return;
-    SplashScreen.hideAsync().catch(() => {});
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 8000);
+    return () => clearTimeout(t);
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;

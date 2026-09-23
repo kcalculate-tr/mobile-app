@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -125,6 +125,11 @@ export default function AppNavigator() {
   const pendingRoute = useNavGate((s) => s.pendingRoute);
   const initialRouteName = session ? 'Tabs' : 'WelcomeGate';
 
+  useEffect(() => {
+    if (authLoading) return;
+    SplashScreen.hideAsync().catch(() => {});
+  }, [authLoading]);
+
   // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).
   useEffect(() => {
     if (authLoading || !pendingRoute || !navigationRef.isReady()) return;
@@ -135,13 +140,12 @@ export default function AppNavigator() {
     });
   }, [authLoading, pendingRoute]);
 
-  if (authLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0A0A' }}>
-        <ActivityIndicator color="#B9EF14" />
-      </View>
-    );
-  }
+  // Oturum çözülene kadar HİÇBİR ŞEY çizilmez ve native splash (kcal logosu)
+  // açık kalır. Önceden burada koyu zeminli bir ActivityIndicator vardı:
+  // logo kayboluyor, araya bir "yükleniyor" karesi giriyor, sonra uygulama
+  // açılıyordu. Splash yalnızca oturum hazır olunca gizleniyor, böylece
+  // açılışta tek bir görsel var: logo → uygulama.
+  if (authLoading) return null;
 
   return (
     <Stack.Navigator

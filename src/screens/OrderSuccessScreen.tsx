@@ -36,6 +36,13 @@ export default function OrderSuccessScreen() {
   const { isAuthenticated, loading } = useRequireAuth();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  // "Hazırlanıyor" etiketindeki canlı noktalar.
+  const [dots, setDots] = useState(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => setDots((d) => (d < 3 ? d + 1 : 1)), 500);
+    return () => clearInterval(interval);
+  }, []);
 
   // Bu siparişin kazandıracağı Macro. Parametre olarak taşınmıyor: çağrı
   // noktaları (checkout, ödeme, 3DS dönüşü) farklı yerlerde ve hepsinin
@@ -135,13 +142,10 @@ export default function OrderSuccessScreen() {
   });
 
   const steps = [
-    { Icon: CheckCircle, label: 'Onaylandı', active: true },
-    // Etiket SABİT: animasyonlu noktalar 60px'lik adım genişliğini taşırıp
-    // "Hazırlanıyor.." diye kırpılmasına yol açıyordu. Canlılık, dairenin
-    // neon dolgusu ve bağlantı çizgisiyle zaten veriliyor.
-    { Icon: Fire, label: 'Hazırlanıyor', active: true },
-    { Icon: Truck, label: 'Yolda', active: false },
-    { Icon: House, label: 'Teslim', active: false },
+    { Icon: CheckCircle, label: 'Onaylandı', active: true, canli: false },
+    { Icon: Fire, label: 'Hazırlanıyor', active: true, canli: true },
+    { Icon: Truck, label: 'Yolda', active: false, canli: false },
+    { Icon: House, label: 'Teslim', active: false, canli: false },
   ];
 
   // Veri YOKSA kart hiç çizilmez; "kazanılamadı" iddiası doğrulanamaz.
@@ -215,28 +219,32 @@ export default function OrderSuccessScreen() {
 
             <View style={styles.kartCizgi} />
 
+            {/* Adımlar eşit sütunlara (flex: 1) bölünüyor ve çizgi KESİNTİSİZ
+                tek ray olarak arkaya çiziliyor. Önceki sabit genişlik + ayrı
+                bağlantı View'leri, etiket uzayınca (canlı noktalar) kırpılma
+                ya da çizgilerin yok olması arasında seçim yapmaya zorluyordu.
+                4 eşit sütunda daire merkezleri %12,5 / %37,5 / %62,5 / %87,5
+                olduğundan ray tam uçlardan başlayıp bitiyor. */}
             <View style={styles.zamanCizgisi}>
-              {steps.map((step, i) => (
-                <React.Fragment key={step.label}>
-                  <View style={styles.adim}>
-                    <View style={[styles.adimDaire, step.active && styles.adimDaireAktif]}>
-                      <step.Icon
-                        size={13}
-                        weight="fill"
-                        color={step.active ? '#000000' : COLORS.text.tertiary}
-                      />
-                    </View>
-                    <Text
-                      style={[styles.adimLabel, step.active && styles.adimLabelAktif]}
-                      numberOfLines={1}
-                    >
-                      {step.label}
-                    </Text>
+              <View style={styles.ray} />
+              <View style={styles.rayAktif} />
+              {steps.map((step) => (
+                <View key={step.label} style={styles.adim}>
+                  <View style={[styles.adimDaire, step.active && styles.adimDaireAktif]}>
+                    <step.Icon
+                      size={13}
+                      weight="fill"
+                      color={step.active ? '#000000' : COLORS.text.tertiary}
+                    />
                   </View>
-                  {i < steps.length - 1 ? (
-                    <View style={[styles.baglanti, i < 1 && styles.baglantiAktif]} />
-                  ) : null}
-                </React.Fragment>
+                  <Text
+                    style={[styles.adimLabel, step.active && styles.adimLabelAktif]}
+                    numberOfLines={1}
+                  >
+                    {step.label}
+                    {step.canli ? '.'.repeat(dots) : ''}
+                  </Text>
+                </View>
               ))}
             </View>
 
@@ -420,11 +428,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  ray: {
+    position: 'absolute',
+    left: '12.5%',
+    right: '12.5%',
+    top: 13,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  rayAktif: {
+    position: 'absolute',
+    left: '12.5%',
+    width: '25%',
+    top: 13,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: COLORS.brand.green,
+  },
   adim: {
+    flex: 1,
     alignItems: 'center',
-    // 4 adım + 3 bağlantı kart genişliğine sığmalı: sabit genişlik büyürse
-    // bağlantı çizgileri görünmez hale geliyor.
-    width: 60,
   },
   adimDaire: {
     width: 28,
@@ -446,16 +470,6 @@ const styles = StyleSheet.create({
   adimLabelAktif: {
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
-  },
-  baglanti: {
-    flex: 1,
-    height: 2,
-    marginTop: 13,
-    borderRadius: 1,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-  },
-  baglantiAktif: {
-    backgroundColor: COLORS.brand.green,
   },
   teslimatSatir: {
     flexDirection: 'row',
