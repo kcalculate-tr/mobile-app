@@ -443,7 +443,12 @@ const s = StyleSheet.create({
   },
 
   // Detay sayfası
-  sheetMedia: { width: '100%', aspectRatio: 16 / 9, borderRadius: RADIUS.md, overflow: 'hidden' },
+  // 24.09.2026: karo 1:1, sayfa 16/9 idi — AYNI görsel iki farklı orana
+  // kırpılıyordu. Kampanya görselleri çoğunlukla yazı içeriyor (ör. "İlk
+  // Siparişe Özel 250 TL"); kare bir görseli 16/9'a kırpmak üstten ve alttan
+  // yazıyı kesiyordu. İkisi de 1:1: tek görsel, hiçbir yerde kırpılma yok.
+  // Boss panel de 1080×1080 öneriyor (bkz. BossVitrin kupon formu).
+  sheetMedia: { width: '100%', aspectRatio: 1, borderRadius: RADIUS.md, overflow: 'hidden' },
   sheetImage: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   sheetDiscount: {
     fontSize: 32, lineHeight: 36, textAlign: 'center',
