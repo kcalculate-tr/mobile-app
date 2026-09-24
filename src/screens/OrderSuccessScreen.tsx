@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -61,15 +62,15 @@ export default function OrderSuccessScreen() {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: DURATION.slow, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: DURATION.slow, useNativeDriver: true }),
     ]).start();
 
     Animated.sequence([
       Animated.delay(300),
       Animated.parallel([
         Animated.spring(checkScale, { toValue: 1, useNativeDriver: true, speed: 8, bounciness: 18 }),
-        Animated.timing(checkOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(checkOpacity, { toValue: 1, duration: DURATION.fast, useNativeDriver: true }),
       ]),
     ]).start();
 
@@ -115,7 +116,7 @@ export default function OrderSuccessScreen() {
       Animated.delay(500),
       Animated.parallel([
         Animated.spring(macroScale, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 14 }),
-        Animated.timing(macroOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.timing(macroOpacity, { toValue: 1, duration: DURATION.base, useNativeDriver: true }),
       ]),
     ]).start();
   }, [kazanilanMacro, macroScale, macroOpacity]);

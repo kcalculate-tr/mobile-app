@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import ReorderCard, { reorderSummary } from '../ReorderCard';
+import ReorderCard, { reorderCalorieLabel, reorderSummary } from '../ReorderCard';
 import type { PastOrder } from '../../lib/reorder';
 
-const kalem = (id: string, name: string, quantity = 1, imageUrl: string | null = null) => ({
-  id, name, quantity, options: {}, imageUrl,
+const kalem = (id: string, name: string, quantity = 1, calories = 0, imageUrl: string | null = null) => ({
+  id, name, quantity, calories, options: {}, imageUrl,
 });
 
 const siparis = (items: PastOrder['items']): PastOrder => ({
@@ -13,6 +13,7 @@ const siparis = (items: PastOrder['items']): PastOrder => ({
   createdAt: '2026-09-12T10:00:00.000Z',
   totalAmount: 585,
   items,
+  totalCalories: items.reduce((n, it) => n + it.calories * it.quantity, 0),
 });
 
 test('başlık, özet ve tarih/adet satırı gösterilir', () => {
@@ -85,4 +86,32 @@ test('busy iken buton etiketi gizlenir ve onPress ÇAĞRILMAZ', () => {
   expect(queryByText('Sepete Ekle')).toBeNull();
   fireEvent.press(getByLabelText('Son siparişi sepete ekle'));
   expect(tiklamalar.length).toBe(0);
+});
+
+// ── Kalori rozeti — 24.09.2026 ──────────────────────────────────────────────
+
+test('toplam kalori birim kalori × adet olarak gösterilir', () => {
+  const { getByText } = render(
+    <ReorderCard
+      order={siparis([kalem('1', 'Tavuklu Bowl', 2, 820), kalem('2', 'Salata', 1, 310)])}
+      onPress={() => {}}
+    />,
+  );
+  // 820×2 + 310 = 1.950
+  expect(getByText('1.950 kcal')).toBeTruthy();
+});
+
+test('kalori 0 ise rozet HİÇ çıkmaz (uydurma sıfır gösterilmez)', () => {
+  const { queryByText } = render(
+    <ReorderCard order={siparis([kalem('1', 'A', 1, 0)])} onPress={() => {}} />,
+  );
+  expect(queryByText(/kcal/)).toBeNull();
+  expect(reorderCalorieLabel(0)).toBeNull();
+  expect(reorderCalorieLabel(-5)).toBeNull();
+});
+
+test('kalori binlik ayraçla yazılır', () => {
+  expect(reorderCalorieLabel(1640)).toBe('1.640 kcal');
+  expect(reorderCalorieLabel(820)).toBe('820 kcal');
+  expect(reorderCalorieLabel(819.6)).toBe('820 kcal');
 });

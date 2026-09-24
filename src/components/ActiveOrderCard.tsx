@@ -1,3 +1,4 @@
+import { DURATION, EASING } from '../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CaretRight, CheckCircle, CookingPot, Package, Receipt, Scooter } from 'phosphor-react-native';
@@ -34,8 +35,8 @@ export default function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps
   useEffect(() => {
     Animated.timing(progress, {
       toValue: current / (ORDER_STEPS.length - 1),
-      duration: 520,
-      easing: Easing.out(Easing.cubic),
+      duration: DURATION.slow,
+      easing: EASING.enter,
       useNativeDriver: false,
     }).start();
   }, [current, progress]);
@@ -46,8 +47,8 @@ export default function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps
     if (isDelivered) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: DURATION.pulse, easing: EASING.move, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: DURATION.pulse, easing: EASING.move, useNativeDriver: true }),
       ]),
     );
     loop.start();

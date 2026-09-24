@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import { tl } from '../lib/money';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Animated,
@@ -75,7 +76,7 @@ const MacroBadge: React.FC<MacroBadgeProps> = React.memo(({ label, value, unit, 
   useEffect(() => {
     Animated.timing(animPct, {
       toValue: Math.min(percentage, 1),
-      duration: 400,
+      duration: DURATION.slow,
       useNativeDriver: false,
     }).start();
   }, [percentage, animPct]);
@@ -121,7 +122,7 @@ const MiniMacroBadge: React.FC<MacroBadgeProps> = React.memo(({ value, unit, col
   useEffect(() => {
     Animated.timing(animPct, {
       toValue: Math.min(percentage, 1),
-      duration: 400,
+      duration: DURATION.slow,
       useNativeDriver: false,
     }).start();
   }, [percentage, animPct]);
@@ -212,7 +213,7 @@ export default function ProductDetailScreen() {
 
   useEffect(() => {
     if (showMiniMacros) {
-      Animated.timing(miniOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+      Animated.timing(miniOpacity, { toValue: 1, duration: DURATION.fast, useNativeDriver: true }).start();
     } else {
       miniOpacity.setValue(0);
     }
@@ -672,8 +673,8 @@ export default function ProductDetailScreen() {
     if (prevInCartRef.current === inCart) return;
     prevInCartRef.current = inCart;
     Animated.parallel([
-      Animated.timing(addBtnOpacity,  { toValue: inCart ? 0 : 1, duration: 250, useNativeDriver: true }),
-      Animated.timing(stepperOpacity, { toValue: inCart ? 1 : 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(addBtnOpacity,  { toValue: inCart ? 0 : 1, duration: DURATION.fast, useNativeDriver: true }),
+      Animated.timing(stepperOpacity, { toValue: inCart ? 1 : 0, duration: DURATION.fast, useNativeDriver: true }),
     ]).start();
   }, [inCart, addBtnOpacity, stepperOpacity]);
 
@@ -686,9 +687,9 @@ export default function ProductDetailScreen() {
       Animated.spring(addButtonScale, { toValue: 1,   useNativeDriver: true, speed: 20, bounciness: 12 }),
     ]).start()
     Animated.sequence([
-      Animated.timing(successOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(successOpacity, { toValue: 1, duration: DURATION.instant, useNativeDriver: true }),
       Animated.delay(800),
-      Animated.timing(successOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(successOpacity, { toValue: 0, duration: DURATION.fast, useNativeDriver: true }),
     ]).start()
   }
 

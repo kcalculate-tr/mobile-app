@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 
@@ -17,7 +18,7 @@ export function useStaggerAnimation(itemCount: number, delay = 60) {
       Animated.parallel([
         Animated.timing(anim.opacity, {
           toValue: 1,
-          duration: 300,
+          duration: DURATION.base,
           delay: i * delay,
           useNativeDriver: true,
         }),

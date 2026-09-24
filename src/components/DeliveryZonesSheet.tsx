@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -121,7 +122,7 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
     contentOpacity.setValue(0.35);
     Animated.timing(contentOpacity, {
       toValue: 1,
-      duration: 200,
+      duration: DURATION.fast,
       useNativeDriver: true,
     }).start();
   }, [tab, contentOpacity]);

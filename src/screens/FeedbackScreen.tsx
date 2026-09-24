@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../constants/theme';
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import KeyboardAccessory from '../components/KeyboardAccessory'
@@ -45,7 +46,7 @@ export default function FeedbackScreen() {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(pageOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(pageOpacity, { toValue: 1, duration: DURATION.slow, useNativeDriver: true }),
       Animated.spring(pageTranslateY, { toValue: 0, useNativeDriver: true, speed: 15, bounciness: 4 }),
     ]).start()
   }, [pageOpacity, pageTranslateY])

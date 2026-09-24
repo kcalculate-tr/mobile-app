@@ -1,3 +1,4 @@
+import { DURATION } from '../../constants/motion';
 import React, { useEffect, useRef } from 'react'
 import { Animated, ViewStyle } from 'react-native'
 
@@ -19,7 +20,7 @@ export default function FadeSwap({ swapKey, style, children }: {
     opacity.setValue(0)
     translateY.setValue(8)
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: DURATION.fast, useNativeDriver: true }),
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true, speed: 16, bounciness: 4 }),
     ]).start()
   }, [swapKey, opacity, translateY])

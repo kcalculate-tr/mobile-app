@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -83,7 +84,7 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 1,
-        duration: 300,
+        duration: DURATION.base,
         useNativeDriver: true,
       }),
       Animated.spring(sheetTranslateY, {
@@ -100,12 +101,12 @@ const FormField = React.forwardRef<TextInput, FormFieldProps>(function FormField
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 250,
+        duration: DURATION.fast,
         useNativeDriver: true,
       }),
       Animated.timing(sheetTranslateY, {
         toValue: SCREEN_HEIGHT,
-        duration: 350,
+        duration: DURATION.base,
         useNativeDriver: true,
       }),
     ]).start(() => {

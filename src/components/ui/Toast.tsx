@@ -1,3 +1,4 @@
+import { DURATION } from '../../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,13 +37,13 @@ export function Toast({ visible, message, type = 'success', onHide, duration = 2
     if (visible) {
       Animated.parallel([
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 6 }),
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: DURATION.fast, useNativeDriver: true }),
       ]).start();
 
       const timer = setTimeout(() => {
         Animated.parallel([
-          Animated.timing(translateY, { toValue: -80, duration: 250, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(translateY, { toValue: -80, duration: DURATION.fast, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0, duration: DURATION.fast, useNativeDriver: true }),
         ]).start(() => onHideRef.current?.());
       }, duration);
 

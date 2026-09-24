@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal, View, Text, Pressable, ScrollView, Animated,
@@ -37,8 +38,8 @@ export default function BottomSheet({
 
   const runCloseAnimation = (onDone?: () => void) => {
     Animated.parallel([
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(sheetTranslateY, { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true }),
+      Animated.timing(backdropOpacity, { toValue: 0, duration: DURATION.fast, useNativeDriver: true }),
+      Animated.timing(sheetTranslateY, { toValue: SCREEN_HEIGHT, duration: DURATION.fast, useNativeDriver: true }),
     ]).start(() => {
       setModalVisible(false);
       onDone?.();
@@ -53,7 +54,7 @@ export default function BottomSheet({
       requestAnimationFrame(() => {
         Animated.parallel([
           Animated.timing(backdropOpacity, {
-            toValue: 1, duration: 300, useNativeDriver: true,
+            toValue: 1, duration: DURATION.base, useNativeDriver: true,
           }),
           Animated.spring(sheetTranslateY, {
             toValue: 0, damping: 28, stiffness: 120, mass: 1, useNativeDriver: true,

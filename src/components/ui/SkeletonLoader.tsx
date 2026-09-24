@@ -1,3 +1,4 @@
+import { DURATION } from '../../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, View, StyleSheet, ViewStyle } from 'react-native';
 
@@ -14,8 +15,8 @@ export function SkeletonLoader({ width = '100%', height = 16, borderRadius = 8, 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(shimmer, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 1, duration: DURATION.pulse, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: DURATION.pulse, useNativeDriver: true }),
       ])
     );
     animation.start();

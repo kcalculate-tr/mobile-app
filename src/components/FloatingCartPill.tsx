@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -39,7 +40,7 @@ export default function FloatingCartPill({ aboveTabBar = false, bottomOffset = 0
           tension: 80,
           friction: 12,
         }),
-        Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: DURATION.fast, useNativeDriver: true }),
       ]).start();
     } else {
       Animated.parallel([
@@ -49,7 +50,7 @@ export default function FloatingCartPill({ aboveTabBar = false, bottomOffset = 0
           tension: 80,
           friction: 12,
         }),
-        Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: DURATION.fast, useNativeDriver: true }),
       ]).start();
     }
   }, [totalQty, translateY, opacity]);

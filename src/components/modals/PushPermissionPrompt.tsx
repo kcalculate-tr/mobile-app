@@ -1,3 +1,4 @@
+import { DURATION } from '../../constants/motion';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Animated, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View,
@@ -76,7 +77,7 @@ export default function PushPermissionPrompt() {
   useEffect(() => {
     if (!visible) return;
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: DURATION.fast, useNativeDriver: true }),
       Animated.spring(rise, { toValue: 0, useNativeDriver: true, speed: 14, bounciness: 4 }),
     ]).start();
   }, [visible, fade, rise]);

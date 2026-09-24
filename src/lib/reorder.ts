@@ -10,6 +10,12 @@ export type PastOrderItem = {
   /** Siparis anindaki normalize edilmis secenekler (cartStore.addItem'e geri verilir) */
   options: Partial<CartSelectedOptions>;
   /**
+   * Siparis anindaki BIRIM kalori (modifikatorler dahil — bkz. cartStore'daki
+   * computeUnitMacros). Guncel katalogtan degil, siparisin kendisinden gelir:
+   * gecmis siparis kartinda "o gun ne yedim" sorusunun cevabi bu.
+   */
+  calories: number;
+  /**
    * Guncel katalogdan gelen urun gorseli. orders.items JSON'i gorsel TASIMAZ
    * (bkz. createOrderFromCart) — bu yuzden products'tan ayri cekilip
    * eslestiriliyor. Urun katalogdan kalkmissa null.
@@ -23,6 +29,8 @@ export type PastOrder = {
   createdAt: string;
   totalAmount: number;
   items: PastOrderItem[];
+  /** Siparisin toplam kalorisi — birim kalori x adet. */
+  totalCalories: number;
 };
 
 // Sadece gercekten tamamlanmis siparisler tekrar edilebilir; iptal/basarisiz
@@ -43,6 +51,7 @@ const toItems = (raw: unknown): PastOrderItem[] => {
         // createOrderFromCart, normalize edilmis CartSelectedOptions'i
         // legacy_selected_options alanina yaziyor (bkz. src/lib/orders.ts).
         options: (r.legacy_selected_options ?? {}) as Partial<CartSelectedOptions>,
+        calories: Math.max(0, Number(r.calories) || 0),
         imageUrl: null,
       } as PastOrderItem;
     })
@@ -72,6 +81,10 @@ export const fetchPastOrders = async (
       createdAt: String(row.created_at),
       totalAmount: Number(row.total_amount ?? 0),
       items: toItems(row.items),
+    }))
+    .map((o) => ({
+      ...o,
+      totalCalories: o.items.reduce((n, it) => n + it.calories * it.quantity, 0),
     }))
     .filter((o) => o.items.length > 0);
 

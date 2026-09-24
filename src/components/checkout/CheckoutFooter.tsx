@@ -1,3 +1,4 @@
+import { DURATION, EASING } from '../../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
@@ -95,8 +96,8 @@ export default function CheckoutFooter({
 
     Animated.timing(ilerleme, {
       toValue: yuzde,
-      duration: 520,
-      easing: Easing.out(Easing.cubic),
+      duration: DURATION.slow,
+      easing: EASING.enter,
       useNativeDriver: false,
     }).start(({ finished }) => {
       // Animasyon yarıda kesildiyse (ör. blok unmount olup değere bağlı son

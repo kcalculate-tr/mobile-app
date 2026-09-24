@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -53,22 +54,22 @@ export const AnimatedNumberText: React.FC<Props> = ({ value, style, ...rest }) =
     Animated.parallel([
       Animated.timing(translateY, {
         toValue: -20,
-        duration: 220,
+        duration: DURATION.fast,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 180,
+        duration: DURATION.fast,
         useNativeDriver: true,
       }),
       Animated.timing(incomingTranslateY, {
         toValue: 0,
-        duration: 220,
+        duration: DURATION.fast,
         useNativeDriver: true,
       }),
       Animated.timing(incomingOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: DURATION.fast,
         useNativeDriver: true,
       }),
     ]).start((result) => {

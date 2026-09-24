@@ -7,6 +7,7 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen_legacy';
 import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen_legacy';
 
 import { haptic } from '../utils/haptics';
+import { DURATION, EASING } from '../constants/motion';
 import { CustomTabBar } from './CustomTabBar';
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
@@ -58,7 +59,20 @@ function TabNavigator() {
         tabBar={(props) => <CustomTabBar {...props} />}
         // Sahne zemini uygulamanin ACIK temasiyla ayni olmali; #0A0A0A
         // sekme gecislerinde bir kare siyah parlama birakiyordu.
-        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: '#f6f6f6' } }}
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: '#f6f6f6' },
+          // 24.09.2026: sekme geçişlerinde HİÇ animasyon yoktu — ekran bir
+          // karede değişiyordu. Stack geçişleri (280 ms) yumuşakken sekme
+          // geçişinin sert olması aynı uygulamada iki farklı his bırakıyordu.
+          // 'fade', sekmeler arasında yön ilişkisi olmadığı için doğru olan:
+          // 'shift' yatay bir yön ima eder, sekmelerde böyle bir sıra yok.
+          animation: 'fade',
+          transitionSpec: {
+            animation: 'timing',
+            config: { duration: DURATION.base, easing: EASING.enter },
+          },
+        }}
       >
       <Tab.Screen
         name="Home"
@@ -154,7 +168,7 @@ export default function AppNavigator() {
         headerShown: false,
         gestureEnabled: true,
         animation: 'slide_from_right',
-        animationDuration: 280,
+        animationDuration: DURATION.base,
         // Bu stack'teki ekranlarin HEPSI acik temali (#f6f6f6). Varsayilan
         // #0A0A0A idi: ekran kendi zeminini boyayana kadar gecis boyunca
         // siyah bir kare goruluyordu ("Hedef Duzenle"ye basinca siyah ekran).
@@ -175,9 +189,9 @@ export default function AppNavigator() {
       <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
       <Stack.Screen name="BrandLanding" component={BrandLandingScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-      <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom', animationDuration: 320 }} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
       <Stack.Screen name="Addresses" component={AddressesScreen} />
-      <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ animation: 'slide_from_bottom', animationDuration: 320 }} />
+      <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsScreen} />
       <Stack.Screen name="Login" component={UnifiedLoginScreen} />

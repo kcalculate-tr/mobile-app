@@ -1,3 +1,4 @@
+import { DURATION } from '../constants/motion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import KeyboardAccessory from '../components/KeyboardAccessory';
 import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -29,6 +30,8 @@ import {
   fetchSuggestionPool,
 } from '../lib/cartSuggestions';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
+import { reorderCalorieLabel } from '../components/ReorderCard';
+import { tl } from '../lib/money';
 import { needsOptionSelection } from '../lib/quickAdd';
 import { animateListChange } from '../utils/layoutAnimation';
 import { validateCoupon, getCouponErrorMessage, CouponCartItem, CouponValidationSuccess } from '../lib/offers';
@@ -240,7 +243,7 @@ export default function CartScreen() {
     if (appliedCoupon) {
       Animated.parallel([
         Animated.spring(couponSlideY, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 8 }),
-        Animated.timing(couponOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(couponOpacity, { toValue: 1, duration: DURATION.base, useNativeDriver: true }),
       ]).start()
     } else {
       couponSlideY.setValue(-20)
@@ -316,63 +319,65 @@ export default function CartScreen() {
                   day: 'numeric', month: 'long',
                 });
                 const busy = reorderingId === order.id;
-                // En fazla 3 gorsel yan yana; kalanlar "+N" ile ozetlenir —
-                // 4+ urunlu siparislerde satir tasmasin.
-                const thumbs = order.items.slice(0, 3);
+                const kalori = reorderCalorieLabel(order.totalCalories);
+                // En fazla 2 gorsel yan yana; kalanlar "+N" ile ozetlenir —
+                // kart tek satira sigsin diye onceki 3'ten indirildi.
+                const thumbs = order.items.slice(0, 2);
                 const extraCount = order.items.length - thumbs.length;
                 return (
-                  <View key={order.id} style={styles.pastCard}>
-                    <View style={styles.pastCardTop}>
-                      <Text style={styles.pastCardDate}>{dateLabel}</Text>
-                      <Text style={styles.pastCardTotal}>{order.totalAmount.toFixed(2)} TL</Text>
+                  <TouchableOpacity
+                    key={order.id}
+                    style={styles.pastCard}
+                    activeOpacity={0.85}
+                    onPress={() => handleReorder(order)}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${dateLabel} tarihli siparişi tekrarla`}
+                  >
+                    <View style={styles.pastThumbs}>
+                      {thumbs.map((it, i) => (
+                        <View key={`${order.id}_${it.id}_${i}`} style={styles.pastThumbWrap}>
+                          {it.imageUrl ? (
+                            <Image source={{ uri: it.imageUrl }} style={styles.pastThumb} resizeMode="cover" />
+                          ) : (
+                            <View style={[styles.pastThumb, styles.pastThumbEmpty]}>
+                              <ShoppingCart size={18} color={COLORS.text.tertiary} />
+                            </View>
+                          )}
+                          {it.quantity > 1 ? (
+                            <View style={styles.pastThumbQty}>
+                              <Text style={styles.pastThumbQtyText}>{it.quantity}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      ))}
+                      {extraCount > 0 ? (
+                        <View style={[styles.pastThumb, styles.pastThumbMore]}>
+                          <Text style={styles.pastThumbMoreText}>+{extraCount}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                    <View style={styles.pastCardBody}>
-                      <View style={styles.pastThumbs}>
-                        {thumbs.map((it, i) => (
-                          <View key={`${order.id}_${it.id}_${i}`} style={styles.pastThumbWrap}>
-                            {it.imageUrl ? (
-                              <Image source={{ uri: it.imageUrl }} style={styles.pastThumb} resizeMode="cover" />
-                            ) : (
-                              <View style={[styles.pastThumb, styles.pastThumbEmpty]}>
-                                <ShoppingCart size={18} color={COLORS.text.tertiary} />
-                              </View>
-                            )}
-                            {it.quantity > 1 ? (
-                              <View style={styles.pastThumbQty}>
-                                <Text style={styles.pastThumbQtyText}>{it.quantity}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        ))}
-                        {extraCount > 0 ? (
-                          <View style={[styles.pastThumb, styles.pastThumbMore]}>
-                            <Text style={styles.pastThumbMoreText}>+{extraCount}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text style={styles.pastCardItems} numberOfLines={3}>{summary}</Text>
-                    </View>
-                    <View style={styles.pastCardBottom}>
-                      <Text style={styles.pastCardMeta}>
-                        {itemCount} ürün{order.orderCode ? ` • ${order.orderCode}` : ''}
+
+                    <View style={styles.pastBilgi}>
+                      <Text style={styles.pastCardItems} numberOfLines={1}>{summary}</Text>
+                      <Text style={styles.pastCardMeta} numberOfLines={1}>
+                        {dateLabel} · {itemCount} ürün{kalori ? ` · ${kalori}` : ''}
                       </Text>
-                      <TouchableOpacity
-                        style={[styles.reorderBtn, busy && styles.reorderBtnBusy]}
-                        onPress={() => handleReorder(order)}
-                        disabled={busy}
-                        activeOpacity={0.85}
-                      >
-                        {busy
-                          ? <ActivityIndicator size="small" color="#000000" />
-                          : (
+                      <View style={styles.pastAltSatir}>
+                        <Text style={styles.pastCardTotal}>{tl(order.totalAmount)}</Text>
+                        <View style={[styles.reorderBtn, busy && styles.reorderBtnBusy]}>
+                          {busy ? (
+                            <ActivityIndicator size="small" color="#000000" />
+                          ) : (
                             <>
-                              <ArrowCounterClockwise size={15} color="#000000" weight="bold" />
-                              <Text style={styles.reorderBtnText}>Siparişi Tekrarla</Text>
+                              <ArrowCounterClockwise size={13} color="#000000" weight="bold" />
+                              <Text style={styles.reorderBtnText}>Tekrarla</Text>
                             </>
                           )}
-                      </TouchableOpacity>
+                        </View>
+                      </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -920,33 +925,35 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.secondary,
   },
+  // 24.09.2026 tasarim revizyonu: kart 4 satir yuksekligindeydi (tarih+tutar
+  // satiri, gorsel+metin satiri, meta satiri, tam genislikte yesil buton) ve
+  // tek urunlu bir siparis icin bile o kadar yer kapliyordu. Ayrica her kartta
+  // tekrar eden tam genislikteki yesil buton listeyi agirlastiriyordu.
+  // Yeni duzen: solda gorseller, sagda uc satir bilgi, tekrar butonu kompakt
+  // bir hap olarak tutarin yaninda. Kartin TAMAMI dokunulabilir.
   pastCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.md,
-    padding: SPACING.lg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border.medium,
-    gap: SPACING.sm,
   },
-  pastCardTop: {
+  pastBilgi: { flex: 1, minWidth: 0, gap: 2 },
+  pastAltSatir: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  pastCardDate: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.secondary,
+    gap: SPACING.sm,
+    marginTop: 3,
   },
   pastCardTotal: {
     fontSize: TYPOGRAPHY.size.md,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
-  },
-  pastCardBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
   },
   pastThumbs: {
     flexDirection: 'row',
@@ -954,8 +961,8 @@ const styles = StyleSheet.create({
   },
   pastThumbWrap: { position: 'relative' },
   pastThumb: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.gray[100],
   },
@@ -989,37 +996,29 @@ const styles = StyleSheet.create({
     color: COLORS.text.secondary,
   },
   pastCardItems: {
-    flex: 1,
     fontSize: TYPOGRAPHY.size.sm,
-    fontFamily: 'PlusJakartaSans_500Medium',
+    fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
-    lineHeight: 19,
-  },
-  pastCardBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
   },
   pastCardMeta: {
-    flex: 1,
     fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.tertiary,
   },
   reorderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    minWidth: 152,
-    height: 38,
-    paddingHorizontal: SPACING.md,
+    gap: 5,
+    height: 30,
+    minWidth: 96,
+    paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.brand.green,
   },
   reorderBtnBusy: { opacity: 0.7 },
   reorderBtnText: {
-    fontSize: TYPOGRAPHY.size.sm,
+    fontSize: TYPOGRAPHY.size.xs,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
   },

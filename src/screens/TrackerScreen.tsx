@@ -1,4 +1,5 @@
 // Gün sınırı ve gün anahtarı tek kaynaktan (bkz. src/lib/dayKey.ts).
+import { DURATION } from '../constants/motion';
 import { dayKey, startOfDayIso } from '../lib/dayKey';
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
@@ -425,7 +426,7 @@ function BigCalorieRing({ current, target }: BigRingProps) {
   useEffect(() => {
     Animated.timing(animatedKcal, {
       toValue: current,
-      duration: 800,
+      duration: DURATION.pulse,
       useNativeDriver: false,
     }).start();
     const id = animatedKcal.addListener(({ value }) => setDisplayKcal(Math.round(value)));
@@ -881,13 +882,13 @@ export default function TrackerScreen() {
     const screenH = Dimensions.get('window').height;
     if (mealModalVisible) {
       Animated.parallel([
-        Animated.timing(mealBackdropOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(mealBackdropOpacity, { toValue: 1, duration: DURATION.base, useNativeDriver: true }),
         Animated.spring(mealSheetTranslateY, { toValue: 0, damping: 28, stiffness: 120, mass: 1, useNativeDriver: true }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(mealBackdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(mealSheetTranslateY, { toValue: screenH, duration: 250, useNativeDriver: true }),
+        Animated.timing(mealBackdropOpacity, { toValue: 0, duration: DURATION.fast, useNativeDriver: true }),
+        Animated.timing(mealSheetTranslateY, { toValue: screenH, duration: DURATION.fast, useNativeDriver: true }),
       ]).start();
     }
   }, [mealModalVisible, mealBackdropOpacity, mealSheetTranslateY]);
@@ -1337,17 +1338,17 @@ export default function TrackerScreen() {
 
     // bgFlash tamamen JS driver'da — diğer native animasyonlardan ayrı çalışır
     Animated.sequence([
-      Animated.timing(anim.bgFlash, { toValue: 1, duration: 150, useNativeDriver: false }),
-      Animated.timing(anim.bgFlash, { toValue: 0, duration: 100, useNativeDriver: false }),
+      Animated.timing(anim.bgFlash, { toValue: 1, duration: DURATION.instant, useNativeDriver: false }),
+      Animated.timing(anim.bgFlash, { toValue: 0, duration: DURATION.instant, useNativeDriver: false }),
     ]).start();
 
     // scale + translateY + opacity tamamen native driver'da
     Animated.sequence([
-      Animated.timing(anim.scale, { toValue: 1.05, duration: 100, useNativeDriver: true }),
-      Animated.timing(anim.scale, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(anim.scale, { toValue: 1.05, duration: DURATION.instant, useNativeDriver: true }),
+      Animated.timing(anim.scale, { toValue: 1, duration: DURATION.instant, useNativeDriver: true }),
       Animated.parallel([
-        Animated.timing(anim.translateY, { toValue: 30, duration: 300, useNativeDriver: true }),
-        Animated.timing(anim.opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(anim.translateY, { toValue: 30, duration: DURATION.base, useNativeDriver: true }),
+        Animated.timing(anim.opacity, { toValue: 0, duration: DURATION.base, useNativeDriver: true }),
       ]),
     ]).start(() => {
       animValuesRef.current.delete(instanceId);
