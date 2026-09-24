@@ -28,7 +28,7 @@ import ForceUpdateModal from './src/components/ForceUpdateModal';
 import PushPermissionPrompt from './src/components/modals/PushPermissionPrompt';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
-import { initSentry, Sentry } from './src/lib/sentry';
+import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK, track } from './src/lib/analytics';
 
@@ -168,6 +168,11 @@ function App() {
 }
 
 // Sentry.wrap: React render hatalari, performans olcumu ve TTID/TTFD icin
-// kok bileseni sarmalamak gerekiyor. DSN yoksa init hic calismadigi icin
-// sarmalayici da pratikte etkisiz.
-export default Sentry.wrap(App);
+// kok bileseni sarmalamak gerekiyor — AMA yalnizca Sentry gercekten
+// baslatildiysa. DSN yokken (yerel gelistirme, DSN tanimlanmamis build)
+// sarmalamak her acilista su uyariyi basiyordu:
+//   "App Start Span could not be finished. `Sentry.wrap` was called before
+//    `Sentry.init`."
+// initSentry() bu satirdan ONCE, modul govdesinin tepesinde calisiyor; o
+// yuzden sentryHazir() burada dogru cevabi verir.
+export default sentryHazir() ? Sentry.wrap(App) : App;
