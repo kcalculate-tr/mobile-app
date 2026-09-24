@@ -45,7 +45,7 @@ export function formatDiscountBadge(
   const value = Number(discountValue);
   if (!discountType || !Number.isFinite(value) || value <= 0) return null;
   if (discountType === 'percent') return `-%${value}`;
-  if (discountType === 'fixed') return `-₺${value}`;
+  if (discountType === 'fixed') return `-${value} TL`;
   return null;
 }
 

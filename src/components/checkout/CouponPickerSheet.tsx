@@ -149,7 +149,7 @@ export default function CouponPickerSheet({ visible, onClose, cartTotal, items, 
                       {c.min_cart_total != null && Number(c.min_cart_total) > 0 && (
                         <View style={s.meta}>
                           <Tag size={11} color={COLORS.text.tertiary} />
-                          <Text style={s.metaText}>{`Min. ₺${Number(c.min_cart_total)}`}</Text>
+                          <Text style={s.metaText}>{`Min. ${Number(c.min_cart_total)} TL`}</Text>
                         </View>
                       )}
                       {c.end_date && (

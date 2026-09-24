@@ -1,3 +1,4 @@
+import { tl } from '../lib/money';
 import React, { useEffect, useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -83,6 +84,7 @@ import { useCartStore } from '../store/cartStore';
 import { getCardsFeatureStatus, syncSavedCards, SavedCard } from '../lib/cards';
 import { buildPaymentNavParams, paymentActionVerb, resolveSelectedCardId } from '../lib/checkoutPayment';
 import { useAddressStore } from '../store/addressStore';
+import { normalizeAddress } from '../lib/addresses';
 import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
 import { logEvent, track } from '../lib/analytics';
@@ -93,7 +95,8 @@ import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../utils/
 type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const toCurrency = (value: number) => `₺${value.toFixed(2)}`;
+// Para biçimi tek kaynaktan (bkz. src/lib/money.ts).
+const toCurrency = (value: number) => tl(value);
 
 const TR_DAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -120,28 +123,6 @@ function formatExpiry(value: string): string {
   if (digits.length >= 3) return digits.slice(0, 2) + '/' + digits.slice(2);
   return digits;
 }
-
-const normalizeAddress = (row: Record<string, unknown>): Address => ({
-  id: String(row.id ?? '').trim(),
-  user_id: String(row.user_id ?? '').trim() || undefined,
-  title: String(row.title ?? 'Adres').trim(),
-  contact_name: String(row.contact_name ?? '').trim(),
-  contact_phone: String(row.contact_phone ?? '').trim(),
-  contact_email: String(row.contact_email ?? '').trim(),
-  full_address: String(row.full_address ?? '').trim(),
-  city: String(row.city ?? 'İzmir').trim() || 'İzmir',
-  district: String(row.district ?? '').trim(),
-  neighbourhood:
-    String(
-      row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '',
-    ).trim() || null,
-  is_default: Boolean(row.is_default),
-  latitude: typeof row.latitude === 'number' ? row.latitude : row.latitude != null ? Number(row.latitude) : null,
-  longitude: typeof row.longitude === 'number' ? row.longitude : row.longitude != null ? Number(row.longitude) : null,
-  verified_at: row.verified_at ? String(row.verified_at) : null,
-  created_at: String(row.created_at ?? '').trim() || undefined,
-  updated_at: String(row.updated_at ?? '').trim() || undefined,
-});
 
 const resolveCheckoutErrorMessage = (error: unknown, fallback: string) =>
   mapSupabaseErrorToUserMessage(error, fallback);
@@ -2561,7 +2542,7 @@ export default function CheckoutScreen() {
                       <Text key={`${group.name}-${idx}`} style={styles.summaryItemOption} numberOfLines={2}>
                         {group.name}: {group.values
                           .map((v) =>
-                            `${v.value_name}${v.price_modifier !== 0 ? ` (${v.price_modifier > 0 ? '+' : ''}₺${Number(v.price_modifier).toFixed(0)})` : ''}`,
+                            `${v.value_name}${v.price_modifier !== 0 ? ` (${v.price_modifier > 0 ? '+' : ''}${Number(v.price_modifier).toFixed(0)} TL)` : ''}`,
                           )
                           .join(', ')}
                       </Text>
@@ -2625,7 +2606,7 @@ export default function CheckoutScreen() {
                 <Text style={styles.macroLabel} numberOfLines={1}>
                   {kazanilacakMacro > 0
                     ? 'Teslimatta kazanacağın Macro'
-                    : `1 Macro'ya ₺${macroyaKalan.toLocaleString('tr-TR')} kaldı`}
+                    : `1 Macro'ya ${macroyaKalan.toLocaleString('tr-TR')} TL kaldı`}
                 </Text>
                 {kazanilacakMacro > 0 ? (
                   <View style={styles.macroRozet}>

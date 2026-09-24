@@ -32,7 +32,7 @@ test('devreden artık [0, eşik) aralığındaysa aynen kullanılır', () => {
 });
 
 test('aralık dışı artık 0 sayılır — eski Macro modelinden devreden 1620 hatası', () => {
-  // 23.09.2026: profiles.macro_points = 1620 (eski model kalıntısı) ₺585'lik
+  // 23.09.2026: profiles.macro_points = 1620 (eski model kalıntısı) 585 TL'lik
   // bir siparişte hem önizlemeyi hem GERÇEK kazanımı 4 Macro'ya şişiriyordu.
   assert.equal(normalizeCarryover(1620, 500), 0);
   assert.equal(normalizeCarryover(500, 500), 0, 'tam eşik de aralık dışıdır');
@@ -64,7 +64,7 @@ test('kazanım: devreden artık hesaba katılır — eşiğin altındaki sipari�
   assert.equal(macroEarnedForOrder(100, { macro_balance: 0, macro_points: 399 }, ayar), 0);
 });
 
-test('kazanım: bozuk artık şişirme yapmaz (₺585 → 1, 4 DEĞİL)', () => {
+test('kazanım: bozuk artık şişirme yapmaz (585 TL → 1, 4 DEĞİL)', () => {
   assert.equal(macroEarnedForOrder(585, { macro_balance: 3, macro_points: 1620 }, ayar), 1);
 });
 

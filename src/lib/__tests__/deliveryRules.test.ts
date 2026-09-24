@@ -97,7 +97,7 @@ test('ücretsiz teslimat eşiği: bölge → global → 0', () => {
 });
 
 test('ücretsiz teslimat eşiği ile ücret hesabı aynı kaynağı okur', () => {
-  // Bar "₺X kaldı" derken resolveFreeShippingAbove’u, ücret satırı
+  // Bar "X TL kaldı" derken resolveFreeShippingAbove’u, ücret satırı
   // resolveShippingFee’yi kullanıyor. İkisi ayrışırsa bar dolar ama ücret
   // düşmez (22.09.2026’da tam olarak bu sınıftan bir hata yaşandı).
   const zone: DeliveryZoneRow = { delivery_fee_immediate: 45, free_shipping_above_immediate: 650 };

@@ -597,9 +597,9 @@ export default function OrderDetailScreen() {
                   >
                     <View style={s.itemLeft}>
                       <Text style={s.itemName}>{item.product_name}</Text>
-                      <Text style={s.itemQty}>{item.quantity} adet × ₺{item.unit_price.toFixed(2)}</Text>
+                      <Text style={s.itemQty}>{item.quantity} adet × {item.unit_price.toFixed(2)} TL</Text>
                     </View>
-                    <Text style={s.itemTotal}>₺{item.total_price.toFixed(2)}</Text>
+                    <Text style={s.itemTotal}>{item.total_price.toFixed(2)} TL</Text>
                   </View>
                 ))}
               </View>
@@ -620,7 +620,7 @@ export default function OrderDetailScreen() {
               ))}
               <View style={[s.infoRow, s.totalRow]}>
                 <Text style={s.totalLabel}>Toplam Tutar</Text>
-                <Text style={s.totalAmount}>₺{order.total_amount.toFixed(2)}</Text>
+                <Text style={s.totalAmount}>{order.total_amount.toFixed(2)} TL</Text>
               </View>
             </View>
 

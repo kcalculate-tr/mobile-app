@@ -52,7 +52,7 @@ const COUPON_ERROR_MESSAGES: Record<CouponValidationReason, string> = {
 
 export function getCouponErrorMessage(result: CouponValidationFailure): string {
   if (result.reason === 'min_cart' && result.min_cart_total != null) {
-    return `Bu kupon ₺${result.min_cart_total} ve üzeri siparişlerde geçerlidir.`;
+    return `Bu kupon ${result.min_cart_total} TL ve üzeri siparişlerde geçerlidir.`;
   }
   return COUPON_ERROR_MESSAGES[result.reason] ?? 'Kupon uygulanamadı';
 }

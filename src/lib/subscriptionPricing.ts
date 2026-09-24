@@ -1,3 +1,4 @@
+import { tlGruplu } from './money';
 /**
  * Öğün aboneliği — fiyat modeli (ŞABLON).
  *
@@ -116,4 +117,4 @@ export function mealDistribution(mealsPerDay: number, deliveriesPerDay: number):
 }
 
 export const formatTRY = (value: number): string =>
-  `₺${Math.round(value).toLocaleString('tr-TR')}`
+  tlGruplu(Math.round(value))

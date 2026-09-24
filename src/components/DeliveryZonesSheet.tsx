@@ -182,7 +182,7 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
             ) : null}
           </View>
         </View>
-        <Text style={s.minAmountText} numberOfLines={1}>Min ₺{minAmount.toLocaleString('tr-TR')}</Text>
+        <Text style={s.minAmountText} numberOfLines={1}>Min {minAmount.toLocaleString('tr-TR')} TL</Text>
       </View>
     );
   };

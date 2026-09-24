@@ -6,7 +6,7 @@ import type { OptionGroup } from '../../types';
 // 24.09.2026 müşteri bildirimi: gramaj seçimi "varsayılana dönüyor".
 // Kök neden hızlı "+" butonunun gramajı hiç sormamasıydı. Bu testler o
 // kuralın geri kaymasını engelliyor — kayarsa müşteri yanlış gramajda öğün
-// alır ve gramaj farkı (₺90–₺175) tahsil edilmez.
+// alır ve gramaj farkı (90 TL–175 TL) tahsil edilmez.
 
 const grup = (over: Partial<OptionGroup> = {}): OptionGroup => ({
   id: 'g1', name: 'Sos', description: '', minSelection: 0, maxSelection: 1,

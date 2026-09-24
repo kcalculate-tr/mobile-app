@@ -14,7 +14,7 @@ export const indirimEtiketi = (c: Campaign): string => {
   if (c.discount_type === 'free_item') return 'ÜCRETSİZ\nÖĞÜN'
   if (c.discount_value == null) return c.title.toUpperCase()
   if (c.discount_type === 'percent') return `%${Number(c.discount_value)}\nİNDİRİM`
-  return `${Number(c.discount_value)}₺\nİNDİRİM`
+  return `${Number(c.discount_value)} TL\nİNDİRİM`
 }
 
 /** Görsel yoksa kullanılacak gradyan. */

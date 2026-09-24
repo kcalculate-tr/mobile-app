@@ -92,7 +92,7 @@ export default function FloatingCartPill({ aboveTabBar = false, bottomOffset = 0
           </View>
           <AnimatedNumberText style={styles.label} value={`${totalQty} ürün`} />
           <Text style={styles.labelSeparator}>—</Text>
-          <AnimatedNumberText style={styles.label} value={`₺${priceLabel}`} />
+          <AnimatedNumberText style={styles.label} value={`${priceLabel} TL`} />
         </View>
         <View style={styles.right}>
           <Text style={styles.cta}>Sepete Git</Text>

@@ -34,7 +34,7 @@ export default function MacroBenefits({ earnThreshold, mealCost }: {
       renk: '#3F6212',
       zemin: '#F2FBE8',
       baslik: 'Ücretsiz öğün kazan',
-      metin: `Her ₺${earnThreshold.toLocaleString('tr-TR')} alışverişte 1 Macro. ${mealCost} Macro'da bir öğün bizden.`,
+      metin: `Her ${earnThreshold.toLocaleString('tr-TR')} TL alışverişte 1 Macro. ${mealCost} Macro'da bir öğün bizden.`,
     },
     {
       Icon: Sparkle,

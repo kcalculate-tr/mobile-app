@@ -14,6 +14,7 @@ import * as Crypto from 'expo-crypto';
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { getSupabaseClient } from '../lib/supabase';
 import { useAddressStore } from '../store/addressStore';
+import { hydrateSelectedAddress } from '../lib/addresses';
 
 const readEnvValue = (key: string): string =>
   (
@@ -82,6 +83,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setSession(data.session ?? null);
           setUser(data.session?.user ?? null);
+          // Soğuk başlangıç: oturum AsyncStorage'dan geldiyse onAuthStateChange
+          // tetiklenmeyebilir — gösterge yine dolsun.
+          const mevcutKullaniciId = data.session?.user?.id;
+          if (mevcutKullaniciId && !useAddressStore.getState().selectedAddress) {
+            void hydrateSelectedAddress(
+              mevcutKullaniciId,
+              useAddressStore.getState().setSelectedAddress,
+            );
+          }
         }
 
         const {
@@ -110,6 +120,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(nextSession ?? null);
           setUser(nextSession?.user ?? null);
           setAuthLoading(false);
+
+          // 24.09.2026: adres göstergesi çıkışta temizleniyordu ama girişte
+          // DOLDURULMUYORDU. Kayıtlı ve varsayılan adresi olan kullanıcı,
+          // Sipariş Özeti veya Adreslerim ekranına girene kadar anasayfada
+          // "Adres seçin" görüyordu. Oturum açıldığında varsayılan adres
+          // sessizce çekilir (zaten seçili bir adres varsa dokunulmaz).
+          const yeniKullaniciId = nextSession?.user?.id;
+          if (yeniKullaniciId && !useAddressStore.getState().selectedAddress) {
+            void hydrateSelectedAddress(
+              yeniKullaniciId,
+              useAddressStore.getState().setSelectedAddress,
+            );
+          }
         });
 
         subscription = authSubscription;

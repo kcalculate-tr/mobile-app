@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { ArrowRight, Check, Plus, Truck } from 'phosphor-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
+import { tlGruplu } from '../../lib/money';
 
 const NEON = COLORS.brand.green;
 const PANEL = '#000000';
@@ -44,7 +45,8 @@ interface Props {
   onPressDistanceSales?: () => void;
 }
 
-const lira = (v: number) => `₺${Math.ceil(v).toLocaleString('tr-TR')}`;
+// Kalan tutar YUKARI yuvarlanır: "1 TL kaldı" deyip 1.4 TL istememek için.
+const lira = (v: number) => tlGruplu(Math.ceil(v));
 
 export default function CheckoutFooter({
   label,

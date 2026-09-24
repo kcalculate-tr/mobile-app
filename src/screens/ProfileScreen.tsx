@@ -528,8 +528,8 @@ export default function ProfileScreen() {
                 style={styles.macroCoinLabel}
                 value={
                   macroProfile
-                    ? `Bir sonraki Macro'ya ₺${macroProgress(macroProfile, macroSettings).liraToNextMacro}`
-                    : `Her ₺${macroSettings.earnThreshold} alışverişe 1 Macro`
+                    ? `Bir sonraki Macro'ya ${macroProgress(macroProfile, macroSettings).liraToNextMacro} TL`
+                    : `Her ${macroSettings.earnThreshold} TL alışverişe 1 Macro`
                 }
               />
             </View>

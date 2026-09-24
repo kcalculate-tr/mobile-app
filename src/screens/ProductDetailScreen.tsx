@@ -1,3 +1,4 @@
+import { tl } from '../lib/money';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Animated,
   ActivityIndicator,
@@ -11,8 +12,6 @@ import { Animated,
   View,
   Image,
 } from 'react-native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -45,13 +44,16 @@ import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { logEvent, track } from '../lib/analytics';
 import { computeBundleUnitMacros, computeProductUnitMacros } from '../lib/itemMacros';
 import Svg, { Circle } from 'react-native-svg';
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 import { COLORS } from '../constants/theme';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 type ProductDetailRoute = RouteProp<RootStackParamList, 'ProductDetail'>;
 type ProductDetailNavigation = NativeStackNavigationProp<RootStackParamList>;
 
-const toCurrency = (value: number) => `₺${value.toFixed(2)}`;
+// Para biçimi tek kaynaktan (bkz. src/lib/money.ts).
+const toCurrency = (value: number) => tl(value);
 
 interface MacroBadgeProps {
   label: string;
@@ -1064,7 +1066,7 @@ export default function ProductDetailScreen() {
                             <Text style={styles.optionName}>{item.name}</Text>
                             {item.priceAdjustment > 0 && (
                               <Text style={styles.optionPriceInline}>
-                                {`(+₺${item.priceAdjustment.toFixed(0)})`}
+                                {`(+${item.priceAdjustment.toFixed(0)} TL)`}
                               </Text>
                             )}
                           </View>
@@ -1144,7 +1146,7 @@ export default function ProductDetailScreen() {
                             <Text style={styles.optionName}>{value.name}</Text>
                             {Number(value.price_modifier) !== 0 ? (
                               <Text style={styles.optionPriceInline}>
-                                {`(${value.price_modifier > 0 ? '+' : ''}₺${Number(value.price_modifier).toFixed(0)})`}
+                                {`(${value.price_modifier > 0 ? '+' : ''}${Number(value.price_modifier).toFixed(0)} TL)`}
                               </Text>
                             ) : null}
                           </View>

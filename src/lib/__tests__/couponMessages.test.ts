@@ -42,7 +42,7 @@ test('sunucunun üretebildiği her sebep için özel bir mesaj var', () => {
 
 test('min_cart mesajı eşiği müşteriye söyler', () => {
   const f: CouponValidationFailure = { valid: false, reason: 'min_cart', min_cart_total: 450 };
-  assert.equal(getCouponErrorMessage(f), 'Bu kupon ₺450 ve üzeri siparişlerde geçerlidir.');
+  assert.equal(getCouponErrorMessage(f), 'Bu kupon 450 TL ve üzeri siparişlerde geçerlidir.');
 });
 
 test('min_cart eşiksiz gelirse genel min sepet mesajına düşer', () => {
@@ -53,12 +53,12 @@ test('min_cart eşiksiz gelirse genel min sepet mesajına düşer', () => {
 });
 
 test('min_cart_total = 0 tutar cümlesine girmez', () => {
-  // 0 ile "₺0 ve üzeri siparişlerde geçerlidir" demek anlamsız olurdu;
+  // 0 ile "0 TL ve üzeri siparişlerde geçerlidir" demek anlamsız olurdu;
   // `!= null` kontrolü 0'ı da geçirdiği için bu davranış bilinçli olarak
   // sabitleniyor — değişirse burada görülür.
   assert.equal(
     getCouponErrorMessage({ valid: false, reason: 'min_cart', min_cart_total: 0 }),
-    'Bu kupon ₺0 ve üzeri siparişlerde geçerlidir.',
+    'Bu kupon 0 TL ve üzeri siparişlerde geçerlidir.',
   );
 });
 

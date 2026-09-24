@@ -31,6 +31,7 @@ import { matchToOption, normalizeTurkishText } from '../lib/geo';
 import { RootStackParamList } from '../navigation/types';
 import { Address } from '../types';
 import { useAddressStore } from '../store/addressStore';
+import { normalizeAddress } from '../lib/addresses';
 import { ANIMATION, COLORS } from '../constants/theme';
 import { Toast } from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
@@ -70,35 +71,6 @@ const INITIAL_FORM: AddressForm = {
   building_name: '',
   full_address: '',
 };
-
-const normalizeAddress = (row: Record<string, unknown>): Address => ({
-  id: String(row.id ?? '').trim(),
-  user_id: String(row.user_id ?? '').trim() || undefined,
-  title: String(row.title ?? 'Adres').trim(),
-  contact_name: String(row.contact_name ?? '').trim(),
-  first_name: String(row.first_name ?? '').trim() || undefined,
-  last_name: String(row.last_name ?? '').trim() || undefined,
-  contact_phone: String(row.contact_phone ?? '').trim(),
-  contact_email: String(row.contact_email ?? '').trim(),
-  full_address: String(row.full_address ?? '').trim(),
-  city: String(row.city ?? 'İzmir').trim() || 'İzmir',
-  district: String(row.district ?? '').trim(),
-  neighbourhood:
-    String(
-      row.neighborhood ?? row.neighbourhood ?? row.mahalle ?? '',
-    ).trim() || null,
-  street: String(row.street ?? '').trim() || undefined,
-  building_no: String(row.building_no ?? '').trim() || undefined,
-  floor: String(row.floor ?? '').trim() || undefined,
-  apartment_no: String(row.apartment_no ?? '').trim() || undefined,
-  building_name: String(row.building_name ?? '').trim() || undefined,
-  is_default: Boolean(row.is_default),
-  latitude: typeof row.latitude === 'number' ? row.latitude : row.latitude != null ? Number(row.latitude) : null,
-  longitude: typeof row.longitude === 'number' ? row.longitude : row.longitude != null ? Number(row.longitude) : null,
-  verified_at: row.verified_at ? String(row.verified_at) : null,
-  created_at: String(row.created_at ?? '').trim() || undefined,
-  updated_at: String(row.updated_at ?? '').trim() || undefined,
-});
 
 const getMissingColumnName = (errorText: string) => {
   const match = errorText.match(/column ["']?([a-zA-Z0-9_]+)["']?/i);

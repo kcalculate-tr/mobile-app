@@ -743,13 +743,13 @@ export default function HomeScreen() {
                     {hasDiscount(product) ? (
                       <View style={styles.priceColumn}>
                         <View style={styles.discountRow}>
-                          <Text style={styles.priceStrikethrough}>₺{Number(product.price).toFixed(2)}</Text>
+                          <Text style={styles.priceStrikethrough}>{Number(product.price).toFixed(2)} TL</Text>
                           <Text style={styles.discountBadge}>{formatDiscountBadge(product.discount_type, product.discount_value)}</Text>
                         </View>
-                        <Text style={styles.productPriceDiscounted}>₺{getEffectivePrice(product).toFixed(2)}</Text>
+                        <Text style={styles.productPriceDiscounted}>{getEffectivePrice(product).toFixed(2)} TL</Text>
                       </View>
                     ) : (
-                      <Text style={styles.productPrice}>₺{product.price.toFixed(2)}</Text>
+                      <Text style={styles.productPrice}>{product.price.toFixed(2)} TL</Text>
                     )}
                     {cardQuantities[product.id] ? (
                       <View style={styles.qtyControl}>

@@ -27,7 +27,7 @@ export default function MacroPointModal({
   const BENEFITS = [
     {
       Icon: ShoppingCart, color: '#B9EF14', bg: 'rgba(198,240,79,0.1)',
-      title: `Her ${esik}₺ Harcama ile 1 Macro Kazan`,
+      title: `Her ${esik} TL Harcama ile 1 Macro Kazan`,
       desc: 'Birikimin küsuratlı bile olsa sistem toplam bakiyeni devamlı hesaplar. Harcamaların her zaman MACRO\u2019ya dönüşür.',
     },
     {
@@ -68,7 +68,7 @@ export default function MacroPointModal({
 
       <View style={styles.heroCard}>
         <View style={styles.heroLeft}>
-          <Text style={styles.heroNumber}>{esik}₺</Text>
+          <Text style={styles.heroNumber}>{esik} TL</Text>
           <Text style={styles.heroSub}>= 1 Macro</Text>
         </View>
         <View style={styles.heroDivider} />
@@ -98,7 +98,7 @@ export default function MacroPointModal({
         </View>
         <Text style={styles.progressHintText}>
           {macroProfile
-            ? `${p.balance % p.mealCost} / ${p.mealCost} Macro — ücretsiz öğüne ${p.macrosToNextMeal} macro, bir sonraki macro'ya ₺${p.liraToNextMacro}`
+            ? `${p.balance % p.mealCost} / ${p.mealCost} Macro — ücretsiz öğüne ${p.macrosToNextMeal} macro, bir sonraki macro'ya ${p.liraToNextMacro} TL`
             : `0 / ${macroSettings.mealCost} Macro — ilk siparişinle biriktirmeye başla`}
         </Text>
       </View>

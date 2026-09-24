@@ -324,7 +324,7 @@ export default function CartScreen() {
                   <View key={order.id} style={styles.pastCard}>
                     <View style={styles.pastCardTop}>
                       <Text style={styles.pastCardDate}>{dateLabel}</Text>
-                      <Text style={styles.pastCardTotal}>₺{order.totalAmount.toFixed(2)}</Text>
+                      <Text style={styles.pastCardTotal}>{order.totalAmount.toFixed(2)} TL</Text>
                     </View>
                     <View style={styles.pastCardBody}>
                       <View style={styles.pastThumbs}>
@@ -471,7 +471,7 @@ export default function CartScreen() {
                         <Text key={`${group.name}-${idx}`} style={styles.itemTemplateOption} numberOfLines={2}>
                           {group.name}: {group.values
                             .map((v) =>
-                              `${v.value_name}${v.price_modifier !== 0 ? ` (${v.price_modifier > 0 ? '+' : ''}₺${Number(v.price_modifier).toFixed(0)})` : ''}`,
+                              `${v.value_name}${v.price_modifier !== 0 ? ` (${v.price_modifier > 0 ? '+' : ''}${Number(v.price_modifier).toFixed(0)} TL)` : ''}`,
                             )
                             .join(', ')}
                         </Text>
@@ -480,16 +480,16 @@ export default function CartScreen() {
                   ) : null}
                   {item.originalUnitPrice && item.originalUnitPrice > item.unitPrice ? (
                     <View style={styles.itemPriceRow}>
-                      <AnimatedNumberText style={styles.itemPriceDiscounted} value={`₺${displayTotal.toFixed(2)}`} />
-                      <Text style={styles.itemPriceStrike}>₺{displayOriginal.toFixed(2)}</Text>
+                      <AnimatedNumberText style={styles.itemPriceDiscounted} value={`${displayTotal.toFixed(2)} TL`} />
+                      <Text style={styles.itemPriceStrike}>{displayOriginal.toFixed(2)} TL</Text>
                       {item.discountType ? (
                         <Text style={styles.itemPriceBadge}>
-                          {item.discountType === 'percent' ? `-%${item.discountValue}` : `-₺${item.discountValue}`}
+                          {item.discountType === 'percent' ? `-%${item.discountValue}` : `-${item.discountValue} TL`}
                         </Text>
                       ) : null}
                     </View>
                   ) : (
-                    <AnimatedNumberText style={styles.itemPrice} value={`₺${displayTotal.toFixed(2)}`} />
+                    <AnimatedNumberText style={styles.itemPrice} value={`${displayTotal.toFixed(2)} TL`} />
                   )}
                 </View>
                 </TouchableOpacity>
@@ -590,7 +590,7 @@ export default function CartScreen() {
 
               {/* FIX 5 grup: tekli ürün ekstraları parent altında indent —
                   bundle child UI pattern reuse (aynı stiller). Fiyat görünür
-                  (+₺X Dahil). Stepper/silme yok; parent silinince cascade. */}
+                  (+X TL Dahil). Stepper/silme yok; parent silinince cascade. */}
               {childItems.length > 0 ? (
                 <View style={styles.bundleChildrenWrap}>
                   {childItems.map((c, idx) => {
@@ -630,7 +630,7 @@ export default function CartScreen() {
                         </View>
                         <View style={styles.bundleDahilBadge}>
                           <Text style={styles.bundleDahilText}>
-                            +₺{(c.unitPrice * c.quantity).toFixed(0)} · Dahil
+                            +{(c.unitPrice * c.quantity).toFixed(0)} TL · Dahil
                           </Text>
                         </View>
                       </View>
@@ -690,11 +690,11 @@ export default function CartScreen() {
                     <View style={styles.crosssellBottomRow}>
                       {hasDiscount(product) ? (
                         <View style={styles.crosssellPriceCol}>
-                          <Text style={styles.crosssellPriceStrike}>₺{Number(product.price).toFixed(2)}</Text>
-                          <Text style={styles.crosssellPriceDiscounted}>₺{getEffectivePrice(product).toFixed(2)}</Text>
+                          <Text style={styles.crosssellPriceStrike}>{Number(product.price).toFixed(2)} TL</Text>
+                          <Text style={styles.crosssellPriceDiscounted}>{getEffectivePrice(product).toFixed(2)} TL</Text>
                         </View>
                       ) : (
-                        <Text style={styles.crosssellPrice}>₺{product.price.toFixed(2)}</Text>
+                        <Text style={styles.crosssellPrice}>{product.price.toFixed(2)} TL</Text>
                       )}
                       <TouchableOpacity
                         style={styles.crosssellPlusBtn}
@@ -803,18 +803,18 @@ export default function CartScreen() {
           )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Ara Toplam</Text>
-            <AnimatedNumberText style={styles.summaryValue} value={`₺${subtotal.toFixed(2)}`} />
+            <AnimatedNumberText style={styles.summaryValue} value={`${subtotal.toFixed(2)} TL`} />
           </View>
           {couponDiscount > 0 && appliedCoupon && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Kupon ({appliedCoupon.code})</Text>
-              <AnimatedNumberText style={[styles.summaryValue, { color: '#16A34A' }]} value={`-₺${couponDiscount.toFixed(2)}`} />
+              <AnimatedNumberText style={[styles.summaryValue, { color: '#16A34A' }]} value={`-${couponDiscount.toFixed(2)} TL`} />
             </View>
           )}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryTotalLabel}>Toplam</Text>
-            <AnimatedNumberText style={styles.summaryTotalValue} value={`₺${total.toFixed(2)}`} />
+            <AnimatedNumberText style={styles.summaryTotalValue} value={`${total.toFixed(2)} TL`} />
           </View>
         </View>
 
@@ -828,7 +828,7 @@ export default function CartScreen() {
             activeOpacity={1}
           >
           <View style={styles.checkoutPriceTag}>
-            <AnimatedNumberText style={styles.checkoutPriceText} value={`₺${total.toFixed(2)}`} />
+            <AnimatedNumberText style={styles.checkoutPriceText} value={`${total.toFixed(2)} TL`} />
           </View>
           <Text style={styles.checkoutText}>Siparişe Devam</Text>
           <CaretRight size={20} color={COLORS.brand.green} />

@@ -57,7 +57,7 @@ function CampaignTile({ campaign, onPress }: { campaign: Campaign; onPress: () =
             {odul && <ForkKnife size={22} color={yazi} weight="fill" style={{ marginBottom: 6 }} />}
             <Text style={[s.tileDiscount, { color: yazi }]} numberOfLines={2}>{indirimEtiketi(campaign)}</Text>
             {campaign.min_cart_total != null && Number(campaign.min_cart_total) > 0 && (
-              <Text style={[s.tileMinCart, { color: yazi, opacity: 0.6 }]}>{`₺${Number(campaign.min_cart_total)} üzeri`}</Text>
+              <Text style={[s.tileMinCart, { color: yazi, opacity: 0.6 }]}>{`${Number(campaign.min_cart_total)} TL üzeri`}</Text>
             )}
           </LinearGradient>
         )}
@@ -108,7 +108,7 @@ function CampaignSheet({
         {campaign.min_cart_total != null && Number(campaign.min_cart_total) > 0 && (
           <View style={s.sheetMetaRow}>
             <Tag size={14} color={COLORS.text.tertiary} />
-            <Text style={s.sheetMetaText}>{`₺${Number(campaign.min_cart_total)} ve üzeri sepetlerde geçerli`}</Text>
+            <Text style={s.sheetMetaText}>{`${Number(campaign.min_cart_total)} TL ve üzeri sepetlerde geçerli`}</Text>
           </View>
         )}
         {campaign.end_date && (

@@ -309,7 +309,7 @@ export default function OrdersScreen() {
 
                 {/* Bottom row */}
                 <View style={s.cardBottom}>
-                  <Text style={s.amountText}>₺{order.total_amount.toFixed(2)}</Text>
+                  <Text style={s.amountText}>{order.total_amount.toFixed(2)} TL</Text>
                   <View style={s.detayRow}>
                     <Text style={s.detayText}>Detay</Text>
                     <CaretRight size={14} color={COLORS.text.secondary} />

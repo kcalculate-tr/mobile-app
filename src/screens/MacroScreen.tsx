@@ -173,8 +173,8 @@ export default function MacroScreen() {
                 style={s.macroCoinLabel}
                 value={
                   profile
-                    ? `Bir sonraki Macro'ya ₺${p.liraToNextMacro}`
-                    : `Her ₺${settings.earnThreshold} alışverişe 1 Macro`
+                    ? `Bir sonraki Macro'ya ${p.liraToNextMacro} TL`
+                    : `Her ${settings.earnThreshold} TL alışverişe 1 Macro`
                 }
               />
             </View>

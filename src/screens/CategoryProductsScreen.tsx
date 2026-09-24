@@ -206,14 +206,14 @@ export default function CategoryProductsScreen() {
                   {hasDiscount(item) ? (
                     <View style={styles.priceColumn}>
                       <View style={styles.discountRow}>
-                        <Text style={styles.priceStrikethrough}>₺{Number(item.price || 0).toFixed(2)}</Text>
+                        <Text style={styles.priceStrikethrough}>{Number(item.price || 0).toFixed(2)} TL</Text>
                         <Text style={styles.discountBadge}>{formatDiscountBadge(item.discount_type, item.discount_value)}</Text>
                       </View>
-                      <Text style={styles.productPriceDiscounted}>₺{getEffectivePrice(item).toFixed(2)}</Text>
+                      <Text style={styles.productPriceDiscounted}>{getEffectivePrice(item).toFixed(2)} TL</Text>
                     </View>
                   ) : (
                     <Text style={styles.productPrice}>
-                      ₺{Number(item.price || 0).toFixed(2)}
+                      {Number(item.price || 0).toFixed(2)} TL
                     </Text>
                   )}
                   {(() => {

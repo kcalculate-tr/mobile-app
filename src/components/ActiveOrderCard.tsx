@@ -61,7 +61,7 @@ export default function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps
     <TouchableOpacity activeOpacity={onPress ? 0.92 : 1} onPress={onPress} style={styles.card}>
       <View style={styles.headRow}>
         <Text style={styles.title} numberOfLines={1}>{headline.title}</Text>
-        <Text style={styles.meta}>₺{order.totalAmount.toFixed(2)}</Text>
+        <Text style={styles.meta}>{order.totalAmount.toFixed(2)} TL</Text>
         <CaretRight size={13} color="rgba(255,255,255,0.45)" weight="bold" />
       </View>
 

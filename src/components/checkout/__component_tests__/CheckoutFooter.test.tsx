@@ -13,12 +13,12 @@ const temel = {
 };
 
 test('etiket ve tutar AYRI düğümler — araya nokta/ayraç girmiyor', () => {
-  // "Siparişi Ver • ₺405" amatör duruyordu; tutar ayrı prop olarak veriliyor.
+  // "Siparişi Ver • 405 TL" amatör duruyordu; tutar ayrı prop olarak veriliyor.
   const { getByText, queryByText } = render(
-    <CheckoutFooter {...temel} priceText="₺405,00" />,
+    <CheckoutFooter {...temel} priceText="405,00 TL" />,
   );
   expect(getByText('Siparişi Ver')).toBeTruthy();
-  expect(getByText('₺405,00')).toBeTruthy();
+  expect(getByText('405,00 TL')).toBeTruthy();
   expect(queryByText(/•/)).toBeNull();
 });
 
@@ -34,7 +34,7 @@ test('minimum sepetin altında kalan tutarı söyler ve Ürün Ekle kısayolunu 
     />,
   );
   expect(getByText(/Minimum sipariş tutarına/)).toBeTruthy();
-  expect(getByText('₺80')).toBeTruthy();
+  expect(getByText('80 TL')).toBeTruthy();
   expect(getByText('Ürün Ekle')).toBeTruthy();
 });
 
@@ -49,7 +49,7 @@ test('minimum aşıldıysa mesaj ücretsiz teslimat eşiğine döner', () => {
     />,
   );
   expect(getByText(/Ücretsiz teslimata/)).toBeTruthy();
-  expect(getByText('₺150')).toBeTruthy();
+  expect(getByText('150 TL')).toBeTruthy();
   expect(queryByText(/Minimum sipariş/)).toBeNull();
 });
 
