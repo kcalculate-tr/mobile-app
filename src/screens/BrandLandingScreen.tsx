@@ -25,7 +25,7 @@ import { fetchProductOptionGroups } from '../lib/products';
 import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
 import { useCartStore } from '../store/cartStore';
-import { needsOptionSelection } from '../lib/quickAdd';
+import { findPlainCartLine, needsOptionSelection } from '../lib/quickAdd';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
 
@@ -94,14 +94,10 @@ export default function BrandLandingScreen() {
       return;
     }
 
-    setCheckingOptions((prev) => ({ ...prev, [numericId]: true }));
-    try {
-      const supabase = getSupabaseClient();
-      const groups = await fetchProductOptionGroups(supabase, String(item.id));
-      if (needsOptionSelection({ optionGroups: groups })) {
-        navigation.navigate('ProductDetail', { productId: String(item.id) });
-        return;
-      }
+    // 24.09.2026: carbs/fats/brand/category buraya HİÇ taşınmıyordu — kartla
+    // eklenen üründe sepetteki K/Y rozetleri boş, add_to_cart olayında marka
+    // ve kategori boş gidiyordu.
+    const ekle = () =>
       addItem(
         {
           id: numericId,
@@ -110,6 +106,10 @@ export default function BrandLandingScreen() {
           img: item.img ?? undefined,
           calories: item.calories ?? undefined,
           protein: item.protein ?? undefined,
+          carbs: item.carbs ?? undefined,
+          fats: item.fats ?? undefined,
+          brand: item.brand ?? undefined,
+          category: item.category ?? undefined,
           is_available: true,
           discount_type: item.discount_type ?? null,
           discount_value: item.discount_value ?? null,
@@ -117,7 +117,25 @@ export default function BrandLandingScreen() {
         {},
         1,
       );
+
+    setCheckingOptions((prev) => ({ ...prev, [numericId]: true }));
+    try {
+      const supabase = getSupabaseClient();
+      const groups = await fetchProductOptionGroups(supabase, String(item.id));
+      if (needsOptionSelection({ optionGroups: groups })) {
+        navigation.navigate('ProductDetail', { productId: String(item.id) });
+        return;
+      }
+      ekle();
       setCardQuantities((prev) => ({ ...prev, [numericId]: 1 }));
+    } catch {
+      // 24.09.2026: bu dal üç ekranda farklıydı — anasayfa hatayı yutup
+      // ÜRÜNÜ EKLİYOR, diğer ikisi sessizce HİÇBİR ŞEY yapmıyordu
+      // (kullanıcı basıyor, sepet sayacı değişmiyor, uyarı da yok).
+      // Opsiyonları öğrenemediysek eklemek de güvenli değil: zorunlu
+      // seçimi olan bir ürün eksik sepete girebilir. İkisi de değil —
+      // detaya gidiyoruz, seçim orada tamamlanır.
+      navigation.navigate('ProductDetail', { productId: String(item.id) });
     } finally {
       setCheckingOptions((prev) => ({ ...prev, [numericId]: false }));
     }
@@ -125,7 +143,7 @@ export default function BrandLandingScreen() {
 
   const handleCardQuantityChange = (item: CategoryProduct, newQty: number) => {
     const numericId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
-    const cartItem = cartItems.find((i) => i.productId === String(numericId));
+    const cartItem = findPlainCartLine(cartItems, numericId);
     if (newQty <= 0) {
       if (cartItem) removeItem(cartItem.lineKey);
       setCardQuantities((prev) => {

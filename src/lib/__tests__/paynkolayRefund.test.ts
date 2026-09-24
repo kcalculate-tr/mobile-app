@@ -21,7 +21,7 @@ const legacyHash = (type: string) =>
   createHash('sha512').update([CFG.cancelSx, REQ.referenceCode, type, REQ.amount, REQ.trxDate, CFG.secretKey].join('|')).digest('base64');
 
 type Call = { url: string; fields: Record<string, string> };
-function mockFetch(responses: Array<{ status?: number; body: unknown } | Error>) {
+function mockFetch(responses: ({ status?: number; body: unknown } | Error)[]) {
   const calls: Call[] = [];
   let i = 0;
   const fetchFn = async (url: string, init: { method: string; body: any }) => {

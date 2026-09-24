@@ -1216,13 +1216,24 @@ export default function CheckoutScreen() {
     const supabase = getSupabaseClient();
     supabase
       .from('profiles')
-      .select('full_name, phone')
+      // 24.09.2026: yalnız full_name okunuyordu ve yedek dalı yoktu. Google/
+      // Apple ile giren kullanıcının adı profilde first_name/last_name olarak
+      // duruyor (bkz. lib/postSocialAuth.ts); full_name boş kalınca Sipariş
+      // Özeti'ndeki "Ad Soyad" alanı her siparişte boş açılıyordu — Adreslerim
+      // ekranı ise aynı kullanıcının adını doğru gösteriyordu.
+      .select('full_name, first_name, last_name, phone')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
-        if (data.full_name) {
-          dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: String(data.full_name) });
+        const ad =
+          String(data.full_name ?? '').trim() ||
+          [data.first_name, data.last_name]
+            .map((x) => String(x ?? '').trim())
+            .filter(Boolean)
+            .join(' ');
+        if (ad) {
+          dispatchOrder({ type: 'SET_CUSTOMER_NAME', payload: ad });
         }
         if (data.phone) {
           dispatchOrder({ type: 'SET_CUSTOMER_PHONE', payload: String(data.phone) });

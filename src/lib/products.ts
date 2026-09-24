@@ -55,7 +55,7 @@ export const mapProductRow = (row: Record<string, unknown>): Product => {
     brand: typeof row.brand === 'string' && row.brand ? row.brand : null,
     is_bundle: row.is_bundle != null ? Boolean(row.is_bundle) : undefined,
     gramaj_options: Array.isArray(row.gramaj_options)
-      ? (row.gramaj_options as Array<Record<string, unknown>>)
+      ? (row.gramaj_options as Record<string, unknown>[])
           .filter((g) => g && typeof g === 'object')
           .map((g, idx) => ({
             name: toSafeString(g.name),
@@ -328,7 +328,7 @@ export const fetchProductImagesByName = async (
   if (error || !Array.isArray(data)) return {};
 
   const map: Record<string, string> = {};
-  for (const row of data as Array<Record<string, unknown>>) {
+  for (const row of data as Record<string, unknown>[]) {
     const name = typeof row.name === 'string' ? row.name.trim().toLowerCase() : '';
     const url = typeof row.img === 'string' ? row.img.trim() : '';
     if (name && url && !map[name]) map[name] = url;

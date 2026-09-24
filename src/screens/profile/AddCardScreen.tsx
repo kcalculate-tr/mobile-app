@@ -10,8 +10,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
 import { PAYNKOLAY_VPOS_ORIGIN } from '../../config/payment';
 import { cancelCardVerification, getVerificationStatus, startCardVerification } from '../../lib/cards';
-import { POLL_MAX_MS } from '../../lib/cardVerification';
-import {
+import { POLL_MAX_MS ,
   CLOSED_MESSAGE,
   LIMIT_MESSAGE,
   TIMEOUT_MESSAGE,

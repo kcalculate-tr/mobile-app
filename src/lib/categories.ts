@@ -15,13 +15,18 @@ export interface CategoryProduct {
   price: number;
   calories: number;
   protein: number;
+  // 24.09.2026: carbs/fats select'te YOKTU. Kategori/marka sayfasından karta
+  // basıp eklenen üründe sepetteki K ve Y rozetleri "—" görünüyordu (aynı
+  // ürün anasayfadan eklendiğinde doğru geliyordu).
+  carbs: number;
+  fats: number;
   img?: string | null;
   category?: string | null;
   order?: number | null;
   discount_type?: string | null;
   discount_value?: number | null;
   brand?: string | null;
-  gramaj_options?: Array<Record<string, unknown>>;
+  gramaj_options?: Record<string, unknown>[];
 }
 
 const toSafeString = (value: unknown) => String(value ?? '').trim();
@@ -47,13 +52,15 @@ const mapCategoryProductRow = (
   price: toNumber(row.price, 0),
   calories: toNumber(row.calories, 0),
   protein: toNumber(row.protein, 0),
+  carbs: toNumber(row.carbs, 0),
+  fats: toNumber(row.fats, 0),
   img: toSafeString(row.img) || null,
   category: toSafeString(row.category) || null,
   order: row.order != null ? toNumber(row.order, 0) : null,
   discount_type: typeof row.discount_type === 'string' && row.discount_type ? row.discount_type : null,
   discount_value: row.discount_value != null ? toNumber(row.discount_value, 0) : null,
   brand: typeof row.brand === 'string' && row.brand ? row.brand : null,
-  gramaj_options: Array.isArray(row.gramaj_options) ? (row.gramaj_options as Array<Record<string, unknown>>) : [],
+  gramaj_options: Array.isArray(row.gramaj_options) ? (row.gramaj_options as Record<string, unknown>[]) : [],
 });
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -77,7 +84,7 @@ export async function fetchProductsByCategory(
   if (ALL_PRODUCTS_NAMES.includes(categoryName)) {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
+      .select('id, name, price, calories, protein, carbs, fats, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
       .eq('is_available', true)
       .order('order', { ascending: true });
 
@@ -109,7 +116,7 @@ export async function fetchProductsByCategory(
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
+    .select('id, name, price, calories, protein, carbs, fats, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
     .in('category', categoryNames)
     .eq('is_available', true)
     .order('order', { ascending: true });
@@ -126,7 +133,7 @@ export async function fetchProductsByBrand(
 ): Promise<CategoryProduct[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, price, calories, protein, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
+    .select('id, name, price, calories, protein, carbs, fats, img, category, is_available, order, discount_type, discount_value, brand, gramaj_options')
     .eq('brand', brandKey)
     .eq('is_available', true)
     .order('order', { ascending: true });

@@ -115,7 +115,7 @@ const buildSelectionSignature = (byGroup: Record<string, string[]>) => {
 };
 
 const buildTemplateOptionsSignature = (
-  selectedOptions?: ReadonlyArray<SelectedOption> | null,
+  selectedOptions?: readonly SelectedOption[] | null,
 ): string => {
   if (!selectedOptions || selectedOptions.length === 0) return '';
   const tokens = selectedOptions
@@ -128,7 +128,7 @@ const buildTemplateOptionsSignature = (
 export const buildCartLineKey = (
   productId: string,
   byGroup: Record<string, string[]>,
-  selectedOptions?: ReadonlyArray<SelectedOption> | null,
+  selectedOptions?: readonly SelectedOption[] | null,
 ) => {
   const safeProductId = toSafeString(productId) || 'unknown';
   const groupSignature = buildSelectionSignature(byGroup);

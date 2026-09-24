@@ -28,7 +28,7 @@ import ReorderCard from '../components/ReorderCard';
 import { Toast } from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
-import { needsOptionSelection } from '../lib/quickAdd';
+import { findPlainCartLine, needsOptionSelection } from '../lib/quickAdd';
 import OrderFeedbackModal from '../components/OrderFeedbackModal';
 import {
   fetchActiveOrder,
@@ -352,22 +352,24 @@ export default function HomeScreen() {
         navigation.navigate('ProductDetail', { productId: product.id.toString() });
         return;
       }
+      addItem(product, {}, 1);
+      setCardQuantities(prev => ({ ...prev, [product.id]: 1 }));
     } catch {
-      // hata olursa direkt ekle
+      // 24.09.2026: burada hata yutulup ürün YİNE ekleniyordu. Opsiyonları
+      // öğrenemediysek eklemek güvenli değil — zorunlu seçimi olan bir ürün
+      // eksik sepete girebilir. Detaya gidiyoruz, seçim orada tamamlanır.
+      // (Category/Brand ekranları ise hiçbir şey yapmıyordu; üçü artık aynı.)
+      haptic.selection();
+      navigation.navigate('ProductDetail', { productId: product.id.toString() });
     } finally {
       setCheckingOptions(prev => ({ ...prev, [product.id]: false }));
     }
-    addItem(product, {}, 1);
-    setCardQuantities(prev => ({ ...prev, [product.id]: 1 }));
   };
 
   const handleCardQuantityChange = (product: Product, newQty: number) => {
     haptic.light();
     if (newQty <= 0) {
-      const existingItem = cartItems.find(
-        i => i.productId === String(product.id) &&
-        Object.keys(i.selectedOptions?.byGroup ?? {}).length === 0
-      );
+      const existingItem = findPlainCartLine(cartItems, product.id);
       if (existingItem) removeItem(existingItem.lineKey);
       setCardQuantities(prev => {
         const next = { ...prev };
@@ -376,10 +378,7 @@ export default function HomeScreen() {
       });
       return;
     }
-    const existingItem = cartItems.find(
-      i => i.productId === String(product.id) &&
-      Object.keys(i.selectedOptions?.byGroup ?? {}).length === 0
-    );
+    const existingItem = findPlainCartLine(cartItems, product.id);
     if (existingItem) updateQuantity(existingItem.lineKey, newQty);
     setCardQuantities(prev => ({ ...prev, [product.id]: newQty }));
   };

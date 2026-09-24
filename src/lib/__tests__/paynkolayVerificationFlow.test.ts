@@ -45,7 +45,7 @@ function setup(opts: {
   refundThrows?: boolean;
   deleteOk?: boolean;
   customerKey?: string;
-  claimable?: Array<VerificationRow['status']>;
+  claimable?: VerificationRow['status'][];
 } = {}) {
   const row: VerificationRow | null = opts.row === null ? null : {
     id: 'v1', user_id: 'u1', client_ref_code: 'KCALVERabc12345', amount: 1, status: 'initiated',

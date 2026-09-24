@@ -33,8 +33,13 @@ export const gunKaldi = (iso?: string | null): number | null => {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000))
 }
 
-export const formatDate = (iso: string): string => {
+export const formatDate = (iso?: string | null): string => {
+  // 24.09.2026: guard YOKTU (diğer üç formatDate kopyasında var). end_date boş
+  // ya da bozuk gelen bir kampanyanın kartında tarih yerine "NaN.NaN.NaN"
+  // yazıyordu.
+  if (!iso) return ''
   const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
 }
 

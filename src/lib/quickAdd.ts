@@ -1,4 +1,4 @@
-import type { OptionGroup } from '../types';
+import type { CartItem, OptionGroup } from '../types';
 
 /**
  * Ürün kartındaki hızlı "+" butonu ile sepete eklemenin güvenli olup
@@ -55,4 +55,37 @@ export function needsOptionSelection(input: {
   optionGroups?: readonly OptionGroup[] | null;
 }): boolean {
   return hasGramajChoice(input.gramajOptions) || hasRequiredOptionGroup(input.optionGroups);
+}
+
+/**
+ * Ürün kartındaki miktar (+/−) hangi sepet satırına dokunacak?
+ *
+ * 24.09.2026: bu kural üç ekranda farklı yazılmıştı. HomeScreen "opsiyonsuz
+ * satır" koşulunu taşıyordu; CategoryProducts ve BrandLanding ise sadece
+ * `productId` eşleşmesine bakıp aynı üründen İLK satırı alıyordu.
+ *
+ * Somut sonuç: kullanıcı ürün detayından ücretli ekstralarla bir kalem
+ * ekliyor (satır A), sonra kategori listesindeki kartın '+' butonuyla sade
+ * halini ekliyor (satır B). Karttaki '−' ile miktarı sıfırlayınca satır A —
+ * yani ekstralarıyla kurduğu kalem — siliniyordu. Artırınca da A'nın adedi
+ * artıyor, müşteri istemediği ekstralar için ikinci kez ödüyordu.
+ *
+ * Kart YALNIZCA kendi eklediği sade satırı yönetir: ne opsiyon grubu ne de
+ * şablon/gramaj seçimi taşıyan satır.
+ */
+export function findPlainCartLine(
+  items: readonly CartItem[] | null | undefined,
+  productId: string | number,
+): CartItem | null {
+  if (!Array.isArray(items)) return null;
+  const hedef = String(productId);
+  return (
+    items.find(
+      (i) =>
+        i.productId === hedef &&
+        !i.parentLineKey &&
+        Object.keys(i.selectedOptions?.byGroup ?? {}).length === 0 &&
+        (i.selectedOptions?.templateOptions?.length ?? 0) === 0,
+    ) ?? null
+  );
 }

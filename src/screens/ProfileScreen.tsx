@@ -1,3 +1,4 @@
+import { dayKeyFromIso, lastDayKeys } from '../lib/dayKey';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -77,14 +78,12 @@ function getBmiCategory(bmi: number): { label: string; color: string } {
   return { label: 'Obez', color: '#EF4444' };
 }
 
+// 24.09.2026: bu liste UTC'den üretiliyordu, aşağıdaki bucket da öyle.
+// Türkiye UTC+3 olduğu için gece 00:00–03:00 arasında işaretlenen öğün bir
+// ÖNCEKİ güne düşüyor, Tracker'da "bugün" görünen kalori burada "dün"e
+// yazılıyordu. Artık iki ekran da src/lib/dayKey.ts'i kullanıyor.
 function getLast7Days(): string[] {
-  const days: string[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
-  return days;
+  return lastDayKeys(7);
 }
 
 const DAY_SHORT = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
@@ -253,7 +252,7 @@ export default function ProfileScreen() {
       if (consumptionsRes.data) {
         const map: Record<string, number> = {};
         for (const row of consumptionsRes.data) {
-          const date = String(row.consumed_at).split('T')[0];
+          const date = dayKeyFromIso(String(row.consumed_at));
           map[date] = (map[date] ?? 0) + (row.calories ?? 0);
         }
         const days = getLast7Days();

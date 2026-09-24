@@ -1,3 +1,5 @@
+// Gün sınırı ve gün anahtarı tek kaynaktan (bkz. src/lib/dayKey.ts).
+import { dayKey, startOfDayIso } from '../lib/dayKey';
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   Animated,
@@ -369,32 +371,16 @@ const calculateTotalMacros = (orders: Order[]): MacroTotals => {
   return t;
 };
 
-const formatDayKey = (d: Date): string => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
+// Gün sınırı tek kaynaktan (bkz. src/lib/dayKey.ts). Önceden cihazın YEREL
+// tarihini kullanıyordu; Profil ekranı UTC, sunucu RPC'si Europe/Istanbul
+// kullandığı için aynı öğün üç ekranda farklı güne düşebiliyordu.
+const formatDayKey = (d: Date): string => dayKey(d);
 
-const startOfTodayISO = (): string => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-};
+const startOfTodayISO = (): string => startOfDayIso(0);
 
-const startOfTomorrowISO = (): string => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  return d.toISOString();
-};
+const startOfTomorrowISO = (): string => startOfDayIso(1);
 
-const startOfDaysAgoISO = (days: number): string => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - days);
-  return d.toISOString();
-};
+const startOfDaysAgoISO = (days: number): string => startOfDayIso(-days);
 
 const normalizeConsumedRow = (raw: any): ConsumedRow => {
   const r = (raw != null && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -414,11 +400,10 @@ const normalizeConsumedRow = (raw: any): ConsumedRow => {
   };
 };
 
-const formatDayLabel = (dayKey: string): string => {
-  const d = new Date(`${dayKey}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return dayKey;
-  const today = formatDayKey(new Date());
-  if (dayKey === today) return 'Bugün';
+const formatDayLabel = (anahtar: string): string => {
+  const d = new Date(`${anahtar}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return anahtar;
+  if (anahtar === formatDayKey(new Date())) return 'Bugün';
   return d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 };
 
@@ -999,7 +984,7 @@ export default function TrackerScreen() {
           // pencereyi kapsıyor — pantryRefs'i buradan türetmek bu iki pencereyi
           // hizalar ve restart sonrası kaybolma sorununu kapatır.
           const pantryRefs = new Set(
-            (weeklyConsumedRes.data as Array<{ source?: string; source_ref?: string | null }>)
+            (weeklyConsumedRes.data as { source?: string; source_ref?: string | null }[])
               .filter((r) => r.source === 'pantry' && r.source_ref)
               .map((r) => r.source_ref as string),
           );

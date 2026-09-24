@@ -4,8 +4,7 @@
  */
 
 import NetInfo from '@react-native-community/netinfo';
-import { AppState, AppStateStatus } from 'react-native';
-import { Alert } from 'react-native';
+import { AppState, AppStateStatus , Alert } from 'react-native';
 import { captureError } from './sentry';
 
 /**

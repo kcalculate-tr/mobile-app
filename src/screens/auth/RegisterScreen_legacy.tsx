@@ -11,16 +11,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+ Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions } from 'react-native';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const loginRegisterImage = require('../../assets/login-register.webp');
 import * as Location from 'expo-location';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -34,6 +30,9 @@ import { getSupabaseClient } from '../../lib/supabase';
 import { registerForPushNotifications } from '../../lib/notifications';
 import { RootStackParamList } from '../../navigation/types';
 import FormField, { FormFieldOption } from '../../components/FormField';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const loginRegisterImage = require('../../assets/login-register.webp');
 
 const BRAND = '#B9EF14';
 const BG = '#f6f6f6';
