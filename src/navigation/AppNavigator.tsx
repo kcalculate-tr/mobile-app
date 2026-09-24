@@ -8,6 +8,7 @@ import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen_leg
 
 import { haptic } from '../utils/haptics';
 import { DURATION, EASING } from '../constants/motion';
+import { forSlide } from './transitions';
 import { CustomTabBar } from './CustomTabBar';
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
@@ -62,17 +63,13 @@ function TabNavigator() {
         screenOptions={{
           headerShown: false,
           sceneStyle: { backgroundColor: '#f6f6f6' },
-          // 24.09.2026: sekme geçişlerinde HİÇ animasyon yoktu — ekran bir
-          // karede değişiyordu. Stack geçişleri (280 ms) yumuşakken sekme
-          // geçişinin sert olması aynı uygulamada iki farklı his bırakıyordu.
-          //
-          // 'shift' seçildi, 'fade' değil: sekmelerin bir SIRASI var ve
-          // kullanıcı bu sırayı alt barda görüyor (Anasayfa · Kcalculate ·
-          // Sepet · Abonelik · Hesabım). Sepet, Anasayfa'nın sağında; oraya
-          // geçerken ekranın sola kayması o sırayı doğruluyor. Stack
-          // geçişleri de (slide_from_right) aynı yönde çalışıyor — tüm
-          // uygulamada tek bir hareket dili.
+          // Sekme geçişi, marka sayfalarındaki (kcalculate / tera /
+          // Breaking Fast) kaymanın aynısı — bkz. navigation/transitions.ts.
+          // Hazır 'shift' kullanılmıyor: hem yalnız ±50px kaydırıyor hem de
+          // geçiş boyunca opaklığı 0'a indirip "ekran yüklenmedi" görüntüsüne
+          // yol açabiliyordu.
           animation: 'shift',
+          sceneStyleInterpolator: forSlide,
           transitionSpec: {
             animation: 'timing',
             config: { duration: DURATION.base, easing: EASING.enter },
@@ -100,7 +97,15 @@ function TabNavigator() {
       <Tab.Screen
         name="Cart"
         component={CartScreen}
-        options={{ tabBarButton: () => null }}
+        options={{
+          tabBarButton: () => null,
+          // Sepet ÖNCEDEN yüklenir. Tembel yüklemede (varsayılan) ekran ilk
+          // açılışta animasyon BAŞLADIKTAN sonra mount oluyor; bu yarış geçiş
+          // değerinin 0'a oturmamasına ve sepetin boş görünmesine yol
+          // açıyordu. Sepet yalnız store'u okuyor, önceden yüklemenin
+          // maliyeti yok.
+          lazy: false,
+        }}
       />
       <Tab.Screen
         name="Subscriptions"

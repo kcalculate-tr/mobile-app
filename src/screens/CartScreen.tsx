@@ -119,7 +119,11 @@ export default function CartScreen() {
   // dolu sepette gorunmedigi icin bos yere sorgu atilmaz.
   const cartIsEmpty = items.length === 0;
   useEffect(() => {
-    if (!cartIsEmpty || !user?.id) { setPastOrders([]); return; }
+    // setPastLoading(false) burada da ŞART: sepet dolunca (ya da oturum
+    // kapanınca) efekt erken dönüyordu ve uçuştaki isteğin `finally`'si
+    // `mounted` false olduğu için çalışmıyordu — yükleniyor göstergesi
+    // kapanmadan takılı kalabiliyordu.
+    if (!cartIsEmpty || !user?.id) { setPastOrders([]); setPastLoading(false); return; }
     let mounted = true;
     setPastLoading(true);
     fetchPastOrders(user.id, 3)
