@@ -1,3 +1,4 @@
+import DiscountBadge from '../components/ui/DiscountBadge';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,7 +22,7 @@ import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { CategoryProduct, fetchProductsByCategory } from '../lib/categories';
 import { fetchProductOptionGroups } from '../lib/products';
-import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
+import { getEffectivePrice, hasDiscount } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
 import { useCartStore } from '../store/cartStore';
 import { findPlainCartLine, needsOptionSelection } from '../lib/quickAdd';
@@ -216,6 +217,7 @@ export default function CategoryProductsScreen() {
                       <Text style={styles.caloriesText}>{item.calories} kcal</Text>
                     </View>
                   ) : null}
+                  <DiscountBadge discountType={item.discount_type} discountValue={item.discount_value} />
                 </View>
                 <Text style={styles.productName} numberOfLines={2}>
                   {item.name}
@@ -223,10 +225,7 @@ export default function CategoryProductsScreen() {
                 <View style={styles.productFooter}>
                   {hasDiscount(item) ? (
                     <View style={styles.priceColumn}>
-                      <View style={styles.discountRow}>
-                        <Text style={styles.priceStrikethrough}>{Number(item.price || 0).toFixed(2)} TL</Text>
-                        <Text style={styles.discountBadge}>{formatDiscountBadge(item.discount_type, item.discount_value)}</Text>
-                      </View>
+                      <Text style={styles.priceStrikethrough}>{Number(item.price || 0).toFixed(2)} TL</Text>
                       <Text style={styles.productPriceDiscounted}>{getEffectivePrice(item).toFixed(2)} TL</Text>
                     </View>
                   ) : (
@@ -420,21 +419,11 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  discountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   priceStrikethrough: {
     fontSize: 11,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#9ca3af',
     textDecorationLine: 'line-through',
-  },
-  discountBadge: {
-    fontSize: 10,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#dc2626',
   },
   productPriceDiscounted: {
     color: '#dc2626',

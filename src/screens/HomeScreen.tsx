@@ -1,3 +1,4 @@
+import DiscountBadge from '../components/ui/DiscountBadge';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +17,7 @@ import { useCartStore } from '../store/cartStore';
 import { Category, fetchCategories } from '../lib/categories';
 import { RootStackParamList } from '../navigation/types';
 import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
-import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
+import { getEffectivePrice, hasDiscount } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
@@ -87,6 +88,11 @@ export default function HomeScreen() {
   // en ucuz siparişin geldiği yer — ilk ekranda olmalı.
   const [lastOrder, setLastOrder] = useState<PastOrder | null>(null);
   const [reordering, setReordering] = useState(false);
+  // Kapatılan öneriler. Ref, çünkü bu bilgi yalnız gösterimi etkiliyor ve
+  // yeniden çizim tetiklemesine gerek yok; ayrıca sekme ekranı mount kaldığı
+  // için oturum boyunca korunuyor. Kalıcı olarak saklamıyoruz: yarın açtığında
+  // öneriyi tekrar görmesi doğru, kapatma "bir daha asla" demek değil.
+  const kapatilanOnerilerRef = useRef<Set<number>>(new Set());
   const { toast, show: showToast, hide: hideToast } = useToast();
   const [feedbackOrder, setFeedbackOrder] = useState<PendingFeedbackOrder | null>(null);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
@@ -194,7 +200,8 @@ export default function HomeScreen() {
     if (!session?.user?.id) { setLastOrder(null); return; }
     try {
       const orders = await fetchPastOrders(session.user.id, 1);
-      setLastOrder(orders[0] ?? null);
+      const son = orders[0] ?? null;
+      setLastOrder(son && kapatilanOnerilerRef.current.has(son.id) ? null : son);
     } catch { /* sessiz — kart yoksa anasayfa normal görünür */ }
   }, [session?.user?.id]);
 
@@ -628,7 +635,16 @@ export default function HomeScreen() {
               eklemek müşterinin mevcut akışını bozar
             · tekrar edilebilir bir geçmiş sipariş var */}
         {!activeOrder && cartItems.length === 0 && lastOrder ? (
-          <ReorderCard order={lastOrder} busy={reordering} onPress={handleReorder} />
+          <ReorderCard
+            order={lastOrder}
+            busy={reordering}
+            onPress={handleReorder}
+            onDismiss={() => {
+              haptic.light();
+              kapatilanOnerilerRef.current.add(lastOrder.id);
+              setLastOrder(null);
+            }}
+          />
         ) : null}
 
         {/* Duyuru şeridi — Boss panel > Vitrin > Grid Yönetimi'nden yönetilir.
@@ -733,6 +749,7 @@ export default function HomeScreen() {
                       <Text style={styles.caloriesText}>{product.calories} kcal</Text>
                     </View>
                   ) : null}
+                  <DiscountBadge discountType={product.discount_type} discountValue={product.discount_value} />
                 </View>
                 <View style={{ flex: 1, justifyContent: 'space-between' }}>
                   <Text style={styles.productName} numberOfLines={2}>
@@ -741,10 +758,7 @@ export default function HomeScreen() {
                   <View style={styles.productFooter}>
                     {hasDiscount(product) ? (
                       <View style={styles.priceColumn}>
-                        <View style={styles.discountRow}>
-                          <Text style={styles.priceStrikethrough}>{Number(product.price).toFixed(2)} TL</Text>
-                          <Text style={styles.discountBadge}>{formatDiscountBadge(product.discount_type, product.discount_value)}</Text>
-                        </View>
+                        <Text style={styles.priceStrikethrough}>{Number(product.price).toFixed(2)} TL</Text>
                         <Text style={styles.productPriceDiscounted}>{getEffectivePrice(product).toFixed(2)} TL</Text>
                       </View>
                     ) : (
@@ -1168,21 +1182,11 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  discountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   priceStrikethrough: {
     fontSize: TYPOGRAPHY.size.xs,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#9ca3af',
     textDecorationLine: 'line-through',
-  },
-  discountBadge: {
-    fontSize: 10,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#dc2626',
   },
   productPriceDiscounted: {
     fontSize: TYPOGRAPHY.size.md,

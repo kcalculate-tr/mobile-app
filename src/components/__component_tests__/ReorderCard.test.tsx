@@ -115,3 +115,28 @@ test('kalori binlik ayraçla yazılır', () => {
   expect(reorderCalorieLabel(820)).toBe('820 kcal');
   expect(reorderCalorieLabel(819.6)).toBe('820 kcal');
 });
+
+// ── Kapatma — 24.09.2026 ────────────────────────────────────────────────────
+
+test('onDismiss verilmezse kapatma butonu HİÇ çizilmez', () => {
+  const { queryByLabelText } = render(
+    <ReorderCard order={siparis([kalem('1', 'A')])} onPress={() => {}} />,
+  );
+  expect(queryByLabelText('Bu öneriyi kapat')).toBeNull();
+});
+
+test('kapatma butonu onDismiss’i çağırır, onPress’i TETİKLEMEZ', () => {
+  // İkisi iç içe: kapatmaya basınca sipariş sepete eklenirse tam tersi olur.
+  const kapatildi: number[] = [];
+  const eklendi: number[] = [];
+  const { getByLabelText } = render(
+    <ReorderCard
+      order={siparis([kalem('1', 'A')])}
+      onPress={() => eklendi.push(1)}
+      onDismiss={() => kapatildi.push(1)}
+    />,
+  );
+  fireEvent.press(getByLabelText('Bu öneriyi kapat'));
+  expect(kapatildi.length).toBe(1);
+  expect(eklendi.length).toBe(0);
+});

@@ -65,9 +65,14 @@ function TabNavigator() {
           // 24.09.2026: sekme geçişlerinde HİÇ animasyon yoktu — ekran bir
           // karede değişiyordu. Stack geçişleri (280 ms) yumuşakken sekme
           // geçişinin sert olması aynı uygulamada iki farklı his bırakıyordu.
-          // 'fade', sekmeler arasında yön ilişkisi olmadığı için doğru olan:
-          // 'shift' yatay bir yön ima eder, sekmelerde böyle bir sıra yok.
-          animation: 'fade',
+          //
+          // 'shift' seçildi, 'fade' değil: sekmelerin bir SIRASI var ve
+          // kullanıcı bu sırayı alt barda görüyor (Anasayfa · Kcalculate ·
+          // Sepet · Abonelik · Hesabım). Sepet, Anasayfa'nın sağında; oraya
+          // geçerken ekranın sola kayması o sırayı doğruluyor. Stack
+          // geçişleri de (slide_from_right) aynı yönde çalışıyor — tüm
+          // uygulamada tek bir hareket dili.
+          animation: 'shift',
           transitionSpec: {
             animation: 'timing',
             config: { duration: DURATION.base, easing: EASING.enter },

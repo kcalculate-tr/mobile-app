@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ActivityIndicator, Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ArrowCounterClockwise, Fire, ShoppingCart } from 'phosphor-react-native';
+import { ArrowCounterClockwise, Fire, ShoppingCart, X } from 'phosphor-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { DURATION, EASING, PRESS_SCALE, SPRING } from '../constants/motion';
 import Shimmer from './ui/Shimmer';
@@ -10,6 +10,8 @@ interface ReorderCardProps {
   order: PastOrder;
   busy?: boolean;
   onPress: () => void;
+  /** Kartı kapat. Verilmezse kapatma butonu hiç çizilmez. */
+  onDismiss?: () => void;
 }
 
 /** En fazla 3 görsel yan yana; kalanlar "+N" ile özetlenir. */
@@ -47,7 +49,7 @@ export function reorderCalorieLabel(kcal: number): string | null {
  * Canlı sipariş kartıyla AYNI yuvayı paylaşır (ikisi aynı anda görünmez):
  * siparişi yolda olan birine "yine aynısını ister misin" demek gürültü.
  */
-export default function ReorderCard({ order, busy = false, onPress }: ReorderCardProps) {
+export default function ReorderCard({ order, busy = false, onPress, onDismiss }: ReorderCardProps) {
   const thumbs = order.items.slice(0, MAX_THUMBS);
   const extraCount = order.items.length - thumbs.length;
   const itemCount = order.items.reduce((n, it) => n + it.quantity, 0);
@@ -103,7 +105,25 @@ export default function ReorderCard({ order, busy = false, onPress }: ReorderCar
         </View>
 
         <View style={s.metinBlok}>
-          <Text style={s.baslik}>Yine aynısı?</Text>
+          <View style={s.baslikSatir}>
+            <Text style={s.baslik}>Yine aynısı?</Text>
+            {/* Kapatma: bu kart bir öneri, zorunluluk değil. Kapatma yolu
+                olmayan öneri bir süre sonra rahatsız edici oluyor. Kapatılan
+                sipariş bu oturumda bir daha gösterilmiyor; YENİ bir sipariş
+                verildiğinde kart yeniden çıkıyor (başka bir sipariş, başka
+                bir öneri). */}
+            {onDismiss ? (
+              <TouchableOpacity
+                onPress={onDismiss}
+                hitSlop={12}
+                style={s.kapatBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Bu öneriyi kapat"
+              >
+                <X size={14} color={COLORS.text.tertiary} weight="bold" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
           <Text style={s.ozet} numberOfLines={2}>{reorderSummary(order)}</Text>
           <View style={s.metaSatir}>
             <Text style={s.meta} numberOfLines={1}>
@@ -202,7 +222,17 @@ const s = StyleSheet.create({
   },
 
   metinBlok: { flex: 1, gap: 3 },
+  baslikSatir: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  kapatBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f2f2f2',
+  },
   baslik: {
+    flex: 1,
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.text.primary,
     fontFamily: 'PlusJakartaSans_800ExtraBold',

@@ -1,4 +1,4 @@
-type DiscountType = string | null | undefined;
+export type DiscountType = string | null | undefined;
 
 type DiscountSource = {
   price?: number;
@@ -45,6 +45,29 @@ export function formatDiscountBadge(
   const value = Number(discountValue);
   if (!discountType || !Number.isFinite(value) || value <= 0) return null;
   if (discountType === 'percent') return `-%${value}`;
+  if (discountType === 'fixed') return `-${value} TL`;
+  return null;
+}
+
+/**
+ * Ürün kartının SAĞ ÜST köşesindeki indirim rozetinin metni.
+ *
+ * 24.09.2026: indirim, fiyat satırında üstü çizili tutarın yanına küçük
+ * kırmızı bir metin olarak yazılıyordu (`-%10`). Orada hem gözden kaçıyor
+ * hem de zaten kalabalık olan fiyat satırını uzatıyordu. Artık ürün
+ * görselinin köşesinde kendi rozetinde — kalori rozetinin karşısında.
+ *
+ * Biçim farkı bilinçli: yüzde indirimde işaret YOK (`%10` — rozet zaten
+ * indirim olduğunu söylüyor), tutar indiriminde eksi VAR (`-50 TL`),
+ * çünkü orada işaretsiz sayı fiyatla karışır.
+ */
+export function formatDiscountCorner(
+  discountType: DiscountType,
+  discountValue: number | null | undefined,
+): string | null {
+  const value = Number(discountValue);
+  if (!discountType || !Number.isFinite(value) || value <= 0) return null;
+  if (discountType === 'percent') return `%${value}`;
   if (discountType === 'fixed') return `-${value} TL`;
   return null;
 }
