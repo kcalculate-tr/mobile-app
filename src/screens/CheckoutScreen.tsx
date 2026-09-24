@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -81,7 +81,7 @@ import { fetchBranches, Branch } from '../lib/branches';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
 import { getCardsFeatureStatus, syncSavedCards, SavedCard } from '../lib/cards';
-import { buildPaymentNavParams, paymentActionVerb, pickInitialCardId } from '../lib/checkoutPayment';
+import { buildPaymentNavParams, paymentActionVerb, resolveSelectedCardId } from '../lib/checkoutPayment';
 import { useAddressStore } from '../store/addressStore';
 import { Address, DeliveryRuleStatus } from '../types';
 import { haptic } from '../utils/haptics';
@@ -476,27 +476,90 @@ export default function CheckoutScreen() {
   const [cardsEnabled, setCardsEnabled] = useState(false);
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [selectedPayCardId, setSelectedPayCardId] = useState<string | null>(null); // null = yeni kart
-  const cardsLoadedRef = useRef(false);
-  useEffect(() => {
+
+  // 24.09.2026 — "Ödeme Yöntemi bölümü bazen HİÇ çıkmıyor" hatası.
+  //
+  // ESKİ KURGU (üç ayrı kusur, üçü birlikte şu davranışı üretiyordu):
+  //
+  //  1) `cardsLoadedRef` isteğin BAŞINDA true yapılıyordu. status ya da sync
+  //     herhangi bir sebeple patlarsa (3 sn'lik üst süre, soğuk başlangıç, ağ
+  //     dalgalanması) catch bloğu hatayı yutuyor ve efekt bu mount boyunca
+  //     BİR DAHA çalışmıyordu. Tek bir geçici hata = bölüm kalıcı olarak yok.
+  //  2) `cardsEnabled` ancak İKİ çağrı da başarılı olunca true oluyordu.
+  //     Oysa "+ Yeni kart ile öde" kayıtlı karta hiç ihtiyaç duymuyor; kart
+  //     listesi alınamadı diye ödeme yöntemi seçeneğini tamamen gizlemek
+  //     gereksiz. (Sıfır kayıtlı kartla da çalışan bir yol bu.)
+  //  3) Yükleniyor durumu yoktu: iki tur ağ gidiş-dönüşü boyunca bölüm
+  //     ekranda hiç yoktu, sonra aniden beliriyordu. Kullanıcının "bazen
+  //     yüklenmiyor" dediği pencere büyük ölçüde buydu.
+  //
+  // YENİ KURGU: iki aşama birbirinden ayrıldı. Özellik açık mı (ucuz, kesin)
+  // ile kart listesi geldi mi (pahalı, kırılgan) artık ayrı durumlar.
+  // Kilit YALNIZCA kesin sonuçta atılıyor; geçici hata tekrar denenebilir.
+  type KartDurumu = 'basliyor' | 'yukleniyor' | 'kapali' | 'hazir' | 'liste_hatasi';
+  const [kartDurumu, setKartDurumu] = useState<KartDurumu>('basliyor');
+  const kartIstegiUcustaRef = useRef(false);
+  const kartKesinSonucRef = useRef(false);
+
+  const kartlariYukle = useCallback(async () => {
     if (PAYMENT_PROVIDER !== 'paynkolay' || !user?.id) return;
-    if (cardsLoadedRef.current) return;
-    cardsLoadedRef.current = true;
-    // mounted bayrağı YOK: ref guard StrictMode'da 2. çalışmayı atladığı için
-    // cleanup'ta iptal edilen bir istek sonucu asla uygulanmazdı.
-    (async () => {
-      try {
-        const status = await getCardsFeatureStatus();
-        if (!status.enabled) return;
-        const result = await syncSavedCards();
-        const cards = result.cards ?? [];
-        setSavedCards(cards);
-        setSelectedPayCardId(pickInitialCardId(cards));
-        setCardsEnabled(true);
-      } catch {
-        // status/sync başarısızsa kart UI'ı gösterilmez, normal akış
-      }
-    })();
+    if (kartIstegiUcustaRef.current) return;          // aynı anda iki istek olmasın
+    if (kartKesinSonucRef.current) return;            // kilit: yalnız KESİN sonuçta atılır
+    kartIstegiUcustaRef.current = true;
+    setKartDurumu('yukleniyor');
+
+    // 1. aşama — özellik açık mı? Tek DB okuması; cevabı kesin.
+    let acik: boolean;
+    try {
+      acik = (await getCardsFeatureStatus()).enabled;
+    } catch {
+      // Geçici olabilir (soğuk başlangıç/ağ). KİLİTLEME — tekrar denenebilsin.
+      kartIstegiUcustaRef.current = false;
+      setKartDurumu('liste_hatasi');
+      return;
+    }
+
+    if (!acik) {
+      // Allowlist dışı: bu kesin bir cevap, tekrar sormanın anlamı yok.
+      kartKesinSonucRef.current = true;
+      kartIstegiUcustaRef.current = false;
+      setKartDurumu('kapali');
+      return;
+    }
+
+    // Özellik AÇIK olduğu kesinleşti. Kart listesi gelmese bile bölüm
+    // görünmeli — "+ Yeni kart ile öde" kayıtlı karta bağlı değil.
+    setCardsEnabled(true);
+
+    // 2. aşama — kayıtlı kart listesi. PaynKolay'a canlı istek; kırılgan.
+    try {
+      const cards = (await syncSavedCards()).cards ?? [];
+      setSavedCards(cards);
+      setSelectedPayCardId((onceki) => resolveSelectedCardId(onceki, cards));
+      kartKesinSonucRef.current = true;
+      setKartDurumu('hazir');
+    } catch {
+      // Liste alınamadı ama özellik açık: yeni kartla ödeme yine mümkün.
+      // Kilit ATILMIYOR — kullanıcı "Tekrar dene" diyebilir, ekrana geri
+      // dönüldüğünde de kendiliğinden yeniden denenir.
+      setKartDurumu('liste_hatasi');
+    } finally {
+      kartIstegiUcustaRef.current = false;
+    }
   }, [user?.id]);
+
+  useEffect(() => {
+    kartlariYukle();
+  }, [kartlariYukle]);
+
+  // Ekrana geri dönüldüğünde (ör. Kayıtlı Kartlarım'dan kart eklenip
+  // dönüldüğünde, ya da ağ toparlandığında) kesin sonuç yoksa tekrar dene.
+  useEffect(() => {
+    const cikar = navigation.addListener('focus', () => {
+      if (!kartKesinSonucRef.current) kartlariYukle();
+    });
+    return cikar;
+  }, [navigation, kartlariYukle]);
   const paymentNavParams = useMemo(
     () => buildPaymentNavParams({ cardsEnabled, selectedCardId: selectedPayCardId }),
     [cardsEnabled, selectedPayCardId],
@@ -2358,7 +2421,20 @@ export default function CheckoutScreen() {
             <Text style={styles.noteCounter}>{orderNote.length}/300</Text>
           </View>
 
-          {/* ── Ödeme Yöntemi (sadece kart saklama açık kullanıcı) ── */}
+          {/* ── Ödeme Yöntemi ── */}
+          {/* Özellik açık mı henüz belli değilken boş bırakmak yerine yer
+              tutucu gösteriliyor; aksi halde bölüm birkaç saniye sonra
+              aniden beliriyor ve kullanıcı "yüklenmedi" sanıyor. */}
+          {kartDurumu === 'basliyor' || kartDurumu === 'yukleniyor' ? (
+            <View style={styles.card}>
+              <View style={styles.payTitleRow}>
+                <Text style={styles.cardTitle}>Ödeme Yöntemi</Text>
+                <ActivityIndicator size="small" color={COLORS.text.secondary} />
+              </View>
+              <Text style={styles.payHintText}>Ödeme yöntemlerin yükleniyor…</Text>
+            </View>
+          ) : null}
+
           {cardsEnabled ? (
             <View style={styles.card}>
               <View style={styles.payTitleRow}>
@@ -2417,6 +2493,24 @@ export default function CheckoutScreen() {
                   sayfasındaki "Öde" / "Öde ve Kartı Kayıt Et" butonları.
                   Buradaki onay kutusu kaldırıldı — iki ayrı onay noktası
                   birbiriyle çelişebiliyordu (bkz. commit mesajı). */}
+              {/* Özellik açık ama kayıtlı kart listesi alınamadı: yeni kartla
+                  ödeme yolu çalışmaya devam ediyor, kullanıcıya sessizce
+                  "kartın yok" demek yerine durumu söyleyip tekrar deneme
+                  imkânı veriyoruz. */}
+              {kartDurumu === 'liste_hatasi' ? (
+                <TouchableOpacity
+                  onPress={kartlariYukle}
+                  activeOpacity={0.75}
+                  style={styles.kartTekrarSatir}
+                  hitSlop={6}
+                >
+                  <Text style={styles.kartTekrarMetin}>
+                    Kayıtlı kartların yüklenemedi.
+                  </Text>
+                  <Text style={styles.kartTekrarLink}>Tekrar dene</Text>
+                </TouchableOpacity>
+              ) : null}
+
               {selectedPayCardId === null ? (
                 <Text style={styles.payHintText}>
                   Kartını ödeme adımında “Öde ve Kartı Kayıt Et” ile kaydedebilirsin.
@@ -2429,7 +2523,7 @@ export default function CheckoutScreen() {
 
           {/* Kart saklama kapalı kullanıcıda yukarıdaki kart hiç render edilmiyor;
               güven rozetleri HERKESE görünsün diye burada tek başına gösterilir. */}
-          {!cardsEnabled ? (
+          {!cardsEnabled && kartDurumu !== 'basliyor' && kartDurumu !== 'yukleniyor' ? (
             <View style={styles.trustStandalone}>
               <View style={styles.payTitleRow}>
                 <Text style={styles.trustStandaloneTitle}>Güvenli Ödeme</Text>
@@ -2977,6 +3071,24 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
+  },
+  kartTekrarSatir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: SPACING.xs,
+  },
+  kartTekrarMetin: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+  },
+  kartTekrarLink: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    textDecorationLine: 'underline',
   },
   payHintText: {
     fontSize: TYPOGRAPHY.size.sm,

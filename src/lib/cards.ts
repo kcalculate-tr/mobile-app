@@ -60,14 +60,24 @@ async function callCards<T>(
   return json as T;
 }
 
-// 3sn timeout: yavas ag/soguk-baslangicta status cevabi geciktirmesin —
-// timeout/hata durumunda caller (try/catch ile) enabled=false varsayip
-// normal odemeyi HEMEN baslatir.
+// 24.09.2026 — ust sureler gercekle hizalandi. ESKI DURUM tersiydi:
+// 'status' (tek DB okumasi, ucuz) 3 sn ile sinirliydi, 'sync' (PaynKolay
+// CardStorageCardList'e CANLI istek + birkac DB turu) HIC sinirli degildi.
+// Sonuc: edge function soguk baslangici 3 sn'yi asinca status "hata" sayilip
+// Odeme Yontemi bolumu hic gorunmuyordu; PaynKolay yavaslayinca da sync
+// sonsuza kadar asili kaliyordu.
+//
+// 8 sn: bu cagri Siparis Ozeti ACILIRKEN yapiliyor, odeme aninda degil —
+// kullaniciyi bekleten bir sey yok, soguk baslangica yer birakmak dogru.
 export const getCardsFeatureStatus = () =>
-  callCards<{ enabled: boolean }>('status', {}, { timeoutMs: 3000 });
+  callCards<{ enabled: boolean }>('status', {}, { timeoutMs: 8000 });
 
+// 12 sn: PaynKolay'a canli istek var. Sinirsiz birakilirsa kart listesi
+// "sonsuza kadar yukleniyor" durumunda kalir.
 export const syncSavedCards = () =>
-  callCards<{ success: true; cards: SavedCard[]; synced: boolean; procReturnCode?: string; errMsg?: string }>('sync');
+  callCards<{ success: true; cards: SavedCard[]; synced: boolean; procReturnCode?: string; errMsg?: string }>(
+    'sync', {}, { timeoutMs: 12000 },
+  );
 
 export const setDefaultCard = (cardId: string) =>
   callCards<{ success: true }>('set_default', { cardId });
