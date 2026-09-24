@@ -130,12 +130,18 @@ export const useCartStore = create<CartState>()(
         // Silmeden önce oku — cascade filtreleme sonrası item referansı kaybolur.
         const removed = get().items.find((i) => i.lineKey === lineKey);
 
-        set((state) => ({
+        set((state) => {
           // Parent silinince ekstra (child) kalemleri de cascade sil.
-          items: state.items.filter(
+          const items = state.items.filter(
             (item) => item.lineKey !== lineKey && item.parentLineKey !== lineKey,
-          ),
-        }));
+          );
+          // Sepet boşaldıysa kupon da düşsün. Kuponun discountAmount'ı
+          // validate_coupon tarafından O ANKİ sepete göre hesaplanmıştı;
+          // sepet sıfırlanıp yeni ürünler eklendiğinde bayat tutar bambaşka
+          // bir sepete uygulanmış olurdu. clearCart zaten böyle yapıyor —
+          // kalemleri tek tek silmek de aynı sonucu vermeli.
+          return items.length === 0 ? { items, appliedCoupon: null } : { items };
+        });
 
         // addToCart ile simetrik: yalnızca parent kalem için event (child cascade
         // silmeler ayrı sayılmasın).

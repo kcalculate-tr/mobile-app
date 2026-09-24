@@ -6,6 +6,29 @@
 
 /* global jest, afterEach */
 
+// AsyncStorage'ın native modülü test ortamında yok; paketin kendi resmi
+// jest taklidi in-memory çalışıyor (zustand persist bunu kullanıyor).
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+
+// Meta/Facebook SDK native modülü test ortamında yok — modül import anında
+// NativeEventEmitter kuruyor ve patlıyor.
+jest.mock('react-native-fbsdk-next', () => ({
+  AppEventsLogger: {
+    logEvent: () => {},
+    logPurchase: () => {},
+    setUserID: () => {},
+    AppEvents: new Proxy({}, { get: (_t, k) => String(k) }),
+    AppEventParams: new Proxy({}, { get: (_t, k) => String(k) }),
+  },
+  Settings: {
+    initializeSDK: () => {},
+    setAdvertiserTrackingEnabled: () => Promise.resolve(true),
+    setAutoLogAppEventsEnabled: () => {},
+  },
+}));
+
 // Supabase istemcisi modül seviyesinde auth oturumu kurmaya çalışıyor
 // (AsyncStorage). Bileşen testlerinde ağa çıkmasın.
 jest.mock('./src/lib/supabase', () => {
