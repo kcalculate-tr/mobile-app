@@ -7,8 +7,7 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen_legacy';
 import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen_legacy';
 
 import { haptic } from '../utils/haptics';
-import { DURATION, EASING } from '../constants/motion';
-import { forSlide } from './transitions';
+import { DURATION } from '../constants/motion';
 import { CustomTabBar } from './CustomTabBar';
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
@@ -63,17 +62,22 @@ function TabNavigator() {
         screenOptions={{
           headerShown: false,
           sceneStyle: { backgroundColor: '#f6f6f6' },
-          // Sekme geçişi, marka sayfalarındaki (kcalculate / tera /
-          // Breaking Fast) kaymanın aynısı — bkz. navigation/transitions.ts.
-          // Hazır 'shift' kullanılmıyor: hem yalnız ±50px kaydırıyor hem de
-          // geçiş boyunca opaklığı 0'a indirip "ekran yüklenmedi" görüntüsüne
-          // yol açabiliyordu.
-          animation: 'shift',
-          sceneStyleInterpolator: forSlide,
-          transitionSpec: {
-            animation: 'timing',
-            config: { duration: DURATION.base, easing: EASING.enter },
-          },
+          // SEKME GEÇİŞİNE ANİMASYON EKLENMİYOR — bilinçli karar (24.09.2026).
+          //
+          // Denenenler ve neden geri alındığı:
+          //  · 'fade'  — yön hissi yok, sekme çubuğundaki sıra görünürken yanlış.
+          //  · 'shift' — ekranı yalnız ±50px kaydırıyor VE opaklığı 0'a
+          //              indiriyor; ilerleme değeri 0'a oturmadığında ekran
+          //              görünmez kalıyor ("sepet yüklenmiyor").
+          //  · özel sceneStyleInterpolator — aynı animasyon değeri hem
+          //              transform'u hem de activityState/shouldFreeze'i
+          //              besliyor; ekran donduğunda transform kaymış hâlde
+          //              takılı kalıyordu.
+          //
+          // Kaydırmalı geçişin referansı stack ('slide_from_right', aşağıda):
+          // marka sayfaları onu kullanıyor ve sorunsuz çalışıyor. Sepet de
+          // kaymalı açılsın isteniyorsa doğru çözüm onu stack ekranına almak,
+          // bu navigatörü zorlamak değil.
         }}
       >
       <Tab.Screen
