@@ -24,6 +24,10 @@ import { AppBanner, fetchActiveAppBanner } from '../lib/appBanners';
 import { AnnouncementStrip as AnnouncementStripData, fetchActiveAnnouncementStrip } from '../lib/announcementStrip';
 import AnnouncementStrip from '../components/AnnouncementStrip';
 import ActiveOrderCard from '../components/ActiveOrderCard';
+import ReorderCard from '../components/ReorderCard';
+import { Toast } from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
+import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
 import OrderFeedbackModal from '../components/OrderFeedbackModal';
 import {
   fetchActiveOrder,
@@ -74,6 +78,15 @@ export default function HomeScreen() {
   const [strip, setStrip] = useState<AnnouncementStripData | null>(null);
   // Canlı sipariş takibi + teslimat sonrası geri bildirim istemi
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
+
+  // ── "Yine aynısı?" — Faz 1 / frekans motoru ────────────────────────────────
+  // Yeniden sipariş altyapısı zaten vardı (lib/reorder.ts) ama YALNIZCA sepet
+  // boşken Sepet sekmesinde görünüyordu: müşterinin onu bulması için önce boş
+  // bir sepete gitmesi gerekiyordu. Tekrar sipariş dikey entegre bir markada
+  // en ucuz siparişin geldiği yer — ilk ekranda olmalı.
+  const [lastOrder, setLastOrder] = useState<PastOrder | null>(null);
+  const [reordering, setReordering] = useState(false);
+  const { toast, show: showToast, hide: hideToast } = useToast();
   const [feedbackOrder, setFeedbackOrder] = useState<PendingFeedbackOrder | null>(null);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [activeHero, setActiveHero] = useState(0);
@@ -176,12 +189,47 @@ export default function HomeScreen() {
     } catch { /* sessiz */ }
   }, [session?.user?.id]);
 
+  const refreshLastOrder = useCallback(async () => {
+    if (!session?.user?.id) { setLastOrder(null); return; }
+    try {
+      const orders = await fetchPastOrders(session.user.id, 1);
+      setLastOrder(orders[0] ?? null);
+    } catch { /* sessiz — kart yoksa anasayfa normal görünür */ }
+  }, [session?.user?.id]);
+
   useFocusEffect(
     useCallback(() => {
       refreshActiveOrder();
       refreshFeedbackPrompt();
-    }, [refreshActiveOrder, refreshFeedbackPrompt]),
+      refreshLastOrder();
+    }, [refreshActiveOrder, refreshFeedbackPrompt, refreshLastOrder]),
   );
+
+  const handleReorder = useCallback(async () => {
+    if (!lastOrder) return;
+    setReordering(true);
+    try {
+      const res = await reorderToCart(lastOrder, addItem);
+      if (res.added === 0) {
+        haptic.error();
+        showToast('Bu siparişteki ürünler şu an satışta değil.', 'error');
+        return;
+      }
+      haptic.success();
+      track('reorder_from_home', { order_id: lastOrder.id, added: res.added });
+      if (res.unavailable.length > 0) {
+        // Kısmen eklendi: sessizce sepete atıp gitmek yanıltıcı olur,
+        // müşteri eksiği sepette fark etmeli.
+        showToast(`${res.unavailable.length} ürün satışta olmadığı için eklenemedi.`, 'info');
+      }
+      navigation.navigate('Tabs', { screen: 'Cart' });
+    } catch {
+      haptic.error();
+      showToast('Sipariş tekrarlanamadı, tekrar dene.', 'error');
+    } finally {
+      setReordering(false);
+    }
+  }, [lastOrder, addItem, showToast, navigation]);
 
   useEffect(() => {
     if (!activeOrder) return;
@@ -564,6 +612,17 @@ export default function HomeScreen() {
           />
         ) : null}
 
+        {/* "Yine aynısı?" — canlı sipariş kartıyla AYNI yuvayı paylaşır.
+            Görünme koşulları:
+            · canlı sipariş YOK  → siparişi yolda olana "yine aynısını ister
+              misin" demek gürültü
+            · sepet BOŞ          → dolu sepetin üstüne geçmiş bir siparişi
+              eklemek müşterinin mevcut akışını bozar
+            · tekrar edilebilir bir geçmiş sipariş var */}
+        {!activeOrder && cartItems.length === 0 && lastOrder ? (
+          <ReorderCard order={lastOrder} busy={reordering} onPress={handleReorder} />
+        ) : null}
+
         {/* Duyuru şeridi — Boss panel > Vitrin > Grid Yönetimi'nden yönetilir.
             Satır yoksa (strip null) hiç render edilmez. */}
         {strip ? (
@@ -742,6 +801,8 @@ export default function HomeScreen() {
         onClose={() => setFeedbackOrder(null)}
         onSubmit={handleSubmitFeedback}
       />
+
+      <Toast {...toast} onHide={hideToast} />
 
       <HowItWorksModal visible={howItWorks.visible} onClose={howItWorks.close} />
       {popup && (
