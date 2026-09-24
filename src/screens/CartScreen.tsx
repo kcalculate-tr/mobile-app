@@ -29,6 +29,7 @@ import {
   fetchSuggestionPool,
 } from '../lib/cartSuggestions';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
+import { needsOptionSelection } from '../lib/quickAdd';
 import { animateListChange } from '../utils/layoutAnimation';
 import { validateCoupon, getCouponErrorMessage, CouponCartItem, CouponValidationSuccess } from '../lib/offers';
 import CouponPickerSheet from '../components/checkout/CouponPickerSheet';
@@ -701,6 +702,15 @@ export default function CartScreen() {
                         onPress={(e) => {
                           e.stopPropagation();
                           haptic.medium();
+                          // 24.09.2026: burada HİÇBİR seçim kontrolü yoktu —
+                          // gramajlı ya da zorunlu opsiyonlu bir öneri ürünü
+                          // hiç sorulmadan sepete giriyordu. Diğer üç hızlı
+                          // ekleme noktasıyla aynı kural (bkz. lib/quickAdd.ts).
+                          if (needsOptionSelection({ gramajOptions: product.gramaj_options })) {
+                            haptic.selection();
+                            navigation.navigate('ProductDetail', { productId: String(product.id) });
+                            return;
+                          }
                           // Yeni satir listede yerini acarak gelsin; ayrica
                           // eklenen urun onerilerden dustugu icin o serit de
                           // kayarak kapansin.

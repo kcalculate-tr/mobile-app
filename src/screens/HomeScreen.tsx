@@ -28,6 +28,7 @@ import ReorderCard from '../components/ReorderCard';
 import { Toast } from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
+import { needsOptionSelection } from '../lib/quickAdd';
 import OrderFeedbackModal from '../components/OrderFeedbackModal';
 import {
   fetchActiveOrder,
@@ -333,12 +334,20 @@ export default function HomeScreen() {
 
   const handleAddToCart = async (product: Product) => {
     haptic.medium();
+
+    // Gramaj için AĞ İSTEĞİ BEKLENMEZ: products.gramaj_options zaten listeyle
+    // geldi. Seçim gerekiyorsa doğrudan detaya (bkz. lib/quickAdd.ts).
+    if (needsOptionSelection({ gramajOptions: product.gramaj_options })) {
+      haptic.selection();
+      navigation.navigate('ProductDetail', { productId: product.id.toString() });
+      return;
+    }
+
     setCheckingOptions(prev => ({ ...prev, [product.id]: true }));
     try {
       const supabase = getSupabaseClient();
       const groups = await fetchProductOptionGroups(supabase, String(product.id));
-      const hasRequired = groups.some(g => g.isRequired || g.minSelection > 0);
-      if (hasRequired) {
+      if (needsOptionSelection({ optionGroups: groups })) {
         haptic.selection();
         navigation.navigate('ProductDetail', { productId: product.id.toString() });
         return;

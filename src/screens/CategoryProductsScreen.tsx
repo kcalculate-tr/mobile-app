@@ -8,11 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_GAP = 12;
-const CARD_PADDING = 16;
-const CARD_WIDTH = (SCREEN_WIDTH - CARD_PADDING * 2 - CARD_GAP) / 2;
 import { SkeletonProductCard } from '../components/ui/SkeletonLoader';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
@@ -29,8 +24,14 @@ import { fetchProductOptionGroups } from '../lib/products';
 import { getEffectivePrice, hasDiscount, formatDiscountBadge } from '../utils/price';
 import { getSupabaseClient } from '../lib/supabase';
 import { useCartStore } from '../store/cartStore';
+import { needsOptionSelection } from '../lib/quickAdd';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_GAP = 12;
+const CARD_PADDING = 16;
+const CARD_WIDTH = (SCREEN_WIDTH - CARD_PADDING * 2 - CARD_GAP) / 2;
 
 type CategoryProductsRouteProp = RouteProp<RootStackParamList, 'CategoryProducts'>;
 type CategoryProductsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -78,12 +79,18 @@ export default function CategoryProductsScreen() {
 
   const handleAddToCart = async (item: CategoryProduct) => {
     const numericId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
+
+    // Gramaj listeyle birlikte geliyor — ağ isteği beklemeden detaya git.
+    if (needsOptionSelection({ gramajOptions: item.gramaj_options })) {
+      navigation.navigate('ProductDetail', { productId: String(item.id) });
+      return;
+    }
+
     setCheckingOptions((prev) => ({ ...prev, [numericId]: true }));
     try {
       const supabase = getSupabaseClient();
       const groups = await fetchProductOptionGroups(supabase, String(item.id));
-      const hasRequired = groups.some((g) => g.isRequired);
-      if (hasRequired) {
+      if (needsOptionSelection({ optionGroups: groups })) {
         navigation.navigate('ProductDetail', { productId: String(item.id) });
         return;
       }
