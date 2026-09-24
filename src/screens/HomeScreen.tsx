@@ -1,4 +1,3 @@
-import DiscountBadge from '../components/ui/DiscountBadge';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -749,7 +748,6 @@ export default function HomeScreen() {
                       <Text style={styles.caloriesText}>{product.calories} kcal</Text>
                     </View>
                   ) : null}
-                  <DiscountBadge discountType={product.discount_type} discountValue={product.discount_value} />
                 </View>
                 <View style={{ flex: 1, justifyContent: 'space-between' }}>
                   <Text style={styles.productName} numberOfLines={2}>

@@ -1,4 +1,3 @@
-import DiscountBadge from '../components/ui/DiscountBadge';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -217,7 +216,6 @@ export default function CategoryProductsScreen() {
                       <Text style={styles.caloriesText}>{item.calories} kcal</Text>
                     </View>
                   ) : null}
-                  <DiscountBadge discountType={item.discount_type} discountValue={item.discount_value} />
                 </View>
                 <Text style={styles.productName} numberOfLines={2}>
                   {item.name}
