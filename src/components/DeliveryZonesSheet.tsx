@@ -1,16 +1,7 @@
-import { DURATION } from '../constants/motion';
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { MapPin } from 'phosphor-react-native';
-import { ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import BottomSheet from './BottomSheet';
+import IzmirTeslimatHaritasi from './IzmirTeslimatHaritasi';
 import { COLORS, SPACING } from '../constants/theme';
 import { formatDeliveryDaysFull } from '../utils/deliveryDays';
 import {
@@ -20,112 +11,103 @@ import {
   DeliveryGlobals,
   DeliveryZoneRow,
 } from '../lib/delivery';
+import { tlGruplu } from '../lib/money';
 
-type Tab = 'immediate' | 'scheduled';
+/**
+ * Teslimat bölgeleri — TEK EKRAN, sekme yok.
+ *
+ * 25.09.2026 — neden yeniden yazıldı:
+ *  1. SEKMELER KALDIRILDI. Önceki hâlde "Hemen Teslim" / "Randevulu Teslim"
+ *     iki sekmeydi; müşteri kendi ilçesini görmek için doğru sekmeyi tahmin
+ *     etmek zorundaydı ve iki katmanı yan yana karşılaştıramıyordu. Kafa
+ *     karışıklığının kaynağı tam olarak buydu.
+ *  2. is_active FİLTRESİ EKLENDİ. Eski sorgu yalnız allow_immediate /
+ *     allow_scheduled'a bakıyordu. Çeşme'nin 25 mahallesi is_active=false
+ *     olmasına rağmen allow_scheduled=true olduğu için listede görünüyordu —
+ *     yani müşteriye teslimat yapmadığımız bir ilçeyi yapıyormuş gibi
+ *     gösteriyorduk. Üç müşterinin Çeşme adresi kayıtlı.
+ *  3. Minimum sipariş tutarı KORUNDU. Planlı teslimatta tutar 500 TL ile
+ *     2500 TL arasında değişiyor (Konak 500, Torbalı/Urla 2500) — beş kat
+ *     fark. Bunu gizlemek ikinci bir "neden sipariş veremiyorum" sorusu
+ *     yaratırdı.
+ */
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'immediate', label: 'Hemen Teslim' },
-  { key: 'scheduled', label: 'Randevulu Teslim' },
-];
-
-type ZoneRow = {
-  id: string;
+type ZoneRow = DeliveryZoneRow & {
   district: string;
-  min_order: number;
-  min_order_immediate: number | null;
-  min_order_scheduled: number | null;
-  is_active: boolean;
-  allow_immediate: boolean;
-  allow_scheduled: boolean;
+  is_active: boolean | null;
+  allow_immediate: boolean | null;
+  allow_scheduled: boolean | null;
   delivery_days: number[] | null;
   delivery_days_immediate: number[] | null;
   delivery_days_scheduled: number[] | null;
 };
 
-type DistrictGroup = {
+type IlceSatiri = {
   district: string;
-  minOrderImmediate: number;
-  minOrderScheduled: number;
-  deliveryDaysImmediate: number[] | null;
-  deliveryDaysScheduled: number[] | null;
+  hizli: boolean;
+  minHizli: number;
+  minPlanli: number;
+  planliGunler: number[] | null;
 };
 
-function sanitizeDays(arr: unknown): number[] | null {
+function gunleriTemizle(arr: unknown): number[] | null {
   if (!Array.isArray(arr) || arr.length === 0) return null;
-  const out = arr
-    .map((v) => Number(v))
-    .filter((n) => Number.isFinite(n) && n >= 0 && n <= 6);
+  const out = arr.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 6);
   return out.length > 0 ? out : null;
 }
 
-function groupByDistrict(
+/**
+ * İlçeye indirger. Bir ilçenin herhangi bir aktif mahallesinde hızlı teslimat
+ * varsa ilçe hızlı sayılır. Minimum tutarda ilçedeki EN DÜŞÜK değer alınır —
+ * "şu tutardan başlıyor" anlamında; ödeme ekranı adrese özel kesin tutarı
+ * zaten gösteriyor.
+ */
+export function ilceleriOzetle(
   zones: ZoneRow[],
   globals: DeliveryGlobals | null,
-): DistrictGroup[] {
-  const rowMap = new Map<string, ZoneRow>();
-  const immediateMap = new Map<string, number[] | null>();
-  const scheduledMap = new Map<string, number[] | null>();
-  zones.forEach(z => {
-    // Keep the row with the smallest resolved immediate min-order so the
-    // displayed amount is a reasonable "starting at" value when multiple
-    // neighbourhood rows exist for the same district.
-    const existing = rowMap.get(z.district);
-    const currentImmediate = resolveMinOrder(z as DeliveryZoneRow, globals, 'immediate');
-    if (!existing || currentImmediate < resolveMinOrder(existing as DeliveryZoneRow, globals, 'immediate')) {
-      rowMap.set(z.district, z);
+): IlceSatiri[] {
+  const harita = new Map<string, IlceSatiri>();
+
+  for (const z of zones) {
+    if (z.is_active !== true) continue;
+    const hizliVar = z.allow_immediate === true;
+    const planliVar = z.allow_scheduled === true;
+    if (!hizliVar && !planliVar) continue;
+
+    const ilce = String(z.district || '').trim();
+    if (!ilce) continue;
+
+    const minHizli = hizliVar ? resolveMinOrder(z, globals, 'immediate') : Infinity;
+    const minPlanli = planliVar ? resolveMinOrder(z, globals, 'scheduled') : Infinity;
+    const gunler = planliVar
+      ? gunleriTemizle(z.delivery_days_scheduled) ?? gunleriTemizle(z.delivery_days)
+      : null;
+
+    const mevcut = harita.get(ilce);
+    if (!mevcut) {
+      harita.set(ilce, {
+        district: ilce,
+        hizli: hizliVar,
+        minHizli,
+        minPlanli,
+        planliGunler: gunler,
+      });
+    } else {
+      mevcut.hizli = mevcut.hizli || hizliVar;
+      mevcut.minHizli = Math.min(mevcut.minHizli, minHizli);
+      mevcut.minPlanli = Math.min(mevcut.minPlanli, minPlanli);
+      mevcut.planliGunler = mevcut.planliGunler ?? gunler;
     }
-    // Fallback chain: new typed column → legacy delivery_days → null (unknown).
-    const legacy = sanitizeDays(z.delivery_days);
-    if (!immediateMap.has(z.district)) {
-      immediateMap.set(z.district, sanitizeDays(z.delivery_days_immediate) ?? legacy);
-    }
-    if (!scheduledMap.has(z.district)) {
-      scheduledMap.set(z.district, sanitizeDays(z.delivery_days_scheduled) ?? legacy);
-    }
-  });
-  return Array.from(rowMap.entries())
-    .map(([district, row]) => ({
-      district,
-      minOrderImmediate: resolveMinOrder(row as DeliveryZoneRow, globals, 'immediate'),
-      minOrderScheduled: resolveMinOrder(row as DeliveryZoneRow, globals, 'scheduled'),
-      deliveryDaysImmediate: immediateMap.get(district) ?? null,
-      deliveryDaysScheduled: scheduledMap.get(district) ?? null,
-    }))
-    .sort((a, b) => a.district.localeCompare(b.district, 'tr'));
+  }
+
+  return Array.from(harita.values()).sort((a, b) =>
+    a.district.localeCompare(b.district, 'tr'),
+  );
 }
 
-type Props = {
-  visible: boolean;
-  onClose: () => void;
-};
+type Props = { visible: boolean; onClose: () => void };
 
 const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>('immediate');
-  const [barWidth, setBarWidth] = useState(0);
-  const indicatorX = useRef(new Animated.Value(0)).current;
-  const contentOpacity = useRef(new Animated.Value(1)).current;
-
-  // Sekme degisince: gosterge kayar, icerik kisa bir capraz gecisle yenilenir.
-  // Ikisi de native driver — JS thread mesgul olsa bile akiciligi bozulmaz.
-  useEffect(() => {
-    if (barWidth <= 0) return;
-    const index = TABS.findIndex((t) => t.key === tab);
-    Animated.spring(indicatorX, {
-      toValue: (barWidth / TABS.length) * Math.max(index, 0),
-      useNativeDriver: true,
-      speed: 18,
-      bounciness: 4,
-    }).start();
-  }, [tab, barWidth, indicatorX]);
-
-  useEffect(() => {
-    contentOpacity.setValue(0.35);
-    Animated.timing(contentOpacity, {
-      toValue: 1,
-      duration: DURATION.fast,
-      useNativeDriver: true,
-    }).start();
-  }, [tab, contentOpacity]);
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [globals, setGlobals] = useState<DeliveryGlobals | null>(null);
   const [loading, setLoading] = useState(false);
@@ -138,13 +120,12 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
     (async () => {
       try {
         const [zoneRows, globalsRes] = await Promise.all([
-          // Paginated — a single .select() stops at PostgREST's 1000-row cap and
-          // would lose late-alphabetical districts once delivery_zones grows.
-          // allow_immediate/scheduled filter is pushed to the server to minimize
-          // payload, then client also filters by active tab below.
           fetchAllDeliveryZones<ZoneRow>({
-            select: 'district, min_order, min_order_immediate, min_order_scheduled, allow_immediate, allow_scheduled, delivery_days, delivery_days_immediate, delivery_days_scheduled',
-            applyFilters: (q) => q.or('allow_immediate.eq.true,allow_scheduled.eq.true'),
+            select:
+              'district, is_active, min_order, min_order_immediate, min_order_scheduled, allow_immediate, allow_scheduled, delivery_days, delivery_days_immediate, delivery_days_scheduled',
+            // is_active.eq.true ŞART — bkz. dosya başındaki 2 numaralı not.
+            applyFilters: (q) =>
+              q.eq('is_active', true).or('allow_immediate.eq.true,allow_scheduled.eq.true'),
           }),
           fetchGlobalDeliverySettings(),
         ]);
@@ -153,9 +134,7 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
           setGlobals(globalsRes);
         }
       } catch (e) {
-        if (__DEV__) {
-          console.warn('delivery_zones error:', e);
-        }
+        if (__DEV__) console.warn('delivery_zones error:', e);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -164,94 +143,86 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
     return () => { mounted = false; };
   }, [visible]);
 
-  const filtered = zones.filter(z =>
-    tab === 'immediate' ? z.allow_immediate : z.allow_scheduled,
-  );
-  const grouped = groupByDistrict(filtered, globals);
+  const ozet = useMemo(() => ilceleriOzetle(zones, globals), [zones, globals]);
+  const hizliIlceler = ozet.filter((i) => i.hizli);
+  const planliIlceler = ozet.filter((i) => !i.hizli);
 
-  const renderItem = ({ item }: { item: DistrictGroup }) => {
-    const days = tab === 'immediate' ? item.deliveryDaysImmediate : item.deliveryDaysScheduled;
-    const minAmount = tab === 'immediate' ? item.minOrderImmediate : item.minOrderScheduled;
+  const bolum = (
+    baslik: string,
+    altBaslik: string,
+    renk: string,
+    satirlar: IlceSatiri[],
+    planliBolum: boolean,
+  ) => {
+    if (satirlar.length === 0) return null;
     return (
-      <View style={s.row}>
-        <View style={s.rowLeft}>
-          <MapPin size={18} color="#999" />
-          <View style={{ flex: 1 }}>
-            <Text style={s.districtText} numberOfLines={1}>{item.district}</Text>
-            {days && days.length > 0 ? (
-              <Text style={s.deliveryDaysText} numberOfLines={1}>{formatDeliveryDaysFull(days)}</Text>
-            ) : null}
-          </View>
+      <View style={s.bolum}>
+        <View style={s.bolumBaslikSatiri}>
+          <View style={[s.nokta, { backgroundColor: renk }]} />
+          <Text style={s.bolumBaslik}>{baslik}</Text>
         </View>
-        <Text style={s.minAmountText} numberOfLines={1}>Min {minAmount.toLocaleString('tr-TR')} TL</Text>
+        <Text style={s.bolumAlt}>{altBaslik}</Text>
+
+        <View style={s.kart}>
+          {satirlar.map((it, i) => {
+            const tutar = planliBolum ? it.minPlanli : it.minHizli;
+            const gunler = planliBolum && it.planliGunler ? formatDeliveryDaysFull(it.planliGunler) : null;
+            return (
+              <View key={it.district} style={[s.satir, i > 0 && s.satirCizgili]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.ilceAdi}>{it.district}</Text>
+                  {gunler ? <Text style={s.gunler}>{gunler}</Text> : null}
+                  {/* Hızlı ilçelerde planlı seçenek de var; tutarı farklı
+                      olduğu için ikisi birden yazılıyor. */}
+                  {!planliBolum && Number.isFinite(it.minPlanli) ? (
+                    <Text style={s.gunler}>Gün seçerek: min {tlGruplu(it.minPlanli)}</Text>
+                  ) : null}
+                </View>
+                <Text style={s.tutar}>
+                  {Number.isFinite(tutar) ? `min ${tlGruplu(tutar)}` : '—'}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
     );
   };
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title="Teslimat Bölgeleri"
-      showCloseButton
-      contentStyle={s.contentReset}
-    >
-      {/* Tabs — alt cizgi sekmeden sekmeye KAYAR (onceki hal: anlik
-          yer degistirme). Iki sekme esit genislikte oldugu icin gosterge
-          genisligi bar'in yarisi; olculen genislik gelene kadar (barWidth=0)
-          gosterge gorunmez, ziplama olmaz. */}
-      <View
-        style={s.tabBar}
-        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-      >
-        {TABS.map(t => (
-          <TouchableOpacity
-            key={t.key}
-            style={s.tab}
-            onPress={() => setTab(t.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={[s.tabText, tab === t.key && s.tabTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            s.tabIndicator,
-            {
-              width: barWidth / TABS.length,
-              opacity: barWidth > 0 ? 1 : 0,
-              transform: [{ translateX: indicatorX }],
-            },
-          ]}
-        />
-      </View>
+    <BottomSheet visible={visible} onClose={onClose} title="Nerelere teslimat yapıyoruz?" showCloseButton>
+      <IzmirTeslimatHaritasi />
 
-      {/* Content */}
-      <Animated.View style={{ opacity: contentOpacity }}>
-        {loading ? (
-          <View style={s.center}>
-            <ActivityIndicator size="small" color={COLORS.brand.green} />
-          </View>
-        ) : grouped.length === 0 ? (
-          <View style={s.center}>
-            <Text style={s.emptyText}>Bu teslimat türü için henüz bölge tanımlanmamıştır.</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={grouped}
-            keyExtractor={(item) => item.district}
-            renderItem={renderItem}
-            ItemSeparatorComponent={() => <View style={s.separator} />}
-            showsVerticalScrollIndicator={false}
-            scrollEnabled={false}
-          />
-        )}
-      </Animated.View>
+      {loading ? (
+        <View style={s.orta}>
+          <ActivityIndicator size="small" color={COLORS.brand.green} />
+        </View>
+      ) : ozet.length === 0 ? (
+        <View style={s.orta}>
+          <Text style={s.bosMetin}>Teslimat bölgeleri şu an yüklenemedi.</Text>
+        </View>
+      ) : (
+        <>
+          {bolum(
+            'Bugün teslimat',
+            'Kendi kuryemizle, siparişinizi aynı gün getiriyoruz.',
+            COLORS.brand.green,
+            hizliIlceler,
+            false,
+          )}
+          {bolum(
+            'Gün seçerek teslimat',
+            'Bu ilçelere gününü siz seçiyorsunuz; aynı gün teslimat yok.',
+            '#C9D4BC',
+            planliIlceler,
+            true,
+          )}
+        </>
+      )}
 
-      {/* Footer */}
-      <Text style={s.footer}>
-        Minimum sipariş tutarları bölgeye göre değişiklik gösterebilir.
+      <Text style={s.dipnot}>
+        Listede olmayan ilçelere şimdilik teslimat yapamıyoruz. Minimum tutarlar
+        başlangıç değeridir; adresinizi seçtiğinizde kesin tutar görünür.
       </Text>
     </BottomSheet>
   );
@@ -260,94 +231,68 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
 export default DeliveryZonesSheet;
 
 const s = StyleSheet.create({
-  contentReset: {
-    paddingHorizontal: 0,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.sm,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-  },
-  // Kayan gosterge: bar'in ALT kenarina oturur, tabBar'in 1px cizgisini orter.
-  tabIndicator: {
-    position: 'absolute',
-    left: 0,
-    bottom: -1,
-    height: 2,
-    borderRadius: 2,
-    backgroundColor: '#F97316',
-  },
-  tabText: {
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans_500Medium',
-    color: '#999',
-  },
-  tabTextActive: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    color: COLORS.text.primary,
-  },
-  center: {
-    minHeight: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.lg,
-  },
-  emptyText: {
+  orta: { minHeight: 120, alignItems: 'center', justifyContent: 'center' },
+  bosMetin: {
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_400Regular',
-    color: '#999',
+    color: COLORS.text.secondary,
     textAlign: 'center',
   },
-  row: {
+  bolum: { marginTop: SPACING.lg },
+  bolumBaslikSatiri: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nokta: { width: 12, height: 12, borderRadius: 6 },
+  bolumBaslik: {
+    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: COLORS.text.primary,
+  },
+  bolumAlt: {
+    fontSize: 12.5,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    color: COLORS.text.secondary,
+    marginTop: 4,
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  kart: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 14,
+  },
+  satir: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: SPACING.lg,
+    paddingVertical: 12,
+    gap: 12,
   },
-  rowLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginRight: 12,
-  },
-  districtText: {
+  satirCizgili: { borderTopWidth: 1, borderTopColor: '#F1F1F1' },
+  ilceAdi: {
     fontSize: 15,
-    fontFamily: 'PlusJakartaSans_500Medium',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     color: COLORS.text.primary,
   },
-  deliveryDaysText: {
-    fontSize: 11,
-    color: '#878787',
+  gunler: {
+    fontSize: 11.5,
     fontFamily: 'PlusJakartaSans_400Regular',
+    color: COLORS.text.secondary,
     marginTop: 2,
   },
-  minAmountText: {
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: '#F97316',
+  tutar: {
+    fontSize: 13.5,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
     flexShrink: 0,
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginHorizontal: SPACING.lg,
-  },
-  footer: {
-    fontSize: 12,
+  dipnot: {
+    fontSize: 11.5,
     fontFamily: 'PlusJakartaSans_400Regular',
-    color: '#999',
+    color: COLORS.text.tertiary,
+    lineHeight: 17,
     textAlign: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
   },
 });

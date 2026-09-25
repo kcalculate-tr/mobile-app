@@ -46,6 +46,7 @@ import { TAB_BAR_TOTAL } from '../constants/layout';
 import MacroPointModal from '../components/modals/MacroPointModal';
 import { fetchMacroProfile, fetchMacroSettings, macroProgress, MacroProfile, MacroSettings, DEFAULT_MACRO_SETTINGS } from '../lib/macros';
 import { useModal } from '../hooks/useModal';
+import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -98,6 +99,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { isAuthenticated, loading } = useRequireAuth();
   const macroModal = useModal();
+  const teslimatBolgeleri = useModal();
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   const [macroSettings, setMacroSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
   const macroProgressAnim = useRef(new Animated.Value(0)).current;
@@ -592,6 +594,15 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('ProfileSecurity')}
             showBorder
           />
+          {/* Teslimat bölgeleri — kalıcı giriş noktası. Önceden bu bilgiye
+              yalnızca sepet ve ödeme ekranından ulaşılabiliyordu; yani
+              müşteri ürünü seçip sepete attıktan SONRA öğreniyordu. */}
+          <MenuItem
+            icon={<MapPin color={COLORS.text.secondary} size={18} />}
+            title="Nerelere teslimat yapıyoruz?"
+            onPress={teslimatBolgeleri.open}
+            showBorder
+          />
           <MenuItem
             icon={<Question color={COLORS.text.secondary} size={18} />}
             title="Yardım & Destek"
@@ -656,6 +667,10 @@ export default function ProfileScreen() {
           macroModal.close();
           navigation.navigate('NutritionProfile');
         }}
+      />
+      <DeliveryZonesSheet
+        visible={teslimatBolgeleri.visible}
+        onClose={teslimatBolgeleri.close}
       />
     </ScreenContainer>
   );

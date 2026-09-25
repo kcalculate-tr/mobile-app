@@ -11,6 +11,10 @@ import { haptic } from '../utils/haptics';
 import HowItWorksModal from '../components/modals/HowItWorksModal';
 import PopupModal from '../components/PopupModal';
 import { useModal } from '../hooks/useModal';
+import { useTeslimatKatmani } from '../hooks/useTeslimatKatmani';
+import { useIlkAcilistaTeslimatBolgeleri } from '../hooks/useIlkAcilistaTeslimatBolgeleri';
+import { katmanEtiketi } from '../lib/deliveryTiers';
+import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
 import { usePopups } from '../hooks/usePopups';
 import { useCartStore } from '../store/cartStore';
 import { Category, fetchCategories } from '../lib/categories';
@@ -62,9 +66,20 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const { session } = useAuth();
   const howItWorks = useModal();
+  const teslimatBolgeleri = useModal();
   const { popup, total, index, handleClose, handleNext } = usePopups();
+  // İlk açılışta bir kez teslimat bölgeleri. Kampanya pop-up'ı varken
+  // beklemeye alınır — iki modal üst üste binmesin.
+  const ilkBolgeler = useIlkAcilistaTeslimatBolgeleri(Boolean(popup));
   const insets = useSafeAreaInsets();
   const selectedAddress = useAddressStore((s) => s.selectedAddress);
+  // Teslimat katmanı: müşterilerin %45'i SADECE planlı teslimat alan
+  // ilçelerde. "Neden bugüne alamıyorum" sorusunu ödeme ekranında değil
+  // burada, adresin hemen altında cevaplıyoruz.
+  const teslimatKatmani = useTeslimatKatmani(
+    session ? selectedAddress?.district : null,
+    session ? selectedAddress?.neighbourhood : null,
+  );
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
@@ -515,6 +530,32 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Teslimat katmanı şeridi — adres çubuğunun hemen altında.
+            Dokununca tüm bölgeler açılır. Katman bilinmiyorken (null) hiçbir
+            şey çizilmez: önce "teslimat yok" yazıp sonra "var"a dönmek, hiç
+            yazmamaktan daha kötü. */}
+        {session && selectedAddress && teslimatKatmani ? (
+          <TouchableOpacity
+            style={[
+              styles.teslimatSerit,
+              teslimatKatmani === 'hizli' && styles.teslimatSeritHizli,
+              teslimatKatmani === 'planli' && styles.teslimatSeritPlanli,
+              teslimatKatmani === 'yok' && styles.teslimatSeritYok,
+            ]}
+            onPress={teslimatBolgeleri.open}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`${katmanEtiketi(teslimatKatmani)}. Tüm teslimat bölgelerini gör.`}
+          >
+            <Text style={styles.teslimatSeritMetin}>
+              {teslimatKatmani === 'hizli' ? 'Bu adrese bugün teslimat yapıyoruz'
+                : teslimatKatmani === 'planli' ? 'Bu adrese gün seçerek teslimat yapıyoruz'
+                : 'Bu adrese henüz teslimat yapamıyoruz'}
+            </Text>
+            <Text style={styles.teslimatSeritLink}>Bolgeler</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {/* Bayram / tatil banner — settings.holiday_banner_active=TRUE iken görünür */}
         {businessHours?.holiday_banner_active && businessHours.holiday_banner_message ? (
           <View style={styles.holidayBanner}>
@@ -825,6 +866,10 @@ export default function HomeScreen() {
       <Toast {...toast} onHide={hideToast} />
 
       <HowItWorksModal visible={howItWorks.visible} onClose={howItWorks.close} />
+      <DeliveryZonesSheet
+        visible={teslimatBolgeleri.visible || ilkBolgeler.gorunur}
+        onClose={() => { teslimatBolgeleri.close(); ilkBolgeler.kapat(); }}
+      />
       {popup && (
         <PopupModal
           popup={popup}
@@ -910,6 +955,36 @@ const styles = StyleSheet.create({
     color: '#555555',
     textAlign: 'center',
     lineHeight: 11,
+  },
+  // Teslimat katmanı şeridi — adres çubuğunun altında, tam genişlikte ince bir
+  // bant. Renk katmanı taşır: marka yeşili = bugün, soluk yeşil = gün seçerek,
+  // kırmızımsı = teslimat yok.
+  teslimatSerit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.sm,
+    paddingVertical: 9,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+  },
+  teslimatSeritHizli: { backgroundColor: 'rgba(185,239,20,0.22)' },
+  teslimatSeritPlanli: { backgroundColor: 'rgba(201,212,188,0.35)' },
+  teslimatSeritYok: { backgroundColor: 'rgba(239,68,68,0.10)' },
+  teslimatSeritMetin: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.primary,
+  },
+  teslimatSeritLink: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
+    textDecorationLine: 'underline',
+    flexShrink: 0,
   },
   holidayBanner: {
     marginHorizontal: SPACING.lg,
