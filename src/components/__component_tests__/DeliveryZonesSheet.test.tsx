@@ -22,9 +22,6 @@ const z = (
   min_order: opts.min_order ?? 0,
   min_order_immediate: opts.min_order_immediate ?? null,
   min_order_scheduled: opts.min_order_scheduled ?? null,
-  delivery_days: null,
-  delivery_days_immediate: null,
-  delivery_days_scheduled: null,
 }) as any;
 
 describe('ilceleriOzetle', () => {

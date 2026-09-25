@@ -3,7 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import BottomSheet from './BottomSheet';
 import IzmirTeslimatHaritasi from './IzmirTeslimatHaritasi';
 import { COLORS, SPACING } from '../constants/theme';
-import { formatDeliveryDaysFull } from '../utils/deliveryDays';
 import {
   fetchAllDeliveryZones,
   fetchGlobalDeliverySettings,
@@ -14,22 +13,26 @@ import {
 import { tlGruplu } from '../lib/money';
 
 /**
- * Teslimat bölgeleri — TEK EKRAN, sekme yok.
+ * Teslimat bölgeleri — TEK EKRAN, liste yok.
  *
- * 25.09.2026 — neden yeniden yazıldı:
- *  1. SEKMELER KALDIRILDI. Önceki hâlde "Hemen Teslim" / "Randevulu Teslim"
- *     iki sekmeydi; müşteri kendi ilçesini görmek için doğru sekmeyi tahmin
- *     etmek zorundaydı ve iki katmanı yan yana karşılaştıramıyordu. Kafa
- *     karışıklığının kaynağı tam olarak buydu.
- *  2. is_active FİLTRESİ EKLENDİ. Eski sorgu yalnız allow_immediate /
- *     allow_scheduled'a bakıyordu. Çeşme'nin 25 mahallesi is_active=false
- *     olmasına rağmen allow_scheduled=true olduğu için listede görünüyordu —
- *     yani müşteriye teslimat yapmadığımız bir ilçeyi yapıyormuş gibi
- *     gösteriyorduk. Üç müşterinin Çeşme adresi kayıtlı.
- *  3. Minimum sipariş tutarı KORUNDU. Planlı teslimatta tutar 500 TL ile
- *     2500 TL arasında değişiyor (Konak 500, Torbalı/Urla 2500) — beş kat
- *     fark. Bunu gizlemek ikinci bir "neden sipariş veremiyorum" sorusu
- *     yaratırdı.
+ * 25.09.2026 (2. tur, İlter'in geri bildirimi):
+ *  · Harita gerçek İzmir il silüeti oldu (serbest çizim "blob" İzmir'e
+ *    benzemiyordu) — bkz. IzmirTeslimatHaritasi.tsx.
+ *  · İKİ UZUN LİSTE KALDIRILDI. Artık yalnızca HEMEN TESLİMAT yapılan
+ *    ilçeler rozet olarak gösteriliyor; diğer ilçeler tek cümlelik bir notla
+ *    özetleniyor. Onbeş ilçeyi minimum tutarlarıyla listelemek "tek bakışta
+ *    anlaşılsın" amacının tersine çalışıyordu.
+ *  · Sekmeler (1. turda kaldırılmıştı) geri gelmedi.
+ *
+ * Korunan davranış: sorgu `is_active` filtresini UYGULAR. Eski sürüm yalnız
+ * allow_immediate/allow_scheduled'a bakıyordu; Çeşme'nin 25 mahallesi
+ * is_active=false olmasına rağmen allow_scheduled=true olduğu için listede
+ * görünüyor, yani teslimat yapmadığımız bir ilçeyi yapıyormuş gibi
+ * gösteriyorduk.
+ *
+ * Rozetler CANLI veriden geliyor, kodda sabit değil: Bayraklı ve Bornova
+ * hemen teslimata açıldığında (allow_immediate=true) yeni sürüm gerekmeden
+ * listede belirirler.
  */
 
 type ZoneRow = DeliveryZoneRow & {
@@ -37,24 +40,13 @@ type ZoneRow = DeliveryZoneRow & {
   is_active: boolean | null;
   allow_immediate: boolean | null;
   allow_scheduled: boolean | null;
-  delivery_days: number[] | null;
-  delivery_days_immediate: number[] | null;
-  delivery_days_scheduled: number[] | null;
 };
 
 type IlceSatiri = {
   district: string;
   hizli: boolean;
   minHizli: number;
-  minPlanli: number;
-  planliGunler: number[] | null;
 };
-
-function gunleriTemizle(arr: unknown): number[] | null {
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  const out = arr.map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 6);
-  return out.length > 0 ? out : null;
-}
 
 /**
  * İlçeye indirger. Bir ilçenin herhangi bir aktif mahallesinde hızlı teslimat
@@ -78,25 +70,13 @@ export function ilceleriOzetle(
     if (!ilce) continue;
 
     const minHizli = hizliVar ? resolveMinOrder(z, globals, 'immediate') : Infinity;
-    const minPlanli = planliVar ? resolveMinOrder(z, globals, 'scheduled') : Infinity;
-    const gunler = planliVar
-      ? gunleriTemizle(z.delivery_days_scheduled) ?? gunleriTemizle(z.delivery_days)
-      : null;
 
     const mevcut = harita.get(ilce);
     if (!mevcut) {
-      harita.set(ilce, {
-        district: ilce,
-        hizli: hizliVar,
-        minHizli,
-        minPlanli,
-        planliGunler: gunler,
-      });
+      harita.set(ilce, { district: ilce, hizli: hizliVar, minHizli });
     } else {
       mevcut.hizli = mevcut.hizli || hizliVar;
       mevcut.minHizli = Math.min(mevcut.minHizli, minHizli);
-      mevcut.minPlanli = Math.min(mevcut.minPlanli, minPlanli);
-      mevcut.planliGunler = mevcut.planliGunler ?? gunler;
     }
   }
 
@@ -122,7 +102,7 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
         const [zoneRows, globalsRes] = await Promise.all([
           fetchAllDeliveryZones<ZoneRow>({
             select:
-              'district, is_active, min_order, min_order_immediate, min_order_scheduled, allow_immediate, allow_scheduled, delivery_days, delivery_days_immediate, delivery_days_scheduled',
+              'district, is_active, min_order, min_order_immediate, allow_immediate, allow_scheduled',
             // is_active.eq.true ŞART — bkz. dosya başındaki 2 numaralı not.
             applyFilters: (q) =>
               q.eq('is_active', true).or('allow_immediate.eq.true,allow_scheduled.eq.true'),
@@ -145,49 +125,19 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
 
   const ozet = useMemo(() => ilceleriOzetle(zones, globals), [zones, globals]);
   const hizliIlceler = ozet.filter((i) => i.hizli);
-  const planliIlceler = ozet.filter((i) => !i.hizli);
 
-  const bolum = (
-    baslik: string,
-    altBaslik: string,
-    renk: string,
-    satirlar: IlceSatiri[],
-    planliBolum: boolean,
-  ) => {
-    if (satirlar.length === 0) return null;
-    return (
-      <View style={s.bolum}>
-        <View style={s.bolumBaslikSatiri}>
-          <View style={[s.nokta, { backgroundColor: renk }]} />
-          <Text style={s.bolumBaslik}>{baslik}</Text>
-        </View>
-        <Text style={s.bolumAlt}>{altBaslik}</Text>
-
-        <View style={s.kart}>
-          {satirlar.map((it, i) => {
-            const tutar = planliBolum ? it.minPlanli : it.minHizli;
-            const gunler = planliBolum && it.planliGunler ? formatDeliveryDaysFull(it.planliGunler) : null;
-            return (
-              <View key={it.district} style={[s.satir, i > 0 && s.satirCizgili]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.ilceAdi}>{it.district}</Text>
-                  {gunler ? <Text style={s.gunler}>{gunler}</Text> : null}
-                  {/* Hızlı ilçelerde planlı seçenek de var; tutarı farklı
-                      olduğu için ikisi birden yazılıyor. */}
-                  {!planliBolum && Number.isFinite(it.minPlanli) ? (
-                    <Text style={s.gunler}>Gün seçerek: min {tlGruplu(it.minPlanli)}</Text>
-                  ) : null}
-                </View>
-                <Text style={s.tutar}>
-                  {Number.isFinite(tutar) ? `min ${tlGruplu(tutar)}` : '—'}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    );
-  };
+  // Minimum tutar tek satırda: ilçeler arasında değişmiyorsa net rakam,
+  // değişiyorsa rakam vermek yerine "adresinize göre" demek doğru —
+  // yanlış bir rakam ikinci bir "neden sipariş veremiyorum" sorusu yaratır.
+  const minTutarlar = Array.from(
+    new Set(hizliIlceler.map((i) => i.minHizli).filter((n) => Number.isFinite(n) && n > 0)),
+  );
+  const minTutarMetni =
+    minTutarlar.length === 1
+      ? `Minimum sipariş tutarı ${tlGruplu(minTutarlar[0])}.`
+      : minTutarlar.length > 1
+        ? 'Minimum sipariş tutarı ilçeye göre değişir; adresinizi seçtiğinizde görünür.'
+        : null;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Nerelere teslimat yapıyoruz?" showCloseButton>
@@ -197,33 +147,38 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
         <View style={s.orta}>
           <ActivityIndicator size="small" color={COLORS.brand.green} />
         </View>
-      ) : ozet.length === 0 ? (
+      ) : hizliIlceler.length === 0 ? (
         <View style={s.orta}>
           <Text style={s.bosMetin}>Teslimat bölgeleri şu an yüklenemedi.</Text>
         </View>
       ) : (
-        <>
-          {bolum(
-            'Bugün teslimat',
-            'Kendi kuryemizle, siparişinizi aynı gün getiriyoruz.',
-            COLORS.brand.green,
-            hizliIlceler,
-            false,
-          )}
-          {bolum(
-            'Gün seçerek teslimat',
-            'Bu ilçelere gününü siz seçiyorsunuz; aynı gün teslimat yok.',
-            '#C9D4BC',
-            planliIlceler,
-            true,
-          )}
-        </>
+        <View style={s.bolum}>
+          <View style={s.baslikSatiri}>
+            <View style={s.nokta} />
+            <Text style={s.baslik}>Hemen teslimat</Text>
+          </View>
+          <Text style={s.altBaslik}>
+            Bu ilçelere kendi kuryemizle, siparişinizi aynı gün getiriyoruz.
+          </Text>
+
+          <View style={s.rozetler}>
+            {hizliIlceler.map((it) => (
+              <View key={it.district} style={s.rozet}>
+                <Text style={s.rozetMetin}>{it.district}</Text>
+              </View>
+            ))}
+          </View>
+
+          {minTutarMetni ? <Text style={s.minTutar}>{minTutarMetni}</Text> : null}
+        </View>
       )}
 
-      <Text style={s.dipnot}>
-        Listede olmayan ilçelere şimdilik teslimat yapamıyoruz. Minimum tutarlar
-        başlangıç değeridir; adresinizi seçtiğinizde kesin tutar görünür.
-      </Text>
+      <View style={s.notKutusu}>
+        <Text style={s.notMetni}>
+          Diğer ilçelere şu an sadece ertesi gün teslimat ile soğuk zincir
+          teslimat yapılabilmektedir.
+        </Text>
+      </View>
     </BottomSheet>
   );
 });
@@ -231,68 +186,72 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
 export default DeliveryZonesSheet;
 
 const s = StyleSheet.create({
-  orta: { minHeight: 120, alignItems: 'center', justifyContent: 'center' },
+  orta: { minHeight: 100, alignItems: 'center', justifyContent: 'center' },
   bosMetin: {
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_400Regular',
     color: COLORS.text.secondary,
     textAlign: 'center',
   },
-  bolum: { marginTop: SPACING.lg },
-  bolumBaslikSatiri: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nokta: { width: 12, height: 12, borderRadius: 6 },
-  bolumBaslik: {
-    fontSize: 16,
+  bolum: { marginTop: SPACING.md },
+  baslikSatiri: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nokta: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.brand.green,
+  },
+  baslik: {
+    fontSize: 17,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: COLORS.text.primary,
   },
-  bolumAlt: {
-    fontSize: 12.5,
+  altBaslik: {
+    fontSize: 13,
     fontFamily: 'PlusJakartaSans_400Regular',
     color: COLORS.text.secondary,
-    marginTop: 4,
-    marginBottom: 10,
-    lineHeight: 18,
+    marginTop: 5,
+    lineHeight: 19,
   },
-  kart: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    paddingHorizontal: 14,
-  },
-  satir: {
+  // Rozetler: ilçe sayısı azken (şu an 4, 1 Ekim'den sonra 6) sarmalanan
+  // rozet dizisi liste satırlarından hem daha kompakt hem tek bakışta okunur.
+  rozetler: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: SPACING.md,
   },
-  satirCizgili: { borderTopWidth: 1, borderTopColor: '#F1F1F1' },
-  ilceAdi: {
-    fontSize: 15,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: COLORS.text.primary,
+  rozet: {
+    backgroundColor: COLORS.brand.green,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
   },
-  gunler: {
-    fontSize: 11.5,
-    fontFamily: 'PlusJakartaSans_400Regular',
-    color: COLORS.text.secondary,
-    marginTop: 2,
-  },
-  tutar: {
-    fontSize: 13.5,
+  rozetMetin: {
+    fontSize: 14,
     fontFamily: 'PlusJakartaSans_700Bold',
+    // Yeşil üzerinde SİYAH: beyaz yazı #B9EF14 üzerinde 1.4:1 kalıyor,
+    // gün ışığında okunmuyor. Siyah 14.8:1.
     color: COLORS.text.primary,
-    flexShrink: 0,
   },
-  dipnot: {
-    fontSize: 11.5,
-    fontFamily: 'PlusJakartaSans_400Regular',
-    color: COLORS.text.tertiary,
-    lineHeight: 17,
-    textAlign: 'center',
+  minTutar: {
+    fontSize: 12.5,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.secondary,
+    marginTop: SPACING.md,
+  },
+  notKutusu: {
+    backgroundColor: '#F4F6F1',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginTop: SPACING.lg,
     marginBottom: SPACING.md,
+  },
+  notMetni: {
+    fontSize: 12.5,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: '#5B6357',
+    lineHeight: 19,
   },
 });
