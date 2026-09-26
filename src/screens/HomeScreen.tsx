@@ -13,6 +13,7 @@ import PopupModal from '../components/PopupModal';
 import { useModal } from '../hooks/useModal';
 import { useIlkAcilistaTeslimatBolgeleri } from '../hooks/useIlkAcilistaTeslimatBolgeleri';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
+import TopReviewsStrip from '../components/TopReviewsStrip';
 import { usePopups } from '../hooks/usePopups';
 import { useCartStore } from '../store/cartStore';
 import { Category, fetchCategories } from '../lib/categories';
@@ -726,6 +727,9 @@ export default function HomeScreen() {
             clearButtonMode="while-editing"
           />
         </View>
+
+        {/* En İyi Yorumlar — onaylı yorum yoksa bileşen hiç çizilmez. */}
+        <TopReviewsStrip />
 
         {/* Sana Özel Teklifler */}
         <View style={styles.section}>

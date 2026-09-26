@@ -20,6 +20,7 @@
 //   10. Başarısızsa sync_status='failed' (SaveOrder yapıldı ama Prepared olmadı)
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { adisyoEtiketleri, fisNotu, type SablonSecimi } from '../_shared/adisyo-labels.ts';
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const ADISYO_API_KEY      = Deno.env.get("ADISYO_API_KEY")!;
@@ -66,10 +67,17 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
-  selected_options?: { labels?: string[]; extraPrice?: number };
-  // Bundle ürünlerde mobil app seçimleri yalnızca buraya yazıyor;
-  // selected_options boş kalıyor → not için fallback bu alandan okunur.
-  legacy_selected_options?: { labels?: string[] };
+  // DİKKAT — iki farklı şekil:
+  //  · Mobil app `selected_options` alanına ŞABLON SEÇİMLERİNİ DİZİ olarak
+  //    yazıyor: [{ template_name: "Et Gramajı", value_name: "200g", ... }]
+  //  · Eski/başka yollarda ise `{ labels: [...] }` nesnesi gelebiliyor.
+  // Önceki tip yalnız nesne şeklini tanıyordu; dizi geldiğinde `.labels`
+  // undefined oluyor, fallback boş diziye düşüyor ve GRAMAJ FİŞE HİÇ
+  // YAZILMIYORDU. (26.09.2026: 21 Mayıs'tan beri 135 siparişi etkilemiş.)
+  selected_options?: SablonSecimi[] | { labels?: string[]; extraPrice?: number };
+  // Bundle ürünlerde grup seçimleri buraya `labels` olarak yazılıyor;
+  // şablon (gramaj) seçimleri ise `templateOptions` altında.
+  legacy_selected_options?: { labels?: string[]; templateOptions?: SablonSecimi[] };
 }
 
 // Telefonu Adisyo'nun beklediği 10 haneli ulusal formata indirger (başındaki
@@ -156,17 +164,10 @@ serve(async (req) => {
     if (!unitId) { unmapped.push(`${it.name} (id=${it.id})`); continue; }
     const catalogPrice = catalogPriceMap.get(pid);
     if (catalogPrice == null) { noPrice.push(`${it.name} (id=${it.id})`); continue; }
-    // Kaynak fallback: bundle siparişlerde labels legacy_selected_options'ta;
-    // selected_options boş kalıyor (gerçek app siparişleri). Dolu olandan oku.
-    const labels = it.selected_options?.labels
-                ?? it.legacy_selected_options?.labels
-                ?? [];
-    // Adisyo fişinde grup öneğini ("Baz Seçimi: ") soy → sadece seçilen değer kalsın
-    // ("Basmati"). ":" yoksa label'ı olduğu gibi bırak (güvenli). Fiş daha kısa/temiz.
-    const cleanLabels = labels.map((l) => {
-      const i = l.indexOf(":");
-      return i >= 0 ? l.slice(i + 1).trim() : l;
-    });
+    // Etiket üretimi _shared/adisyo-labels.ts'te — birim testleri canlı sipariş
+    // verisiyle koşuyor (src/lib/__tests__/adisyoLabels.test.ts).
+    const labels = adisyoEtiketleri(it);
+    const detayNotu = fisNotu(labels);
     orderDetails.push({
       ProductUnitId: unitId,
       Quantity: it.quantity,
@@ -176,7 +177,7 @@ serve(async (req) => {
       UnitPrice: catalogPrice,
       // Ayraç " | ": \n Adisyo word-wrap'iyle çakışıp satırları üst üste bindiriyordu;
       // pipe ile tek akan satır, Adisyo kendi sarmasını düzgün yapıyor.
-      ...(cleanLabels.length > 0 ? { OrderDetailNote: cleanLabels.join(" | ") } : {}),
+      ...(detayNotu ? { OrderDetailNote: detayNotu } : {}),
     });
   }
 

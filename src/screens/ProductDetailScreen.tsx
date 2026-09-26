@@ -26,6 +26,7 @@ import AnimatedNumberText from '../components/AnimatedNumberText';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { getSupabaseClient } from '../lib/supabase';
 import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
+import { begeniCumlesi, begeniOranlariniGetir } from '../lib/socialProof';
 import {
   fetchProductOptionGroups,
   getGroupSelectionLimits,
@@ -193,6 +194,20 @@ export default function ProductDetailScreen() {
   const miniOpacity = useRef(new Animated.Value(0)).current;
 
   const macroCardEnabled = Boolean(product?.is_bundle) || (product?.calories ?? product?.cal) != null;
+
+  // "Deneyenlerin %X'i beğendi" — YETERLİ OY YOKSA HİÇ GÖSTERİLMEZ.
+  // Eşik hem sunucuda (urun_begeni_oranlari) hem burada (begeniCumlesi)
+  // uygulanıyor; tek oya dayanan "%100 beğendi" cümlesi müşteriyi yanıltır.
+  const [begeniMetni, setBegeniMetni] = useState<string | null>(null);
+  useEffect(() => {
+    const pid = Number(product?.id);
+    if (!Number.isFinite(pid)) { setBegeniMetni(null); return; }
+    let gecerli = true;
+    begeniOranlariniGetir().then((harita) => {
+      if (gecerli) setBegeniMetni(begeniCumlesi(harita.get(pid)));
+    });
+    return () => { gecerli = false; };
+  }, [product?.id]);
 
   const onInfoCardLayout = (e: any) => {
     infoCardTopRef.current = e.nativeEvent.layout.y;
@@ -931,6 +946,13 @@ export default function ProductDetailScreen() {
         <View style={styles.infoCard} onLayout={onInfoCardLayout}>
           <Text style={styles.productTitle}>{product.name}</Text>
 
+          {/* Sosyal kanıt — yeterli oy yoksa hiç çizilmez (bkz. socialProofRules). */}
+          {begeniMetni ? (
+            <View style={styles.begeniSeridi}>
+              <Text style={styles.begeniMetni}>{begeniMetni}</Text>
+            </View>
+          ) : null}
+
           {/* Description */}
           {product.desc ? (
             <View style={styles.descriptionSection}>
@@ -1416,6 +1438,20 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.tertiary,
     lineHeight: 9,
+  },
+  // Beğeni şeridi — ürün başlığının hemen altında ince bir bant.
+  begeniSeridi: {
+    backgroundColor: 'rgba(185,239,20,0.18)',
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  begeniMetni: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
   },
   descriptionSection: {
     marginBottom: 4,
