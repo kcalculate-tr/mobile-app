@@ -1670,6 +1670,12 @@ export default function CheckoutScreen() {
           deliveryType: scheduledFields.delivery_type,
           scheduledDate: scheduledFields.scheduled_date,
           scheduledTime: scheduledFields.scheduled_time,
+          // Kayıtlı kart mı yeni kart mı — taslakta kaydediliyor ki
+          // "kayıtlı kart özelliği işe yarıyor mu" ölçülebilsin.
+          // cardsEnabled=false iken kart listesi hiç gösterilmiyor,
+          // o yüzden tek yol yeni kart.
+          paymentMethod:
+            cardsEnabled && selectedPayCardId ? 'saved_card' : 'new_card',
         });
 
         paymentOrderId = draftResult.orderId;

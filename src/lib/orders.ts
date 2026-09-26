@@ -390,6 +390,20 @@ export const createOrderFromCart = async ({
   };
 };
 
+/**
+ * Sipariş hangi ödeme yoluyla başladı.
+ *
+ * 26.09.2026: `orders.payment_method` 333 siparişin HEPSİNDE boştu; yalnızca
+ * admin tarafı 'sponsor'/'ikram' yazıyordu. Bu yüzden "kayıtlı kart özelliği
+ * işe yarıyor mu" sorusu ölçülemiyordu — kaç siparişin kayıtlı kartla
+ * verildiğini gösteren hiçbir kayıt yoktu.
+ *
+ * Taslak oluşturulurken yazılır, yani kullanıcının ödeme ekranında SEÇTİĞİ
+ * yolu gösterir. Ödeme başarısız olsa bile seçim kayıtlıdır — dönüşümü
+ * ölçmek için gereken de budur.
+ */
+export type OdemeYolu = 'saved_card' | 'new_card';
+
 export const createOrderDraftForPayment = async ({
   supabase,
   userId,
@@ -408,6 +422,7 @@ export const createOrderDraftForPayment = async ({
   deliveryType,
   scheduledDate,
   scheduledTime,
+  paymentMethod,
 }: {
   supabase: SupabaseClient;
   userId: string;
@@ -426,6 +441,7 @@ export const createOrderDraftForPayment = async ({
   deliveryType?: 'immediate' | 'scheduled' | null;
   scheduledDate?: string | null;
   scheduledTime?: string | null;
+  paymentMethod?: OdemeYolu | null;
 }) => {
   if (!cartItems.length) {
     throw new Error('Sepet boş.');
@@ -488,6 +504,9 @@ export const createOrderDraftForPayment = async ({
     delivery_type: deliveryType || 'immediate',
     scheduled_date: scheduledDate || null,
     scheduled_time: scheduledTime || null,
+    // null geçilirse kolon hiç yazılmaz — admin tarafının yazdığı
+    // 'sponsor'/'ikram' gibi değerleri ezmeyelim.
+    ...(paymentMethod ? { payment_method: paymentMethod } : {}),
   };
 
   const { data: insertedOrder, droppedColumns } = await insertOrderWithFallback(
