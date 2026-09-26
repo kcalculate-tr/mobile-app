@@ -32,15 +32,15 @@ const HIZLI_CIZGI = '#9FCF13';
 
 type Props = { height?: number };
 
-function IzmirTeslimatHaritasi({ height = 250 }: Props) {
+function IzmirTeslimatHaritasi({ height = 200 }: Props) {
   return (
     <View
-      style={{ width: '100%', height }}
+      style={{ width: '100%', height, borderRadius: 16, overflow: 'hidden' }}
       accessible
       accessibilityRole="image"
       accessibilityLabel="İzmir haritası. Körfezin güney ve doğusundaki bölgeye hemen teslimat yapılıyor."
     >
-      <Svg width="100%" height="100%" viewBox="0 16 320 268">
+      <Svg width="100%" height="100%" viewBox="0 0 320 300">
         <Path d={IL_YOLU} fill={KARA} stroke={KARA_CIZGI} strokeWidth={1.2} />
 
         <Ellipse

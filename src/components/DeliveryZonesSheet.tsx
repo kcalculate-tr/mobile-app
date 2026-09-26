@@ -170,6 +170,15 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
           </View>
 
           {minTutarMetni ? <Text style={s.minTutar}>{minTutarMetni}</Text> : null}
+
+          {/* Sabit liste, bilerek: "çok yakında" bir İŞ VAADİ, veritabanındaki
+              bir durum değil. delivery_zones'tan türetilseydi planlı teslimat
+              yapılan her ilçe (Urla, Torbalı, Güzelbahçe…) burada belirirdi —
+              oysa yakın vadede açılacak olanlar yalnız bu beşi. */}
+          <Text style={s.yakinda}>
+            <Text style={s.yakindaVurgu}>Çok yakında: </Text>
+            Karşıyaka, Buca, Gaziemir, Menderes ve Menemen.
+          </Text>
         </View>
       )}
 
@@ -239,6 +248,17 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.secondary,
     marginTop: SPACING.md,
+  },
+  yakinda: {
+    fontSize: 12.5,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    color: COLORS.text.secondary,
+    lineHeight: 19,
+    marginTop: 6,
+  },
+  yakindaVurgu: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary,
   },
   notKutusu: {
     backgroundColor: '#F4F6F1',
