@@ -33,6 +33,8 @@ import { haptic } from '../utils/haptics';
 import { useCartStore } from '../store/cartStore';
 import { getSupabaseClient } from '../lib/supabase';
 import { logEvent, track } from '../lib/analytics';
+import { recordPaymentDrop } from '../lib/orders';
+import { dususEtiketi, type OdemeAsamasi, type DususSebebi } from '../lib/paymentDrop';
 import { COLORS } from '../constants/theme';
 import {
   PAYMENT_PROVIDER,
@@ -109,6 +111,33 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
   // MOUNTED kalir (callback POST'u ucustayken kapanmaz — Tosla'daki notla ayni).
   const handledRef = useRef(false);
 
+  // ÖDEME DÜŞÜŞ NOKTASI (27.09.2026)
+  // Müşteri ödemeyi tamamlamadığında şimdiye kadar sipariş satırına hiçbir şey
+  // yazılmıyordu; 167 expired siparişin 173'ünde sebep boş. Burada müşterinin
+  // ulaştığı son aşamayı ref'te tutuyoruz ve akış koptuğunda siparişe
+  // yazıyoruz. Ref, çünkü değer render'ı etkilemiyor ve unmount sırasında
+  // güncel olmalı.
+  const asamaRef = useRef<OdemeAsamasi>('init');
+  const dususYazildiRef = useRef(false);
+  // Oturum kimliği ref'te: unmount sırasında (müşteri geri çıktığında) async
+  // getSession çağrısı için vakit yok, o an elde hazır olmalı.
+  const userIdRef = useRef<string | null>(null);
+
+  const dususuKaydet = (reason: DususSebebi, detay?: string | null) => {
+    if (dususYazildiRef.current) return;
+    dususYazildiRef.current = true;
+    const uid = userIdRef.current;
+    if (!uid) return;
+    // Beklemiyoruz: ölçüm için yazılan bir satır ödeme akışını bekletmemeli.
+    void recordPaymentDrop({
+      supabase: getSupabaseClient(),
+      orderId: String(orderId),
+      userId: uid,
+      dropStage: dususEtiketi({ stage: asamaRef.current, reason }),
+      failureReason: detay ?? null,
+    });
+  };
+
   // StrictMode/yeniden-render'a karsi guard: mount-baslatma effect'i ekran
   // basina EN FAZLA 1 kez gercekten calisir (syncSavedCards 8 kez cagrilmis
   // gozlemi — 2026-09-16 canli test — buna karsi eklendi).
@@ -165,6 +194,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     try {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
+      userIdRef.current = session?.user?.id ?? null;
       if (!session) {
         const message = 'Oturum bulunamadı.';
         setInitError(message);
@@ -201,6 +231,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
         handleFailure(PAYMENT_PAGE_ERROR_MESSAGE);
         return;
       }
+      asamaRef.current = 'provider_page';
       setFormHtml(safeHtml);
     } catch (err) {
       const message = userMessageForError(err, PAYMENT_PAGE_LOAD_FAILED_MESSAGE);
@@ -266,6 +297,7 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     return false;
   };
 
+  // handleSuccess düşüş yazmaz; dususYazildiRef ile de korunuyor.
   const handleSuccess = async () => {
     if (handledRef.current) return;
     handledRef.current = true;
@@ -299,6 +331,9 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     if (handledRef.current) return;
     handledRef.current = true;
     track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: reason ?? 'psp_declined' });
+    // Analytics'e EK OLARAK sipariş satırına da yaz — analytics best-effort
+    // bir kuyruk ve payment_attempt takibi ancak 16.09'da başladı.
+    dususuKaydet(asamaRef.current === 'init' ? 'init_error' : 'failed', reason ?? 'psp_declined');
     Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
       { text: 'Tamam', onPress: () => navigation.goBack() },
     ]);
@@ -318,10 +353,26 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     );
   };
 
+  // TERK ETME KAYDI — en değerli sinyal.
+  // Müşteri geri tuşuna basıp ya da uygulamayı kapatıp ödeme ekranından
+  // sonuçsuz çıktığında şimdiye kadar HİÇBİR ŞEY yazılmıyordu: sipariş
+  // pending_payment kalıyor, 10 dk sonra cron sessizce 'expired' yapıyor.
+  // handledRef doluysa (başarı/başarısızlık/inceleme) buraya girilmez.
+  useEffect(() => {
+    return () => {
+      if (handledRef.current) return;
+      dususuKaydet('abandoned');
+    };
+    // Kasıtlı boş deps: yalnız unmount'ta çalışmalı. dususuKaydet gereken
+    // her şeyi ref'ten okuyor, bayat kapanış riski yok.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleNavigationCheck = (url: string): boolean => {
     if (handledRef.current) return false;
     const result = matchesPaynkolayReturn(url);
     if (result.matches) {
+      asamaRef.current = 'returned';
       if (result.success) handleSuccess();
       else handleFailure();
       return false; // eatkcal.com'a gercek navigasyonu engelle (WebView mounted kalir)

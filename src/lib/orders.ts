@@ -587,6 +587,52 @@ export const createOrderDraftForPayment = async ({
   };
 };
 
+/**
+ * Ödeme neden tamamlanmadı — sipariş SATIRINA yazar.
+ *
+ * 27.09.2026: bu bilgi şimdiye kadar yalnızca analytics'e gidiyordu
+ * (`track('payment_failed')`). Sonuç: 167 expired siparişin 173'ünde hiçbir
+ * sebep kaydı yok. Analytics best-effort bir kuyruk ve `payment_attempt`
+ * takibi 16.09'da başladı; sipariş satırı hem kalıcı hem tam.
+ *
+ * Sipariş DURUMUNU DEĞİŞTİRMEZ — bilerek. Ödemenin gerçekten başarısız mı
+ * yoksa yalnız terk mi edildiği sunucu tarafında belli olur; bu fonksiyon
+ * sadece "müşteri buraya kadar geldi" notunu düşer. Durum değişikliği
+ * updateOrderPaymentStatus'ün işi.
+ *
+ * Best-effort: hata yutulur. Ölçüm için yazılan bir satır, ödeme akışını
+ * bozamaz.
+ */
+export const recordPaymentDrop = async ({
+  supabase,
+  orderId,
+  userId,
+  dropStage,
+  failureReason,
+}: {
+  supabase: SupabaseClient;
+  orderId: string;
+  userId: string;
+  dropStage: string;
+  failureReason?: string | null;
+}): Promise<void> => {
+  try {
+    const payload: Record<string, unknown> = { payment_drop_stage: dropStage };
+    if (failureReason) payload.payment_failure_reason = failureReason.slice(0, 500);
+    const { error } = await supabase
+      .from('orders')
+      .update(payload)
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      // Ödenmiş siparişe ASLA dokunma: geç gelen bir "terk edildi" yazımı
+      // başarılı bir siparişi kirletmesin.
+      .neq('payment_status', 'paid');
+    if (error && __DEV__) console.warn('[orders] düşüş kaydı yazılamadı:', error.message);
+  } catch (e) {
+    if (__DEV__) console.warn('[orders] düşüş kaydı yazılamadı:', e);
+  }
+};
+
 export const updateOrderPaymentStatus = async ({
   supabase,
   orderId,
