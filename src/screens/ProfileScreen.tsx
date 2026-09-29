@@ -630,20 +630,24 @@ export default function ProfileScreen() {
             <Text style={styles.logoutText}>Çıkış Yap</Text>
           </TouchableOpacity>
         ) : (
+          // 29.09.2026: burada iki dugme vardi — "Giris Yap" sifresiz akisa
+          // (Apple/Google/e-posta OTP), "Kayit Ol" ise eski sifreli akisa
+          // (sifre formu -> e-posta dogrulama -> beslenme kurulumu) gidiyordu.
+          // Olcum: eski akista Eylul'de kayit olan 379 kisinin 27'si e-postasini
+          // hic dogrulamamis ve hic giris yapmamis; 5 ayda 56 kisi orada takildi.
+          // Sifresiz akista boyle bir kayip yok — kod dogrulanir dogrulanmaz
+          // oturum aciliyor. Tek kapi birakildi; UnifiedLoginScreen zaten yeni
+          // kullaniciyi da karsiliyor (OTP hesabi kendisi olusturuyor).
+          // Eski ekranlar (RegisterScreen_legacy, EmailVerificationScreen_legacy,
+          // NutritionSetupScreen_legacy) route olarak duruyor ama artik hicbir
+          // yerden acilmiyor.
           <View style={styles.authButtonsRow}>
             <TouchableOpacity
               style={styles.authButton}
               onPress={() => navigation.navigate('Login', { redirectTo: 'Tabs' })}
               activeOpacity={0.85}
             >
-              <Text style={styles.authButtonText}>Giriş Yap</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.authButton, styles.authButtonSecondary]}
-              onPress={() => navigation.navigate('Register', { redirectTo: 'Tabs' })}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.authButtonTextSecondary}>Kayıt Ol</Text>
+              <Text style={styles.authButtonText}>Giriş Yap veya Kayıt Ol</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1139,18 +1143,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authButtonSecondary: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
   authButtonText: {
     color: '#000000',
-    fontSize: TYPOGRAPHY.size.md,
-    fontFamily: 'PlusJakartaSans_700Bold',
-  },
-  authButtonTextSecondary: {
-    color: '#374151',
     fontSize: TYPOGRAPHY.size.md,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
