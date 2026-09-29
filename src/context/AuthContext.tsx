@@ -13,6 +13,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { getSupabaseClient } from '../lib/supabase';
+import { setSentryUser } from '../lib/sentry';
 import { useAddressStore } from '../store/addressStore';
 import { hydrateSelectedAddress } from '../lib/addresses';
 
@@ -317,6 +318,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: err?.message ?? 'Google ile giriş başarısız oldu' };
     }
   }, []);
+
+  // 29.09.2026: Sentry kuruldu ama hicbir olaya kullanici kimligi eklenmiyordu;
+  // "50 musteri mi cokuyor yoksa ayni musteri 50 kez mi" sorusu cevapsiz
+  // kaliyordu. Tek bir yerden, user.id degistikce yaziliyor — boylece soguk
+  // baslangic, giris, cikis ve token yenileme dallarinin hicbiri atlanmiyor.
+  // Yalnizca uuid gidiyor: e-posta/telefon/adres DEGIL (sendDefaultPii: false).
+  useEffect(() => {
+    setSentryUser(user?.id ?? null);
+  }, [user?.id]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

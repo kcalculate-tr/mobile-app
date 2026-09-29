@@ -6,6 +6,8 @@
 import NetInfo from '@react-native-community/netinfo';
 import { AppState, AppStateStatus, Alert } from 'react-native';
 
+import { captureError } from './sentry';
+
 /**
  * Network Connectivity Check
  * Kritik işlemlerden önce internet bağlantısını kontrol eder
@@ -164,9 +166,12 @@ export function setupGlobalErrorHandler() {
   const prevHandler = ErrorUtils.getGlobalHandler();
   ErrorUtils.setGlobalHandler((error, isFatal) => {
     console.error('[Unhandled Error]', isFatal ? '(fatal)' : '', error);
-    if (!__DEV__) {
-      // TODO: Send to Sentry/Crashlytics
-    }
+    // 29.09.2026: burasi 'TODO: Send to Sentry' olarak duruyordu — yani Sentry
+    // kurulduktan sonra bile ErrorUtils'in yakaladigi hatalar konsola yazilip
+    // yutuluyordu. captureError, DSN yoksa zaten sessizce no-op.
+    // isFatal ayrimi Sentry'de filtrelenebilsin diye extra olarak gidiyor;
+    // kisisel veri EKLENMIYOR (bkz. sendDefaultPii: false).
+    captureError(error, { kaynak: 'ErrorUtils', olumcul: Boolean(isFatal) });
     prevHandler?.(error, isFatal);
   });
 
