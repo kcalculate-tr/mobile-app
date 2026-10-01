@@ -1254,12 +1254,21 @@ export default function CheckoutScreen() {
       dispatchAddr({ type: 'SET_DELIVERY_RULE_STATUS', payload: { status: 'loading' } });
       try {
         const supabase = getSupabaseClient();
+        // 01.10.2026 — BU SORGU CANLI BIR KESINTIYE SEBEP OLDU.
+        // Eskiden .limit(50) idi: ilcenin yalnizca "en son guncellenen 50"
+        // satiri cekiliyor, musterinin mahallesi o 50'nin disinda kalirsa
+        // matchingRow undefined donuyor ve musteri "bolge tanimli degil"
+        // gorup SIPARIS VEREMIYORDU. Konak'ta 112, Karabaglar'da 58 satir
+        // var; 48 mahalleyi kapatan bir migration updated_at'leri degistirince
+        // pencere kaydi ve Basin Sitesi dahil onlarca ACIK mahalle disarida
+        // kaldi. Siralamaya bagli bir kura oldugu icin hata sessizdi.
+        // En buyuk ilce 112 satir — 500 her ilceyi fazlasiyla kapsar.
         const { data, error } = await supabase
           .from('delivery_zones')
           .select('*')
           .eq('district', selectedAddress.district)
           .order('updated_at', { ascending: false })
-          .limit(50);
+          .limit(500);
 
         if (!mounted) return;
 

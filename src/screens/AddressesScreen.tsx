@@ -27,6 +27,7 @@ import {
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
 import { getSupabaseClient } from '../lib/supabase';
+import { fetchAllDeliveryZones } from '../lib/delivery';
 import { matchToOption, normalizeTurkishText } from '../lib/geo';
 import { RootStackParamList } from '../navigation/types';
 import { Address } from '../types';
@@ -318,17 +319,24 @@ export default function AddressesScreen() {
 
       try {
         const supabase = getSupabaseClient();
-        const [addressesRes, districtsRes] = await Promise.all([
+        // 01.10.2026 — delivery_zones 1.297 satir; PostgREST tek SELECT'i
+        // 1000'de kesiyor. Buradaki sorgu sayfalanmadigi icin alfabenin
+        // sonundaki ilceler (Urla, Torbali, Tire, Seferihisar, Selcuk)
+        // sessizce dusuyordu. fetchAllDeliveryZones .range() ile sayfaliyor.
+        const [addressesRes, districtRows] = await Promise.all([
           supabase
             .from('addresses')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
-          supabase
-            .from('delivery_zones')
-            .select('*')
-            .order('district', { ascending: true }),
+          fetchAllDeliveryZones<Record<string, unknown>>()
+            .then((rows) => ({ data: rows, error: null as Error | null }))
+            .catch((e: unknown) => ({
+              data: [] as Record<string, unknown>[],
+              error: (e instanceof Error ? e : new Error(String(e))),
+            })),
         ]);
+        const districtsRes = districtRows;
 
         if (!mounted) return;
 
