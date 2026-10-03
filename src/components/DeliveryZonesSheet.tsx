@@ -141,7 +141,7 @@ const DeliveryZonesSheet = React.memo(function DeliveryZonesSheet({ visible, onC
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Nerelere teslimat yapıyoruz?" showCloseButton>
-      <IzmirTeslimatHaritasi />
+      <IzmirTeslimatHaritasi acikIlceler={hizliIlceler.map((i) => i.district)} />
 
       {loading ? (
         <View style={s.orta}>

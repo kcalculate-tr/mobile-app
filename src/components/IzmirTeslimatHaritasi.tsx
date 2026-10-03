@@ -29,6 +29,16 @@ import Svg, { Path, Circle, Rect, Text as SvgText } from 'react-native-svg';
  * bilerek haritada DEĞİL — açık olan bölgeyle karışmasınlar; onlar haritanın
  * altında tek satır not olarak duruyor.
  *
+ * ── Hangi pin çizilir ──────────────────────────────────────────────────────
+ * 03.10.2026: pin'ler ESKİDEN SABİTTİ, altı ilçe her zaman çiziliyordu.
+ * Bayraklı ve Bornova veritabanında hemen teslimata kapalıyken (şube henüz
+ * açılmadı) harita yine "hemen teslimat" diye pin basıyordu — yani harita
+ * altı ilçe, hemen altındaki rozet listesi dört ilçe gösteriyordu. Artık
+ * koordinatlar burada duruyor ama hangilerinin çizileceğine ÇAĞIRAN karar
+ * veriyor; rozetlerle aynı kaynaktan (delivery_zones.allow_immediate).
+ * Böylece bir ilçe hemen teslimata açıldığında harita da yeni sürüm
+ * gerekmeden kendiliğinden güncelleniyor.
+ *
  * Ölçüler viewBox birimindedir: 320 birim ≈ 342 px, yani 1 birim ≈ 1.07 px.
  * Yazı 8.5 birim ≈ 9 px — harita etiketi için normal boy.
  */
@@ -44,9 +54,41 @@ const HIZLI = '#B9EF14';
 /** viewBox 320x268 — kap da aynı oranda olmalı. */
 const ORAN = 320 / 268;
 
-type Props = { height?: number };
+/** Pin ve etiket koordinatları — viewBox birimi. Çarpışma çözücüyle bulundu. */
+const PINLER = [
+  { ilce: 'Narlıdere',  cx: 93.0,  cy: 206.6, ex: 87.3,  ey: 209.5, yon: 'end' as const },
+  { ilce: 'Balçova',    cx: 110.2, cy: 201.9, ex: 105.0, ey: 197.0, yon: 'end' as const },
+  { ilce: 'Karabağlar', cx: 125.0, cy: 215.8, ex: 130.7, ey: 218.7, yon: 'start' as const },
+  { ilce: 'Konak',      cx: 127.3, cy: 195.2, ex: 133.0, ey: 198.1, yon: 'start' as const },
+  { ilce: 'Bayraklı',   cx: 147.8, cy: 185.8, ex: 142.6, ey: 180.9, yon: 'end' as const },
+  { ilce: 'Bornova',    cx: 171.1, cy: 180.9, ex: 176.8, ey: 183.8, yon: 'start' as const },
+];
 
-function IzmirTeslimatHaritasi({ height }: Props) {
+/** Türkçe'ye duyarlı sadeleştirme — lower('İ') birleşik aksan üretiyor. */
+const sadelestir = (t: string) =>
+  t.replace(/İ/g, 'I').replace(/ı/g, 'I').replace(/Ş/g, 'S').replace(/ş/g, 's')
+   .replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u')
+   .replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c')
+   .toLowerCase().trim();
+
+type Props = {
+  height?: number;
+  /** Hemen teslimat yapılan ilçeler — rozet listesiyle AYNI kaynaktan gelmeli. */
+  acikIlceler: string[];
+};
+
+function IzmirTeslimatHaritasi({ height, acikIlceler }: Props) {
+  const acik = React.useMemo(() => new Set(acikIlceler.map(sadelestir)), [acikIlceler]);
+  const cizilecek = React.useMemo(
+    () => PINLER.filter((p) => acik.has(sadelestir(p.ilce))),
+    [acik],
+  );
+
+  const etiket =
+    cizilecek.length > 0
+      ? `İzmir haritası. Hemen teslimat yapılan ilçeler: ${cizilecek.map((p) => p.ilce).join(', ')}.`
+      : 'İzmir haritası.';
+
   return (
     <View
       style={[
@@ -58,7 +100,7 @@ function IzmirTeslimatHaritasi({ height }: Props) {
       ]}
       accessible
       accessibilityRole="image"
-      accessibilityLabel="İzmir haritası. Hemen teslimat yapılan ilçeler: Narlıdere, Balçova, Karabağlar, Konak, Bayraklı, Bornova."
+      accessibilityLabel={etiket}
     >
       <Svg
         width="100%"
@@ -69,43 +111,26 @@ function IzmirTeslimatHaritasi({ height }: Props) {
         <Rect x={0} y={16} width={320} height={268} fill={ZEMIN} />
         <Path d={IL_YOLU} fill={KARA} stroke={KARA_CIZGI} strokeWidth={1.1} />
 
-        <Circle cx={93.0} cy={206.6} r={2.7} fill="#111111" />
-        <Circle cx={93.0} cy={206.6} r={1.05} fill={HIZLI} />
-        <Circle cx={110.2} cy={201.9} r={2.7} fill="#111111" />
-        <Circle cx={110.2} cy={201.9} r={1.05} fill={HIZLI} />
-        <Circle cx={125.0} cy={215.8} r={2.7} fill="#111111" />
-        <Circle cx={125.0} cy={215.8} r={1.05} fill={HIZLI} />
-        <Circle cx={127.3} cy={195.2} r={2.7} fill="#111111" />
-        <Circle cx={127.3} cy={195.2} r={1.05} fill={HIZLI} />
-        <Circle cx={147.8} cy={185.8} r={2.7} fill="#111111" />
-        <Circle cx={147.8} cy={185.8} r={1.05} fill={HIZLI} />
-        <Circle cx={171.1} cy={180.9} r={2.7} fill="#111111" />
-        <Circle cx={171.1} cy={180.9} r={1.05} fill={HIZLI} />
+        {cizilecek.map((p) => (
+          <Circle key={`d-${p.ilce}`} cx={p.cx} cy={p.cy} r={2.7} fill="#111111" />
+        ))}
+        {cizilecek.map((p) => (
+          <Circle key={`i-${p.ilce}`} cx={p.cx} cy={p.cy} r={1.05} fill={HIZLI} />
+        ))}
 
-        <SvgText x={87.3} y={209.5} fontSize={8.5}
-          fontWeight="700" fill="#141414" textAnchor="end">
-          NARLIDERE
-        </SvgText>
-        <SvgText x={105.0} y={197.0} fontSize={8.5}
-          fontWeight="700" fill="#141414" textAnchor="end">
-          BALÇOVA
-        </SvgText>
-        <SvgText x={130.7} y={218.7} fontSize={8.5}
-          fontWeight="700" fill="#141414" textAnchor="start">
-          KARABAĞLAR
-        </SvgText>
-        <SvgText x={133.0} y={198.1} fontSize={8.5}
-          fontWeight="700" fill="#141414" textAnchor="start">
-          KONAK
-        </SvgText>
-        <SvgText x={142.6} y={180.9} fontSize={8.5}
-          fontWeight="700" fill="#141414" textAnchor="end">
-          BAYRAKLI
-        </SvgText>
-        <SvgText x={176.8} y={183.8} fontSize={8.5}
-          fontWeight="700" fill="#141414" textAnchor="start">
-          BORNOVA
-        </SvgText>
+        {cizilecek.map((p) => (
+          <SvgText
+            key={`t-${p.ilce}`}
+            x={p.ex}
+            y={p.ey}
+            fontSize={8.5}
+            fontWeight="700"
+            fill="#141414"
+            textAnchor={p.yon}
+          >
+            {p.ilce.toLocaleUpperCase('tr-TR')}
+          </SvgText>
+        ))}
       </Svg>
     </View>
   );
