@@ -282,7 +282,7 @@ function OrderCard({ order, saving, onAccept, onReady, onDeliver, onCancel, sche
 type Tab = 'immediate' | 'completed'
 
 export default function KitchenScreen() {
-  const { branchId: _branchId } = useBranch()
+  const { branchId } = useBranch()
   const [orders,     setOrders]     = useState<Order[]>([])
   const [completed,  setCompleted]  = useState<Order[]>([])
   const [loading,    setLoading]    = useState(true)
@@ -354,9 +354,13 @@ export default function KitchenScreen() {
   }, [])
 
   const fetchOrders = useCallback(async () => {
+    // 03.10.2026: sorgularda sube filtresi YOKTU. Iki mutfak acildiginda her panel
+    // digerinin siparislerini de gosterirdi. branchId BranchGuard sayesinde burada
+    // her zaman dolu; yine de bosken hicbir siparis gostermiyoruz (sizdirmaktan iyidir).
+    if (!branchId) { setOrders([]); setCompleted([]); setLoading(false); return }
     const [active, done] = await Promise.all([
-      supabase.from('orders').select(ORDERS_WITH_ADDRESS_SELECT).in('status', ['pending', 'confirmed', 'preparing', 'on_way']).order('created_at', { ascending: true }),
-      supabase.from('orders').select(ORDERS_WITH_ADDRESS_SELECT).in('status', ['delivered', 'cancelled']).order('updated_at', { ascending: false }).limit(30),
+      supabase.from('orders').select(ORDERS_WITH_ADDRESS_SELECT).eq('branch_id', branchId).in('status', ['pending', 'confirmed', 'preparing', 'on_way']).order('created_at', { ascending: true }),
+      supabase.from('orders').select(ORDERS_WITH_ADDRESS_SELECT).eq('branch_id', branchId).in('status', ['delivered', 'cancelled']).order('updated_at', { ascending: false }).limit(30),
     ])
 
     const userIds = Array.from(new Set(
@@ -387,15 +391,18 @@ export default function KitchenScreen() {
     setOrders((active.data ?? []).map(mapPrivileged))
     setCompleted((done.data ?? []).map(mapPrivileged))
     setLoading(false)
-  }, [])
+  }, [branchId])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
   useEffect(() => {
+    // Realtime de sube bazli: zil yalnizca BU subenin siparisinde calar.
+    if (!branchId) return
+    const subeFiltresi = `branch_id=eq.${branchId}`
     channelRef.current = supabase
-      .channel('kitchen-all-orders')
-      .on('postgres_changes', { event: '*' as const, schema: 'public', table: 'orders' }, () => fetchOrders())
-      .on('postgres_changes', { event: 'INSERT' as const, schema: 'public', table: 'orders' }, (payload) => {
+      .channel(`kitchen-orders-${branchId}`)
+      .on('postgres_changes', { event: '*' as const, schema: 'public', table: 'orders', filter: subeFiltresi }, () => fetchOrders())
+      .on('postgres_changes', { event: 'INSERT' as const, schema: 'public', table: 'orders', filter: subeFiltresi }, (payload) => {
         const status = (payload.new as { status?: string } | null)?.status
         if (status === 'pending' || status === 'confirmed') {
           playNotification()
@@ -404,7 +411,7 @@ export default function KitchenScreen() {
       })
       .subscribe()
     return () => { channelRef.current?.unsubscribe() }
-  }, [fetchOrders, playNotification, flashTitle])
+  }, [branchId, fetchOrders, playNotification, flashTitle])
 
   const pendingOrders   = useMemo(
     () => orders.filter(o => (o.status === 'pending' || o.status === 'confirmed') && isOrderPaid(o)),

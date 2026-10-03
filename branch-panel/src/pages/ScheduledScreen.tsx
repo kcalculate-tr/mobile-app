@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarClock, CheckCircle, ClipboardList, History, Loader2, Printer, Truck, XCircle, BellRing } from 'lucide-react'
 import { supabase } from '../supabase'
+import { useBranch } from '../context/BranchContext'
 import type { Order } from '../types'
 import {
   parseItems,
@@ -362,6 +363,7 @@ function OrderCard({ order, saving, pendingMod, onAccept, onReady, onDeliver, on
 type ScheduledTab = 'pending' | 'preparing' | 'on_way' | 'completed'
 
 export default function ScheduledScreen() {
+  const { branchId } = useBranch()
   const [orders,      setOrders]      = useState<Order[]>([])
   const [loading,     setLoading]     = useState(true)
   const [saving,      setSaving]      = useState<string | null>(null)
@@ -390,9 +392,12 @@ export default function ScheduledScreen() {
   }, [])
 
   const fetchOrders = useCallback(async () => {
+    // 03.10.2026: sube filtresi eklendi — randevulu liste de tum subeleri gosteriyordu.
+    if (!branchId) { setOrders([]); setLoading(false); return }
     const { data, error } = await supabase
       .from('orders')
       .select(ORDERS_WITH_ADDRESS_SELECT)
+      .eq('branch_id', branchId)
       .eq('delivery_type', 'scheduled')
       .in('status', ['pending', 'confirmed', 'preparing', 'on_way', 'delivered', 'cancelled'])
       .order('scheduled_date', { ascending: true })
@@ -401,9 +406,14 @@ export default function ScheduledScreen() {
     // Güvenlik: sadece ödenmiş randevulu siparişleri göster
     setOrders(((data ?? []) as Order[]).filter(isOrderPaid))
     setLoading(false)
-  }, [])
+  }, [branchId])
 
   const fetchModifications = useCallback(async () => {
+    // order_modifications'ta branch_id yok; yalnizca order_id var. Bu yuzden once
+    // bekleyen talepleri (az sayida) cekip, ardindan o siparislerden HANGILERI bu
+    // subeye ait diye soruyoruz. Ters yon (subenin tum siparis id'lerini cekmek)
+    // 1000 satir sinirina takilip talepleri sessizce dusururdu.
+    if (!branchId) { setModifications([]); return }
     const { data, error } = await supabase
       .from('order_modifications')
       .select('*')
@@ -413,18 +423,33 @@ export default function ScheduledScreen() {
       console.error('[ScheduledScreen] modifications fetch error:', error)
       return
     }
-    setModifications((data ?? []) as OrderModification[])
-  }, [])
+    const talepler = (data ?? []) as OrderModification[]
+    if (talepler.length === 0) { setModifications([]); return }
+    const siparisIdleri = Array.from(new Set(talepler.map((m) => m.order_id)))
+    const { data: subeSiparisleri, error: subeHata } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('branch_id', branchId)
+      .in('id', siparisIdleri)
+    if (subeHata) {
+      console.error('[ScheduledScreen] sube suzgeci hatasi:', subeHata)
+      setModifications([])
+      return
+    }
+    const izinli = new Set((subeSiparisleri ?? []).map((o: { id: unknown }) => String(o.id)))
+    setModifications(talepler.filter((m) => izinli.has(String(m.order_id))))
+  }, [branchId])
 
   useEffect(() => { fetchOrders(); fetchModifications() }, [fetchOrders, fetchModifications])
 
   useEffect(() => {
+    if (!branchId) return
     channelRef.current = supabase
-      .channel('scheduled-orders')
-      .on('postgres_changes', { event: '*' as const, schema: 'public', table: 'orders' }, () => fetchOrders())
+      .channel(`scheduled-orders-${branchId}`)
+      .on('postgres_changes', { event: '*' as const, schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` }, () => fetchOrders())
       .subscribe()
     return () => { channelRef.current?.unsubscribe() }
-  }, [fetchOrders])
+  }, [branchId, fetchOrders])
 
   useEffect(() => {
     modChannelRef.current = supabase
