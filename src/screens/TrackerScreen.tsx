@@ -908,7 +908,12 @@ export default function TrackerScreen() {
         const { start, end } = getFilterRange(filter);
         const todayStartISO = startOfTodayISO();
         const tomorrowStartISO = startOfTomorrowISO();
-        const thirtyDaysAgoISO = startOfDaysAgoISO(29);
+        // 07.10.2026: bu pencere backfillPantry'nin penceresinden (now - 30 gun)
+        // DAR idi — 29 gun once gece yarisi, yani birkac saatlik bir dilimde
+        // dolapta duran ama "tuketilmemis" gorunen item olusabiliyordu. 30'a
+        // cekerek dolap penceresini tamamen kapsiyoruz. 30 gunluk grafik
+        // dongusu aralik disi gunleri zaten atliyor (idx.get -> null).
+        const thirtyDaysAgoISO = startOfDaysAgoISO(30);
 
         const [profileRes, ordersRes, measurementRes, todayConsumedRes, weeklyConsumedRes] = await Promise.all([
           supabase
@@ -1118,6 +1123,9 @@ export default function TrackerScreen() {
         }
       };
 
+      // Dolap penceresi = backfill penceresi (30 gun). Budama backfill'den
+      // BAGIMSIZ calisir: backfill yeni aday bulamazsa erken donuyor.
+      usePantryStore.getState().pruneStale(30);
       backfillPantry();
       return () => {
         cancelled = true;
@@ -1266,9 +1274,16 @@ export default function TrackerScreen() {
           note: null,
           consumed_at: new Date().toISOString(),
         };
+        // 07.10.2026: ignoreDuplicates:true idi -> ON CONFLICT DO NOTHING.
+        // Catisma halinde PostgREST ne satir ne hata donuyordu; kod bunu
+        // "basarili" sayip ekrana sentetik satir basiyordu. Sonuc: kullanici
+        // "Tukettim" diyor, ekran onayliyor, DB'ye HICBIR SEY yazilmiyor ve
+        // yenilemede kayboluyor. ignoreDuplicates kaldirildi -> ON CONFLICT
+        // DO UPDATE: ayni source_ref tekrar tuketilirse consumed_at simdiye
+        // cekilir. Kullanicinin niyeti zaten bu: "bunu SIMDI yedim".
         const { data: row, error } = await supabase
           .from('meal_consumptions')
-          .upsert(payload, { onConflict: 'user_id,source,source_ref', ignoreDuplicates: true })
+          .upsert(payload, { onConflict: 'user_id,source,source_ref' })
           .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
           .maybeSingle();
 
@@ -1281,9 +1296,13 @@ export default function TrackerScreen() {
         } else if (error) {
           throw error;
         } else {
-          // upsert başarılı — row null olabilir (ignoreDuplicates conflict'i atlar).
-          // Sayaç todayConsumed'dan okunduğu için anında + kalıcı olarak prepend et
-          // (gerçek row varsa onu, yoksa sentetik kaydı normalize ederek).
+          // upsert başarılı. DO UPDATE yolunda satır bugünün listesinde ZATEN
+          // olabilir; önce aynı source_ref'i çıkarıp sonra ekliyoruz, yoksa
+          // kalori sayacı aynı öğünü iki kez toplardı.
+          dispatchData({
+            type: 'REMOVE_CONSUMED_BY_REF',
+            payload: { source: 'pantry', source_ref: instanceId },
+          });
           dispatchData({
             type: 'PREPEND_CONSUMED',
             payload: normalizeConsumedRow(row ?? {

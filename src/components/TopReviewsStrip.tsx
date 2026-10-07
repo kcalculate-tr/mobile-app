@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Star } from 'phosphor-react-native';
-import { COLORS, SPACING } from '../constants/theme';
+import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { vitrinYorumlariniGetir, yorumTarihi, type VitrinYorumu } from '../lib/socialProof';
 
 /**
@@ -81,11 +81,17 @@ function TopReviewsStrip() {
 export default React.memo(TopReviewsStrip);
 
 const s = StyleSheet.create({
-  bolum: { marginTop: SPACING.lg },
+  // 07.10.2026: baslik anasayfadaki diger bolum basliklariyla UYUSMUYORDU —
+  // 20px/800ExtraBold, harf araligi yok; "Sana Ozel Teklifler" ise
+  // TYPOGRAPHY.size.lg (16) / 700Bold / letterSpacing -0.4. Yan yana
+  // durduklari icin fark bariz goruluyordu. HomeScreen'deki sectionTitle ile
+  // birebir ayni degerlere cekildi.
+  bolum: { marginTop: SPACING.lg, marginBottom: SPACING['2xl'] },
   baslik: {
-    fontSize: 20,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: TYPOGRAPHY.size.lg,
+    fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.primary,
+    letterSpacing: -0.4,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
   },
@@ -103,8 +109,8 @@ const s = StyleSheet.create({
   yildizlar: { flexDirection: 'row', gap: 2, marginBottom: 8 },
   metin: {
     flex: 1,
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: TYPOGRAPHY.size.md,
+    lineHeight: 20,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.primary,
   },
