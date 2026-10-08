@@ -6,7 +6,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -64,6 +65,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // ── E-posta degisimi geri donusu: kcal://auth-callback ───────────────────
+  // 08.10.2026: updateUser({ email }) cagrisina emailRedirectTo verilmiyordu,
+  // onay baglantisi projenin Site URL'ine (bir web sayfasina) dusuyordu ve
+  // kullanici uygulamaya hic donmuyordu. Artik PersonalInfoScreen baglantiyi
+  // bu adrese yonlendiriyor. Supabase istemcisi detectSessionInUrl:false ile
+  // kuruldugu icin token'lari BURADA kendimiz isliyoruz.
+  //
+  // RN'in URLSearchParams polyfill'i eksik (forEach her surumde yok) — sorgu
+  // ve fragment elle ayristiriliyor.
+  useEffect(() => {
+    const ayristir = (ham: string): Record<string, string> => {
+      const cikti: Record<string, string> = {};
+      for (const parca of ham.split('&')) {
+        if (!parca) continue;
+        const i = parca.indexOf('=');
+        const anahtar = decodeURIComponent(i < 0 ? parca : parca.slice(0, i));
+        const deger = i < 0 ? '' : decodeURIComponent(parca.slice(i + 1).replace(/\+/g, ' '));
+        if (anahtar) cikti[anahtar] = deger;
+      }
+      return cikti;
+    };
+
+    const isle = async (url: string | null) => {
+      if (!url || !url.includes('auth-callback')) return;
+      try {
+        const kanca = url.indexOf('#');
+        const soru = url.indexOf('?');
+        const fragment = kanca >= 0 ? url.slice(kanca + 1) : '';
+        const sorgu = soru >= 0 ? url.slice(soru + 1, kanca >= 0 ? kanca : undefined) : '';
+        const p = { ...ayristir(sorgu), ...ayristir(fragment) };
+
+        if (p.error || p.error_description) {
+          Alert.alert(
+            'Bağlantı geçersiz',
+            p.error_description || 'Bağlantının süresi dolmuş olabilir. Lütfen tekrar deneyin.',
+          );
+          return;
+        }
+
+        const supabase = getSupabaseClient();
+        if (p.access_token && p.refresh_token) {
+          const { error } = await supabase.auth.setSession({
+            access_token: p.access_token,
+            refresh_token: p.refresh_token,
+          });
+          if (error) throw error;
+        } else if (p.token_hash && p.type) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: p.token_hash,
+            type: p.type as 'email_change' | 'email' | 'recovery' | 'signup',
+          });
+          if (error) throw error;
+        } else {
+          return;
+        }
+
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          setUser(data.user);
+          if (p.type === 'email_change') {
+            Alert.alert('E-postan güncellendi', data.user.email ?? '');
+          }
+        }
+      } catch {
+        // Teknik mesaj kullaniciya gosterilmez.
+        Alert.alert(
+          'İşlem tamamlanamadı',
+          'Bağlantı geçersiz ya da süresi dolmuş olabilir. Lütfen tekrar deneyin.',
+        );
+      }
+    };
+
+    void Linking.getInitialURL().then(isle);
+    const abone = Linking.addEventListener('url', ({ url }) => { void isle(url); });
+    return () => abone.remove();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;

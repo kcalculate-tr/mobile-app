@@ -1,16 +1,14 @@
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../constants/theme';
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
+import * as Linking from 'expo-linking'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import {
-  CaretLeft, Check, EnvelopeSimple, Phone, User,
-  WhatsappLogo, PencilSimple, X,
-} from 'phosphor-react-native'
+import { CaretLeft, Check, EnvelopeSimple, Phone, User } from 'phosphor-react-native'
 import ScreenContainer from '../components/ScreenContainer'
 import { useAuth } from '../context/AuthContext'
 import { getSupabaseClient } from '../lib/supabase'
@@ -18,22 +16,52 @@ import { RootStackParamList } from '../navigation/types'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
-// ── E-posta değişim modal ─────────────────────────────────────────────────────
+/**
+ * Kişisel Bilgiler.
+ *
+ * 08.10.2026 — üç ayrı sorun birden kapatıldı:
+ *
+ * 1. AD SOYAD YANLIŞ KOLONA YAZILIYORDU. Bu ekran yalnız `full_name` okuyup
+ *    yazıyordu; kayıt akışı ve CheckoutScreen ise `first_name`/`last_name`
+ *    dolduruyor. Canlıda 640 profilin yalnız 59'unda full_name var, 367'sinde
+ *    first_name. Yani çoğu müşteri bu ekranı açtığında adını BOŞ görüyor,
+ *    yazıp kaydediyor, Checkout'ta eski ad çıkmaya devam ediyor — "güncellenmiyor"
+ *    şikâyeti buradan. Artık okurken full_name yoksa first+last'tan türetiyoruz,
+ *    yazarken üçünü birden güncelliyoruz (CheckoutScreen'deki bölme kuralının aynısı).
+ *
+ * 2. TELEFON WHATSAPP OTP İSTİYORDU. Supabase Phone Auth hiç yapılandırılmamış:
+ *    645 kullanıcının HİÇBİRİNDE auth.users.phone dolu değil, doğrulanmış telefon 0.
+ *    Yani akış hiç çalışmadı. Üretimde "OTP gönderilemedi" verip telefonu hiç
+ *    kaydetmiyordu. OTP tamamen kaldırıldı; telefon artık ad soyadla aynı
+ *    düğmeden, düz güncelleme ile kaydediliyor.
+ *
+ * 3. E-POSTA ONAY BAĞLANTISI UYGULAMAYA DÖNMÜYORDU. updateUser'a emailRedirectTo
+ *    verilmediği için bağlantı projenin Site URL'ine düşüyordu. Artık
+ *    kcal://auth-callback'e dönüyor ve AuthContext'teki dinleyici oturumu
+ *    tazeleyip yeni e-postayı uyguluyor.
+ */
+
+// ── E-posta değişimi — tek yer, onay gerektiren tek alan ─────────────────────
 function EmailChangeSection({ currentEmail }: { currentEmail: string }) {
-  const { user } = useAuth()
-  const [editing,   setEditing]   = useState(false)
-  const [newEmail,  setNewEmail]  = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [sent,      setSent]      = useState(false)
+  const [editing,  setEditing]  = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [sent,     setSent]     = useState(false)
 
   const handleSend = async () => {
     const email = newEmail.trim().toLowerCase()
-    if (!email.includes('@')) { Alert.alert('Geçersiz e-posta adresi.'); return }
-    if (email === currentEmail) { Alert.alert('Yeni e-posta mevcut e-postayla aynı.'); return }
+    if (!email.includes('@') || email.length < 5) {
+      Alert.alert('Geçersiz e-posta', 'Lütfen geçerli bir e-posta adresi girin.'); return
+    }
+    if (email === currentEmail.trim().toLowerCase()) {
+      Alert.alert('Aynı adres', 'Yeni e-posta mevcut e-postayla aynı.'); return
+    }
     setLoading(true)
     try {
-      const supabase = getSupabaseClient()
-      const { error } = await supabase.auth.updateUser({ email })
+      const { error } = await getSupabaseClient().auth.updateUser(
+        { email },
+        { emailRedirectTo: Linking.createURL('auth-callback') },
+      )
       if (error) throw error
       setSent(true)
     } catch (e: any) {
@@ -46,54 +74,32 @@ function EmailChangeSection({ currentEmail }: { currentEmail: string }) {
   if (sent) {
     return (
       <View style={s.fieldCard}>
-        <View style={s.fieldIcon}><EnvelopeSimple size={18} color="#16a34a" /></View>
+        <View style={s.fieldIcon}><EnvelopeSimple size={18} color={COLORS.brand.green} /></View>
         <View style={s.fieldBody}>
           <Text style={s.fieldLabel}>E-posta</Text>
-          <Text style={[s.fieldReadOnly, { color: '#16a34a' }]}>Doğrulama e-postası gönderildi!</Text>
+          <Text style={[s.fieldReadOnly, { color: COLORS.brand.green }]}>Doğrulama e-postası gönderildi</Text>
           <Text style={s.fieldHint}>
-            {newEmail} adresine doğrulama bağlantısı gönderildi. Bağlantıya tıkladıktan sonra e-postanız değişecektir.
+            {newEmail} adresine bir bağlantı gönderdik. Bağlantıya tıkladığında
+            e-postan değişecek ve uygulamaya geri döneceksin.
           </Text>
           <TouchableOpacity onPress={() => { setSent(false); setEditing(false); setNewEmail('') }}>
-            <Text style={[s.fieldHint, { color: COLORS.brand.green, marginTop: SPACING.xs }]}>Geri Dön</Text>
+            <Text style={s.linkText}>Geri dön</Text>
           </TouchableOpacity>
         </View>
       </View>
     )
   }
 
-  if (editing) {
+  if (!editing) {
     return (
       <View style={s.fieldCard}>
         <View style={s.fieldIcon}><EnvelopeSimple size={18} color={COLORS.text.secondary} /></View>
         <View style={s.fieldBody}>
-          <Text style={s.fieldLabel}>Yeni E-posta</Text>
-          <TextInput
-            style={s.fieldInput}
-            value={newEmail}
-            onChangeText={setNewEmail}
-            placeholder="yeni@eposta.com"
-            placeholderTextColor={COLORS.text.disabled}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus
-          />
-          <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm }}>
-            <TouchableOpacity
-              style={[s.miniBtn, { backgroundColor: COLORS.brand.green }]}
-              onPress={handleSend}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading
-                ? <ActivityIndicator size="small" color="#000" />
-                : <Text style={[s.miniBtnText, { color: COLORS.text.primary }]}>Doğrulama Gönder</Text>
-              }
-            </TouchableOpacity>
-            <TouchableOpacity style={s.miniBtn} onPress={() => { setEditing(false); setNewEmail('') }} activeOpacity={0.8}>
-              <X size={14} color={COLORS.text.secondary} />
-            </TouchableOpacity>
-          </View>
+          <Text style={s.fieldLabel}>E-posta</Text>
+          <Text style={s.fieldReadOnly}>{currentEmail || '—'}</Text>
+          <TouchableOpacity onPress={() => setEditing(true)}>
+            <Text style={s.linkText}>Değiştir</Text>
+          </TouchableOpacity>
         </View>
       </View>
     )
@@ -103,164 +109,33 @@ function EmailChangeSection({ currentEmail }: { currentEmail: string }) {
     <View style={s.fieldCard}>
       <View style={s.fieldIcon}><EnvelopeSimple size={18} color={COLORS.text.secondary} /></View>
       <View style={s.fieldBody}>
-        <Text style={s.fieldLabel}>E-posta</Text>
-        <Text style={s.fieldReadOnly}>{currentEmail}</Text>
-      </View>
-      <TouchableOpacity onPress={() => setEditing(true)} style={s.editIconBtn} activeOpacity={0.7}>
-        <PencilSimple size={16} color={COLORS.text.tertiary} />
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-// ── Telefon OTP modal ─────────────────────────────────────────────────────────
-function PhoneChangeSection({ currentPhone, onSaved }: { currentPhone: string; onSaved: (p: string) => void }) {
-  const { user } = useAuth()
-  const [editing,   setEditing]   = useState(false)
-  const [step,      setStep]      = useState<'input' | 'otp'>('input')
-  const [newPhone,  setNewPhone]  = useState('')
-  const [otp,       setOtp]       = useState('')
-  const [loading,   setLoading]   = useState(false)
-
-  // OTP gönder — Supabase SMS / mock
-  const handleSendOtp = async () => {
-    const phone = newPhone.trim().replace(/\s/g, '')
-    if (phone.length < 10) { Alert.alert('Geçerli bir telefon numarası girin.'); return }
-    setLoading(true)
-    try {
-      const supabase = getSupabaseClient()
-      // Supabase phone OTP (SMS / WhatsApp via Twilio)
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phone.startsWith('+') ? phone : `+90${phone.replace(/^0/, '')}`,
-      })
-      if (error) throw error
-      setStep('otp')
-    } catch (e: any) {
-      // Supabase phone auth aktif değilse profil direkt güncelle (geliştirme modu)
-      if (__DEV__) {
-        Alert.alert('Test Modu', 'Supabase Phone Auth aktif değil. Telefon kaydediliyor.')
-        await savePhone(newPhone)
-      } else {
-        Alert.alert('Hata', e?.message || 'OTP gönderilemedi.')
-      }
-    } finally {
-      setLoading(false) }
-  }
-
-  const handleVerifyOtp = async () => {
-    const phone = newPhone.trim().replace(/\s/g, '')
-    const formatted = phone.startsWith('+') ? phone : `+90${phone.replace(/^0/, '')}`
-    setLoading(true)
-    try {
-      const supabase = getSupabaseClient()
-      const { error } = await supabase.auth.verifyOtp({
-        phone: formatted, token: otp.trim(), type: 'sms',
-      })
-      if (error) throw error
-      await savePhone(newPhone)
-    } catch (e: any) {
-      Alert.alert('Hata', e?.message || 'Kod doğrulanamadı.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const savePhone = async (phone: string) => {
-    const supabase = getSupabaseClient()
-    await supabase.from('profiles').update({ phone: phone.trim() }).eq('id', user?.id)
-    onSaved(phone.trim())
-    setEditing(false); setStep('input'); setNewPhone(''); setOtp('')
-    Alert.alert('Başarılı', 'Telefon numarası güncellendi.')
-  }
-
-  if (!editing) {
-    return (
-      <View style={s.fieldCard}>
-        <View style={s.fieldIcon}><Phone size={18} color={COLORS.text.secondary} /></View>
-        <View style={s.fieldBody}>
-          <Text style={s.fieldLabel}>Telefon</Text>
-          <Text style={s.fieldReadOnly}>{currentPhone || 'Telefon eklenmemiş'}</Text>
-        </View>
-        <TouchableOpacity onPress={() => setEditing(true)} style={s.editIconBtn} activeOpacity={0.7}>
-          <PencilSimple size={16} color={COLORS.text.tertiary} />
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
-  if (step === 'input') {
-    return (
-      <View style={s.fieldCard}>
-        <View style={s.fieldIcon}><WhatsappLogo size={18} color="#25D366" /></View>
-        <View style={s.fieldBody}>
-          <Text style={s.fieldLabel}>Yeni Telefon</Text>
-          <TextInput
-            style={s.fieldInput}
-            value={newPhone}
-            onChangeText={setNewPhone}
-            placeholder="+90 5xx xxx xx xx"
-            placeholderTextColor={COLORS.text.disabled}
-            keyboardType="phone-pad"
-            autoFocus
-          />
-          <Text style={s.fieldHint}>WhatsApp üzerinden doğrulama kodu gönderilecektir.</Text>
-          <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm }}>
-            <TouchableOpacity
-              style={[s.miniBtn, { backgroundColor: '#25D366' }]}
-              onPress={handleSendOtp}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <>
-                    <WhatsappLogo size={14} color="#fff" />
-                    <Text style={[s.miniBtnText, { color: COLORS.white }]}>Kod Gönder</Text>
-                  </>
-              }
-            </TouchableOpacity>
-            <TouchableOpacity style={s.miniBtn} onPress={() => { setEditing(false); setNewPhone('') }} activeOpacity={0.8}>
-              <X size={14} color={COLORS.text.secondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    )
-  }
-
-  return (
-    <View style={s.fieldCard}>
-      <View style={s.fieldIcon}><WhatsappLogo size={18} color="#25D366" /></View>
-      <View style={s.fieldBody}>
-        <Text style={s.fieldLabel}>Doğrulama Kodu</Text>
-        <Text style={s.fieldHint}>{newPhone} numarasına WhatsApp kodu gönderildi.</Text>
+        <Text style={s.fieldLabel}>Yeni e-posta</Text>
         <TextInput
-          style={[s.fieldInput, { marginTop: SPACING.sm, letterSpacing: 6, fontSize: TYPOGRAPHY.size['2xl'], fontFamily: 'PlusJakartaSans_800ExtraBold'}]}
-          value={otp}
-          onChangeText={setOtp}
-          placeholder="000000"
+          style={s.fieldInput}
+          value={newEmail}
+          onChangeText={setNewEmail}
+          placeholder="ornek@eposta.com"
           placeholderTextColor={COLORS.text.disabled}
-          keyboardType="number-pad"
-          maxLength={6}
-          autoFocus
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-        <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm }}>
+        <Text style={s.fieldHint}>
+          Güvenlik gereği yalnızca e-posta değişikliği onay gerektirir.
+        </Text>
+        <View style={s.rowBtns}>
           <TouchableOpacity
-            style={[s.miniBtn, { backgroundColor: COLORS.brand.green }]}
-            onPress={handleVerifyOtp}
-            disabled={loading || otp.length < 6}
+            style={[s.smallBtn, loading && { opacity: 0.5 }]}
+            onPress={handleSend}
+            disabled={loading}
             activeOpacity={0.85}
           >
             {loading
               ? <ActivityIndicator size="small" color="#000" />
-              : <>
-                  <Check size={14} color="#000" weight="bold" />
-                  <Text style={[s.miniBtnText, { color: COLORS.text.primary }]}>Doğrula</Text>
-                </>
-            }
+              : <Text style={s.smallBtnText}>Onay gönder</Text>}
           </TouchableOpacity>
-          <TouchableOpacity style={s.miniBtn} onPress={() => setStep('input')} activeOpacity={0.8}>
-            <Text style={[s.miniBtnText, { color: COLORS.text.tertiary }]}>Geri</Text>
+          <TouchableOpacity onPress={() => { setEditing(false); setNewEmail('') }}>
+            <Text style={s.linkText}>Vazgeç</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -268,7 +143,7 @@ function PhoneChangeSection({ currentPhone, onSaved }: { currentPhone: string; o
   )
 }
 
-// ── Ana ekran ─────────────────────────────────────────────────────────────────
+// ── Ana ekran ────────────────────────────────────────────────────────────────
 export default function PersonalInfoScreen() {
   const navigation = useNavigation<Nav>()
   const insets     = useSafeAreaInsets()
@@ -285,36 +160,58 @@ export default function PersonalInfoScreen() {
     if (!user?.id) return
     setEmail(user.email || '')
     supabase.from('profiles')
-      .select('full_name, phone')
+      .select('full_name, first_name, last_name, phone')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) { setFullName(data.full_name || ''); setPhone(data.phone || '') }
+        if (data) {
+          // AddressesScreen/CheckoutScreen ile AYNI okuma kuralı: full_name
+          // boşsa first+last'tan türet. Aksi halde adı olan müşteri bu ekranı
+          // boş görüyordu.
+          const ad =
+            String(data.full_name || '').trim() ||
+            [data.first_name, data.last_name].filter(Boolean).join(' ').trim()
+          setFullName(ad)
+          setPhone(String(data.phone || '').trim())
+        }
         setLoading(false)
       })
-    // Profil bir kez, kullanıcı KİMLİĞİ değişince okunur; user.email yalnız
-    // ilk doldurma için. supabase modül seviyesinde sabit.
+    // Profil bir kez, kullanıcı KİMLİĞİ değişince okunur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   const handleSave = async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      Alert.alert('Oturum bulunamadı', 'Lütfen çıkış yapıp tekrar giriş yapın.')
+      return
+    }
+    const ad = fullName.trim()
+    const tel = phone.trim().replace(/\s/g, '')
+    if (ad.length < 2) { Alert.alert('Eksik bilgi', 'Lütfen ad soyad girin.'); return }
+    if (tel && tel.replace(/\D/g, '').length < 10) {
+      Alert.alert('Geçersiz telefon', 'Lütfen geçerli bir telefon numarası girin.'); return
+    }
+
     setSaving(true)
     try {
+      // CheckoutScreen'deki bölme kuralının aynısı — üç kolon da senkron kalsın.
+      const [first, ...rest] = ad.split(/\s+/).filter(Boolean)
       const { error } = await supabase.from('profiles').update({
-        full_name: fullName.trim(),
+        full_name: ad,
+        first_name: first || null,
+        last_name: rest.join(' ') || null,
+        phone: tel || null,
       }).eq('id', user.id)
       if (error) throw error
-      Alert.alert('Başarılı', 'Ad soyad güncellendi.')
+      Alert.alert('Kaydedildi', 'Bilgilerin güncellendi.')
       navigation.goBack()
     } catch (e: any) {
-      Alert.alert('Hata', e?.message || 'Güncelleme başarısız.')
+      Alert.alert('Kaydedilemedi', e?.message || 'Lütfen tekrar deneyin.')
     } finally { setSaving(false) }
   }
 
   return (
     <ScreenContainer style={s.root} edges={['top']}>
-      {/* Header — SecurityScreen ile aynı stil */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
           <CaretLeft size={22} color="#000" />
@@ -328,8 +225,7 @@ export default function PersonalInfoScreen() {
         >
           {saving
             ? <ActivityIndicator size="small" color="#000" />
-            : <Check size={18} color="#000" weight="bold" />
-          }
+            : <Check size={18} color="#000" weight="bold" />}
         </TouchableOpacity>
       </View>
 
@@ -342,7 +238,7 @@ export default function PersonalInfoScreen() {
             contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 40 }]}
             showsVerticalScrollIndicator={false}
           >
-            {/* Ad Soyad */}
+            {/* Ad Soyad — düz güncelleme */}
             <View style={s.fieldCard}>
               <View style={s.fieldIcon}><User size={18} color={COLORS.text.secondary} /></View>
               <View style={s.fieldBody}>
@@ -358,14 +254,26 @@ export default function PersonalInfoScreen() {
               </View>
             </View>
 
-            {/* E-posta — değiştirilebilir */}
-            <EmailChangeSection currentEmail={email} />
+            {/* Telefon — düz güncelleme, OTP yok */}
+            <View style={s.fieldCard}>
+              <View style={s.fieldIcon}><Phone size={18} color={COLORS.text.secondary} /></View>
+              <View style={s.fieldBody}>
+                <Text style={s.fieldLabel}>Telefon</Text>
+                <TextInput
+                  style={s.fieldInput}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="5XX XXX XX XX"
+                  placeholderTextColor={COLORS.text.disabled}
+                  keyboardType="phone-pad"
+                  maxLength={20}
+                />
+                <Text style={s.fieldHint}>Kurye seni bu numaradan arar.</Text>
+              </View>
+            </View>
 
-            {/* Telefon — WhatsApp OTP */}
-            <PhoneChangeSection
-              currentPhone={phone}
-              onSaved={(p) => setPhone(p)}
-            />
+            {/* E-posta — tek onay gerektiren alan */}
+            <EmailChangeSection currentEmail={email} />
 
             <TouchableOpacity
               style={[s.saveFullBtn, saving && { opacity: 0.6 }]}
@@ -375,8 +283,7 @@ export default function PersonalInfoScreen() {
             >
               {saving
                 ? <ActivityIndicator color="#000" />
-                : <Text style={s.saveFullBtnText}>Ad Soyadı Kaydet</Text>
-              }
+                : <Text style={s.saveFullBtnText}>Kaydet</Text>}
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -387,7 +294,6 @@ export default function PersonalInfoScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md,
@@ -396,48 +302,55 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: RADIUS.md,
     backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: TYPOGRAPHY.size.lg, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.primary },
+  headerTitle: {
+    fontSize: TYPOGRAPHY.size.lg, fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.primary, letterSpacing: -0.4,
+  },
   saveBtn: {
     width: 36, height: 36, borderRadius: RADIUS.md,
     backgroundColor: COLORS.brand.green, alignItems: 'center', justifyContent: 'center',
   },
-
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: SPACING.lg, gap: SPACING.md },
-
+  content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
   fieldCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md,
-    backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.lg,
-    ...SHADOWS.sm,
+    flexDirection: 'row', gap: SPACING.md,
+    backgroundColor: COLORS.white, borderRadius: 18,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+    padding: SPACING.lg, marginBottom: SPACING.md,
   },
-  fieldIcon: {
-    width: 36, height: 36, borderRadius: RADIUS.xs, backgroundColor: COLORS.background,
-    alignItems: 'center', justifyContent: 'center', marginTop: 2,
-  },
+  fieldIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
   fieldBody: { flex: 1 },
   fieldLabel: {
-    fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_700Bold', color: COLORS.text.tertiary,
-    marginBottom: SPACING.xs, textTransform: 'uppercase', letterSpacing: 0.5,
+    fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.text.secondary, marginBottom: 2,
   },
-  fieldInput: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_500Medium', color: COLORS.text.primary, paddingVertical: 0 },
-  fieldReadOnly: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_500Medium', color: '#555' },
-  fieldHint: { fontSize: TYPOGRAPHY.size.xs, color: COLORS.text.disabled, marginTop: SPACING.xs, lineHeight: 15 },
-
-  editIconBtn: {
-    width: 32, height: 32, borderRadius: RADIUS.xs, backgroundColor: COLORS.background,
-    alignItems: 'center', justifyContent: 'center',
+  fieldInput: {
+    fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.primary, paddingVertical: 4,
   },
-
-  miniBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: RADIUS.pill, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.background,
+  fieldReadOnly: {
+    fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.primary, paddingVertical: 4,
   },
-  miniBtnText: { fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_700Bold'},
-
+  fieldHint: {
+    fontSize: TYPOGRAPHY.size.xs, fontFamily: 'PlusJakartaSans_400Regular',
+    color: COLORS.text.tertiary, marginTop: 2, lineHeight: 15,
+  },
+  linkText: {
+    fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_700Bold',
+    color: COLORS.brand.green, marginTop: SPACING.xs,
+  },
+  rowBtns: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginTop: SPACING.sm },
+  smallBtn: {
+    backgroundColor: COLORS.brand.green, borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm,
+    alignItems: 'center', justifyContent: 'center', minWidth: 120,
+  },
+  smallBtnText: { fontSize: TYPOGRAPHY.size.sm, fontFamily: 'PlusJakartaSans_700Bold', color: '#000' },
   saveFullBtn: {
-    marginTop: SPACING.sm, backgroundColor: COLORS.brand.green, borderRadius: RADIUS.md,
-    paddingVertical: SPACING.lg, alignItems: 'center',
+    backgroundColor: COLORS.brand.green, borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.lg, alignItems: 'center', justifyContent: 'center',
+    marginTop: SPACING.sm,
   },
-  saveFullBtnText: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_800ExtraBold', color: COLORS.text.primary },
+  saveFullBtnText: { fontSize: TYPOGRAPHY.size.md, fontFamily: 'PlusJakartaSans_700Bold', color: '#000' },
 })
