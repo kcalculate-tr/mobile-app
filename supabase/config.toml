@@ -23,7 +23,10 @@ entrypoint = "./functions/payment-verify/index.ts"
 
 [functions.send-notification]
 enabled = true
-verify_jwt = false
+# 08.10.2026: false idi. Tek basina deligi kapatmaz (anon anahtar herkese
+# acik ve gecerli JWT sayilir) ama ikinci kat: token'siz istekler koda bile
+# ulasmaz. Asil kontrol index.ts'teki yetki kapisi.
+verify_jwt = true
 import_map = "./functions/send-notification/deno.json"
 entrypoint = "./functions/send-notification/index.ts"
 

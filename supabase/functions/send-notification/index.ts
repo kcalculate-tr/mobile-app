@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN') ?? null
 
 const corsHeaders = {
@@ -250,6 +251,47 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+  // ── Yetki kapisi ──────────────────────────────────────────────────────
+  // 08.10.2026: burada HICBIR kontrol yoktu ve verify_jwt = false idi.
+  // URL'i bilen herkes tum kullanicilara istedigi basligi, metni ve
+  // deep-link'i push'layabiliyordu.
+  //
+  // Iki mesru cagiran var:
+  //   1. Ic cagrilar — pg_cron (push-campaign-dispatcher), DB trigger'lari
+  //      (notify_order_status_change, trigger_behavioral_push) ve bu
+  //      fonksiyonun kendi dispatch_scheduled -> by_campaign cagrisi.
+  //      Hepsi service_role anahtarini Bearer olarak gonderiyor
+  //      (cron/trigger'lar vault'tan, ic cagri env'den).
+  //   2. Boss paneli — giris yapmis yoneticinin JWT'si (functions.invoke).
+  //      admin_allowlist'te olmasi sart.
+  // Mobil uygulama bu fonksiyonu hic cagirmiyor (grep: 0 sonuc).
+  const authHeader = req.headers.get('Authorization') ?? ''
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+  const icCagri = SERVICE_ROLE_KEY.length > 0 && token === SERVICE_ROLE_KEY
+
+  if (!icCagri) {
+    if (!token) return jsonResponse({ error: 'Oturum dogrulanamadi' }, 401)
+
+    const authedClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    })
+    const { data: { user }, error: authError } = await authedClient.auth.getUser()
+    if (authError || !user) return jsonResponse({ error: 'Oturum dogrulanamadi' }, 401)
+
+    // admin_allowlist teyidi (user_id, fallback email) — _shared/paynkolay-cards.ts
+    // icindeki isAllowlistedAdmin ile AYNI desen. O modul odeme tarafina ait
+    // oldugu icin buraya import etmiyoruz; dort satir yerinde duruyor.
+    const byId = await supabase
+      .from('admin_allowlist').select('id').eq('user_id', user.id).maybeSingle()
+    let yetkili = Boolean(byId.data)
+    if (!yetkili && user.email) {
+      const byEmail = await supabase
+        .from('admin_allowlist').select('id').eq('email', user.email).maybeSingle()
+      yetkili = Boolean(byEmail.data)
+    }
+    if (!yetkili) return jsonResponse({ error: 'Yetkin yok — yonetici izni gerekli' }, 403)
+  }
 
   try {
     const input: SendInput = await req.json()
