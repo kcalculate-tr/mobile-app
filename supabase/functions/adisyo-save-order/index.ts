@@ -46,14 +46,19 @@ const GLOBAL_ADISYO_CREDS: AdisyoCreds = {
 // kimlik bilgisine hazır. branches.adisyo_config doluysa (örn.
 // { apiKey, apiSecret, apiConsumer }) onu kullanır; boşsa (bugünkü durum,
 // TÜM şubeler için) global secret'lara düşer.
-function resolveAdisyoCreds(adisyoConfig: unknown): AdisyoCreds {
+/** Subenin KENDI Adisyo kimligi; tanimli degilse null (global'e DUSMEZ). */
+function resolveBranchAdisyoCreds(adisyoConfig: unknown): AdisyoCreds | null {
   if (adisyoConfig && typeof adisyoConfig === "object") {
     const cfg = adisyoConfig as Partial<AdisyoCreds>;
     if (cfg.apiKey && cfg.apiSecret && cfg.apiConsumer) {
       return { apiKey: cfg.apiKey, apiSecret: cfg.apiSecret, apiConsumer: cfg.apiConsumer };
     }
   }
-  return GLOBAL_ADISYO_CREDS;
+  return null;
+}
+
+function resolveAdisyoCreds(adisyoConfig: unknown): AdisyoCreds {
+  return resolveBranchAdisyoCreds(adisyoConfig) ?? GLOBAL_ADISYO_CREDS;
 }
 
 const ADISYO_BASE = "https://ext.adisyo.com/api/External/v2";
@@ -231,7 +236,29 @@ serve(async (req) => {
       .eq("id", dbOrder.branch_id)
       .maybeSingle();
     if (branchRow) {
-      adisyoCreds = resolveAdisyoCreds(branchRow.adisyo_config);
+      // 12.10.2026: ONCEDEN kendi adisyo_config'i olmayan HER sube global
+      // kimlik bilgilerine dusuyordu. Global hesap merkezin (Basin Sitesi)
+      // hesabi — yani Bayrakli siparisleri de oraya yaziliyor, iki mutfak da
+      // hepsini goruyordu. Tek ayrim not'un basindaki etiketti; web panelleri
+      // dogru ayrilmisken Adisyo ayrilmamisti.
+      //
+      // Artik merkez OLMAYAN bir subenin KENDI adisyo_config'i yoksa o siparis
+      // Adisyo'ya HIC yazilmaz -> 'skipped'. ('failed' DEGIL: adisyo-retry-failed
+      // cron'u yalnizca failed satirlari tekrar deniyor, skipped dokunulmaz kalir.)
+      // Sube kendi hesabiyla acilmaya hazir oldugunda branches.adisyo_config
+      // doldurulur; bu kod degismeden o hesaba yazmaya baslar.
+      const subeKimligi = resolveBranchAdisyoCreds(branchRow.adisyo_config);
+      if (!branchRow.is_default && !subeKimligi) {
+        await supabase.from("orders").update({
+          adisyo_sync_status: "skipped",
+          adisyo_sync_error: null,
+        }).eq("id", orderId);
+        await logEvent(supabase, orderId, "info", { branch: branchRow.name }, null, null,
+          `adisyo_skipped: ${branchRow.name} subesinin kendi Adisyo hesabi tanimli degil — merkez hesabina YAZILMADI`,
+          null);
+        return json({ skipped: true, reason: "branch_without_adisyo_config", branch: branchRow.name }, 200);
+      }
+      adisyoCreds = subeKimligi ?? GLOBAL_ADISYO_CREDS;
       if (!branchRow.is_default && branchRow.name) {
         branchTag = `[${String(branchRow.name).toLocaleUpperCase("tr-TR")}]`;
       }

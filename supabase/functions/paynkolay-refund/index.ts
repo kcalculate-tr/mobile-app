@@ -213,8 +213,15 @@ Deno.serve(async (req: Request) => {
         ? { ...(result.raw as Record<string, unknown>) }
         : { raw: result.raw }
     // Denemeler (tip/kod/HTTP) audit'e eklenir — secret/sx/hash YOK.
+    // 12.10.2026: `message` eksikti. Aynı gün iade denemesinde ÖNCE cancel, sonra
+    // refund çalışıyor; audit'e yalnız son denemenin ham yanıtı (`raw`) yazıldığı
+    // için cancel'ın NEDEN reddedildiği hiçbir yere kaydedilmiyordu — elimizde
+    // sadece refund'ın "İade aynı gün yapılamaz" mesajı kalıyordu. Teşhis için
+    // her denemenin mesajı da saklanıyor (sanitizeErrorText'ten geçmiş;
+    // secret/sx/kart yok).
     providerJson.attempts = result.attempts.map((a) => ({
-      type: a.type, ok: a.ok, httpStatus: a.httpStatus, responseCode: a.responseCode, networkError: a.networkError,
+      type: a.type, ok: a.ok, httpStatus: a.httpStatus, responseCode: a.responseCode,
+      networkError: a.networkError, message: a.message,
     }))
 
     if (!isSuccess) {
