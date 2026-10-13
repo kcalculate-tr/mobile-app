@@ -101,6 +101,11 @@ export interface TgoPackage {
   totalPrice?: number
   totalDeliveryPrice?: number | null
   appName?: string
+  eta?: string
+  customerNote?: string
+  testPackage?: boolean
+  coupon?: { couponId?: string; description?: string; totalSellerAmount?: number; totalTrendyolAmount?: number } | null
+  promotions?: unknown[] | null
   packageStatus: TgoPackageStatus
   customer?: { id?: number; firstName?: string; lastName?: string; email?: string }
   payment?: { paymentType?: string; mealCard?: unknown; onDelivery?: { paymentType?: string } | null }
@@ -114,7 +119,13 @@ export interface TgoLine {
   unitSellingPrice?: number
   name?: string
   productId?: number
-  items?: { packageItemId: string; lineItemId?: number; isCancelled?: boolean }[]
+  items?: {
+    packageItemId: string
+    lineItemId?: number
+    isCancelled?: boolean
+    coupon?: unknown
+    promotions?: unknown[]
+  }[]
   modifierProducts?: { name?: string; price?: number; modifierProducts?: unknown[] }[]
 }
 

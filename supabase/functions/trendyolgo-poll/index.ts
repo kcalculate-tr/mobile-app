@@ -127,22 +127,89 @@ function satirlariCevir(lines: TgoLine[] | undefined) {
   })
 }
 
+// Trendyol'un maskeleme yer tutucuları — adres metnine yazılmamalı.
+const YER_TUTUCULAR = new Set(['TGO Yemek', 'Trendyol Yemek', 'TGO YEMEK', '-', ''])
+
+function gercek(v: unknown): string {
+  const t = String(v ?? '').trim()
+  return YER_TUTUCULAR.has(t) ? '' : t
+}
+
 function adresMetni(pkg: TgoPackage): string {
-  const a = (pkg.address ?? {}) as Record<string, string | undefined>
+  const a = (pkg.address ?? {}) as Record<string, unknown>
   // Model 1'de gerçek adres address1 içinde; PARSE ETME, tek metin olarak kullan.
-  const parcalar = [a.address1, a.address2, a.neighborhood, a.district, a.city]
-    .map((p) => String(p ?? '').trim())
-    .filter((p) => p && p !== 'TGO Yemek' && p !== 'Trendyol Yemek')
+  const bina: string[] = []
+  const apt = gercek(a.apartmentNumber)
+  const kat = gercek(a.floor)
+  const kapi = gercek(a.doorNumber)
+  if (apt) bina.push(`Apt ${apt}`)
+  if (kat) bina.push(`Kat ${kat}`)
+  if (kapi) bina.push(`Daire ${kapi}`)
+
+  const parcalar = [
+    gercek(a.address1),
+    gercek(a.address2),
+    bina.join(' '),
+    gercek(a.neighborhood),
+    gercek(a.district),
+    gercek(a.city),
+  ].filter(Boolean)
   return parcalar.join(', ')
 }
 
-function odemeNotu(pkg: TgoPackage): string {
-  const tip = String(pkg.payment?.paymentType ?? '')
-  if (tip === 'PAY_WITH_ON_DELIVERY') {
-    const alt = String(pkg.payment?.onDelivery?.paymentType ?? '')
-    return `KAPIDA ÖDEME${alt ? ` (${alt})` : ''} — kuryenin tahsil etmesi gerekiyor`
+interface TutarKirilimi {
+  brut: number
+  indirim: number
+  net: number
+}
+
+/**
+ * MÜŞTERİNİN ÖDEDİĞİ TUTAR — kuryenin kapıda tahsil edeceği rakam budur.
+ *
+ * `totalPrice` indirimsiz BRÜT tutardır. Kupon ve promosyonlar hem paket
+ * düzeyinde (`coupon.totalSellerAmount`) hem satır düzeyinde
+ * (`lines[].items[].coupon.amount`) dönebiliyor. Satır düzeyi daha güvenilir:
+ * iptal edilen kalemin indirimi de düşülmemeli.
+ *
+ * `amount.total` doluysa onu kullan; değilse seller + trendyol paylarını topla
+ * (ikisini birden sayıp indirimi iki katına çıkarmamak için).
+ */
+function tutarlariCikar(pkg: TgoPackage): TutarKirilimi {
+  const brut = Number(pkg.totalPrice ?? 0)
+
+  const payTopla = (kaynak: unknown): number => {
+    if (!kaynak || typeof kaynak !== 'object') return 0
+    const amount = (kaynak as { amount?: Record<string, unknown> }).amount
+    if (!amount || typeof amount !== 'object') return 0
+    const toplam = Number(amount.total ?? NaN)
+    if (Number.isFinite(toplam) && toplam > 0) return toplam
+    const satici = Number(amount.seller ?? 0)
+    const trendyol = Number(amount.trendyol ?? 0)
+    return (Number.isFinite(satici) ? satici : 0) + (Number.isFinite(trendyol) ? trendyol : 0)
   }
-  return 'Trendyol üzerinden ödendi'
+
+  let indirim = 0
+  for (const line of pkg.lines ?? []) {
+    for (const it of line.items ?? []) {
+      if (it?.isCancelled) continue
+      const kalem = it as unknown as { coupon?: unknown; promotions?: unknown[] }
+      indirim += payTopla(kalem.coupon)
+      for (const promo of kalem.promotions ?? []) indirim += payTopla(promo)
+    }
+  }
+
+  // Satır düzeyinde bulunamadıysa paket düzeyine düş.
+  if (indirim === 0) {
+    const kupon = pkg.coupon as { totalSellerAmount?: number; totalTrendyolAmount?: number } | undefined
+    if (kupon) {
+      indirim += Number(kupon.totalSellerAmount ?? 0) + Number(kupon.totalTrendyolAmount ?? 0)
+    }
+    for (const promo of (pkg.promotions as unknown[] | null) ?? []) indirim += payTopla(promo)
+  }
+
+  if (!Number.isFinite(indirim) || indirim < 0) indirim = 0
+  const net = Math.max(0, Number((brut - indirim).toFixed(2)))
+  return { brut, indirim: Number(indirim.toFixed(2)), net }
 }
 
 function pakettenSiparis(pkg: TgoPackage, row: MagazaSatiri) {
@@ -151,22 +218,36 @@ function pakettenSiparis(pkg: TgoPackage, row: MagazaSatiri) {
     .map((p) => String(p ?? '').trim())
     .filter(Boolean)
     .join(' ')
-  const a = (pkg.address ?? {}) as Record<string, string | undefined>
-  const toplam = Number(pkg.totalPrice ?? 0)
+  const a = (pkg.address ?? {}) as Record<string, unknown>
+  const tutar = tutarlariCikar(pkg)
   const markaEtiketi = row.brand.toLocaleUpperCase('tr-TR')
+  const kisaKod = String(pkg.orderCode ?? '').trim()
+  const uzunKod = String(pkg.orderNumber ?? pkg.orderCode ?? pkg.id).trim()
+  const musteriNotu = String((pkg as Record<string, unknown>).customerNote ?? '').trim()
+  const testMi = (pkg as Record<string, unknown>).testPackage === true
+
+  // Kuryenin kapıda tahsil edeceği rakam NET tutardır. Brüt yazarsak kurye
+  // müşteriden fazla para ister.
+  const odemeNotu = (() => {
+    const tip = String(pkg.payment?.paymentType ?? '')
+    if (tip === 'PAY_WITH_ON_DELIVERY') {
+      const alt = String(pkg.payment?.onDelivery?.paymentType ?? '')
+      return `KAPIDA ÖDEME${alt ? ` (${alt})` : ''} — KURYE ${tutar.net.toFixed(2)} TL TAHSİL EDECEK`
+    }
+    return 'Trendyol üzerinden ödendi'
+  })()
 
   return {
     source: 'trendyolgo',
     external_order_id: String(pkg.id),
-    external_code: String(pkg.orderNumber ?? pkg.orderCode ?? pkg.id).trim(),
+    external_code: uzunKod,
     external_store_id: String(row.store_id),
     external_status: String(pkg.packageStatus),
     external_payload: pkg as unknown as Record<string, unknown>,
     branch_id: row.branch_id,
     status: STATU_ESLEME[pkg.packageStatus] ?? 'pending',
     // Trendyol tahsilatı kendi yapıyor; mutfak panelinin "ödenmemiş sipariş
-    // kabul edilemez" kontrolünden geçmesi için paid işaretliyoruz. Kapıda
-    // ödemeyse not alanında kuryeye uyarı var.
+    // kabul edilemez" kontrolünden geçmesi için paid işaretliyoruz.
     payment_status: 'paid',
     payment_method: 'trendyolgo',
     payment_provider: 'trendyolgo',
@@ -175,24 +256,35 @@ function pakettenSiparis(pkg: TgoPackage, row: MagazaSatiri) {
     customer_email: null,
     phone: String(a.phone ?? '').trim() || null,
     address: adresMetni(pkg) || 'Trendyol GO',
-    city: String(a.city ?? '').trim() || null,
-    district: String(a.district ?? '').trim() || null,
-    neighbourhood: String(a.neighborhood ?? '').trim() || null,
+    city: gercek(a.city) || null,
+    district: gercek(a.district) || null,
+    neighbourhood: gercek(a.neighborhood) || null,
     items: kalemler,
-    total_price: toplam,
-    total_amount: toplam,
-    subtotal_amount: toplam,
+    // NET = müşterinin ödediği. Brüt ve indirim ayrı alanlarda duruyor ki
+    // muhasebe tarafında satıcı indirim yükü kaybolmasın.
+    total_price: tutar.net,
+    total_amount: tutar.net,
+    subtotal_amount: tutar.brut,
+    discount_amount: tutar.indirim,
     delivery_fee: Number(pkg.totalDeliveryPrice ?? 0),
     delivery_method: pkg.storePickupSelected ? 'pickup' : 'delivery',
     delivery_type: 'immediate',
     delivery_time_type: 'immediate',
-    order_code: `TGO-${markaEtiketi}-${String(pkg.orderNumber ?? pkg.orderCode ?? '').trim()}`,
+    // Trendyol'un kendi panelinde görünen kısa günlük kod (ör. 005) —
+    // mutfağın iki ekranı eşleştirmesi bununla oluyor.
+    order_code: `TGO-${kisaKod || uzunKod}`,
     note: [
+      testMi ? '*** TEST SİPARİŞİ ***' : '',
       `[TRENDYOL GO · ${markaEtiketi}]`,
-      odemeNotu(pkg),
+      musteriNotu ? `MÜŞTERİ NOTU: ${musteriNotu}` : '',
+      odemeNotu,
+      tutar.indirim > 0
+        ? `Brüt ${tutar.brut.toFixed(2)} TL · indirim ${tutar.indirim.toFixed(2)} TL (satıcı)`
+        : '',
       pkg.storePickupSelected ? 'GEL-AL SİPARİŞ' : '',
-      String(a.addressDescription ?? '').trim(),
+      gercek(a.addressDescription),
       a.pinCode ? `PIN: ${a.pinCode}` : '',
+      pkg.eta ? `Trendyol ETA: ${pkg.eta}` : '',
     ].filter(Boolean).join(' · '),
     updated_at: new Date().toISOString(),
   }
@@ -297,6 +389,9 @@ async function magazayiIsle(supabase: SupabaseClient, row: MagazaSatiri) {
         external_payload: satir.external_payload,
         total_price: satir.total_price,
         total_amount: satir.total_amount,
+        subtotal_amount: satir.subtotal_amount,
+        discount_amount: satir.discount_amount,
+        note: satir.note,
         updated_at: satir.updated_at,
       }
       if (durumIlerledi(String(satir.status), mevcut.status)) {

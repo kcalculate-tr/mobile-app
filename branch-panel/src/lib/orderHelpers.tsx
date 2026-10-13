@@ -141,6 +141,23 @@ export function AddressBlock({ order }: { order: Order }) {
 
   if (!rec && !fallbackText && !contactPhone) return null
 
+  // Pazaryeri siparişlerinde (Trendyol GO vb.) address_record HİÇ olmaz —
+  // adres dış sistemden tek metin olarak gelir. Bu normal, "eski format"
+  // uyarısı göstermek yanlış alarm.
+  if (!rec && fallbackText && order.source && order.source !== 'app') {
+    return (
+      <div className="mx-4 mb-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+        {contactPhone ? (
+          <a href={`tel:${contactPhone}`} className="mb-1 block text-base font-bold text-blue-600">
+            📞 {contactPhone}
+          </a>
+        ) : null}
+        <p className="text-sm font-medium leading-snug text-brand-dark">{fallbackText}</p>
+        {contactName ? <p className="mt-1 text-xs text-slate-400">👤 {contactName}</p> : null}
+      </div>
+    )
+  }
+
   // address_record yok ama orders.address text var → uyarılı legacy bloğu
   if (!rec && fallbackText) {
     return (
