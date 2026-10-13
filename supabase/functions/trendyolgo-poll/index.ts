@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import {
   fetchPackages,
+  pickPackage,
   TgoCreds,
   TgoPackage,
   TgoLine,
@@ -60,6 +61,8 @@ interface MagazaSatiri {
   branch_id: string
   secret_prefix: string
   last_polled_at: string | null
+  auto_accept: boolean
+  preparation_time_min: number
 }
 
 function credsFor(row: MagazaSatiri): TgoCreds | null {
@@ -84,6 +87,24 @@ const STATU_ESLEME: Record<string, string> = {
   Delivered: 'delivered',
   Cancelled: 'cancelled',
   UnSupplied: 'cancelled',
+}
+
+// Yerel durumun "ilerilik" sırası. Poll, bizim durumumuzu GERİ ALMAZ:
+// panelde "Kuryeye Ver" denmiş bir siparişi, Trendyol henüz Invoiced
+// gösteriyor diye preparing'e düşürmek siparişi mutfakta kaybettirir.
+const DURUM_RUTBESI: Record<string, number> = {
+  pending: 0,
+  confirmed: 1,
+  preparing: 2,
+  on_way: 3,
+  delivered: 4,
+}
+
+function durumIlerledi(uzak: string, yerel: string | null): boolean {
+  if (uzak === 'cancelled') return true           // iptal her zaman geçerli
+  if (!yerel) return true
+  if (yerel === 'cancelled') return false         // iptal edilmişi geri açma
+  return (DURUM_RUTBESI[uzak] ?? 0) > (DURUM_RUTBESI[yerel] ?? 0)
 }
 
 function satirlariCevir(lines: TgoLine[] | undefined) {
@@ -180,7 +201,7 @@ function pakettenSiparis(pkg: TgoPackage, row: MagazaSatiri) {
 async function magazayiIsle(supabase: SupabaseClient, row: MagazaSatiri) {
   const creds = credsFor(row)
   if (!creds) {
-    return { store: row.store_id, brand: row.brand, error: 'secret_eksik', yazilan: 0 }
+    return { store: row.store_id, brand: row.brand, error: 'secret_eksik', yeni: 0, guncellenen: 0, kabul: 0 }
   }
 
   const simdi = Date.now()
@@ -188,8 +209,11 @@ async function magazayiIsle(supabase: SupabaseClient, row: MagazaSatiri) {
     ? new Date(row.last_polled_at).getTime() - CAKISMA_MS
     : simdi - ILK_PENCERE_MS
 
-  let yazilan = 0
+  let yeni = 0
+  let guncellenen = 0
+  let kabul = 0
   let hata: string | null = null
+  const paketler: TgoPackage[] = []
 
   for (let sayfa = 0; sayfa < MAX_SAYFA; sayfa++) {
     const sonuc = await fetchPackages(creds, {
@@ -206,23 +230,86 @@ async function magazayiIsle(supabase: SupabaseClient, row: MagazaSatiri) {
       break
     }
 
-    const paketler = sonuc.body?.content ?? []
-    for (const pkg of paketler) {
-      const satir = pakettenSiparis(pkg, row)
-      // Çakışma anahtarı (source, external_order_id) — poll tekrar ederse
-      // sipariş ikinci kez yazılmaz, mevcut kayıt güncellenir.
-      const { error } = await supabase
-        .from('orders')
-        .upsert(satir, { onConflict: 'source,external_order_id' })
-      if (error) {
-        hata = `upsert(${pkg.id}): ${error.message}`
-      } else {
-        yazilan++
-      }
-    }
-
+    paketler.push(...(sonuc.body?.content ?? []))
     const toplamSayfa = sonuc.body?.totalPages ?? 1
     if (sayfa + 1 >= toplamSayfa) break
+  }
+
+  if (paketler.length > 0) {
+    // Mevcut kayıtları tek sorguda al — durumu geri almamak için gerekli.
+    const idler = paketler.map((p) => String(p.id))
+    const { data: mevcutlar } = await supabase
+      .from('orders')
+      .select('id, external_order_id, status')
+      .eq('source', 'trendyolgo')
+      .in('external_order_id', idler)
+
+    const mevcutHarita = new Map<string, { id: number; status: string | null }>()
+    for (const m of (mevcutlar ?? []) as { id: number; external_order_id: string; status: string | null }[]) {
+      mevcutHarita.set(String(m.external_order_id), { id: m.id, status: m.status })
+    }
+
+    for (const pkg of paketler) {
+      const paketId = String(pkg.id)
+      const satir = pakettenSiparis(pkg, row)
+      const mevcut = mevcutHarita.get(paketId)
+
+      if (!mevcut) {
+        // YENİ SİPARİŞ
+        const { error } = await supabase.from('orders').insert(satir)
+        if (error) {
+          // Yarış durumu: aynı anda başka bir tur eklemiş olabilir — tekil
+          // indeks yakalar, bu bir hata değil.
+          if (!String(error.message).includes('duplicate key')) {
+            hata = `insert(${paketId}): ${error.message}`
+          }
+          continue
+        }
+        yeni++
+
+        // OTOMATİK KABUL — sipariş geldiği anda Trendyol'a picked gönder.
+        if (row.auto_accept && pkg.packageStatus === 'Created') {
+          const kabulSonuc = await pickPackage(creds, paketId, row.preparation_time_min)
+          if (kabulSonuc.ok) {
+            kabul++
+            await supabase.from('orders').update({
+              status: 'preparing',
+              external_status: 'Picking',
+              external_sync_status: 'success',
+              external_sync_error: null,
+              external_last_attempt_at: new Date().toISOString(),
+            }).eq('source', 'trendyolgo').eq('external_order_id', paketId)
+          } else {
+            await supabase.from('orders').update({
+              external_sync_status: 'failed',
+              external_sync_error:
+                `otomatik kabul basarisiz — HTTP ${kabulSonuc.status}: ${kabulSonuc.rawText.slice(0, 250)}`,
+              external_last_attempt_at: new Date().toISOString(),
+            }).eq('source', 'trendyolgo').eq('external_order_id', paketId)
+          }
+        }
+        continue
+      }
+
+      // MEVCUT SİPARİŞ — durumu YALNIZ ileri taşı.
+      const guncelleme: Record<string, unknown> = {
+        external_status: satir.external_status,
+        external_payload: satir.external_payload,
+        total_price: satir.total_price,
+        total_amount: satir.total_amount,
+        updated_at: satir.updated_at,
+      }
+      if (durumIlerledi(String(satir.status), mevcut.status)) {
+        guncelleme.status = satir.status
+      }
+
+      const { error } = await supabase.from('orders').update(guncelleme).eq('id', mevcut.id)
+      if (error) {
+        hata = `update(${paketId}): ${error.message}`
+      } else {
+        guncellenen++
+      }
+    }
   }
 
   await supabase
@@ -234,7 +321,7 @@ async function magazayiIsle(supabase: SupabaseClient, row: MagazaSatiri) {
     })
     .eq('id', row.id)
 
-  return { store: row.store_id, brand: row.brand, yazilan, error: hata }
+  return { store: row.store_id, brand: row.brand, yeni, guncellenen, kabul, error: hata }
 }
 
 Deno.serve(async (req: Request) => {
@@ -251,7 +338,7 @@ Deno.serve(async (req: Request) => {
 
   const { data, error } = await supabase
     .from('marketplace_stores')
-    .select('id, brand, supplier_id, store_id, branch_id, secret_prefix, last_polled_at')
+    .select('id, brand, supplier_id, store_id, branch_id, secret_prefix, last_polled_at, auto_accept, preparation_time_min')
     .eq('platform', 'trendyolgo')
     .eq('is_active', true)
 
@@ -266,7 +353,9 @@ Deno.serve(async (req: Request) => {
       sonuclar.push({
         store: row.store_id,
         brand: row.brand,
-        yazilan: 0,
+        yeni: 0,
+        guncellenen: 0,
+        kabul: 0,
         error: e instanceof Error ? e.message : String(e),
       })
     }
