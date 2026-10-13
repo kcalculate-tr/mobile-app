@@ -79,6 +79,12 @@ import {
 } from '../lib/delivery';
 import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvailableScheduledDates, formatTime, toLocalDateStr, BusinessHours } from '../lib/businessHours';
 import { fetchBranches, Branch } from '../lib/branches';
+import {
+  fetchBranchAvailability,
+  findClosedCartItemNames,
+  EMPTY_BRANCH_AVAILABILITY,
+  BranchAvailability,
+} from '../lib/branchAvailability';
 import { RootStackParamList } from '../navigation/types';
 import { useCartStore } from '../store/cartStore';
 import { getCardsFeatureStatus, syncSavedCards, SavedCard } from '../lib/cards';
@@ -381,6 +387,12 @@ export default function CheckoutScreen() {
   const subtotal = useCartStore((state) => state.getSubtotal());
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
+
+  // ŞUBE BAZLI STOK (13.10.2026): adres belli olunca o adresin düştüğü şubede
+  // kapalı olan ürünleri öğren; sepette varsa ödemeye geçmeden uyar.
+  const [branchAvailability, setBranchAvailability] = useState<BranchAvailability>(
+    EMPTY_BRANCH_AVAILABILITY,
+  );
 
   const [addr, dispatchAddr] = useReducer(addressReducer, addressInitial);
   const [delivery, dispatchDelivery] = useReducer(deliveryReducer, deliveryInitial);
@@ -1453,6 +1465,53 @@ export default function CheckoutScreen() {
     if (error) console.error('[Checkout] adres doğrulama güncellemesi başarısız:', error.message);
   };
 
+  useEffect(() => {
+    let mounted = true;
+
+    if (deliveryMethod !== 'home_delivery' || !selectedAddress?.district) {
+      setBranchAvailability(EMPTY_BRANCH_AVAILABILITY);
+      return;
+    }
+
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const sonuc = await fetchBranchAvailability(supabase, {
+          district: selectedAddress.district,
+          neighbourhood: selectedAddress.neighbourhood,
+          addressId: selectedAddress.id ?? null,
+        });
+        if (mounted) setBranchAvailability(sonuc);
+      } catch (error: unknown) {
+        // Stok bilgisi alınamazsa siparişi engellemeyiz — sunucudaki
+        // trg_orders_stock_guard_insert son savunma hattı olarak duruyor.
+        if (__DEV__) {
+          console.warn(`[checkout] branch availability error: ${formatSupabaseErrorForDevLog(error)}`);
+        }
+        if (mounted) setBranchAvailability(EMPTY_BRANCH_AVAILABILITY);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [
+    deliveryMethod,
+    selectedAddress?.id,
+    selectedAddress?.district,
+    selectedAddress?.neighbourhood,
+    rulesRefreshKey,
+  ]);
+
+  const kapaliSepetUrunleri = useMemo(
+    () =>
+      findClosedCartItemNames(
+        items.map((it) => ({ productId: it.productId, name: it.name })),
+        branchAvailability.closedProductIds,
+      ),
+    [items, branchAvailability.closedProductIds],
+  );
+
   const handleCreateOrder = async () => {
     dispatchOrder({ type: 'SET_SCREEN_ERROR', payload: '' });
     dispatchOrder({ type: 'SET_PAYMENT_NOTICE', payload: '' });
@@ -1468,6 +1527,20 @@ export default function CheckoutScreen() {
 
     if (!user) {
       navigation.replace('Login', { redirectTo: 'Checkout' });
+      return;
+    }
+
+    // ŞUBE BAZLI STOK: adresin düştüğü şubede kapatılmış ürün varsa ödemeye
+    // geçilmez. (Sunucuda trg_orders_stock_guard_insert de aynı kontrolü yapar.)
+    if (kapaliSepetUrunleri.length > 0) {
+      dispatchOrder({
+        type: 'SET_SCREEN_ERROR',
+        payload:
+          kapaliSepetUrunleri.length === 1
+            ? `"${kapaliSepetUrunleri[0]}" bu adrese hizmet veren şubede tükendi. Sepetten çıkarıp tekrar deneyin.`
+            : `Şu ürünler bu adrese hizmet veren şubede tükendi: ${kapaliSepetUrunleri.join(', ')}. Sepetten çıkarıp tekrar deneyin.`,
+      });
+      haptic.error();
       return;
     }
 
@@ -2204,6 +2277,18 @@ export default function CheckoutScreen() {
                 <ActivityIndicator color={COLORS.brand.green} style={{ marginVertical: SPACING.sm }} />
               ) : null}
               {addressError ? <Text style={styles.errorText}>{addressError}</Text> : null}
+              {kapaliSepetUrunleri.length > 0 ? (
+                <View style={styles.stokUyariKutu}>
+                  <Text style={styles.stokUyariBaslik}>
+                    {branchAvailability.branchName
+                      ? `${branchAvailability.branchName} şubesinde tükendi`
+                      : 'Bu bölgedeki şubede tükendi'}
+                  </Text>
+                  <Text style={styles.stokUyariMetin}>
+                    {kapaliSepetUrunleri.join(', ')} — sepetten çıkarın ya da farklı bir adres seçin.
+                  </Text>
+                </View>
+              ) : null}
               {!loadingAddresses && addresses.length === 0 ? (
                 <View style={{ gap: SPACING.sm }}>
                   <Text style={styles.noteText}>Kayıtlı adresiniz yok.</Text>
@@ -3266,6 +3351,26 @@ const styles = StyleSheet.create({
   // Footer
 
   // Feedback
+  stokUyariKutu: {
+    marginTop: SPACING.sm,
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 4,
+  },
+  stokUyariBaslik: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: TYPOGRAPHY.size.sm,
+    color: '#B91C1C',
+  },
+  stokUyariMetin: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: TYPOGRAPHY.size.sm,
+    color: '#B91C1C',
+    lineHeight: 18,
+  },
   errorText: {
     fontSize: TYPOGRAPHY.size.sm,
     color: '#dc2626',
