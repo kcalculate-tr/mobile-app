@@ -65,3 +65,71 @@ export const findClosedCartItemNames = (
   }
   return [...adlar];
 };
+
+// ─── Önbellekli erişim ───────────────────────────────────────────────────────
+// Katalog sorguları (anasayfa, kategori, marka sayfası) arka arkaya çalışıyor;
+// her biri için ayrı RPC atmayalım. 60 saniyelik bellek içi önbellek yeterli —
+// mutfak bir ürünü kapattığında müşteri en geç bir dakika içinde görmez olur.
+
+const ONBELLEK_SURESI_MS = 60 * 1000;
+
+let onbellek: { veri: BranchAvailability; zaman: number; anahtar: string } | null = null;
+let ucusta: Promise<BranchAvailability> | null = null;
+
+const adresAnahtari = (a: { id?: string | null; district?: string | null; neighbourhood?: string | null } | null) =>
+  a ? `${a.id ?? ''}|${a.district ?? ''}|${a.neighbourhood ?? ''}` : 'adressiz';
+
+/**
+ * Seçili adrese göre o şubede KAPALI olan ürün id'lerini döner.
+ *
+ * Adres yoksa şubeyi bilemeyiz; o durumda BOŞ döner, yani hiçbir ürün
+ * gizlenmez. Misafir kullanıcı her şeyi görür, adres seçtiği anda (ödeme
+ * adımında) sepeti düzeltilir. Yanlış ürün gizlemektense göstermek yeğdir.
+ */
+export const getClosedProductIds = async (force = false): Promise<BranchAvailability> => {
+  const { useAddressStore } = await import('../store/addressStore');
+  const adres = useAddressStore.getState().selectedAddress;
+  const anahtar = adresAnahtari(adres as never);
+
+  if (!adres?.district) {
+    onbellek = null;
+    return EMPTY_BRANCH_AVAILABILITY;
+  }
+
+  const simdi = Date.now();
+  if (
+    !force &&
+    onbellek &&
+    onbellek.anahtar === anahtar &&
+    simdi - onbellek.zaman < ONBELLEK_SURESI_MS
+  ) {
+    return onbellek.veri;
+  }
+
+  if (ucusta) return ucusta;
+
+  ucusta = (async () => {
+    try {
+      const { getSupabaseClient } = await import('./supabase');
+      const sonuc = await fetchBranchAvailability(getSupabaseClient(), {
+        district: adres.district,
+        neighbourhood: adres.neighbourhood,
+        addressId: adres.id ?? null,
+      });
+      onbellek = { veri: sonuc, zaman: Date.now(), anahtar };
+      return sonuc;
+    } catch {
+      // Sorgu patlarsa ürün GİZLEME — katalogun boşalması, bir ürünün fazladan
+      // görünmesinden çok daha kötü.
+      return onbellek?.anahtar === anahtar ? onbellek.veri : EMPTY_BRANCH_AVAILABILITY;
+    } finally {
+      ucusta = null;
+    }
+  })();
+
+  return ucusta;
+};
+
+export const invalidateBranchAvailability = () => {
+  onbellek = null;
+};

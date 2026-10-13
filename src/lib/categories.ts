@@ -1,5 +1,20 @@
 import { supabase } from './supabase';
 
+
+// ŞUBE BAZLI STOK: seçili adresin düştüğü şubede kapatılmış ürünler listelerden
+// çıkarılır. Adres yoksa şube bilinmez, hiçbir şey gizlenmez.
+const subeFiltresiUygula = async <T extends { id: number | string }>(urunler: T[]): Promise<T[]> => {
+  try {
+    const { getClosedProductIds } = await import('./branchAvailability');
+    const { closedProductIds } = await getClosedProductIds();
+    if (closedProductIds.length === 0) return urunler;
+    const kapali = new Set(closedProductIds);
+    return urunler.filter((u) => !kapali.has(Number(u.id)));
+  } catch {
+    return urunler;
+  }
+};
+
 export interface Category {
   id: number;
   name: string;
@@ -90,8 +105,8 @@ export async function fetchProductsByCategory(
 
     if (error) throw error;
 
-    return (data ?? []).map((row) =>
-      mapCategoryProductRow(row as Record<string, unknown>),
+    return subeFiltresiUygula(
+      (data ?? []).map((row) => mapCategoryProductRow(row as Record<string, unknown>)),
     );
   }
 
@@ -123,8 +138,8 @@ export async function fetchProductsByCategory(
 
   if (error) throw error;
 
-  return (data ?? []).map((row) =>
-    mapCategoryProductRow(row as Record<string, unknown>),
+  return subeFiltresiUygula(
+    (data ?? []).map((row) => mapCategoryProductRow(row as Record<string, unknown>)),
   );
 }
 
@@ -140,7 +155,7 @@ export async function fetchProductsByBrand(
 
   if (error) throw error;
 
-  return (data ?? []).map((row) =>
-    mapCategoryProductRow(row as Record<string, unknown>),
+  return subeFiltresiUygula(
+    (data ?? []).map((row) => mapCategoryProductRow(row as Record<string, unknown>)),
   );
 }

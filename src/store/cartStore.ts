@@ -168,6 +168,40 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => set({ items: [], appliedCoupon: null }),
 
+      // ŞUBE BAZLI STOK: mutfak ürünü kapattığında sepette duran kalem sessizce
+      // kalmamalı — ödeme anında anlamsız bir hataya dönüşüyordu. Burada
+      // çıkarılıyor, çağıran taraf kullanıcıya hangi ürünlerin düştüğünü söylüyor.
+      removeUnavailableItems: (closedProductIds: number[]) => {
+        if (!closedProductIds || closedProductIds.length === 0) return [];
+        const kapali = new Set(closedProductIds.map((id) => Number(id)));
+        const mevcut = get().items;
+        const dusenler = mevcut.filter((item) => kapali.has(Number(item.productId)));
+        if (dusenler.length === 0) return [];
+
+        // Parent düşerse ekstraları (child) da düşsün — removeItem ile aynı kural.
+        const dusenAnahtarlar = new Set(dusenler.map((i) => i.lineKey));
+        const kalan = mevcut.filter(
+          (item) =>
+            !dusenAnahtarlar.has(item.lineKey) &&
+            !(item.parentLineKey && dusenAnahtarlar.has(item.parentLineKey)),
+        );
+
+        // Kupon, o anki sepete göre hesaplanmıştı; sepet değiştiyse bayat kalır.
+        set(kalan.length === 0 ? { items: [], appliedCoupon: null } : { items: kalan });
+
+        for (const item of dusenler) {
+          if (item.parentLineKey) continue;
+          track('remove_from_cart', {
+            product_id: item.productId,
+            price: item.unitPrice,
+            quantity: item.quantity,
+            reason: 'branch_out_of_stock',
+          });
+        }
+
+        return Array.from(new Set(dusenler.filter((i) => !i.parentLineKey).map((i) => i.name)));
+      },
+
       setCoupon: (coupon) => set({ appliedCoupon: coupon }),
 
       clearCoupon: () => set({ appliedCoupon: null }),

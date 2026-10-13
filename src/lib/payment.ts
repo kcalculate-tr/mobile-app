@@ -114,6 +114,23 @@ export const getPaymentConfigStatus = (): PaymentConfigStatus => {
 };
 
 export const mapPaymentErrorToMessage = (error: unknown) => {
+  // ŞUBE BAZLI STOK — son savunma hattı. Sipariş INSERT'i sunucudaki
+  // trg_orders_stock_guard_insert tarafından reddedilirse, müşteriye "bir sorun
+  // oluştu" demek yerine neyin tükendiğini söyle. Eski uygulama sürümlerinde
+  // istemci tarafı kontrol yok; oraya düşen tek anlamlı mesaj bu.
+  const hamMetin =
+    error instanceof Error
+      ? error.message
+      : typeof (error as { message?: unknown })?.message === 'string'
+        ? String((error as { message: string }).message)
+        : '';
+  if (hamMetin.includes('subede tukendi')) {
+    const urunler = hamMetin.split('subede tukendi:')[1]?.trim();
+    return urunler
+      ? `${urunler} şu anda tükendi. Sepetinizden çıkarıp tekrar deneyin.`
+      : 'Sepetinizdeki bir ürün şu anda tükendi. Sepetinizi güncelleyip tekrar deneyin.';
+  }
+
   if (!(error instanceof Error)) {
     return 'Ödeme işlemi sırasında bir sorun oluştu. Lütfen tekrar deneyin.';
   }

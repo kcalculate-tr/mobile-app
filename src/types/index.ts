@@ -198,6 +198,8 @@ export interface CartState {
   removeItem: (lineKey: string) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
+  /** Şubede tükenen ürünleri sepetten çıkarır; çıkarılan ürün adlarını döner. */
+  removeUnavailableItems: (closedProductIds: number[]) => string[];
   getSubtotal: () => number;
   getTotalMacros: () => CartMacros;
   setCoupon: (coupon: AppliedCoupon) => void;

@@ -23,6 +23,24 @@ const isRelationMissingError = (error: unknown) => {
   );
 };
 
+/**
+ * ŞUBE BAZLI STOK (13.10.2026)
+ * Mutfak ürünü kendi şubesi için kapattığında müşteri o ürünü HİÇ görmemeli.
+ * Katalogu okuyan her yol buradan geçtiği için filtreyi tek noktada uyguluyoruz.
+ * Adres seçili değilse şube bilinmez ve hiçbir şey gizlenmez.
+ */
+const subeFiltresiUygula = async (urunler: Product[]): Promise<Product[]> => {
+  try {
+    const { getClosedProductIds } = await import('./branchAvailability');
+    const { closedProductIds } = await getClosedProductIds();
+    if (closedProductIds.length === 0) return urunler;
+    const kapali = new Set(closedProductIds);
+    return urunler.filter((u) => !kapali.has(Number(u.id)));
+  } catch {
+    return urunler;
+  }
+};
+
 export const mapProductRow = (row: Record<string, unknown>): Product => {
   const desc = toSafeString(row.desc) || toSafeString(row.description) || undefined;
   const img =
@@ -85,10 +103,12 @@ export const fetchProductsFromSupabase = async (
   const { data, error } = await query;
   if (error) throw error;
 
-  return (Array.isArray(data) ? data : [])
+  const urunler = (Array.isArray(data) ? data : [])
     .map((row) => mapProductRow(row as Record<string, unknown>))
     .filter((product) => product.is_available !== false && product.in_stock !== false)
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+
+  return subeFiltresiUygula(urunler);
 };
 
 export const fetchProducts = async (signal?: AbortSignal): Promise<Product[]> => {
@@ -107,8 +127,8 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
     .eq('is_available', true)
     .order('favorite_order', { ascending: true });
   if (error) throw error;
-  return (Array.isArray(data) ? data : []).map((row) =>
-    mapProductRow(row as Record<string, unknown>)
+  return subeFiltresiUygula(
+    (Array.isArray(data) ? data : []).map((row) => mapProductRow(row as Record<string, unknown>)),
   );
 };
 
@@ -121,9 +141,11 @@ export const fetchCrosssellProducts = async (limit = 10): Promise<Product[]> => 
     .eq('is_crosssell', true)
     .limit(limit);
   if (error) throw error;
-  return (Array.isArray(data) ? data : [])
-    .map((row) => mapProductRow(row as Record<string, unknown>))
-    .filter((product) => product.is_available !== false && product.in_stock !== false);
+  return subeFiltresiUygula(
+    (Array.isArray(data) ? data : [])
+      .map((row) => mapProductRow(row as Record<string, unknown>))
+      .filter((product) => product.is_available !== false && product.in_stock !== false),
+  );
 };
 
 // Bundle makrosu için: önce linked product'ın gerçek makrosu, yoksa
