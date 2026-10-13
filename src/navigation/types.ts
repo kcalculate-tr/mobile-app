@@ -42,7 +42,7 @@ export type RootStackParamList = {
   ProfileContracts: { slug?: string } | undefined;
   PersonalInfo: undefined;
   Feedback: undefined;
-  NutritionProfile: undefined;
+  NutritionProfile: { firstTime?: boolean } | undefined;
   MeasurementHistory: undefined;
   PaymentScreen: {
     orderId: string;

@@ -16,7 +16,50 @@ import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 type LoginRouteProp = RouteProp<RootStackParamList, 'Login'>;
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const navigateByTarget = (navigation: LoginNavigationProp, target?: AuthRedirectTarget) => {
+/**
+ * HEDEF KURULUMU (13.10.2026)
+ *
+ * FAZ G zorunlu onboarding zincirini kaldırdı; o zincirin içindeki hedef
+ * belirleme adımı da onunla birlikte gitti. Kayıt olanların hedef girme oranı
+ * %70'lerden %10'lara düştü.
+ *
+ * Geri getirirken FAZ G'nin amacını bozmuyoruz:
+ *  · Checkout'a giderken ASLA araya girilmez — satın alma yolu kutsal.
+ *  · Adresler'e giderken de girilmez (oraya da bir iş yapmak için gidiliyor).
+ *  · Yalnız anasayfaya dönen ve HENÜZ hedefi olmayan kullanıcıya gösterilir.
+ *  · Ekran atlanabilir ("Şimdi değil") — zorunlu değil.
+ */
+const hedefiVarMi = async (userId?: string): Promise<boolean> => {
+  try {
+    const { getSupabaseClient } = await import('../../lib/supabase');
+    const supabase = getSupabaseClient();
+
+    // OTP yolunda AuthContext'teki `user` henüz set edilmemiş olabilir
+    // (onAuthStateChange async). Kimliği doğrudan oturumdan çöz.
+    let id = userId;
+    if (!id) {
+      const { data: oturum } = await supabase.auth.getUser();
+      id = oturum?.user?.id;
+    }
+    if (!id) return true; // kimlik yoksa araya girme
+
+    const { data, error } = await supabase
+      .from('user_nutrition_profiles')
+      .select('user_id')
+      .eq('user_id', id)
+      .maybeSingle();
+    if (error) return true; // emin olamıyorsak araya girme
+    return Boolean(data);
+  } catch {
+    return true;
+  }
+};
+
+const navigateByTarget = async (
+  navigation: LoginNavigationProp,
+  target?: AuthRedirectTarget,
+  userId?: string,
+) => {
   if (target === 'Checkout') {
     navigation.replace('Checkout');
     return;
@@ -25,6 +68,12 @@ const navigateByTarget = (navigation: LoginNavigationProp, target?: AuthRedirect
     navigation.replace('Addresses');
     return;
   }
+
+  if (!(await hedefiVarMi(userId))) {
+    navigation.replace('NutritionProfile', { firstTime: true });
+    return;
+  }
+
   navigation.replace('Tabs', { screen: 'Home' });
 };
 
@@ -68,7 +117,7 @@ export default function UnifiedLoginScreen() {
     await AsyncStorage.multiSet([
       ['@kcal_onboarding_done', 'true'],
     ]);
-    navigateByTarget(navigation, redirectTarget);
+    await navigateByTarget(navigation, redirectTarget, user?.id);
   };
 
   const handleSendCode = async () => {

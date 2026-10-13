@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CaretLeft, PencilSimple, LockSimple } from 'phosphor-react-native';
 import { MACRO_COLORS, hexToRgba } from '../../constants/colors';
@@ -118,6 +118,14 @@ const ACTIVITY_OPTIONS: { key: ActivityLevel; label: string; desc: string }[] =
 
 export default function NutritionProfileScreen() {
   const navigation = useNavigation<NutritionProfileNavigationProp>();
+  // İlk giriş sonrası hedef kurulumu (FAZ G'de kaldırılan adımın yerine).
+  // Zorunlu DEĞİL: "Şimdi değil" ile atlanabilir, satın alma yolu tıkanmaz.
+  const route = useRoute<RouteProp<RootStackParamList, 'NutritionProfile'>>();
+  const ilkKurulum = route.params?.firstTime === true;
+  const cikisaGit = () => {
+    if (ilkKurulum) navigation.replace('Tabs', { screen: 'Home' });
+    else navigation.goBack();
+  };
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isAuthenticated, loading } = useRequireAuth();
@@ -319,7 +327,7 @@ export default function NutritionProfileScreen() {
       if (measurementRes.error) throw measurementRes.error;
 
       setSuccessMessage('Profiliniz kaydedildi!');
-      setTimeout(() => navigation.goBack(), 800);
+      setTimeout(cikisaGit, 800);
     } catch (error: unknown) {
       setErrorMessage(mapSupabaseErrorToUserMessage(error, 'Profil kaydedilemedi. Lütfen tekrar deneyin.'));
     } finally {
@@ -333,11 +341,21 @@ export default function NutritionProfileScreen() {
   return (
     <View style={[s.root, { flex: 1, paddingTop: insets.top }]}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
-          <CaretLeft size={22} color="#000000" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Beslenme Profilim</Text>
-        <View style={{ width: 36 }} />
+        {ilkKurulum ? (
+          <View style={{ width: 36 }} />
+        ) : (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.75}>
+            <CaretLeft size={22} color="#000000" />
+          </TouchableOpacity>
+        )}
+        <Text style={s.headerTitle}>{ilkKurulum ? 'Hedefini Belirle' : 'Beslenme Profilim'}</Text>
+        {ilkKurulum ? (
+          <TouchableOpacity onPress={cikisaGit} style={s.atlaBtn} activeOpacity={0.75}>
+            <Text style={s.atlaText}>Şimdi değil</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 36 }} />
+        )}
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -670,6 +688,16 @@ const s = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
+  },
+  atlaBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  atlaText: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13,
+    color: '#6B7280',
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
