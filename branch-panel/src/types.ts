@@ -55,6 +55,13 @@ export interface Order {
   created_at: string
   updated_at: string
   delivered_at?: string | null
+  // Dış pazaryeri kanalı (Trendyol GO) — 13.10.2026
+  source?: string | null
+  external_order_id?: string | null
+  external_code?: string | null
+  external_status?: string | null
+  external_sync_status?: string | null
+  external_sync_error?: string | null
 }
 
 export interface SelectedOptionSnapshot {

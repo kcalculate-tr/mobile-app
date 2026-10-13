@@ -130,8 +130,21 @@ function OrderCard({ order, saving, onAccept, onReady, onDeliver, onCancel, sche
       {/* Header */}
       <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="text-lg font-black text-brand-dark tracking-tight leading-none">{code}</p>
+            {order.source === 'trendyolgo' && (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                TRENDYOL GO{order.external_code ? ` · ${order.external_code}` : ''}
+              </span>
+            )}
+            {order.source === 'trendyolgo' && order.external_sync_status === 'failed' && (
+              <span
+                title={order.external_sync_error ?? 'Trendyol\'a geri yazılamadı'}
+                className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700"
+              >
+                ⚠ Trendyol\'a iletilemedi
+              </span>
+            )}
             {completed && (
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 isDelivered ? 'bg-emerald-100 text-emerald-700'

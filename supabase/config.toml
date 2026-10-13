@@ -103,3 +103,15 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/card-verification-refund-retry/deno.json"
 entrypoint = "./functions/card-verification-refund-retry/index.ts"
+
+[functions.trendyolgo-poll]
+enabled = true
+verify_jwt = true
+import_map = "./functions/trendyolgo-poll/deno.json"
+entrypoint = "./functions/trendyolgo-poll/index.ts"
+
+[functions.trendyolgo-push-status]
+enabled = true
+verify_jwt = true
+import_map = "./functions/trendyolgo-push-status/deno.json"
+entrypoint = "./functions/trendyolgo-push-status/index.ts"
