@@ -88,10 +88,21 @@ const adresAnahtari = (a: { id?: string | null; district?: string | null; neighb
  */
 export const getClosedProductIds = async (force = false): Promise<BranchAvailability> => {
   const { useAddressStore } = await import('../store/addressStore');
-  const adres = useAddressStore.getState().selectedAddress;
-  const anahtar = adresAnahtari(adres as never);
+  const { useDeliveryContextStore } = await import('../store/deliveryContextStore');
 
-  if (!adres?.district) {
+  // Önce seçili teslimat adresi; yoksa açılışta çözülen konum (GPS ya da en
+  // yakın kayıtlı adres). İkisi de yoksa şube bilinemez.
+  const adres = useAddressStore.getState().selectedAddress;
+  const baglam = useDeliveryContextStore.getState();
+  const kaynak = adres?.district
+    ? { id: adres.id, district: adres.district, neighbourhood: adres.neighbourhood }
+    : baglam.district
+      ? { id: null, district: baglam.district, neighbourhood: baglam.neighbourhood }
+      : null;
+
+  const anahtar = adresAnahtari(kaynak);
+
+  if (!kaynak) {
     onbellek = null;
     return EMPTY_BRANCH_AVAILABILITY;
   }
@@ -112,9 +123,9 @@ export const getClosedProductIds = async (force = false): Promise<BranchAvailabi
     try {
       const { getSupabaseClient } = await import('./supabase');
       const sonuc = await fetchBranchAvailability(getSupabaseClient(), {
-        district: adres.district,
-        neighbourhood: adres.neighbourhood,
-        addressId: adres.id ?? null,
+        district: kaynak.district,
+        neighbourhood: kaynak.neighbourhood,
+        addressId: kaynak.id ?? null,
       });
       onbellek = { veri: sonuc, zaman: Date.now(), anahtar };
       return sonuc;

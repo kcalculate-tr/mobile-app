@@ -18,6 +18,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
+import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
 import AppNavigator from './src/navigation/AppNavigator';
 import {
   registerForPushNotifications,
@@ -49,6 +50,8 @@ const navDarkTheme = {
 function AppContent() {
   const { session } = useAuth();
 
+  // Açılışta en yakın konumu çöz — menü doğru şubeye göre gösterilsin.
+  useNearestLocationBootstrap();
   // Şubede tükenen ürünü sepetten düşürür ve kullanıcıya söyler.
   useBranchStockWatch();
 
