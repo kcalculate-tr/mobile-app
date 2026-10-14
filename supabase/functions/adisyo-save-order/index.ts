@@ -137,6 +137,54 @@ serve(async (req) => {
     adisyo_last_attempt_at: new Date().toISOString(),
   }).eq("id", orderId);
 
+  // === 6b. Şube bilgisi (FAZ B) — Adisyo hâlâ TEK hesap/lokasyon; mutfak siparişin
+  // hangi şubeye ait olduğunu not'un başındaki etiketten ayırt eder. Merkez
+  // (is_default) için etiket YOK (mevcut davranış aynen korunur — regresyon yok).
+  let branchTag = "";
+  let adisyoCreds = GLOBAL_ADISYO_CREDS;
+  let paymentMethodId = ADISYO_PAYMENT_METHOD_ID;
+  // Merkez DIŞI şube kendi Adisyo hesabını kullanıyorsa ürün eşlemesi de
+  // o hesaba ait olmalı — branch_product_adisyo'dan okunur.
+  let subeEslemesiGerekli = false;
+  if (dbOrder.branch_id) {
+    const { data: branchRow } = await supabase
+      .from("branches")
+      .select("name, is_default, adisyo_config")
+      .eq("id", dbOrder.branch_id)
+      .maybeSingle();
+    if (branchRow) {
+      // 12.10.2026: ONCEDEN kendi adisyo_config'i olmayan HER sube global
+      // kimlik bilgilerine dusuyordu. Global hesap merkezin (Basin Sitesi)
+      // hesabi — yani Bayrakli siparisleri de oraya yaziliyor, iki mutfak da
+      // hepsini goruyordu. Tek ayrim not'un basindaki etiketti; web panelleri
+      // dogru ayrilmisken Adisyo ayrilmamisti.
+      //
+      // Artik merkez OLMAYAN bir subenin KENDI adisyo_config'i yoksa o siparis
+      // Adisyo'ya HIC yazilmaz -> 'skipped'. ('failed' DEGIL: adisyo-retry-failed
+      // cron'u yalnizca failed satirlari tekrar deniyor, skipped dokunulmaz kalir.)
+      // Sube kendi hesabiyla acilmaya hazir oldugunda branches.adisyo_config
+      // doldurulur; bu kod degismeden o hesaba yazmaya baslar.
+      const subeKimligi = resolveBranchAdisyoCreds(branchRow.adisyo_config);
+      if (!branchRow.is_default && !subeKimligi) {
+        await supabase.from("orders").update({
+          adisyo_sync_status: "skipped",
+          adisyo_sync_error: null,
+        }).eq("id", orderId);
+        await logEvent(supabase, orderId, "info", { branch: branchRow.name }, null, null,
+          `adisyo_skipped: ${branchRow.name} subesinin kendi Adisyo hesabi tanimli degil — merkez hesabina YAZILMADI`,
+          null);
+        return json({ skipped: true, reason: "branch_without_adisyo_config", branch: branchRow.name }, 200);
+      }
+      adisyoCreds = subeKimligi ?? GLOBAL_ADISYO_CREDS;
+      paymentMethodId = resolvePaymentMethodId(branchRow.adisyo_config);
+      subeEslemesiGerekli = !branchRow.is_default && Boolean(subeKimligi);
+      if (!branchRow.is_default && branchRow.name) {
+        branchTag = `[${String(branchRow.name).toLocaleUpperCase("tr-TR")}]`;
+      }
+    }
+  }
+
+
   // === 4. Items işle
   const items = (dbOrder.items ?? []) as OrderItem[];
   if (!Array.isArray(items) || items.length === 0) {
@@ -150,12 +198,33 @@ serve(async (req) => {
   if (prodErr) return await fail(supabase, orderId, `products_fetch: ${prodErr.message}`, null);
 
   const unitIdMap = new Map<number, number>();
+
+  // ŞUBE EŞLEMESİ (14.10.2026)
+  // Şubenin kendi Adisyo hesabı varsa productUnitId'ler de o hesaba aittir;
+  // merkezin products.adisyo_product_unit_id değerleri ORADA GEÇERSİZDİR.
+  // Yanlış id göndermek "unmapped" hatası ya da — id çakışırsa — mutfağa
+  // YANLIŞ ÜRÜN inmesi demek. Bu yüzden şube kipinde yalnız kendi eşlemesi
+  // kullanılır, merkezin değerlerine DÜŞÜLMEZ.
+  if (subeEslemesiGerekli) {
+    const { data: subeEsleme } = await supabase
+      .from("branch_product_adisyo")
+      .select("product_id, adisyo_product_unit_id")
+      .eq("branch_id", dbOrder.branch_id)
+      .in("product_id", productIds);
+
+    for (const r of subeEsleme ?? []) {
+      unitIdMap.set(Number(r.product_id), Number(r.adisyo_product_unit_id));
+    }
+  }
+
   // Adisyo, satır toplamını KENDİ katalog/liste fiyatından doğrular (gönderdiğimiz UnitPrice'ı
   // yok sayar — kanıt: order #41). Bu yüzden UnitPrice olarak DÜZ katalog fiyatı (products.price)
   // yollarız; products.price Adisyo kataloğuyla senkron tutulur (update-prices-v4).
   const catalogPriceMap = new Map<number, number>();
   for (const p of products ?? []) {
-    if (p.adisyo_product_unit_id) unitIdMap.set(p.id as number, p.adisyo_product_unit_id as number);
+    if (!subeEslemesiGerekli && p.adisyo_product_unit_id) {
+      unitIdMap.set(p.id as number, p.adisyo_product_unit_id as number);
+    }
     if (p.price != null) catalogPriceMap.set(p.id as number, Number(p.price));
   }
 
@@ -187,7 +256,10 @@ serve(async (req) => {
   }
 
   if (unmapped.length > 0) {
-    return await fail(supabase, orderId, `unmapped_products: ${unmapped.join("; ")}`, null);
+    const ek = subeEslemesiGerekli
+      ? " (sube kendi Adisyo hesabini kullaniyor — branch_product_adisyo eslemesi eksik; adisyo-sync-products'i { branch_id, dry_run:false } ile calistir)"
+      : "";
+    return await fail(supabase, orderId, `unmapped_products: ${unmapped.join("; ")}${ek}`, null);
   }
   if (noPrice.length > 0) {
     return await fail(supabase, orderId, `no_catalog_price: ${noPrice.join("; ")}`, null);
@@ -224,47 +296,6 @@ serve(async (req) => {
     { itemsSum, orderTotal, deliveryFee, computedDiscount: discount, knownDiscount }, null, null,
     `discount_calc: items_sum(katalog)=${itemsSum} net=${orderTotal} → Discount=${discount} (kupon/makro=${knownDiscount})`, null);
 
-  // === 6b. Şube bilgisi (FAZ B) — Adisyo hâlâ TEK hesap/lokasyon; mutfak siparişin
-  // hangi şubeye ait olduğunu not'un başındaki etiketten ayırt eder. Merkez
-  // (is_default) için etiket YOK (mevcut davranış aynen korunur — regresyon yok).
-  let branchTag = "";
-  let adisyoCreds = GLOBAL_ADISYO_CREDS;
-  if (dbOrder.branch_id) {
-    const { data: branchRow } = await supabase
-      .from("branches")
-      .select("name, is_default, adisyo_config")
-      .eq("id", dbOrder.branch_id)
-      .maybeSingle();
-    if (branchRow) {
-      // 12.10.2026: ONCEDEN kendi adisyo_config'i olmayan HER sube global
-      // kimlik bilgilerine dusuyordu. Global hesap merkezin (Basin Sitesi)
-      // hesabi — yani Bayrakli siparisleri de oraya yaziliyor, iki mutfak da
-      // hepsini goruyordu. Tek ayrim not'un basindaki etiketti; web panelleri
-      // dogru ayrilmisken Adisyo ayrilmamisti.
-      //
-      // Artik merkez OLMAYAN bir subenin KENDI adisyo_config'i yoksa o siparis
-      // Adisyo'ya HIC yazilmaz -> 'skipped'. ('failed' DEGIL: adisyo-retry-failed
-      // cron'u yalnizca failed satirlari tekrar deniyor, skipped dokunulmaz kalir.)
-      // Sube kendi hesabiyla acilmaya hazir oldugunda branches.adisyo_config
-      // doldurulur; bu kod degismeden o hesaba yazmaya baslar.
-      const subeKimligi = resolveBranchAdisyoCreds(branchRow.adisyo_config);
-      if (!branchRow.is_default && !subeKimligi) {
-        await supabase.from("orders").update({
-          adisyo_sync_status: "skipped",
-          adisyo_sync_error: null,
-        }).eq("id", orderId);
-        await logEvent(supabase, orderId, "info", { branch: branchRow.name }, null, null,
-          `adisyo_skipped: ${branchRow.name} subesinin kendi Adisyo hesabi tanimli degil — merkez hesabina YAZILMADI`,
-          null);
-        return json({ skipped: true, reason: "branch_without_adisyo_config", branch: branchRow.name }, 200);
-      }
-      adisyoCreds = subeKimligi ?? GLOBAL_ADISYO_CREDS;
-      if (!branchRow.is_default && branchRow.name) {
-        branchTag = `[${String(branchRow.name).toLocaleUpperCase("tr-TR")}]`;
-      }
-    }
-  }
-
   // === 7. Sipariş notu
   const noteParts: string[] = [];
   if (branchTag) noteParts.push(branchTag);
@@ -293,7 +324,7 @@ serve(async (req) => {
     Region: regionValue,
     Neighborhood: neighborhoodValue,
     City: cityValue,
-    PaymentMethodId: ADISYO_PAYMENT_METHOD_ID,
+    PaymentMethodId: paymentMethodId,
     PaymentNote: `KCAL App / ${dbOrder.payment_provider ?? "paytr"}`,
     Discount: discount,
     OrderTotal: orderTotal,
