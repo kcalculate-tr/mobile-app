@@ -48,6 +48,7 @@ import AddCardScreen from '../screens/profile/AddCardScreen';
 import SecurityScreen from '../screens/profile/SecurityScreen';
 import NotificationPreferencesScreen from '../screens/profile/NotificationPreferencesScreen';
 import SupportScreen from '../screens/profile/SupportScreen';
+import MyReviewsScreen from '../screens/profile/MyReviewsScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -219,6 +220,7 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileAddCard" component={AddCardScreen} />
       <Stack.Screen name="ProfileCoupons" component={CouponsScreen} />
       <Stack.Screen name="ProfileSupport" component={SupportScreen} />
+      <Stack.Screen name="ProfileReviews" component={MyReviewsScreen} />
       <Stack.Screen name="ProfileSecurity" component={SecurityScreen} />
       <Stack.Screen name="ProfileNotificationPreferences" component={NotificationPreferencesScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

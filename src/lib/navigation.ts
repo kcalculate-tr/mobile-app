@@ -6,6 +6,23 @@ export function resolveNavigation(
   const target = (dest ?? fallback).toString().trim();
   if (!target) return;
 
+  // Push bildirimlerinden gelen kcal:// derin baglantilari. Onceden ham sema
+  // dogrudan navigate'e veriliyordu; ekran adi olmadigi icin fallback'e
+  // dusuyor ve bildirim yanlis ekran aciyordu.
+  if (target.startsWith('kcal://')) {
+    const yol = target.substring('kcal://'.length).replace(/^\/+|\/+$/g, '');
+    const HARITA: Record<string, string> = {
+      'reviews': 'ProfileReviews',
+      'degerlendirmelerim': 'ProfileReviews',
+      'orders': 'ProfileOrders',
+      'coupons': 'ProfileCoupons',
+      'support': 'ProfileSupport',
+    };
+    const ekran = HARITA[yol.toLowerCase()];
+    navigation.navigate((ekran ?? fallback) as any);
+    return;
+  }
+
   if (target.startsWith('ProductDetail:')) {
     const productId = target.substring('ProductDetail:'.length).trim();
     if (productId) {

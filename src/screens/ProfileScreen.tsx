@@ -34,6 +34,7 @@ import {
   Question,
   Ruler,
   SignOut,
+  Star,
   Tag,
   Target,
   User,
@@ -580,6 +581,12 @@ export default function ProfileScreen() {
             icon={<Tag color={COLORS.text.secondary} size={18} />}
             title="Kuponlarım"
             onPress={() => navigation.navigate('ProfileCoupons')}
+            showBorder
+          />
+          <MenuItem
+            icon={<Star color={COLORS.text.secondary} size={18} />}
+            title="Değerlendirmelerim"
+            onPress={() => navigation.navigate('ProfileReviews')}
             showBorder
           />
           <MenuItem

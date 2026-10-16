@@ -37,6 +37,7 @@ export type RootStackParamList = {
   ProfileAddCard: undefined;
   ProfileCoupons: undefined;
   ProfileSupport: undefined;
+  ProfileReviews: undefined;
   ProfileSecurity: undefined;
   ProfileNotificationPreferences: undefined;
   ProfileContracts: { slug?: string } | undefined;

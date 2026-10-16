@@ -65,6 +65,32 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`)
 }
 
+// Token'in role claim'i service_role mu?
+//
+// verify_jwt = true oldugu icin Supabase imzayi BU FONKSIYON CALISMADAN ONCE
+// dogruluyor; dolayisiyla payload'daki role claim'ine guvenebiliriz. Imzayi
+// burada tekrar dogrulamiyoruz, zaten dogrulanmis bir token'in iddiasini
+// okuyoruz.
+//
+// 16.10.2026 — NEDEN GEREKLI: eski kapi token'i env'deki
+// SUPABASE_SERVICE_ROLE_KEY ile string olarak karsilastiriyordu. Vault'taki
+// legacy service role JWT'si ile env'deki deger ayni olmadigi an (anahtar
+// rotasyonu ya da yeni format secret key) TUM ic cagrilar 401 oluyor.
+// 07.10.2026'dan 16.10.2026'ya kadar tek bir push gitmedi; sebebi buydu:
+// siparis durumu bildirimleri, davranissal push'lar ve kampanyalar dahil.
+function serviceRoleTokenMu(jwt: string): boolean {
+  const parcalar = jwt.split('.')
+  if (parcalar.length !== 3) return false
+  try {
+    const govde = parcalar[1].replace(/-/g, '+').replace(/_/g, '/')
+    const dolgu = govde + '='.repeat((4 - (govde.length % 4)) % 4)
+    const payload = JSON.parse(atob(dolgu)) as { role?: string }
+    return payload?.role === 'service_role'
+  } catch {
+    return false
+  }
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -268,7 +294,11 @@ Deno.serve(async (req: Request) => {
   // Mobil uygulama bu fonksiyonu hic cagirmiyor (grep: 0 sonuc).
   const authHeader = req.headers.get('Authorization') ?? ''
   const token = authHeader.replace(/^Bearer\s+/i, '').trim()
-  const icCagri = SERVICE_ROLE_KEY.length > 0 && token === SERVICE_ROLE_KEY
+  // Env ile birebir esitlik HIZLI YOL olarak kaliyor (JWT olmayan yeni format
+  // secret key'i de kapsar); asil olcut role claim'i.
+  const icCagri =
+    (SERVICE_ROLE_KEY.length > 0 && token === SERVICE_ROLE_KEY) ||
+    serviceRoleTokenMu(token)
 
   if (!icCagri) {
     if (!token) return jsonResponse({ error: 'Oturum dogrulanamadi' }, 401)
