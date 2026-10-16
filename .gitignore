@@ -94,3 +94,7 @@ plugins/
 # Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
 tools/**/.env
 *.p8
+
+# Adisyo panel tokenleri (sube bazli env) — ASLA commit etme
+tools/adisyo-prices/.env.*
+!tools/adisyo-prices/.env.*.example
