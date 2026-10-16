@@ -45,6 +45,7 @@ const LIST     = has('--list');
 const DRY_RUN  = has('--dry-run');
 const TEMPLATE = flag('--template');
 const ONLY     = flag('--only') ? new Set(flag('--only').split(',').map(s => s.trim())) : null;
+const SET_CODE = flag('--set-code'); // "<pid>=<KOD>" — var olan urune kod basar (create degil, update)
 
 // --- .env yükle (dotenv'e bağımlı olmadan, --env desteklemesi için) ---
 const envPath = path.resolve(ENV_FILE);
@@ -155,6 +156,23 @@ function createPayload(sablon, hedef) {
 async function main() {
   tokenKontrol();
   const { urunler, kategoriler } = await hedefMenu();
+
+  // ── KOD BASMA KİPİ: hedefte zaten duran bir ürüne KCAL kodunu yazar.
+  // Create değil update: id/rowVersion korunur, sadece code alanı değişir.
+  if (SET_CODE) {
+    const [pidRaw, kod] = SET_CODE.split('=');
+    const pid = Number(pidRaw);
+    if (!pid || !kod) { console.error('❌ --set-code <productId>=<KOD> biçiminde olmalı'); process.exit(1); }
+    const mevcut = urunler.find(u => Number(u.id) === pid);
+    if (!mevcut) { console.error(`❌ pid=${pid} hedef hesapta yok`); process.exit(1); }
+    const p = await viewModel(pid);
+    console.log(`\n🏷  pid=${pid} "${p.name}" kodu: ${p.code || '(yok)'} → ${kod}`);
+    if (DRY_RUN) { console.log('🔸 DRY-RUN — yazılmadı'); return; }
+    p.code = kod;
+    const r = await jfetch(`${INTERNAL_API}/SaveProduct`, { method: 'POST', headers: H, body: JSON.stringify(p) });
+    console.log(`✅ ${JSON.stringify(r).slice(0, 160)}`);
+    return;
+  }
 
   if (LIST) {
     console.log(`\n📋 Hedef hesapta ${urunler.length} ürün, ${kategoriler.length} kategori\n`);
