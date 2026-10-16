@@ -113,9 +113,11 @@ async function kcalMenusu() {
     + '?select=id,name,price,adisyo_product_code,is_available'
     + '&adisyo_product_code=not.is.null&order=id.asc';
   const rows = await jfetch(url, { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } });
-  return rows
-    .filter(r => r.is_available !== false)
-    .map(r => ({ code: r.adisyo_product_code, name: r.name, price: Number(r.price) }));
+  // is_available=false olanlar da YAZILIR. Uygulamada kapali olmasi Adisyo'da
+  // durmasina engel degil; yazmazsak urunu actigi gun siparis eslesmeden kalir.
+  const kapali = rows.filter(r => r.is_available === false).map(r => r.adisyo_product_code);
+  if (kapali.length) console.log(`ℹ️  Uygulamada kapali ama Adisyo'ya yazilacak: ${kapali.join(', ')}`);
+  return rows.map(r => ({ code: r.adisyo_product_code, name: r.name, price: Number(r.price) }));
 }
 
 const nulla = (o, ks) => { if (o) for (const k of ks) if (k in o) o[k] = null; };
