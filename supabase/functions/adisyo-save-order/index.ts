@@ -61,6 +61,24 @@ function resolveAdisyoCreds(adisyoConfig: unknown): AdisyoCreds {
   return resolveBranchAdisyoCreds(adisyoConfig) ?? GLOBAL_ADISYO_CREDS;
 }
 
+// Subenin kendi Adisyo hesabindaki odeme yonteminin id'si. Her Adisyo hesabinda
+// odeme yontemleri AYRI id'lerle tanimli — merkezin 61'i baska hesapta baska
+// bir yonteme (ya da hicbir seye) denk gelir. branches.adisyo_config.paymentMethodId
+// yoksa env varsayilanina duser.
+//
+// 16.10.2026 — BU FONKSIYON TANIMSIZDI. Cagrisi (satir ~179) branch_id'si olan
+// HER siparişte calisiyor, yani Basin Sitesi dahil tum siparisler 500 ile
+// patliyordu. Deno deploy'da tip kontrolu olmadigi icin deploy sessizce gecti;
+// hata yalnizca calisma aninda, hicbir log yazilmadan 500 olarak gorundu.
+function resolvePaymentMethodId(adisyoConfig: unknown): number {
+  if (adisyoConfig && typeof adisyoConfig === "object") {
+    const ham = (adisyoConfig as Record<string, unknown>).paymentMethodId;
+    const n = typeof ham === "number" ? ham : parseInt(String(ham ?? ""), 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return ADISYO_PAYMENT_METHOD_ID;
+}
+
 const ADISYO_BASE = "https://ext.adisyo.com/api/External/v2";
 const PREPARED_DELAY_MS = 1500;
 
