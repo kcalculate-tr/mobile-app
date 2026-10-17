@@ -3,7 +3,7 @@ import { ActivityIndicator, BackHandler, StyleSheet, Text, TouchableOpacity, Vie
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';
-import { CaretLeft, CheckCircle, CreditCard, Info, Lock, WarningCircle } from 'phosphor-react-native';
+import { CaretLeft, CheckCircle, CreditCard, Info, Lock, WarningCircle } from '../../components/icons';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { RootStackParamList } from '../../navigation/types';

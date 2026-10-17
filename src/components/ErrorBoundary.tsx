@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Warning } from 'phosphor-react-native';
+import { Warning } from './icons';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
 
 interface ErrorFallbackProps {

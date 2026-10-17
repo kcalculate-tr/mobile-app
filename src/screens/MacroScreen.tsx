@@ -6,7 +6,7 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
-import { CalendarCheck, CrownSimple, Info } from 'phosphor-react-native'
+import { CalendarCheck, CrownSimple, Info } from '../components/icons'
 import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
 import SegmentedTabs from '../components/ui/SegmentedTabs'

@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { CaretLeft } from 'phosphor-react-native';
+import { CaretLeft } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CONTRACTS } from '../../data/contractsData';
 import { RootStackParamList } from '../../navigation/types';

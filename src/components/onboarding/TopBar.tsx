@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
-import { CaretLeft } from 'phosphor-react-native';
+import { CaretLeft } from '../icons';
 import { useNavigation } from '@react-navigation/native';
 import { sportive } from '../../theme/sportive';
 

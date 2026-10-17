@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Star, ThumbsDown, ThumbsUp, X } from 'phosphor-react-native';
+import { Star, ThumbsDown, ThumbsUp, X } from './icons';
 import { COLORS, RADIUS, SPACING, SURFACE, TYPOGRAPHY } from '../constants/theme';
 import { haptic } from '../utils/haptics';
 import { animateListChange } from '../utils/layoutAnimation';

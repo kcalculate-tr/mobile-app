@@ -13,7 +13,7 @@ import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Minus, Plus } from 'phosphor-react-native';
+import { ArrowLeft, Minus, Plus } from '../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FloatingCartPill from '../components/FloatingCartPill';
 import { FLOATING_PILL_GAP, FLOATING_PILL_HEIGHT } from '../constants/layout';

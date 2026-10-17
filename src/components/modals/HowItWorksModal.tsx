@@ -14,7 +14,7 @@ import {
   CookingPot as CookingPotIcon,
   ChartLineUp as ChartLineUpIcon,
   CreditCard as CreditCardIcon,
-} from 'phosphor-react-native';
+} from '../icons';
 import type { IconProps } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
 import BottomSheet from '../BottomSheet';

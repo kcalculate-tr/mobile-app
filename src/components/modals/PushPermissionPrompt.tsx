@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { BellRinging } from 'phosphor-react-native';
+import { BellRinging } from '../icons';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { requestPushPermissionOnly, registerForPushNotifications } from '../../lib/notifications';
 

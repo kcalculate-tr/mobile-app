@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { CalendarBlank, ForkKnife, Info, Truck } from 'phosphor-react-native'
+import { CalendarBlank, ForkKnife, Info, Truck } from '../icons'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
 import {
   DELIVERIES_PER_DAY, DELIVERY_WINDOWS, DURATIONS, Duration, MEALS_PER_DAY,

@@ -2,7 +2,13 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "incremental": true
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "phosphor-react-native/lib/commonjs/icons/*": [
+        "./node_modules/phosphor-react-native/lib/typescript/icons/*"
+      ]
+    }
   },
   "exclude": [
     "node_modules",

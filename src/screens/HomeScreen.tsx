@@ -5,7 +5,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { CachedImage } from '../components/CachedImage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MagnifyingGlass, MapPin, CaretDown, Question, Plus, Minus, Tag } from 'phosphor-react-native';
+import { MagnifyingGlass, MapPin, CaretDown, Question, Plus, Minus, Tag } from '../components/icons';
 import { TAB_BAR_TOTAL } from '../constants/layout';
 import { haptic } from '../utils/haptics';
 import HowItWorksModal from '../components/modals/HowItWorksModal';

@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowRight, ShoppingCart } from 'phosphor-react-native';
+import { ArrowRight, ShoppingCart } from './icons';
 
 import { useCartStore } from '../store/cartStore';
 import AnimatedNumberText from './AnimatedNumberText';

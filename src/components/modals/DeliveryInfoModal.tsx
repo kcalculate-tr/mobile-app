@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import {
   Truck, Calendar, Storefront, Thermometer, Snowflake, Package, Leaf,
-} from 'phosphor-react-native';
+} from '../icons';
 import BottomSheet from '../BottomSheet';
 
 type Props = { visible: boolean; onClose: () => void };

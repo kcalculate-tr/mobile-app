@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, MagnifyingGlass } from 'phosphor-react-native';
+import { ArrowLeft, MagnifyingGlass } from '../components/icons';
 import ScreenContainer from '../components/ScreenContainer';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';

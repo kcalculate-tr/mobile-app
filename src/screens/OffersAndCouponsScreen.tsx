@@ -7,7 +7,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CalendarBlank, CaretLeft, Copy, ForkKnife, Tag, Ticket } from 'phosphor-react-native';
+import { CalendarBlank, CaretLeft, Copy, ForkKnife, Tag, Ticket } from '../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStaggerAnimation } from '../hooks/useStaggerAnimation';

@@ -13,7 +13,7 @@ import { SkeletonOrderCard } from '../../components/ui/SkeletonLoader';
 import { useStaggerAnimation } from '../../hooks/useStaggerAnimation';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CaretLeft, CaretRight, Timer, CreditCard, CheckCircle, ChefHat, Truck, Confetti, XCircle, ArrowCounterClockwise, Package, ShoppingBag, WarningCircle } from 'phosphor-react-native';
+import { CaretLeft, CaretRight, Timer, CreditCard, CheckCircle, ChefHat, Truck, Confetti, XCircle, ArrowCounterClockwise, Package, ShoppingBag, WarningCircle } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';

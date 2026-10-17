@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Pla
 import Constants from 'expo-constants';
 import MapView, { Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { MapPin, X, Check, NavigationArrow } from 'phosphor-react-native';
+import { MapPin, X, Check, NavigationArrow } from '../icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants/theme';
 import { distanceInMeters, normalizeTurkishText } from '../../lib/geo';

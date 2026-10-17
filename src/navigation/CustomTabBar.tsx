@@ -3,7 +3,7 @@ import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from '
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { ChartLineUp, Crown, House, ShoppingCart, User } from 'phosphor-react-native';
+import { ChartLineUp, Crown, House, ShoppingCart, User } from '../components/icons';
 import { Image } from 'react-native';
 import { useCartStore } from '../store/cartStore';
 

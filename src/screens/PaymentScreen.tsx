@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft } from 'phosphor-react-native';
+import { ArrowLeft } from '../components/icons';
 import { payWithSavedCard } from '../lib/cards';
 import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../lib/paymentHtml';
 import { matchesPaynkolayReturn } from '../lib/paynkolayReturn';

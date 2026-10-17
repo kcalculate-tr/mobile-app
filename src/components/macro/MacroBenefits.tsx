@@ -1,6 +1,6 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { Gift, Handshake, Sparkle, Ticket } from 'phosphor-react-native'
+import { Gift, Handshake, Sparkle, Ticket } from '../icons'
 import { COLORS, RADIUS, SPACING } from '../../constants/theme'
 
 type Avantaj = {

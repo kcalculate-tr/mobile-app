@@ -17,7 +17,7 @@ import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, ArrowRight, Minus, Plus, ShoppingBag, ShoppingCart, CheckCircle, Check as CheckIcon } from 'phosphor-react-native';
+import { ArrowLeft, ArrowRight, Minus, Plus, ShoppingBag, ShoppingCart, CheckCircle, Check as CheckIcon } from '../components/icons';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import { haptic } from '../utils/haptics';
 import { useAnimatedPress } from '../utils/useAnimatedPress';

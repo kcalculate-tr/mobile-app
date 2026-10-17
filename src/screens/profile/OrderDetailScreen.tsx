@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { type Icon, CaretLeftIcon, ShoppingCartIcon, CheckCircleIcon, ChefHatIcon, TruckIcon, ConfettiIcon, MapPinIcon, CalendarIcon, XCircleIcon } from 'phosphor-react-native';
+import { type Icon, CaretLeftIcon, ShoppingCartIcon, CheckCircleIcon, ChefHatIcon, TruckIcon, ConfettiIcon, MapPinIcon, CalendarIcon, XCircleIcon } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomSheet from '../../components/BottomSheet';

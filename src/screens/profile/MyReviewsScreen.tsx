@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretLeft, ChatCircleDots, Star } from 'phosphor-react-native';
+import { CaretLeft, ChatCircleDots, Star } from '../../components/icons';
 import { getSupabaseClient } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/theme';

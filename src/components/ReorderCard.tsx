@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ActivityIndicator, Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ArrowCounterClockwise, Fire, ShoppingCart, X } from 'phosphor-react-native';
+import { ArrowCounterClockwise, Fire, ShoppingCart, X } from './icons';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { DURATION, EASING, PRESS_SCALE, SPRING } from '../constants/motion';
 import Shimmer from './ui/Shimmer';

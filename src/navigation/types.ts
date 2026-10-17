@@ -27,10 +27,6 @@ export type RootStackParamList = {
   OrderSuccess: { orderCode: string; orderId?: string; noticeMessage?: string };
   DevDiagnostics: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
-  Register: { redirectTo?: AuthRedirectTarget } | undefined;
-  EmailVerification: { email: string };
-  Onboarding: undefined;
-  NutritionSetup: undefined;
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };
   ProfileSavedCards: undefined;

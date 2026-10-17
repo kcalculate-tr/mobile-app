@@ -3,7 +3,7 @@ import {
   ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { CalendarBlank, Tag, Ticket } from 'phosphor-react-native'
+import { CalendarBlank, Tag, Ticket } from '../icons'
 import BottomSheet from '../BottomSheet'
 import { CachedImage } from '../CachedImage'
 import { transformImageUrl, ImagePreset } from '../../lib/imageUrl'

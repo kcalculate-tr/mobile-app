@@ -2,7 +2,7 @@ import { DURATION } from '../../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, WarningCircle, Info } from 'phosphor-react-native';
+import { CheckCircle, WarningCircle, Info } from '../icons';
 
 type ToastType = 'success' | 'error' | 'info';
 

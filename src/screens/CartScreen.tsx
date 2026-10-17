@@ -5,7 +5,7 @@ import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextI
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {ArrowCounterClockwise, CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from 'phosphor-react-native';
+import {ArrowCounterClockwise, CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from '../components/icons';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';

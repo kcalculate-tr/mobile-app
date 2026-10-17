@@ -40,7 +40,7 @@ import {
   User,
   CrownSimpleIcon,
   CameraIcon,
-} from 'phosphor-react-native';
+} from '../components/icons';
 import ScreenContainer from '../components/ScreenContainer';
 import AnimatedNumberText from '../components/AnimatedNumberText';
 import { TAB_BAR_TOTAL } from '../constants/layout';

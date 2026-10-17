@@ -5,7 +5,7 @@ import {
   View,
   Image,
 } from 'react-native';
-import { ShoppingCart, ForkKnife, Ticket, CalendarX } from 'phosphor-react-native';
+import { ShoppingCart, ForkKnife, Ticket, CalendarX } from '../icons';
 
 import { MacroProfile, MacroSettings, DEFAULT_MACRO_SETTINGS, macroProgress } from '../../lib/macros';
 import BottomSheet from '../BottomSheet';

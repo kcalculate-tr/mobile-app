@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CheckCircle, MapPin, NavigationArrow } from 'phosphor-react-native';
+import { CheckCircle, MapPin, NavigationArrow } from '../icons';
 import Selectable from '../ui/Selectable';
 import { COLORS, RADIUS, SPACING, SURFACE, TYPOGRAPHY } from '../../constants/theme';
 import { distanceInMeters } from '../../lib/geo';

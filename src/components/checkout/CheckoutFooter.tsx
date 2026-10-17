@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { ArrowRight, Check, Plus, Truck } from 'phosphor-react-native';
+import { ArrowRight, Check, Plus, Truck } from '../icons';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { tlGruplu } from '../../lib/money';
 

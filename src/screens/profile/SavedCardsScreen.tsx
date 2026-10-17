@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CaretLeft, CreditCard, Lock, Plus, Star, Trash } from 'phosphor-react-native';
+import { CaretLeft, CreditCard, Lock, Plus, Star, Trash } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRequireAuth } from '../../hooks/useRequireAuth';

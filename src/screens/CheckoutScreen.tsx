@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, WarningCircle } from 'phosphor-react-native';
+import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, WarningCircle } from '../components/icons';
 import ScreenContainer from '../components/ScreenContainer';
 import Selectable from '../components/ui/Selectable';
 import { useSectionTransition } from '../hooks/useSectionTransition';

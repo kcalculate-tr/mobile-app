@@ -3,8 +3,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import OnboardingScreen from '../screens/onboarding/OnboardingScreen_legacy';
-import NutritionSetupScreen from '../screens/onboarding/NutritionSetupScreen_legacy';
 
 import { haptic } from '../utils/haptics';
 import { DURATION } from '../constants/motion';
@@ -31,8 +29,6 @@ import OrderSuccessScreen from '../screens/OrderSuccessScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 
 import UnifiedLoginScreen from '../screens/auth/UnifiedLoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen_legacy';
-import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen_legacy';
 import NutritionProfileScreen from '../screens/tracker/NutritionProfileScreen';
 import MeasurementHistoryScreen from '../screens/tracker/MeasurementHistoryScreen';
 
@@ -197,8 +193,6 @@ export default function AppNavigator() {
         component={WelcomeGateScreen}
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#0A0A0A' } }}
       />
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="NutritionSetup" component={NutritionSetupScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Tabs" component={TabNavigator} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
@@ -210,8 +204,6 @@ export default function AppNavigator() {
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsScreen} />
       <Stack.Screen name="Login" component={UnifiedLoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileScreen} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileOrders" component={OrdersScreen} />

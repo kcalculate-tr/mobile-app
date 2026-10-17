@@ -13,7 +13,7 @@ import {
   Fire,
   Truck,
   ArrowRight,
-} from 'phosphor-react-native';
+} from '../components/icons';
 import ScreenContainer from '../components/ScreenContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRequireAuth } from '../hooks/useRequireAuth';

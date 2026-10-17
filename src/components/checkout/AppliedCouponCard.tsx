@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Percent } from 'phosphor-react-native'
+import { Percent } from '../icons'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
 import { SPRING } from '../../constants/motion'
 import Shimmer from '../ui/Shimmer'

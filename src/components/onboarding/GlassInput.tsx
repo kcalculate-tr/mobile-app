@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps, Platform } from 'react-native';
-import { Eye, EyeSlash } from 'phosphor-react-native';
+import { Eye, EyeSlash } from '../icons';
 import { sportive } from '../../theme/sportive';
 import KeyboardAccessory from '../KeyboardAccessory';
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { Star } from 'phosphor-react-native';
+import { Star } from './icons';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { vitrinYorumlariniGetir, yorumTarihi, type VitrinYorumu } from '../lib/socialProof';
 

@@ -28,7 +28,7 @@ import { KCALCULATE_LOGO_B64 } from '../constants/kcalculateLogo';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import { Circle, Svg, Polyline } from 'react-native-svg';
-import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, Target, TrophyIcon} from 'phosphor-react-native';
+import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, Target, TrophyIcon} from '../components/icons';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import FadeSwap from '../components/ui/FadeSwap';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';

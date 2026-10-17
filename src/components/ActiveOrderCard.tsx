@@ -1,7 +1,7 @@
 import { DURATION, EASING } from '../constants/motion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CaretRight, CheckCircle, CookingPot, Package, Receipt, Scooter } from 'phosphor-react-native';
+import { CaretRight, CheckCircle, CookingPot, Package, Receipt, Scooter } from './icons';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { ORDER_STEPS, stepIndexOf, type ActiveOrder } from '../lib/activeOrder';
 

@@ -17,7 +17,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
-import { CaretLeft, PencilSimple, MapPin, Plus, Trash } from 'phosphor-react-native';
+import { CaretLeft, PencilSimple, MapPin, Plus, Trash } from '../components/icons';
 import ScreenContainer from '../components/ScreenContainer';
 import FormField, { FormFieldOption } from '../components/FormField';
 import AddressVerificationSheet, { ReverseGeoResult } from '../components/checkout/AddressVerificationSheet';

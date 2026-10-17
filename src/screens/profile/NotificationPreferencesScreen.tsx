@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretLeft, Bell } from 'phosphor-react-native';
+import { CaretLeft, Bell } from '../../components/icons';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';

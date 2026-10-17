@@ -5,7 +5,7 @@ import {
   Dimensions, StyleSheet, TouchableOpacity,
   type DimensionValue, type ViewStyle, type StyleProp,
 } from 'react-native';
-import { X as XIcon } from 'phosphor-react-native';
+import { X as XIcon } from './icons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

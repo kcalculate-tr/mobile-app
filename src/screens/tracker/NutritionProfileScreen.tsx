@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CaretLeft, PencilSimple, LockSimple } from 'phosphor-react-native';
+import { CaretLeft, PencilSimple, LockSimple } from '../../components/icons';
 import { MACRO_COLORS, hexToRgba } from '../../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';

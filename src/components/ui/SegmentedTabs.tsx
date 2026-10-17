@@ -3,7 +3,7 @@ import {
   Animated, Image, ImageSourcePropType, LayoutChangeEvent,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
-import { IconProps } from 'phosphor-react-native'
+import { IconProps } from '../icons'
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme'
 
 export type SegmentedTabItem<T extends string> = {

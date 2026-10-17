@@ -17,7 +17,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useStaggerAnimation } from '../../hooks/useStaggerAnimation';
 import { useNavigation } from '@react-navigation/native';
-import { CaretLeft, Headset, ChatText, WarningCircle, PhoneCall, Plus, X as XIcon } from 'phosphor-react-native';
+import { CaretLeft, Headset, ChatText, WarningCircle, PhoneCall, Plus, X as XIcon } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSupabaseClient } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';

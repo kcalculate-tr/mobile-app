@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, PressableProps, View } from 'react-native';
-import { ArrowRight } from 'phosphor-react-native';
+import { ArrowRight } from '../icons';
 import { sportive } from '../../theme/sportive';
 
 interface Props extends PressableProps {
