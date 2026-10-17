@@ -105,6 +105,53 @@ Deno.serve(async (req) => {
     return json({ sent: res.ok, resend: res, to: [GLOBAL_TO] })
   }
 
+  // Destek talebine YANIT verildi -> MUSTERIYE e-posta.
+  // Push bildirimi ayrica gidiyor (fn_notify_support_reply); e-posta
+  // uygulamayi silmis ya da bildirimi kapatmis musteriye de ulasiyor.
+  if (type === 'support_reply') {
+    const ticketId = body.ticket_id
+    if (!ticketId) return json({ error: 'ticket_id_required' }, 400)
+
+    const admin = createClient(SUPABASE_URL, SERVICE)
+    const { data: t, error: tErr } = await admin
+      .from('support_tickets').select('*').eq('id', ticketId).single()
+    if (tErr || !t) return json({ error: 'ticket_not_found', detail: tErr?.message }, 404)
+
+    // Alici: talepteki e-posta, yoksa hesabin e-postasi.
+    let alici = String(t.user_email ?? '').trim()
+    if (!alici && t.user_id) {
+      try {
+        const { data } = await admin.auth.admin.getUserById(String(t.user_id))
+        alici = String(data?.user?.email ?? '').trim()
+      } catch (e) { console.error('[order-alert] getUserById failed:', e) }
+    }
+    if (!alici) return json({ skipped: 'no_recipient', ticket_id: ticketId })
+
+    const kacis = (v: unknown) =>
+      String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    const subject = `Destek talebiniz yanıtlandı — ${t.subject ?? 'KCAL'}`
+    const html = `
+      <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">
+        <h2 style="margin:0 0 4px">Destek talebiniz yanıtlandı</h2>
+        <p style="color:#666;margin:0 0 16px">Konu: ${kacis(t.subject)}${t.order_code ? ` · Sipariş: ${kacis(t.order_code)}` : ''}</p>
+        <div style="background:#f6f6f6;border-radius:10px;padding:12px;margin-bottom:14px">
+          <p style="color:#666;margin:0 0 6px;font-size:13px">Talebiniz</p>
+          <p style="margin:0">${kacis(t.message).replace(/\n/g, '<br>')}</p>
+        </div>
+        <div style="border-left:3px solid #B9EF14;background:rgba(185,239,20,0.12);border-radius:10px;padding:12px">
+          <p style="color:#666;margin:0 0 6px;font-size:13px">KCAL yanıtı</p>
+          <p style="margin:0">${kacis(t.admin_reply).replace(/\n/g, '<br>')}</p>
+        </div>
+        <p style="color:#888;font-size:13px;margin-top:18px">
+          Yanıtı uygulamadan da görebilirsiniz: Profil → Destek Talepleri.
+        </p>
+      </div>`
+
+    const res = await sendEmail([alici], subject, html)
+    return json({ sent: res.ok, resend: res, to: [alici] })
+  }
+
   const orderId = body.order_id
   if (!orderId) return json({ error: 'order_id_required' }, 400)
 
