@@ -8,7 +8,6 @@ create table public.user_known_devices (
   first_seen_at timestamptz not null default now(),
   primary key (user_id, device_id)
 );
-
 -- Hassas değil ama kullanıcıya özgü — failed_payments/user_card_secrets ile aynı
 -- desen: RLS açık + POLİTİKA YOK -> yalnızca service_role (Edge Function) erişir.
 alter table public.user_known_devices enable row level security;

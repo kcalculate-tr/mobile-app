@@ -17,7 +17,6 @@ begin
   return NEW;
 end;
 $$;
-
 create or replace function public.fn_log_branch_assignment()
 returns trigger
 language plpgsql
@@ -35,12 +34,10 @@ begin
   return NEW;
 end;
 $$;
-
 drop trigger if exists trg_orders_log_branch_insert on public.orders;
 create trigger trg_orders_log_branch_insert
   after insert on public.orders
   for each row execute function public.fn_log_branch_assignment();
-
 drop trigger if exists trg_orders_log_branch_update on public.orders;
 create trigger trg_orders_log_branch_update
   after update on public.orders

@@ -13,6 +13,7 @@ ALTER TABLE public.orders
 COMMENT ON COLUMN public.orders.source IS 'app | trendyolgo | (ileride: migros, yemeksepeti…)';
 COMMENT ON COLUMN public.orders.external_order_id IS 'Trendyol GO packageId (64 karakter)';
 
+-- Aynı paketin iki kez yazılmasını engeller (poll tekrarına karşı idempotenlik)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_external
   ON public.orders (source, external_order_id)
   WHERE external_order_id IS NOT NULL;
@@ -21,9 +22,14 @@ CREATE INDEX IF NOT EXISTS idx_orders_source_branch
   ON public.orders (source, branch_id)
   WHERE source <> 'app';
 
--- Şube ataması: dış kanal siparişlerinde branch_id EZİLMEZ (şubeyi storeId belirler).
+-- 1) Şube ataması: dış kanal siparişlerinde branch_id'yi EZME.
+-- Trendyol adresi bizim mahalle eşlemelerimize uymaz (Model 2'de adres zaten
+-- "Trendyol Yemek" olarak maskeli gelir); şubeyi storeId belirler.
 CREATE OR REPLACE FUNCTION public.fn_assign_order_branch()
- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 begin
   if COALESCE(NEW.source, 'app') <> 'app' and NEW.branch_id is not null then
@@ -34,11 +40,12 @@ begin
 end;
 $function$;
 
--- orders_guard_protected_cols: kanal alanları korunur, branch_id adres kontrolü
--- yalnız source='app' için uygulanır. (Tam gövde için uzak şemaya bakınız;
--- aşağıdaki sürüm uygulanan sürümün birebir aynısıdır.)
+-- 2) branch_id koruması: dış kanal siparişlerinde adres bazlı doğrulama yapma.
 CREATE OR REPLACE FUNCTION public.orders_guard_protected_cols()
- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 declare
   v_claims text := current_setting('request.jwt.claims', true);
@@ -100,4 +107,4 @@ begin
 
   return NEW;
 end;
-$function$;
+$function$;;

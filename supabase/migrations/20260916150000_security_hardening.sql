@@ -14,12 +14,10 @@
 --    değiştirilebildiği görüldü — bunlar da korunan alanlara eklendi.
 
 drop policy if exists "profiles_update_all" on public.profiles;
-
 create policy "profiles_update_own" on public.profiles
   for update
   using (id = auth.uid())
   with check (id = auth.uid());
-
 create or replace function public.orders_guard_protected_cols()
 returns trigger
 language plpgsql
@@ -79,9 +77,7 @@ begin
   return NEW;
 end;
 $$;
-
 drop trigger if exists trg_orders_guard_protected_cols on public.orders;
-
 create trigger trg_orders_guard_protected_cols
   before update on public.orders
   for each row

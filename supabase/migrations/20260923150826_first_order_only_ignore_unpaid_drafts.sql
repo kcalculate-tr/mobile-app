@@ -1,10 +1,10 @@
 -- first_order_only kontrolü ÖDENMEMİŞ TASLAKLARI da "geçmiş sipariş" sayıyordu.
 --
 -- orders tablosunda ödeme adımında terk edilmiş taslaklar birikiyor
--- (status='expired', payment_status='pending'). Bu migration yazılırken
--- 330 satırın 160'ı bu. Telefon/adres çakışma kontrolleri bu satırları da
--- tarıyordu; yani hiç ödeme yapılmamış bir taslak, o telefonu "daha önce
--- sipariş vermiş" konumuna düşürüp hoşgeldin kuponunu kapatıyordu.
+-- (status='expired', payment_status='pending'). Bugün 330 satırın 160'ı bu.
+-- Telefon/adres çakışma kontrolleri bu satırları da tarıyordu; yani hiç
+-- ödeme yapılmamış bir taslak, o telefonu "daha önce sipariş vermiş"
+-- konumuna düşürüp hoşgeldin kuponunu kapatıyordu.
 --
 -- Artık yalnızca GERÇEKTEN ÖDENMİŞ siparişler sayılıyor (payment_status =
 -- 'paid'). Sonradan iptal/iade edilmiş olması önemli değil — para ödenmişse
@@ -181,3 +181,4 @@ begin
   );
 end;
 $function$;
+;

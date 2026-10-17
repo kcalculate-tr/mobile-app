@@ -10,19 +10,15 @@ alter table public.branches
   -- İleride şubeye özel Adisyo kimlik bilgisi eşlemesi için (şimdilik hep NULL —
   -- Adisyo tek hesap; kod bu alanı okuyup boşsa global secret'lara düşecek).
   add column if not exists adisyo_config jsonb;
-
 update public.branches
   set name = 'Karabağlar (Basın Sitesi)', is_default = true
   where id = 'aa8ef65d-a9aa-42fb-bc55-016ba2249dbd';
-
 -- Tek "varsayılan" şube garantisi (birden fazla satır is_default=true olamaz).
 create unique index if not exists branches_one_default_idx
   on public.branches (is_default) where is_default;
-
 insert into public.branches (name, address, slug, is_active)
 select 'Bayraklı', 'Bayraklı, İzmir', 'bayrakli', true
 where not exists (select 1 from public.branches where slug = 'bayrakli');
-
 -- KEŞİF NOTU: branches'te RLS açıktı ama yalnızca "public read" politikası vardı —
 -- INSERT/UPDATE/DELETE için HİÇ politika yoktu (Boss panelin "Yeni Şube Ekle" /
 -- "Düzenle" / "Sil" butonları muhtemelen hep RLS hatasıyla başarısız oluyordu,
@@ -31,17 +27,14 @@ drop policy if exists "branches_insert_admin" on public.branches;
 create policy "branches_insert_admin" on public.branches
   for insert
   with check (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 drop policy if exists "branches_update_admin" on public.branches;
 create policy "branches_update_admin" on public.branches
   for update
   using (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 drop policy if exists "branches_delete_admin" on public.branches;
 create policy "branches_delete_admin" on public.branches
   for delete
   using (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 -- ── 2) branch_service_areas: hangi (il/ilçe/mahalle) hangi şubeye ait ────────
 -- delivery_zones'un YERİNE değil YANINA: delivery_zones "burada teslimat var mı,
 -- hangi şartla" sorusunu; bu tablo "varsa hangi şube hazırlıyor" sorusunu cevaplar.
@@ -58,13 +51,11 @@ create table if not exists public.branch_service_areas (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create index if not exists branch_service_areas_lookup_idx
   on public.branch_service_areas (city, district, neighborhood)
   where is_active;
 create index if not exists branch_service_areas_branch_idx
   on public.branch_service_areas (branch_id);
-
 -- S4 NOTU (ileride poligon): burada bir `boundary jsonb` (GeoJSON) veya
 -- `boundary geography(Polygon,4326)` kolonu ALTER TABLE ile eklenebilir; çözüm
 -- fonksiyonu (aşağıda fn_resolve_branch_for_order) önce poligonu, bulamazsa
@@ -72,31 +63,25 @@ create index if not exists branch_service_areas_branch_idx
 -- satırlar/eşleme mantığı bozulmaz.
 
 alter table public.branch_service_areas enable row level security;
-
 drop policy if exists "branch_service_areas_select_admin" on public.branch_service_areas;
 create policy "branch_service_areas_select_admin" on public.branch_service_areas
   for select
   using (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 drop policy if exists "branch_service_areas_insert_admin" on public.branch_service_areas;
 create policy "branch_service_areas_insert_admin" on public.branch_service_areas
   for insert
   with check (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 drop policy if exists "branch_service_areas_update_admin" on public.branch_service_areas;
 create policy "branch_service_areas_update_admin" on public.branch_service_areas
   for update
   using (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 drop policy if exists "branch_service_areas_delete_admin" on public.branch_service_areas;
 create policy "branch_service_areas_delete_admin" on public.branch_service_areas
   for delete
   using (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 -- ── 3) orders: neighbourhood (district/city ile AYNI denormalize desen) ──────
 alter table public.orders
   add column if not exists neighbourhood text;
-
 -- ── 4) branch_assignment_log: audit — otomatik VE manuel şube değişiklikleri ──
 create table if not exists public.branch_assignment_log (
   id uuid primary key default gen_random_uuid(),
@@ -108,24 +93,19 @@ create table if not exists public.branch_assignment_log (
   changed_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
-
 create index if not exists branch_assignment_log_order_idx
   on public.branch_assignment_log (order_id);
-
 alter table public.branch_assignment_log enable row level security;
-
 drop policy if exists "branch_assignment_log_select_admin" on public.branch_assignment_log;
 create policy "branch_assignment_log_select_admin" on public.branch_assignment_log
   for select
   using (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 -- INSERT: service_role (trigger, RLS bypass) + admin panel manuel "şube değiştir"
 -- (admin_allowlist). Update/delete YOK — audit trail asla değiştirilmez/silinmez.
 drop policy if exists "branch_assignment_log_insert_admin" on public.branch_assignment_log;
 create policy "branch_assignment_log_insert_admin" on public.branch_assignment_log
   for insert
   with check (exists (select 1 from public.admin_allowlist a where a.user_id = auth.uid()));
-
 -- ── 5) fn_resolve_branch_for_order: (district, neighbourhood) -> branch_id ───
 -- SECURITY DEFINER: sipariş veren müşteri branch_service_areas'ı RLS'ten dolayı
 -- okuyamaz — bu fonksiyon RLS'i güvenli biçimde bypass eder (yalnızca OKUMA,
@@ -185,7 +165,6 @@ begin
   return v_branch_id;
 end;
 $$;
-
 -- ── 6) fn_assign_order_branch: BEFORE INSERT/UPDATE trigger fonksiyonu ───────
 -- HER ZAMAN sunucu hesabını NEW.branch_id'ye yazar — istemcinin gönderdiği
 -- (mobil DEFAULT_BRANCH_ID dahil) değer koşulsuz yok sayılır/ezilir.
@@ -215,7 +194,6 @@ begin
   return NEW;
 end;
 $$;
-
 -- Trigger isimleri KASITLI: "trg_orders_assign_branch_*" alfabetik olarak
 -- "trg_orders_guard_insert" / "trg_orders_guard_protected_cols"'tan ÖNCE gelir
 -- (a < g) — yani branch_id bu trigger'larda kontrol edilmeden ÖNCE zaten doğru
@@ -224,12 +202,10 @@ drop trigger if exists trg_orders_assign_branch_insert on public.orders;
 create trigger trg_orders_assign_branch_insert
   before insert on public.orders
   for each row execute function public.fn_assign_order_branch();
-
 drop trigger if exists trg_orders_assign_branch_update on public.orders;
 create trigger trg_orders_assign_branch_update
   before update on public.orders
   for each row execute function public.fn_assign_order_branch();
-
 -- ── 7) orders_guard_protected_cols: branch_id koruması ───────────────────────
 -- NAIF "OLD != NEW ise reddet" YAZILMADI — bu, adres değişince meşru şube
 -- değişimini de bloklardı (assign trigger ZATEN her seferinde doğru değeri

@@ -8,7 +8,6 @@ alter table public.analytics_events
   drop constraint analytics_events_user_id_fkey,
   add constraint analytics_events_user_id_fkey
     foreign key (user_id) references auth.users(id) on delete set null;
-
 alter table public.branch_assignment_log
   drop constraint branch_assignment_log_changed_by_fkey,
   add constraint branch_assignment_log_changed_by_fkey

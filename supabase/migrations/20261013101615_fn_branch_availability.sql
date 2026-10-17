@@ -30,7 +30,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.fn_branch_availability(text, text, uuid) TO anon, authenticated;
 
--- Şube panelinin kapatma/açma yolu.
+-- Şube panelinin kapatma/açma işlemi (satır yoksa oluşturur, varsa güncellerse)
 CREATE OR REPLACE FUNCTION public.fn_set_branch_product_availability(
   p_branch_id    uuid,
   p_product_id   bigint,
@@ -57,4 +57,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.fn_set_branch_product_availability(uuid, bigint, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_set_branch_product_availability(uuid, bigint, boolean) TO authenticated;;

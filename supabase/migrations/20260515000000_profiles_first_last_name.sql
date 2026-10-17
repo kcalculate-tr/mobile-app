@@ -2,7 +2,6 @@
 alter table profiles
   add column if not exists first_name text,
   add column if not exists last_name  text;
-
 -- Mevcut kullanicilar icin tek isim kolonu varsa backfill (name veya full_name)
 do $$
 begin
@@ -20,6 +19,5 @@ begin
       where first_name is null $bf$;
   end if;
 end $$;
-
 -- PostgREST schema cache reload (Dashboard > Settings > API > Reload ile esdeger)
 notify pgrst, 'reload schema';

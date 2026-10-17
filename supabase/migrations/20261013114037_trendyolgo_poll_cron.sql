@@ -1,5 +1,5 @@
--- Dakikalık sipariş çekme. PASİF başlar; API secret'ları girilince açılır:
---   select cron.alter_job((select jobid from cron.job where jobname='trendyolgo-poll'), active := true);
+-- Dakikalık sipariş çekme. PASİF başlar; API secret'ları girilince açılacak
+-- (cron.alter_job(jobid, active := true) ya da panelden).
 DO $$
 DECLARE
   v_jobid bigint;
@@ -23,4 +23,4 @@ BEGIN
   ) INTO v_jobid;
 
   PERFORM cron.alter_job(v_jobid, active := false);
-END $$;
+END $$;;

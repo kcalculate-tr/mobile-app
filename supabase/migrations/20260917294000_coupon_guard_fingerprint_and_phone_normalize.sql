@@ -14,9 +14,7 @@ create table public.deleted_account_fingerprints (
 alter table public.deleted_account_fingerprints enable row level security;
 create index idx_deleted_account_fingerprints_phone_hash on public.deleted_account_fingerprints (phone_hash);
 create index idx_deleted_account_fingerprints_email_hash on public.deleted_account_fingerprints (email_hash);
-
 create index if not exists idx_orders_phone on public.orders (phone);
-
 create or replace function public.validate_coupon(p_code text, p_cart_total numeric default 0)
 returns jsonb
 language plpgsql
@@ -146,8 +144,8 @@ begin
     if not v_dup_by_phone and not v_dup_by_address and not v_dup_by_card then
       select exists(
         select 1 from public.deleted_account_fingerprints f
-         where (v_phone_norm <> '' and f.phone_hash = encode(extensions.digest(v_phone_norm, 'sha256'), 'hex'))
-            or (v_email_norm <> '' and f.email_hash = encode(extensions.digest(v_email_norm, 'sha256'), 'hex'))
+         where (v_phone_norm <> '' and f.phone_hash = encode(digest(v_phone_norm, 'sha256'), 'hex'))
+            or (v_email_norm <> '' and f.email_hash = encode(digest(v_email_norm, 'sha256'), 'hex'))
       ) into v_dup_by_fingerprint;
     end if;
 

@@ -1,6 +1,6 @@
--- Dış pazaryeri (Trendyol GO vb.) siparişleri bizim Adisyo senkronumuzdan GEÇMEZ:
--- Adisyo'nun kendi pazaryeri entegrasyonu o siparişleri zaten çekiyor; iki kez
--- yazılırsa çift adisyon ve çift ciro olur.
+-- Dış pazaryeri (Trendyol GO vb.) siparişleri bizim Adisyo senkronumuzdan
+-- GEÇMEZ: Adisyo'nun kendi pazaryeri entegrasyonu zaten o siparişleri
+-- çekiyor, iki kez yazılırsa çift adisyon ve çift ciro olur.
 CREATE OR REPLACE FUNCTION public.fn_notify_adisyo_save_order()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -83,4 +83,4 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'fn_notify_adisyo_save_order failed: % (%)', SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
-$function$;
+$function$;;

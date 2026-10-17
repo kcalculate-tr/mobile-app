@@ -9,10 +9,8 @@ create table public.user_card_secrets (
   updated_at timestamptz not null default now()
 );
 alter table public.user_card_secrets enable row level security;
-
 -- 2) user_cards: card_token kaldırılıyor (tablo boş, veri taşınacak bir şey yok).
 alter table public.user_cards drop column if exists card_token;
-
 -- 3) user_cards RLS: istemci artık yalnızca KENDİ satırını okuyabilir.
 --    Tüm yazma (insert/update/delete) Edge Function'a (service_role) taşınıyor.
 drop policy if exists "cards_insert_own" on public.user_cards;
@@ -24,11 +22,9 @@ drop policy if exists "cards_delete_own" on public.user_cards;
 --    kullanıcı başına bir kez üretilir, bir daha değişmez.
 alter table public.profiles
   add column if not exists payment_customer_key text;
-
 create unique index if not exists profiles_payment_customer_key_uniq
   on public.profiles (payment_customer_key)
   where payment_customer_key is not null;
-
 create or replace function public.generate_payment_customer_key()
 returns text
 language plpgsql
@@ -45,7 +41,6 @@ begin
   return v_key;
 end;
 $$;
-
 -- handle_new_user: yeni kullanıcıda üret; ON CONFLICT UPDATE'e KASITLI OLARAK
 -- eklenmedi — böylece mevcut satırların key'i asla ezilmez (immutable).
 create or replace function public.handle_new_user()
@@ -71,13 +66,11 @@ begin
   return new;
 end;
 $$;
-
 -- Mevcut kullanıcılar için doldur (her satır generate_payment_customer_key()'i
 -- ayrı ayrı çağırır -> her biri farklı bir değer alır).
 update public.profiles
 set payment_customer_key = public.generate_payment_customer_key()
 where payment_customer_key is null;
-
 -- 5) profiles guard: payment_customer_key de artık yalnızca sunucu/admin
 -- tarafından değiştirilebilsin (kullanıcı kendi anahtarını değiştiremesin).
 create or replace function public.profiles_guard_protected_cols()

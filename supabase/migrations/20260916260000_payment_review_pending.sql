@@ -5,11 +5,9 @@
 alter table public.orders
   add column if not exists payment_review_pending boolean not null default false,
   add column if not exists payment_review_started_at timestamptz;
-
 create index if not exists orders_payment_review_pending_idx
   on public.orders (payment_review_pending)
   where payment_review_pending;
-
 -- 'expire-abandoned-orders' cron'u (her 5dk, 10dk'dan eski pending_payment
 -- siparişleri 'expired' yapıyordu) artık review-pending siparişleri HARİÇ
 -- tutuyor — yoksa incelemedeki bir ödeme "expired" görünüp müşteri kafası
@@ -27,7 +25,6 @@ select cron.schedule(
        AND created_at < now() - interval '10 minutes'
   $$
 );
-
 -- paynkolay-review-sweep: 5dk'da bir, en fazla 24 saat boyunca, review-pending
 -- siparişleri PfTransactionReportList ile tekrar dener. 'service_role_key'
 -- vault secret'ı zaten var (push-campaign-dispatcher ile aynı, proje geneli

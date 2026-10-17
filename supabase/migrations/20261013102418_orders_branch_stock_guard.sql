@@ -1,6 +1,7 @@
 -- Şubede kapatılmış ürün sipariş edilemez (13.10.2026)
 -- Eski app sürümleri de dahil HER istemciyi kapsar: sipariş INSERT'te,
--- ödeme alınmadan önce reddedilir.
+-- ödeme alınmadan önce reddedilir. Yalnız branch_product_stock'ta
+-- is_available=false satırı olan ürünler için devreye girer.
 CREATE OR REPLACE FUNCTION public.fn_orders_branch_stock_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -34,12 +35,12 @@ EXCEPTION
   WHEN check_violation THEN
     RAISE;
   WHEN OTHERS THEN
+    -- Beklenmeyen bir hata siparisi engellemesin
     RAISE WARNING 'fn_orders_branch_stock_guard failed: % (%)', SQLERRM, SQLSTATE;
     RETURN NEW;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_orders_stock_guard_insert ON public.orders;
 CREATE TRIGGER trg_orders_stock_guard_insert
   BEFORE INSERT ON public.orders
-  FOR EACH ROW EXECUTE FUNCTION public.fn_orders_branch_stock_guard();
+  FOR EACH ROW EXECUTE FUNCTION public.fn_orders_branch_stock_guard();;

@@ -21,12 +21,10 @@
 alter table public.orders
   add column if not exists paynkolay_reference_code text,
   add column if not exists paynkolay_trx_date       text;
-
 comment on column public.orders.paynkolay_reference_code is
   'Paynkolay REFERENCE_CODE (IKSIRPF...). CancelRefundPayment icin zorunlu.';
 comment on column public.orders.paynkolay_trx_date is
   'Paynkolay orijinal islem tarihi (yyyy.mm.dd). CancelRefundPayment trxDate alani.';
-
 -- 2) refunds: TABLO YOK -> olustur. Mevcut boss panel insert'i ile birebir uyumlu
 --    (order_id, amount, reason, created_at). Tablo varsa bu blok atlanir.
 create table if not exists public.refunds (
@@ -36,20 +34,19 @@ create table if not exists public.refunds (
   reason      text,
   created_at  timestamptz default now()
 );
-
 -- 3) refunds: audit alanlari (her biri varsa atlanir).
 alter table public.refunds
   add column if not exists type                text,        -- 'cancel' | 'refund'
   add column if not exists paynkolay_reference text,
   add column if not exists provider_response   jsonb,       -- Paynkolay ham yanit
   add column if not exists refunded_at         timestamptz,
-  add column if not exists status              text;        -- 'success' | 'failed'
+  add column if not exists status              text;
+-- 'success' | 'failed'
 
 comment on column public.refunds.type is
   'cancel (ayni gun, tam) | refund (sonraki gun, tam/kismi)';
 comment on column public.refunds.provider_response is
   'Paynkolay CancelRefundPayment ham yaniti (audit/teshis).';
-
 -- 4) RLS: refunds HASSAS (iade kayitlari). Yeni olusturulduysa RLS ac;
 --    erisim yalnizca service-role (Edge Function) ve admin_allowlist uzerinden.
 --    NOT: Boss panel su an refunds'a anon/authenticated insert deniyordu ve

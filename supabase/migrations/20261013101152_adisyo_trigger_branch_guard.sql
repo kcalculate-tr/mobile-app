@@ -1,6 +1,3 @@
--- Bayraklı (Mansuroğlu) siparişleri merkezin Adisyo hesabına düşüyordu (13.10.2026)
--- Merkez (is_default) dışındaki bir şubenin siparişi, o şubenin KENDİ Adisyo
--- hesabı tanımlı değilse edge function hiç tetiklenmez.
 CREATE OR REPLACE FUNCTION public.fn_notify_adisyo_save_order()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -12,6 +9,9 @@ DECLARE
   v_cfg         jsonb;
   v_url text := 'https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/adisyo-save-order';
 BEGIN
+  -- İki tetikleme koşulu:
+  --   (1) Yeni sipariş onaylandı (eski davranış)
+  --   (2) Retry cron sync_status='retrying' yaptı
   IF NOT (
     (NEW.status = 'confirmed'
      AND (OLD.status IS DISTINCT FROM NEW.status)
@@ -25,7 +25,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- ŞUBE KORUMASI
+  -- ŞUBE KORUMASI (13.10.2026)
+  -- Merkez (is_default) dışındaki bir şubenin siparişi, o şubenin KENDİ Adisyo
+  -- hesabı tanımlı değilse merkezin hesabına YAZILMAZ. Bayraklı (Mansuroğlu)
+  -- siparişleri merkez adisyonuna düşüyordu.
   IF NEW.branch_id IS NOT NULL THEN
     SELECT b.is_default, b.adisyo_config
       INTO v_is_default, v_cfg
@@ -46,6 +49,7 @@ BEGIN
     END IF;
   END IF;
 
+  -- Vault'tan service key
   SELECT decrypted_secret INTO v_service_key
   FROM vault.decrypted_secrets WHERE name = 'adisyo_service_role_key' LIMIT 1;
 
@@ -54,6 +58,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- Edge Function tetikle
   SELECT net.http_post(
     url := v_url,
     body := jsonb_build_object(
@@ -78,4 +83,4 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'fn_notify_adisyo_save_order failed: % (%)', SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
-$function$;
+$function$;;

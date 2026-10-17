@@ -14,11 +14,8 @@ create table public.app_banners (
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
-
 create index on public.app_banners (is_active, priority desc);
-
 alter table public.app_banners enable row level security;
-
 -- Herkes (anon dahil) yalnızca aktif + tarih penceresi içindeki banner'ları
 -- okuyabilir — Home ekranı henüz giriş yapmamış kullanıcıya da görünebilir.
 create policy "read active banners" on public.app_banners
@@ -27,7 +24,6 @@ create policy "read active banners" on public.app_banners
     and (starts_at is null or starts_at <= now())
     and (ends_at is null or ends_at > now())
   );
-
 -- Yazma yalnızca admin_allowlist — orders/campaigns'teki mevcut admin bypass
 -- pattern'iyle tutarlı (Boss panel Grid Yönetimi bu üzerinden CRUD yapacak).
 create policy "app_banners_admin_write" on public.app_banners

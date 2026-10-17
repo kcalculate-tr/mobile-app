@@ -1,12 +1,11 @@
 -- profiles.macro_points TANIM GEREĞİ eşiğin altındaki artıktır (trigger her
 -- zaman v_remainder yazar). Eski macro modelinden devreden satırlarda bu
 -- değer eşiğin çok üstünde kalmış (ör. 1620) ve hem sipariş özetindeki
--- "kazanacağın Macro" önizlemesini hem de GERÇEK kazanımı şişiriyordu:
+-- "kazanacağın Macro" önizlemesini hem de gerçek kazanımı şişiriyordu:
 -- floor((1620 + 585) / 500) = 4.
 --
 -- Artık aralık dışı bir artık 0 sayılıyor. Eski modelin puanının yeni
 -- modelde tanımlı bir karşılığı yok; modülünü almak da uydurma olurdu.
--- İstemci tarafındaki eşi: src/lib/macros.ts -> normalizeCarryover().
 create or replace function public.grant_macros_on_delivery()
 returns trigger
 language plpgsql
@@ -124,3 +123,4 @@ begin
   return new;
 end;
 $$;
+;

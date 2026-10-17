@@ -20,9 +20,7 @@ begin
   return NEW;
 end;
 $$;
-
 drop trigger if exists orders_record_campaign_use on orders;
-
 create trigger orders_record_campaign_use
   after insert or update of status on orders
   for each row

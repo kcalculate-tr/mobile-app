@@ -14,13 +14,10 @@ CREATE TABLE IF NOT EXISTS adisyo_webhook_events (
   process_error text,
   received_at timestamptz DEFAULT now()
 );
-
 CREATE INDEX IF NOT EXISTS idx_webhook_unprocessed
   ON adisyo_webhook_events(processed, received_at)
   WHERE processed = false;
-
 CREATE INDEX IF NOT EXISTS idx_webhook_order
   ON adisyo_webhook_events(adisyo_order_id);
-
 CREATE INDEX IF NOT EXISTS idx_webhook_event_type
   ON adisyo_webhook_events(event_type, received_at DESC);

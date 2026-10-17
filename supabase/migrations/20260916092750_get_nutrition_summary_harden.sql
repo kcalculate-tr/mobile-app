@@ -1,16 +1,3 @@
--- Görev 1.1 güvenlik sertleştirmesi.
---
--- Doğrulama: get_nutrition_summary SECURITY INVOKER'dı ve altındaki
--- user_nutrition_profiles/meal_consumptions tabloları "select own"
--- (user_id = auth.uid()) RLS politikalarıyla korunuyordu; A kullanıcısının
--- oturumuyla B'nin id'si gönderildiğinde test edildi — sonuç tüm alanlarda 0
--- döndü (B'nin gerçek verisi sızmadı). Yani fiili bir veri sızıntısı yoktu.
---
--- Yine de savunma derinliği için: p_user_id parametresi tamamen kaldırılıyor
--- (spoof edilecek bir alan bırakılmıyor, fonksiyon her zaman çağıranın
--- auth.uid()'sini kullanıyor) ve fonksiyonun EXECUTE yetkisi anon/PUBLIC'ten
--- alınıp yalnızca authenticated rolüne veriliyor (önceden şema varsayılan
--- yetkilendirmesiyle anon'da da EXECUTE vardı).
 drop function if exists public.get_nutrition_summary(uuid, date);
 
 create function public.get_nutrition_summary(
@@ -72,3 +59,4 @@ $$;
 revoke all on function public.get_nutrition_summary(date) from public;
 revoke all on function public.get_nutrition_summary(date) from anon;
 grant execute on function public.get_nutrition_summary(date) to authenticated;
+;

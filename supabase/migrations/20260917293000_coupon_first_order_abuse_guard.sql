@@ -11,7 +11,6 @@
 -- canlıya çıktığında bu kontrol otomatik olarak anlamlı hâle gelecek — o
 -- ayrı, kapalı özelliğin kodu burada değiştirilmiyor, sadece tablosu OKUNUYOR.
 alter table public.campaigns add column if not exists first_order_only boolean not null default false;
-
 create or replace function public.validate_coupon(p_code text, p_cart_total numeric default 0)
 returns jsonb
 language plpgsql

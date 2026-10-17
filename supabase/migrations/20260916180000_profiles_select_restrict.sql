@@ -11,7 +11,6 @@
 -- regresyonundan (20260916160000) ders alınarak SELECT politikasına da
 -- admin_allowlist bypass'ı baştan eklendi.
 drop policy if exists "Profiles are viewable by everyone" on public.profiles;
-
 create policy "profiles_select_own_or_admin" on public.profiles
   for select
   using (

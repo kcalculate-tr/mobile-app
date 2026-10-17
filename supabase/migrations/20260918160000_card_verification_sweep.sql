@@ -8,19 +8,18 @@ alter table public.card_verifications
   add column if not exists charged_amount     numeric(10,2),   -- gerçekten çekilen tutar (iade bu tutar üzerinden)
   add column if not exists report_checked_at  timestamptz,     -- son PaynKolay rapor kontrolü
   add column if not exists report_check_count integer not null default 0 check (report_check_count >= 0);
-
 comment on column public.card_verifications.charged_amount is
   'PaynKolay''ın gerçekten çektiği tutar (amount_mismatch durumunda amount''tan farklı olabilir); iade bu tutar üzerinden yapılır.';
 comment on column public.card_verifications.report_check_count is
   'initiated / failed(timeout|cancelled) kayıtlar için PaynKolay raporundan yapılan kontrol sayısı (geri çekilmeli aralıkla, en fazla 6).';
-
 -- 2) Kilit tablosu + fonksiyonlar (yalnız service_role)
 create table if not exists public.sweep_locks (
   name         text primary key,
   locked_until timestamptz not null,
   locked_by    text
 );
-alter table public.sweep_locks enable row level security;  -- politika YOK: yalnız service_role/security definer
+alter table public.sweep_locks enable row level security;
+-- politika YOK: yalnız service_role/security definer
 
 -- Kilit alındıysa true. Süresi dolmuş kilit devralınır (sweep çökerse TTL sonunda kendiliğinden açılır).
 create or replace function public.acquire_sweep_lock(p_name text, p_ttl_seconds integer, p_owner text default null)
@@ -41,7 +40,6 @@ begin
   return coalesce(v_got, false);
 end;
 $$;
-
 create or replace function public.release_sweep_lock(p_name text, p_owner text default null)
 returns void
 language sql
@@ -52,12 +50,10 @@ as $$
      set locked_until = now() - interval '1 second'
    where name = p_name and (p_owner is null or locked_by = p_owner);
 $$;
-
 revoke all on function public.acquire_sweep_lock(text, integer, text) from public, anon, authenticated;
 revoke all on function public.release_sweep_lock(text, text) from public, anon, authenticated;
 grant execute on function public.acquire_sweep_lock(text, integer, text) to service_role;
 grant execute on function public.release_sweep_lock(text, text) to service_role;
-
 -- 3) Cron: 5 dk'da bir. Sweep fonksiyonu her satırın kendi zamanlamasını uygular
 --    (refund_pending için son denemeden 1 saat, rapor kontrolü için geri çekilme) —
 --    yani iade denemeleri SAATLİK, tarama/rapor mutabakatı ise 5 dk'lık granülarite.

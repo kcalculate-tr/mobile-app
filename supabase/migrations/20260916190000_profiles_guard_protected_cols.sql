@@ -40,9 +40,7 @@ begin
   return NEW;
 end;
 $$;
-
 drop trigger if exists trg_profiles_guard_protected_cols on public.profiles;
-
 create trigger trg_profiles_guard_protected_cols
   before update on public.profiles
   for each row

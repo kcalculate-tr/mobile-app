@@ -30,4 +30,4 @@ select cron.schedule(
   END
   $body$;
   $CRON$
-);
+);;

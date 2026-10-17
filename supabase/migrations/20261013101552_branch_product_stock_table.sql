@@ -1,5 +1,3 @@
--- Şube bazlı ürün kapatma (13.10.2026)
--- Yalnız KAPALI olan tutulur: satır yoksa o şubede açıktır.
 CREATE TABLE IF NOT EXISTS public.branch_product_stock (
   branch_id    uuid        NOT NULL REFERENCES public.branches(id) ON DELETE CASCADE,
   product_id   bigint      NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
@@ -42,4 +40,4 @@ CREATE POLICY bps_delete_branch_or_admin ON public.branch_product_stock
     EXISTS (SELECT 1 FROM public.branch_users bu
              WHERE bu.user_id = auth.uid() AND bu.branch_id = branch_product_stock.branch_id)
     OR EXISTS (SELECT 1 FROM public.admin_allowlist a WHERE a.user_id = auth.uid())
-  );
+  );;

@@ -9,5 +9,4 @@ create table public.user_apple_tokens (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 alter table public.user_apple_tokens enable row level security;

@@ -37,4 +37,4 @@ on conflict (key) do update
       body_template  = excluded.body_template,
       deep_link      = excluded.deep_link,
       is_active      = true,
-      updated_at     = now();
+      updated_at     = now();;

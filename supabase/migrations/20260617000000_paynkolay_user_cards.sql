@@ -18,20 +18,16 @@
 -- kart saklama acilinca dolar. NOT NULL YAPILMAZ (mevcut/gelecek satirlar kirilmasin).
 alter table public.user_cards
   add column if not exists paynkolay_customer_key text;
-
 -- Ayni kart ayni kullanicida iki kez kaydolmasin.
 create unique index if not exists user_cards_user_token_uniq
   on public.user_cards (user_id, card_token);
-
 -- Kullanici basina yalnizca bir varsayilan kart.
 create unique index if not exists user_cards_one_default_per_user
   on public.user_cards (user_id)
   where is_default;
-
 -- Listeleme/eslestirme icin.
 create index if not exists user_cards_user_id_idx
   on public.user_cards (user_id);
-
 -- NOT: user_id nullable BIRAKILDI (riskli ALTER'dan kacinildi).
 -- NOT: RLS zaten aktif; cards_select_own/insert_own/update_own/delete_own policy'leri
 --      zaten var — DUPLICATE policy eklenmedi.
@@ -51,12 +47,10 @@ create table if not exists public.failed_payments (
   order_data      jsonb,
   created_at      timestamptz not null default now()
 );
-
 create index if not exists failed_payments_user_id_idx
   on public.failed_payments (user_id);
 create index if not exists failed_payments_created_at_idx
   on public.failed_payments (created_at);
-
 -- RLS: HASSAS audit tablosu. Kullanici erisimi YOK — yalnizca service-role
 -- (RLS'i bypass eder) yazar/okur. RLS enable + policy YOK = kullaniciya kapali.
 alter table public.failed_payments enable row level security;

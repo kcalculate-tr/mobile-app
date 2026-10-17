@@ -1,15 +1,3 @@
--- Görev 1.1 (Sprint 1): Kcalculate / Profil / Ana sayfa arasındaki hedef-tüketilen-kalan
--- rakam farkının kök nedeni: ProfileScreen.tsx `user_nutrition_profiles.daily_calories_goal`
--- (böyle bir kolon yok) ve legacy `meal_logs` tablosunu okuyordu; hiçbir yazma yolu bu
--- kolon/tabloya veri yazmıyordu. Tracker ise güncel `target_calories/target_protein/
--- target_carbs/target_fat` + `meal_consumptions`'ı kullanıyordu. Bu fonksiyon tek,
--- sunucu taraflı kaynak olarak üç ekranın da kullanacağı hedef/tüketilen/kalan
--- değerlerini döner; gün sınırı Europe/Istanbul saat dilimine göre hesaplanır.
---
--- RLS notu: fonksiyon SECURITY INVOKER (varsayılan) olarak tanımlıdır; çağıranın
--- auth.uid()'sinden farklı bir p_user_id verilse dahi user_nutrition_profiles ve
--- meal_consumptions üzerindeki mevcut "select own" RLS politikaları satırları
--- görünmez kılar, dolayısıyla başka bir kullanıcının verisi sızmaz.
 create or replace function public.get_nutrition_summary(
   p_user_id uuid,
   p_date date default (now() at time zone 'Europe/Istanbul')::date
@@ -68,3 +56,4 @@ as $$
 $$;
 
 grant execute on function public.get_nutrition_summary(uuid, date) to authenticated;
+;

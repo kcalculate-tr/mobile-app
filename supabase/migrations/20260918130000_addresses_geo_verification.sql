@@ -6,7 +6,6 @@ alter table public.addresses
   add column if not exists latitude numeric,
   add column if not exists longitude numeric,
   add column if not exists verified_at timestamptz;
-
 -- Adresin konumla ilgili alanlarından biri değişirse doğrulama düşer —
 -- kullanıcı pin'i tekrar onaylamadan eski "doğrulanmış" durumu miras almasın.
 create or replace function public.fn_addresses_reset_verification()
@@ -27,11 +26,9 @@ begin
   return new;
 end;
 $$;
-
 drop trigger if exists trg_addresses_reset_verification on public.addresses;
 create trigger trg_addresses_reset_verification
   before update on public.addresses
   for each row
   execute function public.fn_addresses_reset_verification();
-
 notify pgrst, 'reload schema';

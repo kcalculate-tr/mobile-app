@@ -1,8 +1,3 @@
--- Şubelere yaklaşık koordinat + Bayraklı şubesinin gerçek adı/adresi.
---
--- Koordinatlar YALNIZCA "kullanıcıya en yakın şube" sıralaması için.
--- Haritadaki pin bu değerlerden değil, address metninin Google tarafından
--- geocode edilmesinden gelir; böylece pin gerçek kapı numarasında durur.
 alter table public.branches
   add column if not exists latitude  double precision,
   add column if not exists longitude double precision;
@@ -21,3 +16,4 @@ update public.branches
    set latitude = 38.3820,
        longitude = 27.1215
  where slug = 'basinsitesi';
+;

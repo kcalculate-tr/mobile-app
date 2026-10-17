@@ -1,9 +1,11 @@
 -- Trendyol GO durum geri yazma tetikleyicisi.
 -- SADECE panelden (gerçek kullanıcı oturumuyla) yapılan değişiklikte çalışır.
--- trendyolgo-poll service_role ile yazdığı için auth.uid() NULL olur; yoksa
--- Trendyol'dan OKUDUĞUMUZ statüyü anında geri yazmaya çalışırdık.
+-- trendyolgo-poll service_role ile yazdığı için auth.uid() NULL olur ve
+-- tetikleyici devreye girmez — yoksa Trendyol'dan OKUDUĞUMUZ statüyü anında
+-- Trendyol'a geri yazmaya çalışır, gereksiz çağrı ve 409 üretirdik.
 CREATE OR REPLACE FUNCTION public.fn_trendyolgo_push_status()
-RETURNS trigger LANGUAGE plpgsql
+RETURNS trigger
+LANGUAGE plpgsql
 AS $function$
 DECLARE
   v_service_key text;
@@ -38,6 +40,9 @@ BEGIN
     )
   ) INTO v_request_id;
 
+  RAISE NOTICE 'trendyolgo-push-status tetiklendi (order_id=%, durum=%, request_id=%)',
+    NEW.id, NEW.status, v_request_id;
+
   RETURN NEW;
 EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'fn_trendyolgo_push_status failed: % (%)', SQLERRM, SQLSTATE;
@@ -45,9 +50,8 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
-DROP TRIGGER IF EXISTS trg_trendyolgo_push_status ON public.orders;
 CREATE TRIGGER trg_trendyolgo_push_status
   AFTER UPDATE OF status ON public.orders
   FOR EACH ROW
   WHEN (OLD.status IS DISTINCT FROM NEW.status)
-  EXECUTE FUNCTION public.fn_trendyolgo_push_status();
+  EXECUTE FUNCTION public.fn_trendyolgo_push_status();;

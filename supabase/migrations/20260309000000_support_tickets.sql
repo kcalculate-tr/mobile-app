@@ -10,13 +10,10 @@ create table if not exists support_tickets (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
-
 alter table support_tickets enable row level security;
-
 create policy "users can insert own tickets"
   on support_tickets for insert
   with check (auth.uid() = user_id);
-
 create policy "users can select own tickets"
   on support_tickets for select
   using (auth.uid() = user_id);

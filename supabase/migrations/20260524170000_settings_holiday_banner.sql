@@ -14,6 +14,5 @@
 
 ALTER TABLE public.settings
   ADD COLUMN IF NOT EXISTS holiday_banner_active BOOLEAN NOT NULL DEFAULT FALSE;
-
 ALTER TABLE public.settings
   ADD COLUMN IF NOT EXISTS holiday_banner_message TEXT;

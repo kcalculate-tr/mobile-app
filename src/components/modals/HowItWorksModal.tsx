@@ -43,15 +43,19 @@ const FAQ_DATA: FaqSection[] = [
     items: [
       {
         q: 'Siparişimi ne zaman teslim alırım?',
-        a: 'Hemen teslimat siparişlerinde, siparişiniz hazırlandıktan sonra en kısa sürede adresinize teslim edilir. Randevulu siparişlerde ise seçtiğiniz gün ve saat aralığında teslimat yapılır.',
+        a: 'Hemen teslimat siparişleri, mahallenize göre ortalama 30-55 dakika içinde adresinize ulaşır. Randevulu siparişlerde seçtiğiniz gün ve saat aralığında teslimat yapılır.',
+      },
+      {
+        q: 'Hangi saatlerde sipariş verebilirim?',
+        a: 'Pazartesi-Cumartesi 09:00-24:00 arasında sipariş alıyoruz. Pazar günleri kapalıyız. Randevulu siparişlerinizi kapalı olduğumuz saatlerde de oluşturabilirsiniz; teslimat seçtiğiniz gün yapılır.',
       },
       {
         q: 'Minimum sipariş tutarı var mı?',
-        a: 'Evet, minimum sipariş tutarı bulunmaktadır. Güncel minimum tutar sepet ekranında gösterilir. Ücretsiz teslimat için gereken minimum tutara ulaştığınızda teslimat ücreti otomatik olarak kaldırılır.',
+        a: 'Evet. Hemen teslimatta minimum sepet tutarı 350 TL, randevulu teslimatta mahallenize göre 500-750 TL arasındadır. Adresinize ait güncel tutar sepet ekranında gösterilir.',
       },
       {
         q: 'Teslimat ücreti ne kadar?',
-        a: 'Teslimat ücreti sipariş tutarınıza ve teslimat bölgenize göre değişir. Belirli bir sipariş tutarının üzerinde ücretsiz teslimat kazanırsınız. Güncel teslimat ücreti ödeme ekranında gösterilir.',
+        a: 'Teslimat ücreti mahallenize göre 0-50 TL arasında değişir; şubelerimizin kendi bölgelerinde teslimat ücretsizdir. Belirli bir sepet tutarının üzerinde (mahalleye göre 600 TL\'ye kadar) ücret tamamen kalkar. Adresinize ait güncel ücret ödeme ekranında gösterilir.',
       },
       {
         q: 'Hangi bölgelere teslimat yapıyorsunuz?',
@@ -96,16 +100,16 @@ const FAQ_DATA: FaqSection[] = [
         a: 'Kcalculate özelliğimiz ile günlük kalori, protein, karbonhidrat ve yağ alımınızı otomatik olarak takip edebilirsiniz. KCAL\'dan sipariş verdiğiniz ürünler otomatik olarak günlük takibinize eklenir. Beslenme profilinizi oluşturarak kişisel hedeflerinizi belirleyebilirsiniz.',
       },
       {
-        q: 'Puan sistemi nedir?',
-        a: 'Macro Puan sistemi ile verdiğiniz her siparişten puan kazanırsınız. Biriktirdiğiniz puanları indirim kuponu olarak kullanabilirsiniz. Ayrıcalıklı Üye seviyesine ulaştığınızda ekstra avantajlar elde edersiniz.',
+        q: 'Macro nedir, nasıl kazanırım?',
+        a: 'Her 500 TL\'lik harcamanız 1 Macro kazandırır. Tutarın küsuratı kaybolmaz: bir sonraki Macro\'ya doğru puan olarak birikir, yani 350 TL\'lik bir sipariş de sizi hedefe yaklaştırır. Kazandığınız Macro\'ları ve bir sonraki Macro\'ya ne kadar kaldığını profilinizden takip edebilirsiniz.',
       },
       {
         q: 'Makro besin değerleri nereden görüntülerim?',
         a: 'Her ürünün detay sayfasında kalori, protein, karbonhidrat ve yağ değerleri gösterilir. Ayrıca sepet ekranında toplam sepet besin değerlerinizi ve Kcalculate sekmesinde günlük takibinizi görebilirsiniz.',
       },
       {
-        q: 'Ayrıcalıklı Üye nedir?',
-        a: 'Belirli sayıda sipariş vererek Ayrıcalıklı Üye (Macro Üye) seviyesine ulaşabilirsiniz. 15, 30, 45 ve 60 sipariş basamakları bulunur. Ayrıcalıklı Üyeler özel indirimler, öncelikli teslimat ve ekstra puanlardan yararlanır.',
+        q: 'Macro\'larımı nasıl kullanırım?',
+        a: '5 Macro = 1 bedava öğün. Yeterli Macro\'nuz olduğunda bedava öğün hakkınız kupon olarak hesabınıza tanımlanır ve sepette seçebilirsiniz. Kuponun geçerlilik süresi tanımlandığı tarihten itibaren 90 gündür.',
       },
     ],
   },
@@ -124,7 +128,7 @@ const FAQ_DATA: FaqSection[] = [
       },
       {
         q: 'Fatura alabilir miyim?',
-        a: 'Evet, tüm siparişleriniz için e-fatura otomatik olarak kayıtlı e-posta adresinize gönderilir. Kurumsal fatura talebiniz varsa destek ekibimizle iletişime geçebilirsiniz.',
+        a: 'Siparişinizin yazar kasa fişi ürünlerle birlikte teslim edilir; ayrıca fatura düzenlenmez. Fatura isterseniz uygulamadan destek talebi oluşturup vergi kimlik numarası, vergi dairesi, adres ve isim/unvan bilgilerinizi iletmeniz yeterlidir — faturanız bu bilgilere göre düzenlenir.',
       },
     ],
   },

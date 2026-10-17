@@ -35,10 +35,8 @@ create table if not exists public.card_verifications (
   created_at               timestamptz not null default now(),
   updated_at               timestamptz not null default now()
 );
-
 comment on table public.card_verifications is
   'Kart Ekle: 1 TL doğrulama işlemi + iade takibi. Sipariş değildir; yazma sadece service_role.';
-
 -- Günlük limit sorgusu (kullanıcı başına, TR günü) ve durum taramaları için.
 create index if not exists card_verifications_user_created_idx
   on public.card_verifications (user_id, created_at desc);
@@ -46,7 +44,6 @@ create index if not exists card_verifications_refund_pending_idx
   on public.card_verifications (created_at) where status = 'refund_pending';
 create index if not exists card_verifications_initiated_idx
   on public.card_verifications (created_at) where status = 'initiated';
-
 create or replace function public.card_verifications_touch_updated_at()
 returns trigger
 language plpgsql
@@ -56,21 +53,17 @@ begin
   return new;
 end;
 $$;
-
 drop trigger if exists card_verifications_touch on public.card_verifications;
 create trigger card_verifications_touch
   before update on public.card_verifications
   for each row execute function public.card_verifications_touch_updated_at();
-
 -- RLS: INSERT/UPDATE/DELETE politikası YOK (yalnız service_role — RLS'i bypass eder).
 alter table public.card_verifications enable row level security;
-
 drop policy if exists card_verifications_select_own on public.card_verifications;
 create policy card_verifications_select_own
   on public.card_verifications for select
   to authenticated
   using (user_id = auth.uid());
-
 drop policy if exists card_verifications_select_admin on public.card_verifications;
 create policy card_verifications_select_admin
   on public.card_verifications for select

@@ -32,4 +32,4 @@ create policy "read active announcement strip" on public.announcement_strip
 create policy "announcement_strip_admin_write" on public.announcement_strip
   for all
   using (exists (select 1 from admin_allowlist a where a.user_id = auth.uid()))
-  with check (exists (select 1 from admin_allowlist a where a.user_id = auth.uid()));
+  with check (exists (select 1 from admin_allowlist a where a.user_id = auth.uid()));;

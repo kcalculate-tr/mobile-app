@@ -13,7 +13,6 @@
 -- imza önce açıkça düşürülüyor (aksi halde 2-arg çağrılar belirsizlik
 -- hatası verir).
 drop function if exists public.validate_coupon(text, numeric);
-
 create or replace function public.validate_coupon(
   p_code text,
   p_cart_total numeric default 0,

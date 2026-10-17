@@ -44,9 +44,7 @@ begin
   return NEW;
 end;
 $$;
-
 drop trigger if exists trg_orders_guard_insert on public.orders;
-
 create trigger trg_orders_guard_insert
   before insert on public.orders
   for each row

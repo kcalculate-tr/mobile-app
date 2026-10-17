@@ -7,7 +7,6 @@
 -- bu yüzden sakli tutuluyor.
 alter table public.user_card_secrets
   add column if not exists cs_tran_id text;
-
 -- bank_name: mevcut şemada last4/brand var ama banka adı için kolon yoktu.
 -- Kart Saklama görevinin 3. adımı ("maskeli kart / banka / marka bilgisini
 -- user_cards'a yazsın") bunu gerektiriyor.

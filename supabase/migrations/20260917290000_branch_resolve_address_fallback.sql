@@ -9,7 +9,6 @@
 -- sayısı değişiyor) — bırakılırsa 2 ve 3 parametreli sürüm birlikte var olur
 -- ve 2-arg çağrılar belirsizlik hatası verir. Önce açıkça düşürülüyor.
 drop function if exists public.fn_resolve_branch_for_order(text, text);
-
 create or replace function public.fn_resolve_branch_for_order(
   p_district text,
   p_neighbourhood text,
@@ -76,7 +75,6 @@ begin
   return v_branch_id;
 end;
 $$;
-
 create or replace function public.fn_assign_order_branch()
 returns trigger
 language plpgsql
@@ -88,7 +86,6 @@ begin
   return NEW;
 end;
 $$;
-
 create or replace function public.orders_guard_protected_cols()
 returns trigger
 language plpgsql
