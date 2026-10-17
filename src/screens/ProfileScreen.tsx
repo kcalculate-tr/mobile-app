@@ -57,7 +57,6 @@ import { supabase } from '../lib/supabase';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { unregisterPushToken } from '../lib/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
-import { PAYMENT_PROVIDER } from '../config/payment';
 import { getCardsFeatureStatus } from '../lib/cards';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -109,7 +108,6 @@ export default function ProfileScreen() {
   const [savedCardsEnabled, setSavedCardsEnabled] = useState(false);
 
   useEffect(() => {
-    if (PAYMENT_PROVIDER === 'paytr_iframe') return; // satir zaten gizli, istek atmaya gerek yok
     let cancelled = false;
     (async () => {
       try {
@@ -569,7 +567,7 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('Addresses')}
             showBorder
           />
-          {PAYMENT_PROVIDER !== 'paytr_iframe' && savedCardsEnabled && (
+          {savedCardsEnabled && (
             <MenuItem
               icon={<CreditCard color={COLORS.text.secondary} size={18} />}
               title="Kayıtlı Kartlarım"

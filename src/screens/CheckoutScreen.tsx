@@ -1816,7 +1816,7 @@ export default function CheckoutScreen() {
         return;
       }
 
-      if ((PAYMENT_PROVIDER === 'paytr_iframe' || PAYMENT_PROVIDER === 'paynkolay') && paymentOrderId) {
+      if (PAYMENT_PROVIDER === 'paynkolay' && paymentOrderId) {
         console.log('[CHECKOUT] navigate to payment', {
           paymentOrderId,
           paymentOrderCode,
@@ -1891,9 +1891,9 @@ export default function CheckoutScreen() {
   const handlePay = async () => {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: '' });
 
-    // Hosted akis (PayTR iframe / Paynkolay Ortak Odeme): kart bilgileri saglayicinin
+    // Hosted akis (Paynkolay Ortak Odeme): kart bilgileri saglayicinin
     // sayfasinda girilir. Inline kart formu dogrulamasini atla, PaymentScreen router'a yonlendir.
-    if (PAYMENT_PROVIDER === 'paytr_iframe' || PAYMENT_PROVIDER === 'paynkolay') {
+    if (PAYMENT_PROVIDER === 'paynkolay') {
       const hostedOrderId = retryPaymentOrderId || pendingPaymentOrderIdFromRoute;
       if (!hostedOrderId) {
         dispatchPay({ type: 'SET_PAY_ERROR', payload: 'Sipariş bulunamadı.' });

@@ -1,8 +1,8 @@
-import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { apiRequestJson, isApiBaseUrlConfigured } from './api';
 import { supabase } from './supabase';
+import { PAYMENT_PROVIDER } from '../config/payment';
 
 const SUPABASE_ANON_KEY = 'sb_publishable_tjeQHxsEgZIObTyf1UHz5Q_Bh4jqS29';
 
@@ -13,21 +13,10 @@ const REQUEST_TIMEOUT_MS = 12000;
 const toSafeString = (value: unknown) =>
   typeof value === 'string' ? value.trim() : '';
 
-const readEnvValue = (key: string) =>
-  toSafeString(
-    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.[key] ??
-      process.env[key],
-  );
-
-// GUVENLI FALLBACK: env okunamasa bile (EAS update / build cache / extra propagation
-// bug) PayTR yolu varsayilan olarak aktif kalsin. Iframe akisi tek aktif provider.
-const PAYMENT_PROVIDER_FALLBACK = 'paytr_iframe' as const;
-
-const normalizePath = (value: string) => {
-  const trimmed = toSafeString(value);
-  if (!trimmed) return '';
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-};
+// 17.10.2026: burada IKINCI bir saglayici cozumu vardi — env okuyor, okuyamazsa
+// 'paytr_iframe'e dusuyordu. config/payment.ts ise sabit 'paynkolay' donuyordu.
+// Iki ayri dogruluk kaynagi; PayTR yolu olu oldugu halde isPaymentEnabled'i
+// besleyen deger oradan geliyordu. Artik tek kaynak config/payment.ts.
 
 const INIT_PATH = '/payment-init';
 const VERIFY_PATH = '/payment-verify';
@@ -72,20 +61,12 @@ export type PaymentVerifyResult = {
 let __paymentConfigLoggedOnce = false;
 
 export const getPaymentConfigStatus = (): PaymentConfigStatus => {
-  const fromExtra = toSafeString(
-    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.EXPO_PUBLIC_PAYMENT_PROVIDER,
-  );
-  const fromProcess = toSafeString(process.env.EXPO_PUBLIC_PAYMENT_PROVIDER);
-  // Env okunabildiyse onu kullan; aksi halde guvenli fallback ('paytr_iframe').
-  const rawProvider = fromExtra || fromProcess || PAYMENT_PROVIDER_FALLBACK;
-  const provider = rawProvider.toLowerCase();
+  const provider: string = PAYMENT_PROVIDER;
 
   const redirectUrl = Linking.createURL('payment-callback');
-  const isPaymentEnabled =
-    provider === 'tosla' || provider === 'paytr_iframe' || provider === 'paytr' || provider === 'paynkolay';
+  const isPaymentEnabled = provider === 'tosla' || provider === 'paynkolay';
 
   const missingKeys: string[] = [];
-  // PayTR iframe runs via dedicated edge function, not the legacy API base URL.
   if (provider === 'tosla' && !isApiBaseUrlConfigured()) {
     missingKeys.push('EXPO_PUBLIC_API_BASE_URL');
   }
@@ -94,9 +75,6 @@ export const getPaymentConfigStatus = (): PaymentConfigStatus => {
   if (!__paymentConfigLoggedOnce) {
     __paymentConfigLoggedOnce = true;
     console.log('[PAYMENT] config', {
-      processEnv: fromProcess || null,
-      constantsExtra: fromExtra || null,
-      usedFallback: !fromExtra && !fromProcess,
       finalProvider: provider,
       isPaymentEnabled,
     });
