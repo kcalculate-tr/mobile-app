@@ -169,7 +169,6 @@ module.exports = {
           sounds: [],
         },
       ],
-      'expo-video',
       'expo-apple-authentication',
       [
         '@react-native-google-signin/google-signin',
