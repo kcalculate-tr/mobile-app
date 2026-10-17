@@ -74,6 +74,37 @@ Deno.serve(async (req) => {
     return json({ sent: res.ok, resend: res })
   }
 
+  // Yeni destek talebi. Siparise bagli degil -> order_id istemez, bu yuzden
+  // asagidaki order_id zorunlulugundan ONCE duruyor.
+  //
+  // 17.10.2026 — support_tickets'ta hicbir tetikleyici yoktu: musteri
+  // uygulamadan yaziyor, talep panelde birikiyor, kimseye haber gitmiyordu.
+  // 34 talebin 33'u yanitsiz kalmisti.
+  if (type === 'support_ticket') {
+    const ticketId = body.ticket_id
+    if (!ticketId) return json({ error: 'ticket_id_required' }, 400)
+
+    const admin = createClient(SUPABASE_URL, SERVICE)
+    const { data: t, error: tErr } = await admin
+      .from('support_tickets').select('*').eq('id', ticketId).single()
+    if (tErr || !t) return json({ error: 'ticket_not_found', detail: tErr?.message }, 404)
+
+    const kacis = (v: unknown) =>
+      String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    const subject = `📩 Yeni destek talebi: ${t.subject ?? '-'}`
+    const html = `
+      <h2>Yeni destek talebi</h2>
+      <p><b>Konu:</b> ${kacis(t.subject)}</p>
+      <p><b>Sipariş:</b> ${kacis(t.order_code) || '-'}</p>
+      <p><b>Müşteri:</b> ${kacis(t.user_email) || '-'}</p>
+      <p><b>Mesaj:</b><br>${kacis(t.message).replace(/\n/g, '<br>')}</p>
+      <p><a href="https://boss.eatkcal.com/boss/support">Panelde yanıtla →</a></p>`
+
+    const res = await sendEmail([GLOBAL_TO], subject, html)
+    return json({ sent: res.ok, resend: res, to: [GLOBAL_TO] })
+  }
+
   const orderId = body.order_id
   if (!orderId) return json({ error: 'order_id_required' }, 400)
 
