@@ -47,7 +47,7 @@ const FAQ_DATA: FaqSection[] = [
       },
       {
         q: 'Hangi saatlerde sipariş verebilirim?',
-        a: 'Pazartesi-Cumartesi 09:00-24:00 arasında sipariş alıyoruz. Pazar günleri kapalıyız. Randevulu siparişlerinizi kapalı olduğumuz saatlerde de oluşturabilirsiniz; teslimat seçtiğiniz gün yapılır.',
+        a: 'Pazartesi-Cumartesi 09:00-21:30 arasında sipariş alıyoruz. Pazar günleri kapalıyız. Randevulu siparişlerinizi kapalı olduğumuz saatlerde de oluşturabilirsiniz; teslimat seçtiğiniz gün yapılır.',
       },
       {
         q: 'Minimum sipariş tutarı var mı?',

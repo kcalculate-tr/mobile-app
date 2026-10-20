@@ -3,17 +3,19 @@ import { getSupabaseClient } from './supabase'
 export interface BusinessHours {
   working_days: number[]      // 1=Pzt, 2=Sal, ... 7=Paz
   open_time: string           // '09:00'
-  close_time: string          // '21:00'
+  close_time: string          // '21:30'
   closed_dates: string[]      // ['2026-01-01', ...]
   closed_dates_note: Record<string, string> // {'2026-01-01': 'Yılbaşı'}
   holiday_banner_active: boolean
   holiday_banner_message: string | null
 }
 
+// Yedek degerler: settings tablosu okunamazsa kullanilir, bu yuzden canli
+// calisma saatleriyle ayni olmali (Pzt-Cmt 09:00-21:30, Pazar kapali).
 const DEFAULT: BusinessHours = {
-  working_days: [1, 2, 3, 4, 5],
+  working_days: [1, 2, 3, 4, 5, 6],
   open_time: '09:00',
-  close_time: '21:00',
+  close_time: '21:30',
   closed_dates: [],
   closed_dates_note: {},
   holiday_banner_active: false,
