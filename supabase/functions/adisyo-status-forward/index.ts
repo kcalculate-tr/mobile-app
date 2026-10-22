@@ -43,6 +43,38 @@ const ACTION_TO_ENDPOINT: Record<Action, string> = {
   cancel: "Cancel",
 };
 
+// ── Yetki kontrolu ────────────────────────────────────────────────────────────
+// Bu fonksiyon verify_jwt=false ile yayindaydi ve govdesinde hicbir kimlik
+// kontrolu yoktu: internetteki herkes {orderId, action} gondererek herhangi bir
+// siparisi "teslim edildi" veya "iptal" yapabiliyordu. "delivered" ayrica
+// grant_macros_on_delivery trigger'ini tetikledigi icin macro da kazandiriyordu.
+// Artik cagiranin admin ya da ilgili subenin kullanicisi olmasi gerekiyor.
+async function yetkiliMi(req: Request, orderId: number): Promise<{ ok: boolean; neden?: string }> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return { ok: false, neden: "missing_token" };
+
+  // Sunucu ici cagrilar (cron/trigger) service_role anahtariyla gelir
+  try {
+    const govde = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/") +
+           "=".repeat((4 - (token.split(".")[1].length % 4)) % 4)),
+    ) as { role?: string };
+    if (govde?.role === "service_role") return { ok: true };
+  } catch { /* JWT degilse asagida kullanici olarak dogrulanir */ }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const { data: userData, error: userErr } = await admin.auth.getUser(token);
+  if (userErr || !userData?.user) return { ok: false, neden: "invalid_token" };
+  const uid = userData.user.id;
+
+  const { data: izin } = await admin.rpc("fn_order_staff_yetkisi", {
+    p_user_id: uid,
+    p_order_id: orderId,
+  });
+  return izin === true ? { ok: true } : { ok: false, neden: "forbidden" };
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
@@ -52,6 +84,9 @@ serve(async (req) => {
   const { orderId, action } = body;
   if (!orderId || !action) return json({ error: "missing_fields" }, 400);
   if (!ACTION_TO_STATUS[action]) return json({ error: "invalid_action", action }, 400);
+
+  const yetki = await yetkiliMi(req, Number(orderId));
+  if (!yetki.ok) return json({ error: "unauthorized", reason: yetki.neden }, 401);
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
