@@ -1,0 +1,72 @@
+{
+  "manifest_version": 3,
+  "name": "KCAL Platform Veri Toplayıcı",
+  "version": "1.1.0",
+  "description": "Yemeksepeti, Trendyol GO, Migros Yemek ve Getir panellerinden salt-okuma veri çeker; ham JSON'u İndirilenler/kcal-platform-raw altına kaydeder.",
+  "permissions": [
+    "scripting",
+    "downloads",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://partner-app.yemeksepeti.com/*",
+    "https://partner.tgoyemek.com/*",
+    "https://restoran.migrosonline.com/*",
+    "https://restoran.getiryemek.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "KCAL veri çek"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://partner-app.yemeksepeti.com/*"
+      ],
+      "js": [
+        "collectors/common.js",
+        "collectors/ys.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://partner.tgoyemek.com/*"
+      ],
+      "js": [
+        "collectors/common.js",
+        "collectors/tgo.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://restoran.migrosonline.com/*"
+      ],
+      "js": [
+        "collectors/common.js",
+        "collectors/migros.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://restoran.getiryemek.com/*"
+      ],
+      "js": [
+        "collectors/common.js",
+        "collectors/getir.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

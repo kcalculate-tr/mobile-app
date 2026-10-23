@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font: 13px system-ui, sans-serif; width: 280px; margin: 12px; color: #1d1d1f; }
+    h1 { font-size: 14px; margin: 0 0 8px; }
+    button { width: 100%; padding: 9px; margin: 4px 0; border: 0; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    #weekly { background: #0b7a5b; color: #fff; }
+    #full { background: #eee; }
+    p { color: #666; margin: 8px 0 0; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <h1>KCAL platform verisi</h1>
+  <button id="weekly">Haftalık çek (son 14 gün)</button>
+  <button id="full">İlk tam çekim (en uzun geçmiş + Getir)</button>
+  <p>Bu Chrome profilinde açık olan panel sekmelerini kullanır. Panellerde giriş yapılmış olmalı. Ham veri İndirilenler/kcal-platform-raw klasörüne iner.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

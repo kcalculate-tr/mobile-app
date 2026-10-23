@@ -1,0 +1,7 @@
+# never commit collected data
+__pycache__/
+*.csv
+*.xlsx
+kcalraw__*.json
+kcal-platform-raw/
+platform_data/
