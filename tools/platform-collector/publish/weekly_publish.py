@@ -7,13 +7,18 @@ Steps (stops at the first failure; nothing is pushed on failure):
   3. run_log.md 7-day order check is OK for every store pulled today
   4. personal-data scan (phone, e-mail, national id, masked customer names, PII columns)
   5. copy to <data repo>/latest and <data repo>/runs/YYYY-MM-DD, commit, push
+  6. after a successful push: upload the 6 CSVs + run_log.md to the private Supabase
+     Storage bucket platform-metrics (latest/ and runs/YYYY-MM-DD/) for the boss panel
+     /boss/metrics page. Key: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in ~/.kcal-metrics.env
+     (path overridable with KCAL_METRICS_ENV; never commit that file).
 On failure: writes WEEKLY_FAILED_<date>.md next to the CSVs and shows a macOS notification.
 No analysis is done here.
 
-Usage: weekly_publish.py [--initial] [--date YYYY-MM-DD] [--dry-run]
-  --initial  publish the first full pull (do not require raw files from today)
+Usage: weekly_publish.py [--initial] [--date YYYY-MM-DD] [--dry-run] [--upload-only]
+  --initial      publish the first full pull (do not require raw files from today)
+  --upload-only  only the personal-data scan + Storage upload of the current CSVs (no normalize, no git)
 """
-import argparse, csv, datetime as dt, glob, json, os, re, shutil, subprocess, sys
+import argparse, csv, datetime as dt, glob, json, os, re, shutil, ssl, subprocess, sys, urllib.error, urllib.request
 
 HOME = os.path.expanduser('~')
 RAW_GLOBS = [f'{HOME}/Downloads/kcal-platform-raw/*/*.json', f'{HOME}/Downloads/kcalraw__*.json']
@@ -24,6 +29,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 NORMALIZE = os.environ.get('KCAL_NORMALIZE', os.path.join(HERE, '..', 'normalize', 'normalize.py'))
 FILES = ['platform_metrics.csv', 'reviews.csv', 'cancellations.csv', 'products.csv', 'campaigns.csv', 'hourly.csv', 'field_map.md', 'run_log.md']
 TZ = dt.timezone(dt.timedelta(hours=3))
+METRICS_ENV = os.environ.get('KCAL_METRICS_ENV', f'{HOME}/.kcal-metrics.env')
+BUCKET = 'platform-metrics'
+STORAGE_FILES = ['platform_metrics.csv', 'reviews.csv', 'cancellations.csv', 'products.csv', 'campaigns.csv', 'hourly.csv', 'run_log.md']
 
 # stores the weekly run must cover (Getir is frozen and not pulled weekly)
 EXPECTED = {
@@ -48,11 +56,13 @@ def notify(msg):
         pass
 
 
-def fail(date, problems):
+def fail(date, problems, pushed=False):
     path = os.path.join(OUT, f'WEEKLY_FAILED_{date}.md')
     os.makedirs(OUT, exist_ok=True)
     with open(path, 'w', encoding='utf-8') as fh:
-        fh.write(f'# Haftalık yayın BAŞARISIZ — {date}\n\nVeri reposuna push EDİLMEDİ.\n\n')
+        state = ('Veri reposuna push EDİLDİ, ama Supabase Storage yüklemesi (boss paneli Metrikler) başarısız.'
+                 if pushed else 'Veri reposuna push EDİLMEDİ.')
+        fh.write(f'# Haftalık yayın BAŞARISIZ — {date}\n\n{state}\n\n')
         for p in problems: fh.write(f'- {p}\n')
     print('FAIL:', *problems, sep='\n  ')
     notify(f'Push edilmedi: {problems[0][:120]}')
@@ -143,11 +153,63 @@ def publish(date, dry):
     return sha
 
 
+def load_metrics_env():
+    """SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY from the environment or ~/.kcal-metrics.env."""
+    if os.path.exists(METRICS_ENV):
+        for line in open(METRICS_ENV, encoding='utf-8'):
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line: continue
+            k, v = line.split('=', 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+    return os.environ.get('SUPABASE_URL', '').rstrip('/'), os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
+
+
+def ssl_context():
+    # python.org builds ship without CA roots; use the macOS system bundle when present
+    for ca in (os.environ.get('SSL_CERT_FILE'), '/etc/ssl/cert.pem', '/opt/homebrew/etc/ca-certificates/cert.pem'):
+        if ca and os.path.exists(ca): return ssl.create_default_context(cafile=ca)
+    return ssl.create_default_context()
+
+
+def upload_storage(date):
+    """Upload STORAGE_FILES to platform-metrics/latest/ and platform-metrics/runs/<date>/ (upsert)."""
+    url, key = load_metrics_env()
+    ctx = ssl_context()
+    if not url or not key:
+        return [f'Storage yüklemesi yapılamadı: {METRICS_ENV} içinde SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY yok.']
+    problems = []
+    for prefix in ('latest', f'runs/{date}'):
+        for f in STORAGE_FILES:
+            body = open(os.path.join(OUT, f), 'rb').read()
+            ctype = 'text/csv' if f.endswith('.csv') else 'text/markdown'
+            req = urllib.request.Request(
+                f'{url}/storage/v1/object/{BUCKET}/{prefix}/{f}', data=body, method='POST',
+                headers={'Authorization': f'Bearer {key}', 'apikey': key, 'Content-Type': ctype,
+                         'x-upsert': 'true', 'cache-control': 'max-age=60'})
+            try:
+                urllib.request.urlopen(req, timeout=60, context=ctx).read()
+            except urllib.error.HTTPError as e:
+                problems.append(f'Storage {prefix}/{f}: HTTP {e.code} {e.read()[:200].decode("utf-8", "replace")}')
+            except Exception as e:
+                problems.append(f'Storage {prefix}/{f}: {e}')
+    if not problems: print(f'Storage OK: {BUCKET}/latest + {BUCKET}/runs/{date} ({len(STORAGE_FILES)} dosya)')
+    return problems
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--initial', action='store_true'); ap.add_argument('--date'); ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--upload-only', action='store_true')
     a = ap.parse_args()
     date = a.date or dt.datetime.now(TZ).date().isoformat()
+    if a.upload_only:
+        problems = check_pii()
+        if problems: fail(date, problems)
+        problems = upload_storage(date)
+        if problems: fail(date, problems, pushed=True)
+        old = os.path.join(OUT, f'WEEKLY_FAILED_{date}.md')
+        if os.path.exists(old): os.remove(old)
+        return
     if not a.initial:
         problems = check_raw(date)
         if problems: fail(date, problems)
@@ -159,6 +221,9 @@ def main():
     sha = publish(date, a.dry_run)
     remote = DATA_REMOTE.removesuffix('.git')
     print('OK', f'{remote}/commit/{sha}' if sha else '(değişiklik yok)')
+    if not a.dry_run:
+        problems = upload_storage(date)
+        if problems: fail(date, problems, pushed=True)
     old = os.path.join(OUT, f'WEEKLY_FAILED_{date}.md')
     if os.path.exists(old): os.remove(old)
 

@@ -42,7 +42,11 @@ python3 tools/platform-collector/normalize/normalize.py
    - 18 mağazanın (Yemeksepeti, Trendyol, Migros) ham verisinin geldiğini ve oturum hatası olmadığını kontrol eder,
    - `normalize.py` ile CSV'leri yeniden kurar,
    - 7 gün kontrolünü ve kişisel veri taramasını yapar,
-   - sorun yoksa `kcalculate-tr/kcal-platform-data` reposuna `latest/` ve `runs/YYYY-MM-DD/` olarak push eder.
+   - sorun yoksa `kcalculate-tr/kcal-platform-data` reposuna `latest/` ve `runs/YYYY-MM-DD/` olarak push eder,
+   - push başarılıysa 6 CSV + `run_log.md`'yi Supabase Storage'daki **private** `platform-metrics` bucket'ına
+     (`latest/` ve `runs/YYYY-MM-DD/`) yükler; boss paneli `/boss/metrics` buradan okur (yalnız admin).
+     Anahtar `~/.kcal-metrics.env` dosyasında (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, chmod 600) — repoya girmez.
+     Elle yükleme: `python3 publish/weekly_publish.py --upload-only`.
 
    Sorun varsa push etmez; `~/kcal-reports/platform_data/WEEKLY_FAILED_<tarih>.md` yazar ve macOS bildirimi gösterir. Analiz yapmaz.
 3. Kurulum: `bash publish/install_launchd.sh` (bir kez; kod `~/kcal-platform-tools` altına kopyalanır, kod güncellenirse tekrar çalıştırın).

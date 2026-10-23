@@ -11,6 +11,7 @@ PY="$(command -v python3)"
 mkdir -p "$DEST/normalize" "$DEST/publish" "$HOME/kcal-reports/platform_data"
 cp "$SRC/normalize/normalize.py" "$DEST/normalize/"
 cp "$SRC/publish/weekly_publish.py" "$DEST/publish/"
+[ -f "$HOME/.kcal-metrics.env" ] || echo "UYARI: ~/.kcal-metrics.env yok — Storage yüklemesi (boss paneli Metrikler) başarısız olur."
 
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -26,7 +27,11 @@ cat > "$PLIST" <<EOF
   <key>StartCalendarInterval</key>
   <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
   <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- Supabase Storage anahtari bu dosyada (chmod 600); plist'e anahtarin kendisi yazilmaz -->
+    <key>KCAL_METRICS_ENV</key><string>$HOME/.kcal-metrics.env</string>
+  </dict>
   <key>StandardOutPath</key><string>$HOME/kcal-reports/platform_data/publish.log</string>
   <key>StandardErrorPath</key><string>$HOME/kcal-reports/platform_data/publish.log</string>
 </dict>
