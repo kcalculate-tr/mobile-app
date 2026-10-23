@@ -133,10 +133,13 @@ def publish(date, dry):
     if not os.path.exists(readme):
         open(readme, 'w', encoding='utf-8').write('# kcal-platform-data\n\nYemeksepeti, Trendyol GO, Migros Yemek ve Getir panel verisi (haftalık).\n\n- `latest/` — en güncel dosyalar (her hafta üzerine yazılır)\n- `runs/YYYY-MM-DD/` — o haftanın arşiv kopyası\n\nSütun tanımları: `latest/field_map.md`. Kontroller: `latest/run_log.md`.\nKişisel veri (ad, telefon, adres, e-posta) içermez.\n')
     git('add', '-A')
-    if not git('status', '--porcelain'): print('Değişiklik yok, commit atlanıyor.'); return None
-    git('commit', '-m', f'data: {date} platform verisi')
+    if git('status', '--porcelain'): git('commit', '-m', f'data: {date} platform verisi')
+    else: print('Değişiklik yok, yeni commit yok.')
     sha = git('rev-parse', 'HEAD')
-    if not dry: git('push', 'origin', 'HEAD')
+    if not dry:
+        # always push: also sends commits left behind by an earlier failed push
+        r = subprocess.run(['git', 'push', '-u', 'origin', 'HEAD:main'], cwd=DATA_REPO, capture_output=True, text=True)
+        if r.returncode != 0: fail(date, [f'git push başarısız (commit yerelde duruyor, sonraki çalışmada tekrar denenir): {(r.stderr or r.stdout).strip()[-300:]}'])
     return sha
 
 
