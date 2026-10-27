@@ -40,10 +40,20 @@ test('eşik 5 — düşürülürse testler uyarır', () => {
 });
 
 test('yorum tarihi kısa biçimde', () => {
-  assert.equal(yorumTarihi('2026-09-24T12:00:00Z'), '24 Eyl');
-  assert.equal(yorumTarihi('2026-01-03T12:00:00Z'), '3 Oca');
-  assert.equal(yorumTarihi(null), '');
-  assert.equal(yorumTarihi('bozuk'), '');
+  const simdi = new Date('2026-10-27T12:00:00Z');
+  assert.equal(yorumTarihi('2026-09-24T12:00:00Z', simdi), '24 Eyl');
+  assert.equal(yorumTarihi('2026-01-03T12:00:00Z', simdi), '3 Oca');
+  assert.equal(yorumTarihi(null, simdi), '');
+  assert.equal(yorumTarihi('bozuk', simdi), '');
+});
+
+test('önceki yıldan bir yorumda YIL da yazılır', () => {
+  // Yıl hep gizlenirse 2025'ten bir yorum dünkü gibi görünür.
+  const simdi = new Date('2026-10-27T12:00:00Z');
+  assert.equal(yorumTarihi('2025-12-31T12:00:00Z', simdi), '31 Ara 2025');
+  assert.equal(yorumTarihi('2024-06-05T12:00:00Z', simdi), '5 Haz 2024');
+  // Yıl dönünce bu yılın yorumları da yıl almaya başlar — beklenen davranış.
+  assert.equal(yorumTarihi('2026-09-24T12:00:00Z', new Date('2027-01-02T12:00:00Z')), '24 Eyl 2026');
 });
 
 test('kaynak etiketi: yalnızca uygulama geri bildirimleri işaretlenir', () => {

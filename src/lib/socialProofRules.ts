@@ -55,13 +55,23 @@ export function begeniCumlesi(veri: BegeniOrani | null | undefined): string | nu
   return `Deneyenlerin %${veri.oran}'i bu öğünü beğendi (${veri.toplam} kişi)`;
 }
 
-/** Yorum kartında gösterilecek kısa tarih: "24 Eyl". */
-export function yorumTarihi(iso: string | null | undefined): string {
+/**
+ * Yorum kartında gösterilecek kısa tarih.
+ *
+ * Bu yıl ise yıl YAZILMAZ ("24 Eyl"), önceki yıllarda YAZILIR ("24 Eyl 2025").
+ * Sebep: yılı hep gizlemek eski bir yorumu dünkü gibi gösterir, hep yazmak da
+ * kartın %90'ında gereksiz tekrar olur.
+ *
+ * `simdi` yalnızca test için; üretimde çağıran taraf vermiyor.
+ */
+export function yorumTarihi(iso: string | null | undefined, simdi?: Date): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const aylar = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
-  return `${d.getDate()} ${aylar[d.getMonth()]}`;
+  const buYil = (simdi ?? new Date()).getFullYear();
+  const yil = d.getFullYear() === buYil ? '' : ` ${d.getFullYear()}`;
+  return `${d.getDate()} ${aylar[d.getMonth()]}${yil}`;
 }
 
 /**

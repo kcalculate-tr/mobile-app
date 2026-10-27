@@ -36,20 +36,26 @@ function YorumKarti({ yorum }: { yorum: VitrinYorumu }) {
   const etiket = kaynakEtiketi(yorum.kaynak);
   return (
     <View style={s.kart}>
-      <View style={s.yildizlar}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star
-            key={i}
-            size={13}
-            weight={i < yorum.rating ? 'fill' : 'regular'}
-            color={i < yorum.rating ? '#F5A623' : '#D8D8D8'}
-          />
-        ))}
+      {/* Tarih yildizlarin HIZASINDA, sagda: kartin en gorunur satiri burasi.
+          Onceden adin yaninda, en altta, en silik renkteydi — fark edilmiyordu. */}
+      <View style={s.ust}>
+        <View style={s.yildizlar}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star
+              key={i}
+              size={13}
+              weight={i < yorum.rating ? 'fill' : 'regular'}
+              color={i < yorum.rating ? '#F5A623' : '#D8D8D8'}
+            />
+          ))}
+        </View>
+        {yorum.tarih ? (
+          <Text style={s.tarih} numberOfLines={1}>{yorumTarihi(yorum.tarih)}</Text>
+        ) : null}
       </View>
       <Text style={s.metin} numberOfLines={4}>{yorum.yorum}</Text>
       <View style={s.alt}>
         <Text style={s.ad} numberOfLines={1}>{yorum.ad}</Text>
-        {yorum.tarih ? <Text style={s.tarih}>{yorumTarihi(yorum.tarih)}</Text> : null}
       </View>
       {etiket ? <Text style={s.kaynak} numberOfLines={1}>{etiket}</Text> : null}
     </View>
@@ -116,7 +122,14 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 132,
   },
-  yildizlar: { flexDirection: 'row', gap: 2, marginBottom: 8 },
+  ust: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
+  yildizlar: { flexDirection: 'row', gap: 2 },
   metin: {
     flex: 1,
     fontSize: TYPOGRAPHY.size.md,
@@ -137,10 +150,13 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.secondary,
   },
+  // Yildizlarla ayni satirda, sagda. tertiary + Regular 11px iken
+  // goruluyor denemezdi; secondary + SemiBold 12px'e cekildi.
   tarih: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans_400Regular',
-    color: COLORS.text.tertiary,
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: COLORS.text.secondary,
+    letterSpacing: -0.1,
     flexShrink: 0,
   },
   // Yalnizca uygulama ici geri bildirimlerde cikiyor; siparis
