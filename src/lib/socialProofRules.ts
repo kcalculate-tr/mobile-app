@@ -23,12 +23,17 @@
 /** Ürün sayfasında oranın gösterileceği en az oy sayısı. */
 export const EN_AZ_OY = 5;
 
+/** Vitrin yorumunun nereden geldigi. */
+export type YorumKaynagi = 'siparis' | 'uygulama';
+
 export interface VitrinYorumu {
-  id: number;
+  /** 'r_<id>' (siparis degerlendirmesi) ya da 'f_<uuid>' (uygulama geri bildirimi). */
+  id: string;
   rating: number;
   yorum: string;
   ad: string;
   tarih: string;
+  kaynak: YorumKaynagi;
 }
 
 export interface BegeniOrani {
@@ -57,4 +62,14 @@ export function yorumTarihi(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return '';
   const aylar = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
   return `${d.getDate()} ${aylar[d.getMonth()]}`;
+}
+
+/**
+ * Kartin altinda gosterilecek kaynak etiketi.
+ * Siparis degerlendirmeleri icin etiket YOK: anasayfadaki varsayilan durum o,
+ * her karta ayni etiketi basmak gurultu olur. Yalnizca uygulama ici geri
+ * bildirimler isaretleniyor.
+ */
+export function kaynakEtiketi(kaynak: YorumKaynagi | undefined): string | null {
+  return kaynak === 'uygulama' ? 'Uygulama geri bildirimi' : null;
 }

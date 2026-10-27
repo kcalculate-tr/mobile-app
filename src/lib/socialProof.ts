@@ -4,13 +4,28 @@ import { EN_AZ_OY, type BegeniOrani, type VitrinYorumu } from './socialProofRule
 
 export * from './socialProofRules';
 
+/**
+ * Anasayfa vitrini — İKİ KAYNAK BİRLEŞİK:
+ *   · reviews   → sipariş sonrası değerlendirmeler
+ *   · feedback  → Profil ▸ Destek ▸ Geri Bildirim'den gelen yorumlar
+ *
+ * Her ikisi de sunucuda `is_approved = true` + 4 yıldız eşiğinden geçiyor
+ * (vitrin_yorumlari). Onaylanmamış hiçbir metin buraya düşmez.
+ */
 export async function vitrinYorumlariniGetir(limit = 12): Promise<VitrinYorumu[]> {
   try {
-    const { data, error } = await getSupabaseClient().rpc('en_iyi_yorumlar', { p_limit: limit });
+    const { data, error } = await getSupabaseClient().rpc('vitrin_yorumlari', { p_limit: limit });
     if (error) throw error;
-    return (Array.isArray(data) ? data : []).filter(
-      (y) => typeof y?.yorum === 'string' && y.yorum.trim() !== '',
-    );
+    return (Array.isArray(data) ? data : [])
+      .filter((y) => typeof y?.yorum === 'string' && y.yorum.trim() !== '')
+      .map((y) => ({
+        id: String(y.id),
+        rating: Number(y.rating) || 0,
+        yorum: String(y.yorum),
+        ad: String(y.ad ?? 'kcal. müşterisi'),
+        tarih: String(y.tarih ?? ''),
+        kaynak: y.kaynak === 'uygulama' ? 'uygulama' : 'siparis',
+      }));
   } catch (e) {
     if (__DEV__) console.warn('[sosyal kanıt] yorumlar okunamadı:', e);
     return [];

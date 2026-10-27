@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { begeniCumlesi, yorumTarihi, EN_AZ_OY } from '../socialProofRules';
+import { begeniCumlesi, kaynakEtiketi, yorumTarihi, EN_AZ_OY } from '../socialProofRules';
 
 test('eşiğin altındaki oy hiçbir şey göstermez', () => {
   // 26.09.2026 canlı durum: en çok oy alan ürün 2 oy. Bu kural olmasa
@@ -44,4 +44,12 @@ test('yorum tarihi kısa biçimde', () => {
   assert.equal(yorumTarihi('2026-01-03T12:00:00Z'), '3 Oca');
   assert.equal(yorumTarihi(null), '');
   assert.equal(yorumTarihi('bozuk'), '');
+});
+
+test('kaynak etiketi: yalnızca uygulama geri bildirimleri işaretlenir', () => {
+  // Sipariş değerlendirmesi anasayfadaki VARSAYILAN durum — her karta aynı
+  // etiketi basmak gürültü olurdu, o yüzden bilinçli olarak null.
+  assert.equal(kaynakEtiketi('uygulama'), 'Uygulama geri bildirimi');
+  assert.equal(kaynakEtiketi('siparis'), null);
+  assert.equal(kaynakEtiketi(undefined), null);
 });

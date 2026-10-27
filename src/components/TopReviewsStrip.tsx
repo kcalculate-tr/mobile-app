@@ -2,29 +2,38 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Star } from './icons';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
-import { vitrinYorumlariniGetir, yorumTarihi, type VitrinYorumu } from '../lib/socialProof';
+import {
+  kaynakEtiketi,
+  vitrinYorumlariniGetir,
+  yorumTarihi,
+  type VitrinYorumu,
+} from '../lib/socialProof';
 
 /**
- * "En İyi Yorumlar" — anasayfada, Sana Özel Teklifler'in hemen üstünde,
+ * "Müşteri Yorumları" — anasayfada, Sana Özel Teklifler'in hemen üstünde,
  * yatay kaydırmalı şerit.
+ *
+ * İKİ KAYNAK BİRLEŞİK (27.10.2026):
+ *   · reviews  → sipariş sonrası değerlendirmeler        (etiket yok)
+ *   · feedback → Profil ▸ Destek ▸ Geri Bildirim yorumları ("Uygulama geri
+ *                bildirimi" etiketiyle işaretli)
  *
  * VERİ YOKSA HİÇBİR ŞEY ÇİZMEZ. Yer tutucu, örnek yorum ya da "henüz yorum
  * yok" kutusu göstermiyoruz: boş şerit, sahte şeritten iyidir ve anasayfada
  * yer kaplamaz.
  *
- * Hangi yorumlar gelir (sunucudaki en_iyi_yorumlar kuralı):
- *   · is_approved = true — yani Boss panel → Yorumlar'dan ONAYLANMIŞ
- *   · yorum metni dolu (yalnız yıldız verenler girmez)
- *   · 4 yıldız ve üzeri
- *
- * 26.09.2026 durumu: 8 değerlendirmenin 2'si yazılı, HİÇBİRİ onaylı değil —
- * şerit şu an görünmüyor. Onaylandıkça kendiliğinden dolar.
+ * Hangi yorumlar gelir (sunucudaki vitrin_yorumlari kuralı):
+ *   · is_approved = true — yani Boss panelden ONAYLANMIŞ (her iki kaynak için)
+ *   · 4 yıldız ve üzeri — şikayetler onaylansa bile eşiği geçemez
+ *   · metin dolu; geri bildirimde en az 20 karakter ("Teşekkür ederim" gibi
+ *     içeriksiz 5 yıldızlılar vitrinde yer kaplamasın)
  *
  * Ad maskeleme sunucuda: "Fırat Beyde" → "Fırat B." Başka müşterilerin tam
  * adını uygulamada yayımlamıyoruz.
  */
 
 function YorumKarti({ yorum }: { yorum: VitrinYorumu }) {
+  const etiket = kaynakEtiketi(yorum.kaynak);
   return (
     <View style={s.kart}>
       <View style={s.yildizlar}>
@@ -42,6 +51,7 @@ function YorumKarti({ yorum }: { yorum: VitrinYorumu }) {
         <Text style={s.ad} numberOfLines={1}>{yorum.ad}</Text>
         {yorum.tarih ? <Text style={s.tarih}>{yorumTarihi(yorum.tarih)}</Text> : null}
       </View>
+      {etiket ? <Text style={s.kaynak} numberOfLines={1}>{etiket}</Text> : null}
     </View>
   );
 }
@@ -61,7 +71,7 @@ function TopReviewsStrip() {
 
   return (
     <View style={s.bolum}>
-      <Text style={s.baslik}>En İyi Yorumlar</Text>
+      <Text style={s.baslik}>Müşteri Yorumları</Text>
       <FlatList
         horizontal
         data={yorumlar}
@@ -132,5 +142,14 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_400Regular',
     color: COLORS.text.tertiary,
     flexShrink: 0,
+  },
+  // Yalnizca uygulama ici geri bildirimlerde cikiyor; siparis
+  // degerlendirmeleri etiketsiz (varsayilan durum o).
+  kaynak: {
+    marginTop: 6,
+    fontSize: 10,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
+    letterSpacing: -0.1,
   },
 });
