@@ -4,6 +4,8 @@ export interface Branch {
   id: string;
   name: string;
   address: string;
+  /** Vitrin fotoğrafını seçmek için kullanılıyor (bkz. branchBanner.ts). */
+  slug: string;
   /**
    * Yaklaşık koordinat — SADECE "kullanıcıya en yakın şube" sıralaması için.
    * Haritadaki pin bu değerden değil, `address` metninin Google tarafından
@@ -23,7 +25,7 @@ export async function fetchBranches(): Promise<Branch[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('branches')
-    .select('id, name, address, latitude, longitude');
+    .select('id, name, address, slug, latitude, longitude');
 
   if (error) {
     if (__DEV__) {
@@ -36,6 +38,7 @@ export async function fetchBranches(): Promise<Branch[]> {
     id: String(row.id ?? ''),
     name: String(row.name ?? ''),
     address: String(row.address ?? ''),
+    slug: String(row.slug ?? ''),
     latitude: toCoord(row.latitude),
     longitude: toCoord(row.longitude),
   }));

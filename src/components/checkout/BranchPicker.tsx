@@ -3,6 +3,7 @@ import { Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-
 import { CheckCircle, MapPin, NavigationArrow } from '../icons';
 import Selectable from '../ui/Selectable';
 import { COLORS, RADIUS, SPACING, SURFACE, TYPOGRAPHY } from '../../constants/theme';
+import { BANNER_ORANI, subeBanneri } from '../../lib/branchBanner';
 import { distanceInMeters } from '../../lib/geo';
 import type { Branch } from '../../lib/branches';
 
@@ -91,6 +92,8 @@ export default function BranchPicker({
 
   const secili = branches.find((b) => b.id === selectedId) ?? null;
   const otomatikSecimDuruyor = !!secili && otoSecilenIdRef.current === secili.id;
+  // Fotoğrafı olmayan şube bannersiz görünür — yer tutucu göstermiyoruz.
+  const banner = subeBanneri(secili?.slug);
 
   const haritaUrl = (adres: string) =>
     `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(adres)}` +
@@ -146,6 +149,9 @@ export default function BranchPicker({
 
       {secili ? (
         <View style={s.detay}>
+          {banner ? (
+            <Image source={banner} style={s.banner} resizeMode="cover" />
+          ) : null}
           <Text style={s.detayAdres}>{secili.address}</Text>
           {googleMapsKey ? (
             <TouchableOpacity
@@ -246,6 +252,15 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_500Medium',
     color: COLORS.text.secondary,
     lineHeight: 20,
+  },
+  // Şube cephe fotoğrafı. Yükseklik SABİT DEĞİL: 3:1 oran, görselin kendi
+  // oranıyla birebir aynı olduğu için kırpma olmuyor ve her ekran genişliğinde
+  // aynı duruyor. ~390pt'lik telefonda ≈115pt — haritadan (120) kısa.
+  banner: {
+    width: '100%',
+    aspectRatio: BANNER_ORANI,
+    borderRadius: RADIUS.sm,
+    backgroundColor: '#EFEFEF',
   },
   harita: {
     height: 120,
