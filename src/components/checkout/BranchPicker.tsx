@@ -16,6 +16,12 @@ interface Props {
   /** Cihaz konumu — en yakın şubeyi otomatik seçmek için. */
   deviceCoords?: Coords | null;
   googleMapsKey: string;
+  /**
+   * "Konumuna en yakın şube otomatik seçildi" notu ARTIK BU BİLEŞENDE
+   * ÇİZİLMİYOR — not, Yöntem kartı ile Şube kartının ARASINA taşındı
+   * (28.10.2026). Mantık burada kaldığı için durum parent'a bildiriliyor.
+   */
+  onAutoSelectedChange?: (aktif: boolean) => void;
 }
 
 /** Metre cinsinden mesafeyi kullanıcıya okunur hale getirir. */
@@ -28,6 +34,7 @@ export default function BranchPicker({
   onSelect,
   deviceCoords,
   googleMapsKey,
+  onAutoSelectedChange,
 }: Props) {
   // Kullanıcı bir kez elle şube seçtiyse otomatik seçim bir daha araya girmez.
   const elleSecildiRef = useRef(false);
@@ -95,6 +102,15 @@ export default function BranchPicker({
   // Fotoğrafı olmayan şube bannersiz görünür — yer tutucu göstermiyoruz.
   const banner = subeBanneri(secili?.slug);
 
+  // Durum DEĞİŞTİĞİNDE bildir. Ref kilidi olmadan, parent her render'da yeni
+  // bir closure veriyorsa effect sonsuz döner.
+  const bildirilenRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (bildirilenRef.current === otomatikSecimDuruyor) return;
+    bildirilenRef.current = otomatikSecimDuruyor;
+    onAutoSelectedChange?.(otomatikSecimDuruyor);
+  }, [otomatikSecimDuruyor, onAutoSelectedChange]);
+
   const haritaUrl = (adres: string) =>
     `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(adres)}` +
     `&zoom=16&size=800x300&scale=2&markers=color:0xE8431A%7C${encodeURIComponent(adres)}` +
@@ -138,36 +154,34 @@ export default function BranchPicker({
         })}
       </View>
 
-      {otomatikSecimDuruyor ? (
-        <View style={s.otoNot}>
-          <NavigationArrow size={13} color={COLORS.text.secondary} weight="fill" />
-          <Text style={s.otoNotText}>
-            Konumuna en yakın şube otomatik olarak seçildi, değiştirmek için şube seçin.
-          </Text>
-        </View>
-      ) : null}
-
       {secili ? (
         <View style={s.detay}>
-          {banner ? (
-            <Image source={banner} style={s.banner} resizeMode="cover" />
+          {/* Cephe fotoğrafı + harita TEK kutu: ikisi de "burası neresi"
+              sorusunu yanıtlıyor, ayrı ayrı yüzer gibi durmaları kartı
+              parçalıyordu. Dış köşe yuvarlatma kapsayıcıda, parçalarda yok. */}
+          {banner || googleMapsKey ? (
+            <View style={s.gorselBlok}>
+              {banner ? (
+                <Image source={banner} style={s.banner} resizeMode="cover" />
+              ) : null}
+              {googleMapsKey ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() =>
+                    Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(secili.address)}`)
+                  }
+                  style={s.harita}
+                >
+                  <Image source={{ uri: haritaUrl(secili.address) }} style={s.haritaImg} resizeMode="cover" />
+                  <View style={s.haritaRozet}>
+                    <MapPin size={11} color="#000" weight="fill" />
+                    <Text style={s.haritaRozetText}>Haritada Aç</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           ) : null}
           <Text style={s.detayAdres}>{secili.address}</Text>
-          {googleMapsKey ? (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() =>
-                Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(secili.address)}`)
-              }
-              style={s.harita}
-            >
-              <Image source={{ uri: haritaUrl(secili.address) }} style={s.haritaImg} resizeMode="cover" />
-              <View style={s.haritaRozet}>
-                <MapPin size={11} color="#000" weight="fill" />
-                <Text style={s.haritaRozetText}>Haritada Aç</Text>
-              </View>
-            </TouchableOpacity>
-          ) : null}
         </View>
       ) : null}
     </View>
@@ -226,23 +240,6 @@ const s = StyleSheet.create({
   mesafeTextAktif: {
     color: 'rgba(0,0,0,0.6)',
   },
-  otoNot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.xs,
-    backgroundColor: '#f5f5f5',
-  },
-  otoNotText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.xs,
-    fontFamily: 'PlusJakartaSans_500Medium',
-    color: COLORS.text.secondary,
-    lineHeight: 16,
-  },
   detay: {
     marginTop: SPACING.md,
     gap: SPACING.sm,
@@ -253,19 +250,24 @@ const s = StyleSheet.create({
     color: COLORS.text.secondary,
     lineHeight: 20,
   },
-  // Şube cephe fotoğrafı. Yükseklik SABİT DEĞİL: 3:1 oran, görselin kendi
-  // oranıyla birebir aynı olduğu için kırpma olmuyor ve her ekran genişliğinde
-  // aynı duruyor. ~390pt'lik telefonda ≈115pt — haritadan (120) kısa.
+  // Fotoğraf + haritayı saran tek kutu. Yuvarlatma ve kırpma BURADA:
+  // parçaların kendi köşeleri olsaydı birleşim yerinde çift kavis çıkardı.
+  gorselBlok: {
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+    backgroundColor: '#EFEFEF',
+  },
+  // Şube cephe fotoğrafı. Yükseklik SABİT DEĞİL: oran BANNER_ORANI'ndan
+  // geliyor ve görselin kendi oranıyla birebir aynı — bu yüzden kırpma yok ve
+  // her ekran genişliğinde aynı duruyor. ~390pt'lik telefonda ≈137pt.
   banner: {
     width: '100%',
     aspectRatio: BANNER_ORANI,
-    borderRadius: RADIUS.sm,
-    backgroundColor: '#EFEFEF',
   },
+  // 120 -> 100: fotoğrafla birleşince blok uzuyordu; harita burada sokağı
+  // göstermeye yarıyor, tek başına bir ekran değil.
   harita: {
-    height: 120,
-    borderRadius: RADIUS.sm,
-    overflow: 'hidden',
+    height: 100,
   },
   haritaImg: {
     width: '100%',

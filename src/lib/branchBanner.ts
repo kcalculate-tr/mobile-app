@@ -10,8 +10,13 @@
 // Yeni şube açılınca: fotoğrafı src/assets/branches/<slug>.jpg olarak koy ve
 // aşağıya bir satır ekle. Haritada olmayan şube bannersiz görünür, hata vermez.
 //
-// Görseller 1200x400 (3:1) JPEG, ~110 KB. Oran UI'daki kutuyla aynı; bu yüzden
-// resizeMode="cover" kırpma yapmıyor.
+// Görseller 1600x667 (2.4:1) JPEG, ~300 KB. Oran UI'daki kutuyla BİREBİR aynı;
+// bu yüzden resizeMode="cover" hiç kırpmıyor. Oranı değiştirirsen görselleri
+// de yeniden kırpman gerekir, yoksa cephenin kenarları kesilir.
+//
+// 28.10.2026: 3:1 / 1200px iken cephe hem kısa hem yumuşak görünüyordu.
+// Daha uzun kırpıldı (tabela + vitrin + zemin) ve 1600px'e çıkarıldı — ekranda
+// ~987px yer kapladığı için 1200px yeterli çözünürlük bırakmıyordu.
 import type { ImageSourcePropType } from 'react-native';
 
 const BANNERLAR: Record<string, ImageSourcePropType> = {
@@ -20,7 +25,7 @@ const BANNERLAR: Record<string, ImageSourcePropType> = {
 };
 
 /** Banner kutusunun en/boy oranı — görsellerle BİREBİR aynı olmalı. */
-export const BANNER_ORANI = 3;
+export const BANNER_ORANI = 2.4;
 
 export function subeBanneri(slug: string | null | undefined): ImageSourcePropType | null {
   if (!slug) return null;

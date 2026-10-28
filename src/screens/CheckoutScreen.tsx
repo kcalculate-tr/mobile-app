@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, WarningCircle } from '../components/icons';
+import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, NavigationArrow, WarningCircle } from '../components/icons';
 import ScreenContainer from '../components/ScreenContainer';
 import Selectable from '../components/ui/Selectable';
 import { useSectionTransition } from '../hooks/useSectionTransition';
@@ -415,6 +415,10 @@ export default function CheckoutScreen() {
   // Gel-Al'da müşterinin teslim alacağı şube. Konum varsa en yakını
   // BranchPicker otomatik işaretler, kullanıcı değiştirebilir.
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  // "En yakın şube otomatik seçildi" notu Yöntem kartı ile Şube kartının
+  // ARASINDA duruyor (28.10.2026): seçimden ÖNCE okunması gereken bir bilgi,
+  // şube kartının içinde seçimin altında kalıyordu. Mantık BranchPicker'da.
+  const [subeOtoSecildi, setSubeOtoSecildi] = useState(false);
 
   // ── Zorunlu alan doğrulaması ────────────────────────────────────────────
   // Eksik alan artık sayfanın en altında genel bir kutu olarak DEĞİL, kendi
@@ -2266,6 +2270,13 @@ export default function CheckoutScreen() {
             ) : null}
           </View>
 
+          {/* ── 1b. En yakın şube notu — Yöntem ile Şube kartının ARASINDA ── */}
+          {deliveryMethod === 'pickup' && subeOtoSecildi ? (
+            <InfoPill Icon={NavigationArrow} style={styles.subeOtoNot}>
+              Konumuna en yakın şube otomatik olarak seçildi, değiştirmek için şube seçin.
+            </InfoPill>
+          ) : null}
+
           {/* ── 2. Teslimat Adresi (eve teslim) ── */}
           {deliveryMethod === 'home_delivery' ? (
             <View style={styles.card} onLayout={bolumOlcu('adres')}>
@@ -2408,6 +2419,7 @@ export default function CheckoutScreen() {
                   onSelect={(branch) => setSelectedBranchId(branch.id)}
                   deviceCoords={deviceCoords}
                   googleMapsKey={getGoogleMapsKey()}
+                  onAutoSelectedChange={setSubeOtoSecildi}
                 />
               ) : null}
               <InfoPill Icon={Storefront} style={{ marginTop: SPACING.md }}>
@@ -3045,6 +3057,11 @@ const styles = StyleSheet.create({
   },
   cardDisabled: {
     opacity: 0.4,
+  },
+  // Kartlar arasında duruyor: sayfa zemini #f6f6f6 olduğu için InfoPill'in
+  // kendi gri zemini görünmezdi, beyaza çekildi.
+  subeOtoNot: {
+    backgroundColor: COLORS.white,
   },
   // Inline hint under the address card: out-of-zone warning + "view zones" link.
   zonesHintWrap: {
