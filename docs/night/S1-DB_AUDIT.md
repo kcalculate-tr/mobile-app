@@ -60,7 +60,43 @@ Bunlar **yeni migration değil**; aynı mantıksal migration'ların repo'daki fa
 
 ## 2. Şema Denetimi
 
-> _(Doldurulacak: tablo/kolon envanteri, orphan tablolar, backend-only tablolar — schema_dump.md temelli.)_
+**public** şemasında **67 tablo**. Tam kolon/FK/index/RLS dökümü: `schema_dump.md` (job tmp, 96 KB — rapora eklenmek üzere arşivlendi). Kod referansı taraması: `src/`, `admin-panel/src/`, `branch-panel/`, `landing-page/`, `supabase/` (node_modules hariç, kelime-sınırı grep).
+
+> Not: `admin-panel` submodule worktree'de checkout EDİLMEMİŞ (0 dosya); analiz ana checkout'taki kopya ile yapıldı. Ayrıca bir `order_financials` **view**'i var (67 tablo + 1 view). Tüm 67 tabloda RLS açık.
+
+### 2.1 Gerçek orphan tablolar (hiçbir yerde referans yok — ne kod ne supabase)
+| Tablo | Satır | Durum | Öneri |
+|---|---|---|---|
+| `user_credits` | 1 | RLS politikaları + auth.users FK'si canlıda var (`uc_select_own/insert/update`) **ama repoda hiçbir migration kurmuyor, hiçbir kod okumuyor/yazmıyor** — kayıp/eski migration izi. Makro model v2 (`macro_transactions`) işlevi devralmış görünüyor. | **Sil** (1 satır; makro akışının kullanmadığı doğrulanıp) · Etki: Düşük · Efor: S |
+| `legal_documents` | 4 | Beş denetlenen dizinde hiç referans yok (isim-varyant grep'leri dahil). Yasal metinler muhtemelen başka yolla sunuluyor. | **İncele→Sil** (4 satır; nerede okunduğu doğrulanmalı) · Etki: Düşük · Efor: S |
+
+### 2.2 Uyuyan / boş tablolar
+- `push_notifications` — **0 satır**. RLS açık, politika yok. Harici admin kopyasında tek bir iz dışında kullanılmıyor; `notifications` + `notification_sends` yapısı onu değiştirmiş. → **İncele→Sil** · Etki: Düşük · Efor: S.
+- `subscription_plans` — 0 satır ama kodda referanslı → **planlanan özellik** (abonelik). Tut.
+
+### 2.3 Backend-only tablolar (yalnızca `supabase/`'de — normal; service_role/trigger/cron/edge)
+`adisyo_api_log`, `adisyo_webhook_events`, `branch_product_adisyo`, `deleted_account_fingerprints`, `marketplace_stores`, `metrics_actions`, `metrics_insights`, `sweep_locks`, `user_apple_tokens`, `user_card_secrets`.
+→ **Düzeltme yok.** Uyarılar:
+- `marketplace_stores`, `metrics_actions`, `metrics_insights` → `/boss/metrics` ve pazaryeri aracı **kcal-web**'de yaşıyor (bu denetimin 5 dizini dışında); "tüketilmiyor" değil, yalnızca kapsam dışı (bkz. [[boss-metrics-page]]).
+- **`meal_logs` (5 satır) legacy** — mobil aktif olarak `meal_consumptions` (84 satır) kullanıyor; tracking şemasına taşınırken birleştirme adayı (bkz. S1-TRACKING_SCHEMA.md).
+- `body_measurements` (156 satır) aktif takip verisi — orphan değil; tracking'e taşınacak.
+
+### 2.4 Legacy / yinelenen kolonlar (refactor adayları — bu gece dokunulmadı)
+- **`orders` (72 kolon!)** — ağır legacy birikimi:
+  - Dört sağlayıcıya özel OID alanı: `paytr_oid` + `tosla_oid` + `merchant_oid` + `paynkolay_reference_code` (PayTR kaldırıldı → `paytr_oid` ölü).
+  - Paralel tutar alanları: `total_price` / `total_amount` / `payment_total_amount` / `subtotal_amount`.
+  - Paralel kod alanları: `order_code` / `order_uuid` / `external_code`.
+  - Paralel adres gösterimi: `address` (text) / `address_id` (FK) / inline `city`/`district`/`neighbourhood`.
+  - Paralel teslimat alanları: `delivery_date`/`delivery_method`/`delivery_time_type` vs `scheduled_date`/`scheduled_slot`/`scheduled_time`/`delivery_type`.
+  - Yinelenen unique index: `uq_orders_external` (partial) **ve** `uq_orders_external_full`, ikisi de `(source, external_order_id)` — biri gereksiz.
+  → **Etki: Orta · Efor: L · Öneri: Ertele** (servis ayrışmasıyla birlikte düzenli refactor; tek tek kolon silme değil).
+- **`products`** — `cal` vs `calories` (yinelenen), `in_stock` vs `is_available` (§5.3a'da birleştirildi), `desc`/`img`/`order` eski kısa adlar, `allow_immediate`/`allow_scheduled` ölü kolon (gerçeği `delivery_zones`'da). → Ertele.
+- **`profiles`** — `macro_points` / `macro_balance` / `total_macros_purchased` (üç makro-para kolonu), `full_name` vs `first_name`+`last_name`, `push_token` (ayrı `push_tokens` tablosunu tekrarlıyor). → Ertele.
+- **`addresses`** — `contact_name` vs `first_name`+`last_name`; granüler `building_no`/`floor`/`apartment_no` yanında serbest `full_address`. → Ertele.
+- **`campaigns`** — `user_id` vs `profile_id` (iki kullanıcı-referans kolonu, biri gereksiz). → Ertele.
+- **Çift FK constraint'ler:** `option_items.group_id` (`_fk`+`_fkey`) ve `product_option_groups` (group_id, product_id'de `_fk`+`_fkey`). `product_option_groups` olanları §5.3c migration'ında temizlendi; `option_items` için aynı kalıp bir sonraki temizlikte. → Düzelt (S).
+
+> Kolon-düzeyi tam orphan taraması 67 tablonun hepsi için yapılmadı; yukarıdakiler dökümde (schema_dump.md) göze çarpanlar.
 
 ---
 
@@ -147,7 +183,23 @@ RLS açık + politika yok = yalnızca `service_role` erişebilir (anon/authentic
 
 ## 5. Düzeltme Migration'ları
 
-> _(Doldurulacak: 3a müsaitlik bayrağı birleştirme, 3b carts/cart_items, 3c index+RLS — her biri + rollback.)_
+Her biri geriye uyumlu; her migration için aynı adla `_rollback.sql`. **staging olmadığı için hiçbiri uygulanmadı/test edilmedi** — yalnızca dosya.
+
+### 5.3a — Müsaitlik bayrakları tek alanda (`20261102000100_products_availability_unify`)
+**Bulgu:** `products.in_stock` ve `products.is_available` fiilen aynı kavram; canlıda 65 ürünün tamamında özdeş (0 ayrışma). Admin ikisini birlikte yazıyor; kategori/marka/anasayfa sorguları **yalnızca `is_available`** üzerinden sunucu-filtreliyor (`src/lib/categories.ts:103,136,153`). `branch_product_stock.is_available` ise farklı kavram (şube bazlı istisna, tek sunucu-taraflı guard `fn_orders_branch_stock_guard`) — ayrı kalır. `allow_immediate/allow_scheduled` products'ta ölü kolon (gerçeği `delivery_zones`).
+**Çözüm:** Canonical = `products.is_available` (NOT NULL DEFAULT true). `in_stock` silinmez; `fn_products_sync_availability` trigger'ı ile çift yönlü senkron (eski yazıcılar/okuyucular çalışmaya devam). → **Etki: Orta · Efor: M · Öneri: Düzelt.**
+**Risk (gizli bug):** Bugün `in_stock`/`is_available` yalnızca admin birlikte yazdığı için tutuyor; `adisyo-webhook-receiver/index.ts:269`'daki "Faz 4" TODO yalnızca birini yazarsa kategori sayfası (is_available filtre) ile anasayfa/çapraz-satış (in_stock+is_available istemci filtresi) ayrışırdı. Trigger bu ayağı kapatır. Ayrıca global müsaitlik **sunucuda zorlanmıyor** (yalnız istemci) — istenirse order guard'a `products.is_available=false` reddi eklenebilir.
+
+### 5.3b — Sepet kalıcılığı (`20261102000200_carts_and_cart_items`)
+**Bulgu:** Canlıda hiç cart/sepet tablosu yok (`cart_like` sorgusu boş); sepet yalnızca istemci (AsyncStorage). Cihaz/oturum değişince kayıp, çapraz-cihaz senkron yok, "sepet terk" push'u (cron 16) yalnızca orders taslaklarına bakabiliyor.
+**Çözüm:** `carts` (kullanıcı başına tek, `unique(user_id)`) + `cart_items` (order_items ile aynı biçim: `selected_options jsonb`, `quantity`, `unit_price`). RLS: kullanıcı **yalnızca kendi** sepeti (`auth.uid()` → `(select auth.uid())` initplan-dostu). `touch_updated_at` trigger'ları. → **Etki: Orta · Efor: M · Öneri: Düzelt.** Uygulama entegrasyonu ayrı iş (bu gece yalnız şema).
+
+### 5.3c — Eksik FK index'leri + çift constraint temizliği (`20261102000300_fk_indexes_and_dupe_cleanup`)
+**Bulgu:** 24 indekssiz FK (advisor 0001); `product_option_groups`'ta özdeş UNIQUE index (0009) **ve** çift FK constraint (`_fk`+`_fkey`, group_id ve product_id için).
+**Çözüm:** 23 FK index'i (`IF NOT EXISTS`); duplicate UNIQUE constraint + iki gereksiz FK constraint kaldırıldı (bırakılanlar `_fkey`/`_key` kanonik; bırakılan unique index'e FK bağımlılığı yok → güvenli). → **Etki: Orta · Efor: S · Öneri: Düzelt.**
+
+### 5.3c-ertelenen — Geniş RLS/performans sıkılaştırması (migration YAZILMADI, öneri)
+`auth_rls_initplan` (115 politika) ve `multiple_permissive_policies` (57) düzeltmeleri **mekanik ama çok geniş** ve staging olmadan test edilemez; 200+ politikayı körlemesine yeniden yazıp commit'lemek riskli. Tam politika tanımları `schema_dump.md §(d)`'de mevcut. Öneri: staging erişimi olan ayrı bir oturumda, hot-path tablolardan (orders, order_items, reviews, meal_consumptions, user_nutrition_profiles, addresses, profiles) başlayarak `auth.uid()` → `(select auth.uid())` sarmalı + admin-write politikalarına `AS RESTRICTIVE`/aksiyon kısıtı. `function_search_path_mutable` (19) ve SECURITY DEFINER EXECUTE revoke (anon 9 / authenticated 37) aynı oturumda. → **Etki: Yüksek (initplan) · Efor: L · Öneri: Düzelt (staging'de).**
 
 ---
 
