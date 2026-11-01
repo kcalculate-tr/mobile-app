@@ -1,5 +1,5 @@
 import type { Address } from '../types';
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { coalesce } from './requestCoalesce';
 
 /**

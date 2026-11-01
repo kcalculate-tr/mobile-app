@@ -63,4 +63,15 @@ Altı paralel Explore ajanıyla tarandı. src/ altında (ekran/bileşen/hook/uti
   (config/payment.ts, lib/payment.ts, screens/PaymentScreen.tsx, lib/orders.ts).
 - CheckoutScreen'deki Tosla inline form/3DS DOKUNULMADI (RULES: Tosla yedek, dokunma).
 - `src/` içinde artık `paytr` geçmiyor. tsc 88, yeni hata yok.
+- Commit: `e7d03ec refactor(gece-s2): PayTR yorum kalintilarini ...`
+
+### Madde 4 — Klasör yapısı (ayrı commit)
+- `src/core/`: supabase.ts, AuthContext.tsx (auth), notifications.ts (push), ui/ (10 bileşen)
+  taşındı; importlar güncellendi (git mv rename olarak izlendi).
+- `src/modules/ai/`: README + index.ts (boş iskelet).
+- `src/modules/eatkcal/screens/`: CartScreen, CheckoutScreen, OrderSuccessScreen,
+  PaymentScreen taşındı (+2 seviye import kaydırma). AppNavigator güncellendi.
+- Katalog/adres ekranları + sipariş-domain lib'leri merkezde bırakıldı (bilinçli, SORULAR).
+- **tsc: 88 (baseline), yeni hata yok → adım KORUNDU (geri alınmadı).**
+- Not: taşıma sadece yol değiştirir, çalışma zamanı modülü aynı; davranış/görünüm değişmedi.
 

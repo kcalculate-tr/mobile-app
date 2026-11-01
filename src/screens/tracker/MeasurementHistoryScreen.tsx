@@ -12,8 +12,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {CaretLeft, TrendDown, TrendUp, Minus, Ruler, Scales} from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenContainer from '../../components/ScreenContainer';
-import { useAuth } from '../../context/AuthContext';
-import { getSupabaseClient } from '../../lib/supabase';
+import { useAuth } from '../../core/AuthContext';
+import { getSupabaseClient } from '../../core/supabase';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
 

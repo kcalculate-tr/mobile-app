@@ -1,7 +1,7 @@
 /**
  * Saf Macro kurallari — Supabase istemcisine DOKUNMAZ.
  *
- * 23.09.2026: bu mantik macros.ts icindeydi; o dosya './supabase'i import
+ * 23.09.2026: bu mantik macros.ts icindeydi; o dosya '../core/supabase'i import
  * ettigi icin birim testinden cagirildiginda gercek bir auth istemcisi ayaga
  * kalkiyordu. Kazanim formulu sunucudaki grant_macros_on_delivery() ile
  * birebir ayni olmak ZORUNDA oldugundan test altinda olmasi sart.

@@ -3,7 +3,7 @@ import { View, Text, Platform, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { GlassButton } from './GlassButton';
 import { sportive } from '../../theme/sportive';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import { resolvePostSocialAuth } from '../../lib/postSocialAuth';
 
 interface Props {

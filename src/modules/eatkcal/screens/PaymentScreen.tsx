@@ -12,10 +12,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft } from '../components/icons';
-import { payWithSavedCard } from '../lib/cards';
-import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../lib/paymentHtml';
-import { matchesPaynkolayReturn } from '../lib/paynkolayReturn';
+import { ArrowLeft } from '../../../components/icons';
+import { payWithSavedCard } from '../../../lib/cards';
+import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../../../lib/paymentHtml';
+import { matchesPaynkolayReturn } from '../../../lib/paynkolayReturn';
 import {
   LoadGuard,
   PAYMENT_PAGE_LOAD_FAILED_MESSAGE,
@@ -27,20 +27,20 @@ import {
   isProviderPageReady,
   userMessageForError,
   withDeadline,
-} from '../lib/webviewResilience';
-import { RootStackParamList } from '../navigation/types';
-import { haptic } from '../utils/haptics';
-import { useCartStore } from '../store/cartStore';
-import { getSupabaseClient } from '../lib/supabase';
-import { logEvent, track } from '../lib/analytics';
-import { recordPaymentDrop } from '../lib/orders';
-import { dususEtiketi, type OdemeAsamasi, type DususSebebi } from '../lib/paymentDrop';
-import { COLORS } from '../constants/theme';
+} from '../../../lib/webviewResilience';
+import { RootStackParamList } from '../../../navigation/types';
+import { haptic } from '../../../utils/haptics';
+import { useCartStore } from '../../../store/cartStore';
+import { getSupabaseClient } from '../../../core/supabase';
+import { logEvent, track } from '../../../lib/analytics';
+import { recordPaymentDrop } from '../../../lib/orders';
+import { dususEtiketi, type OdemeAsamasi, type DususSebebi } from '../../../lib/paymentDrop';
+import { COLORS } from '../../../constants/theme';
 import {
   PAYMENT_PROVIDER,
   PAYNKOLAY_INIT_URL,
   PAYNKOLAY_VPOS_ORIGIN,
-} from '../config/payment';
+} from '../../../config/payment';
 
 type PaymentScreenRouteProp = RouteProp<RootStackParamList, 'PaymentScreen'>;
 type PaymentScreenNavProp = NativeStackNavigationProp<RootStackParamList>;

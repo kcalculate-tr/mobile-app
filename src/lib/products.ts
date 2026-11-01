@@ -112,7 +112,7 @@ export const fetchProductsFromSupabase = async (
 };
 
 export const fetchProducts = async (signal?: AbortSignal): Promise<Product[]> => {
-  const { getSupabaseClient } = await import('./supabase');
+  const { getSupabaseClient } = await import('../core/supabase');
   const supabase = getSupabaseClient();
   // AbortSignal'li çağrılar coalesce EDİLMEZ — bir çağıranın iptali
   // diğerlerini bozmasın (iptal semantiği korunur).
@@ -125,7 +125,7 @@ export const fetchProducts = async (signal?: AbortSignal): Promise<Product[]> =>
 };
 
 export const fetchFeaturedProducts = async (): Promise<Product[]> => {
-  const { getSupabaseClient } = await import('./supabase');
+  const { getSupabaseClient } = await import('../core/supabase');
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('products')
@@ -140,7 +140,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
 };
 
 export const fetchCrosssellProducts = async (limit = 10): Promise<Product[]> => {
-  const { getSupabaseClient } = await import('./supabase');
+  const { getSupabaseClient } = await import('../core/supabase');
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('products')
@@ -348,7 +348,7 @@ export const fetchProductImagesByName = async (
   );
   if (wanted.length === 0) return {};
 
-  const { getSupabaseClient } = await import('./supabase');
+  const { getSupabaseClient } = await import('../core/supabase');
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('products')

@@ -16,14 +16,14 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 
 SplashScreen.preventAutoHideAsync();
-import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './src/core/AuthContext';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
 import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
 import AppNavigator from './src/navigation/AppNavigator';
 import {
   registerForPushNotifications,
   setupNotificationListeners,
-} from './src/lib/notifications';
+} from './src/core/notifications';
 import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';

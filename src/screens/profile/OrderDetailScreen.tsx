@@ -15,7 +15,7 @@ import { type Icon, CaretLeftIcon, ShoppingCartIcon, CheckCircleIcon, ChefHatIco
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomSheet from '../../components/BottomSheet';
-import { getSupabaseClient } from '../../lib/supabase';
+import { getSupabaseClient } from '../../core/supabase';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
@@ -28,7 +28,7 @@ import {
 } from '../../lib/orders';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, TYPOGRAPHY } from '../../constants/theme';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../utils/deliveryDays';
 
 type OrderDetailRouteProp = RouteProp<RootStackParamList, 'OrderDetail'>;

@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import ScreenContainer from '../components/ScreenContainer';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import {
   getApiBaseUrl,
   isApiBaseUrlConfigured,
@@ -18,7 +18,7 @@ import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { COLORS } from '../constants/theme';
 
 type DiagnosticsData = {

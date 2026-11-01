@@ -121,7 +121,7 @@ export const getClosedProductIds = async (force = false): Promise<BranchAvailabi
 
   ucusta = (async () => {
     try {
-      const { getSupabaseClient } = await import('./supabase');
+      const { getSupabaseClient } = await import('../core/supabase');
       const sonuc = await fetchBranchAvailability(getSupabaseClient(), {
         district: kaynak.district,
         neighbourhood: kaynak.neighbourhood,

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../core/supabase';
 import type { CouponValidationResponse } from './couponMessages';
 
 // Not: Banner + fetchBanners/fetchPromoBanners yeni banner_rows + banner_cells

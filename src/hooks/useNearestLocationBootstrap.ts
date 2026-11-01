@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import { useAddressStore } from '../store/addressStore';
 import { useDeliveryContextStore } from '../store/deliveryContextStore';
 import { cihazKonumunuCoz, enYakinAdres } from '../lib/nearestLocation';
@@ -54,7 +54,7 @@ export function useNearestLocationBootstrap() {
 
         // 2) Girişli kullanıcının kayıtlı adresleri arasından en yakını.
         if (user?.id) {
-          const { getSupabaseClient } = await import('../lib/supabase');
+          const { getSupabaseClient } = await import('../core/supabase');
           const { data } = await getSupabaseClient()
             .from('addresses')
             .select('*')

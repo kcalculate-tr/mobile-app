@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
-import { resolveNavigation } from './navigation';
+import { resolveNavigation } from '../lib/navigation';
 
 export const PUSH_PERMISSION_FLAG = '@kcal_push_permission_status';
 

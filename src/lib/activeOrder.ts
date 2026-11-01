@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 
 export type ActiveOrderStatus = 'confirmed' | 'preparing' | 'on_way' | 'delivered';
 

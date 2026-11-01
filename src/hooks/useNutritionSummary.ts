@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { getSupabaseClient } from '../lib/supabase';
+import { useAuth } from '../core/AuthContext';
+import { getSupabaseClient } from '../core/supabase';
 
 export type NutritionSummary = {
   targetKcal: number;

@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase'
+import { getSupabaseClient } from '../core/supabase'
 import { DEFAULT_MACRO_SETTINGS, FALLBACK_EARN_THRESHOLD, FALLBACK_MEAL_COST, FALLBACK_REWARD_VALID_DAYS } from './macroRules';
 import type { MacroProfile, MacroSettings } from './macroRules';
 

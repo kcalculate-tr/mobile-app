@@ -9,15 +9,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SkeletonOrderCard } from '../../components/ui/SkeletonLoader';
+import { SkeletonOrderCard } from '../../core/ui/SkeletonLoader';
 import { useStaggerAnimation } from '../../hooks/useStaggerAnimation';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CaretLeft, CaretRight, Timer, CreditCard, CheckCircle, ChefHat, Truck, Confetti, XCircle, ArrowCounterClockwise, Package, ShoppingBag, WarningCircle } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
-import { getSupabaseClient } from '../../lib/supabase';
+import { getSupabaseClient } from '../../core/supabase';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,

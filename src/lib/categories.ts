@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../core/supabase';
 
 
 // ŞUBE BAZLI STOK: seçili adresin düştüğü şubede kapatılmış ürünler listelerden

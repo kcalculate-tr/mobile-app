@@ -20,7 +20,7 @@ import { Category, fetchCategories } from '../lib/categories';
 import { RootStackParamList } from '../navigation/types';
 import { Product, fetchProducts, fetchFeaturedProducts, fetchProductOptionGroups } from '../lib/products';
 import { getEffectivePrice, hasDiscount } from '../utils/price';
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { BannerCell, BannerRow, fetchBannerRows } from '../lib/banners';
 import { AppBanner, fetchActiveAppBanner } from '../lib/appBanners';
@@ -28,7 +28,7 @@ import { AnnouncementStrip as AnnouncementStripData, fetchActiveAnnouncementStri
 import AnnouncementStrip from '../components/AnnouncementStrip';
 import ActiveOrderCard from '../components/ActiveOrderCard';
 import ReorderCard from '../components/ReorderCard';
-import { Toast } from '../components/ui/Toast';
+import { Toast } from '../core/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
 import { findPlainCartLine, needsOptionSelection } from '../lib/quickAdd';
@@ -43,7 +43,7 @@ import { fetchPendingFeedbackOrder, submitOrderReview, type ItemFeedbackMap, typ
 import { resolveNavigation } from '../lib/navigation';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { useAddressStore } from '../store/addressStore';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import { fetchBusinessHours, BusinessHours } from '../lib/businessHours';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { track } from '../lib/analytics';

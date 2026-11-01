@@ -16,13 +16,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CaretLeft, PencilSimple, LockSimple } from '../../components/icons';
 import { MACRO_COLORS, hexToRgba } from '../../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
-import { getSupabaseClient } from '../../lib/supabase';
+import { getSupabaseClient } from '../../core/supabase';
 import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, SURFACE } from '../../constants/theme';
-import Selectable from '../../components/ui/Selectable';
+import Selectable from '../../core/ui/Selectable';
 import { useSectionTransition } from '../../hooks/useSectionTransition';
 import MacroRing from '../../components/MacroRing';
 import {

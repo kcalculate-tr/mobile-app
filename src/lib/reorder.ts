@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { mapProductRow } from './products';
 import type { CartSelectedOptions, Product } from '../types';
 

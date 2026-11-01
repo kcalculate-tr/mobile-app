@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 
 import { haptic } from '../utils/haptics';
 import { DURATION } from '../constants/motion';
@@ -19,11 +19,11 @@ import { RootStackParamList, TabParamList } from './types';
 //  · Checkout: görevde açıkça hariç tutuldu.
 import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 import HomeScreen from '../screens/HomeScreen';
-import CartScreen from '../screens/CartScreen';
+import CartScreen from '../modules/eatkcal/screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import TrackerScreen from '../screens/TrackerScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import CheckoutScreen from '../screens/CheckoutScreen';
+import CheckoutScreen from '../modules/eatkcal/screens/CheckoutScreen';
 
 // LAZY (code-split) — stack'e PUSH edilen ikincil ekranlar. 'slide_from_right'
 // (veya slide_from_bottom) animasyonu chunk yüklenirken ekranı örttüğü için
@@ -35,12 +35,12 @@ const CategoryProductsScreen = lazy(() => import('../screens/CategoryProductsScr
 const BrandLandingScreen = lazy(() => import('../screens/BrandLandingScreen'));
 const DevDiagnosticsScreen = lazy(() => import('../screens/DevDiagnosticsScreen'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
-const OrderSuccessScreen = lazy(() => import('../screens/OrderSuccessScreen'));
+const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
 const UnifiedLoginScreen = lazy(() => import('../screens/auth/UnifiedLoginScreen'));
 const NutritionProfileScreen = lazy(() => import('../screens/tracker/NutritionProfileScreen'));
 const MeasurementHistoryScreen = lazy(() => import('../screens/tracker/MeasurementHistoryScreen'));
-const PaymentScreen = lazy(() => import('../screens/PaymentScreen'));
+const PaymentScreen = lazy(() => import('../modules/eatkcal/screens/PaymentScreen'));
 const PersonalInfoScreen = lazy(() => import('../screens/PersonalInfoScreen'));
 const FeedbackScreen = lazy(() => import('../screens/FeedbackScreen'));
 const ContractsScreen = lazy(() => import('../screens/profile/ContractsScreen'));

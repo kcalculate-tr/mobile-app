@@ -9,14 +9,14 @@ import { useFocusEffect } from '@react-navigation/native'
 import { CalendarCheck, CrownSimple, Info } from '../components/icons'
 import AnimatedNumberText from '../components/AnimatedNumberText'
 import MacroPointModal from '../components/modals/MacroPointModal'
-import SegmentedTabs from '../components/ui/SegmentedTabs'
-import FadeSwap from '../components/ui/FadeSwap'
+import SegmentedTabs from '../core/ui/SegmentedTabs'
+import FadeSwap from '../core/ui/FadeSwap'
 import SubscriptionBuilder from '../components/subscription/SubscriptionBuilder'
 import MacroBenefits from '../components/macro/MacroBenefits'
 import CouponRail from '../components/macro/CouponRail'
 import { isAdminUser } from '../lib/admin'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../core/AuthContext'
 import {
   DEFAULT_MACRO_SETTINGS, MacroProfile, MacroSettings,
   fetchMacroProfile, fetchMacroSettings, macroProgress,

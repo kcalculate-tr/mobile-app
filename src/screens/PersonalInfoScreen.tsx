@@ -10,8 +10,8 @@ import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { CaretLeft, Check, EnvelopeSimple, Phone, User } from '../components/icons'
 import ScreenContainer from '../components/ScreenContainer'
-import { useAuth } from '../context/AuthContext'
-import { getSupabaseClient } from '../lib/supabase'
+import { useAuth } from '../core/AuthContext'
+import { getSupabaseClient } from '../core/supabase'
 import { RootStackParamList } from '../navigation/types'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>

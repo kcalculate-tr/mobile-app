@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 
 export function useRequireAuth() {
   const { session, loading } = useAuth();

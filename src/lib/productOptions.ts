@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import type { ProductOptionLink, OptionTemplate, OptionTemplateValue } from '../types';
 
 const toNumber = (value: unknown, fallback = 0): number => {

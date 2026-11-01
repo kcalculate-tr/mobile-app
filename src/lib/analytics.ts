@@ -3,7 +3,7 @@ import { AppEventsLogger, Settings } from 'react-native-fbsdk-next';
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 
 let initialized = false;
 

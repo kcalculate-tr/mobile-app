@@ -122,5 +122,41 @@ Temizlenen yorumlar (operatif Paynkolay/Tosla bilgisi KORUNARAK sadeleştirildi)
 
 **tsc:** 88 (baseline) · yeni hata yok. **Değişen ekran davranışı:** yok (yalnızca yorum).
 
-## 4. Klasör yapısı
-_(işlem sürüyor)_
+## 4. Klasör yapısı (ayrı commit)
+
+Yalnızca **taşıma + import güncellemesi** yapıldı; davranış/görünüm değişmedi.
+`tsc` adım sonunda **88 (baseline), yeni hata yok** → adım korundu (geri alınmadı).
+
+### `src/core/` — ortak altyapı (iki servis de paylaşır)
+| Yeni konum | Eski konum |
+|---|---|
+| `src/core/supabase.ts` | `src/lib/supabase.ts` |
+| `src/core/AuthContext.tsx` (auth) | `src/context/AuthContext.tsx` |
+| `src/core/notifications.ts` (push) | `src/lib/notifications.ts` |
+| `src/core/ui/*` (10 bileşen) | `src/components/ui/*` |
+
+Import güncellemesi: `lib/supabase`→`core/supabase`, `context/AuthContext`→`core/AuthContext`,
+`lib/notifications`→`core/notifications`, `components/ui/`→`core/ui/` (prefix `../` korundu,
+hepsi src'ye göre çözülüyor). `src/lib` içindeki `./supabase` → `../core/supabase`.
+Taşınan dosyaların kendi iç importları düzeltildi (notifications `./navigation`→`../lib/navigation`,
+ui `../icons`→`../../components/icons`, components'teki `./ui/`,`../ui/` → core/ui). `git mv`
+rename olarak izlendi (geçmiş korunur).
+
+### `src/modules/ai/` — Kcalculate AI (boş iskelet + README)
+`README.md` + `index.ts` (`export {}`). Henüz kod taşınmadı; yalnızca servis sınırı.
+
+### `src/modules/eatkcal/` — öğün siparişi
+Sipariş akışının çekirdek ekranları taşındı: `screens/{CartScreen, CheckoutScreen,
+OrderSuccessScreen, PaymentScreen}.tsx`. Depth +2 olduğu için her göreli-yukarı yol
+(`'../`) + modül importları VE asset `require`'ları) tek tip +2 seviye kaydırıldı
+(`'../`→`'../../../`); `./` kardeş importlar değişmedi. AppNavigator importerları yeni
+konuma yönlendirildi.
+
+**Bilinçli kapsam (SORULAR):** Katalog/adres/kampanya ekranları ve sipariş-domain lib'leri
+merkezde bırakıldı (AI ile kısmen paylaşılıyor + geniş import yüzeyi). Sonraki fazda
+`tsc`-doğrulanabilir şekilde taşınacak. Bu, tek gecede davranış-riskini sıfır tutma kararı.
+
+**Değişen ekranlar (sabah simülatörde kontrol):** Sepet, Sipariş Özeti/Ödeme (Checkout),
+Sipariş Başarılı, Ödeme (PaymentScreen) — taşındı ama davranış/görünüm aynı olmalı.
+Ayrıca tüm uygulama: `core/` taşımaları supabase/auth/push/ui'ı kullanan HER ekranı
+dolaylı etkiler (import yolu değişti, çalışma zamanı modülü aynı).

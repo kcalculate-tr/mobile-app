@@ -6,7 +6,7 @@
 // çekip kısa bir coalesce penceresinde paylaşıyoruz. Her çağıran kendi
 // alanlarını okur; davranış birebir korunur (hata/eksik satır → null).
 
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { coalesce } from './requestCoalesce';
 
 // forceUpdate + businessHours'un ihtiyaç duyduğu tüm sütunların birleşimi.

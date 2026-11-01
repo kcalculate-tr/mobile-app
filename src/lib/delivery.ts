@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { pickTypeDefaults } from './deliveryRules';
 import type { DeliveryGlobals, DeliveryZoneRow } from './deliveryRules';
 

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Address, CartItem } from '../types';
 import { formatSupabaseErrorForDevLog } from './supabaseErrors';
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { computeUnitMacros } from './itemMacros';
 import {
   buildCartSignatureLines,

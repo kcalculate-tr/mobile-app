@@ -13,7 +13,7 @@ import { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { setSentryUser } from '../lib/sentry';
 import { useAddressStore } from '../store/addressStore';
 import { hydrateSelectedAddress } from '../lib/addresses';

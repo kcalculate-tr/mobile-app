@@ -10,7 +10,7 @@ import { OTPInput } from '../../components/onboarding/OTPInput';
 import { PrimaryCTA } from '../../components/onboarding/PrimaryCTA';
 import { SocialAuthButtons } from '../../components/onboarding/SocialAuthButtons';
 import { sportive } from '../../theme/sportive';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 
 type LoginRouteProp = RouteProp<RootStackParamList, 'Login'>;
@@ -31,7 +31,7 @@ type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList>;
  */
 const hedefiVarMi = async (userId?: string): Promise<boolean> => {
   try {
-    const { getSupabaseClient } = await import('../../lib/supabase');
+    const { getSupabaseClient } = await import('../../core/supabase');
     const supabase = getSupabaseClient();
 
     // OTP yolunda AuthContext'teki `user` henüz set edilmemiş olabilir

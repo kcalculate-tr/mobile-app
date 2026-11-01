@@ -1,7 +1,7 @@
 // src/hooks/usePopups.ts
 // Supabase'den aktif pop-up'ları çeker, session başına bir kez gösterir
 import { useEffect, useState } from 'react'
-import { getSupabaseClient } from '../lib/supabase'
+import { getSupabaseClient } from '../core/supabase'
 
 // React Native'de sessionStorage yok — uygulama yaşam döngüsü boyunca tutulur
 let shownThisSession = false

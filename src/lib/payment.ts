@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { apiRequestJson, isApiBaseUrlConfigured } from './api';
-import { supabase } from './supabase';
+import { supabase } from '../core/supabase';
 import { PAYMENT_PROVIDER } from '../config/payment';
 
 const SUPABASE_ANON_KEY = 'sb_publishable_tjeQHxsEgZIObTyf1UHz5Q_Bh4jqS29';

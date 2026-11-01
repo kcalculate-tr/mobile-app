@@ -14,7 +14,7 @@
 // Not (26.09.2026): şu an 0 onaylı yorum var. Boss panel → Yorumlar'dan
 // onaylanana kadar şerit görünmez; bu beklenen davranış, hata değil.
 //
-// Bu dosya SAF: './supabase'i import ETMEZ. (deliveryRules.ts ile aynı sebep —
+// Bu dosya SAF: '../core/supabase'i import ETMEZ. (deliveryRules.ts ile aynı sebep —
 // supabase modülü import anında gerçek bir auth istemcisi ayağa kaldırıyor ve
 // node ortamında 'window is not defined' ile patlıyor. Ağ çağrıları
 // socialProof.ts'te.)
