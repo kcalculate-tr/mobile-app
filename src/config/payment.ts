@@ -2,15 +2,9 @@ import Constants from 'expo-constants';
 
 export type PaymentProvider = 'tosla' | 'paynkolay';
 
-// 21.09.2026: PayTR ve Tosla ile calisma tamamen sona erdi — tek saglayici
-// PaynKolay. Env degeri artik OKUNMUYOR; EAS/eas.json arasindaki
-// EXPO_PUBLIC_PAYMENT_PROVIDER celiskisi build'i PayTR'ye dusuremez.
-// 23.09.2026: PaymentScreen'deki PayTR/Tosla akislari ve PAYTR_* URL'leri
-// silindi. CheckoutScreen'deki inline kart formu + 3DS modali hala duruyor
-// (webViewHtml state'ine bagli); o temizlik ayri bir is olarak bekliyor.
-// 17.10.2026: paytr_iframe tipten de cikarildi — son PayTR siparisi
-// 23.05.2026. Tosla BILEREK duruyor: Paynkolay'da bir aksaklik olursa
-// API'yi baglayip oradan devam edebilmek icin.
+// Tek odeme saglayici: PaynKolay. Env degeri (EXPO_PUBLIC_PAYMENT_PROVIDER)
+// BILEREK okunmuyor — saglayici sabit. Tosla yedek olarak tipte duruyor:
+// Paynkolay'da bir aksaklik olursa API'yi baglayip oradan devam edebilmek icin.
 const FALLBACK: PaymentProvider = 'paynkolay';
 
 function readEnv(): string | undefined {

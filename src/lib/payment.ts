@@ -13,10 +13,7 @@ const REQUEST_TIMEOUT_MS = 12000;
 const toSafeString = (value: unknown) =>
   typeof value === 'string' ? value.trim() : '';
 
-// 17.10.2026: burada IKINCI bir saglayici cozumu vardi — env okuyor, okuyamazsa
-// 'paytr_iframe'e dusuyordu. config/payment.ts ise sabit 'paynkolay' donuyordu.
-// Iki ayri dogruluk kaynagi; PayTR yolu olu oldugu halde isPaymentEnabled'i
-// besleyen deger oradan geliyordu. Artik tek kaynak config/payment.ts.
+// Saglayici bilgisinin TEK dogruluk kaynagi config/payment.ts (PAYMENT_PROVIDER).
 
 const INIT_PATH = '/payment-init';
 const VERIFY_PATH = '/payment-verify';

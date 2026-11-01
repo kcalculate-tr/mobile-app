@@ -215,7 +215,7 @@ const isOrderItemsRelationIssue = (error: unknown) => {
 /**
  * @deprecated Bu fonksiyon siparisi DOGRUDAN status='pending' ile yaratir, ödeme alinmaz.
  * Tum siparisler PaymentScreen yolundan gecmelidir — bunun yerine
- * `createOrderDraftForPayment` (status='pending_payment') + PayTR akisini kullan.
+ * `createOrderDraftForPayment` (status='pending_payment') + odeme akisini kullan.
  * Cagri yeri kalmadi (CheckoutScreen.tsx'deki bypass branch'i kaldirildi); ileride
  * referans olmadigi dogrulandiktan sonra silinebilir.
  */

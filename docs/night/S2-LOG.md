@@ -56,4 +56,11 @@ Altı paralel Explore ajanıyla tarandı. src/ altında (ekran/bileşen/hook/uti
   `handleHeroScrollEnd` useCallback. useNativeDriver zaten doğru (width = layout → false).
 - **tsc: 88 (baseline), yeni hata yok.** (Not: yeni dosyalara sızan `</content>`/`</invoke>`
   kalıntı etiketleri temizlendi; TS1110 parse hatasını bunlar tetiklemişti.)
+- Commit: `18c7e44 perf(gece-s2): lazy navigasyon ...`
+
+### Madde 3 — PayTR kalıntı temizliği
+- PayTR gerçek kodu zaten silinmişti; yalnızca yorum kalıntıları temizlendi
+  (config/payment.ts, lib/payment.ts, screens/PaymentScreen.tsx, lib/orders.ts).
+- CheckoutScreen'deki Tosla inline form/3DS DOKUNULMADI (RULES: Tosla yedek, dokunma).
+- `src/` içinde artık `paytr` geçmiyor. tsc 88, yeni hata yok.
 

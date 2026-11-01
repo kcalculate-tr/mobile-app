@@ -100,7 +100,27 @@ Kayıtlı Kartlar, Kart Ekle, Güvenlik, Bildirim Tercihleri, Destek, Yorumları
 (Her biri açılışta normal görünmeli; "boş kare" flash OLMAMALI.)
 
 ## 3. PayTR kalıntı temizliği
-_(işlem sürüyor)_
+
+**Önemli bulgu:** PayTR'ye ait gerçek KOD `src/` içinde zaten silinmişti (23.09.2026).
+Geriye yalnızca tarihsel YORUM kalıntıları kalmıştı; onlar temizlendi. `src/` içinde artık
+`paytr` (büyük/küçük) hiç geçmiyor (doğrulandı).
+
+Temizlenen yorumlar (operatif Paynkolay/Tosla bilgisi KORUNARAK sadeleştirildi):
+- `src/config/payment.ts` — PayTR kaldırma tarihçesi çıkarıldı; "tek sağlayıcı Paynkolay,
+  env yok sayılıyor, Tosla yedek" bilgisi korundu.
+- `src/lib/payment.ts` — eski ikinci-sağlayıcı (paytr_iframe) arkeolojisi tek satıra indirildi.
+- `src/screens/PaymentScreen.tsx` — "PaytrPaymentFlow'dan türetildi / PayTR uri GET'ti"
+  karşılaştırmaları çıkarıldı; Paynkolay akış açıklaması korundu.
+- `src/lib/orders.ts` — deprecated JSDoc'taki "PayTR akışını kullan" → "ödeme akışını kullan".
+
+**DOKUNULMAYANLAR (bilinçli):**
+- CheckoutScreen'deki inline kart formu + 3DS WebView + `TOSLA_PROCESS_URL`: bunlar **Tosla**
+  yedek yolu. RULES "Tosla yedek olarak duruyor, ikisine de dokunma" dediği için ELLENMEDİ.
+- Panel/edge-function tarafındaki `paytr_oid` kolonu okumaları (branch-panel, supabase/
+  functions): hem KAPSAM DIŞI hem de eski siparişler için geriye-uyumlu DB okuması
+  (payment_status NULL iken "ödendi" tespiti) — korunmalı. (Panel etiket eşlemelerine dokunma kuralı.)
+
+**tsc:** 88 (baseline) · yeni hata yok. **Değişen ekran davranışı:** yok (yalnızca yorum).
 
 ## 4. Klasör yapısı
 _(işlem sürüyor)_

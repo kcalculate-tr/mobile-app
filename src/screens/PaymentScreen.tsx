@@ -49,8 +49,8 @@ type PaymentScreenNavProp = NativeStackNavigationProp<RootStackParamList>;
 const SUPABASE_ANON_KEY = 'sb_publishable_tjeQHxsEgZIObTyf1UHz5Q_Bh4jqS29';
 
 export default function PaymentScreen() {
-  // 23.09.2026: PayTR ve Tosla dallari silindi — tek saglayici PaynKolay
-  // (bkz. src/config/payment.ts). Ekran artik dogrudan hosted akisi acar.
+  // Tek saglayici PaynKolay (bkz. src/config/payment.ts). Ekran dogrudan hosted
+  // odeme akisini acar.
   const route = useRoute<PaymentScreenRouteProp>();
   return (
     <PaynkolayPaymentFlow
@@ -65,11 +65,9 @@ export default function PaymentScreen() {
   );
 }
 // ── Paynkolay hosted (Ortak Odeme) akisi ────────────────────────────────────
-// (Eski PaytrPaymentFlow deseninden turetilmisti; o dal 23.09.2026'da silindi.)
-// Tek farklar:
 //  - init -> paynkolay-payment-init { orderId, amount } -> { success, formHtml }
-//  - WebView source = { html: formHtml, baseUrl } (form-POST; PayTR uri: GET'ti)
-//  - donus URL'leri ayni: callback eatkcal.com/payment/success|fail'e redirect eder
+//  - WebView source = { html: formHtml, baseUrl } (form-POST)
+//  - callback eatkcal.com/payment/success|fail'e redirect eder
 type PaynkolayFlowProps = {
   orderId: string;
   amount: number;
