@@ -1,0 +1,2 @@
+// devre dışı (geçici teşhis tamamlandı)
+Deno.serve(() => new Response(JSON.stringify({ error: 'disabled' }), { status: 410, headers: { 'Content-Type': 'application/json' } }));
