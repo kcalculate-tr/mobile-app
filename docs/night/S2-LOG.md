@@ -2,8 +2,17 @@
 
 > Dal: `night/s2-mobile` (feat/social-login'den) · Başlangıç: 2026-11-02
 
-## Özet (bitince güncellenecek)
-_(işlem sürüyor)_
+## Özet (10 satır)
+1. Dal: `night/s2-mobile` (feat/social-login'den). 4 madde, 4 commit. tsc her commit'te 88 (baseline), yeni hata YOK.
+2. **Madde 1 — ölü kod:** 6 paralel tarama; `src/` içinde silinecek kesin ölü dosya YOK (hepsi referanslı). Kök çöpü + kullanılmayan paketler kapsam-dışı, SORULAR'a yazıldı. Commit `b3f2b2e`.
+3. **Madde 2 — performans:** (2a) AppNavigator'da 24 push ekran lazy; (2b) addresses/settings/products soğuk-açılış istekleri `requestCoalesce`+`appSettings` ile tekilleştirildi; (2c) CheckoutScreen seri await → Promise.all; (2d) HomeScreen carousel memo (useNativeDriver zaten doğru). Commit `18c7e44`.
+4. **Madde 3 — PayTR:** gerçek kod zaten silinmişti; yorum kalıntıları temizlendi. Tosla yedek yoluna DOKUNULMADI. Commit `e7d03ec`.
+5. **Madde 4 — klasör:** `src/core/` (supabase, auth, push, ui) + `src/modules/ai` (iskelet) + `src/modules/eatkcal/screens` (4 sipariş ekranı). Sadece taşıma+import. tsc geçti → KORUNDU. Commit `b9000ad`.
+6. **Davranış/görünüm değişmedi** (hard kural). Tüm değişiklikler yol/istek/memoizasyon düzeyinde.
+7. **Kalan (bilinçli):** eatkcal'e katalog/adres ekranları + sipariş-domain lib'leri sonraki fazda taşınacak; kök dizin çöpü ve kullanılmayan paketler kapsam dışı.
+8. **Sabah simülatör kontrolü:** değişen ekranlar her maddenin altında + AUDIT'te listeli; özellikle lazy ekranlarda "boş kare" flash OLMAMALI ve Sepet/Checkout/Ödeme akışı aynı çalışmalı.
+9. **Test:** RULES gereği gate = `npx tsc --noEmit` (temiz); jest çalıştırılmadı (autonomous oturumda rabbit-hole riski).
+10. Rapor: `docs/night/S2-MOBILE_AUDIT.md`. Migration/DB değişikliği yok (yalnızca mobil `src/`).
 
 ---
 
