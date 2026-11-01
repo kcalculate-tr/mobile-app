@@ -1,5 +1,6 @@
 import type { Address } from '../types';
 import { getSupabaseClient } from './supabase';
+import { coalesce } from './requestCoalesce';
 
 /**
  * Adres satırının TEK normalize edici kaynağı.
@@ -80,7 +81,15 @@ export const hydrateSelectedAddress = async (
   setSelectedAddress: (address: Address | null) => void,
 ): Promise<void> => {
   try {
-    const varsayilan = pickDefaultAddress(await fetchUserAddresses(userId));
+    // Soğuk açılışta AuthContext bu fonksiyonu iki kez (initializeAuth +
+    // onAuthStateChange) neredeyse aynı anda çağırıyor. Yalnızca HYDRATE yolunu
+    // coalesce ediyoruz — AddressesScreen'in doğrudan fetchUserAddresses çağrısı
+    // (ekle/düzenle sonrası taze liste) ETKİLENMEZ. 3 sn pencere iki eşzamanlı
+    // çağrıyı birleştirir.
+    const list = await coalesce(`hydrate-addresses:${userId}`, 3000, () =>
+      fetchUserAddresses(userId),
+    );
+    const varsayilan = pickDefaultAddress(list);
     if (varsayilan) setSelectedAddress(varsayilan);
   } catch {
     // sessiz — gösterge boş kalır, kullanıcı yine adres seçebilir

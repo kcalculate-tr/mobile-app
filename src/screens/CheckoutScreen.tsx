@@ -1066,12 +1066,17 @@ export default function CheckoutScreen() {
 
         dispatchOrder({ type: 'SET_SETTINGS_MIN_CART', payload: Math.max(0, Number(data?.min_cart_amount || 0)) });
         dispatchOrder({ type: 'SET_SETTINGS_FETCH_STATUS', payload: 'ready' });
-        const bh = await fetchBusinessHours();
+        // Çalışma saatleri ve global teslimat varsayılanları birbirinden bağımsız
+        // — seri await yerine paralel çek (S2 performans).
+        // fetchGlobalDeliverySettings: delivery_settings.__GLOBAL__.cargo_rules;
+        // yoksa delivery_zones üzerindeki tip-bazlı override'lar yine geçerli.
+        const [bh, globals] = await Promise.all([
+          fetchBusinessHours(),
+          fetchGlobalDeliverySettings(),
+        ]);
+        if (!mounted) return;
         dispatchDelivery({ type: 'SET_BUSINESS_HOURS', payload: bh });
-        // Fetch global delivery defaults (delivery_settings.__GLOBAL__.cargo_rules).
-        // If absent, per-type overrides on delivery_zones still take precedence via resolvers.
-        const globals = await fetchGlobalDeliverySettings();
-        if (mounted) setDeliveryGlobals(globals);
+        setDeliveryGlobals(globals);
       } catch (error: unknown) {
         if (!mounted) return;
         if (__DEV__) {

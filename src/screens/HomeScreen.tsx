@@ -402,9 +402,28 @@ export default function HomeScreen() {
     return [allProducts, ...others];
   }, [categories]);
 
-  const displayProducts = searchText.trim()
-    ? products.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()))
-    : (featuredProducts.length > 0 ? featuredProducts : products.slice(0, 6));
+  const displayProducts = useMemo(
+    () =>
+      searchText.trim()
+        ? products.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()))
+        : (featuredProducts.length > 0 ? featuredProducts : products.slice(0, 6)),
+    [searchText, products, featuredProducts],
+  );
+
+  // Hero carousel: her render'da yeni fonksiyon/stil nesnesi üretmemek için
+  // memoize (S2 performans). Davranış aynı.
+  const heroKeyExtractor = useCallback((item: BannerCell) => item.id, []);
+  const handleHeroScrollEnd = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
+      setActiveHero(idx);
+    },
+    [],
+  );
+  const activeDotStyle = useMemo(
+    () => ({ backgroundColor: '#B9EF14', width: activeDotWidth }),
+    [activeDotWidth],
+  );
 
   const renderHeroBanner = useCallback(({ item: cell }: { item: BannerCell }) => (
     <TouchableOpacity
@@ -547,14 +566,11 @@ export default function HomeScreen() {
               keyboardShouldPersistTaps="handled"
               ref={heroFlatListRef}
               data={heroCells}
-              keyExtractor={(item) => item.id}
+              keyExtractor={heroKeyExtractor}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
-                const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
-                setActiveHero(idx);
-              }}
+              onMomentumScrollEnd={handleHeroScrollEnd}
               renderItem={renderHeroBanner}
             />
             {heroCells.length > 1 && (
@@ -564,7 +580,7 @@ export default function HomeScreen() {
                     key={i}
                     style={[
                       styles.bannerDot,
-                      i === activeHero && { backgroundColor: '#B9EF14', width: activeDotWidth },
+                      i === activeHero && activeDotStyle,
                     ]}
                   />
                 ))}

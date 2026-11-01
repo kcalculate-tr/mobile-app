@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase'
+import { fetchSettingsRow } from './appSettings'
 
 export interface BusinessHours {
   working_days: number[]      // 1=Pzt, 2=Sal, ... 7=Paz
@@ -23,21 +23,17 @@ const DEFAULT: BusinessHours = {
 }
 
 export async function fetchBusinessHours(): Promise<BusinessHours> {
-  const supabase = getSupabaseClient()
-  const { data } = await supabase
-    .from('settings')
-    .select('working_days, open_time, close_time, closed_dates, closed_dates_note, holiday_banner_active, holiday_banner_message')
-    .eq('id', 1)
-    .maybeSingle()
+  // settings (id=1) tek çekiciden — forceUpdate ile aynı satırı paylaşır.
+  const data = await fetchSettingsRow()
   if (!data) return DEFAULT
   return {
-    working_days: data.working_days ?? DEFAULT.working_days,
-    open_time:    data.open_time    ?? DEFAULT.open_time,
-    close_time:   data.close_time   ?? DEFAULT.close_time,
-    closed_dates: data.closed_dates ?? [],
-    closed_dates_note: data.closed_dates_note ?? {},
-    holiday_banner_active: data.holiday_banner_active ?? false,
-    holiday_banner_message: data.holiday_banner_message ?? null,
+    working_days: (data.working_days as number[]) ?? DEFAULT.working_days,
+    open_time:    (data.open_time as string)    ?? DEFAULT.open_time,
+    close_time:   (data.close_time as string)   ?? DEFAULT.close_time,
+    closed_dates: (data.closed_dates as string[]) ?? [],
+    closed_dates_note: (data.closed_dates_note as Record<string, string>) ?? {},
+    holiday_banner_active: (data.holiday_banner_active as boolean) ?? false,
+    holiday_banner_message: (data.holiday_banner_message as string | null) ?? null,
   }
 }
 

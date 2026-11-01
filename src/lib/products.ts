@@ -114,7 +114,14 @@ export const fetchProductsFromSupabase = async (
 export const fetchProducts = async (signal?: AbortSignal): Promise<Product[]> => {
   const { getSupabaseClient } = await import('./supabase');
   const supabase = getSupabaseClient();
-  return fetchProductsFromSupabase(supabase, signal);
+  // AbortSignal'li çağrılar coalesce EDİLMEZ — bir çağıranın iptali
+  // diğerlerini bozmasın (iptal semantiği korunur).
+  if (signal) return fetchProductsFromSupabase(supabase, signal);
+  // Sinyalsiz katalog çekimini kısa pencerede tekilleştir: soğuk açılışta/ekran
+  // yarışlarında yinelenen istekleri önler. 2 sn, bir insanın pull-to-refresh
+  // gecikmesinin altında kaldığından manuel yenileme taze veri alır.
+  const { coalesce } = await import('./requestCoalesce');
+  return coalesce('products:all', 2000, () => fetchProductsFromSupabase(supabase));
 };
 
 export const fetchFeaturedProducts = async (): Promise<Product[]> => {

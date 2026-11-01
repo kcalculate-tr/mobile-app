@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,40 +12,86 @@ import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
 
+// EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
+//  · WelcomeGate: oturumsuz soğuk açılışın ilk ekranı (initialRouteName).
+//  · Sekme hedefleri (Home/Cart/Tracker/Subscription/Profile): sekmeye basınca
+//    Suspense fallback'i "boş kare" gibi parlamasın — sekme geçişinde slide yok.
+//  · Checkout: görevde açıkça hariç tutuldu.
 import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import TrackerScreen from '../screens/TrackerScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-
-import AddressesScreen from '../screens/AddressesScreen';
-import CategoriesScreen from '../screens/CategoriesScreen';
-import CategoryProductsScreen from '../screens/CategoryProductsScreen';
-import BrandLandingScreen from '../screens/BrandLandingScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
-import DevDiagnosticsScreen from '../screens/DevDiagnosticsScreen';
-import OffersScreen from '../screens/OffersScreen';
-import OrderSuccessScreen from '../screens/OrderSuccessScreen';
-import ProductDetailScreen from '../screens/ProductDetailScreen';
 
-import UnifiedLoginScreen from '../screens/auth/UnifiedLoginScreen';
-import NutritionProfileScreen from '../screens/tracker/NutritionProfileScreen';
-import MeasurementHistoryScreen from '../screens/tracker/MeasurementHistoryScreen';
+// LAZY (code-split) — stack'e PUSH edilen ikincil ekranlar. 'slide_from_right'
+// (veya slide_from_bottom) animasyonu chunk yüklenirken ekranı örttüğü için
+// fallback görünmez; görünüm değişmez. Fallback zemini stack'in içerik zemini
+// (#f6f6f6) ile aynı — geçişte ekstra renk kıpırtısı olmaz.
+const AddressesScreen = lazy(() => import('../screens/AddressesScreen'));
+const CategoriesScreen = lazy(() => import('../screens/CategoriesScreen'));
+const CategoryProductsScreen = lazy(() => import('../screens/CategoryProductsScreen'));
+const BrandLandingScreen = lazy(() => import('../screens/BrandLandingScreen'));
+const DevDiagnosticsScreen = lazy(() => import('../screens/DevDiagnosticsScreen'));
+const OffersScreen = lazy(() => import('../screens/OffersScreen'));
+const OrderSuccessScreen = lazy(() => import('../screens/OrderSuccessScreen'));
+const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
+const UnifiedLoginScreen = lazy(() => import('../screens/auth/UnifiedLoginScreen'));
+const NutritionProfileScreen = lazy(() => import('../screens/tracker/NutritionProfileScreen'));
+const MeasurementHistoryScreen = lazy(() => import('../screens/tracker/MeasurementHistoryScreen'));
+const PaymentScreen = lazy(() => import('../screens/PaymentScreen'));
+const PersonalInfoScreen = lazy(() => import('../screens/PersonalInfoScreen'));
+const FeedbackScreen = lazy(() => import('../screens/FeedbackScreen'));
+const ContractsScreen = lazy(() => import('../screens/profile/ContractsScreen'));
+const CouponsScreen = lazy(() => import('../screens/profile/CouponsScreen'));
+const OrderDetailScreen = lazy(() => import('../screens/profile/OrderDetailScreen'));
+const OrdersScreen = lazy(() => import('../screens/profile/OrdersScreen'));
+const SavedCardsScreen = lazy(() => import('../screens/profile/SavedCardsScreen'));
+const AddCardScreen = lazy(() => import('../screens/profile/AddCardScreen'));
+const SecurityScreen = lazy(() => import('../screens/profile/SecurityScreen'));
+const NotificationPreferencesScreen = lazy(() => import('../screens/profile/NotificationPreferencesScreen'));
+const SupportScreen = lazy(() => import('../screens/profile/SupportScreen'));
+const MyReviewsScreen = lazy(() => import('../screens/profile/MyReviewsScreen'));
 
-import PaymentScreen from '../screens/PaymentScreen';
-import PersonalInfoScreen from '../screens/PersonalInfoScreen';
-import FeedbackScreen from '../screens/FeedbackScreen';
-import ContractsScreen from '../screens/profile/ContractsScreen';
-import CouponsScreen from '../screens/profile/CouponsScreen';
-import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
-import OrdersScreen from '../screens/profile/OrdersScreen';
-import SavedCardsScreen from '../screens/profile/SavedCardsScreen';
-import AddCardScreen from '../screens/profile/AddCardScreen';
-import SecurityScreen from '../screens/profile/SecurityScreen';
-import NotificationPreferencesScreen from '../screens/profile/NotificationPreferencesScreen';
-import SupportScreen from '../screens/profile/SupportScreen';
-import MyReviewsScreen from '../screens/profile/MyReviewsScreen';
+// Lazy ekranı, stack içerik zeminiyle aynı renkte bloklamayan bir Suspense
+// sınırına sarar. Sarmalayıcı MODÜL seviyesinde bir kez üretilir (her render'da
+// yeni component referansı = remount olmasın diye).
+const SUSPENSE_FALLBACK = <View style={{ flex: 1, backgroundColor: '#f6f6f6' }} />;
+function withSuspense<P extends object>(Comp: React.ComponentType<P>): React.ComponentType<P> {
+  return function LazyScreen(props: P) {
+    return (
+      <Suspense fallback={SUSPENSE_FALLBACK}>
+        <Comp {...props} />
+      </Suspense>
+    );
+  };
+}
+
+const AddressesLazy = withSuspense(AddressesScreen);
+const CategoriesLazy = withSuspense(CategoriesScreen);
+const CategoryProductsLazy = withSuspense(CategoryProductsScreen);
+const BrandLandingLazy = withSuspense(BrandLandingScreen);
+const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
+const OffersLazy = withSuspense(OffersScreen);
+const OrderSuccessLazy = withSuspense(OrderSuccessScreen);
+const ProductDetailLazy = withSuspense(ProductDetailScreen);
+const UnifiedLoginLazy = withSuspense(UnifiedLoginScreen);
+const NutritionProfileLazy = withSuspense(NutritionProfileScreen);
+const MeasurementHistoryLazy = withSuspense(MeasurementHistoryScreen);
+const PaymentLazy = withSuspense(PaymentScreen);
+const PersonalInfoLazy = withSuspense(PersonalInfoScreen);
+const FeedbackLazy = withSuspense(FeedbackScreen);
+const ContractsLazy = withSuspense(ContractsScreen);
+const CouponsLazy = withSuspense(CouponsScreen);
+const OrderDetailLazy = withSuspense(OrderDetailScreen);
+const OrdersLazy = withSuspense(OrdersScreen);
+const SavedCardsLazy = withSuspense(SavedCardsScreen);
+const AddCardLazy = withSuspense(AddCardScreen);
+const SecurityLazy = withSuspense(SecurityScreen);
+const NotificationPreferencesLazy = withSuspense(NotificationPreferencesScreen);
+const SupportLazy = withSuspense(SupportScreen);
+const MyReviewsLazy = withSuspense(MyReviewsScreen);
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -194,31 +241,31 @@ export default function AppNavigator() {
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#0A0A0A' } }}
       />
       <Stack.Screen name="Tabs" component={TabNavigator} />
-      <Stack.Screen name="Categories" component={CategoriesScreen} />
-      <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
-      <Stack.Screen name="BrandLanding" component={BrandLandingScreen} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+      <Stack.Screen name="Categories" component={CategoriesLazy} />
+      <Stack.Screen name="CategoryProducts" component={CategoryProductsLazy} />
+      <Stack.Screen name="BrandLanding" component={BrandLandingLazy} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailLazy} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
-      <Stack.Screen name="Addresses" component={AddressesScreen} />
-      <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
-      <Stack.Screen name="Offers" component={OffersScreen} />
-      <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsScreen} />
-      <Stack.Screen name="Login" component={UnifiedLoginScreen} />
-      <Stack.Screen name="NutritionProfile" component={NutritionProfileScreen} />
-      <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="ProfileOrders" component={OrdersScreen} />
-      <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
-      <Stack.Screen name="ProfileSavedCards" component={SavedCardsScreen} />
-      <Stack.Screen name="ProfileAddCard" component={AddCardScreen} />
-      <Stack.Screen name="ProfileCoupons" component={CouponsScreen} />
-      <Stack.Screen name="ProfileSupport" component={SupportScreen} />
-      <Stack.Screen name="ProfileReviews" component={MyReviewsScreen} />
-      <Stack.Screen name="ProfileSecurity" component={SecurityScreen} />
-      <Stack.Screen name="ProfileNotificationPreferences" component={NotificationPreferencesScreen} />
-      <Stack.Screen name="Feedback" component={FeedbackScreen} />
-      <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
-      <Stack.Screen name="ProfileContracts" component={ContractsScreen} />
-      <Stack.Screen name="PaymentScreen" component={PaymentScreen} />
+      <Stack.Screen name="Addresses" component={AddressesLazy} />
+      <Stack.Screen name="OrderSuccess" component={OrderSuccessLazy} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
+      <Stack.Screen name="Offers" component={OffersLazy} />
+      <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsLazy} />
+      <Stack.Screen name="Login" component={UnifiedLoginLazy} />
+      <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
+      <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />
+      <Stack.Screen name="ProfileOrders" component={OrdersLazy} />
+      <Stack.Screen name="OrderDetail" component={OrderDetailLazy} />
+      <Stack.Screen name="ProfileSavedCards" component={SavedCardsLazy} />
+      <Stack.Screen name="ProfileAddCard" component={AddCardLazy} />
+      <Stack.Screen name="ProfileCoupons" component={CouponsLazy} />
+      <Stack.Screen name="ProfileSupport" component={SupportLazy} />
+      <Stack.Screen name="ProfileReviews" component={MyReviewsLazy} />
+      <Stack.Screen name="ProfileSecurity" component={SecurityLazy} />
+      <Stack.Screen name="ProfileNotificationPreferences" component={NotificationPreferencesLazy} />
+      <Stack.Screen name="Feedback" component={FeedbackLazy} />
+      <Stack.Screen name="PersonalInfo" component={PersonalInfoLazy} />
+      <Stack.Screen name="ProfileContracts" component={ContractsLazy} />
+      <Stack.Screen name="PaymentScreen" component={PaymentLazy} />
     </Stack.Navigator>
   );
 }

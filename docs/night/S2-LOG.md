@@ -43,6 +43,17 @@ Altı paralel Explore ajanıyla tarandı. src/ altında (ekran/bileşen/hook/uti
   0 referanslı görünse de App.tsx entry point'inde kullanılıyor — ölü DEĞİL.
 - **Sonuç:** `git rm` yapılacak kesin ölü dosya bulunamadı. Kod tabanı temiz.
   (Şüpheliler ve kapsam-dışı öneriler SORULAR'da.)
+- Commit: `b3f2b2e docs(gece-s2): olu kod envanteri ...`
 
-</content>
-</invoke>
+### Madde 2 — Performans
+- 2a: AppNavigator'da 24 ikincil (push) ekran `React.lazy`+`Suspense`. Home/Cart/Checkout/
+  sekme-hedefleri/WelcomeGate eager (flash önlemek için). Fallback zemini #f6f6f6.
+- 2b: `requestCoalesce.ts` + `appSettings.ts` eklendi. addresses hydrate 2→1, settings 2→1,
+  products sinyalsiz yol 2 sn coalesce. `AddressesScreen`'in doğrudan çağrısı korundu.
+- 2c: CheckoutScreen `loadSettings` — bağımsız iki await `Promise.all`'a çevrildi + mounted guard.
+  useEffect zincirleri incelendi, sadeleştirilecek gerçek zincir yok.
+- 2d: HomeScreen — `displayProducts`/`activeDotStyle` useMemo, `heroKeyExtractor`/
+  `handleHeroScrollEnd` useCallback. useNativeDriver zaten doğru (width = layout → false).
+- **tsc: 88 (baseline), yeni hata yok.** (Not: yeni dosyalara sızan `</content>`/`</invoke>`
+  kalıntı etiketleri temizlendi; TS1110 parse hatasını bunlar tetiklemişti.)
+
