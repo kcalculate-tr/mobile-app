@@ -1,5 +1,6 @@
 import React from 'react';
-import { Animated, StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useTheme } from '../ThemeProvider';
 import { useBreath } from '../motion';
 
@@ -36,8 +37,8 @@ export function GlowDot({
             height: size * 2,
             borderRadius: size,
             backgroundColor: dotColor,
-            opacity: breath.style.opacity,
           },
+          breath.style,
         ]}
       />
       <Animated.View
@@ -47,8 +48,8 @@ export function GlowDot({
             height: size,
             borderRadius: size / 2,
             backgroundColor: dotColor,
-            opacity: breath.style.opacity,
           },
+          breath.style,
         ]}
       />
     </View>

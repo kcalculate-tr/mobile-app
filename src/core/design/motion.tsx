@@ -1,16 +1,35 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing } from 'react-native';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
+import {
+  Easing,
+  cancelAnimation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 /**
  * Hareket sistemi — token'lar + hook'lar. TEK KAYNAK.
  *
  * TASARIM KURALI (değiştirilebilir motor): Ekranlar HİÇBİR ZAMAN doğrudan
- * `Animated` çağırmaz. Yalnızca bu dosyanın dışa verdiği hook'ları kullanır
- * (`useEnter`, `usePop`, `useFloat`, `useBreath`, `useSpringTo`) ve token'ları
- * okur (`MOTION`). Motor (bugün React Native Animated) tamamen bu dosyanın
- * içinde kalır; ileride Reanimated'a geçilirse yalnızca burası değişir, hiçbir
- * ekran dokunulmaz. Reanimated kararı İLTER'DE — bu gece paket kurulmadı.
+ * animasyon kütüphanesini çağırmaz. Yalnızca bu dosyanın dışa verdiği hook'ları
+ * kullanır (`useEnter`, `usePop`, `useFloat`, `useBreath`, `useSpringTo`) ve
+ * token'ları okur. Motor (artık **Reanimated 4** + worklets) tamamen bu
+ * dosyanın içinde kalır; hook imzaları değişmediği için hiçbir ekran dokunulmaz.
+ *
+ * MOTOR GEÇİŞİ (G3-S3): Önceki temel React Native `Animated` kullanıyordu; bu
+ * oturumda hook'ların içi Reanimated'a taşındı. Her animasyon artık **UI
+ * thread'de** (worklet) çalışır — JS thread bloklansa bile akıcı kalır. Hook'lar
+ * `useAnimatedStyle` çıktısı döndürür; tüketici bileşenler `Animated.View`'ı
+ * **react-native-reanimated**'tan alır (RN'in Animated.View'ı değil).
  *
  * Her değer token'dır: hareket dili hâlâ TEST aşamasında, bu yüzden tek yerden
  * ayarlanabilir olmalı.
@@ -19,10 +38,9 @@ import * as Haptics from 'expo-haptics';
  * karşılığı = yalnız opaklık + en fazla 8 px kayma, en fazla 200 ms. Haptik
  * AYNI kalır (dokunsal geri bildirim hareketten bağımsız erişilebilirlik).
  *
- * Native driver: yalnız `opacity` ve `transform` (scale/rotate/translate)
- * animasyonları var; hepsi native-driver uyumlu (JS thread'i bloklamaz).
- * strokeDashoffset / SVG path çizimi gibi JS-thread animasyonları BURADA YOK —
- * rapordaki "Reanimated gerektirenler" listesine bak.
+ * Kesilebilirlik: yay (`useSpringTo`) interrupt'ta mevcut hızı taşır
+ * (`withSpring` doğası). Diğer hook'lar `cancelAnimation` ile mevcut kareden
+ * yeni hedefe geçer (sıçrama yok).
  */
 
 // ---------------------------------------------------------------------------
@@ -229,62 +247,55 @@ export function useReducedMotion(): boolean {
 // HOOK'LAR (motor içeride kalır)
 // ---------------------------------------------------------------------------
 
-const DEG = (d: number) => `${d}deg`;
+/** useAnimatedStyle çıktısı — doğrudan <Animated.View style={[...]}> içine konur. */
+export type MotionStyle = ReturnType<typeof useAnimatedStyle>;
 
 export interface EnterControls {
-  /** <Animated.View style={[...]}> içine konur. */
-  style: {
-    opacity: Animated.Value;
-    transform: ({ scale: Animated.Value } | { rotate: Animated.AnimatedInterpolation<string> })[];
-  };
-  /** Animasyonu baştan oynat (kesilebilir — çağrıldığında mevcut değerden gider). */
+  /** react-native-reanimated'ın <Animated.View> style'ına verilir. */
+  style: MotionStyle;
+  /** Animasyonu baştan oynat (kesilebilir — mevcut kareden sıfırlanıp gider). */
   play: () => void;
 }
 
 /**
  * Giriş: scale 0.85→1, rotate −6°→0, opacity 0→1, 500 ms, enter eğrisi.
- * Azaltılmışta: yalnız opacity 0→1 (+ 8 px yok çünkü girişte kayma şart değil),
- * 200 ms. Mount'ta otomatik oynar. `play()` yeniden tetikler.
+ * Azaltılmışta: yalnız opacity 0→1 (girişte kayma şart değil), 200 ms.
+ * Mount'ta otomatik oynar. `play()` baştan yeniden tetikler.
  */
 export function useEnter(opts?: { autoplay?: boolean; delay?: number }): EnterControls {
   const reduced = useReducedMotion();
-  const p = useRef(new Animated.Value(0)).current; // 0 = başlangıç, 1 = yerinde
+  const p = useSharedValue(0); // 0 = başlangıç, 1 = yerinde
   const autoplay = opts?.autoplay ?? true;
   const delay = opts?.delay ?? 0;
 
-  const run = () => {
-    p.stopAnimation(() => {
-      Animated.timing(p, {
-        toValue: 1,
-        duration: reduced ? REDUCED.duration : TIMING.enter,
-        delay,
-        easing: reduced ? CURVE.out : CURVE.enter,
-        useNativeDriver: true,
-      }).start();
+  const run = useCallback(() => {
+    cancelAnimation(p);
+    p.value = 0;
+    const timing = withTiming(1, {
+      duration: reduced ? REDUCED.duration : TIMING.enter,
+      easing: reduced ? CURVE.out : CURVE.enter,
     });
-  };
+    p.value = delay > 0 ? withDelay(delay, timing) : timing;
+  }, [reduced, delay, p]);
 
   useEffect(() => {
-    p.setValue(0);
     if (autoplay) run();
-    // reduced değişiminde de doğru süreyle yeniden kurulsun.
+    else p.value = 0;
+    // reduced değişiminde doğru süreyle yeniden kurulur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
-  const scale = p.interpolate({ inputRange: [0, 1], outputRange: [reduced ? 1 : 0.85, 1] });
-  const rotate = p.interpolate({
-    inputRange: [0, 1],
-    outputRange: [reduced ? DEG(0) : DEG(-6), DEG(0)],
+  const style = useAnimatedStyle(() => {
+    const scale = reduced ? 1 : interpolate(p.value, [0, 1], [0.85, 1]);
+    const rotate = reduced ? 0 : interpolate(p.value, [0, 1], [-6, 0]);
+    return { opacity: p.value, transform: [{ scale }, { rotate: `${rotate}deg` }] };
   });
 
-  return {
-    style: { opacity: p, transform: [{ scale: scale as unknown as Animated.Value }, { rotate }] },
-    play: run,
-  };
+  return { style, play: run };
 }
 
 export interface PopControls {
-  style: { transform: { scale: Animated.Value }[] };
+  style: MotionStyle;
   /** Kutlama sıçraması + success haptik (hero). */
   pop: () => void;
 }
@@ -295,126 +306,109 @@ export interface PopControls {
  */
 export function usePop(): PopControls {
   const reduced = useReducedMotion();
-  const s = useRef(new Animated.Value(1)).current;
+  const s = useSharedValue(1);
 
-  const pop = () => {
+  const pop = useCallback(() => {
     haptic('success');
     if (reduced) return;
-    Animated.sequence([
-      Animated.timing(s, {
-        toValue: 1.08,
-        duration: TIMING.pop / 2,
-        easing: CURVE.out,
-        useNativeDriver: true,
-      }),
-      Animated.timing(s, {
-        toValue: 1,
-        duration: TIMING.pop / 2,
-        easing: CURVE.in,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+    cancelAnimation(s);
+    s.value = withSequence(
+      withTiming(1.08, { duration: TIMING.pop / 2, easing: CURVE.out }),
+      withTiming(1, { duration: TIMING.pop / 2, easing: CURVE.in }),
+    );
+  }, [reduced, s]);
 
-  return { style: { transform: [{ scale: s }] }, pop };
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  return { style, pop };
 }
 
 /**
  * Süzülme (float): translateY ±4 px, 3.2 s ease-in-out, sonsuz. İsteğe bağlı
  * eğim (tilt): rotate ±2°, 4.8 s. Azaltılmışta: hiç döngü yok (sabit durur).
  */
-export function useFloat(opts?: { tilt?: boolean; amplitude?: number }): {
-  style: {
-    transform: (
-      | { translateY: Animated.AnimatedInterpolation<number> }
-      | { rotate: Animated.AnimatedInterpolation<string> }
-    )[];
-  };
-} {
+export function useFloat(opts?: { tilt?: boolean; amplitude?: number }): { style: MotionStyle } {
   const reduced = useReducedMotion();
   const amp = opts?.amplitude ?? 4;
-  const f = useRef(new Animated.Value(0)).current;
-  const t = useRef(new Animated.Value(0)).current;
+  const tilt = opts?.tilt ?? false;
+  const f = useSharedValue(0);
+  const tv = useSharedValue(0);
 
   useEffect(() => {
-    if (reduced) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(f, { toValue: 1, duration: TIMING.float / 2, easing: CURVE.move, useNativeDriver: true }),
-        Animated.timing(f, { toValue: 0, duration: TIMING.float / 2, easing: CURVE.move, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    let tiltLoop: Animated.CompositeAnimation | undefined;
-    if (opts?.tilt) {
-      tiltLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(t, { toValue: 1, duration: TIMING.tilt / 2, easing: CURVE.move, useNativeDriver: true }),
-          Animated.timing(t, { toValue: 0, duration: TIMING.tilt / 2, easing: CURVE.move, useNativeDriver: true }),
-        ]),
-      );
-      tiltLoop.start();
+    if (reduced) {
+      cancelAnimation(f);
+      f.value = withTiming(0, { duration: REDUCED.duration });
+      cancelAnimation(tv);
+      tv.value = withTiming(0, { duration: REDUCED.duration });
+      return;
+    }
+    // withRepeat(…, -1, true) = 0→1→0 yoyo (sonsuz).
+    f.value = withRepeat(withTiming(1, { duration: TIMING.float / 2, easing: CURVE.move }), -1, true);
+    if (tilt) {
+      tv.value = withRepeat(withTiming(1, { duration: TIMING.tilt / 2, easing: CURVE.move }), -1, true);
     }
     return () => {
-      loop.stop();
-      tiltLoop?.stop();
+      cancelAnimation(f);
+      cancelAnimation(tv);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced, opts?.tilt]);
+  }, [reduced, tilt, amp, f, tv]);
 
-  const translateY = f.interpolate({ inputRange: [0, 1], outputRange: [-amp, amp] });
-  const rotate = t.interpolate({ inputRange: [0, 1], outputRange: [DEG(-2), DEG(2)] });
-  const transform: (
-    | { translateY: Animated.AnimatedInterpolation<number> }
-    | { rotate: Animated.AnimatedInterpolation<string> }
-  )[] = [{ translateY }];
-  if (opts?.tilt) transform.push({ rotate });
-  return { style: { transform } };
+  const style = useAnimatedStyle(() => {
+    const translateY = interpolate(f.value, [0, 1], [-amp, amp]);
+    if (tilt) {
+      const rotate = `${interpolate(tv.value, [0, 1], [-2, 2])}deg`;
+      return { transform: [{ translateY }, { rotate }] };
+    }
+    return { transform: [{ translateY }] };
+  });
+
+  return { style };
+}
+
+export interface BreathControls {
+  style: MotionStyle;
+  /** Ham ilerleme (0..1) SharedValue — aynı nefesi birden çok görünümde kullanmak için. */
+  progress: SharedValue<number>;
+  min: number;
+  max: number;
 }
 
 /**
  * Nefes (breath / parıltı): opacity 0.5→0.9, 2.4 s, sonsuz. GlowDot ve
  * "yükleniyor" göstergesi bunu kullanır. Azaltılmışta: sabit tam opaklıkta
- * durur (göz yormayan tek kare).
+ * durur (göz yormayan tek kare). `progress` ile aynı nefes birden çok görünüme
+ * (ör. GlowDot halo + nokta) UI thread'de verilebilir.
  */
-export function useBreath(opts?: { min?: number; max?: number; period?: number }): {
-  style: { opacity: Animated.Value | Animated.AnimatedInterpolation<number> };
-} {
+export function useBreath(opts?: { min?: number; max?: number; period?: number }): BreathControls {
   const reduced = useReducedMotion();
-  const b = useRef(new Animated.Value(0)).current;
   const min = opts?.min ?? 0.5;
   const max = opts?.max ?? 0.9;
   const period = opts?.period ?? TIMING.glow;
+  const b = useSharedValue(0);
 
   useEffect(() => {
-    if (reduced) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(b, { toValue: 1, duration: period / 2, easing: CURVE.move, useNativeDriver: true }),
-        Animated.timing(b, { toValue: 0, duration: period / 2, easing: CURVE.move, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced, period]);
+    if (reduced) {
+      cancelAnimation(b);
+      b.value = 1; // → max opaklık (sabit)
+      return;
+    }
+    b.value = withRepeat(withTiming(1, { duration: period / 2, easing: CURVE.move }), -1, true);
+    return () => cancelAnimation(b);
+  }, [reduced, period, b]);
 
-  if (reduced) {
-    return { style: { opacity: new Animated.Value(max) } };
-  }
-  const opacity = b.interpolate({ inputRange: [0, 1], outputRange: [min, max] });
-  return { style: { opacity } };
+  const style = useAnimatedStyle(() => ({
+    opacity: reduced ? max : interpolate(b.value, [0, 1], [min, max]),
+  }));
+
+  return { style, progress: b, min, max };
 }
 
 export interface SpringToControls {
-  value: Animated.ValueXY;
-  style: { transform: { translateX: Animated.Value }[] | { translateY: Animated.Value }[] };
+  style: MotionStyle;
   /**
    * Hedefe yay çizerek git + varışta light haptik. Kesilebilir: tekrar
-   * çağrılırsa mevcut hızdan yeni hedefe gider.
-   * NOT: Bu yalnız DÜZ çizgide yay hareketidir. "Logla izi"nin KAVİSLİ yolu
-   * (öğe küçülüp hedefe yay çizerek gider) JS-thread path gerektirir →
-   * Reanimated. Burada düz yaklaşımı veriyoruz; kavis rapordaki listede.
+   * çağrılırsa mevcut HIZDAN (velocity carry) yeni hedefe gider (withSpring doğası).
+   * NOT: Bu DÜZ çizgide yay hareketidir. "Logla izi"nin KAVİSLİ yolu artık
+   * ayrı bir UI-thread bileşeninde (LogTrail) worklet ile çiziliyor.
    */
   springTo: (to: { x: number; y: number }, family?: keyof typeof SPRING) => void;
 }
@@ -425,33 +419,33 @@ export interface SpringToControls {
  */
 export function useSpringTo(): SpringToControls {
   const reduced = useReducedMotion();
-  const xy = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
 
-  const springTo: SpringToControls['springTo'] = (to, family = 'ai') => {
-    if (reduced) {
-      const clamp = (n: number) => Math.max(-REDUCED.maxShift, Math.min(REDUCED.maxShift, n));
-      Animated.timing(xy, {
-        toValue: { x: clamp(to.x), y: clamp(to.y) },
-        duration: REDUCED.duration,
-        easing: CURVE.out,
-        useNativeDriver: true,
-      }).start(() => haptic('light'));
-      return;
-    }
-    Animated.spring(xy, {
-      toValue: to,
-      ...SPRING[family],
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) haptic('light');
-    });
-  };
+  const springTo = useCallback<SpringToControls['springTo']>(
+    (to, family = 'ai') => {
+      if (reduced) {
+        const clamp = (n: number) => Math.max(-REDUCED.maxShift, Math.min(REDUCED.maxShift, n));
+        x.value = withTiming(clamp(to.x), { duration: REDUCED.duration, easing: CURVE.out });
+        y.value = withTiming(clamp(to.y), { duration: REDUCED.duration, easing: CURVE.out }, (fin) => {
+          if (fin) runOnJS(haptic)('light');
+        });
+        return;
+      }
+      const sp = SPRING[family];
+      x.value = withSpring(to.x, sp);
+      y.value = withSpring(to.y, sp, (fin) => {
+        if (fin) runOnJS(haptic)('light');
+      });
+    },
+    [reduced, x, y],
+  );
 
-  return {
-    value: xy,
-    style: { transform: [{ translateX: xy.x }, { translateY: xy.y }] as any },
-    springTo,
-  };
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }, { translateY: y.value }],
+  }));
+
+  return { style, springTo };
 }
 
 /**
