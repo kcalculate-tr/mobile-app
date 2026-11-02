@@ -25,18 +25,11 @@
 
 begin;
 
--- ── 1) validate_coupon(text,numeric,text) — anon'a GEREK YOK ───────────────
--- İstemci (sepet) validate_coupon_v2'yi çağırıyor; v1'i yalnızca
--- free-order-complete edge function'ı KULLANICININ KENDİ JWT'siyle (authenticated)
--- çağırıyor (supabase/functions/free-order-complete/index.ts:54). Anon çağıran yok.
-revoke execute on function public.validate_coupon(text, numeric, text) from anon, public;
-grant  execute on function public.validate_coupon(text, numeric, text) to authenticated;
-
--- ── 2) en_iyi_yorumlar(integer) — tamamen kullanımdan kalktı ───────────────
--- vitrin_yorumlari (20261027140022) tarafından yerine getirildi; src/, admin-panel/,
--- branch-panel/, supabase/functions/ içinde tek bir çağrısı yok. Hem anon hem
--- authenticated'tan kaldırılıyor.
-revoke execute on function public.en_iyi_yorumlar(integer) from anon, authenticated, public;
+-- ── 1–2) ERTELENDİ (3 Kas, canlı log kontrolü) ─────────────────────────────
+-- Son 24 saatte canlıda en_iyi_yorumlar 36, validate_coupon (v1) 2 kez çağrılmış:
+-- mağazadaki mevcut uygulama sürümü hâlâ bunları kullanıyor. Yeni sürüm yayılana
+-- kadar yetkiler AYNEN kalıyor; yeni uygulama yayınlanıp eski sürüm kullanımı
+-- sıfıra inince ayrı bir migration ile kaldırılacak.
 
 -- ── 3) campaign_targets_me(uuid) — anon için anlamsız ──────────────────────
 -- "Beni hedefliyor mu?" fonksiyonu auth.uid() gerektirir; anon'da kimlik yok,
