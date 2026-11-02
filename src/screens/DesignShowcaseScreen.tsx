@@ -5,15 +5,22 @@ import { useFonts } from 'expo-font';
 import {
   AppText,
   bricolageFonts,
+  DailyRing,
   GlassObject,
+  GlassTabBar,
   GlowDot,
   LogPill,
+  LogTrail,
+  NumberRoll,
   ProgressRing,
   ReducedMotionProvider,
+  StreakMoment,
   Toast,
   ThemeProvider,
   useEnter,
+  useFloat,
   usePop,
+  useSpringTo,
   useTheme,
   type ColorScheme,
 } from '../core/design';
@@ -22,9 +29,10 @@ import {
  * Tasarım vitrini — YALNIZ __DEV__.
  *
  * Yeni tasarım temelinin tüm parçalarını açık/koyu ve azaltılmış hareketle
- * denemek için. Hiçbir üretim ekranına bağlı değil; AppNavigator'da ekran
- * kaydı __DEV__ ile koşullu. Bricolage fontları burada (açılışta değil)
- * yüklenir — üretim açılış süresi etkilenmez.
+ * denemek için. G3-S3 ile hareket motoru Reanimated'a taşındı; bu vitrin her
+ * hareketi tek tek tetikleyen düğmeler sunar. Hiçbir üretim ekranına bağlı
+ * değil; AppNavigator'da ekran kaydı __DEV__ ile koşullu. Bricolage fontları
+ * burada (açılışta değil) yüklenir — üretim açılış süresi etkilenmez.
  */
 export default function DesignShowcaseScreen() {
   const [fontsLoaded] = useFonts(bricolageFonts);
@@ -64,12 +72,19 @@ function ShowcaseBody({
   const [progressStep, setProgressStep] = useState(0);
   const steps = [0.25, 0.5, 0.75, 1];
 
+  // Tek tek tetiklenen UI-thread hareketleri (playToken artınca yeniden oynar).
+  const [logToken, setLogToken] = useState(0);
+  const [streakToken, setStreakToken] = useState(0);
+  const [ringToken, setRingToken] = useState(0);
+  const [glassKey, setGlassKey] = useState(0);
+  const [kcal, setKcal] = useState(1240);
+
   return (
     <View style={{ flex: 1, backgroundColor: t.color.bg }}>
       <ScrollView contentContainerStyle={styles.content}>
         <AppText variant="display">Tasarım vitrini</AppText>
         <AppText variant="caption" tone="secondary" style={styles.sub}>
-          Yalnız geliştirme · temel bileşenler ve hareket
+          Yalnız geliştirme · Reanimated hareket motoru
           {fontsLoaded ? '' : ' · (Bricolage yükleniyor…)'}
         </AppText>
 
@@ -99,6 +114,15 @@ function ShowcaseBody({
           <AppText variant="caption" tone="secondary">Caption — ikincil bilgi</AppText>
         </Panel>
 
+        {/* Hareket motoru hook demoları */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">HAREKET MOTORU (hook'lar)</AppText>
+          <EnterDemo />
+          <PopDemo />
+          <SpringToDemo />
+          <FloatDemo />
+        </Panel>
+
         {/* LogPill */}
         <Panel>
           <AppText variant="caption" tone="secondary">LOGPILL</AppText>
@@ -122,7 +146,7 @@ function ShowcaseBody({
 
         {/* ProgressRing */}
         <Panel>
-          <AppText variant="caption" tone="secondary">PROGRESSRING</AppText>
+          <AppText variant="caption" tone="secondary">PROGRESSRING (UI thread)</AppText>
           <View style={styles.center}>
             <ProgressRing progress={steps[progressStep]}>
               <AppText variant="title">{Math.round(steps[progressStep] * 100)}%</AppText>
@@ -144,19 +168,63 @@ function ShowcaseBody({
           </View>
         </Panel>
 
-        {/* GlassObject */}
+        {/* GlassObject + ışık süpürmesi */}
         <Panel>
-          <AppText variant="caption" tone="secondary">GLASSOBJECT (süzülme + eğim + giriş)</AppText>
+          <AppText variant="caption" tone="secondary">GLASSOBJECT (giriş + ışık süpürmesi + iç parıltı)</AppText>
           <View style={styles.center}>
-            <GlassObject size={140} />
+            <GlassObject key={glassKey} size={140} />
+          </View>
+          <Chip label="Tekrar (giriş + süpürme)" active onPress={() => setGlassKey((k) => k + 1)} />
+        </Panel>
+
+        {/* LogTrail */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">LOGLA İZİ (öğe → nokta, yay çizerek hedefe)</AppText>
+          <View style={styles.center}>
+            <LogTrail playToken={logToken} />
+          </View>
+          <Chip label="Logla" active onPress={() => setLogToken((n) => n + 1)} />
+        </Panel>
+
+        {/* DailyRing */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">GÜNLÜK HALKA (tek çizgi üçe ayrılır)</AppText>
+          <View style={styles.center}>
+            <DailyRing playToken={ringToken} />
+          </View>
+          <Chip label="Ayır" active onPress={() => setRingToken((n) => n + 1)} />
+        </Panel>
+
+        {/* StreakMoment */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">SERİ ANI ("7" tek çizgi → halka, hero + success)</AppText>
+          <View style={styles.center}>
+            <StreakMoment playToken={streakToken} />
+          </View>
+          <Chip label="Seri anı" active onPress={() => setStreakToken((n) => n + 1)} />
+        </Panel>
+
+        {/* NumberRoll */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">SAYI DEĞİŞİMI</AppText>
+          <View style={styles.center}>
+            <NumberRoll value={`${kcal} kcal`} />
+          </View>
+          <View style={styles.rowWrap}>
+            <Chip label="+180" active onPress={() => setKcal((k) => k + 180)} />
+            <Chip label="−90" active onPress={() => setKcal((k) => Math.max(0, k - 90))} />
           </View>
         </Panel>
 
-        {/* Hareket demoları */}
+        {/* GlassTabBar */}
         <Panel>
-          <AppText variant="caption" tone="secondary">HAREKET</AppText>
-          <EnterDemo />
-          <PopDemo />
+          <AppText variant="caption" tone="secondary">GLASSTABBAR (expo-blur · yalnız vitrin)</AppText>
+          <AppText variant="caption" tone="secondary" style={styles.note}>
+            Sekme değiştir: lime nokta kurdeleye uzayıp hedefe varır.
+          </AppText>
+          <View style={{ paddingVertical: 8 }}>
+            <GlassTabBar />
+          </View>
         </Panel>
 
         <View style={{ height: 40 }} />
@@ -212,6 +280,53 @@ function PopDemo() {
         <AppText variant="heading">Pop 🎉</AppText>
       </Animated.View>
       <Chip label="Kutla (success)" active onPress={pop} />
+    </View>
+  );
+}
+
+function SpringToDemo() {
+  const { style, springTo } = useSpringTo();
+  const t = useTheme();
+  const [out, setOut] = useState(false);
+  return (
+    <View style={styles.demoRow}>
+      <View style={styles.springTrack}>
+        <Animated.View
+          style={[
+            style,
+            styles.springBox,
+            { backgroundColor: t.color.accent, borderRadius: t.radius.sm },
+          ]}
+        />
+      </View>
+      <Chip
+        label="Yay ile fırlat"
+        active
+        onPress={() => {
+          const next = !out;
+          setOut(next);
+          springTo({ x: next ? 120 : 0, y: 0 });
+        }}
+      />
+    </View>
+  );
+}
+
+function FloatDemo() {
+  const floatA = useFloat({ tilt: true });
+  const t = useTheme();
+  return (
+    <View style={styles.demoRow}>
+      <Animated.View
+        style={[
+          floatA.style,
+          styles.demoBox,
+          { backgroundColor: t.color.surfaceRaised, borderColor: t.color.line, borderWidth: 1, borderRadius: t.radius.md },
+        ]}
+      >
+        <AppText variant="caption" tone="secondary">Süzülme</AppText>
+      </Animated.View>
+      <AppText variant="caption" tone="secondary">sürekli (±4 px, ±2°)</AppText>
     </View>
   );
 }
@@ -285,6 +400,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  springTrack: { width: 160, height: 44, justifyContent: 'center' },
+  springBox: { width: 40, height: 40 },
   toastHost: {
     position: 'absolute',
     top: 48,

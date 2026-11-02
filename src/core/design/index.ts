@@ -27,3 +27,8 @@ export { Toast } from './components/Toast';
 export { ProgressRing } from './components/ProgressRing';
 export { GlowDot } from './components/GlowDot';
 export { GlassObject } from './components/GlassObject';
+export { LogTrail } from './components/LogTrail';
+export { DailyRing } from './components/DailyRing';
+export { StreakMoment } from './components/StreakMoment';
+export { NumberRoll } from './components/NumberRoll';
+export { GlassTabBar } from './components/GlassTabBar';
