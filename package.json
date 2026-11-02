@@ -11,7 +11,7 @@
     "typecheck": "npm run hygiene && tsc --noEmit",
     "doctor": "npx expo-doctor",
     "lint": "npm run hygiene && eslint . --ext .ts,.tsx",
-    "test:unit": "tsx --test \"src/**/__tests__/**/*.test.ts\"",
+    "test:unit": "find src -path '*__tests__*' -name '*.test.ts' | sort | xargs tsx --test",
     "test:components": "jest",
     "test": "npm run test:unit && npm run test:components"
   },
