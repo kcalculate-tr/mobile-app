@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -186,24 +186,43 @@ export function haptic(kind: HapticKind): void {
 // ---------------------------------------------------------------------------
 
 /**
+ * Azaltılmış hareketi ZORLAMAK için (yalnız VİTRİN/test). Üretimde kullanılmaz;
+ * değer verilmezse sistem ayarı geçerlidir. Vitrin bununla açık/koyu gibi
+ * "azaltılmış" halini de OS ayarına dokunmadan yan yana gösterir.
+ */
+const ReducedMotionOverride = createContext<boolean | null>(null);
+
+export function ReducedMotionProvider({
+  value,
+  children,
+}: {
+  value: boolean | null;
+  children: React.ReactNode;
+}) {
+  return <ReducedMotionOverride.Provider value={value}>{children}</ReducedMotionOverride.Provider>;
+}
+
+/**
  * Telefonun "hareketi azalt" ayarını izler. Değişince yeniden render eder.
+ * ReducedMotionProvider ile bir alt ağaçta zorlanabilir (vitrin).
  */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  const override = useContext(ReducedMotionOverride);
+  const [osReduced, setOsReduced] = useState(false);
   useEffect(() => {
     let mounted = true;
     AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      if (mounted) setReduced(v);
+      if (mounted) setOsReduced(v);
     });
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) =>
-      setReduced(v),
+      setOsReduced(v),
     );
     return () => {
       mounted = false;
       sub.remove();
     };
   }, []);
-  return reduced;
+  return override ?? osReduced;
 }
 
 // ---------------------------------------------------------------------------
