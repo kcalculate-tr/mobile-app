@@ -183,7 +183,7 @@ function ShowcaseBody({
           <View style={styles.center}>
             <LogTrail playToken={logToken} />
           </View>
-          <Chip label="Logla" active onPress={() => setLogToken((n) => n + 1)} />
+          <Chip label="Öğle'ye logla" active onPress={() => setLogToken((n) => n + 1)} />
         </Panel>
 
         {/* DailyRing */}
