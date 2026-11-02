@@ -102,6 +102,9 @@
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
     ],
+    "moduleNameMapper": {
+      "^phosphor-react-native/lib/commonjs/icons/(.*)$": "<rootDir>/node_modules/phosphor-react-native/lib/commonjs/icons/$1"
+    },
     "testMatch": [
       "<rootDir>/src/**/__component_tests__/**/*.test.tsx"
     ],

@@ -125,7 +125,7 @@ test('userMessageForError: ağ/zaman aşımı/İngilizce -> Türkçe genel mesaj
 const root = join(__dirname, '../../..');
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
 const add = read('src/screens/profile/AddCardScreen.tsx');
-const pay = read('src/screens/PaymentScreen.tsx');
+const pay = read('src/modules/eatkcal/screens/PaymentScreen.tsx');
 const cards = read('src/lib/cards.ts');
 
 test('AddCard: WebView 20 sn bekçisi + onError + onHttpError bağlı', () => {

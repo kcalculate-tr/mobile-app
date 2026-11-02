@@ -183,12 +183,12 @@ const root = join(__dirname, '../../..');
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
 const addCard = read('src/screens/profile/AddCardScreen.tsx');
 const saved = read('src/screens/profile/SavedCardsScreen.tsx');
-const payment = read('src/screens/PaymentScreen.tsx');
+const payment = read('src/modules/eatkcal/screens/PaymentScreen.tsx');
 const cardsLib = read('src/lib/cards.ts');
 const cardsFn = read('supabase/functions/paynkolay-cards/index.ts');
 
 test('PaymentScreen: ortak matchesPaynkolayReturn kullanır, yerel kopya YOK', () => {
-  assert.match(payment, /from '..\/lib\/paynkolayReturn'/);
+  assert.match(payment, /from '(?:\.\.\/)+lib\/paynkolayReturn'/);
   assert.doesNotMatch(payment, /const matchesPaynkolayReturn\s*=/);
 });
 
