@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { Star } from './icons';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Flag, Star } from './icons';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { ReviewReportSheet } from './ReviewReportSheet';
 import {
   kaynakEtiketi,
   vitrinYorumlariniGetir,
@@ -32,7 +33,7 @@ import {
  * adını uygulamada yayımlamıyoruz.
  */
 
-function YorumKarti({ yorum }: { yorum: VitrinYorumu }) {
+function YorumKarti({ yorum, onReport }: { yorum: VitrinYorumu; onReport: (y: VitrinYorumu) => void }) {
   const etiket = kaynakEtiketi(yorum.kaynak);
   return (
     <View style={s.kart}>
@@ -56,6 +57,17 @@ function YorumKarti({ yorum }: { yorum: VitrinYorumu }) {
       <Text style={s.metin} numberOfLines={4}>{yorum.yorum}</Text>
       <View style={s.alt}>
         <Text style={s.ad} numberOfLines={1}>{yorum.ad}</Text>
+        {/* Apple 1.2 UGC — in-app şikayet. Silik, kartı bozmayan küçük eylem. */}
+        <Pressable
+          onPress={() => onReport(yorum)}
+          hitSlop={8}
+          style={s.bildirBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Yorumu bildir"
+        >
+          <Flag size={13} color={COLORS.text.tertiary} />
+          <Text style={s.bildirMetin}>Bildir</Text>
+        </Pressable>
       </View>
       {etiket ? <Text style={s.kaynak} numberOfLines={1}>{etiket}</Text> : null}
     </View>
@@ -64,6 +76,7 @@ function YorumKarti({ yorum }: { yorum: VitrinYorumu }) {
 
 function TopReviewsStrip() {
   const [yorumlar, setYorumlar] = useState<VitrinYorumu[]>([]);
+  const [bildirilen, setBildirilen] = useState<VitrinYorumu | null>(null);
 
   useEffect(() => {
     let gecerli = true;
@@ -82,13 +95,19 @@ function TopReviewsStrip() {
         horizontal
         data={yorumlar}
         keyExtractor={(y) => String(y.id)}
-        renderItem={({ item }) => <YorumKarti yorum={item} />}
+        renderItem={({ item }) => <YorumKarti yorum={item} onReport={setBildirilen} />}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.liste}
         ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
         // Şerit kısa (en fazla 12 kart) — sanallaştırma penceresini daraltmak
         // kaydırmada boş kart gösteriyordu.
         initialNumToRender={12}
+      />
+      <ReviewReportSheet
+        visible={bildirilen !== null}
+        onClose={() => setBildirilen(null)}
+        kaynak={bildirilen?.kaynak ?? 'siparis'}
+        contentId={bildirilen ? String(bildirilen.id) : ''}
       />
     </View>
   );
@@ -149,6 +168,17 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: COLORS.text.secondary,
+  },
+  bildirBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  bildirMetin: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: COLORS.text.tertiary,
   },
   // Yildizlarla ayni satirda, sagda. tertiary + Regular 11px iken
   // goruluyor denemezdi; secondary + SemiBold 12px'e cekildi.

@@ -50,6 +50,7 @@ export { EnvelopeSimple } from 'phosphor-react-native/lib/commonjs/icons/Envelop
 export { Eye } from 'phosphor-react-native/lib/commonjs/icons/Eye';
 export { EyeSlash } from 'phosphor-react-native/lib/commonjs/icons/EyeSlash';
 export { FilePdf } from 'phosphor-react-native/lib/commonjs/icons/FilePdf';
+export { Flag } from 'phosphor-react-native/lib/commonjs/icons/Flag';
 export { FileText } from 'phosphor-react-native/lib/commonjs/icons/FileText';
 export { Fire } from 'phosphor-react-native/lib/commonjs/icons/Fire';
 export { Flame } from 'phosphor-react-native/lib/commonjs/icons/Flame';
