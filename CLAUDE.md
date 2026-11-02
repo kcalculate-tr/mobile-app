@@ -21,9 +21,9 @@
      ```
      export DEVELOPER_DIR=/Applications/Xcode-26.app/Contents/Developer
      cd ~/dev/kcal-mobile/ios && xcodebuild -workspace Kcalculate.xcworkspace -scheme Kcalculate \
-       -configuration Debug -destination "id=31E99C6C-55F8-48A3-84A8-E382E0481AA5" \
+       -configuration Debug -destination "id=C903CA49-48CB-4699-8C70-7ABDCD684CF6" \
        -allowProvisioningUpdates DEVELOPMENT_TEAM=A63MT69ASR CODE_SIGN_STYLE=Automatic build \
-       && xcrun simctl install 31E99C6C-55F8-48A3-84A8-E382E0481AA5 \
+       && xcrun simctl install C903CA49-48CB-4699-8C70-7ABDCD684CF6 \
        ~/Library/Developer/Xcode/DerivedData/Kcalculate-*/Build/Products/Debug-iphonesimulator/Kcalculate.app
      ```
 
@@ -32,7 +32,7 @@
      ```
      export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
      cd ~/dev/kcal-mobile && npx expo start --dev-client & \
-       xcrun simctl launch 31E99C6C-55F8-48A3-84A8-E382E0481AA5 com.kcalmobile.app
+       xcrun simctl launch C903CA49-48CB-4699-8C70-7ABDCD684CF6 com.kcalmobile.app
      ```
 
   Simülatör UDID'si "iPhone 17 (iOS 26.3)" içindir — Xcode 26.6, iOS 27.0 runtime'ını
