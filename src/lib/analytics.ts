@@ -17,6 +17,13 @@ export const initFBSDK = async (): Promise<void> => {
       const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
       const granted = status === 'granted';
       await Settings.setAdvertiserTrackingEnabled(granted);
+      // IDFA toplama YALNIZCA ATT izni verildiyse açılır. app.config.js'te
+      // advertiserIDCollectionEnabled=false + isAutoInitEnabled=false olduğu
+      // için SDK uygulama açılışında (ATT öncesi) IDFA'yı hiç okumaz; burada
+      // izin alındıktan SONRA, initializeSDK'dan ÖNCE açıkça etkinleştiriyoruz.
+      // Böylece Apple 5.1.2 (ATT öncesi IDFA toplama) ihlali oluşmaz, izin
+      // verenlerde reklam ölçümü eskisi gibi çalışır.
+      Settings.setAdvertiserIDCollectionEnabled(granted);
       if (__DEV__) console.log('[analytics] ATT status:', status);
     }
     Settings.initializeSDK();

@@ -52,6 +52,147 @@ module.exports = {
         NSLocationWhenInUseUsageDescription:
           'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
       },
+      // GİZLİLİK MANİFESTİ (2026-11-03, G3-S1) — prebuild bundan
+      // ios/Kcalculate/PrivacyInfo.xcprivacy'yi üretir. Her veri tipi kodda
+      // GERÇEKTEN toplanan veridir; satır referansları docs/night/G3-S1-LOG.md.
+      //   · NSPrivacyTracking: true — Meta SDK + ATT + SKAdNetwork aktif.
+      //   · NSPrivacyTrackingDomains: FBSDK'nın kendi manifestiyle aynı
+      //     (ep1.facebook.com); app seviyesinde true + boş domain = Apple reddi.
+      //   · Required-reason API'ler (FileTimestamp/UserDefaults/BootTime/
+      //     DiskSpace) mevcut native dosyadan BİREBİR taşındı — kaybolmasın.
+      privacyManifests: {
+        NSPrivacyTracking: true,
+        NSPrivacyTrackingDomains: ['ep1.facebook.com'],
+        NSPrivacyCollectedDataTypes: [
+          {
+            // auth (OTP/Apple/Google) — src/core/AuthContext.tsx
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeEmailAddress',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // profiles.name + Apple FULL_NAME scope — AuthContext / postSocialAuth.ts
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeName',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // profiles.phone / orders / addresses
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhoneNumber',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // teslimat adresleri — addresses / CheckoutScreen
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhysicalAddress',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // expo-location (when-in-use) — adres doğrulama / en yakın şube
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePreciseLocation',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // boy/kilo/yaş + hedef — user_nutrition_profiles (NutritionProfileScreen)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeHealth',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // kalori/makro takibi — meal_logs / Tracker
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeFitness',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // profil/görsel seçimi — expo-image-picker
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypePurposes: [
+              'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+              'NSPrivacyCollectedDataTypePurposeAnalytics',
+              'NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising',
+            ],
+          },
+          {
+            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypePurposes: [
+              'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+              'NSPrivacyCollectedDataTypePurposeAnalytics',
+              'NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising',
+            ],
+          },
+          {
+            // IDFA — react-native-fbsdk-next (ATT sonrası, analytics.ts)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising'],
+          },
+          {
+            // Supabase kullanıcı kimliği — analytics_events.user_id
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeUserID',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: [
+              'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+              'NSPrivacyCollectedDataTypePurposeAnalytics',
+            ],
+          },
+          {
+            // Sentry — src/lib/sentry.ts
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCrashData',
+            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // Sentry performans — src/lib/sentry.ts
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePerformanceData',
+            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+        ],
+        NSPrivacyAccessedAPITypes: [
+          {
+            NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+            NSPrivacyAccessedAPITypeReasons: ['C617.1', '0A2A.1', '3B52.1'],
+          },
+          {
+            NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+            NSPrivacyAccessedAPITypeReasons: ['CA92.1', 'C56D.1'],
+          },
+          {
+            NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+            NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+          },
+          {
+            NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+            NSPrivacyAccessedAPITypeReasons: ['E174.1', '85F4.1'],
+          },
+        ],
+      },
     },
     android: {
       package: 'com.kcalmobile.app',
@@ -64,10 +205,12 @@ module.exports = {
         monochromeImage: './assets/adaptive-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
+      // READ/WRITE_EXTERNAL_STORAGE KALDIRILDI (2026-11-03, G3-S1): Android 13+
+      // (API 33) bunları yok sayar; expo-image-picker Foto Seçici (Photo Picker)
+      // kullandığı için depolama izni gerekmiyor (kodda MediaLibrary/dosya
+      // yazımı yok). Play "hassas izin" incelemesini gereksiz yere tetikliyordu.
       permissions: [
         'CAMERA',
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
       ],
@@ -196,9 +339,16 @@ module.exports = {
           clientToken: '99ec21a60f8699f2534e3aaa52951f73',
           displayName: 'KCAL',
           scheme: 'fb4403872953189106',
-          advertiserIDCollectionEnabled: true,
+          // ATT UYUMU (2026-11-03, G3-S1): SDK açılışta OTOMATİK başlatılmaz ve
+          // IDFA'yı varsayılan olarak TOPLAMAZ. src/lib/analytics.ts önce ATT
+          // iznini ister, izin verilirse setAdvertiserTrackingEnabled(true) +
+          // setAdvertiserIDCollectionEnabled(true) çağırır, SONRA
+          // initializeSDK() der. Böylece ATT onayından önce IDFA okunmaz
+          // (Apple 5.1.2). Önceki true/true/true değerleri auto-init ile bu
+          // sırayı atlayıp izin öncesi IDFA okuyabiliyordu.
+          advertiserIDCollectionEnabled: false,
           autoLogAppEventsEnabled: true,
-          isAutoInitEnabled: true,
+          isAutoInitEnabled: false,
           iosUserTrackingPermission:
             'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
         },
