@@ -16,9 +16,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretLeft, Bell } from '../../components/icons';
 import * as Notifications from 'expo-notifications';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../core/supabase';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 

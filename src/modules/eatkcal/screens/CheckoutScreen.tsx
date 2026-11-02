@@ -1,4 +1,4 @@
-import { tl } from '../lib/money';
+import { tl } from '../../../lib/money';
 import React, { useEffect, useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,18 +24,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, NavigationArrow, WarningCircle } from '../components/icons';
-import ScreenContainer from '../components/ScreenContainer';
-import Selectable from '../components/ui/Selectable';
-import { useSectionTransition } from '../hooks/useSectionTransition';
-import KeyboardAccessory from '../components/KeyboardAccessory';
-import AnimatedNumberText from '../components/AnimatedNumberText';
-import AddressVerificationSheet from '../components/checkout/AddressVerificationSheet';
-import BranchPicker from '../components/checkout/BranchPicker';
-import CheckoutFooter from '../components/checkout/CheckoutFooter';
-import InfoPill from '../components/ui/InfoPill';
-import { useAuth } from '../context/AuthContext';
-import PrivilegedBadge from '../components/PrivilegedBadge';
+import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, CalendarBlank, MapPin, NavigationArrow, WarningCircle } from '../../../components/icons';
+import ScreenContainer from '../../../components/ScreenContainer';
+import Selectable from '../../../core/ui/Selectable';
+import { useSectionTransition } from '../../../hooks/useSectionTransition';
+import KeyboardAccessory from '../../../components/KeyboardAccessory';
+import AnimatedNumberText from '../../../components/AnimatedNumberText';
+import AddressVerificationSheet from '../../../components/checkout/AddressVerificationSheet';
+import BranchPicker from '../../../components/checkout/BranchPicker';
+import CheckoutFooter from '../../../components/checkout/CheckoutFooter';
+import InfoPill from '../../../core/ui/InfoPill';
+import { useAuth } from '../../../core/AuthContext';
+import PrivilegedBadge from '../../../components/PrivilegedBadge';
 import {
   DEFAULT_MACRO_SETTINGS,
   fetchMacroProfile,
@@ -44,8 +44,8 @@ import {
   macroEarnedForOrder,
   MacroProfile,
   MacroSettings,
-} from '../lib/macros';
-import { isApiBaseUrlConfigured } from '../lib/api';
+} from '../../../lib/macros';
+import { isApiBaseUrlConfigured } from '../../../lib/api';
 import {
   buildCartSignatureLines,
   cancelStaleOrderDraft,
@@ -55,19 +55,19 @@ import {
   PendingPaymentOrder,
   resolveAddressId,
   updateOrderPaymentStatus,
-} from '../lib/orders';
-import { distanceInMeters, ORDER_ADDRESS_DISTANCE_WARNING_METERS } from '../lib/geo';
+} from '../../../lib/orders';
+import { distanceInMeters, ORDER_ADDRESS_DISTANCE_WARNING_METERS } from '../../../lib/geo';
 import {
   getPaymentConfigStatus,
   initPayment,
   mapPaymentErrorToMessage,
-} from '../lib/payment';
-import { PAYMENT_PROVIDER } from '../config/payment';
+} from '../../../lib/payment';
+import { PAYMENT_PROVIDER } from '../../../config/payment';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
-} from '../lib/supabaseErrors';
-import { getSupabaseClient } from '../lib/supabase';
+} from '../../../lib/supabaseErrors';
+import { getSupabaseClient } from '../../../core/supabase';
 import {
   fetchGlobalDeliverySettings,
   resolveMinOrder,
@@ -76,27 +76,27 @@ import {
   formatEstimatedDelivery,
   DeliveryGlobals,
   DeliveryZoneRow,
-} from '../lib/delivery';
-import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvailableScheduledDates, formatTime, toLocalDateStr, BusinessHours } from '../lib/businessHours';
-import { fetchBranches, Branch } from '../lib/branches';
+} from '../../../lib/delivery';
+import { fetchBusinessHours, isShopOpenNow, isDateAvailableForScheduled, getAvailableScheduledDates, formatTime, toLocalDateStr, BusinessHours } from '../../../lib/businessHours';
+import { fetchBranches, Branch } from '../../../lib/branches';
 import {
   fetchBranchAvailability,
   findClosedCartItemNames,
   EMPTY_BRANCH_AVAILABILITY,
   BranchAvailability,
-} from '../lib/branchAvailability';
-import { RootStackParamList } from '../navigation/types';
-import { useCartStore } from '../store/cartStore';
-import { getCardsFeatureStatus, syncSavedCards, SavedCard } from '../lib/cards';
-import { buildPaymentNavParams, paymentActionVerb, resolveSelectedCardId } from '../lib/checkoutPayment';
-import { useAddressStore } from '../store/addressStore';
-import { normalizeAddress } from '../lib/addresses';
-import { Address, DeliveryRuleStatus } from '../types';
-import { haptic } from '../utils/haptics';
-import { logEvent, track } from '../lib/analytics';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../constants/theme';
-import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
-import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../utils/deliveryDays';
+} from '../../../lib/branchAvailability';
+import { RootStackParamList } from '../../../navigation/types';
+import { useCartStore } from '../../../store/cartStore';
+import { getCardsFeatureStatus, syncSavedCards, SavedCard } from '../../../lib/cards';
+import { buildPaymentNavParams, paymentActionVerb, resolveSelectedCardId } from '../../../lib/checkoutPayment';
+import { useAddressStore } from '../../../store/addressStore';
+import { normalizeAddress } from '../../../lib/addresses';
+import { Address, DeliveryRuleStatus } from '../../../types';
+import { haptic } from '../../../utils/haptics';
+import { logEvent, track } from '../../../lib/analytics';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../../../constants/theme';
+import DeliveryZonesSheet from '../../../components/DeliveryZonesSheet';
+import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../../utils/deliveryDays';
 
 type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -357,11 +357,11 @@ const payInitial: PayState = {
 function TrustBadges({ divider = true }: { divider?: boolean }) {
   return (
     <View style={[styles.trustRow, !divider && styles.trustRowNoDivider]}>
-      <Image source={require('../../assets/payment/pci-dss.png')} style={styles.trustPci} resizeMode="contain" />
+      <Image source={require('../../../../assets/payment/pci-dss.png')} style={styles.trustPci} resizeMode="contain" />
       <View style={styles.trustDivider} />
-      <Image source={require('../../assets/payment/visa.png')} style={styles.trustVisa} resizeMode="contain" />
-      <Image source={require('../../assets/payment/mastercard.png')} style={styles.trustMastercard} resizeMode="contain" />
-      <Image source={require('../../assets/payment/troy.png')} style={styles.trustTroy} resizeMode="contain" />
+      <Image source={require('../../../../assets/payment/visa.png')} style={styles.trustVisa} resizeMode="contain" />
+      <Image source={require('../../../../assets/payment/mastercard.png')} style={styles.trustMastercard} resizeMode="contain" />
+      <Image source={require('../../../../assets/payment/troy.png')} style={styles.trustTroy} resizeMode="contain" />
       <Text style={styles.trustNote} numberOfLines={1}>3D Secure ile korunur</Text>
     </View>
   );
@@ -1066,12 +1066,17 @@ export default function CheckoutScreen() {
 
         dispatchOrder({ type: 'SET_SETTINGS_MIN_CART', payload: Math.max(0, Number(data?.min_cart_amount || 0)) });
         dispatchOrder({ type: 'SET_SETTINGS_FETCH_STATUS', payload: 'ready' });
-        const bh = await fetchBusinessHours();
+        // Çalışma saatleri ve global teslimat varsayılanları birbirinden bağımsız
+        // — seri await yerine paralel çek (S2 performans).
+        // fetchGlobalDeliverySettings: delivery_settings.__GLOBAL__.cargo_rules;
+        // yoksa delivery_zones üzerindeki tip-bazlı override'lar yine geçerli.
+        const [bh, globals] = await Promise.all([
+          fetchBusinessHours(),
+          fetchGlobalDeliverySettings(),
+        ]);
+        if (!mounted) return;
         dispatchDelivery({ type: 'SET_BUSINESS_HOURS', payload: bh });
-        // Fetch global delivery defaults (delivery_settings.__GLOBAL__.cargo_rules).
-        // If absent, per-type overrides on delivery_zones still take precedence via resolvers.
-        const globals = await fetchGlobalDeliverySettings();
-        if (mounted) setDeliveryGlobals(globals);
+        setDeliveryGlobals(globals);
       } catch (error: unknown) {
         if (!mounted) return;
         if (__DEV__) {
@@ -2545,7 +2550,7 @@ export default function CheckoutScreen() {
                 <Text style={styles.cardTitle}>Ödeme Yöntemi</Text>
                 {/* Ödeme altyapısı sağlayıcısı — güven sinyali */}
                 <Image
-                  source={require('../../assets/payment/paynkolay-logo.png')}
+                  source={require('../../../../assets/payment/paynkolay-logo.png')}
                   style={styles.paynkolayLogo}
                   resizeMode="contain"
                 />
@@ -2632,7 +2637,7 @@ export default function CheckoutScreen() {
               <View style={styles.payTitleRow}>
                 <Text style={styles.trustStandaloneTitle}>Güvenli Ödeme</Text>
                 <Image
-                  source={require('../../assets/payment/paynkolay-logo.png')}
+                  source={require('../../../../assets/payment/paynkolay-logo.png')}
                   style={styles.paynkolayLogo}
                   resizeMode="contain"
                 />
@@ -2722,7 +2727,7 @@ export default function CheckoutScreen() {
             {user?.id && totalAmount > 0 ? (
               <View style={styles.macroSatir}>
                 <Image
-                  source={require('../../assets/macro-coin.png')}
+                  source={require('../../../../assets/macro-coin.png')}
                   style={styles.macroIkon}
                   resizeMode="contain"
                 />

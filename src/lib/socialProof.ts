@@ -1,5 +1,5 @@
 // Sosyal kanıt — ağ çağrıları. Saf mantık socialProofRules.ts'te.
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { EN_AZ_OY, type BegeniOrani, type VitrinYorumu } from './socialProofRules';
 
 export * from './socialProofRules';

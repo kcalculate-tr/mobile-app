@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, Image, StyleSheet, Text, TouchableOpacity,
 import { ArrowCounterClockwise, Fire, ShoppingCart, X } from './icons';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { DURATION, EASING, PRESS_SCALE, SPRING } from '../constants/motion';
-import Shimmer from './ui/Shimmer';
+import Shimmer from '../core/ui/Shimmer';
 import type { PastOrder } from '../lib/reorder';
 
 interface ReorderCardProps {

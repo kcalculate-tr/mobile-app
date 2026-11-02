@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SkeletonProductCard } from '../components/ui/SkeletonLoader';
+import { SkeletonProductCard } from '../core/ui/SkeletonLoader';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -17,13 +17,13 @@ import { ArrowLeft, Minus, Plus } from '../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FloatingCartPill from '../components/FloatingCartPill';
 import { FLOATING_PILL_GAP, FLOATING_PILL_HEIGHT } from '../constants/layout';
-import EmptyState from '../components/ui/EmptyState';
-import ErrorState from '../components/ui/ErrorState';
+import EmptyState from '../core/ui/EmptyState';
+import ErrorState from '../core/ui/ErrorState';
 import { CategoryProduct, fetchProductsByBrand } from '../lib/categories';
 import { Brand, fetchBrand } from '../lib/brands';
 import { fetchProductOptionGroups } from '../lib/products';
 import { getEffectivePrice, hasDiscount } from '../utils/price';
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { useCartStore } from '../store/cartStore';
 import { findPlainCartLine, needsOptionSelection } from '../lib/quickAdd';
 import { RootStackParamList } from '../navigation/types';

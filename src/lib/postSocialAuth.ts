@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { useNavGate } from '../store/navGateStore';
 

@@ -23,8 +23,8 @@ import { haptic } from '../utils/haptics';
 import { useAnimatedPress } from '../utils/useAnimatedPress';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedNumberText from '../components/AnimatedNumberText';
-import { SkeletonLoader } from '../components/ui/SkeletonLoader';
-import { getSupabaseClient } from '../lib/supabase';
+import { SkeletonLoader } from '../core/ui/SkeletonLoader';
+import { getSupabaseClient } from '../core/supabase';
 import { mapSupabaseErrorToUserMessage } from '../lib/supabaseErrors';
 import { begeniCumlesi, begeniOranlariniGetir } from '../lib/socialProof';
 import {

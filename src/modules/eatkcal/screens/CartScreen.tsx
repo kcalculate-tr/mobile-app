@@ -1,49 +1,49 @@
-import { DURATION } from '../constants/motion';
+import { DURATION } from '../../../constants/motion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import KeyboardAccessory from '../components/KeyboardAccessory';
+import KeyboardAccessory from '../../../components/KeyboardAccessory';
 import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {ArrowCounterClockwise, CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from '../components/icons';
-import { MACRO_COLORS, hexToRgba } from '../constants/colors';
-import ScreenContainer from '../components/ScreenContainer';
-import AnimatedNumberText from '../components/AnimatedNumberText';
-import MacroRing from '../components/MacroRing';
-import { CachedImage } from '../components/CachedImage';
-import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
-import { haptic } from '../utils/haptics';
-import { useAnimatedPress } from '../utils/useAnimatedPress';
-import { Toast } from '../components/ui/Toast';
-import { useToast } from '../hooks/useToast';
-import DeliveryInfoModal from '../components/modals/DeliveryInfoModal';
-import { useModal } from '../hooks/useModal';
-import { useCartStore } from '../store/cartStore';
-import { getEffectivePrice, hasDiscount } from '../utils/price';
-import { useAuth } from '../context/AuthContext';
-import { RootStackParamList } from '../navigation/types';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import {ArrowCounterClockwise, CaretRight, Minus, Plus, ShoppingCart, Tag, Trash, Flame, Truck as TruckIcon} from '../../../components/icons';
+import { MACRO_COLORS, hexToRgba } from '../../../constants/colors';
+import ScreenContainer from '../../../components/ScreenContainer';
+import AnimatedNumberText from '../../../components/AnimatedNumberText';
+import MacroRing from '../../../components/MacroRing';
+import { CachedImage } from '../../../components/CachedImage';
+import { transformImageUrl, ImagePreset } from '../../../lib/imageUrl';
+import { haptic } from '../../../utils/haptics';
+import { useAnimatedPress } from '../../../utils/useAnimatedPress';
+import { Toast } from '../../../core/ui/Toast';
+import { useToast } from '../../../hooks/useToast';
+import DeliveryInfoModal from '../../../components/modals/DeliveryInfoModal';
+import { useModal } from '../../../hooks/useModal';
+import { useCartStore } from '../../../store/cartStore';
+import { getEffectivePrice, hasDiscount } from '../../../utils/price';
+import { useAuth } from '../../../core/AuthContext';
+import { RootStackParamList } from '../../../navigation/types';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../../../constants/theme';
 import {
   SUGGESTION_BADGES,
   buildCartSuggestions,
   fetchOrderedProductIds,
   fetchSuggestionPool,
-} from '../lib/cartSuggestions';
-import { fetchPastOrders, reorderToCart, type PastOrder } from '../lib/reorder';
-import { reorderCalorieLabel } from '../components/ReorderCard';
-import { tl } from '../lib/money';
-import { needsOptionSelection } from '../lib/quickAdd';
-import { animateListChange } from '../utils/layoutAnimation';
-import { validateCoupon, getCouponErrorMessage, CouponCartItem, CouponValidationSuccess } from '../lib/offers';
-import CouponPickerSheet from '../components/checkout/CouponPickerSheet';
-import AppliedCouponCard from '../components/checkout/AppliedCouponCard';
+} from '../../../lib/cartSuggestions';
+import { fetchPastOrders, reorderToCart, type PastOrder } from '../../../lib/reorder';
+import { reorderCalorieLabel } from '../../../components/ReorderCard';
+import { tl } from '../../../lib/money';
+import { needsOptionSelection } from '../../../lib/quickAdd';
+import { animateListChange } from '../../../utils/layoutAnimation';
+import { validateCoupon, getCouponErrorMessage, CouponCartItem, CouponValidationSuccess } from '../../../lib/offers';
+import CouponPickerSheet from '../../../components/checkout/CouponPickerSheet';
+import AppliedCouponCard from '../../../components/checkout/AppliedCouponCard';
 import {
   fetchMacroProfile,
   MacroProfile,
-} from '../lib/macros';
-import { addMacros, computeLineMacros, formatMacroGrams, formatMacroKcal, ItemMacros } from '../lib/itemMacros';
-import type { Product } from '../types';
-import { track } from '../lib/analytics';
+} from '../../../lib/macros';
+import { addMacros, computeLineMacros, formatMacroGrams, formatMacroKcal, ItemMacros } from '../../../lib/itemMacros';
+import type { Product } from '../../../types';
+import { track } from '../../../lib/analytics';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
 

@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { getSupabaseClient } from './supabase';
+import { fetchSettingsRow } from './appSettings';
 
 export type ForceUpdateCheck = {
   required: boolean;
@@ -41,14 +41,9 @@ export const checkForceUpdate = async (): Promise<ForceUpdateCheck> => {
     const current = parseVersion(Constants.expoConfig?.version);
     if (!current) return FAIL_OPEN; // mevcut versiyon okunamadı → kilitleme
 
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from('settings')
-      .select('min_supported_version, force_update_message')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (error || !data) return FAIL_OPEN; // settings okunamadı → kilitleme
+    // settings (id=1) tek çekiciden — businessHours ile aynı satırı paylaşır.
+    const data = await fetchSettingsRow();
+    if (!data) return FAIL_OPEN; // settings okunamadı → kilitleme
 
     const min = parseVersion(data.min_supported_version);
     if (!min) return FAIL_OPEN; // min_supported_version NULL/bozuk → gösterme

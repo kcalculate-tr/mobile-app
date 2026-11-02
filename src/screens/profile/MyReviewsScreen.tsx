@@ -22,8 +22,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretLeft, ChatCircleDots, Star } from '../../components/icons';
-import { getSupabaseClient } from '../../lib/supabase';
-import { useAuth } from '../../context/AuthContext';
+import { getSupabaseClient } from '../../core/supabase';
+import { useAuth } from '../../core/AuthContext';
 import { COLORS } from '../../constants/theme';
 
 type ReviewRow = {

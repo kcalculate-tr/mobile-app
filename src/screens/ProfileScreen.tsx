@@ -49,13 +49,13 @@ import { fetchMacroProfile, fetchMacroSettings, macroProgress, MacroProfile, Mac
 import { useModal } from '../hooks/useModal';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { RootStackParamList } from '../navigation/types';
 import { useNavGate } from '../store/navGateStore';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../core/supabase';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
-import { unregisterPushToken } from '../lib/notifications';
+import { unregisterPushToken } from '../core/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getCardsFeatureStatus } from '../lib/cards';
 

@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase'
+import { getSupabaseClient } from '../core/supabase'
 
 /**
  * Kullanıcı admin_allowlist'te mi?

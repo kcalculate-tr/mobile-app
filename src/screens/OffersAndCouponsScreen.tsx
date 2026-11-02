@@ -11,22 +11,22 @@ import { CalendarBlank, CaretLeft, Copy, ForkKnife, Tag, Ticket } from '../compo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStaggerAnimation } from '../hooks/useStaggerAnimation';
-import { Toast } from '../components/ui/Toast';
+import { Toast } from '../core/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import BottomSheet from '../components/BottomSheet';
 import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import FloatingCartPill from '../components/FloatingCartPill';
 import { FLOATING_PILL_GAP, FLOATING_PILL_HEIGHT } from '../constants/layout';
-import EmptyState from '../components/ui/EmptyState';
-import ErrorState from '../components/ui/ErrorState';
-import { useAuth } from '../context/AuthContext';
+import EmptyState from '../core/ui/EmptyState';
+import ErrorState from '../core/ui/ErrorState';
+import { useAuth } from '../core/AuthContext';
 import { Campaign, fetchAvailableCampaigns } from '../lib/offers';
 import { BannerCell, fetchBannerRows } from '../lib/banners';
 import { resolveNavigation } from '../lib/navigation';
 import { formatDate, gradyan, gunKaldi, indirimEtiketi, metinRengi } from '../lib/campaignVisual';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
-import FadeSwap from '../components/ui/FadeSwap';
+import SegmentedTabs from '../core/ui/SegmentedTabs';
+import FadeSwap from '../core/ui/FadeSwap';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
 

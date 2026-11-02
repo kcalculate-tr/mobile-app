@@ -1,4 +1,4 @@
-import { DURATION } from '../constants/motion';
+import { DURATION } from '../../../constants/motion';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -13,20 +13,20 @@ import {
   Fire,
   Truck,
   ArrowRight,
-} from '../components/icons';
-import ScreenContainer from '../components/ScreenContainer';
+} from '../../../components/icons';
+import ScreenContainer from '../../../components/ScreenContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRequireAuth } from '../hooks/useRequireAuth';
-import { RootStackParamList } from '../navigation/types';
-import { supabase } from '../lib/supabase';
+import { useRequireAuth } from '../../../hooks/useRequireAuth';
+import { RootStackParamList } from '../../../navigation/types';
+import { supabase } from '../../../core/supabase';
 import {
   DEFAULT_MACRO_SETTINGS,
   fetchMacroProfile,
   fetchMacroSettings,
   macroEarnedForOrder,
-} from '../lib/macros';
-import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../constants/theme';
+} from '../../../lib/macros';
+import { useAuth } from '../../../core/AuthContext';
+import { COLORS } from '../../../constants/theme';
 
 type OrderSuccessRoute = RouteProp<RootStackParamList, 'OrderSuccess'>;
 type OrderSuccessNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -185,7 +185,7 @@ export default function OrderSuccessScreen() {
               ]}
             >
               <Image
-                source={require('../../assets/macro-coin.png')}
+                source={require('../../../../assets/macro-coin.png')}
                 style={styles.sahneCoin}
                 resizeMode="contain"
               />
@@ -282,7 +282,7 @@ export default function OrderSuccessScreen() {
                 activeOpacity={0.8}
               >
                 <Image
-                  source={require('../../assets/macro-coin.png')}
+                  source={require('../../../../assets/macro-coin.png')}
                   style={styles.ikinciCoin}
                   resizeMode="contain"
                 />

@@ -19,8 +19,8 @@ import { useStaggerAnimation } from '../../hooks/useStaggerAnimation';
 import { useNavigation } from '@react-navigation/native';
 import { CaretLeft, Headset, ChatText, WarningCircle, PhoneCall, Plus, X as XIcon } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getSupabaseClient } from '../../lib/supabase';
-import { useAuth } from '../../context/AuthContext';
+import { getSupabaseClient } from '../../core/supabase';
+import { useAuth } from '../../core/AuthContext';
 import { COLORS } from '../../constants/theme';
 
 const TOPIC_OPTIONS = [

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../core/supabase';
 import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
 import { logEvent, track } from '../lib/analytics';
 import { computeLineMacros, computeUnitMacros } from '../lib/itemMacros';

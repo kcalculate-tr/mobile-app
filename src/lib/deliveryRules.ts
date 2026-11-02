@@ -1,6 +1,6 @@
 // Saf teslimat kurallari — Supabase istemcisine DOKUNMAZ.
 //
-// 23.09.2026: bu mantik delivery.ts icindeydi; o dosya './supabase'i import
+// 23.09.2026: bu mantik delivery.ts icindeydi; o dosya '../core/supabase'i import
 // ettigi icin birim testinden import edildiginde gercek bir auth istemcisi
 // ayaga kalkiyordu (AsyncStorage -> `window is not defined`). Para hesabi
 // yapan kurallar test edilebilir olsun diye saf kisim buraya ayrildi.

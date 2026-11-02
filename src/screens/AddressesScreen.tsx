@@ -21,12 +21,12 @@ import { CaretLeft, PencilSimple, MapPin, Plus, Trash } from '../components/icon
 import ScreenContainer from '../components/ScreenContainer';
 import FormField, { FormFieldOption } from '../components/FormField';
 import AddressVerificationSheet, { ReverseGeoResult } from '../components/checkout/AddressVerificationSheet';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import {
   formatSupabaseErrorForDevLog,
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../core/supabase';
 import { fetchAllDeliveryZones } from '../lib/delivery';
 import { matchToOption, normalizeTurkishText } from '../lib/geo';
 import { RootStackParamList } from '../navigation/types';
@@ -34,7 +34,7 @@ import { Address } from '../types';
 import { useAddressStore } from '../store/addressStore';
 import { normalizeAddress } from '../lib/addresses';
 import { ANIMATION, COLORS } from '../constants/theme';
-import { Toast } from '../components/ui/Toast';
+import { Toast } from '../core/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { haptic } from '../utils/haptics';
 

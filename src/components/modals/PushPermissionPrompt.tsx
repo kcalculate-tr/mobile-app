@@ -8,7 +8,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { BellRinging } from '../icons';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { requestPushPermissionOnly, registerForPushNotifications } from '../../lib/notifications';
+import { requestPushPermissionOnly, registerForPushNotifications } from '../../core/notifications';
 
 const STATE_KEY = '@kcal_push_prompt_state';
 /** En fazla kaç kez gösterilsin. */
