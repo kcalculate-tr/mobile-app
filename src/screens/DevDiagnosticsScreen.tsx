@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ScreenContainer from '../components/ScreenContainer';
+import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../core/AuthContext';
 import {
   getApiBaseUrl,
@@ -37,8 +40,11 @@ const initialData: DiagnosticsData = {
   couponPingInfo: '-',
 };
 
+type DevNav = NativeStackNavigationProp<RootStackParamList>;
+
 export default function DevDiagnosticsScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<DevNav>();
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [data, setData] = useState<DiagnosticsData>(initialData);
@@ -168,6 +174,16 @@ export default function DevDiagnosticsScreen() {
             <DiagnosticRow label="Validate Coupon Ping" value={data.couponPingInfo} />
           </>
         )}
+
+        {__DEV__ ? (
+          <TouchableOpacity
+            style={styles.showcaseLink}
+            onPress={() => navigation.navigate('DesignShowcase')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.showcaseLinkText}>🎨 Tasarım vitrini →</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -265,5 +281,19 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 13,
     marginBottom: 8,
+  },
+  showcaseLink: {
+    marginTop: 6,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.brand.green,
+    backgroundColor: 'rgba(185,239,20,0.12)',
+    alignItems: 'center',
+  },
+  showcaseLinkText: {
+    color: COLORS.text.primary,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

@@ -26,6 +26,9 @@ export type RootStackParamList = {
   // kendisi tarafından siparişin tutarından hesaplanıyor (OrderSuccessScreen).
   OrderSuccess: { orderCode: string; orderId?: string; noticeMessage?: string };
   DevDiagnostics: undefined;
+  // Yalnız __DEV__: yeni tasarım vitrini. Üretim derlemesinde ekran kaydı
+  // AppNavigator'da __DEV__ ile koşullu, bu yüzden canlıda erişilemez.
+  DesignShowcase: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };

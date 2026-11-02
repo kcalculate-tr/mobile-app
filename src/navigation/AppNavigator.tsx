@@ -34,6 +34,8 @@ const CategoriesScreen = lazy(() => import('../screens/CategoriesScreen'));
 const CategoryProductsScreen = lazy(() => import('../screens/CategoryProductsScreen'));
 const BrandLandingScreen = lazy(() => import('../screens/BrandLandingScreen'));
 const DevDiagnosticsScreen = lazy(() => import('../screens/DevDiagnosticsScreen'));
+// Yalnız __DEV__ vitrini; aşağıda Stack.Screen kaydı __DEV__ ile koşullu.
+const DesignShowcaseScreen = lazy(() => import('../screens/DesignShowcaseScreen'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
 const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
@@ -73,6 +75,7 @@ const CategoriesLazy = withSuspense(CategoriesScreen);
 const CategoryProductsLazy = withSuspense(CategoryProductsScreen);
 const BrandLandingLazy = withSuspense(BrandLandingScreen);
 const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
+const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
 const OffersLazy = withSuspense(OffersScreen);
 const OrderSuccessLazy = withSuspense(OrderSuccessScreen);
 const ProductDetailLazy = withSuspense(ProductDetailScreen);
@@ -250,6 +253,9 @@ export default function AppNavigator() {
       <Stack.Screen name="OrderSuccess" component={OrderSuccessLazy} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
       <Stack.Screen name="Offers" component={OffersLazy} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsLazy} />
+      {__DEV__ && (
+        <Stack.Screen name="DesignShowcase" component={DesignShowcaseLazy} options={{ headerShown: false }} />
+      )}
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />
