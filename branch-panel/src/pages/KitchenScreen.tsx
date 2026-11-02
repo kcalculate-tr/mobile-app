@@ -142,7 +142,7 @@ function OrderCard({ order, saving, onAccept, onReady, onDeliver, onCancel, sche
                 title={order.external_sync_error ?? 'Trendyol\'a geri yazılamadı'}
                 className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700"
               >
-                ⚠ Trendyol\'a iletilemedi
+                ⚠ {"Trendyol'a iletilemedi"}
               </span>
             )}
             {completed && (
