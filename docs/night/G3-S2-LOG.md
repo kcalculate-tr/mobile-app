@@ -12,7 +12,7 @@
 7. Rotasyon migration'ı `supabase/migrations-manual/` altında (db push'a girmez) + rollback.
 8. Tam runbook `docs/night/G3-S2-KEY_ROTATION.md` (8 adım + her adımda "ne bozulabilir" + geri dönüş).
 9. filter-repo ÖNERİLMEDİ: rotasyon legacy JWT'yi zaten değersizleştirir (repo private).
-10. **İlter sabah:** (a) canlı salt-okunur doğrulama onayı; (b) admin-panel env adı; sonra runbook.
+10. Canlı doğrulandı (gömülü JWT=0) + admin-panel env (`kcal-final` / `VITE_SUPABASE_KEY`) işlendi; runbook hazır.
 
 ## Yapılanlar
 - Worktree + dal kuruldu; `git worktree add .claude/worktrees/g3-s2 -b night3/key-rotation feat/social-login`.
@@ -31,8 +31,8 @@
 - Migration'lar UYGULANMADI, staging'de test EDİLMEDİ (RULES gereği). SQL sözdizimi gözden geçirildi.
 
 ## Kalanlar / açık noktalar
-- Canlı teyit (cron.job / fonksiyon gövdelerinde gömülü JWT 0 mı) — İlter onayı bekliyor (SORU 1).
-- admin-panel submodule bu worktree'de yok — Vercel env adı doğrulanacak (SORU 2).
+- Canlı teyit TAMAM (İlter, 2026-11-03): cron.job + fonksiyon gövdelerinde gömülü JWT = 0, tümü Vault'tan.
+- admin-panel Vercel env TAMAM: proje `kcal-final`, değişken `VITE_SUPABASE_KEY` (runbook'a işlendi).
 
 ## SORULAR
-→ `docs/night/G3-S2-KEY_ROTATION.md` Bölüm 6 (4 madde).
+→ `docs/night/G3-S2-KEY_ROTATION.md` Bölüm 6. SORU 1–2 çözüldü; SORU 3–4 açık (opsiyonel, kritik değil).

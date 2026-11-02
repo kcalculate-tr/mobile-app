@@ -45,11 +45,10 @@ anahtarı **Supabase Vault**'tan okur. Repo migration geçmişi ile doğrulandı
 **Anahtar KULLANMAYAN cron** (yalnız SQL, bilgi için):
 - `adisyo-retry-failed` (`20260508000100_adisyo_retry_cron.sql`) — sadece `UPDATE orders`.
 
-> **⚠️ Tek açık nokta — canlı doğrulama yapılamadı:** `mcp__supabase-prod__execute_sql`
-> auto-mode politikası tarafından reddedildi (prod'a doğrudan SELECT için İlter'in onayı
-> gerekiyor). Yukarıdaki tablo repo migration geçmişinden çıkarıldı. Canlıda migration'a
-> girmemiş, **elle oluşturulmuş** bir cron/fonksiyonun gövdesine ham JWT gömülü OLMADIĞINI
-> kanıtlamak için aşağıdaki salt-okunur sorgu çalıştırılmalı (Bölüm 4, "Ön doğrulama").
+> **✅ Canlıda doğrulandı (İlter, 2026-11-03):** Bölüm 4 "Ön doğrulama" (a)(b)(c)
+> çalıştırıldı — `cron.job` komutlarında ve fonksiyon gövdelerinde gömülü JWT = **0**;
+> tüm anahtarlar Vault'tan okunuyor (`service_role_key`, `adisyo_service_role_key`).
+> Elle oluşturulmuş, migration'a girmemiş gömülü-anahtarlı cron/fonksiyon YOK. Envanter kesin.
 
 ### 1b. Edge Functions (29 aktif)
 
@@ -82,9 +81,9 @@ Zaten **yeni publishable** (`sb_publishable_…`) kullanıyor:
 
 - **branch-panel** — `branch-panel/src/supabase.ts:13` env `VITE_SUPABASE_ANON_KEY`
   (+ `VITE_SUPABASE_URL`). Değer Vercel'de. Yeni publishable olmalı.
-- **admin-panel** — submodule; bu worktree'de checkout edilmedi. Vercel env adları
-  İlter tarafından admin-panel reposundan ayrıca doğrulanmalı (beklenen: `VITE_SUPABASE_*`
-  veya `NEXT_PUBLIC_SUPABASE_*`). → SORULAR.
+- **admin-panel** — submodule; bu worktree'de checkout edilmedi. **Doğrulandı (İlter):**
+  Vercel projesi **`kcal-final`**, anon değişkeni **`VITE_SUPABASE_KEY`** (+ `VITE_SUPABASE_URL`).
+  Değer Vercel'de; yeni publishable olmalı.
 - **landing-page** — Supabase env kullanımı bulunamadı (statik).
 - **tools/adisyo-prices/setup-adisyo-trigger.sql** — ESKİDEN satır 32'de ham legacy
   service_role JWT vardı. **Bu dalda placeholder ile değiştirildi** (Bölüm 3).
@@ -94,8 +93,8 @@ Zaten **yeni publishable** (`sb_publishable_…`) kullanıyor:
 ### 1e. Vercel ortam değişkeni ADLARI (değer yok)
 
 Rotasyonda **yeni publishable** değere güncellenecek adlar:
-- branch-panel: `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`
-- admin-panel: (doğrulanacak) muhtemelen `VITE_SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- branch-panel (Vercel projesi: branch-panel): `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`
+- admin-panel (Vercel projesi: **`kcal-final`**): **`VITE_SUPABASE_KEY`**, `VITE_SUPABASE_URL`
 
 Hiçbir panel **service_role** kullanmıyor (iyi — service_role yalnız DB Vault + edge env'de).
 
@@ -196,8 +195,9 @@ placeholder'lara yeni `sb_secret_…` yaz, çalıştır. İki secret (`service_r
 _Bozulma:_ Yanlış/eksik değer → tüm cron'lar ve orders→adisyo trigger'ı 401 (sipariş Adisyo'ya
 düşmez, bildirim gitmez). Rollback dosyası hazır.
 
-**Adım 4 — Vercel env (paneller).** branch-panel (+ admin-panel) projelerinde
-`VITE_SUPABASE_ANON_KEY` (ve varsa admin-panel'in anon adı) → yeni `sb_publishable_…`.
+**Adım 4 — Vercel env (paneller).** → yeni `sb_publishable_…`:
+- branch-panel projesi: `VITE_SUPABASE_ANON_KEY`
+- admin-panel = Vercel projesi **`kcal-final`**: **`VITE_SUPABASE_KEY`**
 Kaydet + **redeploy** (env değişikliği build'e yeni deploy ile girer).
 _Bozulma:_ Redeploy olmazsa panel eski değerle çalışmaya devam eder (sorun değil); ama legacy
 kapatılınca eski değerli panel giriş yapamaz. Bu yüzden kapatmadan ÖNCE redeploy + test.
@@ -231,10 +231,9 @@ sipariş→Adisyo akışı; push bildirimleri.
 ---
 
 ## 6. SORULAR (İlter)
-1. **Canlı DB salt-okunur onayı:** Bölüm 4 ön doğrulama (a)(b)(c)'yi ben çalıştırayım mı?
-   (`execute_sql` auto-mode'da reddedildi.) Onay verirsen envanterin canlı teyidini tamamlarım.
-2. **admin-panel** Vercel'deki Supabase env değişkeninin tam adı nedir (`VITE_` mi
-   `NEXT_PUBLIC_` mi)? Submodule bu worktree'de yok.
+1. ~~Canlı DB salt-okunur onayı~~ → **ÇÖZÜLDÜ (2026-11-03):** canlıda doğrulandı,
+   cron.job + fonksiyon gövdelerinde gömülü JWT = 0, tümü Vault'tan. Envanter kesin.
+2. ~~admin-panel env adı~~ → **ÇÖZÜLDÜ:** Vercel projesi `kcal-final`, değişken `VITE_SUPABASE_KEY`.
 3. `scripts/test-paynkolay-*.sh` içindeki gömülü `sb_publishable_` değerlerini de env'e mi
-   taşıyalım (zararsız ama ideal değil)?
-4. Geçmiş temizliği (filter-repo) İSTENİYOR mu? Önerim: hayır — rotasyon zaten değersizleştirir.
+   taşıyalım (zararsız ama ideal değil)? — AÇIK.
+4. Geçmiş temizliği (filter-repo) İSTENİYOR mu? Önerim: hayır — rotasyon zaten değersizleştirir. — AÇIK.
