@@ -10,6 +10,8 @@ interface Props {
   onNewUser: () => void;
   onReturningUser?: () => void;
   onError: (message: string) => void;
+  // 18+ yaş onayı verilmeden (yeni kayıtlarda) sosyal giriş başlatılmaz.
+  disabled?: boolean;
 }
 
 // Google marka kurallarının istediği resmi 4 renkli "G" logosu (Google'ın
@@ -67,7 +69,7 @@ const AppleLogo = ({ size = 18 }: { size?: number }) => (
 // (varsayılan light/gray pill, özelleştirilemez metin) zorunlu kılmıyor;
 // marka kılavuzu doğru logo + onaylı metin şartıyla özel buton stiline izin
 // veriyor, bu app'in koyu "glass" temasıyla tutarlı kalması için bu seçildi.
-export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser, onError }) => {
+export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser, onError, disabled = false }) => {
   const { signInWithApple, signInWithGoogle } = useAuth();
   const [loadingApple, setLoadingApple] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -95,7 +97,7 @@ export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser,
   };
 
   const handleApple = async () => {
-    if (loadingApple || loadingGoogle) return;
+    if (disabled || loadingApple || loadingGoogle) return;
     setLoadingApple(true);
     try {
       const result = await signInWithApple();
@@ -106,6 +108,7 @@ export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser,
   };
 
   const handleGoogle = async () => {
+    if (disabled || loadingApple || loadingGoogle) return;
     setLoadingGoogle(true);
     try {
       const result = await signInWithGoogle();
@@ -129,7 +132,7 @@ export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser,
             label={loadingApple ? 'Bağlanıyor…' : 'Apple ile Giriş Yap'}
             icon={<AppleLogo size={18} />}
             onPress={handleApple}
-            disabled={loadingApple || loadingGoogle}
+            disabled={disabled || loadingApple || loadingGoogle}
             style={styles.appleButton}
             textStyle={styles.appleButtonText}
             pressedBackgroundColor="#F0F0F0"
@@ -141,7 +144,7 @@ export const SocialAuthButtons: React.FC<Props> = ({ onNewUser, onReturningUser,
         label={loadingGoogle ? 'Bağlanıyor…' : 'Google ile devam et'}
         icon={<GoogleGLogo size={16} />}
         onPress={handleGoogle}
-        disabled={loadingApple || loadingGoogle}
+        disabled={disabled || loadingApple || loadingGoogle}
       />
     </View>
   );
