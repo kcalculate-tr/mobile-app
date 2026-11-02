@@ -28,8 +28,12 @@ CREATE EXTENSION IF NOT EXISTS supabase_vault;
 -- Eğer önceden kayıtlıysa silelim, sonra ekleyelim (idempotent)
 DELETE FROM vault.secrets WHERE name = 'adisyo_service_role_key';
 
+-- ÖNEMLİ: Aşağıdaki placeholder'ı GERÇEK secret key ile değiştir, ardından
+-- çalıştır. Anahtar değerini bu dosyaya KAYDETME / commit'leme.
+-- Yeni anahtar sistemi: Dashboard → Settings → API Keys → "secret" (sb_secret_...).
+-- Eski (legacy) JWT service_role anahtarını buraya bir daha yazma.
 SELECT vault.create_secret(
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0amFrdmlua2x0aGx2c2ZjbmN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDgwNDI3NywiZXhwIjoyMDg2MzgwMjc3fQ.obCq27Caj2vt0yPjw4VddBH88wQeSN2XPWOXNaCRgdQ',
+  'PASTE_SECRET_KEY_HERE',   -- sb_secret_... (veya rotasyon öncesi legacy service_role JWT)
   'adisyo_service_role_key',
   'KCAL adisyo-save-order Edge Function tetikleme için'
 );
