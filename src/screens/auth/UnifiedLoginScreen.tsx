@@ -9,12 +9,16 @@ import { GlassInput } from '../../components/onboarding/GlassInput';
 import { OTPInput } from '../../components/onboarding/OTPInput';
 import { PrimaryCTA } from '../../components/onboarding/PrimaryCTA';
 import { SocialAuthButtons } from '../../components/onboarding/SocialAuthButtons';
+import { Check } from '../../components/icons';
 import { sportive } from '../../theme/sportive';
 import { useAuth } from '../../core/AuthContext';
 import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 
 type LoginRouteProp = RouteProp<RootStackParamList, 'Login'>;
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// 18+ onayının bir kez verildiğini işaretler — cihazda bir daha sorulmaz.
+const AGE_CONFIRMED_KEY = '@kcal_age_18_confirmed';
 
 /**
  * HEDEF KURULUMU (13.10.2026)
@@ -98,6 +102,24 @@ export default function UnifiedLoginScreen() {
   const [countdown, setCountdown] = useState(0);
   const [socialError, setSocialError] = useState('');
 
+  // 18+ YAŞ ONAYI (App Store 1.2 / Play) — YALNIZCA YENİ KAYITLARDA.
+  // Daha önce bu cihazda giriş/kayıt tamamlamış kullanıcılarda (onboarding_done
+  // ya da age_18_confirmed set'liyse) hiç gösterilmez → mevcut akış uzamaz.
+  const [needsAgeGate, setNeedsAgeGate] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+
+  useEffect(() => {
+    let gecerli = true;
+    (async () => {
+      const [[, done], [, age]] = await AsyncStorage.multiGet([
+        '@kcal_onboarding_done',
+        AGE_CONFIRMED_KEY,
+      ]);
+      if (gecerli && done !== 'true' && age !== 'true') setNeedsAgeGate(true);
+    })();
+    return () => { gecerli = false; };
+  }, []);
+
   useEffect(() => {
     if (countdown === 0) return;
     const t = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
@@ -116,11 +138,16 @@ export default function UnifiedLoginScreen() {
   const finishLogin = async () => {
     await AsyncStorage.multiSet([
       ['@kcal_onboarding_done', 'true'],
+      [AGE_CONFIRMED_KEY, 'true'],
     ]);
     await navigateByTarget(navigation, redirectTarget, user?.id);
   };
 
   const handleSendCode = async () => {
+    if (needsAgeGate && !ageConfirmed) {
+      setError('Devam etmek için 18 yaşından büyük olduğunu onayla.');
+      return;
+    }
     const trimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError('Geçerli bir e-posta gir.');
@@ -181,6 +208,20 @@ export default function UnifiedLoginScreen() {
                   />
                 </View>
 
+                {needsAgeGate ? (
+                  <Pressable
+                    onPress={() => setAgeConfirmed((v) => !v)}
+                    style={styles.ageRow}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: ageConfirmed }}
+                  >
+                    <View style={[styles.ageBox, ageConfirmed && styles.ageBoxOn]}>
+                      {ageConfirmed ? <Check size={13} color="#000000" weight="bold" /> : null}
+                    </View>
+                    <Text style={styles.ageText}>18 yaşından büyüğüm ve kullanım koşullarını kabul ediyorum.</Text>
+                  </Pressable>
+                ) : null}
+
                 <View style={{ marginTop: 8 }}>
                   <PrimaryCTA label="Kod Gönder" showArrow loading={sending} onPress={handleSendCode} />
                 </View>
@@ -189,6 +230,7 @@ export default function UnifiedLoginScreen() {
                   onNewUser={finishLogin}
                   onReturningUser={finishLogin}
                   onError={setSocialError}
+                  disabled={needsAgeGate && !ageConfirmed}
                 />
                 {socialError ? <Text style={styles.errorText}>{socialError}</Text> : null}
               </>
@@ -248,4 +290,31 @@ const styles = StyleSheet.create({
   resend: { ...sportive.type.bodySm, color: sportive.colors.textSecondary, textAlign: 'center' },
   resendCounter: { color: sportive.colors.textTertiary },
   resendActive: { color: sportive.colors.accent, fontFamily: 'PlusJakartaSans_500Medium' },
+  ageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 16,
+    paddingVertical: 4,
+  },
+  ageBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: sportive.colors.glassBorder,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  ageBoxOn: {
+    backgroundColor: sportive.colors.accent,
+    borderColor: sportive.colors.accent,
+  },
+  ageText: {
+    flex: 1,
+    ...sportive.type.bodySm,
+    color: sportive.colors.textSecondary,
+  },
 });

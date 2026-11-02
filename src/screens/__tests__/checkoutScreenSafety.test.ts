@@ -11,7 +11,7 @@ import { join } from 'node:path';
 // tutmaz, sadece aynı iki hatanın sessizce tekrarlanmasını engeller.
 
 const source = readFileSync(
-  join(__dirname, '../CheckoutScreen.tsx'),
+  join(__dirname, '../../modules/eatkcal/screens/CheckoutScreen.tsx'),
   'utf8',
 );
 

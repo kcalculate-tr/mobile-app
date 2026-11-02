@@ -25,13 +25,14 @@ jest.mock('react-native-fbsdk-next', () => ({
   Settings: {
     initializeSDK: () => {},
     setAdvertiserTrackingEnabled: () => Promise.resolve(true),
+    setAdvertiserIDCollectionEnabled: () => {},
     setAutoLogAppEventsEnabled: () => {},
   },
 }));
 
 // Supabase istemcisi modül seviyesinde auth oturumu kurmaya çalışıyor
 // (AsyncStorage). Bileşen testlerinde ağa çıkmasın.
-jest.mock('./src/lib/supabase', () => {
+jest.mock('./src/core/supabase', () => {
   const zincir = () => {
     const q = {};
     for (const m of ['select','insert','update','upsert','delete','eq','neq','in','is','or','order','limit','range','maybeSingle','single']) {
