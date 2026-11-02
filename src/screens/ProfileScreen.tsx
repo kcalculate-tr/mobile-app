@@ -626,6 +626,15 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('ProfileContracts')}
             showBorder
           />
+          {/* Yalnız geliştirme sürümünde görünür; canlı uygulamada derlenmez. */}
+          {__DEV__ ? (
+            <MenuItem
+              icon={<FileText color={COLORS.text.secondary} size={18} />}
+              title="🎨 Tasarım vitrini (DEV)"
+              onPress={() => navigation.navigate('DesignShowcase' as never)}
+              showBorder
+            />
+          ) : null}
         </View>
 
         {/* ─── Çıkış / Auth ─── */}
