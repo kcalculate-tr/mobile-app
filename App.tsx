@@ -17,6 +17,7 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 import { AuthProvider, useAuth } from './src/core/AuthContext';
+import { FlagsProvider } from './src/core/flags';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
 import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -154,9 +155,14 @@ function App() {
       <SafeAreaProvider style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
         <PortalProvider>
           <AuthProvider>
-            <NavigationContainer ref={navigationRef} theme={navDarkTheme}>
-              <AppContent />
-            </NavigationContainer>
+            {/* Bayrak altyapısı — useAuth'a bağımlı olduğu için AuthProvider
+                içinde. BU OTURUMDA hiçbir ekran useFeature kullanmaz; provider
+                yalnız arka planda değer çözer, canlı davranış değişmez. */}
+            <FlagsProvider>
+              <NavigationContainer ref={navigationRef} theme={navDarkTheme}>
+                <AppContent />
+              </NavigationContainer>
+            </FlagsProvider>
           </AuthProvider>
           {/* Global "Kapat" barı — her iki platformda. Klavye yüksekliğini takip
               eden absolute JS overlay (native InputAccessoryView Fabric'te render

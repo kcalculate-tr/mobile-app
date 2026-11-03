@@ -22,6 +22,7 @@ import {
   mapSupabaseErrorToUserMessage,
 } from '../lib/supabaseErrors';
 import { getSupabaseClient } from '../core/supabase';
+import { useFlagsContext, FLAG_KEYS, type FlagKey } from '../core/flags';
 import { COLORS } from '../constants/theme';
 
 type DiagnosticsData = {
@@ -172,6 +173,7 @@ export default function DevDiagnosticsScreen() {
             <DiagnosticRow label="Delivery Rule Query" value={data.deliveryRuleInfo} />
             <DiagnosticRow label="API Base URL" value={data.apiInfo} />
             <DiagnosticRow label="Validate Coupon Ping" value={data.couponPingInfo} />
+            {__DEV__ ? <FlagsDebugSection /> : null}
           </>
         )}
 
@@ -201,6 +203,64 @@ const DiagnosticRow = ({ label, value }: { label: string; value: string }) => (
     <Text style={styles.cardValue}>{value}</Text>
   </View>
 );
+
+// __DEV__ bayrak listesi — çözümlenmiş değeri gösterir ve yerel geçersiz kılma
+// (override) sunar. Yalnız geliştirme; üretim build'inde hiç render edilmez.
+const FlagsDebugSection = () => {
+  const ctx = useFlagsContext();
+  if (!ctx) return null;
+  const { flags, devOverrides, setDevOverride, refresh } = ctx;
+  const overrideKeys = Object.keys(devOverrides) as FlagKey[];
+  const hasOverride = overrideKeys.length > 0;
+
+  const cycle = (key: FlagKey) => {
+    // yok → açık → kapalı → yok
+    const cur = devOverrides[key];
+    if (cur === undefined) void setDevOverride(key, true);
+    else if (cur === true) void setDevOverride(key, false);
+    else void setDevOverride(key, null);
+  };
+
+  // Tüm override'ları sırayla kaldır (her çağrı provider state'ini günceller).
+  const resetAll = () => {
+    for (const key of overrideKeys) void setDevOverride(key, null);
+  };
+
+  return (
+    <View style={styles.flagsSection}>
+      <View style={styles.flagsHeaderRow}>
+        <Text style={styles.flagsTitle}>Bayraklar (__DEV__)</Text>
+        <View style={styles.flagsActions}>
+          <TouchableOpacity onPress={() => void refresh()} style={styles.flagsSmallBtn}>
+            <Text style={styles.flagsSmallBtnText}>Yenile</Text>
+          </TouchableOpacity>
+          {hasOverride ? (
+            <TouchableOpacity onPress={resetAll} style={styles.flagsSmallBtn}>
+              <Text style={styles.flagsSmallBtnText}>Sıfırla</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+      {FLAG_KEYS.map((key) => {
+        const ov = devOverrides[key];
+        const effective = flags[key];
+        return (
+          <TouchableOpacity key={key} style={styles.flagRow} onPress={() => cycle(key)}>
+            <Text style={styles.flagKey}>{key}</Text>
+            <Text style={[styles.flagValue, effective ? styles.flagOn : styles.flagOff]}>
+              {effective ? 'AÇIK' : 'kapalı'}
+              {ov !== undefined ? ' · override' : ''}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+      <Text style={styles.flagsHint}>
+        Dokun: override yok → açık → kapalı → yok. Override yalnız bu cihazda,
+        yalnız geliştirmede.
+      </Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   header: {
@@ -295,5 +355,71 @@ const styles = StyleSheet.create({
     color: COLORS.text.primary,
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  flagsSection: {
+    marginTop: 6,
+    backgroundColor: 'white',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
+  },
+  flagsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  flagsTitle: {
+    color: COLORS.text.primary,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  flagsActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  flagsSmallBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  flagsSmallBtnText: {
+    fontSize: 12,
+    color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  flagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  flagKey: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_500Medium',
+  },
+  flagValue: {
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  flagOn: {
+    color: COLORS.brand.green,
+  },
+  flagOff: {
+    color: '#9CA3AF',
+  },
+  flagsHint: {
+    marginTop: 4,
+    fontSize: 11,
+    color: '#9CA3AF',
+    lineHeight: 15,
   },
 });
