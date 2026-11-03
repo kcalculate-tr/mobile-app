@@ -20,6 +20,13 @@ export const FLAG_DEFAULTS = {
   inbox: false, // Mesaj kutusu
   // eatkcal (sipariş tarafı)
   eatkcal_ordering: false, // eatkcal öğün siparişi
+  // G5 — Keşfet / Gün halkası / AI tarama (G5-CONTRACT.md "Bayrak anahtarları")
+  kesfet: false, // Keşfet editoryal akış (Dalga 1)
+  kesfet_takip: false, // Keşfet "Takip" sekmesi
+  gun_halkasi: false, // Gün halkası (paylaşılan öğünler)
+  ai_tarama: false, // AI fotoğraf tarama (günlük kota)
+  restoran_yakinda: false, // eatkcal "restoran yakında" kapısı
+  paylasim_karti: false, // Öğünü güne paylaşma kartı
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
