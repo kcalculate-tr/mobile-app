@@ -27,6 +27,8 @@ function sampleCard(user: string, i: number): DayCard {
     photo_url: null,
     kcal: 180 + i * 40,
     protein_g: 8 + i * 3,
+    carbs_g: 14 + i * 5,
+    fat_g: 6 + i * 2,
   };
 }
 
@@ -56,6 +58,10 @@ export function createMockGunClient(options: { ringCount?: number; cardCount?: n
 
     async shareMealToDay({ consumption }): Promise<void> {
       shared.add(consumption);
+    },
+
+    async addDayCardToDay({ card }): Promise<{ consumption_id: string }> {
+      return { consumption_id: `consumption-from-${card}` };
     },
   };
 }

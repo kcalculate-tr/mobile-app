@@ -23,6 +23,11 @@ export interface DayCard {
   photo_url: string | null;
   kcal: number;
   protein_g: number;
+  // SORU (G6-S1'e): G5-CONTRACT.md'deki get_day_cards imzasında yok — GunViewer
+  // tasarımı (T20GunView) P/K/Y'nin HER ZAMAN göründüğünü gösteriyor. Sunucu
+  // ekleyene kadar İSTEĞE BAĞLI; UI alan yoksa "—" gösterir.
+  carbs_g?: number | null;
+  fat_g?: number | null;
 }
 
 // İstemci arayüzü — gerçek RPC (client.ts) ve mock (mock.ts) uygular.
@@ -33,4 +38,10 @@ export interface GunClient {
   getDayCards(params: { user: string }): Promise<DayCard[]>;
   // share_meal_to_day(p_consumption) → void.
   shareMealToDay(params: { consumption: string }): Promise<void>;
+  // SORU (G6-S1'e): sözleşmede yok — GunViewer'da başkasının paylaştığı kartı
+  // "Günüme ekle" ile kendi günlüğüne (meal_consumptions) kaydetmek için
+  // `add_post_meal_to_day` benzeri bir RPC gerekiyor. Ad/imza adaydır:
+  // add_day_card_to_day(p_card uuid, p_idempotency_key text) → { consumption_id }.
+  // Sunucu bu RPC'yi eklemeden gerçek istemci hata fırlatır (bkz. client.ts).
+  addDayCardToDay(params: { card: string; idempotencyKey: string }): Promise<{ consumption_id: string }>;
 }
