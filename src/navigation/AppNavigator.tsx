@@ -38,6 +38,10 @@ const DevDiagnosticsScreen = lazy(() => import('../screens/DevDiagnosticsScreen'
 const DesignShowcaseScreen = lazy(() => import('../screens/DesignShowcaseScreen'));
 // Yalnız __DEV__: G5-S3 veri katmanı deneme ekranı (Keşfet/profil/Gün/AI tarama).
 const FeedDataLabScreen = lazy(() => import('../screens/FeedDataLabScreen'));
+// Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
+const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
+const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
+const KcalAiSignUpRouteScreen = lazy(() => import('../modules/profil/ui/signup/KcalAiSignUpRoute'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
 const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
@@ -79,6 +83,9 @@ const BrandLandingLazy = withSuspense(BrandLandingScreen);
 const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
 const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
 const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
+const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
+const PublicProfileLazy = withSuspense(PublicProfileScreen);
+const KcalAiSignUpLazy = withSuspense(KcalAiSignUpRouteScreen);
 const OffersLazy = withSuspense(OffersScreen);
 const OrderSuccessLazy = withSuspense(OrderSuccessScreen);
 const ProductDetailLazy = withSuspense(ProductDetailScreen);
@@ -262,6 +269,11 @@ export default function AppNavigator() {
       {__DEV__ && (
         <Stack.Screen name="FeedDataLab" component={FeedDataLabLazy} options={{ title: 'Keşfet ve profil (veri)' }} />
       )}
+      {__DEV__ && (
+        <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />
+      )}
+      <Stack.Screen name="PublicProfile" component={PublicProfileLazy} />
+      <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} />
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />

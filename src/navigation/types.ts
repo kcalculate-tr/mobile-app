@@ -31,6 +31,14 @@ export type RootStackParamList = {
   DesignShowcase: undefined;
   // Yalnız __DEV__: G5-S3 veri katmanı deneme ekranı (koşullu kayıt).
   FeedDataLab: undefined;
+  // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini (koşullu kayıt).
+  GunProfilUiLab: undefined;
+  // `/u/:handle` — açık profil (bkz. modules/profil/ui/PublicProfileScreen).
+  // Derin bağlantı (deep link) eşlemesi night5/share-links ile birleşince
+  // kurulur (bkz. G6-S3-LOG.md "Rota notu").
+  PublicProfile: { handle: string };
+  // Kcal AI kaydı — `useFeature('kesfet')` arkasında (bkz. modules/profil/ui/signup).
+  KcalAiSignUp: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };

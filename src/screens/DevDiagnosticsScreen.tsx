@@ -186,6 +186,26 @@ export default function DevDiagnosticsScreen() {
             <Text style={styles.showcaseLinkText}>🎨 Tasarım vitrini →</Text>
           </TouchableOpacity>
         ) : null}
+
+        {__DEV__ ? (
+          <TouchableOpacity
+            style={styles.showcaseLink}
+            onPress={() => navigation.navigate('FeedDataLab')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.showcaseLinkText}>🧪 Keşfet ve profil (veri) →</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {__DEV__ ? (
+          <TouchableOpacity
+            style={styles.showcaseLink}
+            onPress={() => navigation.navigate('GunProfilUiLab')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.showcaseLinkText}>🧪 Gün halkası / profil (UI) →</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
 
       <View style={styles.footer}>
