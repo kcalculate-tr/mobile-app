@@ -19,6 +19,11 @@ export interface FeedMedia {
   url: string;
   width: number;
   height: number;
+  // Video alanları (G8-CONTRACT "post_media") — sunucu G8-S1'de ekler; o ana
+  // kadar hep undefined → mevcut görsel akışı birebir aynı davranır.
+  kind?: 'image' | 'video';
+  duration_s?: number;
+  thumb_path?: string;
 }
 
 export interface MealCard {

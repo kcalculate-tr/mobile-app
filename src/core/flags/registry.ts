@@ -23,6 +23,7 @@ export const FLAG_DEFAULTS = {
   // G5 — Keşfet / Gün halkası / AI tarama (G5-CONTRACT.md "Bayrak anahtarları")
   kesfet: false, // Keşfet editoryal akış (Dalga 1)
   kesfet_takip: false, // Keşfet "Takip" sekmesi
+  kesfet_video: false, // Keşfet video (G8-CONTRACT) — yerel paketler onaylı (G8-S3)
   gun_halkasi: false, // Gün halkası (paylaşılan öğünler)
   ai_tarama: false, // AI fotoğraf tarama (günlük kota)
   restoran_yakinda: false, // eatkcal "restoran yakında" kapısı
