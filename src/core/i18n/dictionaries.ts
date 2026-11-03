@@ -25,6 +25,13 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete: 'Sil',
       you: 'Sen',
     },
+    // G11-S2 — yeni kabuk (TabBarR3) metinleri.
+    shell: {
+      tab: { home: 'Ana sayfa', explore: 'Keşfet', eat: 'eatkcal', profile: 'Profil' },
+      scan: 'Tara',
+      cart: 'Sepet',
+      expand: 'Menüyü aç',
+    },
     kesfet: {
       title: 'Keşfet',
       tab: { for_you: 'Senin için', following: 'Takip' },
@@ -301,6 +308,13 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       estimate: 'estimate',
       delete: 'Delete',
       you: 'You',
+    },
+    // G11-S2 — new shell (TabBarR3) strings.
+    shell: {
+      tab: { home: 'Home', explore: 'Explore', eat: 'eatkcal', profile: 'Profile' },
+      scan: 'Scan',
+      cart: 'Cart',
+      expand: 'Open menu',
     },
     kesfet: {
       title: 'Discover',
