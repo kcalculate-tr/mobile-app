@@ -15,6 +15,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { X, ArrowCounterClockwise } from '../../../../components/icons';
+import { LogTrail, Toast } from '../../../../core/design';
+import { RollingNumber } from '../../../gun/ui';
+import type { NumLang } from '../../../gun/motion';
+import ScanFrame from '../ui/ScanFrame';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { RootStackParamList } from '../../../../navigation/types';
@@ -37,7 +41,7 @@ type Stage = 'viewfinder' | 'scanning' | 'result';
 
 export default function ScanScreen() {
   const navigation = useNavigation<Nav>();
-  const { t } = useT();
+  const { t, lang } = useT();
   const { user } = useAuth();
   const paylasimKarti = useFeature('paylasim_karti');
 
@@ -54,6 +58,9 @@ export default function ScanScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
+  // "Günüme ekle" → Logla izi + zaman hapı.
+  const [logToken, setLogToken] = useState(0);
+  const [savedToast, setSavedToast] = useState(false);
 
   const insets = useSafeAreaInsets();
 
@@ -103,6 +110,8 @@ export default function ScanScreen() {
         estimate: result,
       });
       setSaved(true);
+      setLogToken((n) => n + 1); // Logla izi oynar
+      setSavedToast(true);
     } catch (e) {
       Alert.alert(e instanceof Error ? e.message : t('ai_scan.failed'));
     } finally {
@@ -144,7 +153,17 @@ export default function ScanScreen() {
 
         <Text style={styles.estimateBadge}>{t('common.estimate').toUpperCase()}</Text>
         <Text style={styles.resultName}>{result.name}</Text>
-        <Text style={styles.resultKcal}>{Math.round(result.kcal)} kcal</Text>
+
+        {/* Makro kartı — kcal RollingNumber + P/K/Y hapları (sayı yuvarlanması). */}
+        <View style={styles.kcalRow}>
+          <RollingNumber value={Math.round(result.kcal)} lang={lang as NumLang} fontSize={34} weight="700" color="#0A0A0A" />
+          <Text style={styles.kcalUnit}>kcal</Text>
+        </View>
+        <View style={styles.macroPills}>
+          <MacroPill label="P" value={Math.round(result.protein_g)} lang={lang as NumLang} />
+          <MacroPill label="K" value={Math.round(result.carbs_g)} lang={lang as NumLang} />
+          <MacroPill label="Y" value={Math.round(result.fat_g)} lang={lang as NumLang} />
+        </View>
 
         {result.ingredients.length > 0 ? (
           <View style={styles.tagRow}>
@@ -187,6 +206,21 @@ export default function ScanScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Logla izi (Günüme ekle sonrası) — mutlak katman, yerleşimi bozmaz. */}
+        {logToken > 0 ? (
+          <View pointerEvents="none" style={styles.trailLayer}>
+            <LogTrail playToken={logToken} width={300} height={120} label={result.name} />
+          </View>
+        ) : null}
+        <View style={styles.toastLayer} pointerEvents="box-none">
+          <Toast
+            visible={savedToast}
+            message={t('ai_scan.saved_toast')}
+            onDismiss={() => setSavedToast(false)}
+            autoHideMs={2600}
+          />
+        </View>
+
         {paylasimKarti ? (
           <PlateXRayShareModal
             visible={shareVisible}
@@ -202,6 +236,7 @@ export default function ScanScreen() {
   return (
     <View style={styles.viewfinder}>
       <View style={styles.cameraPlaceholder} />
+      <ScanFrame active={stage === 'scanning'} />
       <View style={[styles.topBar, { top: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.closeBtn}
@@ -234,6 +269,16 @@ export default function ScanScreen() {
         onClose={() => setLimitVisible(false)}
         onManualEntry={handleManualEntry}
       />
+    </View>
+  );
+}
+
+function MacroPill({ label, value, lang }: { label: string; value: number; lang: NumLang }) {
+  return (
+    <View style={styles.macroPill}>
+      <Text style={styles.macroPillLabel}>{label}</Text>
+      <RollingNumber value={value} lang={lang} fontSize={14} weight="700" color="#0A0A0A" />
+      <Text style={styles.macroPillUnit}>g</Text>
     </View>
   );
 }
@@ -283,7 +328,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   resultName: { marginTop: 4, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 24, color: '#0A0A0A' },
-  resultKcal: { marginTop: 2, fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 16, color: '#0A0A0A' },
+  kcalRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 6 },
+  kcalUnit: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 16, color: '#6B6B70', marginBottom: 4 },
+  macroPills: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  macroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+  },
+  macroPillLabel: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13, color: '#6B6B70', marginRight: 2 },
+  macroPillUnit: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: '#6B6B70' },
+  trailLayer: { position: 'absolute', bottom: 120, left: 0, right: 0, alignItems: 'center' },
+  toastLayer: { position: 'absolute', top: 60, left: 16, right: 16, zIndex: 10 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
   tag: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#FFFFFF' },
   tagText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: '#0A0A0A' },

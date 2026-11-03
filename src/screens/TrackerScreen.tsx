@@ -20,7 +20,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import * as Print from 'expo-print';
@@ -39,7 +39,9 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { fetchProductImagesByName } from '../lib/products';
 import { useAuth } from '../core/AuthContext';
 import { useFeature } from '../core/flags';
+import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
+import { TrackerDayHeader } from './tracker/TrackerDayHeader';
 import ShareMealCardModal from '../components/share/ShareMealCardModal';
 import type { ShareMealData } from '../components/share/MealShareCard';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -853,6 +855,16 @@ export default function TrackerScreen() {
   const aiTarama = useFeature('ai_tarama');
   // G8: Tracker'da etkinlik kaydı — bayrak kapalıyken aşağıdaki blok render olmaz.
   const etkinlik = useFeature('etkinlik');
+  // G11-S4: yeni kabuk. Bayrak KAPALIYKEN (varsayılan — S2'nin registry satırı
+  // S6 birleştirmesiyle gelir; o zamana dek mergeFlags tanımadığı anahtarı
+  // false'a çözer) bu ekran bugünküyle BİREBİR aynı: yeni başlık render olmaz,
+  // eski kalori halkası yerinde kalır. (ENTEGRASYONA: registry 'yeni_kabuk'.)
+  const yeniKabuk = useFeature('yeni_kabuk' as FlagKey);
+  const route = useRoute();
+  const asTab = (route.params as { asTab?: boolean } | undefined)?.asTab === true;
+  // Logla izi tetikleyici — öğün kaydedilince artar; yalnız yeni başlık okur.
+  const [logToken, setLogToken] = useState(0);
+  const [lastMealLabel, setLastMealLabel] = useState<string | null>(null);
 
   const animValuesRef = useRef<Map<string, {
     scale: Animated.Value;
@@ -1458,6 +1470,12 @@ export default function TrackerScreen() {
       if (row) {
         dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
       }
+      // Yeni kabuk: Logla izi + zaman hapı (TrackerDayHeader okur). Eski kabukta
+      // bu state'in görünür etkisi yok.
+      setLastMealLabel(
+        ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null,
+      );
+      setLogToken((n) => n + 1);
       dispatchMealForm({ type: 'RESET_FORM' });
     } catch (e) {
       if (__DEV__) console.warn('meal log error:', e);
@@ -1901,7 +1919,7 @@ const html = `
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={[s.scroll, asTab ? { paddingBottom: insets.bottom + 96 } : null]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ── */}
@@ -1999,6 +2017,17 @@ const html = `
           </FadeSwap>
         ) : (
           <FadeSwap swapKey="ozet">
+            {/* ── Yeni kabuk Ana sayfa başlığı (yeni_kabuk) — gün halkası şeridi +
+                 halka dolumu imza anı + seri + Logla izi + sessiz an. Bayrak
+                 kapalıyken render OLMAZ (eski kalori halkası aşağıda kalır). ── */}
+            {yeniKabuk ? (
+              <TrackerDayHeader
+                kcal={Math.round(displayMacros.kcal)}
+                target={targets.kcal}
+                logToken={logToken}
+                lastMealLabel={lastMealLabel}
+              />
+            ) : null}
             {/* ── Pantry ── */}
             <View style={s.pantrySection}>
               {/* G8: etkinlik girişi — yalnız `etkinlik` bayrağı açıkken; kapalıyken
@@ -2114,26 +2143,30 @@ const html = `
               )}
             </View>
 
-            {/* ── Big Calorie Ring ── */}
-            <View style={s.calorieCard}>
-              <BigCalorieRing current={displayMacros.kcal} target={targets.kcal} />
-              <View style={s.miniStatsRow}>
-                {[
-                  { label: 'Hedef', value: targets.kcal },
-                  { label: 'Tüketilen', value: Math.round(displayMacros.kcal) },
-                  { label: 'Kalan', value: Math.max(targets.kcal - Math.round(displayMacros.kcal), 0) },
-                ].map((stat, i, arr) => (
-                  <View
-                    key={stat.label}
-                    style={[s.miniStat, i < arr.length - 1 && s.miniStatBorder]}
-                  >
-                    <Text style={s.miniStatValue}>{stat.value.toLocaleString()}</Text>
-                    <Text style={s.miniStatLabel}>{stat.label}</Text>
-                    <Text style={s.miniStatUnit}>kcal</Text>
-                  </View>
-                ))}
+            {/* ── Big Calorie Ring — yeni kabukta üstteki imza halkası bunun yerini
+                 alır; o yüzden yeni_kabuk açıkken bu blok gizlenir (çift halka
+                 olmasın). Bayrak kapalıyken bugünküyle aynı. ── */}
+            {!yeniKabuk ? (
+              <View style={s.calorieCard}>
+                <BigCalorieRing current={displayMacros.kcal} target={targets.kcal} />
+                <View style={s.miniStatsRow}>
+                  {[
+                    { label: 'Hedef', value: targets.kcal },
+                    { label: 'Tüketilen', value: Math.round(displayMacros.kcal) },
+                    { label: 'Kalan', value: Math.max(targets.kcal - Math.round(displayMacros.kcal), 0) },
+                  ].map((stat, i, arr) => (
+                    <View
+                      key={stat.label}
+                      style={[s.miniStat, i < arr.length - 1 && s.miniStatBorder]}
+                    >
+                      <Text style={s.miniStatValue}>{stat.value.toLocaleString()}</Text>
+                      <Text style={s.miniStatLabel}>{stat.label}</Text>
+                      <Text style={s.miniStatUnit}>kcal</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : null}
 
             {/* ── Macro Rings ── */}
             <View style={s.section}>

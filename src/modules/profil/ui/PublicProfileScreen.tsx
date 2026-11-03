@@ -9,14 +9,18 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, useTheme } from '../../../core/design';
+import Animated from 'react-native-reanimated';
+
+import { AppText, useTheme, usePop } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { CachedImage } from '../../../components/CachedImage';
-import { CaretLeft, LockSimple, User } from '../../../components/icons';
+import { CaretLeft, LockSimple, User, XCircle } from '../../../components/icons';
 import { RootStackParamList } from '../../../navigation/types';
 import { getProfilClient } from '../client';
 import { canViewProfileContent } from '../visibility';
+import { RollingNumber } from '../../gun/ui';
+import type { NumLang } from '../../gun/motion';
 import type { PublicProfile } from '../types';
 import { PrivacySheet } from './PrivacySheet';
 import { TakibeBaslaCTA } from './TakibeBaslaCTA';
@@ -26,7 +30,7 @@ type Rp = RouteProp<RootStackParamList, 'PublicProfile'>;
 
 export default function PublicProfileScreen() {
   const t = useTheme();
-  const { t: tt } = useT();
+  const { t: tt, lang } = useT();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rp>();
   const insets = useSafeAreaInsets();
@@ -37,6 +41,7 @@ export default function PublicProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [followBusy, setFollowBusy] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const { style: followPopStyle, pop: followPop } = usePop();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -78,6 +83,8 @@ export default function PublicProfileScreen() {
       const turningOn = profile.me_following === 'none';
       const res = await getProfilClient().follow({ user: profile.id, on: turningOn });
       setProfile((p) => (p ? { ...p, me_following: res.state } : p));
+      // Takip düğmesi pop'u — yalnız takip/istek AÇILIRKEN (olumlu an); bırakırken sessiz.
+      if (turningOn && (res.state === 'following' || res.state === 'requested')) followPop();
     } finally {
       setFollowBusy(false);
     }
@@ -119,12 +126,20 @@ export default function PublicProfileScreen() {
         ) : null}
 
         <View style={styles.counters}>
-          <Counter label={tt('profil.posts')} value={profile.posts} />
-          <Counter label={tt('profil.followers')} value={profile.followers} />
-          <Counter label={tt('profil.following_count')} value={profile.following} />
+          <Counter label={tt('profil.posts')} value={profile.posts} lang={lang as NumLang} color={t.color.ink} />
+          <Counter label={tt('profil.followers')} value={profile.followers} lang={lang as NumLang} color={t.color.ink} />
+          <Counter label={tt('profil.following_count')} value={profile.following} lang={lang as NumLang} color={t.color.ink} />
         </View>
 
-        {isMe ? (
+        {profile.blocked ? (
+          // Engelli hâli — takip düğmesi yok, içerik yok (olumsuz an: sessiz, kırmızı yok).
+          <View style={styles.blockedWrap}>
+            <XCircle size={22} color={t.color.secondary} weight="fill" />
+            <AppText variant="body" tone="secondary">
+              {tt('profil.blocked_title')}
+            </AppText>
+          </View>
+        ) : isMe ? (
           <Pressable
             onPress={() => setPrivacyOpen(true)}
             style={[styles.privacyBtn, { borderColor: t.color.line }]}
@@ -135,29 +150,31 @@ export default function PublicProfileScreen() {
             </AppText>
           </Pressable>
         ) : (
-          <Pressable
-            onPress={handleFollowPress}
-            disabled={followBusy}
-            style={[
-              styles.followBtn,
-              profile.me_following === 'following'
-                ? { borderColor: t.color.line, backgroundColor: 'transparent' }
-                : { backgroundColor: t.color.accent },
-            ]}
-            accessibilityRole="button"
-          >
-            {followBusy ? (
-              <ActivityIndicator color={t.color.ink} />
-            ) : (
-              <AppText
-                variant="body"
-                tone={profile.me_following === 'following' ? 'ink' : 'onAccent'}
-                style={{ fontWeight: '700' }}
-              >
-                {followLabel}
-              </AppText>
-            )}
-          </Pressable>
+          <Animated.View style={[styles.followWrap, followPopStyle]}>
+            <Pressable
+              onPress={handleFollowPress}
+              disabled={followBusy}
+              style={[
+                styles.followBtn,
+                profile.me_following === 'following'
+                  ? { borderColor: t.color.line, backgroundColor: 'transparent' }
+                  : { backgroundColor: t.color.accent },
+              ]}
+              accessibilityRole="button"
+            >
+              {followBusy ? (
+                <ActivityIndicator color={t.color.ink} />
+              ) : (
+                <AppText
+                  variant="body"
+                  tone={profile.me_following === 'following' ? 'ink' : 'onAccent'}
+                  style={{ fontWeight: '700' }}
+                >
+                  {followLabel}
+                </AppText>
+              )}
+            </Pressable>
+          </Animated.View>
         )}
       </View>
 
@@ -167,20 +184,22 @@ export default function PublicProfileScreen() {
         </View>
       ) : null}
 
-      <View style={styles.content}>
-        {canView ? (
-          <AppText variant="body" tone="secondary" style={styles.emptyContent}>
-            {tt('kesfet.empty')}
-          </AppText>
-        ) : (
-          <View style={styles.lockedWrap}>
-            <LockSimple size={28} color={t.color.secondary} weight="fill" />
-            <AppText variant="heading" style={styles.lockedTitle}>
-              {tt('profil.account_private')}
+      {profile.blocked ? null : (
+        <View style={styles.content}>
+          {canView ? (
+            <AppText variant="body" tone="secondary" style={styles.emptyContent}>
+              {tt('kesfet.empty')}
             </AppText>
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={styles.lockedWrap}>
+              <LockSimple size={28} color={t.color.secondary} weight="fill" />
+              <AppText variant="heading" style={styles.lockedTitle}>
+                {tt('profil.account_private')}
+              </AppText>
+            </View>
+          )}
+        </View>
+      )}
 
       {isMe ? (
         <PrivacySheet
@@ -194,10 +213,10 @@ export default function PublicProfileScreen() {
   );
 }
 
-function Counter({ label, value }: { label: string; value: number }) {
+function Counter({ label, value, lang, color }: { label: string; value: number; lang: NumLang; color: string }) {
   return (
     <View style={styles.counter}>
-      <AppText variant="heading">{value}</AppText>
+      <RollingNumber value={value} lang={lang} fontSize={20} weight="700" color={color} />
       <AppText variant="caption" tone="secondary">
         {label}
       </AppText>
@@ -224,8 +243,8 @@ const styles = StyleSheet.create({
   bio: { marginTop: 10, textAlign: 'center' },
   counters: { flexDirection: 'row', gap: 28, marginTop: 20 },
   counter: { alignItems: 'center', gap: 2 },
+  followWrap: { marginTop: 20, alignSelf: 'stretch' },
   followBtn: {
-    marginTop: 20,
     alignSelf: 'stretch',
     height: 48,
     borderRadius: 24,
@@ -233,6 +252,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  blockedWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20 },
   privacyBtn: {
     marginTop: 20,
     alignSelf: 'stretch',
