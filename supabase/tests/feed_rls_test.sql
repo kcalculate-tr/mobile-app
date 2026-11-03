@@ -92,6 +92,42 @@ insert into public.post_comments (id, post_id, author_id, body, status)
 values (:CA, :PC, :A, 'Gizli hesabin yorumu', 'published')
 on conflict (id) do nothing;
 
+-- ── G10 fixture'ları (ayrıcalıklı; RLS baypas) ──────────────────────────────
+\set PG  '''dddd0000-0000-4000-8000-000000000200'''
+\set CG  '''aaaa0000-0000-4000-8000-000000000202'''
+\set CB  '''aaaa0000-0000-4000-8000-000000000201'''
+-- PG: A'nın 'pending' gönderisi (item 4 — AI beklettiği, dismiss ile yayına alınacak).
+insert into public.posts (id, author_id, lang, body, post_type, status, published_at)
+values (:PG, :A, 'tr', 'A AI-bekleyen gonderi', 'serbest', 'pending', now())
+on conflict (id) do nothing;
+-- CG: A'nın PC üzerine 'pending' yorumu (item 4 — dismiss ile published olacak).
+insert into public.post_comments (id, post_id, author_id, body, status)
+values (:CG, :PC, :A, 'A AI-bekleyen yorum', 'pending')
+on conflict (id) do nothing;
+-- CB: A'nın PC üzerine 'pending' yorumu (item 5 — status guard testi: A doğrudan
+--     published yapamaz; delete_my_comment RPC ile removed yapabilir).
+insert into public.post_comments (id, post_id, author_id, body, status)
+values (:CB, :PC, :A, 'A guard yorum', 'pending')
+on conflict (id) do nothing;
+-- AI denetim kuyruğu + sistem (ai) şikayeti: PG (post) + CG (comment).
+insert into public.moderation_queue (target_type, target_id, status)
+values ('post', :PG, 'pending'), ('comment', :CG, 'pending')
+on conflict (target_type, target_id) do update set status = 'pending';
+insert into public.content_reports (reporter_id, target_type, target_id, reason, status, risk, source)
+values (null, 'post',    :PG, 'ai:spam', 'open', 1, 'ai'),
+       (null, 'comment', :CG, 'ai:spam', 'open', 1, 'ai');
+-- Storage: post-media kovasına A'nın ve C'nin birer objesi (item 2 listeleme kapısı).
+insert into storage.objects (id, bucket_id, name)
+values (gen_random_uuid(), 'post-media', 'posts/aaaa0000-0000-4000-8000-000000000001/a1.jpg'),
+       (gen_random_uuid(), 'post-media', 'posts/cccc0000-0000-4000-8000-000000000003/c1.jpg');
+-- item 3 günlük 50 şikayet sınırı için B'ye 50 adet (bugün, source=user) tohum.
+insert into public.content_reports (reporter_id, target_type, target_id, reason, status, risk, source)
+select :B, 'user',
+       ('00000000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+       'spam', 'open', 1, 'user'
+from generate_series(1, 50) g
+on conflict (reporter_id, target_type, target_id) do nothing;
+
 -- ── Kimlik değiştirme yardımcıları ──────────────────────────────────────────
 set local role authenticated;
 
@@ -453,6 +489,197 @@ begin
   r := public.create_post('serbest', 'f gonderi 4', 'tr', null, null, null, 'f-idem-4');
   if (r->>'error') <> 'rate_limited' then raise exception 'FAIL T21: 4. gonderi rate_limited donmedi (%).', r; end if;
   raise notice 'OK T21: gonderi hiz siniri (gunde 3/yeni hesap)';
+end $$;
+
+-- ============================ TEST 22 (G10/1) ================================
+-- reserve_ai_scan: BAŞKA kullanıcının idempotency anahtarıyla kota aşılamaz.
+-- B anahtarla rezerve eder; C aynı anahtarla çağırınca 'ok' ALAMAZ (hata) ve C'nin
+-- kota sayacı artMAZ.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+declare r jsonb;
+begin
+  r := public.reserve_ai_scan('g10-shared-key');
+  if (r->>'ok') <> 'true' then raise exception 'FAIL T22: B rezervasyon alamadi (%).', r; end if;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :C, 'role','authenticated')::text, true);
+do $$
+declare v_used int;
+begin
+  begin
+    perform public.reserve_ai_scan('g10-shared-key');
+    raise exception 'FAIL T22: C baskasinin anahtariyla rezervasyon aldi';
+  exception when others then
+    if sqlerrm like '%baskasinin_anahtari%' then
+      select coalesce(used, 0) into v_used from public.ai_scan_usage
+       where user_id = 'cccc0000-0000-4000-8000-000000000003'
+         and day = (now() at time zone 'Europe/Istanbul')::date;
+      if coalesce(v_used, 0) <> 0 then raise exception 'FAIL T22: C kotasi harcandi (used=%)', v_used; end if;
+      raise notice 'OK T22: baskasinin anahtari reddedildi, kota korundu';
+    else raise; end if;
+  end;
+end $$;
+
+-- ============================ TEST 23 (G10/2) ================================
+-- post-media kovası LİSTELEME: yabancı 0 görür; sahip yalnız kendi objesini; moderatör hepsini.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+declare v_n int;
+begin
+  select count(*) into v_n from storage.objects where bucket_id = 'post-media';
+  if v_n <> 0 then raise exception 'FAIL T23: yabanci post-media kovasini listeledi (n=%)', v_n; end if;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare v_mine int; v_others int;
+begin
+  select count(*) into v_mine   from storage.objects where bucket_id='post-media' and name like 'posts/aaaa%';
+  select count(*) into v_others from storage.objects where bucket_id='post-media' and name like 'posts/cccc%';
+  if v_mine < 1  then raise exception 'FAIL T23: sahip kendi objesini goremedi'; end if;
+  if v_others <> 0 then raise exception 'FAIL T23: sahip baskasinin objesini gordu (n=%)', v_others; end if;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :M, 'role','authenticated')::text, true);
+do $$
+declare v_n int;
+begin
+  select count(*) into v_n from storage.objects where bucket_id='post-media';
+  if v_n < 2 then raise exception 'FAIL T23: moderator kovayi listeleyemedi (n=%)', v_n; end if;
+  raise notice 'OK T23: post-media listeleme yalniz sahip + moderator';
+end $$;
+
+-- ============================ TEST 24 (G10/3) ================================
+-- report_content görünürlük kapısı + comment + günlük 50 sınır.
+-- (a) B (A engelli) A'nin yayimlanmis gonderisini (PA) sikayet → 'bulunamadi'.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    perform public.report_content('post', 'dddd0000-0000-4000-8000-000000000010'::uuid, 'spam');
+    raise exception 'FAIL T24a: engelli kullanici gorulmez gonderiyi sikayet edebildi';
+  exception when others then
+    if sqlerrm like '%bulunamadi%' then raise notice 'OK T24a: gorulmeyen gonderi bulunamadi';
+    else raise; end if;
+  end;
+end $$;
+-- (b) C (A takipcisi) A'nin PENDING gonderisini (PA2) sikayet → 'bulunamadi'.
+select set_config('request.jwt.claims', json_build_object('sub', :C, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    perform public.report_content('post', 'dddd0000-0000-4000-8000-000000000020'::uuid, 'spam');
+    raise exception 'FAIL T24b: pending gonderi sikayet edilebildi';
+  exception when others then
+    if sqlerrm like '%bulunamadi%' then raise notice 'OK T24b: pending gonderi bulunamadi';
+    else raise; end if;
+  end;
+end $$;
+-- (c) C, C'nin ACIK gonderisini (PC) + A'nin yayimlanmis yorumunu (CA) sikayet → hata YOK.
+do $$
+begin
+  perform public.report_content('post',    'cccc0000-0000-4000-8000-000000000040'::uuid, 'uygunsuz');
+  perform public.report_content('comment', 'aaaa0000-0000-4000-8000-000000000050'::uuid, 'uygunsuz');
+  raise notice 'OK T24c: gorulebilir gonderi + yorum sikayet edildi';
+end $$;
+-- (d) B (bugun 50 sikayeti var) gorulebilir PC'yi sikayet → 'cok_fazla_sikayet'.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    perform public.report_content('post', 'cccc0000-0000-4000-8000-000000000040'::uuid, 'spam');
+    raise exception 'FAIL T24d: gunluk 50 sinir asildi ama izin verildi';
+  exception when others then
+    if sqlerrm like '%cok_fazla_sikayet%' then raise notice 'OK T24d: gunluk 50 sikayet siniri';
+    else raise; end if;
+  end;
+end $$;
+
+-- ── Sahip (ayrıcalıklı) rolde çalışan testler (RLS baypas; guard trigger jwt rolünü
+--    okumaya devam eder, auth.uid() jwt claim'den gelir) ──────────────────────
+reset role;
+
+-- ============================ TEST 25 (G10/4) ================================
+-- mod_resolve_report(dismiss): pending gonderi+yorum published olur VE moderation_queue done.
+select set_config('request.jwt.claims', json_build_object('sub', :M, 'role','authenticated')::text, true);
+do $$
+declare v_rid bigint; v_st text; v_q text;
+begin
+  -- PG (post)
+  select id into v_rid from public.content_reports
+   where target_type='post' and target_id='dddd0000-0000-4000-8000-000000000200' and source='ai';
+  perform public.mod_resolve_report(v_rid, 'dismiss', 'uygundur');
+  select status into v_st from public.posts where id='dddd0000-0000-4000-8000-000000000200';
+  if v_st <> 'published' then raise exception 'FAIL T25: pending gonderi published olmadi (%).', v_st; end if;
+  select status into v_q from public.moderation_queue
+   where target_type='post' and target_id='dddd0000-0000-4000-8000-000000000200';
+  if v_q <> 'done' then raise exception 'FAIL T25: post moderation_queue done olmadi (%).', v_q; end if;
+
+  -- CG (comment)
+  select id into v_rid from public.content_reports
+   where target_type='comment' and target_id='aaaa0000-0000-4000-8000-000000000202' and source='ai';
+  perform public.mod_resolve_report(v_rid, 'dismiss', 'uygundur');
+  select status into v_st from public.post_comments where id='aaaa0000-0000-4000-8000-000000000202';
+  if v_st <> 'published' then raise exception 'FAIL T25: pending yorum published olmadi (%).', v_st; end if;
+  select status into v_q from public.moderation_queue
+   where target_type='comment' and target_id='aaaa0000-0000-4000-8000-000000000202';
+  if v_q <> 'done' then raise exception 'FAIL T25: comment moderation_queue done olmadi (%).', v_q; end if;
+  raise notice 'OK T25: dismiss gonderi+yorum published + queue done';
+end $$;
+
+-- ============================ TEST 26 (G10/5) ================================
+-- post_comments.status guard: yazar A kendi pending yorumunu DOĞRUDAN published yapamaz;
+-- delete_my_comment RPC'si ile removed yapabilir (islem-yerel app.post_rpc bayragi).
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    update public.post_comments set status='published'
+     where id='aaaa0000-0000-4000-8000-000000000201';
+    raise exception 'FAIL T26: yazar yorum durumunu dogrudan degistirebildi';
+  exception when others then
+    if sqlerrm like '%post_comments_guard%' then raise notice 'OK T26a: dogrudan status degisimi engellendi';
+    else raise; end if;
+  end;
+end $$;
+do $$
+declare v_st text;
+begin
+  perform public.delete_my_comment('aaaa0000-0000-4000-8000-000000000201'::uuid);
+  select status into v_st from public.post_comments where id='aaaa0000-0000-4000-8000-000000000201';
+  if v_st <> 'removed' then raise exception 'FAIL T26b: delete_my_comment removed yapmadi (%).', v_st; end if;
+  raise notice 'OK T26b: delete_my_comment RPC ile removed';
+end $$;
+
+-- ============================ TEST 27 (G10/6) ================================
+-- get_user_day_progress yetki kapisi: gorulemeyene (B→A) 'yetkisiz'; auth.uid() NULL
+-- (rolsuz/servis definer) → kapi atlanir (hata YOK); self → ok.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    perform public.get_user_day_progress('aaaa0000-0000-4000-8000-000000000001'::uuid);
+    raise exception 'FAIL T27a: B gorulemeyen A ilerlemesini okuyabildi';
+  exception when others then
+    if sqlerrm like '%yetkisiz%' then raise notice 'OK T27a: gorulemeyen ilerleme reddedildi';
+    else raise; end if;
+  end;
+end $$;
+select set_config('request.jwt.claims', NULL, true);  -- auth.uid() = NULL (rolsüz/servis)
+do $$
+declare r jsonb;
+begin
+  r := public.get_user_day_progress('aaaa0000-0000-4000-8000-000000000001'::uuid);
+  if r is null or (r ? 'progress') is not true then
+    raise exception 'FAIL T27b: null-auth definer cagri sonuc donmedi (%).', r;
+  end if;
+  raise notice 'OK T27b: auth.uid() NULL iken kapi atlandi (definer korundu)';
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare r jsonb;
+begin
+  r := public.get_user_day_progress('aaaa0000-0000-4000-8000-000000000001'::uuid);
+  if r is null or (r ? 'progress') is not true then raise exception 'FAIL T27c: self ilerleme okunamadi (%).', r; end if;
+  raise notice 'OK T27c: kullanici kendi ilerlemesini okur';
 end $$;
 
 reset role;
