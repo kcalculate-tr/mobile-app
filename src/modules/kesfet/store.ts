@@ -48,6 +48,11 @@ interface KesfetState {
   // Engelle: iyimser — bu yazarın tüm gönderileri akıştan ANINDA düşer, sonra RPC.
   // Hata olursa liste eski hâline döner.
   blockAuthor: (userId: string) => Promise<boolean>;
+  // G8 — "Ben de yaptım": etkinlik gönderisine did_it. İyimser sayaç; sunucu
+  // yetkili kcal_est döner. Başarıda kcal_est, hata/null başarısızlıkta null.
+  didIt: (postId: string, minutes: number | null, idempotencyKey: string) => Promise<number | null>;
+  // G8 — kendi gönderini sil: iyimser olarak akıştan düşer, sonra RPC.
+  deletePost: (postId: string) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -206,6 +211,42 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
     } catch (e) {
       // Başarısız → listeyi geri yükle.
       set({ posts: prev, error: e instanceof Error ? e.message : 'block_failed' });
+      return false;
+    }
+  },
+
+  didIt: async (postId, minutes, idempotencyKey) => {
+    const before = get().posts.find((p) => p.id === postId);
+    // İyimser: sayaç +1.
+    set({
+      posts: get().posts.map((p) =>
+        p.id === postId ? { ...p, stats: { ...p.stats, did_it: p.stats.did_it + 1 } } : p,
+      ),
+    });
+    try {
+      const res = await getKesfetClient().didIt({ post: postId, minutes, idempotencyKey });
+      return res.kcal_est;
+    } catch (e) {
+      // Geri al.
+      if (before) {
+        set({
+          posts: get().posts.map((p) => (p.id === postId ? { ...p, stats: before.stats } : p)),
+        });
+      }
+      set({ error: e instanceof Error ? e.message : 'did_it_failed' });
+      return null;
+    }
+  },
+
+  deletePost: async (postId) => {
+    const prev = get().posts;
+    // İyimser: gönderiyi hemen çıkar.
+    set({ posts: prev.filter((p) => p.id !== postId) });
+    try {
+      await getKesfetClient().deleteMyPost({ post: postId });
+      return true;
+    } catch (e) {
+      set({ posts: prev, error: e instanceof Error ? e.message : 'delete_failed' });
       return false;
     }
   },

@@ -44,8 +44,11 @@ function samplePost(over: Partial<FeedPost> = {}): FeedPost {
     },
     quote: null,
     thread: null,
-    stats: { likes: 12, saves: 3, adds: 5 },
-    me: { liked: false, saved: false },
+    stats: { likes: 12, saves: 3, adds: 5, comments: 2, did_it: 0 },
+    me: { liked: false, saved: false, is_author: false },
+    post_type: 'ogun',
+    status: 'published',
+    activity_card: null,
     ...over,
   };
 }

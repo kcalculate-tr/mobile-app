@@ -1,14 +1,27 @@
 // Keşfet mock sağlayıcı — sunucu yokken __DEV__ deneme ekranı ve testler için.
 // Bellek içi; deterministik id'ler (Date.now/Math.random yok → test kararlı).
 // Sunucu davranışını taklit eder: tepki toggle stats'ı günceller, idempotency
-// anahtarı aynıysa yeni kayıt AÇMAZ.
+// anahtarı aynıysa yeni kayıt AÇMAZ. G8: composer, yorum, etkinlik, bildirim.
+import { estimateActivityKcal } from './activity';
 import type {
+  AddCommentResult,
   AddToDayResult,
+  ActivityLogResult,
+  ActivityType,
+  Comment,
+  CommentPage,
+  CreatePostInput,
+  CreatePostResult,
+  DayActivity,
+  DayActivityItem,
   FeedPage,
   FeedPost,
   FeedTab,
   KesfetClient,
+  NotificationPage,
+  RateLimitedResult,
   ReactResult,
+  SocialNotification,
 } from './types';
 
 function samplePost(i: number, opts: Partial<FeedPost> = {}): FeedPost {
@@ -25,7 +38,7 @@ function samplePost(i: number, opts: Partial<FeedPost> = {}): FeedPost {
     published_at: `2026-11-0${(i % 9) + 1}T10:00:00.000Z`,
     lang: 'tr',
     body: `Örnek gönderi #${i} — dengeli bir öğün.`,
-    media: [{ url: `https://example.invalid/post-${i}.jpg`, width: 1080, height: 1080 }],
+    media: [{ url: `https://example.invalid/post-${i}.jpg`, width: 1080, height: 1080, kind: 'image' }],
     meal_card: {
       name: 'Izgara tavuk + bulgur',
       kcal: 520 + i * 10,
@@ -38,9 +51,69 @@ function samplePost(i: number, opts: Partial<FeedPost> = {}): FeedPost {
     },
     quote: null,
     thread: null,
-    stats: { likes: 10 + i, saves: 3 + i, adds: i },
-    me: { liked: false, saved: false },
+    stats: { likes: 10 + i, saves: 3 + i, adds: i, comments: i % 4, did_it: 0 },
+    me: { liked: false, saved: false, is_author: false },
+    post_type: 'ogun',
+    status: 'published',
+    activity_card: null,
     ...opts,
+  };
+}
+
+// __DEV__ vitrininde bir etkinlik gönderisi de görünsün (tür çeşitliliği).
+function sampleActivityPost(i: number): FeedPost {
+  const minutes = 45;
+  return samplePost(i, {
+    body: 'Sabah koşusu tamam 🏃',
+    meal_card: null,
+    media: [],
+    post_type: 'etkinlik',
+    activity_card: {
+      type: 'kosu',
+      minutes,
+      distance_km: 7.2,
+      kcal_est: estimateActivityKcal('kosu', minutes),
+      note: null,
+    },
+    stats: { likes: 24, saves: 2, adds: 0, comments: 3, did_it: 5 },
+  });
+}
+
+function sampleComment(postId: string, i: number): Comment {
+  return {
+    id: `comment-${postId}-${i}`,
+    post_id: postId,
+    author: {
+      id: `author-${i % 3}`,
+      display_name: ['Kcalculate', 'Dyt. Elif', 'PT Can'][i % 3],
+      handle: ['kcalculate', 'dyt.elif', 'pt.can'][i % 3],
+      avatar_url: null,
+      verified: i % 3 === 0,
+    },
+    parent_id: null,
+    body: `Örnek yorum #${i}`,
+    status: 'published',
+    created_at: `2026-11-03T1${i % 10}:00:00.000Z`,
+    reply_count: 0,
+    can_delete: i % 3 === 2, // "PT Can" yorumları silinebilir (mock'ta ben)
+  };
+}
+
+function sampleNotification(i: number, read: boolean): SocialNotification {
+  const kinds: SocialNotification['kind'][] = ['like', 'comment', 'follow', 'did_it', 'add_to_day'];
+  return {
+    id: `notif-${i}`,
+    actor: {
+      id: `author-${i % 3}`,
+      display_name: ['Kcalculate', 'Dyt. Elif', 'PT Can'][i % 3],
+      handle: ['kcalculate', 'dyt.elif', 'pt.can'][i % 3],
+      avatar_url: null,
+    },
+    kind: kinds[i % kinds.length],
+    post_id: i % 2 === 0 ? `post-${i % 7}` : null,
+    comment_id: null,
+    created_at: `2026-11-03T0${i % 10}:00:00.000Z`,
+    read_at: read ? '2026-11-03T12:00:00.000Z' : null,
   };
 }
 
@@ -49,16 +122,41 @@ export interface MockKesfetOptions {
   count?: number;
   /** 'following' sekmesinde görünecek gönderi index'leri (varsayılan ilk 3). */
   followingIndexes?: number[];
+  /** Okunmamış bildirim sayısı (varsayılan 3; toplam 6 üretilir). */
+  unreadCount?: number;
+  /** Etkinlik gönderisini de ekle (vitrin). Varsayılan false (testler kararlı). */
+  withActivityPost?: boolean;
 }
 
-export function createMockKesfetClient(options: MockKesfetOptions = {}): KesfetClient & {
+export type MockKesfetClient = KesfetClient & {
   _addedKeys: Map<string, string>;
-} {
+  _comments: Map<string, Comment[]>;
+  _notifications: SocialNotification[];
+  _activityLogs: DayActivityItem[];
+};
+
+export function createMockKesfetClient(options: MockKesfetOptions = {}): MockKesfetClient {
   const count = options.count ?? 7;
   const posts: FeedPost[] = Array.from({ length: count }, (_, i) => samplePost(i));
+  if (options.withActivityPost) posts.push(sampleActivityPost(count));
   const followingSet = new Set(options.followingIndexes ?? [0, 1, 2]);
-  // idempotency: anahtar → consumption_id (aynı anahtar → aynı kayıt)
+  // idempotency: anahtar → id (aynı anahtar → aynı kayıt)
   const addedKeys = new Map<string, string>();
+  const createKeys = new Map<string, CreatePostResult>();
+  const commentKeys = new Map<string, AddCommentResult>();
+  const activityKeys = new Map<string, ActivityLogResult>();
+  const comments = new Map<string, Comment[]>();
+  // Deterministik başlangıç yorumları.
+  for (const p of posts) {
+    comments.set(p.id, Array.from({ length: p.stats.comments }, (_, i) => sampleComment(p.id, i)));
+  }
+  const unread = options.unreadCount ?? 3;
+  const total = Math.max(unread, 6);
+  const notifications: SocialNotification[] = Array.from({ length: total }, (_, i) =>
+    sampleNotification(i, i >= unread),
+  );
+  const activityLogs: DayActivityItem[] = [];
+  let seq = 0;
 
   function pool(tab: FeedTab): FeedPost[] {
     return tab === 'following' ? posts.filter((_, i) => followingSet.has(i)) : posts;
@@ -66,6 +164,9 @@ export function createMockKesfetClient(options: MockKesfetOptions = {}): KesfetC
 
   return {
     _addedKeys: addedKeys,
+    _comments: comments,
+    _notifications: notifications,
+    _activityLogs: activityLogs,
 
     async getFeed({ tab, cursor = null, limit = 20 }): Promise<FeedPage> {
       const list = pool(tab);
@@ -114,8 +215,151 @@ export function createMockKesfetClient(options: MockKesfetOptions = {}): KesfetC
     async blockUser(): Promise<void> {
       // mock: kaydı yut
     },
+
+    // ── G8 ────────────────────────────────────────────────────────────────
+    async createPost(input: CreatePostInput): Promise<CreatePostResult | RateLimitedResult> {
+      const prev = createKeys.get(input.idempotencyKey);
+      if (prev) return prev;
+      seq += 1;
+      const res: CreatePostResult = { post_id: `newpost-${seq}`, status: 'pending' };
+      createKeys.set(input.idempotencyKey, res);
+      comments.set(res.post_id, []);
+      return res;
+    },
+
+    async deleteMyPost({ post }): Promise<{ ok: boolean }> {
+      const p = posts.find((x) => x.id === post);
+      if (p) p.status = 'removed';
+      return { ok: true };
+    },
+
+    async moderateContent(): Promise<void> {
+      // mock: ateşle-unut, yut
+    },
+
+    async addComment({ post, body, parent = null, idempotencyKey }): Promise<AddCommentResult> {
+      const prev = commentKeys.get(idempotencyKey);
+      if (prev) return prev;
+      seq += 1;
+      const id = `newcomment-${seq}`;
+      const list = comments.get(post) ?? [];
+      list.push({
+        id,
+        post_id: post,
+        author: { id: 'me', display_name: 'Ben', handle: 'ben', avatar_url: null, verified: false },
+        parent_id: parent,
+        body,
+        status: 'pending',
+        created_at: `2026-11-03T13:0${seq % 10}:00.000Z`,
+        reply_count: 0,
+        can_delete: true,
+      });
+      comments.set(post, list);
+      const p = posts.find((x) => x.id === post);
+      if (p) p.stats.comments += 1;
+      const res: AddCommentResult = { comment_id: id, status: 'pending' };
+      commentKeys.set(idempotencyKey, res);
+      return res;
+    },
+
+    async listComments({ post, cursor = null, limit = 30 }): Promise<CommentPage> {
+      const list = (comments.get(post) ?? []).filter((c) => c.status !== 'removed');
+      const start = cursor ? Number(cursor) : 0;
+      const slice = list.slice(start, start + limit);
+      const nextStart = start + limit;
+      return {
+        items: slice.map((c) => ({ ...c })),
+        next_cursor: nextStart < list.length ? String(nextStart) : null,
+      };
+    },
+
+    async deleteMyComment({ comment }): Promise<{ ok: boolean }> {
+      for (const [postId, list] of comments) {
+        const c = list.find((x) => x.id === comment);
+        if (c) {
+          c.status = 'removed';
+          const p = posts.find((x) => x.id === postId);
+          if (p && p.stats.comments > 0) p.stats.comments -= 1;
+          return { ok: true };
+        }
+      }
+      return { ok: false };
+    },
+
+    async didIt({ post, minutes = null, idempotencyKey }): Promise<ActivityLogResult> {
+      const prev = activityKeys.get(idempotencyKey);
+      if (prev) return prev;
+      const p = posts.find((x) => x.id === post);
+      const card = p?.activity_card ?? null;
+      const type: ActivityType = card?.type ?? 'diger';
+      const mins = minutes ?? card?.minutes ?? 0;
+      seq += 1;
+      const res: ActivityLogResult = {
+        activity_log_id: `log-${seq}`,
+        kcal_est: estimateActivityKcal(type, mins),
+      };
+      activityKeys.set(idempotencyKey, res);
+      if (p) p.stats.did_it += 1;
+      activityLogs.push({
+        id: res.activity_log_id,
+        type,
+        minutes: mins,
+        distance_km: card?.distance_km ?? null,
+        kcal_est: res.kcal_est,
+        source: 'post',
+        logged_at: '2026-11-03T13:30:00.000Z',
+      });
+      return res;
+    },
+
+    async logActivity({ type, minutes, distanceKm = null, idempotencyKey }): Promise<ActivityLogResult> {
+      const prev = activityKeys.get(idempotencyKey);
+      if (prev) return prev;
+      seq += 1;
+      const res: ActivityLogResult = {
+        activity_log_id: `log-${seq}`,
+        kcal_est: estimateActivityKcal(type, minutes),
+      };
+      activityKeys.set(idempotencyKey, res);
+      activityLogs.push({
+        id: res.activity_log_id,
+        type,
+        minutes,
+        distance_km: distanceKm,
+        kcal_est: res.kcal_est,
+        source: 'manual',
+        logged_at: '2026-11-03T13:30:00.000Z',
+      });
+      return res;
+    },
+
+    async getMyDayActivity(): Promise<DayActivity> {
+      return {
+        items: activityLogs.map((a) => ({ ...a })),
+        total_kcal_est: activityLogs.reduce((s, a) => s + a.kcal_est, 0),
+        total_minutes: activityLogs.reduce((s, a) => s + a.minutes, 0),
+      };
+    },
+
+    async listSocialNotifications({ cursor = null }: { cursor?: string | null } = {}): Promise<NotificationPage> {
+      const start = cursor ? Number(cursor) : 0;
+      const limit = 20;
+      const slice = notifications.slice(start, start + limit);
+      const nextStart = start + limit;
+      return {
+        items: slice.map((n) => ({ ...n })),
+        next_cursor: nextStart < notifications.length ? String(nextStart) : null,
+        unread: notifications.filter((n) => n.read_at == null).length,
+      };
+    },
+
+    async markSocialNotificationsRead(): Promise<void> {
+      for (const n of notifications) {
+        if (n.read_at == null) n.read_at = '2026-11-03T12:30:00.000Z';
+      }
+    },
   };
 }
 
 /** __DEV__ deneme ekranı için varsayılan örnek istemci. */
-export const mockKesfetClient = createMockKesfetClient();
+export const mockKesfetClient = createMockKesfetClient({ withActivityPost: true });
