@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Animated from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
@@ -26,6 +26,7 @@ import { useKesfetStore } from '../store';
 import { useNotificationsStore } from '../notificationsStore';
 import { getGunClient, shareMealToDay } from '../../gun';
 import { getProfilClient } from '../../profil';
+import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../../shell';
 import type { DayRing } from '../../gun/types';
 import type { FeedPost, MealType, ReportTargetType } from '../types';
 
@@ -144,11 +145,17 @@ export function KesfetScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   // Sekme olarak açıldığında (yeni kabuk): geri düğmesi yok, alt boşluk kabuğun
-  // tab barına göre. Paralel aşamada sabit import edilemez → geçici değer
-  // insets.bottom + 96 (G11-CONTRACT; S6 TAB_BAR_R3_HEIGHT'a bağlar). Stack
+  // tab barına göre — `TAB_BAR_R3_HEIGHT` (tek kaynak, S2 layout.ts = 96). Stack
   // olarak açılınca (bildirim/derin bağlantı) bugünkü boşluk korunur.
   const asTab = route.params?.asTab === true;
-  const listBottomPad = insets.bottom + (asTab ? 96 : 120);
+  const listBottomPad = insets.bottom + (asTab ? TAB_BAR_R3_HEIGHT : 120);
+  // Kaydırınca tab barı küçült (yalnız sekme bağlamında; stack'te provider yok
+  // → useTabBarCollapse no-op). scrollY → useTabBarCollapse (G11-CONTRACT m.39).
+  const scrollY = useSharedValue(0);
+  useTabBarCollapse(scrollY);
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
   const { t: tr, fmt, lang } = useT();
   const kesfetTakip = useFeature('kesfet_takip');
   // G8 bayrakları — her biri kapalıyken ilgili davranış HİÇ render olmaz.
@@ -462,10 +469,12 @@ export function KesfetScreen() {
     );
   } else {
     body = (
-      <FlatList
+      <Animated.FlatList
         data={posts}
         keyExtractor={(p) => p.id}
         renderItem={renderItem}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         ListHeaderComponent={ringStrip}
         refreshControl={
           <RefreshControl

@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Reanimated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -42,6 +43,7 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { TrackerDayHeader } from './tracker/TrackerDayHeader';
+import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../modules/shell';
 import ShareMealCardModal from '../components/share/ShareMealCardModal';
 import type { ShareMealData } from '../components/share/MealShareCard';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -900,6 +902,15 @@ export default function TrackerScreen() {
   const { visible: mealModalVisible, mealType, calories: mealCalories, note: mealNote, saving: mealSaving } = mealForm;
 
   const insets = useSafeAreaInsets();
+
+  // Kaydırınca tab barı küçült — yalnız yeni kabuk sekmesinde (asTab). Stack/eski
+  // kabukta provider yok → useTabBarCollapse no-op, onScroll da bağlanmaz
+  // (bayrak kapalıyken bu ekran 1.0.7 ile bire bir). G11-CONTRACT m.39.
+  const scrollY = useSharedValue(0);
+  useTabBarCollapse(scrollY);
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
 
   // Meal modal custom animation (backdrop fade + sheet slide, independent)
   const mealBackdropOpacity = useRef(new Animated.Value(0)).current;
@@ -1917,10 +1928,12 @@ const html = `
         </KeyboardAvoidingView>
       </Modal>
 
-      <ScrollView
+      <Reanimated.ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[s.scroll, asTab ? { paddingBottom: insets.bottom + 96 } : null]}
+        contentContainerStyle={[s.scroll, asTab ? { paddingBottom: insets.bottom + TAB_BAR_R3_HEIGHT } : null]}
         showsVerticalScrollIndicator={false}
+        onScroll={asTab ? scrollHandler : undefined}
+        scrollEventThrottle={16}
       >
         {/* ── Header ── */}
         <View style={s.header}>
@@ -2309,7 +2322,7 @@ const html = `
             )}
           </FadeSwap>
         )}
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* Paylaşım kartı modalı (G5-S4) — yalnız bayrak açıkken. */}
       {paylasimKarti ? (
