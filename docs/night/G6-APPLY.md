@@ -60,7 +60,9 @@ bağımlılık (feature_flags tablosu) uygulanmalı.
 | 12 | `20261104002000_g8_social.sql` | bayrak tohumları (`kesfet_paylasim/kesfet_video/kesfet_yorum/etkinlik/sosyal_bildirim`, hepsi KAPALI); `posts` (post_type, activity_card, status+='pending', idempotency_key); `post_media` (kind/duration_s/thumb_path/frame_paths); `content_reports` (target_type+='comment', source user\|ai, reporter_id nullable); tablolar `activity_logs, post_comments, social_notifications, moderation_queue` + RLS; fn `feed_flag_enabled, activity_kcal`; sosyal bildirim tetikleyicileri + guard (self/engel/hız sınırı) + push; RPC `create_post, delete_my_post, add_comment, list_comments, delete_my_comment, did_it, log_activity, get_my_day_activity, list_social_notifications, mark_social_notifications_read`; `get_feed` + `mod_list_reports` + `mod_resolve_report` + `respond_follow_request` + `set_profile_privacy` (create or replace); panel `admin_list_posts, admin_delete_draft_post`; `post-media` storage (video + kesfet_paylasim yazma) | UYGULANACAK (#1–#11 gerekli; #11'den SONRA) |
 
 | 13 | `20261104002100_g8_moderation_cron.sql` | fn `fn_moderate_pending_retry` + pg_cron işi `moderate_pending_retry` (*/5 dk) | UYGULANACAK (#12 + `moderate-content` edge deploy + Vault `service_role_key` gerekli) |
-| 14 | `20261105000100_g9_fixes.sql` | **G9 düzeltmeleri (EN SON).** 3a: `post-media` yazma politikaları (+`kesfet_paylasim`); 3b: `user-media` SELECT EK politikası (aktif day_share + feed_can_view_author/moderatör) + `get_day_cards` (erişim feed_can_view_author); 3c: `posts_guard_protected_cols` BEFORE UPDATE trigger (status/pinned_until/author_id koruması, `app.post_rpc`) + `delete_my_post` (bayrak); 3d: `profiles` handle CHECK + `claim_handle`/`check_handle` (nokta izinli, 3–30); 3e: `admin_create_post` (carb_g→carbs_g normalize); 3f: `mod_resolve_report` (dismiss→published + `app.post_rpc`); 3g: `add_comment` (`kesfet_yorum` kapısı); 3h: `get_user_day_progress` (feed_can_view_author kapısı + authenticated revoke); 3j: content_reports/moderation_actions CHECK (comment + source=ai, idempotent) | UYGULANACAK (#1–#13 gerekli; EN SON) |
+| 14 | `20261105000100_g9_fixes.sql` | **G9 düzeltmeleri.** 3a: `post-media` yazma politikaları (+`kesfet_paylasim`); 3b: `user-media` SELECT EK politikası (aktif day_share + feed_can_view_author/moderatör) + `get_day_cards` (erişim feed_can_view_author); 3c: `posts_guard_protected_cols` BEFORE UPDATE trigger (status/pinned_until/author_id koruması, `app.post_rpc`) + `delete_my_post` (bayrak); 3d: `profiles` handle CHECK + `claim_handle`/`check_handle` (nokta izinli, 3–30); 3e: `admin_create_post` (carb_g→carbs_g normalize); 3f: `mod_resolve_report` (dismiss→published + `app.post_rpc`); 3g: `add_comment` (`kesfet_yorum` kapısı); 3h: `get_user_day_progress` (feed_can_view_author kapısı + authenticated revoke); 3j: content_reports/moderation_actions CHECK (comment + source=ai, idempotent) | UYGULANACAK (#1–#13 gerekli) |
+
+| 15 | `20261105000200_g10_fixes.sql` | **G10 son güvenlik düzeltmeleri (EN SON).** 1: `reserve_ai_scan` idempotency araması `user_id=auth.uid()` ile sınırlı (başkasının anahtarı → hata; kota aşımı kapandı; `release_ai_scan` zaten kendi rezervasyonu — değişiklik yok); 2: `post_media_read` geniş `public` SELECT kaldırıldı → listeleme yalnız sahip (`posts/{uid}/`) + moderatör/admin (kova `public` kalır, CDN URL RLS'siz); 3: `report_content` görünürlük kapısı (post→yayında+feed_can_view_author; comment→yorum+gönderi yayında+görülebilir; day_card→aktif+görülebilir; user→engel yok; değilse `bulunamadi`) + `comment` desteği + günde 50 şikayet sınırı; 4: `mod_resolve_report` çözülen post/comment için `moderation_queue` satırını `done` yapar (dismiss→published korunur); 5: `post_comments_guard_protected_cols` BEFORE UPDATE trigger (status/author_id/post_id/parent_id; `app.post_rpc`) + `delete_my_comment` (bayrak); 6: `get_user_day_progress` yetki kapısı yalnız `auth.uid()` doluyken (null-auth definer/servis çağrısı kırılmaz) | UYGULANACAK (#1–#14 gerekli; EN SON) |
 
 Not: #10 G6 düzeltmeleri #3 ve #8'in RPC gövdelerini **ezer** (örn. `report_content`
 status='open', `check_delivery_city` {ok,reason}, `get_public_profile` gerçek
@@ -74,7 +76,7 @@ yalnız `moderate-content` edge function deploy edildikten ve Vault'ta `service_
 bulunduktan sonra anlamlıdır (cron o fonksiyonu çağırır). Bütün bayraklar KAPALI
 olduğundan #12/#13 uygulansa da davranış değişmez.
 
-Not (#14, G9): EN SON uygulanır; #11/#12'nin gövdelerini **ezer** —
+Not (#14, G9): #15'ten önce uygulanır; #11/#12'nin gövdelerini **ezer** —
 `get_day_cards` (erişim artık `feed_can_view_author`), `admin_create_post`
 (carb_g→carbs_g), `mod_resolve_report` (dismiss→published), `add_comment`
 (kesfet_yorum kapısı), `claim_handle`/`check_handle` (nokta izinli 3–30),
@@ -86,6 +88,18 @@ kadarki tüm zincir uygulanmış olmalı (özellikle #12 `posts.status`'a 'pendi
 posts guard, moderate-content edge fn'in `service_role` ile doğrudan status
 UPDATE'ini (request.jwt.claims rolü) ve migration/cron (rolsüz) bağlamını serbest
 bırakır — yayın akışı bozulmaz.
+
+Not (#15, G10): EN SON uygulanır (#14'ten SONRA); #8/#4/#9(g6)/#14'ün gövdelerini
+**ezer** — `reserve_ai_scan` (anahtar sahipliği), `post_media_read` (geniş public
+SELECT kalkar → listeleme sahip+moderatör), `report_content` (görünürlük+comment+50
+sınır), `mod_resolve_report` (+moderation_queue done), `delete_my_comment`
+(app.post_rpc), `get_user_day_progress` (kapı yalnız auth.uid() doluyken). Yeni:
+`post_comments_guard_protected_cols` trigger'ı. Hepsi geriye uyumlu; bayrak-bağımsız
+sunucu güvenlik düzeltmeleri (davranış 1.0.7 akışıyla uyumlu — görülebilir içerik
+eskisi gibi şikayet/okuma, görülmez içerik artık yoklanamaz). **Önkoşul:** #14'e
+kadarki tüm zincir (özellikle #6 ai_scan tabloları, #4 post-media kovası, #12
+moderation_queue/post_comments, #14 posts guard). comment guard moderate-content
+edge fn'i (`service_role`) ve rolsüz bağlamı serbest bırakır.
 
 Not (#11, G7): #10'dan SONRA uygulanır; #3/#8/#10'un gövdelerini (`get_day_cards`,
 `claim_handle`, `set_profile_privacy`, `profiles_guard_protected_cols`) **ezer**.
@@ -120,10 +134,14 @@ bu fonksiyonu `service_role` ile çağırır → Vault'ta `service_role_key` bul
 
 ## Uygulama sonrası
 
-- `supabase/tests/feed_rls_test.sql`'i staging'de koş (A/B/C/D/M/F, **21 senaryo**;
+- `supabase/tests/feed_rls_test.sql`'i staging'de koş (A/B/C/D/M/F, **27 senaryo**;
   T16–T21 G8: pending yalnız yazara, did_it idempotent, kendine bildirim yok, gizli
-  yorum görünmez, engelli yorum yapamaz, gönderi hız sınırı). Tohum FK'leri için
-  kurum/moderatör/üretici auth kullanıcıları Auth Admin API ile açılmalı.
+  yorum görünmez, engelli yorum yapamaz, gönderi hız sınırı; T22–T27 G10: reserve_ai_scan
+  başkasının anahtarıyla kota aşamaz, post-media listeleme yalnız sahip+moderatör,
+  report_content görünürlük+50 sınır, mod_resolve_report dismiss→published+queue done,
+  post_comments.status guard, get_user_day_progress null-auth kapısı). Tohum FK'leri için
+  kurum/moderatör/üretici auth kullanıcıları Auth Admin API ile açılmalı. NOT: T22–T27
+  ai_scan/storage.objects/moderation_queue tohumları da gerektirir (dosya içinde).
 - Bayrakları (`kesfet, gun_halkasi, ai_tarama, paylasim_karti` ve G8:
   `kesfet_paylasim, kesfet_video, kesfet_yorum, etkinlik, sosyal_bildirim`) açmak
   İlter'in dalga planı kararı; hepsi varsayılan KAPALI, davranış değişmez.
