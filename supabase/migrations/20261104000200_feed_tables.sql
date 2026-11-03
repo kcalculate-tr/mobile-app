@@ -3,20 +3,17 @@
 -- Dalga 1: yayın zamanına göre akış; puanlı sıralama / yanıt / sponsor / Besin Notu YOK.
 -- NOT: staging'de test EDİLMEDİ — gece kuralları gereği yalnız DOSYA olarak yazıldı,
 -- hiçbir yere uygulanmadı. Geriye uyumlu, kolon silme/yeniden adlandırma yok.
--- Rollback: 20261103020000_feed_tables_rollback.sql
+-- Rollback: 20261104000200_feed_tables_rollback.sql
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- ╔═══════════════════════════════════════════════════════════════════════════╗
 -- ║ 0) profiles sosyal kolonları (hesap-düzeyi gizlilik + @handle)             ║
 -- ╚═══════════════════════════════════════════════════════════════════════════╝
--- Bu kolonlar sözleşmede (G5-CONTRACT.md) kayıt akışı olarak S2'ye ait; ancak
--- akış RLS'i `is_private`'a, FeedPost.author ise `handle`'a bağlı. Feed migration'ı
--- kendi başına uygulanabilsin diye IF NOT EXISTS ile savunmacı eklenir — S2 aynı
--- kolonları eklerse çakışmaz. `handle` benzersizliği/`claim_handle` S2'nindir;
--- burada yalnız okunur, UNIQUE index BİLEREK eklenmez.
-alter table public.profiles add column if not exists is_private boolean not null default false;
-alter table public.profiles add column if not exists handle      text;
-alter table public.profiles add column if not exists bio         text;
+-- G6 entegrasyonu: `profiles.is_private/handle/bio` kolonları (ve handle UNIQUE
+-- index'i) artık TEK yerde — bu dosyadan ÖNCE çalışan profiles_social_columns
+-- migration'ında (20261104000100) eklenir. Burada tekrar eklenmez (çift ALTER
+-- kaldırıldı); bu migration'ın akış RLS'i `is_private`/`handle` kolonlarının
+-- zaten var olduğunu varsayar.
 
 -- ╔═══════════════════════════════════════════════════════════════════════════╗
 -- ║ 1) creators — kim gönderi yazabilir (kurum + davetli diyetisyen/PT/mod)     ║

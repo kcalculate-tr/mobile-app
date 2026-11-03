@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020200_ai_scan_quota
+-- ROLLBACK — 20261104000600_ai_scan_quota
 -- Kota tablolarını ve seed'lenen ayarları geri alır. UYGULANMADI (yalnız dosya).
 begin;
 drop table if exists public.ai_scan_reservations;

@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020300_user_media_bucket
+-- ROLLBACK — 20261104000700_user_media_bucket
 -- Politikaları ve kovayı geri alır. UYGULANMADI (yalnız dosya).
 -- NOT: Kovada nesne varsa `delete from storage.buckets` hata verir; önce nesneler
 -- boşaltılmalı (canlıda uygulanmadığı için burada sorun değil).

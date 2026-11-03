@@ -3,7 +3,7 @@
 -- yayımlanmış kurum/üretici görselleri), yalnız creators yazar.
 -- Tür: jpeg/png/webp/heic · boyut ≤ 5 MB. Dosya düzeni: posts/{author_id}/...
 -- NOT: staging'de test EDİLMEDİ — yalnız dosya olarak yazıldı, uygulanmadı.
--- Rollback: 20261103020200_post_media_storage_rollback.sql
+-- Rollback: 20261104000400_post_media_storage_rollback.sql
 -- ─────────────────────────────────────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

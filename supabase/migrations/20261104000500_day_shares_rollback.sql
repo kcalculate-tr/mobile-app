@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020100_day_shares
+-- ROLLBACK — 20261104000500_day_shares
 -- day_shares tablosunu ve meal_consumptions.photo_path kolonunu geri alır.
 -- UYGULANMADI (yalnız dosya).
 begin;

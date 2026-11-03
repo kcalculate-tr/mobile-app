@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020200_post_media_storage.sql
+-- ROLLBACK — 20261104000400_post_media_storage.sql
 -- NOT: staging'de test EDİLMEDİ. Uygulanmaz; yalnız dosya olarak tutulur.
 -- Kova yalnız boşsa düşürülebilir; güvenlik için yalnız politikalar kaldırılır,
 -- kova bırakılır (içindeki görseller kaybolmasın).

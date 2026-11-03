@@ -1,8 +1,8 @@
 -- G5-S2 — Sözleşme RPC'leri: profil, Gün halkası, AI kotası, şehir kapısı
--- version: 20261103020400  name: g5_rpcs
+-- version: 20261104000800  name: g5_rpcs
 --
 -- DURUM: Bu dosya YALNIZCA yazıldı; canlıya/staging'e UYGULANMADI (gece kuralı).
--- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261103020400_g5_rpcs_rollback.sql
+-- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261104000800_g5_rpcs_rollback.sql
 --
 -- Tüm fonksiyonlar (G5-CONTRACT.md ilkesi): SECURITY DEFINER, set search_path=public,
 -- auth.uid() ile çağıran kimliği, yalnız `authenticated`'a EXECUTE. Yetki ve kota

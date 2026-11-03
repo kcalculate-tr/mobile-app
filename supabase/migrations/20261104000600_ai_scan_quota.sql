@@ -1,13 +1,13 @@
 -- G5-S2 — AI tarama kotası: kullanım + rezervasyon + genel ayar (`app_settings`)
--- version: 20261103020200  name: ai_scan_quota
+-- version: 20261104000600  name: ai_scan_quota
 --
 -- DURUM: Bu dosya YALNIZCA yazıldı; canlıya/staging'e UYGULANMADI (gece kuralı).
--- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261103020200_ai_scan_quota_rollback.sql
+-- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261104000600_ai_scan_quota_rollback.sql
 --
 -- Kota (G5-CONTRACT.md §AI tarama): kullanıcı başına günde 3 tarama (Europe/Istanbul
 -- gece yarısı sıfırlanır); başarısız analizde hak iade. Ayrıca tüm kullanıcılar için
 -- günlük toplam harcama tavanı (maliyet koruması). Yetki/kota SUNUCUDA; bkz.
--- reserve_ai_scan / release_ai_scan (20261103020400_g5_rpcs.sql).
+-- reserve_ai_scan / release_ai_scan (20261104000800_g5_rpcs.sql).
 --
 -- NOT: Mevcut `public.settings` (id=1) MAĞAZA singleton'u (sabit kolonlu). Genel/
 -- anahtar-bazlı uygulama ayarı için ayrı, küçük bir key-value tablosu kuruyoruz.

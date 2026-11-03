@@ -3,7 +3,7 @@
 -- auth.uid() ile; engellenen kullanıcıların içeriği her listeden süzülür.
 -- Yetki ve kota SUNUCUDA denetlenir (bayrak yetki değildir).
 -- NOT: staging'de test EDİLMEDİ — yalnız dosya olarak yazıldı, uygulanmadı.
--- Rollback: 20261103020100_feed_rpcs_rollback.sql
+-- Rollback: 20261104000300_feed_rpcs_rollback.sql
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- ╔═══════════════════════════════════════════════════════════════════════════╗

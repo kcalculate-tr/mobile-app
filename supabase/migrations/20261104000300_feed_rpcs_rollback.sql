@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020100_feed_rpcs.sql
+-- ROLLBACK — 20261104000300_feed_rpcs.sql
 -- NOT: staging'de test EDİLMEDİ. Uygulanmaz; yalnız dosya olarak tutulur.
 drop function if exists public.respond_follow_request(uuid, bool);
 drop function if exists public.follow(uuid, bool);

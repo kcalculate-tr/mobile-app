@@ -1,8 +1,8 @@
 -- G5-S4 — Paylaşım kartı bayrağının (feature flag) sunucu kaydı.
--- version: 20261103020000  name: paylasim_karti_flag
+-- version: 20261104000900  name: paylasim_karti_flag
 --
 -- DURUM: Bu dosya YALNIZCA yazıldı; canlıya/staging'e UYGULANMADI (gece kuralı).
--- Staging'de test EDİLMEDİ. Geri alma: 20261103020000_paylasim_karti_flag_rollback.sql
+-- Staging'de test EDİLMEDİ. Geri alma: 20261104000900_paylasim_karti_flag_rollback.sql
 --
 -- Bağımlılık: 20261103000500_feature_flags.sql (public.feature_flags tablosu).
 -- O migration da henüz uygulanmadığı için bu ikisi birlikte uygulanmalıdır.

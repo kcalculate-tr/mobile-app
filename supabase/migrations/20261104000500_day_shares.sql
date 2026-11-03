@@ -1,8 +1,8 @@
 -- G5-S2 — Gün halkası paylaşımları (`day_shares`) + öğün fotoğraf yolu
--- version: 20261103020100  name: day_shares
+-- version: 20261104000500  name: day_shares
 --
 -- DURUM: Bu dosya YALNIZCA yazıldı; canlıya/staging'e UYGULANMADI (gece kuralı).
--- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261103020100_day_shares_rollback.sql
+-- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261104000500_day_shares_rollback.sql
 --
 -- Gün halkası (G5-CONTRACT.md §Gün halkası): kullanıcı bir öğününü (meal_consumption)
 -- "Günüme ekle" ile 24 saatliğine paylaşır. Erişim süresi SUNUCUDA kesilir (expires_at).

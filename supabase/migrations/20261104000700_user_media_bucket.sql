@@ -1,8 +1,8 @@
 -- G5-S2 — `user-media` özel storage kovası + sahip bazlı politika
--- version: 20261103020300  name: user_media_bucket
+-- version: 20261104000700  name: user_media_bucket
 --
 -- DURUM: Bu dosya YALNIZCA yazıldı; canlıya/staging'e UYGULANMADI (gece kuralı).
--- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261103020300_user_media_bucket_rollback.sql
+-- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261104000700_user_media_bucket_rollback.sql
 --
 -- Medya kovaları (G5-CONTRACT.md §Medya): `user-media` ÖZEL — AI tarama fotoğrafları
 -- ve Gün kartı görselleri. Sahip okur/yazar; başkasıyla paylaşım yalnız kısa ömürlü

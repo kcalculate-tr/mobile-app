@@ -1,13 +1,13 @@
 -- G5-S2 — Kcalculate AI profili için `profiles` sosyal kolonları (Instagram modeli)
--- version: 20261103020000  name: profiles_social_columns
+-- version: 20261104000100  name: profiles_social_columns
 --
 -- DURUM: Bu dosya YALNIZCA yazıldı; canlıya/staging'e UYGULANMADI (gece kuralı).
--- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261103020000_profiles_social_columns_rollback.sql
+-- STAGING'DE TEST EDİLMEDİ. Geri alma: 20261104000100_profiles_social_columns_rollback.sql
 --
 -- Sözleşme (G5-CONTRACT.md §Kayıt): handle (benzersiz, küçük harf), bio (<=160),
 -- is_private (varsayılan false). `avatar_url` ZATEN var (profiles) → tekrar eklenmez.
 -- `display_name` ayrı kolon olarak EKLENMEZ: mevcut `full_name` kullanılır
--- (bkz. update_public_profile / get_public_profile — 20261103020400_g5_rpcs.sql).
+-- (bkz. update_public_profile / get_public_profile — 20261104000800_g5_rpcs.sql).
 -- `verified` ayrı kolon DEĞİL; `role`'den türetilir (role <> 'customer').
 -- Kolon silme/yeniden adlandırma YOK; mevcut kullanıcılarda handle NULL kalabilir
 -- (ilk açılışta claim_handle ile seçtirilir).

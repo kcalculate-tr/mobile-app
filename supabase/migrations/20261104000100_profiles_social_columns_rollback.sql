@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020000_profiles_social_columns
+-- ROLLBACK — 20261104000100_profiles_social_columns
 -- Eklenen kolonları/kısıtları/indeksi geri alır. UYGULANMADI (yalnız dosya).
 begin;
 drop index  if exists public.profiles_handle_unique_idx;

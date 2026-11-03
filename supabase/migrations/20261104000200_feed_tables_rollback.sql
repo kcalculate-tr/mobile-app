@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020000_feed_tables.sql
+-- ROLLBACK — 20261104000200_feed_tables.sql
 -- NOT: staging'de test EDİLMEDİ. Uygulanmaz; yalnız dosya olarak tutulur.
 -- Bağımlılık sırasına göre düşürülür. profiles'a eklenen sosyal kolonlar GERİ
 -- ALINMAZ (geriye uyumlu + S2 de aynı kolonları kullanıyor olabilir — veri kaybı riski).

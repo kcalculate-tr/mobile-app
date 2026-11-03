@@ -1,4 +1,4 @@
--- ROLLBACK — 20261103020400_g5_rpcs
+-- ROLLBACK — 20261104000800_g5_rpcs
 -- Tüm G5-S2 RPC'lerini düşürür. UYGULANMADI (yalnız dosya).
 begin;
 drop function if exists public.claim_handle(text);
