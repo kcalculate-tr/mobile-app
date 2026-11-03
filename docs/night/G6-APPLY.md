@@ -55,9 +55,21 @@ bağımlılık (feature_flags tablosu) uygulanmalı.
 | 9 | `20261104000900_paylasim_karti_flag.sql` | `feature_flags`'a `paylasim_karti` satırı (enabled=false) | UYGULANACAK (#0 gerekli) |
 | 10 | `20261104001000_g6_fixes.sql` | fn `check_handle, set_profile_privacy` (yeni); `get_public_profile, get_day_rings, check_delivery_city, report_content` (create or replace); `content_reports.status→open/resolved + risk` + `content_report_risk`; tablo `moderation_actions` + RLS; fn `mod_list_reports, mod_resolve_report`; `ai_scan_reservations.status += consumed` | UYGULANACAK (#1–#8 gerekli) |
 
+| 11 | `20261104001100_g7_fixes.sql` | `meal_consumptions_source_check` = ('manual','pantry','post','ai_scan','day_card'); `creators.role` CHECK'ine 'uretici'; `get_day_cards` (carbs_g/fat_g); fn `add_day_card_to_day, get_post, admin_set_creator, admin_create_post, admin_list_creators`; `profiles_guard_protected_cols` (handle/is_private korunur); `claim_handle`/`set_profile_privacy` (işlem-yerel `app.profile_rpc` bayrağı) | UYGULANACAK (#1–#10 gerekli; EN SON) |
+
 Not: #10 G6 düzeltmeleri #3 ve #8'in RPC gövdelerini **ezer** (örn. `report_content`
 status='open', `check_delivery_city` {ok,reason}, `get_public_profile` gerçek
 sayaçlar). #3/#8'i uyguladıktan sonra #10 son uygulanmalı.
+
+Not (#11, G7): EN SON uygulanır; #3/#8/#10'un gövdelerini (`get_day_cards`,
+`claim_handle`, `set_profile_privacy`, `profiles_guard_protected_cols`) **ezer**.
+**Önkoşullar:** (a) `user_nutrition_profiles` tablosu canlıda MEVCUT olmalı
+(`language sql` fonksiyonlar — `get_user_day_progress` vb. — buna bağlı; canlıda
+var). (b) Uygulamadan ÖNCE `select distinct source from public.meal_consumptions;`
+koş — küme ('manual','pantry','post','ai_scan','day_card') dışında bir değer
+(ör. 'order','barcode','ai') varsa `meal_consumptions_source_check` ADD'i patlar;
+o durumda #11'deki IN listesine eksik değer(ler)i ekle. (c) `creators`'ta
+'uretici' dışı rol varsa sorun yok; rollback'te tersi geçerli.
 
 ## Edge function (db push DEĞİL — ayrı deploy)
 

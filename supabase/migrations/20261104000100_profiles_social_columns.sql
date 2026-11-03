@@ -21,12 +21,23 @@ alter table public.profiles
 
 -- Biçim ve uzunluk güvenceleri. NOT VALID: mevcut 754 satır (handle NULL)
 -- kilitlemeden/zorlamadan geçer; yeni/güncellenen satırlar zorlanır.
-alter table public.profiles
-  add constraint profiles_handle_format_chk
-    check (handle is null or handle ~ '^[a-z0-9_]{3,30}$') not valid;
-alter table public.profiles
-  add constraint profiles_bio_len_chk
-    check (bio is null or char_length(bio) <= 160) not valid;
+-- İdempotent: dosya iki kez koşarsa "constraint zaten var" hatası vermesin diye
+-- pg_constraint kontrolüyle (G7-S1 bulgusu).
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_handle_format_chk'
+                   and conrelid = 'public.profiles'::regclass) then
+    alter table public.profiles
+      add constraint profiles_handle_format_chk
+        check (handle is null or handle ~ '^[a-z0-9_]{3,30}$') not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'profiles_bio_len_chk'
+                   and conrelid = 'public.profiles'::regclass) then
+    alter table public.profiles
+      add constraint profiles_bio_len_chk
+        check (bio is null or char_length(bio) <= 160) not valid;
+  end if;
+end $$;
 
 -- Büyük/küçük harf duyarsız benzersizlik; NULL handle'lar serbest.
 create unique index if not exists profiles_handle_unique_idx
