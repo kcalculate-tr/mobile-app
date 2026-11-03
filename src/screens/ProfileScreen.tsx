@@ -50,7 +50,10 @@ import { useModal } from '../hooks/useModal';
 import DeliveryZonesSheet from '../components/DeliveryZonesSheet';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
 import { useAuth } from '../core/AuthContext';
+import { useFeature } from '../core/flags';
+import type { FlagKey } from '../core/flags';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import { ProfileSocialHeader } from '../modules/profil/ui/ProfileSocialHeader';
 import { RootStackParamList } from '../navigation/types';
 import { useNavGate } from '../store/navGateStore';
 import { supabase } from '../core/supabase';
@@ -217,6 +220,11 @@ export default function ProfileScreen() {
     String(user?.email || 'Kcal Misafir').split('@')[0];
   const initial = userName.charAt(0).toUpperCase();
 
+  // G11-S4: yeni kabuk sosyal başlık. Bayrak KAPALIYKEN (varsayılan; registry
+  // satırı S2'den S6 birleştirmesiyle gelir) başlık render olmaz → ekran bugünküyle
+  // birebir aynı; sipariş/kart/adres/kupon satırlarına dokunulmaz.
+  const yeniKabuk = useFeature('yeni_kabuk' as FlagKey);
+
   const fetchData = useCallback(async () => {
     if (!user) return;
     // İskelet YALNIZCA ilk yüklemede. Bu ekran her odaklandığında
@@ -332,6 +340,18 @@ export default function ProfileScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ─── Yeni kabuk sosyal başlık (yeni_kabuk) — avatar, ad, @kullanıcı adı,
+             gönderi/takipçi/takip sayıları, gizlilik rozeti → PrivacySheet,
+             "Macro aboneliğim" → Subscriptions. Bayrak kapalıyken render OLMAZ. ─── */}
+        {yeniKabuk ? (
+          <ProfileSocialHeader
+            name={userName}
+            avatarUrl={avatarUrl}
+            onAvatarPress={pickAvatar}
+            onOpenSubscriptions={() => navigation.navigate('Subscriptions' as never)}
+          />
+        ) : null}
+
         {/* ─── Üst Profil Kartı ─── */}
         {/* İskelet YALNIZCA elde hiç veri yokken. dataLoading tek başına
             yeterli değil: ekran her odaklandığında tazelendiği için, veri
