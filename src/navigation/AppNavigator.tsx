@@ -57,6 +57,9 @@ const SecurityScreen = lazy(() => import('../screens/profile/SecurityScreen'));
 const NotificationPreferencesScreen = lazy(() => import('../screens/profile/NotificationPreferencesScreen'));
 const SupportScreen = lazy(() => import('../screens/profile/SupportScreen'));
 const MyReviewsScreen = lazy(() => import('../screens/profile/MyReviewsScreen'));
+// Derin bağlantı hedefleri (G5-S4) — yalnız /p/ /u/ bağlantısıyla erişilir.
+const SharedPostScreen = lazy(() => import('../screens/share/SharedPostScreen'));
+const SharedProfileScreen = lazy(() => import('../screens/share/SharedProfileScreen'));
 
 // Lazy ekranı, stack içerik zeminiyle aynı renkte bloklamayan bir Suspense
 // sınırına sarar. Sarmalayıcı MODÜL seviyesinde bir kez üretilir (her render'da
@@ -98,6 +101,8 @@ const SecurityLazy = withSuspense(SecurityScreen);
 const NotificationPreferencesLazy = withSuspense(NotificationPreferencesScreen);
 const SupportLazy = withSuspense(SupportScreen);
 const MyReviewsLazy = withSuspense(MyReviewsScreen);
+const SharedPostLazy = withSuspense(SharedPostScreen);
+const SharedProfileLazy = withSuspense(SharedProfileScreen);
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -278,6 +283,9 @@ export default function AppNavigator() {
       <Stack.Screen name="PersonalInfo" component={PersonalInfoLazy} />
       <Stack.Screen name="ProfileContracts" component={ContractsLazy} />
       <Stack.Screen name="PaymentScreen" component={PaymentLazy} />
+      {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
+      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      <Stack.Screen name="SharedProfile" component={SharedProfileLazy} options={{ contentStyle: { backgroundColor: '#0A0A0A' } }} />
     </Stack.Navigator>
   );
 }
