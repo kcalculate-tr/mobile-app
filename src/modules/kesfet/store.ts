@@ -11,6 +11,7 @@ import type {
   FeedTab,
   MealType,
   ReactionKind,
+  ReportTargetType,
 } from './types';
 
 const PAGE_LIMIT = 20;
@@ -42,6 +43,11 @@ interface KesfetState {
     portion: number,
     idempotencyKey: string,
   ) => Promise<string | null>;
+  // Şikayet: RPC'ye iletir; başarıda true. Liste değişmez (moderasyon sunucuda).
+  report: (targetType: ReportTargetType, target: string, reason: string) => Promise<boolean>;
+  // Engelle: iyimser — bu yazarın tüm gönderileri akıştan ANINDA düşer, sonra RPC.
+  // Hata olursa liste eski hâline döner.
+  blockAuthor: (userId: string) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -177,6 +183,30 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
       return null;
     } finally {
       inFlightAdds.delete(idempotencyKey);
+    }
+  },
+
+  report: async (targetType, target, reason) => {
+    try {
+      await getKesfetClient().reportContent({ targetType, target, reason });
+      return true;
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'report_failed' });
+      return false;
+    }
+  },
+
+  blockAuthor: async (userId) => {
+    const prev = get().posts;
+    // İyimser: yazarın gönderilerini hemen çıkar (akıştan anında düşer).
+    set({ posts: prev.filter((p) => p.author.id !== userId) });
+    try {
+      await getKesfetClient().blockUser({ user: userId, on: true });
+      return true;
+    } catch (e) {
+      // Başarısız → listeyi geri yükle.
+      set({ posts: prev, error: e instanceof Error ? e.message : 'block_failed' });
+      return false;
     }
   },
 
