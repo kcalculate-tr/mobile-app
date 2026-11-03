@@ -26,7 +26,13 @@ begin;
 \set C  '''cccc0000-0000-4000-8000-000000000003'''
 \set D  '''dddd0000-0000-4000-8000-000000000004'''
 \set M  '''eeee0000-0000-4000-8000-000000000005'''
+\set F  '''ffff0000-0000-4000-8000-000000000006'''
 \set PA '''dddd0000-0000-4000-8000-000000000010'''
+-- G8 fixture kimlikleri
+\set PA2 '''dddd0000-0000-4000-8000-000000000020'''
+\set PA3 '''dddd0000-0000-4000-8000-000000000030'''
+\set PC  '''cccc0000-0000-4000-8000-000000000040'''
+\set CA  '''aaaa0000-0000-4000-8000-000000000050'''
 
 -- ── Kurulum (ayrıcalıklı rol; RLS baypas) ───────────────────────────────────
 insert into auth.users (instance_id, id, aud, role, email, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, encrypted_password)
@@ -35,7 +41,8 @@ values
   ('00000000-0000-0000-0000-000000000000', :B, 'authenticated','authenticated','b_test@kcal.test', now(), now(), now(), '{"provider":"email"}','{}',''),
   ('00000000-0000-0000-0000-000000000000', :C, 'authenticated','authenticated','c_test@kcal.test', now(), now(), now(), '{"provider":"email"}','{}',''),
   ('00000000-0000-0000-0000-000000000000', :D, 'authenticated','authenticated','d_test@kcal.test', now(), now(), now(), '{"provider":"email"}','{}',''),
-  ('00000000-0000-0000-0000-000000000000', :M, 'authenticated','authenticated','m_test@kcal.test', now(), now(), now(), '{"provider":"email"}','{}','')
+  ('00000000-0000-0000-0000-000000000000', :M, 'authenticated','authenticated','m_test@kcal.test', now(), now(), now(), '{"provider":"email"}','{}',''),
+  ('00000000-0000-0000-0000-000000000000', :F, 'authenticated','authenticated','f_test@kcal.test', now(), now(), now(), '{"provider":"email"}','{}','')
 on conflict (id) do nothing;
 
 insert into public.profiles (id, full_name, handle, is_private, created_at) values
@@ -43,13 +50,15 @@ insert into public.profiles (id, full_name, handle, is_private, created_at) valu
   (:B, 'Bora Kullanıcı','bora', false, now()),
   (:C, 'Cem Takipçi',  'cem',  false, now()),
   (:D, 'Dilan İstek',  'dilan',false, now()),
-  (:M, 'Mert Moderatör','mert',false, now())
+  (:M, 'Mert Moderatör','mert',false, now()),
+  (:F, 'Fuat Üretici', 'fuat', false, now())
 on conflict (id) do nothing;
 
--- A üretici ve yazabilir; M moderatör.
+-- A üretici ve yazabilir; M moderatör; F üretici (hız sınırı testi için).
 insert into public.creators (user_id, role, verified_at, can_post)
 values (:A, 'diyetisyen', now(), true),
-       (:M, 'moderator',  now(), false) on conflict (user_id) do nothing;
+       (:M, 'moderator',  now(), false),
+       (:F, 'uretici',    now(), true) on conflict (user_id) do nothing;
 
 -- D, A gizli hesabına bekleyen takip isteği gönderdi (gizli→açık testinde onaylanacak).
 insert into public.follow_requests (requester_id, target_id) values (:D, :A) on conflict do nothing;
@@ -63,6 +72,25 @@ on conflict (id) do nothing;
 
 -- C, A'yı takip ediyor (onaylı).
 insert into public.follows (follower_id, following_id) values (:C, :A) on conflict do nothing;
+
+-- ── G8 fixture'ları (ayrıcalıklı; RLS baypas) ───────────────────────────────
+-- PA2: A'nın 'pending' (incelenen) gönderisi — yalnız A'ya görünmeli.
+insert into public.posts (id, author_id, lang, body, post_type, status, published_at)
+values (:PA2, :A, 'tr', 'A incelenen gonderi', 'serbest', 'pending', now())
+on conflict (id) do nothing;
+-- PA3: A'nın YAYIMLANMIŞ etkinlik gönderisi (activity_card) — did_it/self-notify testi.
+insert into public.posts (id, author_id, lang, body, post_type, activity_card, status, published_at)
+values (:PA3, :A, 'tr', 'A kosu etkinligi', 'etkinlik',
+        jsonb_build_object('type','kosu','minutes',30,'kcal_est',300), 'published', now())
+on conflict (id) do nothing;
+-- PC: C'nin AÇIK yayımlanmış gönderisi — gizli hesabın yorumu testi için zemin.
+insert into public.posts (id, author_id, lang, body, post_type, status, published_at)
+values (:PC, :C, 'tr', 'C acik gonderi', 'serbest', 'published', now())
+on conflict (id) do nothing;
+-- CA: A'nın (gizli olacak) PC üzerine YAYIMLANMIŞ yorumu — B'ye görünmemeli.
+insert into public.post_comments (id, post_id, author_id, body, status)
+values (:CA, :PC, :A, 'Gizli hesabin yorumu', 'published')
+on conflict (id) do nothing;
 
 -- ── Kimlik değiştirme yardımcıları ──────────────────────────────────────────
 set local role authenticated;
@@ -312,6 +340,119 @@ begin
   where e->>'id' = 'dddd0000-0000-4000-8000-000000000010';
   if v_n <> 0 then raise exception 'FAIL T15: removed gonderi hala akista (n=%)', v_n; end if;
   raise notice 'OK T15: removed gonderi akista gorunmuyor';
+end $$;
+
+-- ============================ TEST 16 ========================================
+-- pending yalnız YAZARA görünür: A kendi 'pending' PA2'sini for_you'da görür;
+-- C (A'yı görebilen takipçi) A'nın YAYIMLANMIŞ PA3'ünü görür ama PA2'yi GÖRMEZ.
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare v_pa2 int;
+begin
+  select count(*) into v_pa2
+  from jsonb_array_elements(public.get_feed('for_you','tr',null,50)->'items') e
+  where e->>'id' = 'dddd0000-0000-4000-8000-000000000020';
+  if v_pa2 <> 1 then raise exception 'FAIL T16: yazar kendi pending gonderisini goremedi (n=%)', v_pa2; end if;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :C, 'role','authenticated')::text, true);
+do $$
+declare v_pa2 int; v_pa3 int;
+begin
+  select count(*) into v_pa2
+  from jsonb_array_elements(public.get_feed('for_you','tr',null,50)->'items') e
+  where e->>'id' = 'dddd0000-0000-4000-8000-000000000020';
+  select count(*) into v_pa3
+  from jsonb_array_elements(public.get_feed('for_you','tr',null,50)->'items') e
+  where e->>'id' = 'dddd0000-0000-4000-8000-000000000030';
+  if v_pa2 <> 0 then raise exception 'FAIL T16: baskasi pending gonderiyi gordu (n=%)', v_pa2; end if;
+  if v_pa3 <> 1 then raise exception 'FAIL T16: yayimlanmis etkinlik gonderisi gorunmuyor (n=%)', v_pa3; end if;
+  raise notice 'OK T16: pending yalniz yazara gorunuyor';
+end $$;
+
+-- ============================ TEST 17 ========================================
+-- did_it idempotent: C aynı etkinlik gönderisine iki kez → tek kayıt, aynı id, kcal>0.
+do $$
+declare v1 uuid; v2 uuid; v_k numeric; v_cnt int;
+begin
+  v1  := (public.did_it('dddd0000-0000-4000-8000-000000000030'::uuid, null, 'did-key-1'))->>'activity_log_id';
+  v_k := (public.did_it('dddd0000-0000-4000-8000-000000000030'::uuid, null, 'did-key-2'))->>'kcal_est';
+  select (public.did_it('dddd0000-0000-4000-8000-000000000030'::uuid, 30, 'did-key-3'))->>'activity_log_id' into v2;
+  if v1 is null or v1 <> v2 then raise exception 'FAIL T17: did_it idempotent degil (v1=%, v2=%)', v1, v2; end if;
+  if coalesce(v_k,0) <= 0 then raise exception 'FAIL T17: kcal_est hesaplanmadi (%).', v_k; end if;
+  select count(*) into v_cnt from public.activity_logs
+   where user_id = 'cccc0000-0000-4000-8000-000000000003'
+     and source = 'post' and source_ref = 'dddd0000-0000-4000-8000-000000000030';
+  if v_cnt <> 1 then raise exception 'FAIL T17: did_it tekrar satir acti (n=%)', v_cnt; end if;
+  raise notice 'OK T17: did_it idempotent + kcal tahmini';
+end $$;
+
+-- ============================ TEST 18 ========================================
+-- kendine bildirim yok: A kendi gönderisini beğenir → A'ya (actor=A) bildirim OLUŞMAZ.
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare v_self int;
+begin
+  perform public.react_post('dddd0000-0000-4000-8000-000000000030'::uuid, 'like', true);
+  select count(*) into v_self from public.social_notifications
+   where user_id = 'aaaa0000-0000-4000-8000-000000000001'
+     and actor_id = 'aaaa0000-0000-4000-8000-000000000001';
+  if v_self <> 0 then raise exception 'FAIL T18: kendine bildirim olustu (n=%)', v_self; end if;
+  raise notice 'OK T18: kendine bildirim yok (guard)';
+end $$;
+
+-- ============================ TEST 19 ========================================
+-- gizli hesabın yorumu görünmez: A gizli olunca, A'nın PC üzerindeki yorumu (CA)
+-- takipçi olmayan F'ye GÖRÜNMEZ; PC sahibi C ise GÖRÜR.
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$ begin perform public.set_profile_privacy(true); end $$;  -- A yeniden GİZLİ
+select set_config('request.jwt.claims', json_build_object('sub', :F, 'role','authenticated')::text, true);
+do $$
+declare v_n int;
+begin
+  select count(*) into v_n
+  from jsonb_array_elements(public.list_comments('cccc0000-0000-4000-8000-000000000040'::uuid,null,50)->'items') e
+  where e->>'id' = 'aaaa0000-0000-4000-8000-000000000050';
+  if v_n <> 0 then raise exception 'FAIL T19: gizli hesabin yorumu yabanciya gorundu (n=%)', v_n; end if;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub', :C, 'role','authenticated')::text, true);
+do $$
+declare v_n int;
+begin
+  select count(*) into v_n
+  from jsonb_array_elements(public.list_comments('cccc0000-0000-4000-8000-000000000040'::uuid,null,50)->'items') e
+  where e->>'id' = 'aaaa0000-0000-4000-8000-000000000050';
+  if v_n <> 1 then raise exception 'FAIL T19: gonderi sahibi yorumu goremedi (n=%)', v_n; end if;
+  raise notice 'OK T19: gizli hesabin yorumu suzuldu';
+end $$;
+
+-- ============================ TEST 20 ========================================
+-- engelli yorum yapamaz: B (A tarafından engelli) A'nın gönderisine add_comment → 'engel_var'.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    perform public.add_comment('dddd0000-0000-4000-8000-000000000030'::uuid, 'olmaz', null, 'c-key-b');
+    raise exception 'FAIL T20: engelli kullanici yorum yapabildi';
+  exception when others then
+    if sqlerrm like '%engel_var%' or sqlerrm like '%bulunamadi%'
+      then raise notice 'OK T20: engelli yorum yapamadi';
+    else raise; end if;
+  end;
+end $$;
+
+-- ============================ TEST 21 ========================================
+-- hız sınırı: F (üretici, hesap <24s → limit 3) 3 gönderi açar, 4. 'rate_limited'.
+select set_config('request.jwt.claims', json_build_object('sub', :F, 'role','authenticated')::text, true);
+do $$
+declare r jsonb; i int;
+begin
+  for i in 1..3 loop
+    r := public.create_post('serbest', 'f gonderi ' || i, 'tr', null, null, null, 'f-idem-' || i);
+    if (r->>'post_id') is null then raise exception 'FAIL T21: % . gonderi acilamadi (%).', i, r; end if;
+  end loop;
+  r := public.create_post('serbest', 'f gonderi 4', 'tr', null, null, null, 'f-idem-4');
+  if (r->>'error') <> 'rate_limited' then raise exception 'FAIL T21: 4. gonderi rate_limited donmedi (%).', r; end if;
+  raise notice 'OK T21: gonderi hiz siniri (gunde 3/yeni hesap)';
 end $$;
 
 reset role;
