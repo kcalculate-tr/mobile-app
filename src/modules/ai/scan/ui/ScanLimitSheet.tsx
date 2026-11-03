@@ -3,7 +3,7 @@
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, Lock } from '../../../../components/icons';
+import { ClockCounterClockwise, Lock } from '../../../../components/icons';
 import { useT } from '../../../../core/i18n';
 
 type Props = {
@@ -22,7 +22,7 @@ export default function ScanLimitSheet({ visible, onManualEntry, onClose }: Prop
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: Math.max(34, insets.bottom + 16) }]}>
           <View style={styles.iconCircle}>
-            <CheckCircle size={26} color="#0A0A0A" weight="fill" />
+            <ClockCounterClockwise size={26} color="#0A0A0A" />
           </View>
           <Text style={styles.title}>{t('ai_scan.limit_title')}</Text>
           <Text style={styles.body}>{t('ai_scan.limit_body')}</Text>
