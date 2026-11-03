@@ -10,6 +10,7 @@ import { DURATION } from '../constants/motion';
 import { CustomTabBar } from './CustomTabBar';
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
+import { useFeature } from '../core/flags';
 import { RootStackParamList, TabParamList } from './types';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
@@ -38,6 +39,8 @@ const DevDiagnosticsScreen = lazy(() => import('../screens/DevDiagnosticsScreen'
 const DesignShowcaseScreen = lazy(() => import('../screens/DesignShowcaseScreen'));
 // Yalnız __DEV__: G5-S3 veri katmanı deneme ekranı (Keşfet/profil/Gün/AI tarama).
 const FeedDataLabScreen = lazy(() => import('../screens/FeedDataLabScreen'));
+// Keşfet ekranı (G6-S2) — `kesfet` bayrağı açıkken veya __DEV__'de kayıtlı.
+const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
 const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
@@ -82,6 +85,7 @@ const BrandLandingLazy = withSuspense(BrandLandingScreen);
 const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
 const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
 const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
+const KesfetLazy = withSuspense(KesfetScreen);
 const OffersLazy = withSuspense(OffersScreen);
 const OrderSuccessLazy = withSuspense(OrderSuccessScreen);
 const ProductDetailLazy = withSuspense(ProductDetailScreen);
@@ -206,6 +210,11 @@ function TabNavigator() {
 export default function AppNavigator() {
   const { authLoading, session } = useAuth();
   const pendingRoute = useNavGate((s) => s.pendingRoute);
+  // Keşfet (G6-S2): bayrak açık DEĞİLSE üretimde ekran HİÇ kaydolmaz; tab bar ve
+  // akış bugünküyle bire bir aynı kalır. __DEV__'de daima kayıtlı (geliştirici
+  // FeedDataLab'tan açar). Canlı "Keşfet sekmesi" yerleşimi TabBarR3 kabuğuyla
+  // birlikte (G6-S3) gelir; bu oturum ekranı ve bayrak kapısını teslim eder.
+  const kesfetEnabled = useFeature('kesfet');
   const initialRouteName = session ? 'Tabs' : 'WelcomeGate';
 
   useEffect(() => {
@@ -266,6 +275,9 @@ export default function AppNavigator() {
       )}
       {__DEV__ && (
         <Stack.Screen name="FeedDataLab" component={FeedDataLabLazy} options={{ title: 'Keşfet ve profil (veri)' }} />
+      )}
+      {(kesfetEnabled || __DEV__) && (
+        <Stack.Screen name="Kesfet" component={KesfetLazy} />
       )}
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
