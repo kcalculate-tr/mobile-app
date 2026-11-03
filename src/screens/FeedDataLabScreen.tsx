@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { I18nProvider, useT, type Lang } from '../core/i18n';
+import type { RootStackParamList } from '../navigation/types';
 import {
   useKesfetStore,
   setKesfetClient,
@@ -44,6 +47,7 @@ import {
 export default function FeedDataLabScreen() {
   const [mode, setMode] = useState<'mock' | 'real'>('mock');
   const [lang, setLang] = useState<Lang>('tr');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Mod değişince tüm modül istemcilerini ayarla (DEV-only global yan etki).
   useEffect(() => {
@@ -74,6 +78,9 @@ export default function FeedDataLabScreen() {
           <Row>
             <Toggle label="TR" active={lang === 'tr'} onPress={() => setLang('tr')} />
             <Toggle label="EN" active={lang === 'en'} onPress={() => setLang('en')} />
+          </Row>
+          <Row>
+            <Btn label="Keşfet arayüzü (G6-S2) →" onPress={() => navigation.navigate('Kesfet')} />
           </Row>
         </Section>
 

@@ -31,6 +31,9 @@ export type RootStackParamList = {
   DesignShowcase: undefined;
   // Yalnız __DEV__: G5-S3 veri katmanı deneme ekranı (koşullu kayıt).
   FeedDataLab: undefined;
+  // Keşfet (G6-S2) — kaydı AppNavigator'da `kesfet` bayrağı (veya __DEV__) ile
+  // koşullu. Bayrak kapalı + üretimde HİÇ kaydolmaz; uygulama bugünküyle aynı.
+  Kesfet: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };
