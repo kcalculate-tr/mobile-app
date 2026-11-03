@@ -6,6 +6,7 @@ import type {
   ClaimResult,
   DeliveryCityResult,
   FollowState,
+  HandleAvailability,
   ProfilClient,
   PublicProfile,
 } from './types';
@@ -48,6 +49,13 @@ export function createMockProfilClient(options: MockProfilOptions = {}): ProfilC
     },
     get _privacy() {
       return state.privacy;
+    },
+
+    async checkHandle({ handle }): Promise<HandleAvailability> {
+      const v = validateHandle(handle);
+      if (!v.ok) return { available: false, reason: 'format' };
+      if (taken.has(v.normalized)) return { available: false, reason: 'taken' };
+      return { available: true, reason: null }; // salt okur — rezerve ETMEZ
     },
 
     async claimHandle({ handle }): Promise<ClaimResult> {

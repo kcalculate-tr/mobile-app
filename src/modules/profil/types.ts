@@ -7,6 +7,11 @@ export interface ClaimResult {
   reason: string | null; // sunucu: 'taken' | 'invalid' | null
 }
 
+export interface HandleAvailability {
+  available: boolean;
+  reason: 'format' | 'taken' | 'reserved' | null;
+}
+
 export interface PublicProfile {
   id: string;
   display_name: string;
@@ -32,7 +37,9 @@ export type RegistrationTemplate = 'kcalculate_ai' | 'eatkcal';
 
 // İstemci arayüzü — gerçek RPC (client.ts) ve mock (mock.ts) uygular.
 export interface ProfilClient {
-  // claim_handle(p_handle) → benzersizliği SUNUCU denetler.
+  // check_handle(p_handle) → SALT OKUR, rezervasyon yapmaz. Canlı kontrolde kullanılır.
+  checkHandle(params: { handle: string }): Promise<HandleAvailability>;
+  // claim_handle(p_handle) → benzersizliği SUNUCU denetler; idempotent (aynı kullanıcı aynı handle).
   claimHandle(params: { handle: string }): Promise<ClaimResult>;
   updatePublicProfile(params: {
     displayName: string;

@@ -1,10 +1,8 @@
 // Kullanıcı adı seçimi hook'u — anında BİÇİM denetimi + gecikmeli (debounce)
-// canlı benzersizlik kontrolü. Benzersizlik SUNUCUDA (claim_handle). Bu hook
-// hiçbir canlı ekrana bağlı değil; yalnız yeni kayıt akışı / __DEV__ ekranı.
-//
-// SORULAR: sözleşmede yalnız claim_handle var; bu RPC adayı REZERVE ediyorsa
-// her duraklamada farklı aday rezerve edilir. Salt-okunur bir check_handle
-// tercih edilir — S2'ye soruldu. Şimdilik claim_handle ile canlı kontrol.
+// canlı müsaitlik kontrolü (`check_handle`, SALT OKUR — rezervasyon yapmaz).
+// Gerçek rezervasyon yalnız kayıt akışının `submit()` adımında `claim_handle`
+// ile olur (G6-CONTRACT.md). Bu hook hiçbir canlı ekrana bağlı değil; yalnız
+// yeni kayıt akışı / __DEV__ ekranı.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getProfilClient } from './client';
