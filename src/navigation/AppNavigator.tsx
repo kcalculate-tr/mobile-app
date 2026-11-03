@@ -4,13 +4,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../core/AuthContext';
+import { useFeature } from '../core/flags';
 
 import { haptic } from '../utils/haptics';
 import { DURATION } from '../constants/motion';
 import { CustomTabBar } from './CustomTabBar';
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
-import { useFeature } from '../core/flags';
 import { RootStackParamList, TabParamList } from './types';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
@@ -67,6 +67,11 @@ const MyReviewsScreen = lazy(() => import('../screens/profile/MyReviewsScreen'))
 // Derin bağlantı hedefleri (G5-S4) — yalnız /p/ /u/ bağlantısıyla erişilir.
 const SharedPostScreen = lazy(() => import('../screens/share/SharedPostScreen'));
 const SharedProfileScreen = lazy(() => import('../screens/share/SharedProfileScreen'));
+// AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken TrackerScreen'den erişilir.
+const ScanScreen = lazy(() => import('../modules/ai/scan/screens/ScanScreen'));
+// eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
+// Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
+const EatHomeScreen = lazy(() => import('../modules/eatkcal/screens/EatHomeScreen'));
 
 // Lazy ekranı, stack içerik zeminiyle aynı renkte bloklamayan bir Suspense
 // sınırına sarar. Sarmalayıcı MODÜL seviyesinde bir kez üretilir (her render'da
@@ -114,9 +119,20 @@ const SupportLazy = withSuspense(SupportScreen);
 const MyReviewsLazy = withSuspense(MyReviewsScreen);
 const SharedPostLazy = withSuspense(SharedPostScreen);
 const SharedProfileLazy = withSuspense(SharedProfileScreen);
+const ScanLazy = withSuspense(ScanScreen);
+const EatHomeLazy = withSuspense(EatHomeScreen);
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Home sekmesi — `restoran_yakinda` bayrağı açıkken T20Eat (EatHomeScreen),
+// kapalıyken (varsayılan) bugünkü HomeScreen AYNEN. HomeScreen bu dosyada
+// hiç değişmedi; "Sipariş ver" sonrası aynı bileşen `EatCatalog` rotasıyla
+// yeniden kullanılır (bkz. aşağıdaki Stack.Screen).
+function HomeTabScreen() {
+  const restoranYakinda = useFeature('restoran_yakinda');
+  return restoranYakinda ? <EatHomeLazy /> : <HomeScreen />;
+}
 
 function TabNavigator() {
   const { session } = useAuth();
@@ -148,7 +164,7 @@ function TabNavigator() {
       >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeTabScreen}
         listeners={{ tabPress: () => haptic.selection() }}
       />
       <Tab.Screen
@@ -310,6 +326,15 @@ export default function AppNavigator() {
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
       <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ contentStyle: { backgroundColor: '#0A0A0A' } }} />
       <Stack.Screen name="SharedProfile" component={SharedProfileLazy} options={{ contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      {/* AI tarama (G6-S4) — tam ekran kamera görünümü. */}
+      <Stack.Screen
+        name="AiScan"
+        component={ScanLazy}
+        options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base, contentStyle: { backgroundColor: '#2C2C2E' } }}
+      />
+      {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
+          HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
+      <Stack.Screen name="EatCatalog" component={HomeScreen} />
     </Stack.Navigator>
   );
 }
