@@ -28,7 +28,7 @@ import { KCALCULATE_LOGO_B64 } from '../constants/kcalculateLogo';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import { Circle, Svg, Polyline } from 'react-native-svg';
-import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, Target, TrophyIcon} from '../components/icons';
+import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, ShareNetwork, Target, TrophyIcon} from '../components/icons';
 import SegmentedTabs from '../core/ui/SegmentedTabs';
 import FadeSwap from '../core/ui/FadeSwap';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
@@ -38,6 +38,9 @@ import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { fetchProductImagesByName } from '../lib/products';
 import { useAuth } from '../core/AuthContext';
+import { useFeature } from '../core/flags';
+import ShareMealCardModal from '../components/share/ShareMealCardModal';
+import type { ShareMealData } from '../components/share/MealShareCard';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
 import { getSupabaseClient } from '../core/supabase';
@@ -839,6 +842,11 @@ export default function TrackerScreen() {
 
   const pantryItems = usePantryStore((state) => state.items);
   const removePantryItem = usePantryStore((state) => state.removeItem);
+
+  // Paylaşım kartı (G5-S4) — yalnız bayrak açıkken görünür; kapalıyken (varsayılan)
+  // hiçbir yeni UI/mount yok, mevcut ekran davranışı değişmez.
+  const paylasimKarti = useFeature('paylasim_karti');
+  const [shareMeal, setShareMeal] = useState<{ data: ShareMealData; seed: string } | null>(null);
 
   const animValuesRef = useRef<Map<string, {
     scale: Animated.Value;
@@ -2210,6 +2218,27 @@ const html = `
                           ) : null}
                         </View>
                         <Text style={s.consumedKcal}>{Math.round(row.calories)} kcal</Text>
+                        {paylasimKarti ? (
+                          <TouchableOpacity
+                            style={s.consumedShareBtn}
+                            onPress={() =>
+                              setShareMeal({
+                                data: {
+                                  name: row.name,
+                                  calories: row.calories,
+                                  protein: row.protein,
+                                  portion: note || null,
+                                  estimate: true,
+                                },
+                                seed: row.id,
+                              })
+                            }
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            activeOpacity={0.7}
+                          >
+                            <ShareNetwork size={20} color={COLORS.brand.green} weight="bold" />
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
                     );
                   })}
@@ -2225,6 +2254,16 @@ const html = `
           </FadeSwap>
         )}
       </ScrollView>
+
+      {/* Paylaşım kartı modalı (G5-S4) — yalnız bayrak açıkken. */}
+      {paylasimKarti ? (
+        <ShareMealCardModal
+          visible={shareMeal != null}
+          onClose={() => setShareMeal(null)}
+          data={shareMeal?.data ?? null}
+          seed={shareMeal?.seed}
+        />
+      ) : null}
 
     </ScreenContainer>
   );
@@ -2549,6 +2588,14 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     color: '#000000',
     fontVariant: ['tabular-nums'],
+  },
+  consumedShareBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f1f1',
   },
   consumedTotal: {
     flexDirection: 'row',

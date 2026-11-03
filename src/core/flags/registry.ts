@@ -20,6 +20,8 @@ export const FLAG_DEFAULTS = {
   inbox: false, // Mesaj kutusu
   // eatkcal (sipariş tarafı)
   eatkcal_ordering: false, // eatkcal öğün siparişi
+  // Organik büyüme (G5-S4)
+  paylasim_karti: false, // Öğün/Tabak Röntgeni paylaşım kartı (cihazda görsel üretimi + sistem paylaşımı)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
