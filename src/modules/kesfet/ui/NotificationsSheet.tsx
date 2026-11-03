@@ -2,10 +2,12 @@
 // Liste + okunmamış vurgusu; açılışta okundu işaretlenir. Dokun → gönderi/profil.
 import React, { useEffect } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 
+import { useSheetRise } from '../motion';
 import { useNotificationsStore } from '../notificationsStore';
 import type { SocialNotification } from '../types';
 import { Avatar } from './Avatar';
@@ -37,6 +39,7 @@ export function NotificationsSheet({
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { t: tr, lang } = useT();
+  const { panelStyle, backdropStyle, onLayout } = useSheetRise(visible);
 
   const items = useNotificationsStore((s) => s.items);
   const loading = useNotificationsStore((s) => s.loading);
@@ -90,10 +93,12 @@ export function NotificationsSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.fill}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} />
-        <View style={[styles.sheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} />
+        </Animated.View>
+        <Animated.View onLayout={onLayout} style={[styles.sheet, panelStyle, { backgroundColor: t.color.bg, paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={[styles.handle, { backgroundColor: t.color.line }]} />
           <AppText variant="heading" style={styles.title}>{tr('kesfet.notif.title')}</AppText>
           {loading && items.length === 0 ? (
@@ -110,7 +115,7 @@ export function NotificationsSheet({
               style={styles.list}
             />
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

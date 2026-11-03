@@ -12,6 +12,7 @@ import type {
   MealType,
   ReactionKind,
   ReportTargetType,
+  UpdatePostResult,
 } from './types';
 
 const PAGE_LIMIT = 20;
@@ -53,6 +54,10 @@ interface KesfetState {
   didIt: (postId: string, minutes: number | null, idempotencyKey: string) => Promise<number | null>;
   // G8 — kendi gönderini sil: iyimser olarak akıştan düşer, sonra RPC.
   deletePost: (postId: string) => Promise<boolean>;
+  // G11 — kendi gönderini düzenle: update_my_post. Başarıda gövde + durum (pending
+  // dönerse kartta "İncelemede") güncellenir. Dönen result caller'a geri verilir;
+  // `available:false` ise çağıran "Düzenle" seçeneğini gizler. RPC yoksa liste değişmez.
+  editPost: (postId: string, body: string) => Promise<UpdatePostResult>;
   reset: () => void;
 }
 
@@ -248,6 +253,24 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
     } catch (e) {
       set({ posts: prev, error: e instanceof Error ? e.message : 'delete_failed' });
       return false;
+    }
+  },
+
+  editPost: async (postId, body) => {
+    try {
+      const res = await getKesfetClient().updateMyPost({ post: postId, body });
+      if (res.available && res.ok) {
+        // Gövde + durum güncelle (pending → kartta "İncelemede").
+        set({
+          posts: get().posts.map((p) =>
+            p.id === postId ? { ...p, body, status: res.status } : p,
+          ),
+        });
+      }
+      return res;
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'edit_failed' });
+      return { available: true, ok: false, status: 'published' };
     }
   },
 

@@ -19,10 +19,22 @@ import type {
   FeedTab,
   KesfetClient,
   NotificationPage,
+  ProductSearchItem,
+  ProductSearchResult,
   RateLimitedResult,
   ReactResult,
   SocialNotification,
+  UpdatePostResult,
 } from './types';
+
+// G11 — composer ürün arama için sahte ürünler (mock modu). Gerçek veri sunucuda.
+const SAMPLE_PRODUCTS: ProductSearchItem[] = [
+  { id: 'prod-1', name: 'Izgara tavuk göğsü', image_url: null, kcal: 165, protein_g: 31, carbs_g: 0, fat_g: 3.6 },
+  { id: 'prod-2', name: 'Tam yağlı yoğurt', image_url: null, kcal: 61, protein_g: 3.5, carbs_g: 4.7, fat_g: 3.3 },
+  { id: 'prod-3', name: 'Haşlanmış yumurta', image_url: null, kcal: 78, protein_g: 6.3, carbs_g: 0.6, fat_g: 5.3 },
+  { id: 'prod-4', name: 'Pişmiş bulgur', image_url: null, kcal: 83, protein_g: 3, carbs_g: 19, fat_g: 0.2 },
+  { id: 'prod-5', name: 'Avokado', image_url: null, kcal: 160, protein_g: 2, carbs_g: 9, fat_g: 15 },
+];
 
 function samplePost(i: number, opts: Partial<FeedPost> = {}): FeedPost {
   return {
@@ -126,6 +138,10 @@ export interface MockKesfetOptions {
   unreadCount?: number;
   /** Etkinlik gönderisini de ekle (vitrin). Varsayılan false (testler kararlı). */
   withActivityPost?: boolean;
+  /** search_products RPC canlıda yokmuş gibi davran (düğme gizlenir testi). */
+  productSearchUnavailable?: boolean;
+  /** update_my_post RPC canlıda yokmuş gibi davran (düzenle gizlenir testi). */
+  postEditUnavailable?: boolean;
 }
 
 export type MockKesfetClient = KesfetClient & {
@@ -357,6 +373,26 @@ export function createMockKesfetClient(options: MockKesfetOptions = {}): MockKes
       for (const n of notifications) {
         if (n.read_at == null) n.read_at = '2026-11-03T12:30:00.000Z';
       }
+    },
+
+    // ── G11 ──────────────────────────────────────────────────────────────
+    async searchProducts({ q, limit = 12 }): Promise<ProductSearchResult> {
+      if (options.productSearchUnavailable) return { available: false, items: [] };
+      const needle = q.trim().toLowerCase();
+      if (needle.length < 2) return { available: true, items: [] };
+      const items = SAMPLE_PRODUCTS.filter((p) => p.name.toLowerCase().includes(needle)).slice(0, limit);
+      // Eşleşme yoksa da sahte 5 ürünü göster (mock: her zaman dolu).
+      return { available: true, items: items.length ? items : SAMPLE_PRODUCTS.slice(0, limit) };
+    },
+
+    async updateMyPost({ post, body }): Promise<UpdatePostResult> {
+      if (options.postEditUnavailable) return { available: false, ok: false, status: 'published' };
+      const p = posts.find((x) => x.id === post);
+      if (!p) return { available: true, ok: false, status: 'published' };
+      p.body = body;
+      // Yayındaki gönderinin gövdesi değişince yeniden denetime düşer.
+      if (p.status === 'published') p.status = 'pending';
+      return { available: true, ok: true, status: p.status };
     },
   };
 }

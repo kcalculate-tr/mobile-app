@@ -1,13 +1,33 @@
 // Keşfet durum görünümleri — iskelet (yükleme), hata (+ Tekrar dene), boş akış
 // ve "Takip" boş durumu (önerilen hesaplar). Öneriler GERÇEK veriden gelir
 // (çağıran, can_post yazarlarını geçer); uydurma isim/sayı yok.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { AppText, useTheme } from '../../../core/design';
+import Animated from 'react-native-reanimated';
+import NetInfo from '@react-native-community/netinfo';
+import { AppText, useTheme, useBreath } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Avatar } from './Avatar';
 import { Icon } from './icons';
 import { roleBadgeKey } from './format';
+
+/** Çevrimiçi mi — çevrimdışı durumunu sakin göstermek için (states). */
+export function useIsOnline(): boolean {
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    const apply = (s: { isConnected?: boolean | null }) => {
+      if (alive) setOnline(s.isConnected !== false);
+    };
+    void NetInfo.fetch().then(apply);
+    const unsub = NetInfo.addEventListener(apply);
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, []);
+  return online;
+}
 
 export interface SuggestedAccount {
   id: string;
@@ -18,26 +38,50 @@ export interface SuggestedAccount {
   avatar_url: string | null;
 }
 
-function Block({ w, h, r = 8 }: { w: number | `${number}%`; h: number; r?: number }) {
+function Block({ w, h, r = 8, shimmer }: { w: number | `${number}%`; h: number; r?: number; shimmer?: ReturnType<typeof useBreath>['style'] }) {
   const t = useTheme();
-  return <View style={{ width: w, height: h, borderRadius: r, backgroundColor: t.color.line }} />;
+  return <Animated.View style={[{ width: w, height: h, borderRadius: r, backgroundColor: t.color.line }, shimmer]} />;
 }
 
-/** Yükleme iskeleti — birkaç kart yer tutucusu. */
+/** Yükleme iskeleti — birkaç kart yer tutucusu; parıltı useBreath (motion). */
 export function FeedSkeleton({ count = 4 }: { count?: number }) {
   const t = useTheme();
+  const { style: shimmer } = useBreath({ min: 0.4, max: 0.85 });
   return (
     <View accessibilityLabel="Yükleniyor" accessibilityRole="progressbar">
       {Array.from({ length: count }, (_, i) => (
         <View key={i} style={[styles.skelCard, { borderBottomColor: t.color.line }]}>
-          <Block w={40} h={40} r={20} />
+          <Block w={40} h={40} r={20} shimmer={shimmer} />
           <View style={styles.skelBody}>
-            <Block w="60%" h={12} />
-            <Block w="90%" h={12} />
-            <Block w="100%" h={160} r={16} />
+            <Block w="60%" h={12} shimmer={shimmer} />
+            <Block w="90%" h={12} shimmer={shimmer} />
+            <Block w="100%" h={160} r={16} shimmer={shimmer} />
           </View>
         </View>
       ))}
+    </View>
+  );
+}
+
+/** Çevrimdışı — sakin (kırmızı/alarm yok). Bağlanınca akış kendiliğinden döner. */
+export function FeedOffline({ onRetry }: { onRetry: () => void }) {
+  const t = useTheme();
+  const { t: tr } = useT();
+  return (
+    <View style={styles.center}>
+      <View style={[styles.offlineIcon, { backgroundColor: t.color.line }]}>
+        <Icon name="slash" size={22} color={t.color.secondary} />
+      </View>
+      <AppText variant="heading" style={styles.centerText}>{tr('kesfet.ui.offline_title')}</AppText>
+      <AppText variant="body" tone="secondary" style={styles.centerText}>{tr('kesfet.ui.offline_desc')}</AppText>
+      <Pressable
+        onPress={onRetry}
+        accessibilityRole="button"
+        accessibilityLabel={tr('common.retry')}
+        style={({ pressed }) => [styles.retry, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
+      >
+        <AppText variant="body" style={{ fontWeight: '600' }}>{tr('common.retry')}</AppText>
+      </Pressable>
     </View>
   );
 }
@@ -153,8 +197,9 @@ export function FollowingEmpty({
 const styles = StyleSheet.create({
   skelCard: { flexDirection: 'row', gap: 12, padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
   skelBody: { flex: 1, gap: 10 },
-  center: { paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center', gap: 16 },
+  center: { paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center', gap: 12 },
   centerText: { textAlign: 'center' },
+  offlineIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   retry: { minHeight: 44, paddingHorizontal: 20, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   emptyWrap: { padding: 24, gap: 8 },
   emptyTitle: {},

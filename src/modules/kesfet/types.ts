@@ -254,6 +254,35 @@ export interface NotificationPage {
 
 export type ModerateTargetType = 'post' | 'comment';
 
+// ── G11: Composer ürün arama (search_products) ───────────────────────────────
+// Sunucu (S1) `search_products(p_q, p_limit)` → `{ items: [...] }`. İstemci YALNIZ
+// bu dönüş şekline güvenir (G11-CONTRACT). Gerçek tablo/kolon adları sunucuda.
+export interface ProductSearchItem {
+  id: string;
+  name: string;
+  image_url: string | null;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+// `available=false` → RPC canlıda YOK (fonksiyon bulunamadı); composer ürün ara
+// düğmesini gizler. Geçici hata `available=true` + boş liste (sakin, kırmızı yok).
+export interface ProductSearchResult {
+  available: boolean;
+  items: ProductSearchItem[];
+}
+
+// ── G11: Gönderi düzenleme (update_my_post) ──────────────────────────────────
+// `available=false` → RPC yok; PostMenu "Düzenle" seçeneği gizli. Yayındaki
+// gönderinin gövdesi değişince sunucu `status='pending'` döner → kartta "İncelemede".
+export interface UpdatePostResult {
+  available: boolean;
+  ok: boolean;
+  status: PostStatus;
+}
+
 // İstemci arayüzü — gerçek RPC (client.ts) ve mock (mock.ts) bunu uygular.
 // Store ve hook'lar yalnız bu arayüze bağlıdır; test mock enjekte eder.
 export interface KesfetClient {
@@ -322,4 +351,12 @@ export interface KesfetClient {
 
   listSocialNotifications(params?: { cursor?: string | null }): Promise<NotificationPage>;
   markSocialNotificationsRead(params?: { until?: string }): Promise<void>;
+
+  // ── G11 ─────────────────────────────────────────────────────────────────
+  // search_products → composer öğün kartını doldurmak için ürün arama. RPC yoksa
+  // { available:false } (düğme gizlenir). p_q en az 2 karakter sunucuda denetlenir.
+  searchProducts(params: { q: string; limit?: number }): Promise<ProductSearchResult>;
+  // update_my_post → kendi gönderinin gövdesini düzenle. RPC yoksa
+  // { available:false } (menü seçeneği gizlenir). Yayındakinde status→'pending'.
+  updateMyPost(params: { post: string; body: string }): Promise<UpdatePostResult>;
 }

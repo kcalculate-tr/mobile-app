@@ -1,10 +1,11 @@
 // Composer — G8 (yalnız `kesfet_paylasim` açıkken; AppNavigator). HERKES paylaşır.
 // Tür: Serbest / Öğün / Etkinlik. Metin + en fazla 4 fotoğraf (video YOK).
-// Öğün kartı: elle ad + kcal + P/K/Y (ürün arama / AI sonucu sonraki tur).
+// Öğün kartı: elle ad + kcal + P/K/Y, ya da "Ürün ara" (search_products, G11;
+// RPC yoksa düğme gizli). Kullanıcı seçilen ürünün değerlerini düzeltebilir.
 // Etkinlik kartı: tür, süre, mesafe (ops.), CANLI tahmini kcal. Gönder →
 // create_post → moderate-content → "Paylaşılıyor… / İnceleniyor". Hatalar:
 // hız sınırı, ağ, reddedildi.
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -24,6 +25,7 @@ import {
   type ActivityType,
   type CreatePostMedia,
   type PostType,
+  type ProductSearchItem,
 } from '../types';
 import {
   activityDraftCard,
@@ -90,6 +92,64 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
   const [activity, setActivity] = useState<ActivityDraft>(emptyActivity);
   const [submit, setSubmit] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  // G11 — ürün arama (search_products). RPC canlıda yoksa düğme gizlenir
+  // (ilk aramada { available:false } dönerse). Seçilen ürün öğün kartını doldurur.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchAvailable, setSearchAvailable] = useState(true);
+  const [searchQ, setSearchQ] = useState('');
+  const [searchResults, setSearchResults] = useState<ProductSearchItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  useEffect(() => {
+    const q = searchQ.trim();
+    if (!searchOpen || q.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    let alive = true;
+    setSearchLoading(true);
+    const id = setTimeout(() => {
+      void getKesfetClient()
+        .searchProducts({ q })
+        .then((res) => {
+          if (!alive) return;
+          if (!res.available) {
+            // RPC canlıda yok → özelliği gizle (sakin; kırmızı/uyarı yok).
+            setSearchAvailable(false);
+            setSearchOpen(false);
+            return;
+          }
+          setSearchResults(res.items);
+        })
+        .catch(() => {
+          if (alive) setSearchResults([]);
+        })
+        .finally(() => {
+          if (alive) setSearchLoading(false);
+        });
+    }, 250);
+    return () => {
+      alive = false;
+      clearTimeout(id);
+    };
+  }, [searchQ, searchOpen]);
+
+  const pickProduct = useCallback((p: ProductSearchItem) => {
+    haptic('light');
+    setMeal((m) => ({
+      ...m,
+      name: p.name,
+      kcal: String(p.kcal),
+      protein_g: String(p.protein_g),
+      carbs_g: String(p.carbs_g),
+      fat_g: String(p.fat_g),
+      productId: p.id,
+    }));
+    setSearchOpen(false);
+    setSearchQ('');
+  }, []);
 
   const draft: ComposerDraft = useMemo(
     () => ({ type, body, photoCount: photos.length, meal: type === 'ogun' ? meal : null, activity: type === 'etkinlik' ? activity : null }),
@@ -173,8 +233,9 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
         </View>
       ) : null}
       {error ? (
-        <View style={[styles.statusBar, { backgroundColor: t.color.danger }]}>
-          <AppText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>{error}</AppText>
+        // Olumsuz an sessiz (motion §2): kırmızı/alarm yok, ink-quiet metin.
+        <View style={[styles.statusBar, { backgroundColor: t.color.surface }]}>
+          <AppText variant="caption" tone="secondary" style={{ fontWeight: '600' }}>{error}</AppText>
         </View>
       ) : null}
 
@@ -238,6 +299,54 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
         {type === 'ogun' ? (
           <View style={styles.cardBox}>
             <AppText variant="caption" tone="secondary" style={styles.cardTitle}>{tr('kesfet.compose.meal_section')}</AppText>
+
+            {/* Ürün ara — search_products RPC varsa (G11). Seçilen ürün alanları doldurur. */}
+            {searchAvailable ? (
+              <Pressable
+                onPress={() => { haptic('selection'); setSearchOpen((v) => !v); }}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: searchOpen }}
+                accessibilityLabel={tr('kesfet.compose.product_search')}
+                style={[styles.searchToggle, { borderColor: t.color.line }]}
+              >
+                <Icon name="search" size={16} color={t.color.ink} />
+                <AppText variant="caption" style={{ fontWeight: '700' }}>{tr('kesfet.compose.product_search')}</AppText>
+              </Pressable>
+            ) : null}
+            {searchOpen && searchAvailable ? (
+              <View style={[styles.searchPanel, { borderColor: t.color.line, backgroundColor: t.color.surface }]}>
+                <TextInput
+                  value={searchQ}
+                  onChangeText={setSearchQ}
+                  placeholder={tr('kesfet.compose.product_search_ph')}
+                  placeholderTextColor={t.color.secondary}
+                  autoFocus
+                  style={[styles.searchInput, { color: t.color.ink, borderColor: t.color.line }]}
+                  accessibilityLabel={tr('kesfet.compose.product_search')}
+                />
+                {searchQ.trim().length < 2 ? (
+                  <AppText variant="caption" tone="secondary" style={styles.searchHint}>{tr('kesfet.compose.product_search_min')}</AppText>
+                ) : searchLoading ? (
+                  <AppText variant="caption" tone="secondary" style={styles.searchHint}>{tr('kesfet.ui.loading')}</AppText>
+                ) : searchResults.length === 0 ? (
+                  <AppText variant="caption" tone="secondary" style={styles.searchHint}>{tr('kesfet.compose.product_search_empty')}</AppText>
+                ) : (
+                  searchResults.map((p) => (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => pickProduct(p)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${p.name} · ${fmt(p.kcal)} kcal`}
+                      style={({ pressed }) => [styles.searchRow, { borderTopColor: t.color.line }, pressed && { opacity: 0.85 }]}
+                    >
+                      <AppText variant="caption" style={{ fontWeight: '700', flex: 1 }} numberOfLines={1}>{p.name}</AppText>
+                      <AppText variant="caption" tone="secondary">{tr('kesfet.ui.meal_card.macro', { kcal: fmt(p.kcal), protein: fmt(Math.round(p.protein_g)) })}</AppText>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            ) : null}
+
             <Field label={tr('kesfet.compose.meal_name')} value={meal.name} onChange={(v) => setMeal((m) => ({ ...m, name: v }))} placeholder={tr('kesfet.compose.meal_name_ph')} />
             <View style={styles.grid2}>
               <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.kcal')} value={meal.kcal} onChange={(v) => setMeal((m) => ({ ...m, kcal: v }))} keyboardType="numeric" placeholder="0" /></View>
@@ -309,6 +418,11 @@ const styles = StyleSheet.create({
   addPhoto: { width: 72, height: 72, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 2 },
   cardBox: { marginTop: 16, gap: 4 },
   cardTitle: { fontWeight: '700', marginBottom: 4 },
+  searchToggle: { alignSelf: 'flex-start', minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, marginBottom: 8 },
+  searchPanel: { borderWidth: 1, borderRadius: 12, padding: 8, marginBottom: 8, gap: 2 },
+  searchInput: { minHeight: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontSize: 15 },
+  searchHint: { paddingVertical: 10, textAlign: 'center' },
+  searchRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
   field: { marginBottom: 8 },
   fieldLabel: { marginBottom: 4, fontWeight: '600' },
   input: { minHeight: 44, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, fontSize: 15 },

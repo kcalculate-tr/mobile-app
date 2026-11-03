@@ -10,18 +10,35 @@ import { useActiveVideoStore } from '../activeVideo';
 import { useAutoplayAllowed } from '../useAutoplayAllowed';
 import { PlayIcon, VolumeOnIcon, VolumeOffIcon, ExpandIcon } from './icons';
 
+export interface FeedVideoLabels {
+  mute: string;
+  unmute: string;
+  fullscreen: string;
+  play: string;
+}
+
+// Varsayılan (TR) etiketler — çağıran i18n ile geçersiz kılar (TR/EN, G11-S3).
+const DEFAULT_LABELS: FeedVideoLabels = {
+  mute: 'Sesi kapat',
+  unmute: 'Sesi aç',
+  fullscreen: 'Tam ekran',
+  play: 'Oynat',
+};
+
 export function FeedVideo({
   id,
   source,
   posterUri,
   isVisible,
   style,
+  labels = DEFAULT_LABELS,
 }: {
   id: string;
   source: string;
   posterUri: string | null;
   isVisible: boolean;
   style?: object;
+  labels?: FeedVideoLabels;
 }) {
   const autoplayAllowed = useAutoplayAllowed();
   const activeId = useActiveVideoStore((s) => s.activeId);
@@ -84,7 +101,7 @@ export function FeedVideo({
       <Pressable
         style={StyleSheet.absoluteFill}
         accessibilityRole="button"
-        accessibilityLabel={muted ? 'Sesi aç' : 'Sesi kapat'}
+        accessibilityLabel={showManualPlayButton ? labels.play : muted ? labels.unmute : labels.mute}
         onPress={() => {
           if (showManualPlayButton) {
             setManualPlay(true);
@@ -108,7 +125,7 @@ export function FeedVideo({
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Tam ekran"
+          accessibilityLabel={labels.fullscreen}
           style={styles.badge}
           onPress={() => void viewRef.current?.enterFullscreen()}
         >

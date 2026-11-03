@@ -13,12 +13,14 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Animated from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
-import { AppText, useTheme } from '../../../core/design';
+import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { haptic } from '../../../core/design';
+import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
 import { useNotificationsStore } from '../notificationsStore';
@@ -33,11 +35,12 @@ import { GunRingStrip, GunViewer } from '../../gun/ui';
 import type { DayCard } from '../../gun/types';
 import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
+import { EditPostSheet } from './EditPostSheet';
 import { CommentsSheet } from './CommentsSheet';
 import { NotificationsSheet } from './NotificationsSheet';
 import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 import { AddToast, type ToastState } from './AddToast';
-import { FeedSkeleton, FeedError, FeedEmpty, FollowingEmpty, type SuggestedAccount } from './states';
+import { FeedSkeleton, FeedError, FeedOffline, FeedEmpty, FollowingEmpty, useIsOnline, type SuggestedAccount } from './states';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
 
 function Header({
@@ -57,6 +60,13 @@ function Header({
 }) {
   const t = useTheme();
   const { t: tr } = useT();
+  // Zil rozeti pop'u — okunmamış sayısı arttıkça rozet tek nefes sıçrar.
+  const badgePop = useIconPop();
+  const prevUnread = useRef(unread);
+  useEffect(() => {
+    if (unread > prevUnread.current) badgePop.pop();
+    prevUnread.current = unread;
+  }, [unread, badgePop]);
   return (
     <View style={styles.header}>
       <AppText variant="title" style={styles.title}>
@@ -75,11 +85,11 @@ function Header({
           <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn}>
             <Icon name="bell" size={24} color={t.color.ink} />
             {unread > 0 ? (
-              <View style={[styles.badge, { backgroundColor: t.color.accentLine }]}>
+              <Animated.View style={[styles.badge, { backgroundColor: t.color.accentLine }, badgePop.style]}>
                 <AppText variant="caption" style={styles.badgeText}>
                   {unread > 9 ? '9+' : String(unread)}
                 </AppText>
-              </View>
+              </Animated.View>
             ) : null}
           </Pressable>
         ) : null}
@@ -132,6 +142,13 @@ export function KesfetScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  // Sekme olarak açıldığında (yeni kabuk): geri düğmesi yok, alt boşluk kabuğun
+  // tab barına göre. Paralel aşamada sabit import edilemez → geçici değer
+  // insets.bottom + 96 (G11-CONTRACT; S6 TAB_BAR_R3_HEIGHT'a bağlar). Stack
+  // olarak açılınca (bildirim/derin bağlantı) bugünkü boşluk korunur.
+  const asTab = route.params?.asTab === true;
+  const listBottomPad = insets.bottom + (asTab ? 96 : 120);
   const { t: tr, fmt, lang } = useT();
   const kesfetTakip = useFeature('kesfet_takip');
   // G8 bayrakları — her biri kapalıyken ilgili davranış HİÇ render olmaz.
@@ -140,6 +157,7 @@ export function KesfetScreen() {
   const sosyalBildirim = useFeature('sosyal_bildirim');
 
   const unread = useNotificationsStore((s) => s.unread);
+  const online = useIsOnline();
 
   const tab = useKesfetStore((s) => s.tab);
   const posts = useKesfetStore((s) => s.posts);
@@ -158,6 +176,13 @@ export function KesfetScreen() {
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [pushPromptOpen, setPushPromptOpen] = useState(false);
+  // G11 — gönderi düzenleme. editAvailable: update_my_post RPC canlıda yoksa
+  // (ilk denemede anlaşılır) "Düzenle" seçeneği gizlenir.
+  const [editPost, setEditPost] = useState<FeedPost | null>(null);
+  const [editAvailable, setEditAvailable] = useState(true);
+  // G11 — "Logla izi" imza anı: başarılı "Günüme ekle"de kısa bir iz oynatılır.
+  const [trail, setTrail] = useState<{ token: number; label: string } | null>(null);
+  const trailSeq = useRef(0);
   const addSeq = useRef(0);
   const addCardSeq = useRef(0);
   const didItSeq = useRef(0);
@@ -188,6 +213,13 @@ export function KesfetScreen() {
       alive = false;
     };
   }, []);
+
+  // "Logla izi" oynadıktan sonra örtüyü kaldır (iz ~logTrail + tampon sürede biter).
+  useEffect(() => {
+    if (!trail) return;
+    const id = setTimeout(() => setTrail(null), 1200);
+    return () => clearTimeout(id);
+  }, [trail]);
 
   // "Takip" bayrağı kapalıysa ama sekme orada kaldıysa Sana Özel'e düş.
   useEffect(() => {
@@ -247,8 +279,12 @@ export function KesfetScreen() {
       const key = `kesfet-${post.id}-${mealType}-${portion}-${addSeq.current}`;
       const consumptionId = await useKesfetStore.getState().addToDay(post.id, mealType, portion, key);
       if (!consumptionId) return;
+      // "Logla izi" — yemek noktaya iner, yay çizip hedefe uçar (motion §3).
+      trailSeq.current += 1;
+      setTrail({ token: trailSeq.current, label: post.meal_card?.name ?? '' });
+      // Toast: "<Öğün>'ye loglandı / Logged to <Meal>" (motion kitabı §3 kopyası).
       setToast({
-        message: tr('kesfet.ui.added_to_meal', { meal: tr(`meal.${mealType}`) }),
+        message: tr('kesfet.added_toast', { meal: tr(`meal.${mealType}`) }),
         actionLabel: tr('kesfet.ui.share_to_my_day'),
         onAction: () => {
           void shareMealToDay(consumptionId).catch(() => {});
@@ -306,14 +342,16 @@ export function KesfetScreen() {
       const minutes = post.activity_card?.minutes ?? null;
       const kcal = await useKesfetStore.getState().didIt(post.id, minutes, key);
       if (kcal != null) {
+        // Tahmini kcal hapı + "eklendi" (success haptiği ActivityCard'da verildi).
         setToast({
-          message: tr('kesfet.activity.did_it_toast'),
+          message: `${tr('kesfet.activity.kcal_est', { kcal: fmt(kcal) })} · ${tr('kesfet.activity.logged')}`,
           actionLabel: tr('kesfet.ui.share_to_my_day'),
           onAction: () => {},
         });
       }
+      // Başarısızlık sessiz: kcal null ise toast yok (olumsuz an sessiz — motion §2).
     },
-    [touchSocial, tr],
+    [touchSocial, tr, fmt],
   );
 
   const onDeletePost = useCallback(async (post: FeedPost) => {
@@ -322,11 +360,12 @@ export function KesfetScreen() {
   }, [tr]);
 
   const renderItem = useCallback(
-    ({ item }: { item: FeedPost }) => {
+    ({ item, index }: { item: FeedPost; index: number }) => {
       const model = postCardModel(item, nowMs, lang);
       return (
         <PostCard
           model={model}
+          index={index}
           showComment={kesfetYorum}
           isVisible={item.id === visiblePostId}
           onLike={() => {
@@ -366,8 +405,29 @@ export function KesfetScreen() {
       mealType: card.meal_type,
       idempotencyKey: key,
     });
-    setToast({ message: tr('kesfet.ui.added_to_meal', { meal: tr(`meal.${card.meal_type}`) }) });
+    setToast({ message: tr('kesfet.added_toast', { meal: tr(`meal.${card.meal_type}`) }) });
   }, [tr]);
+
+  // G11 — gönderiyi düzenle. update_my_post yoksa seçeneği gizle; pending dönerse
+  // kartta "İncelemede" (store status'u günceller). Olumsuz an sessiz (kırmızı yok).
+  const onEditSave = useCallback(
+    async (body: string) => {
+      const post = editPost;
+      if (!post) return;
+      setEditPost(null);
+      const res = await useKesfetStore.getState().editPost(post.id, body);
+      if (!res.available) {
+        setEditAvailable(false);
+        return;
+      }
+      if (res.ok) {
+        setToast({
+          message: res.status === 'pending' ? tr('kesfet.ui.edit_pending') : tr('kesfet.ui.edit_saved'),
+        });
+      }
+    },
+    [editPost, tr],
+  );
 
   const showFollowingEmpty = tab === 'following' && !loading && !error && posts.length === 0;
 
@@ -380,7 +440,12 @@ export function KesfetScreen() {
       </>
     );
   } else if (error && posts.length === 0) {
-    body = <FeedError message={error} onRetry={() => void useKesfetStore.getState().load()} />;
+    // Çevrimdışıysa sakin çevrimdışı hâli; değilse genel hata + tekrar dene.
+    body = online ? (
+      <FeedError message={error} onRetry={() => void useKesfetStore.getState().load()} />
+    ) : (
+      <FeedOffline onRetry={() => void useKesfetStore.getState().load()} />
+    );
   } else if (showFollowingEmpty) {
     body = (
       <>
@@ -428,7 +493,7 @@ export function KesfetScreen() {
             ) : null}
           </View>
         }
-        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+        contentContainerStyle={{ paddingBottom: listBottomPad }}
         showsVerticalScrollIndicator={false}
       />
     );
@@ -466,12 +531,26 @@ export function KesfetScreen() {
         onClose={() => setMenuPost(null)}
         authorName={menuPost?.author.display_name ?? ''}
         isMine={menuPost?.me.is_author ?? false}
+        canEdit={(menuPost?.me.is_author ?? false) && editAvailable}
         onCopyLink={() => menuPost && void onCopyLink(menuPost)}
         onReport={(reason) => menuPost && void onReport(menuPost, reason)}
         onBlock={() => menuPost && void onBlock(menuPost)}
         onDelete={() => menuPost && void onDeletePost(menuPost)}
+        onEdit={() => setEditPost(menuPost)}
+      />
+      <EditPostSheet
+        visible={editPost != null}
+        initialBody={editPost?.body ?? ''}
+        onClose={() => setEditPost(null)}
+        onSave={onEditSave}
       />
       <AddToast toast={toast} onDismiss={() => setToast(null)} />
+
+      {trail ? (
+        <View pointerEvents="none" style={styles.trailOverlay}>
+          <LogTrail playToken={trail.token} label={trail.label} width={300} height={160} />
+        </View>
+      ) : null}
 
       {kesfetYorum ? (
         <CommentsSheet
@@ -521,6 +600,7 @@ const styles = StyleSheet.create({
   tabUnderline: { position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2 },
   content: { flex: 1 },
   footer: { paddingVertical: 20, alignItems: 'center' },
+  trailOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
 });
 
 export default KesfetScreen;

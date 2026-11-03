@@ -46,20 +46,25 @@ export function PostMenu({
   onClose,
   authorName,
   isMine = false,
+  canEdit = false,
   onCopyLink,
   onReport,
   onBlock,
   onDelete,
+  onEdit,
 }: {
   visible: boolean;
   onClose: () => void;
   authorName: string;
   // G8 — kendi gönderin: şikayet/engelle yerine "Sil".
   isMine?: boolean;
+  // G11 — kendi gönderin + update_my_post RPC varsa "Düzenle" (yoksa gizli).
+  canEdit?: boolean;
   onCopyLink: () => void;
   onReport: (reason: ReportReason) => void;
   onBlock: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
@@ -88,12 +93,25 @@ export function PostMenu({
             }}
           />
           {isMine ? (
-            <MenuRow
-              icon="trash"
-              label={tr('kesfet.ui.menu.delete')}
-              danger
-              onPress={() => setView('delete')}
-            />
+            <>
+              {canEdit && onEdit ? (
+                <MenuRow
+                  icon="pencil"
+                  label={tr('kesfet.ui.menu.edit')}
+                  onPress={() => {
+                    haptic('selection');
+                    onEdit();
+                    close();
+                  }}
+                />
+              ) : null}
+              <MenuRow
+                icon="trash"
+                label={tr('kesfet.ui.menu.delete')}
+                danger
+                onPress={() => setView('delete')}
+              />
+            </>
           ) : (
             <>
               <MenuRow
