@@ -772,6 +772,27 @@ begin
     else raise; end if;
   end;
 end $$;
+-- T29d (S6 EK DUZELTME): daha once denetlenmis (kuyruk 'done') yayindaki gonderi
+-- duzenlenince kuyruk satiri yeniden 'pending' acilmali. Eski 'do nothing' bunu
+-- yapmiyordu → gonderi sonsuza dek pending kalirdi.
+select set_config('request.jwt.claims', NULL, true);  -- rolsuz: guard bypass (hazirlik)
+update public.posts set status = 'published' where id = :PA;
+insert into public.moderation_queue (target_type, target_id, status, attempts, last_attempt_at)
+values ('post', :PA, 'done', 2, now())
+on conflict (target_type, target_id)
+do update set status = 'done', attempts = 2, last_attempt_at = now();
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare r jsonb; v_q text; v_att int;
+begin
+  r := public.update_my_post('dddd0000-0000-4000-8000-000000000010'::uuid, 'G11 done kuyruk yeniden acilir');
+  if (r->>'status') <> 'pending' then raise exception 'FAIL T29d: RPC status pending degil (%).', r; end if;
+  select status, attempts into v_q, v_att from public.moderation_queue
+   where target_type = 'post' and target_id = 'dddd0000-0000-4000-8000-000000000010';
+  if v_q <> 'pending' then raise exception 'FAIL T29d: done kuyruk yeniden pending olmadi (%).', v_q; end if;
+  if v_att <> 0 then raise exception 'FAIL T29d: attempts sifirlanmadi (%).', v_att; end if;
+  raise notice 'OK T29d: done kuyruk duzenlemede yeniden pending (attempts=0)';
+end $$;
 
 -- ============================ TEST 30 (G11/3) ================================
 -- post-media storage politikalari tek sete indi: creator_* kalkti, writer_* (3) kaldi.

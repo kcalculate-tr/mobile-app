@@ -256,8 +256,13 @@ begin
     -- geldiği için yukarıdaki raise tetiklenmedi; pending'e BURADA alıyoruz.)
     if NEW.body is distinct from OLD.body and OLD.status = 'published' then
       NEW.status := 'pending';
+      -- Gönderi daha önce denetlendiyse kuyruk satırı 'done' kalmış olabilir;
+      -- do nothing onu yeniden açmaz → gönderi sonsuza dek pending kalırdı.
+      -- Yeniden denetim için satırı yeniden 'pending'e al (S6 EK DÜZELTME).
       insert into public.moderation_queue (target_type, target_id)
-      values ('post', NEW.id) on conflict do nothing;
+      values ('post', NEW.id)
+      on conflict (target_type, target_id)
+      do update set status = 'pending', attempts = 0, last_attempt_at = null;
     end if;
   end if;
   return NEW;
@@ -308,8 +313,12 @@ begin
   -- Yayındaki gönderi yeniden denetime düştüyse kuyruğa al (RPC kendi ekler;
   -- guard dalı v_post_rpc=on olduğu için burada çalışmaz → çift ekleme yok).
   if v_new_status = 'pending' and r.status = 'published' then
+    -- Daha önce 'done' olan kuyruk satırını yeniden 'pending'e al (yoksa düzenlenen
+    -- gönderi yeniden denetlenmez; S6 EK DÜZELTME).
     insert into public.moderation_queue (target_type, target_id)
-    values ('post', p_post) on conflict do nothing;
+    values ('post', p_post)
+    on conflict (target_type, target_id)
+    do update set status = 'pending', attempts = 0, last_attempt_at = null;
   end if;
 
   return jsonb_build_object('ok', true, 'status', v_new_status);
