@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["A63MT69ASR.com.kcalmobile.app"],
+        "components": [
+          {
+            "/": "/p/*",
+            "comment": "Paylasilan gonderi (post) derin baglantisi"
+          },
+          {
+            "/": "/u/*",
+            "comment": "Profil (handle) derin baglantisi"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["A63MT69ASR.com.kcalmobile.app"]
+  }
+}

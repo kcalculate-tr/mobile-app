@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kcalculate — Profil</title>
+  <meta name="description" content="Bu kullanıcının paylaşımlarını Kcalculate'te gör. Kalori ve protein tahminiyle kendi beslenme takibini yap." />
+  <meta property="og:type" content="profile" />
+  <meta property="og:site_name" content="Kcalculate" />
+  <meta property="og:title" content="Kcalculate — Profil" />
+  <meta property="og:description" content="Bu kullanıcının paylaşımlarını Kcalculate'te gör." />
+  <meta name="twitter:card" content="summary" />
+  <!--
+    NOT (G5-S4): /u/<handle> yolu Vercel rewrite ile bu sayfaya düşer. Uygulama
+    kuruluysa Universal/App Link uygulamayı açar ve bu sayfa HİÇ görünmez; burası
+    yalnız "uygulama yok" durumundaki hafif web önizlemesidir. App Store numarası
+    İlter tarafından doldurulacak (bkz. docs/night/G5-S4-LINKS.md).
+  -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0A0A0A; --surface: #141414; --border: #232323;
+      --green: #B9EF14; --green2: #D2F55E;
+      --text: #FFFFFF; --muted: rgba(255,255,255,0.55); --sub: rgba(255,255,255,0.75);
+    }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 28px; line-height: 1.5;
+    }
+    .wrap { width: 100%; max-width: 420px; text-align: center; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(185,239,20,0.10); border: 1px solid rgba(185,239,20,0.35);
+      color: var(--green2); border-radius: 100px; padding: 6px 16px;
+      font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    .avatar {
+      width: 92px; height: 92px; border-radius: 46px; margin: 0 auto 22px;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; word-break: break-word; }
+    p.lead { color: var(--sub); font-size: 15px; margin-bottom: 30px; }
+    .stores { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+    .store-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--green); color: #0A0A0A; text-decoration: none;
+      font-weight: 700; font-size: 15px; border-radius: 100px; padding: 15px 20px;
+      transition: transform 0.15s, background 0.2s;
+    }
+    .store-btn:active { transform: scale(0.98); }
+    .store-btn.ghost { background: transparent; color: var(--green2); border: 1px solid rgba(185,239,20,0.4); }
+    .brand { margin-top: 26px; font-weight: 800; font-size: 15px; color: var(--muted); letter-spacing: 0.5px; }
+    .brand span { color: var(--green); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">Profil</div>
+    <div class="avatar" aria-hidden="true">
+      <svg width="44" height="44" viewBox="0 0 256 256" fill="var(--green)">
+        <path d="M128 24a104 104 0 1 0 104 104A104.1 104.1 0 0 0 128 24Zm0 48a32 32 0 1 1-32 32 32 32 0 0 1 32-32Zm0 144a87.5 87.5 0 0 1-56.8-20.9 60 60 0 0 1 113.6 0A87.5 87.5 0 0 1 128 216Z"/>
+      </svg>
+    </div>
+    <h1 id="title">Paylaşılan profil</h1>
+    <p class="lead">Bu kullanıcının paylaşımlarını görmek ve kendi beslenme takibini yapmak için Kcalculate'i indir.</p>
+
+    <div class="stores">
+      <a class="store-btn" id="openApp" href="#">Uygulamada aç</a>
+      <a class="store-btn" id="appstore" href="#">App Store'dan indir</a>
+      <a class="store-btn ghost" id="playstore" href="#">Google Play'den indir</a>
+    </div>
+
+    <div class="brand">Kcal<span>culate</span></div>
+  </div>
+
+  <script>
+    (function () {
+      var APPSTORE_URL = '#';
+      var PLAYSTORE_URL = 'https://play.google.com/store/apps/details?id=com.kcalmobile.app';
+
+      var appstore = document.getElementById('appstore');
+      var playstore = document.getElementById('playstore');
+      if (APPSTORE_URL !== '#') appstore.href = APPSTORE_URL;
+      playstore.href = PLAYSTORE_URL;
+
+      // Yoldan handle: /u/<handle>
+      var parts = location.pathname.split('/').filter(Boolean);
+      var handle = parts.length >= 2 ? decodeURIComponent(parts[1]).replace(/^@/, '') : '';
+      if (handle) {
+        document.getElementById('title').textContent = '@' + handle;
+        document.title = 'Kcalculate — @' + handle;
+      }
+
+      var openApp = document.getElementById('openApp');
+      openApp.href = handle ? ('kcal://u/' + encodeURIComponent(handle)) : 'kcal://';
+    })();
+  </script>
+</body>
+</html>
