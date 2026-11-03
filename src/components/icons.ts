@@ -16,6 +16,7 @@
 
 export type { Icon, IconProps } from 'phosphor-react-native';
 
+export { AppleLogo } from 'phosphor-react-native/lib/commonjs/icons/AppleLogo';
 export { ArrowCounterClockwise } from 'phosphor-react-native/lib/commonjs/icons/ArrowCounterClockwise';
 export { ArrowLeft } from 'phosphor-react-native/lib/commonjs/icons/ArrowLeft';
 export { ArrowRight } from 'phosphor-react-native/lib/commonjs/icons/ArrowRight';
@@ -56,6 +57,7 @@ export { Fire } from 'phosphor-react-native/lib/commonjs/icons/Fire';
 export { Flame } from 'phosphor-react-native/lib/commonjs/icons/Flame';
 export { ForkKnife } from 'phosphor-react-native/lib/commonjs/icons/ForkKnife';
 export { Gift } from 'phosphor-react-native/lib/commonjs/icons/Gift';
+export { GoogleLogo } from 'phosphor-react-native/lib/commonjs/icons/GoogleLogo';
 export { Handshake } from 'phosphor-react-native/lib/commonjs/icons/Handshake';
 export { Headset } from 'phosphor-react-native/lib/commonjs/icons/Headset';
 export { House } from 'phosphor-react-native/lib/commonjs/icons/House';

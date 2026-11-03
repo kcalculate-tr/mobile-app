@@ -41,6 +41,10 @@ const DesignShowcaseScreen = lazy(() => import('../screens/DesignShowcaseScreen'
 const FeedDataLabScreen = lazy(() => import('../screens/FeedDataLabScreen'));
 // Keşfet ekranı (G6-S2) — `kesfet` bayrağı açıkken veya __DEV__'de kayıtlı.
 const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
+// Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
+const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
+const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
+const KcalAiSignUpRouteScreen = lazy(() => import('../modules/profil/ui/signup/KcalAiSignUpRoute'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
 const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
@@ -86,6 +90,9 @@ const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
 const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
 const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const KesfetLazy = withSuspense(KesfetScreen);
+const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
+const PublicProfileLazy = withSuspense(PublicProfileScreen);
+const KcalAiSignUpLazy = withSuspense(KcalAiSignUpRouteScreen);
 const OffersLazy = withSuspense(OffersScreen);
 const OrderSuccessLazy = withSuspense(OrderSuccessScreen);
 const ProductDetailLazy = withSuspense(ProductDetailScreen);
@@ -279,6 +286,11 @@ export default function AppNavigator() {
       {(kesfetEnabled || __DEV__) && (
         <Stack.Screen name="Kesfet" component={KesfetLazy} />
       )}
+      {__DEV__ && (
+        <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />
+      )}
+      <Stack.Screen name="PublicProfile" component={PublicProfileLazy} />
+      <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} />
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />

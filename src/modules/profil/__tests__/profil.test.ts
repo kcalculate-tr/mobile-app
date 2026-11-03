@@ -45,6 +45,32 @@ test('claimHandle: biçimsiz → invalid', async () => {
   assert.deepEqual(await c.claimHandle({ handle: 'ab' }), { ok: false, reason: 'invalid' });
 });
 
+// ── Mock istemci: check_handle SALT OKUR — rezervasyon yapmaz ─────────────────
+test('checkHandle: müsait handle rezerve EDİLMEZ (tekrar tekrar müsait kalır)', async () => {
+  const c = createMockProfilClient();
+  assert.deepEqual(await c.checkHandle({ handle: 'yeni_aday' }), { available: true, reason: null });
+  // İkinci kontrol de aynı sonucu verir — check_handle rezerve etmedi.
+  assert.deepEqual(await c.checkHandle({ handle: 'yeni_aday' }), { available: true, reason: null });
+  // claim_handle ÇAĞRILMADAN handle hâlâ claim edilebilir durumda.
+  assert.equal((await c.claimHandle({ handle: 'yeni_aday' })).ok, true);
+});
+
+test('checkHandle: alınmış → taken, biçimsiz → format', async () => {
+  const c = createMockProfilClient({ takenHandles: ['dyt_elif'] });
+  assert.deepEqual(await c.checkHandle({ handle: 'dyt_elif' }), { available: false, reason: 'taken' });
+  assert.deepEqual(await c.checkHandle({ handle: 'ab' }), { available: false, reason: 'format' });
+});
+
+test('claimHandle: aynı kullanıcı aynı handle — ikinci çağrı da claim edilebilir aday için ok verir', async () => {
+  // G6-CONTRACT.md: claim_handle idempotent. Mock sunucu-taraflı "aynı
+  // kullanıcı" ayrımını modellemiyor (tek kullanıcı varsayımı); burada en az
+  // claim sonrası handle'ın "taken" kümesine girdiğini doğruluyoruz.
+  const c = createMockProfilClient();
+  const first = await c.claimHandle({ handle: 'ilter' });
+  assert.equal(first.ok, true);
+  assert.ok(c._taken.has('ilter'));
+});
+
 // ── Mock istemci: follow gizli hesaba istek gönderir ──────────────────────────
 test('follow: açık hesap → following, gizli hesap → requested', async () => {
   const c = createMockProfilClient({ privateUsers: ['user-gizli'] });

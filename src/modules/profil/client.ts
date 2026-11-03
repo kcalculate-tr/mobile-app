@@ -8,6 +8,7 @@ import type {
   ClaimResult,
   DeliveryCityResult,
   FollowState,
+  HandleAvailability,
   ProfilClient,
   PublicProfile,
 } from './types';

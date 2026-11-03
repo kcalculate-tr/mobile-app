@@ -34,6 +34,13 @@ export type RootStackParamList = {
   // Keşfet (G6-S2) — kaydı AppNavigator'da `kesfet` bayrağı (veya __DEV__) ile
   // koşullu. Bayrak kapalı + üretimde HİÇ kaydolmaz; uygulama bugünküyle aynı.
   Kesfet: undefined;
+  // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini (koşullu kayıt).
+  GunProfilUiLab: undefined;
+  // `/u/:handle` — açık profil (bkz. modules/profil/ui/PublicProfileScreen).
+  // G7-S1'de derin bağlantı eşlemesi `/u/:handle` → PublicProfile kuruldu.
+  PublicProfile: { handle: string };
+  // Kcal AI kaydı — `useFeature('kesfet')` arkasında (bkz. modules/profil/ui/signup).
+  KcalAiSignUp: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };

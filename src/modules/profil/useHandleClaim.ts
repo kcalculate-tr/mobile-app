@@ -1,10 +1,11 @@
 // Kullanıcı adı seçimi hook'u — anında BİÇİM denetimi + gecikmeli (debounce)
-// canlı benzersizlik kontrolü. Benzersizlik SUNUCUDA. Bu hook hiçbir canlı ekrana
+// canlı müsaitlik kontrolü. Benzersizlik SUNUCUDA. Bu hook hiçbir canlı ekrana
 // bağlı değil; yalnız yeni kayıt akışı / __DEV__ ekranı.
 //
 // G6: canlı kontrol SALT OKUR `check_handle` ile yapılır (rezerve etmez); nihai
-// sahiplenme `claim_handle` ile (idempotent). Böylece debounce'lu her duraklama
-// gereksiz rezervasyon yapmaz.
+// sahiplenme yalnız kayıt akışının `submit()` adımında `claim_handle` ile olur
+// (idempotent, G6-CONTRACT.md). Böylece debounce'lu her duraklama gereksiz
+// rezervasyon yapmaz.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getProfilClient } from './client';

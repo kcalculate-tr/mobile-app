@@ -17,6 +17,7 @@ export {
   resetProfilClient,
 } from './client';
 export { createMockProfilClient, mockProfilClient, type MockProfilOptions } from './mock';
+export { canViewProfileContent } from './visibility';
 export { useHandleClaim, type HandleStatus, type UseHandleClaim } from './useHandleClaim';
 export {
   useKcalculateAiRegistration,

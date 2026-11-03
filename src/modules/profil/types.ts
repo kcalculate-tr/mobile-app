@@ -10,8 +10,10 @@ export interface ClaimResult {
 // check_handle(p_handle) → SALT OKUR benzersizlik kontrolü (rezervasyon yapmaz).
 export interface CheckHandleResult {
   available: boolean;
-  reason: string | null; // 'format' | 'reserved' | 'taken' | null
+  reason: 'format' | 'taken' | 'reserved' | null;
 }
+// gun-profil-ui'nin kullandığı ad; aynı yapı (tek tip, iki ad).
+export type HandleAvailability = CheckHandleResult;
 
 export interface PublicProfile {
   id: string;

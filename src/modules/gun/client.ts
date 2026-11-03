@@ -30,6 +30,16 @@ export const realGunClient: GunClient = {
     const { error } = await sb().rpc('share_meal_to_day', { p_consumption: consumption });
     if (error) rpcError('share_meal_to_day', error);
   },
+
+  // SORU (G6-S1'e): bkz. types.ts — `add_day_card_to_day` sözleşmede henüz yok.
+  async addDayCardToDay({ card, idempotencyKey }): Promise<{ consumption_id: string }> {
+    const { data, error } = await sb().rpc('add_day_card_to_day', {
+      p_card: card,
+      p_idempotency_key: idempotencyKey,
+    });
+    if (error) rpcError('add_day_card_to_day', error);
+    return data as { consumption_id: string };
+  },
 };
 
 let activeClient: GunClient = realGunClient;
