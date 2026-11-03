@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import { AppText, useTheme } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
@@ -161,6 +162,16 @@ export function KesfetScreen() {
   const addCardSeq = useRef(0);
   const didItSeq = useRef(0);
 
+  // Hangi gönderi ekranda görünür — FeedVideo otomatik oynat/durdur (G8-S3).
+  const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<{ item: FeedPost; isViewable: boolean }> }) => {
+      const visible = viewableItems.find((v) => v.isViewable);
+      setVisiblePostId(visible ? visible.item.id : null);
+    },
+  ).current;
+
   // İlk yükleme + gün halkaları.
   useEffect(() => {
     if (useKesfetStore.getState().posts.length === 0) {
@@ -266,14 +277,9 @@ export function KesfetScreen() {
 
   const onCopyLink = useCallback(
     async (post: FeedPost) => {
-      // expo-clipboard kurulu değil (yeni paket yasak); şimdilik sistem paylaşım
-      // sayfasıyla bağlantı verilir. Gerçek "kopyala" için SORULAR'a bkz.
-      try {
-        await Share.share({ message: postLink(post.id), url: postLink(post.id) });
-        setToast({ message: tr('kesfet.ui.link_shared') });
-      } catch {
-        // iptal
-      }
+      // expo-clipboard G8-S3'te kuruldu (onaylı istisna) — gerçek kopyalama.
+      await Clipboard.setStringAsync(postLink(post.id));
+      setToast({ message: tr('kesfet.ui.link_copied') });
     },
     [tr],
   );
@@ -322,6 +328,7 @@ export function KesfetScreen() {
         <PostCard
           model={model}
           showComment={kesfetYorum}
+          isVisible={item.id === visiblePostId}
           onLike={() => {
             touchSocial();
             void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
@@ -338,7 +345,7 @@ export function KesfetScreen() {
         />
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, touchSocial, onDidIt],
+    [nowMs, lang, onShare, kesfetYorum, touchSocial, onDidIt, visiblePostId],
   );
 
   const ringStrip = useMemo(
@@ -406,6 +413,8 @@ export function KesfetScreen() {
         onEndReached={() => {
           if (hasMore && !loadingMore) void useKesfetStore.getState().loadMore();
         }}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
         ListFooterComponent={
           <View style={styles.footer}>
             {loadingMore ? (

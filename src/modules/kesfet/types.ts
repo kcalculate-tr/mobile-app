@@ -45,7 +45,8 @@ export interface FeedMedia {
   url: string;
   width: number;
   height: number;
-  // G8 — video desteği (şema hazır; istemci yükleme ayrı oturum).
+  // G8 — video desteği (G8-CONTRACT "post_media"); sunucu alanları ekleyene
+  // kadar hep undefined → mevcut görsel akışı birebir aynı davranır.
   kind?: MediaKind;
   duration_s?: number | null;
   thumb_path?: string | null;

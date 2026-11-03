@@ -50,6 +50,7 @@ function Action({
 
 export function PostCard({
   model,
+  isVisible = false,
   onLike,
   onSave,
   onShare,
@@ -60,6 +61,8 @@ export function PostCard({
   showComment = false,
 }: {
   model: PostCardModel;
+  /** Video otomatik oynatma/durdurma için — ekranda görünür mü (G8-S3). */
+  isVisible?: boolean;
   onLike: () => void;
   onSave: () => void;
   onShare: () => void;
@@ -135,7 +138,9 @@ export function PostCard({
           ) : null}
 
           {/* Görseller */}
-          {model.media.length > 0 ? <MediaGrid media={model.media} /> : null}
+          {model.media.length > 0 ? (
+            <MediaGrid media={model.media} postId={model.id} isVisible={isVisible} />
+          ) : null}
 
           {/* Öğün kartı */}
           {model.meal ? (
