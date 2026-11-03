@@ -28,7 +28,7 @@ import { KCALCULATE_LOGO_B64 } from '../constants/kcalculateLogo';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import { Circle, Svg, Polyline } from 'react-native-svg';
-import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, ShareNetwork, Target, TrophyIcon} from '../components/icons';
+import {ChartBar, CheckCircle, ClockCounterClockwise, SquaresFour, Package, Plus, Drop, FilePdf, ForkKnife, ShareNetwork, Sparkle, Target, TrophyIcon} from '../components/icons';
 import SegmentedTabs from '../core/ui/SegmentedTabs';
 import FadeSwap from '../core/ui/FadeSwap';
 import { MACRO_COLORS, hexToRgba } from '../constants/colors';
@@ -847,6 +847,9 @@ export default function TrackerScreen() {
   // hiçbir yeni UI/mount yok, mevcut ekran davranışı değişmez.
   const paylasimKarti = useFeature('paylasim_karti');
   const [shareMeal, setShareMeal] = useState<{ data: ShareMealData; seed: string } | null>(null);
+  // AI tarama (G6-S4) — yalnız bayrak açıkken "AI ile tara" butonu görünür;
+  // kapalıyken bu buton hiç render olmaz, ScanScreen'e hiç erişilmez.
+  const aiTarama = useFeature('ai_tarama');
 
   const animValuesRef = useRef<Map<string, {
     scale: Animated.Value;
@@ -2011,6 +2014,16 @@ const html = `
                   <Plus size={12} color="#000000" />
                   <Text style={s.addMealBtnText}>Kalori Ekle</Text>
                 </TouchableOpacity>
+                {aiTarama ? (
+                  <TouchableOpacity
+                    style={s.addMealBtn}
+                    onPress={() => navigation.navigate('AiScan')}
+                    activeOpacity={0.8}
+                  >
+                    <Sparkle size={12} color="#000000" weight="fill" />
+                    <Text style={s.addMealBtnText}>AI ile tara</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               {expandedItems.filter(i => !consumedInstances.has(i.instanceId)).length === 0 ? (

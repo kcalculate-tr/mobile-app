@@ -49,6 +49,11 @@ export type RootStackParamList = {
   // Derin bağlantı hedefleri (G5-S4) — l.eatkcal.com/p/:postId, /u/:handle.
   SharedPost: { postId: string };
   SharedProfile: { handle: string };
+  // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken erişilir.
+  AiScan: undefined;
+  // eatkcal ilk sipariş şehir kapısı sonrası mevcut sipariş akışı (G6-S4) —
+  // bugünkü HomeScreen'i AYNEN yeniden kullanır, yeni bir katalog YAZILMADI.
+  EatCatalog: undefined;
   PaymentScreen: {
     orderId: string;
     amount: number;

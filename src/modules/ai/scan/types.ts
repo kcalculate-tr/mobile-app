@@ -11,6 +11,9 @@ export interface ReserveResult {
 export interface ScanIngredient {
   name: string;
   grams: number;
+  // Bileşen başına kalori — sunucu döndürmezse paylaşım kartı etiketi yalnız
+  // adı gösterir (uydurma sayı yok, bkz. PlateXRayShareCard).
+  kcal?: number;
 }
 
 export interface ScanEstimate {
