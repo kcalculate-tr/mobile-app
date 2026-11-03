@@ -30,7 +30,6 @@ export const FLAG_DEFAULTS = {
   paylasim_karti: false, // Öğünü güne paylaşma / Tabak Röntgeni kartı (cihazda görsel üretimi + sistem paylaşımı)
   // G8 — Açık paylaşım / yorum / etkinlik / bildirim (G8-CONTRACT.md "Bayraklar")
   kesfet_paylasim: false, // Keşfet'te HERKES paylaşır (composer + create_post yetkisi)
-  kesfet_video: false, // Gönderiye video (istemci ayrı oturum; şema hazır)
   kesfet_yorum: false, // Gönderi yorumları (tek seviye yanıt)
   etkinlik: false, // Etkinlik kartı + Tracker'da etkinlik kaydı
   sosyal_bildirim: false, // Sosyal bildirimler (Keşfet zili + liste)

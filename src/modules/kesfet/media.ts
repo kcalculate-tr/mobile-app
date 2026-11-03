@@ -1,5 +1,7 @@
-// Composer medya — galeriden en fazla 4 FOTOĞRAF seç + `user-media` kovasına
-// yükle, create_post'un beklediği { path, width, height, kind } listesini döner.
+// Composer medya — galeriden en fazla 4 FOTOĞRAF seç + herkese açık `post-media`
+// kovasına (`posts/{uid}/...`) yükle, create_post'un beklediği { path, width,
+// height, kind } listesini döner. (G9-3a: gönderi medyası özel user-media yerine
+// herkese açık post-media'da olmalı ki akışta/takipçide görünsün; video da oraya.)
 // Video YOK (ayrı oturum). avatarUpload.ts ile aynı mekanik (izin → seç → base64
 // → upload). Yükleme hatası → o görsel atlanır (sessiz). NOT: index.ts'ten dışa
 // açılMAZ — testler asla import etmez (expo-image-picker native bağımlılığı).
@@ -7,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { getSupabaseClient } from '../../core/supabase';
+import { POST_MEDIA_BUCKET, buildPostMediaPath } from './mediaPath';
 import type { CreatePostMedia } from './types';
 
 export const MAX_PHOTOS = 4;
@@ -36,7 +39,7 @@ export async function pickPhotos(remaining: number): Promise<LocalPhoto[]> {
   }));
 }
 
-/** Seçili fotoğrafları `user-media` kovasına yükle → create_post media listesi. */
+/** Seçili fotoğrafları `post-media` kovasına yükle → create_post media listesi. */
 export async function uploadPhotos(userId: string, photos: LocalPhoto[]): Promise<CreatePostMedia[]> {
   const supabase = getSupabaseClient();
   const out: CreatePostMedia[] = [];
@@ -44,9 +47,9 @@ export async function uploadPhotos(userId: string, photos: LocalPhoto[]): Promis
     const p = photos[i];
     try {
       const ext = (p.uri.split('.').pop() || 'jpg').toLowerCase().split('?')[0];
-      const path = `${userId}/posts/${i}-${p.width}x${p.height}.${ext}`;
+      const path = buildPostMediaPath(userId, i, p.width, p.height, ext);
       const base64 = await FileSystem.readAsStringAsync(p.uri, { encoding: FileSystem.EncodingType.Base64 });
-      const { error } = await supabase.storage.from('user-media').upload(path, decode(base64), {
+      const { error } = await supabase.storage.from(POST_MEDIA_BUCKET).upload(path, decode(base64), {
         contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
         upsert: true,
       });

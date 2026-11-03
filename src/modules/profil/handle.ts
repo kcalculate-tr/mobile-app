@@ -1,7 +1,8 @@
 // Kullanıcı adı (@handle) doğrulama — SAF (native/ağ yok). Benzersizlik SUNUCUDA
 // (claim_handle) denetlenir; burada yalnız BİÇİM denetimi yapılır. Instagram/X
 // benzeri kurallar: küçük harf, rakam, alt çizgi, nokta; başta/sonda nokta yok;
-// ardışık nokta yok; 3–20 karakter; rezerve adlar yasak.
+// ardışık nokta yok; 3–30 karakter; rezerve adlar yasak. (G9-3d: sunucu CHECK /
+// claim_handle / check_handle ile birebir aynı kural ve uzunluk — 3–30.)
 
 export type HandleReason =
   | 'empty'
@@ -19,7 +20,7 @@ export interface HandleCheck {
 }
 
 export const HANDLE_MIN = 3;
-export const HANDLE_MAX = 20;
+export const HANDLE_MAX = 30;
 
 // Kurumsal/sistem adları — kullanıcı alamaz.
 const RESERVED = new Set([

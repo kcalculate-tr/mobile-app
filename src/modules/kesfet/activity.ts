@@ -15,7 +15,7 @@ export const MET_TABLE: Record<ActivityType, number> = {
   yuruyus: 3.5, // tempolu yürüyüş
   bisiklet: 7.5, // orta tempo bisiklet
   yuzme: 7.0,
-  fitness: 5.0, // ağırlık/direnç antrenmanı (genel)
+  fitness: 6.0, // ağırlık/direnç antrenmanı (genel) — sunucu activity_kcal ile eşit
   yoga: 2.5,
   pilates: 3.0,
   futbol: 7.0,

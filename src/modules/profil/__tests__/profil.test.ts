@@ -19,7 +19,8 @@ test('validateHandle: normalize — @ ve büyük harf kırpılır', () => {
 
 test('validateHandle: hata nedenleri', () => {
   assert.equal(validateHandle('ab').reason, 'too_short');
-  assert.equal(validateHandle('a'.repeat(21)).reason, 'too_long');
+  assert.equal(validateHandle('a'.repeat(30)).ok, true); // G9-3d: üst sınır 30 (eskiden 20)
+  assert.equal(validateHandle('a'.repeat(31)).reason, 'too_long');
   assert.equal(validateHandle('ElİF boşluk').reason, 'invalid_chars'); // boşluk + ı/İ
   assert.equal(validateHandle('.elif').reason, 'edge_dot');
   assert.equal(validateHandle('elif.').reason, 'edge_dot');
