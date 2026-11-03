@@ -22,23 +22,57 @@ export interface HandleCheck {
 export const HANDLE_MIN = 3;
 export const HANDLE_MAX = 30;
 
-// Kurumsal/sistem adları — kullanıcı alamaz.
-const RESERVED = new Set([
+// Kurumsal/sistem adları — kullanıcı alamaz. (G11-1: liste + kural sunucu
+// public.handle_is_reserved() ile BİREBİR; ortak test vektörü
+// __tests__/handle.reserved.test.ts + supabase/tests/feed_rls_test.sql T28.)
+// Ayrılmışlık iki yoldan: (a) tam eşleşme (aşağıdaki liste), (b) marka önekiyle
+// başlayıp ardından harf/rakam gelen adlar (kcal*, eatkcal* — ör. `kcalofficial`).
+// Noktalı/alt çizgili türevler (örn. `kcal.official`, `kcal_`) ayrılmış DEĞİL:
+// marka önekinden sonra ayraç (./_) geldiği için impersonation sayılmaz.
+const RESERVED_EXACT = new Set([
   'admin',
   'administrator',
-  'kcalculate',
-  'eatkcal',
   'kcal',
+  'kcalai',
+  'kcalculate',
+  'kcalculateai',
+  'eatkcal',
   'support',
   'destek',
-  'api',
-  'www',
+  'yardim',
+  'help',
   'root',
-  'moderator',
-  'mod',
+  'null',
+  'undefined',
   'system',
   'sistem',
+  'moderator',
+  'mod',
+  'official',
+  'resmi',
+  'api',
+  'www',
+  'app',
 ]);
+
+// `kcalculate` zaten `kcal` önekiyle kapsanır; yine de netlik için ikisi de yok,
+// `kcal` + `eatkcal` yeterli (kcal, kcalculate'in de önekidir).
+const RESERVED_BRAND_PREFIXES = ['kcal', 'eatkcal'];
+
+/** Ayrılmış ad mı? normalized zaten küçük harf + kırpılmış olmalı. */
+export function isReservedHandle(normalized: string): boolean {
+  if (RESERVED_EXACT.has(normalized)) return true;
+  for (const prefix of RESERVED_BRAND_PREFIXES) {
+    if (
+      normalized.length > prefix.length &&
+      normalized.startsWith(prefix) &&
+      /[a-z0-9]/.test(normalized[prefix.length])
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 const VALID_CHARS = /^[a-z0-9_.]+$/;
 
@@ -58,7 +92,7 @@ export function validateHandle(input: string): HandleCheck {
     return { ok: false, reason: 'edge_dot', normalized };
   }
   if (normalized.includes('..')) return { ok: false, reason: 'consecutive_dots', normalized };
-  if (RESERVED.has(normalized)) return { ok: false, reason: 'reserved', normalized };
+  if (isReservedHandle(normalized)) return { ok: false, reason: 'reserved', normalized };
   return { ok: true, reason: null, normalized };
 }
 
