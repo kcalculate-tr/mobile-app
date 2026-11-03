@@ -1,7 +1,5 @@
-// modules/ai — Kcalculate AI servis modülü (iskelet).
+// modules/ai — Kcalculate AI servis modülü.
 //
-// Şimdilik boş: bu dosya yalnızca modül giriş noktası sınırını oluşturur.
-// İleride AI/kalori-takibi domain export'ları buradan dışa verilecek.
-// Davranış değişikliği yok; henüz hiçbir şey import edilmiyor.
-
-export {};
+// AI fotoğraf tarama veri katmanı `scan/` altında (kota + tahmin akışı).
+// Hiçbir canlı ekran buna bağlı değil; yalnız __DEV__ deneme ekranı kullanır.
+export * from './scan';

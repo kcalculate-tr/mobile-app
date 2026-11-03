@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useFonts } from 'expo-font';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 import {
   AppText,
   bricolageFonts,
@@ -68,6 +71,7 @@ function ShowcaseBody({
   fontsLoaded: boolean;
 }) {
   const t = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [toastVisible, setToastVisible] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
   const steps = [0.25, 0.5, 0.75, 1];
@@ -87,6 +91,16 @@ function ShowcaseBody({
           Yalnız geliştirme · Reanimated hareket motoru
           {fontsLoaded ? '' : ' · (Bricolage yükleniyor…)'}
         </AppText>
+
+        {/* G5-S3 veri katmanı deneme ekranı — yalnız __DEV__ */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">VERİ KATMANI</AppText>
+          <Chip
+            label="Keşfet ve profil (veri) →"
+            active
+            onPress={() => navigation.navigate('FeedDataLab')}
+          />
+        </Panel>
 
         {/* Kontroller */}
         <Panel>
