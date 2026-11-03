@@ -102,6 +102,16 @@ function ShowcaseBody({
           />
         </Panel>
 
+        {/* G11-S2 — bayraklar + geliştirici ekranları (Tanı → "Yeni uygulamayı aç"). */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">GELİŞTİRİCİ</AppText>
+          <Chip
+            label="Bayraklar ve geliştirici ekranları →"
+            active
+            onPress={() => navigation.navigate('DevDiagnostics')}
+          />
+        </Panel>
+
         {/* Kontroller */}
         <Panel>
           <AppText variant="heading">Tema</AppText>

@@ -224,6 +224,22 @@ const DiagnosticRow = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
+// "Yeni uygulamayı aç" ön ayarı — İlter simülatörde yeni kabuğu + bağlı
+// özellikleri tek dokunuşla görebilsin (G11-S2). `restoran_yakinda` AYRI düğme
+// (eatkcal "restoran yakında" kapısı yeni kabuktan bağımsız denensin).
+const NEW_SHELL_PRESET: FlagKey[] = [
+  'yeni_kabuk',
+  'kesfet',
+  'kesfet_takip',
+  'kesfet_paylasim',
+  'kesfet_video',
+  'etkinlik',
+  'sosyal_bildirim',
+  'gun_halkasi',
+  'ai_tarama',
+  'paylasim_karti',
+];
+
 // __DEV__ bayrak listesi — çözümlenmiş değeri gösterir ve yerel geçersiz kılma
 // (override) sunar. Yalnız geliştirme; üretim build'inde hiç render edilmez.
 const FlagsDebugSection = () => {
@@ -232,6 +248,14 @@ const FlagsDebugSection = () => {
   const { flags, devOverrides, setDevOverride, refresh } = ctx;
   const overrideKeys = Object.keys(devOverrides) as FlagKey[];
   const hasOverride = overrideKeys.length > 0;
+
+  // Ön ayarı uygula: preset bayraklarını override=true yap (sırayla).
+  const applyNewShell = () => {
+    for (const key of NEW_SHELL_PRESET) void setDevOverride(key, true);
+  };
+  const toggleRestoran = () => {
+    void setDevOverride('restoran_yakinda', devOverrides.restoran_yakinda ? null : true);
+  };
 
   const cycle = (key: FlagKey) => {
     // yok → açık → kapalı → yok
@@ -261,6 +285,31 @@ const FlagsDebugSection = () => {
           ) : null}
         </View>
       </View>
+
+      {/* Ön ayarlar — yeni kabuğu tek dokunuşla aç. */}
+      <View style={styles.presetRow}>
+        <TouchableOpacity onPress={applyNewShell} style={[styles.presetBtn, styles.presetPrimary]}>
+          <Text style={styles.presetPrimaryText}>🚀 Yeni uygulamayı aç</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={toggleRestoran}
+          style={[styles.presetBtn, devOverrides.restoran_yakinda ? styles.presetPrimary : styles.presetSecondary]}
+        >
+          <Text style={devOverrides.restoran_yakinda ? styles.presetPrimaryText : styles.presetSecondaryText}>
+            restoran_yakında
+          </Text>
+        </TouchableOpacity>
+        {hasOverride ? (
+          <TouchableOpacity onPress={resetAll} style={[styles.presetBtn, styles.presetSecondary]}>
+            <Text style={styles.presetSecondaryText}>Hepsini sıfırla</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+      <Text style={styles.flagsHint}>
+        "Yeni uygulamayı aç" yeni kabuğu + Keşfet/Gün/AI/paylaşım bayraklarını
+        açar. Değişiklik bir sonraki açılışta (reload) yansır. Mock veri:
+        "Keşfet ve profil (veri)" ekranı.
+      </Text>
       {FLAG_KEYS.map((key) => {
         const ov = devOverrides[key];
         const effective = flags[key];
@@ -441,5 +490,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     lineHeight: 15,
+  },
+  presetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  presetBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  presetPrimary: {
+    backgroundColor: COLORS.brand.green,
+    borderColor: COLORS.brand.green,
+  },
+  presetPrimaryText: {
+    fontSize: 13,
+    color: '#0A0A0A',
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  presetSecondary: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  presetSecondaryText: {
+    fontSize: 13,
+    color: COLORS.text.primary,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });

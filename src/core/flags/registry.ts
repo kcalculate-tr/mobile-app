@@ -33,6 +33,10 @@ export const FLAG_DEFAULTS = {
   kesfet_yorum: false, // Gönderi yorumları (tek seviye yanıt)
   etkinlik: false, // Etkinlik kartı + Tracker'da etkinlik kaydı
   sosyal_bildirim: false, // Sosyal bildirimler (Keşfet zili + liste)
+  // G11 — Yeni kabuk (TabBarR3: cam hap + Tara). Açıkken AppNavigator R3 tab
+  // navigatörünü kurar; kapalıyken (varsayılan) bugünkü CustomTabBar AYNEN.
+  // Sunucu satırı: enabled false, rollout_percent 0, min_app_version '1.1.0'.
+  yeni_kabuk: false, // Yeni uygulama kabuğu (sekme çubuğu + Tara)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

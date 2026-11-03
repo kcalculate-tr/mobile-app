@@ -1,14 +1,19 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../core/AuthContext';
-import { useFeature } from '../core/flags';
+import { useFeature, useFlagsContext, type FlagKey } from '../core/flags';
 
 import { haptic } from '../utils/haptics';
 import { DURATION } from '../constants/motion';
 import { CustomTabBar } from './CustomTabBar';
+import {
+  TabBarR3,
+  TabBarCollapseProvider,
+  resolveInitialShellTab,
+} from '../modules/shell';
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
@@ -128,6 +133,18 @@ const EatHomeLazy = withSuspense(EatHomeScreen);
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// AI (Kcalculate AI) stack rotalarının geçiş token'ları — DURATION.base ile
+// tutarlı (G11-S2 madde 5). eatkcal rotalarına DOKUNULMAZ (onlar kendi
+// slide_from_bottom/slide_from_right ayarlarını korur).
+const AI_PUSH = {
+  animation: 'slide_from_right' as const,
+  animationDuration: DURATION.base,
+};
+const AI_MODAL = {
+  animation: 'slide_from_bottom' as const,
+  animationDuration: DURATION.base,
+};
+
 // Home sekmesi — `restoran_yakinda` bayrağı açıkken T20Eat (EatHomeScreen),
 // kapalıyken (varsayılan) bugünkü HomeScreen AYNEN. HomeScreen bu dosyada
 // hiç değişmedi; "Sipariş ver" sonrası aynı bileşen `EatCatalog` rotasıyla
@@ -218,6 +235,102 @@ function TabNavigator() {
   );
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// YENİ KABUK (G11-S2) — `yeni_kabuk` bayrağı açıkken.
+//
+// Bayrak AÇILIŞTA BİR KEZ okunur ve sabitlenir: sunucudan çalışma anında gelen
+// değişiklik navigasyonu BOZMAZ, bir sonraki soğuk açılışta uygulanır. Bayrak
+// henüz çözülmediyse (ready=false) eski kabuk gösterilir (güvenli varsayılan);
+// ilk çözümde değer dondurulur ve bir daha değişmez.
+function useColdStartFeature(key: FlagKey): boolean {
+  const live = useFeature(key);
+  const ctx = useFlagsContext();
+  const ready = ctx ? ctx.ready : true;
+  const frozen = useRef<boolean | undefined>(undefined);
+  if (frozen.current === undefined && ready) {
+    frozen.current = live;
+  }
+  return frozen.current ?? false;
+}
+
+// R3 tab navigatörü — sekme ADLARI bugünküyle aynı (Tracker/Home/Profile), böylece
+// mevcut navigate(...) çağrıları iki kabukta da çalışır. Keşfet sekmesi `kesfet`
+// açıkken eklenir; Cart/Subscriptions düğmesiz (gizli) sekmeler. Oturum kapıları
+// bugünkü TabNavigator'dakiyle aynı (Tracker/KesfetTab/Profile oturumsuzsa Login).
+function TabNavigatorR3() {
+  const { session } = useAuth();
+  const kesfet = useColdStartFeature('kesfet');
+  const initialRouteName = resolveInitialShellTab({
+    session: !!session,
+    // Sipariş geçmişi için YENİ sorgu yok; mevcut önbellek bunu vermiyor →
+    // undefined (→ Home). S6 bir önbellek bağlarsa Tracker-ilk kuralı devreye girer.
+    hasOrderHistory: undefined,
+  });
+  const authGate = (navigation: any) => ({
+    tabPress: (e: { preventDefault: () => void }) => {
+      haptic.selection();
+      if (!session) {
+        e.preventDefault();
+        navigation.getParent()?.navigate('Login' as never);
+      }
+    },
+  });
+  return (
+    <TabBarCollapseProvider>
+      <Tab.Navigator
+        initialRouteName={initialRouteName}
+        tabBar={(props) => <TabBarR3 {...props} />}
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: '#f6f6f6' },
+          // Sekme geçişine animasyon EKLENMEZ (24.09.2026 kararı, bkz. TabNavigator).
+        }}
+      >
+        <Tab.Screen
+          name="Tracker"
+          component={TrackerScreen}
+          listeners={({ navigation }) => authGate(navigation)}
+        />
+        {kesfet && (
+          <Tab.Screen
+            name="KesfetTab"
+            component={KesfetLazy}
+            initialParams={{ asTab: true }}
+            listeners={({ navigation }) => authGate(navigation)}
+          />
+        )}
+        <Tab.Screen
+          name="Home"
+          component={HomeTabScreen}
+          listeners={{ tabPress: () => haptic.selection() }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          listeners={({ navigation }) => authGate(navigation)}
+        />
+        {/* Gizli (düğmesiz) sekmeler — bugünkü bileşenler, navigate ile erişilir. */}
+        <Tab.Screen
+          name="Cart"
+          component={CartScreen}
+          options={{ tabBarButton: () => null, lazy: false }}
+        />
+        <Tab.Screen
+          name="Subscriptions"
+          component={SubscriptionScreen}
+          options={{ tabBarButton: () => null }}
+        />
+      </Tab.Navigator>
+    </TabBarCollapseProvider>
+  );
+}
+
+// `Tabs` kök sekme ekranı — açılışta bir kez `yeni_kabuk`u okur ve kabuğu seçer.
+function TabsRoot() {
+  const yeniKabuk = useColdStartFeature('yeni_kabuk');
+  return yeniKabuk ? <TabNavigatorR3 /> : <TabNavigator />;
+}
+
 // FAZ G — kayıtsız gezinme: zorunlu onboarding zinciri (Welcome→ValueProp→
 // AuthGateway) kalktı, uygulama her zaman doğrudan Tabs (Home) ile açılır.
 // Oturum sadece Checkout'ta (kendi guard'ı) ve Tracker/Profile sekmelerine
@@ -288,7 +401,7 @@ export default function AppNavigator() {
         component={WelcomeGateScreen}
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#0A0A0A' } }}
       />
-      <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen name="Tabs" component={TabsRoot} />
       <Stack.Screen name="Categories" component={CategoriesLazy} />
       <Stack.Screen name="CategoryProducts" component={CategoryProductsLazy} />
       <Stack.Screen name="BrandLanding" component={BrandLandingLazy} />
@@ -305,16 +418,16 @@ export default function AppNavigator() {
         <Stack.Screen name="FeedDataLab" component={FeedDataLabLazy} options={{ title: 'Keşfet ve profil (veri)' }} />
       )}
       {(kesfetEnabled || __DEV__) && (
-        <Stack.Screen name="Kesfet" component={KesfetLazy} />
+        <Stack.Screen name="Kesfet" component={KesfetLazy} options={AI_PUSH} />
       )}
       {(kesfetPaylasimEnabled || __DEV__) && (
-        <Stack.Screen name="Composer" component={ComposerLazy} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
+        <Stack.Screen name="Composer" component={ComposerLazy} options={AI_MODAL} />
       )}
       {__DEV__ && (
         <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />
       )}
-      <Stack.Screen name="PublicProfile" component={PublicProfileLazy} />
-      <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} />
+      <Stack.Screen name="PublicProfile" component={PublicProfileLazy} options={AI_PUSH} />
+      <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} options={AI_PUSH} />
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />
@@ -332,13 +445,13 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileContracts" component={ContractsLazy} />
       <Stack.Screen name="PaymentScreen" component={PaymentLazy} />
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
-      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ contentStyle: { backgroundColor: '#0A0A0A' } }} />
-      <Stack.Screen name="SharedProfile" component={SharedProfileLazy} options={{ contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      <Stack.Screen name="SharedProfile" component={SharedProfileLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
       {/* AI tarama (G6-S4) — tam ekran kamera görünümü. */}
       <Stack.Screen
         name="AiScan"
         component={ScanLazy}
-        options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base, contentStyle: { backgroundColor: '#2C2C2E' } }}
+        options={{ ...AI_MODAL, contentStyle: { backgroundColor: '#2C2C2E' } }}
       />
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}

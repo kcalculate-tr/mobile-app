@@ -6,6 +6,10 @@ export type TabParamList = {
   Subscriptions: undefined;
   Tracker: undefined;
   Profile: undefined;
+  // G11-S2 yeni kabuk: Keşfet sekmesi (yalnız `kesfet` + `yeni_kabuk` açıkken
+  // R3 tab navigatörüne eklenir). `asTab` ekrana tab bağlamında olduğunu söyler
+  // (alt boşluk hesabı; bkz. G11-CONTRACT). Stack `Kesfet` rotası ayrı kalır.
+  KesfetTab: { asTab?: boolean } | undefined;
 };
 
 export type AuthRedirectTarget = 'Tabs' | 'Checkout' | 'Addresses';
