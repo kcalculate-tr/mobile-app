@@ -52,7 +52,13 @@ export function useHandleClaim(initial = ''): UseHandleClaim {
     }
     if (!v.ok) {
       setStatus('invalid');
-      setMessageKey(v.reason ? handleReasonI18nKey(v.reason) : 'profil.handle_invalid');
+      // Rezerve adlar için ayrı mesaj (G11-S4 madde 6): handle.ts (S1) 'reserved'ı
+      // handle_taken'a eşliyor; burada ayrımı koruyup "ayrılmış" mesajını veriyoruz.
+      if (v.reason === 'reserved') {
+        setMessageKey('profil.handle_reserved');
+      } else {
+        setMessageKey(v.reason ? handleReasonI18nKey(v.reason) : 'profil.handle_invalid');
+      }
       return;
     }
     // Biçim geçerli → gecikmeli canlı kontrol.
@@ -69,7 +75,8 @@ export function useHandleClaim(initial = ''): UseHandleClaim {
             setMessageKey('profil.handle_available');
           } else {
             setStatus('taken');
-            setMessageKey('profil.handle_taken');
+            // Sunucu ayrılmış adı 'reserved' ile ayırır → farklı mesaj.
+            setMessageKey(res.reason === 'reserved' ? 'profil.handle_reserved' : 'profil.handle_taken');
           }
         })
         .catch(() => {

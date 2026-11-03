@@ -191,6 +191,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       empty_pick_today: 'Bugünkü kayıtlarımdan seç',
       picker_title: 'Bugünkü kayıtların',
       picker_empty: 'Bugün henüz bir kaydın yok.',
+      // G11-S4 — yeni kabuk Ana sayfa (Tracker) imza anları.
+      tomorrow_new_ring: 'Yarın yeni halka.',
+      logged_to: '%{meal}’ye loglandı',
+      goal_kcal: '%{kcal} / %{target} kcal',
     },
     meal: {
       breakfast: 'Kahvaltı',
@@ -202,6 +206,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     profil: {
       handle_label: 'Kullanıcı adı',
       handle_taken: 'Bu kullanıcı adı alınmış.',
+      handle_reserved: 'Bu kullanıcı adı ayrılmış',
       handle_invalid: 'Yalnız küçük harf, rakam, alt çizgi ve nokta.',
       handle_too_short: 'En az 3 karakter.',
       handle_too_long: 'En fazla 20 karakter.',
@@ -226,6 +231,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       privacy_public: 'Herkese açık',
       privacy_public_hint: 'Herkes görür',
       privacy_private_hint: 'Yalnız onayladığın takipçiler görür',
+      // G11-S4 — yeni kabuk Profil sosyal başlık.
+      macro_subscription: 'Macro aboneliğim',
+      private_badge: 'Gizli',
       email_invalid: 'Geçerli bir e-posta gir.',
       code_invalid: 'Kod yanlış. Tekrar dene.',
       signup_skip: 'Atla',
@@ -466,6 +474,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       empty_pick_today: 'Pick from today’s logs',
       picker_title: 'Today’s logs',
       picker_empty: 'You haven’t logged anything today yet.',
+      // G11-S4 — new shell Home (Tracker) signature moments.
+      tomorrow_new_ring: 'Tomorrow’s a new ring.',
+      logged_to: 'Logged to %{meal}',
+      goal_kcal: '%{kcal} / %{target} kcal',
     },
     meal: {
       breakfast: 'Breakfast',
@@ -477,6 +489,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     profil: {
       handle_label: 'Username',
       handle_taken: 'This username is taken.',
+      handle_reserved: 'This username is reserved',
       handle_invalid: 'Only lowercase letters, digits, underscore and dot.',
       handle_too_short: 'At least 3 characters.',
       handle_too_long: 'At most 20 characters.',
@@ -501,6 +514,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       privacy_public: 'Public',
       privacy_public_hint: 'Everyone can see it',
       privacy_private_hint: 'Only approved followers can see it',
+      // G11-S4 — new shell Profile social header.
+      macro_subscription: 'My Macro subscription',
+      private_badge: 'Private',
       email_invalid: 'Enter a valid email.',
       code_invalid: 'Wrong code. Try again.',
       signup_skip: 'Skip',
