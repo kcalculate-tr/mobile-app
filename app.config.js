@@ -19,10 +19,11 @@ module.exports = {
   expo: {
     name: 'Kcalculate',
     slug: 'kcal-mobile',
-    // 1.0.7: Sentry native modulu geldi — OTA ile gidemez, yeni build sart.
-    // runtimeVersion policy 'appVersion' oldugu icin bu satir ayni zamanda
-    // 1.0.6 cihazlarin bu paketi ALMASINI engelleyen emniyet kilididir.
-    version: '1.0.7',
+    // 1.1.0 (G9): yeni yerel paketler geldi (expo-video, expo-video-thumbnails,
+    // expo-clipboard) — OTA ile gidemez, yeni build sart. runtimeVersion policy
+    // 'appVersion' oldugu icin bu satir ayni zamanda 1.0.7 cihazlarin bu paketi
+    // ALMASINI engelleyen emniyet kilididir (OTA kanali yeni surume baglanir).
+    version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -209,7 +210,7 @@ module.exports = {
     },
     android: {
       package: 'com.kcalmobile.app',
-      versionCode: 9,
+      versionCode: 10,
       userInterfaceStyle: 'light',
       adaptiveIcon: {
         backgroundColor: '#000000',
