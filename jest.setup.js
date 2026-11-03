@@ -71,6 +71,27 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
 
+// Google ile Giriş native modülü test ortamında yok (core/flags→AuthContext
+// zinciri import ediyor). Taklit → PostCard/Keşfet testleri yerel mock'suz render
+// olur (G11-S3-LOG → ENTEGRASYONA #3).
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure() {},
+    hasPlayServices: async () => true,
+    signIn: async () => ({}),
+    signOut: async () => {},
+  },
+  statusCodes: {},
+  isSuccessResponse: () => false,
+  isErrorWithCode: () => false,
+}));
+
+// expo-video native modülü test ortamında yok (media/video → FeedVideo).
+jest.mock('expo-video', () => ({
+  useVideoPlayer: () => ({ play() {}, pause() {}, muted: true, loop: true }),
+  VideoView: () => null,
+}));
+
 // Animated.timing test bittikten sonra gerçek zamanlayıcıyla dönmeye devam
 // edip "update was not wrapped in act(...)" gürültüsü üretiyor. Her testten
 // sonra bekleyen zamanlayıcıları temizle — testler zaten son duruma bakıyor.

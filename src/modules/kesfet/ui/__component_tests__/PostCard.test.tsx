@@ -2,10 +2,8 @@
 // Yalnız yazarına pending görünür (status 'pending'); yayınlanmışta rozet yok.
 //
 // PostCard → MediaGrid, native modülleri (core/flags→AuthContext→google-signin,
-// media/video→expo-video) import eder; jest.setup.js'te taklitleri yok (bkz.
-// ENTEGRASYONA — G11-S3-LOG). Rozet testi medyasız, MediaGrid'i taklit etmek yeter.
-jest.mock('../MediaGrid', () => ({ MediaGrid: () => null }));
-
+// media/video→expo-video) import eder. Taklitleri artık jest.setup.js'te (S6,
+// ENTEGRASYONA — G11-S3-LOG #3) → yerel MediaGrid mock'u gerekmiyor.
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { PostCard } from '../PostCard';
