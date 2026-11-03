@@ -33,6 +33,11 @@ export const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       SharedPost: 'p/:postId',
       PublicProfile: 'u/:handle',
+      // Keşfet derin bağlantısı — her İKİ kabukta da aynı kök `Kesfet` ekranına
+      // gider (eski kabukta stack Keşfet; yeni kabukta KesfetTab in-app sekmedir,
+      // ama derin bağlantı tam ekran Keşfet'i açar). `Kesfet` rotası yalnız
+      // `kesfet` açıkken kayıtlı; kapalıyken RN bu yolu yok sayar (davranış aynı).
+      Kesfet: 'kesfet',
     },
   },
 };
