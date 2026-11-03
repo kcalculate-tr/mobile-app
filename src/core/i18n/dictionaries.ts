@@ -234,6 +234,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G11-S4 — yeni kabuk Profil sosyal başlık.
       macro_subscription: 'Macro aboneliğim',
       private_badge: 'Gizli',
+      blocked_title: 'Bu hesabı engelledin',
+      blocked_desc: 'Birbirinizin paylaşımlarını göremezsiniz.',
       email_invalid: 'Geçerli bir e-posta gir.',
       code_invalid: 'Kod yanlış. Tekrar dene.',
       signup_skip: 'Atla',
@@ -517,6 +519,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G11-S4 — new shell Profile social header.
       macro_subscription: 'My Macro subscription',
       private_badge: 'Private',
+      blocked_title: 'You blocked this account',
+      blocked_desc: 'You can’t see each other’s posts.',
       email_invalid: 'Enter a valid email.',
       code_invalid: 'Wrong code. Try again.',
       signup_skip: 'Skip',

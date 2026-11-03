@@ -29,6 +29,9 @@ export interface PublicProfile {
   posts: number;
   me_following: FollowState;
   me_requested?: boolean; // G6: bekleyen takip isteğim var mı (gizli hesap)
+  // G11-S4: çift yönlü engel (ben engelledim ya da o engelledi). Sunucu henüz
+  // döndürmüyorsa undefined → engelli hâli gösterilmez (ileri uyumlu, mock ile test).
+  blocked?: boolean;
 }
 
 export interface DeliveryCityResult {
