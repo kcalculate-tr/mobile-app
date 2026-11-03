@@ -36,6 +36,8 @@ const BrandLandingScreen = lazy(() => import('../screens/BrandLandingScreen'));
 const DevDiagnosticsScreen = lazy(() => import('../screens/DevDiagnosticsScreen'));
 // Yalnız __DEV__ vitrini; aşağıda Stack.Screen kaydı __DEV__ ile koşullu.
 const DesignShowcaseScreen = lazy(() => import('../screens/DesignShowcaseScreen'));
+// Yalnız __DEV__: G5-S3 veri katmanı deneme ekranı (Keşfet/profil/Gün/AI tarama).
+const FeedDataLabScreen = lazy(() => import('../screens/FeedDataLabScreen'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
 const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
@@ -76,6 +78,7 @@ const CategoryProductsLazy = withSuspense(CategoryProductsScreen);
 const BrandLandingLazy = withSuspense(BrandLandingScreen);
 const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
 const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
+const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const OffersLazy = withSuspense(OffersScreen);
 const OrderSuccessLazy = withSuspense(OrderSuccessScreen);
 const ProductDetailLazy = withSuspense(ProductDetailScreen);
@@ -255,6 +258,9 @@ export default function AppNavigator() {
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsLazy} />
       {__DEV__ && (
         <Stack.Screen name="DesignShowcase" component={DesignShowcaseLazy} options={{ headerShown: false }} />
+      )}
+      {__DEV__ && (
+        <Stack.Screen name="FeedDataLab" component={FeedDataLabLazy} options={{ title: 'Keşfet ve profil (veri)' }} />
       )}
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />

@@ -29,6 +29,8 @@ export type RootStackParamList = {
   // Yalnız __DEV__: yeni tasarım vitrini. Üretim derlemesinde ekran kaydı
   // AppNavigator'da __DEV__ ile koşullu, bu yüzden canlıda erişilemez.
   DesignShowcase: undefined;
+  // Yalnız __DEV__: G5-S3 veri katmanı deneme ekranı (koşullu kayıt).
+  FeedDataLab: undefined;
   Login: { redirectTo?: AuthRedirectTarget } | undefined;
   ProfileOrders: undefined;
   OrderDetail: { orderId: number };
