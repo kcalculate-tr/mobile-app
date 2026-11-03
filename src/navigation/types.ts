@@ -46,6 +46,9 @@ export type RootStackParamList = {
   Feedback: undefined;
   NutritionProfile: { firstTime?: boolean } | undefined;
   MeasurementHistory: undefined;
+  // Derin bağlantı hedefleri (G5-S4) — l.eatkcal.com/p/:postId, /u/:handle.
+  SharedPost: { postId: string };
+  SharedProfile: { handle: string };
   PaymentScreen: {
     orderId: string;
     amount: number;

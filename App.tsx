@@ -26,6 +26,7 @@ import {
   setupNotificationListeners,
 } from './src/core/notifications';
 import { navigationRef } from './src/navigation/navigationRef';
+import { linking } from './src/navigation/linking';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
 import PushPermissionPrompt from './src/components/modals/PushPermissionPrompt';
@@ -159,7 +160,7 @@ function App() {
                 içinde. BU OTURUMDA hiçbir ekran useFeature kullanmaz; provider
                 yalnız arka planda değer çözer, canlı davranış değişmez. */}
             <FlagsProvider>
-              <NavigationContainer ref={navigationRef} theme={navDarkTheme}>
+              <NavigationContainer ref={navigationRef} theme={navDarkTheme} linking={linking}>
                 <AppContent />
               </NavigationContainer>
             </FlagsProvider>

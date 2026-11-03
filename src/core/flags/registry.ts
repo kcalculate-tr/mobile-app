@@ -26,7 +26,7 @@ export const FLAG_DEFAULTS = {
   gun_halkasi: false, // Gün halkası (paylaşılan öğünler)
   ai_tarama: false, // AI fotoğraf tarama (günlük kota)
   restoran_yakinda: false, // eatkcal "restoran yakında" kapısı
-  paylasim_karti: false, // Öğünü güne paylaşma kartı
+  paylasim_karti: false, // Öğün/Tabak Röntgeni paylaşım kartı (cihazda görsel üretimi + sistem paylaşımı)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

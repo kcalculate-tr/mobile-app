@@ -79,6 +79,7 @@ export { Receipt } from 'phosphor-react-native/lib/commonjs/icons/Receipt';
 export { Ruler } from 'phosphor-react-native/lib/commonjs/icons/Ruler';
 export { Scales } from 'phosphor-react-native/lib/commonjs/icons/Scales';
 export { Scooter } from 'phosphor-react-native/lib/commonjs/icons/Scooter';
+export { ShareNetwork } from 'phosphor-react-native/lib/commonjs/icons/ShareNetwork';
 export { Shield } from 'phosphor-react-native/lib/commonjs/icons/Shield';
 export { ShoppingBag } from 'phosphor-react-native/lib/commonjs/icons/ShoppingBag';
 export { ShoppingCart, ShoppingCartIcon } from 'phosphor-react-native/lib/commonjs/icons/ShoppingCart';

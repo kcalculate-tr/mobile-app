@@ -41,6 +41,11 @@ module.exports = {
       bundleIdentifier: 'com.kcalmobile.app',
       buildNumber: '1',
       userInterfaceStyle: 'light',
+      // DERİN BAĞLANTI (G5-S4) — Universal Links. l.eatkcal.com'daki
+      // .well-known/apple-app-site-association (Vercel landing-page) bu bundle'a
+      // (A63MT69ASR.com.kcalmobile.app) /p/* ve /u/* yollarını eşler. Alan adı
+      // yayına girene ve YENİ BUILD çıkana kadar mevcut 1.0.7 cihazlarda etkisiz.
+      associatedDomains: ['applinks:l.eatkcal.com'],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
@@ -205,6 +210,21 @@ module.exports = {
         monochromeImage: './assets/adaptive-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
+      // DERİN BAĞLANTI (G5-S4) — Android App Links. autoVerify, l.eatkcal.com'daki
+      // .well-known/assetlinks.json ile imza parmak izini eşleştirir (parmak izi
+      // İlter tarafından eklenecek — bkz. docs/night/G5-S4-LINKS.md). Yalnız /p
+      // ve /u yolları; diğer yollar tarayıcıda açılır. Alan adı + yeni build şart.
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          category: ['BROWSABLE', 'DEFAULT'],
+          data: [
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/p' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/u' },
+          ],
+        },
+      ],
       // READ/WRITE_EXTERNAL_STORAGE KALDIRILDI (2026-11-03, G3-S1): Android 13+
       // (API 33) bunları yok sayar; expo-image-picker Foto Seçici (Photo Picker)
       // kullandığı için depolama izni gerekmiyor (kodda MediaLibrary/dosya
