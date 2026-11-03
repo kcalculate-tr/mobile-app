@@ -5,7 +5,7 @@
 // bu modelin üstünde koşar, gerçek bir renderer gerektirmez). Bileşenler bu
 // modeli alır ve yalnız çizer; metin/sayı biçimi burada belirlenir.
 
-import type { FeedMedia, FeedPost, MealCard } from '../types';
+import type { ActivityCard, FeedMedia, FeedPost, MealCard, PostType } from '../types';
 
 export type UiLang = 'tr' | 'en';
 
@@ -90,8 +90,13 @@ export interface PostCardModel {
   avatarUrl: string | null;
   media: FeedMedia[];
   meal: MealCard | null;
-  stats: { likes: number; saves: number; adds: number };
-  me: { liked: boolean; saved: boolean };
+  // G8 — tür, etkinlik kartı, yorum/didit sayaçları, sahiplik + pending.
+  postType: PostType;
+  activity: ActivityCard | null;
+  isMine: boolean;
+  pending: boolean;
+  stats: { likes: number; saves: number; adds: number; comments: number; did_it: number };
+  me: { liked: boolean; saved: boolean; is_author: boolean };
   link: string;
 }
 
@@ -114,6 +119,10 @@ export function postCardModel(post: FeedPost, nowMs: number, lang: UiLang): Post
     avatarUrl: post.author.avatar_url,
     media: mediaItems(post),
     meal: post.meal_card,
+    postType: post.post_type,
+    activity: post.activity_card,
+    isMine: post.me.is_author,
+    pending: post.status === 'pending',
     stats: post.stats,
     me: post.me,
     link: postLink(post.id),

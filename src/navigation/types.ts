@@ -34,6 +34,8 @@ export type RootStackParamList = {
   // Keşfet (G6-S2) — kaydı AppNavigator'da `kesfet` bayrağı (veya __DEV__) ile
   // koşullu. Bayrak kapalı + üretimde HİÇ kaydolmaz; uygulama bugünküyle aynı.
   Kesfet: undefined;
+  // G8 — Composer (herkes paylaşır); yalnız `kesfet_paylasim` açıkken erişilir.
+  Composer: undefined;
   // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini (koşullu kayıt).
   GunProfilUiLab: undefined;
   // `/u/:handle` — açık profil (bkz. modules/profil/ui/PublicProfileScreen).

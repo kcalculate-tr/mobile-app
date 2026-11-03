@@ -39,6 +39,7 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { fetchProductImagesByName } from '../lib/products';
 import { useAuth } from '../core/AuthContext';
 import { useFeature } from '../core/flags';
+import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import ShareMealCardModal from '../components/share/ShareMealCardModal';
 import type { ShareMealData } from '../components/share/MealShareCard';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -850,6 +851,8 @@ export default function TrackerScreen() {
   // AI tarama (G6-S4) — yalnız bayrak açıkken "AI ile tara" butonu görünür;
   // kapalıyken bu buton hiç render olmaz, ScanScreen'e hiç erişilmez.
   const aiTarama = useFeature('ai_tarama');
+  // G8: Tracker'da etkinlik kaydı — bayrak kapalıyken aşağıdaki blok render olmaz.
+  const etkinlik = useFeature('etkinlik');
 
   const animValuesRef = useRef<Map<string, {
     scale: Animated.Value;
@@ -1998,6 +2001,13 @@ const html = `
           <FadeSwap swapKey="ozet">
             {/* ── Pantry ── */}
             <View style={s.pantrySection}>
+              {/* G8: etkinlik girişi — yalnız `etkinlik` bayrağı açıkken; kapalıyken
+                  bu blok HİÇ render olmaz, Tracker bugünküyle birebir aynı kalır. */}
+              {etkinlik ? (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                  <TrackerActivityEntry />
+                </View>
+              ) : null}
               <View style={s.pantrySectionHeader}>
                 <Package size={14} color="#000000" />
                 <Text style={s.pantrySectionTitle}>Dolabındakiler</Text>

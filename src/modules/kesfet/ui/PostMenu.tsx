@@ -11,7 +11,7 @@ import { BottomSheet } from './BottomSheet';
 import { Icon, type IconName } from './icons';
 import { REPORT_REASONS, type ReportReason } from './format';
 
-type MenuView = 'menu' | 'report' | 'block';
+type MenuView = 'menu' | 'report' | 'block' | 'delete';
 
 function MenuRow({
   icon,
@@ -45,16 +45,21 @@ export function PostMenu({
   visible,
   onClose,
   authorName,
+  isMine = false,
   onCopyLink,
   onReport,
   onBlock,
+  onDelete,
 }: {
   visible: boolean;
   onClose: () => void;
   authorName: string;
+  // G8 — kendi gönderin: şikayet/engelle yerine "Sil".
+  isMine?: boolean;
   onCopyLink: () => void;
   onReport: (reason: ReportReason) => void;
   onBlock: () => void;
+  onDelete?: () => void;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
@@ -82,17 +87,28 @@ export function PostMenu({
               close();
             }}
           />
-          <MenuRow
-            icon="flag"
-            label={tr('kesfet.ui.menu.report')}
-            onPress={() => setView('report')}
-          />
-          <MenuRow
-            icon="slash"
-            label={tr('kesfet.ui.menu.block')}
-            danger
-            onPress={() => setView('block')}
-          />
+          {isMine ? (
+            <MenuRow
+              icon="trash"
+              label={tr('kesfet.ui.menu.delete')}
+              danger
+              onPress={() => setView('delete')}
+            />
+          ) : (
+            <>
+              <MenuRow
+                icon="flag"
+                label={tr('kesfet.ui.menu.report')}
+                onPress={() => setView('report')}
+              />
+              <MenuRow
+                icon="slash"
+                label={tr('kesfet.ui.menu.block')}
+                danger
+                onPress={() => setView('block')}
+              />
+            </>
+          )}
           <Pressable
             onPress={close}
             accessibilityRole="button"
@@ -121,6 +137,39 @@ export function PostMenu({
               }}
             />
           ))}
+          <Pressable
+            onPress={() => setView('menu')}
+            accessibilityRole="button"
+            accessibilityLabel={tr('common.cancel')}
+            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
+          >
+            <AppText variant="body" style={{ fontWeight: '600' }}>
+              {tr('common.cancel')}
+            </AppText>
+          </Pressable>
+        </View>
+      ) : view === 'delete' ? (
+        <View style={styles.group}>
+          <AppText variant="heading" style={styles.title}>
+            {tr('kesfet.ui.delete_confirm_title')}
+          </AppText>
+          <AppText variant="body" tone="secondary" style={styles.desc}>
+            {tr('kesfet.ui.delete_confirm_desc')}
+          </AppText>
+          <Pressable
+            onPress={() => {
+              haptic('medium');
+              onDelete?.();
+              close();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={tr('kesfet.ui.menu.delete')}
+            style={({ pressed }) => [styles.blockBtn, { backgroundColor: t.color.danger, opacity: pressed ? 0.9 : 1 }]}
+          >
+            <AppText variant="body" style={{ color: '#FFFFFF', fontWeight: '700' }}>
+              {tr('kesfet.ui.menu.delete')}
+            </AppText>
+          </Pressable>
           <Pressable
             onPress={() => setView('menu')}
             accessibilityRole="button"

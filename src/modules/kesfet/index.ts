@@ -18,3 +18,14 @@ export { useKesfetStore } from './store';
 export { useCommentsStore } from './commentsStore';
 export { useNotificationsStore } from './notificationsStore';
 export { estimateActivityKcal, MET_TABLE, DEFAULT_WEIGHT_KG } from './activity';
+export {
+  validateComposer,
+  activityDraftCard,
+  buildCreateInput,
+  MAX_BODY,
+  MAX_PHOTOS,
+  type ComposerDraft,
+  type ComposerError,
+  type MealDraft,
+  type ActivityDraft,
+} from './composer';
