@@ -62,7 +62,9 @@ bağımlılık (feature_flags tablosu) uygulanmalı.
 | 13 | `20261104002100_g8_moderation_cron.sql` | fn `fn_moderate_pending_retry` + pg_cron işi `moderate_pending_retry` (*/5 dk) | UYGULANACAK (#12 + `moderate-content` edge deploy + Vault `service_role_key` gerekli) |
 | 14 | `20261105000100_g9_fixes.sql` | **G9 düzeltmeleri.** 3a: `post-media` yazma politikaları (+`kesfet_paylasim`); 3b: `user-media` SELECT EK politikası (aktif day_share + feed_can_view_author/moderatör) + `get_day_cards` (erişim feed_can_view_author); 3c: `posts_guard_protected_cols` BEFORE UPDATE trigger (status/pinned_until/author_id koruması, `app.post_rpc`) + `delete_my_post` (bayrak); 3d: `profiles` handle CHECK + `claim_handle`/`check_handle` (nokta izinli, 3–30); 3e: `admin_create_post` (carb_g→carbs_g normalize); 3f: `mod_resolve_report` (dismiss→published + `app.post_rpc`); 3g: `add_comment` (`kesfet_yorum` kapısı); 3h: `get_user_day_progress` (feed_can_view_author kapısı + authenticated revoke); 3j: content_reports/moderation_actions CHECK (comment + source=ai, idempotent) | UYGULANACAK (#1–#13 gerekli) |
 
-| 15 | `20261105000200_g10_fixes.sql` | **G10 son güvenlik düzeltmeleri (EN SON).** 1: `reserve_ai_scan` idempotency araması `user_id=auth.uid()` ile sınırlı (başkasının anahtarı → hata; kota aşımı kapandı; `release_ai_scan` zaten kendi rezervasyonu — değişiklik yok); 2: `post_media_read` geniş `public` SELECT kaldırıldı → listeleme yalnız sahip (`posts/{uid}/`) + moderatör/admin (kova `public` kalır, CDN URL RLS'siz); 3: `report_content` görünürlük kapısı (post→yayında+feed_can_view_author; comment→yorum+gönderi yayında+görülebilir; day_card→aktif+görülebilir; user→engel yok; değilse `bulunamadi`) + `comment` desteği + günde 50 şikayet sınırı; 4: `mod_resolve_report` çözülen post/comment için `moderation_queue` satırını `done` yapar (dismiss→published korunur); 5: `post_comments_guard_protected_cols` BEFORE UPDATE trigger (status/author_id/post_id/parent_id; `app.post_rpc`) + `delete_my_comment` (bayrak); 6: `get_user_day_progress` yetki kapısı yalnız `auth.uid()` doluyken (null-auth definer/servis çağrısı kırılmaz) | UYGULANACAK (#1–#14 gerekli; EN SON) |
+| 15 | `20261105000200_g10_fixes.sql` | **G10 son güvenlik düzeltmeleri (EN SON).** 1: `reserve_ai_scan` idempotency araması `user_id=auth.uid()` ile sınırlı (başkasının anahtarı → hata; kota aşımı kapandı; `release_ai_scan` zaten kendi rezervasyonu — değişiklik yok); 2: `post_media_read` geniş `public` SELECT kaldırıldı → listeleme yalnız sahip (`posts/{uid}/`) + moderatör/admin (kova `public` kalır, CDN URL RLS'siz); 3: `report_content` görünürlük kapısı (post→yayında+feed_can_view_author; comment→yorum+gönderi yayında+görülebilir; day_card→aktif+görülebilir; user→engel yok; değilse `bulunamadi`) + `comment` desteği + günde 50 şikayet sınırı; 4: `mod_resolve_report` çözülen post/comment için `moderation_queue` satırını `done` yapar (dismiss→published korunur); 5: `post_comments_guard_protected_cols` BEFORE UPDATE trigger (status/author_id/post_id/parent_id; `app.post_rpc`) + `delete_my_comment` (bayrak); 6: `get_user_day_progress` yetki kapısı yalnız `auth.uid()` doluyken (null-auth definer/servis çağrısı kırılmaz) | UYGULANACAK (#1–#14 gerekli) |
+
+| 16 | `20261105000300_g11_fixes.sql` | **G11 son sunucu düzeltmeleri + yeni RPC'ler (EN SON, #15'ten SONRA).** 1: ayrılmış kullanıcı adları (`handle_is_reserved` + `claim_handle`/`check_handle` rezerve kontrolü; tam eşleşme + `kcal`/`eatkcal` marka öneki); 2: tüm G5–G8 sosyal tablolarında `revoke truncate, trigger, references from anon, authenticated`; 3: yinelenen post-media storage politikaları (`creator_*`/`writer_*`) tek `writer_*` setine indirildi; 4: `update_my_post` + `posts_guard_protected_cols` gövde dalı (yayındaki gövde değişimi → `pending` + `moderation_queue`; doğrudan UPDATE açığı kapandı); 5: `search_products(p_q, p_limit)` (SECURITY INVOKER; `products` herkese okunur); 6: bayrak yönetimi RPC'leri (`admin_list_flags`/`admin_set_flag`/`admin_flag_unlock`/`admin_find_user`) + `feature_flag_audit` tablosu + RLS (yalnız admin okur); 7: `yeni_kabuk` bayrak satırı (`enabled=false, rollout_percent=0, min_app_version='1.1.0'`) | UYGULANACAK (#0–#15 gerekli; EN SON) |
 
 Not: #10 G6 düzeltmeleri #3 ve #8'in RPC gövdelerini **ezer** (örn. `report_content`
 status='open', `check_delivery_city` {ok,reason}, `get_public_profile` gerçek
@@ -110,6 +112,18 @@ koş — küme ('manual','pantry','post','ai_scan','day_card') dışında bir de
 (ör. 'order','barcode','ai') varsa `meal_consumptions_source_check` ADD'i patlar;
 o durumda #11'deki IN listesine eksik değer(ler)i ekle. (c) `creators`'ta
 'uretici' dışı rol varsa sorun yok; rollback'te tersi geçerli.
+
+Not (#16, G11): **GERÇEK EN SON** (#15'ten SONRA). `claim_handle`/`check_handle`
+(G9 #14) gövdesini **ezer** — rezerve ad kontrolü eklenir; `posts_guard_protected_cols`
+(G9 #14) gövdesini **ezer** — gövde değişimi yeniden denetim dalı eklenir (geriye
+uyumlu; eski status/pinned/author koruması aynen durur). Yeni: `handle_is_reserved`,
+`update_my_post`, `search_products`, `feature_flag_audit` + 4 admin bayrak RPC'si,
+`yeni_kabuk` satırı. **Önkoşullar:** #0 (`feature_flags`/`user_feature_unlocks`),
+#4/#12/#14 (post-media `writer_*`/`creator_*` politikaları — #16 çifti teke indirir),
+#14 (`posts_guard_protected_cols` trigger'ı mevcut). `search_products` için **canlı
+`products` kolonları doğrulanmalı** (eşleme repodan çıkarıldı: `img`/`calories`/
+`protein`/`carbs`/`fats`/`is_available`; bkz. `G11-CANLI-SIRA.md`). Hepsi bayrak-bağımsız
+veya kapalı bayrak arkasında; davranış 1.0.7 ile aynı.
 
 ## Edge function (db push DEĞİL — ayrı deploy)
 
