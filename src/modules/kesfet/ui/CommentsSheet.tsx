@@ -12,10 +12,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, useTheme, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 
+import { useSheetRise } from '../motion';
 import { useCommentsStore } from '../commentsStore';
 import type { Comment, CommentAuthor } from '../types';
 import { Avatar } from './Avatar';
@@ -158,16 +160,19 @@ export function CommentsSheet({
   }, [text, submitting, currentUser, tr, postId, replyTo, onToast]);
 
   const remaining = MAX_LEN - text.length;
+  const { panelStyle, backdropStyle, onLayout } = useSheetRise(visible);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.fill}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} />
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} />
+        </Animated.View>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.sheetWrap}
         >
-          <View style={[styles.sheet, { backgroundColor: t.color.bg }]}>
+          <Animated.View onLayout={onLayout} style={[styles.sheet, panelStyle, { backgroundColor: t.color.bg }]}>
             <View style={[styles.handle, { backgroundColor: t.color.line }]} />
             <AppText variant="heading" style={styles.title}>
               {tr('kesfet.comments.title')}
@@ -245,7 +250,7 @@ export function CommentsSheet({
                 {remaining}
               </AppText>
             ) : null}
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
 
         {/* Yorum ⋯ — şikayet / engelle */}

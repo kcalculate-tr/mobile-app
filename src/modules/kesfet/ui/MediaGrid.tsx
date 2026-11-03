@@ -8,6 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
+import { useT } from '../../../core/i18n';
 import { FeedVideo } from '../../media/video';
 import { getSupabaseClient } from '../../../core/supabase';
 import type { FeedMedia } from '../types';
@@ -33,6 +34,7 @@ function Cell({
   style?: object;
 }) {
   const t = useTheme();
+  const { t: tr } = useT();
   const kesfetVideo = useFeature('kesfet_video');
 
   if (media.kind === 'video' && kesfetVideo) {
@@ -43,6 +45,12 @@ function Cell({
         posterUri={media.thumb_path ? publicUrlForPath(media.thumb_path) : null}
         isVisible={isVisible}
         style={[{ backgroundColor: t.color.line }, style]}
+        labels={{
+          mute: tr('kesfet.ui.a11y.video_mute'),
+          unmute: tr('kesfet.ui.a11y.video_unmute'),
+          fullscreen: tr('kesfet.ui.a11y.video_fullscreen'),
+          play: tr('kesfet.ui.a11y.video_play'),
+        }}
       />
     );
   }

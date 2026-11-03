@@ -20,8 +20,11 @@ import type {
   FeedPost,
   KesfetClient,
   NotificationPage,
+  ProductSearchItem,
+  ProductSearchResult,
   RateLimitedResult,
   ReactResult,
+  UpdatePostResult,
 } from './types';
 import { toServerMealType } from '../../core/meal/mealType';
 
@@ -33,6 +36,34 @@ function sb() {
 
 function rpcError(name: string, error: { message: string }): never {
   throw new Error(`${name}: ${error.message}`);
+}
+
+// Canlıda HENÜZ olmayan RPC'ler (S1 yazar) için: "fonksiyon bulunamadı" hatasını
+// ayırt et → özellik sessizce gizlenir (G11-CONTRACT: "RPC bulunamazsa gizlenir").
+// PostgREST şema önbelleğinde yoksa `PGRST202`; Postgres undefined_function `42883`.
+function isMissingFunction(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const code = error.code ?? '';
+  if (code === 'PGRST202' || code === '42883') return true;
+  const m = (error.message ?? '').toLowerCase();
+  return m.includes('could not find the function') || m.includes('does not exist');
+}
+
+function toNum(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeProduct(raw: Partial<ProductSearchItem> & { id: string }): ProductSearchItem {
+  return {
+    id: String(raw.id),
+    name: typeof raw.name === 'string' ? raw.name : '',
+    image_url: raw.image_url ?? null,
+    kcal: toNum(raw.kcal),
+    protein_g: toNum(raw.protein_g),
+    carbs_g: toNum(raw.carbs_g),
+    fat_g: toNum(raw.fat_g),
+  };
 }
 
 // Sunucu eski (G7 öncesi) şekilde döndürse bile G8 alanlarını güvenli
@@ -235,6 +266,30 @@ export const realKesfetClient: KesfetClient = {
       p_until: params?.until ?? null,
     });
     if (error) rpcError('mark_social_notifications_read', error);
+  },
+
+  // ── G11 ────────────────────────────────────────────────────────────────────
+  async searchProducts({ q, limit = 12 }): Promise<ProductSearchResult> {
+    const { data, error } = await sb().rpc('search_products', { p_q: q, p_limit: limit });
+    if (error) {
+      // RPC canlıda yok → özellik gizlenir. Diğer hata → sakin boş sonuç.
+      if (isMissingFunction(error)) return { available: false, items: [] };
+      return { available: true, items: [] };
+    }
+    const items = Array.isArray((data as { items?: unknown })?.items)
+      ? ((data as { items: Array<Partial<ProductSearchItem> & { id: string }> }).items)
+      : [];
+    return { available: true, items: items.map(normalizeProduct) };
+  },
+
+  async updateMyPost({ post, body }): Promise<UpdatePostResult> {
+    const { data, error } = await sb().rpc('update_my_post', { p_post: post, p_body: body });
+    if (error) {
+      if (isMissingFunction(error)) return { available: false, ok: false, status: 'published' };
+      rpcError('update_my_post', error);
+    }
+    const d = (data ?? {}) as { ok?: boolean; status?: UpdatePostResult['status'] };
+    return { available: true, ok: d.ok ?? true, status: d.status ?? 'published' };
   },
 };
 

@@ -1,11 +1,14 @@
-// Alttan açılan sayfa — AddToDaySheet ve PostMenu'nun ortak kabuğu. RN Modal
-// (yeni paket yok). Arka plan karartması + üstten yuvarlak köşeli yüzey +
-// tutamak. Arka plana veya donanım geri tuşuna basınca kapanır. Alt güvenli
-// alan boşluğu eklenir.
+// Alttan açılan sayfa — AddToDaySheet, PostMenu ve yorum alt-sayfasının ortak
+// kabuğu. RN Modal (yeni paket yok). Panel SPRING.sheet ile yükselir, arka plan
+// kararması eş zamanlı solar (motion token'ları, G11-S3). Arka plana veya
+// donanım geri tuşuna basınca kapanır. Alt güvenli alan boşluğu eklenir.
+// Azaltılmış harekete useSheetRise içinde uyulur.
 import React from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/design';
+import { useSheetRise } from '../motion';
 
 export function BottomSheet({
   visible,
@@ -20,32 +23,37 @@ export function BottomSheet({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const { panelStyle, backdropStyle, onLayout } = useSheetRise(visible);
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.fill}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Kapat" accessibilityRole="button" />
-        <View
+      <Animated.View style={[styles.fill]}>
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Kapat" accessibilityRole="button" />
+        </Animated.View>
+        <Animated.View
+          onLayout={onLayout}
           accessibilityViewIsModal
           accessibilityLabel={accessibilityLabel}
           style={[
             styles.sheet,
+            panelStyle,
             {
               backgroundColor: t.color.bg,
               paddingBottom: Math.max(insets.bottom, 16) + 8,
             },
           ]}
         >
-          <View style={[styles.handle, { backgroundColor: t.color.line }]} />
+          <Animated.View style={[styles.handle, { backgroundColor: t.color.line }]} />
           {children}
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }

@@ -47,7 +47,9 @@ export function ActivityCard({
       {onDidIt ? (
         <Pressable
           onPress={() => {
-            haptic('selection');
+            // "Ben de yaptım" bir kutlama anı → hero success haptiği (günde en
+            // fazla 3; motion.tsx). Tahmini kcal hapı toast'ta gösterilir (ekran).
+            haptic('success');
             onDidIt();
           }}
           accessibilityRole="button"
