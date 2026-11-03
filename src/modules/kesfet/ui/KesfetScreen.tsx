@@ -19,14 +19,15 @@ import { useT } from '../../../core/i18n';
 import { haptic } from '../../../core/design';
 
 import { useKesfetStore } from '../store';
-import { getGunClient } from '../../gun';
+import { getGunClient, shareMealToDay } from '../../gun';
 import { getProfilClient } from '../../profil';
 import type { DayRing } from '../../gun/types';
 import type { FeedPost, MealType, ReportTargetType } from '../types';
 
 import { Icon } from './icons';
 import { PostCard } from './PostCard';
-import { GunRingStripPlaceholder } from './GunRingStrip';
+import { GunRingStrip, GunViewer } from '../../gun/ui';
+import type { DayCard } from '../../gun/types';
 import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
 import { AddToast, type ToastState } from './AddToast';
@@ -112,7 +113,9 @@ export function KesfetScreen() {
   const [menuPost, setMenuPost] = useState<FeedPost | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestedAccount[]>([]);
+  const [viewerUserId, setViewerUserId] = useState<string | null>(null);
   const addSeq = useRef(0);
+  const addCardSeq = useRef(0);
 
   // İlk yükleme + gün halkaları.
   useEffect(() => {
@@ -180,7 +183,7 @@ export function KesfetScreen() {
         message: tr('kesfet.ui.added_to_meal', { meal: tr(`meal.${mealType}`) }),
         actionLabel: tr('kesfet.ui.share_to_my_day'),
         onAction: () => {
-          void getGunClient().shareMealToDay({ consumption: consumptionId }).catch(() => {});
+          void shareMealToDay(consumptionId).catch(() => {});
         },
       });
     },
@@ -252,10 +255,23 @@ export function KesfetScreen() {
   const ringStrip = useMemo(
     () =>
       rings.length > 0 ? (
-        <GunRingStripPlaceholder rings={rings} onOpen={() => { /* G6-S3: gün görünümü */ }} />
+        <GunRingStrip rings={rings} onOpen={(userId) => setViewerUserId(userId)} />
       ) : null,
     [rings],
   );
+
+  // GunViewer "Günüme ekle": başkasının paylaştığı kartı kendi günlüğüme
+  // (meal_consumptions) ekle (add_day_card_to_day, source='day_card').
+  const onAddCardToDay = useCallback(async (card: DayCard) => {
+    addCardSeq.current += 1;
+    const key = `daycard-${card.id}-${addCardSeq.current}`;
+    await getGunClient().addDayCardToDay({
+      card: card.id,
+      mealType: card.meal_type,
+      idempotencyKey: key,
+    });
+    setToast({ message: tr('kesfet.ui.added_to_meal', { meal: tr(`meal.${card.meal_type}`) }) });
+  }, [tr]);
 
   const showFollowingEmpty = tab === 'following' && !loading && !error && posts.length === 0;
 
@@ -349,6 +365,16 @@ export function KesfetScreen() {
         onBlock={() => menuPost && void onBlock(menuPost)}
       />
       <AddToast toast={toast} onDismiss={() => setToast(null)} />
+
+      {viewerUserId != null && (
+        <GunViewer
+          visible
+          rings={rings}
+          startUserId={viewerUserId}
+          onClose={() => setViewerUserId(null)}
+          onAddToDay={onAddCardToDay}
+        />
+      )}
     </View>
   );
 }

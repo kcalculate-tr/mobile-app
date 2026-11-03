@@ -38,7 +38,7 @@ function fakeSupabase(onInsert: (table: string, row: Record<string, unknown>) =>
   };
 }
 
-test('saveAiScanEstimate: meal_consumptions tablosuna source=manual, source_ref=ai_scan yazar', async () => {
+test('saveAiScanEstimate: source=ai_scan, benzersiz source_ref, sunucu meal_type yazar', async () => {
   const captured: { row: Record<string, unknown> | null } = { row: null };
   const supabase = fakeSupabase((table, row) => {
     assert.equal(table, 'meal_consumptions');
@@ -48,6 +48,7 @@ test('saveAiScanEstimate: meal_consumptions tablosuna source=manual, source_ref=
   const row = await saveAiScanEstimate(supabase, {
     userId: 'user-1',
     mealType: 'lunch',
+    sourceRef: 'user-1-file:///scan-abc.jpg',
     estimate: {
       name: 'Tabak (tahmini)',
       kcal: 640.4,
@@ -60,8 +61,9 @@ test('saveAiScanEstimate: meal_consumptions tablosuna source=manual, source_ref=
     },
   });
 
-  assert.equal(captured.row?.source, 'manual');
-  assert.equal(captured.row?.source_ref, 'ai_scan');
+  assert.equal(captured.row?.source, 'ai_scan');
+  assert.equal(captured.row?.source_ref, 'user-1-file:///scan-abc.jpg', 'tarama başına benzersiz ref');
+  assert.equal(captured.row?.meal_type, 'ogle', 'istemci lunch → sunucu ogle');
   assert.equal(captured.row?.user_id, 'user-1');
   assert.equal(row.calories, 640, 'kalori yuvarlanmalı');
   assert.equal(row.protein, 35);
@@ -89,6 +91,7 @@ test('saveAiScanEstimate: hata fırlatınca anlaşılır mesajla patlar', async 
     saveAiScanEstimate(supabase, {
       userId: 'u',
       mealType: 'lunch',
+      sourceRef: 'u-x',
       estimate: { name: 'x', kcal: 1, protein_g: 1, carbs_g: 1, fat_g: 1, portion: 1, ingredients: [], photo_url: null },
     }),
     /boom/,

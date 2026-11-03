@@ -1,12 +1,14 @@
-// AI tarama tahminini güne kaydet. G6-S1'in `meal_consumptions_source_check`
-// güncellemesi (CHECK'e 'ai_scan' ekler) henüz bu dala alınmadı; bu yüzden
-// şimdilik mevcut izinli değer `source: 'manual'` kullanılır, köken
-// `source_ref: 'ai_scan'` ile işaretlenir (bkz. docs/night/G6-S4-LOG.md
-// SORULAR — G6-S1 entegre olunca source='ai_scan'a geçilebilir).
+// AI tarama tahminini güne kaydet. G7-S1 (migration 20261104001100): CHECK'e
+// 'ai_scan' eklendi; kayıt `source: 'ai_scan'`, `source_ref: <sourceRef>` ile
+// yazılır. sourceRef taramaya özgü BENZERSİZ anahtardır (reservation/idempotency
+// anahtarı) — (user_id, source, source_ref) UNIQUE kısıtı yüzünden sabit bir
+// source_ref aynı gün ikinci taramada çakışıyordu; benzersiz ref bunu çözer.
+// meal_type sunucu koduna (kahvalti|…) çevrilir (bkz. core/meal/mealType).
 //
 // Bağımlılık enjekte edilir (gerçek Supabase istemcisi çağıran tarafından
 // verilir) — bu dosya native import YAPMAZ, saf birim testlerle doğrulanır.
 import type { ScanEstimate } from './types';
+import { toServerMealType } from '../../../core/meal/mealType';
 
 export interface MealConsumptionRow {
   id: string;
@@ -33,17 +35,17 @@ export interface InsertableSupabase {
 
 export async function saveAiScanEstimate(
   supabase: InsertableSupabase,
-  params: { userId: string; mealType: string; estimate: Omit<ScanEstimate, 'isEstimate'> },
+  params: { userId: string; mealType: string; sourceRef: string; estimate: Omit<ScanEstimate, 'isEstimate'> },
 ): Promise<MealConsumptionRow> {
-  const { userId, mealType, estimate } = params;
+  const { userId, mealType, sourceRef, estimate } = params;
   const { data, error } = await supabase
     .from('meal_consumptions')
     .insert({
       user_id: userId,
-      source: 'manual',
-      source_ref: 'ai_scan',
+      source: 'ai_scan',
+      source_ref: sourceRef,
       name: estimate.name,
-      meal_type: mealType,
+      meal_type: toServerMealType(mealType),
       calories: Math.max(0, Math.round(estimate.kcal)),
       protein: Math.max(0, Math.round(estimate.protein_g)),
       carbs: Math.max(0, Math.round(estimate.carbs_g)),

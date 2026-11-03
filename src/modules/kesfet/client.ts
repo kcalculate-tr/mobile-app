@@ -11,9 +11,11 @@
 import type {
   AddToDayResult,
   FeedPage,
+  FeedPost,
   KesfetClient,
   ReactResult,
 } from './types';
+import { toServerMealType } from '../../core/meal/mealType';
 
 type SupabaseModule = typeof import('../../core/supabase');
 function sb() {
@@ -41,6 +43,12 @@ export const realKesfetClient: KesfetClient = {
     };
   },
 
+  async getPost({ post }): Promise<FeedPost | null> {
+    const { data, error } = await sb().rpc('get_post', { p_post: post });
+    if (error) rpcError('get_post', error);
+    return (data ?? null) as FeedPost | null;
+  },
+
   async reactPost({ post, kind, on }): Promise<ReactResult> {
     const { data, error } = await sb().rpc('react_post', {
       p_post: post,
@@ -54,7 +62,7 @@ export const realKesfetClient: KesfetClient = {
   async addPostMealToDay({ post, mealType, portion, idempotencyKey }): Promise<AddToDayResult> {
     const { data, error } = await sb().rpc('add_post_meal_to_day', {
       p_post: post,
-      p_meal_type: mealType,
+      p_meal_type: toServerMealType(mealType),
       p_portion: portion,
       p_idempotency_key: idempotencyKey,
     });

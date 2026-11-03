@@ -18,6 +18,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 import { AuthProvider, useAuth } from './src/core/AuthContext';
 import { FlagsProvider } from './src/core/flags';
+import { I18nProvider } from './src/core/i18n';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
 import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -155,6 +156,11 @@ function App() {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <SafeAreaProvider style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
         <PortalProvider>
+          {/* i18n: cihaz dilini algılar + kullanıcı tercihini AsyncStorage'dan
+              yükler. Mevcut ekranların metni DEĞİŞMEZ (onlar sabit TR metin
+              kullanıyor); yalnız useT() kullanan yeni ekranlar (Keşfet/Gün/
+              profil/AI tarama/eatkcal) bundan etkilenir. */}
+          <I18nProvider>
           <AuthProvider>
             {/* Bayrak altyapısı — useAuth'a bağımlı olduğu için AuthProvider
                 içinde. BU OTURUMDA hiçbir ekran useFeature kullanmaz; provider
@@ -175,6 +181,7 @@ function App() {
               auth/onboarding ekranlari ve MacroScreen) kendi StatusBar'larini
               "light" olarak tanimliyor. */}
           <StatusBar style="dark" />
+          </I18nProvider>
         </PortalProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

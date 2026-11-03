@@ -95,6 +95,9 @@ export interface KesfetClient {
     cursor?: string | null;
     limit?: number;
   }): Promise<FeedPage>;
+  // get_post(p_post) → tek gönderi (derin bağlantı /p/:postId için). Görünürlük
+  // (gizlilik + engel) SUNUCUDA denetlenir; erişilemezse null.
+  getPost(params: { post: string }): Promise<FeedPost | null>;
   reactPost(params: {
     post: string;
     kind: ReactionKind;

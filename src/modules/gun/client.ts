@@ -2,6 +2,7 @@
 // `core/supabase` tembel require ile yüklenir (kesfet/client.ts ile aynı neden:
 // Node testlerinde modül import'u Supabase istemcisini kurmasın).
 import type { DayCard, DayRing, GunClient } from './types';
+import { toServerMealType, toClientMealType } from '../../core/meal/mealType';
 
 type SupabaseModule = typeof import('../../core/supabase');
 function sb() {
@@ -23,7 +24,12 @@ export const realGunClient: GunClient = {
   async getDayCards({ user }): Promise<DayCard[]> {
     const { data, error } = await sb().rpc('get_day_cards', { p_user: user });
     if (error) rpcError('get_day_cards', error);
-    return Array.isArray(data) ? (data as DayCard[]) : [];
+    if (!Array.isArray(data)) return [];
+    // Sunucu meal_type'ı Türkçe kodla (kahvalti|…) döner; UI istemci kodu bekler.
+    return (data as DayCard[]).map((c) => ({
+      ...c,
+      meal_type: toClientMealType(c.meal_type as unknown as string),
+    }));
   },
 
   async shareMealToDay({ consumption }): Promise<void> {
@@ -31,10 +37,11 @@ export const realGunClient: GunClient = {
     if (error) rpcError('share_meal_to_day', error);
   },
 
-  // SORU (G6-S1'e): bkz. types.ts — `add_day_card_to_day` sözleşmede henüz yok.
-  async addDayCardToDay({ card, idempotencyKey }): Promise<{ consumption_id: string }> {
+  async addDayCardToDay({ card, mealType, portion, idempotencyKey }): Promise<{ consumption_id: string }> {
     const { data, error } = await sb().rpc('add_day_card_to_day', {
       p_card: card,
+      p_meal_type: toServerMealType(mealType),
+      p_portion: portion ?? 1,
       p_idempotency_key: idempotencyKey,
     });
     if (error) rpcError('add_day_card_to_day', error);

@@ -1,8 +1,8 @@
 // Derin bağlantı (deep link) yapılandırması — React Navigation linking (G5-S4 md.2).
 //
-// Yalnız iki YENİ rota eşlenir:
-//   https://l.eatkcal.com/p/<post_id>  (veya kcal://p/<post_id>)  → SharedPost
-//   https://l.eatkcal.com/u/<handle>   (veya kcal://u/<handle>)   → SharedProfile
+// Yalnız iki YENİ rota eşlenir (G7-S1: gerçek ekranlara bağlandı):
+//   https://l.eatkcal.com/p/<post_id>  (veya kcal://p/<post_id>)  → SharedPost (tek PostCard)
+//   https://l.eatkcal.com/u/<handle>   (veya kcal://u/<handle>)   → PublicProfile
 //
 // GÜVENLİK/UYUM:
 //  • `filter`, uygulamanın expo-linking ile MANUEL işlediği geri dönüşleri
@@ -32,7 +32,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       SharedPost: 'p/:postId',
-      SharedProfile: 'u/:handle',
+      PublicProfile: 'u/:handle',
     },
   },
 };

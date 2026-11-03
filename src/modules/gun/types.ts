@@ -38,10 +38,16 @@ export interface GunClient {
   getDayCards(params: { user: string }): Promise<DayCard[]>;
   // share_meal_to_day(p_consumption) → void.
   shareMealToDay(params: { consumption: string }): Promise<void>;
-  // SORU (G6-S1'e): sözleşmede yok — GunViewer'da başkasının paylaştığı kartı
-  // "Günüme ekle" ile kendi günlüğüne (meal_consumptions) kaydetmek için
-  // `add_post_meal_to_day` benzeri bir RPC gerekiyor. Ad/imza adaydır:
-  // add_day_card_to_day(p_card uuid, p_idempotency_key text) → { consumption_id }.
-  // Sunucu bu RPC'yi eklemeden gerçek istemci hata fırlatır (bkz. client.ts).
-  addDayCardToDay(params: { card: string; idempotencyKey: string }): Promise<{ consumption_id: string }>;
+  // add_day_card_to_day(p_card, p_meal_type, p_portion, p_idempotency_key)
+  // → { consumption_id } (G6-CONTRACT "G7 ekleri", migration 20261104001100).
+  // Kartı görebilen kullanıcı başkasının paylaştığı kartı kendi günlüğüne ekler;
+  // değerler karttaki anlık değerlerin porsiyonla ölçeği; source='day_card'.
+  // `mealType` istemci kodudur; client.ts sunucu koduna çevirir. idempotencyKey
+  // zorunlu (source_ref). portion verilmezse 1.
+  addDayCardToDay(params: {
+    card: string;
+    mealType: string;
+    portion?: number;
+    idempotencyKey: string;
+  }): Promise<{ consumption_id: string }>;
 }

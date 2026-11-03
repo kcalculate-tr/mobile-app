@@ -78,6 +78,11 @@ export function createMockKesfetClient(options: MockKesfetOptions = {}): KesfetC
       };
     },
 
+    async getPost({ post }): Promise<FeedPost | null> {
+      const p = posts.find((x) => x.id === post);
+      return p ? { ...p, me: { ...p.me }, stats: { ...p.stats } } : null;
+    },
+
     async reactPost({ post, kind, on }): Promise<ReactResult> {
       const p = posts.find((x) => x.id === post);
       if (!p) throw new Error(`mock: bilinmeyen gönderi ${post}`);

@@ -90,6 +90,14 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         loading: 'Yükleniyor…',
         end: 'Hepsi bu kadar',
       },
+      // Derin bağlantı (/p/:postId) tek gönderi ekranı (G7-S1).
+      share: {
+        post_eyebrow: 'Paylaşılan öğün',
+        post_unavailable: 'Bu gönderiye şu an ulaşılamıyor',
+        post_subtitle:
+          'Gönderi kaldırılmış, gizli ya da sana kapalı olabilir. Kcalculate’te kendi öğünlerini kalori ve protein tahminiyle takip et.',
+        open_app: 'Uygulamayı aç',
+      },
     },
     gun: {
       title: 'Gün',
@@ -282,6 +290,14 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         suggested_title: 'Suggested accounts',
         loading: 'Loading…',
         end: 'That’s all',
+      },
+      // Deep link (/p/:postId) single-post screen (G7-S1).
+      share: {
+        post_eyebrow: 'Shared meal',
+        post_unavailable: 'This post isn’t available right now',
+        post_subtitle:
+          'It may have been removed, be private, or not shared with you. Track your own meals with calorie and protein estimates in Kcalculate.',
+        open_app: 'Open app',
       },
     },
     gun: {

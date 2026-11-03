@@ -48,6 +48,9 @@ export default function ScanScreen() {
   const [limitVisible, setLimitVisible] = useState(false);
   const [result, setResult] = useState<Omit<ScanEstimate, 'isEstimate'> | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  // Bu taramanın benzersiz anahtarı (reservation/idempotency) — kayıtta
+  // source_ref olur; aynı gün ikinci tarama çakışmasın diye tarama başına benzersiz.
+  const [scanRef, setScanRef] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
@@ -70,6 +73,7 @@ export default function ScanScreen() {
     setPhotoUri(uri);
     setStage('scanning');
     const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
+    setScanRef(idempotencyKey);
     const outcome = await runAiScan(getAiScanClient(), { idempotencyKey, imageRef: uri });
     recordQuota(outcome.remaining, outcome.reset_at);
 
@@ -95,6 +99,7 @@ export default function ScanScreen() {
       await saveAiScanEstimate(getSupabaseClient(), {
         userId: user.id,
         mealType: inferMealTypeFromHour(new Date().getHours()),
+        sourceRef: scanRef ?? `${user.id}-${photoUri ?? ''}`,
         estimate: result,
       });
       setSaved(true);
