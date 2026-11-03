@@ -60,6 +60,7 @@ bağımlılık (feature_flags tablosu) uygulanmalı.
 | 12 | `20261104002000_g8_social.sql` | bayrak tohumları (`kesfet_paylasim/kesfet_video/kesfet_yorum/etkinlik/sosyal_bildirim`, hepsi KAPALI); `posts` (post_type, activity_card, status+='pending', idempotency_key); `post_media` (kind/duration_s/thumb_path/frame_paths); `content_reports` (target_type+='comment', source user\|ai, reporter_id nullable); tablolar `activity_logs, post_comments, social_notifications, moderation_queue` + RLS; fn `feed_flag_enabled, activity_kcal`; sosyal bildirim tetikleyicileri + guard (self/engel/hız sınırı) + push; RPC `create_post, delete_my_post, add_comment, list_comments, delete_my_comment, did_it, log_activity, get_my_day_activity, list_social_notifications, mark_social_notifications_read`; `get_feed` + `mod_list_reports` + `mod_resolve_report` + `respond_follow_request` + `set_profile_privacy` (create or replace); panel `admin_list_posts, admin_delete_draft_post`; `post-media` storage (video + kesfet_paylasim yazma) | UYGULANACAK (#1–#11 gerekli; #11'den SONRA) |
 
 | 13 | `20261104002100_g8_moderation_cron.sql` | fn `fn_moderate_pending_retry` + pg_cron işi `moderate_pending_retry` (*/5 dk) | UYGULANACAK (#12 + `moderate-content` edge deploy + Vault `service_role_key` gerekli) |
+| 14 | `20261105000100_g9_fixes.sql` | **G9 düzeltmeleri (EN SON).** 3a: `post-media` yazma politikaları (+`kesfet_paylasim`); 3b: `user-media` SELECT EK politikası (aktif day_share + feed_can_view_author/moderatör) + `get_day_cards` (erişim feed_can_view_author); 3c: `posts_guard_protected_cols` BEFORE UPDATE trigger (status/pinned_until/author_id koruması, `app.post_rpc`) + `delete_my_post` (bayrak); 3d: `profiles` handle CHECK + `claim_handle`/`check_handle` (nokta izinli, 3–30); 3e: `admin_create_post` (carb_g→carbs_g normalize); 3f: `mod_resolve_report` (dismiss→published + `app.post_rpc`); 3g: `add_comment` (`kesfet_yorum` kapısı); 3h: `get_user_day_progress` (feed_can_view_author kapısı + authenticated revoke); 3j: content_reports/moderation_actions CHECK (comment + source=ai, idempotent) | UYGULANACAK (#1–#13 gerekli; EN SON) |
 
 Not: #10 G6 düzeltmeleri #3 ve #8'in RPC gövdelerini **ezer** (örn. `report_content`
 status='open', `check_delivery_city` {ok,reason}, `get_public_profile` gerçek
@@ -72,6 +73,19 @@ korunur; set_profile_privacy g7'nin `app.profile_rpc` bloğunu aynen taşır). #
 yalnız `moderate-content` edge function deploy edildikten ve Vault'ta `service_role_key`
 bulunduktan sonra anlamlıdır (cron o fonksiyonu çağırır). Bütün bayraklar KAPALI
 olduğundan #12/#13 uygulansa da davranış değişmez.
+
+Not (#14, G9): EN SON uygulanır; #11/#12'nin gövdelerini **ezer** —
+`get_day_cards` (erişim artık `feed_can_view_author`), `admin_create_post`
+(carb_g→carbs_g), `mod_resolve_report` (dismiss→published), `add_comment`
+(kesfet_yorum kapısı), `claim_handle`/`check_handle` (nokta izinli 3–30),
+`get_user_day_progress` (feed_can_view_author kapısı), `delete_my_post`
+(app.post_rpc). Yeni: `posts_guard_protected_cols` trigger'ı. Hepsi geriye uyumlu;
+bütün bayraklar KAPALI olduğundan davranış 1.0.7 ile aynı kalır. **Önkoşul:** #13'e
+kadarki tüm zincir uygulanmış olmalı (özellikle #12 `posts.status`'a 'pending',
+`content_reports.source`, `moderation_queue`; #11 `profiles_handle_format_chk`).
+posts guard, moderate-content edge fn'in `service_role` ile doğrudan status
+UPDATE'ini (request.jwt.claims rolü) ve migration/cron (rolsüz) bağlamını serbest
+bırakır — yayın akışı bozulmaz.
 
 Not (#11, G7): #10'dan SONRA uygulanır; #3/#8/#10'un gövdelerini (`get_day_cards`,
 `claim_handle`, `set_profile_privacy`, `profiles_guard_protected_cols`) **ezer**.
