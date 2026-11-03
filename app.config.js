@@ -28,6 +28,12 @@ module.exports = {
     userInterfaceStyle: 'light',
     scheme: 'kcal',
     jsEngine: 'hermes',
+    // İzin metinleri varsayılan (TR) infoPlist/plugin seçeneklerinde; EN cihazlar
+    // için üstüne biner (G8-S3). TR dosyası yalnız açıklık için — aynı metinler.
+    locales: {
+      tr: './locales/tr.json',
+      en: './locales/en.json',
+    },
     assetBundlePatterns: ['**/*'],
     notification: {
       icon: './assets/notification-icon.png',
@@ -49,9 +55,11 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
-          'Profil fotoğrafınızı çekmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.',
+          'Profil fotoğrafınızı çekmek, video kaydetmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.',
+        NSMicrophoneUsageDescription:
+          'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         NSPhotoLibraryUsageDescription:
-          'Profil fotoğrafı ve görsel seçmek için fotoğraf kütüphanesine erişim gereklidir.',
+          'Profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
         NSPhotoLibraryAddUsageDescription:
           'Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir.',
         NSLocationWhenInUseUsageDescription:
@@ -311,11 +319,14 @@ module.exports = {
         'expo-image-picker',
         {
           photosPermission:
-            'Profil fotoğrafı ve görsel seçmek için fotoğraf kütüphanesine erişim gereklidir.',
+            'Profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
           cameraPermission:
-            'Profil fotoğrafınızı çekmek için kameraya erişim gereklidir.',
+            'Profil fotoğrafınızı çekmek ve video kaydetmek için kameraya erişim gereklidir.',
+          microphonePermission:
+            'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         },
       ],
+      'expo-video',
       [
         'expo-location',
         {
