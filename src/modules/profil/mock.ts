@@ -3,6 +3,7 @@
 // taklit eder. Gizli hesaba follow → 'requested'.
 import { validateHandle } from './handle';
 import type {
+  CheckHandleResult,
   ClaimResult,
   DeliveryCityResult,
   FollowState,
@@ -30,6 +31,7 @@ function sampleProfile(handle: string, isPrivate: boolean): PublicProfile {
     following: 7,
     posts: 3,
     me_following: 'none',
+    me_requested: false,
   };
 }
 
@@ -48,6 +50,14 @@ export function createMockProfilClient(options: MockProfilOptions = {}): ProfilC
     },
     get _privacy() {
       return state.privacy;
+    },
+
+    async checkHandle({ handle }): Promise<CheckHandleResult> {
+      // SALT OKUR: rezerve etmez (canlı debounce kontrolü).
+      const v = validateHandle(handle);
+      if (!v.ok) return { available: false, reason: 'format' };
+      if (taken.has(v.normalized)) return { available: false, reason: 'taken' };
+      return { available: true, reason: null };
     },
 
     async claimHandle({ handle }): Promise<ClaimResult> {

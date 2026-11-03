@@ -7,6 +7,12 @@ export interface ClaimResult {
   reason: string | null; // sunucu: 'taken' | 'invalid' | null
 }
 
+// check_handle(p_handle) → SALT OKUR benzersizlik kontrolü (rezervasyon yapmaz).
+export interface CheckHandleResult {
+  available: boolean;
+  reason: string | null; // 'format' | 'reserved' | 'taken' | null
+}
+
 export interface PublicProfile {
   id: string;
   display_name: string;
@@ -20,6 +26,7 @@ export interface PublicProfile {
   following: number;
   posts: number;
   me_following: FollowState;
+  me_requested?: boolean; // G6: bekleyen takip isteğim var mı (gizli hesap)
 }
 
 export interface DeliveryCityResult {
@@ -32,7 +39,9 @@ export type RegistrationTemplate = 'kcalculate_ai' | 'eatkcal';
 
 // İstemci arayüzü — gerçek RPC (client.ts) ve mock (mock.ts) uygular.
 export interface ProfilClient {
-  // claim_handle(p_handle) → benzersizliği SUNUCU denetler.
+  // check_handle(p_handle) → SALT OKUR; canlı (debounce) kontrol için. Rezerve etmez.
+  checkHandle(params: { handle: string }): Promise<CheckHandleResult>;
+  // claim_handle(p_handle) → nihai sahiplenme; benzersizliği SUNUCU denetler (idempotent).
   claimHandle(params: { handle: string }): Promise<ClaimResult>;
   updatePublicProfile(params: {
     displayName: string;

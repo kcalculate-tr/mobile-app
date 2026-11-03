@@ -1,10 +1,10 @@
 // Kullanıcı adı seçimi hook'u — anında BİÇİM denetimi + gecikmeli (debounce)
-// canlı benzersizlik kontrolü. Benzersizlik SUNUCUDA (claim_handle). Bu hook
-// hiçbir canlı ekrana bağlı değil; yalnız yeni kayıt akışı / __DEV__ ekranı.
+// canlı benzersizlik kontrolü. Benzersizlik SUNUCUDA. Bu hook hiçbir canlı ekrana
+// bağlı değil; yalnız yeni kayıt akışı / __DEV__ ekranı.
 //
-// SORULAR: sözleşmede yalnız claim_handle var; bu RPC adayı REZERVE ediyorsa
-// her duraklamada farklı aday rezerve edilir. Salt-okunur bir check_handle
-// tercih edilir — S2'ye soruldu. Şimdilik claim_handle ile canlı kontrol.
+// G6: canlı kontrol SALT OKUR `check_handle` ile yapılır (rezerve etmez); nihai
+// sahiplenme `claim_handle` ile (idempotent). Böylece debounce'lu her duraklama
+// gereksiz rezervasyon yapmaz.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getProfilClient } from './client';
@@ -60,10 +60,10 @@ export function useHandleClaim(initial = ''): UseHandleClaim {
     const id = ++reqId.current;
     timer.current = setTimeout(() => {
       getProfilClient()
-        .claimHandle({ handle: v.normalized })
+        .checkHandle({ handle: v.normalized })
         .then((res) => {
           if (id !== reqId.current) return; // eski istek — yok say
-          if (res.ok) {
+          if (res.available) {
             setStatus('available');
             setMessageKey('profil.handle_available');
           } else {

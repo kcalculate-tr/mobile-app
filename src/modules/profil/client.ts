@@ -1,9 +1,10 @@
 // Profil gerçek RPC istemcisi. Benzersizlik/yetki/gizlilik SUNUCUDA denetlenir.
 // `core/supabase` tembel require (Node testleri için — kesfet/client.ts ile aynı).
 //
-// SORULAR: `set_profile_privacy` ve `check_delivery_city` adları sözleşmede
-// açıkça yok; S1/S2 kesin adı verince güncellenecek.
+// G6: `set_profile_privacy`, `check_delivery_city` ve salt-okur `check_handle`
+// adları G6-CONTRACT.md ile onaylandı (G5'teki SORULAR kapandı).
 import type {
+  CheckHandleResult,
   ClaimResult,
   DeliveryCityResult,
   FollowState,
@@ -22,6 +23,12 @@ function rpcError(name: string, error: { message: string }): never {
 }
 
 export const realProfilClient: ProfilClient = {
+  async checkHandle({ handle }): Promise<CheckHandleResult> {
+    const { data, error } = await sb().rpc('check_handle', { p_handle: handle });
+    if (error) rpcError('check_handle', error);
+    return data as CheckHandleResult;
+  },
+
   async claimHandle({ handle }): Promise<ClaimResult> {
     const { data, error } = await sb().rpc('claim_handle', { p_handle: handle });
     if (error) rpcError('claim_handle', error);
