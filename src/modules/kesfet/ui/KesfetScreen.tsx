@@ -13,12 +13,14 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { AppText, useTheme } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { haptic } from '../../../core/design';
 
 import { useKesfetStore } from '../store';
+import { useNotificationsStore } from '../notificationsStore';
 import { getGunClient, shareMealToDay } from '../../gun';
 import { getProfilClient } from '../../profil';
 import type { DayRing } from '../../gun/types';
@@ -30,11 +32,28 @@ import { GunRingStrip, GunViewer } from '../../gun/ui';
 import type { DayCard } from '../../gun/types';
 import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
+import { CommentsSheet } from './CommentsSheet';
+import { NotificationsSheet } from './NotificationsSheet';
+import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 import { AddToast, type ToastState } from './AddToast';
 import { FeedSkeleton, FeedError, FeedEmpty, FollowingEmpty, type SuggestedAccount } from './states';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
 
-function Header({ onSearch, onNotifications }: { onSearch: () => void; onNotifications: () => void }) {
+function Header({
+  onSearch,
+  onNotifications,
+  onCompose,
+  showCompose,
+  showBell,
+  unread,
+}: {
+  onSearch: () => void;
+  onNotifications: () => void;
+  onCompose: () => void;
+  showCompose: boolean;
+  showBell: boolean;
+  unread: number;
+}) {
   const t = useTheme();
   const { t: tr } = useT();
   return (
@@ -46,9 +65,23 @@ function Header({ onSearch, onNotifications }: { onSearch: () => void; onNotific
         <Pressable onPress={onSearch} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.search')} style={styles.iconBtn}>
           <Icon name="search" size={24} color={t.color.ink} />
         </Pressable>
-        <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn}>
-          <Icon name="bell" size={24} color={t.color.ink} />
-        </Pressable>
+        {showCompose ? (
+          <Pressable onPress={onCompose} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.compose')} style={styles.iconBtn}>
+            <Icon name="plus" size={24} color={t.color.ink} />
+          </Pressable>
+        ) : null}
+        {showBell ? (
+          <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn}>
+            <Icon name="bell" size={24} color={t.color.ink} />
+            {unread > 0 ? (
+              <View style={[styles.badge, { backgroundColor: t.color.accentLine }]}>
+                <AppText variant="caption" style={styles.badgeText}>
+                  {unread > 9 ? '9+' : String(unread)}
+                </AppText>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -97,8 +130,15 @@ function Tabs({
 export function KesfetScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const { t: tr, fmt, lang } = useT();
   const kesfetTakip = useFeature('kesfet_takip');
+  // G8 bayrakları — her biri kapalıyken ilgili davranış HİÇ render olmaz.
+  const kesfetPaylasim = useFeature('kesfet_paylasim');
+  const kesfetYorum = useFeature('kesfet_yorum');
+  const sosyalBildirim = useFeature('sosyal_bildirim');
+
+  const unread = useNotificationsStore((s) => s.unread);
 
   const tab = useKesfetStore((s) => s.tab);
   const posts = useKesfetStore((s) => s.posts);
@@ -114,8 +154,12 @@ export function KesfetScreen() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestedAccount[]>([]);
   const [viewerUserId, setViewerUserId] = useState<string | null>(null);
+  const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [pushPromptOpen, setPushPromptOpen] = useState(false);
   const addSeq = useRef(0);
   const addCardSeq = useRef(0);
+  const didItSeq = useRef(0);
 
   // İlk yükleme + gün halkaları.
   useEffect(() => {
@@ -138,6 +182,19 @@ export function KesfetScreen() {
   useEffect(() => {
     if (!kesfetTakip && tab === 'following') void useKesfetStore.getState().setTab('for_you');
   }, [kesfetTakip, tab]);
+
+  // Sosyal bildirim rozeti — yalnız bayrak açıkken sayaç çek.
+  useEffect(() => {
+    if (sosyalBildirim) void useNotificationsStore.getState().refreshUnread();
+  }, [sosyalBildirim]);
+
+  // İlk sosyal etkileşimden sonra bir kez push izni ön sayfası (bayrak açıksa).
+  const touchSocial = useCallback(() => {
+    if (!sosyalBildirim) return;
+    void socialPushPromptSeen().then((seen) => {
+      if (!seen) setPushPromptOpen(true);
+    });
+  }, [sosyalBildirim]);
 
   // Önerilen hesaplar — for_you akışındaki can_post (rozetli) yazarlardan türet
   // (gerçek veri; uydurma yok). Takip boşken gösterilir.
@@ -235,21 +292,53 @@ export function KesfetScreen() {
     [],
   );
 
+  const onDidIt = useCallback(
+    async (post: FeedPost) => {
+      touchSocial();
+      didItSeq.current += 1;
+      const key = `didit-${post.id}-${didItSeq.current}`;
+      const minutes = post.activity_card?.minutes ?? null;
+      const kcal = await useKesfetStore.getState().didIt(post.id, minutes, key);
+      if (kcal != null) {
+        setToast({
+          message: tr('kesfet.activity.did_it_toast'),
+          actionLabel: tr('kesfet.ui.share_to_my_day'),
+          onAction: () => {},
+        });
+      }
+    },
+    [touchSocial, tr],
+  );
+
+  const onDeletePost = useCallback(async (post: FeedPost) => {
+    const ok = await useKesfetStore.getState().deletePost(post.id);
+    if (ok) setToast({ message: tr('kesfet.ui.post_deleted') });
+  }, [tr]);
+
   const renderItem = useCallback(
     ({ item }: { item: FeedPost }) => {
       const model = postCardModel(item, nowMs, lang);
       return (
         <PostCard
           model={model}
-          onLike={() => useKesfetStore.getState().react(item.id, 'like', !item.me.liked)}
+          showComment={kesfetYorum}
+          onLike={() => {
+            touchSocial();
+            void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
+          }}
           onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
           onShare={() => onShare(item)}
           onAddToDay={() => setSheetPost(item)}
           onOpenMenu={() => setMenuPost(item)}
+          onComment={() => {
+            touchSocial();
+            setCommentsPost(item);
+          }}
+          onDidIt={() => void onDidIt(item)}
         />
       );
     },
-    [nowMs, lang, onShare],
+    [nowMs, lang, onShare, kesfetYorum, touchSocial, onDidIt],
   );
 
   const ringStrip = useMemo(
@@ -338,7 +427,14 @@ export function KesfetScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
-      <Header onSearch={() => {}} onNotifications={() => {}} />
+      <Header
+        onSearch={() => {}}
+        onNotifications={() => setNotifOpen(true)}
+        onCompose={() => navigation.navigate('Composer')}
+        showCompose={kesfetPaylasim}
+        showBell={sosyalBildirim}
+        unread={unread}
+      />
       <Tabs
         tab={tab}
         showFollowing={kesfetTakip}
@@ -360,11 +456,35 @@ export function KesfetScreen() {
         visible={menuPost != null}
         onClose={() => setMenuPost(null)}
         authorName={menuPost?.author.display_name ?? ''}
+        isMine={menuPost?.me.is_author ?? false}
         onCopyLink={() => menuPost && void onCopyLink(menuPost)}
         onReport={(reason) => menuPost && void onReport(menuPost, reason)}
         onBlock={() => menuPost && void onBlock(menuPost)}
+        onDelete={() => menuPost && void onDeletePost(menuPost)}
       />
       <AddToast toast={toast} onDismiss={() => setToast(null)} />
+
+      {kesfetYorum ? (
+        <CommentsSheet
+          visible={commentsPost != null}
+          postId={commentsPost?.id ?? null}
+          currentUser={null}
+          onClose={() => setCommentsPost(null)}
+          onToast={(message) => setToast({ message })}
+        />
+      ) : null}
+
+      {sosyalBildirim ? (
+        <>
+          <NotificationsSheet
+            visible={notifOpen}
+            onClose={() => setNotifOpen(false)}
+            onOpenPost={(postId) => navigation.navigate('SharedPost', { postId })}
+            onOpenProfile={(handle) => navigation.navigate('PublicProfile', { handle })}
+          />
+          <SocialPushPrompt visible={pushPromptOpen} onClose={() => setPushPromptOpen(false)} />
+        </>
+      ) : null}
 
       {viewerUserId != null && (
         <GunViewer
@@ -385,6 +505,8 @@ const styles = StyleSheet.create({
   title: {},
   headerIcons: { flexDirection: 'row' },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { color: '#0A0A0A', fontSize: 10, fontWeight: '800', lineHeight: 14 },
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   tabUnderline: { position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2 },

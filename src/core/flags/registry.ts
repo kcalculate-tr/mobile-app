@@ -27,6 +27,12 @@ export const FLAG_DEFAULTS = {
   ai_tarama: false, // AI fotoğraf tarama (günlük kota)
   restoran_yakinda: false, // eatkcal "restoran yakında" kapısı
   paylasim_karti: false, // Öğünü güne paylaşma / Tabak Röntgeni kartı (cihazda görsel üretimi + sistem paylaşımı)
+  // G8 — Açık paylaşım / yorum / etkinlik / bildirim (G8-CONTRACT.md "Bayraklar")
+  kesfet_paylasim: false, // Keşfet'te HERKES paylaşır (composer + create_post yetkisi)
+  kesfet_video: false, // Gönderiye video (istemci ayrı oturum; şema hazır)
+  kesfet_yorum: false, // Gönderi yorumları (tek seviye yanıt)
+  etkinlik: false, // Etkinlik kartı + Tracker'da etkinlik kaydı
+  sosyal_bildirim: false, // Sosyal bildirimler (Keşfet zili + liste)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

@@ -41,6 +41,8 @@ const DesignShowcaseScreen = lazy(() => import('../screens/DesignShowcaseScreen'
 const FeedDataLabScreen = lazy(() => import('../screens/FeedDataLabScreen'));
 // Keşfet ekranı (G6-S2) — `kesfet` bayrağı açıkken veya __DEV__'de kayıtlı.
 const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
+// Composer (G8-S2) — `kesfet_paylasim` açıkken veya __DEV__'de kayıtlı.
+const ComposerScreen = lazy(() => import('../modules/kesfet/ui/ComposerScreen'));
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
 const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
 const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
@@ -95,6 +97,7 @@ const DevDiagnosticsLazy = withSuspense(DevDiagnosticsScreen);
 const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
 const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const KesfetLazy = withSuspense(KesfetScreen);
+const ComposerLazy = withSuspense(ComposerScreen);
 const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
 const PublicProfileLazy = withSuspense(PublicProfileScreen);
 const KcalAiSignUpLazy = withSuspense(KcalAiSignUpRouteScreen);
@@ -238,6 +241,8 @@ export default function AppNavigator() {
   // FeedDataLab'tan açar). Canlı "Keşfet sekmesi" yerleşimi TabBarR3 kabuğuyla
   // birlikte (G6-S3) gelir; bu oturum ekranı ve bayrak kapısını teslim eder.
   const kesfetEnabled = useFeature('kesfet');
+  // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
+  const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const initialRouteName = session ? 'Tabs' : 'WelcomeGate';
 
   useEffect(() => {
@@ -301,6 +306,9 @@ export default function AppNavigator() {
       )}
       {(kesfetEnabled || __DEV__) && (
         <Stack.Screen name="Kesfet" component={KesfetLazy} />
+      )}
+      {(kesfetPaylasimEnabled || __DEV__) && (
+        <Stack.Screen name="Composer" component={ComposerLazy} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
       )}
       {__DEV__ && (
         <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />

@@ -10,6 +10,7 @@ import { haptic } from '../../../core/design';
 import { Avatar } from './Avatar';
 import { MediaGrid } from './MediaGrid';
 import { MealCard } from './MealCard';
+import { ActivityCard } from './ActivityCard';
 import { Icon, type IconName } from './icons';
 import type { PostCardModel } from './format';
 
@@ -54,6 +55,9 @@ export function PostCard({
   onShare,
   onAddToDay,
   onOpenMenu,
+  onComment,
+  onDidIt,
+  showComment = false,
 }: {
   model: PostCardModel;
   onLike: () => void;
@@ -61,6 +65,10 @@ export function PostCard({
   onShare: () => void;
   onAddToDay: () => void;
   onOpenMenu: () => void;
+  // G8 — `kesfet_yorum` açıkken yorum aksiyonu; etkinlik kartı için "Ben de yaptım".
+  onComment?: () => void;
+  onDidIt?: () => void;
+  showComment?: boolean;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -109,6 +117,16 @@ export function PostCard({
             </Pressable>
           </View>
 
+          {/* Pending etiketi — yalnız yazarına (İnceleniyor) */}
+          {model.pending ? (
+            <View style={[styles.pending, { borderColor: t.color.line }]}>
+              <Icon name="clock" size={13} color={t.color.secondary} />
+              <AppText variant="caption" tone="secondary" style={styles.pendingLabel}>
+                {tr('kesfet.compose.reviewing')}
+              </AppText>
+            </View>
+          ) : null}
+
           {/* Metin — serbest sarar (dinamik yazı boyutunda kırılmasın diye clamp yok) */}
           {model.body ? (
             <AppText variant="body" style={styles.text}>
@@ -122,6 +140,11 @@ export function PostCard({
           {/* Öğün kartı */}
           {model.meal ? (
             <MealCard meal={model.meal} addsCount={model.stats.adds} onAddToDay={onAddToDay} />
+          ) : null}
+
+          {/* Etkinlik kartı */}
+          {model.postType === 'etkinlik' && model.activity ? (
+            <ActivityCard activity={model.activity} didItCount={model.stats.did_it} onDidIt={onDidIt} />
           ) : null}
 
           {/* Aksiyon satırı: Beğen · Kaydet · Paylaş */}
@@ -142,6 +165,16 @@ export function PostCard({
               fmtCount={(n) => fmt(n)}
               onPress={save}
             />
+            {showComment && onComment ? (
+              <Action
+                icon="chat"
+                color={t.color.secondary}
+                label={tr('kesfet.ui.a11y.comment')}
+                count={model.stats.comments}
+                fmtCount={(n) => fmt(n)}
+                onPress={onComment}
+              />
+            ) : null}
             <Action
               icon="share"
               color={t.color.secondary}
@@ -164,6 +197,8 @@ const styles = StyleSheet.create({
   handle: { flexShrink: 1 },
   more: { marginLeft: 'auto', minHeight: 24, minWidth: 24, alignItems: 'center', justifyContent: 'center' },
   text: { marginTop: 2, fontSize: 15, lineHeight: 22 },
+  pending: { alignSelf: 'flex-start', marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth },
+  pendingLabel: {},
   actions: { marginTop: 4, flexDirection: 'row', gap: 28 },
   action: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionCount: {},
