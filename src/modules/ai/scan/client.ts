@@ -1,8 +1,10 @@
 // AI tarama gerçek istemcisi. reserve/release RPC; analiz edge fonksiyonu.
 // Kota SUNUCUDA denetlenir. `core/supabase` tembel require (Node testleri için).
 //
-// SORULAR: analiz adımının edge fonksiyonu adı sözleşmede yok; aşağıda
-// 'analyze_ai_scan' varsayıldı — S2 kesin adı verince güncellenecek.
+// G6: analiz adımı `analyze-ai-scan` edge fonksiyonudur (G6-CONTRACT.md); gövde
+// { reservation_id, image_path }. reservation_id = rezervasyonun idempotency
+// anahtarı; image_path = user-media kovasındaki kendi yolu. Yanıt (items+total)
+// istemcinin düz ScanEstimate biçimine maplenir.
 import type { AiScanClient, ReserveResult, ScanEstimate } from './types';
 
 type SupabaseModule = typeof import('../../../core/supabase');
@@ -32,11 +34,30 @@ export const realAiScanClient: AiScanClient = {
   },
 
   async analyzeImage({ idempotencyKey, imageRef }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
-    const { data, error } = await sb().functions.invoke('analyze_ai_scan', {
-      body: { idempotency_key: idempotencyKey, image_ref: imageRef },
+    // Edge fonksiyonu adı ve gövdesi G6-CONTRACT.md ile birebir:
+    // reservation_id = rezervasyon anahtarı (idempotencyKey), image_path = user-media yolu.
+    const { data, error } = await sb().functions.invoke('analyze-ai-scan', {
+      body: { reservation_id: idempotencyKey, image_path: imageRef },
     });
-    if (error) throw new Error(`analyze_ai_scan: ${error.message}`);
-    return data as Omit<ScanEstimate, 'isEstimate'>;
+    if (error) throw new Error(`analyze-ai-scan: ${error.message}`);
+    const res = data as {
+      items?: { name: string; grams: number; kcal: number; protein_g: number; carb_g: number; fat_g: number }[];
+      total?: { kcal: number; protein_g: number; carb_g: number; fat_g: number };
+      lang?: string;
+    };
+    const items = res.items ?? [];
+    const total = res.total ?? { kcal: 0, protein_g: 0, carb_g: 0, fat_g: 0 };
+    // items+total → düz ScanEstimate (carb_g → carbs_g). Ad = öğelerin birleşimi.
+    return {
+      name: items.length ? items.map((i) => i.name).join(', ') : (res.lang === 'en' ? 'Food' : 'Yemek'),
+      kcal: total.kcal,
+      protein_g: total.protein_g,
+      carbs_g: total.carb_g,
+      fat_g: total.fat_g,
+      portion: 1,
+      ingredients: items.map((i) => ({ name: i.name, grams: i.grams })),
+      photo_url: null,
+    };
   },
 };
 
