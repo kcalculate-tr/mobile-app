@@ -10,6 +10,12 @@
 --   · set_profile_privacy gizli→açık geçişte bekleyen istekleri onaylar.
 --   · moderatör olmayan mod_list_reports/mod_resolve_report çağıramaz.
 --   · moderatör mod_resolve_report('remove') → gönderi 'removed', akışta görünmez.
+-- G11 ek senaryoları (T28-T33):
+--   · T28 ayrılmış kullanıcı adları (claim/check_handle; tam eşleşme + marka öneki).
+--   · T29 update_my_post + posts guard gövde dalı (yayındaki gövde değişimi → pending).
+--   · T30 post-media tek writer_* seti (creator_* kaldırıldı).
+--   · T31 search_products (<2 karakter boş; aktif filtre + kolon eşlemesi).
+--   · T32 yeni_kabuk bayrak satırı varsayılanları; T33 bayrak yönetimi RPC'leri + audit.
 --
 -- Çalıştırma: psql ... -f feed_rls_test.sql  (tamamı BEGIN ... ROLLBACK içinde,
 -- hiçbir kalıcı veri bırakmaz). NOT: staging'de test EDİLMEDİ — yalnız dosya.
@@ -680,6 +686,239 @@ begin
   r := public.get_user_day_progress('aaaa0000-0000-4000-8000-000000000001'::uuid);
   if r is null or (r ? 'progress') is not true then raise exception 'FAIL T27c: self ilerleme okunamadi (%).', r; end if;
   raise notice 'OK T27c: kullanici kendi ilerlemesini okur';
+end $$;
+
+-- ============================ TEST 28 (G11/1) ================================
+-- Ayrilmis kullanici adlari: claim_handle/check_handle rezerve kontrolu. Ortak
+-- vektor src/modules/profil/__tests__/handle.reserved.test.ts ile AYNI kural.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+declare r jsonb;
+begin
+  -- Tam eslesme ayrilmis.
+  r := public.check_handle('kcalculate');
+  if (r->>'available')::boolean or (r->>'reason') <> 'reserved' then
+    raise exception 'FAIL T28a: kcalculate ayrilmis degil (%).', r; end if;
+  r := public.check_handle('admin');
+  if (r->>'available')::boolean or (r->>'reason') <> 'reserved' then
+    raise exception 'FAIL T28a: admin ayrilmis degil (%).', r; end if;
+  -- Marka oneki + harf → ayrilmis.
+  r := public.check_handle('kcalofficial');
+  if (r->>'available')::boolean or (r->>'reason') <> 'reserved' then
+    raise exception 'FAIL T28b: kcalofficial ayrilmis degil (%).', r; end if;
+  -- Noktali turev → ayrilmis DEGIL (kimsede yok → available).
+  r := public.check_handle('kcal.official');
+  if not (r->>'available')::boolean then
+    raise exception 'FAIL T28c: kcal.official ayrilmis sayildi (%).', r; end if;
+  -- claim_handle rezerve reddi.
+  r := public.claim_handle('kcal');
+  if (r->>'ok')::boolean or (r->>'reason') <> 'reserved' then
+    raise exception 'FAIL T28d: claim_handle(kcal) reddetmedi (%).', r; end if;
+  -- Idempotent: B kendi handle'ini (bora) tekrar isteyebilir.
+  r := public.claim_handle('bora');
+  if not (r->>'ok')::boolean then
+    raise exception 'FAIL T28e: B kendi handle idempotent olmadi (%).', r; end if;
+  -- Serbest, rezerve olmayan ad → ok + guncellenir.
+  r := public.claim_handle('borakullanici');
+  if not (r->>'ok')::boolean then
+    raise exception 'FAIL T28f: serbest ad alinamadi (%).', r; end if;
+  raise notice 'OK T28: ayrilmis ad tam/prefix reddi, noktali turev serbest, idempotent';
+end $$;
+
+-- ============================ TEST 29 (G11/4) ================================
+-- update_my_post + posts guard govde dali: yayindaki gonderinin govdesi degisirse
+-- (RPC VEYA dogrudan UPDATE) status=pending + moderation_queue; yazar status'u
+-- hala dogrudan degistiremez.
+select set_config('request.jwt.claims', NULL, true);  -- rolsuz: guard bypass (hazirlik)
+update public.posts set status = 'published' where id = :PA;
+delete from public.moderation_queue where target_type = 'post' and target_id = :PA;
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare r jsonb; v_st text; v_q int;
+begin
+  r := public.update_my_post('dddd0000-0000-4000-8000-000000000010'::uuid, 'G11 yeni govde RPC ile');
+  if (r->>'status') <> 'pending' then raise exception 'FAIL T29a: RPC status pending degil (%).', r; end if;
+  select status into v_st from public.posts where id = 'dddd0000-0000-4000-8000-000000000010';
+  if v_st <> 'pending' then raise exception 'FAIL T29a: gonderi pending olmadi (%).', v_st; end if;
+  select count(*) into v_q from public.moderation_queue
+   where target_type = 'post' and target_id = 'dddd0000-0000-4000-8000-000000000010';
+  if v_q <> 1 then raise exception 'FAIL T29a: moderation_queue satiri yok (%).', v_q; end if;
+  raise notice 'OK T29a: update_my_post yayindaki govdeyi pending + kuyruk';
+end $$;
+-- Dogrudan UPDATE yolu: yayina geri al, kuyrugu temizle, A dogrudan govde degistirir.
+select set_config('request.jwt.claims', NULL, true);
+update public.posts set status = 'published' where id = :PA;
+delete from public.moderation_queue where target_type = 'post' and target_id = :PA;
+select set_config('request.jwt.claims', json_build_object('sub', :A, 'role','authenticated')::text, true);
+do $$
+declare v_st text; v_q int;
+begin
+  update public.posts set body = 'G11 elle duzenleme' where id = 'dddd0000-0000-4000-8000-000000000010';
+  select status into v_st from public.posts where id = 'dddd0000-0000-4000-8000-000000000010';
+  if v_st <> 'pending' then raise exception 'FAIL T29b: dogrudan govde UPDATE pending yapmadi (%).', v_st; end if;
+  select count(*) into v_q from public.moderation_queue
+   where target_type = 'post' and target_id = 'dddd0000-0000-4000-8000-000000000010';
+  if v_q <> 1 then raise exception 'FAIL T29b: kuyruk satiri yok (%).', v_q; end if;
+  raise notice 'OK T29b: dogrudan govde UPDATE yeniden denetime dusurdu (acik kapandi)';
+end $$;
+-- Yazar status'u hala dogrudan degistiremez (guard regresyonu).
+do $$
+begin
+  begin
+    update public.posts set status = 'published' where id = 'dddd0000-0000-4000-8000-000000000010';
+    raise exception 'FAIL T29c: yazar status dogrudan degistirdi';
+  exception when others then
+    if sqlerrm like '%posts_guard%' then raise notice 'OK T29c: yazar status degisimi hala engelli';
+    else raise; end if;
+  end;
+end $$;
+
+-- ============================ TEST 30 (G11/3) ================================
+-- post-media storage politikalari tek sete indi: creator_* kalkti, writer_* (3) kaldi.
+do $$
+declare v_creator int; v_writer int;
+begin
+  select count(*) into v_creator from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname like 'post_media_creator_%';
+  select count(*) into v_writer from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname like 'post_media_writer_%';
+  if v_creator <> 0 then raise exception 'FAIL T30: creator_* kaldirilmadi (%).', v_creator; end if;
+  if v_writer <> 3 then raise exception 'FAIL T30: writer_* 3 degil (%).', v_writer; end if;
+  raise notice 'OK T30: post-media tek writer_* seti (creator_* kaldirildi)';
+end $$;
+
+-- ============================ TEST 31 (G11/5) ================================
+-- search_products: p_q<2 → bos; aktif urun + kolon eslemesi (best-effort seed —
+-- canli products kolonlari repodan cikarildi, uyusmazsa SKIP).
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+declare r jsonb;
+begin
+  r := public.search_products('a', 12);
+  if r is null or jsonb_typeof(r->'items') <> 'array' or jsonb_array_length(r->'items') <> 0 then
+    raise exception 'FAIL T31a: p_q<2 bos items dondurmedi (%).', r; end if;
+  raise notice 'OK T31a: search_products p_q<2 → bos items';
+end $$;
+select set_config('request.jwt.claims', NULL, true);
+do $$
+declare r jsonb; v_item jsonb; v_seeded boolean := false;
+begin
+  begin
+    insert into public.products (id, name, calories, protein, carbs, fats, img, is_available)
+    values (999900001, 'G11TestUrunu Aktif', 321, 11, 22, 33, 'test/img.jpg', true);
+    insert into public.products (id, name, calories, protein, carbs, fats, img, is_available)
+    values (999900002, 'G11TestUrunu Pasif', 100, 1, 2, 3, 'x.jpg', false);
+    v_seeded := true;
+  exception when others then
+    raise notice 'SKIP T31b: products seed yapilamadi (canli kolonlar farkli olabilir): %', sqlerrm;
+  end;
+  if v_seeded then
+    r := public.search_products('G11TestUrunu', 12);
+    if jsonb_array_length(r->'items') <> 1 then
+      raise exception 'FAIL T31b: aktif filtre tutmadi (% sonuc).', jsonb_array_length(r->'items'); end if;
+    v_item := r->'items'->0;
+    if (v_item->>'kcal')::int <> 321 or (v_item->>'protein_g')::int <> 11
+       or (v_item->>'carbs_g')::int <> 22 or (v_item->>'fat_g')::int <> 33
+       or (v_item->>'image_url') <> 'test/img.jpg' then
+      raise exception 'FAIL T31b: kolon eslemesi yanlis (%).', v_item; end if;
+    raise notice 'OK T31b: search_products aktif filtre + kolon eslemesi (kcal/protein_g/carbs_g/fat_g/image_url)';
+  end if;
+end $$;
+
+-- ============================ TEST 32 (G11/7) ================================
+-- yeni_kabuk bayrak satiri: enabled=false, rollout_percent=0, min_app_version=1.1.0.
+-- (T33'ten ONCE — T33 bu satiri degistirir.)
+do $$
+declare ff record;
+begin
+  select * into ff from public.feature_flags where key = 'yeni_kabuk';
+  if not found then raise exception 'FAIL T32: yeni_kabuk bayrak satiri yok'; end if;
+  if ff.enabled or ff.rollout_percent <> 0 or ff.min_app_version <> '1.1.0' then
+    raise exception 'FAIL T32: yeni_kabuk varsayilanlari yanlis (enabled=%, rollout=%, min=%).',
+      ff.enabled, ff.rollout_percent, ff.min_app_version;
+  end if;
+  raise notice 'OK T32: yeni_kabuk enabled=false rollout=0 min_app_version=1.1.0';
+end $$;
+
+-- ============================ TEST 33 (G11/6) ================================
+-- Bayrak yonetimi RPC'leri + feature_flag_audit. Admin yetkisi admin_allowlist
+-- (best-effort seed; yoksa SKIP). non-admin reddi her halukarda calisir.
+select set_config('request.jwt.claims', NULL, true);
+do $$
+begin
+  begin
+    insert into public.admin_allowlist (user_id) values ('eeee0000-0000-4000-8000-000000000005')
+    on conflict do nothing;
+  exception when others then
+    raise notice 'SKIP T33 seed: admin_allowlist kolonlari farkli olabilir: %', sqlerrm;
+  end;
+end $$;
+-- non-admin B reddedilir.
+select set_config('request.jwt.claims', json_build_object('sub', :B, 'role','authenticated')::text, true);
+do $$
+begin
+  begin
+    perform public.admin_list_flags();
+    raise exception 'FAIL T33a: non-admin admin_list_flags cagirabildi';
+  exception when others then
+    if sqlerrm like '%yetkisiz%' then raise notice 'OK T33a: non-admin reddedildi';
+    else raise; end if;
+  end;
+end $$;
+-- Admin M (seed tuttu ise).
+select set_config('request.jwt.claims', json_build_object('sub', :M, 'role','authenticated')::text, true);
+do $$
+declare r jsonb; v_before int; v_after int; v_cnt int;
+begin
+  if not exists (select 1 from public.admin_allowlist where user_id = 'eeee0000-0000-4000-8000-000000000005') then
+    raise notice 'SKIP T33b-g: M admin degil (seed yapilamadi)';
+    return;
+  end if;
+  -- gecersiz yuzde
+  begin perform public.admin_set_flag('yeni_kabuk', true, 150, null, null);
+    raise exception 'FAIL T33b: gecersiz yuzde kabul edildi';
+  exception when others then
+    if sqlerrm like '%gecersiz_yuzde%' then raise notice 'OK T33b: gecersiz yuzde reddedildi'; else raise; end if;
+  end;
+  -- gecersiz anahtar
+  begin perform public.admin_set_flag('olmayan_bayrak_xyz', true, 10, null, null);
+    raise exception 'FAIL T33c: gecersiz anahtar kabul edildi';
+  exception when others then
+    if sqlerrm like '%gecersiz_anahtar%' then raise notice 'OK T33c: gecersiz anahtar reddedildi'; else raise; end if;
+  end;
+  -- gecerli set + audit satiri
+  select count(*) into v_before from public.feature_flag_audit where flag_key = 'yeni_kabuk';
+  perform public.admin_set_flag('yeni_kabuk', true, 25, '1.1.0', array['ios','android']);
+  select count(*) into v_after from public.feature_flag_audit where flag_key = 'yeni_kabuk';
+  if v_after <> v_before + 1 then raise exception 'FAIL T33d: audit satiri yazilmadi'; end if;
+  if not exists (select 1 from public.feature_flags where key='yeni_kabuk' and enabled and rollout_percent=25) then
+    raise exception 'FAIL T33d: bayrak guncellenmedi'; end if;
+  raise notice 'OK T33d: admin_set_flag guncelledi + audit';
+  -- list_flags + unlock_count
+  r := public.admin_list_flags();
+  if not exists (select 1 from jsonb_array_elements(r) e where e->>'key'='yeni_kabuk') then
+    raise exception 'FAIL T33e: admin_list_flags yeni_kabuk icermiyor'; end if;
+  raise notice 'OK T33e: admin_list_flags listeledi';
+  -- flag_unlock ekle/kaldir
+  perform public.admin_flag_unlock('yeni_kabuk', 'bbbb0000-0000-4000-8000-000000000002', true);
+  if not exists (select 1 from public.user_feature_unlocks
+                 where flag_key='yeni_kabuk' and user_id='bbbb0000-0000-4000-8000-000000000002') then
+    raise exception 'FAIL T33f: unlock eklenmedi'; end if;
+  r := public.admin_list_flags();
+  select (e->>'unlock_count')::int into v_cnt from jsonb_array_elements(r) e where e->>'key'='yeni_kabuk';
+  if coalesce(v_cnt,0) < 1 then raise exception 'FAIL T33f: unlock_count artmadi (%).', v_cnt; end if;
+  perform public.admin_flag_unlock('yeni_kabuk', 'bbbb0000-0000-4000-8000-000000000002', false);
+  if exists (select 1 from public.user_feature_unlocks
+             where flag_key='yeni_kabuk' and user_id='bbbb0000-0000-4000-8000-000000000002') then
+    raise exception 'FAIL T33f: unlock kaldirilmadi'; end if;
+  raise notice 'OK T33f: admin_flag_unlock ekle/kaldir + unlock_count';
+  -- find_user handle + maskeli email
+  r := public.admin_find_user('bora');
+  if jsonb_array_length(r) < 1 or not exists (select 1 from jsonb_array_elements(r) e where e->>'handle'='bora') then
+    raise exception 'FAIL T33g: admin_find_user handle bulamadi (%).', r; end if;
+  if exists (select 1 from jsonb_array_elements(r) e where e->>'email_masked' like '%b_test@kcal.test%') then
+    raise exception 'FAIL T33g: email maskelenmedi'; end if;
+  raise notice 'OK T33g: admin_find_user handle + maskeli email';
 end $$;
 
 reset role;
