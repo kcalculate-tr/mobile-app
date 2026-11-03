@@ -1,10 +1,12 @@
 // T20SignupEat (ekran 1) — şehir kapısı. İlk "Sipariş ver"de bir kez
 // gösterilir; İzmir dışı seçimler yalnız yerel "Haber ver" tercihi kaydeder,
 // gezinirken (adres/telefon ekranlarına geçerken) hiçbir şey sorulmaz.
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from '../../../components/icons';
+import { SPRING, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useEatkcalRegistration } from '../../profil/useRegistration';
 import { CITY_CATALOG } from '../cityGate';
@@ -24,6 +26,22 @@ export default function CityGateSheet({ visible, onClose, onConfirmed }: Props) 
   const [selected, setSelected] = useState<string>('izmir');
   const [notified, setNotified] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const reduced = useReducedMotion();
+
+  // Alttan açılan sayfa: SPRING.sheet ile yukarı yaylanır (TRANSITION.sheet).
+  // Azaltılmış harekette anında yerine oturur.
+  const anim = useSharedValue(0);
+  useEffect(() => {
+    if (!visible) {
+      anim.value = 0;
+      return;
+    }
+    anim.value = reduced ? 1 : withSpring(1, SPRING.sheet);
+  }, [visible, reduced, anim]);
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(anim.value, [0, 1], [380, 0]) }],
+  }));
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: anim.value }));
 
   const handleNotify = useCallback(async (cityKey: string) => {
     await addNotifyCity(cityKey);
@@ -42,10 +60,11 @@ export default function CityGateSheet({ visible, onClose, onConfirmed }: Props) 
   }, [selected, submitting, reg, onConfirmed]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <View style={styles.backdropWrap}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]} />
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: Math.max(34, insets.bottom + 16) }]}>
+        <Animated.View style={[styles.sheet, { paddingBottom: Math.max(34, insets.bottom + 16) }, sheetStyle]}>
           <View style={styles.handleBar} />
           <Text style={styles.title}>{t('eatkcal.city_gate.title')}</Text>
           <Text style={styles.subtitle}>{t('eatkcal.city_gate.subtitle')}</Text>
@@ -104,14 +123,15 @@ export default function CityGateSheet({ visible, onClose, onConfirmed }: Props) 
           >
             <Text style={styles.continueBtnText}>{t('eatkcal.city_gate.continue')}</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(10,10,10,0.4)', justifyContent: 'flex-end' },
+  backdropWrap: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { backgroundColor: 'rgba(10,10,10,0.4)' },
   sheet: {
     backgroundColor: '#F3F4F6',
     borderTopLeftRadius: 24,

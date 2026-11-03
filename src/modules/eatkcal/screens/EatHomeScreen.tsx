@@ -6,7 +6,8 @@
 // "Çevrendeki sağlıklı restoranlar": GERÇEK veri olmadığı için sahte restoran
 // listesi YOK — tek "Yakında burada" kartı (md.1 açık talimat).
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useFonts } from 'expo-font';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { bricolageFonts } from '../../../core/design/fonts';
+import { SPRING, haptic, useReducedMotion } from '../../../core/design';
 import { useTheme } from '../../../core/design/ThemeProvider';
 import { useT } from '../../../core/i18n';
 import { MapPin, BellRinging } from '../../../components/icons';
@@ -88,7 +90,7 @@ export default function EatHomeScreen() {
           </Text>
           <View style={[styles.cityChip, { borderColor: theme.color.line }]}>
             <MapPin size={14} color={theme.color.ink} weight="fill" />
-            <Text style={[styles.cityChipText, { color: theme.color.ink }]}>İzmir</Text>
+            <Text style={[styles.cityChipText, { color: theme.color.ink }]}>İzmir ▾</Text>
           </View>
         </View>
 
@@ -112,13 +114,12 @@ export default function EatHomeScreen() {
                     {branch.address}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={[styles.orderBtn, { backgroundColor: theme.color.accent }]}
+                <OrderButton
+                  label={t('eatkcal.order_cta')}
+                  bg={theme.color.accent}
+                  fg={theme.color.onAccent}
                   onPress={handleOrderPress}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.orderBtnText, { color: theme.color.onAccent }]}>{t('eatkcal.order_cta')}</Text>
-                </TouchableOpacity>
+                />
               </View>
             </View>
           );
@@ -157,6 +158,45 @@ export default function EatHomeScreen() {
         onConfirmed={handleGateConfirmed}
       />
     </View>
+  );
+}
+
+// "Sipariş ver" — sipariş anı eatkcal yayıyla (SPRING.eat, daha yumuşak "teslim"
+// hissi; motion.tsx token'ı). Azaltılmış harekette yay yok, yalnız haptik.
+function OrderButton({
+  label,
+  bg,
+  fg,
+  onPress,
+}: {
+  label: string;
+  bg: string;
+  fg: string;
+  onPress: () => void;
+}) {
+  const reduced = useReducedMotion();
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        if (!reduced) scale.value = withSpring(0.95, SPRING.eat);
+      }}
+      onPressOut={() => {
+        if (!reduced) scale.value = withSpring(1, SPRING.eat);
+      }}
+      onPress={() => {
+        haptic('light');
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Animated.View style={[styles.orderBtn, { backgroundColor: bg }, animStyle]}>
+        <Text style={[styles.orderBtnText, { color: fg }]}>{label}</Text>
+      </Animated.View>
+    </Pressable>
   );
 }
 
