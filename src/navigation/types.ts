@@ -16,6 +16,12 @@ export type AuthRedirectTarget = 'Tabs' | 'Checkout' | 'Addresses';
 
 export type RootStackParamList = {
   WelcomeGate: undefined;
+  // G12-S1 — yeni onboarding akışı (yalnız `yeni_onboarding` açık + oturumsuz
+  // soğuk açılış). Kapalıyken HİÇ kaydolmaz; WelcomeGate bugünküyle aynı.
+  Onboarding: undefined;
+  // G12-S1 — "Takibe başla" (hedef/tempo/beden/hareket/sonuç/ilk adım). Mevcut
+  // beslenme profili servisini kullanır; `editGoal` Profil › Hedefim'den açılış.
+  TakibeBasla: { editGoal?: boolean } | undefined;
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   Categories: undefined;
   Offers: undefined;
