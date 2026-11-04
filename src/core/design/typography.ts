@@ -93,6 +93,47 @@ export const type: Record<TypeScaleKey, TypeScaleEntry> = {
 } as const;
 
 /**
+ * FinComponents rolleri (Final tek ölçü kaynağı: tipografi 24 / 20 / 20 / 17 / 15 / 13).
+ * `type` genel ölçek kademesidir; `role` ise Final panolarındaki EKRAN rolleridir
+ * (ana başlık, bölüm, alt sayfa başlığı, gövde, küçük gövde, yardımcı). Aynı font
+ * ailelerini kullanır; yeni renk/font sistemi KURMAZ.
+ */
+export type RoleKey =
+  | 'screenTitle' // Ana başlık · 24
+  | 'section' // Bölüm · 20
+  | 'sheetTitle' // Alt sayfa · 20
+  | 'body' // Gövde · 17
+  | 'bodySm' // Gövde · 15
+  | 'helper'; // Yardımcı · 13
+
+export const role: Record<RoleKey, TypeScaleEntry> = {
+  screenTitle: {
+    style: { fontFamily: fontFamily.headingBold, fontSize: 24, lineHeight: 30, letterSpacing: -0.3 },
+    scaleCap: 1.3,
+  },
+  section: {
+    style: { fontFamily: fontFamily.headingSemibold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+    scaleCap: 1.4,
+  },
+  sheetTitle: {
+    style: { fontFamily: fontFamily.headingSemibold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+    scaleCap: 1.4,
+  },
+  body: {
+    style: { fontFamily: fontFamily.bodyRegular, fontSize: 17, lineHeight: 24 },
+    scaleCap: 1.6,
+  },
+  bodySm: {
+    style: { fontFamily: fontFamily.bodyRegular, fontSize: 15, lineHeight: 22 },
+    scaleCap: 1.6,
+  },
+  helper: {
+    style: { fontFamily: fontFamily.bodyMedium, fontSize: 13, lineHeight: 18 },
+    scaleCap: 1.6,
+  },
+} as const;
+
+/**
  * En büyük Dynamic Type boyunda kırılma kuralı (bileşenlerin uyması için not):
  *  - Başlıklar (display/title/heading): tek satıra ZORLAMA; `numberOfLines`
  *    verme, satır kırılsın. `scaleCap` düşük tutuldu ki taşma sınırlı kalsın.

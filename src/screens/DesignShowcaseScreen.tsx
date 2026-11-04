@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useFonts } from 'expo-font';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,7 +30,14 @@ import {
   useFloat,
   usePop,
   useSpringTo,
+  useReducedMotion,
   useTheme,
+  MOTION_MAP,
+  haptic,
+  DURATION,
+  CURVE,
+  REDUCED,
+  type MotionMapRow,
   type ColorScheme,
 } from '../core/design';
 
@@ -251,6 +264,20 @@ function ShowcaseBody({
           </View>
         </Panel>
 
+        {/* Hareket haritası (FinMoMap) — her satırı tetikleyen düğmeler */}
+        <Panel>
+          <AppText variant="caption" tone="secondary">HAREKET HARİTASI (FinMoMap)</AppText>
+          <AppText variant="caption" tone="secondary" style={styles.note}>
+            Her satır token adıyla; düğme ilgili hareketi + haptiği tetikler.
+          </AppText>
+          <MotionMapSection
+            onToast={() => {
+              setToastVisible(true);
+              setTimeout(() => setToastVisible(false), 2600);
+            }}
+          />
+        </Panel>
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -355,6 +382,100 @@ function FloatDemo() {
   );
 }
 
+// Preview kutusuna her FinMoMap satırını yaklaşık canlandırır (dev referansı).
+const MOTION_KIND: Record<string, 'x' | 'y' | 'scale' | 'opacity'> = {
+  tab: 'x',
+  jelly: 'x',
+  push: 'x',
+  pop: 'x',
+  sheetAi: 'y',
+  sheetEat: 'y',
+  modal: 'y',
+  toast: 'y',
+  tabbar: 'scale',
+  header: 'scale',
+  skeleton: 'opacity',
+  listAdd: 'y',
+};
+
+function motionDuration(token: string): number {
+  if (token.includes('slow 500')) return DURATION.slow;
+  if (token.includes('fast 200')) return DURATION.fast;
+  if (token.includes('story 900')) return DURATION.story;
+  return DURATION.base;
+}
+
+function MotionMapSection({ onToast }: { onToast: () => void }) {
+  const t = useTheme();
+  const reduced = useReducedMotion();
+  const p = useSharedValue(0);
+  const [kind, setKind] = useState<'x' | 'y' | 'scale' | 'opacity'>('x');
+  const [jelly, setJelly] = useState(false);
+
+  const play = (row: MotionMapRow) => {
+    if (row.haptic) haptic(row.haptic);
+    if (row.id === 'toast') {
+      onToast();
+      return;
+    }
+    setKind(MOTION_KIND[row.id] ?? 'opacity');
+    setJelly(row.id === 'jelly');
+    const d = reduced ? REDUCED.duration : motionDuration(row.token);
+    p.value = 0;
+    p.value = withSequence(
+      withTiming(1, { duration: d, easing: CURVE.enter }),
+      withTiming(0, { duration: Math.round(d * 0.8), easing: CURVE.exit }),
+    );
+  };
+
+  const previewStyle = useAnimatedStyle(() => {
+    if (reduced) return { opacity: interpolate(p.value, [0, 1], [0.4, 1]) };
+    switch (kind) {
+      case 'x': {
+        const sx = jelly ? interpolate(p.value, [0, 0.5, 1], [1, 1.6, 1]) : 1;
+        return { opacity: 1, transform: [{ translateX: interpolate(p.value, [0, 1], [0, 56]) }, { scaleX: sx }] };
+      }
+      case 'y':
+        return { opacity: interpolate(p.value, [0, 1], [0.4, 1]), transform: [{ translateY: interpolate(p.value, [0, 1], [36, 0]) }] };
+      case 'scale':
+        return { opacity: 1, transform: [{ scale: interpolate(p.value, [0, 1], [0.6, 1]) }] };
+      default:
+        return { opacity: interpolate(p.value, [0, 1], [0.25, 1]) };
+    }
+  });
+
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={styles.center}>
+        <Animated.View style={[styles.motionPreview, { backgroundColor: t.color.accent }, previewStyle]} />
+      </View>
+      {MOTION_MAP.map((row) => (
+        <Pressable
+          key={row.id}
+          onPress={() => play(row)}
+          style={[styles.motionRow, { borderColor: t.color.line }]}
+          accessibilityRole="button"
+          accessibilityLabel={`${row.label} — ${row.token}`}
+        >
+          <View style={{ flex: 1 }}>
+            <AppText variant="body">{row.label}</AppText>
+            <AppText variant="caption" tone="secondary">{row.token}</AppText>
+            <AppText variant="caption" tone="secondary">
+              azalt: {row.reduced}
+              {row.haptic ? ` · haptik: ${row.haptic}` : ''}
+            </AppText>
+          </View>
+          <View style={[styles.playChip, { backgroundColor: t.color.ink }]}>
+            <AppText variant="caption" style={{ color: t.color.surface }}>
+              Oynat
+            </AppText>
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function Panel({ children }: { children: React.ReactNode }) {
   const t = useTheme();
   return (
@@ -431,5 +552,23 @@ const styles = StyleSheet.create({
     top: 48,
     left: 16,
     right: 16,
+  },
+  motionPreview: { width: 52, height: 52, borderRadius: 16 },
+  motionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  playChip: {
+    minHeight: 36,
+    minWidth: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
 });

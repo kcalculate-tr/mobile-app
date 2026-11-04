@@ -1,0 +1,15 @@
+G12-S1 tamamlandı — night12/shell-motion
+
+9 madde bitti (Final panolarıyla birebir, tüm özellikler bayrak arkasında, kapalı = 1.0.7 aynı):
+1. Hareket (FinMoTokens v2 + FinMoMap)        dd4561a
+2. Ortak bileşenler (FinComponents)            f4d226b
+3. Tab bar son hâli (stroke'suz/+N/jöle/uçuş)  8bf5689
+4. Bayraklar (yeni_onboarding, yeni_siparis)   dd4561a
+5. Onboarding (FinOnb*)                         afda78e
+6. Takibe başla (FinTb*)                        95570c2
+7. Mevcut müşteriye tanıtım (FinIntro*)         17a3dcb
+8. Dev vitrin "Hareket haritası"               5138852
+9. Testler + kontrol + LOG                      2c3eb6e
+
+Kontrol: typecheck 0 · test:unit 437 · test:components 57 · expo export (ios) OK.
+Detay: docs/night/G12-S1-LOG.md

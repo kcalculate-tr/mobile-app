@@ -16,36 +16,39 @@ import { Easing } from 'react-native';
  * diye düşün; öyleyse token ekle, değilse en yakınını kullan.
  */
 
-/** Süreler (ms). Dört kademe; arası doldurulmaz. */
+/**
+ * Süreler (ms) — FinMoTokens v2'ye hizalı (`design/final/FinMoTokens.dc.html`):
+ * `instant 100 · fast 200 · base 300 · slow 500 · story 900+`. `pulse`/`sweep`
+ * v2'de "story 900+" bandının takma adlarıdır (mevcut tüketiciler korunur).
+ */
 export const DURATION = {
-  /** 120 — dokunma geri bildirimi, küçük ölçek/opaklık sıçraması. */
-  instant: 120,
-  /** 200 — durum değişimi: görünür/gizli, seçili/seçili değil, renk geçişi. */
+  /** 100 — dokunma geri bildirimi, küçük ölçek/opaklık sıçraması (v2 instant). */
+  instant: 100,
+  /** 200 — durum değişimi, crossfade, kaydet, sheet kapanış (v2 fast). */
   fast: 200,
-  /** 280 — giriş/çıkış, çapraz geçiş, liste öğesi belirmesi. */
-  base: 280,
-  /** 420 — ekran ölçeğinde hareket, ilerleme çubuğu dolumu, vurgu. */
-  slow: 420,
-  /**
-   * 900 — "nefes alan" döngüler (iskelet parıltısı, canlı sipariş nabzı) ve
-   * sayı sayma. Bu ikisi aynı kademede, çünkü ikisi de İZLENİR: göz değişimi
-   * takip eder, tek karede algılanan bir durum değişimi değildir.
-   */
+  /** 300 — giriş/geçiş, liste öğesi belirmesi (v2 base). */
+  base: 300,
+  /** 500 — ekran ölçeğinde hareket, ilerleme dolumu, vurgu (v2 slow). */
+  slow: 500,
+  /** 900 — "nefes alan" döngüler, sayı sayma (v2 story). */
   pulse: 900,
-  /** 1400 — bir yüzeyin üzerinden geçen ışık bandı. */
+  /** 1400 — yüzeyden geçen ışık bandı (v2 story 900+). */
   sweep: 1400,
 } as const;
 
 /**
- * Yumuşama eğrileri.
- * - `enter`: dışarıdan gelen hareket hızlı başlar, yavaş oturur.
- * - `exit`: gidiş hızlanarak çıkar.
- * - `move`: iki durum arasında gidip gelen hareket (döngüler dahil).
+ * Yumuşama eğrileri — FinMoTokens v2 üç eğri. `enter`/`move` korunur; `standard`
+ * ve `exit` eklenir. `move` v2'de `standard` ile aynıdır (döngü/yerinde değişim).
  */
 export const EASING = {
-  enter: Easing.out(Easing.cubic),
-  exit: Easing.in(Easing.cubic),
-  move: Easing.inOut(Easing.quad),
+  /** yerinde değişim, döngü, sabit hız (v2 standard). */
+  standard: Easing.bezier(0.2, 0, 0, 1),
+  /** giriş — dışarıdan gelir, yumuşak oturur (v2 enter). */
+  enter: Easing.bezier(0.05, 0.7, 0.1, 1),
+  /** çıkış — girişten kısa (v2 exit). */
+  exit: Easing.bezier(0.3, 0, 0.8, 0.15),
+  /** @deprecated → standard (döngüler/yerinde değişim). */
+  move: Easing.bezier(0.2, 0, 0, 1),
 } as const;
 
 /**

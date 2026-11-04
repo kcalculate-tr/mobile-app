@@ -24,6 +24,10 @@ import { RootStackParamList, TabParamList } from './types';
 //    Suspense fallback'i "boş kare" gibi parlamasın — sekme geçişinde slide yok.
 //  · Checkout: görevde açıkça hariç tutuldu.
 import WelcomeGateScreen from '../screens/WelcomeGateScreen';
+// G12-S1 — yeni onboarding yığını (koyu zemin; beyaz flash olmasın diye eager
+// import, WelcomeGate gibi). Yalnız `yeni_onboarding` açık + oturumsuz soğuk
+// açılışta initialRouteName buna gelir.
+import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay } from '../modules/onboarding';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../modules/eatkcal/screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -321,6 +325,9 @@ function TabNavigatorR3() {
           options={{ tabBarButton: () => null }}
         />
       </Tab.Navigator>
+      {/* G12-S1 — mevcut müşteriye tanıtım: yeni kabuk ilk açılışında bir kez
+          (oturumlu kullanıcı). Bugünkü kabukta (TabNavigator) YOK. */}
+      <IntroOverlay />
     </TabBarCollapseProvider>
   );
 }
@@ -356,7 +363,15 @@ export default function AppNavigator() {
   const kesfetEnabled = useFeature('kesfet');
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
-  const initialRouteName = session ? 'Tabs' : 'WelcomeGate';
+  // G12-S1: `yeni_onboarding` açıkken oturumsuz soğuk açılış WelcomeGate yerine
+  // yeni onboarding akışını gösterir (soğuk-başlangıçta bir kez okunur, böylece
+  // process ömrü boyunca tek initialRoute). Kapalıyken WelcomeGate bugünküyle aynı.
+  const yeniOnboarding = useColdStartFeature('yeni_onboarding');
+  const initialRouteName = session
+    ? 'Tabs'
+    : yeniOnboarding
+      ? 'Onboarding'
+      : 'WelcomeGate';
 
   useEffect(() => {
     if (authLoading) return;
@@ -401,6 +416,17 @@ export default function AppNavigator() {
         component={WelcomeGateScreen}
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#0A0A0A' } }}
       />
+      {/* G12-S1 — yeni onboarding (koyu zemin, geri jesti kapalı). Bayrak
+          kapalıyken initialRoute WelcomeGate olduğundan erişilmez. */}
+      <Stack.Screen
+        name="Onboarding"
+        component={OnboardingNavigator}
+        options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }}
+      />
+      {/* G12-S1 — Takibe başla (hedef/tempo/beden/hareket/sonuç/ilk adım).
+          Onboarding'den (yeni kullanıcı) ve Profil › Hedefim'den (editGoal, S4
+          bağlar) açılır. Mevcut beslenme profili servisini kullanır. */}
+      <Stack.Screen name="TakibeBasla" component={TakibeBaslaNavigator} />
       <Stack.Screen name="Tabs" component={TabsRoot} />
       <Stack.Screen name="Categories" component={CategoriesLazy} />
       <Stack.Screen name="CategoryProducts" component={CategoryProductsLazy} />

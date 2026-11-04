@@ -37,6 +37,10 @@ export const FLAG_DEFAULTS = {
   // navigatörünü kurar; kapalıyken (varsayılan) bugünkü CustomTabBar AYNEN.
   // Sunucu satırı: enabled false, rollout_percent 0, min_app_version '1.1.0'.
   yeni_kabuk: false, // Yeni uygulama kabuğu (sekme çubuğu + Tara)
+  // G12 — Final tasarımla giydirme (Dalga 1). Hepsi kapalı; sunucu satırlarını
+  // S6 migration dosyası olarak yazar. Kapalıyken uygulama bugünküyle AYNI.
+  yeni_onboarding: false, // Onboarding + Takibe başla + mevcut müşteriye tanıtım (G12-S1)
+  yeni_siparis: false, // eatkcal yeni arayüzü: ana sayfa, mağaza, ürün, sepet, özet, adres, siparişler (G12-S5)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

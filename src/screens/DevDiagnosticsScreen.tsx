@@ -238,6 +238,9 @@ const NEW_SHELL_PRESET: FlagKey[] = [
   'gun_halkasi',
   'ai_tarama',
   'paylasim_karti',
+  // G12 Dalga 1 — final arayüz
+  'yeni_onboarding',
+  'yeni_siparis',
 ];
 
 // __DEV__ bayrak listesi — çözümlenmiş değeri gösterir ve yerel geçersiz kılma
