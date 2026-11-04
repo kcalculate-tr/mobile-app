@@ -1,5 +1,18 @@
 # G12-S4-LOG — Tara + Profil + ayarlar + kayıt
 
+## Kapanış özeti (10 satır, madde 8 — final geçiş)
+8 madde tamam: Tara, Profil (FinPrProfile), İlerleme, Macro ve Abonelik, 6
+ayar ekranı, Herkese açık profil + rozet + gizlilik, Kayıt (FinSignupAI/
+FinSignupEat). Bayrak `yeni_kabuk` kapalıyken ProfileScreen/ScanScreen bugünle
+bayt bayt aynı (early-return / kendi `if (yeniKabuk)` bloğu — doğrulandı).
+Final geçişte eksik bulundu: FinPrProfileScreen'de "Macro ve Abonelik" satırı
+bakiye göstermiyordu → `fetchMacroProfile`/`fetchMacroSettings`/`macroProgress`
+ile bağlandı, `MacroScreen.tsx`'teki "balance > 0 ise rozet" kuralı birebir
+uygulandı (0 bakiyede value gösterilmez). `npx tsc --noEmit` = 0 hata,
+`npm run test:unit` 429/429, `npm run test:components` 13 suite/59 test,
+`npx expo export --platform ios` başarılı (dist/ üretildi). ENTEGRASYONA
+listesi aşağıda (5 madde); SORULAR yok.
+
 ## Özet (10 satır)
 8 madde tamamlandı: Tara (FinScanR2/FinPhotoR1 + hata/çevrimdışı sheet +
 offline dedup), Profil (FinPrProfile hub), İlerleme (FinPrProgress, kilo/BMI
@@ -118,6 +131,16 @@ telefon akışına dokunulmadı (ENTEGRASYONA, bkz. aşağı).
 5. **Paylaşılan dosyalar**: `src/components/icons.ts`'e Image/WifiSlash/
    DownloadSimple re-export'ları eklendi (başka oturumun da kullanabileceği
    paylaşılan barrel dosya) — çakışma riski düşük (yalnız ekleme).
+6. **"Dil" satırı yok**: Ayarlar bölümünde dil değiştirme ekranı/satırı
+   bilerek eklenmedi — repoda gerçek bir dil-değiştirme ekranı/mekanizması
+   (yalnız statik TR/EN sözlük) yok. S6: gerçek bir dil ekranı eklenirse
+   `FinPrProfileScreen`'in Ayarlar `FinRowGroup`'una satır eklenmeli.
+7. **Macro bakiye satırı (final geçiş)**: "Macro ve Abonelik" satırına artık
+   `value={"${balance} Macro"}` gösteriliyor (balance > 0 ise), `MacroScreen`
+   ile aynı kural. `FinPrMacroScreen` zaten kendi `fetchMacro` çağrısını
+   yapıyor; `FinPrProfileScreen` bağımsız bir ikinci fetch ekledi (aynı veri
+   iki yerde ayrı ayrı çekiliyor) — S6'da istenirse ortak bir hook'a
+   taşınabilir, bugün için risksiz (salt okunur, ekstra bir GET).
 
 ## SORULAR
 Yok — tüm kararlar (Koleksiyon placeholder, rapor üretici tekrarı, VerifiedBadge

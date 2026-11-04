@@ -26,6 +26,14 @@ import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { useNutritionSummary } from '../../../../hooks/useNutritionSummary';
 import { getCardsFeatureStatus } from '../../../../lib/cards';
+import {
+  DEFAULT_MACRO_SETTINGS,
+  MacroProfile,
+  MacroSettings,
+  fetchMacroProfile,
+  fetchMacroSettings,
+  macroProgress,
+} from '../../../../lib/macros';
 import { unregisterPushToken } from '../../../../core/notifications';
 import { useNavGate } from '../../../../store/navGateStore';
 import { RootStackParamList } from '../../../../navigation/types';
@@ -98,6 +106,8 @@ export default function FinPrProfileScreen() {
   const [handle, setHandle] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
   const [savedCardsEnabled, setSavedCardsEnabled] = useState(false);
+  const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
+  const [macroSettings, setMacroSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
   const { summary } = useNutritionSummary();
 
   const userName =
@@ -124,6 +134,21 @@ export default function FinPrProfileScreen() {
       fetchIdentity();
     }, [fetchIdentity]),
   );
+
+  const fetchMacro = useCallback(async () => {
+    if (!user?.id) return;
+    const [p, st] = await Promise.all([fetchMacroProfile(user.id), fetchMacroSettings()]);
+    setMacroProfile(p);
+    setMacroSettings(st);
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMacro();
+    }, [fetchMacro]),
+  );
+
+  const macroProgressInfo = macroProgress(macroProfile, macroSettings);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +262,7 @@ export default function FinPrProfileScreen() {
               first
               icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
               label={tr('profil.macro_and_sub')}
+              value={macroProgressInfo.balance > 0 ? `${macroProgressInfo.balance} Macro` : undefined}
               onPress={() => setSub('macro')}
             />
             <FinRow
