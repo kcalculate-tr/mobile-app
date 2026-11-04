@@ -1,0 +1,15 @@
+G12-S3 TAMAM — night12/home
+
+8 madde işlendi (saf veri katmanı + sunum bileşenleri; bağlama S4/ENTEGRASYONA):
+1. GlassObject (modules/celebrate) + assets/glass 5 PNG
+2. Ana sayfa veri katmanı homeData (FinHomeR3) + i18n
+3. İmza anlar: LiquidDots (Skia'sız) + logFlight köprüsü
+4. eatkcal teslim → otomatik log (delivery.ts)
+5. Kutlamalar (celebrate/): ilk öğün, 3/7 gün seri, izin sheet
+6. Koleksiyon (collection/): deriveCards + yerel store + kartlar
+7. Gün görüntüleyici son hâli (gun/ui)
+8. Testler + kontrol
+
+Doğrulama: tsc 0 · hygiene OK · 441 unit + 56 component test geçti · expo export ios exit 0
+Bayrak kapalı (yeni_kabuk=false): Tracker baytı baytına aynı — screens/navigation değişmedi.
+LOG: docs/night/G12-S3-LOG.md
