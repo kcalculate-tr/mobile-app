@@ -1,21 +1,29 @@
-// TabBarR3 — yeni kabuğun cam sekme çubuğu (G11-S2).
+// TabBarR3 — yeni kabuğun cam sekme çubuğu (G11-S2 · G12-S1 son hâli).
 //
-// Tasarım: `.claude/night/design/t20/TabBarR3.dc.html` birebir:
+// Tasarım: `design/final/FinTabBar-rest|mid|min.dc.html` (bu paneller gerçek
+// TabBarR3'ü render eder) + hareket `FinMoMap` / `FinMoLogA`:
 //   · Cam hap (blur + iç kenar highlight), 4 sekme, aktif gösterge (bubble).
+//   · Aktif gösterge STROKE'SUZ (yalnız cam dolgu) — FinComponents v2.
+//   · "Ana sayfa ↔ eatkcal" geçişinde JÖLE uzama (scaleX 1→1.6→1, fast 200).
 //   · Sağda AYRIK yuvarlak "Tara" düğmesi (yalnız `ai_tarama` açıkken).
-//   · Durumlar: tam / küçük (aşağı kaydırınca hap tek daireye iner).
-//   · Açık + koyu tema, TR + EN.
+//   · Durumlar: rest / mid / min (aşağı kaydırınca hap tek daireye iner).
+//   · "Logla izi A": başka sekmeden loglanınca (kcal:logFlight) uçan görsel
+//     Ana sayfa sekmesine iner (slow 500, hafif aşma), "+N" rozeti bouncy
+//     yayla açılır (stroke'suz), "…loglandı · Geri al" toast'ı görünür.
+//     "Geri al" / kcal:logUndo rozeti azaltır. Azaltılmışta uçuş YOK —
+//     yalnız rozet + toast 200 ms opaklık (FinMoMap).
 //
 // Hareket (yalnız core/design/motion token'ları + usePop + haptic):
-//   · İlk açılış: bar aşağıdan yükselir (Ağır, SPRING.ai).
-//   · Aktif gösterge: nokta → hap morfu (Orta) + sekme değişiminde kayar (SPRING.ai).
-//   · Tara: basışta usePop + haptic.
-//   · Küçülme/büyüme: Orta (collapsed SharedValue'dan interpolasyon).
+//   · İlk açılış: bar aşağıdan yükselir (SPRING.ai).
+//   · Aktif gösterge: nokta → hap morfu + sekme değişiminde kayar (SPRING.ai).
+//   · Tara: basışta usePop + haptic. Küçülme/büyüme: base 300 (collapsed SV).
 //   · Azaltılmış harekette: yalnız opaklık/kısa timing (REDUCED).
 // Sekme İÇERİĞİ arasında geçiş animasyonu YOK (AppNavigator 24.09 kararı).
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  DeviceEventEmitter,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -23,9 +31,12 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Animated, {
+  Easing,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -44,12 +55,19 @@ import {
   useReducedMotion,
   usePop,
 } from '../../core/design/motion';
+import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
 import { TAB_BAR_R3 } from './layout';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
+import {
+  LOG_FLIGHT_EVENT,
+  LOG_UNDO_EVENT,
+  type LogFlightPayload,
+  type LogUndoPayload,
+} from './logEvents';
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
 function glassTokens(dark: boolean) {
@@ -62,6 +80,7 @@ function glassTokens(dark: boolean) {
       bubble: 'rgba(255,255,255,0.16)',
       bubbleEdge: 'rgba(255,255,255,0.10)',
       cut: '#2C2C2E',
+      accent: '#C6FF3A',
       tint: 'dark' as const,
     };
   }
@@ -73,8 +92,22 @@ function glassTokens(dark: boolean) {
     bubble: 'rgba(255,255,255,0.92)',
     bubbleEdge: 'rgba(10,10,10,0.06)',
     cut: '#FFFFFF',
+    accent: '#8AD400',
     tint: 'light' as const,
   };
+}
+
+/** Uçan öğenin iç durumu (payload + çözülmüş kaynak/konum). */
+interface FlightState {
+  payload: LogFlightPayload;
+  /** Kabuk-yerel başlangıç (sol, üst) px. */
+  startX: number;
+  startY: number;
+  /** Hedef merkez (Ana sayfa sekmesi ikonu) — kabuk-yerel px. */
+  targetX: number;
+  targetY: number;
+  /** Retrigger anahtarı. */
+  key: number;
 }
 
 export function TabBarR3({ state, navigation }: BottomTabBarProps) {
@@ -83,7 +116,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
   const i18n = useT();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
-  const { width: winW } = useWindowDimensions();
+  const { width: winW, height: winH } = useWindowDimensions();
 
   const aiTarama = useFeature('ai_tarama');
   const showScan = shouldShowScan({ ai_tarama: aiTarama });
@@ -103,6 +136,8 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
   const activeName = state.routes[state.index]?.name;
   const activeIndex = visibleTabs.findIndex((d) => d.route === activeName);
   const onEat = activeName === 'Home';
+  // "+N" rozeti Ana sayfa (Tracker) sekmesinde durur.
+  const anaIndex = visibleTabs.findIndex((d) => d.route === 'Tracker');
 
   // ── Geometri ──────────────────────────────────────────────────────────────
   const containerW = winW - 2 * TAB_BAR_R3.SIDE_INSET;
@@ -111,6 +146,77 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
   const pillFullW = containerW - scanGap - scanFull;
   const nTabs = Math.max(visibleTabs.length, 1);
   const tabW = (pillFullW - 2 * TAB_BAR_R3.BUBBLE_PAD) / nTabs;
+
+  // Kabuk kök View'ının ekrandaki yüksekliği (uçuş koordinat dönüşümü için).
+  const rootHeight = TAB_BAR_R3.PILL_HEIGHT + insets.bottom + TAB_BAR_R3.BOTTOM_GAP;
+
+  // ── "Logla izi" durumu ──────────────────────────────────────────────────────
+  const [badge, setBadge] = useState(0);
+  const [flight, setFlight] = useState<FlightState | null>(null);
+  const [toast, setToast] = useState<{ id: string; message: string } | null>(null);
+  const badgePop = useSharedValue(0); // 0 gizli, 1 açık (bouncy)
+  const flightKey = useRef(0);
+  // Olay dinleyicisi mount'ta bir kez kurulur; en güncel geometri/ayar ref'ten.
+  const geomRef = useRef({ reduced, rootHeight, tabW, anaIndex, winH });
+  geomRef.current = { reduced, rootHeight, tabW, anaIndex, winH };
+
+  const popBadge = useCallback(() => {
+    badgePop.value = withSequence(
+      withTiming(0, { duration: 0 }),
+      withSpring(1, SPRING.bouncy),
+    );
+  }, [badgePop]);
+
+  // Rozet + toast + haptik (uçuş varışında VEYA azaltılmışta doğrudan).
+  const arrive = useCallback(
+    (payload: LogFlightPayload) => {
+      haptic('success');
+      setBadge((n) => {
+        if (n === 0) popBadge();
+        return n + 1;
+      });
+      const id = payload.id ?? `log-${flightKey.current}`;
+      const message = payload.mealLabel
+        ? i18n.t('shell.logged', { meal: payload.mealLabel })
+        : i18n.t('shell.logged_generic');
+      setToast({ id, message });
+    },
+    [i18n, popBadge],
+  );
+
+  useEffect(() => {
+    const onFlight = (raw: LogFlightPayload) => {
+      const geom = geomRef.current;
+      if (geom.reduced || geom.anaIndex < 0) {
+        // Uçuş yok — doğrudan rozet + toast (FinMoMap: "Uçuş yok").
+        arrive(raw);
+        return;
+      }
+      flightKey.current += 1;
+      const targetX =
+        TAB_BAR_R3.BUBBLE_PAD + geom.tabW * (geom.anaIndex + 0.5);
+      const targetY = TAB_BAR_R3.PILL_HEIGHT / 2;
+      // Ekran (sayfa) koordinatı → kabuk-yerel koordinat.
+      const startX = raw.x - TAB_BAR_R3.SIDE_INSET;
+      const startY = raw.y - (geom.winH - geom.rootHeight);
+      setFlight({ payload: raw, startX, startY, targetX, targetY, key: flightKey.current });
+    };
+    const onUndo = (_raw: LogUndoPayload) => {
+      setBadge((n) => Math.max(0, n - 1));
+      setToast(null);
+    };
+    const subF = DeviceEventEmitter.addListener(LOG_FLIGHT_EVENT, onFlight);
+    const subU = DeviceEventEmitter.addListener(LOG_UNDO_EVENT, onUndo);
+    return () => {
+      subF.remove();
+      subU.remove();
+    };
+  }, [arrive]);
+
+  const badgeStyle = useAnimatedStyle(() => ({
+    opacity: badgePop.value,
+    transform: [{ scale: interpolate(badgePop.value, [0, 1], [0.4, 1]) }],
+  }));
 
   // ── Hareket: açılışta yükselme ──────────────────────────────────────────────
   const enter = useSharedValue(0);
@@ -129,9 +235,10 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
     ],
   }));
 
-  // ── Hareket: aktif gösterge (nokta → hap morfu + kayma) ─────────────────────
+  // ── Hareket: aktif gösterge (nokta → hap morfu + kayma + jöle uzama) ─────────
   const appeared = useSharedValue(0); // 0 nokta, 1 hap
   const posX = useSharedValue(0); // bubble sol konumu (px)
+  const stretch = useSharedValue(1); // jöle uzama (scaleX çarpanı)
   useEffect(() => {
     if (activeIndex < 0) return;
     const target = TAB_BAR_R3.BUBBLE_PAD + activeIndex * tabW;
@@ -139,21 +246,28 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
       posX.value = target; // ilk konum sıçramasız
       appeared.value = reduced
         ? withTiming(1, { duration: REDUCED.duration })
-        : withTiming(1, { duration: TIMING.enter }); // nokta→hap (Orta)
+        : withTiming(1, { duration: TIMING.enter }); // nokta→hap
     } else {
       posX.value = reduced
         ? withTiming(target, { duration: REDUCED.duration })
         : withSpring(target, SPRING.ai); // sekme değişiminde kayar
+      if (!reduced) {
+        // Jöle: kayma yönünde uzayıp toparlanır (scaleX 1→1.6→1, fast 200).
+        stretch.value = withSequence(
+          withTiming(1.6, { duration: DURATION.fast / 2, easing: Easing.bezier(0.2, 0, 0, 1) }),
+          withTiming(1, { duration: DURATION.fast / 2, easing: Easing.bezier(0.2, 0, 0, 1) }),
+        );
+      }
     }
-  }, [activeIndex, tabW, reduced, appeared, posX]);
+  }, [activeIndex, tabW, reduced, appeared, posX, stretch]);
 
-  const bubbleStyle = useAnimatedStyle(() => ({
-    opacity: activeIndex < 0 ? 0 : appeared.value,
-    transform: [
-      { translateX: posX.value },
-      { scaleX: interpolate(appeared.value, [0, 1], [0.18, 1]) },
-    ],
-  }));
+  const bubbleStyle = useAnimatedStyle(() => {
+    const sx = interpolate(appeared.value, [0, 1], [0.18, 1]) * stretch.value;
+    return {
+      opacity: activeIndex < 0 ? 0 : appeared.value,
+      transform: [{ translateX: posX.value }, { scaleX: sx }],
+    };
+  });
 
   // ── Hareket: küçülme (collapsed 0→1) ────────────────────────────────────────
   const collapsedShared = useTabBarCollapsedValue();
@@ -185,6 +299,11 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
   const scanPop = usePop();
 
   // ── Davranış ────────────────────────────────────────────────────────────────
+  const clearBadge = useCallback(() => {
+    setBadge(0);
+    badgePop.value = withTiming(0, { duration: REDUCED.duration });
+  }, [badgePop]);
+
   const handleTabPress = (routeName: string, routeKey: string) => {
     const event = navigation.emit({
       type: 'tabPress',
@@ -195,6 +314,8 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
       haptic('selection');
       navigation.navigate(routeName as never);
     }
+    // Ana sayfa'ya geçince "+N" rozeti temizlenir (kayıtlar görüldü).
+    if (routeName === 'Tracker') clearBadge();
   };
 
   const onScanPress = () => {
@@ -207,7 +328,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
     if (collapsedShared) {
       collapsedShared.value = reduced
         ? withTiming(0, { duration: REDUCED.duration })
-        : withTiming(0, { duration: DURATION.emphasis });
+        : withTiming(0, { duration: DURATION.base });
     }
   };
 
@@ -218,6 +339,18 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
     navigation.navigate('Cart' as never);
   };
 
+  const onToastUndo = useCallback(() => {
+    if (toast) DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: toast.id } as LogUndoPayload);
+    setBadge((n) => Math.max(0, n - 1));
+    setToast(null);
+  }, [toast]);
+
+  const onToastView = useCallback(() => {
+    setToast(null);
+    clearBadge();
+    navigation.navigate('Tracker' as never);
+  }, [navigation, clearBadge]);
+
   const activeDef = activeIndex >= 0 ? visibleTabs[activeIndex] : undefined;
   const MiniIcon = activeDef ? TAB_ICON_BY_KIND[activeDef.kind] : TAB_ICON_BY_KIND.eat;
 
@@ -226,6 +359,30 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
       style={[styles.root, { paddingBottom: insets.bottom + TAB_BAR_R3.BOTTOM_GAP }]}
       pointerEvents="box-none"
     >
+      {/* "Logla izi" uçan öğesi (yalnız azaltılmamış harekette) */}
+      {flight ? (
+        <LogFlight
+          key={flight.key}
+          flight={flight}
+          accent={g.accent}
+          onArrive={() => arrive(flight.payload)}
+          onDone={() => setFlight(null)}
+        />
+      ) : null}
+
+      {/* Logla toast'ı — barın üstünde */}
+      {toast ? (
+        <View style={styles.toastRow} pointerEvents="box-none">
+          <Toast
+            visible
+            message={toast.message}
+            onUndo={onToastUndo}
+            onView={onToastView}
+            onDismiss={() => setToast(null)}
+          />
+        </View>
+      ) : null}
+
       {/* Sepet hapı — yalnız eatkcal sekmesinde + sepette ürün varken */}
       {onEat && cartCount > 0 ? (
         <CartPill count={cartCount} glass={g} onPress={onCartPress} reduced={reduced} />
@@ -252,11 +409,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                 pointerEvents="none"
                 style={[
                   styles.bubble,
-                  {
-                    width: tabW,
-                    backgroundColor: g.bubble,
-                    borderColor: g.bubbleEdge,
-                  },
+                  { width: tabW, backgroundColor: g.bubble },
                   bubbleStyle,
                 ]}
               />
@@ -267,6 +420,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                 const isActive = i === activeIndex;
                 const Icon = TAB_ICON_BY_KIND[def.kind];
                 const label = i18n.t(def.labelKey);
+                const showBadge = i === anaIndex && badge > 0;
                 return (
                   <Pressable
                     key={def.route}
@@ -274,9 +428,25 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                     onPress={() => route && handleTabPress(def.route, route.key)}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={label}
+                    accessibilityLabel={
+                      showBadge
+                        ? `${label} · ${i18n.t('shell.logged_badge', { count: badge })}`
+                        : label
+                    }
                   >
-                    <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.bubble} />
+                    <View>
+                      <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.bubble} />
+                      {showBadge ? (
+                        <Animated.View
+                          pointerEvents="none"
+                          style={[styles.badge, { backgroundColor: g.accent }, badgeStyle]}
+                        >
+                          <Text style={[styles.badgeText, { color: g.cut }]} numberOfLines={1}>
+                            +{badge}
+                          </Text>
+                        </Animated.View>
+                      ) : null}
+                    </View>
                     <Text
                       numberOfLines={1}
                       style={[
@@ -334,6 +504,73 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
         ) : null}
       </Animated.View>
     </View>
+  );
+}
+
+/**
+ * LogFlight — "logla izi" uçan öğesi. Mount'ta kaynak konumdan Ana sayfa
+ * sekmesine yay çizerek iner (slow 500, hafif aşma cubic-bezier 0.3,1.15,0.4,1
+ * — FinMoLogA fly1), varışta `onArrive` (rozet/toast/haptik), sonra solup
+ * `onDone` ile kapanır. Kabuk kök View'ı kırpmadığından bar üstünde çizilir.
+ */
+function LogFlight({
+  flight,
+  accent,
+  onArrive,
+  onDone,
+}: {
+  flight: FlightState;
+  accent: string;
+  onArrive: () => void;
+  onDone: () => void;
+}) {
+  const p = useSharedValue(0);
+  const w = Math.max(flight.payload.w, 16);
+  const h = Math.max(flight.payload.h, 16);
+
+  useEffect(() => {
+    p.value = withTiming(
+      1,
+      { duration: TIMING.logTrail, easing: Easing.bezier(0.3, 1.15, 0.4, 1) },
+      (fin) => {
+        if (fin) {
+          runOnJS(onArrive)();
+          runOnJS(onDone)();
+        }
+      },
+    );
+    // yalnız mount'ta; key değişince yeni örnek oluşur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const style = useAnimatedStyle(() => {
+    const dx = flight.targetX - (flight.startX + w / 2);
+    const dy = flight.targetY - (flight.startY + h / 2);
+    return {
+      opacity: interpolate(p.value, [0, 0.85, 1], [1, 1, 0]),
+      transform: [
+        { translateX: interpolate(p.value, [0, 1], [0, dx]) },
+        { translateY: interpolate(p.value, [0, 1], [0, dy]) },
+        { scale: interpolate(p.value, [0, 1], [1, 0.08]) },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.flight,
+        { left: flight.startX, top: flight.startY, width: w, height: h },
+        style,
+      ]}
+    >
+      {flight.payload.imageUri ? (
+        <Image source={{ uri: flight.payload.imageUri }} style={styles.flightImg} />
+      ) : (
+        <View style={[styles.flightDot, { backgroundColor: accent }]} />
+      )}
+    </Animated.View>
   );
 }
 
@@ -418,7 +655,7 @@ const styles = StyleSheet.create({
     bottom: TAB_BAR_R3.BUBBLE_PAD,
     left: 0,
     borderRadius: TAB_BAR_R3.BUBBLE_RADIUS,
-    borderWidth: StyleSheet.hairlineWidth,
+    // STROKE'SUZ (FinComponents v2): yalnız cam dolgu, kenarlık yok.
   },
   tab: {
     flex: 1,
@@ -430,6 +667,43 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     lineHeight: 14,
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    left: 12,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // STROKE'SUZ rozet (FinMoLogA).
+  },
+  badgeText: {
+    fontSize: 11,
+    lineHeight: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  flight: {
+    position: 'absolute',
+    borderRadius: 14,
+    overflow: 'hidden',
+    zIndex: 20,
+  },
+  flightImg: {
+    width: '100%',
+    height: '100%',
+  },
+  flightDot: {
+    flex: 1,
+    borderRadius: 999,
+  },
+  toastRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: TAB_BAR_R3.PILL_HEIGHT + TAB_BAR_R3.BOTTOM_GAP + 8,
   },
   miniCenter: {
     alignItems: 'center',

@@ -31,6 +31,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       scan: 'Tara',
       cart: 'Sepet',
       expand: 'Menüyü aç',
+      logged: '%{meal} loglandı',
+      logged_generic: 'Loglandı',
+      logged_badge: '%{count} yeni kayıt',
+      view: 'Gör',
     },
     kesfet: {
       title: 'Keşfet',
@@ -343,6 +347,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       scan: 'Scan',
       cart: 'Cart',
       expand: 'Open menu',
+      logged: 'Logged to %{meal}',
+      logged_generic: 'Logged',
+      logged_badge: '%{count} new entries',
+      view: 'View',
     },
     kesfet: {
       title: 'Discover',
