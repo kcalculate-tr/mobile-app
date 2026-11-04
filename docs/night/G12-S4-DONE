@@ -1,0 +1,16 @@
+G12-S4 tamamlandı — night12/scan-profil
+
+8 madde bitti (Final panolarıyla birebir, tüm özellikler yeni_kabuk arkasında, kapalı = bugünkü ProfileScreen/ScanScreen aynı):
+0. Final ortak bileşenler (finUi) + i18n anahtarları     11b7ee8
+1. Tara (FinScanR2/FinPhotoR1/hatalar/çevrimdışı dedup)   1776b98
+2. Profil (kendi) — FinPrProfile hub                      ef7fe97
+3. İlerleme (FinPrProgress, kilo/BMI yok)                  ef7fe97
+4. Macro ve Abonelik (FinPrMacro/FinPrMacroWhat)           0716d8d
+5. Ayar ekranları (Kişisel/Bildirim/Güvenlik/Sözleşmeler/Destek/Öneri) 564d766
+6. Herkese açık profil + rozet + gizlilik                  d9925fc, 5393964, 20c3c0e
+7. Kayıt (FinSignupAI/FinSignupEat)                        5393964, f977d2a
+8. Testler + kontrol + LOG                                 5a61db7
+
+Kontrol: typecheck 0 · test:unit 429/429 · test:components 13 suite/59 test · expo export (ios) OK.
+Bayrak kapalıyken ProfileScreen + ScanScreen davranışı git diff ile doğrulandı (bayt bayt aynı render dalları).
+Detay + ENTEGRASYONA notları: docs/night/G12-S4-LOG.md
