@@ -72,7 +72,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         meal_card: {
           macro: '%{kcal} kcal · %{protein} g protein',
           added: { one: '%{count} kişi ekledi', other: '%{count} kişi ekledi' },
+          logged_count: { one: '%{count} kişi logladı', other: '%{count} kişi logladı' },
+          log_to_meal: '%{meal}’ye logla',
+          log_hint: 'Uzun bas: öğün ve porsiyon seç',
+          pick_meal: 'Öğün ve porsiyon seç',
         },
+        view_day: 'Gör',
         added_to_meal: '%{meal}’ye eklendi',
         share_to_my_day: 'Günüme paylaş',
         sheet: {
@@ -382,7 +387,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         meal_card: {
           macro: '%{kcal} kcal · %{protein} g protein',
           added: { one: '%{count} person added', other: '%{count} people added' },
+          logged_count: { one: '%{count} person logged', other: '%{count} people logged' },
+          log_to_meal: 'Log to %{meal}',
+          log_hint: 'Long-press: pick meal and portion',
+          pick_meal: 'Pick meal and portion',
         },
+        view_day: 'View',
         added_to_meal: 'Added to %{meal}',
         share_to_my_day: 'Share to my day',
         sheet: {

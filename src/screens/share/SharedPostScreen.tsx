@@ -109,7 +109,8 @@ export default function SharedPostScreen() {
         onShare={() => {
           void Share.share({ message: postLink(post.id), url: postLink(post.id) }).catch(() => {});
         }}
-        onAddToDay={goHome}
+        onQuickLog={goHome}
+        onOpenSheet={goHome}
         onOpenMenu={goHome}
       />
     </View>

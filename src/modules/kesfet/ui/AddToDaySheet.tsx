@@ -9,7 +9,7 @@ import { useT } from '../../../core/i18n';
 import { haptic } from '../../../core/design';
 import { BottomSheet } from './BottomSheet';
 import { Avatar } from './Avatar';
-import { MEAL_OPTIONS, PORTION_OPTIONS, scaleMacros } from './format';
+import { MEAL_OPTIONS, PORTION_OPTIONS, PORTION_LABELS, scaleMacros } from './format';
 import type { MealCard, MealType } from '../types';
 
 function Chip({
@@ -133,7 +133,7 @@ export function AddToDaySheet({
           {PORTION_OPTIONS.map((p) => (
             <Chip
               key={p}
-              label={fmt(p, { precision: 1 })}
+              label={PORTION_LABELS[p]}
               selected={portion === p}
               onPress={() => setPortion(p)}
             />
@@ -148,15 +148,15 @@ export function AddToDaySheet({
           <MacroCell label={tr('kesfet.ui.sheet.fat')} value={`${fmt(macros.fat_g, { precision: 1 })} g`} last />
         </View>
 
-        {/* Ekle */}
+        {/* Logla — Final: "⟨Öğün⟩'ye logla" (seçilen öğüne göre) */}
         <Pressable
           onPress={confirm}
           accessibilityRole="button"
-          accessibilityLabel={tr('kesfet.ui.sheet.add')}
+          accessibilityLabel={tr('kesfet.ui.meal_card.log_to_meal', { meal: tr(`meal.${mealType}`) })}
           style={({ pressed }) => [styles.addBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
         >
           <AppText variant="body" style={{ color: t.color.surface, fontWeight: '600' }}>
-            {tr('kesfet.ui.sheet.add')}
+            {tr('kesfet.ui.meal_card.log_to_meal', { meal: tr(`meal.${mealType}`) })}
           </AppText>
         </Pressable>
       </ScrollView>

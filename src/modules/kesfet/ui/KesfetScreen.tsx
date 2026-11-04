@@ -24,7 +24,10 @@ import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
 import { useNotificationsStore } from '../notificationsStore';
-import { getGunClient, shareMealToDay } from '../../gun';
+import { emitLogFlight, emitLogUndo } from '../events';
+import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
+import type { LogOriginFrame } from './MealCard';
+import { getGunClient } from '../../gun';
 import { getProfilClient } from '../../profil';
 import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../../shell';
 import type { DayRing } from '../../gun/types';
@@ -277,29 +280,78 @@ export function KesfetScreen() {
     }
   }, []);
 
+  // "Gör" — loglanan öğünü görmek için Ana sayfa/Gün'e geç (varsa). Kabuk
+  // bağlamında sekme değişir; bilinmeyen rotada sessizce yutar.
+  const onViewDay = useCallback(() => {
+    try {
+      navigation.navigate('Home');
+    } catch {
+      // rota yoksa no-op
+    }
+  }, [navigation]);
+
+  // Tek loglama yolu — hem hızlı logla (dokun) hem seçiciden (sheet) buraya gelir.
+  // addToDay → uçuş olayı (`kcal:logFlight`, frame varsa) → "Logla izi" → toast
+  // ("<Öğün>'ye loglandı · Geri al · Gör"). Geri al tek kaydı geri alır + logUndo.
+  const logMeal = useCallback(
+    async (post: FeedPost, mealType: MealType, portion: number, frame?: LogOriginFrame) => {
+      addSeq.current += 1;
+      const key = `kesfet-${post.id}-${mealType}-${portion}-${addSeq.current}`;
+      const consumptionId = await useKesfetStore.getState().addToDay(post.id, mealType, portion, key);
+      if (!consumptionId) return;
+      const mealLabel = tr(`meal.${mealType}`);
+      // Kabuğun tab barına uçuş (S1 dinler): yemek görseli "Ana sayfa"ya uçar + "+N".
+      if (frame && (frame.w > 0 || frame.h > 0)) {
+        emitLogFlight({
+          x: frame.x,
+          y: frame.y,
+          w: frame.w,
+          h: frame.h,
+          imageUri: post.meal_card?.photo_url ?? null,
+          mealLabel,
+        });
+      }
+      // "Logla izi" — ekran içi kısa yankı (yemek noktaya iner, yay çizip uçar).
+      trailSeq.current += 1;
+      setTrail({ token: trailSeq.current, label: post.meal_card?.name ?? '' });
+      // Toast: "<Öğün>'ye loglandı · Geri al · Gör".
+      setToast({
+        message: tr('kesfet.added_toast', { meal: mealLabel }),
+        undoLabel: tr('common.undo'),
+        onUndo: () => {
+          void useKesfetStore.getState().undoAddToDay(post.id, consumptionId, key);
+          emitLogUndo({ id: consumptionId });
+        },
+        actionLabel: tr('kesfet.ui.view_day'),
+        onAction: onViewDay,
+      });
+    },
+    [tr, onViewDay],
+  );
+
+  // Seçiciden (FinAddSheet) öğün + porsiyon ile logla.
   const onAdd = useCallback(
     async (mealType: MealType, portion: number) => {
       const post = sheetPost;
       if (!post) return;
       setSheetPost(null);
-      addSeq.current += 1;
-      const key = `kesfet-${post.id}-${mealType}-${portion}-${addSeq.current}`;
-      const consumptionId = await useKesfetStore.getState().addToDay(post.id, mealType, portion, key);
-      if (!consumptionId) return;
-      // "Logla izi" — yemek noktaya iner, yay çizip hedefe uçar (motion §3).
-      trailSeq.current += 1;
-      setTrail({ token: trailSeq.current, label: post.meal_card?.name ?? '' });
-      // Toast: "<Öğün>'ye loglandı / Logged to <Meal>" (motion kitabı §3 kopyası).
-      setToast({
-        message: tr('kesfet.added_toast', { meal: tr(`meal.${mealType}`) }),
-        actionLabel: tr('kesfet.ui.share_to_my_day'),
-        onAction: () => {
-          void shareMealToDay(consumptionId).catch(() => {});
-        },
-      });
+      await logMeal(post, mealType, portion);
     },
-    [sheetPost, tr],
+    [sheetPost, logMeal],
   );
+
+  // Hızlı logla — öğün kartında dokununca saate göre öğüne, porsiyon 1 ile logla.
+  const onQuickLog = useCallback(
+    (post: FeedPost, frame: LogOriginFrame) => {
+      touchSocial();
+      const mealType = inferMealTypeFromHour(new Date().getHours());
+      void logMeal(post, mealType, 1, frame);
+    },
+    [logMeal, touchSocial],
+  );
+
+  // Saate göre hızlı loglanacak öğünün etiketi — kartlardaki düğme bunu gösterir.
+  const quickMealLabel = tr(`meal.${inferMealTypeFromHour(new Date().getHours())}`);
 
   const onReport = useCallback(
     async (post: FeedPost, reason: ReportReason) => {
@@ -375,13 +427,15 @@ export function KesfetScreen() {
           index={index}
           showComment={kesfetYorum}
           isVisible={item.id === visiblePostId}
+          quickMealLabel={quickMealLabel}
           onLike={() => {
             touchSocial();
             void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
           }}
           onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
           onShare={() => onShare(item)}
-          onAddToDay={() => setSheetPost(item)}
+          onQuickLog={(frame) => onQuickLog(item, frame)}
+          onOpenSheet={() => setSheetPost(item)}
           onOpenMenu={() => setMenuPost(item)}
           onComment={() => {
             touchSocial();
@@ -391,7 +445,7 @@ export function KesfetScreen() {
         />
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, touchSocial, onDidIt, visiblePostId],
+    [nowMs, lang, onShare, kesfetYorum, touchSocial, onDidIt, visiblePostId, quickMealLabel, onQuickLog],
   );
 
   const ringStrip = useMemo(

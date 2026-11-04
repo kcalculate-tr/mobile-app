@@ -224,6 +224,19 @@ export function createMockKesfetClient(options: MockKesfetOptions = {}): MockKes
       return { consumption_id: id };
     },
 
+    async removeConsumption({ consumption }): Promise<void> {
+      // mock: kaydın idempotency anahtarını ve "eklenme" sayacını geri al.
+      for (const [key, id] of addedKeys) {
+        if (id === consumption) {
+          addedKeys.delete(key);
+          const postId = consumption.split('-')[1];
+          const p = posts.find((x) => x.id === postId);
+          if (p && p.stats.adds > 0) p.stats.adds -= 1;
+          break;
+        }
+      }
+    },
+
     async reportContent(): Promise<void> {
       // mock: kaydı yut
     },
