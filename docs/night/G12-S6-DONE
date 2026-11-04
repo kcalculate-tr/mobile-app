@@ -1,0 +1,35 @@
+G12-S6 — Entegrasyon, kabul ve dondurma adayı — TAMAMLANDI
+
+Dal: night12/release (taban night11/release)
+Worktree: .claude/worktrees/g12-s6
+5 Kasım akşamı mağaza derlemesi BU daldan.
+
+Yapılanlar (8 madde):
+1. S1–S4 sıralı merge (çakışmasız, her adımda tsc 0). S5 (eatkcal) ATLANDI —
+   G12-S5-DONE yok, night12/eatkcal=night11/release (0 commit). yeni_siparis kapalı.
+2. Entegrasyon wiring: Profil Hedefim→TakibeBasla{editGoal}, Koleksiyon→gerçek
+   collection ekranı (foto akışı Dalga 2), VerifiedBadge tek kaynağa (kesfet),
+   glass görselleri assets/glass'e tekilleştirildi. Kalan home-yuva/kutlama mount,
+   exportReport/logFlight tekilleştirme = ENTEGRASYONA (Dalga 1 sonrası, kapalı bayrak).
+3. Bayrak migration 20261105000400_g12_flags.sql (yeni_onboarding + yeni_siparis;
+   enabled false, rollout 0, min_app_version 1.1.0) + rollback + G6-APPLY #17. Yalnız dosya.
+4. SON_HAL denetimi: design/final Fin* panoları sahibe göre var/eksik/fark (LOG §4).
+   Kapatılan: Koleksiyon rotası, VerifiedBadge, glass. Eksik (Dalga 1 sonrası): S5 eatkcal
+   (24+ pano), FinHomeR3 öğün yuvaları mount, CelebrateOverlay mount.
+5. Bayrak kapalı = 1.0.7 kanıtı (LOG §5): flags testi 11/11 false + KİMSE dosyaları
+   git diff night10/release BOŞ + giriş yolları flag-gated.
+6. Kabul (LOG §6): mevcut ödeme durumları (payment.ts verifyPayment), mükerrer sipariş
+   (orders.ts cartSignature + test), Dynamic Type bileşen testi + sheet a11y (yeni test, 5/5).
+7. Kontrol: tsc 0 · test:unit 449/449 · test:components 76/76 · prebuild ios ✓ ·
+   expo export ios ✓ (8.73 MB; night11/release 8.42 MB → +0.31 MB additive/bayrak-geçitli).
+8. LOG docs/night/G12-S6-LOG.md (10 satır özet + SON_HAL + kanıt + İlter'in yapacakları).
+
+Kontrol sonuçları:
+- npx tsc --noEmit = 0
+- npm run test:unit = 449/449
+- npm run test:components = 76/76 (17 süit)
+- npx expo prebuild -p ios --no-install = OK (ios/ gitignored, commit'lenmedi)
+- npx expo export --platform ios = OK (8.73 MB)
+
+Migration/edge function UYGULANMADI (gece kuralı). production build / mağaza gönderimi
+onayla İlter'in elinde (BU daldan — LOG İLTER'E (c)).
