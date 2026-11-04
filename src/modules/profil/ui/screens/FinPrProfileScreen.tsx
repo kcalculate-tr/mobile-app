@@ -11,8 +11,9 @@
  * "Herkese açık profilim" ve "Rozetler" satırları G12-S4.md madde 2 listesinde
  * yok ama madde 6'nın ekranlarının (FinProfilePublic/FinBadges) bir giriş
  * noktası olması gerekiyor — kimlik bloğunun altına eklendi (IA kararı, LOG'da).
- * "Koleksiyon": S3'ün `collection` modülü bu gece henüz yok → geçici olarak
- * Rozetler'e yönlendirilir (LOG "ENTEGRASYONA", S6 gerçek rotayı bağlar).
+ * "Hedefim" → TakibeBasla { editGoal:true } (S1 entegrasyon); "Koleksiyon" →
+ * S3'ün `collection` modülü ekranı (G12-S6 entegrasyonda bağlandı; fotoğraf
+ * akışı Dalga 2 — bkz. CollectionScreen.tsx).
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -76,6 +77,7 @@ import SettingsFeedbackScreen from './SettingsFeedbackScreen';
 import FinPrMacroScreen from './FinPrMacroScreen';
 import FinPrProgressScreen from './ProgressScreen';
 import BadgesScreen from './BadgesScreen';
+import CollectionScreen from './CollectionScreen';
 import PublicPreviewScreen from './PublicPreviewScreen';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -92,6 +94,7 @@ type SubScreen =
   | 'macro'
   | 'progress'
   | 'badges'
+  | 'collection'
   | 'public';
 
 export default function FinPrProfileScreen() {
@@ -189,6 +192,7 @@ export default function FinPrProfileScreen() {
     );
   }
   if (sub === 'badges') return <BadgesScreen onBack={() => setSub('root')} handle={handle} />;
+  if (sub === 'collection') return <CollectionScreen onBack={() => setSub('root')} />;
   if (sub === 'public') {
     return (
       <PublicPreviewScreen
@@ -240,7 +244,7 @@ export default function FinPrProfileScreen() {
               icon={<Target size={18} color={t.color.ink} />}
               label={tr('profil.my_goal')}
               value={summary?.targetKcal ? tr('profil.goal_per_day', { n: summary.targetKcal }) : undefined}
-              onPress={() => navigation.navigate('NutritionProfile')}
+              onPress={() => navigation.navigate('TakibeBasla', { editGoal: true })}
             />
             <FinRow
               icon={<ChartLine size={18} color={t.color.ink} />}
@@ -250,7 +254,7 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<TrophyIcon size={18} color={t.color.ink} />}
               label={tr('profil.collection')}
-              onPress={() => setSub('badges')}
+              onPress={() => setSub('collection')}
             />
           </FinRowGroup>
         </View>

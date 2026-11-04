@@ -17,7 +17,9 @@ import {
   body,
   bodySemibold,
 } from '../finUi';
-import { VerifiedBadge } from './VerifiedBadge';
+// G12-S6: S2'nin (Keşfet) gerçek VerifiedBadge'i tek kaynak; S4'ün geçici yerel
+// kopyası kaldırıldı (ENTEGRASYONA — tasarım Final FinBadges/FinComponents).
+import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
 
 export default function BadgesScreen({ onBack, handle }: { onBack: () => void; handle?: string | null }) {
   const t = useTheme();

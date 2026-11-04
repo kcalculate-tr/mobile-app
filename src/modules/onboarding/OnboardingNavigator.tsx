@@ -48,7 +48,7 @@ function WelcomeScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'Onb
   const enter = useEnter();
   const root = useRootNav(navigation);
   return (
-    <OnbScaffold glass={require('./assets/bowl.png')} glowY={0.34}>
+    <OnbScaffold glass={require('../../../assets/glass/bowl.png')} glowY={0.34}>
       <View style={styles.flexTop}>
         <AppText textRole="screenTitle" style={[styles.brand, { color: ONB.accent }]}>
           {i18n.t('onboarding.welcome.brand')}
@@ -151,7 +151,7 @@ function NotifyScreen({ navigation, route }: NativeStackScreenProps<OnbParamList
   };
 
   return (
-    <OnbScaffold glass={require('./assets/flame.png')} glowY={0.28}>
+    <OnbScaffold glass={require('../../../assets/glass/flame.png')} glowY={0.28}>
       <View style={styles.flexTop} />
       <Animated.View style={[styles.bottom, enter.style]}>
         <AppText textRole="screenTitle" style={[styles.title, { color: ONB.ink }]}>
@@ -208,7 +208,7 @@ function AccountScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'Onb
   };
 
   return (
-    <OnbScaffold glass={require('./assets/drop.png')} glowY={0.26}>
+    <OnbScaffold glass={require('../../../assets/glass/drop.png')} glowY={0.26}>
       <View style={styles.flexTop} />
       <Animated.View style={[styles.bottom, enter.style]}>
         <AppText textRole="screenTitle" style={[styles.title, { color: ONB.ink }]}>
