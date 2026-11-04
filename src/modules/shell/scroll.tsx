@@ -15,8 +15,11 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import {
+  Extrapolation,
+  interpolate,
   type SharedValue,
   useAnimatedReaction,
+  useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -83,4 +86,26 @@ export function useTabBarCollapse(scrollY: SharedValue<number>): void {
       }
     },
   );
+}
+
+/**
+ * Büyük başlık daralması (FinMoMap "Büyük başlık daralması": kaydırmaya bağlı ·
+ * bitişte base 300 · standard). Kaydırma offset'ini 0..1 ilerlemeye çevirir
+ * (0 = tam başlık, 1 = daralmış/çubuk başlık). Hareket parmağa bağlıdır — ayrı
+ * animatör yoktur; `progress`'ı başlık ölçeği/opaklığı için interpolasyonla kullan.
+ *
+ * Ekran (S2 Keşfet / S3 Tracker — S6 bağlar):
+ *   const scrollY = useSharedValue(0);
+ *   const { progress } = useHeaderCollapse(scrollY);
+ *   const titleStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+ */
+export function useHeaderCollapse(
+  scrollY: SharedValue<number>,
+  opts?: { maxOffset?: number },
+): { progress: SharedValue<number> } {
+  const maxOffset = opts?.maxOffset ?? 96;
+  const progress = useDerivedValue(() =>
+    interpolate(scrollY.value, [0, maxOffset], [0, 1], Extrapolation.CLAMP),
+  );
+  return { progress };
 }

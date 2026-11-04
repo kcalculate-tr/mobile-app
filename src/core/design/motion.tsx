@@ -47,45 +47,73 @@ import * as Haptics from 'expo-haptics';
 // TOKEN'LAR
 // ---------------------------------------------------------------------------
 
-/** Süre bantları (ms). Arası doldurulmaz; yeni süre eklemeden önce bant seç. */
+/**
+ * Süre bantları (ms) — FinMoTokens v2 TEK KAYNAK (`design/final/FinMoTokens.dc.html`):
+ * `instant 100 · fast 200 · base 300 · slow 500 · story 900+`. Arası doldurulmaz.
+ * Eski adlar (micro/standard/emphasis/heroMin/heroMax) v2 bandına EŞLENMİŞ TAKMA
+ * ADLARDIR; imzalar değişmez, bu yüzden mevcut tüketiciler kırılmaz.
+ */
 export const DURATION = {
-  /** 120 — dokunma geri bildirimi, küçük sıçrama. */
-  micro: 120,
-  /** 280 — standart giriş/çıkış, durum değişimi, liste öğesi. */
-  standard: 280,
-  /** 420 — vurgu: ekran ölçeğinde hareket, ilerleme dolumu. */
-  emphasis: 420,
-  /** 900 — hero alt sınır (günlük halka gövdesi). */
+  /** 100 — deklanşör, kademe, dokunma geri bildirimi (v2). */
+  instant: 100,
+  /** 200 — crossfade, kaydet, sheet kapanış, durum değişimi (v2). */
+  fast: 200,
+  /** 300 — standart giriş/geçiş, liste öğesi, tab küçül/büyü (v2). */
+  base: 300,
+  /** 500 — ekran ölçeğinde hareket, sheet/modal açılış, odometre (v2). */
+  slow: 500,
+  /** 900 — "story": halka dolumu, iskelet nabzı, analiz, süzülme döngüsü (v2). */
+  story: 900,
+  // --- Eski adlar (takma ad → v2 bandı) ---
+  /** @deprecated → instant (100). */
+  micro: 100,
+  /** @deprecated → base (300). */
+  standard: 300,
+  /** @deprecated → slow (500). */
+  emphasis: 500,
+  /** @deprecated → story (900). */
   heroMin: 900,
-  /** 1400 — hero üst sınır (seri anı, ışık bandı). Günde en fazla 1 kez/olay. */
+  /** story 900+ üst ucu (uzun döngü/analiz). */
   heroMax: 1400,
 } as const;
 
-/** Belirli jestlerin süreleri (Claude Design test panolarından). */
+/**
+ * Belirli jestlerin süreleri. v2 bandına oturtuldu (FinMoMap): giriş slow 500,
+ * pop/kutlama base 300, logla izi slow 500; döngüler story 900+ üstü (süzülme
+ * 3200 / eğim 4800 / parıltı 2400 — "story döngü"). Değerler token bandından seçilir.
+ */
 export const TIMING = {
-  enter: 500,
-  pop: 360,
-  float: 3200,
-  tilt: 4800,
-  glow: 2400,
-  sweep: 700,
-  logTrail: 600,
-  streak: 1400,
-  dailyRing: 900,
-  loading: 1200,
+  enter: 500, // slow
+  pop: 300, // base (kutlama sıçraması bouncy yay ile)
+  float: 3200, // story döngü (süzülme)
+  tilt: 4800, // story döngü (eğim)
+  glow: 2400, // story döngü (parıltı/nefes)
+  sweep: 1400, // story+ (analiz/ışık bandı)
+  logTrail: 500, // slow (tabak uçuşu)
+  streak: 1400, // story+ (seri anı)
+  dailyRing: 900, // story (halka dolumu)
+  loading: 1200, // story+ (yükleniyor nabzı)
 } as const;
 
 /**
- * Yumuşama eğrileri.
- * - `enter`: cubic-bezier(0.34,1.56,0.64,1) — hafif aşma (overshoot), canlı giriş.
- * - `move`: döngüsel gidip-gelme (süzülme/eğim/parıltı).
- * - `out` / `in`: tek yönlü çıkış/giriş.
+ * Yumuşama eğrileri — FinMoTokens v2 ÜÇ eğri:
+ * - `standard` (0.2,0,0,1): yerinde değişim, döngü, hız sabit işler.
+ * - `enter` (0.05,0.7,0.1,1): giriş (dışarıdan gelir, yumuşak oturur — aşma YOK;
+ *    aşma artık yalnız `SPRING.bouncy` ödül anlarında).
+ * - `exit` (0.3,0,0.8,0.15): çıkış (girişten KISA).
+ * Eski adlar `move/out/in` v2 eğrilerine eşlenmiş takma adlardır.
  */
 export const CURVE = {
-  enter: Easing.bezier(0.34, 1.56, 0.64, 1),
-  move: Easing.inOut(Easing.ease),
-  out: Easing.out(Easing.cubic),
-  in: Easing.in(Easing.cubic),
+  standard: Easing.bezier(0.2, 0, 0, 1),
+  enter: Easing.bezier(0.05, 0.7, 0.1, 1),
+  exit: Easing.bezier(0.3, 0, 0.8, 0.15),
+  // --- Eski adlar (takma ad) ---
+  /** @deprecated → standard. */
+  move: Easing.bezier(0.2, 0, 0, 1),
+  /** @deprecated → exit. */
+  out: Easing.bezier(0.3, 0, 0.8, 0.15),
+  /** @deprecated → enter. */
+  in: Easing.bezier(0.05, 0.7, 0.1, 1),
 } as const;
 
 /**
@@ -94,12 +122,14 @@ export const CURVE = {
  * doğrudan kabul eder.
  */
 export const SPRING = {
-  /** Kcalculate AI — biraz daha sıkı/çevik. */
+  /** Kcalculate AI (260/24) — sheet, push/pop, modal, yer değiştirme (v2). */
   ai: { stiffness: 260, damping: 24, mass: 1 },
-  /** eatkcal — biraz daha yumuşak. */
+  /** eatkcal (200/28) — sepet, ödeme, teslim (v2). */
   eat: { stiffness: 200, damping: 28, mass: 1 },
-  /** Alttan açılan sayfa (sheet). */
-  sheet: { stiffness: 300, damping: 30, mass: 0.8 },
+  /** bouncy (220/14) — YALNIZ küçük ödüller: ✓, rozet, kaydet, beğen sayacı (v2). */
+  bouncy: { stiffness: 220, damping: 14, mass: 1 },
+  /** @deprecated → ai. Sheet, FinMoMap'te AI yayını kullanır. */
+  sheet: { stiffness: 260, damping: 24, mass: 1 },
 } as const;
 
 /** Sıralı giriş (stagger) gecikmeleri (ms). */
@@ -115,16 +145,18 @@ export const STAGGER = {
   scanCorners: 30,
 } as const;
 
-/** Haptik sözlüğü — hangi olayda hangi dokunsal. */
+/** Haptik sözlüğü — FinMoTokens v2 (hangi olayda hangi dokunsal). */
 export const HAPTIC = {
-  /** Gezinme / durum değişimi. */
+  /** sekme, çip, öğün seçici, segmented. */
   selection: 'selection',
-  /** Log / geri bildirim. */
+  /** beğen, kaydet, takip, sepete ekle, geri al, sheet detent, çek-yenile eşiği. */
   light: 'light',
-  /** Çekim (pull/drag). */
+  /** Tara deklanşörü. */
   medium: 'medium',
-  /** Yalnız hero kutlaması. Günde en fazla 3. */
+  /** loglandı, ödeme, seri, ilk öğün, koleksiyon — günde en fazla 3. */
   success: 'success',
+  /** YALNIZ hata titreşimi (form alanı). */
+  warning: 'warning',
 } as const;
 
 /**
@@ -145,11 +177,85 @@ export const TRANSITION = {
   listItem: { duration: DURATION.standard, curve: CURVE.out, stagger: STAGGER.list },
 } as const;
 
-/** Azaltılmış hareket sınırları. */
+/** Azaltılmış hareket sınırları. Son durum 200 ms opaklık; yer değiştirme/ölçek yok. */
 export const REDUCED = {
   duration: 200,
   maxShift: 8,
 } as const;
+
+// ---------------------------------------------------------------------------
+// FinMoMap — UYGULAMA GENELİ GEÇİŞ YAPILANDIRMALARI (v2)
+// Ekran/sheet/modal gibi gezinme düzeyi hareketler. Navigatör ve BottomSheet
+// bu token'ları okur; süre/eğri burada değişir, ekranlar dokunulmaz.
+// ---------------------------------------------------------------------------
+
+/** Alttan açılan sayfa — iki ürün ayrı (FinMoMap: AI 260/24 · eatkcal 200/28). */
+export const SHEET = {
+  /** Kcalculate AI sheet: açılış slow 500 · kapanış fast 200 · scrim 0→0.4. */
+  ai: {
+    openDuration: DURATION.slow,
+    closeDuration: DURATION.fast,
+    scrimTo: 0.4,
+    spring: SPRING.ai,
+    detentHaptic: 'light' as HapticKind,
+  },
+  /** eatkcal sheet: aynı süreler, eatkcal yayı. */
+  eat: {
+    openDuration: DURATION.slow,
+    closeDuration: DURATION.fast,
+    scrimTo: 0.4,
+    spring: SPRING.eat,
+    detentHaptic: 'light' as HapticKind,
+  },
+} as const;
+
+/** Tam ekran modal: açılış slow 500 (y 100%→0) · kapanış fast 200 · AI yayı. */
+export const MODAL = {
+  openDuration: DURATION.slow,
+  closeDuration: DURATION.fast,
+  spring: SPRING.ai,
+} as const;
+
+/** Ekranlar arası push/pop (FinMoMap). */
+export const SCREEN = {
+  /** Push: yeni ekran base 300 (x %100→0), eski ekran −%30; AI yayı. */
+  push: { duration: DURATION.base, curve: CURVE.enter, prevShift: -0.3 },
+  /** Pop / geri: ekran fast 200 (0→%100); exit eğrisi. */
+  pop: { duration: DURATION.fast, curve: CURVE.exit },
+} as const;
+
+/**
+ * FinMoMap satırları — TEK KAYNAK kayıt tablosu. Vitrin "Hareket haritası"
+ * (G12-S1 madde 8) bu listeyi gezip her satır için bir tetik düğmesi çizer.
+ * `token`: ilgili süre/yay özeti (pano metni). `lime`/`reduced`: harita sütunları.
+ */
+export interface MotionMapRow {
+  id: string;
+  /** Pano etiketi (TR). */
+  label: string;
+  /** Süre + eğri/yay özeti (FinMoMap satırından). */
+  token: string;
+  haptic: HapticKind | null;
+  /** Azaltılmış harekette lime nokta çekilir mi / görünür mü. */
+  lime: boolean;
+  /** Azaltılmış hareket karşılığı. */
+  reduced: string;
+}
+
+export const MOTION_MAP: readonly MotionMapRow[] = [
+  { id: 'tab', label: 'Sekme değişimi', token: 'içerik anında · ikon 0.9→1 fast 200 · standard', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
+  { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '200 ms opaklık' },
+  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 · x %100→0, eski −%30 · AI 260/24', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'pop', label: 'Pop / geri', token: 'fast 200 · 0→%100 · exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış slow 500 · kapanış fast 200 · scrim 0→0.4 · AI 260/24', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
+  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış slow 500 · kapanış fast 200 · scrim 0→0.4 · eatkcal 200/28', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
+  { id: 'modal', label: 'Tam ekran modal', token: 'açılış slow 500 (y %100→0) · kapanış fast 200 · AI 260/24', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 200 ms opaklık' },
+  { id: 'listAdd', label: 'Liste ekleme', token: 'satır base 300 (y 8→0 + opaklık) · komşular base 300 · enter', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'toast', label: 'Toast', token: 'giriş base 300 · çıkış fast 200 · 4 s · enter/exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
+] as const;
 
 // ---------------------------------------------------------------------------
 // HAPTİK YARDIMCISI
@@ -164,11 +270,11 @@ function todayIndex(): number {
   return Math.floor(Date.now() / 86_400_000);
 }
 
-export type HapticKind = 'selection' | 'light' | 'medium' | 'success';
+export type HapticKind = 'selection' | 'light' | 'medium' | 'success' | 'warning';
 
 /**
- * Haptik tetikle. Hata/uyarı haptiği YOK (sözlükte yer almaz, çağrılırsa
- * sessizce yok sayılır). success günde 3 ile sınırlı.
+ * Haptik tetikle. `warning` YALNIZ hata titreşiminde (FinMoTokens v2). success
+ * günde 3 ile sınırlı; warning sınırsız ama tek olayda bir kez çağrılmalı.
  */
 export function haptic(kind: HapticKind): void {
   try {
@@ -181,6 +287,9 @@ export function haptic(kind: HapticKind): void {
         break;
       case 'medium':
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
+      case 'warning':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         break;
       case 'success': {
         const day = todayIndex();
