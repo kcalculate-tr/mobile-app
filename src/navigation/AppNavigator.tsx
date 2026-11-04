@@ -27,7 +27,7 @@ import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 // G12-S1 — yeni onboarding yığını (koyu zemin; beyaz flash olmasın diye eager
 // import, WelcomeGate gibi). Yalnız `yeni_onboarding` açık + oturumsuz soğuk
 // açılışta initialRouteName buna gelir.
-import { OnboardingNavigator } from '../modules/onboarding';
+import { OnboardingNavigator, TakibeBaslaNavigator } from '../modules/onboarding';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../modules/eatkcal/screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -420,6 +420,10 @@ export default function AppNavigator() {
         component={OnboardingNavigator}
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }}
       />
+      {/* G12-S1 — Takibe başla (hedef/tempo/beden/hareket/sonuç/ilk adım).
+          Onboarding'den (yeni kullanıcı) ve Profil › Hedefim'den (editGoal, S4
+          bağlar) açılır. Mevcut beslenme profili servisini kullanır. */}
+      <Stack.Screen name="TakibeBasla" component={TakibeBaslaNavigator} />
       <Stack.Screen name="Tabs" component={TabsRoot} />
       <Stack.Screen name="Categories" component={CategoriesLazy} />
       <Stack.Screen name="CategoryProducts" component={CategoryProductsLazy} />
