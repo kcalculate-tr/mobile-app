@@ -17,11 +17,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
+import { useFeature } from '../../../../core/flags';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { AppleLogo, CaretLeft, Check, EnvelopeSimple, GoogleLogo, User } from '../../../../components/icons';
 import { useKcalculateAiRegistration } from '../../useRegistration';
 import { pickAndUploadAvatar } from '../../avatarUpload';
 import { getProfilClient } from '../../client';
+import SignupAIScreen from '../screens/SignupAIScreen';
 
 type Step = 'welcome' | 'email' | 'handle' | 'profile';
 
@@ -63,10 +65,12 @@ function SignUpFlow({
   const { t: tt } = useT();
   const insets = useSafeAreaInsets();
   const { signInWithApple, signInWithGoogle, signInWithOtp, verifyEmailOtp } = useAuth();
+  const yeniKabuk = useFeature('yeni_kabuk');
 
   const [step, setStep] = useState<Step>('welcome');
   const [socialBusy, setSocialBusy] = useState<'apple' | 'google' | null>(null);
   const [socialError, setSocialError] = useState('');
+  const [emailFieldOpen, setEmailFieldOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [emailBusy, setEmailBusy] = useState(false);
@@ -204,7 +208,56 @@ function SignUpFlow({
         </View>
       ) : null}
 
-      {step === 'welcome' ? (
+      {step === 'welcome' && yeniKabuk ? (
+        // G12-S4 — FinSignupAI final tasarım kabuğu. Kimlik doğrulama AYNI
+        // (handleApple/handleGoogle/handleSendCode) — yalnız görsel kabuk.
+        <SignupAIScreen
+          onApple={handleApple}
+          onGoogle={handleGoogle}
+          onEmail={() => setEmailFieldOpen(true)}
+          onSkip={() => finishProfile(true)}
+        >
+          {emailFieldOpen ? (
+            <View style={styles.emailInline}>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="ornek@eposta.com"
+                placeholderTextColor={t.color.secondary}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={[styles.emailInput, { borderColor: t.color.line, color: t.color.ink }]}
+              />
+              <Pressable
+                onPress={handleSendCode}
+                disabled={emailBusy}
+                style={[styles.authBtn, { backgroundColor: t.color.ink, marginTop: 8 }]}
+                accessibilityRole="button"
+              >
+                {emailBusy ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <AppText variant="body" style={styles.authBtnTextOnDark}>
+                    {tt('profil.signup_continue')}
+                  </AppText>
+                )}
+              </Pressable>
+              {emailError ? (
+                <AppText variant="caption" style={{ color: t.color.danger, textAlign: 'center' }}>
+                  {emailError}
+                </AppText>
+              ) : null}
+            </View>
+          ) : null}
+          {socialError ? (
+            <AppText variant="caption" style={{ color: t.color.danger, textAlign: 'center' }}>
+              {socialError}
+            </AppText>
+          ) : null}
+        </SignupAIScreen>
+      ) : null}
+
+      {step === 'welcome' && !yeniKabuk ? (
         <View style={styles.content}>
           <View style={[styles.logoCircle, { backgroundColor: t.color.ink }]}>
             <AppText variant="heading" style={styles.logoText}>
@@ -259,19 +312,17 @@ function SignUpFlow({
             </AppText>
           </Pressable>
 
-          {step === 'welcome' ? (
-            <View style={styles.emailInline}>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="ornek@eposta.com"
-                placeholderTextColor={t.color.secondary}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={[styles.emailInput, { borderColor: t.color.line, color: t.color.ink }]}
-              />
-            </View>
-          ) : null}
+          <View style={styles.emailInline}>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="ornek@eposta.com"
+              placeholderTextColor={t.color.secondary}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[styles.emailInput, { borderColor: t.color.line, color: t.color.ink }]}
+            />
+          </View>
 
           {socialError ? (
             <AppText variant="caption" style={{ color: t.color.danger, textAlign: 'center' }}>

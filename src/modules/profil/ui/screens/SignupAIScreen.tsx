@@ -24,11 +24,14 @@ export default function SignupAIScreen({
   onApple,
   onGoogle,
   onEmail,
+  children,
 }: {
   onSkip?: () => void;
   onApple?: () => void;
   onGoogle?: () => void;
   onEmail?: () => void;
+  /** E-posta ile devam → inline e-posta alanı (çağıran enjekte eder; mevcut OTP mantığı tekrar yazılmaz). */
+  children?: React.ReactNode;
 }) {
   const t = useTheme();
   const x = finExtras(t);
@@ -105,6 +108,8 @@ export default function SignupAIScreen({
             icon={<EnvelopeSimple size={18} color={t.color.ink} weight="bold" />}
           />
         </View>
+
+        {children}
 
         <Text
           style={{
