@@ -1,7 +1,9 @@
 // TabBarR3 + eski kabuk parite — render testleri (G11-S2 madde 9).
 // Çalıştırma: npm run test:components (jest, jest-expo preset).
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
+import { DeviceEventEmitter } from 'react-native';
+import { ReducedMotionProvider } from '../../../core/design/motion';
 
 // ── Yerel taklitler (bu teste özel; paylaşılan jest.setup'a dokunulmaz) ──────
 // Reanimated: resmi jest taklidi (useAnimatedStyle/withSpring/... senkron döner).
@@ -116,5 +118,34 @@ describe('Eski kabuk parite (bayrak kapalı)', () => {
     for (const t of LEGACY_TABS) {
       if (t.label) getByText(t.label);
     }
+  });
+});
+
+describe('Logla izi A — "+N" rozeti (azaltılmış hareket = uçuşsuz)', () => {
+  test('kcal:logFlight → Ana sayfa sekmesinde "+1"; kcal:logUndo → kaybolur', () => {
+    const { props } = makeProps(R3_ROUTES, 2); // eatkcal aktif; başka sekmeden log
+    const { queryByText } = render(
+      <ReducedMotionProvider value={true}>
+        <TabBarR3 {...props} />
+      </ReducedMotionProvider>,
+    );
+    expect(queryByText('+1')).toBeNull();
+
+    act(() => {
+      DeviceEventEmitter.emit('kcal:logFlight', {
+        id: 'log-1',
+        x: 40,
+        y: 120,
+        w: 48,
+        h: 48,
+        mealLabel: 'Öğle’ye',
+      });
+    });
+    expect(queryByText('+1')).not.toBeNull();
+
+    act(() => {
+      DeviceEventEmitter.emit('kcal:logUndo', { id: 'log-1' });
+    });
+    expect(queryByText('+1')).toBeNull();
   });
 });
