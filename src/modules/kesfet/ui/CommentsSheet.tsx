@@ -237,6 +237,7 @@ export function CommentsSheet({
                 disabled={!text.trim() || submitting}
                 accessibilityRole="button"
                 accessibilityLabel={tr('kesfet.comments.send')}
+                hitSlop={4}
                 style={({ pressed }) => [
                   styles.sendBtn,
                   { backgroundColor: text.trim() ? t.color.ink : t.color.line, opacity: pressed ? 0.9 : 1 },

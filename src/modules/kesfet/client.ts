@@ -136,6 +136,13 @@ export const realKesfetClient: KesfetClient = {
     return data as AddToDayResult;
   },
 
+  async removeConsumption({ consumption }): Promise<void> {
+    // Doğrudan tablo silme (RPC değil): RLS yalnız kendi satırını siler. Keşfet'in
+    // loglama yolu TrackerScreen ile aynı `meal_consumptions` tablosunu kullanır.
+    const { error } = await sb().from('meal_consumptions').delete().eq('id', consumption);
+    if (error) rpcError('remove_consumption', error);
+  },
+
   async reportContent({ targetType, target, reason }): Promise<void> {
     const { error } = await sb().rpc('report_content', {
       p_target_type: targetType,

@@ -1,7 +1,8 @@
 // G11-S3 bileşen testi — PostMenu "Düzenle" gizleme.
 // canEdit false (update_my_post RPC yok) → "Düzenle" satırı HİÇ çizilmez.
+// G12-S2 — şikayet akışı: sonuca göre FinReportDone / FinReportNotice.
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PostMenu } from '../PostMenu';
 
@@ -44,4 +45,27 @@ test('başkasının gönderisi → Düzenle/Sil yok, Şikayet/Engelle var', () =
   expect(queryByText('Sil')).toBeNull();
   expect(queryByText('Şikayet et')).toBeTruthy();
   expect(queryByText('Engelle')).toBeTruthy();
+});
+
+test('şikayet başarılı → "Şikayetin alındı" (FinReportDone)', async () => {
+  const onReport = jest.fn().mockResolvedValue(true);
+  const { getByLabelText, queryByText } = renderMenu({ onReport });
+  fireEvent.press(getByLabelText('Şikayet et'));
+  await act(async () => {
+    fireEvent.press(getByLabelText('Spam'));
+  });
+  await waitFor(() => expect(queryByText('Şikayetin alındı')).toBeTruthy());
+  expect(onReport).toHaveBeenCalledWith('spam');
+});
+
+test('şikayet başarısız → "Şikayet gönderilemedi" (FinReportNotice) + tekrar dene', async () => {
+  const onReport = jest.fn().mockResolvedValue(false);
+  const { getByLabelText, queryByText } = renderMenu({ onReport });
+  fireEvent.press(getByLabelText('Şikayet et'));
+  await act(async () => {
+    fireEvent.press(getByLabelText('Spam'));
+  });
+  await waitFor(() => expect(queryByText('Şikayet gönderilemedi')).toBeTruthy());
+  fireEvent.press(getByLabelText('Tekrar dene'));
+  expect(queryByText('Neden şikayet ediyorsun?')).toBeTruthy();
 });

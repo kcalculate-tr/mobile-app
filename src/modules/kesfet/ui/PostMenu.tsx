@@ -11,7 +11,7 @@ import { BottomSheet } from './BottomSheet';
 import { Icon, type IconName } from './icons';
 import { REPORT_REASONS, type ReportReason } from './format';
 
-type MenuView = 'menu' | 'report' | 'block' | 'delete';
+type MenuView = 'menu' | 'report' | 'report_done' | 'report_notice' | 'block' | 'delete';
 
 function MenuRow({
   icon,
@@ -61,7 +61,7 @@ export function PostMenu({
   // G11 — kendi gönderin + update_my_post RPC varsa "Düzenle" (yoksa gizli).
   canEdit?: boolean;
   onCopyLink: () => void;
-  onReport: (reason: ReportReason) => void;
+  onReport: (reason: ReportReason) => void | boolean | Promise<boolean | void>;
   onBlock: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
@@ -150,13 +150,65 @@ export function PostMenu({
               label={tr(`kesfet.ui.report_reason.${reason}`)}
               onPress={() => {
                 haptic('selection');
-                onReport(reason);
-                close();
+                // İyimser: sonuç beklenirken menü "report" görünümünde kalır;
+                // sonuca göre "report_done" (FinReportDone) ya da "report_notice"
+                // (FinReportNotice, başarısız çağrı) gösterilir.
+                void Promise.resolve(onReport(reason)).then((result) => {
+                  setView(result === false ? 'report_notice' : 'report_done');
+                });
               }}
             />
           ))}
           <Pressable
             onPress={() => setView('menu')}
+            accessibilityRole="button"
+            accessibilityLabel={tr('common.cancel')}
+            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
+          >
+            <AppText variant="body" style={{ fontWeight: '600' }}>
+              {tr('common.cancel')}
+            </AppText>
+          </Pressable>
+        </View>
+      ) : view === 'report_done' ? (
+        <View style={styles.group}>
+          <AppText variant="heading" style={styles.title}>
+            {tr('kesfet.ui.report_done_title')}
+          </AppText>
+          <AppText variant="body" tone="secondary" style={styles.desc}>
+            {tr('kesfet.ui.report_done_desc')}
+          </AppText>
+          <Pressable
+            onPress={close}
+            accessibilityRole="button"
+            accessibilityLabel={tr('kesfet.ui.done_ok')}
+            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
+          >
+            <AppText variant="body" style={{ fontWeight: '600' }}>
+              {tr('kesfet.ui.done_ok')}
+            </AppText>
+          </Pressable>
+        </View>
+      ) : view === 'report_notice' ? (
+        <View style={styles.group}>
+          <AppText variant="heading" style={styles.title}>
+            {tr('kesfet.ui.report_notice_title')}
+          </AppText>
+          <AppText variant="body" tone="secondary" style={styles.desc}>
+            {tr('kesfet.ui.report_notice_desc')}
+          </AppText>
+          <Pressable
+            onPress={() => setView('report')}
+            accessibilityRole="button"
+            accessibilityLabel={tr('common.retry')}
+            style={({ pressed }) => [styles.blockBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
+          >
+            <AppText variant="body" style={{ color: t.color.surface, fontWeight: '700' }}>
+              {tr('common.retry')}
+            </AppText>
+          </Pressable>
+          <Pressable
+            onPress={close}
             accessibilityRole="button"
             accessibilityLabel={tr('common.cancel')}
             style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}

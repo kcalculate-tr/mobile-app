@@ -132,6 +132,14 @@ export function postCardModel(post: FeedPost, nowMs: number, lang: UiLang): Post
 /** AddToDaySheet porsiyon seçenekleri (sözleşme: 0,5 / 1 / 1,5 / 2). */
 export const PORTION_OPTIONS = [0.5, 1, 1.5, 2] as const;
 
+/** Porsiyon etiketleri — tasarım Final FinAddSheet: ½ · 1 · 1½ · 2 (unicode). */
+export const PORTION_LABELS: Record<number, string> = {
+  0.5: '½',
+  1: '1',
+  1.5: '1½',
+  2: '2',
+};
+
 /** Öğün seçenekleri — görünüm sırası + MealType değeri (İngilizce kanonik ad). */
 export const MEAL_OPTIONS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 

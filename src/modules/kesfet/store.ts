@@ -44,6 +44,14 @@ interface KesfetState {
     portion: number,
     idempotencyKey: string,
   ) => Promise<string | null>;
+  // G12 — "Geri al": az önce loglanan tek kaydı geri al. İyimser sayaç −1 +
+  // idempotency anahtarı temizlenir (yeniden loglanabilsin), sonra best-effort
+  // `removeConsumption` (hata yutulur). `kcal:logUndo` olayını ÇAĞIRAN yayar.
+  undoAddToDay: (
+    postId: string,
+    consumptionId: string,
+    idempotencyKey: string,
+  ) => Promise<void>;
   // Şikayet: RPC'ye iletir; başarıda true. Liste değişmez (moderasyon sunucuda).
   report: (targetType: ReportTargetType, target: string, reason: string) => Promise<boolean>;
   // Engelle: iyimser — bu yazarın tüm gönderileri akıştan ANINDA düşer, sonra RPC.
@@ -193,6 +201,26 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
       return null;
     } finally {
       inFlightAdds.delete(idempotencyKey);
+    }
+  },
+
+  undoAddToDay: async (postId, consumptionId, idempotencyKey) => {
+    set((s) => {
+      const addedKeys = { ...s.addedKeys };
+      delete addedKeys[idempotencyKey];
+      return {
+        addedKeys,
+        posts: s.posts.map((post) =>
+          post.id === postId
+            ? { ...post, stats: { ...post.stats, adds: Math.max(0, post.stats.adds - 1) } }
+            : post,
+        ),
+      };
+    });
+    try {
+      await getKesfetClient().removeConsumption({ consumption: consumptionId });
+    } catch {
+      // Olumsuz an sessiz — sayaç zaten geri alındı, satır temizliği best-effort.
     }
   },
 

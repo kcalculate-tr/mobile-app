@@ -306,6 +306,10 @@ export interface KesfetClient {
     portion: number;
     idempotencyKey: string;
   }): Promise<AddToDayResult>;
+  // G12 — "Geri al": az önce loglanan tek `meal_consumptions` kaydını geri al.
+  // RLS yalnız auth.uid()'ın kendi satırını siler (TrackerScreen'in okuduğu aynı
+  // tablo + yetki modeli). Hata çağıran tarafından yutulur (olumsuz an sessiz).
+  removeConsumption(params: { consumption: string }): Promise<void>;
   reportContent(params: {
     targetType: ReportTargetType;
     target: string;
