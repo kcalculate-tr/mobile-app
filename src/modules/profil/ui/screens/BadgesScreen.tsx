@@ -1,12 +1,14 @@
 // FinBadges — kazanılan/kilitli rozetler. "Onaylı" rozeti her zaman listelenir;
-// kullanıcı onaylı değilse kilitli/soluk hâlde. Kazanılmış rozet uydurulmaz —
-// varsayılan kilitli. Hiç kazanılmış rozet yoksa boş-durum kartı gösterilir.
-import React from 'react';
+// gerçek durum `profiles.verified` (get_public_profile RPC) — kendi handle'ım
+// ile okunur, uydurma yok; sunucuya erişilemezse kilitli varsayılır. Hiç
+// kazanılmış rozet yoksa boş-durum kartı gösterilir.
+import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { Gift } from '../../../../components/icons';
+import { getProfilClient } from '../../client';
 import {
   FinScreen,
   FinHeader,
@@ -17,13 +19,29 @@ import {
 } from '../finUi';
 import { VerifiedBadge } from './VerifiedBadge';
 
-export default function BadgesScreen({ onBack }: { onBack: () => void }) {
+export default function BadgesScreen({ onBack, handle }: { onBack: () => void; handle?: string | null }) {
   const t = useTheme();
   const { t: tr } = useT();
 
-  // S4 kapsamında istemcinin kazanılmış rozet kaynağı yok → onaylı rozet kilitli
-  // varsayılır (uydurma yok). S6 entegrasyonda gerçek rozet verisi bağlanır.
-  const verified = false;
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    const h = (handle ?? '').trim().replace(/^@/, '');
+    if (!h) return;
+    getProfilClient()
+      .getPublicProfile({ handle: h })
+      .then((p) => {
+        if (alive && p) setVerified(p.verified);
+      })
+      .catch(() => {
+        /* sunucu erişilemezse kilitli kalır — uydurma yok */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [handle]);
+
   const earnedCount = verified ? 1 : 0;
 
   return (
