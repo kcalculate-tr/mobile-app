@@ -147,6 +147,21 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         footer: 'İstediğin zaman Profil › Hedefim’den değiştirebilirsin.',
       },
     },
+    // G12-S1 — mevcut müşteriye tanıtım (FinIntro / FinIntroOrder).
+    intro: {
+      title: 'Kcalculate’e yeni şeyler geldi',
+      kesfet: 'Keşfet',
+      kesfet_desc: 'Başkaları ne yiyor, gör; beğendiğini öğününe logla.',
+      gun: 'Gün halkası',
+      gun_desc: 'Gününü paylaş, yakınlarının gününü gör.',
+      tara: 'Tara',
+      tara_desc: 'Fotoğrafla; günde 3 ücretsiz tarama.',
+      order: 'Siparişin aynı yerde.',
+      browse: 'Göz at',
+      later: 'Sonra',
+      continueOrder: 'Siparişe devam',
+      browseNew: 'Yenilere göz at',
+    },
     kesfet: {
       title: 'Keşfet',
       tab: { for_you: 'Senin için', following: 'Takip' },
@@ -573,6 +588,21 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         discover_desc: 'Add a plate you like to your day in one tap.',
         footer: 'You can change it anytime from Profile › My Goal.',
       },
+    },
+    // G12-S1 — intro for existing customers (FinIntro / FinIntroOrder).
+    intro: {
+      title: 'New things in Kcalculate',
+      kesfet: 'Discover',
+      kesfet_desc: 'See what others eat; log the ones you like to your day.',
+      gun: 'Day ring',
+      gun_desc: 'Share your day, see the days of people around you.',
+      tara: 'Scan',
+      tara_desc: 'By photo; 3 free scans a day.',
+      order: 'Ordering lives here too.',
+      browse: 'Take a look',
+      later: 'Later',
+      continueOrder: 'Continue ordering',
+      browseNew: 'Browse what’s new',
     },
     kesfet: {
       title: 'Discover',
