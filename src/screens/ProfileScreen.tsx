@@ -53,7 +53,7 @@ import { useAuth } from '../core/AuthContext';
 import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-import { ProfileSocialHeader } from '../modules/profil/ui/ProfileSocialHeader';
+import FinPrProfileScreen from '../modules/profil/ui/screens/FinPrProfileScreen';
 import { RootStackParamList } from '../navigation/types';
 import { useNavGate } from '../store/navGateStore';
 import { supabase } from '../core/supabase';
@@ -330,6 +330,13 @@ export default function ProfileScreen() {
   if (loading) return null;
   if (!isAuthenticated) return null;
 
+  // G12-S4 — Final tasarım (FinPrProfile) yeni_kabuk AÇIKKEN ekranı TAMAMEN
+  // devralır (kilo/boy/BMI yok, yeni bölüm grupları). Kapalıyken bu satıra
+  // hiç girilmez — aşağıdaki eski JSX bayt bayt aynı kalır.
+  if (yeniKabuk) {
+    return <FinPrProfileScreen />;
+  }
+
   return (
     <ScreenContainer edges={['top']}>
       <ScrollView
@@ -340,18 +347,6 @@ export default function ProfileScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Yeni kabuk sosyal başlık (yeni_kabuk) — avatar, ad, @kullanıcı adı,
-             gönderi/takipçi/takip sayıları, gizlilik rozeti → PrivacySheet,
-             "Macro aboneliğim" → Subscriptions. Bayrak kapalıyken render OLMAZ. ─── */}
-        {yeniKabuk ? (
-          <ProfileSocialHeader
-            name={userName}
-            avatarUrl={avatarUrl}
-            onAvatarPress={pickAvatar}
-            onOpenSubscriptions={() => navigation.navigate('Subscriptions' as never)}
-          />
-        ) : null}
-
         {/* ─── Üst Profil Kartı ─── */}
         {/* İskelet YALNIZCA elde hiç veri yokken. dataLoading tek başına
             yeterli değil: ekran her odaklandığında tazelendiği için, veri

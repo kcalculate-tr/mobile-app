@@ -46,6 +46,7 @@ export { Copy } from 'phosphor-react-native/lib/commonjs/icons/Copy';
 export { CreditCard } from 'phosphor-react-native/lib/commonjs/icons/CreditCard';
 export { Crown } from 'phosphor-react-native/lib/commonjs/icons/Crown';
 export { CrownSimple, CrownSimpleIcon } from 'phosphor-react-native/lib/commonjs/icons/CrownSimple';
+export { DownloadSimple } from 'phosphor-react-native/lib/commonjs/icons/DownloadSimple';
 export { Drop } from 'phosphor-react-native/lib/commonjs/icons/Drop';
 export { EnvelopeSimple } from 'phosphor-react-native/lib/commonjs/icons/EnvelopeSimple';
 export { Eye } from 'phosphor-react-native/lib/commonjs/icons/Eye';
