@@ -7,14 +7,15 @@
 // ile native kamerayı açıyoruz (profildeki galeri seçimiyle aynı paket,
 // bkz. src/screens/ProfileScreen.tsx) — tasarımdaki vitrin/çerçeve zemini
 // statik kalır, deklanşöre basınca sistem kamerası açılır.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import NetInfo from '@react-native-community/netinfo';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { X, ArrowCounterClockwise } from '../../../../components/icons';
+import { X, ArrowCounterClockwise, Image as ImageIcon } from '../../../../components/icons';
 import { LogTrail, Toast } from '../../../../core/design';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
@@ -26,12 +27,18 @@ import { runAiScan } from '../runScan';
 import { getAiScanClient } from '../client';
 import { useScanQuotaStore } from '../quotaStore';
 import { inferMealTypeFromHour } from '../mealTypeFromHour';
+import type { ClientMealType } from '../../../../core/meal/mealType';
 import { saveAiScanEstimate } from '../saveEstimate';
 import { getSupabaseClient } from '../../../../core/supabase';
 import type { ScanEstimate } from '../types';
 import ScanQuotaChip from '../ui/ScanQuotaChip';
 import ScanLimitSheet from '../ui/ScanLimitSheet';
+import FinScanErrorSheet, { type FinScanErrorKind } from '../ui/FinScanErrorSheet';
+import FinPhotoResult from '../ui/FinPhotoResult';
+import { getPendingScanPhoto, setPendingScanPhoto, clearPendingScanPhoto } from '../offlineQueue';
+import { emitLogFlight } from '../logFlight';
 import { useFeature } from '../../../../core/flags';
+import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
 
@@ -47,6 +54,10 @@ export default function ScanScreen() {
 
   const remaining = useScanQuotaStore((s) => s.remaining);
   const recordQuota = useScanQuotaStore((s) => s.recordQuota);
+  // G12-S4 — yeni kabuk Tara (FinScanR2/FinPhotoR1). Bayrak kapalıyken bu
+  // değişkenin TÜM etkisi sıfırdır: aşağıdaki JSX dallarından yalnız eski dal
+  // render olur, yeni state'ler hiç okunmaz/yazılmaz.
+  const yeniKabuk = useFeature('yeni_kabuk');
 
   const [stage, setStage] = useState<Stage>('viewfinder');
   const [limitVisible, setLimitVisible] = useState(false);
@@ -62,21 +73,73 @@ export default function ScanScreen() {
   const [logToken, setLogToken] = useState(0);
   const [savedToast, setSavedToast] = useState(false);
 
+  // Yeni kabuk — hata sayfası (FinScanError: failed/offline/limit) + öğün tipi
+  // döngüsü + çevrimdışı bekleyen fotoğraf toast'ı.
+  const [errorKind, setErrorKind] = useState<FinScanErrorKind | null>(null);
+  const [mealType, setMealType] = useState<ClientMealType>(() => inferMealTypeFromHour(new Date().getHours()));
+  const [pendingToast, setPendingToast] = useState(false);
+
   const insets = useSafeAreaInsets();
 
-  const handleCapture = async () => {
+  // Ekran açıldığında, önceki bir oturumdan kalmış çevrimdışı bekleyen
+  // fotoğraf varsa ve şimdi bağlantı VARSA sessizce çöz: analiz et, kaydet,
+  // kuyruğu temizle, uçuş olayını yayınla. "Tek kayıt" kuralı: elle giriş bu
+  // arada kuyruğu zaten temizlemiş olabilir — o zaman burada yapılacak iş yok.
+  useEffect(() => {
+    if (!yeniKabuk || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const pending = await getPendingScanPhoto();
+      if (!pending || cancelled) return;
+      const net = await NetInfo.fetch();
+      if (!net.isConnected) return;
+      try {
+        const outcome = await runAiScan(getAiScanClient(), {
+          idempotencyKey: pending.id,
+          imageRef: pending.imageUri,
+        });
+        if (cancelled) return;
+        if (outcome.status === 'ok') {
+          await saveAiScanEstimate(getSupabaseClient(), {
+            userId: user.id,
+            mealType: pending.mealType,
+            sourceRef: pending.id,
+            estimate: outcome.estimate,
+          });
+          await clearPendingScanPhoto();
+          const label = t(`meal.${pending.mealType}`);
+          emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: pending.imageUri, mealLabel: label });
+          setPendingToast(true);
+        }
+        // failed/quota_exhausted: bekleyen fotoğraf kuyrukta kalır, bir
+        // sonraki fırsatta (ekran yeniden açıldığında) tekrar denenir.
+      } catch {
+        // Ağ yine kesildi — kuyrukta kalsın, sessizce geç.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yeniKabuk, user?.id]);
+
+  const captureOnce = async (): Promise<string | null> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(t('ai_scan.permission_denied'));
-      return;
+      return null;
     }
     const picked = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
     });
-    if (picked.canceled || !picked.assets?.[0]?.uri) return;
+    if (picked.canceled || !picked.assets?.[0]?.uri) return null;
+    return picked.assets[0].uri;
+  };
 
-    const uri = picked.assets[0].uri;
+  const handleCaptureLegacy = async () => {
+    const uri = await captureOnce();
+    if (!uri) return;
     setPhotoUri(uri);
     setStage('scanning');
     const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
@@ -99,7 +162,75 @@ export default function ScanScreen() {
     setStage('result');
   };
 
-  const handleSave = async () => {
+  const pickFromGallery = async (): Promise<string | null> => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('ai_scan.permission_denied'));
+      return null;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (picked.canceled || !picked.assets?.[0]?.uri) return null;
+    return picked.assets[0].uri;
+  };
+
+  // Yeni kabuk — çevrimdışıysa hiç rezervasyon denemeden kuyruğa al (hak
+  // harcanmasın); hata/limit/çevrimdışı tek sheet (FinScanErrorSheet) ile
+  // gösterilir — Alert.alert YOK. Kamera ve galeri aynı akışı paylaşır.
+  const runFinCapture = async (uri: string) => {
+    setPhotoUri(uri);
+    const net = await NetInfo.fetch();
+    const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
+    setScanRef(idempotencyKey);
+
+    if (!net.isConnected) {
+      await setPendingScanPhoto({ id: idempotencyKey, imageUri: uri, mealType, queuedAt: new Date().toISOString() });
+      setErrorKind('offline');
+      return;
+    }
+
+    setStage('scanning');
+    try {
+      const outcome = await runAiScan(getAiScanClient(), { idempotencyKey, imageRef: uri });
+      recordQuota(outcome.remaining, outcome.reset_at);
+      if (outcome.status === 'quota_exhausted') {
+        setStage('viewfinder');
+        setErrorKind('limit');
+        return;
+      }
+      if (outcome.status === 'failed') {
+        setStage('viewfinder');
+        setErrorKind('failed');
+        return;
+      }
+      // FinMoScan: başarı animasyonu/sonucu YALNIZ gerçek sonuçtan sonra —
+      // burada stage 'result' olana dek hiçbir optimistik gösterim yok.
+      setResult(outcome.estimate);
+      setSaved(false);
+      setStage('result');
+    } catch {
+      setStage('viewfinder');
+      setErrorKind('failed');
+    }
+  };
+
+  const handleCaptureFin = async () => {
+    const uri = await captureOnce();
+    if (!uri) return;
+    await runFinCapture(uri);
+  };
+
+  const handleGalleryPick = async () => {
+    const uri = await pickFromGallery();
+    if (!uri) return;
+    await runFinCapture(uri);
+  };
+
+  const handleCapture = yeniKabuk ? handleCaptureFin : handleCaptureLegacy;
+
+  const handleSaveLegacy = async () => {
     if (!result || !user?.id || saving) return;
     setSaving(true);
     try {
@@ -119,14 +250,46 @@ export default function ScanScreen() {
     }
   };
 
+  const handleSaveFin = async (adjusted: Omit<ScanEstimate, 'isEstimate'>) => {
+    if (!user?.id || saving || saved) return;
+    setSaving(true);
+    try {
+      await saveAiScanEstimate(getSupabaseClient(), {
+        userId: user.id,
+        mealType,
+        sourceRef: scanRef ?? `${user.id}-${photoUri ?? ''}`,
+        estimate: adjusted,
+      });
+      setResult(adjusted);
+      setSaved(true);
+      const label = t(`meal.${mealType}`);
+      emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label });
+    } catch {
+      setErrorKind('failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (yeniKabuk && result) {
+      void handleSaveFin(result);
+      return;
+    }
+    void handleSaveLegacy();
+  };
+
   const handleRetry = () => {
     setResult(null);
     setPhotoUri(null);
+    setErrorKind(null);
     setStage('viewfinder');
   };
 
   const handleManualEntry = () => {
     setLimitVisible(false);
+    setErrorKind(null);
+    void clearPendingScanPhoto();
     navigation.goBack();
   };
 
@@ -139,6 +302,98 @@ export default function ScanScreen() {
         handle: null,
       }
     : null;
+
+  if (yeniKabuk) {
+    if (stage === 'result' && result) {
+      return (
+        <FinPhotoResult
+          estimate={result}
+          photoUri={photoUri}
+          mealType={mealType}
+          saving={saving}
+          saved={saved}
+          lang={lang as NumLang}
+          onChangeMealType={setMealType}
+          onSave={handleSaveFin}
+          onRetry={handleRetry}
+        />
+      );
+    }
+    return (
+      <View style={styles.viewfinder}>
+        <View style={styles.cameraPlaceholder} />
+        <ScanFrame active={stage === 'scanning'} />
+        <View style={[styles.topBar, { top: insets.top + 8 }]}>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <X size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.chipRow, { top: insets.top + 8 }]}>
+          <FinChip label={t('ai_scan.mode_photo')} selected onPress={() => {}} />
+          <FinChip label={t('ai_scan.mode_barcode')} onPress={() => {}} />
+          <FinChip label={t('ai_scan.mode_manual')} onPress={handleManualEntry} />
+        </View>
+
+        <View style={[styles.chipWrap, { top: insets.top + 56 }]}>
+          <ScanQuotaChip remaining={remaining} />
+        </View>
+
+        {stage !== 'scanning' ? (
+          <Text style={styles.frameHint}>{t('ai_scan.frame_hint')}</Text>
+        ) : null}
+
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(28, insets.bottom + 8) }]}>
+          {stage === 'scanning' ? (
+            <View style={styles.scanningWrap}>
+              <ActivityIndicator color="#FFFFFF" />
+              <Text style={styles.scanningText}>{t('ai_scan.scanning')}</Text>
+            </View>
+          ) : (
+            <View style={styles.shutterRow}>
+              <TouchableOpacity
+                style={styles.galleryBtn}
+                onPress={handleGalleryPick}
+                activeOpacity={0.8}
+                accessibilityLabel={t('ai_scan.gallery_pick')}
+              >
+                <ImageIcon size={20} color="#FFFFFF" />
+                <Text style={styles.galleryBtnText}>{t('ai_scan.gallery')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.shutter} onPress={handleCapture} activeOpacity={0.85}>
+                <View style={styles.shutterInner} />
+              </TouchableOpacity>
+              <View style={{ width: 64 }} />
+            </View>
+          )}
+        </View>
+
+        <FinScanErrorSheet
+          visible={errorKind !== null}
+          kind={errorKind ?? 'failed'}
+          remaining={remaining ?? 0}
+          onClose={() => setErrorKind(null)}
+          onManualEntry={handleManualEntry}
+          onRetry={() => setErrorKind(null)}
+        />
+
+        {pendingToast ? (
+          <View style={styles.toastLayer} pointerEvents="box-none">
+            <Toast
+              visible={pendingToast}
+              message={t('ai_scan.logged_to_meal', { meal: t(`meal.${mealType}`) })}
+              onDismiss={() => setPendingToast(false)}
+              autoHideMs={2600}
+            />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
   if (stage === 'result' && result) {
     return (
@@ -296,6 +551,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  chipRow: { position: 'absolute', left: 0, right: 56, flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  frameHint: {
+    position: 'absolute',
+    top: '42%',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    color: 'rgba(255,255,255,0.85)',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13,
+  },
+  shutterRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  galleryBtn: { width: 64, alignItems: 'center', gap: 4 },
+  galleryBtnText: { color: '#FFFFFF', fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 11 },
   bottomBar: {
     position: 'absolute',
     left: 0,
