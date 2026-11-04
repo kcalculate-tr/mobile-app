@@ -69,6 +69,7 @@ export function TrackerActivityEntry() {
         onPress={() => setSheet(true)}
         accessibilityRole="button"
         accessibilityLabel={tr('kesfet.activity.add')}
+        hitSlop={5}
         style={({ pressed }) => [styles.addBtn, { borderColor: t.color.line }, pressed && { opacity: 0.85 }]}
       >
         <Icon name="run" size={16} color={t.color.ink} />
@@ -96,6 +97,7 @@ export function TrackerActivityEntry() {
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
                   accessibilityLabel={tr(`kesfet.activity.type.${at}`)}
+                  hitSlop={5}
                   style={[styles.chip, { borderColor: active ? t.color.ink : t.color.line, backgroundColor: active ? t.color.ink : 'transparent' }]}
                 >
                   <AppText variant="caption" style={{ color: active ? t.color.surface : t.color.ink, fontWeight: '600' }}>

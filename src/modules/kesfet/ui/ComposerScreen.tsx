@@ -37,6 +37,7 @@ import {
 } from '../composer';
 import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, type LocalPhoto } from '../media';
 import { Icon } from './icons';
+import { RulesSheet, rulesSeen } from './RulesSheet';
 
 const POST_TYPES: PostType[] = ['serbest', 'ogun', 'etkinlik'];
 
@@ -92,6 +93,7 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
   const [activity, setActivity] = useState<ActivityDraft>(emptyActivity);
   const [submit, setSubmit] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [rulesVisible, setRulesVisible] = useState(false);
 
   // G11 — ürün arama (search_products). RPC canlıda yoksa düğme gizlenir
   // (ilk aramada { available:false } dönerse). Seçilen ürün öğün kartını doldurur.
@@ -199,6 +201,22 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
     }
   }, [draft, photos, type, body.length, lang, tr, navigation]);
 
+  // İlk gönderiden önce bir kez Topluluk kuralları (FinRules) — kabul edilmemişse
+  // "Gönder" bu sheet'i açar; kabul edince bayrak işaretlenir ve asıl gönderim sürer.
+  const handleSharePress = useCallback(async () => {
+    if (!canSubmit) return;
+    if (!(await rulesSeen())) {
+      setRulesVisible(true);
+      return;
+    }
+    void onSubmit();
+  }, [canSubmit, onSubmit]);
+
+  const onAcceptRules = useCallback(() => {
+    setRulesVisible(false);
+    void onSubmit();
+  }, [onSubmit]);
+
   const statusLabel =
     submit === 'uploading' || submit === 'publishing'
       ? tr('kesfet.compose.publishing')
@@ -215,10 +233,11 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
         </Pressable>
         <AppText variant="heading">{tr('kesfet.compose.title')}</AppText>
         <Pressable
-          onPress={onSubmit}
+          onPress={handleSharePress}
           disabled={!canSubmit}
           accessibilityRole="button"
           accessibilityLabel={tr('kesfet.compose.share')}
+          hitSlop={8}
           style={({ pressed }) => [styles.shareBtn, { backgroundColor: canSubmit ? t.color.ink : t.color.line, opacity: pressed ? 0.9 : 1 }]}
         >
           <AppText variant="caption" style={{ color: canSubmit ? t.color.surface : t.color.secondary, fontWeight: '700' }}>
@@ -251,6 +270,7 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={tr(`kesfet.compose.type.${pt}`)}
+                hitSlop={4}
                 style={[styles.segmentItem, active && { backgroundColor: t.color.ink }]}
               >
                 <AppText variant="caption" style={{ fontWeight: '700', color: active ? t.color.surface : t.color.ink }}>
@@ -307,6 +327,7 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
                 accessibilityRole="button"
                 accessibilityState={{ expanded: searchOpen }}
                 accessibilityLabel={tr('kesfet.compose.product_search')}
+                hitSlop={8}
                 style={[styles.searchToggle, { borderColor: t.color.line }]}
               >
                 <Icon name="search" size={16} color={t.color.ink} />
@@ -374,6 +395,7 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
                     accessibilityRole="radio"
                     accessibilityState={{ selected: active }}
                     accessibilityLabel={tr(`kesfet.activity.type.${at}`)}
+                    hitSlop={5}
                     style={[styles.chip, { borderColor: active ? t.color.ink : t.color.line, backgroundColor: active ? t.color.ink : 'transparent' }]}
                   >
                     <AppText variant="caption" style={{ color: active ? t.color.surface : t.color.ink, fontWeight: '600' }}>
@@ -396,6 +418,11 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
           </View>
         ) : null}
       </ScrollView>
+      <RulesSheet
+        visible={rulesVisible}
+        onAccept={onAcceptRules}
+        onClose={() => setRulesVisible(false)}
+      />
     </View>
   );
 }

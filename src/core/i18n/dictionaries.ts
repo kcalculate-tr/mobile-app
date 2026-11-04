@@ -104,9 +104,15 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         post_deleted: 'Gönderin silindi',
         block_confirm_title: '%{name} engellensin mi?',
         block_confirm_desc:
-          'Gönderileri akışından kaldırılır; birbirinizin paylaşımlarını göremezsiniz.',
+          'Seni göremez, sana yazamaz; paylaşımları akışından kalkar. İstediğin zaman Ayarlar’dan kaldırabilirsin.',
         blocked_toast: '%{name} engellendi',
         report_title: 'Neden şikayet ediyorsun?',
+        report_done_title: 'Şikayetin alındı',
+        report_done_desc:
+          'Bilgini inceleme ekibimize ilettik. Kurallara aykırıysa gereğini yaparız. Teşekkürler.',
+        report_notice_title: 'Şikayet gönderilemedi',
+        report_notice_desc: 'Bağlantı sorunu olabilir. Birazdan tekrar dene.',
+        done_ok: 'Tamam',
         report_reason: {
           spam: 'Spam',
           wrong_info: 'Yanlış bilgi',
@@ -121,6 +127,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         suggested_title: 'Önerilen hesaplar',
         loading: 'Yükleniyor…',
         end: 'Hepsi bu kadar',
+        feed_tip: 'Beğen, kaydet ya da bir öğünü dokunarak gününe ekle. Takip sekmesi yalnız takip ettiklerini gösterir.',
       },
       // Derin bağlantı (/p/:postId) tek gönderi ekranı (G7-S1).
       share: {
@@ -201,6 +208,16 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         desc: 'Beğeni, yorum ve takipçilerinden anında haberdar olmak için bildirimlere izin ver.',
         allow: 'İzin ver',
         later: 'Şimdi değil',
+      },
+      // G12-S2 — Topluluk kuralları (FinRules), ilk paylaşımdan önce bir kez.
+      rules: {
+        title: 'Topluluk kuralları',
+        intro: 'Keşfet’i güvenli ve yararlı tutmak için üç kısa kural:',
+        item_1: 'Paylaştığın besin bilgisi gerçek olsun; kasıtlı yanlış bilgi yasak.',
+        item_2: 'Diğer kullanıcılara saygılı ol; taciz ve nefret söylemi yasak.',
+        item_3: 'Reklam, spam veya başkasının içeriğini izinsiz paylaşma yasak.',
+        accept: 'Anladım, paylaş',
+        cancel: 'Vazgeç',
       },
     },
     gun: {
@@ -422,6 +439,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           'Their posts are removed from your feed; you won’t see each other’s posts.',
         blocked_toast: '%{name} blocked',
         report_title: 'Why are you reporting this?',
+        report_done_title: 'Your report was received',
+        report_done_desc:
+          'We’ve sent this to our review team. If it breaks the rules, we’ll act on it. Thank you.',
+        report_notice_title: 'Couldn’t send your report',
+        report_notice_desc: 'There may be a connection issue. Try again shortly.',
+        done_ok: 'Done',
         report_reason: {
           spam: 'Spam',
           wrong_info: 'False information',
@@ -436,6 +459,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         suggested_title: 'Suggested accounts',
         loading: 'Loading…',
         end: 'That’s all',
+        feed_tip: 'Like, save, or tap to add a meal to your day. The Following tab only shows people you follow.',
       },
       // Deep link (/p/:postId) single-post screen (G7-S1).
       share: {
@@ -516,6 +540,16 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         desc: 'Allow notifications to hear about likes, comments and your followers instantly.',
         allow: 'Allow',
         later: 'Not now',
+      },
+      // G12-S2 — Community rules (FinRules), shown once before the first post.
+      rules: {
+        title: 'Community rules',
+        intro: 'Three short rules to keep Discover safe and useful:',
+        item_1: 'Share real nutrition info; posting false information on purpose is not allowed.',
+        item_2: 'Be respectful to others; harassment and hate speech are not allowed.',
+        item_3: 'No ads, spam, or sharing someone else’s content without permission.',
+        accept: 'Got it, post',
+        cancel: 'Cancel',
       },
     },
     gun: {

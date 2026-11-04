@@ -43,6 +43,7 @@ import { EditPostSheet } from './EditPostSheet';
 import { CommentsSheet } from './CommentsSheet';
 import { NotificationsSheet } from './NotificationsSheet';
 import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
+import { FeedTip, feedTipSeen } from './FeedTip';
 import { AddToast, type ToastState } from './AddToast';
 import { FeedSkeleton, FeedError, FeedOffline, FeedEmpty, FollowingEmpty, useIsOnline, type SuggestedAccount } from './states';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
@@ -186,6 +187,8 @@ export function KesfetScreen() {
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [pushPromptOpen, setPushPromptOpen] = useState(false);
+  // G12-S2 — FinFeedTip: akışa ilk kez girişte bir kez ipucu şeridi.
+  const [showFeedTip, setShowFeedTip] = useState(false);
   // G11 — gönderi düzenleme. editAvailable: update_my_post RPC canlıda yoksa
   // (ilk denemede anlaşılır) "Düzenle" seçeneği gizlenir.
   const [editPost, setEditPost] = useState<FeedPost | null>(null);
@@ -230,6 +233,11 @@ export function KesfetScreen() {
     const id = setTimeout(() => setTrail(null), 1200);
     return () => clearTimeout(id);
   }, [trail]);
+
+  // Akışa ilk kez girişte bir kez ipucu şeridi (FinFeedTip).
+  useEffect(() => {
+    void feedTipSeen().then((seen) => setShowFeedTip(!seen));
+  }, []);
 
   // "Takip" bayrağı kapalıysa ama sekme orada kaldıysa Sana Özel'e düş.
   useEffect(() => {
@@ -353,12 +361,12 @@ export function KesfetScreen() {
   // Saate göre hızlı loglanacak öğünün etiketi — kartlardaki düğme bunu gösterir.
   const quickMealLabel = tr(`meal.${inferMealTypeFromHour(new Date().getHours())}`);
 
+  // Sonuç PostMenu içinde gösterilir (FinReportDone/FinReportNotice) — burada
+  // toast YOK, yalnız başarı/başarısızlığı döndürür.
   const onReport = useCallback(
-    async (post: FeedPost, reason: ReportReason) => {
-      const ok = await useKesfetStore.getState().report('post' as ReportTargetType, post.id, reason);
-      if (ok) setToast({ message: tr('kesfet.ui.report_toast') });
-    },
-    [tr],
+    (post: FeedPost, reason: ReportReason) =>
+      useKesfetStore.getState().report('post' as ReportTargetType, post.id, reason),
+    [],
   );
 
   const onBlock = useCallback(
@@ -456,6 +464,13 @@ export function KesfetScreen() {
     [rings],
   );
 
+  const feedHeader = (
+    <>
+      {ringStrip}
+      {showFeedTip ? <FeedTip onDismiss={() => setShowFeedTip(false)} /> : null}
+    </>
+  );
+
   // GunViewer "Günüme ekle": başkasının paylaştığı kartı kendi günlüğüme
   // (meal_consumptions) ekle (add_day_card_to_day, source='day_card').
   const onAddCardToDay = useCallback(async (card: DayCard) => {
@@ -496,7 +511,7 @@ export function KesfetScreen() {
   if (loading && posts.length === 0) {
     body = (
       <>
-        {ringStrip}
+        {feedHeader}
         <FeedSkeleton />
       </>
     );
@@ -510,14 +525,14 @@ export function KesfetScreen() {
   } else if (showFollowingEmpty) {
     body = (
       <>
-        {ringStrip}
+        {feedHeader}
         <FollowingEmpty suggestions={suggestions} onFollow={onFollow} />
       </>
     );
   } else if (posts.length === 0) {
     body = (
       <>
-        {ringStrip}
+        {feedHeader}
         <FeedEmpty following={tab === 'following'} />
       </>
     );
@@ -529,7 +544,7 @@ export function KesfetScreen() {
         renderItem={renderItem}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        ListHeaderComponent={ringStrip}
+        ListHeaderComponent={feedHeader}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -596,7 +611,7 @@ export function KesfetScreen() {
         isMine={menuPost?.me.is_author ?? false}
         canEdit={(menuPost?.me.is_author ?? false) && editAvailable}
         onCopyLink={() => menuPost && void onCopyLink(menuPost)}
-        onReport={(reason) => menuPost && void onReport(menuPost, reason)}
+        onReport={(reason) => (menuPost ? onReport(menuPost, reason) : false)}
         onBlock={() => menuPost && void onBlock(menuPost)}
         onDelete={() => menuPost && void onDeletePost(menuPost)}
         onEdit={() => setEditPost(menuPost)}

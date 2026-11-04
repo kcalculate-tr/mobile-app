@@ -150,6 +150,7 @@ function SuggestionRow({
         onPress={() => onFollow(account.id)}
         accessibilityRole="button"
         accessibilityLabel={`${tr('profil.follow')} ${account.display_name}`}
+        hitSlop={8}
         style={({ pressed }) => [styles.followBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
       >
         <AppText variant="caption" style={{ color: t.color.surface, fontWeight: '700' }}>

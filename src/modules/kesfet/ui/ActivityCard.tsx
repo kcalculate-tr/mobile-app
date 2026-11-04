@@ -54,6 +54,7 @@ export function ActivityCard({
           }}
           accessibilityRole="button"
           accessibilityLabel={tr('kesfet.activity.did_it')}
+          hitSlop={8}
           style={({ pressed }) => [styles.didItBtn, { borderColor: t.color.line }, pressed && { opacity: 0.85 }]}
         >
           <Icon name="check" size={16} color={t.color.ink} />

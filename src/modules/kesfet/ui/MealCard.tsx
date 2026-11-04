@@ -113,6 +113,7 @@ export function MealCard({
             accessibilityRole="button"
             accessibilityLabel={tr('kesfet.ui.meal_card.log_to_meal', { meal: quickMealLabel })}
             accessibilityHint={tr('kesfet.ui.meal_card.log_hint')}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             style={({ pressed }) => [styles.logLabelTouch, pressed && { opacity: 0.85 }]}
           >
             <AppText variant="caption" style={[styles.logText, { color: t.color.onAccent }]} numberOfLines={1}>
@@ -124,6 +125,7 @@ export function MealCard({
             onPress={onOpenSheet}
             accessibilityRole="button"
             accessibilityLabel={tr('kesfet.ui.meal_card.pick_meal')}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             style={({ pressed }) => [styles.logCaret, pressed && { opacity: 0.85 }]}
           >
             <Icon name="caretDown" size={14} color={t.color.onAccent} />
@@ -155,9 +157,10 @@ const styles = StyleSheet.create({
   },
   added: { flex: 1 },
   // Final: h 32, radius 16, etiket pad 0 8 0 12, ayraç 1x16, ⌄ yuvası 32 geniş.
-  logBtn: { minHeight: 32, borderRadius: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
-  logLabelTouch: { minHeight: 44, paddingLeft: 12, paddingRight: 8, justifyContent: 'center' },
+  // Görsel yükseklik 32'de sabit kalır (Final birebir); dokunma ≥44 hitSlop ile.
+  logBtn: { height: 32, borderRadius: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  logLabelTouch: { paddingLeft: 12, paddingRight: 8, justifyContent: 'center' },
   logText: { fontWeight: '700', fontSize: 13 },
   logDivider: { width: 1, height: 16 },
-  logCaret: { width: 32, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  logCaret: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
 });
