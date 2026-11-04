@@ -66,6 +66,8 @@ bağımlılık (feature_flags tablosu) uygulanmalı.
 
 | 16 | `20261105000300_g11_fixes.sql` | **G11 son sunucu düzeltmeleri + yeni RPC'ler (EN SON, #15'ten SONRA).** 1: ayrılmış kullanıcı adları (`handle_is_reserved` + `claim_handle`/`check_handle` rezerve kontrolü; tam eşleşme + `kcal`/`eatkcal` marka öneki); 2: tüm G5–G8 sosyal tablolarında `revoke truncate, trigger, references from anon, authenticated`; 3: yinelenen post-media storage politikaları (`creator_*`/`writer_*`) tek `writer_*` setine indirildi; 4: `update_my_post` + `posts_guard_protected_cols` gövde dalı (yayındaki gövde değişimi → `pending` + `moderation_queue`; doğrudan UPDATE açığı kapandı); 5: `search_products(p_q, p_limit)` (SECURITY INVOKER; `products` herkese okunur); 6: bayrak yönetimi RPC'leri (`admin_list_flags`/`admin_set_flag`/`admin_flag_unlock`/`admin_find_user`) + `feature_flag_audit` tablosu + RLS (yalnız admin okur); 7: `yeni_kabuk` bayrak satırı (`enabled=false, rollout_percent=0, min_app_version='1.1.0'`) | UYGULANACAK (#0–#15 gerekli; EN SON) |
 
+| 17 | `20261105000400_g12_flags.sql` | **G12 Final tasarım (Dalga 1) bayrak satırları (GERÇEK EN SON, #16'dan SONRA).** `yeni_onboarding` + `yeni_siparis` satırları (her ikisi `enabled=false, rollout_percent=0, min_app_version='1.1.0'`). Yeni tablo/kolon/fonksiyon YOK; yalnız iki `insert ... on conflict do nothing`. İstemci karşılığı `src/core/flags/registry.ts` FLAG_DEFAULTS'ta mevcut. | UYGULANACAK (#0 gerekli; GERÇEK EN SON) |
+
 Not: #10 G6 düzeltmeleri #3 ve #8'in RPC gövdelerini **ezer** (örn. `report_content`
 status='open', `check_delivery_city` {ok,reason}, `get_public_profile` gerçek
 sayaçlar). #3/#8'i uyguladıktan sonra #10 son uygulanmalı.
