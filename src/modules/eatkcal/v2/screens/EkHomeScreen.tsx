@@ -25,7 +25,8 @@ import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { useFeature } from '../../../../core/flags';
-import { MagnifyingGlass, Receipt, ShoppingBag, MapPin, CaretRight, X, BellRinging } from '../../../../components/icons';
+import { MagnifyingGlass, Receipt, ShoppingBag, MapPin, CaretRight, X, BellRinging, Info } from '../../../../components/icons';
+import { EkInfoSheet } from '../ui/InfoSheet';
 import { TAB_BAR_TOTAL } from '../../../../constants/layout';
 
 import { fetchCategories, fetchProductsByCategory, type Category, type CategoryProduct } from '../../../../lib/categories';
@@ -266,6 +267,7 @@ export default function EkHomeScreen() {
     : null;
 
   // ── Üst bar ───────────────────────────────────────────────────────────────
+  const [infoOpen, setInfoOpen] = useState(false);
   const header = (
     <View style={styles.header}>
       {searchOpen ? (
@@ -297,6 +299,9 @@ export default function EkHomeScreen() {
           <Text style={[ekType.h24, { color: c.ink, flex: 1 }]} accessibilityRole="header">
             {t('eatkcal.v2.home.title')}
           </Text>
+          <IconBtn label={t('eatkcal.v2.home.info')} onPress={() => setInfoOpen(true)} testID="ek-home-info">
+            <Info size={22} color={c.ink} />
+          </IconBtn>
           <IconBtn label={t('eatkcal.v2.home.search')} onPress={() => setSearchOpen(true)} testID="ek-home-search">
             <MagnifyingGlass size={22} color={c.ink} />
           </IconBtn>
@@ -505,6 +510,7 @@ export default function EkHomeScreen() {
           ) : null}
         </View>
       )}
+      <EkInfoSheet visible={infoOpen} onClose={() => setInfoOpen(false)} />
     </EkScreen>
   );
 }

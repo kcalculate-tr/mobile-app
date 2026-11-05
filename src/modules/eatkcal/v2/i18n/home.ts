@@ -4,6 +4,7 @@
 export const tr = {
   home: {
     title: 'eatkcal',
+    info: 'Nerelere teslimat yapıyoruz?',
     search: 'Ürün ara',
     search_placeholder: 'Ürün ara',
     search_close: 'Aramayı kapat',
@@ -62,6 +63,7 @@ export const tr = {
 export const en: typeof tr = {
   home: {
     title: 'eatkcal',
+    info: 'Where do we deliver?',
     search: 'Search products',
     search_placeholder: 'Search products',
     search_close: 'Close search',
