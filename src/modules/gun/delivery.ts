@@ -86,3 +86,50 @@ export function isFreshDelivery(card: DeliveredCard | null, nowMs: number, withi
   const t = new Date(card.createdAt).getTime();
   return Number.isFinite(t) && nowMs - t >= 0 && nowMs - t <= withinMs;
 }
+
+// ─── Yeni kabuk: teslim edilen sipariş otomatik loglanır (G13-S1 m.1) ──────────
+// Yeni kabukta "Dolabındakiler" şeridi YOK; bugün teslim edilen siparişin
+// dolap kopyaları (pantryStore, backfill ile gelir) Ana sayfaya kendiliğinden
+// loglanır. Kayıt biçimi bugünkü "Tükettim" ile AYNI (source='pantry',
+// source_ref=instanceId) → eski kabuk/raporlar aynı veriyi görür.
+
+export interface AutoLogPantryItem {
+  id: string;
+  orderItemId?: string;
+  quantity: number;
+}
+
+export interface AutoLogCandidate<T extends AutoLogPantryItem> {
+  instanceId: string;
+  item: T;
+  /** Teslim zamanı (ISO) — kaydın consumed_at'i; öğün yuvası buradan çıkar. */
+  deliveredAt: string;
+}
+
+/**
+ * Otomatik loglanacak dolap kopyaları. Yalnız:
+ *  - siparişi BUGÜN teslim edilmiş (`deliveredToday`: orderItemId → delivered_at),
+ *  - henüz tüketilmemiş (`consumed`: instanceId kümesi, DB'den),
+ *  - daha önce otomatik loglanmamış (`done`: kalıcı küme — kullanıcı kaydı
+ *    "Kaldır"dıysa bir daha geri gelmesin)
+ * kopyalar. instanceId biçimi TrackerScreen ile aynı: `${item.id}-${i}`.
+ */
+export function pickAutoLogInstances<T extends AutoLogPantryItem>(
+  items: readonly T[],
+  deliveredToday: ReadonlyMap<string, string>,
+  consumed: ReadonlySet<string>,
+  done: ReadonlySet<string>,
+): AutoLogCandidate<T>[] {
+  const out: AutoLogCandidate<T>[] = [];
+  for (const item of items) {
+    const at = item.orderItemId ? deliveredToday.get(item.orderItemId) : undefined;
+    if (!at) continue;
+    const n = Math.max(1, Math.floor(item.quantity || 1));
+    for (let i = 0; i < n; i++) {
+      const instanceId = `${item.id}-${i}`;
+      if (consumed.has(instanceId) || done.has(instanceId)) continue;
+      out.push({ instanceId, item, deliveredAt: at });
+    }
+  }
+  return out;
+}
