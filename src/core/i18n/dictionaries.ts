@@ -401,6 +401,17 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       view: 'Gör',
       activity_add: 'Etkinlik ekle',
       day_total: '%{eaten} / %{target} kcal',
+      // G13-S1 — FinHomeR3 öğün yuvaları (yeni kabuk).
+      log_to_breakfast: 'Kahvaltı’ya logla',
+      log_to_lunch: 'Öğle’ye logla',
+      log_to_dinner: 'Akşam’a logla',
+      log_to_snack: 'Ara öğüne logla',
+      slot_empty_kcal: '—',
+      item_kcal: '%{kcal} kcal',
+      just_now: 'şimdi',
+      record_menu: 'Kayıt menüsü: %{name}',
+      share_item: 'Paylaş',
+      portion_pick: 'Porsiyon %{p}',
     },
     meal: {
       breakfast: 'Kahvaltı',
@@ -432,6 +443,13 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       notify_body: 'Seri bozulmadan hatırlatalım, kutlamalarını kaçırma. İstediğin an kapatabilirsin.',
       notify_allow: 'İzin ver',
       notify_later: 'Şimdi değil',
+      // G13-S1 — Ana sayfa mount (paylaşım kartı metinleri, FinCelebrate).
+      card_first: 'İlk öğün eklendi',
+      card_streak3: '3 günlük seri',
+      card_streak7: 'Bir hafta tamam',
+      card_sub_first: '%{name} · %{kcal} kcal',
+      card_sub_streak3: 'Üst üste kayıt',
+      card_sub_streak7: '7 / 7 gün kayıt',
     },
     collection: {
       title: 'Tabak koleksiyonu',
@@ -1142,6 +1160,17 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       view: 'View',
       activity_add: 'Add activity',
       day_total: '%{eaten} / %{target} kcal',
+      // G13-S1 — FinHomeR3 meal slots (new shell).
+      log_to_breakfast: 'Log to breakfast',
+      log_to_lunch: 'Log to lunch',
+      log_to_dinner: 'Log to dinner',
+      log_to_snack: 'Log a snack',
+      slot_empty_kcal: '—',
+      item_kcal: '%{kcal} kcal',
+      just_now: 'now',
+      record_menu: 'Entry menu: %{name}',
+      share_item: 'Share',
+      portion_pick: 'Portion %{p}',
     },
     meal: {
       breakfast: 'Breakfast',
@@ -1173,6 +1202,13 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       notify_body: 'We’ll remind you before your streak breaks so you don’t miss a celebration. Turn it off anytime.',
       notify_allow: 'Allow',
       notify_later: 'Not now',
+      // G13-S1 — Home mount (share card texts, FinCelebrate).
+      card_first: 'First meal logged',
+      card_streak3: '3-day streak',
+      card_streak7: 'A full week',
+      card_sub_first: '%{name} · %{kcal} kcal',
+      card_sub_streak3: 'Logged in a row',
+      card_sub_streak7: '7 / 7 days logged',
     },
     collection: {
       title: 'Plate collection',

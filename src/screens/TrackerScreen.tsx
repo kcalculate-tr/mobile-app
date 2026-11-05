@@ -43,6 +43,12 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { TrackerDayHeader } from './tracker/TrackerDayHeader';
+import { HomeMealSlots } from './tracker/HomeMealSlots';
+import { useHomeHighlight } from './tracker/useHomeHighlight';
+import { HomeCelebrations } from './tracker/HomeCelebrations';
+import { buildSlots, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
+import { pickAutoLogInstances } from '../modules/gun/delivery';
+import { loadAutoLogged, markAutoLogged } from '../modules/gun/autoLogStore';
 import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../modules/shell';
 import ShareMealCardModal from '../components/share/ShareMealCardModal';
 import type { ShareMealData } from '../components/share/MealShareCard';
@@ -97,6 +103,8 @@ type MeasurementRow = { date: string; weight_kg: number | null; waist_cm: number
 type ConsumedRow = {
   id: string;
   source: 'pantry' | 'manual';
+  /** DB'deki ham kaynak (ai_scan/kesfet/…) — yalnız yeni kabuk yuva etiketleri okur. */
+  raw_source: string;
   source_ref: string | null;
   name: string;
   meal_type: string | null;
@@ -170,9 +178,20 @@ type DataAction =
   | { type: 'SET_CONSUMED_INSTANCES'; payload: Set<string> }
   | { type: 'ADD_CONSUMED_INSTANCE'; payload: string }
   | { type: 'REMOVE_CONSUMED_INSTANCE'; payload: string }
-  | { type: 'REMOVE_CONSUMED_INSTANCES_BY_ITEM'; payload: string };
+  | { type: 'REMOVE_CONSUMED_INSTANCES_BY_ITEM'; payload: string }
+  // Yeni kabuk (yuva kayıt menüsü) — eski kabuk bu eylemleri hiç göndermez.
+  | { type: 'REMOVE_CONSUMED_BY_ID'; payload: string }
+  | { type: 'REPLACE_CONSUMED'; payload: ConsumedRow };
 function dataReducer(state: DataState, action: DataAction): DataState {
   switch (action.type) {
+    case 'REMOVE_CONSUMED_BY_ID': return {
+      ...state,
+      todayConsumed: state.todayConsumed.filter(c => c.id !== action.payload),
+    };
+    case 'REPLACE_CONSUMED': return {
+      ...state,
+      todayConsumed: state.todayConsumed.map(c => (c.id === action.payload.id ? action.payload : c)),
+    };
     case 'SET_ORDERS': return { ...state, orders: action.payload };
     case 'SET_NUTRITION_PROFILE': return { ...state, nutritionProfile: action.payload };
     case 'SET_MEASUREMENTS': return { ...state, measurements: action.payload };
@@ -397,6 +416,7 @@ const normalizeConsumedRow = (raw: any): ConsumedRow => {
   return {
     id: String(r.id ?? ''),
     source,
+    raw_source: r.source != null ? String(r.source) : source,
     source_ref: r.source_ref != null ? String(r.source_ref) : null,
     name: String(r.name ?? '').trim() || (source === 'manual' ? 'Manuel' : 'Ürün'),
     meal_type: r.meal_type != null ? String(r.meal_type) : null,
@@ -1254,6 +1274,214 @@ export default function TrackerScreen() {
     return weeklyConsumption.slice(-n);
   }, [weeklyConsumption, selectedFilter]);
 
+  // ─── G13-S1: yeni kabuk Ana sayfa bağları (yeni_kabuk) ──────────────────────
+  // Hepsi `yeniKabuk` arkasında: bayrak KAPALIYKEN hiçbir abonelik/sorgu/yazma
+  // çalışmaz ve aşağıdaki yeni JSX dalları render olmaz (bayrak-kapalı
+  // snapshot testi: __component_tests__/TrackerScreen.flagOff.test.tsx).
+
+  // Bugünün kayıtlarını yükleme göstergesi OLMADAN tazeler (çapraz sekme loglama).
+  const refreshToday = useCallback(async (): Promise<ConsumedRow[]> => {
+    if (!user) return [];
+    const { data: rows, error } = await getSupabaseClient()
+      .from('meal_consumptions')
+      .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+      .eq('user_id', user.id)
+      .gte('consumed_at', startOfTodayISO())
+      .lt('consumed_at', startOfTomorrowISO())
+      .order('consumed_at', { ascending: false });
+    if (error) throw error;
+    const next = (Array.isArray(rows) ? rows : []).map(normalizeConsumedRow);
+    dispatchData({ type: 'SET_TODAY_CONSUMED', payload: next });
+    return next;
+  }, [user]);
+
+  // Logla izi B: nokta → öğün satırı → halka (halka evresinde logToken artar).
+  const { highlight, start: startHighlight } = useHomeHighlight({
+    enabled: yeniKabuk,
+    rows: todayConsumed,
+    refresh: refreshToday,
+    onRing: (label) => {
+      setLastMealLabel(label);
+      setLogToken((n) => n + 1);
+    },
+  });
+
+  // Halka, vurgu 'ring' evresine gelene dek yeni kaydı saymaz (sıra: satır → halka).
+  const heldKcal = useMemo(() => {
+    if (!highlight || highlight.phase === 'ring') return 0;
+    const r = todayConsumed.find((c) => c.id === highlight.id);
+    return r ? r.calories : 0;
+  }, [highlight, todayConsumed]);
+
+  // FinHomeR3 dört öğün yuvası — ham kaynakla (Tara/Keşfet/eatkcal/Elle etiketi).
+  const homeSlots = useMemo(
+    () =>
+      yeniKabuk
+        ? buildSlots(
+            todayConsumed.map((r) => ({
+              id: r.id,
+              source: r.raw_source,
+              name: r.name,
+              meal_type: r.meal_type,
+              calories: r.calories,
+              protein: r.protein,
+              carbs: r.carbs,
+              fat: r.fat,
+              consumed_at: r.consumed_at,
+            })),
+            { highlightId: highlight?.id ?? null },
+          )
+        : [],
+    [yeniKabuk, todayConsumed, highlight],
+  );
+
+  const openMealFormFor = (slot: SlotKey) => {
+    const formType = ({ breakfast: 'kahvalti', lunch: 'ogle', dinner: 'aksam', snack: 'atistirma' } as const)[slot];
+    dispatchMealForm({ type: 'SET_MEAL_TYPE', payload: formType });
+    dispatchMealForm({ type: 'SET_VISIBLE', payload: true });
+  };
+
+  // Kayıt menüsü › Kaldır — tek satır silinir; dolap kaydıysa tüketildi işareti de kalkar.
+  const handleRemoveRow = async (item: HomeMealItem) => {
+    if (!user) return;
+    const row = todayConsumed.find((c) => c.id === item.id);
+    if (!row) return;
+    const pantryRef = row.raw_source === 'pantry' ? row.source_ref : null;
+    dispatchData({ type: 'REMOVE_CONSUMED_BY_ID', payload: row.id });
+    if (pantryRef) dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: pantryRef });
+    try {
+      const { error } = await getSupabaseClient()
+        .from('meal_consumptions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('id', row.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error('[home] remove error:', formatSupabaseErrorForDevLog(e));
+      dispatchData({ type: 'PREPEND_CONSUMED', payload: row });
+      if (pantryRef) dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: pantryRef });
+      Alert.alert('Kaydedilemedi', 'Lütfen tekrar deneyin.');
+    }
+  };
+
+  // Kayıt menüsü › Porsiyon (otomatik eatkcal kaydı) — menü açıldığındaki
+  // değer "1" kabul edilir; ½·1½·2 bu tabana göre ölçeklenir.
+  const portionBaseRef = useRef<Map<string, { calories: number; protein: number; carbs: number; fat: number }>>(new Map());
+  const handlePortion = async (item: HomeMealItem, factor: number) => {
+    if (!user) return;
+    const row = todayConsumed.find((c) => c.id === item.id);
+    if (!row) return;
+    let base = portionBaseRef.current.get(row.id);
+    if (!base) {
+      base = { calories: row.calories, protein: row.protein, carbs: row.carbs, fat: row.fat };
+      portionBaseRef.current.set(row.id, base);
+    }
+    const r1 = (n: number) => Math.round(n * 10) / 10;
+    const patch = {
+      calories: Math.round(base.calories * factor),
+      protein: r1(base.protein * factor),
+      carbs: r1(base.carbs * factor),
+      fat: r1(base.fat * factor),
+    };
+    dispatchData({ type: 'REPLACE_CONSUMED', payload: { ...row, ...patch } });
+    try {
+      const { error } = await getSupabaseClient()
+        .from('meal_consumptions')
+        .update(patch)
+        .eq('user_id', user.id)
+        .eq('id', row.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error('[home] portion error:', formatSupabaseErrorForDevLog(e));
+      dispatchData({ type: 'REPLACE_CONSUMED', payload: row });
+      Alert.alert('Kaydedilemedi', 'Lütfen tekrar deneyin.');
+    }
+  };
+
+  const handleShareRow = (item: HomeMealItem) => {
+    const row = todayConsumed.find((c) => c.id === item.id);
+    if (!row) return;
+    const note = (row.note ?? '').trim();
+    setShareMeal({
+      data: { name: row.name, calories: row.calories, protein: row.protein, portion: note || null, estimate: true },
+      seed: row.id,
+    });
+  };
+
+  // Teslim edilen sipariş otomatik loglanır (yeni kabukta "Dolabındakiler" yok).
+  // Kayıt biçimi "Tükettim" ile AYNI (source='pantry', source_ref=instanceId,
+  // aynı upsert çakışma anahtarı); consumed_at = teslim zamanı. Kullanıcı
+  // kaldırdığı kopyayı bir daha görmez (autoLogStore).
+  const autoLogBusyRef = useRef(false);
+  useEffect(() => {
+    if (!yeniKabuk || !user || dataLoading || autoLogBusyRef.current) return;
+    if (pantryItems.length === 0) return;
+    autoLogBusyRef.current = true;
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: orderRows, error } = await supabase
+          .from('orders')
+          .select('id,delivered_at,order_items(id)')
+          .eq('user_id', user.id)
+          .eq('status', 'delivered')
+          .gte('delivered_at', startOfTodayISO())
+          .lt('delivered_at', startOfTomorrowISO());
+        if (error || !Array.isArray(orderRows)) return;
+        const deliveredToday = new Map<string, string>();
+        for (const o of orderRows as any[]) {
+          const at = o?.delivered_at ? String(o.delivered_at) : '';
+          for (const oi of Array.isArray(o?.order_items) ? o.order_items : []) {
+            if (at && oi?.id) deliveredToday.set(String(oi.id), at);
+          }
+        }
+        if (deliveredToday.size === 0) return;
+        const done = await loadAutoLogged();
+        const candidates = pickAutoLogInstances(pantryItems, deliveredToday, consumedInstances, done);
+        let lastId: string | null = null;
+        for (const c of candidates) {
+          dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: c.instanceId });
+          const { data: row, error: e2 } = await supabase
+            .from('meal_consumptions')
+            .upsert(
+              {
+                user_id: user.id,
+                source: 'pantry' as const,
+                source_ref: c.instanceId,
+                name: c.item.name,
+                meal_type: null,
+                calories: Math.round(c.item.calories || 0),
+                protein: c.item.protein || 0,
+                carbs: c.item.carbs || 0,
+                fat: c.item.fat || 0,
+                note: null,
+                consumed_at: c.deliveredAt,
+              },
+              { onConflict: 'user_id,source,source_ref' },
+            )
+            .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+            .maybeSingle();
+          if (e2 && (e2 as any)?.code !== '23505') {
+            dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: c.instanceId });
+            continue;
+          }
+          await markAutoLogged([c.instanceId]);
+          if (row) {
+            dispatchData({ type: 'REMOVE_CONSUMED_BY_REF', payload: { source: 'pantry', source_ref: c.instanceId } });
+            dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
+            lastId = String((row as { id?: unknown }).id ?? '') || lastId;
+          }
+        }
+        // FinHomeDelivered: teslim anı → yeni kayıt bir kez vurgulanır.
+        if (lastId) startHighlight(lastId, null);
+      } catch (e) {
+        if (__DEV__) console.warn(`[home] delivered auto-log failed: ${formatSupabaseErrorForDevLog(e)}`);
+      } finally {
+        autoLogBusyRef.current = false;
+      }
+    })();
+  }, [yeniKabuk, user, dataLoading, pantryItems, consumedInstances, startHighlight]);
+
   const handleToggleConsumed = async (instanceId: string, item: PantryItem) => {
     if (!user) return;
     // TEŞHİS LOGU (geçici) — token bayatlama şüphesi: auth.uid() gerçekten
@@ -1483,10 +1711,15 @@ export default function TrackerScreen() {
       }
       // Yeni kabuk: Logla izi + zaman hapı (TrackerDayHeader okur). Eski kabukta
       // bu state'in görünür etkisi yok.
-      setLastMealLabel(
-        ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null,
-      );
-      setLogToken((n) => n + 1);
+      const savedLabel =
+        ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null;
+      if (yeniKabuk && row) {
+        // G13-S1: Logla izi B — nokta → satır → halka (logToken halka evresinde).
+        startHighlight(String((row as { id?: unknown }).id ?? ''), savedLabel);
+      } else {
+        setLastMealLabel(savedLabel);
+        setLogToken((n) => n + 1);
+      }
       dispatchMealForm({ type: 'RESET_FORM' });
     } catch (e) {
       if (__DEV__) console.warn('meal log error:', e);
@@ -2035,13 +2268,38 @@ const html = `
                  kapalıyken render OLMAZ (eski kalori halkası aşağıda kalır). ── */}
             {yeniKabuk ? (
               <TrackerDayHeader
-                kcal={Math.round(displayMacros.kcal)}
+                kcal={Math.round(displayMacros.kcal - heldKcal)}
                 target={targets.kcal}
                 logToken={logToken}
                 lastMealLabel={lastMealLabel}
               />
             ) : null}
+            {/* ── G13-S1: FinHomeR3 öğün yuvaları (yeni_kabuk). Yeni kabukta
+                 "Dolabındakiler" şeridi YOK — teslim edilen sipariş otomatik
+                 loglanır (yukarıdaki auto-log etkisi). ── */}
+            {yeniKabuk ? (
+              <>
+                {etkinlik ? (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                    <TrackerActivityEntry />
+                  </View>
+                ) : null}
+                <HomeMealSlots
+                  slots={homeSlots}
+                  eaten={Math.round(consumedTodayMacros.kcal)}
+                  target={targets.kcal}
+                  images={consumedImages}
+                  highlight={highlight}
+                  onLog={openMealFormFor}
+                  onChangeMeal={openMealFormFor}
+                  onRemove={handleRemoveRow}
+                  onPortion={handlePortion}
+                  onShare={paylasimKarti ? handleShareRow : undefined}
+                />
+              </>
+            ) : null}
             {/* ── Pantry ── */}
+            {!yeniKabuk ? (
             <View style={s.pantrySection}>
               {/* G8: etkinlik girişi — yalnız `etkinlik` bayrağı açıkken; kapalıyken
                   bu blok HİÇ render olmaz, Tracker bugünküyle birebir aynı kalır. */}
@@ -2155,6 +2413,7 @@ const html = `
                 />
               )}
             </View>
+            ) : null}
 
             {/* ── Big Calorie Ring — yeni kabukta üstteki imza halkası bunun yerini
                  alır; o yüzden yeni_kabuk açıkken bu blok gizlenir (çift halka
@@ -2251,8 +2510,9 @@ const html = `
               </View>
             </View>
 
-            {/* ── Bugün Tüketilenler ── */}
-            {todayConsumed.length === 0 ? (
+            {/* ── Bugün Tüketilenler — yeni kabukta yukarıdaki öğün yuvaları bunun
+                 yerini alır (aynı kayıtlar). Bayrak kapalıyken bugünküyle aynı. ── */}
+            {yeniKabuk ? null : todayConsumed.length === 0 ? (
               <View style={s.emptyState}>
                 <ForkKnife size={56} color={COLORS.brand.green} weight="duotone" />
                 <Text style={s.emptyTitle}>Bugün henüz bir şey tüketmediniz</Text>
@@ -2331,6 +2591,19 @@ const html = `
           onClose={() => setShareMeal(null)}
           data={shareMeal?.data ?? null}
           seed={shareMeal?.seed}
+        />
+      ) : null}
+
+      {/* G13-S1: kutlamalar (ilk öğün / 3·7 gün seri) + ardından bildirim izni —
+          yalnız yeni kabukta. Bayrak kapalıyken HİÇ mount edilmez. */}
+      {yeniKabuk ? (
+        <HomeCelebrations
+          userId={user?.id ?? null}
+          today={todayConsumed}
+          days={weeklyConsumption}
+          todayKey={formatDayKey(new Date())}
+          todayStartISO={startOfTodayISO()}
+          ready={!dataLoading}
         />
       ) : null}
 
