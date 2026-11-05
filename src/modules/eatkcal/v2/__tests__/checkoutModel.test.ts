@@ -179,7 +179,10 @@ test('taslak argümanı = eski createOrderDraftForPayment çağrısı (CheckoutS
     cardsEnabled: true,
     selectedCardId: 'card-1',
   });
-  // Eski ekranın geçtiği nesne (aynen):
+  // Eski ekranın geçtiği nesne (aynen; değişkenler eski ekrandaki adlarla):
+  const appliedCoupon: { code: string; campaignId: string } | null = { code: 'KOD', campaignId: '9' };
+  const cardsEnabled = true as boolean;
+  const selectedPayCardId: string | null = 'card-1';
   const legacy = {
     userId: 'u1',
     address,
@@ -190,14 +193,14 @@ test('taslak argümanı = eski createOrderDraftForPayment çağrısı (CheckoutS
     subtotal: 540,
     deliveryFee: 0,
     discountAmount: 40,
-    couponCode: 'KOD' || null,
-    couponId: '9' || null,
+    couponCode: appliedCoupon?.code || null,
+    couponId: appliedCoupon?.campaignId || null,
     deliveryMethod: 'delivery',
     orderNote: '  zil çalma '.trim() || null,
     deliveryType: 'scheduled',
     scheduledDate: '2026-11-07',
     scheduledTime: '13:30',
-    paymentMethod: true && 'card-1' ? 'saved_card' : 'new_card',
+    paymentMethod: cardsEnabled && selectedPayCardId ? 'saved_card' : 'new_card',
   };
   assert.deepEqual(v2, legacy);
 
