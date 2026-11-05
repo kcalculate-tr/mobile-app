@@ -17,6 +17,8 @@ import {
 import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
+// G13-S2 — eatkcal yeni arayüzü (yalnız `yeni_siparis` açıkken kaydolur/görünür).
+import { EkHomeTab, ekV2Routes, resolveHomeTab } from '../modules/eatkcal/v2/routes';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
 //  · WelcomeGate: oturumsuz soğuk açılışın ilk ekranı (initialRouteName).
@@ -153,9 +155,14 @@ const AI_MODAL = {
 // kapalıyken (varsayılan) bugünkü HomeScreen AYNEN. HomeScreen bu dosyada
 // hiç değişmedi; "Sipariş ver" sonrası aynı bileşen `EatCatalog` rotasıyla
 // yeniden kullanılır (bkz. aşağıdaki Stack.Screen).
+// G13-S2: `yeni_siparis` açıkken eatkcal v2 ana sayfası (FinEkHome); kapalıyken
+// karar `resolveHomeTab` ile bugünküyle AYNI (restoran_yakinda → EatHome, değilse HomeScreen).
 function HomeTabScreen() {
   const restoranYakinda = useFeature('restoran_yakinda');
-  return restoranYakinda ? <EatHomeLazy /> : <HomeScreen />;
+  const yeniSiparis = useColdStartFeature('yeni_siparis');
+  const kind = resolveHomeTab({ yeniSiparis, restoranYakinda });
+  if (kind === 'v2') return <EkHomeTab />;
+  return kind === 'eatHome' ? <EatHomeLazy /> : <HomeScreen />;
 }
 
 function TabNavigator() {
@@ -367,6 +374,8 @@ export default function AppNavigator() {
   // yeni onboarding akışını gösterir (soğuk-başlangıçta bir kez okunur, böylece
   // process ömrü boyunca tek initialRoute). Kapalıyken WelcomeGate bugünküyle aynı.
   const yeniOnboarding = useColdStartFeature('yeni_onboarding');
+  // G13-S2 — eatkcal v2 rotaları; kapalıyken `ekV2Routes(false)` → [] (hiç kayıt yok).
+  const yeniSiparis = useColdStartFeature('yeni_siparis');
   const initialRouteName = session
     ? 'Tabs'
     : yeniOnboarding
@@ -482,6 +491,11 @@ export default function AppNavigator() {
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={HomeScreen} />
+      {/* G13-S2 — eatkcal yeni arayüzü (src/modules/eatkcal/v2/routes.tsx). Yalnız
+          `yeni_siparis` açıkken; kapalıyken liste boş, bugünkü akış AYNEN. */}
+      {ekV2Routes(yeniSiparis).map((r) => (
+        <Stack.Screen key={r.name} name={r.name as never} component={r.component} options={r.options} />
+      ))}
     </Stack.Navigator>
   );
 }

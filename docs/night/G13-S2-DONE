@@ -1,0 +1,5 @@
+G13-S2 tamamlandı — night13/eatkcal (taban night12/release)
+11 madde: eatkcal v2 (src/modules/eatkcal/v2/) yeni_siparis bayrağı arkasında; AppNavigator kaydı yalnız bayrak açıkken.
+Eski sipariş dosyaları (KİMSE) git diff night12/release: BOŞ. Bayrak kapalı = bugünkü akış (routeTable testi).
+Kontrol: tsc 0 · hygiene OK · test:unit 506/506 · test:components 80/80 · expo export ios ✓ (9.1 MB)
+Ayrıntı: docs/night/G13-S2-LOG.md
