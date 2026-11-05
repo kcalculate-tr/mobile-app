@@ -65,9 +65,12 @@ export default function EkCheckoutScreen() {
     else if (e.zaman) setOpen('md');
   }, [ctrl.fieldErrors]);
 
-  // Sepet boşaldıysa (ör. başka sekmede) sepete dön.
+  // Sepet boşaldıysa (ör. başka sekmede) sepete dön — sipariş tamamlanıp
+  // ekrandan çıkılırken (0 TL → OrderSuccess) tetiklenmez.
+  const leavingRef = useRef(false);
   useEffect(() => {
-    if (ctrl.items.length === 0 && ctrl.payState === 'idle' && !ctrl.placing) navigation.goBack();
+    if (leavingRef.current) return;
+    if (ctrl.items.length === 0 && ctrl.payState === 'idle' && !ctrl.placing && navigation.isFocused()) navigation.goBack();
   }, [ctrl.items.length, ctrl.payState, ctrl.placing, navigation]);
 
   const toggle = (k: SectionKey) => {
@@ -78,8 +81,10 @@ export default function EkCheckoutScreen() {
   const onPlace = async () => {
     const r = await ctrl.placeOrder();
     if (r.kind === 'payment') navigation.navigate('PaymentScreen', r.params);
-    else if (r.kind === 'free_success') navigation.replace('OrderSuccess', { orderCode: r.orderCode, orderId: r.orderId, noticeMessage: undefined });
-    else if (r.kind === 'login') navigation.navigate('Login');
+    else if (r.kind === 'free_success') {
+      leavingRef.current = true;
+      navigation.replace('OrderSuccess', { orderCode: r.orderCode, orderId: r.orderId, noticeMessage: undefined });
+    } else if (r.kind === 'login') navigation.navigate('Login');
   };
 
   // ── Özet satırları ─────────────────────────────────────────────────────
