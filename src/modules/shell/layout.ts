@@ -1,14 +1,15 @@
-// Yeni kabuk (TabBarR3) geometrisi — TEK KAYNAK (G11-S2).
+// Yeni kabuk (TabBarR3) geometrisi — TEK KAYNAK (G11-S2 · G16-S2).
 //
-// Tasarım: `.claude/night/design/t20/TabBarR3.dc.html` (telefon genişliği 393px).
-//   · Cam hap: left 16, bottom 24, height 62, radius 31, 4 sekme.
-//   · Ayrık "Tara" dairesi: right 16, bottom 24, tam 62 / küçük 52, radius %50.
+// Tasarım: `design/final/FinTabBar-rest|mid|min` (telefon genişliği 393px).
+//   · Cam hap: left 16, height 62, radius 31, 4 sekme.
+//   · Ayrık "Tara" dairesi: right 16, tam 62 / küçük 52, radius %50.
 //   · Küçük (mini) durum: hap → 52x52 tek daireye iner.
 //
-// `TAB_BAR_R3_HEIGHT` = tab barın ekranda kapladığı yükseklik (safe-area HARİÇ).
-// Ekran listeleri alt boşluğu bunu + insets.bottom ile verir. G11-CONTRACT
-// paralel aşamada S3/S4'e `insets.bottom + 96` yazdırır; S6 bu sabite bağlar —
-// o yüzden değer 96'da sabittir.
+// G16-S2 (İlter, 6 Kas — telefonda "tab bar fazla yüksekte"): Instagram gibi
+// çubuğun alt kenarı home indicator'ın hemen üstünde. Alt boşluk artık
+// `insets.bottom + 4` (önce `insets.bottom + 24`); home tuşlu / insets 0
+// cihazda 8. Hap, Tara, cam ve rest/mid/min durumları aynı satırda olduğu için
+// hepsi aynı miktarda (20 pt) iner. İçerik alt boşluğu da buna göre küçülür.
 
 export const TAB_BAR_R3 = {
   /** Cam hap yüksekliği. */
@@ -21,8 +22,12 @@ export const TAB_BAR_R3 = {
   BUBBLE_RADIUS: 26,
   /** Ekran kenarından boşluk (sol hap, sağ Tara). */
   SIDE_INSET: 16,
-  /** Barın safe-area üstündeki alt boşluğu. */
-  BOTTOM_GAP: 24,
+  /** Barın safe-area (home indicator) üstündeki alt boşluğu — en fazla 4. */
+  BOTTOM_GAP: 4,
+  /** Güvenli alanı olmayan (home tuşlu, insets.bottom = 0) cihazda alt boşluk. */
+  BOTTOM_GAP_NO_INSET: 8,
+  /** Barın üstünde içerik için nefes payı (son liste öğesi barın altında kalmasın). */
+  CONTENT_BREATH: 10,
   /** Hap ile Tara dairesi arası boşluk. */
   GAP: 12,
   /** Tara dairesi — tam durum. */
@@ -36,9 +41,27 @@ export const TAB_BAR_R3 = {
 } as const;
 
 /**
- * Tab barın kapladığı toplam yükseklik (safe-area insets.bottom HARİÇ).
- * İçerik alt boşluğu = `useSafeAreaInsets().bottom + TAB_BAR_R3_HEIGHT`.
- * = hap (62) + alt boşluk (24) + üst nefes payı (10) = 96.
+ * Barın alt kenarının ekranın altına uzaklığı (px).
+ * insets.bottom > 0 → insets.bottom + 4; home tuşlu cihaz → 8.
+ */
+export function tabBarBottomOffset(insetsBottom: number): number {
+  return insetsBottom > 0
+    ? insetsBottom + TAB_BAR_R3.BOTTOM_GAP
+    : TAB_BAR_R3.BOTTOM_GAP_NO_INSET;
+}
+
+/**
+ * Sekme KÖK ekranlarının içerik alt boşluğu (safe-area DAHİL): barın üst
+ * kenarı + nefes payı. Yığın ekranları bunu KULLANMAZ — yalnız insets.bottom.
+ */
+export function tabBarContentInset(insetsBottom: number): number {
+  return tabBarBottomOffset(insetsBottom) + TAB_BAR_R3.PILL_HEIGHT + TAB_BAR_R3.CONTENT_BREATH;
+}
+
+/**
+ * Tab barın kapladığı yükseklik (safe-area insets.bottom HARİÇ), insets > 0
+ * cihazlar için: hap (62) + alt boşluk (4) + nefes payı (10) = 76 (önce 96).
+ * Yeni kod `tabBarContentInset(insets.bottom)` kullanır (home tuşlu cihazı da doğru verir).
  */
 export const TAB_BAR_R3_HEIGHT =
-  TAB_BAR_R3.PILL_HEIGHT + TAB_BAR_R3.BOTTOM_GAP + 10; // 96
+  TAB_BAR_R3.PILL_HEIGHT + TAB_BAR_R3.BOTTOM_GAP + TAB_BAR_R3.CONTENT_BREATH; // 76

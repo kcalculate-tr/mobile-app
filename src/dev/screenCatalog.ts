@@ -118,6 +118,11 @@ const tab = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name, params }] } },
 ];
 const HOME_VITRIN = { vitrinOpenAuto: true, vitrinHour: 9 };
+/**
+ * G16-S2 — Profil alt ekranı GERÇEK kabukta (Profil sekmesi içinde, TabBarR3 ile):
+ * `<Pano>~2`. Alt ekranda tab bar gizli, altta yalnız güvenli alan olmalı.
+ */
+const inProfileTab = (sub: string) => ({ frames: { 2: { target: route(tab('Profile', { vitrinSub: sub })) } } });
 /** G15-S3 — FinCompose kareleri: Final'deki örnek metin/medya/kart (yalnız vitrin). */
 const PH_URI = 'https://example.invalid/vitrin-placeholder.jpg';
 const COMPOSE_PREFILL = {
@@ -283,21 +288,21 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // ── Profil ─────────────────────────────────────────────────────────────────
   ['FinPrProfile', 'profil', route(tab('Profile'))],
   ['FinProfilePublic', 'profil', comp('profileSub', { sub: 'public' })],
-  ['FinBadges', 'profil', comp('profileSub', { sub: 'badges' })],
+  ['FinBadges', 'profil', comp('profileSub', { sub: 'badges' }), inProfileTab('badges')],
   ['FinPrivacy', 'profil', comp('privacySheet')],
-  ['FinPrivacySettings', 'profil', comp('profileSub', { sub: 'privacy' })],
-  ['FinPrProgress', 'profil', comp('profileSub', { sub: 'progress' })],
+  ['FinPrivacySettings', 'profil', comp('profileSub', { sub: 'privacy' }), inProfileTab('privacy')],
+  ['FinPrProgress', 'profil', comp('profileSub', { sub: 'progress' }), inProfileTab('progress')],
   ['FinPrMacro', 'profil', comp('profileSub', { sub: 'macro', mock: true })],
   ['FinPrMacroWhat', 'profil', comp('profileSub', { sub: 'macro', what: true, mock: true })],
   ['FinPrMacroHistoryEmpty', 'profil', comp('profileSub', { sub: 'macro', history: true })],
-  ['FinPrPersonal', 'profil', comp('profileSub', { sub: 'personal' })],
+  ['FinPrPersonal', 'profil', comp('profileSub', { sub: 'personal' }), inProfileTab('personal')],
   // G15-S5: yeni_siparis açık → v2 EkSavedCardsScreen (servis çağrılmadan vitrin kartlarıyla).
   ['FinPrCards', 'profil', route([...tab('Profile'), { name: 'ProfileSavedCards', params: { vitrinCards: VITRIN_CARDS } }])],
-  ['FinPrNotify', 'profil', comp('profileSub', { sub: 'notify' })],
-  ['FinPrSecurity', 'profil', comp('profileSub', { sub: 'security' })],
-  ['FinPrAgreements', 'profil', comp('profileSub', { sub: 'agreements' })],
-  ['FinPrSupport', 'profil', comp('profileSub', { sub: 'support' })],
-  ['FinPrFeedback', 'profil', comp('profileSub', { sub: 'feedback' })],
+  ['FinPrNotify', 'profil', comp('profileSub', { sub: 'notify' }), inProfileTab('notify')],
+  ['FinPrSecurity', 'profil', comp('profileSub', { sub: 'security' }), inProfileTab('security')],
+  ['FinPrAgreements', 'profil', comp('profileSub', { sub: 'agreements' }), inProfileTab('agreements')],
+  ['FinPrSupport', 'profil', comp('profileSub', { sub: 'support' }), inProfileTab('support')],
+  ['FinPrFeedback', 'profil', comp('profileSub', { sub: 'feedback' }), inProfileTab('feedback')],
 
   // ── eatkcal ────────────────────────────────────────────────────────────────
   // G15-S5: il kapısı eatkcal sekmesinde (sekme çubuğuyla); adım dev-only `vitrinGate` parametresi.

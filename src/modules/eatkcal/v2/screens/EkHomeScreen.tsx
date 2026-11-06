@@ -12,7 +12,8 @@
 //   şeridindeki tahmini süre — yalnız gösterim; ui/home/useDeliveryChip).
 // Veri yoksa bölüm gizlenir; panodaki [N]/[Ürün] yer tutucu, uydurma yok.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -28,6 +29,7 @@ import { useFeature } from '../../../../core/flags';
 import { MagnifyingGlass, Receipt, MapPin, CaretRight, X, BellRinging, Info } from '../../../../components/icons';
 import { EkInfoSheet } from '../ui/InfoSheet';
 import { TAB_BAR_TOTAL } from '../../../../constants/layout';
+import { tabBarContentInset, useInR3Shell } from '../../../shell';
 
 import { fetchCategories, fetchProductsByCategory, type Category, type CategoryProduct } from '../../../../lib/categories';
 import { fetchProducts, fetchFeaturedProducts } from '../../../../lib/products';
@@ -57,7 +59,10 @@ const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
 type StoreItem = { key: string; brand: Brand; cover: string | null };
 
 function EkHomeContent() {
-  const { c, t } = useEk();
+  const { c, t, insets } = useEk();
+  // G16-S2: yeni kabukta bar indi → alt boşluk barın yeni üst kenarına göre;
+  // bayrak kapalı kabukta (CustomTabBar) bugünkü değer AYNEN.
+  const inR3 = useInR3Shell();
   const navigation = useEkNav();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -314,7 +319,7 @@ function EkHomeContent() {
     </View>
   );
 
-  const bottom = TAB_BAR_TOTAL + 24;
+  const bottom = inR3 ? tabBarContentInset(insets.bottom) - insets.bottom : TAB_BAR_TOTAL + 24;
 
   if (searchOpen) {
     return (

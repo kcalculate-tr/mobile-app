@@ -10,10 +10,11 @@
 // Mağaza puanı / değerlendirme sayısı verisi yok → "★ [N] · [N] değerlendirme"
 // gizli; "Yorumları gör" yalnız onaylı yorum varsa.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
-import { EkSkeleton, ekType, useEk } from '../ui/kit';
+import { EkSkeleton, EkToastLayer, ekType, useEk } from '../ui/kit';
 import { useEkNav, type EkV2ParamList } from '../nav';
 import { CategoryPill, ProductCard } from '../ui/home/cards';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
@@ -290,15 +291,18 @@ export default function EkStoreScreen() {
         aggregate={vitrin.aggregate}
         subScores={vitrin.subScores}
       />
-      <Toast
-        visible={toast}
-        message={t('eatkcal.v2.store.added')}
-        onView={() => {
-          setToast(false);
-          navigation.navigate('EkCart');
-        }}
-        onDismiss={() => setToast(false)}
-      />
+      {/* G16-S2: Toast yüzen katmanda (önce kök sütunda ~69 pt yer tutup ızgarayı alttan kesiyordu). */}
+      <EkToastLayer bottom={insets.bottom + 16}>
+        <Toast
+          visible={toast}
+          message={t('eatkcal.v2.store.added')}
+          onView={() => {
+            setToast(false);
+            navigation.navigate('EkCart');
+          }}
+          onDismiss={() => setToast(false)}
+        />
+      </EkToastLayer>
     </View>
   );
 }

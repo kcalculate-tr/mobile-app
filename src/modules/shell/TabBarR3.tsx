@@ -26,10 +26,10 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
+import { FinText as Text } from '../../core/design/components/FinText';
 import Animated, {
   Easing,
   interpolate,
@@ -58,7 +58,7 @@ import {
 import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
-import { TAB_BAR_R3 } from './layout';
+import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
@@ -110,7 +110,7 @@ interface FlightState {
   key: number;
 }
 
-export function TabBarR3({ state, navigation }: BottomTabBarProps) {
+export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) {
   const theme = useTheme();
   const g = glassTokens(theme.isDark);
   const i18n = useT();
@@ -147,8 +147,10 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
   const nTabs = Math.max(visibleTabs.length, 1);
   const tabW = (pillFullW - 2 * TAB_BAR_R3.BUBBLE_PAD) / nTabs;
 
+  // G16-S2: barın alt kenarı home indicator'ın hemen üstünde (insets + 4; insets 0 → 8).
+  const bottomOffset = tabBarBottomOffset(insets.bottom);
   // Kabuk kök View'ının ekrandaki yüksekliği (uçuş koordinat dönüşümü için).
-  const rootHeight = TAB_BAR_R3.PILL_HEIGHT + insets.bottom + TAB_BAR_R3.BOTTOM_GAP;
+  const rootHeight = TAB_BAR_R3.PILL_HEIGHT + bottomOffset;
 
   // ── "Logla izi" durumu ──────────────────────────────────────────────────────
   const [badge, setBadge] = useState(0);
@@ -220,7 +222,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
 
   // ── Hareket: açılışta yükselme ──────────────────────────────────────────────
   const enter = useSharedValue(0);
-  const rise = TAB_BAR_R3.PILL_HEIGHT + TAB_BAR_R3.BOTTOM_GAP + insets.bottom;
+  const rise = TAB_BAR_R3.PILL_HEIGHT + bottomOffset;
   useEffect(() => {
     enter.value = reduced
       ? withTiming(1, { duration: REDUCED.duration })
@@ -361,9 +363,18 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
   const activeDef = activeIndex >= 0 ? visibleTabs[activeIndex] : undefined;
   const MiniIcon = activeDef ? TAB_ICON_BY_KIND[activeDef.kind] : TAB_ICON_BY_KIND.eat;
 
+  // G16-S2: sekme içinde yığın gibi açılan alt ekranlar (Profil › Ayarlar alt
+  // ekranları vb.) `navigation.setOptions({ tabBarStyle: { display: 'none' } })`
+  // ile barı gizler — o ekranlarda bar ve bar boşluğu YOK, yalnız insets.bottom.
+  const focusedKey = state.routes[state.index]?.key;
+  const focusedBarStyle = focusedKey
+    ? StyleSheet.flatten(descriptors?.[focusedKey]?.options?.tabBarStyle as never)
+    : undefined;
+  if ((focusedBarStyle as { display?: string } | undefined)?.display === 'none') return null;
+
   return (
     <View
-      style={[styles.root, { paddingBottom: insets.bottom + TAB_BAR_R3.BOTTOM_GAP }]}
+      style={[styles.root, { paddingBottom: bottomOffset }]}
       pointerEvents="box-none"
     >
       {/* "Logla izi" uçan öğesi (yalnız azaltılmamış harekette) */}
@@ -379,7 +390,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
 
       {/* Logla toast'ı — barın üstünde */}
       {toast ? (
-        <View style={styles.toastRow} pointerEvents="box-none">
+        <View style={[styles.toastRow, { bottom: bottomOffset + TAB_BAR_R3.PILL_HEIGHT + 8 }]} pointerEvents="box-none">
           <Toast
             visible
             message={toast.message}
@@ -715,7 +726,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: TAB_BAR_R3.PILL_HEIGHT + TAB_BAR_R3.BOTTOM_GAP + 8,
   },
   miniCenter: {
     alignItems: 'center',

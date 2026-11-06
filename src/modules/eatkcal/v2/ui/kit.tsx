@@ -9,16 +9,19 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type RefreshControlProps,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
+import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { useTheme, useReducedMotion, fontFamily, haptic, Button } from '../../../../core/design';
@@ -84,7 +87,14 @@ export function EkScreen({
   const { c, insets } = useEk();
   const pad = footer ? 96 + insets.bottom : bottomInset + insets.bottom;
   return (
-    <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top }]} testID={testID}>
+    // G16-S2: Android kenar-kenar pencerede adjustResize çalışmaz → ödeme notu/kupon gibi
+    // alanlar klavyenin altında kalmasın (bkz. core/design/keyboard). iOS'ta davranış
+    // verilmez → düz View gibi, bugünküyle aynı.
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'android' ? SCREEN_KEYBOARD_BEHAVIOR : undefined}
+      style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top }]}
+      testID={testID}
+    >
       {header}
       {scroll ? (
         <ScrollView
@@ -103,7 +113,7 @@ export function EkScreen({
         <View style={[styles.fill, contentStyle]}>{children}</View>
       )}
       {footer}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -246,6 +256,20 @@ export function EkButton({
       testID={testID}
       accessibilityLabel={accessibilityLabel}
     />
+  );
+}
+
+/**
+ * G16-S2 — Toast için yüzen katman. Final `Toast` akış içi bir kutudur; ekranın
+ * kök sütununa doğrudan konunca gizliyken bile ~69 pt yer kaplıyordu (yığın
+ * ekranlarında en alttaki "yer tutucu" + içerik kesilmesi). Katman absolute,
+ * `bottom` güvenli alan dahil verilir; dokunmayı yalnız Toast alır.
+ */
+export function EkToastLayer({ bottom, children }: { bottom: number; children: React.ReactNode }) {
+  return (
+    <View pointerEvents="box-none" style={[styles.toastLayer, { bottom }]}>
+      {children}
+    </View>
   );
 }
 
@@ -397,6 +421,7 @@ const styles = StyleSheet.create({
   textBtn: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
   card: { borderRadius: 20, padding: 14 },
   sticky: { position: 'absolute', left: 0, right: 0, bottom: 0, overflow: 'hidden' },
+  toastLayer: { position: 'absolute', left: 16, right: 16 },
   stickyInner: { paddingHorizontal: 16, paddingTop: 12 },
   chip: {
     minHeight: 44,

@@ -16,9 +16,9 @@
  * akışı Dalga 2 — bkz. CollectionScreen.tsx).
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, TouchableOpacity, View } from 'react-native';
+import { BackHandler, ScrollView, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,7 +85,7 @@ import BadgesScreen from './BadgesScreen';
 import CollectionScreen from './CollectionScreen';
 import { loadCollection, markWon, ProfileCollectionRow, type CollectionStamp } from '../../../collection';
 import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
-import { TAB_BAR_R3_HEIGHT } from '../../../shell';
+import { tabBarContentInset } from '../../../shell';
 import PublicPreviewScreen from './PublicPreviewScreen';
 import FinPrReviewsScreen from './FinPrReviewsScreen';
 import FinPrCouponsScreen from './FinPrCouponsScreen';
@@ -125,7 +125,29 @@ export default function FinPrProfileScreen() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
 
-  const [sub, setSub] = useState<SubScreen>('root');
+  // G16-S2 — YALNIZ __DEV__ vitrini: alt ekranı sekme içinde (gerçek kabukla) açar.
+  const route = useRoute<any>();
+  const [sub, setSub] = useState<SubScreen>(
+    () => (__DEV__ ? (route.params?.vitrinSub as SubScreen | undefined) : undefined) ?? 'root',
+  );
+  // G16-S2 (İlter, 6 Kas): alt ekranlar (Ayarlar alt ekranları, Makro, İlerleme…)
+  // sekme içinde yığın ekranı gibi açılır → yüzen tab bar ve bar boşluğu YOK;
+  // altta yalnız insets.bottom (FinScreen). Kökte bar geri gelir. Bu ekran
+  // yalnız `yeni_kabuk` açıkken çizilir → bayrak kapalı kabuk etkilenmez.
+  useEffect(() => {
+    (navigation as any).setOptions?.({ tabBarStyle: sub === 'root' ? undefined : { display: 'none' } });
+  }, [navigation, sub]);
+  // Android geri tuşu: alt ekrandan bir üst seviyeye döner (uygulamadan çıkmaz).
+  useFocusEffect(
+    useCallback(() => {
+      if (sub === 'root') return undefined;
+      const h = BackHandler.addEventListener('hardwareBackPress', () => {
+        setSub(sub === 'measurements' ? 'progress' : 'root');
+        return true;
+      });
+      return () => h.remove();
+    }, [sub]),
+  );
   // G15-S2: koleksiyon şeridi — yerel katalog atamalarından son kartlar (en yeni önce).
   const [collectionStamps, setCollectionStamps] = useState<CollectionStamp[]>([]);
   const [collectionNew, setCollectionNew] = useState(false);
@@ -273,7 +295,7 @@ export default function FinPrProfileScreen() {
     <FinScreen>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 120, gap: 18 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: tabBarContentInset(insets.bottom) + 14, gap: 18 }}
       >
         <ProfileSocialHeader
           name={userName}
@@ -454,7 +476,7 @@ export default function FinPrProfileScreen() {
         visible={collectionToast}
         dot
         message={tr('collection.added_toast')}
-        bottom={insets.bottom + TAB_BAR_R3_HEIGHT + 8}
+        bottom={tabBarContentInset(insets.bottom) + 8}
         onView={() => {
           setCollectionToast(false);
           setSub('collection');

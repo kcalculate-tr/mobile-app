@@ -22,6 +22,7 @@ export * from './motion';
 
 // Bileşenler
 export { AppText, TextScaleCapContext, withWeightFamily } from './components/AppText';
+export { FinText, resolveFinTextStyle } from './components/FinText';
 export { Button } from './components/Button';
 export { Chip } from './components/Chip';
 export { Card } from './components/Card';

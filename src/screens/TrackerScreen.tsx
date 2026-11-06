@@ -55,7 +55,7 @@ import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
 import { useT } from '../core/i18n';
 import { pickAutoLogInstances } from '../modules/gun/delivery';
 import { loadAutoLogged, markAutoLogged } from '../modules/gun/autoLogStore';
-import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../modules/shell';
+import { tabBarContentInset, useTabBarCollapse } from '../modules/shell';
 import ShareMealCardModal from '../components/share/ShareMealCardModal';
 import type { ShareMealData } from '../components/share/MealShareCard';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -2296,7 +2296,7 @@ const html = `
       <TextScaleCapContext.Provider value={yeniKabuk ? 1.3 : Number.POSITIVE_INFINITY}>
       <Reanimated.ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[s.scroll, asTab ? { paddingBottom: insets.bottom + TAB_BAR_R3_HEIGHT } : null]}
+        contentContainerStyle={[s.scroll, asTab ? { paddingBottom: tabBarContentInset(insets.bottom) } : null]}
         showsVerticalScrollIndicator={false}
         onScroll={asTab ? scrollHandler : undefined}
         scrollEventThrottle={16}
@@ -2797,7 +2797,7 @@ const html = `
           visible={homeToast != null}
           message={homeToast?.message ?? ''}
           bowl={homeToast?.kind === 'delivered'}
-          bottom={insets.bottom + TAB_BAR_R3_HEIGHT + 8}
+          bottom={tabBarContentInset(insets.bottom) + 8}
           onUndo={homeToast ? onHomeToastUndo : undefined}
           onView={homeToast?.kind === 'delivered' ? () => setHomeToast(null) : undefined}
           onDismiss={dismissHomeToast}

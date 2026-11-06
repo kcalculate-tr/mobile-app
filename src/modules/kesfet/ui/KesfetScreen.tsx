@@ -32,7 +32,7 @@ import { useNutritionSummary } from '../../../hooks/useNutritionSummary';
 import type { LogOriginFrame } from './MealCard';
 import { getGunClient } from '../../gun';
 import { getProfilClient } from '../../profil';
-import { TAB_BAR_R3_HEIGHT, useTabBarCollapse, useTabBarCollapsedValue } from '../../shell';
+import { tabBarContentInset, useTabBarCollapse, useTabBarCollapsedValue } from '../../shell';
 import type { DayRing } from '../../gun/types';
 import type { FeedPost, MealType, ReportTargetType } from '../types';
 
@@ -166,7 +166,7 @@ export function KesfetScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   // Sekme olarak açıldığında (yeni kabuk): geri düğmesi yok, alt boşluk kabuğun
-  // tab barına göre — `TAB_BAR_R3_HEIGHT` (tek kaynak, S2 layout.ts = 96). Stack
+  // tab barına göre — `tabBarContentInset` (tek kaynak, shell/layout.ts; G16-S2). Stack
   // olarak açılınca (bildirim/derin bağlantı) bugünkü boşluk korunur.
   const asTab = route.params?.asTab === true;
   // G15 — YALNIZ __DEV__ vitrini: Final ara durumlarını açar (ör. 'comments',
@@ -177,7 +177,7 @@ export function KesfetScreen() {
   const vitrinScroll: number | undefined = __DEV__ ? route.params?.vitrinScroll : undefined;
   const listRef = useRef<any>(null);
   const { summary } = useNutritionSummary();
-  const listBottomPad = insets.bottom + (asTab ? TAB_BAR_R3_HEIGHT : 120);
+  const listBottomPad = asTab ? tabBarContentInset(insets.bottom) : insets.bottom + 120;
   // Kaydırınca tab barı küçült (yalnız sekme bağlamında; stack'te provider yok
   // → useTabBarCollapse no-op). scrollY → useTabBarCollapse (G11-CONTRACT m.39).
   const scrollY = useSharedValue(0);

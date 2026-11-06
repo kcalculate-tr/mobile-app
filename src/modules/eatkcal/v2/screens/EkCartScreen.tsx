@@ -5,7 +5,8 @@
 // yeniden doğrulama ve "Siparişe devam" adımları bugünkü
 // src/modules/eatkcal/screens/CartScreen.tsx (KİMSE) ile AYNI sırada.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Basket, CaretRight, Minus, Plus, Tag, Trash } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
@@ -27,7 +28,7 @@ import { getEffectivePrice } from '../../../../utils/price';
 import { track } from '../../../../lib/analytics';
 import type { DeliveryRuleStatus, Product } from '../../../../types';
 import { useEkNav } from '../nav';
-import { EkHeader, EkScreen, EkSkeleton, EkStickyBar, ekType, money, useEk, EkKV } from '../ui/kit';
+import { EkHeader, EkScreen, EkSkeleton, EkStickyBar, EkToastLayer, ekType, money, useEk, EkKV } from '../ui/kit';
 import { EkErrorCard } from '../ui/ErrorCard';
 import { CouponSheet } from '../ui/CouponSheet';
 import { priceError, stockError, type EkErrorModel } from '../model/errors';
@@ -47,7 +48,7 @@ function useCartHydrated(): boolean {
 
 export default function EkCartScreen() {
   const navigation = useEkNav();
-  const { c, t } = useEk();
+  const { c, t, insets } = useEk();
   const { user } = useAuth();
   const hydrated = useCartHydrated();
   // YALNIZ __DEV__ vitrini (FinEkCartSkeleton): iskelet hâlinde başlar.
@@ -280,6 +281,7 @@ export default function EkCartScreen() {
       scrollRef={scrollRef}
       header={<EkHeader title={t('eatkcal.v2.cart.title')} onBack={navigation.canGoBack() ? navigation.goBack : undefined} />}
       footer={
+        <>
         <EkStickyBar>
           <Pressable
             onPress={handleContinue}
@@ -292,6 +294,11 @@ export default function EkCartScreen() {
             </Text>
           </Pressable>
         </EkStickyBar>
+        {/* G16-S2: Toast akışta değil, alt barın üstünde yüzer (önce kaydırma içeriğinin sonunda ~69 pt yer tutuyordu). */}
+        <EkToastLayer bottom={Math.max(insets.bottom, 12) + 84}>
+          <Toast visible={!!toast} message={toast ?? ''} onDismiss={() => setToast(null)} autoHideMs={2400} />
+        </EkToastLayer>
+        </>
       }
     >
       <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }} testID="ek-cart">
@@ -510,7 +517,6 @@ export default function EkCartScreen() {
         items={couponItems}
         onApplied={handleCouponApplied}
       />
-      <Toast visible={!!toast} message={toast ?? ''} onDismiss={() => setToast(null)} autoHideMs={2400} />
     </EkScreen>
   );
 }

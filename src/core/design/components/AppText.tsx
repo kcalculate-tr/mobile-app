@@ -1,7 +1,8 @@
 import React, { createContext, useContext } from 'react';
-import { StyleSheet, Text, TextProps, TextStyle } from 'react-native';
+import { Platform, StyleSheet, Text, TextProps, TextStyle } from 'react-native';
 import { useTheme } from '../ThemeProvider';
 import { type as typeScale, TypeScaleKey, role as roleScale, RoleKey } from '../typography';
+import { useFeature } from '../../flags';
 
 /**
  * Yeni tasarımın metin bileşeni.
@@ -45,9 +46,22 @@ export function AppText({
 
   const flat = StyleSheet.flatten([entry.style, { color }, style]) as TextStyle;
   const weighted = withWeightFamily(flat);
+  // G16-S2 — Android: iOS ile aynı dikey ölçü (bkz. FinText). Stil açıkça verirse dokunulmaz.
+  // Yalnız yeni kabukta: AppText bayrak kapalı bir yolda da (Keşfet kapalıyken paylaşılan
+  // gönderi iniş kartları) çiziliyor → bayrak kapalıyken Android'de de bugünküyle aynı.
+  const yeniKabuk = useFeature('yeni_kabuk');
+  const final =
+    yeniKabuk && Platform.OS === 'android' && flat.includeFontPadding === undefined
+      ? { ...weighted, includeFontPadding: false }
+      : weighted;
   const cap = Math.min(entry.scaleCap, useContext(TextScaleCapContext));
 
-  return <Text allowFontScaling maxFontSizeMultiplier={cap} style={weighted} {...rest} />;
+  // İç içe FinText (ör. kalın parça) bu ailenin ağırlık dosyasına geçsin.
+  return (
+    <AppTextFamily value={final.fontFamily ?? null}>
+      <Text allowFontScaling maxFontSizeMultiplier={cap} style={final} {...rest} />
+    </AppTextFamily>
+  );
 }
 
 /**
@@ -56,6 +70,10 @@ export function AppText({
  * kendi kademesinin tavanını kullanır (davranış değişmez).
  */
 export const TextScaleCapContext = createContext<number>(Number.POSITIVE_INFINITY);
+
+/** FinText'in ebeveyn-aile bağlamı (döngüsel import olmasın diye burada tanımlı). */
+export const AppTextFamilyContext = createContext<string | null>(null);
+const AppTextFamily = AppTextFamilyContext.Provider;
 
 const JAKARTA: Record<string, string> = {
   '400': 'PlusJakartaSans_400Regular',

@@ -116,3 +116,13 @@ export function useHeaderCollapse(
   );
   return { progress };
 }
+
+/**
+ * G16-S2 — Bileşen yeni kabuğun (TabBarR3) sekme ağacında mı? Sağlayıcı yalnız
+ * TabNavigatorR3'ü sarar: bayrak kapalı kabukta (CustomTabBar) ve kök yığın
+ * ekranlarında `false`. Hem eski hem yeni kabukta sekme olan ekranlar (ör.
+ * eatkcal v2 ana sayfa) alt boşluğu buna göre seçer → bayrak kapalı AYNEN.
+ */
+export function useInR3Shell(): boolean {
+  return useContext(TabBarCollapseContext) != null;
+}
