@@ -21,7 +21,7 @@ export type { BricolageFamily } from './fonts';
 export * from './motion';
 
 // Bileşenler
-export { AppText } from './components/AppText';
+export { AppText, TextScaleCapContext, withWeightFamily } from './components/AppText';
 export { Button } from './components/Button';
 export { Chip } from './components/Chip';
 export { Card } from './components/Card';

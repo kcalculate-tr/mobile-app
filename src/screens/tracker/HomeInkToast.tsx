@@ -97,7 +97,7 @@ export function HomeInkToast({
 
 const styles = StyleSheet.create({
   layer: { position: 'absolute', left: 16, right: 16, zIndex: 31 },
-  bowl: { position: 'absolute', bottom: 64, left: 0, right: 0, alignItems: 'center', height: 110, justifyContent: 'flex-end' },
+  bowl: { position: 'absolute', bottom: 34, left: 0, right: 0, alignItems: 'center' },
   bar: {
     height: 52,
     borderRadius: 26,

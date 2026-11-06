@@ -43,7 +43,7 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
-import { useTheme } from '../core/design';
+import { TextScaleCapContext, useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
@@ -2291,6 +2291,9 @@ const html = `
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* G15-S2 (FinHomeXL): yeni kabukta en büyük yazıda başlık/etiketler kırpılmasın —
+          Final XL ≈ 1.3× tavan. Bayrak kapalıyken değer sınırsız (AppText zaten yok). */}
+      <TextScaleCapContext.Provider value={yeniKabuk ? 1.3 : Number.POSITIVE_INFINITY}>
       <Reanimated.ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[s.scroll, asTab ? { paddingBottom: insets.bottom + TAB_BAR_R3_HEIGHT } : null]}
@@ -2747,6 +2750,7 @@ const html = `
           </FadeSwap>
         )}
       </Reanimated.ScrollView>
+      </TextScaleCapContext.Provider>
 
       {/* Paylaşım kartı modalı (G5-S4) — yalnız bayrak açıkken. */}
       {paylasimKarti ? (
@@ -2782,6 +2786,7 @@ const html = `
           onUndo={homeToast ? onHomeToastUndo : undefined}
           onView={homeToast?.kind === 'delivered' ? () => setHomeToast(null) : undefined}
           onDismiss={dismissHomeToast}
+          autoHideMs={__DEV__ && vitrinParams.vitrinDelivered ? 0 : 4000}
         />
       ) : null}
 

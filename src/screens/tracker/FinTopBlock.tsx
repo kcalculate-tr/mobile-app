@@ -135,7 +135,7 @@ function MacroChip({ label, value, target, lang }: { label: string; value: numbe
         <AppText style={[styles.chipName, { color: k.sec }]} numberOfLines={1}>
           {label}
         </AppText>
-        <AppText style={styles.chipVal} numberOfLines={1}>
+        <AppText style={styles.chipVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {`${Math.round(value)} / ${Math.round(target)} g`}
         </AppText>
       </View>

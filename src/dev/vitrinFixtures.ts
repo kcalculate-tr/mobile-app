@@ -47,7 +47,7 @@ function meals(long = false, delivered = false): any[] {
       carbs: 44,
       fat: 18,
       note: null,
-      consumed_at: new Date().toISOString(),
+      consumed_at: todayAt(19, 20),
     });
   }
   return rows;

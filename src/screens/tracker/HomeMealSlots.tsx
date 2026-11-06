@@ -69,6 +69,11 @@ const PORTIONS: { label: string; value: number }[] = [
   { label: '2', value: 2 },
 ];
 
+/** FinHomeEN: "0.5 · 1 · 1.5 · 2"; TR "½ · 1 · 1½ · 2". */
+function portionLabel(p: { label: string; value: number }, lang: 'tr' | 'en'): string {
+  return lang === 'en' ? String(p.value) : p.label;
+}
+
 function StrokeIcon({ d, size, color }: { d: string; size: number; color: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -418,7 +423,7 @@ function SlotItem({
                     onPress={() => onPick(p.value)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={tt('gun.portion_pick', { p: p.label })}
+                    accessibilityLabel={tt('gun.portion_pick', { p: portionLabel(p, numLang) })}
                     style={[
                       styles.portion,
                       on
@@ -430,7 +435,7 @@ function SlotItem({
                       variant="caption"
                       style={[styles.portionText, { color: on ? t.color.bg : t.color.ink }]}
                     >
-                      {p.label}
+                      {portionLabel(p, numLang)}
                     </AppText>
                   </Pressable>
                 );
@@ -445,10 +450,8 @@ function SlotItem({
               accessibilityLabel={tt('gun.share_item')}
               style={styles.menuBtn}
             >
-              <ShareNetwork size={16} color={t.color.ink} />
-              <AppText variant="caption" style={styles.menuBtnText}>
-                {tt('gun.share_item')}
-              </AppText>
+              {/* Final satırında Paylaş yok; özellik (paylasim_karti) kalır → yalnız ikon, satır kırılmasın. */}
+              <ShareNetwork size={18} color={t.color.ink} />
             </Pressable>
           ) : null}
           <Pressable
@@ -539,7 +542,7 @@ const styles = StyleSheet.create({
   dot: { position: 'absolute', left: -10, top: 18, width: 8, height: 8, borderRadius: 4 },
   editLink: { alignSelf: 'flex-start', marginLeft: 56, minWidth: 44, minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   editText: { fontWeight: '600', textDecorationLine: 'underline' },
-  menu: { paddingLeft: 56, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  menu: { paddingLeft: 56, flexDirection: 'row', alignItems: 'center', gap: 6 },
   menuSpacer: { flex: 1 },
   portion: {
     minWidth: 44,
