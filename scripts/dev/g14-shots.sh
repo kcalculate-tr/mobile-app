@@ -14,6 +14,10 @@
 #              simülatörüne DOKUNMAZ.
 #   G14_WAIT   bekleme sn (varsayılan 3)
 #   G14_OUT    çıktı klasörü
+#   G14_MODE   storage → openurl/onay kutusu YOK: bekleyen pano adı uygulamanın
+#              AsyncStorage manifest.json'una (g14-vitrin-pending) yazılır, uygulama
+#              terminate + launch edilir (Erişilebilirlik izni gerekmez). Ön koşul:
+#              uygulama bir kez açılıp Metro'ya bağlanmış olmalı (manifest var).
 # Ön koşul: dev client kurulu + Metro açık (CLAUDE.md "Yerel iOS geliştirme").
 set -euo pipefail
 
@@ -49,6 +53,25 @@ accept_open_prompt() {
     -e 'tell application "System Events" to key code 36' > /dev/null 2>&1 || true
 }
 
+MODE="${G14_MODE:-openurl}"
+BUNDLE_ID="${G14_BUNDLE:-com.kcalmobile.app}"
+MANIFEST=""
+if [ "$MODE" = "storage" ]; then
+  DATA="$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data)"
+  MANIFEST="$DATA/Library/Application Support/$BUNDLE_ID/RCTAsyncLocalStorage_V1/manifest.json"
+  [ -f "$MANIFEST" ] || { echo "manifest yok: $MANIFEST (uygulamayı bir kez aç)" >&2; exit 1; }
+fi
+set_pending() {
+  python3 - "$MANIFEST" "$1" <<'PY'
+import json,sys
+p,pano=sys.argv[1],sys.argv[2]
+m=json.load(open(p))
+m['g14-vitrin-pending']=pano
+m.pop('g15-vitrin-last',None)
+json.dump(m,open(p,'w'),ensure_ascii=False,separators=(',',':'))
+PY
+}
+
 LAST_SCHEME=""
 LAST_SIZE=""
 while IFS=$'\t' read -r PANO SCHEME SIZE; do
@@ -61,8 +84,14 @@ while IFS=$'\t' read -r PANO SCHEME SIZE; do
     xcrun simctl ui "$UDID" content_size "$SIZE"
     LAST_SIZE="$SIZE"
   fi
-  xcrun simctl openurl "$UDID" "kcal://dev/screen/$PANO"
-  accept_open_prompt
+  if [ "$MODE" = "storage" ]; then
+    xcrun simctl terminate "$UDID" "$BUNDLE_ID" > /dev/null 2>&1 || true
+    set_pending "$PANO"
+    xcrun simctl launch "$UDID" "$BUNDLE_ID" > /dev/null
+  else
+    xcrun simctl openurl "$UDID" "kcal://dev/screen/$PANO"
+    accept_open_prompt
+  fi
   sleep "$WAIT"
   xcrun simctl io "$UDID" screenshot --type=png "$OUT/$PANO.png" > /dev/null 2>&1
   echo "ok $PANO"
