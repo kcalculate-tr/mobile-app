@@ -184,6 +184,8 @@ export interface CommentAuthor {
   handle: string;
   avatar_url: string | null;
   verified: boolean;
+  // G15 — İSTEĞE BAĞLI: FinDetail yorum satırındaki rol etiketi (Diyetisyen…).
+  role?: string | null;
 }
 
 export interface Comment {
