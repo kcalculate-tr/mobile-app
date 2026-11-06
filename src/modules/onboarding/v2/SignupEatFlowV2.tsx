@@ -9,21 +9,18 @@
 //  · telefon: `addresses.contact_phone` + `backfillProfileContact` (profil iletişim)
 // Yalnız `yeni_onboarding` arkasında (SignupEatGate). Adres/telefon dosyalarında diff=0.
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../../core/design/components/AppText';
 import { haptic } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { getSupabaseClient } from '../../../core/supabase';
-import { Check, NavigationArrow } from '../../../components/icons';
+import { NavigationArrow } from '../../../components/icons';
 import { fetchAllDeliveryZones } from '../../../lib/delivery';
 import { normalizeAddress } from '../../../lib/addresses';
 import { mapSupabaseErrorToUserMessage } from '../../../lib/supabaseErrors';
 import { useAddressStore } from '../../../store/addressStore';
-import { useEatkcalRegistration } from '../../profil/useRegistration';
 import {
   EMPTY_FORM,
   EMPTY_ZONE_INDEX,
@@ -49,14 +46,14 @@ import {
   fetchUserAddressRows,
   insertAddress,
 } from '../../eatkcal/v2/model/addressSave';
+import { CityGateView } from '../../eatkcal/v2/ui/gate/CityGateView';
+import { useEk } from '../../eatkcal/v2/ui/kit';
 import { AddressMap, NoMapCard, type AddressMapHandle } from '../../eatkcal/v2/ui/address/AddressMap';
 import { AddressSelectField, OptionPickerSheet } from '../../eatkcal/v2/ui/address/fields';
 import { OnbButton } from '../components/pieces';
 import { useOnb } from '../components/onbTheme';
 import { FormScreen, OnbField } from './FormScreen';
 import {
-  SIGNUP_EAT_CITIES,
-  canContinueCity,
   formatPhoneMask,
   isValidTrMobile,
   nextStep,
@@ -130,118 +127,15 @@ export default function SignupEatFlowV2({
   );
 }
 
-// ── Panel 1 · Şehrini seç (alttan sheet) ───────────────────────────────────────
+// ── Panel 1 · Şehrini seç — G16-S1: Final FinCityR1 fotoğraflı kapı (tek bileşen) ──
+// Eski alttan-sheet şehir listesi kaldırıldı; eatkcal sekmesi ve EkCityGate rotasıyla
+// AYNI `CityGateView` (FinCityR1 / FinWaitlistR1 / FinEatBerlin). Doğrulama mantığı
+// (setCity + checkCity → checkDeliveryCity RPC) CityGateView içinde aynen.
 function CityPanel({ onBack, onPassed }: { onBack: () => void; onPassed: () => void }) {
-  const P = useOnb();
-  const { t } = useT();
-  const insets = useSafeAreaInsets();
-  const reg = useEatkcalRegistration();
-  const [selected, setSelected] = useState<string | null>(null);
-  const [notified, setNotified] = useState<Record<string, boolean>>({});
-
-  const pick = (city: { name: string; allowed: boolean }) => {
-    haptic('selection');
-    setSelected(city.name);
-    if (city.allowed) reg.setCity(city.name);
-  };
-
-  const proceed = async () => {
-    if (!selected) return;
-    const ok = await reg.checkCity();
-    if (ok) onPassed();
-  };
-
+  const { c } = useEk();
   return (
-    <View style={[styles.root, { backgroundColor: P.bg }]} testID="signup-eat-city">
-      <StatusBar style={P.isDark ? 'light' : 'dark'} />
-      <Pressable
-        style={[StyleSheet.absoluteFill, { backgroundColor: P.isDark ? 'rgba(0,0,0,0.55)' : 'rgba(10,10,10,0.32)' }]}
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel={t(`${K}back`)}
-      />
-      <View
-        style={[
-          styles.sheet,
-          { backgroundColor: P.isDark ? '#1C1C1E' : P.bg, paddingBottom: Math.max(insets.bottom, 16) + 8 },
-        ]}
-      >
-        <View style={[styles.handle, { backgroundColor: P.line2 }]} />
-        <AppText style={[styles.sheetTitle, { color: P.ink }]}>{t(`${K}city_title`)}</AppText>
-        <AppText textRole="bodySm" style={{ color: P.sec, marginTop: 4 }}>
-          {t(`${K}city_sub`)}
-        </AppText>
-
-        <View style={{ marginTop: 12 }}>
-          {SIGNUP_EAT_CITIES.map((city, i) => {
-            const on = selected === city.name;
-            return (
-              <Pressable
-                key={city.name}
-                onPress={() => pick(city)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on, disabled: !city.allowed }}
-                testID={`city-${city.name}`}
-                style={[
-                  styles.cityRow,
-                  { borderTopColor: P.line, borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <AppText
-                    textRole="body"
-                    style={{
-                      color: city.allowed ? P.ink : P.sec,
-                      fontFamily: city.allowed ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_500Medium',
-                      fontSize: 16,
-                    }}
-                  >
-                    {city.name}
-                  </AppText>
-                  <AppText textRole="helper" style={{ color: P.sec }}>
-                    {city.allowed ? t(`${K}city_active`) : t(`${K}city_soon`)}
-                  </AppText>
-                </View>
-                {city.allowed ? (
-                  on ? (
-                    <View style={[styles.tick, { backgroundColor: P.ink }]}>
-                      <Check size={14} color={P.onInk} weight="bold" />
-                    </View>
-                  ) : null
-                ) : (
-                  <Pressable
-                    onPress={() => setNotified((p) => ({ ...p, [city.name]: true }))}
-                    accessibilityRole="button"
-                    style={[styles.notify, { borderColor: P.line2 }]}
-                  >
-                    <AppText textRole="helper" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold' }}>
-                      {notified[city.name] ? t(`${K}city_notified`) : t(`${K}city_notify`)}
-                    </AppText>
-                  </Pressable>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {reg.messageKey ? (
-          <AppText textRole="helper" style={styles.msg}>
-            {t(reg.messageKey)}
-          </AppText>
-        ) : reg.status === 'error' ? (
-          <AppText textRole="helper" style={styles.msg}>
-            {t('eatkcal.city_gate.error')}
-          </AppText>
-        ) : null}
-
-        <OnbButton
-          label={t(`${K}continue`)}
-          onPress={proceed}
-          disabled={!canContinueCity(selected, reg.status === 'checking')}
-          style={{ marginTop: 12 }}
-          icon={() => (reg.status === 'checking' ? <ActivityIndicator color={P.onInk} /> : null)}
-        />
-      </View>
+    <View style={{ flex: 1, backgroundColor: c.bg }} testID="signup-eat-city">
+      <CityGateView onAllowed={onPassed} onExit={onBack} showTabSpace={false} />
     </View>
   );
 }
