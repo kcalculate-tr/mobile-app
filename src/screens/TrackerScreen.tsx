@@ -43,6 +43,7 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
+import { useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
@@ -882,6 +883,7 @@ export default function TrackerScreen() {
   // false'a çözer) bu ekran bugünküyle BİREBİR aynı: yeni başlık render olmaz,
   // eski kalori halkası yerinde kalır. (ENTEGRASYONA: registry 'yeni_kabuk'.)
   const yeniKabuk = useFeature('yeni_kabuk' as FlagKey);
+  const designTheme = useTheme();
   const route = useRoute();
   const asTab = (route.params as { asTab?: boolean } | undefined)?.asTab === true;
   // Logla izi tetikleyici — öğün kaydedilince artar; yalnız yeni başlık okur.
@@ -2086,7 +2088,9 @@ const html = `
   if (!isAuthenticated) return null;
 
   return (
-    <ScreenContainer edges={['top']} style={s.container}>
+    // G14-S1 — yeni kabukta zemin temadan (koyu temada açık gri zemin üstünde
+    // temalı metinler okunmuyordu). Bayrak kapalıyken stil nesnesi AYNEN (snapshot).
+    <ScreenContainer edges={['top']} style={yeniKabuk ? [s.container, { backgroundColor: designTheme.color.bg }] : s.container}>
       {/* ── Kalori Ekle Modal ── */}
       <Modal
         visible={mealModalVisible}
