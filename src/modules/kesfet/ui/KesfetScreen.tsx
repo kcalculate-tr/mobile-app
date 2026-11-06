@@ -23,6 +23,7 @@ import { haptic } from '../../../core/design';
 import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
+import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
 import { emitLogFlight, emitLogUndo } from '../events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
@@ -231,9 +232,11 @@ export function KesfetScreen() {
     },
   ).current;
 
-  // İlk yükleme + gün halkaları.
+  // İlk yükleme + gün halkaları. (Vitrin: `initialTab: 'following'` → Takip sekmesiyle aç.)
   useEffect(() => {
-    if (useKesfetStore.getState().posts.length === 0) {
+    if (__DEV__ && route.params?.initialTab === 'following') {
+      void useKesfetStore.getState().setTab('following');
+    } else if (useKesfetStore.getState().posts.length === 0) {
       void useKesfetStore.getState().load();
     }
     let alive = true;
@@ -285,11 +288,12 @@ export function KesfetScreen() {
   }, [sosyalBildirim]);
 
   // Önerilen hesaplar — for_you akışındaki can_post (rozetli) yazarlardan türet
-  // (gerçek veri; uydurma yok). Takip boşken gösterilir.
-  useEffect(() => {
-    if (tab !== 'for_you') return;
+  // (gerçek veri; uydurma yok). Takip boşken gösterilir. G15: Takip sekmesiyle
+  // açılınca (henüz for_you yüklenmemiş) for_you bir kez okunur; kısa tanıtım
+  // herkese açık profilden (bio) gelir — yoksa yalnız @kullanıcı adı.
+  const suggestionsFrom = useCallback((list: FeedPost[]) => {
     const seen = new Map<string, SuggestedAccount>();
-    for (const p of posts) {
+    for (const p of list) {
       if (roleBadgeKey(p.author.role) && !seen.has(p.author.id)) {
         seen.set(p.author.id, {
           id: p.author.id,
@@ -302,8 +306,37 @@ export function KesfetScreen() {
       }
       if (seen.size >= 3) break;
     }
-    if (seen.size > 0) setSuggestions(Array.from(seen.values()));
-  }, [tab, posts]);
+    return Array.from(seen.values());
+  }, []);
+  useEffect(() => {
+    if (tab !== 'for_you') return;
+    const next = suggestionsFrom(posts);
+    if (next.length > 0) setSuggestions(next);
+  }, [tab, posts, suggestionsFrom]);
+  const showFollowingEmptyNow = tab === 'following' && !loading && !error && posts.length === 0;
+  const bioFetched = useRef(false);
+  useEffect(() => {
+    if (!showFollowingEmptyNow || bioFetched.current) return;
+    bioFetched.current = true;
+    let alive = true;
+    void (async () => {
+      let list = suggestions;
+      if (list.length === 0) {
+        const page = await getKesfetClient().getFeed({ tab: 'for_you', lang }).catch(() => null);
+        list = page ? suggestionsFrom(page.items) : [];
+      }
+      const withBio = await Promise.all(
+        list.map(async (a) => {
+          const prof = await getProfilClient().getPublicProfile({ handle: a.handle }).catch(() => null);
+          return { ...a, bio: prof?.bio ?? null };
+        }),
+      );
+      if (alive && withBio.length > 0) setSuggestions(withBio);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [showFollowingEmptyNow, suggestions, suggestionsFrom, lang]);
 
   const nowMs = Date.now();
   // G15 — FinFeedTip balonu ilk öğün kartlı gönderinin logla düğmesine çapalanır.

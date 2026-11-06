@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import NetInfo from '@react-native-community/netinfo';
-import { AppText, useTheme, useBreath } from '../../../core/design';
+import { AppText, fontFamily, useTheme, useBreath } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Avatar } from './Avatar';
 import { Icon } from './icons';
@@ -36,6 +36,8 @@ export interface SuggestedAccount {
   role: string;
   verified: boolean;
   avatar_url: string | null;
+  /** G15 — kısa tanıtım (herkese açık profil `bio`); yoksa yalnız @kullanıcı adı. */
+  bio?: string | null;
 }
 
 function Block({ w, h, r = 8, shimmer }: { w: number | `${number}%`; h: number; r?: number; shimmer?: ReturnType<typeof useBreath>['style'] }) {
@@ -132,18 +134,23 @@ function SuggestionRow({
   const { t: tr } = useT();
   const badgeKey = roleBadgeKey(account.role);
   return (
-    <View style={styles.sugRow}>
-      <Avatar name={account.display_name} url={account.avatar_url} official={badgeKey === 'official'} />
+    <View style={[styles.sugRow, { borderTopColor: t.color.line }]}>
+      <Avatar name={account.display_name} url={account.avatar_url} official={badgeKey === 'official'} size={44} />
       <View style={styles.sugInfo}>
         <View style={styles.sugNameRow}>
-          <AppText variant="caption" style={{ fontWeight: '700' }} numberOfLines={1}>
+          <AppText style={[styles.sugName, { color: t.color.ink }]} numberOfLines={1}>
             {account.display_name}
           </AppText>
-          {account.verified ? <Icon name="seal" size={14} color={t.color.accentLine} /> : null}
+          {account.verified ? <Icon name="seal" size={16} color={t.color.accentLine} /> : null}
+          {badgeKey ? (
+            <AppText style={[styles.sugSub, { color: t.color.secondary }]} numberOfLines={1}>
+              {tr(`kesfet.ui.badge.${badgeKey}`)}
+            </AppText>
+          ) : null}
         </View>
-        <AppText variant="caption" tone="secondary" numberOfLines={1}>
+        <AppText style={[styles.sugSub, { color: t.color.secondary }]} numberOfLines={2}>
           @{account.handle}
-          {badgeKey ? ` · ${tr(`kesfet.ui.badge.${badgeKey}`)}` : ''}
+          {account.bio ? ` · ${account.bio}` : ''}
         </AppText>
       </View>
       <Pressable
@@ -153,15 +160,13 @@ function SuggestionRow({
         hitSlop={8}
         style={({ pressed }) => [styles.followBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
       >
-        <AppText variant="caption" style={{ color: t.color.surface, fontWeight: '700' }}>
-          {tr('profil.follow')}
-        </AppText>
+        <AppText style={[styles.followText, { color: t.color.bg }]}>{tr('profil.follow')}</AppText>
       </Pressable>
     </View>
   );
 }
 
-/** "Takip" sekmesi boş — başlık, açıklama ve önerilen hesaplar. */
+/** "Takip" sekmesi boş — Final FinFollowingEmpty: ikon dairesi, başlık, açıklama, önerilen hesaplar. */
 export function FollowingEmpty({
   suggestions,
   onFollow,
@@ -172,23 +177,21 @@ export function FollowingEmpty({
   const t = useTheme();
   const { t: tr } = useT();
   return (
-    <View style={styles.emptyWrap}>
-      <AppText variant="heading" style={styles.emptyTitle}>
-        {tr('kesfet.ui.following_empty_title')}
-      </AppText>
-      <AppText variant="body" tone="secondary" style={styles.emptyDesc}>
-        {tr('kesfet.ui.following_empty_desc')}
-      </AppText>
+    <View>
+      <View style={styles.emptyWrap}>
+        <View style={[styles.emptyIcon, { backgroundColor: t.color.line }]}>
+          <Icon name="users" size={24} color={t.color.ink} />
+        </View>
+        <AppText style={[styles.emptyTitle, { color: t.color.ink }]}>{tr('kesfet.ui.following_empty_title')}</AppText>
+        <AppText style={[styles.emptyDesc, { color: t.color.secondary }]}>{tr('kesfet.ui.following_empty_desc')}</AppText>
+      </View>
       {suggestions.length > 0 ? (
-        <View style={styles.sugSection}>
-          <AppText variant="caption" tone="secondary" style={styles.sugTitle}>
-            {tr('kesfet.ui.suggested_title')}
-          </AppText>
-          <View style={[styles.sugCard, { backgroundColor: t.color.surface, borderColor: t.color.line }]}>
-            {suggestions.map((a) => (
-              <SuggestionRow key={a.id} account={a} onFollow={onFollow} />
-            ))}
-          </View>
+        <View>
+          <AppText style={[styles.sugTitle, { color: t.color.secondary }]}>{tr('kesfet.ui.suggested_title')}</AppText>
+          {suggestions.map((a) => (
+            <SuggestionRow key={a.id} account={a} onFollow={onFollow} />
+          ))}
+          <View style={[styles.sugEnd, { borderTopColor: t.color.line }]} />
         </View>
       ) : null}
     </View>
@@ -202,14 +205,17 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   offlineIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   retry: { minHeight: 44, paddingHorizontal: 20, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyWrap: { padding: 24, gap: 8 },
-  emptyTitle: {},
-  emptyDesc: {},
-  sugSection: { marginTop: 16, gap: 8 },
-  sugTitle: { fontWeight: '600', textTransform: 'uppercase' },
-  sugCard: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 12 },
-  sugRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  sugInfo: { flex: 1, minWidth: 0, gap: 2 },
+  emptyWrap: { paddingTop: 36, paddingHorizontal: 16, paddingBottom: 20, alignItems: 'flex-start', gap: 6 },
+  emptyIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  emptyTitle: { fontFamily: fontFamily.headingSemibold, fontSize: 20, lineHeight: 26 },
+  emptyDesc: { fontFamily: fontFamily.bodyRegular, fontSize: 14, lineHeight: 20 },
+  sugTitle: { paddingHorizontal: 16, paddingBottom: 6, fontFamily: fontFamily.bodySemibold, fontSize: 13, lineHeight: 18 },
+  sugRow: { minHeight: 72, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  sugEnd: { borderTopWidth: StyleSheet.hairlineWidth },
+  sugInfo: { flex: 1, minWidth: 0 },
   sugNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  followBtn: { minHeight: 36, paddingHorizontal: 16, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  sugName: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 21, flexShrink: 1 },
+  sugSub: { fontFamily: fontFamily.bodyRegular, fontSize: 13, lineHeight: 18 },
+  followBtn: { height: 36, paddingHorizontal: 14, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  followText: { fontFamily: fontFamily.bodySemibold, fontSize: 14 },
 });

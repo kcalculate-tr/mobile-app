@@ -492,3 +492,34 @@ export function resolveVitrinPhotos<T>(value: T): T {
   };
   return walk(value);
 }
+
+/** G15-S3 — Önerilen hesapların kısa tanıtımı (FinFollowingEmpty): herkese açık profil bio'su. */
+const VITRIN_BIOS: Record<string, { bio: string; role: string; name: string }> = {
+  kcal: { bio: 'Haftanın tabakları ve tarifleri', role: 'kurum', name: 'kcal' },
+  diyetisyen: { bio: 'Pratik tabak önerileri', role: 'dietitian', name: 'Dyt. Ece' },
+  uretici: { bio: 'Yerel süt ürünleri', role: 'producer', name: 'Tire Süt' },
+};
+
+export function vitrinProfilClient<T extends { getPublicProfile: (p: { handle: string }) => Promise<any> }>(base: T): T {
+  return {
+    ...base,
+    async getPublicProfile({ handle }: { handle: string }) {
+      const v = VITRIN_BIOS[handle];
+      if (!v) return base.getPublicProfile({ handle });
+      return {
+        id: `a-${handle}`,
+        display_name: v.name,
+        handle,
+        avatar_url: null,
+        bio: v.bio,
+        role: v.role,
+        verified: true,
+        is_private: false,
+        followers: 1200,
+        following: 12,
+        posts: 48,
+        me_following: 'none',
+      };
+    },
+  } as T;
+}
