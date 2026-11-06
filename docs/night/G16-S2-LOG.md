@@ -7,7 +7,7 @@
 (4) md.3 Android: React 19'da `Text.defaultProps` ÖLÜ → `fontFamily`'siz metin SF/Roboto'ya düşüyordu. Final modüllerinde 51 dosya `FinText`'e geçti (tek dosyada: eksik aile → Jakarta, `fontWeight` → ağırlık dosyası, iç içe aile, Android `includeFontPadding:false`). Bricolage build'e gömülü (dosyalar aile adıyla).
 (5) Android'e özel: kenar-kenar (SDK 54 varsayılan, `edgeToEdgeEnabled=true`) → ekran KAV'ları `SCREEN_KEYBOARD_BEHAVIOR` ('padding'), EkScreen (sepet/ödeme) Android'de klavyeye göre daralır; geri tuşu: Profil alt ekranı → üst seviye, sekme kökü → uygulama çıkışı (`backBehavior="none"`); LogPill ripple kaldırıldı; cam: `expo-blur` Android'de bulanıklık yok, `rgba` cam dolgusu yarı saydam yedek olarak kalıyor; gölge token'larında `elevation` var.
 (6) **Android emülatörü/SDK YOK** (`emulator`, `adb`, `sdkmanager`, `~/Library/Android/sdk` yok; yalnız Java 8) → Android panoları ÇEKİLEMEDİ; tablo iOS çekimi + koddan beklenen Android değerleriyle (SORULAR 1). Android prebuild + export ✓.
-(7) md.4 Bayrak kapalı parite: bar/boşluk yalnız TabBarR3/yeni kabuk; FinText yalnız bayrak arkası modüllerde; AppText Android düzeltmesi `yeni_kabuk` açıkken; TrackerScreen flag-off snapshot testi aynı. Bayrak kapalı ekranlarda da font düşmesi var → uygulanmadı, SORULAR 2.
+(7) md.4 Bayrak kapalı parite: 5 sekme (Ana sayfa/eatkcal/Profil/Sepet/Abonelik) bütün bayraklar kapalı, taban `0e301d0` ↔ bu dal piksel karşılaştırması: 4'ü 0 px fark, Off-Home'da 0,05% şerit = aynı kodla iki çekimde de değişen animasyon (gürültü). Ayrıca TrackerScreen flag-off snapshot testi aynı. Bayrak kapalı ekranlarda font düşmesi → uygulanmadı, SORULAR 2.
 (8) Kontrol (merge sonrası `3f722d9`): tsc 0 · test:unit 597/597 · test:components 144/144 · prebuild iOS ✓ Android ✓ · `expo export --platform ios` ✓ (9.83 MB) · `--platform android` ✓ (9.85 MB).
 (9) Eski tasarım: 0 (kendi alanım: tab bar, alt boşluk, toast katmanı, Profil alt ekranları — hepsi Final bileşenleri).
 (10) Son commit GERÇEK dosya `docs/night/G16-S2-DONE`. SORULAR: 8 madde, ENTEGRASYONA: 2.
@@ -59,7 +59,7 @@ Yöntem: vitrin (`G14_MODE=storage` eşdeğeri, `shot.py`), önce = `0e301d0` ka
 | Profil › Gizlilik ayarları | Bar altta | Bar yok |
 | Profil › İlerleme | Bar "Beslenme raporunu indir" altında boşlukta | Bar yok |
 | Profil › Rozetler | Bar altta | Bar yok |
-| Profil › Makro / Koleksiyon / Kartlar / Kuponlar / Ölçümler / Değerlendirmeler / Herkese açık | Aynı mekanizma (sekme içi `sub`) | Aynı düzeltme (kod yolu ortak; çekilmedi) |
+| Profil › Makro / Koleksiyon / Kartlar / Kuponlar / Değerlendirmeler / Ölçümler / Herkese açık | Aynı mekanizma (sekme içi `sub`) → bar üstte | `Sub-<alt>` sahnesiyle gerçek kabukta çekildi (7/7): bar yok, içerik (Koleksiyon ızgarası, Makro geçmişi satırları) ekran altına kadar |
 Ayrıca G16-S1'in yeni yığın ekranı `ScanOfflineScreen` zaten yalnız `insets.bottom + 24` kullanıyor.
 
 ## md.3 — Android uyumu
@@ -70,7 +70,8 @@ Ayrıca G16-S1'in yeni yığın ekranı `ScanOfflineScreen` zaten yalnız `inset
 **Kenar-kenar / insets:** `edgeToEdgeEnabled=true` (prebuild `android/gradle.properties:47`); bar `insets.bottom` (gezinme çubuğu) + 4 üstünde → hareketli gezinmede ~24 dp + 4, 3 tuşta ~48 dp + 4. **Durum çubuğu:** R3 kabukta temadan (`AppNavigator` StatusBar, G15-S2). **Geri tuşu:** Sheet `Modal onRequestClose` → kapanır (`Sheet.tsx:121`); Profil alt ekranı → üst seviye (BackHandler); sekme kökü → çıkış (`backBehavior="none"`, yalnız R3). **Klavye:** manifest `adjustResize`, ama kenar-kenar pencerede etkisiz → ekran KAV'ları `SCREEN_KEYBOARD_BEHAVIOR` (`EkAddressAdd`, `PostDetail`, `Composer`, onboarding `FormScreen`), `EkScreen` (sepet/ödeme/kart) Android'de KAV; Modal içi sheet'ler (yorumlar, rapor, kupon) kendi penceresinde yeniden boyutlanır, dokunulmadı. **Gölge/cam:** `tokens.elevation` sm/md/lg `elevation` 0/3/8 içeriyor; `expo-blur` Android'de `experimentalBlurMethod` verilmedikçe bulanıklık yapmaz, cam token'larının `rgba` dolgusu (TabBarR3 `glass` 0.58/0.55) yarı saydam yedek. **Ripple:** Final modüllerinde tek `android_ripple` LogPill'deydi → kaldırıldı (iOS ile aynı basma hâli).
 
 ### iOS ↔ Android pano tablosu (%50 ölçek hedefi)
-iOS = bu dalda "G16-2 iPhone" çekimi (`T-<Pano>.png`), Final karşılaştırması G15-S6 son durumu + bu oturumdaki değişikliğin etkisi. Android = ÇEKİLEMEDİ (SDK yok); sütun koddan beklenen farkı yazar.
+**Android çekimi ENGELLİ:** `emulator -list-avds` → komut yok; `adb`, `sdkmanager`, `avdmanager` yok; `~/Library/Android/sdk`, `$ANDROID_HOME` yok; Java yalnız 1.8 (Gradle/AGP 17 ister). G16-S2.md md.3: "SDK yoksa dur, SORULAR'a yaz; 3'ün kod kısmını yine yap" → SDK kurulmadı (≈10 GB sistem kurulumu, onay gerekir; SORULAR 1). Android tarafında yapılabilen her şey yapıldı: prebuild (gömülü 10 font, `edgeToEdgeEnabled=true`, `adjustResize` doğrulandı) + `expo export --platform android` ✓.
+iOS = bu dalda "G16-2 iPhone" çekimi (`T-<Pano>.png`), Final karşılaştırması G15-S6 son durumu + bu oturumdaki değişikliğin etkisi. Android sütunu = koddan beklenen (cihazda doğrulanmadı).
 | Pano | iOS (sonra) | Android (beklenen, cihazsız) |
 |---|---|---|
 | FinHomeR3 | G15-S6 ile aynı içerik; bar 20 pt aşağıda (İlter isteği, Final'den bilinçli sapma) | Jakarta/Bricolage gömülü dosyadan; `includeFontPadding:false`; bar gezinme çubuğu + 4 |
@@ -85,6 +86,18 @@ iOS = bu dalda "G16-2 iPhone" çekimi (`T-<Pano>.png`), Final karşılaştırmas
 | FinTabBar-rest | Bar 20 pt aşağıda; ölçüler (62/62, radius 31) aynı | Etiketler açık aileli (FinText yalnız padding ekler); blur yok → `rgba(255,255,255,0.58)` cam |
 
 ## md.4 — Bayrak kapalı parite
+### Ekran görüntüsü kanıtı (bütün bayraklar varsayılan/kapalı, 1.0.7 kabuğu)
+Yöntem: vitrine `Off-<Sekme>` sahnesi eklendi (`screenCatalog.ts` `resolveParity`, yalnız __DEV__): bayraklar `FLAG_DEFAULTS`, gerçek AppNavigator. Önce = `0e301d0` kaynakları (yalnız font yolu güncel), sonra = bu dal. Karşılaştırma: |Δkanal| > 24 piksel oranı, durum çubuğu hariç.
+| Ekran | Önce ↔ Sonra | Not |
+|---|---|---|
+| Off-Tracker (Ana sayfa, eski kabuk) | 0,000% (0 px) | aynı |
+| Off-Home (eatkcal sekmesi, eski HomeScreen + değerlendirme penceresi) | 0,049% (1.436 px, y 571–582 pt tam genişlik) | aynı kodla iki çekim (P1↔P2) de aynı şeritte 575 px farklı → zamanlı animasyon, kod farkı değil |
+| Off-Profile (eski Profil) | 0,000% (0 px) | aynı |
+| Off-Cart (eski Sepet) | 0,000% (0 px) | aynı |
+| Off-Subscriptions (eski Macro) | 0,000% (0 px) | aynı |
+Görsel kontrol: hepsi eski siyah alt bar + lime sepet düğmesi (CustomTabBar).
+
+### Kod kanıtı
 - TabBarR3, `shell/layout.ts`, `useInR3Shell`, `backBehavior` yalnız `TabNavigatorR3` (yeni_kabuk). Eski `CustomTabBar` ve `constants/layout.ts` (`TAB_BAR_TOTAL`) DEĞİŞMEDİ.
 - `TrackerScreen.tsx` değişen satırlar yalnız `asTab`/`yeniKabuk` dallarında; `KesfetScreen` stack boşluğu (insets + 120) aynı; `EkHomeScreen` eski kabukta `TAB_BAR_TOTAL + 24` aynı.
 - FinText yalnız bayrak arkası modüllerde (liste yukarıda). AppText bayrak kapalı bir yolda da çiziliyor (Keşfet kapalıyken `SharedPost` legacy kartları) → Android `includeFontPadding` yalnız `useFeature('yeni_kabuk')` açıkken; aile bağlamı sağlayıcısı görsel etkisiz.

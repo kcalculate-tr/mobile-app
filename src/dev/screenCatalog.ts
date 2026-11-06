@@ -422,6 +422,8 @@ export function allPanoNames(): string[] {
 /** `FinFeed-Dark` → FinFeed kaydı + scheme dark. Bilinmeyen ad → null. */
 export function resolvePano(requested: string): ResolvedEntry | null {
   const name = requested.trim();
+  const extra = resolveParity(name);
+  if (extra) return extra;
   const isDark = name.endsWith('-Dark');
   const noDark = isDark ? name.slice(0, -'-Dark'.length) : name;
   const fm = /^(.*)~(\d+)$/.exec(noDark);
@@ -434,6 +436,32 @@ export function resolvePano(requested: string): ResolvedEntry | null {
   const scheme: VitrinScheme = isDark || base === 'FinStressDark' ? 'dark' : 'light';
   const over = frame != null ? entry.frames?.[frame] ?? {} : {};
   return { ...entry, ...over, requested: name, scheme, frame };
+}
+
+/**
+ * G16-S2 — Final panosu OLMAYAN iki kontrol sahnesi (allPanoNames'e girmez):
+ *  - `Off-<Sekme>` (Tracker | Home | Profile | Cart | Subscriptions): BÜTÜN
+ *    bayraklar varsayılanda (kapalı) — bugünkü 1.0.7 kabuğu; parite çekimi.
+ *  - `Sub-<alt>` (personal, macro, cards…): Profil alt ekranı GERÇEK yeni kabukta
+ *    (Profil sekmesi içinde, TabBarR3 ile) — alt ekranda bar gizli olmalı.
+ */
+const OFF_AREA: Record<string, string> = { Tracker: 'ana', Home: 'eatkcal', Profile: 'profil', Cart: 'eatkcal', Subscriptions: 'profil' };
+function resolveParity(name: string): ResolvedEntry | null {
+  const off = /^Off-(Tracker|Home|Profile|Cart|Subscriptions)$/.exec(name);
+  if (off) {
+    return {
+      pano: name, area: OFF_AREA[off[1]], target: route(tab(off[1])), data: 'default', flags: [],
+      lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
+    };
+  }
+  const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
+  if (sub) {
+    return {
+      pano: name, area: 'profil', target: route(tab('Profile', { vitrinSub: sub[1] })), data: 'default',
+      flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
+    };
+  }
+  return null;
 }
 
 /**
