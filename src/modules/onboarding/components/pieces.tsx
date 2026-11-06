@@ -3,30 +3,96 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AppText } from '../../../core/design/components/AppText';
 import { haptic } from '../../../core/design/motion';
+import { Check, EnvelopeSimple } from '../../../components/icons';
+import { useOnb } from './onbTheme';
 
-/** Onboarding koyu paleti — bu modül daima koyu zeminde çalışır. */
-export const ONB = {
-  ink: '#F5F5F5',
-  sub: 'rgba(245,245,245,0.72)',
-  glass: 'rgba(255,255,255,0.08)',
-  glassEdge: 'rgba(255,255,255,0.14)',
-  glassSel: 'rgba(198,240,79,0.14)',
-  accent: '#C6F04F',
-  onAccent: '#0A0A0A',
-} as const;
+/** Final başlık: Bricolage 700 · 30/32. */
+export function OnbTitle({ children, style }: { children: React.ReactNode; style?: object }) {
+  const P = useOnb();
+  return (
+    <AppText style={[styles.title, { color: P.ink }, style]}>{children}</AppText>
+  );
+}
 
-/** Cam seçenek kartı (FinOnbIntent): başlık + açıklama, dokunma ≥44. */
-export function GlassOption({
+/** Final alt açıklama: ikincil renk · 15. */
+export function OnbLead({ children, style }: { children: React.ReactNode; style?: object }) {
+  const P = useOnb();
+  return (
+    <AppText textRole="bodySm" style={[styles.lead, { color: P.sec }, style]}>
+      {children}
+    </AppText>
+  );
+}
+
+export type OnbButtonKind = 'ink' | 'lime' | 'chip';
+
+/**
+ * Onboarding düğmesi (pill, 52). `ink` = tema mürekkebi (Light'ta siyah, Dark'ta
+ * beyaz), `lime` = lime dolgu + koyu metin, `chip` = yarı saydam çerçeveli.
+ * `disabled` → Final'in pasif gri hali.
+ */
+export function OnbButton({
+  label,
+  onPress,
+  kind = 'ink',
+  icon,
+  disabled = false,
+  style,
+}: {
+  label: string;
+  onPress: () => void;
+  kind?: OnbButtonKind;
+  icon?: (color: string) => React.ReactNode;
+  disabled?: boolean;
+  style?: object;
+}) {
+  const P = useOnb();
+  const bg = disabled ? P.dis : kind === 'ink' ? P.ink : kind === 'lime' ? P.accent : P.chip;
+  const fg = disabled ? P.disText : kind === 'ink' ? P.onInk : kind === 'lime' ? P.onAccent : P.ink;
+  return (
+    <Pressable
+      onPress={() => {
+        if (disabled) return;
+        haptic('selection');
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      style={[
+        styles.btn,
+        { backgroundColor: bg },
+        kind === 'chip' && !disabled ? { borderWidth: 1, borderColor: P.chipEdge } : null,
+        style,
+      ]}
+    >
+      {icon ? icon(fg) : null}
+      <AppText textRole="body" style={[styles.btnLabel, { color: fg }]} numberOfLines={2}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+/**
+ * Seçenek satırı (FinOnbIntent / FinTb*): seçiliyse lime dolgu + sağda tik,
+ * değilse yarı saydam çip kartı. İsteğe bağlı baş ikon (Intent).
+ */
+export function OptionRow({
   title,
   desc,
   selected = false,
+  icon,
   onPress,
 }: {
   title: string;
-  desc: string;
+  desc?: string;
   selected?: boolean;
+  icon?: (color: string) => React.ReactNode;
   onPress: () => void;
 }) {
+  const P = useOnb();
+  const fg = selected ? P.onAccent : P.ink;
   return (
     <Pressable
       onPress={() => {
@@ -34,23 +100,36 @@ export function GlassOption({
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={`${title}. ${desc}`}
+      accessibilityState={{ selected }}
+      accessibilityLabel={desc ? `${title}. ${desc}` : title}
       style={[
         styles.option,
-        { backgroundColor: selected ? ONB.glassSel : ONB.glass, borderColor: selected ? ONB.accent : ONB.glassEdge },
+        selected
+          ? { backgroundColor: P.accent, borderColor: 'transparent' }
+          : { backgroundColor: P.chip, borderColor: P.chipEdge },
       ]}
     >
-      <AppText textRole="section" style={{ color: ONB.ink, marginBottom: 4 }}>
-        {title}
-      </AppText>
-      <AppText textRole="bodySm" style={{ color: ONB.sub }}>
-        {desc}
-      </AppText>
+      {icon ? (
+        <View style={[styles.optIcon, { backgroundColor: selected ? P.accentIcon : 'transparent' }]}>
+          {icon(fg)}
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>
+        <AppText textRole="body" style={[styles.optTitle, { color: fg }]}>
+          {title}
+        </AppText>
+        {desc ? (
+          <AppText textRole="helper" style={{ color: selected ? P.accentSub : P.sec, marginTop: 2 }}>
+            {desc}
+          </AppText>
+        ) : null}
+      </View>
+      {selected ? <Check size={20} color={P.onAccent} /> : null}
     </Pressable>
   );
 }
 
-/** Hesap adımı auth butonu (Apple/Google/E-posta) — FinOnbAccount. */
+/** Hesap adımı auth düğmesi (Apple siyah / Google·E-posta çerçeveli) — FinOnbAccount. */
 export function AuthButton({
   label,
   kind,
@@ -62,36 +141,33 @@ export function AuthButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
-  const light = kind !== 'email';
+  const P = useOnb();
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      style={[
-        styles.authBtn,
-        light
-          ? { backgroundColor: '#FFFFFF' }
-          : { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: ONB.glassEdge },
-        disabled ? { opacity: 0.5 } : null,
-      ]}
-    >
-      {kind === 'apple' ? <AppleLogo /> : kind === 'google' ? <GoogleLogo /> : null}
-      <AppText textRole="body" style={[styles.authLabel, { color: light ? '#000000' : ONB.ink }]}>
-        {label}
-      </AppText>
-    </Pressable>
+    <OnbButton
+      label={label}
+      kind={kind === 'apple' ? 'ink' : 'chip'}
+      disabled={false}
+      onPress={disabled ? () => {} : onPress}
+      style={disabled ? { opacity: 0.5 } : undefined}
+      icon={(fg) =>
+        kind === 'apple' ? (
+          <AppleLogo color={fg} />
+        ) : kind === 'google' ? (
+          <GoogleLogo />
+        ) : (
+          <EnvelopeSimple size={20} color={P.ink} />
+        )
+      }
+    />
   );
 }
 
 // Apple'ın onaylı tek-renk logosu (SocialAuthButtons ile aynı path).
-function AppleLogo({ size = 18 }: { size?: number }) {
+function AppleLogo({ size = 18, color }: { size?: number; color: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
-        fill="#000000"
+        fill={color}
         d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.9-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701z"
       />
     </Svg>
@@ -110,67 +186,29 @@ function GoogleLogo({ size = 18 }: { size?: number }) {
   );
 }
 
-/** Birincil lime buton (onboarding). */
-export function PrimaryButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={() => {
-        haptic('selection');
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={[styles.authBtn, { backgroundColor: ONB.accent }]}
-    >
-      <AppText textRole="body" style={[styles.authLabel, { color: ONB.onAccent }]}>
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
-/** İkincil (çizgisiz) metin buton. */
-export function GhostButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={() => {
-        haptic('selection');
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={styles.ghost}
-    >
-      <AppText textRole="body" style={{ color: ONB.ink }}>
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  option: {
-    borderRadius: 20,
-    borderWidth: 1.5,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-  },
-  authBtn: {
+  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 33, letterSpacing: -0.4 },
+  lead: { marginTop: 8 },
+  btn: {
     minHeight: 52,
-    borderRadius: 20,
+    borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     paddingHorizontal: 20,
   },
-  authLabel: { fontWeight: '600' },
-  // G14-S1 — Final ikincil düğme: dolu koyu hap (çerçevesiz düz metin değil).
-  ghost: {
-    minHeight: 52,
-    borderRadius: 26,
+  btnLabel: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 16, lineHeight: 20, textAlign: 'center' },
+  option: {
+    borderRadius: 20,
+    borderWidth: 1,
+    minHeight: 56,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    gap: 12,
   },
+  optIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  optTitle: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 16, lineHeight: 20 },
 });
