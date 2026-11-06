@@ -54,6 +54,8 @@ const FeedDataLabScreen = lazy(() => import('../screens/FeedDataLabScreen'));
 const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
 // Composer (G8-S2) — `kesfet_paylasim` açıkken veya __DEV__'de kayıtlı.
 const ComposerScreen = lazy(() => import('../modules/kesfet/ui/ComposerScreen'));
+// G15-S3 — Bildirimler tam sayfa (FinNotifications); `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
+const KesfetNotificationsScreen = lazy(() => import('../modules/kesfet/ui/NotificationsScreen'));
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
 const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
 const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
@@ -109,6 +111,7 @@ const DesignShowcaseLazy = withSuspense(DesignShowcaseScreen);
 const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const KesfetLazy = withSuspense(KesfetScreen);
 const ComposerLazy = withSuspense(ComposerScreen);
+const KesfetNotificationsLazy = withSuspense(KesfetNotificationsScreen);
 const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
 const PublicProfileLazy = withSuspense(PublicProfileScreen);
 const KcalAiSignUpLazy = withSuspense(KcalAiSignUpRouteScreen);
@@ -370,6 +373,7 @@ export default function AppNavigator() {
   const kesfetEnabled = useFeature('kesfet');
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
+  const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
   // G12-S1: `yeni_onboarding` açıkken oturumsuz soğuk açılış WelcomeGate yerine
   // yeni onboarding akışını gösterir (soğuk-başlangıçta bir kez okunur, böylece
   // process ömrü boyunca tek initialRoute). Kapalıyken WelcomeGate bugünküyle aynı.
@@ -457,6 +461,9 @@ export default function AppNavigator() {
       )}
       {(kesfetPaylasimEnabled || __DEV__) && (
         <Stack.Screen name="Composer" component={ComposerLazy} options={AI_MODAL} />
+      )}
+      {(sosyalBildirimEnabled || __DEV__) && (
+        <Stack.Screen name="KesfetNotifications" component={KesfetNotificationsLazy} options={AI_PUSH} />
       )}
       {__DEV__ && (
         <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />

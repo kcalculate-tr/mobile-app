@@ -46,6 +46,8 @@ export type RootStackParamList = {
   Kesfet: undefined;
   // G8 — Composer (herkes paylaşır); yalnız `kesfet_paylasim` açıkken erişilir.
   Composer: undefined;
+  // G15-S3 — Bildirimler tam sayfa; yalnız `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
+  KesfetNotifications: undefined;
   // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini (koşullu kayıt).
   GunProfilUiLab: undefined;
   // `/u/:handle` — açık profil (bkz. modules/profil/ui/PublicProfileScreen).
