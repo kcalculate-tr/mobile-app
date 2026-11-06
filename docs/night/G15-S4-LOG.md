@@ -9,7 +9,7 @@
 (6) Kontrol: tsc 0 · test:unit 531/531 · test:components 90/90 (Tracker flagOff snapshot DEĞİŞMEDİ) · `expo export --platform ios` ✓.
 (7) Görsel doğrulama (simülatör, `.claude/night/out/g15s4/final/` 32 görüntü + `r3/`): Final ile yan yana okunan panolar tabloda. Çekim aracı vitrin geçişlerinde ara sıra eski pano yakalıyor; bozuk (özdeş md5) görüntüler tek tek yeniden çekildi.
 (8) Bayrak kapalı bayt bayt aynı: değişen her yüzey `yeni_kabuk`/`yeni_siparis`/celebrate arkasında; KİMSE dosyalarına dokunulmadı; yeni paket/migration/eas/DB yazma YOK. Dev-only `vitrin*` prop'ları üretimde geçilmez.
-(9) Dark: 32 görüntünün tamamı alındı; Dark'tan ayrıca okunanlar: Profile, Progress, Feedback, Macro, Security, Badges, Notify, Public, Privacy (hepsi temadan, okunur, Final ile uyumlu). Kalan Dark panolar (Personal, Agreements, Support, MacroWhat, MacroHistory, PrivacySettings, SheetNotify) aynı bileşenlerin tema çıktısı; bire bir okunmadı (SORULAR #4).
+(9) Dark: 16 Dark panonun TAMAMI çekildi ve tek tek okundu (Profile, Personal, Notify, Security, Agreements, Support, Feedback, Macro, MacroWhat, MacroHistory, Progress, Privacy, PrivacySettings, Public, Badges, SheetNotify); hepsi temadan, okunur, Final ile aynı ya da küçük fark (SheetNotify-Dark: zil dairesi bg tonunda, Final'de koyu gri). Bozuk/eski pano yakalayan çekimler (özdeş md5 ya da "bilinmeyen pano") yeniden çekildi.
 (10) Son commit GERÇEK dosya `docs/night/G15-S4-DONE`.
 
 ## Pano tablosu (önce G14 → sonra)
@@ -37,7 +37,7 @@ Eski tasarım: 0
 Envanter (Profil sekmesi ve açtığı her ekran/sheet, bayraklar açık):
 - Benim: hub, Personal, Notify, Security, Privacy sheet + ayarlar, Agreements, Support, Feedback, Macro (+geçmiş, nedir), Progress, Badges, Collection, Public önizleme, `/u/:handle`, Değerlendirmelerim, Kampanyalar & Kuponlar, Ölçüm geçmişi, EkInfoSheet → Final.
 - Siparişlerim / Adreslerim: `yeni_siparis` açıkken Profil artık eatkcal v2'ye (EkOrders / EkAddresses, G13-S2 Final ekranları) gider; eski ekranlar yalnız bayrak kapalı.
-- Kayıtlı kartlarım (SavedCards, FinPrCards): KİMSE ekranı; satır yalnız kart özelliği açıkken görünür; bu görevin kuralı gereği dokunulmadı (eski tasarım) — SORULAR #2. Sayıma dahil değil çünkü sahibi başka.
+- Kayıtlı kartlarım (SavedCards, FinPrCards): görev dosyası (G15-S4.md) açıkça "FinPrCards S5'te" diyor ve ekran KİMSE dosyası (ödeme/kart mantığı) → bu görevin kapsamı DIŞINDA; benim alanımda sayılmaz. Hub satırı yalnız kart özelliği açıkken görünür; giydirmesi S5'in işi — SORULAR #2.
 - TakibeBasla (Hedefi düzenle): onboarding/hedef akışı (başka sahip, Final FinTb* panoları kapsamı).
 
 Yeniden giydirilen (Final'de yok): Macro aboneliğim, Hesap gizliliği, Rozetlerim girişi, Değerlendirmelerim, Kampanyalar & Kuponlarım, Ölçüm geçmişi, hesap silme onay katmanı, Macro işlem geçmişi listesi, Destek geçmişi sekmesi.
@@ -46,5 +46,5 @@ Yeniden giydirilen (Final'de yok): Macro aboneliğim, Hesap gizliliği, Rozetler
 1. Final Güvenlik "En az 8 karakter" diyor; kod 6 doğruluyor (kural değiştirilmedi). 8'e çıkarılsın mı? Final Gizlilik notu "30 gün içinde geri dönebilirsin" — böyle bir bekleme süresi yok, mevcut metin korundu.
 2. KİMSE'nin SavedCards ekranı (FinPrCards) eski tasarımda; KİMSE oturumunda giydirilmeli.
 3. FinProfilePublic ızgarası için yazar bazlı gönderi listesi RPC'si gerekiyor (migration dosyası yazılsın mı?); kapak da ilk tabaktan türetilecek.
-4. Kalan Dark panoların (listelenen 7) bire bir okunması bir sonraki turda; çekimler `.claude/night/out/g15s4/final/` altında hazır.
+4. (Kapandı: bütün Dark panolar okundu.)
 5. Seri hatırlatması öğün silinirse o gün yeniden kurulmaz (gün içi "loglandı" hatırlanır). Kabul mü?
