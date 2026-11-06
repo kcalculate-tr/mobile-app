@@ -34,7 +34,7 @@ import {
 } from '../finUi';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { LockSimple, Shield, Warning, Phone } from '../../../../components/icons';
+import { Trash, Phone } from '../../../../components/icons';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { unregisterPushToken } from '../../../../core/notifications';
@@ -44,40 +44,36 @@ function SecureField({
   label,
   value,
   onChangeText,
-  hint,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChangeText: (v: string) => void;
-  hint?: string;
+  placeholder?: string;
 }) {
   const t = useTheme();
   const x = finExtras(t);
   return (
     <View style={{ gap: 6 }}>
-      <Text style={{ fontFamily: bodyMedium, fontSize: 13, color: t.color.ink }}>{label}</Text>
+      <Text style={{ fontFamily: bodyMedium, fontSize: 14, color: t.color.ink }}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         secureTextEntry
         autoCapitalize="none"
         autoCorrect={false}
-        placeholderTextColor={x.placeholderText}
+        placeholder={placeholder}
+        placeholderTextColor={t.color.secondary}
         style={{
           height: 52,
           borderRadius: 14,
-          borderWidth: 1,
-          borderColor: t.color.line,
-          backgroundColor: t.color.surface,
+          backgroundColor: t.color.line,
           paddingHorizontal: 16,
           fontFamily: body,
           fontSize: 15,
           color: t.color.ink,
         }}
       />
-      {hint ? (
-        <Text style={{ fontFamily: body, fontSize: 12, color: t.color.secondary }}>{hint}</Text>
-      ) : null}
     </View>
   );
 }
@@ -190,30 +186,9 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
       <FinHeader title={tr('profil.security_title')} onBack={onBack} />
 
       <View style={{ paddingHorizontal: 16, gap: 16 }}>
-        {/* Güvenlik özeti */}
-        <FinCard style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: t.color.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Shield size={22} color={t.color.onAccent} weight="fill" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: bodyBold, fontSize: 15, color: t.color.ink }}>
-              {tr('profil.security_title')}
-            </Text>
-          </View>
-        </FinCard>
-
         {/* Şifre değiştir */}
         <FinSectionLabel>{tr('profil.change_password')}</FinSectionLabel>
-        <FinCard style={{ gap: 12 }}>
+        <FinCard style={{ gap: 12, padding: 14 }}>
           <SecureField
             label={tr('profil.current_password')}
             value={currentPassword}
@@ -231,7 +206,7 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
               setFieldHint('');
               setSuccessMessage('');
             }}
-            hint={tr('profil.password_min')}
+            placeholder={tr('profil.password_min').replace(/\.$/, '')}
           />
           <SecureField
             label={tr('profil.security_new_password_confirm')}
@@ -255,17 +230,10 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
           ) : null}
 
           <FinPrimaryButton
-            label={tr('profil.change_password')}
-            tone="lime"
+            label={tr('profil.update_password')}
             disabled={saving}
             onPress={handleChangePassword}
-            icon={
-              saving ? (
-                <ActivityIndicator size="small" color={t.color.onAccent} />
-              ) : (
-                <LockSimple size={18} color={t.color.onAccent} weight="bold" />
-              )
-            }
+            icon={saving ? <ActivityIndicator size="small" color={t.color.bg} /> : undefined}
           />
         </FinCard>
 
@@ -273,7 +241,7 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
         <FinSectionLabel>{tr('profil.security_sessions_title')}</FinSectionLabel>
         <FinCard style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 22, alignItems: 'center' }}>
-            <Phone size={20} color={t.color.secondary} weight="bold" />
+            <Phone size={20} color={t.color.ink} />
           </View>
           <Text style={{ flex: 1, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>
             {tr('profil.security_active_sessions')}
@@ -287,25 +255,29 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
           </Text>
         </FinCard>
 
-        {/* Hesabı sil */}
-        <FinSectionLabel>{tr('profil.delete_account')}</FinSectionLabel>
-        <FinCard style={{ gap: 12 }}>
-          <Text style={{ fontFamily: bodyBold, fontSize: 15, color: t.color.ink }}>
+        {/* Hesabı sil — Final: beyaz tam genişlik düğme, kırmızı çöp + metin. Silme akışı (onay + edge function) aynen. */}
+        <Pressable
+          onPress={() => {
+            setConfirmText('');
+            setConfirmOpen(true);
+          }}
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            height: 52,
+            borderRadius: 20,
+            backgroundColor: t.color.surface,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Trash size={18} color={t.color.danger} />
+          <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.danger }}>
             {tr('profil.delete_account')}
           </Text>
-          <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary, lineHeight: 19 }}>
-            {tr('profil.delete_account_desc')}
-          </Text>
-          <FinSecondaryButton
-            label={tr('profil.delete_account')}
-            onPress={() => {
-              setConfirmText('');
-              setConfirmOpen(true);
-            }}
-            style={{ borderColor: t.color.danger }}
-            icon={<Warning size={18} color={t.color.danger} weight="bold" />}
-          />
-        </FinCard>
+        </Pressable>
       </View>
 
       {/* Silme onay overlay'i */}
@@ -334,6 +306,11 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
           >
             <Text style={{ fontFamily: bodyBold, fontSize: 18, color: t.color.ink }}>
               {tr('profil.delete_confirm_title')}
+            </Text>
+            <Text
+              style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, lineHeight: 20 }}
+            >
+              {tr('profil.delete_account_desc')}
             </Text>
             <Text
               style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, lineHeight: 20 }}

@@ -71,10 +71,12 @@ export function FinScreen({
   children,
   scroll,
   contentStyle,
+  refreshControl,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  refreshControl?: React.ReactElement<any>;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -84,6 +86,7 @@ export function FinScreen({
         style={{ flex: 1, backgroundColor: t.color.bg }}
         contentContainerStyle={[{ paddingBottom: insets.bottom + 40 }, contentStyle]}
         showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
       >
         {children}
       </ScrollView>
@@ -97,10 +100,13 @@ export function FinHeader({
   title,
   onBack,
   right,
+  align = 'center',
 }: {
   title: string;
   onBack?: () => void;
   right?: React.ReactNode;
+  /** FinPrivacySettings başlığı sola dayalı; diğerleri ortalı. */
+  align?: 'center' | 'left';
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -132,7 +138,7 @@ export function FinHeader({
         numberOfLines={1}
         style={{
           flex: 1,
-          textAlign: 'center',
+          textAlign: align,
           fontFamily: heading,
           fontSize: 20,
           color: t.color.ink,

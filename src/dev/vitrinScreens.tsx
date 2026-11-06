@@ -32,6 +32,10 @@ import SettingsPrivacyScreen from '../modules/profil/ui/screens/SettingsPrivacyS
 import SettingsAgreementsScreen from '../modules/profil/ui/screens/SettingsAgreementsScreen';
 import SettingsSupportScreen from '../modules/profil/ui/screens/SettingsSupportScreen';
 import SettingsFeedbackScreen from '../modules/profil/ui/screens/SettingsFeedbackScreen';
+import FinPrCardsScreen from '../modules/profil/ui/screens/FinPrCardsScreen';
+import FinPrReviewsScreen from '../modules/profil/ui/screens/FinPrReviewsScreen';
+import FinPrCouponsScreen from '../modules/profil/ui/screens/FinPrCouponsScreen';
+import FinPrMeasurementsScreen from '../modules/profil/ui/screens/FinPrMeasurementsScreen';
 import FinPrMacroScreen from '../modules/profil/ui/screens/FinPrMacroScreen';
 import FinPrProgressScreen from '../modules/profil/ui/screens/ProgressScreen';
 import BadgesScreen from '../modules/profil/ui/screens/BadgesScreen';
@@ -169,7 +173,16 @@ function GunViewerScene({ end, done }: { end?: boolean; done?: boolean }) {
   );
 }
 
-function ProfileSubScene({ sub, what }: { sub: string; what?: boolean }) {
+// Final FinPrMacro örneğiyle aynı içerik: 3/5 Macro, iki ödül kuponu.
+const MACRO_MOCK = {
+  balance: 3,
+  coupons: [
+    { id: 'c1', code: 'MACRO-1', description: 'Ücretsiz öğün', end_date: '2026-12-31T00:00:00Z' },
+    { id: 'c2', code: 'MACRO-2', description: 'Ücretsiz öğün', end_date: '2027-01-15T00:00:00Z' },
+  ],
+};
+
+function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boolean; history?: boolean; mock?: boolean }) {
   switch (sub) {
     case 'personal':
       return <SettingsPersonalScreen onBack={noop} />;
@@ -183,12 +196,58 @@ function ProfileSubScene({ sub, what }: { sub: string; what?: boolean }) {
       return <SettingsAgreementsScreen onBack={noop} />;
     case 'support':
       return <SettingsSupportScreen onBack={noop} />;
+    case 'cards':
+      return (
+        <FinPrCardsScreen
+          {...({
+            onBack: noop,
+            // Final FinPrCards örneği: iki kart, biri varsayılan.
+            vitrinCards: [
+              { id: 'k1', last4: '4242', brand: 'Kart', bank_name: null, card_alias: null, is_default: true, created_at: '2026-10-01' },
+              { id: 'k2', last4: '1881', brand: 'Kart', bank_name: null, card_alias: null, is_default: false, created_at: '2026-10-02' },
+            ],
+          } as any)}
+        />
+      );
+    case 'reviews':
+      return <FinPrReviewsScreen onBack={noop} />;
+    case 'coupons':
+      return <FinPrCouponsScreen onBack={noop} />;
+    case 'measurements':
+      return <FinPrMeasurementsScreen onBack={noop} />;
     case 'feedback':
       return <SettingsFeedbackScreen onBack={noop} />;
     case 'macro':
-      return <FinPrMacroScreen {...({ onBack: noop, vitrinWhatOpen: what } as any)} />;
+      return (
+        <FinPrMacroScreen
+          {...({
+            onBack: noop,
+            vitrinWhatOpen: what,
+            vitrinHistory: history,
+            vitrinData: mock ? MACRO_MOCK : undefined,
+          } as any)}
+        />
+      );;
     case 'progress':
-      return <FinPrProgressScreen {...({ onBack: noop, goalKcal: 2000, onAddMeasurement: noop } as any)} />;
+      return (
+        <FinPrProgressScreen
+          {...({
+            onBack: noop,
+            goalKcal: 2000,
+            targets: { protein: 140, carbs: 250, fat: 70 },
+            onAddMeasurement: noop,
+            // Final FinPrProgress örneği: uygun · üstü · uygun · altı · uygun · üstü · uygun.
+            vitrinDays: [2010, 2480, 1960, 1380, 2040, 2520, 1990].map((kcal, i) => ({
+              date: `2026-11-0${i + 1}`,
+              kcal,
+              protein: kcal * 0.07,
+              carbs: kcal * 0.12,
+              fat: kcal * 0.034,
+            })),
+            vitrinMeasurements: [{ date: '2026-11-01', waist_cm: 78, hip_cm: 96, chest_cm: 92 }],
+          } as any)}
+        />
+      );
     case 'badges':
       return <BadgesScreen onBack={noop} handle="deniz" />;
     case 'collection':
@@ -196,7 +255,28 @@ function ProfileSubScene({ sub, what }: { sub: string; what?: boolean }) {
     case 'public':
       return (
         <PublicPreviewScreen
-          {...({ onBack: noop, handle: 'deniz', displayName: 'Deniz Kaya', avatarUrl: null, isPrivate: false } as any)}
+          {...({
+            onBack: noop,
+            handle: 'dytisyen',
+            displayName: 'Dyt. Ayşe Soyad',
+            avatarUrl: null,
+            isPrivate: false,
+            vitrinProfile: {
+              id: 'vitrin-public',
+              display_name: 'Dyt. Ayşe Soyad',
+              handle: 'dytisyen',
+              avatar_url: null,
+              bio: 'İzmir’de diyetisyen, hafta sonları koşucu. Pratik tabaklar, mevsim sebzeleri ve hafta içi hazırlanabilen tarifler.',
+              role: 'dietitian',
+              verified: true,
+              is_private: false,
+              followers: 12400,
+              following: 180,
+              posts: 86,
+              me_following: 'none',
+            },
+            vitrinPosts: [128, 96, 211, 74, 52, 33].map((adds, i) => ({ id: `v${i}`, photoUrl: null, adds })),
+          } as any)}
         />
       );
     default:

@@ -27,6 +27,7 @@ import {
   type CelebrateMoment,
 } from '../../modules/celebrate';
 import { computeStreak, isFirstMeal, type DayBucket } from '../../modules/celebrate/signals';
+import { syncStreakReminder } from '../../modules/profil/streakReminder';
 
 const NOTIFY_OFFERED_KEY = '@kcal_celebrate_notify_offered';
 /** Kutlama, Logla izi B halka dolumundan SONRA gelsin (üst üste binmesin). */
@@ -95,6 +96,18 @@ export function HomeCelebrations({
     };
   }, [ready, userId, todayCount, streak, todayStartISO, evaluate]);
 
+  // G15-S4 — Seri hatırlatması: izin verildiyse her gün 19:30; bugün öğün
+  // loglandıysa bugünün bildirimi iptal, ertesi güne kurulu kalır. İzin yoksa
+  // syncStreakReminder hiçbir şey kurmaz.
+  useEffect(() => {
+    if (!ready || !userId) return;
+    void syncStreakReminder({
+      loggedToday: todayCount > 0,
+      title: tt('profil.streak_reminder_title'),
+      body: tt('profil.streak_reminder_body'),
+    });
+  }, [ready, userId, todayCount, tt]);
+
   // pending → kısa gecikmeyle göster (halka dolumu bitsin).
   useEffect(() => {
     if (!pending || shown) return;
@@ -157,7 +170,10 @@ export function HomeCelebrations({
         visible={notifyOpen}
         onClose={() => setNotifyOpen(false)}
         onResult={(status) => {
-          if (status === 'granted') void registerForPushNotifications();
+          if (status === 'granted') {
+            void registerForPushNotifications();
+            void syncStreakReminder({ loggedToday: todayCount > 0, title: tt('profil.streak_reminder_title'), body: tt('profil.streak_reminder_body') });
+          }
         }}
       />
     </>

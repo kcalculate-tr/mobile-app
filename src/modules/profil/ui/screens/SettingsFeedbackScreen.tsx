@@ -1,5 +1,5 @@
 /**
- * G12-S4 — Öneri ve görüş (Final FinPrFeedback panosu).
+ * G12-S4 — Öneri ve görüş (Final FinPrFeedback panosu); G15-S4 ince ayar.
  *
  * `feedback` tablosu `src/screens/FeedbackScreen.tsx` ile AYNI kolonlarla
  * yazılır (user_id/user_email/category/rating/message/status) — yalnız Fin
@@ -7,6 +7,7 @@
  */
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
@@ -20,8 +21,10 @@ import {
   FinPrimaryButton,
   FinFieldError,
   useFinShake,
+  body,
   bodyMedium,
   bodySemibold,
+  finExtras,
 } from '../finUi';
 
 const CATEGORIES = [
@@ -35,6 +38,8 @@ const CATEGORIES = [
 
 export default function SettingsFeedbackScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
+  const x = finExtras(t);
+  const insets = useSafeAreaInsets();
   const { t: tr } = useT();
   const { user } = useAuth();
   const supabase = getSupabaseClient();
@@ -97,43 +102,42 @@ export default function SettingsFeedbackScreen({ onBack }: { onBack: () => void 
     );
   }
 
+  const label = { fontFamily: bodyMedium, fontSize: 13, color: t.color.secondary } as const;
+
   return (
-    <FinScreen scroll contentStyle={{ paddingTop: 0 }}>
+    <FinScreen contentStyle={{ paddingTop: 0 }}>
       <FinHeader title={tr('profil.feedback_title')} onBack={onBack} />
-      <View style={{ paddingHorizontal: 16, gap: 16 }}>
-        <View style={{ gap: 8 }}>
-          <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>
-            {tr('profil.feedback_prompt')}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}
-          >
-            {CATEGORIES.map(c => (
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 14 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={{ fontFamily: body, fontSize: 15, color: t.color.secondary }}>
+          {tr('profil.feedback_prompt')}
+        </Text>
+
+        <FinCard style={{ gap: 12, padding: 16 }}>
+          <Text style={label}>{tr('profil.feedback_topic')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {CATEGORIES.map((c) => (
               <FinChip key={c.key} label={c.label} selected={c.key === category} onPress={() => setCategory(c.key)} />
             ))}
-          </ScrollView>
-        </View>
+          </View>
 
-        <FinCard style={{ alignItems: 'center', gap: 8 }}>
+          <Text style={[label, { marginTop: 4 }]}>{tr('profil.feedback_rating')}</Text>
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            {[1, 2, 3, 4, 5].map(i => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <Pressable key={i} onPress={() => setRating(i)} accessibilityRole="button" hitSlop={6}>
-                <Star
-                  size={32}
-                  color={i <= rating ? t.color.accent : t.color.line}
-                  weight={i <= rating ? 'fill' : 'regular'}
-                />
+                <Star size={36} color={i <= rating ? t.color.accentLine : x.line2} weight="fill" />
               </Pressable>
             ))}
           </View>
-        </FinCard>
 
-        <View style={{ gap: 6 }}>
+          <Text style={[label, { marginTop: 4 }]}>{tr('profil.feedback_message')}</Text>
           <TextInput
             value={message}
-            onChangeText={text => {
+            onChangeText={(text) => {
               setMessage(text);
               if (error) setError(null);
             }}
@@ -147,17 +151,29 @@ export default function SettingsFeedbackScreen({ onBack }: { onBack: () => void 
               minHeight: 120,
               borderRadius: 14,
               padding: 14,
-              backgroundColor: t.color.surface,
-              borderWidth: 1,
-              borderColor: error ? t.color.danger : t.color.line,
+              backgroundColor: t.color.line,
+              borderWidth: error ? 1 : 0,
+              borderColor: t.color.danger,
               fontFamily: bodyMedium,
               fontSize: 15,
               color: t.color.ink,
             }}
           />
           {error ? <FinFieldError>{error}</FinFieldError> : null}
-        </View>
+        </FinCard>
+      </ScrollView>
 
+      {/* Alta yapışık "Gönder" çubuğu (FinPrFeedback). */}
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 12) + 8,
+          backgroundColor: t.color.bg,
+          borderTopWidth: 1,
+          borderTopColor: t.color.line,
+        }}
+      >
         <FinPrimaryButton
           label={tr('profil.feedback_send')}
           onPress={handleSubmit}

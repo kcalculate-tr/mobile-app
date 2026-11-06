@@ -40,6 +40,7 @@ import { unregisterPushToken } from '../../../../core/notifications';
 import { useNavGate } from '../../../../store/navGateStore';
 import { RootStackParamList } from '../../../../navigation/types';
 import { ProfileSocialHeader } from '../ProfileSocialHeader';
+import { PrivacySheet } from '../PrivacySheet';
 import {
   Target,
   ChartLine,
@@ -60,6 +61,7 @@ import {
   SignOut,
   MapTrifold,
   Translate,
+  SealCheck,
 } from '../../../../components/icons';
 import { AppText } from '../../../../core/design';
 import { EkInfoSheet } from '../../../eatkcal/v2/ui/InfoSheet';
@@ -85,6 +87,11 @@ import { loadCollection, markWon, ProfileCollectionRow, type CollectionStamp } f
 import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
 import { TAB_BAR_R3_HEIGHT } from '../../../shell';
 import PublicPreviewScreen from './PublicPreviewScreen';
+import FinPrReviewsScreen from './FinPrReviewsScreen';
+import FinPrCouponsScreen from './FinPrCouponsScreen';
+import FinPrCardsScreen from './FinPrCardsScreen';
+import FinPrMeasurementsScreen from './FinPrMeasurementsScreen';
+import { useFeature } from '../../../../core/flags';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -98,10 +105,15 @@ type SubScreen =
   | 'support'
   | 'feedback'
   | 'macro'
+  | 'macroSub'
   | 'progress'
   | 'badges'
   | 'collection'
-  | 'public';
+  | 'public'
+  | 'reviews'
+  | 'coupons'
+  | 'measurements'
+  | 'cards';
 
 export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -110,6 +122,8 @@ export default function FinPrProfileScreen() {
   const { t: tr, lang, setLang } = useT();
   const { user, signOut } = useAuth();
   const [infoOpen, setInfoOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const yeniSiparis = useFeature('yeni_siparis' as any);
 
   const [sub, setSub] = useState<SubScreen>('root');
   // G15-S2: koleksiyon şeridi — yerel katalog atamalarından son kartlar (en yeni önce).
@@ -209,22 +223,33 @@ export default function FinPrProfileScreen() {
   if (sub === 'personal') return <SettingsPersonalScreen onBack={() => setSub('root')} />;
   if (sub === 'notify') return <SettingsNotifyScreen onBack={() => setSub('root')} />;
   if (sub === 'security') return <SettingsSecurityScreen onBack={() => setSub('root')} />;
-  if (sub === 'privacy') return <SettingsPrivacyScreen onBack={() => setSub('root')} />;
+  if (sub === 'privacy') return <SettingsPrivacyScreen onBack={() => setSub('root')} onOpenSecurity={() => setSub('security')} />;
   if (sub === 'agreements') return <SettingsAgreementsScreen onBack={() => setSub('root')} />;
   if (sub === 'support') return <SettingsSupportScreen onBack={() => setSub('root')} />;
   if (sub === 'feedback') return <SettingsFeedbackScreen onBack={() => setSub('root')} />;
   if (sub === 'macro') return <FinPrMacroScreen onBack={() => setSub('root')} />;
+  // "Macro aboneliğim": eski Subscriptions ekranı yerine Final Macro ve Abonelik'in "Öğün Aboneliği" sekmesi.
+  if (sub === 'macroSub') return <FinPrMacroScreen onBack={() => setSub('root')} initialTab={1} />;
   if (sub === 'progress') {
     return (
       <FinPrProgressScreen
         onBack={() => setSub('root')}
         goalKcal={summary?.targetKcal}
-        onAddMeasurement={() => navigation.navigate('MeasurementHistory')}
+        targets={{
+          protein: summary?.targetProtein,
+          carbs: summary?.targetCarb,
+          fat: summary?.targetFat,
+        }}
+        onAddMeasurement={() => setSub('measurements')}
       />
     );
   }
   if (sub === 'badges') return <BadgesScreen onBack={() => setSub('root')} handle={handle} />;
   if (sub === 'collection') return <CollectionScreen onBack={() => setSub('root')} />;
+  if (sub === 'reviews') return <FinPrReviewsScreen onBack={() => setSub('root')} />;
+  if (sub === 'cards') return <FinPrCardsScreen onBack={() => setSub('root')} />;
+  if (sub === 'coupons') return <FinPrCouponsScreen onBack={() => setSub('root')} />;
+  if (sub === 'measurements') return <FinPrMeasurementsScreen onBack={() => setSub('progress')} />;
   if (sub === 'public') {
     return (
       <PublicPreviewScreen
@@ -330,29 +355,54 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<Package size={18} color={t.color.ink} />}
               label={tr('profil.orders')}
-              onPress={() => navigation.navigate('ProfileOrders')}
+              onPress={() => (yeniSiparis ? (navigation as any).navigate('EkOrders') : navigation.navigate('ProfileOrders'))}
             />
             <FinRow
               icon={<MapPin size={18} color={t.color.ink} />}
               label={tr('profil.addresses')}
-              onPress={() => navigation.navigate('Addresses')}
+              onPress={() => (yeniSiparis ? (navigation as any).navigate('EkAddresses') : navigation.navigate('Addresses'))}
             />
             {savedCardsEnabled ? (
               <FinRow
                 icon={<CreditCard size={18} color={t.color.ink} />}
                 label={tr('profil.saved_cards')}
-                onPress={() => navigation.navigate('ProfileSavedCards')}
+                onPress={() => setSub('cards')}
               />
             ) : null}
             <FinRow
               icon={<Tag size={18} color={t.color.ink} />}
               label={tr('profil.coupons')}
-              onPress={() => navigation.navigate('ProfileCoupons')}
+              onPress={() => setSub('coupons')}
             />
             <FinRow
               icon={<Star size={18} color={t.color.ink} />}
               label={tr('profil.reviews')}
-              onPress={() => navigation.navigate('ProfileReviews')}
+              onPress={() => setSub('reviews')}
+            />
+          </FinRowGroup>
+        </View>
+
+        {/* G15-S4 — G14'ün kaldırdığı "Macro aboneliğim" ve "Hesap gizliliği" satırları
+            geri geldi (özellik kaybı yok) + "Rozetlerim" girişi (FinBadges). */}
+        <View style={{ paddingHorizontal: 16, gap: 6 }}>
+          <FinSectionLabel>{tr('profil.section_account')}</FinSectionLabel>
+          <FinRowGroup>
+            <FinRow
+              first
+              icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
+              label={tr('profil.macro_subscription')}
+              onPress={() => setSub('macroSub')}
+            />
+            <FinRow
+              icon={<LockSimple size={18} color={t.color.ink} />}
+              label={tr('profil.privacy_title')}
+              value={isPrivate ? tr('profil.private_account') : tr('profil.privacy_public')}
+              onPress={() => setPrivacyOpen(true)}
+            />
+            <FinRow
+              icon={<SealCheck size={18} color={t.color.ink} />}
+              label={tr('profil.my_badges')}
+              onPress={() => setSub('badges')}
             />
           </FinRowGroup>
         </View>
@@ -393,6 +443,12 @@ export default function FinPrProfileScreen() {
           </View>
         ) : null}
       </ScrollView>
+      <PrivacySheet
+        visible={privacyOpen}
+        isPrivate={isPrivate}
+        onClose={() => setPrivacyOpen(false)}
+        onChanged={(next) => setIsPrivate(next)}
+      />
       <EkInfoSheet visible={infoOpen} onClose={() => setInfoOpen(false)} />
       <HomeInkToast
         visible={collectionToast}
