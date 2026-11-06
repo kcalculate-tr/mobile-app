@@ -7,6 +7,10 @@
 // geri döner (enableFallback). Çoğul anahtarlar { one, other } biçimindedir ve
 // `{ count }` ile çağrılır.
 
+import { tr as loginTr, en as loginEn } from '../../modules/onboarding/v2/i18n/login';
+import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/i18n/signupAI';
+import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
+
 export type Lang = 'tr' | 'en';
 
 export const SUPPORTED_LANGS: readonly Lang[] = ['tr', 'en'] as const;
@@ -57,6 +61,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         both_desc: 'Takip et, uyan yemeği sipariş ver',
         note: '3 kısa soru, sonra hedefin hazır.',
       },
+      // G15-S1 Ek karar — v2 görünüm katmanı metinleri (modules/onboarding/v2/i18n/*).
+      v2: { login: loginTr, signupAi: signupAiTr, signupEat: signupEatTr },
       underage: {
         title: 'Kcalculate 18 yaş ve üzeri içindir',
         body: 'Girdiğin doğum yılına göre 18 yaşından küçüksün. Bu yüzden hesap oluşturamıyoruz.',
@@ -1232,6 +1238,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         both_desc: 'Track, then order a meal that fits',
         note: '3 short questions, then your goal is ready.',
       },
+      v2: { login: loginEn, signupAi: signupAiEn, signupEat: signupEatEn },
       underage: {
         title: 'Kcalculate is for ages 18 and up',
         body: 'Based on the birth year you entered, you’re under 18. That’s why we can’t create an account.',
