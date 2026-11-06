@@ -1,15 +1,21 @@
-// Topluluk kuralları — FinRules. İlk paylaşımdan önce bir kez gösterilir
-// (ComposerScreen "Gönder" düğmesini kapsar); AsyncStorage bayrağıyla kilitlenir
-// (SocialPushPrompt ile aynı desen). "Anladım, paylaş" → bayrağı işaretler ve
-// paylaşımı devam ettirir; "Vazgeç" bayrağı işaretlemez, bir dahaki denemede
-// yine sorar.
+// Topluluk kuralları — FinRules (G14-S1: Final'e göre TAM SAYFA). İlk paylaşımdan
+// önce bir kez gösterilir (ComposerScreen "Gönder" düğmesini kapsar); AsyncStorage
+// bayrağıyla kilitlenir (SocialPushPrompt ile aynı desen). "Anladım, paylaş" →
+// bayrağı işaretler ve paylaşımı devam ettirir; X ("Vazgeç") bayrağı işaretlemez,
+// bir dahaki denemede yine sorar.
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BowlFood } from 'phosphor-react-native/lib/commonjs/icons/BowlFood';
+import { PersonSimpleRun } from 'phosphor-react-native/lib/commonjs/icons/PersonSimpleRun';
+import { SneakerMove } from 'phosphor-react-native/lib/commonjs/icons/SneakerMove';
+import { Smiley } from 'phosphor-react-native/lib/commonjs/icons/Smiley';
+import { Prohibit } from 'phosphor-react-native/lib/commonjs/icons/Prohibit';
+import { ShieldCheck } from 'phosphor-react-native/lib/commonjs/icons/ShieldCheck';
+import { X } from 'phosphor-react-native/lib/commonjs/icons/X';
 import { AppText, useTheme, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { BottomSheet } from './BottomSheet';
-import { Icon } from './icons';
 
 export const RULES_SEEN_FLAG = '@kcal_kesfet_rules_seen';
 
@@ -30,7 +36,13 @@ async function markSeen(): Promise<void> {
   }
 }
 
-const RULE_KEYS = ['item_1', 'item_2', 'item_3'] as const;
+const ALLOWED = [
+  { key: 'allowed_1', Icon: BowlFood },
+  { key: 'allowed_2', Icon: PersonSimpleRun },
+  { key: 'allowed_3', Icon: SneakerMove },
+  { key: 'allowed_4', Icon: Smiley },
+] as const;
+const BANNED = ['banned_1', 'banned_2', 'banned_3', 'banned_4', 'banned_5'] as const;
 
 export function RulesSheet({
   visible,
@@ -43,6 +55,7 @@ export function RulesSheet({
 }) {
   const t = useTheme();
   const { t: tr } = useT();
+  const insets = useSafeAreaInsets();
 
   const accept = async () => {
     haptic('light');
@@ -51,48 +64,93 @@ export function RulesSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={tr('kesfet.rules.title')}>
-      <View style={styles.group}>
-        <View style={[styles.iconWrap, { backgroundColor: t.color.accent }]}>
-          <Icon name="flag" size={24} color={t.color.onAccent} />
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+      <View style={[styles.root, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={tr('kesfet.rules.cancel')}
+            hitSlop={8}
+            style={styles.close}
+          >
+            <X size={22} color={t.color.ink} />
+          </Pressable>
         </View>
-        <AppText variant="heading" style={styles.title}>{tr('kesfet.rules.title')}</AppText>
-        <AppText variant="body" tone="secondary" style={styles.intro}>{tr('kesfet.rules.intro')}</AppText>
-        {RULE_KEYS.map((key) => (
-          <View key={key} style={styles.ruleRow}>
-            <View style={[styles.dot, { backgroundColor: t.color.ink }]} />
-            <AppText variant="body" style={styles.ruleText}>{tr(`kesfet.rules.${key}`)}</AppText>
+        <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+          <View style={styles.titleBlock}>
+            <AppText variant="title" style={styles.title} accessibilityRole="header">
+              {tr('kesfet.rules.title')}
+            </AppText>
+            <AppText style={styles.lead} tone="secondary">{tr('kesfet.rules.lead')}</AppText>
           </View>
-        ))}
-        <Pressable
-          onPress={accept}
-          accessibilityRole="button"
-          accessibilityLabel={tr('kesfet.rules.accept')}
-          style={({ pressed }) => [styles.primary, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
-        >
-          <AppText variant="body" style={{ color: t.color.surface, fontWeight: '700' }}>{tr('kesfet.rules.accept')}</AppText>
-        </Pressable>
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel={tr('kesfet.rules.cancel')}
-          style={({ pressed }) => [styles.secondary, pressed && { opacity: 0.8 }]}
-        >
-          <AppText variant="body" tone="secondary" style={{ fontWeight: '600' }}>{tr('kesfet.rules.cancel')}</AppText>
-        </Pressable>
+
+          <View style={styles.section}>
+            <AppText style={styles.sectionLabel} tone="secondary">{tr('kesfet.rules.allowed_title')}</AppText>
+            {ALLOWED.map(({ key, Icon }) => (
+              <View key={key} style={styles.allowedRow}>
+                <Icon size={22} color={t.color.ink} />
+                <AppText style={styles.rowText}>{tr(`kesfet.rules.${key}`)}</AppText>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.section}>
+            <AppText style={styles.sectionLabel} tone="secondary">{tr('kesfet.rules.banned_title')}</AppText>
+            {BANNED.map((key) => (
+              <View key={key} style={[styles.bannedRow, { borderTopColor: t.color.line }]}>
+                <Prohibit size={20} color={t.color.ink} />
+                <View style={styles.bannedText}>
+                  <AppText style={styles.bannedTitle}>{tr(`kesfet.rules.${key}`)}</AppText>
+                  <AppText style={styles.bannedSub} tone="secondary">{tr(`kesfet.rules.${key}_sub`)}</AppText>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <View style={[styles.note, { backgroundColor: t.color.line }]}>
+            <ShieldCheck size={20} color={t.color.ink} />
+            <AppText style={styles.noteText}>{tr('kesfet.rules.note')}</AppText>
+          </View>
+        </ScrollView>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Pressable
+            onPress={accept}
+            accessibilityRole="button"
+            accessibilityLabel={tr('kesfet.rules.accept')}
+            style={({ pressed }) => [styles.primary, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
+          >
+            <AppText style={{ color: t.color.surface, fontWeight: '700' }}>{tr('kesfet.rules.accept')}</AppText>
+          </Pressable>
+        </View>
       </View>
-    </BottomSheet>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  group: { alignItems: 'center', gap: 8, paddingBottom: 8 },
-  iconWrap: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  title: { textAlign: 'center' },
-  intro: { textAlign: 'center', marginBottom: 4 },
-  ruleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, alignSelf: 'stretch', paddingHorizontal: 8, marginBottom: 2 },
-  dot: { width: 6, height: 6, borderRadius: 3, marginTop: 8 },
-  ruleText: { flex: 1 },
-  primary: { alignSelf: 'stretch', minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  secondary: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1 },
+  header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  titleBlock: { paddingHorizontal: 16, paddingTop: 4 },
+  title: { fontSize: 28, lineHeight: 32 },
+  lead: { marginTop: 6, fontSize: 15, lineHeight: 21 },
+  section: { paddingHorizontal: 16, paddingTop: 16 },
+  sectionLabel: { fontSize: 13, lineHeight: 18, fontWeight: '700', marginBottom: 4 },
+  allowedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52 },
+  rowText: { flex: 1, fontSize: 15, lineHeight: 21 },
+  bannedRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth * 2,
+  },
+  bannedText: { flex: 1 },
+  bannedTitle: { fontSize: 15, lineHeight: 21, fontWeight: '600' },
+  bannedSub: { fontSize: 13, lineHeight: 18 },
+  note: { margin: 16, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, flexDirection: 'row', gap: 10 },
+  noteText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  footer: { paddingHorizontal: 16, paddingTop: 8 },
+  primary: { minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
 });

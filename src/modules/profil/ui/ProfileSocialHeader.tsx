@@ -1,6 +1,8 @@
 // ProfileSocialHeader — yeni kabuk (yeni_kabuk) açıkken Profil üstündeki sosyal
-// başlık: avatar, ad, @kullanıcı adı, gönderi/takipçi/takip sayıları, gizlilik
-// rozeti (→ PrivacySheet) + "Macro aboneliğim" satırı (→ Subscriptions).
+// başlık (FinPrProfile, G14-S1): avatar, ad, @kullanıcı adı, açık/gizli hesap
+// çipi (→ PrivacySheet), gönderi/takipçi/takip kartı. "Macro aboneliğim"
+// satırı Final'de yok (eatkcal › Macro ve Abonelik satırı var) → kaldırıldı;
+// `onOpenSubscriptions` geriye uyum için prop'ta kalır.
 // ProfileScreen bu bileşeni YALNIZ bayrak açıkken render eder; kapalıyken eski
 // profil kartı yerinde kalır (bayt bayt aynı).
 //
@@ -14,7 +16,7 @@ import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { getSupabaseClient } from '../../../core/supabase';
 import { CachedImage } from '../../../components/CachedImage';
-import { CaretRight, CrownSimpleIcon, LockSimple, User } from '../../../components/icons';
+import { Eye, LockSimple } from '../../../components/icons';
 import { RollingNumber } from '../../gun/ui';
 import type { NumLang } from '../../gun/motion';
 import { getProfilClient } from '../client';
@@ -76,77 +78,64 @@ export function ProfileSocialHeader({
     };
   }, [user?.id]);
 
+  const initial = (name.trim()[0] ?? '?').toLocaleUpperCase(lang === 'en' ? 'en' : 'tr');
+
   return (
     <View style={styles.wrap}>
+      {/* G14-S1 — FinPrProfile kimlik bloğu: 76 avatar (foto yoksa baş harf),
+          ad (Bricolage 24), @kullanıcı adı, açık/gizli hesap çipi (→ PrivacySheet). */}
       <View style={styles.identityRow}>
-        <Pressable onPress={onAvatarPress} style={[styles.avatar, { backgroundColor: t.color.line }]} accessibilityRole="button">
+        <Pressable
+          onPress={onAvatarPress}
+          style={[styles.avatar, { backgroundColor: t.color.line }]}
+          accessibilityRole="button"
+          accessibilityLabel={name}
+        >
           {avatarUrl ? (
             <CachedImage uri={avatarUrl} style={styles.avatarImg} />
           ) : (
-            <User size={34} color={t.color.secondary} weight="fill" />
+            <AppText variant="title" style={styles.initial}>
+              {initial}
+            </AppText>
           )}
         </Pressable>
         <View style={styles.identityInfo}>
-          <View style={styles.nameRow}>
-            <AppText variant="title" numberOfLines={1} style={styles.name}>
-              {name}
-            </AppText>
-            {isPrivate ? (
-              <View style={[styles.privateBadge, { backgroundColor: t.color.line }]}>
-                <LockSimple size={11} color={t.color.secondary} weight="fill" />
-                <AppText variant="caption" tone="secondary">
-                  {tt('profil.private_badge')}
-                </AppText>
-              </View>
-            ) : null}
-          </View>
+          <AppText variant="title" numberOfLines={1} style={styles.name}>
+            {name}
+          </AppText>
           {handle ? (
-            <AppText variant="body" tone="secondary" numberOfLines={1}>
+            <AppText tone="secondary" numberOfLines={1} style={styles.handle}>
               @{handle}
             </AppText>
           ) : null}
+          <Pressable
+            onPress={() => setPrivacyOpen(true)}
+            style={[styles.privacyChip, { backgroundColor: t.color.line }]}
+            accessibilityRole="button"
+            accessibilityLabel={tt('profil.privacy_title')}
+          >
+            {isPrivate ? (
+              <LockSimple size={14} color={t.color.ink} weight="fill" />
+            ) : (
+              <Eye size={14} color={t.color.ink} />
+            )}
+            <AppText style={styles.chipText}>
+              {isPrivate ? tt('profil.private_account_badge') : tt('profil.public_account')}
+            </AppText>
+          </Pressable>
         </View>
       </View>
 
-      {/* Sayaçlar — yalnız gerçek veri geldiyse. */}
+      {/* Sayaçlar — yalnız gerçek veri geldiyse (beyaz kart, 3 sütun). */}
       {profile ? (
-        <View style={styles.counters}>
-          <Counter label={tt('profil.posts')} value={profile.posts} lang={lang as NumLang} />
+        <View style={[styles.counters, { backgroundColor: t.color.surface }]}>
+          <Counter label={tt('profil.posts_short')} value={profile.posts} lang={lang as NumLang} />
           <View style={[styles.counterDivider, { backgroundColor: t.color.line }]} />
-          <Counter label={tt('profil.followers')} value={profile.followers} lang={lang as NumLang} />
+          <Counter label={tt('profil.followers_short')} value={profile.followers} lang={lang as NumLang} />
           <View style={[styles.counterDivider, { backgroundColor: t.color.line }]} />
-          <Counter label={tt('profil.following_count')} value={profile.following} lang={lang as NumLang} />
+          <Counter label={tt('profil.following_short')} value={profile.following} lang={lang as NumLang} />
         </View>
       ) : null}
-
-      {/* Gizlilik satırı → PrivacySheet. */}
-      <Pressable
-        onPress={() => setPrivacyOpen(true)}
-        style={[styles.row, { borderColor: t.color.line }]}
-        accessibilityRole="button"
-      >
-        <LockSimple size={18} color={t.color.ink} weight="fill" />
-        <AppText variant="body" style={styles.rowLabel}>
-          {tt('profil.privacy_title')}
-        </AppText>
-        <AppText variant="caption" tone="secondary">
-          {isPrivate ? tt('profil.private_account') : tt('profil.privacy_public')}
-        </AppText>
-        <CaretRight size={16} color={t.color.secondary} />
-      </Pressable>
-
-      {/* Macro aboneliğim → Subscriptions. */}
-      <Pressable
-        onPress={onOpenSubscriptions}
-        style={[styles.row, { borderColor: t.color.line }]}
-        accessibilityRole="button"
-      >
-        <CrownSimpleIcon size={18} color={t.color.ink} weight="fill" />
-        <AppText variant="body" style={styles.rowLabel}>
-          {tt('profil.macro_subscription')}
-        </AppText>
-        <CaretRight size={16} color={t.color.secondary} />
-      </Pressable>
 
       <PrivacySheet
         visible={privacyOpen}
@@ -163,7 +152,7 @@ function Counter({ label, value, lang }: { label: string; value: number; lang: N
   return (
     <View style={styles.counter}>
       <RollingNumber value={value} lang={lang} fontSize={18} weight="700" color={t.color.ink} />
-      <AppText variant="caption" tone="secondary">
+      <AppText tone="secondary" style={styles.counterLabel}>
         {label}
       </AppText>
     </View>
@@ -171,25 +160,27 @@ function Counter({ label, value, lang }: { label: string; value: number; lang: N
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 16, paddingTop: 8, gap: 14 },
+  wrap: { paddingHorizontal: 16, gap: 12 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatar: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImg: { width: '100%', height: '100%' },
-  identityInfo: { flex: 1, gap: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { flexShrink: 1 },
-  privateBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  counters: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
-  counter: { alignItems: 'center', gap: 2, flex: 1 },
-  counterDivider: { width: StyleSheet.hairlineWidth, height: 28 },
-  row: {
+  initial: { fontSize: 28, lineHeight: 34 },
+  identityInfo: { flex: 1, minWidth: 0, gap: 2 },
+  name: { fontSize: 24, lineHeight: 30 },
+  handle: { fontSize: 14, lineHeight: 19 },
+  privacyChip: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    height: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    minHeight: 52,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: 4,
   },
-  rowLabel: { flex: 1 },
+  chipText: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
+  counters: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, minHeight: 60 },
+  counter: { alignItems: 'center', justifyContent: 'center', gap: 0, flex: 1, minHeight: 60 },
+  counterLabel: { fontSize: 13, lineHeight: 17 },
+  counterDivider: { width: StyleSheet.hairlineWidth * 2, alignSelf: 'stretch' },
 });

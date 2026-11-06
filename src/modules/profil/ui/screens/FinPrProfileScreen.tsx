@@ -16,7 +16,8 @@
  * akışı Dalga 2 — bkz. CollectionScreen.tsx).
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, TouchableOpacity, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -57,15 +58,17 @@ import {
   Headset,
   ChatText,
   SignOut,
-  PhoneCall,
+  MapTrifold,
+  Translate,
 } from '../../../../components/icons';
+import { AppText } from '../../../../core/design';
+import { EkInfoSheet } from '../../../eatkcal/v2/ui/InfoSheet';
 import {
   FinScreen,
   FinSectionLabel,
   FinRowGroup,
   FinRow,
-  FinPrimaryButton,
-  body,
+  FinSecondaryButton,
 } from '../finUi';
 import SettingsPersonalScreen from './SettingsPersonalScreen';
 import SettingsNotifyScreen from './SettingsNotifyScreen';
@@ -101,8 +104,9 @@ export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
   const t = useTheme();
-  const { t: tr } = useT();
+  const { t: tr, lang, setLang } = useT();
   const { user, signOut } = useAuth();
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const [sub, setSub] = useState<SubScreen>('root');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -205,47 +209,63 @@ export default function FinPrProfileScreen() {
     );
   }
 
+  // Hedef halkası: bugünkü tüketim / hedef (veri yoksa boş halka).
+  const goalRatio =
+    summary?.targetKcal && summary.targetKcal > 0
+      ? Math.max(0, Math.min(1, (summary.consumedKcal ?? 0) / summary.targetKcal))
+      : 0;
+  const RING_C = 2 * Math.PI * 17;
+
   return (
     <FinScreen>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 120, gap: 20 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 120, gap: 18 }}
       >
         <ProfileSocialHeader
           name={userName}
           avatarUrl={avatarUrl}
+          onAvatarPress={() => setSub('public')}
           onOpenSubscriptions={() => setSub('macro')}
         />
 
-        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
-          <TouchableOpacity
-            onPress={() => setSub('public')}
-            style={{ flex: 1, height: 44, borderRadius: 14, borderWidth: 1, borderColor: t.color.line, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontFamily: body, fontSize: 13, color: t.color.ink }}>
-              {tr('profil.public_profile_title')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSub('badges')}
-            style={{ flex: 1, height: 44, borderRadius: 14, borderWidth: 1, borderColor: t.color.line, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontFamily: body, fontSize: 13, color: t.color.ink }}>
-              {tr('profil.badges_title')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ paddingHorizontal: 16, gap: 10 }}>
+        <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_ai')}</FinSectionLabel>
           <FinRowGroup>
-            <FinRow
-              first
-              icon={<Target size={18} color={t.color.ink} />}
-              label={tr('profil.my_goal')}
-              value={summary?.targetKcal ? tr('profil.goal_per_day', { n: summary.targetKcal }) : undefined}
-              onPress={() => navigation.navigate('TakibeBasla', { editGoal: true })}
-            />
+            {/* G14-S1 — Hedefim kartı (FinPrProfile): halka + hedef + "Hedefi düzenle". */}
+            <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Svg width={44} height={44}>
+                <Circle cx={22} cy={22} r={17} fill="none" stroke={t.color.line} strokeWidth={5} />
+                {goalRatio > 0 ? (
+                  <Circle
+                    cx={22}
+                    cy={22}
+                    r={17}
+                    fill="none"
+                    stroke={t.color.accentLine}
+                    strokeWidth={5}
+                    strokeLinecap="round"
+                    strokeDasharray={`${RING_C * goalRatio} ${RING_C}`}
+                    transform="rotate(-90 22 22)"
+                  />
+                ) : null}
+              </Svg>
+              <View style={{ flex: 1 }}>
+                <AppText tone="secondary" style={{ fontSize: 13, lineHeight: 17, fontWeight: '600' }}>
+                  {tr('profil.my_goal')}
+                </AppText>
+                <AppText variant="heading" style={{ fontSize: 18, lineHeight: 23 }}>
+                  {summary?.targetKcal ? tr('profil.goal_per_day', { n: summary.targetKcal }) : '—'}
+                </AppText>
+              </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('TakibeBasla', { editGoal: true })}
+                accessibilityRole="button"
+                style={{ height: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: t.color.line, justifyContent: 'center' }}
+              >
+                <AppText style={{ fontSize: 14, fontWeight: '600' }}>{tr('profil.edit_goal')}</AppText>
+              </TouchableOpacity>
+            </View>
             <FinRow
               icon={<ChartLine size={18} color={t.color.ink} />}
               label={tr('profil.progress')}
@@ -299,41 +319,43 @@ export default function FinPrProfileScreen() {
           </FinRowGroup>
         </View>
 
-        <View style={{ paddingHorizontal: 16, gap: 10 }}>
+        <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_settings')}</FinSectionLabel>
           <FinRowGroup>
             <FinRow first icon={<User size={18} color={t.color.ink} />} label={tr('profil.personal')} onPress={() => setSub('personal')} />
             <FinRow icon={<Bell size={18} color={t.color.ink} />} label={tr('profil.notify')} onPress={() => setSub('notify')} />
             <FinRow icon={<LockSimple size={18} color={t.color.ink} />} label={tr('profil.privacy_row')} onPress={() => setSub('privacy')} />
             <FinRow icon={<Shield size={18} color={t.color.ink} />} label={tr('profil.security')} onPress={() => setSub('security')} />
+            <FinRow
+              icon={<Translate size={18} color={t.color.ink} />}
+              label={tr('profil.language')}
+              value={tr(lang === 'en' ? 'profil.lang_en' : 'profil.lang_tr')}
+              onPress={() => setLang(lang === 'en' ? 'tr' : 'en')}
+            />
             <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('profil.agreements')} onPress={() => setSub('agreements')} />
-            <FinRow icon={<Headset size={18} color={t.color.ink} />} label={tr('profil.help_support')} onPress={() => setSub('support')} />
-            <FinRow icon={<ChatText size={18} color={t.color.ink} />} label={tr('profil.feedback')} onPress={() => setSub('feedback')} />
           </FinRowGroup>
         </View>
 
-        <View style={{ paddingHorizontal: 16, gap: 10 }}>
+        <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_support')}</FinSectionLabel>
           <FinRowGroup>
-            <FinRow
-              first
-              icon={<PhoneCall size={18} color={t.color.ink} />}
-              label={tr('profil.support_call')}
-              onPress={() => Linking.openURL(`tel:${tr('profil.support_phone').replace(/\s/g, '')}`)}
-            />
+            <FinRow first icon={<Headset size={18} color={t.color.ink} />} label={tr('profil.help_support')} onPress={() => setSub('support')} />
+            <FinRow icon={<ChatText size={18} color={t.color.ink} />} label={tr('profil.feedback')} onPress={() => setSub('feedback')} />
+            <FinRow icon={<MapTrifold size={18} color={t.color.ink} />} label={tr('profil.delivery_where')} onPress={() => setInfoOpen(true)} />
           </FinRowGroup>
         </View>
 
         {user ? (
           <View style={{ paddingHorizontal: 16 }}>
-            <FinPrimaryButton
+            <FinSecondaryButton
               label={tr('profil.logout')}
               onPress={handleLogout}
-              icon={<SignOut size={18} color={t.color.bg} />}
+              icon={<SignOut size={18} color={t.color.ink} />}
             />
           </View>
         ) : null}
       </ScrollView>
+      <EkInfoSheet visible={infoOpen} onClose={() => setInfoOpen(false)} />
     </FinScreen>
   );
 }

@@ -203,9 +203,15 @@ const SAMPLE_ESTIMATE = {
   protein_g: 38,
   carbs_g: 52,
   fat_g: 16,
-  confidence: 0.92,
   isEstimate: true,
-  items: [],
+  portion: 1,
+  photo_url: null,
+  ingredients: [
+    { name: 'Tavuk göğsü', grams: 150, kcal: 248 },
+    { name: 'Kinoa', grams: 120, kcal: 144 },
+    { name: 'Avokado', grams: 60, kcal: 96 },
+    { name: 'Sebzeler', grams: 80, kcal: 32 },
+  ],
 };
 
 const SAMPLE_CARD = {
@@ -230,7 +236,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
   ),
   commentsSheet: () => (
     <SheetOver>
-      <CommentsSheet visible postId="post-1" currentUser={{ id: 'dev-vitrin-user', handle: 'deniz', display_name: 'Deniz Kaya' } as any} onClose={noop} />
+      <CommentsSheet visible postId="post-1" currentUser={{ id: '00000000-0000-4000-8000-00000000a14e', handle: 'deniz', display_name: 'Deniz Kaya' } as any} onClose={noop} />
     </SheetOver>
   ),
   notificationsSheet: () => (

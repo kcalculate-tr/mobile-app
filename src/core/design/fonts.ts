@@ -4,10 +4,10 @@
  * Dosyalar `assets/fonts/`'a Atelier Triay'ın resmî GitHub deposundan indirildi
  * (varsayılan optik boy, statik örnekler). Lisans: `assets/fonts/OFL.txt`.
  *
- * ÖNEMLİ: Bu fontlar uygulama açılışında (App.tsx) YÜKLENMEZ — üretim açılışı
- * değişmesin diye yalnızca kullanıldıkları yerde (şimdilik yalnız __DEV__
- * vitrini) `useFonts(bricolageFonts)` ile yüklenir. Gövde fontu Plus Jakarta
- * Sans zaten App.tsx'te yükleniyor; onu burada tekrar yüklemiyoruz.
+ * G14-S1: Bu fontlar artık uygulama açılışında (App.tsx useFonts) Plus Jakarta
+ * ile birlikte YÜKLENİR. Önceden yüklenmiyordu ve yeni ekranların (Final)
+ * başlıkları sistem fontuna düşüyordu. Bayrak kapalı ekranlar bu aileyi
+ * referans etmez (görünüm aynı).
  */
 
 export const bricolageFonts = {

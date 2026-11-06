@@ -57,7 +57,7 @@ test('üretim paketi (varsa dist/) vitrin içermez', { skip: !fs.existsSync(path
   for (const f of files) {
     const buf = fs.readFileSync(f);
     // NOT: 'dev/screen/' dizgisi linking.ts filtresinde üretimde de var → işaret olarak kullanılmaz.
-    for (const marker of ['Vitrin: sahne yok', 'vitrin hata', 'dev-vitrin-user']) {
+    for (const marker of ['Vitrin: sahne yok', 'vitrin hata', 'Vitrin: bilinmeyen pano']) {
       assert.equal(buf.includes(marker), false, `${path.basename(f)} içinde "${marker}" var`);
     }
   }

@@ -53,7 +53,7 @@ export function installNetwork(state: VitrinDataState, routes: MockRoute[]): voi
       if (!url.includes(r.match)) continue;
       if (r.method && r.method.toUpperCase() !== method) continue;
       const body = typeof r.body === 'function' ? (r.body as (u: string) => unknown)(url) : r.body;
-      return json(state === 'empty' && Array.isArray(body) ? [] : body, r.status ?? 200);
+      return json(body, r.status ?? 200);
     }
     if (isSupabase) {
       if (url.includes('/auth/v1/')) return json({ error: 'vitrin' }, 401);

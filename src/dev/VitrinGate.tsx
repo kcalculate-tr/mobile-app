@@ -13,6 +13,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, NavigationIndependentTree, DefaultTheme } from '@react-navigation/native';
 import type { Session, User } from '@supabase/supabase-js';
+import ErrorBoundary from 'react-native-error-boundary';
 
 import { AuthContextForDev, type AuthContextValue } from '../core/AuthContext';
 import { FlagsOverrideProvider, FLAG_DEFAULTS, type FlagKey } from '../core/flags';
@@ -25,7 +26,8 @@ import { prepareScene } from './vitrinSetup';
 import { VITRIN_SCENES } from './vitrinScreens';
 
 const DEV_USER = {
-  id: 'dev-vitrin-user',
+  // Geçerli UUID olmalı: ekranlar bunu uuid kolonlarına filtre olarak yollar.
+  id: '00000000-0000-4000-8000-00000000a14e',
   email: 'vitrin@example.invalid',
   aud: 'authenticated',
   role: 'authenticated',
@@ -175,7 +177,22 @@ export default function VitrinGate({ children }: { children: React.ReactNode }) 
     );
   }
   // key → her pano temiz bir ağaç (store'lar sahne hazırlığında sıfırlanır).
-  return <VitrinRoot key={pano} entry={entry} />;
+  // Pano başına hata sınırı: bir sahnenin çökmesi sonraki panoları bozmasın;
+  // çökme görüntüde açıkça görünür (LOG'da "çöktü").
+  return (
+    <ErrorBoundary key={pano} FallbackComponent={({ error }) => <Crashed pano={pano} error={error} />}>
+      <VitrinRoot entry={entry} />
+    </ErrorBoundary>
+  );
+}
+
+function Crashed({ pano, error }: { pano: string; error: Error }) {
+  return (
+    <View style={[styles.fill, styles.center, { padding: 24, backgroundColor: '#fff' }]}>
+      <Text style={{ fontWeight: '700', marginBottom: 8 }}>Vitrin: {pano} çöktü</Text>
+      <Text selectable>{String(error?.message ?? error)}</Text>
+    </View>
+  );
 }
 
 // seedStorage dışa açık kalsın (vitrinSetup kullanır).

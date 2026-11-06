@@ -17,6 +17,7 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 import { AuthProvider, useAuth } from './src/core/AuthContext';
+import { bricolageFonts } from './src/core/design/fonts';
 import { FlagsProvider } from './src/core/flags';
 import { I18nProvider } from './src/core/i18n';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
@@ -134,6 +135,11 @@ function App() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
+    // G14-S1: Final başlık fontu (Bricolage Grotesque). Yalnız yeni ekranlar
+    // (core/design typography, onboarding, eatkcal v2, profil Fin*) kullanır;
+    // bayrak kapalı ekranlar bu aileyi hiç referans etmez → görünüm aynı.
+    // Önceden hiç yüklenmiyordu → yeni ekranların başlıkları sistem fontuna düşüyordu.
+    ...bricolageFonts,
   });
   // Native splash'ı gizleme işi AppNavigator'a taşındı: oturum da çözülmeden
   // gizlenirse araya bir "yükleniyor" karesi giriyordu. Açılışta tek görsel
