@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   Pressable,
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -323,6 +324,7 @@ export default function EkProductScreen() {
     setTemplateSelections((prev) => ({ ...prev, [tplId]: toggleTemplateSelection(link, prev[tplId] || [], Number(itemKey)) }));
   };
 
+  const { height: winH } = useWindowDimensions();
   const groupsRef = useRef(groupModels);
   groupsRef.current = groupModels;
   useEffect(() => {
@@ -335,7 +337,9 @@ export default function EkProductScreen() {
       const fy = firstKey ? sectionY.current[firstKey] : undefined;
       if (fy == null && n < 15) return;
       clearInterval(h);
-      const y = fy != null ? Math.max(0, fy - 8) : bodyY.current + macroBottom.current + 24;
+      // Final (FinEkProductScroll): ilk seçim grubu üstte, makro halkaları ekran dışında.
+      // Ölçümler görsel yüklenince kayabildiğinden en az fotoğraf + başlık + halkalar kadar in.
+      const y = Math.max(fy != null ? fy - 8 : 0, bodyY.current + macroBottom.current + 24, Math.round(winH * 0.78));
       scrollRef.current?.scrollTo({ y, animated: false });
       setStripVisible(true);
     }, 300);
