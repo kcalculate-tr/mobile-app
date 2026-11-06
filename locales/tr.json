@@ -1,6 +1,8 @@
 {
-  "NSCameraUsageDescription": "Profil fotoğrafınızı çekmek, video kaydetmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.",
-  "NSMicrophoneUsageDescription": "Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.",
-  "NSPhotoLibraryUsageDescription": "Profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.",
-  "NSPhotoLibraryAddUsageDescription": "Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir."
+  "ios": {
+    "NSCameraUsageDescription": "Profil fotoğrafınızı çekmek, video kaydetmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.",
+    "NSMicrophoneUsageDescription": "Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.",
+    "NSPhotoLibraryUsageDescription": "Profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.",
+    "NSPhotoLibraryAddUsageDescription": "Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir."
+  }
 }
