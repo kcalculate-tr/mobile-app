@@ -1,5 +1,10 @@
-// Yorumlar alt sayfası — G8 (yalnız `kesfet_yorum` açıkken). Liste (eski → yeni,
-// tek seviye yanıt), yazma kutusu, kendi yorumunu silme, ⋯ şikayet/engelle.
+// Yorumlar alt sayfası — Final FinComments (G15-S3). Yalnız `kesfet_yorum` açıkken.
+//  1) Liste: ortalı "Yorumlar · N"; satır = avatar 36 (yanıt 28, 52 girinti), ad +
+//     @kullanıcı · süre + ⋯, metin, "Yanıtla" (+ kendi yorumunda "Sil"). Altta
+//     avatar + "Yorum yaz" hapı + siyah yuvarlak gönder.
+//  2) ⋯ → "<Ad> adlı kişinin yorumu": Şikayet et (tam sayfa ReportFlow) · Engelle
+//     (onay) · Vazgeç.
+//  3) Boş: sohbet ikonu, "İlk yorumu sen yaz", kısa not.
 // add_comment → moderate-content (store yönetir). İyimser ekleme; sunucu onayı.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -14,18 +19,33 @@ import {
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, useTheme, haptic } from '../../../core/design';
+import Svg, { Path } from 'react-native-svg';
+import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 
 import { useSheetRise } from '../motion';
 import { useCommentsStore } from '../commentsStore';
 import type { Comment, CommentAuthor } from '../types';
 import { Avatar } from './Avatar';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 import { BottomSheet } from './BottomSheet';
-import { relativeTime, REPORT_REASONS, type ReportReason, type UiLang } from './format';
+import { BlockConfirm, ReportModal, reportReasonText } from './ReportFlow';
+import { relativeTime, type UiLang } from './format';
 
 const MAX_LEN = 500;
+
+const SEND_PATH =
+  'M231.87,114l-168-95.89A16,16,0,0,0,40.92,37.34L71.55,128,40.92,218.67A16,16,0,0,0,56,240a16.15,16.15,0,0,0,7.93-2.1l167.92-96.05a16,16,0,0,0,.05-27.89ZM56,224a.56.56,0,0,0,0-.12L85.74,136H144a8,8,0,0,0,0-16H85.74L56.06,32.16A.46.46,0,0,0,56,32l168,95.83Z';
+const BUBBLE_PATH =
+  'M128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z';
+
+function Glyph({ d, size, color }: { d: string; size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 256 256" accessible={false}>
+      <Path d={d} fill={color} />
+    </Svg>
+  );
+}
 
 function CommentRow({
   comment,
@@ -49,43 +69,86 @@ function CommentRow({
   const time = comment.created_at ? relativeTime(comment.created_at, nowMs, lang) : '';
   return (
     <View style={[styles.row, depth > 0 && styles.rowReply]}>
-      <Avatar name={comment.author.display_name} url={comment.author.avatar_url} official={false} size={32} />
+      <Avatar
+        name={comment.author.display_name}
+        url={comment.author.avatar_url}
+        official={false}
+        size={depth > 0 ? 28 : 36}
+      />
       <View style={styles.rowBody}>
         <View style={styles.rowHead}>
-          <AppText variant="caption" style={styles.rowName} numberOfLines={1}>
+          <AppText variant="caption" style={[styles.rowName, { color: t.color.ink }]} numberOfLines={1}>
             {comment.author.display_name}
           </AppText>
           {comment.author.verified ? <Icon name="seal" size={13} color={t.color.accentLine} /> : null}
           <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.rowHandle}>
-            @{comment.author.handle}
-            {time ? ` · ${time}` : ''}
+            {comment.author.handle ? `@${comment.author.handle}` : ''}
+            {time ? `${comment.author.handle ? ' · ' : ''}${time}` : ''}
           </AppText>
+          {!comment.can_delete ? (
+            <Pressable
+              onPress={() => onMenu(comment)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={tr('kesfet.ui.a11y.more')}
+              style={styles.more}
+            >
+              <Icon name="more" size={16} color={t.color.secondary} />
+            </Pressable>
+          ) : null}
         </View>
-        <AppText variant="body" style={styles.rowText}>
+        <AppText variant="body" style={[styles.rowText, { color: t.color.ink }]}>
           {comment.body}
         </AppText>
         <View style={styles.rowActions}>
-          {depth === 0 ? (
-            <Pressable onPress={() => onReply(comment)} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('kesfet.comments.reply')}>
-              <AppText variant="caption" tone="secondary" style={styles.rowAction}>
-                {tr('kesfet.comments.reply')}
-              </AppText>
-            </Pressable>
-          ) : null}
+          <Pressable
+            onPress={() => onReply(comment)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={tr('kesfet.comments.reply')}
+            style={styles.actionHit}
+          >
+            <AppText variant="caption" tone="secondary" style={styles.rowAction}>
+              {tr('kesfet.comments.reply')}
+            </AppText>
+          </Pressable>
           {comment.can_delete ? (
-            <Pressable onPress={() => onDelete(comment)} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('common.delete')}>
+            <Pressable
+              onPress={() => onDelete(comment)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={tr('common.delete')}
+              style={styles.actionHit}
+            >
               <AppText variant="caption" tone="secondary" style={styles.rowAction}>
                 {tr('common.delete')}
               </AppText>
             </Pressable>
-          ) : (
-            <Pressable onPress={() => onMenu(comment)} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.more')}>
-              <Icon name="more" size={16} color={t.color.secondary} />
-            </Pressable>
-          )}
+          ) : null}
         </View>
       </View>
     </View>
+  );
+}
+
+function MenuRow({ icon, label, last, onPress }: { icon: IconName; label: string; last?: boolean; onPress: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.menuRow,
+        !last && { borderBottomWidth: StyleSheet.hairlineWidth * 2, borderBottomColor: t.color.line },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <Icon name={icon} size={22} color={t.color.ink} />
+      <AppText variant="body" style={[styles.menuText, { color: t.color.ink }]}>
+        {label}
+      </AppText>
+    </Pressable>
   );
 }
 
@@ -93,18 +156,24 @@ export function CommentsSheet({
   visible,
   postId,
   currentUser,
+  count,
   onClose,
   onToast,
+  vitrinMenu,
 }: {
   visible: boolean;
   postId: string | null;
   currentUser: CommentAuthor | null;
+  /** Başlıktaki sayı (gönderinin yorum sayacı); yoksa yüklenen yorum sayısı. */
+  count?: number;
   onClose: () => void;
   onToast?: (message: string) => void;
+  /** YALNIZ __DEV__ vitrini: FinComments kare 2 — ilk yorumun ⋯ menüsü açık. */
+  vitrinMenu?: boolean;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { t: tr, lang } = useT();
+  const { t: tr, lang, fmt } = useT();
 
   const items = useCommentsStore((s) => s.items);
   const loading = useCommentsStore((s) => s.loading);
@@ -115,6 +184,8 @@ export function CommentsSheet({
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [menuTarget, setMenuTarget] = useState<Comment | null>(null);
+  const [menuView, setMenuView] = useState<'menu' | 'block'>('menu');
+  const [reportTarget, setReportTarget] = useState<Comment | null>(null);
   const keySeq = useRef(0);
   const nowMs = Date.now();
 
@@ -126,6 +197,16 @@ export function CommentsSheet({
     }
     if (!visible) useCommentsStore.getState().reset();
   }, [visible, postId]);
+
+  // Vitrin: ilk (başkasının) yorumun menüsü.
+  useEffect(() => {
+    if (!vitrinMenu || !visible || items.length === 0 || menuTarget) return;
+    const first = items.find((c) => !c.can_delete);
+    if (first) {
+      setMenuView('menu');
+      setMenuTarget(first);
+    }
+  }, [vitrinMenu, visible, items, menuTarget]);
 
   // Tek seviye: üst yorumlar + hemen altına yanıtları. parent_id null → üst.
   const ordered: Array<{ c: Comment; depth: number }> = [];
@@ -152,7 +233,8 @@ export function CommentsSheet({
     keySeq.current += 1;
     const key = `comment-${postId}-${keySeq.current}`;
     setText('');
-    const parent = replyTo?.id ?? null;
+    // Yanıtlar tek seviye: yanıta yanıt → üst yoruma bağlanır.
+    const parent = replyTo ? replyTo.parent_id ?? replyTo.id : null;
     setReplyTo(null);
     haptic('light');
     const id = await useCommentsStore.getState().add(body, author, parent, key);
@@ -161,6 +243,14 @@ export function CommentsSheet({
 
   const remaining = MAX_LEN - text.length;
   const { panelStyle, backdropStyle, onLayout } = useSheetRise(visible);
+  // Liste boş geldiyse (silinmiş/gizlenmiş yorumlar) sayaç 0 — başlık listeyle çelişmesin.
+  const shownCount = !loading && ordered.length === 0 ? 0 : count ?? ordered.length;
+  const line2 = t.isDark ? '#48484A' : '#C3C7CC';
+  const onInk = t.isDark ? '#0A0A0A' : '#FFFFFF';
+  const closeMenu = () => {
+    setMenuTarget(null);
+    setMenuView('menu');
+  };
 
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
@@ -168,14 +258,19 @@ export function CommentsSheet({
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} />
         </Animated.View>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.sheetWrap}
-        >
-          <Animated.View onLayout={onLayout} style={[styles.sheet, panelStyle, { backgroundColor: t.color.bg }]}>
-            <View style={[styles.handle, { backgroundColor: t.color.line }]} />
-            <AppText variant="heading" style={styles.title}>
-              {tr('kesfet.comments.title')}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Animated.View
+            onLayout={onLayout}
+            accessibilityViewIsModal
+            style={[
+              styles.sheet,
+              panelStyle,
+              { backgroundColor: t.color.bg, paddingBottom: Math.max(insets.bottom, 16) },
+            ]}
+          >
+            <View style={[styles.handle, { backgroundColor: line2 }]} />
+            <AppText accessibilityRole="header" style={[styles.title, { color: t.color.ink }]}>
+              {`${tr('kesfet.comments.title')} · ${fmt(shownCount)}`}
             </AppText>
 
             {loading && items.length === 0 ? (
@@ -183,8 +278,12 @@ export function CommentsSheet({
                 <AppText variant="caption" tone="secondary">{tr('kesfet.ui.loading')}</AppText>
               </View>
             ) : ordered.length === 0 ? (
-              <View style={styles.center}>
-                <AppText variant="body" tone="secondary">{tr('kesfet.comments.empty')}</AppText>
+              <View style={styles.empty}>
+                <Glyph d={BUBBLE_PATH} size={32} color={t.color.secondary} />
+                <AppText style={[styles.emptyTitle, { color: t.color.ink }]}>{tr('kesfet.comments.empty_title')}</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.emptySub}>
+                  {tr('kesfet.comments.empty_sub')}
+                </AppText>
               </View>
             ) : (
               <FlatList
@@ -198,7 +297,10 @@ export function CommentsSheet({
                     lang={lang as UiLang}
                     onReply={(c) => setReplyTo(c)}
                     onDelete={(c) => void useCommentsStore.getState().remove(c.id)}
-                    onMenu={(c) => setMenuTarget(c)}
+                    onMenu={(c) => {
+                      setMenuView('menu');
+                      setMenuTarget(c);
+                    }}
                   />
                 )}
                 onEndReachedThreshold={0.5}
@@ -206,7 +308,6 @@ export function CommentsSheet({
                   if (hasMore && !loadingMore) void useCommentsStore.getState().loadMore();
                 }}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.listContent}
                 style={styles.list}
               />
             )}
@@ -222,28 +323,35 @@ export function CommentsSheet({
               </View>
             ) : null}
 
-            <View style={[styles.inputRow, { borderTopColor: t.color.line, paddingBottom: Math.max(insets.bottom, 8) }]}>
+            <View style={styles.inputRow}>
+              <Avatar
+                name={currentUser?.display_name ?? ''}
+                url={currentUser?.avatar_url ?? null}
+                official={false}
+                size={32}
+              />
               <TextInput
                 value={text}
                 onChangeText={(v) => setText(v.slice(0, MAX_LEN))}
-                placeholder={tr('kesfet.comments.placeholder')}
+                placeholder={tr('kesfet.comments.placeholder_short')}
                 placeholderTextColor={t.color.secondary}
-                style={[styles.input, { color: t.color.ink, backgroundColor: t.color.surface }]}
+                style={[
+                  styles.input,
+                  { color: t.color.ink, backgroundColor: t.color.surface, borderColor: t.color.line },
+                ]}
                 multiline
-                accessibilityLabel={tr('kesfet.comments.placeholder')}
+                accessibilityLabel={tr('kesfet.comments.placeholder_short')}
               />
               <Pressable
                 onPress={submit}
                 disabled={!text.trim() || submitting}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !text.trim() || submitting }}
                 accessibilityLabel={tr('kesfet.comments.send')}
                 hitSlop={4}
-                style={({ pressed }) => [
-                  styles.sendBtn,
-                  { backgroundColor: text.trim() ? t.color.ink : t.color.line, opacity: pressed ? 0.9 : 1 },
-                ]}
+                style={({ pressed }) => [styles.sendBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.85 : 1 }]}
               >
-                <Icon name="share" size={18} color={text.trim() ? t.color.surface : t.color.secondary} />
+                <Glyph d={SEND_PATH} size={18} color={onInk} />
               </Pressable>
             </View>
             {text.length > MAX_LEN - 60 ? (
@@ -254,51 +362,65 @@ export function CommentsSheet({
           </Animated.View>
         </KeyboardAvoidingView>
 
-        {/* Yorum ⋯ — şikayet / engelle */}
-        <BottomSheet
-          visible={menuTarget != null}
-          onClose={() => setMenuTarget(null)}
-          accessibilityLabel={tr('kesfet.ui.a11y.more')}
-        >
-          <View style={styles.menuGroup}>
-            <AppText variant="heading" style={styles.menuTitle}>{tr('kesfet.ui.report_title')}</AppText>
-            {REPORT_REASONS.map((reason: ReportReason) => (
-              <Pressable
-                key={reason}
+        {/* Yorum ⋯ — Şikayet et / Engelle (FinComments kare 2) */}
+        <BottomSheet visible={menuTarget != null} onClose={closeMenu} accessibilityLabel={tr('kesfet.ui.a11y.more')}>
+          {menuView === 'menu' ? (
+            <View>
+              <AppText variant="caption" tone="secondary" style={styles.menuCaption}>
+                {tr('kesfet.report.comment_menu_title', { name: menuTarget?.author.display_name ?? '' })}
+              </AppText>
+              <MenuRow
+                icon="flag"
+                label={tr('kesfet.ui.menu.report')}
                 onPress={() => {
                   const c = menuTarget;
-                  setMenuTarget(null);
-                  if (c) {
-                    void useCommentsStore.getState().report(c.id, reason);
-                    onToast?.(tr('kesfet.ui.report_toast'));
-                  }
+                  closeMenu();
+                  setReportTarget(c);
                 }}
-                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: t.color.surface }]}
+              />
+              <MenuRow icon="slash" label={tr('kesfet.ui.menu.block')} onPress={() => setMenuView('block')} />
+              <Pressable
+                onPress={closeMenu}
                 accessibilityRole="button"
-                accessibilityLabel={tr(`kesfet.ui.report_reason.${reason}`)}
+                accessibilityLabel={tr('common.cancel')}
+                style={({ pressed }) => [styles.cancel, { borderColor: line2 }, pressed && { opacity: 0.9 }]}
               >
-                <Icon name="flag" size={20} color={t.color.ink} />
-                <AppText variant="body">{tr(`kesfet.ui.report_reason.${reason}`)}</AppText>
+                <AppText variant="body" style={[styles.cancelText, { color: t.color.ink }]}>
+                  {tr('common.cancel')}
+                </AppText>
               </Pressable>
-            ))}
-            <Pressable
-              onPress={() => {
+            </View>
+          ) : (
+            <BlockConfirm
+              name={menuTarget?.author.display_name ?? ''}
+              onConfirm={() => {
                 const c = menuTarget;
-                setMenuTarget(null);
+                closeMenu();
                 if (c) {
                   void useCommentsStore.getState().blockAuthor(c.author.id);
                   onToast?.(tr('kesfet.ui.blocked_toast', { name: c.author.display_name }));
                 }
               }}
-              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: t.color.surface }]}
-              accessibilityRole="button"
-              accessibilityLabel={tr('kesfet.ui.menu.block')}
-            >
-              <Icon name="slash" size={20} color={t.color.danger} />
-              <AppText variant="body" style={{ color: t.color.danger }}>{tr('kesfet.ui.menu.block')}</AppText>
-            </Pressable>
-          </View>
+              onCancel={() => setMenuView('menu')}
+            />
+          )}
         </BottomSheet>
+
+        <ReportModal
+          visible={reportTarget != null}
+          authorName={reportTarget?.author.display_name ?? ''}
+          onSubmit={(reason, note) =>
+            reportTarget ? useCommentsStore.getState().report(reportTarget.id, reportReasonText(reason, note)) : false
+          }
+          onBlock={() => {
+            const c = reportTarget;
+            if (c) {
+              void useCommentsStore.getState().blockAuthor(c.author.id);
+              onToast?.(tr('kesfet.ui.blocked_toast', { name: c.author.display_name }));
+            }
+          }}
+          onClose={() => setReportTarget(null)}
+        />
       </View>
     </Modal>
   );
@@ -307,28 +429,44 @@ export function CommentsSheet({
 const styles = StyleSheet.create({
   fill: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,10,0.4)' },
-  sheetWrap: { maxHeight: '85%' },
-  sheet: { height: '100%', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16 },
-  handle: { width: 36, height: 5, borderRadius: 3, alignSelf: 'center', marginTop: 8, marginBottom: 8 },
-  title: { marginBottom: 8 },
-  center: { flex: 1, minHeight: 120, alignItems: 'center', justifyContent: 'center' },
-  list: { flexGrow: 0, maxHeight: 420 },
-  listContent: { paddingBottom: 8 },
-  row: { flexDirection: 'row', gap: 10, paddingVertical: 8 },
-  rowReply: { marginLeft: 36 },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16 },
+  handle: { width: 36, height: 5, borderRadius: 3, alignSelf: 'center', marginTop: 8, marginBottom: 16 },
+  title: { textAlign: 'center', fontSize: 15, lineHeight: 21, fontFamily: fontFamily.bodyBold },
+  center: { minHeight: 160, alignItems: 'center', justifyContent: 'center' },
+  empty: { paddingTop: 40, paddingBottom: 60, alignItems: 'center', gap: 8 },
+  emptyTitle: { fontFamily: fontFamily.headingBold, fontSize: 18, lineHeight: 24 },
+  emptySub: { fontSize: 13, textAlign: 'center' },
+  list: { flexGrow: 0, maxHeight: 470 },
+  row: { flexDirection: 'row', gap: 10, paddingTop: 10, paddingBottom: 2 },
+  rowReply: { paddingLeft: 52 },
   rowBody: { flex: 1, minWidth: 0 },
   rowHead: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  rowName: { fontWeight: '700', flexShrink: 1 },
-  rowHandle: { flexShrink: 1 },
-  rowText: { marginTop: 2, fontSize: 15, lineHeight: 21 },
-  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
-  rowAction: { fontWeight: '600' },
-  replyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  input: { flex: 1, minHeight: 40, maxHeight: 120, borderRadius: 20, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10, fontSize: 15 },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  rowName: { fontSize: 13, fontFamily: fontFamily.bodyBold, flexShrink: 1 },
+  rowHandle: { fontSize: 13, flexShrink: 1 },
+  more: { marginLeft: 'auto', paddingLeft: 8 },
+  rowText: { fontSize: 14, lineHeight: 20 },
+  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  actionHit: { minHeight: 32, justifyContent: 'center' },
+  rowAction: { fontSize: 13, fontFamily: fontFamily.bodySemibold },
+  replyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 8 },
+  inputRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 14,
+    fontFamily: fontFamily.bodyRegular,
+  },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   counter: { alignSelf: 'flex-end', marginTop: 2 },
-  menuGroup: { gap: 2, paddingBottom: 8 },
-  menuTitle: { marginBottom: 6 },
-  menuRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 8, borderRadius: 12 },
+  menuCaption: { fontSize: 13, paddingTop: 4, paddingBottom: 6 },
+  menuRow: { minHeight: 57, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  menuText: { fontSize: 16, lineHeight: 22 },
+  cancel: { height: 52, borderRadius: 26, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  cancelText: { fontSize: 15, fontFamily: fontFamily.bodySemibold },
 });

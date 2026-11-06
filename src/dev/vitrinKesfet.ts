@@ -419,6 +419,7 @@ function postsFor(scene: string): FeedPost[] {
     case 'serbest':
       return serbestPosts();
     case 'activity':
+    case 'commentsEmpty':
     case 'didIt':
     case 'didItToast':
       return activityPosts();

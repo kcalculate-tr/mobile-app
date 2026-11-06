@@ -381,6 +381,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         reply: 'Yanıtla',
         replying_to: '%{name} kullanıcısına yanıt veriyorsun',
         sent: 'Yorumun gönderildi',
+        // G15-S3 — FinComments
+        placeholder_short: 'Yorum yaz',
+        empty_title: 'İlk yorumu sen yaz',
+        empty_sub: 'Nazik ve konuya dair yorumlar öne çıkar.',
       },
       // G8 — Sosyal bildirimler.
       notif: {
@@ -1669,6 +1673,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         reply: 'Reply',
         replying_to: 'Replying to %{name}',
         sent: 'Your comment was sent',
+        // G15-S3 — FinComments
+        placeholder_short: 'Write a comment',
+        empty_title: 'Be the first to comment',
+        empty_sub: 'Kind, on-topic comments rise to the top.',
       },
       // G8 — Social notifications.
       notif: {
