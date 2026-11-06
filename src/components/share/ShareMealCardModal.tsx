@@ -8,32 +8,20 @@
 // Tamamen kendine yeten yeni bir bileşen: çağıran ekran yalnız bayrak açıkken
 // (paylasim_karti) mount eder; kapalıyken hiç render olmaz, üretim davranışı
 // değişmez.
+//
+// G15-S2 (ESKİ TASARIM YASAĞI): sabit koyu renkler + eski lime (#B9EF14) yerine
+// tema token'ları ve Final sheet dili (28 köşe, tutamaç, kapat 44, lime 52
+// düğme, Export ikonu); metinler i18n. Paylaşım mantığı aynı.
 
 import React, { useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg from 'react-native-svg';
-import { ShareNetwork, X } from '../icons';
+import { Export, X } from '../icons';
 import MealShareCard, { CARD_W, CARD_H, ShareMealData } from './MealShareCard';
 import { captureSvgToPngBase64, sharePngBase64 } from '../../lib/shareCard';
-
-const C = {
-  bg: '#141414',
-  border: '#232323',
-  accent: '#B9EF14',
-  accentText: '#0A0A0A',
-  textPrimary: '#FFFFFF',
-  textMuted: 'rgba(255,255,255,0.55)',
-  overlay: 'rgba(0,0,0,0.75)',
-};
+import { AppText, useTheme } from '../../core/design';
+import { useT } from '../../core/i18n';
 
 type Props = {
   visible: boolean;
@@ -44,6 +32,8 @@ type Props = {
 };
 
 export default function ShareMealCardModal({ visible, onClose, data, seed }: Props) {
+  const t = useTheme();
+  const { t: tt } = useT();
   const insets = useSafeAreaInsets();
   const cardRef = useRef<React.ElementRef<typeof Svg>>(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +53,7 @@ export default function ShareMealCardModal({ visible, onClose, data, seed }: Pro
       await sharePngBase64(base64, data.name, seed);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Paylaşım tamamlanamadı.');
+      setError(e instanceof Error ? e.message : tt('share_card.error'));
     } finally {
       setBusy(false);
     }
@@ -72,13 +62,25 @@ export default function ShareMealCardModal({ visible, onClose, data, seed }: Pro
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={busy ? undefined : onClose} />
-        <View style={[styles.sheet, { paddingBottom: Math.max(28, insets.bottom + 16) }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={busy ? undefined : onClose} />
+        <View
+          accessibilityViewIsModal
+          style={[styles.sheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(28, insets.bottom + 16) }]}
+        >
+          <View style={[styles.handle, { backgroundColor: t.isDark ? '#48484A' : '#C3C7CC' }]} />
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Öğün kartını paylaş</Text>
-            <TouchableOpacity onPress={onClose} disabled={busy} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <X size={24} color={C.textMuted} weight="bold" />
-            </TouchableOpacity>
+            <AppText textRole="sheetTitle" accessibilityRole="header">
+              {tt('share_card.meal_title')}
+            </AppText>
+            <Pressable
+              onPress={onClose}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={tt('common.close')}
+              style={styles.close}
+            >
+              <X size={22} color={t.color.ink} />
+            </Pressable>
           </View>
 
           {/* Önizleme — tam boy kart, görsel olarak ölçeklenmiş. */}
@@ -90,20 +92,33 @@ export default function ShareMealCardModal({ visible, onClose, data, seed }: Pro
             ) : null}
           </View>
 
-          <Text style={styles.hint}>Kişisel hedefin ve gün toplamın paylaşılmaz.</Text>
+          <AppText tone="secondary" style={styles.hint}>
+            {tt('share_card.hint')}
+          </AppText>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <AppText tone="danger" style={styles.hint}>
+              {error}
+            </AppText>
+          ) : null}
 
-          <TouchableOpacity style={[styles.shareBtn, busy && styles.shareBtnDisabled]} onPress={handleShare} disabled={busy} activeOpacity={0.85}>
+          <Pressable
+            style={[styles.shareBtn, { backgroundColor: t.color.accent, opacity: busy ? 0.6 : 1 }]}
+            onPress={handleShare}
+            disabled={busy}
+            accessibilityRole="button"
+          >
             {busy ? (
-              <ActivityIndicator color={C.accentText} />
+              <ActivityIndicator color={t.color.onAccent} />
             ) : (
               <>
-                <ShareNetwork size={22} color={C.accentText} weight="bold" />
-                <Text style={styles.shareBtnText}>Paylaş</Text>
+                <Export size={20} color={t.color.onAccent} weight="bold" />
+                <AppText tone="onAccent" style={styles.shareBtnText}>
+                  {tt('share_card.cta')}
+                </AppText>
               </>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -111,67 +126,22 @@ export default function ShareMealCardModal({ visible, onClose, data, seed }: Pro
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: C.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: C.bg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    alignItems: 'center',
-  },
-  headerRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  title: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 18,
-    color: C.textPrimary,
-  },
-  previewBox: {
-    overflow: 'hidden',
-    borderRadius: 24,
-    backgroundColor: '#0A0A0A',
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  hint: {
-    fontFamily: 'PlusJakartaSans_400Regular',
-    fontSize: 12,
-    color: C.textMuted,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  error: {
-    fontFamily: 'PlusJakartaSans_400Regular',
-    fontSize: 13,
-    color: '#FF6B6B',
-    textAlign: 'center',
-    marginTop: 12,
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16, paddingTop: 8, alignItems: 'center' },
+  handle: { width: 36, height: 5, borderRadius: 3, marginBottom: 8 },
+  headerRow: { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  previewBox: { overflow: 'hidden', borderRadius: 24, backgroundColor: '#0A0A0A' },
+  hint: { fontSize: 13, textAlign: 'center', marginTop: 14 },
   shareBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: C.accent,
-    borderRadius: 100,
-    height: 56,
+    gap: 8,
+    borderRadius: 26,
+    height: 52,
     width: '100%',
-    marginTop: 20,
+    marginTop: 18,
   },
-  shareBtnDisabled: { opacity: 0.6 },
-  shareBtnText: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 16,
-    color: C.accentText,
-  },
+  shareBtnText: { fontSize: 15, fontWeight: '700' },
 });

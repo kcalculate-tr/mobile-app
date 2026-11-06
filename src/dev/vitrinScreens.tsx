@@ -116,11 +116,20 @@ function SheetOver({ children }: { children: React.ReactNode }) {
 }
 
 function AddToDayScene() {
-  const post = useMockPost((p: any) => !!p.meal);
-  const meal = (post as any)?.meal ?? null;
+  // G15-S2: mock gönderilerde alan `meal_card` (eski `meal` hiç yoktu → sheet açılmıyordu).
+  // Final FinAddSheet örneği: Tavuk kinoa bowl · 540 kcal · P42 K48 Y18 · @kcal.
+  const meal = {
+    name: 'Tavuk kinoa bowl',
+    kcal: 540,
+    protein_g: 42,
+    carbs_g: 48,
+    fat_g: 18,
+    is_author: false,
+    photo_url: null,
+  } as any;
   return (
     <SheetOver>
-      <AddToDaySheet visible onClose={noop} meal={meal} authorHandle={(post as any)?.author?.handle ?? ''} onAdd={noop} />
+      <AddToDaySheet visible onClose={noop} meal={meal} authorHandle="kcal · haftanın tabağı" onAdd={noop} />
     </SheetOver>
   );
 }

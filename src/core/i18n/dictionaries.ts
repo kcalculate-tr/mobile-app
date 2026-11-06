@@ -445,6 +445,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       logged_dinner: 'Akşam’a loglandı',
       logged_snack: 'Ara öğüne loglandı',
       day_summary: 'Günün özeti',
+      load_error_title: 'Bugün yüklenemedi',
+      retry: 'Tekrar dene',
       manual_title: 'Elle gir',
       manual_sub: 'Bugün tükettiğin kaloriyi gir',
       manual_meal: 'Öğün',
@@ -1211,6 +1213,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
     share_card: {
       title: 'Tabak Röntgenini paylaş',
+      meal_title: 'Öğün kartını paylaş',
       hint: 'Kişisel hedefin ve gün toplamın paylaşılmaz.',
       cta: 'Paylaş',
       error: 'Paylaşım tamamlanamadı.',
@@ -1645,6 +1648,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       logged_dinner: 'Logged to dinner',
       logged_snack: 'Logged as a snack',
       day_summary: 'Day summary',
+      load_error_title: 'Couldn’t load today',
+      retry: 'Try again',
       manual_title: 'Enter manually',
       manual_sub: 'Enter the calories you had today',
       manual_meal: 'Meal',
@@ -2402,6 +2407,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
     share_card: {
       title: 'Share your Plate X-ray',
+      meal_title: 'Share your meal card',
       hint: 'Your personal goal and daily total are not shared.',
       cta: 'Share',
       error: 'Could not complete the share.',

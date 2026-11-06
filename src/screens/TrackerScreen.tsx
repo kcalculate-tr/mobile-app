@@ -43,7 +43,7 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
-import { TextScaleCapContext, useTheme } from '../core/design';
+import { EmptyErrorCard, TextScaleCapContext, useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
@@ -2193,8 +2193,8 @@ const html = `
     fat: nutritionSummary?.targetFat || nutritionProfile?.target_fat || 65,
   };
 
-  if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-    <ActivityIndicator color={COLORS.brand.green} size="large" />
+  if (loading) return <View style={yeniKabuk ? { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: designTheme.color.bg } : { flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <ActivityIndicator color={yeniKabuk ? designTheme.color.secondary : COLORS.brand.green} size="large" />
   </View>;
   if (!isAuthenticated) return null;
 
@@ -2371,7 +2371,22 @@ const html = `
         </>
         )}
 
-        {dataLoading ? (
+        {/* G15-S2: yeni kabukta yükleniyor/hata durumları Final dilinde. */}
+        {yeniKabuk && dataLoading ? (
+          <View style={s.centered}>
+            <ActivityIndicator color={designTheme.color.secondary} size="large" />
+          </View>
+        ) : yeniKabuk && errorMessage ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
+            <EmptyErrorCard
+              tone="error"
+              title={tt('gun.load_error_title')}
+              description={errorMessage}
+              actionLabel={tt('gun.retry')}
+              onAction={() => fetchData(selectedFilter)}
+            />
+          </View>
+        ) : dataLoading ? (
           <View style={s.centered}>
             <ActivityIndicator color={COLORS.brand.green} size="large" />
           </View>
