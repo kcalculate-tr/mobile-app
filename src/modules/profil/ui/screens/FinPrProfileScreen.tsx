@@ -97,6 +97,7 @@ type SubScreen =
   | 'support'
   | 'feedback'
   | 'macro'
+  | 'macroSub'
   | 'progress'
   | 'badges'
   | 'collection'
@@ -189,6 +190,8 @@ export default function FinPrProfileScreen() {
   if (sub === 'support') return <SettingsSupportScreen onBack={() => setSub('root')} />;
   if (sub === 'feedback') return <SettingsFeedbackScreen onBack={() => setSub('root')} />;
   if (sub === 'macro') return <FinPrMacroScreen onBack={() => setSub('root')} />;
+  // "Macro aboneliğim": eski Subscriptions ekranı yerine Final Macro ve Abonelik'in "Öğün Aboneliği" sekmesi.
+  if (sub === 'macroSub') return <FinPrMacroScreen onBack={() => setSub('root')} initialTab={1} />;
   if (sub === 'progress') {
     return (
       <FinPrProgressScreen
@@ -336,7 +339,7 @@ export default function FinPrProfileScreen() {
               first
               icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
               label={tr('profil.macro_subscription')}
-              onPress={() => navigation.navigate('Subscriptions' as any)}
+              onPress={() => setSub('macroSub')}
             />
             <FinRow
               icon={<LockSimple size={18} color={t.color.ink} />}

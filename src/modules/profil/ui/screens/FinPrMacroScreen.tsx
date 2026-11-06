@@ -59,8 +59,11 @@ export default function FinPrMacroScreen({
   vitrinWhatOpen,
   vitrinHistory,
   vitrinData,
+  initialTab = 0,
 }: {
   onBack: () => void;
+  /** 0 = Macro, 1 = Öğün Aboneliği ("Macro aboneliğim" girişi). */
+  initialTab?: number;
   /** YALNIZ dev vitrini (`__DEV__`): "Macro nedir?" sheet'i açık başlar. Üretimde geçilmez. */
   vitrinWhatOpen?: boolean;
   /** YALNIZ dev vitrini: "Macro geçmişi" ekranı açık başlar. */
@@ -73,7 +76,7 @@ export default function FinPrMacroScreen({
   const { user } = useAuth();
   const navigation = useNavigation<Nav>();
 
-  const [tabIndex, setTabIndex] = useState(0);
+  const [tabIndex, setTabIndex] = useState(initialTab);
   const [loading, setLoading] = useState(!vitrinData);
   const [profile, setProfile] = useState<MacroProfile | null>(null);
   const [settings, setSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
