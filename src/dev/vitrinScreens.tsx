@@ -304,7 +304,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
   ),
   ekInfo: () => (
     <Backdrop>
-      <EkInfoSheet visible onClose={noop} />
+      <EkInfoSheet visible onClose={noop} initialTab="zones" />
     </Backdrop>
   ),
   ekErrors: () => <EkErrorsScene />,

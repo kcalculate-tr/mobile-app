@@ -113,6 +113,12 @@ const ek = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name, params },
 ];
 
+/** G15-S5 FinPrCards örneği: iki kart, ilki varsayılan (Final "Kart •••• [son 4]"). */
+const VITRIN_CARDS = [
+  { id: 'vc1', last4: '4242', brand: null, bank_name: null, card_alias: null, is_default: true, created_at: '2026-01-01T00:00:00.000Z' },
+  { id: 'vc2', last4: '1881', brand: null, bank_name: null, card_alias: null, is_default: false, created_at: '2026-01-02T00:00:00.000Z' },
+];
+
 const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // ── Kabuk ──────────────────────────────────────────────────────────────────
   ['FinTabBar-rest', 'kabuk', route(tab('Tracker')), { collapse: 0 }],
@@ -197,7 +203,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinPrMacroWhat', 'profil', comp('profileSub', { sub: 'macro', what: true })],
   ['FinPrMacroHistoryEmpty', 'profil', comp('profileSub', { sub: 'macro' }), { data: 'empty' }],
   ['FinPrPersonal', 'profil', comp('profileSub', { sub: 'personal' })],
-  ['FinPrCards', 'profil', route([...tab('Profile'), { name: 'ProfileSavedCards' }]), { note: 'KİMSE ekranı (SavedCards) — yalnız karşılaştırılır' }],
+  // G15-S5: yeni_siparis açık → v2 EkSavedCardsScreen (servis çağrılmadan vitrin kartlarıyla).
+  ['FinPrCards', 'profil', route([...tab('Profile'), { name: 'ProfileSavedCards', params: { vitrinCards: VITRIN_CARDS } }])],
   ['FinPrNotify', 'profil', comp('profileSub', { sub: 'notify' })],
   ['FinPrSecurity', 'profil', comp('profileSub', { sub: 'security' })],
   ['FinPrAgreements', 'profil', comp('profileSub', { sub: 'agreements' })],
@@ -205,9 +212,10 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinPrFeedback', 'profil', comp('profileSub', { sub: 'feedback' })],
 
   // ── eatkcal ────────────────────────────────────────────────────────────────
-  ['FinCityR1', 'eatkcal', route(ek('EkCityGate')), { scene: 'city' }],
-  ['FinWaitlistR1', 'eatkcal', route(ek('EkCityGate')), { scene: 'waitlist' }],
-  ['FinEatBerlin', 'eatkcal', route(ek('EkCityGate')), { scene: 'berlin' }],
+  // G15-S5: il kapısı eatkcal sekmesinde (sekme çubuğuyla); adım dev-only `vitrinGate` parametresi.
+  ['FinCityR1', 'eatkcal', route(tab('Home')), { scene: 'city' }],
+  ['FinWaitlistR1', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul' })), { scene: 'waitlist' }],
+  ['FinEatBerlin', 'eatkcal', route(tab('Home', { vitrinGate: 'other', vitrinOtherCity: 'Berlin' })), { scene: 'berlin' }],
   ['FinEkHome', 'eatkcal', route(tab('Home'))],
   ['FinEkHomeSkeleton', 'eatkcal', route(tab('Home')), { data: 'loading' }],
   ['FinEkStore', 'eatkcal', route(ek('EkStore', { brandKey: 'kcal' }))],

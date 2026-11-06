@@ -13,7 +13,7 @@
 // Veri yoksa bölüm gizlenir; panodaki [N]/[Ürün] yer tutucu, uydurma yok.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { EkScreen, EkSection, EkChip, EkButton, ekType, useEk } from '../ui/kit';
@@ -40,7 +40,8 @@ import { fetchBrand, type Brand } from '../../../../lib/brands';
 import { resolveNavigation } from '../../../../lib/navigation';
 import { useAddressStore } from '../../../../store/addressStore';
 import { useCartStore } from '../../../../store/cartStore';
-import { readCityGatePassed } from '../../cityGateStorage';
+import { readCityGatePassed, writeCityGatePassed } from '../../cityGateStorage';
+import { CityGateView, type GateStep } from '../ui/gate/CityGateView';
 import type { Product } from '../../../../types';
 import {
   bannerTargetToEk,
@@ -56,7 +57,7 @@ const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
 
 type StoreItem = { key: string; brand: Brand; cover: string | null };
 
-export default function EkHomeScreen() {
+function EkHomeContent() {
   const { c, t } = useEk();
   const navigation = useEkNav();
   const { session } = useAuth();
@@ -577,3 +578,64 @@ const styles = StyleSheet.create({
   gridCell: { width: '50%', paddingHorizontal: 6 },
   nearby: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20, borderWidth: 1 },
 });
+
+// ── G15-S5 md.2 — il kapısı eatkcal sekmesinde (FinCityR1 / WaitlistR1 / EatBerlin) ──
+// Final'de kapı, sekme çubuğuyla birlikte eatkcal sekmesinin ilk hâli. Kapı
+// geçilmemişse (bugünkü `eatkcal-city-gate-passed` anahtarı) sekme önce
+// fotoğraflı şehir seçimini gösterir; İzmir doğrulanınca (aynı checkCity)
+// EkCityGateScreen.onAllowed ile aynı adımlar: kapı geçildi → adres yoksa adres
+// ekranı → mağaza ana sayfası. Geçildikten sonra bir daha sorulmaz.
+type HomeTabParams = {
+  /** YALNIZ __DEV__ vitrini: kapı adımı (FinWaitlistR1 / FinEatBerlin). */
+  vitrinGate?: GateStep;
+  vitrinCity?: string;
+  vitrinOtherCity?: string;
+};
+
+export default function EkHomeScreen() {
+  const { c } = useEk();
+  const navigation = useEkNav();
+  const params = (useRoute().params ?? {}) as HomeTabParams;
+  const address = useAddressStore((s) => s.selectedAddress);
+  const [gate, setGate] = useState<'unknown' | 'show' | 'passed'>('unknown');
+
+  useEffect(() => {
+    let alive = true;
+    readCityGatePassed()
+      .then((passed) => {
+        if (alive) setGate(passed ? 'passed' : 'show');
+      })
+      .catch(() => {
+        if (alive) setGate('passed');
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const onAllowed = useCallback(async () => {
+    await writeCityGatePassed();
+    setGate('passed');
+    if (!useAddressStore.getState().selectedAddress) {
+      navigation.navigate('EkAddressAdd', { selectMode: true });
+    }
+  }, [navigation]);
+
+  const onTrack = useCallback(() => {
+    (navigation as unknown as { navigate: (name: string, p?: object) => void }).navigate('Tabs', { screen: 'Tracker' });
+  }, [navigation]);
+
+  if (gate === 'unknown') return <View style={{ flex: 1, backgroundColor: c.bg }} />;
+  if (gate === 'show') {
+    return (
+      <CityGateView
+        onAllowed={onAllowed}
+        onTrack={onTrack}
+        initialStep={__DEV__ ? params.vitrinGate : undefined}
+        initialCityKey={__DEV__ ? params.vitrinCity : undefined}
+        otherCityName={(__DEV__ ? params.vitrinOtherCity : undefined) ?? address?.city ?? null}
+      />
+    );
+  }
+  return <EkHomeContent />;
+}

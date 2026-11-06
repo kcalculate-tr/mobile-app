@@ -1,29 +1,28 @@
-// eatkcal v2 (G13-S2 md.1 + md.11) — il kapısı: ilk "Sipariş ver"de bir kez.
+// eatkcal v2 (G13-S2 md.1 + md.11; G15-S5 md.2) — il kapısı rotası.
 //
-// FinSignupEat panel 1 / FinCityR1 / FinWaitlistR1 → G12-S4'ün
-// `SignupEatScreen`'i (src/modules/profil/ui/screens/SignupEatScreen.tsx) AYNEN
-// mount edilir: şehir listesi, "Çok yakında · Haber ver" ve sunucu doğrulaması
-// (`useEatkcalRegistration().checkCity` → checkDeliveryCity RPC) onun mevcut
-// mantığı; burada yeni kural YOK. Onaylanınca bugünkü EatHomeScreen
-// (handleGateConfirmed) ile aynı: `writeCityGatePassed()` (bir daha sorulmaz),
-// kayıtlı adres yoksa önce adres ekranı (FinSignupEat panel 2), varsa
-// `next` hedefine devam. FinEatBerlin (mutfak olmayan şehir): sahte restoran
-// listesi YOK — Ana sayfadaki `restoran_yakinda` "Yakında burada" kartı.
+// G15-S5: şehir listesi (SignupEatScreen) yerine Final'deki fotoğraflı kapı
+// (`ui/gate/CityGateView`: FinCityR1 / FinWaitlistR1 / FinEatBerlin). Asıl giriş
+// artık eatkcal sekmesinin kendisi (EkHomeScreen); bu rota, sekme dışından
+// sipariş eylemiyle gelinirse (geçilmemiş kapı) aynı görünümü açar.
+// MANTIK AYNI: doğrulama `useEatkcalRegistration().checkCity` (checkDeliveryCity
+// RPC); onaylanınca `writeCityGatePassed()` (bir daha sorulmaz), kayıtlı adres
+// yoksa önce adres ekranı, varsa `next` hedefine devam.
 import React, { useCallback } from 'react';
 import { View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import SignupEatScreen from '../../../profil/ui/screens/SignupEatScreen';
 import { writeCityGatePassed } from '../../cityGateStorage';
 import { useAddressStore } from '../../../../store/addressStore';
 import { useEkNav, type EkV2ParamList } from '../nav';
 import { useEk } from '../ui/kit';
+import { CityGateView } from '../ui/gate/CityGateView';
 
 type R = RouteProp<EkV2ParamList, 'EkCityGate'>;
 
 export default function EkCityGateScreen() {
-  const { c, insets } = useEk();
+  const { c } = useEk();
   const navigation = useEkNav();
   const params = useRoute<R>().params;
+  const address = useAddressStore((s) => s.selectedAddress);
 
   const onBack = useCallback(() => navigation.goBack(), [navigation]);
 
@@ -44,8 +43,8 @@ export default function EkCityGateScreen() {
   }, [navigation, params?.next, params?.brandKey]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top }} testID="ek-city-gate">
-      <SignupEatScreen onBack={onBack} onAllowed={onAllowed} />
+    <View style={{ flex: 1, backgroundColor: c.bg }} testID="ek-city-gate">
+      <CityGateView onAllowed={onAllowed} onExit={onBack} otherCityName={address?.city ?? null} showTabSpace={false} />
     </View>
   );
 }
