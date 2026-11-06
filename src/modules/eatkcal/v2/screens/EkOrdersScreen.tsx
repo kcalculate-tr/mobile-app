@@ -10,7 +10,8 @@ import { useProductImages } from '../ui/orders/useProductImages';
 import { useAuth } from '../../../../core/AuthContext';
 import { useRequireAuth } from '../../../../hooks/useRequireAuth';
 import { haptic } from '../../../../core/design';
-import { Receipt, Package, WarningCircle } from '../../../../components/icons';
+import { Receipt, WarningCircle } from '../../../../components/icons';
+import { Funnel } from 'phosphor-react-native/lib/commonjs/icons/Funnel';
 import { formatSupabaseErrorForDevLog } from '../../../../lib/supabaseErrors';
 import { getPendingModificationsForUser, type OrderModificationType } from '../../../../lib/orders';
 import { useEkNav } from '../nav';
@@ -172,7 +173,7 @@ export default function EkOrdersScreen() {
         ) : view === 'filter_empty' ? (
           <View style={styles.stateWrap}>
             <EkStateCard
-              icon={<Package size={24} color={c.ink} />}
+              icon={<Funnel size={24} color={c.ink} />}
               title={t('eatkcal.v2.orders.filter_empty_title')}
               body={t('eatkcal.v2.orders.filter_empty_body')}
               action={t('eatkcal.v2.orders.filter_empty_action')}
