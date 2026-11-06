@@ -12,6 +12,10 @@ import { AppText } from '../../../core/design/components/AppText';
 import { Button } from '../../../core/design/components/Button';
 import { Sheet } from '../../../core/design/components/Sheet';
 import { useTheme } from '../../../core/design/ThemeProvider';
+import { Compass, Scan, CircleDashed } from '../../../components/icons';
+
+// Keşfet · Gün halkası · Tara (FEATURES sırası).
+const FEATURE_ICONS = [Compass, CircleDashed, Scan];
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { fetchPastOrders } from '../../../lib/reorder';
@@ -71,9 +75,14 @@ export function IntroOverlay() {
   return (
     <Sheet visible={visible} onClose={() => close(false)} title={i18n.t('intro.title')}>
       <View style={styles.list}>
-        {FEATURES.map((f) => (
+        {FEATURES.map((f, i) => {
+          const Icon = FEATURE_ICONS[i] ?? Compass;
+          return (
           <View key={f.title} style={styles.row}>
-            <View style={[styles.dot, { backgroundColor: t.color.accent }]} />
+            {/* G14-S1 — FinIntro: lime nokta yerine özellik ikonu (gri daire). */}
+            <View style={[styles.iconWrap, { backgroundColor: t.color.line }]}>
+              <Icon size={20} color={t.color.ink} />
+            </View>
             <View style={styles.rowText}>
               <AppText textRole="body" style={{ color: t.color.ink, fontFamily: 'PlusJakartaSans_600SemiBold' }}>
                 {f.title}
@@ -83,7 +92,8 @@ export function IntroOverlay() {
               </AppText>
             </View>
           </View>
-        ))}
+          );
+        })}
         <AppText textRole="body" style={{ color: t.color.ink, fontFamily: 'PlusJakartaSans_600SemiBold', marginTop: 4 }}>
           {i18n.t('intro.order')}
         </AppText>
@@ -92,13 +102,13 @@ export function IntroOverlay() {
       <View style={styles.actions}>
         {state === 'order' ? (
           <>
-            <Button label={i18n.t('intro.continueOrder')} onPress={() => close(true)} />
-            <Button variant="text" label={i18n.t('intro.browseNew')} onPress={() => close(false)} />
+            <Button tone="ink" label={i18n.t('intro.continueOrder')} onPress={() => close(true)} />
+            <Button variant="secondary" label={i18n.t('intro.browseNew')} onPress={() => close(false)} />
           </>
         ) : (
           <>
-            <Button label={i18n.t('intro.browse')} onPress={() => close(false)} />
-            <Button variant="text" label={i18n.t('intro.later')} onPress={() => close(false)} />
+            <Button tone="ink" label={i18n.t('intro.browse')} onPress={() => close(false)} />
+            <Button variant="secondary" label={i18n.t('intro.later')} onPress={() => close(false)} />
           </>
         )}
       </View>
@@ -109,7 +119,7 @@ export function IntroOverlay() {
 const styles = StyleSheet.create({
   list: { gap: 16, paddingTop: 4 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
+  iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1 },
   actions: { marginTop: 20, gap: 6, paddingBottom: 4 },
 });

@@ -41,6 +41,9 @@ export function PrivacySheet({ visible, isPrivate, onClose, onChanged }: Privacy
       visible={visible}
       onClose={onClose}
       title={tt('profil.privacy_title')}
+      // G14-S1 — FinPrivacy-Dark: eski BottomSheet beyaz kalıyordu; yüzey temadan.
+      containerStyle={{ backgroundColor: t.color.surface }}
+      handleColor={t.color.line}
       footer={
         <Pressable
           onPress={handleConfirm}
@@ -51,7 +54,7 @@ export function PrivacySheet({ visible, isPrivate, onClose, onChanged }: Privacy
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <AppText variant="body" style={styles.confirmText}>
+            <AppText variant="body" style={[styles.confirmText, { color: t.color.surface }]}>
               {tt('profil.privacy_confirm')}
             </AppText>
           )}
@@ -89,6 +92,9 @@ function Option({
   subtitle: string;
   line: string;
 }) {
+  const t = useTheme();
+  const ink = t.color.ink;
+  const onInk = t.color.surface;
   return (
     <Pressable
       onPress={onPress}
@@ -104,8 +110,8 @@ function Option({
           {subtitle}
         </AppText>
       </View>
-      <View style={[styles.radio, selected && styles.radioOn]}>
-        {selected ? <Check size={12} color="#FFFFFF" weight="bold" /> : null}
+      <View style={[styles.radio, selected && { backgroundColor: ink, borderColor: ink }]}>
+        {selected ? <Check size={12} color={onInk} weight="bold" /> : null}
       </View>
     </Pressable>
   );

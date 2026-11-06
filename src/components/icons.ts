@@ -115,3 +115,7 @@ export { XCircle, XCircleIcon } from 'phosphor-react-native/lib/commonjs/icons/X
 export { MapTrifold } from 'phosphor-react-native/lib/commonjs/icons/MapTrifold';
 export { Translate } from 'phosphor-react-native/lib/commonjs/icons/Translate';
 export { Basket } from 'phosphor-react-native/lib/commonjs/icons/Basket';
+// G14-S1 — FinIntro özellik ikonları
+export { Compass } from 'phosphor-react-native/lib/commonjs/icons/Compass';
+export { Scan } from 'phosphor-react-native/lib/commonjs/icons/Scan';
+export { CircleDashed } from 'phosphor-react-native/lib/commonjs/icons/CircleDashed';
