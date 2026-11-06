@@ -82,6 +82,7 @@ export const FINAL_FLAGS: FlagKey[] = [
   'etkinlik',
   'sosyal_bildirim',
   'paylasim_karti',
+  'su_takibi',
 ];
 
 /** Final'de -Dark görseli OLMAYAN panolar (design/final/png). */
@@ -108,6 +109,7 @@ function motion(key: string, props?: Record<string, unknown>): VitrinTarget {
 const tab = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name, params }] } },
 ];
+const HOME_VITRIN = { vitrinOpenAuto: true, vitrinHour: 9 };
 const ek = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name: 'Home' }] } },
   { name, params },
@@ -136,14 +138,17 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinTbFirst', 'takibe', route([{ name: 'TakibeBasla', params: { screen: 'TbFirst' } }]), { scene: 'draft' }],
 
   // ── Ana sayfa (Tracker, yeni kabuk) ────────────────────────────────────────
-  ['FinHomeR3', 'ana', route(tab('Tracker')), { scene: 'meals' }],
-  ['FinHomeEmptyR1', 'ana', route(tab('Tracker')), { data: 'empty' }],
-  ['FinHomeDelivered', 'ana', route(tab('Tracker')), { scene: 'delivered' }],
-  ['FinHomeEN', 'ana', route(tab('Tracker')), { lang: 'en', scene: 'meals' }],
-  ['FinHomeXL', 'ana', route(tab('Tracker')), { textSize: 'accessibility-extra-large', scene: 'meals' }],
-  ['FinHomeLogBefore', 'ana', route(tab('Tracker')), { scene: 'meals' }],
-  ['FinHomeLogFlow', 'ana', route(tab('Tracker')), { scene: 'meals' }],
-  ['FinHomeLogMerged', 'ana', route(tab('Tracker')), { scene: 'meals' }],
+  // G15-S2: vitrin* parametreleri (yalnız __DEV__) — Final'in ara durumları:
+  // açık porsiyon menüsü (pano state editing:true), sabah selamı, teslim anı,
+  // bekleyen-log damlası.
+  ['FinHomeR3', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
+  ['FinHomeEmptyR1', 'ana', route(tab('Tracker', { vitrinHour: 9 })), { data: 'empty' }],
+  ['FinHomeDelivered', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinDelivered: true })), { scene: 'delivered' }],
+  ['FinHomeEN', 'ana', route(tab('Tracker', HOME_VITRIN)), { lang: 'en', scene: 'meals' }],
+  ['FinHomeXL', 'ana', route(tab('Tracker', HOME_VITRIN)), { textSize: 'accessibility-extra-large', scene: 'meals' }],
+  ['FinHomeLogBefore', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinPending: 'dinner' })), { scene: 'meals' }],
+  ['FinHomeLogFlow', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinPending: 'dinner' })), { scene: 'meals' }],
+  ['FinHomeLogMerged', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
 
   // ── Keşfet ─────────────────────────────────────────────────────────────────
   ['FinFeed', 'kesfet', route(tab('KesfetTab', { asTab: true }))],

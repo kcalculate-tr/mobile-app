@@ -72,5 +72,29 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     }, 400);
   }
 
+  // G15-S2 — Ana sayfa alt bölümleri: Final örneği (eatkcal şeridi + Keşfet videoları).
+  const { setHomeStripsProvider } = require('../screens/tracker/HomeStrips');
+  setHomeStripsProvider({
+    eta: '30–55 dk',
+    city: 'İzmir',
+    dishes: async () => [
+      { id: 'v-d1', name: 'Tavuklu Bowl', kcal: 560, price: 265, photo: null },
+      { id: 'v-d2', name: 'Izgara Somon Bowl', kcal: 520, price: 285, photo: null },
+      { id: 'v-d3', name: 'Peynirli omlet', kcal: 340, price: 195, photo: null },
+    ],
+    videos: async (lang: string) =>
+      lang === 'en'
+        ? [
+            { id: 'post-1', title: 'Simit, X-rayed', thumb: null },
+            { id: 'post-2', title: 'Calorie Court: Kumpir', thumb: null },
+            { id: 'post-3', title: 'Label Detective: light', thumb: null },
+          ]
+        : [
+            { id: 'post-1', title: 'Simidin röntgeni', thumb: null },
+            { id: 'post-2', title: 'Kalori Mahkemesi: Kumpir', thumb: null },
+            { id: 'post-3', title: 'Etiket Dedektifi: light', thumb: null },
+          ],
+  });
+
   return { routes, mockRoutes: mockRoutesFor(entry) };
 }

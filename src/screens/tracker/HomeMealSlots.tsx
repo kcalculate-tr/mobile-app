@@ -95,6 +95,34 @@ export interface HomeMealSlotsProps {
   onPortion?: (item: HomeMealItem, factor: number) => void;
   /** Verilirse kayıt menüsünde "Paylaş" görünür (paylasim_karti). */
   onShare?: (item: HomeMealItem) => void;
+  /** Vitrin (yalnız __DEV__): ilk eatkcal kaydının porsiyon menüsü açık başlar (FinHomeR3). */
+  initialOpenAuto?: boolean;
+  /**
+   * Loglama anı · önce (FinHomeLogBefore / FinMoLogA): kullanıcı "…'e logla"ya
+   * bastı, kayıt henüz gelmedi → o yuvanın başlığında Logla damlası.
+   */
+  pendingSlot?: SlotKey | null;
+  /** Saat (0–23) — boş gün hapının yuvası. Verilmezse yerel saat. */
+  nowHour?: number;
+}
+
+/** FinMoLogA "goo" damlası: r11 baş + r6 kuyruk (pano: #4A6B00, koyuda lime). */
+function LogDrop() {
+  const t = useTheme();
+  const reduced = useReducedMotion();
+  const c = t.isDark ? '#C6F04F' : '#4A6B00';
+  const s = useSharedValue(0);
+  useEffect(() => {
+    s.value = reduced ? withTiming(1, { duration: REDUCED.duration }) : withSpring(1, SPRING.ai);
+  }, [reduced, s]);
+  const style = useAnimatedStyle(() => ({ opacity: s.value, transform: [{ scale: 0.4 + 0.6 * s.value }] }));
+  return (
+    <Animated.View style={[styles.drop, style]} accessibilityElementsHidden importantForAccessibility="no">
+      <Svg width={24} height={34} viewBox="0 0 24 34">
+        <Path d="M12 1a11 11 0 0 1 4.6 21 5.6 5.6 0 0 1-2.2 3.6 6 6 0 1 1-4.8 0A5.6 5.6 0 0 1 7.4 22 11 11 0 0 1 12 1Z" fill={c} />
+      </Svg>
+    </Animated.View>
+  );
 }
 
 export function HomeMealSlots({
@@ -108,11 +136,18 @@ export function HomeMealSlots({
   onRemove,
   onPortion,
   onShare,
+  initialOpenAuto = false,
+  pendingSlot = null,
+  nowHour,
 }: HomeMealSlotsProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
   const numLang = lang === 'en' ? 'en' : 'tr';
   const [openId, setOpenId] = useState<string | null>(null);
+  const firstAutoId = slots.flatMap((s) => s.items).find((it) => it.auto)?.id ?? null;
+  useEffect(() => {
+    if (__DEV__ && initialOpenAuto && firstAutoId) setOpenId(firstAutoId);
+  }, [initialOpenAuto, firstAutoId]);
   const [portion, setPortion] = useState<Record<string, number>>({});
 
   const allEmpty = slots.every((s) => s.empty);
@@ -127,7 +162,7 @@ export function HomeMealSlots({
   }, []);
 
   // Gün tamamen boşken tek pill: o anki saatin yuvası (FinHomeEmptyR1).
-  const nowSlot = slotFromHour(new Date().getHours());
+  const nowSlot = slotFromHour(nowHour ?? new Date().getHours());
 
   return (
     <View
@@ -163,9 +198,12 @@ export function HomeMealSlots({
           <View key={sl.key} style={[styles.slot, { borderTopColor: t.color.line }]}>
             <View style={styles.slotHead}>
               <StrokeIcon d={SLOT_ICON[sl.key]} size={18} color={t.color.secondary} />
-              <AppText variant="caption" style={styles.slotName}>
-                {tt(`meal.${sl.key}`)}
-              </AppText>
+              <View style={styles.slotNameWrap}>
+                <AppText variant="caption" style={styles.slotNameText}>
+                  {tt(`meal.${sl.key}`)}
+                </AppText>
+                {pendingSlot === sl.key ? <LogDrop /> : null}
+              </View>
               <AppText variant="caption" tone="secondary" style={styles.slotKcal}>
                 {sl.empty
                   ? tt('gun.slot_empty_kcal')
@@ -459,7 +497,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  slotName: { flex: 1, fontWeight: '600' },
+  slotNameWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  slotNameText: { fontWeight: '600' },
+  drop: { marginTop: 8, marginLeft: 4 },
   slotKcal: { fontWeight: '600' },
   slotEmpty: { paddingLeft: 42, paddingRight: 16, paddingBottom: 8 },
   pill: {

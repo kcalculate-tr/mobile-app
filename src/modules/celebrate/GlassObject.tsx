@@ -8,7 +8,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { CURVE, TIMING, useBreath, useEnter, useFloat, useReducedMotion } from '../../core/design';
 
 /**
@@ -97,11 +96,14 @@ export function GlassObject({
     );
   }, [reduced, sweep, replayKey]);
 
-  const sweepStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(sweep.value, [0, 1], [-size * 1.2, size * 1.2]);
-    const opacity = interpolate(sweep.value, [0, 0.15, 0.5, 0.85, 1], [0, 0.9, 0.9, 0.9, 0]);
-    return { transform: [{ translateX }, { rotate: '18deg' }], opacity };
-  });
+  // Işık süpürmesi — Final'de nesne şekliyle maskeli (mask-image). Maske
+  // paketi kullanılmıyor: görselin kendi alfa kanalı (tintColor beyaz) ile
+  // kısa parlama → ışık YALNIZ nesnenin üstünde; zemin (koyu tema) etkilenmez.
+  // (Önce kare kırpma + kare sheen koyu temada nesnenin arkasında gri kare
+  // gösteriyordu — FinHomeEmptyR1-Dark.)
+  const sweepStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sweep.value, [0, 0.4, 1], [0, 0.32, 0]),
+  }));
 
   return (
     <Animated.View
@@ -109,49 +111,29 @@ export function GlassObject({
       style={[{ transformOrigin: 'bottom' }, enter.style, reduced ? null : floatA.style, popStyle, style]}
     >
       {glow ? (
-        <Animated.View
-          style={[
-            styles.glow,
-            { width: size, height: size, borderRadius: size / 2 },
-            breath.style,
-          ]}
-          pointerEvents="none"
-        />
+        <View pointerEvents="none" style={[styles.glowWrap, { width: size, height: size }]}>
+          <Animated.View
+            style={[styles.glow, { width: size * 0.7, height: size * 0.7, borderRadius: size * 0.35 }, breath.style]}
+          />
+        </View>
       ) : null}
 
-      <View style={[styles.clip, { width: size, height: size, borderRadius: size * 0.18 }]}>
+      <View style={[styles.clip, { width: size, height: size }]}>
         <Image source={source} style={{ width: size, height: size }} resizeMode="contain" />
-
-        {/* Sabit cam sheen'i: ust-sol aydinlik -> seffaf. */}
-        <LinearGradient
-          colors={['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)']}
-          locations={[0, 0.45, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
+        <Animated.Image
+          source={source}
+          resizeMode="contain"
+          style={[StyleSheet.absoluteFill, { width: size, height: size, tintColor: '#FFFFFF' }, sweepStyle]}
         />
-
-        {/* Isik supurmesi bandi (giriste bir kez). */}
-        <Animated.View
-          style={[styles.sweepWrap, { width: size * 0.5, height: size * 2 }, sweepStyle]}
-          pointerEvents="none"
-        >
-          <LinearGradient
-            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Lime hale — kutlama vurgusu (tema'dan bagimsiz sabit tasarim rengi).
-  glow: { position: 'absolute', alignSelf: 'center', top: '10%', backgroundColor: '#C6F04F' },
-  clip: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  sweepWrap: { position: 'absolute', top: '-50%', left: 0 },
+  // Lime hale — kutlama vurgusu (tema'dan bağımsız sabit tasarım rengi). Final
+  // go-glow bulanık radyal; RN'de bulanıklık yok → küçük + düşük opaklık.
+  glowWrap: { position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: 0.45 },
+  glow: { backgroundColor: '#C6F04F' },
+  clip: { alignItems: 'center', justifyContent: 'center' },
 });
