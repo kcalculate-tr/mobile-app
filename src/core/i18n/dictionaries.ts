@@ -7,6 +7,10 @@
 // geri döner (enableFallback). Çoğul anahtarlar { one, other } biçimindedir ve
 // `{ count }` ile çağrılır.
 
+import { tr as loginTr, en as loginEn } from '../../modules/onboarding/v2/i18n/login';
+import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/i18n/signupAI';
+import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
+
 export type Lang = 'tr' | 'en';
 
 export const SUPPORTED_LANGS: readonly Lang[] = ['tr', 'en'] as const;
@@ -55,9 +59,13 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         order_desc: 'Sağlıklı yemek · eatkcal ile İzmir’de 30–55 dk',
         both: 'İkisi de',
         both_desc: 'Takip et, uyan yemeği sipariş ver',
+        note: '3 kısa soru, sonra hedefin hazır.',
       },
+      // G15-S1 Ek karar — v2 görünüm katmanı metinleri (modules/onboarding/v2/i18n/*).
+      v2: { login: loginTr, signupAi: signupAiTr, signupEat: signupEatTr },
       underage: {
         title: 'Kcalculate 18 yaş ve üzeri içindir',
+        body: 'Girdiğin doğum yılına göre 18 yaşından küçüksün. Bu yüzden hesap oluşturamıyoruz.',
         sub: 'Hiçbir bilgin kaydedilmedi.',
         fix: 'Doğum yılını düzelt',
         ok: 'Tamam',
@@ -98,7 +106,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         title: 'Tempo',
         sub: 'Yalnız Kilo ver ve Kas yap için.',
         unit: 'kg / hafta',
-        projection: 'Bu tempoyla ilk kilona',
+        projection: 'Bu tempoyla hedefine',
+        min: '0,25 kg',
+        max: '1 kg',
       },
       about: {
         title: 'Seni tanıyalım',
@@ -132,8 +142,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       how: {
         title: 'Nasıl hesaplanır?',
         bmr: 'Bazal metabolizma (BMR)',
+        bmr_desc: 'Dinlenirken vücudunun harcadığı enerji. Cinsiyet, yaş, boy ve kilondan hesaplanır.',
         activity: 'Hareket',
+        activity_desc: 'BMR, günlük hareketine göre artırılır; daha hareketli günler daha çok enerji ister.',
         goal: 'Hedef',
+        goal_desc: 'Kilo verirken seçtiğin tempoya göre günlük bir açık, kas yaparken küçük bir fazla eklenir.',
         note: 'Her hafta ilerlemene göre birlikte güncelleriz.',
         ok: 'Tamam',
       },
@@ -1223,9 +1236,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         order_desc: 'Healthy food · 30–55 min in İzmir with eatkcal',
         both: 'Both',
         both_desc: 'Track, then order a meal that fits',
+        note: '3 short questions, then your goal is ready.',
       },
+      v2: { login: loginEn, signupAi: signupAiEn, signupEat: signupEatEn },
       underage: {
         title: 'Kcalculate is for ages 18 and up',
+        body: 'Based on the birth year you entered, you’re under 18. That’s why we can’t create an account.',
         sub: 'None of your info was saved.',
         fix: 'Fix birth year',
         ok: 'OK',
@@ -1266,7 +1282,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         title: 'Pace',
         sub: 'Only for Lose weight and Build muscle.',
         unit: 'kg / week',
-        projection: 'At this pace, your first kg by',
+        projection: 'At this pace, your goal by',
+        min: '0.25 kg',
+        max: '1 kg',
       },
       about: {
         title: 'Let’s get to know you',
@@ -1300,8 +1318,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       how: {
         title: 'How is it calculated?',
         bmr: 'Basal metabolism (BMR)',
+        bmr_desc: 'The energy your body burns at rest. Calculated from gender, age, height and weight.',
         activity: 'Activity',
+        activity_desc: 'BMR is raised by your daily activity; more active days need more energy.',
         goal: 'Goal',
+        goal_desc: 'When losing weight, a daily deficit based on your pace is applied; when building muscle, a small surplus is added.',
         note: 'We update it together each week based on your progress.',
         ok: 'OK',
       },

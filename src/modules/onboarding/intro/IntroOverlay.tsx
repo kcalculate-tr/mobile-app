@@ -7,12 +7,12 @@
 // yeni sorgu YAZILMAZ (G12-CONTRACT "Bağlar").
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '../../../core/design/components/AppText';
 import { Button } from '../../../core/design/components/Button';
 import { Sheet } from '../../../core/design/components/Sheet';
 import { useTheme } from '../../../core/design/ThemeProvider';
-import { Compass, Scan, CircleDashed } from '../../../components/icons';
+import { Compass, Scan, CircleDashed, ShoppingBag } from '../../../components/icons';
 
 // Keşfet · Gün halkası · Tara (FEATURES sırası).
 const FEATURE_ICONS = [Compass, CircleDashed, Scan];
@@ -21,6 +21,18 @@ import { useAuth } from '../../../core/AuthContext';
 import { fetchPastOrders } from '../../../lib/reorder';
 import { navigationRef } from '../../../navigation/navigationRef';
 import { readIntroSeen, writeIntroSeen } from './storage';
+
+/** Final ikincil eylem: çerçevesiz, mürekkep renkli düz metin. */
+function InkTextButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}>
+      <AppText textRole="body" style={{ color: t.color.ink, fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
 
 type IntroState = 'checking' | 'hidden' | 'plain' | 'order';
 
@@ -94,21 +106,25 @@ export function IntroOverlay() {
           </View>
           );
         })}
-        <AppText textRole="body" style={{ color: t.color.ink, fontFamily: 'PlusJakartaSans_600SemiBold', marginTop: 4 }}>
-          {i18n.t('intro.order')}
-        </AppText>
+        {/* G15-S1 — FinIntro: "Siparişin aynı yerde." kenarlıklı kart + çanta ikonu. */}
+        <View style={[styles.orderCard, { backgroundColor: t.color.surfaceRaised, borderColor: t.color.line }]}>
+          <ShoppingBag size={20} color={t.color.ink} />
+          <AppText textRole="bodySm" style={{ color: t.color.ink, fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+            {i18n.t('intro.order')}
+          </AppText>
+        </View>
       </View>
 
       <View style={styles.actions}>
         {state === 'order' ? (
           <>
             <Button tone="ink" label={i18n.t('intro.continueOrder')} onPress={() => close(true)} />
-            <Button variant="secondary" label={i18n.t('intro.browseNew')} onPress={() => close(false)} />
+            <InkTextButton label={i18n.t('intro.browseNew')} onPress={() => close(false)} />
           </>
         ) : (
           <>
             <Button tone="ink" label={i18n.t('intro.browse')} onPress={() => close(false)} />
-            <Button variant="secondary" label={i18n.t('intro.later')} onPress={() => close(false)} />
+            <InkTextButton label={i18n.t('intro.later')} onPress={() => close(false)} />
           </>
         )}
       </View>
@@ -121,5 +137,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1 },
+  orderCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, minHeight: 48 },
   actions: { marginTop: 20, gap: 6, paddingBottom: 4 },
 });

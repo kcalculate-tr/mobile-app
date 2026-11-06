@@ -55,5 +55,7 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
     .filter((f) => f.endsWith('.webp'))
     .map((f) => f.slice(0, -'.webp'.length))
     .sort();
-  assert.deepEqual([...allPanoNames()].sort(), finals);
+  // G15-S1: Final'de tek panoda 3 panel olan akışların adım çekimleri (ek kayıtlar).
+  const EXTRA = /^Fin(LoginEmail|LoginCode|SignupAIHandle|SignupAIProfile|SignupEatAddress|SignupEatPhone)(-Dark)?$/;
+  assert.deepEqual([...allPanoNames()].filter((n) => !EXTRA.test(n)).sort(), finals);
 });

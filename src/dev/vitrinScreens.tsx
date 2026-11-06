@@ -49,6 +49,21 @@ import { CelebrateOverlay } from '../modules/celebrate/CelebrateOverlay';
 import { NotifyPermissionSheet } from '../modules/celebrate/NotifyPermissionSheet';
 import { CollectionWon } from '../modules/collection/CollectionWon';
 
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import LoginV2 from '../modules/onboarding/v2/LoginV2';
+import SignupAIFlowV2 from '../modules/onboarding/v2/SignupAIFlowV2';
+import SignupEatFlowV2 from '../modules/onboarding/v2/SignupEatFlowV2';
+
+const VitrinStack = createNativeStackNavigator();
+/** v2 ekranları useRoute/useNavigation kullanır → tek ekranlı mini yığın içinde aç (YALNIZ vitrin). */
+function InScreen({ children }: { children: React.ReactElement }) {
+  return (
+    <VitrinStack.Navigator screenOptions={{ headerShown: false }}>
+      <VitrinStack.Screen name="Login" component={() => children} />
+    </VitrinStack.Navigator>
+  );
+}
+
 const noop = () => {};
 const P = (props: Record<string, unknown> | undefined) => (props ?? {}) as any;
 
@@ -309,7 +324,22 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
   ),
   ekErrors: () => <EkErrorsScene />,
   signupAI: () => <SignupAIScreen onSkip={noop} />,
+  loginV2: ({ step }: { step?: 'email' | 'code' }) => (
+    <InScreen>
+      <LoginV2 vitrinStep={step} />
+    </InScreen>
+  ),
+  signupAIV2: ({ step }: { step?: 'welcome' | 'handle' | 'profile' }) => (
+    <InScreen>
+      <SignupAIFlowV2 onDone={noop} onBack={noop} vitrinStep={step} />
+    </InScreen>
+  ),
   signupEat: () => <SignupEatScreen onBack={noop} onAllowed={noop} />,
+  signupEatV2: ({ step }: { step?: 'city' | 'address' | 'phone' }) => (
+    <InScreen>
+      <SignupEatFlowV2 onBack={noop} onAllowed={noop} vitrinStep={step} />
+    </InScreen>
+  ),
   celebrate: ({ kind }: { kind?: 'first' | 'streak3' | 'streak7' }) => (
     <Backdrop>
       <CelebrateOverlay
