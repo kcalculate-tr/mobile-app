@@ -12,8 +12,15 @@
 (9) **Eski tasarım: 0** (noLegacyWhenFlagsOn geçti; yeni bileşen yalnız Final tema belirteçleri).
 (10) Son commit `docs/night/G16-S1-DONE`.
 
+## KARARLAR (İlter, 6 Kas — B)
+1. Bayrak kapalı parite kanıtı: mevcut test kanıtı yeterli (TrackerScreen.flagOff snapshot, gates.flagOff, flagOffRoutes, legacySwap + korunan dosyalarda `git diff night15/release` boş). Ekran görüntüsü karşılaştırması YAPILMADI: iki çekim denemesi geliştirme başlatıcı ekranını yakaladı (geçersiz); Metro sonlandırma/worktree silme izni verilmedi.
+2. Madde 2 şimdiki hâliyle kalır: SignupEat (`yeni_onboarding`) ilk paneli Final alttan-sheet (FinSignupEat panosu esas); fotoğraflı il kapısı (FinCityR1) eatkcal sekmesinde ve EkCityGate rotasında. Kapı `writeCityGatePassed` ile bir kez görünür.
+3. Vitrindeki gri "Klavye" yer tutucusu (yalnız `__DEV__`, Final panosundaki yer tutucuyla aynı) kabul edildi; FinSignupEat kompozit (3 kare yan yana) 6,5%.
+4. PDF rapor logosu: `design/final/` içinde logo varlığı yok → rapor olduğu gibi.
+
 ## SORULAR
-1. Final logo varlığı (SVG/PNG) `design/final/` içinde yok; PDF raporu eski logoda.
-2. md.2 SignupEat kısmı (3 panelli kapıda da FinCityR1) hedef koşul için GEVŞETİLDİ; geri alınmak istenirse `98aee02`'yi yeniden uygula.
+Açık soru yok.
+
+Not: Geçici parite worktree'leri `$CLAUDE_JOB_DIR/tmp/par-night15`, `par-night16` ve olası Metro (8098) silinemedi/sonlandırılamadı; repoya etkisi yok (job silinince temizlenir).
 
 Yeniden giydirilen (Final'de yok): —
