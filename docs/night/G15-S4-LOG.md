@@ -42,12 +42,12 @@ Sonra = G15-S4 simülatör görüntüsü (Light; Dark ayrıca yukarıdaki listed
 | FinBadges | büyük | aynı | — |
 | FinSheetNotify | büyük | aynı | arkada ana sayfa yok (vitrin) |
 
-Eski tasarım: 0
+Eski tasarım: 0 (AddCard → S5 EkAddCardScreen, S6'da bağlanır)
 Envanter (Profil sekmesi ve açtığı her ekran/sheet, bayraklar açık):
 - Benim: hub, Personal, Notify, Security, Privacy sheet + ayarlar, Agreements, Support, Feedback, Macro (+geçmiş, nedir), Progress, Badges, Collection, Public önizleme, `/u/:handle`, Değerlendirmelerim, Kampanyalar & Kuponlar, Ölçüm geçmişi, EkInfoSheet → Final.
 - Siparişlerim / Adreslerim: `yeni_siparis` açıkken Profil artık eatkcal v2'ye (EkOrders / EkAddresses, G13-S2 Final ekranları) gider; eski ekranlar yalnız bayrak kapalı.
 - Kayıtlı kartlarım (FinPrCards): 5. tur — `FinPrCardsScreen` (Final dili). KİMSE'nin `SavedCardsScreen.tsx` dosyasına DOKUNULMADI; yeni ekran AYNI `lib/cards` çağrılarını (syncSavedCards / setDefaultCard / deleteSavedCard / getCardsFeatureStatus) + `consumeCardsStale` kullanır, ödeme/kart mantığı yeniden yazılmadı; "Yeni kart" mevcut `ProfileAddCard` (PaynKolay doğrulama, KİMSE akışı) ekranına gider. Hub satırı (yalnız kart özelliği açıkken) artık bu ekrana gider. Light + Dark simülatörde Final ile aynı. (Not: görev "FinPrCards S5'te" diyordu; S5 ile çakışmaması için S5'e bu dosyayı kullanabileceği LOG notu — dev vitrini `FinPrCards` girişi bu ekrana işaret eder.)
-- AÇIK İSTİSNA — `ProfileAddCard` (`AddCardScreen.tsx`, KİMSE): "Yeni kart"ın açtığı PaynKolay doğrulama ekranı eski tasarımda. Ekran bir form değil, ödeme doğrulama akışı (WebView + durum yoklama + 20 sn sayfa bekçisi + kayıt iptal kilitleri + 3D Secure dönüş URL'i). Yeniden giydirmek ya KİMSE dosyasına dokunmayı ya da bu akışı kopyalamayı gerektirir; ikisi de G15-S4.md'nin yasak listesinde (ödeme MANTIĞI) ve canlı PaynKolay olmadan doğrulanamaz. Bu yüzden `Eski tasarım: 0` Profil sekmesinin kendi ekranları için; bu ekran SAYILMADI ve aşağıda SORULAR #6'da karara bağlanmayı bekliyor.
+- Yeni kart ekleme (`ProfileAddCard`, `AddCardScreen.tsx`, KİMSE): İlter kararı — bu oturum DOKUNMAZ (`AddCardScreen.tsx` diff = 0). Yeni tasarımı S5 zaten yaptı: `eatkcal/v2` altındaki `EkAddCardScreen` (mantık AddCardScreen'den satır satır kopya; bayt eşitliğini `legacySwap.test.ts` denetler). G15-S6, bayrak açıkken Profil › Kayıtlı kartlarım › Yeni kart yolunu bu ekrana bağlar. Şimdilik `FinPrCardsScreen`'deki "Yeni kart" `ProfileAddCard`'a gider; S6 bağlayınca Eski tasarım yolu kalmaz.
 - TakibeBasla (Hedefi düzenle): onboarding/hedef akışı (başka sahip, Final FinTb* panoları kapsamı).
 
 Yeniden giydirilen (Final'de yok): Macro aboneliğim, Hesap gizliliği, Rozetlerim girişi, Değerlendirmelerim, Kampanyalar & Kuponlarım, Ölçüm geçmişi, hesap silme onay katmanı, Macro işlem geçmişi listesi, Destek geçmişi sekmesi.
@@ -57,5 +57,5 @@ Yeniden giydirilen (Final'de yok): Macro aboneliğim, Hesap gizliliği, Rozetler
 2. (Kapandı: FinPrCards Final diliyle yapıldı.) Eski SavedCardsScreen + AddCardScreen (KİMSE) bayrak kapalı yolda kalır; temizlik oturumunda (G-TEMİZLİK) silinir. S5 de FinPrCards'a dokunacaksa `FinPrCardsScreen` ile çakışmasın.
 3. FinProfilePublic ızgarası için yazar bazlı gönderi listesi RPC'si gerekiyor (migration dosyası yazılsın mı?); kapak da ilk tabaktan türetilecek.
 4. (Kapandı: bütün Dark panolar okundu.)
-6. KARAR GEREKİR (İlter): `ProfileAddCard` (PaynKolay kart doğrulama WebView akışı) yeniden giydirilsin mi? Seçenekler: (a) yalnız KİMSE'nin kendi oturumu, canlı PaynKolay test kartıyla; (b) bu oturum yalnız üst başlık/boş/hata kartlarının görünümünü (mantığa dokunmadan) Final'e çevirir — KİMSE dosyası değişir, onay gerekir; (c) bu ekran G-TEMİZLİK'e kadar olduğu gibi kalır. Karar gelene kadar dokunulmadı.
+6. (Kapandı — İlter: AddCardScreen'e dokunma; S5 `EkAddCardScreen` yaptı, G15-S6 Profil › Yeni kart yolunu bağlar.) G15-S6'ya not: `FinPrCardsScreen.tsx` içindeki `navigation.navigate('ProfileAddCard')` bayrak açıkken `EkAddCardScreen` rotasına çevrilecek.
 5. Seri hatırlatması öğün silinirse o gün yeniden kurulmaz (gün içi "loglandı" hatırlanır). Kabul mü?
