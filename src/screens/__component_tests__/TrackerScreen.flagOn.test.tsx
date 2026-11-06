@@ -276,7 +276,7 @@ test('ilk öğün: gerçek sinyalle kutlama bir kez + ardından bildirim izni sh
   await flush();
   await flush();
   expect(tree.queryByText('İlk öğün eklendi')).toBeNull();
-  expect(tree.getByText('Seni haberdar edelim mi?')).toBeTruthy();
+  expect(tree.getByText('Serini korumak için akşam 19:30’da hatırlatayım mı?')).toBeTruthy();
   const shown = JSON.parse((await AsyncStorage.getItem('@kcal_celebrate_shown')) ?? '{}');
   expect(shown.first).toBe(true);
   // Yeniden mount → ömür boyu bir kez: tekrar gösterilmez.

@@ -306,8 +306,7 @@ export default function FinPrProgressScreen({
                     <Text
                       key={d.date}
                       style={{
-                        width: days.length > 14 ? 5 : days.length > 7 ? 12 : 24,
-                        overflow: 'visible',
+                        flex: 1,
                         textAlign: 'center',
                         fontFamily: body,
                         fontSize: 12,

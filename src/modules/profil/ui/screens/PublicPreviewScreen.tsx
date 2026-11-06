@@ -10,7 +10,7 @@
 // türetilir, yoksa nötr zemin. Uydurma veri YOK. Dev vitrini `vitrinPosts` ile
 // Final örneğindeki içeriği gösterir (üretimde geçilmez).
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../../../core/design';
@@ -46,6 +46,8 @@ export default function PublicPreviewScreen({
   const t = useTheme();
   const { t: tr } = useT();
   const insets = useSafeAreaInsets();
+  const { width: screenW } = useWindowDimensions();
+  const cell = Math.floor((screenW - 4) / 3);
 
   const [profile, setProfile] = useState<PublicProfile | null>(vitrinProfile ?? null);
   const [tab, setTab] = useState<'plates' | 'posts'>('plates');
@@ -82,7 +84,7 @@ export default function PublicPreviewScreen({
 
   const stat = (value: number, label: string) => (
     <Text key={label} style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
-      <Text style={{ fontFamily: bodyBold, color: t.color.ink }}>{value}</Text> {label}
+      <Text style={{ fontFamily: bodyBold, color: t.color.ink }}>{value.toLocaleString('tr-TR')}</Text> {label}
     </Text>
   );
 
@@ -212,7 +214,7 @@ export default function PublicPreviewScreen({
       {tab === 'plates' && posts.length > 0 ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 }}>
           {posts.map((p) => (
-            <View key={p.id} style={{ width: '33%', flexGrow: 1, aspectRatio: 1, backgroundColor: t.color.line }}>
+            <View key={p.id} style={{ width: cell, height: cell, backgroundColor: t.color.line }}>
               {p.photoUrl ? <Image source={{ uri: p.photoUrl }} style={{ width: '100%', height: '100%' }} /> : null}
               {p.adds > 0 ? (
                 <View
