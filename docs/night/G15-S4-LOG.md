@@ -12,6 +12,15 @@
 (9) Dark: 16 Dark panonun TAMAMI çekildi ve tek tek okundu (Profile, Personal, Notify, Security, Agreements, Support, Feedback, Macro, MacroWhat, MacroHistory, Progress, Privacy, PrivacySettings, Public, Badges, SheetNotify); hepsi temadan, okunur, Final ile aynı ya da küçük fark (SheetNotify-Dark: zil dairesi bg tonunda, Final'de koyu gri). Bozuk/eski pano yakalayan çekimler (özdeş md5 ya da "bilinmeyen pano") yeniden çekildi.
 (10) Son commit GERÇEK dosya `docs/night/G15-S4-DONE`.
 
+## Bayrak kapalı parite (son commit'ler sonrası taze kanıt)
+`git diff night14/visual --stat` ile bayrak kapalı yoldan ulaşılabilen her dosya tarandı:
+- `PrivacySheet.tsx`: yeniden giydirme eski `/u/:handle` (bayrak kapalı) ve GunProfilUiLab'dan da görünüyordu → SIZINTI bulundu ve kapatıldı: eski sheet `LegacyPrivacySheet.tsx`'e taşındı (night14/visual'daki dosyanın bayt bayt kopyası; `diff` yalnız 3 ad değişikliği), `PrivacySheet` bayrağa göre seçer (`yeni_kabuk` kapalı → Legacy).
+- `PublicProfileScreen.tsx`: değişiklik yalnız `if (yeniKabuk) { … }` bloğu + 3 import/hook satırı; kapalıyken eski JSX aynen.
+- `NotifyPermissionSheet.tsx`, `HomeCelebrations.tsx`: yalnız TrackerScreen'in celebrate bayrağı AÇIKKEN render ettiği bileşenler; bayrak kapalıyken hiç mount edilmez (`TrackerScreen.flagOff` snapshot DEĞİŞMEDEN geçti).
+- `dictionaries.ts`: değişen/eklenen anahtarları yalnız `modules/profil/ui/screens/*`, `PrivacySheet`, `NotifyPermissionSheet` kullanıyor (grep: bayrak kapalı yoldan başka kullanıcı yok).
+- Diğer değişenler (Fin* ekranları, `finUi`, `streakReminder*`, `icons.ts`, `dev/*`) yalnız yeni kabuk/dev vitrini yolunda; `icons.ts`/`finUi` yalnız ekleme.
+- Sonuç (taze): tsc 0 · test:unit 531/531 · test:components 90/90, snapshot 1/1 · `expo export --platform ios` ✓.
+
 ## Pano tablosu (önce G14 → sonra)
 Sonra = G15-S4 simülatör görüntüsü (Light; Dark ayrıca yukarıdaki listede). "aynı" = bire bir/ölçü ayrımı yok.
 | Pano | Önce | Sonra | Kalan fark |

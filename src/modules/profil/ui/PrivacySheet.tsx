@@ -11,6 +11,8 @@ import { Sheet, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Globe, LockSimple } from '../../../components/icons';
 import { getProfilClient } from '../client';
+import { useFeature } from '../../../core/flags';
+import { LegacyPrivacySheet } from './LegacyPrivacySheet';
 import { FinPrimaryButton, body, bodyBold, bodyMedium } from './finUi';
 
 export interface PrivacySheetProps {
@@ -20,7 +22,17 @@ export interface PrivacySheetProps {
   onChanged: (isPrivate: boolean) => void;
 }
 
-export function PrivacySheet({ visible, isPrivate, onClose, onChanged }: PrivacySheetProps) {
+/**
+ * Bayrak kapalıyken BUGÜNKÜ (eski BottomSheet) görünüm AYNEN; `yeni_kabuk`
+ * açıkken Final alttan sayfa. Aynı dosyadan çağıran tüm yerler (eski
+ * `/u/:handle`, GunProfilUiLab) bayrak kapalı yolda eski sheet'i görür.
+ */
+export function PrivacySheet(props: PrivacySheetProps) {
+  const yeniKabuk = useFeature('yeni_kabuk' as any);
+  return yeniKabuk ? <FinPrivacySheet {...props} /> : <LegacyPrivacySheet {...props} />;
+}
+
+export function FinPrivacySheet({ visible, isPrivate, onClose, onChanged }: PrivacySheetProps) {
   const t = useTheme();
   const { t: tt } = useT();
   const [selected, setSelected] = useState(isPrivate);
