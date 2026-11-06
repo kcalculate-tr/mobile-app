@@ -326,7 +326,9 @@ export default function EkProductScreen() {
   useEffect(() => {
     if (!vitrinScroll || loading) return;
     const h = setTimeout(() => {
-      const y = bodyY.current + macroBottom.current + 24;
+      const firstKey = groupModels[0]?.key;
+      const fy = firstKey ? sectionY.current[firstKey] : undefined;
+      const y = fy != null ? Math.max(0, fy - 8) : bodyY.current + macroBottom.current + 24;
       scrollRef.current?.scrollTo({ y, animated: false });
       if (derived?.macroCardEnabled) setStripVisible(true);
     }, 600);
@@ -396,7 +398,8 @@ export default function EkProductScreen() {
     : tried
       ? t('eatkcal.v2.product.missing_list', { names: missing.map((m) => m.name).join(', ') })
       : t('eatkcal.v2.product.complete_required');
-  const roundBtn = [styles.roundBtn, { backgroundColor: theme.isDark ? 'rgba(28,28,30,0.85)' : 'rgba(255,255,255,0.85)' }];
+  // G15-S5 (FinEkProduct-Dark): fotoğraf üstündeki yuvarlak düğmeler iki temada da açık cam + koyu ikon.
+  const roundBtn = [styles.roundBtn, { backgroundColor: 'rgba(255,255,255,0.85)' }];
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product">
@@ -422,7 +425,7 @@ export default function EkProductScreen() {
               style={roundBtn}
               testID="ek-product-back"
             >
-              <ArrowLeft size={20} color={c.ink} />
+              <ArrowLeft size={20} color="#0A0A0A" />
             </Pressable>
             <Pressable
               onPress={() => navigation.goBack()}
@@ -430,7 +433,7 @@ export default function EkProductScreen() {
               accessibilityLabel={t('eatkcal.v2.product.close')}
               style={roundBtn}
             >
-              <X size={20} color={c.ink} />
+              <X size={20} color="#0A0A0A" />
             </Pressable>
           </View>
         </View>

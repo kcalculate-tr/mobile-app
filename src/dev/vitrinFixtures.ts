@@ -151,7 +151,9 @@ export function mockRoutesFor(entry: ResolvedEntry, productIds: string[] = []): 
     return [...identityRoutes(entry), { match: '/rest/v1/addresses', body: entry.data === 'empty' ? [] : addresses() }];
   }
   if (target.includes('"EkOrders"') || target.includes('"EkOrderDetail"')) {
-    const list = entry.data === 'empty' ? [] : orders(productIds);
+    // FinEkOrdersFilterEmpty: İptal filtresi boş kalsın (iade satırı yok).
+    const all = entry.data === 'empty' ? [] : orders(productIds);
+    const list = scene === 'filterEmpty' ? all.filter((o) => o.status !== 'refunded') : all;
     return [
       ...identityRoutes(entry),
       {
