@@ -73,6 +73,26 @@ export default function SignupAIScreen({
           </Text>
         </Pressable>
 
+        {/* G15-S1 — FinSignupAI: kcal. işareti (siyah daire, lime nokta). */}
+        <View
+          accessibilityElementsHidden
+          style={{
+            position: 'absolute',
+            top: 190,
+            alignSelf: 'center',
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: '#0A0A0A',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+          }}
+        >
+          <Text style={{ fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, color: '#FFFFFF' }}>kcal</Text>
+          <Text style={{ fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, color: '#C6F04F' }}>.</Text>
+        </View>
+
         <FinDisplay size={32} style={{ lineHeight: 38 }}>
           {tr('profil.signup_welcome_title')}
         </FinDisplay>

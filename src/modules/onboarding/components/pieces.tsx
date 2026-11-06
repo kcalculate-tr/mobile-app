@@ -187,7 +187,7 @@ function GoogleLogo({ size = 18 }: { size?: number }) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 33, letterSpacing: -0.4 },
+  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 32, lineHeight: 35, letterSpacing: -0.4 },
   lead: { marginTop: 8 },
   btn: {
     minHeight: 52,

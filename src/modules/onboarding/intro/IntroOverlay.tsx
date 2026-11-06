@@ -7,7 +7,7 @@
 // yeni sorgu YAZILMAZ (G12-CONTRACT "Bağlar").
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '../../../core/design/components/AppText';
 import { Button } from '../../../core/design/components/Button';
 import { Sheet } from '../../../core/design/components/Sheet';
@@ -21,6 +21,18 @@ import { useAuth } from '../../../core/AuthContext';
 import { fetchPastOrders } from '../../../lib/reorder';
 import { navigationRef } from '../../../navigation/navigationRef';
 import { readIntroSeen, writeIntroSeen } from './storage';
+
+/** Final ikincil eylem: çerçevesiz, mürekkep renkli düz metin. */
+function InkTextButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}>
+      <AppText textRole="body" style={{ color: t.color.ink, fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
 
 type IntroState = 'checking' | 'hidden' | 'plain' | 'order';
 
@@ -107,12 +119,12 @@ export function IntroOverlay() {
         {state === 'order' ? (
           <>
             <Button tone="ink" label={i18n.t('intro.continueOrder')} onPress={() => close(true)} />
-            <Button variant="text" label={i18n.t('intro.browseNew')} onPress={() => close(false)} />
+            <InkTextButton label={i18n.t('intro.browseNew')} onPress={() => close(false)} />
           </>
         ) : (
           <>
             <Button tone="ink" label={i18n.t('intro.browse')} onPress={() => close(false)} />
-            <Button variant="text" label={i18n.t('intro.later')} onPress={() => close(false)} />
+            <InkTextButton label={i18n.t('intro.later')} onPress={() => close(false)} />
           </>
         )}
       </View>

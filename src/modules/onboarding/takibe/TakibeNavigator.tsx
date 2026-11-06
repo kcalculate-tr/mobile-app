@@ -416,22 +416,9 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
         footer={<OnbButton label={i18n.t('tb.how.ok')} onPress={() => setHowOpen(false)} />}
       >
         <View style={{ paddingHorizontal: 20 }}>
-          <HowRow
-            title={i18n.t('tb.how.bmr')}
-            desc={i18n.t('tb.how.bmr_desc')}
-            value={result ? `${result.bmr} kcal` : undefined}
-          />
-          <HowRow
-            title={i18n.t('tb.how.activity')}
-            desc={i18n.t('tb.how.activity_desc')}
-            value={result ? `+${result.tdee - result.bmr} kcal` : undefined}
-          />
-          <HowRow
-            title={i18n.t('tb.how.goal')}
-            desc={i18n.t('tb.how.goal_desc')}
-            value={result && m ? `${m.calories - result.tdee >= 0 ? '+' : ''}${Math.round(m.calories - result.tdee)} kcal` : undefined}
-            last
-          />
+          <HowRow title={i18n.t('tb.how.bmr')} desc={i18n.t('tb.how.bmr_desc')} />
+          <HowRow title={i18n.t('tb.how.activity')} desc={i18n.t('tb.how.activity_desc')} />
+          <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} last />
           <AppText textRole="helper" style={{ color: P.sec, marginTop: 12, marginBottom: 12 }}>
             {i18n.t('tb.how.note')}
           </AppText>
