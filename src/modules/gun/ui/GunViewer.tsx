@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   expiryHint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)' },
   summaryWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 24 },
   summaryPercent: { fontSize: 44 },
-  summaryComplete: { textAlign: 'center', fontSize: 30, lineHeight: 36, maxWidth: 170 },
+  summaryComplete: { textAlign: 'center', fontSize: 28, lineHeight: 34, maxWidth: 200 },
   summaryThumbs: { flexDirection: 'row', gap: 20 },
   summaryThumbCol: { alignItems: 'center', gap: 6 },
   summaryThumb: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

@@ -37,6 +37,9 @@ export function CollectionWon({
   onClose: () => void;
 }) {
   const t = useTheme();
+  const ct = t.isDark
+    ? { card: '#1C1C1E', empty: '#2C2C2E', ink: '#F5F5F5', sec: '#A1A1A6', line: '#48484A' }
+    : { card: '#FFFFFF', empty: '#F1F2F4', ink: '#0A0A0A', sec: '#6B6B70', line: '#C3C7CC' };
   const { t: tr, lang } = useT();
   const reduced = useReducedMotion();
 
@@ -89,31 +92,34 @@ export function CollectionWon({
           </AppText>
 
           <Animated.View style={[styles.cardWrap, cardStyle]}>
-            <View style={[styles.card, { backgroundColor: '#FFFFFF' }]}>
+            {/* G15-S2 (FinCollectWon-Dark): koyu temada kart koyu yüzey. */}
+            <View style={[styles.card, { backgroundColor: ct.card }]}>
               <Animated.View style={flyStyle}>
                 <View style={styles.stickerClip}>
                   {card.photoUri ? (
                     <CachedImage uri={card.photoUri} style={styles.stickerImg} contentFit="cover" />
                   ) : (
-                    <View style={[styles.stickerImg, styles.stickerEmpty]} />
+                    <View style={[styles.stickerImg, { backgroundColor: ct.empty }]} />
                   )}
                 </View>
               </Animated.View>
 
-              <AppText style={styles.dishName} numberOfLines={2}>
+              <AppText style={[styles.dishName, { color: ct.ink }]} numberOfLines={2}>
                 {card.name}
               </AppText>
-              <AppText style={styles.dateMeal}>{`${dateLabel} · ${mealLabel}`}</AppText>
+              <AppText style={[styles.dateMeal, { color: ct.sec }]}>{`${dateLabel} · ${mealLabel}`}</AppText>
 
               {tags.length > 0 ? (
                 <View style={styles.tagRow}>
                   {tags.map((l) => (
-                    <Tag key={l} label={l} />
+                    <View key={l} style={[styles.tag, { borderColor: ct.line }]}>
+                      <AppText style={[styles.tagText, { color: ct.ink }]}>{l}</AppText>
+                    </View>
                   ))}
                 </View>
               ) : null}
 
-              <AppText style={styles.brand}>kcal.</AppText>
+              <AppText style={[styles.brand, { color: ct.sec }]}>kcal.</AppText>
             </View>
 
             {/* Lime çip: "No. NNN · İlk kez" — kartın sol üst köşesinde. */}
@@ -155,13 +161,6 @@ export function cardTags(card: Pick<CollectionCard, 'kcal' | 'protein_g' | 'carb
   return out;
 }
 
-function Tag({ label }: { label: string }) {
-  return (
-    <View style={styles.tag}>
-      <AppText style={styles.tagText}>{label}</AppText>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#2A2622' },
