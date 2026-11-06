@@ -313,6 +313,7 @@ function notifications(scene: string): SocialNotification[] {
         actor: { id: 'kcal', display_name: 'kcal', handle: 'kcal', avatar_url: null },
         created_at: ago(0),
         excerpt: 'removed',
+        post_id: 'post-2',
       }),
       notif('nr1', 'follow', { created_at: ago(120), read_at: READ }),
       notif('nr2', 'system', {
@@ -469,4 +470,25 @@ export function vitrinKesfetClient(scene: string, empty: boolean): KesfetClient 
 /** Gün istemcisi: Final halka şeridi (Keşfet sahneleri). */
 export function vitrinGunClient(base: GunClient): GunClient {
   return { ...base, async getDayRings() { return vitrinRings(); } } as GunClient;
+}
+
+/**
+ * G15-S3 — rota parametrelerindeki `__vitrinPhoto:<ad>` dizgilerini VITRIN_PHOTO
+ * URI'lerine çevirir (catalog saf veri: RN Image çözümü burada yapılır).
+ */
+export function resolveVitrinPhotos<T>(value: T): T {
+  const walk = (v: any): any => {
+    if (typeof v === 'string' && v.startsWith('__vitrinPhoto:')) {
+      const key = v.slice('__vitrinPhoto:'.length) as keyof typeof VITRIN_PHOTO;
+      return (VITRIN_PHOTO as any)[key] ?? v;
+    }
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') {
+      const o: any = {};
+      for (const [k, x] of Object.entries(v)) o[k] = walk(x);
+      return o;
+    }
+    return v;
+  };
+  return walk(value);
 }
