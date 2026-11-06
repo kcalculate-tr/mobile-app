@@ -62,6 +62,7 @@ export { GoogleLogo } from 'phosphor-react-native/lib/commonjs/icons/GoogleLogo'
 export { Handshake } from 'phosphor-react-native/lib/commonjs/icons/Handshake';
 export { Headset } from 'phosphor-react-native/lib/commonjs/icons/Headset';
 export { House } from 'phosphor-react-native/lib/commonjs/icons/House';
+export { ImageSquare } from 'phosphor-react-native/lib/commonjs/icons/ImageSquare';
 export { Prohibit } from 'phosphor-react-native/lib/commonjs/icons/Prohibit';
 export { Globe } from 'phosphor-react-native/lib/commonjs/icons/Globe';
 export { Barbell } from 'phosphor-react-native/lib/commonjs/icons/Barbell';
