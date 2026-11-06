@@ -40,6 +40,7 @@ import { unregisterPushToken } from '../../../../core/notifications';
 import { useNavGate } from '../../../../store/navGateStore';
 import { RootStackParamList } from '../../../../navigation/types';
 import { ProfileSocialHeader } from '../ProfileSocialHeader';
+import { PrivacySheet } from '../PrivacySheet';
 import {
   Target,
   ChartLine,
@@ -60,6 +61,7 @@ import {
   SignOut,
   MapTrifold,
   Translate,
+  SealCheck,
 } from '../../../../components/icons';
 import { AppText } from '../../../../core/design';
 import { EkInfoSheet } from '../../../eatkcal/v2/ui/InfoSheet';
@@ -107,6 +109,7 @@ export default function FinPrProfileScreen() {
   const { t: tr, lang, setLang } = useT();
   const { user, signOut } = useAuth();
   const [infoOpen, setInfoOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const [sub, setSub] = useState<SubScreen>('root');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -319,6 +322,31 @@ export default function FinPrProfileScreen() {
           </FinRowGroup>
         </View>
 
+        {/* G15-S4 — G14'ün kaldırdığı "Macro aboneliğim" ve "Hesap gizliliği" satırları
+            geri geldi (özellik kaybı yok) + "Rozetlerim" girişi (FinBadges). */}
+        <View style={{ paddingHorizontal: 16, gap: 6 }}>
+          <FinSectionLabel>{tr('profil.section_account')}</FinSectionLabel>
+          <FinRowGroup>
+            <FinRow
+              first
+              icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
+              label={tr('profil.macro_subscription')}
+              onPress={() => navigation.navigate('Subscriptions' as any)}
+            />
+            <FinRow
+              icon={<LockSimple size={18} color={t.color.ink} />}
+              label={tr('profil.privacy_title')}
+              value={isPrivate ? tr('profil.private_account') : tr('profil.privacy_public')}
+              onPress={() => setPrivacyOpen(true)}
+            />
+            <FinRow
+              icon={<SealCheck size={18} color={t.color.ink} />}
+              label={tr('profil.my_badges')}
+              onPress={() => setSub('badges')}
+            />
+          </FinRowGroup>
+        </View>
+
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_settings')}</FinSectionLabel>
           <FinRowGroup>
@@ -355,6 +383,12 @@ export default function FinPrProfileScreen() {
           </View>
         ) : null}
       </ScrollView>
+      <PrivacySheet
+        visible={privacyOpen}
+        isPrivate={isPrivate}
+        onClose={() => setPrivacyOpen(false)}
+        onChanged={(next) => setIsPrivate(next)}
+      />
       <EkInfoSheet visible={infoOpen} onClose={() => setInfoOpen(false)} />
     </FinScreen>
   );

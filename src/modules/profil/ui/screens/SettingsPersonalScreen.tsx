@@ -22,28 +22,30 @@ import {
   Animated,
   Image,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
-import { Check, CameraIcon, User } from '../../../../components/icons';
+import { Check } from '../../../../components/icons';
 import { pickAndUploadAvatar } from '../../avatarUpload';
 import { getProfilClient } from '../../client';
 import { useHandleClaim } from '../../useHandleClaim';
 import {
   FinScreen,
   FinHeader,
-  FinCard,
   FinPrimaryButton,
   FinFieldError,
   useFinShake,
   bodyMedium,
   bodySemibold,
+  heading,
 } from '../finUi';
 
 type FieldProps = {
@@ -89,13 +91,13 @@ function Field({
         textAlignVertical={multiline ? 'top' : 'center'}
         placeholderTextColor={t.color.secondary}
         style={{
-          height: multiline ? 90 : 52,
+          height: multiline ? 120 : 52,
           borderRadius: 14,
           paddingHorizontal: 14,
-          paddingVertical: multiline ? 10 : 0,
-          backgroundColor: t.color.surface,
-          borderWidth: 1,
-          borderColor: error ? t.color.danger : t.color.line,
+          paddingVertical: multiline ? 14 : 0,
+          backgroundColor: t.color.line,
+          borderWidth: error ? 1 : 0,
+          borderColor: t.color.danger,
           fontFamily: bodyMedium,
           fontSize: 15,
           color: editable ? t.color.ink : t.color.secondary,
@@ -112,6 +114,7 @@ function Field({
 
 export default function SettingsPersonalScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { t: tr } = useT();
   const { user } = useAuth();
   const supabase = getSupabaseClient();
@@ -271,60 +274,60 @@ export default function SettingsPersonalScreen({ onBack }: { onBack: () => void 
   const handleOkHint = handleClaim.status === 'available' ? handleHint : null;
 
   return (
-    <FinScreen scroll contentStyle={{ paddingTop: 0 }}>
+    <FinScreen>
       <FinHeader title={tr('profil.personal_title')} onBack={onBack} />
-      <View style={{ paddingHorizontal: 16, gap: 16 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {loading ? (
           <View style={{ paddingVertical: 48, alignItems: 'center' }}>
             <ActivityIndicator color={t.color.accent} size="large" />
           </View>
         ) : (
           <>
-            <View style={{ alignItems: 'center', gap: 10 }}>
+            {/* FinPrPersonal: avatar solda + altı çizili "Fotoğrafı değiştir" bağlantısı. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <Pressable onPress={handlePickAvatar} disabled={avatarUploading} accessibilityRole="button">
                 <View
                   style={{
-                    width: 84,
-                    height: 84,
-                    borderRadius: 42,
-                    backgroundColor: t.color.surface,
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: t.color.line,
                     alignItems: 'center',
                     justifyContent: 'center',
                     overflow: 'hidden',
                   }}
                 >
                   {avatarUploading ? (
-                    <ActivityIndicator color={t.color.accent} />
+                    <ActivityIndicator color={t.color.ink} />
                   ) : avatarUrl ? (
-                    <Image source={{ uri: avatarUrl }} style={{ width: 84, height: 84 }} />
+                    <Image source={{ uri: avatarUrl }} style={{ width: 64, height: 64 }} />
                   ) : (
-                    <User size={36} color={t.color.secondary} weight="bold" />
+                    <Text style={{ fontFamily: heading, fontSize: 28, color: t.color.ink }}>
+                      {(fullName.trim()[0] ?? '').toLocaleUpperCase('tr')}
+                    </Text>
                   )}
-                  <View
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: t.color.accent,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <CameraIcon size={14} color={t.color.onAccent} weight="bold" />
-                  </View>
                 </View>
               </Pressable>
-              <Pressable onPress={handlePickAvatar} disabled={avatarUploading}>
-                <Text style={{ fontFamily: bodySemibold, fontSize: 13, color: t.color.accent }}>
+              <Pressable onPress={handlePickAvatar} disabled={avatarUploading} accessibilityRole="button" hitSlop={8}>
+                <Text
+                  style={{
+                    fontFamily: bodySemibold,
+                    fontSize: 15,
+                    color: t.color.ink,
+                    textDecorationLine: 'underline',
+                  }}
+                >
                   {tr('profil.avatar_change')}
                 </Text>
               </Pressable>
             </View>
 
-            <FinCard style={{ gap: 16 }}>
+            <View style={{ gap: 14 }}>
               <Field
                 label={tr('profil.field_name')}
                 value={fullName}
@@ -368,7 +371,7 @@ export default function SettingsPersonalScreen({ onBack }: { onBack: () => void 
                 error={phoneError}
                 shakeStyle={phoneShake.style}
               />
-            </FinCard>
+            </View>
 
             {saved ? (
               <View
@@ -389,14 +392,26 @@ export default function SettingsPersonalScreen({ onBack }: { onBack: () => void 
               </View>
             ) : null}
 
-            <FinPrimaryButton
-              label={tr('profil.save_changes')}
-              onPress={handleSave}
-              disabled={saving}
-              icon={saving ? <ActivityIndicator color={t.color.bg} /> : undefined}
-            />
           </>
         )}
+      </ScrollView>
+      {/* Alta yapışık "Kaydet" çubuğu (FinPrPersonal). */}
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 12) + 8,
+          backgroundColor: t.color.bg,
+          borderTopWidth: 1,
+          borderTopColor: t.color.line,
+        }}
+      >
+        <FinPrimaryButton
+          label={tr('profil.save_changes')}
+          onPress={handleSave}
+          disabled={saving}
+          icon={saving ? <ActivityIndicator color={t.color.bg} /> : undefined}
+        />
       </View>
     </FinScreen>
   );

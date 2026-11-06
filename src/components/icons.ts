@@ -85,6 +85,7 @@ export { Scooter } from 'phosphor-react-native/lib/commonjs/icons/Scooter';
 export { Image } from 'phosphor-react-native/lib/commonjs/icons/Image';
 export { ShareNetwork } from 'phosphor-react-native/lib/commonjs/icons/ShareNetwork';
 export { WifiSlash } from 'phosphor-react-native/lib/commonjs/icons/WifiSlash';
+export { SealCheck } from 'phosphor-react-native/lib/commonjs/icons/SealCheck';
 export { Shield } from 'phosphor-react-native/lib/commonjs/icons/Shield';
 export { ShoppingBag } from 'phosphor-react-native/lib/commonjs/icons/ShoppingBag';
 export { ShoppingCart, ShoppingCartIcon } from 'phosphor-react-native/lib/commonjs/icons/ShoppingCart';
