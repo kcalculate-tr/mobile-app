@@ -1,0 +1,8 @@
+G14-S1 TAMAM — 2026-11-06
+Dal: night14/visual (taban night13/release a73f622)
+1. __DEV__ ekran vitrini kcal://dev/screen/<Pano> + src/dev/screenCatalog.ts (125 pano / 249 görsel); üretim paketinde yok (prod işaret 0, dev 1; vitrinTreeShake testi)
+2. Ayrı simülatör "G14 iPhone" (71501989-3C53-44A8-AEA3-E6F6D3B5E965), dev client + Metro :8090
+3. scripts/dev/g14-shots.sh + g14-pair.ts — 249/249 görüntü
+4. Karşılaştırma tablosu: docs/night/G14-S1-LOG.md (önce → sonra)
+5. 20 düzeltme, 5 commit (008f50f 1390e86 2b57c9e 0fafa84 2e0d045); KİMSE dosyalarına dokunulmadı
+6. tsc 0 · test:unit 528/528 · test:components 90/90 (snapshot 1/1) · bayrak kapalı parite aynı · expo export ios ✓
