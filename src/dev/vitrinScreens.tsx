@@ -214,6 +214,46 @@ const SAMPLE_ESTIMATE = {
   ],
 };
 
+/** G15-S2 — FinPhotoR1 / FinPhotoEN örneği (460 kcal · P24 K62 Y13; kayıt sonrası toast açık). */
+function PhotoResultScene({ reduced }: { reduced?: boolean }) {
+  const { lang } = useT();
+  const en = lang === 'en';
+  const estimate = reduced
+    ? SAMPLE_ESTIMATE
+    : {
+        name: en ? 'Ezogelin soup, rice pilaf, ayran' : 'Ezogelin çorbası, pilav, ayran',
+        kcal: 460,
+        protein_g: 24,
+        carbs_g: 62,
+        fat_g: 13,
+        isEstimate: true,
+        portion: 1,
+        photo_url: null,
+        ingredients: [
+          { name: en ? 'Ezogelin soup' : 'Ezogelin çorbası', grams: 250, kcal: 180 },
+          { name: en ? 'Rice pilaf' : 'Pilav', grams: 150, kcal: 210 },
+          { name: en ? 'Ayran (yogurt drink)' : 'Ayran', grams: 200, kcal: 70 },
+        ],
+      };
+  return (
+    <FinPhotoResult
+      {...({
+        estimate,
+        photoUri: null,
+        mealType: 'lunch',
+        saving: false,
+        saved: !reduced,
+        lang: en ? 'en' : 'tr',
+        onChangeMealType: noop,
+        onSave: noop,
+        onRetry: noop,
+        onUndo: noop,
+        onView: noop,
+      } as any)}
+    />
+  );
+}
+
 const SAMPLE_CARD = {
   id: 'c-43',
   no: 43,
@@ -269,25 +309,20 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
       <GunEmpty onLogMeal={noop} onShared={noop} />
     </Backdrop>
   ),
-  photoResult: () => (
-    <FinPhotoResult
-      {...({
-        estimate: SAMPLE_ESTIMATE,
-        photoUri: null,
-        mealType: 'lunch',
-        saving: false,
-        saved: false,
-        lang: 'tr',
-        onChangeMealType: noop,
-        onSave: noop,
-        onRetry: noop,
-      } as any)}
-    />
-  ),
+  photoResult: (p) => <PhotoResultScene {...P(p)} />,
   scanError: ({ kind }: { kind?: string }) => (
     <Backdrop>
       <FinScanErrorSheet
-        {...({ visible: true, kind: kind ?? 'failed', remaining: 2, onClose: noop, onManualEntry: noop, onRetry: noop } as any)}
+        {...({
+          visible: true,
+          kind: kind ?? 'failed',
+          remaining: kind === 'limit' ? 0 : 2,
+          onClose: noop,
+          onManualEntry: noop,
+          onRetry: noop,
+          onOpenSettings: noop,
+          onGallery: noop,
+        } as any)}
       />
     </Backdrop>
   ),

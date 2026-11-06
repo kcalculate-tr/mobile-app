@@ -19,23 +19,37 @@ const SIZE = 260;
 const CORNER = 36;
 const THICK = 3;
 
-export default function ScanFrame({ active }: { active: boolean }) {
+export default function ScanFrame({
+  active,
+  color,
+  width = SIZE,
+  height = SIZE,
+  style,
+}: {
+  active: boolean;
+  /** G15-S2 (FinScanR2): açık temada koyu köşeler. Verilmezse beyaz (eski yol aynı). */
+  color?: string;
+  width?: number;
+  height?: number;
+  style?: object;
+}) {
   const reduced = useReducedMotion();
+  const tint = color ? { borderColor: color } : null;
 
   return (
-    <View style={styles.wrap} pointerEvents="none">
-      <View style={{ width: SIZE, height: SIZE }}>
-        <Corner index={0} reduced={reduced} style={styles.tl} />
-        <Corner index={1} reduced={reduced} style={styles.tr} />
-        <Corner index={2} reduced={reduced} style={styles.bl} />
-        <Corner index={3} reduced={reduced} style={styles.br} />
-        {active ? <Sweep reduced={reduced} /> : null}
+    <View style={[styles.wrap, style]} pointerEvents="none">
+      <View style={{ width, height }}>
+        <Corner index={0} reduced={reduced} style={[styles.tl, tint]} />
+        <Corner index={1} reduced={reduced} style={[styles.tr, tint]} />
+        <Corner index={2} reduced={reduced} style={[styles.bl, tint]} />
+        <Corner index={3} reduced={reduced} style={[styles.br, tint]} />
+        {active ? <Sweep reduced={reduced} h={height} /> : null}
       </View>
     </View>
   );
 }
 
-function Corner({ index, reduced, style }: { index: number; reduced: boolean; style: object }) {
+function Corner({ index, reduced, style }: { index: number; reduced: boolean; style: object | object[] }) {
   const p = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
     if (reduced) {
@@ -53,7 +67,7 @@ function Corner({ index, reduced, style }: { index: number; reduced: boolean; st
   return <Animated.View style={[styles.corner, style, anim]} />;
 }
 
-function Sweep({ reduced }: { reduced: boolean }) {
+function Sweep({ reduced, h = SIZE }: { reduced: boolean; h?: number }) {
   const y = useSharedValue(0);
   useEffect(() => {
     if (reduced) return;
@@ -62,7 +76,7 @@ function Sweep({ reduced }: { reduced: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
   const anim = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(y.value, [0, 1], [8, SIZE - 8]) }],
+    transform: [{ translateY: interpolate(y.value, [0, 1], [8, h - 8]) }],
   }));
   if (reduced) return null;
   return <Animated.View style={[styles.sweep, anim]} />;

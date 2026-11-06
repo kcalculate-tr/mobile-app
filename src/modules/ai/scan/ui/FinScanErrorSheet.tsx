@@ -1,107 +1,206 @@
 /**
- * G12-S4 — Tara hata/çevrimdışı/limit alt sayfası (FinScanError paneli).
+ * G12-S4 / G15-S2 — Tara hata/çevrimdışı/limit/kamera izni sayfası
+ * (FinScanError, FinErrFailed, FinErrOffline, FinErrLimit).
  *
- * `kind`'a göre tek sheet: analiz başarısız (hak iade edildi), çevrimdışı
- * (fotoğraf sırada bekliyor) veya günlük kota doldu. FinMoShake burada
- * TETİKLENMEZ — bu alan doğrulama hatası değil, ağ/limit/red durumu
- * (bkz. FinMoShake.dc.html: "Yalnız form alanı · ağ/limit/red: titreşim yok").
+ * Final düzeni (G15-S2): tam ekran — zemin çekilen foto (varsa) ya da kamera
+ * alanı; sol üstte kapat (44), sağ üstte durum hapı ("Fotoğrafın saklandı" ·
+ * "Çevrimdışı" · "Bugün 0/3 tarama hakkın kaldı"); altta beyaz sheet: 52'lik
+ * ikon dairesi, Bricolage başlık, açıklama, tikli not hapı (butonlardan önce),
+ * birincil siyah + ikincil çerçeveli düğmeler.
+ *
+ * `camera` (G15-S2): "Kameraya erişim kapalı" AYRI durum — Ayarlar'ı aç +
+ * Galeriden seç / Elle gir (yan yana).
+ *
+ * FinMoShake burada TETİKLENMEZ — doğrulama hatası değil, ağ/limit/red durumu.
  */
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../../core/design';
+import { AppText, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ClockCounterClockwise, Lock, WifiSlash, ArrowCounterClockwise } from '../../../../components/icons';
-import { finExtras, FinPrimaryButton, FinSecondaryButton, body, bodyBold, bodySemibold } from '../../../profil/ui/finUi';
+import { CameraSlash, Check, Clock, WarningCircle, WifiSlash, X } from '../../../../components/icons';
+import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 
-export type FinScanErrorKind = 'failed' | 'offline' | 'limit';
+export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera';
+
+function tokens(isDark: boolean) {
+  return isDark
+    ? { sheet: '#1C1C1E', nested: '#2C2C2E', photo: '#2C2C2E', camOff: '#2C2C2E', glass: 'rgba(28,28,30,0.72)', line: '#48484A' }
+    : { sheet: '#FFFFFF', nested: '#F3F4F6', photo: '#D3D6DA', camOff: '#48484C', glass: 'rgba(255,255,255,0.86)', line: '#C3C7CC' };
+}
+
+function Btn({
+  label,
+  onPress,
+  primary,
+  disabled,
+  style,
+}: {
+  label: string;
+  onPress?: () => void;
+  primary?: boolean;
+  disabled?: boolean;
+  style?: object;
+}) {
+  const t = useTheme();
+  const k = tokens(t.isDark);
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || !onPress}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      style={[
+        styles.btn,
+        primary ? { backgroundColor: t.color.ink } : { borderWidth: 1, borderColor: k.line },
+        disabled ? { opacity: 0.45 } : null,
+        style,
+      ]}
+    >
+      <AppText style={[styles.btnText, { color: primary ? t.color.bg : t.color.ink }]} numberOfLines={1}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
 
 export default function FinScanErrorSheet({
   visible,
   kind,
   remaining,
+  photoUri,
   onClose,
   onManualEntry,
   onRetry,
+  onOpenSettings,
+  onGallery,
 }: {
   visible: boolean;
   kind: FinScanErrorKind;
   remaining: number;
+  /** Çekilen foto (failed/offline) — zemin. */
+  photoUri?: string | null;
   onClose: () => void;
   onManualEntry: () => void;
   onRetry?: () => void;
+  onOpenSettings?: () => void;
+  onGallery?: () => void;
 }) {
   const t = useTheme();
-  const x = finExtras(t);
+  const k = tokens(t.isDark);
   const { t: tr } = useT();
   const insets = useSafeAreaInsets();
 
+  const iconColor = t.color.ink;
   const icon =
     kind === 'failed' ? (
-      <ArrowCounterClockwise size={26} color={t.color.ink} weight="bold" />
+      <WarningCircle size={24} color={iconColor} />
     ) : kind === 'offline' ? (
-      <WifiSlash size={26} color={t.color.ink} weight="bold" />
+      <WifiSlash size={24} color={iconColor} />
+    ) : kind === 'camera' ? (
+      <CameraSlash size={24} color={iconColor} />
     ) : (
-      <ClockCounterClockwise size={26} color={t.color.ink} weight="bold" />
+      <Clock size={24} color={iconColor} />
     );
 
   const title =
-    kind === 'failed' ? tr('ai_scan.failed_title') : kind === 'offline' ? tr('ai_scan.offline_title') : tr('ai_scan.limit_title');
-  const body_ =
-    kind === 'failed' ? tr('ai_scan.failed_body') : kind === 'offline' ? tr('ai_scan.offline_body') : tr('ai_scan.limit_body');
+    kind === 'failed'
+      ? tr('ai_scan.failed_title')
+      : kind === 'offline'
+        ? tr('ai_scan.offline_title')
+        : kind === 'camera'
+          ? tr('ai_scan.camera_denied_title')
+          : tr('ai_scan.limit_title');
+  const body =
+    kind === 'failed'
+      ? tr('ai_scan.failed_body')
+      : kind === 'offline'
+        ? tr('ai_scan.offline_body')
+        : kind === 'camera'
+          ? tr('ai_scan.camera_denied_body')
+          : tr('ai_scan.limit_body');
   const note =
     kind === 'failed'
       ? tr('ai_scan.failed_note', { count: remaining })
       : kind === 'offline'
         ? tr('ai_scan.offline_note', { count: 1 })
-        : tr('ai_scan.quota_chip', { count: remaining });
-  const chip = kind === 'failed' ? tr('ai_scan.photo_saved') : kind === 'offline' ? tr('ai_scan.offline_chip') : null;
+        : null;
+  const topChip =
+    kind === 'failed'
+      ? tr('ai_scan.photo_saved')
+      : kind === 'offline'
+        ? tr('ai_scan.offline_chip')
+        : kind === 'limit'
+          ? tr('ai_scan.quota_left_of', { count: remaining, cap: SCAN_QUOTA_CAP })
+          : null;
+  const bg = photoUri && (kind === 'failed' || kind === 'offline') ? null : kind === 'failed' || kind === 'offline' ? k.photo : k.camOff;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View
-          style={[
-            styles.sheet,
-            { backgroundColor: t.color.bg, paddingBottom: Math.max(34, insets.bottom + 16) },
-          ]}
-        >
-          <View style={styles.topRow}>
-            <View style={[styles.iconCircle, { backgroundColor: t.color.surface }]}>{icon}</View>
-            {chip ? (
-              <View style={[styles.chip, { backgroundColor: x.nested }]}>
-                <Text style={{ fontFamily: bodySemibold, fontSize: 12, color: t.color.secondary }}>{chip}</Text>
-              </View>
-            ) : null}
-          </View>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.fill, bg ? { backgroundColor: bg } : null]}>
+        {!bg && photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
 
-          <Text style={{ marginTop: 14, fontFamily: bodyBold, fontSize: 22, color: t.color.ink }}>{title}</Text>
-          <Text style={{ marginTop: 6, fontFamily: body, fontSize: 15, color: t.color.secondary, lineHeight: 20 }}>
-            {body_}
-          </Text>
+        <View style={[styles.top, { top: insets.top + 6 }]}>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={tr('common.close')}
+            style={[styles.close, { backgroundColor: k.glass }]}
+          >
+            <X size={20} color={t.color.ink} />
+          </Pressable>
+          {topChip ? (
+            <View style={[styles.topChip, { backgroundColor: k.glass }]}>
+              <AppText style={styles.topChipText} numberOfLines={1}>
+                {topChip}
+              </AppText>
+            </View>
+          ) : null}
+        </View>
+
+        <View
+          accessibilityViewIsModal
+          style={[styles.sheet, { backgroundColor: k.sheet, paddingBottom: Math.max(24, insets.bottom + 8) }]}
+        >
+          <View style={[styles.iconCircle, { backgroundColor: k.nested }]}>{icon}</View>
+          <AppText textRole="screenTitle" style={styles.title} accessibilityRole="header">
+            {title}
+          </AppText>
+          <AppText tone="secondary" style={styles.body}>
+            {body}
+          </AppText>
+
+          {note ? (
+            <View style={[styles.note, { backgroundColor: k.nested }]}>
+              <Check size={14} color={t.color.ink} weight="bold" />
+              <AppText style={styles.noteText}>{note}</AppText>
+            </View>
+          ) : null}
 
           {kind === 'failed' ? (
-            <FinPrimaryButton label={tr('ai_scan.failed_retry')} onPress={onRetry} style={{ marginTop: 18 }} />
+            <>
+              <Btn primary label={tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
+              <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />
+            </>
           ) : kind === 'offline' ? (
-            <FinPrimaryButton label={tr('ai_scan.offline_ok')} onPress={onClose} style={{ marginTop: 18 }} />
+            <>
+              <Btn primary label={tr('ai_scan.offline_ok')} onPress={onClose} style={styles.first} />
+              <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />
+            </>
+          ) : kind === 'camera' ? (
+            <>
+              <Btn primary label={tr('ai_scan.open_settings')} onPress={onOpenSettings} style={styles.first} />
+              <View style={[styles.next, styles.pair]}>
+                <Btn label={tr('ai_scan.gallery_pick_short')} onPress={onGallery} style={styles.half} />
+                <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.half} />
+              </View>
+            </>
           ) : (
-            <FinPrimaryButton label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={{ marginTop: 18 }} />
+            <>
+              <Btn primary label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.first} />
+              <Btn label={tr('ai_scan.pro_soon')} disabled style={styles.next} />
+            </>
           )}
-
-          {kind === 'limit' ? (
-            <View style={{ marginTop: 10, opacity: 0.45 }}>
-              <FinSecondaryButton label={tr('ai_scan.pro_soon')} icon={<Lock size={18} color={t.color.ink} />} height={52} />
-            </View>
-          ) : (
-            <View style={{ marginTop: 10 }}>
-              <FinSecondaryButton label={tr('ai_scan.manual_entry')} onPress={onManualEntry} height={52} />
-            </View>
-          )}
-
-          <Text style={{ marginTop: 14, fontFamily: body, fontSize: 12, color: t.color.secondary, textAlign: 'center' }}>
-            {note}
-          </Text>
         </View>
       </View>
     </Modal>
@@ -109,9 +208,21 @@ export default function FinScanErrorSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(10,10,10,0.4)', justifyContent: 'flex-end' },
+  fill: { flex: 1, justifyContent: 'flex-end' },
+  top: { position: 'absolute', left: 4, right: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  topChip: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginLeft: 12 },
+  topChipText: { fontSize: 13, fontWeight: '600' },
   sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 16 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconCircle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  title: { marginTop: 14 },
+  body: { marginTop: 6, fontSize: 15, lineHeight: 21 },
+  note: { marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
+  noteText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  first: { marginTop: 18 },
+  next: { marginTop: 10 },
+  pair: { flexDirection: 'row', gap: 8 },
+  half: { flex: 1 },
+  btn: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  btnText: { fontSize: 15, fontWeight: '600' },
 });

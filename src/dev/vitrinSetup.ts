@@ -72,6 +72,12 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     }, 400);
   }
 
+  // G15-S2 — Tara: hak hapı görünsün (Final "Bugün N/3 tarama hakkın kaldı").
+  if (JSON.stringify(entry.target).includes('AiScan')) {
+    const { useScanQuotaStore } = require('../modules/ai/scan/quotaStore');
+    useScanQuotaStore.getState().recordQuota(3, new Date(Date.now() + 864e5).toISOString());
+  }
+
   // G15-S2 — Ana sayfa alt bölümleri: Final örneği (eatkcal şeridi + Keşfet videoları).
   const { setHomeStripsProvider } = require('../screens/tracker/HomeStrips');
   setHomeStripsProvider({

@@ -185,10 +185,10 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinScanR2', 'tara', route([...tab('Tracker'), { name: 'AiScan' }])],
   ['FinPhotoR1', 'tara', comp('photoResult')],
   ['FinPhotoEN', 'tara', comp('photoResult'), { lang: 'en' }],
-  ['FinScanError', 'tara', comp('scanError', { kind: 'unrecognized' })],
+  ['FinScanError', 'tara', comp('scanError', { kind: 'camera' })],
   ['FinErrFailed', 'tara', comp('scanError', { kind: 'failed' })],
   ['FinErrOffline', 'tara', comp('scanError', { kind: 'offline' })],
-  ['FinErrLimit', 'tara', comp('scanLimit')],
+  ['FinErrLimit', 'tara', comp('scanError', { kind: 'limit' })],
   ['FinScanOffline', 'tara', route(tab('Tracker')), { scene: 'scanOffline' }],
 
   // ── Profil ─────────────────────────────────────────────────────────────────

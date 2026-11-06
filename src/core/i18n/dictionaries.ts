@@ -772,6 +772,18 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       camera_denied_body:
         'Tabağını taramak için kamera iznine ihtiyacımız var. İstersen galeriden seç ya da elle gir.',
       open_settings: 'Ayarlar’ı aç',
+      // G15-S2 — FinScanR2 / FinScanError.
+      quota_left_of: 'Bugün %{count}/%{cap} tarama hakkın kaldı',
+      flash_hint: 'Flaşı kamerada açabilirsin',
+      gallery_pick_short: 'Galeriden seç',
+      macros: 'Makrolar',
+      macros_toggle: 'Makrolar · görünümü değiştir',
+      macro_protein: 'protein',
+      macro_carbs: 'karbonhidrat',
+      macro_fat: 'yağ',
+      grams_of: '%{name} gram',
+      search_food: 'Besin ara (ör. yoğurt)',
+      per_100g: '100 g · %{kcal} kcal',
       failed_title: 'Analiz tamamlanamadı',
       failed_body:
         'Bağlantı ya da ışık yüzünden olabilir. Fotoğrafın duruyor; tekrar denediğinde baştan çekmen gerekmez.',
@@ -1943,6 +1955,18 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       camera_denied_body:
         'We need camera access to scan your plate. You can pick from gallery or enter manually instead.',
       open_settings: 'Open Settings',
+      // G15-S2 — FinScanR2 / FinScanError.
+      quota_left_of: '%{count}/%{cap} scans left today',
+      flash_hint: 'Turn on flash in the camera',
+      gallery_pick_short: 'Pick from gallery',
+      macros: 'Macros',
+      macros_toggle: 'Macros · switch view',
+      macro_protein: 'protein',
+      macro_carbs: 'carbs',
+      macro_fat: 'fat',
+      grams_of: '%{name} grams',
+      search_food: 'Search food (e.g. yogurt)',
+      per_100g: '100 g · %{kcal} kcal',
       failed_title: 'Analysis couldn’t finish',
       failed_body:
         'It may be the connection or lighting. Your photo is kept; you won’t need to retake it when you retry.',

@@ -12,6 +12,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DevSettings, Linking, LogBox, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, NavigationIndependentTree, DefaultTheme } from '@react-navigation/native';
 import type { Session, User } from '@supabase/supabase-js';
 import ErrorBoundary from 'react-native-error-boundary';
@@ -137,6 +138,8 @@ function VitrinRoot({ entry }: { entry: ResolvedEntry }) {
   return (
     <AuthContextForDev.Provider value={authValue(entry.auth === 'guest')}>
       <FlagsOverrideProvider flags={flags}>
+        {/* G15-S2: bileşen sahnelerinde (R3 kabuğu yok) durum çubuğu şemadan. */}
+        <StatusBar style={entry.scheme === 'dark' ? 'light' : 'dark'} />
         <I18nProvider forceLang={entry.lang}>
           <ThemeProvider forceScheme={entry.scheme}>{body}</ThemeProvider>
         </I18nProvider>
