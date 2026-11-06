@@ -189,12 +189,12 @@ export function mockRoutesFor(entry: ResolvedEntry, productIds: string[] = []): 
   if (target.includes('"EkStore"')) {
     return [...identityRoutes(entry), { match: '/rpc/vitrin_yorumlari', body: entry.data === 'empty' ? [] : REVIEWS }];
   }
-  const isHome = target.includes('"Tracker"') && (HOME_SCENES.has(scene) || entry.data === 'empty' || scene === '');
+  const isHome = scene === 'scanOffline' || target.includes('"Tracker"') && (HOME_SCENES.has(scene) || entry.data === 'empty' || scene === '');
   if (!isHome) return identityRoutes(entry);
   const empty = entry.data === 'empty';
   return [
     ...identityRoutes(entry),
-    { match: '/rest/v1/meal_consumptions', body: () => (empty ? [] : meals(scene === 'longNames', scene === 'delivered')) },
+    { match: '/rest/v1/meal_consumptions', body: () => (empty ? [] : scene === 'scanOffline' ? meals(false, false).filter((m: any) => m.source === 'ai_scan') : meals(scene === 'longNames', scene === 'delivered')) },
     { match: '/rest/v1/body_measurements', body: [] },
     { match: '/rest/v1/orders', body: [] },
     // G15-S2 — Su halkası (water_daily, Final: 1,5 / 2,5 L).

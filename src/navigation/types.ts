@@ -75,6 +75,7 @@ export type RootStackParamList = {
   SharedProfile: { handle: string };
   // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken erişilir.
   AiScan: undefined;
+  AiScanOffline: undefined;
   // eatkcal ilk sipariş şehir kapısı sonrası mevcut sipariş akışı (G6-S4) —
   // bugünkü HomeScreen'i AYNEN yeniden kullanır, yeni bir katalog YAZILMADI.
   EatCatalog: undefined;

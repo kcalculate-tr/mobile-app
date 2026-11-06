@@ -1041,6 +1041,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       pending_sub: 'bekleyen fotoğraf',
       pending_single_note: 'Tek kayıt: bağlantı gelince fotoğraf ayrıca eklenmez.',
       pending_cancelled: 'bekleyen fotoğraf iptal edildi',
+      offline_screen_title: 'Ana sayfa · Tara çevrimdışı',
+      offline_today: 'Bugün',
     },
     eatkcal: {
       kitchens_title: 'Kcalculate mutfakları',
@@ -2582,6 +2584,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       pending_sub: 'pending photo',
       pending_single_note: 'Single entry: the photo won’t be added again when connection returns.',
       pending_cancelled: 'pending photo cancelled',
+      offline_screen_title: 'Home · Scan offline',
+      offline_today: 'Today',
     },
     eatkcal: {
       kitchens_title: 'Kcalculate kitchens',

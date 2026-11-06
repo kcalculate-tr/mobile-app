@@ -377,7 +377,11 @@ export default function ScanScreen() {
           remaining={remaining ?? 0}
           pendingCount={pendingCount}
           photoUri={photoUri}
-          onClose={() => setErrorKind(null)}
+          onClose={() => {
+            // FinScanOffline: çevrimdışı kuyruğa alındı → sade durum ekranı.
+            if (errorKind === 'offline') navigation.replace('AiScanOffline');
+            else setErrorKind(null);
+          }}
           onManualEntry={handleManualEntry}
           onRetry={() => setErrorKind(null)}
           onOpenSettings={() => {
