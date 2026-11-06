@@ -10,12 +10,12 @@
 // türetilir, yoksa nötr zemin. Uydurma veri YOK. Dev vitrini `vitrinPosts` ile
 // Final örneğindeki içeriği gösterir (üretimde geçilmez).
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ArrowLeft } from '../../../../components/icons';
+import { ArrowLeft, LockSimple } from '../../../../components/icons';
 import { getProfilClient } from '../../client';
 import type { PublicProfile } from '../../types';
 import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
@@ -32,8 +32,17 @@ export default function PublicPreviewScreen({
   isPrivate,
   vitrinPosts,
   vitrinProfile,
+  action,
+  locked,
+  blocked,
 }: {
   onBack: () => void;
+  /** Gerçek profil ekranı (`/u/:handle`): Takip et / İstek gönderildi / Takiptesin. Verilmezse önizleme düğmesi. */
+  action?: { label: string; onPress: () => void; busy?: boolean; outlined?: boolean };
+  /** Gizli hesap + takip etmiyorum: ızgara yerine kilit notu. */
+  locked?: boolean;
+  /** Engelli: düğme ve içerik yok. */
+  blocked?: boolean;
   handle?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
@@ -136,20 +145,33 @@ export default function PublicPreviewScreen({
             ) : null}
           </View>
           {/* Önizleme: başkalarının göreceği düğme; kendi profilinde etkileşimsiz. */}
-          <View
-            accessibilityElementsHidden
-            style={{
-              height: 44,
-              paddingHorizontal: 22,
-              borderRadius: 22,
-              backgroundColor: t.color.ink,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 6,
-            }}
-          >
-            <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.bg }}>{tr('profil.follow')}</Text>
-          </View>
+          {blocked ? null : (
+            <Pressable
+              onPress={action?.onPress}
+              disabled={!action || action.busy}
+              accessibilityRole={action ? 'button' : undefined}
+              accessibilityElementsHidden={!action}
+              style={{
+                height: 44,
+                paddingHorizontal: 22,
+                borderRadius: 22,
+                backgroundColor: action?.outlined ? 'transparent' : t.color.ink,
+                borderWidth: action?.outlined ? 1 : 0,
+                borderColor: t.color.line,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 6,
+              }}
+            >
+              {action?.busy ? (
+                <ActivityIndicator color={t.color.bg} />
+              ) : (
+                <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: action?.outlined ? t.color.ink : t.color.bg }}>
+                  {action?.label ?? tr('profil.follow')}
+                </Text>
+              )}
+            </Pressable>
+          )}
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
@@ -211,7 +233,16 @@ export default function PublicPreviewScreen({
         })}
       </View>
 
-      {tab === 'plates' && posts.length > 0 ? (
+      {blocked ? (
+        <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, textAlign: 'center', paddingVertical: 40 }}>
+          {tr('profil.blocked_title')}
+        </Text>
+      ) : locked ? (
+        <View style={{ alignItems: 'center', gap: 8, paddingVertical: 40 }}>
+          <LockSimple size={26} color={t.color.secondary} weight="fill" />
+          <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>{tr('profil.account_private')}</Text>
+        </View>
+      ) : tab === 'plates' && posts.length > 0 ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 }}>
           {posts.map((p) => (
             <View key={p.id} style={{ width: cell, height: cell, backgroundColor: t.color.line }}>

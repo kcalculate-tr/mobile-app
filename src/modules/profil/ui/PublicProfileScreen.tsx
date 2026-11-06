@@ -23,6 +23,8 @@ import { RollingNumber } from '../../gun/ui';
 import type { NumLang } from '../../gun/motion';
 import type { PublicProfile } from '../types';
 import { PrivacySheet } from './PrivacySheet';
+import PublicPreviewScreen from './screens/PublicPreviewScreen';
+import { useFeature } from '../../../core/flags';
 import { TakibeBaslaCTA } from './TakibeBaslaCTA';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -36,6 +38,7 @@ export default function PublicProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const handle = (route.params?.handle ?? '').trim().replace(/^@/, '');
+  const yeniKabuk = useFeature('yeni_kabuk' as any);
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +99,35 @@ export default function PublicProfileScreen() {
       : profile.me_following === 'requested'
         ? tt('profil.requested')
         : tt('profil.follow');
+
+  // G15-S4 — yeni kabuk açıkken Final (FinProfilePublic) düzeni; kapalıyken aşağıdaki eski görünüm AYNEN.
+  if (yeniKabuk) {
+    return (
+      <>
+      {isMe ? (
+        <PrivacySheet
+          visible={privacyOpen}
+          isPrivate={profile.is_private}
+          onClose={() => setPrivacyOpen(false)}
+          onChanged={(isPrivate) => setProfile((p) => (p ? { ...p, is_private: isPrivate } : p))}
+        />
+      ) : null}
+      <PublicPreviewScreen
+        key={`${profile.id}:${profile.me_following}`}
+        onBack={() => navigation.goBack()}
+        handle={profile.handle}
+        vitrinProfile={profile}
+        blocked={Boolean(profile.blocked)}
+        locked={!canView}
+        action={
+          isMe
+            ? { label: profile.is_private ? tt('profil.private_account') : tt('profil.privacy_public'), onPress: () => setPrivacyOpen(true), outlined: true }
+            : { label: followLabel, onPress: handleFollowPress, busy: followBusy, outlined: profile.me_following === 'following' }
+        }
+      />
+      </>
+    );
+  }
 
   return (
     <ScrollView style={{ backgroundColor: t.color.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40 }}>

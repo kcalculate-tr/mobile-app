@@ -84,6 +84,10 @@ import FinPrProgressScreen from './ProgressScreen';
 import BadgesScreen from './BadgesScreen';
 import CollectionScreen from './CollectionScreen';
 import PublicPreviewScreen from './PublicPreviewScreen';
+import FinPrReviewsScreen from './FinPrReviewsScreen';
+import FinPrCouponsScreen from './FinPrCouponsScreen';
+import FinPrMeasurementsScreen from './FinPrMeasurementsScreen';
+import { useFeature } from '../../../../core/flags';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -101,7 +105,10 @@ type SubScreen =
   | 'progress'
   | 'badges'
   | 'collection'
-  | 'public';
+  | 'public'
+  | 'reviews'
+  | 'coupons'
+  | 'measurements';
 
 export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -111,6 +118,7 @@ export default function FinPrProfileScreen() {
   const { user, signOut } = useAuth();
   const [infoOpen, setInfoOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const yeniSiparis = useFeature('yeni_siparis' as any);
 
   const [sub, setSub] = useState<SubScreen>('root');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -202,12 +210,15 @@ export default function FinPrProfileScreen() {
           carbs: summary?.targetCarb,
           fat: summary?.targetFat,
         }}
-        onAddMeasurement={() => navigation.navigate('MeasurementHistory')}
+        onAddMeasurement={() => setSub('measurements')}
       />
     );
   }
   if (sub === 'badges') return <BadgesScreen onBack={() => setSub('root')} handle={handle} />;
   if (sub === 'collection') return <CollectionScreen onBack={() => setSub('root')} />;
+  if (sub === 'reviews') return <FinPrReviewsScreen onBack={() => setSub('root')} />;
+  if (sub === 'coupons') return <FinPrCouponsScreen onBack={() => setSub('root')} />;
+  if (sub === 'measurements') return <FinPrMeasurementsScreen onBack={() => setSub('progress')} />;
   if (sub === 'public') {
     return (
       <PublicPreviewScreen
@@ -303,12 +314,12 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<Package size={18} color={t.color.ink} />}
               label={tr('profil.orders')}
-              onPress={() => navigation.navigate('ProfileOrders')}
+              onPress={() => (yeniSiparis ? (navigation as any).navigate('EkOrders') : navigation.navigate('ProfileOrders'))}
             />
             <FinRow
               icon={<MapPin size={18} color={t.color.ink} />}
               label={tr('profil.addresses')}
-              onPress={() => navigation.navigate('Addresses')}
+              onPress={() => (yeniSiparis ? (navigation as any).navigate('EkAddresses') : navigation.navigate('Addresses'))}
             />
             {savedCardsEnabled ? (
               <FinRow
@@ -320,12 +331,12 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<Tag size={18} color={t.color.ink} />}
               label={tr('profil.coupons')}
-              onPress={() => navigation.navigate('ProfileCoupons')}
+              onPress={() => setSub('coupons')}
             />
             <FinRow
               icon={<Star size={18} color={t.color.ink} />}
               label={tr('profil.reviews')}
-              onPress={() => navigation.navigate('ProfileReviews')}
+              onPress={() => setSub('reviews')}
             />
           </FinRowGroup>
         </View>
