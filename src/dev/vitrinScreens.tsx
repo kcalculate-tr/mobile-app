@@ -180,7 +180,25 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
         />
       );;
     case 'progress':
-      return <FinPrProgressScreen {...({ onBack: noop, goalKcal: 2000, onAddMeasurement: noop } as any)} />;
+      return (
+        <FinPrProgressScreen
+          {...({
+            onBack: noop,
+            goalKcal: 2000,
+            targets: { protein: 140, carbs: 250, fat: 70 },
+            onAddMeasurement: noop,
+            // Final FinPrProgress örneği: uygun · üstü · uygun · altı · uygun · üstü · uygun.
+            vitrinDays: [2010, 2480, 1960, 1380, 2040, 2520, 1990].map((kcal, i) => ({
+              date: `2026-11-0${i + 1}`,
+              kcal,
+              protein: kcal * 0.07,
+              carbs: kcal * 0.12,
+              fat: kcal * 0.034,
+            })),
+            vitrinMeasurements: [{ date: '2026-11-01', waist_cm: 78, hip_cm: 96, chest_cm: 92 }],
+          } as any)}
+        />
+      );
     case 'badges':
       return <BadgesScreen onBack={noop} handle="deniz" />;
     case 'collection':

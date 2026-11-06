@@ -194,6 +194,11 @@ export default function FinPrProfileScreen() {
       <FinPrProgressScreen
         onBack={() => setSub('root')}
         goalKcal={summary?.targetKcal}
+        targets={{
+          protein: summary?.targetProtein,
+          carbs: summary?.targetCarb,
+          fat: summary?.targetFat,
+        }}
         onAddMeasurement={() => navigation.navigate('MeasurementHistory')}
       />
     );
