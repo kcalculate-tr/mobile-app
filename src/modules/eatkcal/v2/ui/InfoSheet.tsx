@@ -17,7 +17,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensio
 import { Sheet, haptic } from '../../../../core/design';
 import { Clock, CalendarBlank, Storefront, Fire, Snowflake, CaretDown } from '../../../../components/icons';
 import IzmirTeslimatHaritasi from '../../../../components/IzmirTeslimatHaritasi';
-import { ilceleriOzetle } from '../../../../components/DeliveryZonesSheet';
+import { ilceleriOzetle } from '../../../../lib/deliveryZonesSummary';
 import {
   fetchAllDeliveryZones,
   fetchGlobalDeliverySettings,

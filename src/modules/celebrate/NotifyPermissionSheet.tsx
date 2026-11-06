@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import BottomSheet from '../../components/BottomSheet';
-import { AppText, haptic, useTheme } from '../../core/design';
+import { AppText, Sheet, haptic, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { requestPushPermissionOnly } from '../../core/notifications';
 import { Bell } from '../../components/icons';
@@ -38,13 +37,7 @@ export function NotifyPermissionSheet({
   };
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      maxHeight="60%"
-      handleColor={t.color.line}
-      containerStyle={{ backgroundColor: t.color.surface }}
-    >
+    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.6}>
       <View style={styles.body}>
         {/* G15-S4 — FinSheetNotify: gri daire + çizgi zil, sola dayalı başlık. */}
         <View style={[styles.iconWrap, { backgroundColor: t.color.bg }]}>
@@ -85,7 +78,7 @@ export function NotifyPermissionSheet({
           </AppText>
         </Pressable>
       </View>
-    </BottomSheet>
+    </Sheet>
   );
 }
 

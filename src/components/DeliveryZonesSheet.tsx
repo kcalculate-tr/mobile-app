@@ -6,10 +6,11 @@ import { COLORS, SPACING } from '../constants/theme';
 import {
   fetchAllDeliveryZones,
   fetchGlobalDeliverySettings,
-  resolveMinOrder,
   DeliveryGlobals,
-  DeliveryZoneRow,
 } from '../lib/delivery';
+import { ilceleriOzetle, type ZoneRow } from '../lib/deliveryZonesSummary';
+
+export { ilceleriOzetle };
 import { tlGruplu } from '../lib/money';
 
 /**
@@ -34,56 +35,6 @@ import { tlGruplu } from '../lib/money';
  * hemen teslimata açıldığında (allow_immediate=true) yeni sürüm gerekmeden
  * listede belirirler.
  */
-
-type ZoneRow = DeliveryZoneRow & {
-  district: string;
-  is_active: boolean | null;
-  allow_immediate: boolean | null;
-  allow_scheduled: boolean | null;
-};
-
-type IlceSatiri = {
-  district: string;
-  hizli: boolean;
-  minHizli: number;
-};
-
-/**
- * İlçeye indirger. Bir ilçenin herhangi bir aktif mahallesinde hızlı teslimat
- * varsa ilçe hızlı sayılır. Minimum tutarda ilçedeki EN DÜŞÜK değer alınır —
- * "şu tutardan başlıyor" anlamında; ödeme ekranı adrese özel kesin tutarı
- * zaten gösteriyor.
- */
-export function ilceleriOzetle(
-  zones: ZoneRow[],
-  globals: DeliveryGlobals | null,
-): IlceSatiri[] {
-  const harita = new Map<string, IlceSatiri>();
-
-  for (const z of zones) {
-    if (z.is_active !== true) continue;
-    const hizliVar = z.allow_immediate === true;
-    const planliVar = z.allow_scheduled === true;
-    if (!hizliVar && !planliVar) continue;
-
-    const ilce = String(z.district || '').trim();
-    if (!ilce) continue;
-
-    const minHizli = hizliVar ? resolveMinOrder(z, globals, 'immediate') : Infinity;
-
-    const mevcut = harita.get(ilce);
-    if (!mevcut) {
-      harita.set(ilce, { district: ilce, hizli: hizliVar, minHizli });
-    } else {
-      mevcut.hizli = mevcut.hizli || hizliVar;
-      mevcut.minHizli = Math.min(mevcut.minHizli, minHizli);
-    }
-  }
-
-  return Array.from(harita.values()).sort((a, b) =>
-    a.district.localeCompare(b.district, 'tr'),
-  );
-}
 
 type Props = { visible: boolean; onClose: () => void };
 

@@ -32,7 +32,7 @@ test('initialRoute: Onboarding yalnız yeni_onboarding açıkken, kapalıyken We
   );
 });
 
-test("'TakibeBasla'ya yalnız Onboarding (bayrak açık) ve Final Profil › Hedefim'den gidilir", () => {
+test("'TakibeBasla'ya yalnız Onboarding, Final Profil › Hedefim ve Ana sayfa makro ayrıntısından (ikisi de bayrak açık) gidilir", () => {
   const hits = walk(SRC)
     .filter((f) => /navigate\(\s*'TakibeBasla'/.test(fs.readFileSync(f, 'utf8')))
     .map((f) => path.relative(SRC, f))
@@ -40,6 +40,7 @@ test("'TakibeBasla'ya yalnız Onboarding (bayrak açık) ve Final Profil › Hed
   assert.deepEqual(hits, [
     'modules/onboarding/OnboardingNavigator.tsx',
     'modules/profil/ui/screens/FinPrProfileScreen.tsx',
+    'screens/TrackerScreen.tsx', // G15-S2: makro ayrıntısı; yalnız `yeni_onboarding` açıkken, kapalıyken NutritionProfile
   ]);
 });
 
