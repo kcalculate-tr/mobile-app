@@ -17,7 +17,7 @@ import { EkSkeleton, ekType, useEk } from '../ui/kit';
 import { useEkNav, type EkV2ParamList } from '../nav';
 import { CategoryPill, ProductCard } from '../ui/home/cards';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
-import { ReviewsSheet } from '../ui/ReviewsSheet';
+import { ReviewsSheet, type ReviewAggregate, type ReviewSubScores } from '../ui/ReviewsSheet';
 import { EmptyErrorCard, haptic, Toast } from '../../../../core/design';
 import { CachedImage } from '../../../../components/CachedImage';
 import { ArrowLeft, Lightning, ShoppingBag } from '../../../../components/icons';
@@ -32,11 +32,15 @@ import { useCartStore } from '../../../../store/cartStore';
 import { filterByCategory, storeCategories } from '../model/homeData';
 
 type R = RouteProp<EkV2ParamList, 'EkStore'>;
+/** YALNIZ __DEV__ vitrini (FinEkReviews): sheet açık başlar; özet/alt puan örnek veriyle. */
+type VitrinParams = { vitrinReviews?: boolean; vitrinAggregate?: ReviewAggregate; vitrinSubScores?: ReviewSubScores };
 
 export default function EkStoreScreen() {
   const { c, t, insets, theme } = useEk();
   const navigation = useEkNav();
-  const { brandKey } = useRoute<R>().params;
+  const routeParams = useRoute<R>().params as R['params'] & VitrinParams;
+  const { brandKey } = routeParams;
+  const vitrin: VitrinParams = __DEV__ ? routeParams : {};
   const addItem = useCartStore((s) => s.addItem);
   const cartCount = useCartStore((s) => s.items.reduce((n, i) => n + (i.parentLineKey ? 0 : i.quantity), 0));
   const { chip } = useDeliveryChip();
@@ -76,6 +80,10 @@ export default function EkStoreScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (vitrin.vitrinReviews && reviews.length > 0) setReviewsOpen(true);
+  }, [vitrin.vitrinReviews, reviews.length]);
 
   const chips = useMemo(() => storeCategories(categories, products), [categories, products]);
   const visible = useMemo(() => filterByCategory(products, category), [products, category]);
@@ -270,7 +278,13 @@ export default function EkStoreScreen() {
         </Pressable>
       </View>
 
-      <ReviewsSheet visible={reviewsOpen} onClose={() => setReviewsOpen(false)} reviews={reviews} />
+      <ReviewsSheet
+        visible={reviewsOpen}
+        onClose={() => setReviewsOpen(false)}
+        reviews={reviews}
+        aggregate={vitrin.vitrinAggregate}
+        subScores={vitrin.vitrinSubScores}
+      />
       <Toast
         visible={toast}
         message={t('eatkcal.v2.store.added')}

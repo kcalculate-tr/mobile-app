@@ -8,17 +8,18 @@
 // İLTER'E: iki ekranın inline sorgusu tek kaynağa (src/lib) indirilebilir —
 // KİMSE dosyaları olduğundan bu oturumda yapılmadı.
 import { getSupabaseClient } from '../../../../core/supabase';
-import { allTabStatuses, type OrderListRow } from './orders';
+import { allTabStatuses, firstProductId, type OrderListRow } from './orders';
 
 /**
  * OrdersScreen.tsx loadOrders sorgusu — aynı select/sıralama. Tek fark: sekme
  * başına ayrı sorgu yerine tüm sekmelerin durum birleşimi (istemcide süzülür).
+ * G15-S5: satır fotoğrafı (FinEkOrders) için `items` da okunur → ilk ürünün id'si.
  */
 export async function fetchOrdersForList(userId: string): Promise<OrderListRow[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('orders')
-    .select('id, order_code, created_at, total_amount, status, payment_status')
+    .select('id, order_code, created_at, total_amount, status, payment_status, items')
     .eq('user_id', userId)
     .in('status', allTabStatuses())
     .order('created_at', { ascending: false });
@@ -30,8 +31,10 @@ export async function fetchOrdersForList(userId: string): Promise<OrderListRow[]
     total_amount: Number(row.total_amount ?? 0),
     status: String(row.status ?? ''),
     payment_status: row.payment_status != null ? String(row.payment_status) : null,
+    first_product_id: firstProductId(row.items),
   }));
 }
+
 
 export interface OrderDetailRow {
   id: number;

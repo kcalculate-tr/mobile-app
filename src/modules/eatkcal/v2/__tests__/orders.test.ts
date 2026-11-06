@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  firstProductId,
   allTabStatuses,
   canReorder,
   canReview,
@@ -121,6 +122,7 @@ test('ürün satırları: items JSON (seçim özetiyle), yoksa order_items', () 
   const fromJson = detailLines({
     items: [
       {
+        id: 42,
         name: 'Tavuk Bowl',
         quantity: 1,
         unit_price: 300,
@@ -131,10 +133,17 @@ test('ürün satırları: items JSON (seçim özetiyle), yoksa order_items', () 
     ],
     order_items: [{ product_name: 'X', quantity: 9, total_price: 1 }],
   });
-  assert.deepEqual(fromJson, [{ name: 'Tavuk Bowl', quantity: 1, totalPrice: 300, summary: 'Basmati · Izgara Tavuk 150 g · Maş Fasulye' }]);
+  assert.deepEqual(fromJson, [{ name: 'Tavuk Bowl', productId: '42', quantity: 1, totalPrice: 300, summary: 'Basmati · Izgara Tavuk 150 g · Maş Fasulye' }]);
   const fromRel = detailLines({ items: [], order_items: [{ product_name: 'Somon', quantity: 2, total_price: 640 }] });
-  assert.deepEqual(fromRel, [{ name: 'Somon', quantity: 2, totalPrice: 640, summary: '' }]);
+  assert.deepEqual(fromRel, [{ name: 'Somon', productId: null, quantity: 2, totalPrice: 640, summary: '' }]);
   assert.equal(selectionSummary({}), '');
+});
+
+test('G15-S5: liste satırı fotoğrafı için ilk ürün id (orders.items)', () => {
+  assert.equal(firstProductId([{ id: 7 }, { id: 9 }]), '7');
+  assert.equal(firstProductId([{ name: 'x' }, { id: 'a1' }]), 'a1');
+  assert.equal(firstProductId(null), null);
+  assert.equal(firstProductId([]), null);
 });
 
 test('değerlendir yalnız mevcut fetchPendingFeedbackOrder bu siparişi döndürünce', () => {

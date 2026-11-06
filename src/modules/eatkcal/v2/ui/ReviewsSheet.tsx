@@ -83,9 +83,9 @@ export function ReviewsSheet({
       {subs.length > 0 ? (
         <View style={styles.subs}>
           {subs.map(({ key, value: v }) => (
-            <View key={key} style={styles.subRow}>
-              <Text style={[ekType.b15, { color: c.secondary, flex: 1 }]}>{t(key)}</Text>
-              <Text style={[ekType.b15s, ekType.num, { color: c.ink }]}>{v.toFixed(1)}</Text>
+            <View key={key} style={[styles.subTile, { backgroundColor: c.line }]}>
+              <Text style={[ekType.c13, { color: c.secondary }]} numberOfLines={1}>{t(key)}</Text>
+              <Text style={[ekType.b17, ekType.num, { color: c.ink }]}>{v.toFixed(1)}</Text>
             </View>
           ))}
         </View>
@@ -118,8 +118,9 @@ const styles = StyleSheet.create({
   avg: { fontFamily: ekType.h24.fontFamily, fontSize: 40, lineHeight: 44 },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bar: { height: 6, borderRadius: 3, flex: 1, overflow: 'hidden' },
-  subs: { paddingVertical: 8, gap: 4 },
-  subRow: { flexDirection: 'row', alignItems: 'center', minHeight: 32 },
+  // G15-S5: Final'deki üç gri karo (Lezzet · Teslimat · Kalori uyumu).
+  subs: { flexDirection: 'row', gap: 8, paddingTop: 8, paddingBottom: 16 },
+  subTile: { flex: 1, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 10, gap: 2 },
   item: { gap: 4, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   itemHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });
