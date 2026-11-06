@@ -470,7 +470,8 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
               accessibilityRole="button"
               accessibilityLabel={i18n.t('shell.expand')}
             >
-              <View style={styles.miniCenter}>
+              {/* G15 — flex:1: ikon dairenin ortasında (önce üstte kalıyordu). */}
+              <View style={[styles.miniCenter, styles.fill1]}>
                 <MiniIcon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled cutColor={g.cut} />
               </View>
             </Pressable>
@@ -709,6 +710,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fill1: { flex: 1 },
   scanWrap: {
     overflow: 'hidden',
     alignItems: 'center',

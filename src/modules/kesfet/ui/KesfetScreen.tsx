@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
@@ -32,7 +32,7 @@ import { useNutritionSummary } from '../../../hooks/useNutritionSummary';
 import type { LogOriginFrame } from './MealCard';
 import { getGunClient } from '../../gun';
 import { getProfilClient } from '../../profil';
-import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../../shell';
+import { TAB_BAR_R3_HEIGHT, useTabBarCollapse, useTabBarCollapsedValue } from '../../shell';
 import type { DayRing } from '../../gun/types';
 import type { FeedPost, MealType, ReportTargetType } from '../types';
 
@@ -182,6 +182,15 @@ export function KesfetScreen() {
   // → useTabBarCollapse no-op). scrollY → useTabBarCollapse (G11-CONTRACT m.39).
   const scrollY = useSharedValue(0);
   useTabBarCollapse(scrollY);
+  // G15 — Final FinFeedScrollR3: aşağı kaydırınca tab bar küçülürken başlık + sekmeler
+  // de katlanır (yukarı kaydırınca geri gelir). Yalnız sekme bağlamında (provider).
+  const collapsed = useTabBarCollapsedValue();
+  const headerH = useSharedValue(0);
+  const headerHideStyle = useAnimatedStyle(() => {
+    const c = collapsed ? collapsed.value : 0;
+    if (!collapsed || headerH.value === 0) return {};
+    return { height: headerH.value * (1 - c), opacity: 1 - c, overflow: 'hidden' };
+  });
   const scrollHandler = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
   });
@@ -795,6 +804,11 @@ export function KesfetScreen() {
     <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
       {/* G15 — koyu temada durum çubuğu yazısı açık (Final -Dark panoları). */}
       <StatusBar style={t.isDark ? 'light' : 'dark'} />
+      <Animated.View style={headerHideStyle} onLayout={(e) => {
+          // Yalnız açıkken ölç (katlanırken gelen küçük yükseklikler ölçüyü bozmasın).
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && (headerH.value === 0 || (collapsed?.value ?? 0) === 0)) headerH.value = h;
+        }}>
       <Header
         onSearch={() => {}}
         onNotifications={() => navigation.navigate('KesfetNotifications')}
@@ -811,6 +825,7 @@ export function KesfetScreen() {
           void useKesfetStore.getState().setTab(next);
         }}
       />
+      </Animated.View>
       <View style={styles.content}>{body}</View>
 
       <AddToDaySheet

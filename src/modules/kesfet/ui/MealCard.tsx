@@ -68,7 +68,8 @@ export function MealCard({
     <View
       style={[
         styles.card,
-        { backgroundColor: t.color.surfaceRaised, borderColor: t.color.line },
+        // Final: açık #FFFFFF, koyu #1C1C1E (çipler #2C2C2E üstünde seçilsin).
+        { backgroundColor: t.color.surface, borderColor: t.color.line },
       ]}
     >
       <View style={styles.top}>
