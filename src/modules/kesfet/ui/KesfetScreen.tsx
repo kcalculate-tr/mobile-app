@@ -41,6 +41,9 @@ import { PostCard } from './PostCard';
 import { GunViewer } from '../../gun/ui';
 import { RingStrip } from './RingStrip';
 import { VideoPlayer } from './VideoPlayer';
+import { PostingStatus } from './PostingStatus';
+import { RulesSheet } from './RulesSheet';
+import { usePostingStore, type PostingPhase } from '../postingStore';
 import type { DayCard } from '../../gun/types';
 import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
@@ -193,7 +196,18 @@ export function KesfetScreen() {
   const online = useIsOnline();
 
   const tab = useKesfetStore((s) => s.tab);
-  const posts = useKesfetStore((s) => s.posts);
+  const allPosts = useKesfetStore((s) => s.posts);
+  // G15 — FinPosting: paylaşım durumu (Composer arka planda gönderir).
+  const postingPhase = usePostingStore((s) => s.phase);
+  const postingId = usePostingStore((s) => s.postId);
+  const postingError = usePostingStore((s) => s.error);
+  const postingRetry = usePostingStore((s) => s.retry);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  // Ret: gönderi akışta gösterilmez, yerine sakin kart.
+  const posts = useMemo(
+    () => (postingPhase === 'rejected' && postingId ? allPosts.filter((p) => p.id !== postingId) : allPosts),
+    [allPosts, postingPhase, postingId],
+  );
   const loading = useKesfetStore((s) => s.loading);
   const refreshing = useKesfetStore((s) => s.refreshing);
   const loadingMore = useKesfetStore((s) => s.loadingMore);
@@ -268,6 +282,37 @@ export function KesfetScreen() {
     const v = posts.find((p) => p.media.some((m) => m.kind === 'video'));
     if (v) setVideoPostId(v.id);
   }, [vitrin, posts]);
+
+  // Paylaşım durumu: "Yayında" birkaç saniye görünür; "İnceleniyor"da sunucu
+  // durumu aralıklı sorulur (yayımlandı → Yayında; kaldırıldı → sakin ret kartı).
+  useEffect(() => {
+    if (vitrin) return;
+    if (postingPhase === 'published') {
+      const id = setTimeout(() => usePostingStore.getState().clear(), 3500);
+      return () => clearTimeout(id);
+    }
+    if (postingPhase !== 'reviewing' || !postingId) return;
+    let tries = 0;
+    const iv = setInterval(async () => {
+      tries += 1;
+      const p = await getKesfetClient().getPost({ post: postingId }).catch(() => null);
+      if (p?.status === 'published') {
+        usePostingStore.getState().set('published');
+        void useKesfetStore.getState().refresh();
+      } else if (p?.status === 'removed') {
+        usePostingStore.getState().set('rejected');
+      }
+      if (tries >= 15) clearInterval(iv);
+    }, 8000);
+    return () => clearInterval(iv);
+  }, [postingPhase, postingId, vitrin]);
+
+  // Vitrin (FinPosting kareleri): durum satırı + kendi gönderim.
+  useEffect(() => {
+    const map: Record<string, PostingPhase> = { posting: 'uploading', reviewing: 'reviewing', published: 'published', rejected: 'rejected' };
+    if (!vitrin || !map[vitrin]) return;
+    usePostingStore.getState().set(map[vitrin], { postId: 'post-p1' });
+  }, [vitrin]);
 
   // Vitrin (FinAddToast): loglama sonrası toast'ı göster ("Öğle’ye loglandı · Geri al · Gör").
   useEffect(() => {
@@ -568,41 +613,47 @@ export function KesfetScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: FeedPost; index: number }) => {
-      const model = postCardModel(item, nowMs, lang);
+      const base = postCardModel(item, nowMs, lang);
+      // Durum satırı görünürken kartın kendi "İnceleniyor" etiketi tekrar etmesin.
+      const inPosting = item.id === postingId && postingPhase !== 'idle';
+      const model = inPosting ? { ...base, pending: false } : base;
+      const faded = inPosting && (postingPhase === 'uploading' || postingPhase === 'publishing' || postingPhase === 'reviewing');
       return (
-        <PostCard
-          model={model}
-          index={index}
-          showComment={kesfetYorum}
-          isVisible={item.id === visiblePostId}
-          quickMealLabel={quickMealLabel}
-          quickLogLabel={quickLogLabel}
-          tip={
-            showFeedTip && item.id === firstMealPostId ? <FeedTip onDismiss={() => setShowFeedTip(false)} /> : undefined
-          }
-          fitsGoal={remainingKcal != null && item.meal_card != null ? item.meal_card.kcal <= remainingKcal : undefined}
-          plateOpen={vitrinXray}
-          onOpen={() => navigation.navigate('SharedPost', { postId: item.id })}
-          onOpenVideo={() => setVideoPostId(item.id)}
-          onLike={() => {
-            touchSocial();
-            void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
-          }}
-          onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
-          onShare={() => onShare(item)}
-          onQuickLog={(frame) => onQuickLog(item, frame)}
-          onOpenSheet={() => setSheetPost(item)}
-          onOpenMenu={() => setMenuPost(item)}
-          onComment={() => {
-            touchSocial();
-            setCommentsPost(item);
-          }}
-          onDidIt={() => setDidItPost(item)}
-          didItDone={didItDone.has(item.id)}
-        />
+        <View style={faded ? styles.faded : undefined}>
+          <PostCard
+            model={model}
+            index={index}
+            showComment={kesfetYorum}
+            isVisible={item.id === visiblePostId}
+            quickMealLabel={quickMealLabel}
+            quickLogLabel={quickLogLabel}
+            tip={
+              showFeedTip && item.id === firstMealPostId ? <FeedTip onDismiss={() => setShowFeedTip(false)} /> : undefined
+            }
+            fitsGoal={remainingKcal != null && item.meal_card != null ? item.meal_card.kcal <= remainingKcal : undefined}
+            plateOpen={vitrinXray}
+            onOpen={() => navigation.navigate('SharedPost', { postId: item.id })}
+            onOpenVideo={() => setVideoPostId(item.id)}
+            onLike={() => {
+              touchSocial();
+              void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
+            }}
+            onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
+            onShare={() => onShare(item)}
+            onQuickLog={(frame) => onQuickLog(item, frame)}
+            onOpenSheet={() => setSheetPost(item)}
+            onOpenMenu={() => setMenuPost(item)}
+            onComment={() => {
+              touchSocial();
+              setCommentsPost(item);
+            }}
+            onDidIt={() => setDidItPost(item)}
+            didItDone={didItDone.has(item.id)}
+          />
+        </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId],
+    [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   const ringStrip = useMemo(
@@ -620,6 +671,16 @@ export function KesfetScreen() {
   const feedHeader = (
     <>
       {ringStrip}
+      <PostingStatus
+        phase={postingPhase}
+        error={postingError}
+        onRetry={postingRetry}
+        onRules={() => setRulesOpen(true)}
+        onEdit={(() => {
+          const own = allPosts.find((p) => p.id === postingId);
+          return own ? () => setEditPost(own) : undefined;
+        })()}
+      />
     </>
   );
 
@@ -810,6 +871,7 @@ export function KesfetScreen() {
             : undefined
         }
       />
+      <RulesSheet visible={rulesOpen} onAccept={() => setRulesOpen(false)} onClose={() => setRulesOpen(false)} />
       <AddToast toast={toast} onDismiss={() => (vitrin ? undefined : setToast(null))} />
 
       {trail ? (
@@ -862,6 +924,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   tabUnderline: { position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2 },
   content: { flex: 1 },
+  faded: { opacity: 0.6 },
   footer: { paddingVertical: 20, alignItems: 'center' },
   trailOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
 });

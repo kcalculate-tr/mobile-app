@@ -172,6 +172,17 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       saved: 'Kaydedildi',
       add_to_day: 'Günüme ekle',
       added_toast: '%{meal}’ye loglandı',
+      // G15 — FinPosting: akıştaki paylaşım durumu.
+      posting: {
+        sharing: 'Paylaşılıyor…',
+        reviewing: 'İnceleniyor',
+        published: 'Yayında',
+        rejected_title: 'Topluluk kurallarına uymadığı için yayınlanmadı',
+        rejected_body: 'Gönderin yalnız sana görünüyor. Düzenleyip yeniden paylaşabilirsin.',
+        rules: 'Kurallar',
+        edit: 'Düzenle',
+        retry: 'Tekrar dene',
+      },
       stats: {
         likes: { one: '%{count} beğeni', other: '%{count} beğeni' },
         saves: { one: '%{count} kayıt', other: '%{count} kayıt' },
@@ -1468,6 +1479,16 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       saved: 'Saved',
       add_to_day: 'Add to my day',
       added_toast: 'Logged to %{meal}',
+      posting: {
+        sharing: 'Sharing…',
+        reviewing: 'In review',
+        published: 'Live',
+        rejected_title: 'Not published: it doesn’t follow the community rules',
+        rejected_body: 'Only you can see your post. You can edit it and share again.',
+        rules: 'Rules',
+        edit: 'Edit',
+        retry: 'Try again',
+      },
       stats: {
         likes: { one: '%{count} like', other: '%{count} likes' },
         saves: { one: '%{count} save', other: '%{count} saves' },

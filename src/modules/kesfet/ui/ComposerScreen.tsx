@@ -31,6 +31,7 @@ import { useT } from '../../../core/i18n';
 
 import { getKesfetClient } from '../client';
 import { useKesfetStore } from '../store';
+import { usePostingStore } from '../postingStore';
 import {
   ACTIVITY_TYPES,
   type ActivityType,
@@ -274,15 +275,20 @@ export function ComposerScreen({
     }
   }, [tr]);
 
-  const onSubmit = useCallback(async () => {
-    if (validateComposer(draft) != null) return;
-    setError(null);
-    haptic('light');
+  // G15 (Final FinPosting): "Paylaş" → composer kapanır, gönderim arka planda sürer
+  // ve akışta durum satırı görünür (paylaşılıyor → inceleniyor → yayında / sakin
+  // ret kartı). Sıra AYNI: yükle → create_post → moderate-content → refresh. Hata
+  // olursa akışta sakin satır + "Tekrar dene" (aynı taslakla yeniden dener).
+  const runPost = useCallback(async () => {
+    const posting = usePostingStore.getState();
+    posting.set('uploading', { postId: null, error: null, retry: null });
+    const retry = () => void runPost();
     try {
       // 1) Fotoğrafları (+ varsa videoyu) yükle.
       let media: CreatePostMedia[] = [];
       if (photos.length || video) {
         setSubmit('uploading');
+        posting.set('uploading');
         const uid = await currentUserId();
         if (uid && photos.length) media = await uploadPhotos(uid, photos);
         if (uid && video) {
@@ -295,12 +301,14 @@ export function ComposerScreen({
       }
       // 2) create_post.
       setSubmit('publishing');
+      posting.set('publishing');
       const key = `composer-${type}-${body.length}-${photos.length}-${Date.now()}`;
       const input = buildCreateInput(draft, media, lang, key);
       const res = await getKesfetClient().createPost(input);
       if ('error' in res) {
         setSubmit('idle');
         setError(tr('kesfet.compose.err_rate'));
+        posting.set('error', { error: tr('kesfet.compose.err_rate'), retry: null });
         return;
       }
       // 3) moderate-content (ateşle-unut).
@@ -308,12 +316,21 @@ export function ComposerScreen({
       // 4) Yazar kendi pending gönderisini görsün.
       void useKesfetStore.getState().refresh();
       setSubmit('done');
-      setTimeout(() => navigation?.goBack(), 900);
+      posting.set(res.status === 'published' ? 'published' : 'reviewing', { postId: res.post_id });
     } catch {
       setSubmit('idle');
       setError(tr('kesfet.compose.err_network'));
+      posting.set('error', { error: tr('kesfet.compose.err_network'), retry });
     }
-  }, [draft, photos, video, type, body.length, lang, tr, navigation]);
+  }, [draft, photos, video, type, body.length, lang, tr]);
+
+  const onSubmit = useCallback(async () => {
+    if (validateComposer(draft) != null) return;
+    setError(null);
+    haptic('light');
+    void runPost();
+    navigation?.goBack();
+  }, [draft, runPost, navigation]);
 
   // İlk gönderiden önce bir kez Topluluk kuralları (FinRules) — kabul edilmemişse
   // "Paylaş" bu sayfayı açar; kabul edince bayrak işaretlenir ve asıl gönderim sürer.
