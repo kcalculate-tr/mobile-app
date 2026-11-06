@@ -1,40 +1,48 @@
-// Gönderi menüsü (⋯) — tasarım T20PostMenu / T20PostMenuBlock.
-// Üç görünüm: (1) menü: Bağlantıyı kopyala · Şikayet et · Engelle · Vazgeç,
-// (2) şikayet: neden listesi → report_content, (3) engelle: onay adımı → block_user.
-// Engelleme onaylanınca çağıran akıştan yazarı anında düşürür.
+// Gönderi menüsü (⋯) — Final FinPostMenu / FinPostMenuBlock / FinReport /
+// FinReportDone (G15-S3).
+//  - Menü (sheet): Bağlantıyı kopyala · Şikayet et · Engelle (satırlar arası ince
+//    çizgi) + çerçeveli Vazgeç. Kendi gönderinde: Düzenle (varsa) · Sil.
+//  - Engelle → onay sheet'i (ikon dairesi, başlık, açıklama, siyah Engelle, Vazgeç).
+//  - Şikayet et → TAM SAYFA neden + not + Gönder → Teşekkürler sayfası
+//    (engelle / sessize al / benzerlerini daha az göster, Tamam). ReportFlow.tsx.
+//  - Sil → onay (kendi gönderin).
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { AppText, useTheme } from '../../../core/design';
+import { AppText, fontFamily, haptic, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { haptic } from '../../../core/design';
 import { BottomSheet } from './BottomSheet';
 import { Icon, type IconName } from './icons';
-import { REPORT_REASONS, type ReportReason } from './format';
+import { BlockConfirm, ReportModal } from './ReportFlow';
+import type { ReportReason } from './format';
 
-type MenuView = 'menu' | 'report' | 'report_done' | 'report_notice' | 'block' | 'delete';
+type SheetView = 'menu' | 'block' | 'delete';
+type VitrinStep = 'menu' | 'block' | 'report' | 'reportDone';
 
 function MenuRow({
   icon,
   label,
-  danger,
+  last,
   onPress,
 }: {
   icon: IconName;
   label: string;
-  danger?: boolean;
+  last?: boolean;
   onPress: () => void;
 }) {
   const t = useTheme();
-  const color = danger ? t.color.danger : t.color.ink;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: t.color.surface }]}
+      style={({ pressed }) => [
+        styles.row,
+        !last && { borderBottomWidth: StyleSheet.hairlineWidth * 2, borderBottomColor: t.color.line },
+        pressed && { opacity: 0.7 },
+      ]}
     >
-      <Icon name={icon} size={22} color={color} />
-      <AppText variant="body" style={{ color }}>
+      <Icon name={icon} size={22} color={t.color.ink} />
+      <AppText variant="body" style={[styles.rowText, { color: t.color.ink }]}>
         {label}
       </AppText>
     </Pressable>
@@ -50,8 +58,12 @@ export function PostMenu({
   onCopyLink,
   onReport,
   onBlock,
+  onMute,
+  onLessLike,
   onDelete,
   onEdit,
+  vitrinStep,
+  vitrinNote,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -61,239 +73,157 @@ export function PostMenu({
   // G11 — kendi gönderin + update_my_post RPC varsa "Düzenle" (yoksa gizli).
   canEdit?: boolean;
   onCopyLink: () => void;
-  onReport: (reason: ReportReason) => void | boolean | Promise<boolean | void>;
+  /** Şikayet: neden + isteğe bağlı not. false → başarısız (sayfada sakin not). */
+  onReport: (reason: ReportReason, note?: string) => void | boolean | Promise<boolean | void>;
   onBlock: () => void;
+  /** G15 — Teşekkürler sayfası seçenekleri; verilmezse satır görünmez. */
+  onMute?: () => void;
+  onLessLike?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  /** YALNIZ __DEV__ vitrini: açılış adımı + örnek not. */
+  vitrinStep?: VitrinStep;
+  vitrinNote?: string;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
-  const [view, setView] = useState<MenuView>('menu');
+  const initialSheet: SheetView = vitrinStep === 'block' ? 'block' : 'menu';
+  const [view, setView] = useState<SheetView>(initialSheet);
+  const [reportOpen, setReportOpen] = useState(
+    vitrinStep === 'report' || vitrinStep === 'reportDone',
+  );
 
   // Her açılışta menüden başla.
   useEffect(() => {
-    if (visible) setView('menu');
+    if (visible) {
+      setView(initialSheet);
+      setReportOpen(vitrinStep === 'report' || vitrinStep === 'reportDone');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const close = () => {
+    setReportOpen(false);
     onClose();
   };
 
+  const cancelBtn = (onPress: () => void) => (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={tr('common.cancel')}
+      style={({ pressed }) => [
+        styles.cancel,
+        { borderColor: t.isDark ? '#48484A' : '#C3C7CC' },
+        pressed && { opacity: 0.9 },
+      ]}
+    >
+      <AppText variant="body" style={[styles.cancelText, { color: t.color.ink }]}>
+        {tr('common.cancel')}
+      </AppText>
+    </Pressable>
+  );
+
   return (
-    <BottomSheet visible={visible} onClose={close} accessibilityLabel={tr('kesfet.ui.a11y.post_menu')}>
-      {view === 'menu' ? (
-        <View style={styles.group}>
-          <MenuRow
-            icon="link"
-            label={tr('kesfet.ui.menu.copy_link')}
-            onPress={() => {
-              haptic('selection');
-              onCopyLink();
-              close();
-            }}
-          />
-          {isMine ? (
-            <>
-              {canEdit && onEdit ? (
-                <MenuRow
-                  icon="pencil"
-                  label={tr('kesfet.ui.menu.edit')}
-                  onPress={() => {
-                    haptic('selection');
-                    onEdit();
-                    close();
-                  }}
-                />
-              ) : null}
-              <MenuRow
-                icon="trash"
-                label={tr('kesfet.ui.menu.delete')}
-                danger
-                onPress={() => setView('delete')}
-              />
-            </>
-          ) : (
-            <>
-              <MenuRow
-                icon="flag"
-                label={tr('kesfet.ui.menu.report')}
-                onPress={() => setView('report')}
-              />
-              {/* G14-S1 — FinPostMenu: Engelle satırı mürekkep (kırmızı değil); onay adımı kırmızı kalır. */}
-              <MenuRow
-                icon="slash"
-                label={tr('kesfet.ui.menu.block')}
-                onPress={() => setView('block')}
-              />
-            </>
-          )}
-          <Pressable
-            onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.cancel')}
-            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
-          >
-            <AppText variant="body" style={{ fontWeight: '600' }}>
-              {tr('common.cancel')}
-            </AppText>
-          </Pressable>
-        </View>
-      ) : view === 'report' ? (
-        <View style={styles.group}>
-          <AppText variant="heading" style={styles.title}>
-            {tr('kesfet.ui.report_title')}
-          </AppText>
-          {REPORT_REASONS.map((reason) => (
+    <>
+      <BottomSheet
+        visible={visible && !reportOpen}
+        onClose={close}
+        accessibilityLabel={tr('kesfet.ui.a11y.post_menu')}
+      >
+        {view === 'menu' ? (
+          <View style={styles.group}>
             <MenuRow
-              key={reason}
-              icon="flag"
-              label={tr(`kesfet.ui.report_reason.${reason}`)}
+              icon="link"
+              label={tr('kesfet.ui.menu.copy_link')}
               onPress={() => {
                 haptic('selection');
-                // İyimser: sonuç beklenirken menü "report" görünümünde kalır;
-                // sonuca göre "report_done" (FinReportDone) ya da "report_notice"
-                // (FinReportNotice, başarısız çağrı) gösterilir.
-                void Promise.resolve(onReport(reason)).then((result) => {
-                  setView(result === false ? 'report_notice' : 'report_done');
-                });
+                onCopyLink();
+                close();
               }}
             />
-          ))}
-          <Pressable
-            onPress={() => setView('menu')}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.cancel')}
-            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
-          >
-            <AppText variant="body" style={{ fontWeight: '600' }}>
-              {tr('common.cancel')}
+            {isMine ? (
+              <>
+                {canEdit && onEdit ? (
+                  <MenuRow
+                    icon="pencil"
+                    label={tr('kesfet.ui.menu.edit')}
+                    onPress={() => {
+                      haptic('selection');
+                      onEdit();
+                      close();
+                    }}
+                  />
+                ) : null}
+                <MenuRow icon="trash" label={tr('kesfet.ui.menu.delete')} onPress={() => setView('delete')} />
+              </>
+            ) : (
+              <>
+                <MenuRow icon="flag" label={tr('kesfet.ui.menu.report')} onPress={() => setReportOpen(true)} />
+                <MenuRow icon="slash" label={tr('kesfet.ui.menu.block')} onPress={() => setView('block')} />
+              </>
+            )}
+            {cancelBtn(close)}
+          </View>
+        ) : view === 'delete' ? (
+          <View style={styles.group}>
+            <AppText accessibilityRole="header" style={[styles.title, { color: t.color.ink }]}>
+              {tr('kesfet.ui.delete_confirm_title')}
             </AppText>
-          </Pressable>
-        </View>
-      ) : view === 'report_done' ? (
-        <View style={styles.group}>
-          <AppText variant="heading" style={styles.title}>
-            {tr('kesfet.ui.report_done_title')}
-          </AppText>
-          <AppText variant="body" tone="secondary" style={styles.desc}>
-            {tr('kesfet.ui.report_done_desc')}
-          </AppText>
-          <Pressable
-            onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel={tr('kesfet.ui.done_ok')}
-            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
-          >
-            <AppText variant="body" style={{ fontWeight: '600' }}>
-              {tr('kesfet.ui.done_ok')}
+            <AppText variant="body" tone="secondary" style={styles.desc}>
+              {tr('kesfet.ui.delete_confirm_desc')}
             </AppText>
-          </Pressable>
-        </View>
-      ) : view === 'report_notice' ? (
-        <View style={styles.group}>
-          <AppText variant="heading" style={styles.title}>
-            {tr('kesfet.ui.report_notice_title')}
-          </AppText>
-          <AppText variant="body" tone="secondary" style={styles.desc}>
-            {tr('kesfet.ui.report_notice_desc')}
-          </AppText>
-          <Pressable
-            onPress={() => setView('report')}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.retry')}
-            style={({ pressed }) => [styles.blockBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
-          >
-            <AppText variant="body" style={{ color: t.color.surface, fontWeight: '700' }}>
-              {tr('common.retry')}
-            </AppText>
-          </Pressable>
-          <Pressable
-            onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.cancel')}
-            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
-          >
-            <AppText variant="body" style={{ fontWeight: '600' }}>
-              {tr('common.cancel')}
-            </AppText>
-          </Pressable>
-        </View>
-      ) : view === 'delete' ? (
-        <View style={styles.group}>
-          <AppText variant="heading" style={styles.title}>
-            {tr('kesfet.ui.delete_confirm_title')}
-          </AppText>
-          <AppText variant="body" tone="secondary" style={styles.desc}>
-            {tr('kesfet.ui.delete_confirm_desc')}
-          </AppText>
-          <Pressable
-            onPress={() => {
-              haptic('medium');
-              onDelete?.();
-              close();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={tr('kesfet.ui.menu.delete')}
-            style={({ pressed }) => [styles.blockBtn, { backgroundColor: t.color.danger, opacity: pressed ? 0.9 : 1 }]}
-          >
-            <AppText variant="body" style={{ color: '#FFFFFF', fontWeight: '700' }}>
-              {tr('kesfet.ui.menu.delete')}
-            </AppText>
-          </Pressable>
-          <Pressable
-            onPress={() => setView('menu')}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.cancel')}
-            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
-          >
-            <AppText variant="body" style={{ fontWeight: '600' }}>
-              {tr('common.cancel')}
-            </AppText>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.group}>
-          <AppText variant="heading" style={styles.title}>
-            {tr('kesfet.ui.block_confirm_title', { name: authorName })}
-          </AppText>
-          <AppText variant="body" tone="secondary" style={styles.desc}>
-            {tr('kesfet.ui.block_confirm_desc')}
-          </AppText>
-          <Pressable
-            onPress={() => {
-              haptic('medium');
+            <Pressable
+              onPress={() => {
+                haptic('medium');
+                onDelete?.();
+                close();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={tr('kesfet.ui.menu.delete')}
+              style={({ pressed }) => [styles.primary, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
+            >
+              <AppText variant="body" style={[styles.cancelText, { color: t.isDark ? '#0A0A0A' : '#FFFFFF' }]}>
+                {tr('kesfet.ui.menu.delete')}
+              </AppText>
+            </Pressable>
+            {cancelBtn(() => setView('menu'))}
+          </View>
+        ) : (
+          <BlockConfirm
+            name={authorName}
+            onConfirm={() => {
               onBlock();
               close();
             }}
-            accessibilityRole="button"
-            accessibilityLabel={tr('kesfet.ui.menu.block')}
-            style={({ pressed }) => [styles.blockBtn, { backgroundColor: t.color.danger, opacity: pressed ? 0.9 : 1 }]}
-          >
-            <AppText variant="body" style={{ color: '#FFFFFF', fontWeight: '700' }}>
-              {tr('kesfet.ui.menu.block')}
-            </AppText>
-          </Pressable>
-          <Pressable
-            onPress={() => setView('menu')}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.cancel')}
-            style={({ pressed }) => [styles.cancel, { borderColor: t.color.line }, pressed && { opacity: 0.9 }]}
-          >
-            <AppText variant="body" style={{ fontWeight: '600' }}>
-              {tr('common.cancel')}
-            </AppText>
-          </Pressable>
-        </View>
-      )}
-    </BottomSheet>
+            onCancel={() => setView('menu')}
+          />
+        )}
+      </BottomSheet>
+
+      <ReportModal
+        visible={visible && reportOpen}
+        authorName={authorName}
+        onSubmit={(reason, note) => onReport(reason, note)}
+        onBlock={onBlock}
+        onMute={onMute}
+        onLessLike={onLessLike}
+        onClose={close}
+        initialStep={vitrinStep === 'reportDone' ? 'done' : 'reason'}
+        initialReason={vitrinStep === 'report' ? 'wrong_info' : null}
+        initialNote={vitrinNote}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  group: { gap: 4, paddingBottom: 4 },
-  row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 8, borderRadius: 14 },
-  title: { marginBottom: 4 },
-  desc: { marginBottom: 12 },
-  cancel: { minHeight: 52, borderRadius: 26, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  blockBtn: { minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  group: { paddingBottom: 4 },
+  row: { minHeight: 57, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  rowText: { fontSize: 16, lineHeight: 22 },
+  title: { fontFamily: fontFamily.headingBold, fontSize: 22, lineHeight: 28, marginBottom: 8 },
+  desc: { marginBottom: 16, fontSize: 15, lineHeight: 21 },
+  primary: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  cancel: { height: 52, borderRadius: 26, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  cancelText: { fontSize: 15, fontFamily: fontFamily.bodySemibold },
 });

@@ -1,25 +1,37 @@
 // Composer — G8 (yalnız `kesfet_paylasim` açıkken; AppNavigator). HERKES paylaşır.
-// Tür: Serbest / Öğün / Etkinlik. Metin + en fazla 4 fotoğraf (video YOK).
-// Öğün kartı: elle ad + kcal + P/K/Y, ya da "Ürün ara" (search_products, G11;
-// RPC yoksa düğme gizli). Kullanıcı seçilen ürünün değerlerini düzeltebilir.
-// Etkinlik kartı: tür, süre, mesafe (ops.), CANLI tahmini kcal. Gönder →
-// create_post → moderate-content → "Paylaşılıyor… / İnceleniyor". Hatalar:
-// hız sınırı, ağ, reddedildi.
+// Tasarım: Final FinCompose (G15-S3) — "İptal" + siyah "Paylaş" hapı, Serbest /
+// Öğün / Etkinlik bölmeli seçici, avatar + metin, medya kareleri (✕ + "n / 4"),
+// Öğün: "Öğün kartı" kaynakları (Ürün ara / Elle gir / Tara sonucundan) + kart
+// önizlemesi; Etkinlik: 4×3 tür ızgarası + Süre / Mesafe + canlı kcal tahmini;
+// altta kural notu + "Fotoğraf · Video · En fazla 4 foto veya 60 sn video" çubuğu.
+//
+// Mantık G8/G11 ile AYNI (composer.ts değişmedi): metin + en fazla 4 fotoğraf;
+// öğün kartı elle / search_products (RPC yoksa döşeme gizli) — kullanıcı seçilen
+// değerleri "Elle gir" ile düzeltebilir; etkinlik kartı CANLI tahmini kcal. Gönder
+// → (ilk sefer FinRules) → create_post → moderate-content → "Paylaşılıyor… /
+// İnceleniyor". Hatalar: hız sınırı, ağ (sakin metin, kırmızı yok).
+// Video (Final "Video"): `kesfet_video` açıkken 1 video (≤60 sn) — G8-S3 video
+// modülüyle (pickVideo → extractFrames → uploadVideoPost) p_media'ya eklenir.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, useTheme, haptic } from '../../../core/design';
+import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
+import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 
 import { getKesfetClient } from '../client';
 import { useKesfetStore } from '../store';
+import { usePostingStore } from '../postingStore';
 import {
   ACTIVITY_TYPES,
   type ActivityType,
@@ -36,8 +48,11 @@ import {
   type MealDraft,
 } from '../composer';
 import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, type LocalPhoto } from '../media';
-import { Icon } from './icons';
+import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { RulesSheet, rulesSeen } from './RulesSheet';
+import { ComposeIcon, type ComposeIconName } from './compose/icons';
+import { ActivityTile, F, MealPreview, SourceTile, composeTones } from './compose/pieces';
+import { fetchLastScanMeal } from './compose/lastScan';
 
 const POST_TYPES: PostType[] = ['serbest', 'ogun', 'etkinlik'];
 
@@ -47,6 +62,30 @@ const emptyMeal = (): MealDraft => ({
 const emptyActivity = (): ActivityDraft => ({ type: 'kosu', minutes: '', distanceKm: '', note: '' });
 
 type SubmitState = 'idle' | 'uploading' | 'publishing' | 'done';
+type MealSource = 'search' | 'manual' | 'scan' | null;
+
+/** Seçilmiş video (kesfet_video). Tip G8-S3 video modülünden (lazy import). */
+interface PickedVideoLite {
+  uri: string;
+  width: number;
+  height: number;
+  durationMs: number;
+  fileSizeBytes: number;
+  mimeType: string | null;
+}
+
+/**
+ * YALNIZ __DEV__ vitrini (G15): FinCompose karelerini Final örnek içeriğiyle açar.
+ * Üretimde rota bu parametreleri hiç taşımaz; `__DEV__` false → hep undefined.
+ */
+interface VitrinPrefill {
+  body?: string;
+  photos?: LocalPhoto[];
+  meal?: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; photo_url?: string | null };
+  activity?: { type: ActivityType; minutes: number; distanceKm?: number };
+}
+
+const num = (v: number) => String(v).replace('.', ',');
 
 function Field({
   label,
@@ -54,54 +93,83 @@ function Field({
   onChange,
   placeholder,
   keyboardType,
-  multiline,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   keyboardType?: 'default' | 'numeric';
-  multiline?: boolean;
 }) {
   const t = useTheme();
   return (
     <View style={styles.field}>
-      <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>{label}</AppText>
+      <AppText style={[styles.fieldLabel, F.semibold]} tone="secondary">{label}</AppText>
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={t.color.secondary}
         keyboardType={keyboardType ?? 'default'}
-        multiline={multiline}
-        style={[styles.input, { color: t.color.ink, backgroundColor: t.color.surface, borderColor: t.color.line }, multiline && { minHeight: 80, textAlignVertical: 'top' }]}
+        style={[styles.input, { color: t.color.ink, backgroundColor: t.color.surface, borderColor: t.color.line }]}
         accessibilityLabel={label}
       />
     </View>
   );
 }
 
-export function ComposerScreen({ navigation }: { navigation?: { goBack: () => void } }) {
+export function ComposerScreen({
+  navigation,
+  route,
+}: {
+  navigation?: { goBack: () => void };
+  route?: { params?: { vitrinKind?: PostType; vitrinPrefill?: VitrinPrefill } };
+}) {
   const t = useTheme();
+  const tone = composeTones(t);
   const insets = useSafeAreaInsets();
   const { t: tr, fmt, lang } = useT();
+  const videoEnabled = useFeature('kesfet_video');
 
-  const [type, setType] = useState<PostType>('ogun');
-  const [body, setBody] = useState('');
-  const [photos, setPhotos] = useState<LocalPhoto[]>([]);
-  const [meal, setMeal] = useState<MealDraft>(emptyMeal);
-  const [activity, setActivity] = useState<ActivityDraft>(emptyActivity);
+  const vitrinKind = __DEV__ ? route?.params?.vitrinKind : undefined;
+  const pre = __DEV__ ? route?.params?.vitrinPrefill : undefined;
+
+  const [type, setType] = useState<PostType>(vitrinKind ?? 'ogun');
+  const [body, setBody] = useState(pre?.body ?? '');
+  const [photos, setPhotos] = useState<LocalPhoto[]>(pre?.photos ?? []);
+  const [video, setVideo] = useState<PickedVideoLite | null>(null);
+  const [meal, setMeal] = useState<MealDraft>(() =>
+    pre?.meal
+      ? {
+          name: pre.meal.name,
+          kcal: String(pre.meal.kcal),
+          protein_g: String(pre.meal.protein_g),
+          carbs_g: String(pre.meal.carbs_g),
+          fat_g: String(pre.meal.fat_g),
+          portionLabel: '',
+          productId: null,
+        }
+      : emptyMeal(),
+  );
+  // Önizleme görseli (yalnız arayüz): ürünün görseli, yoksa ilk fotoğraf.
+  const [mealThumb, setMealThumb] = useState<string | null>(pre?.meal?.photo_url ?? null);
+  const [mealSource, setMealSource] = useState<MealSource>(null);
+  const [scanNone, setScanNone] = useState(false);
+  const [activity, setActivity] = useState<ActivityDraft>(() =>
+    pre?.activity
+      ? { type: pre.activity.type, minutes: String(pre.activity.minutes), distanceKm: pre.activity.distanceKm != null ? num(pre.activity.distanceKm) : '', note: '' }
+      : emptyActivity(),
+  );
   const [submit, setSubmit] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [rulesVisible, setRulesVisible] = useState(false);
 
-  // G11 — ürün arama (search_products). RPC canlıda yoksa düğme gizlenir
+  // G11 — ürün arama (search_products). RPC canlıda yoksa döşeme gizlenir
   // (ilk aramada { available:false } dönerse). Seçilen ürün öğün kartını doldurur.
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchAvailable, setSearchAvailable] = useState(true);
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const searchOpen = mealSource === 'search';
 
   useEffect(() => {
     const q = searchQ.trim();
@@ -120,7 +188,7 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
           if (!res.available) {
             // RPC canlıda yok → özelliği gizle (sakin; kırmızı/uyarı yok).
             setSearchAvailable(false);
-            setSearchOpen(false);
+            setMealSource(null);
             return;
           }
           setSearchResults(res.items);
@@ -149,13 +217,39 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
       fat_g: String(p.fat_g),
       productId: p.id,
     }));
-    setSearchOpen(false);
+    setMealThumb(p.image_url ?? null);
+    setMealSource(null);
     setSearchQ('');
   }, []);
 
+  // "Tara sonucundan" — bugünkü son AI tarama kaydı öğün kartını doldurur.
+  const fromScan = useCallback(async () => {
+    haptic('selection');
+    setMealSource('scan');
+    setScanNone(false);
+    const last = await fetchLastScanMeal();
+    if (!last) {
+      setScanNone(true);
+      return;
+    }
+    setMeal((m) => ({
+      ...m,
+      name: last.name,
+      kcal: String(Math.round(last.kcal)),
+      protein_g: String(last.protein_g),
+      carbs_g: String(last.carbs_g),
+      fat_g: String(last.fat_g),
+      productId: null,
+    }));
+    setMealThumb(null);
+    setMealSource(null);
+  }, []);
+
+  // Doğrulama: video da medya sayılır (serbest gönderi "boş" değil); fotoğraf sınırı aynı.
+  const mediaCount = Math.min(MAX_PHOTOS, photos.length + (video ? 1 : 0));
   const draft: ComposerDraft = useMemo(
-    () => ({ type, body, photoCount: photos.length, meal: type === 'ogun' ? meal : null, activity: type === 'etkinlik' ? activity : null }),
-    [type, body, photos.length, meal, activity],
+    () => ({ type, body, photoCount: mediaCount, meal: type === 'ogun' ? meal : null, activity: type === 'etkinlik' ? activity : null }),
+    [type, body, mediaCount, meal, activity],
   );
   const validation = validateComposer(draft);
   const canSubmit = validation == null && submit === 'idle';
@@ -167,26 +261,54 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
     if (picked.length) setPhotos((p) => [...p, ...picked].slice(0, MAX_PHOTOS));
   }, [photos.length]);
 
-  const onSubmit = useCallback(async () => {
-    if (validateComposer(draft) != null) return;
+  const addVideo = useCallback(async () => {
     setError(null);
-    haptic('light');
     try {
-      // 1) Fotoğrafları yükle.
+      const { pickVideo } = require('../../media/video') as typeof import('../../media/video');
+      const picked = await pickVideo();
+      if (picked) setVideo(picked);
+    } catch (e) {
+      const name = e instanceof Error ? e.name : '';
+      setError(
+        name === 'VideoTooLargeError' ? tr('kesfet.compose.video_too_large') : tr('kesfet.compose.video_too_long'),
+      );
+    }
+  }, [tr]);
+
+  // G15 (Final FinPosting): "Paylaş" → composer kapanır, gönderim arka planda sürer
+  // ve akışta durum satırı görünür (paylaşılıyor → inceleniyor → yayında / sakin
+  // ret kartı). Sıra AYNI: yükle → create_post → moderate-content → refresh. Hata
+  // olursa akışta sakin satır + "Tekrar dene" (aynı taslakla yeniden dener).
+  const runPost = useCallback(async () => {
+    const posting = usePostingStore.getState();
+    posting.set('uploading', { postId: null, error: null, retry: null });
+    const retry = () => void runPost();
+    try {
+      // 1) Fotoğrafları (+ varsa videoyu) yükle.
       let media: CreatePostMedia[] = [];
-      if (photos.length) {
+      if (photos.length || video) {
         setSubmit('uploading');
+        posting.set('uploading');
         const uid = await currentUserId();
-        if (uid) media = await uploadPhotos(uid, photos);
+        if (uid && photos.length) media = await uploadPhotos(uid, photos);
+        if (uid && video) {
+          const v = require('../../media/video') as typeof import('../../media/video');
+          const frames = await v.extractFrames(video.uri, video.durationMs);
+          const vm = await v.uploadVideoPost(uid, video, frames, { sort: media.length });
+          // create_post p_media: { url|path, kind:'video', duration_s, thumb_path, frame_paths }.
+          media = [...media, vm as unknown as CreatePostMedia];
+        }
       }
       // 2) create_post.
       setSubmit('publishing');
+      posting.set('publishing');
       const key = `composer-${type}-${body.length}-${photos.length}-${Date.now()}`;
       const input = buildCreateInput(draft, media, lang, key);
       const res = await getKesfetClient().createPost(input);
       if ('error' in res) {
         setSubmit('idle');
         setError(tr('kesfet.compose.err_rate'));
+        posting.set('error', { error: tr('kesfet.compose.err_rate'), retry: null });
         return;
       }
       // 3) moderate-content (ateşle-unut).
@@ -194,15 +316,24 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
       // 4) Yazar kendi pending gönderisini görsün.
       void useKesfetStore.getState().refresh();
       setSubmit('done');
-      setTimeout(() => navigation?.goBack(), 900);
+      posting.set(res.status === 'published' ? 'published' : 'reviewing', { postId: res.post_id });
     } catch {
       setSubmit('idle');
       setError(tr('kesfet.compose.err_network'));
+      posting.set('error', { error: tr('kesfet.compose.err_network'), retry });
     }
-  }, [draft, photos, type, body.length, lang, tr, navigation]);
+  }, [draft, photos, video, type, body.length, lang, tr]);
+
+  const onSubmit = useCallback(async () => {
+    if (validateComposer(draft) != null) return;
+    setError(null);
+    haptic('light');
+    void runPost();
+    navigation?.goBack();
+  }, [draft, runPost, navigation]);
 
   // İlk gönderiden önce bir kez Topluluk kuralları (FinRules) — kabul edilmemişse
-  // "Gönder" bu sheet'i açar; kabul edince bayrak işaretlenir ve asıl gönderim sürer.
+  // "Paylaş" bu sayfayı açar; kabul edince bayrak işaretlenir ve asıl gönderim sürer.
   const handleSharePress = useCallback(async () => {
     if (!canSubmit) return;
     if (!(await rulesSeen())) {
@@ -224,56 +355,86 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
       ? tr('kesfet.compose.reviewing')
       : null;
 
+  const mealKcal = Number(String(meal.kcal).replace(',', '.'));
+  const mealReady = meal.name.trim().length > 0 && Number.isFinite(mealKcal) && mealKcal > 0;
+  const mealN = (v: string) => {
+    const x = Number(String(v).replace(',', '.'));
+    return Number.isFinite(x) ? x : 0;
+  };
+  const quickMealLabel = tr(`meal.${inferMealTypeFromHour(new Date().getHours())}`);
+
+  const activityIcon = (at: ActivityType): ComposeIconName => at as ComposeIconName;
+
   return (
-    <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
-      {/* Başlık */}
+    <KeyboardAvoidingView
+      style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {/* Koyu temada durum çubuğu açık renk (App geneli 'dark'). */}
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
+      {/* Üst çubuk: İptal · Paylaş */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation?.goBack()} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('common.close')} style={styles.headerBtn}>
-          <Icon name="x" size={24} color={t.color.ink} />
+        <Pressable
+          onPress={() => navigation?.goBack()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={tr('kesfet.compose.cancel')}
+          style={styles.cancel}
+        >
+          <AppText style={[styles.cancelText, F.semibold]}>{tr('kesfet.compose.cancel')}</AppText>
         </Pressable>
-        <AppText variant="heading">{tr('kesfet.compose.title')}</AppText>
         <Pressable
           onPress={handleSharePress}
           disabled={!canSubmit}
           accessibilityRole="button"
-          accessibilityLabel={tr('kesfet.compose.share')}
+          accessibilityState={{ disabled: !canSubmit }}
+          accessibilityLabel={tr('kesfet.compose.post_btn')}
           hitSlop={8}
-          style={({ pressed }) => [styles.shareBtn, { backgroundColor: canSubmit ? t.color.ink : t.color.line, opacity: pressed ? 0.9 : 1 }]}
+          style={({ pressed }) => [
+            styles.shareBtn,
+            { backgroundColor: canSubmit ? t.color.ink : t.color.line, opacity: pressed ? 0.9 : 1 },
+          ]}
         >
-          <AppText variant="caption" style={{ color: canSubmit ? t.color.surface : t.color.secondary, fontWeight: '700' }}>
-            {tr('kesfet.compose.share')}
+          <AppText style={[styles.shareText, F.semibold, { color: canSubmit ? tone.onInk : t.color.secondary }]}>
+            {tr('kesfet.compose.post_btn')}
           </AppText>
         </Pressable>
       </View>
 
       {statusLabel ? (
         <View style={[styles.statusBar, { backgroundColor: t.color.accent }]}>
-          <AppText variant="caption" style={{ color: t.color.onAccent, fontWeight: '700' }}>{statusLabel}</AppText>
+          <AppText style={[styles.statusText, F.bold, { color: t.color.onAccent }]}>{statusLabel}</AppText>
         </View>
       ) : null}
       {error ? (
-        // Olumsuz an sessiz (motion §2): kırmızı/alarm yok, ink-quiet metin.
+        // Olumsuz an sessiz (motion §2): kırmızı/alarm yok, sakin metin.
         <View style={[styles.statusBar, { backgroundColor: t.color.surface }]}>
-          <AppText variant="caption" tone="secondary" style={{ fontWeight: '600' }}>{error}</AppText>
+          <AppText style={[styles.statusText, F.semibold]} tone="secondary">{error}</AppText>
         </View>
       ) : null}
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} keyboardShouldPersistTaps="handled">
-        {/* Tür seçimi */}
-        <View style={[styles.segment, { borderColor: t.color.line }]} accessibilityRole="radiogroup">
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+        {/* Tür seçimi — bölmeli seçici */}
+        <View style={[styles.segment, { backgroundColor: t.color.line }]} accessibilityRole="radiogroup">
           {POST_TYPES.map((pt) => {
             const active = type === pt;
             return (
               <Pressable
                 key={pt}
-                onPress={() => { haptic('selection'); setType(pt); }}
+                onPress={() => {
+                  haptic('selection');
+                  setType(pt);
+                }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={tr(`kesfet.compose.type.${pt}`)}
                 hitSlop={4}
-                style={[styles.segmentItem, active && { backgroundColor: t.color.ink }]}
+                style={[styles.segmentItem, active && [styles.segmentActive, { backgroundColor: t.color.surface }]]}
               >
-                <AppText variant="caption" style={{ fontWeight: '700', color: active ? t.color.surface : t.color.ink }}>
+                <AppText
+                  style={[styles.segmentText, active ? F.bold : F.medium]}
+                  tone={active ? 'ink' : 'secondary'}
+                >
                   {tr(`kesfet.compose.type.${pt}`)}
                 </AppText>
               </Pressable>
@@ -281,59 +442,105 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
           })}
         </View>
 
-        {/* Metin */}
-        <TextInput
-          value={body}
-          onChangeText={setBody}
-          placeholder={tr('kesfet.compose.body_placeholder')}
-          placeholderTextColor={t.color.secondary}
-          multiline
-          style={[styles.body, { color: t.color.ink, backgroundColor: t.color.surface, borderColor: t.color.line }]}
-          accessibilityLabel={tr('kesfet.compose.body_placeholder')}
-        />
-
-        {/* Fotoğraflar */}
-        <View style={styles.photoRow}>
-          {photos.map((p, i) => (
-            <View key={`${p.uri}-${i}`} style={styles.thumb}>
-              <Image source={{ uri: p.uri }} style={styles.thumbImg} />
-              <Pressable
-                onPress={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
-                style={[styles.thumbRemove, { backgroundColor: t.color.ink }]}
-                accessibilityRole="button"
-                accessibilityLabel={tr('common.delete')}
-              >
-                <Icon name="x" size={12} color={t.color.surface} />
-              </Pressable>
-            </View>
-          ))}
-          {photos.length < MAX_PHOTOS ? (
-            <Pressable onPress={addPhotos} style={[styles.addPhoto, { borderColor: t.color.line }]} accessibilityRole="button" accessibilityLabel={tr('kesfet.compose.add_photo')}>
-              <Icon name="image" size={22} color={t.color.secondary} />
-              <AppText variant="caption" tone="secondary">{photos.length}/{MAX_PHOTOS}</AppText>
-            </Pressable>
-          ) : null}
+        {/* Avatar + metin */}
+        <View style={styles.bodyRow}>
+          <View style={[styles.avatar, { backgroundColor: tone.avatar }]} />
+          <TextInput
+            value={body}
+            onChangeText={setBody}
+            placeholder={tr('kesfet.compose.body_placeholder')}
+            placeholderTextColor={t.color.secondary}
+            multiline
+            style={[styles.body, { color: t.color.ink }]}
+            accessibilityLabel={tr('kesfet.compose.body_placeholder')}
+          />
         </View>
+
+        {/* Medya kareleri */}
+        {photos.length > 0 || video ? (
+          <View style={styles.mediaRow}>
+            {photos.map((p, i) => (
+              <View key={`${p.uri}-${i}`} style={[styles.thumb, { backgroundColor: tone.photoPh }]}>
+                <Image source={{ uri: p.uri }} style={styles.thumbImg} contentFit="cover" />
+                <Pressable
+                  onPress={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  style={styles.thumbRemove}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('kesfet.compose.remove_media')}
+                >
+                  <ComposeIcon name="x" size={12} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ))}
+            {video ? (
+              <View style={[styles.thumb, { backgroundColor: tone.photoPh }]}>
+                <ComposeIcon name="video" size={22} color={t.color.secondary} />
+                <AppText style={[styles.addText, F.semibold]} tone="secondary">
+                  {`0:${String(Math.round(video.durationMs / 1000)).padStart(2, '0')}`}
+                </AppText>
+                <Pressable
+                  onPress={() => setVideo(null)}
+                  style={styles.thumbRemove}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('kesfet.compose.remove_media')}
+                >
+                  <ComposeIcon name="x" size={12} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ) : null}
+            {photos.length < MAX_PHOTOS ? (
+              <Pressable
+                onPress={addPhotos}
+                style={[styles.addTile, { borderColor: tone.outline }]}
+                accessibilityRole="button"
+                accessibilityLabel={tr('kesfet.compose.add_photo')}
+              >
+                <ComposeIcon name="plus" size={20} color={t.color.secondary} />
+                <AppText style={[styles.addText, F.semibold]} tone="secondary">
+                  {tr('kesfet.compose.add_tile', { n: photos.length, max: MAX_PHOTOS })}
+                </AppText>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Öğün kartı */}
         {type === 'ogun' ? (
-          <View style={styles.cardBox}>
-            <AppText variant="caption" tone="secondary" style={styles.cardTitle}>{tr('kesfet.compose.meal_section')}</AppText>
+          <View style={styles.mealBox}>
+            <AppText style={[styles.sectionLabel, F.semibold]} tone="secondary">
+              {tr('kesfet.compose.meal_section')}
+            </AppText>
+            <View style={styles.sourceRow}>
+              {searchAvailable ? (
+                <SourceTile
+                  icon="search"
+                  label={tr('kesfet.compose.product_search')}
+                  active={mealSource === 'search'}
+                  onPress={() => {
+                    haptic('selection');
+                    setMealSource((s) => (s === 'search' ? null : 'search'));
+                  }}
+                />
+              ) : null}
+              <SourceTile
+                icon="pencil"
+                label={tr('kesfet.compose.meal_manual')}
+                active={mealSource === 'manual'}
+                onPress={() => {
+                  haptic('selection');
+                  setMealSource((s) => (s === 'manual' ? null : 'manual'));
+                }}
+              />
+              <SourceTile
+                icon="scan"
+                label={tr('kesfet.compose.meal_from_scan')}
+                active={mealSource === 'scan'}
+                onPress={() => void fromScan()}
+              />
+            </View>
 
-            {/* Ürün ara — search_products RPC varsa (G11). Seçilen ürün alanları doldurur. */}
-            {searchAvailable ? (
-              <Pressable
-                onPress={() => { haptic('selection'); setSearchOpen((v) => !v); }}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: searchOpen }}
-                accessibilityLabel={tr('kesfet.compose.product_search')}
-                hitSlop={8}
-                style={[styles.searchToggle, { borderColor: t.color.line }]}
-              >
-                <Icon name="search" size={16} color={t.color.ink} />
-                <AppText variant="caption" style={{ fontWeight: '700' }}>{tr('kesfet.compose.product_search')}</AppText>
-              </Pressable>
-            ) : null}
             {searchOpen && searchAvailable ? (
               <View style={[styles.searchPanel, { borderColor: t.color.line, backgroundColor: t.color.surface }]}>
                 <TextInput
@@ -346,11 +553,11 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
                   accessibilityLabel={tr('kesfet.compose.product_search')}
                 />
                 {searchQ.trim().length < 2 ? (
-                  <AppText variant="caption" tone="secondary" style={styles.searchHint}>{tr('kesfet.compose.product_search_min')}</AppText>
+                  <AppText style={styles.searchHint} tone="secondary">{tr('kesfet.compose.product_search_min')}</AppText>
                 ) : searchLoading ? (
-                  <AppText variant="caption" tone="secondary" style={styles.searchHint}>{tr('kesfet.ui.loading')}</AppText>
+                  <AppText style={styles.searchHint} tone="secondary">{tr('kesfet.ui.loading')}</AppText>
                 ) : searchResults.length === 0 ? (
-                  <AppText variant="caption" tone="secondary" style={styles.searchHint}>{tr('kesfet.compose.product_search_empty')}</AppText>
+                  <AppText style={styles.searchHint} tone="secondary">{tr('kesfet.compose.product_search_empty')}</AppText>
                 ) : (
                   searchResults.map((p) => (
                     <Pressable
@@ -360,70 +567,158 @@ export function ComposerScreen({ navigation }: { navigation?: { goBack: () => vo
                       accessibilityLabel={`${p.name} · ${fmt(p.kcal)} kcal`}
                       style={({ pressed }) => [styles.searchRow, { borderTopColor: t.color.line }, pressed && { opacity: 0.85 }]}
                     >
-                      <AppText variant="caption" style={{ fontWeight: '700', flex: 1 }} numberOfLines={1}>{p.name}</AppText>
-                      <AppText variant="caption" tone="secondary">{tr('kesfet.ui.meal_card.macro', { kcal: fmt(p.kcal), protein: fmt(Math.round(p.protein_g)) })}</AppText>
+                      <AppText style={[styles.searchName, F.bold]} numberOfLines={1}>{p.name}</AppText>
+                      <AppText style={styles.searchHintInline} tone="secondary">
+                        {tr('kesfet.ui.meal_card.macro', { kcal: fmt(p.kcal), protein: fmt(Math.round(p.protein_g)) })}
+                      </AppText>
                     </Pressable>
                   ))
                 )}
               </View>
             ) : null}
 
-            <Field label={tr('kesfet.compose.meal_name')} value={meal.name} onChange={(v) => setMeal((m) => ({ ...m, name: v }))} placeholder={tr('kesfet.compose.meal_name_ph')} />
-            <View style={styles.grid2}>
-              <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.kcal')} value={meal.kcal} onChange={(v) => setMeal((m) => ({ ...m, kcal: v }))} keyboardType="numeric" placeholder="0" /></View>
-              <View style={styles.gridCell}><Field label={tr('kesfet.compose.portion_label')} value={meal.portionLabel} onChange={(v) => setMeal((m) => ({ ...m, portionLabel: v }))} placeholder="1 porsiyon" /></View>
-            </View>
-            <View style={styles.grid3}>
-              <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.protein')} value={meal.protein_g} onChange={(v) => setMeal((m) => ({ ...m, protein_g: v }))} keyboardType="numeric" placeholder="0" /></View>
-              <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.carbs')} value={meal.carbs_g} onChange={(v) => setMeal((m) => ({ ...m, carbs_g: v }))} keyboardType="numeric" placeholder="0" /></View>
-              <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.fat')} value={meal.fat_g} onChange={(v) => setMeal((m) => ({ ...m, fat_g: v }))} keyboardType="numeric" placeholder="0" /></View>
-            </View>
+            {mealSource === 'scan' && scanNone ? (
+              <AppText style={styles.searchHint} tone="secondary">{tr('kesfet.compose.meal_scan_none')}</AppText>
+            ) : null}
+
+            {mealSource === 'manual' ? (
+              <View style={styles.manual}>
+                <Field label={tr('kesfet.compose.meal_name')} value={meal.name} onChange={(v) => setMeal((m) => ({ ...m, name: v }))} placeholder={tr('kesfet.compose.meal_name_ph')} />
+                <View style={styles.grid}>
+                  <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.kcal')} value={meal.kcal} onChange={(v) => setMeal((m) => ({ ...m, kcal: v }))} keyboardType="numeric" placeholder="0" /></View>
+                  <View style={styles.gridCell}><Field label={tr('kesfet.compose.portion_label')} value={meal.portionLabel} onChange={(v) => setMeal((m) => ({ ...m, portionLabel: v }))} placeholder="1 porsiyon" /></View>
+                </View>
+                <View style={styles.grid}>
+                  <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.protein')} value={meal.protein_g} onChange={(v) => setMeal((m) => ({ ...m, protein_g: v }))} keyboardType="numeric" placeholder="0" /></View>
+                  <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.carbs')} value={meal.carbs_g} onChange={(v) => setMeal((m) => ({ ...m, carbs_g: v }))} keyboardType="numeric" placeholder="0" /></View>
+                  <View style={styles.gridCell}><Field label={tr('kesfet.ui.sheet.fat')} value={meal.fat_g} onChange={(v) => setMeal((m) => ({ ...m, fat_g: v }))} keyboardType="numeric" placeholder="0" /></View>
+                </View>
+              </View>
+            ) : null}
+
+            {mealReady ? (
+              <MealPreview
+                mealLabel={quickMealLabel}
+                data={{
+                  name: meal.name.trim(),
+                  kcal: mealKcal,
+                  protein_g: mealN(meal.protein_g),
+                  carbs_g: mealN(meal.carbs_g),
+                  fat_g: mealN(meal.fat_g),
+                  thumbUri: mealThumb ?? photos[0]?.uri ?? null,
+                }}
+              />
+            ) : null}
           </View>
         ) : null}
 
         {/* Etkinlik kartı */}
         {type === 'etkinlik' ? (
-          <View style={styles.cardBox}>
-            <AppText variant="caption" tone="secondary" style={styles.cardTitle}>{tr('kesfet.compose.activity_section')}</AppText>
-            <View style={styles.chipWrap} accessibilityRole="radiogroup">
-              {ACTIVITY_TYPES.map((at: ActivityType) => {
-                const active = activity.type === at;
-                return (
-                  <Pressable
-                    key={at}
-                    onPress={() => setActivity((a) => ({ ...a, type: at }))}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={tr(`kesfet.activity.type.${at}`)}
-                    hitSlop={5}
-                    style={[styles.chip, { borderColor: active ? t.color.ink : t.color.line, backgroundColor: active ? t.color.ink : 'transparent' }]}
-                  >
-                    <AppText variant="caption" style={{ color: active ? t.color.surface : t.color.ink, fontWeight: '600' }}>
-                      {tr(`kesfet.activity.type.${at}`)}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+          <View style={styles.activityBox}>
+            <View style={styles.activityGrid} accessibilityRole="radiogroup">
+              {[0, 1, 2].map((row) => (
+                <View key={row} style={styles.activityRow}>
+                  {ACTIVITY_TYPES.slice(row * 4, row * 4 + 4).map((at) => (
+                    <ActivityTile
+                      key={at}
+                      icon={activityIcon(at)}
+                      label={tr(`kesfet.activity.type.${at}`)}
+                      active={activity.type === at}
+                      onPress={() => {
+                        haptic('selection');
+                        setActivity((a) => ({ ...a, type: at }));
+                      }}
+                    />
+                  ))}
+                </View>
+              ))}
             </View>
-            <View style={styles.grid2}>
-              <View style={styles.gridCell}><Field label={tr('kesfet.compose.minutes')} value={activity.minutes} onChange={(v) => setActivity((a) => ({ ...a, minutes: v }))} keyboardType="numeric" placeholder="0" /></View>
-              <View style={styles.gridCell}><Field label={tr('kesfet.compose.distance')} value={activity.distanceKm} onChange={(v) => setActivity((a) => ({ ...a, distanceKm: v }))} keyboardType="numeric" placeholder="0" /></View>
+            <View style={styles.statRow}>
+              <View style={[styles.statBox, { backgroundColor: t.color.surface, borderColor: t.color.line }]}>
+                <AppText style={styles.statLabel} tone="secondary">{tr('kesfet.compose.duration')}</AppText>
+                <View style={styles.statValueRow}>
+                  <TextInput
+                    value={activity.minutes}
+                    onChangeText={(v) => setActivity((a) => ({ ...a, minutes: v }))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={t.color.secondary}
+                    style={[styles.statInput, F.bold, { color: t.color.ink }]}
+                    accessibilityLabel={tr('kesfet.compose.minutes')}
+                  />
+                  <AppText style={[styles.statUnit, F.medium]} tone="secondary">{tr('kesfet.compose.min_unit')}</AppText>
+                </View>
+              </View>
+              <View style={[styles.statBox, { backgroundColor: t.color.surface, borderColor: t.color.line }]}>
+                <AppText style={styles.statLabel} tone="secondary">{tr('kesfet.compose.distance_label')}</AppText>
+                <View style={styles.statValueRow}>
+                  <TextInput
+                    value={activity.distanceKm}
+                    onChangeText={(v) => setActivity((a) => ({ ...a, distanceKm: v }))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={t.color.secondary}
+                    style={[styles.statInput, F.bold, { color: t.color.ink }]}
+                    accessibilityLabel={tr('kesfet.compose.distance')}
+                  />
+                  <AppText style={[styles.statUnit, F.medium]} tone="secondary" numberOfLines={1}>
+                    {tr('kesfet.compose.km_optional')}
+                  </AppText>
+                </View>
+              </View>
             </View>
-            <View style={[styles.kcalLive, { borderColor: t.color.line }]}>
-              <Icon name="fire" size={16} color={t.color.accentLine} />
-              <AppText variant="body" style={{ fontWeight: '700' }}>
-                {livePreview ? tr('kesfet.activity.kcal_est', { kcal: fmt(livePreview.kcal_est) }) : tr('kesfet.compose.kcal_hint')}
-              </AppText>
+            <View style={styles.kcalLine}>
+              <View style={[styles.kcalDot, { backgroundColor: t.color.accentLine }]} />
+              {livePreview ? (
+                <AppText style={[styles.kcalText, F.semibold]}>
+                  {tr('kesfet.compose.kcal_est_line', { kcal: fmt(livePreview.kcal_est) })}{' '}
+                  <AppText style={styles.kcalText} tone="secondary">
+                    {tr('kesfet.compose.kcal_est_note')}
+                  </AppText>
+                </AppText>
+              ) : (
+                <AppText style={styles.kcalText} tone="secondary">{tr('kesfet.compose.kcal_hint')}</AppText>
+              )}
             </View>
           </View>
         ) : null}
       </ScrollView>
-      <RulesSheet
-        visible={rulesVisible}
-        onAccept={onAcceptRules}
-        onClose={() => setRulesVisible(false)}
-      />
-    </View>
+
+      {/* Alt: kural notu + Fotoğraf / Video çubuğu */}
+      <View style={styles.ruleNote}>
+        <ComposeIcon name="shield" size={16} color={t.color.secondary} />
+        <AppText style={styles.ruleText} tone="secondary">{tr('kesfet.compose.rule_note')}</AppText>
+      </View>
+      <View style={[styles.bar, { borderTopColor: t.color.line, paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <Pressable
+          onPress={addPhotos}
+          disabled={photos.length >= MAX_PHOTOS}
+          accessibilityRole="button"
+          accessibilityLabel={tr('kesfet.compose.add_photo')}
+          style={({ pressed }) => [styles.barBtn, (pressed || photos.length >= MAX_PHOTOS) && { opacity: 0.5 }]}
+        >
+          <ComposeIcon name="photo" size={22} color={t.color.ink} />
+          <AppText style={[styles.barText, F.semibold]}>{tr('kesfet.compose.add_photo')}</AppText>
+        </Pressable>
+        {videoEnabled ? (
+          <Pressable
+            onPress={() => void addVideo()}
+            disabled={video != null}
+            accessibilityRole="button"
+            accessibilityLabel={tr('kesfet.compose.video')}
+            style={({ pressed }) => [styles.barBtn, (pressed || video != null) && { opacity: 0.5 }]}
+          >
+            <ComposeIcon name="video" size={22} color={t.color.ink} />
+            <AppText style={[styles.barText, F.semibold]}>{tr('kesfet.compose.video')}</AppText>
+          </Pressable>
+        ) : null}
+        <AppText style={styles.barHint} tone="secondary">
+          {tr('kesfet.compose.media_limit')}
+        </AppText>
+      </View>
+
+      <RulesSheet visible={rulesVisible} onAccept={onAcceptRules} onClose={() => setRulesVisible(false)} />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -431,32 +726,80 @@ export default ComposerScreen;
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
-  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  shareBtn: { minHeight: 36, paddingHorizontal: 18, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  cancel: { minHeight: 44, justifyContent: 'center' },
+  cancelText: { fontSize: 15, lineHeight: 20 },
+  shareBtn: { height: 36, paddingHorizontal: 18, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  shareText: { fontSize: 15, lineHeight: 20 },
   statusBar: { paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center' },
-  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 3, gap: 3 },
-  segmentItem: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 11 },
-  body: { marginTop: 14, minHeight: 100, borderWidth: 1, borderRadius: 14, padding: 12, fontSize: 16, textAlignVertical: 'top' },
-  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  thumb: { width: 72, height: 72, borderRadius: 12, overflow: 'hidden' },
-  thumbImg: { width: '100%', height: '100%' },
-  thumbRemove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  addPhoto: { width: 72, height: 72, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  cardBox: { marginTop: 16, gap: 4 },
-  cardTitle: { fontWeight: '700', marginBottom: 4 },
-  searchToggle: { alignSelf: 'flex-start', minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, marginBottom: 8 },
-  searchPanel: { borderWidth: 1, borderRadius: 12, padding: 8, marginBottom: 8, gap: 2 },
+  statusText: { fontSize: 13, lineHeight: 18 },
+  segment: { marginHorizontal: 16, height: 36, padding: 2, borderRadius: 18, flexDirection: 'row' },
+  segmentItem: { flex: 1, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  segmentActive: {
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  segmentText: { fontSize: 14, lineHeight: 19 },
+  bodyRow: { flexDirection: 'row', gap: 12, paddingTop: 12, paddingHorizontal: 16 },
+  avatar: { width: 40, height: 40, borderRadius: 20 },
+  body: { flex: 1, minHeight: 40, fontSize: 17, lineHeight: 24, paddingTop: 6, paddingBottom: 0, textAlignVertical: 'top', fontFamily: fontFamily.bodyRegular },
+  mediaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 12, paddingRight: 16, paddingLeft: 68 },
+  thumb: { width: 72, height: 92, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  thumbImg: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 },
+  thumbRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(10,10,10,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addTile: { width: 72, height: 92, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  addText: { fontSize: 13, lineHeight: 17 },
+  mealBox: { paddingTop: 14, paddingRight: 16, paddingLeft: 68 },
+  sectionLabel: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
+  sourceRow: { flexDirection: 'row', gap: 8 },
+  manual: { marginTop: 10 },
+  searchPanel: { borderWidth: 1, borderRadius: 12, padding: 8, marginTop: 10, gap: 2 },
   searchInput: { minHeight: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontSize: 15 },
-  searchHint: { paddingVertical: 10, textAlign: 'center' },
+  searchHint: { paddingVertical: 10, textAlign: 'center', fontSize: 13, lineHeight: 18 },
+  searchHintInline: { fontSize: 13, lineHeight: 18 },
+  searchName: { flex: 1, fontSize: 13, lineHeight: 18 },
   searchRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
   field: { marginBottom: 8 },
-  fieldLabel: { marginBottom: 4, fontWeight: '600' },
+  fieldLabel: { marginBottom: 4, fontSize: 13, lineHeight: 18 },
   input: { minHeight: 44, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, fontSize: 15 },
-  grid2: { flexDirection: 'row', gap: 10 },
-  grid3: { flexDirection: 'row', gap: 10 },
+  grid: { flexDirection: 'row', gap: 8 },
   gridCell: { flex: 1 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  chip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  kcalLive: { marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  activityBox: { paddingTop: 12, paddingHorizontal: 16 },
+  activityGrid: { gap: 6 },
+  activityRow: { flexDirection: 'row', gap: 6 },
+  statRow: { marginTop: 10, flexDirection: 'row', gap: 8 },
+  statBox: { flex: 1, minHeight: 56, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1 },
+  statLabel: { fontSize: 13, lineHeight: 18 },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  statInput: { fontSize: 18, lineHeight: 24, padding: 0, minWidth: 24 },
+  statUnit: { fontSize: 13, lineHeight: 18, flexShrink: 1 },
+  kcalLine: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  kcalDot: { width: 8, height: 8, borderRadius: 4 },
+  kcalText: { fontSize: 14, lineHeight: 19, flexShrink: 1 },
+  ruleNote: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 14 },
+  ruleText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    paddingTop: 10,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+  },
+  barBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  barText: { fontSize: 13, lineHeight: 18 },
+  barHint: { marginLeft: 'auto', flexShrink: 1, fontSize: 13, lineHeight: 18 },
 });

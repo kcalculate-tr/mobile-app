@@ -5,7 +5,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppText, useTheme, haptic } from '../../../core/design';
+import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { requestPushPermissionOnly } from '../../../core/notifications';
 import { BottomSheet } from './BottomSheet';
@@ -48,10 +48,11 @@ export function SocialPushPrompt({ visible, onClose }: { visible: boolean; onClo
   return (
     <BottomSheet visible={visible} onClose={later} accessibilityLabel={tr('kesfet.push.title')}>
       <View style={styles.group}>
-        <View style={[styles.iconWrap, { backgroundColor: t.color.accent }]}>
-          <Icon name="bell" size={26} color={t.color.onAccent} />
+        {/* G15 — Final FinSheetNotify dili: sola dayalı, gri ikon dairesi, siyah + çerçeveli düğmeler. */}
+        <View style={[styles.iconWrap, { backgroundColor: t.color.line }]}>
+          <Icon name="bell" size={22} color={t.color.ink} />
         </View>
-        <AppText variant="heading" style={styles.title}>{tr('kesfet.push.title')}</AppText>
+        <AppText textRole="screenTitle" style={styles.title}>{tr('kesfet.push.title')}</AppText>
         <AppText variant="body" tone="secondary" style={styles.desc}>{tr('kesfet.push.desc')}</AppText>
         <Pressable
           onPress={allow}
@@ -59,15 +60,15 @@ export function SocialPushPrompt({ visible, onClose }: { visible: boolean; onClo
           accessibilityLabel={tr('kesfet.push.allow')}
           style={({ pressed }) => [styles.primary, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
         >
-          <AppText variant="body" style={{ color: t.color.surface, fontWeight: '700' }}>{tr('kesfet.push.allow')}</AppText>
+          <AppText style={[styles.btnText, { color: t.color.bg }]}>{tr('kesfet.push.allow')}</AppText>
         </Pressable>
         <Pressable
           onPress={later}
           accessibilityRole="button"
           accessibilityLabel={tr('kesfet.push.later')}
-          style={({ pressed }) => [styles.secondary, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.secondary, { borderColor: t.isDark ? '#48484A' : '#C3C7CC' }, pressed && { opacity: 0.8 }]}
         >
-          <AppText variant="body" tone="secondary" style={{ fontWeight: '600' }}>{tr('kesfet.push.later')}</AppText>
+          <AppText style={[styles.btnText, { color: t.color.ink }]}>{tr('kesfet.push.later')}</AppText>
         </Pressable>
       </View>
     </BottomSheet>
@@ -75,10 +76,11 @@ export function SocialPushPrompt({ visible, onClose }: { visible: boolean; onClo
 }
 
 const styles = StyleSheet.create({
-  group: { alignItems: 'center', gap: 8, paddingBottom: 8 },
-  iconWrap: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  title: { textAlign: 'center' },
-  desc: { textAlign: 'center', marginBottom: 8 },
+  group: { alignItems: 'flex-start', gap: 8, paddingBottom: 8 },
+  iconWrap: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  title: {},
+  desc: { fontSize: 15, lineHeight: 22, marginBottom: 8 },
   primary: { alignSelf: 'stretch', minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  secondary: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  secondary: { alignSelf: 'stretch', minHeight: 52, borderRadius: 26, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  btnText: { fontFamily: fontFamily.bodySemibold, fontSize: 15 },
 });

@@ -6,7 +6,7 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, useTheme } from '../../../core/design';
+import { AppText, fontFamily, useTheme } from '../../../core/design';
 
 export interface ToastState {
   message: string;
@@ -21,25 +21,28 @@ export interface ToastState {
 export function AddToast({
   toast,
   onDismiss,
+  sticky = false,
 }: {
   toast: ToastState | null;
   onDismiss: () => void;
+  /** Kendiliğinden kapanmasın (yalnız __DEV__ vitrini). */
+  sticky?: boolean;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || sticky) return;
     const id = setTimeout(onDismiss, 4000);
     return () => clearTimeout(id);
-  }, [toast, onDismiss]);
+  }, [toast, onDismiss, sticky]);
 
   if (!toast) return null;
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 96 }]}>
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 100 }]}>
       <View style={[styles.toast, { backgroundColor: t.color.ink }]}>
-        <AppText variant="body" style={[styles.msg, { color: t.color.surface }]} numberOfLines={2}>
+        <AppText variant="body" style={[styles.msg, { color: t.color.bg }]} numberOfLines={2}>
           {toast.message}
         </AppText>
         {toast.undoLabel && toast.onUndo ? (
@@ -52,7 +55,7 @@ export function AddToast({
             accessibilityLabel={toast.undoLabel}
             style={styles.undoBtn}
           >
-            <AppText variant="body" style={[styles.undo, { color: t.color.surface }]}>
+            <AppText variant="body" style={[styles.undo, { color: t.color.bg }]}>
               {toast.undoLabel}
             </AppText>
           </Pressable>
@@ -85,18 +88,18 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 56,
     borderRadius: 28,
-    paddingLeft: 16,
+    paddingLeft: 20,
     paddingRight: 6,
     paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  msg: { flex: 1, fontWeight: '600', fontSize: 15 },
+  msg: { flex: 1, fontFamily: fontFamily.bodySemibold, fontSize: 15, lineHeight: 20 },
   // "Geri al": en az 44 dokunma, düz metin.
   undoBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  undo: { fontWeight: '600', fontSize: 15 },
+  undo: { fontFamily: fontFamily.bodySemibold, fontSize: 15, lineHeight: 20 },
   // "Gör": lime dolgu, 44 yükseklik, radius 22.
   actionBtn: { minHeight: 44, paddingHorizontal: 18, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  action: { fontWeight: '700', fontSize: 15 },
+  action: { fontFamily: fontFamily.bodySemibold, fontSize: 15, lineHeight: 20 },
 });

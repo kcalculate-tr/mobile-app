@@ -14,6 +14,7 @@ import { createMockKesfetClient, setKesfetClient } from '../modules/kesfet';
 import { createMockGunClient, setGunClient } from '../modules/gun';
 import { createMockProfilClient, setProfilClient } from '../modules/profil';
 import { createMockAiScanClient, setAiScanClient } from '../modules/ai/scan';
+import { vitrinGunClient, vitrinKesfetClient, vitrinProfilClient } from './vitrinKesfet';
 
 export type MockRoute = {
   /** URL içinde aranacak parça (ör. `/rest/v1/orders`). */
@@ -94,8 +95,16 @@ export function stateClient<T extends object>(base: T, state: VitrinDataState): 
 }
 
 /** Modül istemcilerini (Keşfet, Gün, Profil, AI tarama) mock'a çevirir. */
-export function installMockClients(state: VitrinDataState): void {
+export function installMockClients(state: VitrinDataState, area?: string, scene?: string): void {
   const empty = state === 'empty';
+  if (area === 'kesfet') {
+    // G15-S3 — Keşfet sahneleri Final örnek içeriğiyle (vitrinKesfet.ts).
+    setKesfetClient(stateClient(vitrinKesfetClient(scene ?? '', empty), state));
+    setGunClient(stateClient(vitrinGunClient(createMockGunClient({})), state));
+    setProfilClient(stateClient(vitrinProfilClient(createMockProfilClient()), state));
+    setAiScanClient(stateClient(createMockAiScanClient(), state));
+    return;
+  }
   setKesfetClient(
     stateClient(
       createMockKesfetClient(

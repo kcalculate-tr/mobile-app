@@ -72,7 +72,8 @@ export function Avatar({
     <View
       style={[
         styles.base,
-        { width: size, height: size, borderRadius: radius, backgroundColor: t.color.line },
+        // Final yer tutucu: #DCDEE2 (koyu #3A3A3C) + baş harf.
+        { width: size, height: size, borderRadius: radius, backgroundColor: t.isDark ? '#3A3A3C' : '#DCDEE2' },
       ]}
     >
       <AppText variant="caption" tone="secondary" style={{ fontWeight: '700', fontSize: size * 0.42 }}>

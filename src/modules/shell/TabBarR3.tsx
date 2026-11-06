@@ -435,7 +435,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                     }
                   >
                     <View>
-                      <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.bubble} />
+                      <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.cut} />
                       {showBadge ? (
                         <Animated.View
                           pointerEvents="none"
@@ -474,8 +474,9 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
               accessibilityRole="button"
               accessibilityLabel={i18n.t('shell.expand')}
             >
-              <View style={styles.miniCenter}>
-                <MiniIcon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled cutColor={g.bubble} />
+              {/* G15 — flex:1: ikon dairenin ortasında (önce üstte kalıyordu). */}
+              <View style={[styles.miniCenter, styles.fill1]}>
+                <MiniIcon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled cutColor={g.cut} />
               </View>
             </Pressable>
           </Animated.View>
@@ -713,6 +714,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fill1: { flex: 1 },
   scanWrap: {
     overflow: 'hidden',
     alignItems: 'center',

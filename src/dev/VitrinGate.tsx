@@ -89,7 +89,7 @@ function VitrinRoot({ entry }: { entry: ResolvedEntry }) {
     (async () => {
       restoreNetwork();
       setDevInitialCollapse(entry.collapse ?? 0);
-      installMockClients(entry.data);
+      installMockClients(entry.data, entry.area, entry.scene);
       // Sahne hazırlığı gerçek (okuma) ağıyla yapılır; durum taklidi sonra kurulur.
       const prepared = await prepareScene(entry).catch(() => ({ routes: null, mockRoutes: [] }));
       if (!alive) return;
@@ -160,6 +160,7 @@ function Missing({ name }: { name: string }) {
 // sızmasın; ör. Tabs → Onboarding geçişinde StackRouter 'stale' hatası).
 // Bekleyen pano adı yeniden yüklemeden sonra buradan okunur.
 const PENDING_KEY = 'g14-vitrin-pending';
+const LAST_KEY = 'g15-vitrin-last';
 
 export default function VitrinGate({ children }: { children: React.ReactNode }) {
   const [pano, setPano] = useState<string | null>(null);
@@ -176,8 +177,20 @@ export default function VitrinGate({ children }: { children: React.ReactNode }) 
       const pending = await AsyncStorage.getItem(PENDING_KEY).catch(() => null);
       if (pending) {
         await AsyncStorage.removeItem(PENDING_KEY).catch(() => {});
+        await AsyncStorage.setItem(LAST_KEY, JSON.stringify({ p: pending, at: Date.now() })).catch(() => {});
         open(pending);
         return;
+      }
+      // G15 — paralel düzenlemede Metro tam yeniden yükleme yaparsa son pano
+      // (2 dk içinde açıldıysa) yeniden açılır; görüntü normal uygulamaya düşmez.
+      try {
+        const last = JSON.parse((await AsyncStorage.getItem(LAST_KEY)) ?? 'null') as { p: string; at: number } | null;
+        if (last && Date.now() - last.at < 120_000) {
+          open(last.p);
+          return;
+        }
+      } catch {
+        // yut
       }
       const p = parseVitrinUrl(await Linking.getInitialURL());
       if (p) open(p);
@@ -186,6 +199,7 @@ export default function VitrinGate({ children }: { children: React.ReactNode }) 
       const p = parseVitrinUrl(url);
       if (!p) return;
       if (!active.current) {
+        void AsyncStorage.setItem(LAST_KEY, JSON.stringify({ p, at: Date.now() })).catch(() => {});
         open(p);
         return;
       }

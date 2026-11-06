@@ -7,6 +7,7 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 import { BowlFood } from 'phosphor-react-native/lib/commonjs/icons/BowlFood';
 import { PersonSimpleRun } from 'phosphor-react-native/lib/commonjs/icons/PersonSimpleRun';
 import { SneakerMove } from 'phosphor-react-native/lib/commonjs/icons/SneakerMove';
@@ -14,7 +15,7 @@ import { Smiley } from 'phosphor-react-native/lib/commonjs/icons/Smiley';
 import { Prohibit } from 'phosphor-react-native/lib/commonjs/icons/Prohibit';
 import { ShieldCheck } from 'phosphor-react-native/lib/commonjs/icons/ShieldCheck';
 import { X } from 'phosphor-react-native/lib/commonjs/icons/X';
-import { AppText, useTheme, haptic } from '../../../core/design';
+import { AppText, useTheme, haptic, fontFamily } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 
 export const RULES_SEEN_FLAG = '@kcal_kesfet_rules_seen';
@@ -66,6 +67,8 @@ export function RulesSheet({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <View style={[styles.root, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
+        {/* Koyu temada durum çubuğu açık renk (App geneli 'dark'). */}
+        <StatusBar style={t.isDark ? 'light' : 'dark'} />
         <View style={styles.header}>
           <Pressable
             onPress={onClose}
@@ -77,7 +80,7 @@ export function RulesSheet({
             <X size={22} color={t.color.ink} />
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+        <ScrollView>
           <View style={styles.titleBlock}>
             <AppText variant="title" style={styles.title} accessibilityRole="header">
               {tr('kesfet.rules.title')}
@@ -112,17 +115,19 @@ export function RulesSheet({
             <ShieldCheck size={20} color={t.color.ink} />
             <AppText style={styles.noteText}>{tr('kesfet.rules.note')}</AppText>
           </View>
+          {/* G15: Final FinRules'ta sabit düğme yok — kabul düğmesi notun ALTINDA,
+              içerikle birlikte kayar (not kartı düğmenin arkasında kalmaz). */}
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <Pressable
+              onPress={accept}
+              accessibilityRole="button"
+              accessibilityLabel={tr('kesfet.rules.accept')}
+              style={({ pressed }) => [styles.primary, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
+            >
+              <AppText style={[styles.primaryText, { color: t.isDark ? t.color.bg : t.color.surface }]}>{tr('kesfet.rules.accept')}</AppText>
+            </Pressable>
+          </View>
         </ScrollView>
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Pressable
-            onPress={accept}
-            accessibilityRole="button"
-            accessibilityLabel={tr('kesfet.rules.accept')}
-            style={({ pressed }) => [styles.primary, { backgroundColor: t.color.ink, opacity: pressed ? 0.9 : 1 }]}
-          >
-            <AppText style={{ color: t.color.surface, fontWeight: '700' }}>{tr('kesfet.rules.accept')}</AppText>
-          </Pressable>
-        </View>
       </View>
     </Modal>
   );
@@ -136,7 +141,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, lineHeight: 32 },
   lead: { marginTop: 6, fontSize: 15, lineHeight: 21 },
   section: { paddingHorizontal: 16, paddingTop: 16 },
-  sectionLabel: { fontSize: 13, lineHeight: 18, fontWeight: '700', marginBottom: 4 },
+  sectionLabel: { fontFamily: fontFamily.bodyBold, fontSize: 13, lineHeight: 18, marginBottom: 4 },
   allowedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52 },
   rowText: { flex: 1, fontSize: 15, lineHeight: 21 },
   bannedRow: {
@@ -144,13 +149,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth * 2,
+    borderTopWidth: 1,
   },
   bannedText: { flex: 1 },
-  bannedTitle: { fontSize: 15, lineHeight: 21, fontWeight: '600' },
+  bannedTitle: { fontFamily: fontFamily.bodySemibold, fontSize: 15, lineHeight: 21 },
   bannedSub: { fontSize: 13, lineHeight: 18 },
   note: { margin: 16, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, flexDirection: 'row', gap: 10 },
   noteText: { flex: 1, fontSize: 13, lineHeight: 18 },
-  footer: { paddingHorizontal: 16, paddingTop: 8 },
+  footer: { paddingHorizontal: 16, paddingTop: 4 },
   primary: { minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { fontFamily: fontFamily.bodySemibold, fontSize: 17 },
 });

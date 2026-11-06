@@ -4,9 +4,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppText, useTheme } from '../../../core/design';
+import { AppText, fontFamily, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { Icon } from './icons';
 
 export const FEED_TIP_SEEN_FLAG = '@kcal_kesfet_feed_tip_seen';
 
@@ -27,6 +26,11 @@ async function markSeen(): Promise<void> {
   }
 }
 
+/**
+ * G15 — Final FinFeedTip: logla düğmesinin altına çapalı siyah balon (koyu temada
+ * açık) — başlık + açıklama + altı çizili "Tamam". Konumu çağıran verir (PostCard
+ * ilk öğün kartının altına mutlak yerleştirir); ok (caret) sağda, düğmeyi gösterir.
+ */
 export function FeedTip({ onDismiss }: { onDismiss: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
@@ -36,30 +40,39 @@ export function FeedTip({ onDismiss }: { onDismiss: () => void }) {
     onDismiss();
   };
 
+  const bg = t.color.ink;
+  const fg = t.color.bg;
   return (
-    <View style={[styles.row, { backgroundColor: t.color.surface, borderColor: t.color.line }]}>
-      <Icon name="info" size={16} color={t.color.secondary} />
-      <AppText variant="caption" tone="secondary" style={styles.text}>
-        {tr('kesfet.ui.feed_tip')}
-      </AppText>
-      <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('common.close')}>
-        <Icon name="x" size={14} color={t.color.secondary} />
-      </Pressable>
+    <View style={styles.wrap} accessibilityRole="alert">
+      <View style={[styles.caret, { borderBottomColor: bg }]} />
+      <View style={[styles.box, { backgroundColor: bg }]}>
+        <AppText style={[styles.title, { color: fg }]}>{tr('kesfet.ui.feed_tip_title')}</AppText>
+        <View style={styles.bottom}>
+          <AppText style={[styles.body, { color: fg }]}>{tr('kesfet.ui.feed_tip_body')}</AppText>
+          <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.feed_tip_ok')}>
+            <AppText style={[styles.ok, { color: fg }]}>{tr('kesfet.ui.feed_tip_ok')}</AppText>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 4,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
+  wrap: { width: 262, alignItems: 'flex-end', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 8 } },
+  caret: {
+    marginRight: 28,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
   },
-  text: { flex: 1 },
+  box: { alignSelf: 'stretch', borderRadius: 18, paddingLeft: 14, paddingRight: 8, paddingTop: 12, paddingBottom: 8, gap: 2 },
+  title: { fontFamily: fontFamily.bodySemibold, fontSize: 14, lineHeight: 20 },
+  bottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  body: { flex: 1, fontFamily: fontFamily.bodyRegular, fontSize: 13, lineHeight: 18, opacity: 0.7 },
+  ok: { minHeight: 36, paddingHorizontal: 8, textAlignVertical: 'center', lineHeight: 36, fontFamily: fontFamily.bodyBold, fontSize: 13, textDecorationLine: 'underline' },
 });

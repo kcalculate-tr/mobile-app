@@ -62,6 +62,18 @@ export interface MealCard {
   photo_url: string | null;
   // "tahmin değil, tarif verisi" ise product_id dolu; tahmin ise null.
   product_id: string | null;
+  // G15 — FinFeed "Tabaktaki besinler": tabaktaki bileşenler (foto etiketleri +
+  // besin tablosu). İSTEĞE BAĞLI: sunucu göndermezse bölüm hiç görünmez.
+  items?: MealCardItem[] | null;
+}
+
+export interface MealCardItem {
+  name: string;
+  grams: number;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
 }
 
 // G8 — etkinlik kartı (activity_card jsonb). kcal_est her zaman "tahmini".
@@ -172,6 +184,8 @@ export interface CommentAuthor {
   handle: string;
   avatar_url: string | null;
   verified: boolean;
+  // G15 — İSTEĞE BAĞLI: FinDetail yorum satırındaki rol etiketi (Diyetisyen…).
+  role?: string | null;
 }
 
 export interface Comment {
@@ -227,7 +241,11 @@ export type NotificationKind =
   | 'follow_request'
   | 'follow_accept'
   | 'add_to_day'
-  | 'did_it';
+  | 'did_it'
+  // G15 — FinNotifications / FinReportNotice. Sunucu göndermezse hiç görünmez.
+  | 'comment_like'
+  | 'report_result'
+  | 'system';
 
 export interface NotificationActor {
   id: string;
@@ -244,6 +262,10 @@ export interface SocialNotification {
   comment_id: string | null;
   created_at: string; // ISO
   read_at: string | null;
+  // G15 — İSTEĞE BAĞLI (FinNotifications): yorum alıntısı / etkinlik özeti /
+  // sistem metni ve gönderi küçük görseli. Yoksa satır yalnız eylemi gösterir.
+  excerpt?: string | null;
+  post_thumb_url?: string | null;
 }
 
 export interface NotificationPage {

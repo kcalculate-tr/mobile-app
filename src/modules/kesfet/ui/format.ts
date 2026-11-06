@@ -144,11 +144,16 @@ export const PORTION_LABELS: Record<number, string> = {
 export const MEAL_OPTIONS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 
 /** Şikayet nedenleri — i18n `kesfet.ui.report_reason.*` + RPC'ye giden kod. */
+// G15-S3 — Final FinReport sırası (7 neden). Kod report_content'e serbest metin
+// olarak gider; sunucu risk eşlemesi (content_report_risk) koddaki anahtar
+// kelimelerden (hate/harass…) türetir.
 export const REPORT_REASONS = [
-  'spam',
   'wrong_info',
-  'inappropriate',
+  'body_shaming',
   'harassment',
+  'hate',
+  'spam',
+  'fake_account',
   'other',
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];

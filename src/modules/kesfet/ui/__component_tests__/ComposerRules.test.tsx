@@ -44,7 +44,7 @@ test('ilk paylaşım denemesinde Topluluk kuralları (FinRules) gösterilir', as
   const { getByLabelText, getByPlaceholderText, queryByText } = renderComposer();
   fillSerbestBody(getByLabelText, getByPlaceholderText);
   await act(async () => {
-    fireEvent.press(getByLabelText('Gönder'));
+    fireEvent.press(getByLabelText('Paylaş'));
   });
   expect(queryByText('Topluluk kuralları')).toBeTruthy();
 });
@@ -53,7 +53,7 @@ test('"Anladım, paylaş" → sheet kapanır, paylaşım sürer, bayrak işaretl
   const { getByLabelText, getByPlaceholderText, queryByText } = renderComposer();
   fillSerbestBody(getByLabelText, getByPlaceholderText);
   await act(async () => {
-    fireEvent.press(getByLabelText('Gönder'));
+    fireEvent.press(getByLabelText('Paylaş'));
   });
   await act(async () => {
     fireEvent.press(getByLabelText('Anladım, paylaş'));
@@ -66,7 +66,7 @@ test('"Vazgeç" → sheet kapanır ama bayrak işaretlenmez, paylaşım sürmez'
   const { getByLabelText, getByPlaceholderText, queryByText } = renderComposer();
   fillSerbestBody(getByLabelText, getByPlaceholderText);
   await act(async () => {
-    fireEvent.press(getByLabelText('Gönder'));
+    fireEvent.press(getByLabelText('Paylaş'));
   });
   await act(async () => {
     fireEvent.press(getByLabelText('Vazgeç'));
@@ -81,7 +81,7 @@ test('bayrak önceden işaretliyse ikinci paylaşımda tekrar gösterilmez', asy
   const { getByLabelText, getByPlaceholderText, queryByText } = renderComposer();
   fillSerbestBody(getByLabelText, getByPlaceholderText);
   await act(async () => {
-    fireEvent.press(getByLabelText('Gönder'));
+    fireEvent.press(getByLabelText('Paylaş'));
   });
   expect(queryByText('Topluluk kuralları')).toBeNull();
 });

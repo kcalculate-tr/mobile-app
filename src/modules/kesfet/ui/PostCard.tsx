@@ -8,7 +8,7 @@
 // nokta izi (useDotBurst). ÇİFT DOKUNMA görselde → beğen + büyük kalp damgası
 // (opaklık + yay ölçek, FinMoLike). Haptik: beğen/kaydet light. Azaltılmış harekete
 // hook'lar uyar.
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -18,10 +18,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { AppText, useTheme, SPRING, DURATION, CURVE, useReducedMotion, haptic } from '../../../core/design';
+import { AppText, fontFamily, useTheme, SPRING, DURATION, CURVE, useReducedMotion, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Avatar } from './Avatar';
 import { MediaGrid } from './MediaGrid';
+import { PlateMedia } from './PlateMedia';
 import { MealCard, type LogOriginFrame } from './MealCard';
 import { ActivityCard } from './ActivityCard';
 import { VerifiedBadge } from './VerifiedBadge';
@@ -51,8 +52,9 @@ function Action({
   const pop = useIconPop();
   const dot = useDotBurst();
   const roll = useCountRoll(count ?? 0);
-  // Final: ikon + "Etiket · N" (sayaç varsa). Sayaç yoksa yalnız etiket.
-  const text = count != null ? `${label} · ${fmtCount ? fmtCount(count) : String(count)}` : label;
+  // Final (G15): ikon + yalnız sayı; etiket erişilebilirlik adında ("Beğen · N").
+  const num = count != null ? (fmtCount ? fmtCount(count) : String(count)) : null;
+  const text = num != null ? `${label} · ${num}` : label;
   return (
     <Pressable
       onPress={() => {
@@ -76,11 +78,13 @@ function Action({
           />
         ) : null}
       </View>
-      <Animated.View style={count != null ? roll.style : undefined}>
-        <AppText variant="caption" tone="secondary" style={styles.actionLabel}>
-          {text}
-        </AppText>
-      </Animated.View>
+      {num != null ? (
+        <Animated.View style={roll.style}>
+          <AppText variant="caption" tone="secondary" style={styles.actionLabel}>
+            {num}
+          </AppText>
+        </Animated.View>
+      ) : null}
     </Pressable>
   );
 }
@@ -98,7 +102,14 @@ export function PostCard({
   onOpenMenu,
   onComment,
   onDidIt,
+  didItDone = false,
   showComment = false,
+  quickLogLabel,
+  fitsGoal,
+  plateOpen = false,
+  onOpen,
+  tip,
+  onOpenVideo,
 }: {
   model: PostCardModel;
   /** Akışta sıra — girişte ardışık animasyon için (en fazla 6 gecikir). */
@@ -118,7 +129,21 @@ export function PostCard({
   // G8 — `kesfet_yorum` açıkken yorum aksiyonu; etkinlik kartı için "Ben de yaptım".
   onComment?: () => void;
   onDidIt?: () => void;
+  /** G15 — bu oturumda "Ben de yaptım" eklendi → kartta "✓ Yaptın". */
+  didItDone?: boolean;
   showComment?: boolean;
+  /** G15 — hızlı logla düğmesinin tam metni ("Öğle’ye logla"); yoksa eski kalıp. */
+  quickLogLabel?: string;
+  /** G15 — öğün kalan günlük kaloriye sığıyor mu ("Kalori hedefine uyar"). */
+  fitsGoal?: boolean;
+  /** G15 — "Tabaktaki besinler" açık başlasın mı (vitrin FinFeed). */
+  plateOpen?: boolean;
+  /** G15 — gönderi metnine dokun = ayrıntı (FinDetail). */
+  onOpen?: () => void;
+  /** G15 — FinFeedTip balonu: öğün kartının logla düğmesinin altına çapalı. */
+  tip?: React.ReactNode;
+  /** G15 — videoya dokun = tam ekran oynatıcı (FinVideo kare 2). */
+  onOpenVideo?: () => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -164,13 +189,15 @@ export function PostCard({
     }
   };
 
+  // FinFeedTip balonu: öğün kartının altına (kartın son katmanı → aksiyonların üstünde).
+  const [mealBottom, setMealBottom] = useState(0);
   const badgeLabel = model.badgeKey ? tr(`kesfet.ui.badge.${model.badgeKey}`) : null;
 
   return (
     <Animated.View style={[styles.article, { borderBottomColor: t.color.line }, enter.style]}>
       <View style={styles.row}>
         <Avatar name={model.authorName} url={model.avatarUrl} official={model.isOfficial} />
-        <View style={styles.body}>
+        <View style={[styles.body, tip ? styles.bodyTip : null]}>
           {/* Yazar satırı */}
           <View style={styles.authorRow}>
             <AppText variant="caption" style={styles.name} numberOfLines={1}>
@@ -178,11 +205,9 @@ export function PostCard({
             </AppText>
             {model.verified ? <VerifiedBadge size={16} /> : null}
             {badgeLabel ? (
-              <View style={[styles.roleChip, { backgroundColor: t.color.line }]}>
-                <AppText variant="caption" style={styles.roleChipText} numberOfLines={1}>
-                  {badgeLabel}
-                </AppText>
-              </View>
+              <AppText variant="caption" tone="secondary" style={styles.roleText} numberOfLines={1}>
+                {badgeLabel}
+              </AppText>
             ) : null}
             <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.handle}>
               @{model.handle}
@@ -211,16 +236,32 @@ export function PostCard({
 
           {/* Metin — serbest sarar (dinamik yazı boyutunda kırılmasın diye clamp yok) */}
           {model.body ? (
-            <AppText variant="body" style={styles.text}>
+            <AppText variant="body" style={styles.text} onPress={onOpen} suppressHighlighting>
               {model.body}
             </AppText>
           ) : null}
 
           {/* Görseller — çift dokunma beğen + büyük kalp damgası */}
-          {model.media.length > 0 ? (
+          {model.media.length === 1 &&
+          model.media[0].kind !== 'video' &&
+          model.meal &&
+          (model.meal.items?.length ?? 0) > 0 ? (
+            <PlateMedia
+              media={model.media[0]}
+              meal={model.meal}
+              fitsGoal={fitsGoal}
+              initialOpen={plateOpen}
+              onMediaTap={onMediaTap}
+              overlay={
+                <Animated.View pointerEvents="none" style={[styles.heartOverlay, heartStyle]}>
+                  <Icon name="heartFill" size={88} color={t.color.accentLine} />
+                </Animated.View>
+              }
+            />
+          ) : model.media.length > 0 ? (
             <Pressable onPress={onMediaTap} accessibilityRole="imagebutton" accessibilityLabel={tr('kesfet.ui.a11y.like')}>
               <View>
-                <MediaGrid media={model.media} postId={model.id} isVisible={isVisible} />
+                <MediaGrid media={model.media} postId={model.id} isVisible={isVisible} onOpenVideo={onOpenVideo} />
                 <Animated.View pointerEvents="none" style={[styles.heartOverlay, heartStyle]}>
                   <Icon name="heartFill" size={88} color={t.color.accentLine} />
                 </Animated.View>
@@ -230,43 +271,36 @@ export function PostCard({
 
           {/* Öğün kartı */}
           {model.meal ? (
-            <MealCard
-              meal={model.meal}
-              loggedCount={model.stats.adds}
-              quickMealLabel={quickMealLabel ?? ''}
-              onQuickLog={(frame) => onQuickLog?.(frame)}
-              onOpenSheet={() => onOpenSheet?.()}
-            />
+            <View onLayout={(e) => setMealBottom(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
+              <MealCard
+                meal={model.meal}
+                loggedCount={model.stats.adds}
+                quickMealLabel={quickMealLabel ?? ''}
+                logLabel={quickLogLabel}
+                onQuickLog={(frame) => onQuickLog?.(frame)}
+                onOpenSheet={() => onOpenSheet?.()}
+              />
+            </View>
           ) : null}
 
           {/* Etkinlik kartı */}
           {model.postType === 'etkinlik' && model.activity ? (
-            <ActivityCard activity={model.activity} didItCount={model.stats.did_it} onDidIt={onDidIt} />
+            <ActivityCard activity={model.activity} didItCount={model.stats.did_it} onDidIt={onDidIt} done={didItDone} />
           ) : null}
 
           {/* Aksiyon satırı: Beğen · Kaydet · (Yorum) · Paylaş — hepsi etiketli */}
           <View style={styles.actions}>
             <Action
               icon={model.me.liked ? 'heartFill' : 'heart'}
-              color={model.me.liked ? t.color.accentLine : t.color.secondary}
+              color={model.me.liked ? t.color.ink : t.color.secondary}
               label={tr('kesfet.ui.a11y.like')}
               count={model.stats.likes}
               fmtCount={(n) => fmt(n)}
               onPress={like}
             />
-            <Action
-              icon={model.me.saved ? 'bookmarkFill' : 'bookmark'}
-              color={model.me.saved ? t.color.accentLine : t.color.secondary}
-              label={tr('kesfet.ui.a11y.save')}
-              count={model.stats.saves}
-              fmtCount={(n) => fmt(n)}
-              withDot
-              dotColor={t.color.accentLine}
-              onPress={save}
-            />
             {showComment && onComment ? (
               <Action
-                icon="chat"
+                icon="chatCircle"
                 color={t.color.secondary}
                 label={tr('kesfet.ui.a11y.comment')}
                 count={model.stats.comments}
@@ -275,12 +309,23 @@ export function PostCard({
               />
             ) : null}
             <Action
+              icon={model.me.saved ? 'bookmarkFill' : 'bookmark'}
+              color={model.me.saved ? t.color.ink : t.color.secondary}
+              label={tr('kesfet.ui.a11y.save')}
+              count={model.stats.saves}
+              fmtCount={(n) => fmt(n)}
+              withDot
+              dotColor={t.color.accentLine}
+              onPress={save}
+            />
+            <Action
               icon="share"
               color={t.color.secondary}
               label={tr('kesfet.ui.a11y.share')}
               onPress={onShare}
             />
           </View>
+          {tip && model.meal ? <View style={[styles.tip, { top: mealBottom - 4 }]}>{tip}</View> : null}
         </View>
       </View>
     </Animated.View>
@@ -291,18 +336,19 @@ const styles = StyleSheet.create({
   article: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6, borderBottomWidth: StyleSheet.hairlineWidth },
   row: { flexDirection: 'row', gap: 12 },
   body: { flex: 1, minWidth: 0 },
+  bodyTip: { paddingBottom: 28 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  name: { fontWeight: '700', flexShrink: 1 },
-  roleChip: { minHeight: 20, paddingHorizontal: 8, borderRadius: 10, justifyContent: 'center' },
-  roleChipText: { fontWeight: '700', fontSize: 13 },
-  handle: { flexShrink: 1 },
+  name: { fontFamily: fontFamily.bodyBold, fontSize: 14, flexShrink: 1 },
+  roleText: { fontSize: 13 },
+  handle: { flexShrink: 1, fontFamily: fontFamily.bodyRegular, fontSize: 14 },
   more: { marginLeft: 'auto', minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   text: { marginTop: 2, fontSize: 15, lineHeight: 22 },
   pending: { alignSelf: 'flex-start', marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth },
   pendingLabel: {},
+  tip: { position: 'absolute', right: 0 },
   heartOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  actions: { marginTop: 4, flexDirection: 'row', gap: 20 },
-  action: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actionLabel: { fontSize: 13 },
+  actions: { marginTop: 4, flexDirection: 'row', gap: 28, paddingRight: 8 },
+  action: { height: 40, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  actionLabel: { fontFamily: fontFamily.bodyRegular, fontSize: 13 },
   dot: { position: 'absolute', top: -2, right: -4, width: 6, height: 6, borderRadius: 3 },
 });

@@ -14,13 +14,16 @@ import { AppText, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getKesfetClient } from '../../modules/kesfet';
 import type { FeedPost } from '../../modules/kesfet/types';
-import { PostCard } from '../../modules/kesfet/ui/PostCard';
+// G15-S3 — bayrak kapalı yol: dondurulmuş kart (Keşfet kartı Final'e giydirildi).
+import { PostCard } from './legacy/LegacyPostCard';
 import { postCardModel, postLink } from '../../modules/kesfet/ui/format';
 import { RootStackParamList } from '../../navigation/types';
+import { useFeature } from '../../core/flags';
+import { PostDetailScreen } from '../../modules/kesfet/ui/PostDetailScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SharedPost'>;
 
-export default function SharedPostScreen() {
+function LegacySharedPostScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<RootStackParamList, 'SharedPost'>>();
   const postId = (route.params?.postId ?? '').toString().trim();
@@ -115,6 +118,24 @@ export default function SharedPostScreen() {
       />
     </View>
   );
+}
+
+// G15-S3 — `kesfet` açıkken Final FinDetail gönderi detayı; kapalıyken yukarıdaki
+// derin bağlantı ekranı AYNEN (bayt bayt) çizilir.
+function KesfetPostDetail() {
+  const navigation = useNavigation<Nav>();
+  const route = useRoute<RouteProp<RootStackParamList, 'SharedPost'>>();
+  const postId = (route.params?.postId ?? '').toString().trim();
+  const onBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+  };
+  return <PostDetailScreen postId={postId} onBack={onBack} />;
+}
+
+export default function SharedPostScreen() {
+  const kesfet = useFeature('kesfet');
+  return kesfet ? <KesfetPostDetail /> : <LegacySharedPostScreen />;
 }
 
 const styles = StyleSheet.create({

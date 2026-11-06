@@ -8,6 +8,7 @@ import { useCartStore } from '../store/cartStore';
 import { useTbDraft } from '../modules/onboarding/takibe/draft';
 import { FEED_TIP_SEEN_FLAG } from '../modules/kesfet/ui/FeedTip';
 import { mockRoutesFor } from './vitrinFixtures';
+import { resolveVitrinPhotos } from './vitrinKesfet';
 
 export interface PreparedScene {
   routes: RouteSpec[] | null;
@@ -142,6 +143,9 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
             { id: 'post-3', title: 'Etiket Dedektifi: light', thumb: null },
           ],
   });
+  // G15-S3 — rota parametrelerindeki `__vitrinPhoto:<ad>` işaretlerini dev görsel URI'sine çevir.
+  const base = routes ?? (entry.target.kind === 'route' ? entry.target.routes : null);
+  if (base && JSON.stringify(base).includes('__vitrinPhoto:')) routes = resolveVitrinPhotos(base);
 
   return { routes, mockRoutes: mockRoutesFor(entry) };
 }

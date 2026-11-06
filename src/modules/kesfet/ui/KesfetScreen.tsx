@@ -14,8 +14,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
+import { StatusBar } from 'expo-status-bar';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
@@ -23,30 +24,38 @@ import { haptic } from '../../../core/design';
 import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
+import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
 import { emitLogFlight, emitLogUndo } from '../events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
+import { useNutritionSummary } from '../../../hooks/useNutritionSummary';
 import type { LogOriginFrame } from './MealCard';
 import { getGunClient } from '../../gun';
 import { getProfilClient } from '../../profil';
-import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../../shell';
+import { TAB_BAR_R3_HEIGHT, useTabBarCollapse, useTabBarCollapsedValue } from '../../shell';
 import type { DayRing } from '../../gun/types';
 import type { FeedPost, MealType, ReportTargetType } from '../types';
 
 import { Icon } from './icons';
 import { PostCard } from './PostCard';
-import { GunRingStrip, GunViewer } from '../../gun/ui';
+import { GunViewer } from '../../gun/ui';
+import { RingStrip } from './RingStrip';
+import { VideoPlayer } from './VideoPlayer';
+import { PostingStatus } from './PostingStatus';
+import { RulesSheet } from './RulesSheet';
+import { usePostingStore, type PostingPhase } from '../postingStore';
 import type { DayCard } from '../../gun/types';
 import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
 import { EditPostSheet } from './EditPostSheet';
 import { CommentsSheet } from './CommentsSheet';
-import { NotificationsSheet } from './NotificationsSheet';
 import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 import { FeedTip, feedTipSeen } from './FeedTip';
 import { AddToast, type ToastState } from './AddToast';
+import { DidItSheet } from './DidItSheet';
 import { FeedSkeleton, FeedError, FeedOffline, FeedEmpty, FollowingEmpty, useIsOnline, type SuggestedAccount } from './states';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
+import { reportReasonText } from './ReportFlow';
 
 function Header({
   onSearch,
@@ -55,6 +64,7 @@ function Header({
   showCompose,
   showBell,
   unread,
+  finalHeader = true,
 }: {
   onSearch: () => void;
   onNotifications: () => void;
@@ -62,6 +72,8 @@ function Header({
   showCompose: boolean;
   showBell: boolean;
   unread: number;
+  /** G15 — Final başlığı (+ yok, zilde nokta). */
+  finalHeader?: boolean;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
@@ -74,14 +86,16 @@ function Header({
   }, [unread, badgePop]);
   return (
     <View style={styles.header}>
-      <AppText variant="title" style={styles.title}>
+      <AppText textRole="screenTitle" style={styles.title}>
         {tr('kesfet.title')}
       </AppText>
       <View style={styles.headerIcons}>
         <Pressable onPress={onSearch} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.search')} style={styles.iconBtn}>
           <Icon name="search" size={24} color={t.color.ink} />
         </Pressable>
-        {showCompose ? (
+        {/* G15 — Final başlığında + yok: paylaş girişi Gün halkası şeridindeki
+            "Günüm +" rozetine taşındı (özellik kaybı yok). */}
+        {showCompose && !finalHeader ? (
           <Pressable onPress={onCompose} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.compose')} style={styles.iconBtn}>
             <Icon name="plus" size={24} color={t.color.ink} />
           </Pressable>
@@ -89,7 +103,10 @@ function Header({
         {showBell ? (
           <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn}>
             <Icon name="bell" size={24} color={t.color.ink} />
-            {unread > 0 ? (
+            {unread > 0 && finalHeader ? (
+              // Final: okunmamış varsa zilin sağ üstünde lime nokta (sayı yok).
+              <Animated.View style={[styles.dot, { backgroundColor: t.color.accent, borderColor: t.color.bg }, badgePop.style]} />
+            ) : unread > 0 ? (
               <Animated.View style={[styles.badge, { backgroundColor: t.color.accentLine }, badgePop.style]}>
                 <AppText variant="caption" style={styles.badgeText}>
                   {unread > 9 ? '9+' : String(unread)}
@@ -152,11 +169,28 @@ export function KesfetScreen() {
   // tab barına göre — `TAB_BAR_R3_HEIGHT` (tek kaynak, S2 layout.ts = 96). Stack
   // olarak açılınca (bildirim/derin bağlantı) bugünkü boşluk korunur.
   const asTab = route.params?.asTab === true;
+  // G15 — YALNIZ __DEV__ vitrini: Final ara durumlarını açar (ör. 'comments',
+  // 'didIt', 'posting'). Üretimde parametre hiç verilmez → undefined.
+  const vitrin: string | undefined = __DEV__ ? route.params?.vitrin : undefined;
+  const vitrinXray: boolean = __DEV__ ? route.params?.vitrinXray === true : false;
+  // Vitrin: kaydırılmış durumlar (FinFeedScrollR3 / FinFeedTip) — ilk yüklemeden sonra.
+  const vitrinScroll: number | undefined = __DEV__ ? route.params?.vitrinScroll : undefined;
+  const listRef = useRef<any>(null);
+  const { summary } = useNutritionSummary();
   const listBottomPad = insets.bottom + (asTab ? TAB_BAR_R3_HEIGHT : 120);
   // Kaydırınca tab barı küçült (yalnız sekme bağlamında; stack'te provider yok
   // → useTabBarCollapse no-op). scrollY → useTabBarCollapse (G11-CONTRACT m.39).
   const scrollY = useSharedValue(0);
   useTabBarCollapse(scrollY);
+  // G15 — Final FinFeedScrollR3: aşağı kaydırınca tab bar küçülürken başlık + sekmeler
+  // de katlanır (yukarı kaydırınca geri gelir). Yalnız sekme bağlamında (provider).
+  const collapsed = useTabBarCollapsedValue();
+  const headerH = useSharedValue(0);
+  const headerHideStyle = useAnimatedStyle(() => {
+    const c = collapsed ? collapsed.value : 0;
+    if (!collapsed || headerH.value === 0) return {};
+    return { height: headerH.value * (1 - c), opacity: 1 - c, overflow: 'hidden' };
+  });
   const scrollHandler = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
   });
@@ -171,7 +205,18 @@ export function KesfetScreen() {
   const online = useIsOnline();
 
   const tab = useKesfetStore((s) => s.tab);
-  const posts = useKesfetStore((s) => s.posts);
+  const allPosts = useKesfetStore((s) => s.posts);
+  // G15 — FinPosting: paylaşım durumu (Composer arka planda gönderir).
+  const postingPhase = usePostingStore((s) => s.phase);
+  const postingId = usePostingStore((s) => s.postId);
+  const postingError = usePostingStore((s) => s.error);
+  const postingRetry = usePostingStore((s) => s.retry);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  // Ret: gönderi akışta gösterilmez, yerine sakin kart.
+  const posts = useMemo(
+    () => (postingPhase === 'rejected' && postingId ? allPosts.filter((p) => p.id !== postingId) : allPosts),
+    [allPosts, postingPhase, postingId],
+  );
   const loading = useKesfetStore((s) => s.loading);
   const refreshing = useKesfetStore((s) => s.refreshing);
   const loadingMore = useKesfetStore((s) => s.loadingMore);
@@ -185,7 +230,9 @@ export function KesfetScreen() {
   const [suggestions, setSuggestions] = useState<SuggestedAccount[]>([]);
   const [viewerUserId, setViewerUserId] = useState<string | null>(null);
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
-  const [notifOpen, setNotifOpen] = useState(false);
+  // G15 — FinVideo kare 2: tam ekran oynatıcı (videoya dokun).
+  const [videoPostId, setVideoPostId] = useState<string | null>(null);
+  const videoPost = videoPostId ? posts.find((p) => p.id === videoPostId) ?? null : null;
   const [pushPromptOpen, setPushPromptOpen] = useState(false);
   // G12-S2 — FinFeedTip: akışa ilk kez girişte bir kez ipucu şeridi.
   const [showFeedTip, setShowFeedTip] = useState(false);
@@ -199,6 +246,9 @@ export function KesfetScreen() {
   const addSeq = useRef(0);
   const addCardSeq = useRef(0);
   const didItSeq = useRef(0);
+  // G15 — FinActivityCard: "Ben de yaptım" süre sayfası + bu oturumda eklenenler ("✓ Yaptın").
+  const [didItPost, setDidItPost] = useState<FeedPost | null>(null);
+  const [didItDone, setDidItDone] = useState<ReadonlySet<string>>(() => new Set());
 
   // Hangi gönderi ekranda görünür — FeedVideo otomatik oynat/durdur (G8-S3).
   const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
@@ -210,9 +260,11 @@ export function KesfetScreen() {
     },
   ).current;
 
-  // İlk yükleme + gün halkaları.
+  // İlk yükleme + gün halkaları. (Vitrin: `initialTab: 'following'` → Takip sekmesiyle aç.)
   useEffect(() => {
-    if (useKesfetStore.getState().posts.length === 0) {
+    if (__DEV__ && route.params?.initialTab === 'following') {
+      void useKesfetStore.getState().setTab('following');
+    } else if (useKesfetStore.getState().posts.length === 0) {
       void useKesfetStore.getState().load();
     }
     let alive = true;
@@ -226,6 +278,62 @@ export function KesfetScreen() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (vitrinScroll == null || posts.length === 0) return;
+    const id = setTimeout(() => listRef.current?.scrollToOffset?.({ offset: vitrinScroll, animated: false }), 600);
+    return () => clearTimeout(id);
+  }, [vitrinScroll, posts.length]);
+
+  // Vitrin (FinVideo kare 2): ilk video gönderisini tam ekran aç.
+  useEffect(() => {
+    if (vitrin !== 'videoFull') return;
+    const v = posts.find((p) => p.media.some((m) => m.kind === 'video'));
+    if (v) setVideoPostId(v.id);
+  }, [vitrin, posts]);
+
+  // Paylaşım durumu: "Yayında" birkaç saniye görünür; "İnceleniyor"da sunucu
+  // durumu aralıklı sorulur (yayımlandı → Yayında; kaldırıldı → sakin ret kartı).
+  useEffect(() => {
+    if (vitrin) return;
+    if (postingPhase === 'published') {
+      const id = setTimeout(() => usePostingStore.getState().clear(), 3500);
+      return () => clearTimeout(id);
+    }
+    if (postingPhase !== 'reviewing' || !postingId) return;
+    let tries = 0;
+    const iv = setInterval(async () => {
+      tries += 1;
+      const p = await getKesfetClient().getPost({ post: postingId }).catch(() => null);
+      if (p?.status === 'published') {
+        usePostingStore.getState().set('published');
+        void useKesfetStore.getState().refresh();
+      } else if (p?.status === 'removed') {
+        usePostingStore.getState().set('rejected');
+      }
+      if (tries >= 15) clearInterval(iv);
+    }, 8000);
+    return () => clearInterval(iv);
+  }, [postingPhase, postingId, vitrin]);
+
+  // Vitrin (FinPosting kareleri): durum satırı + kendi gönderim.
+  useEffect(() => {
+    const map: Record<string, PostingPhase> = { posting: 'uploading', reviewing: 'reviewing', published: 'published', rejected: 'rejected' };
+    if (!vitrin || !map[vitrin]) return;
+    usePostingStore.getState().set(map[vitrin], { postId: 'post-p1' });
+  }, [vitrin]);
+
+  // Vitrin (FinAddToast): loglama sonrası toast'ı göster ("Öğle’ye loglandı · Geri al · Gör").
+  useEffect(() => {
+    if (vitrin !== 'addToast' || posts.length === 0) return;
+    setToast({
+      message: tr('kesfet.ui.logged_to', { meal: tr('kesfet.ui.meal_dat.lunch') }),
+      undoLabel: tr('common.undo'),
+      onUndo: () => {},
+      actionLabel: tr('kesfet.ui.view_day'),
+      onAction: () => {},
+    });
+  }, [vitrin, posts.length, tr]);
 
   // "Logla izi" oynadıktan sonra örtüyü kaldır (iz ~logTrail + tampon sürede biter).
   useEffect(() => {
@@ -258,11 +366,12 @@ export function KesfetScreen() {
   }, [sosyalBildirim]);
 
   // Önerilen hesaplar — for_you akışındaki can_post (rozetli) yazarlardan türet
-  // (gerçek veri; uydurma yok). Takip boşken gösterilir.
-  useEffect(() => {
-    if (tab !== 'for_you') return;
+  // (gerçek veri; uydurma yok). Takip boşken gösterilir. G15: Takip sekmesiyle
+  // açılınca (henüz for_you yüklenmemiş) for_you bir kez okunur; kısa tanıtım
+  // herkese açık profilden (bio) gelir — yoksa yalnız @kullanıcı adı.
+  const suggestionsFrom = useCallback((list: FeedPost[]) => {
     const seen = new Map<string, SuggestedAccount>();
-    for (const p of posts) {
+    for (const p of list) {
       if (roleBadgeKey(p.author.role) && !seen.has(p.author.id)) {
         seen.set(p.author.id, {
           id: p.author.id,
@@ -275,10 +384,41 @@ export function KesfetScreen() {
       }
       if (seen.size >= 3) break;
     }
-    if (seen.size > 0) setSuggestions(Array.from(seen.values()));
-  }, [tab, posts]);
+    return Array.from(seen.values());
+  }, []);
+  useEffect(() => {
+    if (tab !== 'for_you') return;
+    const next = suggestionsFrom(posts);
+    if (next.length > 0) setSuggestions(next);
+  }, [tab, posts, suggestionsFrom]);
+  const showFollowingEmptyNow = tab === 'following' && !loading && !error && posts.length === 0;
+  const bioFetched = useRef(false);
+  useEffect(() => {
+    if (!showFollowingEmptyNow || bioFetched.current) return;
+    bioFetched.current = true;
+    let alive = true;
+    void (async () => {
+      let list = suggestions;
+      if (list.length === 0) {
+        const page = await getKesfetClient().getFeed({ tab: 'for_you', lang }).catch(() => null);
+        list = page ? suggestionsFrom(page.items) : [];
+      }
+      const withBio = await Promise.all(
+        list.map(async (a) => {
+          const prof = await getProfilClient().getPublicProfile({ handle: a.handle }).catch(() => null);
+          return { ...a, bio: prof?.bio ?? null };
+        }),
+      );
+      if (alive && withBio.length > 0) setSuggestions(withBio);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [showFollowingEmptyNow, suggestions, suggestionsFrom, lang]);
 
   const nowMs = Date.now();
+  // G15 — FinFeedTip balonu ilk öğün kartlı gönderinin logla düğmesine çapalanır.
+  const firstMealPostId = useMemo(() => posts.find((p) => p.meal_card != null)?.id ?? null, [posts]);
 
   const onShare = useCallback(async (post: FeedPost) => {
     try {
@@ -324,7 +464,7 @@ export function KesfetScreen() {
       setTrail({ token: trailSeq.current, label: post.meal_card?.name ?? '' });
       // Toast: "<Öğün>'ye loglandı · Geri al · Gör".
       setToast({
-        message: tr('kesfet.added_toast', { meal: mealLabel }),
+        message: tr('kesfet.ui.logged_to', { meal: tr(`kesfet.ui.meal_dat.${mealType}`) }),
         undoLabel: tr('common.undo'),
         onUndo: () => {
           void useKesfetStore.getState().undoAddToDay(post.id, consumptionId, key);
@@ -359,15 +499,54 @@ export function KesfetScreen() {
   );
 
   // Saate göre hızlı loglanacak öğünün etiketi — kartlardaki düğme bunu gösterir.
-  const quickMealLabel = tr(`meal.${inferMealTypeFromHour(new Date().getHours())}`);
+  const quickMealType = inferMealTypeFromHour(new Date().getHours());
+  const quickMealLabel = tr(`meal.${quickMealType}`);
+  // G15 — doğru yönelme ekiyle tam düğme metni ("Kahvaltı’ya logla" · "Öğle’ye logla").
+  const quickLogLabel = tr('kesfet.ui.meal_card.log_to', { meal: tr(`kesfet.ui.meal_dat.${quickMealType}`) });
+  // G15 — "Kalori hedefine uyar": bugünkü kalan kalori (sunucu özeti) varsa.
+  const remainingKcal = summary && summary.targetKcal > 0 ? summary.remainingKcal : null;
 
   // Sonuç PostMenu içinde gösterilir (FinReportDone/FinReportNotice) — burada
   // toast YOK, yalnız başarı/başarısızlığı döndürür.
   const onReport = useCallback(
-    (post: FeedPost, reason: ReportReason) =>
-      useKesfetStore.getState().report('post' as ReportTargetType, post.id, reason),
+    (post: FeedPost, reason: ReportReason, note?: string) =>
+      useKesfetStore.getState().report('post' as ReportTargetType, post.id, reportReasonText(reason, note ?? '')),
     [],
   );
+
+  // G15 — FinReportDone "Sessize al" / "Benzerlerini daha az göster": sunucu
+  // karşılığı yok (SORULAR) → yalnız bu oturumun akışından düşer.
+  const onMute = useCallback(
+    (post: FeedPost) => {
+      useKesfetStore.setState((s) => ({ posts: s.posts.filter((p) => p.author.id !== post.author.id) }));
+      setToast({ message: tr('kesfet.report.muted_toast', { name: post.author.display_name }) });
+    },
+    [tr],
+  );
+  const onLessLike = useCallback(
+    (post: FeedPost) => {
+      useKesfetStore.setState((s) => ({ posts: s.posts.filter((p) => p.id !== post.id) }));
+      setToast({ message: tr('kesfet.report.less_toast') });
+    },
+    [tr],
+  );
+
+  // G15 — YALNIZ __DEV__ vitrini: FinComments kare 1–3 — ilk gönderinin yorumları açık.
+  useEffect(() => {
+    if ((vitrin !== 'comments' && vitrin !== 'commentsMenu') || posts.length === 0) return;
+    setCommentsPost(posts[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrin, posts.length]);
+
+  // G15 — YALNIZ __DEV__ vitrini: FinPostMenu / Block / Report / ReportDone — ilk
+  // gönderinin ⋯ menüsü ilgili adımda açılır.
+  const vitrinMenuStep =
+    vitrin === 'menu' || vitrin === 'block' || vitrin === 'report' || vitrin === 'reportDone' ? vitrin : undefined;
+  useEffect(() => {
+    if (!vitrinMenuStep || posts.length === 0) return;
+    setMenuPost(posts[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrinMenuStep, posts.length]);
 
   const onBlock = useCallback(
     async (post: FeedPost) => {
@@ -402,24 +581,39 @@ export function KesfetScreen() {
   );
 
   const onDidIt = useCallback(
-    async (post: FeedPost) => {
+    async (post: FeedPost, chosenMinutes?: number) => {
       touchSocial();
       didItSeq.current += 1;
       const key = `didit-${post.id}-${didItSeq.current}`;
-      const minutes = post.activity_card?.minutes ?? null;
+      const minutes = chosenMinutes ?? post.activity_card?.minutes ?? null;
       const kcal = await useKesfetStore.getState().didIt(post.id, minutes, key);
       if (kcal != null) {
-        // Tahmini kcal hapı + "eklendi" (success haptiği ActivityCard'da verildi).
+        // FinActivityCard kare 3: kart "✓ Yaptın" + "Etkinliğin eklendi · Günüme paylaş".
+        setDidItDone((prev) => new Set(prev).add(post.id));
         setToast({
-          message: `${tr('kesfet.activity.kcal_est', { kcal: fmt(kcal) })} · ${tr('kesfet.activity.logged')}`,
-          actionLabel: tr('kesfet.ui.share_to_my_day'),
+          message: tr('kesfet.activity.logged'),
+          actionLabel: tr('kesfet.activity.share_day'),
           onAction: () => {},
         });
       }
       // Başarısızlık sessiz: kcal null ise toast yok (olumsuz an sessiz — motion §2).
     },
-    [touchSocial, tr, fmt],
+    [touchSocial, tr],
   );
+
+  // G15 — YALNIZ __DEV__ vitrini: FinActivityCard kare 2 (süre sayfası) / kare 3
+  // (eklendi + toast) ilk etkinlik gönderisiyle açılır.
+  useEffect(() => {
+    if (vitrin !== 'didIt' && vitrin !== 'didItToast') return;
+    const first = posts.find((p) => p.post_type === 'etkinlik' && p.activity_card);
+    if (!first) return;
+    if (vitrin === 'didIt') setDidItPost(first);
+    else {
+      setDidItDone(new Set([first.id]));
+      setToast({ message: tr('kesfet.activity.logged'), actionLabel: tr('kesfet.activity.share_day'), onAction: () => {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrin, posts.length]);
 
   const onDeletePost = useCallback(async (post: FeedPost) => {
     const ok = await useKesfetStore.getState().deletePost(post.id);
@@ -428,46 +622,74 @@ export function KesfetScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: FeedPost; index: number }) => {
-      const model = postCardModel(item, nowMs, lang);
+      const base = postCardModel(item, nowMs, lang);
+      // Durum satırı görünürken kartın kendi "İnceleniyor" etiketi tekrar etmesin.
+      const inPosting = item.id === postingId && postingPhase !== 'idle';
+      const model = inPosting ? { ...base, pending: false } : base;
+      const faded = inPosting && (postingPhase === 'uploading' || postingPhase === 'publishing' || postingPhase === 'reviewing');
       return (
-        <PostCard
-          model={model}
-          index={index}
-          showComment={kesfetYorum}
-          isVisible={item.id === visiblePostId}
-          quickMealLabel={quickMealLabel}
-          onLike={() => {
-            touchSocial();
-            void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
-          }}
-          onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
-          onShare={() => onShare(item)}
-          onQuickLog={(frame) => onQuickLog(item, frame)}
-          onOpenSheet={() => setSheetPost(item)}
-          onOpenMenu={() => setMenuPost(item)}
-          onComment={() => {
-            touchSocial();
-            setCommentsPost(item);
-          }}
-          onDidIt={() => void onDidIt(item)}
-        />
+        <View style={faded ? styles.faded : undefined}>
+          <PostCard
+            model={model}
+            index={index}
+            showComment={kesfetYorum}
+            isVisible={item.id === visiblePostId}
+            quickMealLabel={quickMealLabel}
+            quickLogLabel={quickLogLabel}
+            tip={
+              showFeedTip && item.id === firstMealPostId ? <FeedTip onDismiss={() => setShowFeedTip(false)} /> : undefined
+            }
+            fitsGoal={remainingKcal != null && item.meal_card != null ? item.meal_card.kcal <= remainingKcal : undefined}
+            plateOpen={vitrinXray}
+            onOpen={() => navigation.navigate('SharedPost', { postId: item.id })}
+            onOpenVideo={() => setVideoPostId(item.id)}
+            onLike={() => {
+              touchSocial();
+              void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
+            }}
+            onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
+            onShare={() => onShare(item)}
+            onQuickLog={(frame) => onQuickLog(item, frame)}
+            onOpenSheet={() => setSheetPost(item)}
+            onOpenMenu={() => setMenuPost(item)}
+            onComment={() => {
+              touchSocial();
+              setCommentsPost(item);
+            }}
+            onDidIt={() => setDidItPost(item)}
+            didItDone={didItDone.has(item.id)}
+          />
+        </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, touchSocial, onDidIt, visiblePostId, quickMealLabel, onQuickLog],
+    [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   const ringStrip = useMemo(
     () =>
       rings.length > 0 ? (
-        <GunRingStrip rings={rings} onOpen={(userId) => setViewerUserId(userId)} />
+        <RingStrip
+          rings={rings}
+          onOpen={(userId) => setViewerUserId(userId)}
+          onAddMine={kesfetPaylasim ? () => navigation.navigate('Composer') : undefined}
+        />
       ) : null,
-    [rings],
+    [rings, kesfetPaylasim, navigation],
   );
 
   const feedHeader = (
     <>
       {ringStrip}
-      {showFeedTip ? <FeedTip onDismiss={() => setShowFeedTip(false)} /> : null}
+      <PostingStatus
+        phase={postingPhase}
+        error={postingError}
+        onRetry={postingRetry}
+        onRules={() => setRulesOpen(true)}
+        onEdit={(() => {
+          const own = allPosts.find((p) => p.id === postingId);
+          return own ? () => setEditPost(own) : undefined;
+        })()}
+      />
     </>
   );
 
@@ -539,6 +761,7 @@ export function KesfetScreen() {
   } else {
     body = (
       <Animated.FlatList
+        ref={listRef}
         data={posts}
         keyExtractor={(p) => p.id}
         renderItem={renderItem}
@@ -579,9 +802,16 @@ export function KesfetScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
+      {/* G15 — koyu temada durum çubuğu yazısı açık (Final -Dark panoları). */}
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
+      <Animated.View style={headerHideStyle} onLayout={(e) => {
+          // Yalnız açıkken ölç (katlanırken gelen küçük yükseklikler ölçüyü bozmasın).
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && (headerH.value === 0 || (collapsed?.value ?? 0) === 0)) headerH.value = h;
+        }}>
       <Header
         onSearch={() => {}}
-        onNotifications={() => setNotifOpen(true)}
+        onNotifications={() => navigation.navigate('KesfetNotifications')}
         onCompose={() => navigation.navigate('Composer')}
         showCompose={kesfetPaylasim}
         showBell={sosyalBildirim}
@@ -595,6 +825,7 @@ export function KesfetScreen() {
           void useKesfetStore.getState().setTab(next);
         }}
       />
+      </Animated.View>
       <View style={styles.content}>{body}</View>
 
       <AddToDaySheet
@@ -611,8 +842,12 @@ export function KesfetScreen() {
         isMine={menuPost?.me.is_author ?? false}
         canEdit={(menuPost?.me.is_author ?? false) && editAvailable}
         onCopyLink={() => menuPost && void onCopyLink(menuPost)}
-        onReport={(reason) => (menuPost ? onReport(menuPost, reason) : false)}
+        onReport={(reason, note) => (menuPost ? onReport(menuPost, reason, note) : false)}
         onBlock={() => menuPost && void onBlock(menuPost)}
+        onMute={() => menuPost && onMute(menuPost)}
+        onLessLike={() => menuPost && onLessLike(menuPost)}
+        vitrinStep={vitrinMenuStep}
+        vitrinNote={vitrinMenuStep ? route.params?.vitrinNote : undefined}
         onDelete={() => menuPost && void onDeletePost(menuPost)}
         onEdit={() => setEditPost(menuPost)}
       />
@@ -622,7 +857,37 @@ export function KesfetScreen() {
         onClose={() => setEditPost(null)}
         onSave={onEditSave}
       />
-      <AddToast toast={toast} onDismiss={() => setToast(null)} />
+      <DidItSheet
+        visible={didItPost != null}
+        activity={didItPost?.activity_card ?? null}
+        authorName={didItPost?.author.display_name ?? ''}
+        initialMinutes={vitrin === 'didIt' ? 30 : undefined}
+        onClose={() => setDidItPost(null)}
+        onAdd={(minutes) => {
+          const post = didItPost;
+          setDidItPost(null);
+          if (post) void onDidIt(post, minutes);
+        }}
+      />
+      {/* Vitrin (YALNIZ __DEV__) karesinde toast kendiliğinden kapanmaz — görüntü alınabilsin. */}
+      <VideoPlayer
+        post={videoPost}
+        onClose={() => setVideoPostId(null)}
+        onLike={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'like', !videoPost.me.liked)}
+        onSave={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'save', !videoPost.me.saved)}
+        onShare={() => videoPost && void onShare(videoPost)}
+        onComment={
+          kesfetYorum
+            ? () => {
+                const p = videoPost;
+                setVideoPostId(null);
+                if (p) setCommentsPost(p);
+              }
+            : undefined
+        }
+      />
+      <RulesSheet visible={rulesOpen} onAccept={() => setRulesOpen(false)} onClose={() => setRulesOpen(false)} />
+      <AddToast toast={toast} onDismiss={() => (vitrin ? undefined : setToast(null))} />
 
       {trail ? (
         <View pointerEvents="none" style={styles.trailOverlay}>
@@ -635,19 +900,15 @@ export function KesfetScreen() {
           visible={commentsPost != null}
           postId={commentsPost?.id ?? null}
           currentUser={null}
+          count={commentsPost?.stats.comments}
           onClose={() => setCommentsPost(null)}
           onToast={(message) => setToast({ message })}
+          vitrinMenu={vitrin === 'commentsMenu'}
         />
       ) : null}
 
       {sosyalBildirim ? (
         <>
-          <NotificationsSheet
-            visible={notifOpen}
-            onClose={() => setNotifOpen(false)}
-            onOpenPost={(postId) => navigation.navigate('SharedPost', { postId })}
-            onOpenProfile={(handle) => navigation.navigate('PublicProfile', { handle })}
-          />
           <SocialPushPrompt visible={pushPromptOpen} onClose={() => setPushPromptOpen(false)} />
         </>
       ) : null}
@@ -671,12 +932,14 @@ const styles = StyleSheet.create({
   title: {},
   headerIcons: { flexDirection: 'row' },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  dot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
   badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
   badgeText: { color: '#0A0A0A', fontSize: 10, fontWeight: '800', lineHeight: 14 },
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   tabUnderline: { position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2 },
   content: { flex: 1 },
+  faded: { opacity: 0.6 },
   footer: { paddingVertical: 20, alignItems: 'center' },
   trailOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
 });
