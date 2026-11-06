@@ -74,7 +74,7 @@ export function EkInfoSheet({
   /** Açılış sekmesi (vitrin FinEkInfo: 'zones'). */
   initialTab?: Tab;
 }) {
-  const { c, t } = useEk();
+  const { c, t, theme } = useEk();
   const [tab, setTab] = useState<Tab>(initialTab);
   const { height: winH } = useWindowDimensions();
   const [zones, setZones] = useState<ZoneRow[]>([]);
@@ -187,6 +187,8 @@ export function EkInfoSheet({
         <View style={styles.zones} testID="ek-info-zones">
           <View style={styles.mapBox}>
             <IzmirTeslimatHaritasi height={170} acikIlceler={fastDistricts.map((d) => d.district)} />
+            {/* G15-S5 (FinEkInfo-Dark): ortak harita bileşeni sabit açık renkli → koyu temada karartma katmanı. */}
+            {theme.isDark ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} /> : null}
           </View>
           {loading ? (
             <View style={styles.center}>

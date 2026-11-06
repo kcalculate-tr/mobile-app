@@ -47,7 +47,9 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   const targetJson = JSON.stringify(entry.target);
   const isEkHomeTab = /"name":"Home"/.test(targetJson) && !/"name":"Ek/.test(targetJson);
   if (entry.area === 'eatkcal') (useAddressStore.getState() as any).setSelectedAddress?.(
-    isEkHomeTab && entry.data !== 'empty' && !['city', 'waitlist', 'berlin'].includes(scene) ? vitrinHomeAddress() : null,
+    (isEkHomeTab || CART_SCENES.has(scene)) && entry.data !== 'empty' && !['city', 'waitlist', 'berlin'].includes(scene)
+      ? vitrinHomeAddress()
+      : null,
   );
 
   // Sepet: Final sepet/özet sahneleri dolu, boş durumda boş.
@@ -64,7 +66,9 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     const products = await loadProducts().catch(() => []);
     productIds = products.filter((p) => p.img).map((p) => String(p.id));
     if (CART_SCENES.has(scene)) {
-      for (const p of products.slice(0, 2)) cart.addItem?.(p, {}, 1);
+      // G15-S5: Final sepet örneği makrolu ürünler (satır makro çipleri + özet halkaları).
+      const withMacros = products.filter((p) => Number(p.calories) > 0);
+      for (const p of (withMacros.length >= 2 ? withMacros : products).slice(0, 2)) cart.addItem?.(p, {}, 1);
     }
     if (entry.target.kind === 'route') {
       const brand = products.find((p) => typeof p.brand === 'string' && p.brand)?.brand ?? null;
