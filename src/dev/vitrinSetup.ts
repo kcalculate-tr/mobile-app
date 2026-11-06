@@ -38,6 +38,11 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
     'eatkcal-city-gate-passed': ['city', 'waitlist', 'berlin'].includes(scene) ? null : '1',
+    // G15-S2 — FinCollectEntry: profilde koleksiyon şeridi (4 kart).
+    '@kcal_collection_v1':
+      entry.pano === 'FinCollectEntry'
+        ? JSON.stringify({ assignments: { 'Tavuk kinoa bowl': 43, Menemen: 31, 'Mercimek çorbası': 24, 'Yulaf kasesi': 19 }, won: [] })
+        : null,
   });
 
   // Sepet: Final sepet/özet sahneleri dolu, boş durumda boş.

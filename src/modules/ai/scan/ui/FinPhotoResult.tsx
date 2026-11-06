@@ -159,6 +159,69 @@ export default function FinPhotoResult({
     { key: 'f', label: tr('ai_scan.macro_fat'), g: adjusted.fat_g, share: (adjusted.fat_g * 9) / kc, color: k.line2 },
   ];
 
+  // G15-S2 (FinCollectCut): tek tabak tanındıysa (≤1 öğe) kompakt sonuç —
+  // tam ekran foto + tabak adı hapı + "Fotoğraf sonucu" sheet'i + lime logla.
+  // Eşleşme yüzdesi verisi yok → hapta yalnız ad (uydurma yok).
+  if (estimate.ingredients.length <= 1) {
+    return (
+      <View style={[styles.fill, { backgroundColor: '#2A2622' }]}>
+        {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        <Pressable
+          onPress={onRetry}
+          accessibilityRole="button"
+          accessibilityLabel={tr('ai_scan.retry')}
+          style={[styles.back, { top: insets.top + 6, backgroundColor: k.glass }]}
+        >
+          <ArrowLeft size={20} color={t.color.ink} />
+        </Pressable>
+        <View style={styles.cutChipWrap} pointerEvents="none">
+          <View style={[styles.cutChip, { backgroundColor: k.glass }]}>
+            <AppText style={styles.foundText} numberOfLines={1}>
+              {estimate.name}
+            </AppText>
+          </View>
+        </View>
+        <View style={[styles.cutSheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(16, insets.bottom + 8) }]}>
+          <AppText tone="secondary" style={styles.cap}>
+            {tr('ai_scan.photo_result')}
+          </AppText>
+          <AppText textRole="screenTitle" numberOfLines={2}>
+            {estimate.name}
+          </AppText>
+          <AppText tone="secondary" style={styles.cap}>
+            {`${adjusted.kcal} kcal · P ${adjusted.protein_g} g · K ${adjusted.carbs_g} g · Y ${adjusted.fat_g} g`}
+          </AppText>
+          <View style={[styles.logPill, styles.cutPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
+            <Pressable
+              onPress={() => {
+                haptic('light');
+                onSave(adjusted);
+              }}
+              disabled={saving || saved}
+              accessibilityRole="button"
+              style={styles.logMain}
+            >
+              {saving ? <ActivityIndicator color={t.color.onAccent} /> : saved ? <Check size={18} color={t.color.onAccent} weight="bold" /> : null}
+              <AppText tone="onAccent" style={styles.cutLogText} numberOfLines={1}>
+                {saved ? tr(`gun.logged_${slot}`) : tr(`gun.log_to_${slot}`)}
+              </AppText>
+            </Pressable>
+            <View style={styles.logDivider} />
+            <Pressable
+              onPress={cycleMeal}
+              disabled={saving || saved}
+              accessibilityRole="button"
+              accessibilityLabel={tr('gun.change_meal', { meal: tr(`meal.${slot}`) })}
+              style={styles.logCaret}
+            >
+              <CaretDown size={16} color={t.color.onAccent} weight="bold" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.fill, { backgroundColor: k.photo }]}>
       <View style={styles.photo}>
@@ -531,6 +594,11 @@ const styles = StyleSheet.create({
   logText: { fontFamily: 'BricolageGrotesque_600SemiBold', fontSize: 17 },
   logDivider: { width: 1, height: 22, backgroundColor: 'rgba(10,10,10,0.28)' },
   logCaret: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
+  cutChipWrap: { position: 'absolute', left: 0, right: 0, bottom: 330, alignItems: 'center' },
+  cutChip: { height: 32, borderRadius: 16, paddingHorizontal: 12, justifyContent: 'center', maxWidth: '86%' },
+  cutSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 316, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16, paddingTop: 22, gap: 4 },
+  cutPill: { marginTop: 'auto' },
+  cutLogText: { fontSize: 15, fontWeight: '700' },
   mfFill: { flex: 1, justifyContent: 'flex-end' },
   mfScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
   mfSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, paddingHorizontal: 16, maxHeight: '80%' },

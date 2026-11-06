@@ -16,6 +16,7 @@ import Animated, {
 import { AppText, CURVE, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { CachedImage } from '../../components/CachedImage';
+import { StatusBar } from 'expo-status-bar';
 import { formatNo } from './StickerCard';
 import type { CollectionCard } from './types';
 
@@ -69,16 +70,21 @@ export function CollectionWon({
 
   const cardStyle = useAnimatedStyle(() => ({ opacity: p.value }));
 
-  // "tarih · öğün"
-  const dateLabel = new Date(card.dateISO).toLocaleDateString(lang);
+  // G15-S2 (FinCollectWon): "2 Kas · Öğle".
+  const dateLabel = new Date(card.dateISO).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
   const mealLabel = tr(`meal.${card.meal}`);
+  const tags = cardTags(card).map((k) => tr(`collection.tag_${k}`));
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      {/* Koyu scrim — fotoğrafın üstünde. */}
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={tr('collection.won_title')}>
-        <View style={styles.center} pointerEvents="box-none">
-          <AppText variant="title" tone="onAccent" style={styles.heading}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <StatusBar style="light" />
+      {/* Zemin: taranan foto (varsa) + koyu scrim. */}
+      <View style={styles.root}>
+        {card.photoUri ? <CachedImage uri={card.photoUri} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+        <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={tr('collection.won_title')} />
+
+        <View style={styles.top} pointerEvents="box-none">
+          <AppText variant="title" style={styles.heading} accessibilityRole="header">
             {tr('collection.won_title')}
           </AppText>
 
@@ -94,104 +100,105 @@ export function CollectionWon({
                 </View>
               </Animated.View>
 
-              <AppText variant="heading" tone="ink" style={styles.dishName}>
+              <AppText style={styles.dishName} numberOfLines={2}>
                 {card.name}
               </AppText>
-              <AppText variant="caption" tone="secondary" style={styles.dateMeal}>
-                {`${dateLabel} · ${mealLabel}`}
-              </AppText>
+              <AppText style={styles.dateMeal}>{`${dateLabel} · ${mealLabel}`}</AppText>
 
-              {/* 2 etiket çipi (outline). */}
-              <View style={styles.tagRow}>
-                <Tag label={`${Math.round(card.protein_g ?? 0)}P`} />
-                <Tag label={`${Math.round(card.carbs_g ?? 0)}K`} />
-              </View>
+              {tags.length > 0 ? (
+                <View style={styles.tagRow}>
+                  {tags.map((l) => (
+                    <Tag key={l} label={l} />
+                  ))}
+                </View>
+              ) : null}
 
-              <AppText variant="caption" tone="secondary" style={styles.kcalFoot}>
-                {`${Math.round(card.kcal)} kcal.`}
-              </AppText>
+              <AppText style={styles.brand}>kcal.</AppText>
             </View>
 
-            {/* Lime çip: "No. NNN · İlk kez" (ilk kez değilse yalnız No.). */}
+            {/* Lime çip: "No. NNN · İlk kez" — kartın sol üst köşesinde. */}
             <View style={[styles.limeChip, { backgroundColor: t.color.accent }]}>
-              <AppText variant="caption" tone="onAccent">
+              <AppText tone="onAccent" style={styles.limeText}>
                 {card.firstTime ? `${formatNo(card.no)} · ${tr('collection.first_time')}` : formatNo(card.no)}
               </AppText>
             </View>
           </Animated.View>
-
-          {/* Alt iki düğme. */}
-          <View style={styles.actions}>
-            <Pressable
-              style={[styles.btn, { backgroundColor: t.color.accent }]}
-              onPress={onViewCard}
-              accessibilityRole="button"
-            >
-              <AppText variant="body" tone="onAccent">
-                {tr('collection.view_card')}
-              </AppText>
-            </Pressable>
-            <Pressable
-              style={[styles.btn, styles.btnOutline, { borderColor: t.color.line }]}
-              onPress={onShare}
-              accessibilityRole="button"
-            >
-              <AppText variant="body" tone="ink">
-                {tr('collection.share')}
-              </AppText>
-            </Pressable>
-          </View>
         </View>
-      </Pressable>
+
+        {/* Alt düğmeler — tam genişlik, alt alta. */}
+        <View style={styles.actions}>
+          <Pressable style={[styles.btn, { backgroundColor: t.color.accent }]} onPress={onViewCard} accessibilityRole="button">
+            <AppText tone="onAccent" style={styles.btnText}>
+              {tr('collection.view_card')}
+            </AppText>
+          </Pressable>
+          <Pressable style={[styles.btn, styles.btnOutline]} onPress={onShare} accessibilityRole="button">
+            <AppText style={[styles.btnText, { color: '#FFFFFF' }]}>{tr('collection.share')}</AppText>
+          </Pressable>
+        </View>
+      </View>
     </Modal>
   );
+}
+
+/**
+ * Kart etiketleri — YALNIZ mevcut veriden: proteinden gelen enerji ≥ %25 →
+ * "Yüksek protein"; karbonhidrat ≤ %25 → "Düşük karbonhidrat". Lif verisi
+ * yok → "Lifli" gösterilmez (uydurma yok). SAF.
+ */
+export function cardTags(card: Pick<CollectionCard, 'kcal' | 'protein_g' | 'carbs_g'>): string[] {
+  const kcal = card.kcal > 0 ? card.kcal : 0;
+  if (!kcal) return [];
+  const out: string[] = [];
+  if (card.protein_g != null && (card.protein_g * 4) / kcal >= 0.25) out.push('high_protein');
+  if (card.carbs_g != null && (card.carbs_g * 4) / kcal <= 0.25) out.push('low_carb');
+  return out;
 }
 
 function Tag({ label }: { label: string }) {
   return (
     <View style={styles.tag}>
-      <AppText variant="caption" tone="secondary">
-        {label}
-      </AppText>
+      <AppText style={styles.tagText}>{label}</AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.82)' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  heading: { color: '#FFFFFF', marginBottom: 20, textAlign: 'center' },
-  cardWrap: { alignItems: 'center' },
+  root: { flex: 1, backgroundColor: '#2A2622' },
+  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
+  top: { alignItems: 'center', paddingTop: 76, paddingHorizontal: 24 },
+  heading: { color: '#FFFFFF', marginBottom: 24, textAlign: 'center', fontSize: 28, lineHeight: 34 },
+  cardWrap: { alignItems: 'flex-start' },
   card: {
     width: CARD_W,
     height: CARD_H,
     borderRadius: 20,
     padding: 18,
-    alignItems: 'center',
   },
   stickerClip: {
-    width: CARD_W - 60,
-    height: CARD_W - 60,
+    width: CARD_W - 36,
+    height: CARD_W - 50,
     borderRadius: 16,
     overflow: 'hidden',
-    marginTop: 8,
     marginBottom: 16,
   },
-  stickerImg: { width: CARD_W - 60, height: CARD_W - 60 },
-  stickerEmpty: { backgroundColor: '#F1F1F1' },
-  dishName: { fontSize: 18, textAlign: 'center' },
-  dateMeal: { fontSize: 13, marginTop: 4, textAlign: 'center' },
-  tagRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  tag: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  kcalFoot: { marginTop: 'auto' },
-  limeChip: { marginTop: -14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 28 },
+  stickerImg: { width: CARD_W - 36, height: CARD_W - 50 },
+  stickerEmpty: { backgroundColor: '#F1F2F4' },
+  dishName: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 18, lineHeight: 23, color: '#0A0A0A' },
+  dateMeal: { fontSize: 13, marginTop: 2, color: '#6B6B70' },
+  tagRow: { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
+  tag: { borderWidth: 1, borderColor: '#C3C7CC', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  tagText: { fontSize: 13, fontWeight: '500', color: '#0A0A0A' },
+  brand: { marginTop: 'auto', fontFamily: 'BricolageGrotesque_700Bold', fontSize: 14, color: '#6B6B70' },
+  limeChip: { position: 'absolute', top: -14, left: 12, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
+  limeText: { fontSize: 13, fontWeight: '700' },
+  actions: { position: 'absolute', left: 16, right: 16, bottom: 40, gap: 12 },
   btn: {
-    minHeight: 48,
-    paddingHorizontal: 24,
-    borderRadius: 999,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnOutline: { backgroundColor: 'transparent', borderWidth: 1 },
+  btnText: { fontSize: 15, fontWeight: '700' },
+  btnOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.7)' },
 });

@@ -251,7 +251,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinSheetNotify', 'kutlama', comp('notifySheet')],
   ['FinCollectCut', 'kutlama', comp('photoResult', { reduced: true })],
   ['FinCollectWon', 'kutlama', comp('collectWon')],
-  ['FinCollectGrid', 'kutlama', comp('profileSub', { sub: 'collection' })],
+  ['FinCollectGrid', 'kutlama', comp('collectDetail')],
   ['FinCollectEntry', 'kutlama', route(tab('Profile'))],
 
   // ── Stres (kabul testi) ────────────────────────────────────────────────────

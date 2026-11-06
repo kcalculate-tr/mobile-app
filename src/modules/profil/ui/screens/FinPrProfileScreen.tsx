@@ -81,6 +81,7 @@ import FinPrMacroScreen from './FinPrMacroScreen';
 import FinPrProgressScreen from './ProgressScreen';
 import BadgesScreen from './BadgesScreen';
 import CollectionScreen from './CollectionScreen';
+import { loadCollection, ProfileCollectionRow, type CollectionStamp } from '../../../collection';
 import PublicPreviewScreen from './PublicPreviewScreen';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -109,6 +110,21 @@ export default function FinPrProfileScreen() {
   const [infoOpen, setInfoOpen] = useState(false);
 
   const [sub, setSub] = useState<SubScreen>('root');
+  // G15-S2: koleksiyon şeridi — yerel katalog atamalarından son kartlar (en yeni önce).
+  const [collectionStamps, setCollectionStamps] = useState<CollectionStamp[]>([]);
+  useEffect(() => {
+    let alive = true;
+    loadCollection()
+      .then((s) => {
+        if (!alive) return;
+        const nos = Object.values(s.assignments).sort((a, b) => b - a);
+        setCollectionStamps(nos.map((no) => ({ no })));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [sub]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [handle, setHandle] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -271,11 +287,20 @@ export default function FinPrProfileScreen() {
               label={tr('profil.progress')}
               onPress={() => setSub('progress')}
             />
-            <FinRow
-              icon={<TrophyIcon size={18} color={t.color.ink} />}
-              label={tr('profil.collection')}
-              onPress={() => setSub('collection')}
-            />
+            {/* G15-S2 (FinCollectEntry): en az 1 tabak kartı varsa koleksiyon şeridi. */}
+            {collectionStamps.length > 0 ? (
+              <ProfileCollectionRow
+                count={collectionStamps.length}
+                recent={collectionStamps}
+                onPress={() => setSub('collection')}
+              />
+            ) : (
+              <FinRow
+                icon={<TrophyIcon size={18} color={t.color.ink} />}
+                label={tr('profil.collection')}
+                onPress={() => setSub('collection')}
+              />
+            )}
           </FinRowGroup>
         </View>
 

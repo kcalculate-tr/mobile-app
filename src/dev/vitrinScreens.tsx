@@ -48,6 +48,7 @@ import { addressSaveError, couponError, priceError, stockError } from '../module
 import { CelebrateOverlay } from '../modules/celebrate/CelebrateOverlay';
 import { NotifyPermissionSheet } from '../modules/celebrate/NotifyPermissionSheet';
 import { CollectionWon } from '../modules/collection/CollectionWon';
+import { CollectionCardDetail } from '../modules/collection/CollectionCardDetail';
 
 const noop = () => {};
 const P = (props: Record<string, unknown> | undefined) => (props ?? {}) as any;
@@ -199,9 +200,9 @@ function EkErrorsScene() {
 
 const SAMPLE_ESTIMATE = {
   name: 'Tavuk kinoa bowl',
-  kcal: 520,
-  protein_g: 38,
-  carbs_g: 52,
+  kcal: 540,
+  protein_g: 42,
+  carbs_g: 48,
   fat_g: 16,
   isEstimate: true,
   portion: 1,
@@ -219,7 +220,8 @@ function PhotoResultScene({ reduced }: { reduced?: boolean }) {
   const { lang } = useT();
   const en = lang === 'en';
   const estimate = reduced
-    ? SAMPLE_ESTIMATE
+    ? // FinCollectCut: tek tabak tanındı (540 kcal · P42 · K48 · Y18).
+      { ...SAMPLE_ESTIMATE, fat_g: 18, ingredients: [{ name: 'Tavuk kinoa bowl', grams: 380, kcal: 540 }] }
     : {
         name: en ? 'Ezogelin soup, rice pilaf, ayran' : 'Ezogelin çorbası, pilav, ayran',
         kcal: 460,
@@ -279,11 +281,11 @@ const SAMPLE_CARD = {
   no: 43,
   name: 'Tavuk kinoa bowl',
   meal: 'lunch',
-  dateISO: '2026-11-06T12:30:00.000+03:00',
+  dateISO: '2026-11-02T12:30:00.000+03:00',
   photoUri: null,
-  kcal: 520,
-  protein_g: 38,
-  carbs_g: 52,
+  kcal: 540,
+  protein_g: 42,
+  carbs_g: 48,
   firstTime: true,
 };
 
@@ -371,6 +373,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
       <NotifyPermissionSheet visible onClose={noop} />
     </Backdrop>
   ),
+  collectDetail: () => <CollectionCardDetail card={SAMPLE_CARD as any} onBack={noop} onRelog={async () => {}} />,
   collectWon: () => (
     <Backdrop>
       <CollectionWon visible card={SAMPLE_CARD as any} onViewCard={noop} onShare={noop} onClose={noop} />
