@@ -1,8 +1,8 @@
 G16-S2 DONE — 2026-11-06
 Dal: night16/ui (taban night15/release 0e301d0; night16/release / G16-S1 DONE merge 3f722d9)
-md.1 tab bar indi (insets.bottom + 4; insets 0 → 8) — ac786ae
-md.2 yığın ekranlarında alt kesilme yok (Toast katmanı + Profil alt ekranında bar gizli; 23 ekran önce/sonra) — ac786ae
-md.3 Android: FinText tek kaynak (51 dosya), Bricolage gömülü, KAV, geri tuşu, ripple — feeabf8; Android SDK yok → tablo cihazsız (SORULAR 1)
-md.4 bayrak kapalı aynı (TrackerScreen.flagOff snapshot dahil components 144/144)
-md.5 tsc 0 · unit 597/597 · components 144/144 · prebuild iOS+Android ✓ · expo export ios ✓ android ✓ (merge sonrası)
+md.1 tab bar indi (insets.bottom + 4; insets 0 → 8; hap alt kenarı 58 → 38 pt) — ac786ae
+md.2 yığın ekranlarında alt kesilme yok (Toast katmanı + Profil alt ekranında bar gizli; 23 ekran önce/sonra + 7 Profil alt ekranı gerçek kabukta) — ac786ae, 7b59b24
+md.3 Android: FinText tek kaynak (51 dosya), Bricolage gömülü, KAV, geri tuşu, ripple — feeabf8; Android SDK yok → G16-S2.md gereği kurulmadı, LOG'daki iOS ↔ Android tablosunun Android sütunu koddan (SORULAR 1)
+md.4 bayrak kapalı aynı: 5 sekme önce/sonra piksel 0 px (Off-Home 0,05% = animasyon gürültüsü, aynı kodla da var) + TrackerScreen.flagOff snapshot
+md.5 tsc 0 · unit 597/597 · components 144/144 · prebuild iOS+Android ✓ · expo export ios ✓ android ✓ (merge sonrası, 7b59b24)
 LOG: docs/night/G16-S2-LOG.md (Eski tasarım: 0)
