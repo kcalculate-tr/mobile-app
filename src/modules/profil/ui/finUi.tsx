@@ -97,10 +97,13 @@ export function FinHeader({
   title,
   onBack,
   right,
+  align = 'center',
 }: {
   title: string;
   onBack?: () => void;
   right?: React.ReactNode;
+  /** FinPrivacySettings başlığı sola dayalı; diğerleri ortalı. */
+  align?: 'center' | 'left';
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -132,7 +135,7 @@ export function FinHeader({
         numberOfLines={1}
         style={{
           flex: 1,
-          textAlign: 'center',
+          textAlign: align,
           fontFamily: heading,
           fontSize: 20,
           color: t.color.ink,

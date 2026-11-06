@@ -1,15 +1,17 @@
-// T20Privacy — Hesap gizliliği. Yalnız iki seçenek (Herkese açık / Gizli
+// FinPrivacy — Hesap gizliliği. Yalnız iki seçenek (Herkese açık / Gizli
 // hesap); başka seçenek yok (bkz. G6-S3.md madde 4). Onayda `set_profile_privacy`
 // çağrılır. Gizliden açığa geçişte bekleyen takip istekleri SUNUCUDA otomatik
 // onaylanır (G6-CONTRACT.md) — istemci ek bir şey yapmaz.
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+// G15-S4: tasarım Final alttan sayfa (core/design Sheet: sola dayalı başlık,
+// 28 köşe, tutamaç); satırlarda globe/kilit ikonu, radyo = halka + iç nokta.
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
-import { AppText, useTheme } from '../../../core/design';
+import { Sheet, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import BottomSheet from '../../../components/BottomSheet';
-import { Check } from '../../../components/icons';
+import { Globe, LockSimple } from '../../../components/icons';
 import { getProfilClient } from '../client';
+import { FinPrimaryButton, body, bodyBold, bodyMedium } from './finUi';
 
 export interface PrivacySheetProps {
   visible: boolean;
@@ -24,6 +26,11 @@ export function PrivacySheet({ visible, isPrivate, onClose, onChanged }: Privacy
   const [selected, setSelected] = useState(isPrivate);
   const [saving, setSaving] = useState(false);
 
+  // Her açılışta mevcut duruma dön (kapatılıp yeniden açılınca eski seçim kalmasın).
+  useEffect(() => {
+    if (visible) setSelected(isPrivate);
+  }, [visible, isPrivate]);
+
   const handleConfirm = async () => {
     if (saving) return;
     setSaving(true);
@@ -37,105 +44,87 @@ export function PrivacySheet({ visible, isPrivate, onClose, onChanged }: Privacy
   };
 
   return (
-    <BottomSheet
+    <Sheet
       visible={visible}
       onClose={onClose}
       title={tt('profil.privacy_title')}
-      // G14-S1 — FinPrivacy-Dark: eski BottomSheet beyaz kalıyordu; yüzey temadan.
-      containerStyle={{ backgroundColor: t.color.surface }}
-      handleColor={t.color.line}
       footer={
-        <Pressable
+        <FinPrimaryButton
+          label={tt('profil.privacy_confirm')}
           onPress={handleConfirm}
           disabled={saving}
-          style={[styles.confirmBtn, { backgroundColor: t.color.ink }]}
-          accessibilityRole="button"
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <AppText variant="body" style={[styles.confirmText, { color: t.color.surface }]}>
-              {tt('profil.privacy_confirm')}
-            </AppText>
-          )}
-        </Pressable>
+          icon={saving ? <ActivityIndicator color={t.color.bg} /> : undefined}
+          style={{ marginTop: 12 }}
+        />
       }
     >
       <Option
         selected={!selected}
         onPress={() => setSelected(false)}
+        icon={<Globe size={22} color={t.color.ink} />}
         title={tt('profil.privacy_public')}
         subtitle={tt('profil.privacy_public_hint')}
-        line={t.color.line}
+        first
       />
       <Option
         selected={selected}
         onPress={() => setSelected(true)}
+        icon={<LockSimple size={22} color={t.color.ink} />}
         title={tt('profil.private_account')}
         subtitle={tt('profil.privacy_private_hint')}
-        line={t.color.line}
       />
-    </BottomSheet>
+    </Sheet>
   );
 }
 
 function Option({
   selected,
   onPress,
+  icon,
   title,
   subtitle,
-  line,
+  first,
 }: {
   selected: boolean;
   onPress: () => void;
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
-  line: string;
+  first?: boolean;
 }) {
   const t = useTheme();
-  const ink = t.color.ink;
-  const onInk = t.color.surface;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
-      style={[styles.option, { borderBottomColor: line }]}
+      style={{
+        minHeight: 68,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: t.color.line,
+      }}
     >
-      <View style={{ flex: 1 }}>
-        <AppText variant="body" style={selected ? styles.optionTitleOn : undefined}>
-          {title}
-        </AppText>
-        <AppText variant="caption" tone="secondary">
-          {subtitle}
-        </AppText>
+      <View style={{ width: 24, alignItems: 'center' }}>{icon}</View>
+      <View style={{ flex: 1, gap: 1 }}>
+        <Text style={{ fontFamily: selected ? bodyBold : bodyMedium, fontSize: 15, color: t.color.ink }}>{title}</Text>
+        <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{subtitle}</Text>
       </View>
-      <View style={[styles.radio, selected && { backgroundColor: ink, borderColor: ink }]}>
-        {selected ? <Check size={12} color={onInk} weight="bold" /> : null}
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          borderWidth: 2,
+          borderColor: selected ? t.color.ink : t.color.line,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {selected ? <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: t.color.ink }} /> : null}
       </View>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  option: {
-    minHeight: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  optionTitleOn: { fontWeight: '700' },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#C3C7CC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOn: { backgroundColor: '#0A0A0A', borderColor: '#0A0A0A' },
-  confirmBtn: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  confirmText: { color: '#FFFFFF', fontWeight: '600' },
-});

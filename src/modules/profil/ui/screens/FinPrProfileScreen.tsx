@@ -184,7 +184,7 @@ export default function FinPrProfileScreen() {
   if (sub === 'personal') return <SettingsPersonalScreen onBack={() => setSub('root')} />;
   if (sub === 'notify') return <SettingsNotifyScreen onBack={() => setSub('root')} />;
   if (sub === 'security') return <SettingsSecurityScreen onBack={() => setSub('root')} />;
-  if (sub === 'privacy') return <SettingsPrivacyScreen onBack={() => setSub('root')} />;
+  if (sub === 'privacy') return <SettingsPrivacyScreen onBack={() => setSub('root')} onOpenSecurity={() => setSub('security')} />;
   if (sub === 'agreements') return <SettingsAgreementsScreen onBack={() => setSub('root')} />;
   if (sub === 'support') return <SettingsSupportScreen onBack={() => setSub('root')} />;
   if (sub === 'feedback') return <SettingsFeedbackScreen onBack={() => setSub('root')} />;

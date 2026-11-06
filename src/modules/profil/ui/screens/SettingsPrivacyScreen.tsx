@@ -24,19 +24,24 @@ import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { getProfilClient } from '../../client';
-import { Check, Warning } from '../../../../components/icons';
+import { Prohibit } from '../../../../components/icons';
 import {
   FinScreen,
   FinHeader,
   FinSectionLabel,
-  FinCard,
-  FinRow,
-  FinRowGroup,
   FinSecondaryButton,
   body,
   bodyMedium,
   bodySemibold,
 } from '../finUi';
+
+const flatGroup = (t: ReturnType<typeof useTheme>) => ({
+  borderTopWidth: 1,
+  borderBottomWidth: 1,
+  borderColor: t.color.line,
+  marginHorizontal: -16,
+  paddingHorizontal: 2,
+});
 
 function PrivacyOption({
   selected,
@@ -69,30 +74,36 @@ function PrivacyOption({
       }}
     >
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>{title}</Text>
+        <Text style={{ fontFamily: selected ? bodySemibold : bodyMedium, fontSize: 15, color: t.color.ink }}>{title}</Text>
         <Text style={{ fontFamily: bodyMedium, fontSize: 13, color: t.color.secondary }}>
           {subtitle}
         </Text>
       </View>
       <View
         style={{
-          width: 24,
-          height: 24,
-          borderRadius: 12,
-          borderWidth: 1.5,
-          borderColor: selected ? t.color.accent : t.color.line,
-          backgroundColor: selected ? t.color.accent : 'transparent',
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          borderWidth: 2,
+          borderColor: selected ? t.color.ink : t.color.line,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        {selected ? <Check size={12} color={t.color.onAccent} weight="bold" /> : null}
+        {selected ? <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: t.color.ink }} /> : null}
       </View>
     </Pressable>
   );
 }
 
-export default function SettingsPrivacyScreen({ onBack }: { onBack: () => void }) {
+export default function SettingsPrivacyScreen({
+  onBack,
+  onOpenSecurity,
+}: {
+  onBack: () => void;
+  /** "Hesabı sil" — silme akışı Güvenlik ekranında (tek yerde). */
+  onOpenSecurity?: () => void;
+}) {
   const t = useTheme();
   const { t: tr } = useT();
   const { user } = useAuth();
@@ -139,7 +150,7 @@ export default function SettingsPrivacyScreen({ onBack }: { onBack: () => void }
 
   return (
     <FinScreen scroll contentStyle={{ paddingTop: 0 }}>
-      <FinHeader title={tr('profil.privacy_settings_title')} onBack={onBack} />
+      <FinHeader title={tr('profil.privacy_settings_title')} onBack={onBack} align="left" />
       <View style={{ paddingHorizontal: 16, gap: 16 }}>
         {loading ? (
           <View style={{ paddingVertical: 48, alignItems: 'center' }}>
@@ -148,7 +159,7 @@ export default function SettingsPrivacyScreen({ onBack }: { onBack: () => void }
         ) : (
           <>
             <FinSectionLabel>{tr('profil.privacy_who_can_see')}</FinSectionLabel>
-            <FinRowGroup>
+            <View style={flatGroup(t)}>
               <PrivacyOption
                 first
                 selected={!isPrivate}
@@ -162,7 +173,7 @@ export default function SettingsPrivacyScreen({ onBack }: { onBack: () => void }
                 title={tr('profil.private_account_badge')}
                 subtitle={tr('profil.privacy_private_hint')}
               />
-            </FinRowGroup>
+            </View>
             {saving ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 }}>
                 <ActivityIndicator size="small" color={t.color.accent} />
@@ -173,14 +184,22 @@ export default function SettingsPrivacyScreen({ onBack }: { onBack: () => void }
             ) : null}
 
             <FinSectionLabel>{tr('profil.privacy_blocked_section')}</FinSectionLabel>
-            <FinRowGroup>
-              <FinRow
-                first
-                label={tr('profil.privacy_blocked_accounts_row')}
-                value={blockedCount === null ? '—' : String(blockedCount)}
-                chevron={false}
-              />
-            </FinRowGroup>
+            <View style={[flatGroup(t), { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: 14 }]}>
+              <Prohibit size={20} color={t.color.ink} />
+              <View style={{ flex: 1, gap: 1 }}>
+                <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>
+                  {tr('profil.privacy_blocked_accounts_row')}
+                </Text>
+                <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
+                  {tr('profil.privacy_blocked_sub')}
+                </Text>
+              </View>
+              <Text style={{ fontFamily: bodyMedium, fontSize: 15, color: t.color.secondary }}>
+                {blockedCount === null ? '—' : String(blockedCount)}
+              </Text>
+            </View>
+
+            <FinSecondaryButton label={tr('profil.delete_account')} onPress={onOpenSecurity ?? onBack} height={52} />
 
             <Text
               style={{
@@ -194,12 +213,6 @@ export default function SettingsPrivacyScreen({ onBack }: { onBack: () => void }
               {tr('profil.privacy_delete_footnote')}
             </Text>
 
-            <FinSecondaryButton
-              label={tr('profil.delete_account')}
-              onPress={onBack}
-              style={{ borderColor: t.color.danger }}
-              icon={<Warning size={18} color={t.color.danger} weight="bold" />}
-            />
           </>
         )}
       </View>
