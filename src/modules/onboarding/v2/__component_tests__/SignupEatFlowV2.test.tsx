@@ -112,9 +112,9 @@ function setup(props: Partial<React.ComponentProps<typeof SignupEatFlowV2>> = {}
 }
 
 async function passCity(u: ReturnType<typeof setup>) {
-  // G16-S1: şehir adımı Final FinCityR1 kapısı (CityGateView) — İzmir kartına dokunmak doğrular.
+  fireEvent.press(u.getByTestId('city-İzmir'));
   await act(async () => {
-    fireEvent.press(u.getByTestId('ek-gate-izmir'));
+    fireEvent.press(u.getByLabelText('Devam'));
   });
   await flush();
 }
@@ -132,11 +132,10 @@ beforeEach(() => {
 describe('Panel 1 · şehir', () => {
   it('"Çok yakında" şehir seçilince Devam kapalı kalır, checkCity çağrılmaz', async () => {
     const u = setup();
+    fireEvent.press(u.getByTestId('city-İstanbul'));
     await act(async () => {
-      fireEvent.press(u.getByTestId('ek-gate-soon-istanbul'));
+      fireEvent.press(u.getByLabelText('Devam'));
     });
-    // Henüz mutfak yok → FinWaitlistR1; doğrulama/ilerleme yok.
-    expect(u.getByTestId('ek-gate-waitlist')).toBeTruthy();
     expect(mockReg.checkCity).not.toHaveBeenCalled();
     expect(u.queryByTestId('signup-eat-street')).toBeNull();
   });
@@ -153,7 +152,7 @@ describe('Panel 1 · şehir', () => {
 
   it('checkCity false (bloklu) → ilerlemez, bloklu ileti görünür', async () => {
     mockReg.checkCity = jest.fn(async () => false);
-    mockReg.status = 'blocked';
+    mockReg.messageKey = 'profil.city_gate_only_izmir';
     const u = setup();
     await passCity(u);
     expect(u.onCityAllowed).not.toHaveBeenCalled();
