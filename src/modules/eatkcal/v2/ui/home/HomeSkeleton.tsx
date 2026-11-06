@@ -1,7 +1,8 @@
 // eatkcal v2 (G13-S2 md.1) — FinEkHomeSkeleton: başlıklar gerçek, içerik
 // blokları 1800 ms nabızlı iskelet (EkSkeleton). Ekran okuyucuya "Yükleniyor".
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { EkSkeleton, ekType, useEk } from '../kit';
 import { HRow } from './cards';
 

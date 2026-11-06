@@ -5,7 +5,8 @@
 // Başarılı sonuç çağırana (`onApplied`) verilir; cüzdana yazma sepet ekranında
 // eski ekranla aynı alanlarla yapılır.
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { Sheet, haptic } from '../../../../core/design';
 import { Ticket } from '../../../../components/icons';
 import {

@@ -2,7 +2,8 @@
 // kullanıcı haritayı sürükler (AVS "Uber/Yemeksepeti deseni", AVS:85-86 ile
 // aynı). Harita `onMapReady` vermezse (yüklenemedi) FinEkAddressNoMap kartı.
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import MapView, { type Region } from 'react-native-maps';
 import { MapPin, MapTrifold } from '../../../../../components/icons';
 import { ekType, useEk } from '../kit';

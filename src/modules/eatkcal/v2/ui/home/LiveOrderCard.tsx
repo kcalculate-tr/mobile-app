@@ -5,7 +5,8 @@
 // "Tahmini varış [N] dk": siparişe özel ETA verisi YOK → satır gösterilmez,
 // yerine güncel aşama yazılır (uydurma süre yok).
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Phone } from '../../../../../components/icons';
 import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';

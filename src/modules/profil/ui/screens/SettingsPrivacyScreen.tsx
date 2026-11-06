@@ -18,7 +18,8 @@
  * "delete account görünür hem Security hem Privacy'de" der, mantık tek yerde).
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';

@@ -14,6 +14,7 @@ import {
   TextInputProps,
   View,
 } from 'react-native';
+import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path } from 'react-native-svg';
@@ -70,7 +71,7 @@ export function FormScreen({
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: P.bg, paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={SCREEN_KEYBOARD_BEHAVIOR}
     >
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <View style={styles.bar}>

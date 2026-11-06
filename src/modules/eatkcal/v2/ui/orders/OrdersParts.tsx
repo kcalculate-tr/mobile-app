@@ -3,7 +3,8 @@
 // diğerleri nötr (#E9EBEE = tema `line`). FinEkOrdersEmpty: kart 20 köşe,
 // 48'lik ikon dairesi, başlık 20, gövde 15, 52'lik mürekkep buton.
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { haptic } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { statusBadge } from '../../model/orders';

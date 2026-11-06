@@ -6,7 +6,8 @@
 // SATIR KOPYA — yalnız JSX ve stiller v2. Kaynakta değişiklik olursa buraya da
 // uygulanmalı (LOG › SORULAR).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';

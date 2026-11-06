@@ -1,7 +1,8 @@
 // T20ScanLimit — günlük AI tarama kotası dolduğunda gösterilen alt sayfa.
 // "Pro ile sınırsız" dokunulamaz (satın alma yok, G6-S4 md.3).
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ClockCounterClockwise, Lock } from '../../../../components/icons';
 import { useT } from '../../../../core/i18n';

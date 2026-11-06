@@ -1,7 +1,8 @@
 // eatkcal v2 (G13-S2 md.1–2) — Ana sayfa / Mağaza kartları (FinEkHome,
 // FinEkStore). Opak akış içi kartlar; renk yalnız tema rolü; dokunma ≥44.
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { CachedImage } from '../../../../../components/CachedImage';
 import { Plus } from '../../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';

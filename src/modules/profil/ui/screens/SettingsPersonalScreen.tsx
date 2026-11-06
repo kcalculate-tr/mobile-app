@@ -23,10 +23,10 @@ import {
   Image,
   Pressable,
   ScrollView,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import * as ExpoLinking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../../core/design';

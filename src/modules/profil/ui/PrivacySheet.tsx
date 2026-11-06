@@ -5,7 +5,8 @@
 // G15-S4: tasarım Final alttan sayfa (core/design Sheet: sola dayalı başlık,
 // 28 köşe, tutamaç); satırlarda globe/kilit ikonu, radyo = halka + iç nokta.
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import { FinText as Text } from '../../../core/design/components/FinText';
 
 import { Sheet, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';

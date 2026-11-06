@@ -5,7 +5,8 @@
 // yeniden yazılmadı. "Yeni kart" → mevcut `ProfileAddCard` (PaynKolay doğrulama,
 // KİMSE akışı). Yalnız `yeni_kabuk` açıkken Profil hub'ından açılır.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';

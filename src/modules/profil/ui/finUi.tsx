@@ -16,11 +16,11 @@ import {
   Pressable,
   ScrollView,
   StyleProp,
-  Text,
   TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
+import { FinText as Text } from '../../../core/design/components/FinText';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../core/design';

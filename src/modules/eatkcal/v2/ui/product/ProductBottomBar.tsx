@@ -4,7 +4,8 @@
 // buton pasif görünür ama dokunulabilir: dokununca eksik gruplar vurgulanır.
 // FinMoCart: dokun 0.97 → "Sepette ✓" (eatkcal yayı); azaltılmış harekette ölçek yok.
 import React, { useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Check, Minus, Plus } from '../../../../../components/icons';
 import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
 import { EkStickyBar, ekType, money, useEk } from '../kit';

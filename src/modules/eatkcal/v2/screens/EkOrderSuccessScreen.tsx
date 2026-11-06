@@ -9,7 +9,8 @@
 // Korunan özellikler (Final'de ayrı yeri yok, yeni dille): sipariş no, kazanılan
 // Macro, uyarı notu, Macro'larım / Bugün / Ana sayfa geçişleri.
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { haptic, SPRING, useReducedMotion, DURATION } from '../../../../core/design';
 import { Check } from '../../../../components/icons';

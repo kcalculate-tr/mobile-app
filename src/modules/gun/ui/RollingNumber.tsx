@@ -7,7 +7,8 @@
 // STAGGER, useReducedMotion); yeni süre/eğri icat edilmez (RULES "Hareket").
 // Azaltılmış hareket: akış yok, değer anında oturur.
 import React from 'react';
-import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { StyleSheet, TextStyle, View, ViewStyle } from 'react-native';
+import { FinText as Text } from '../../../core/design/components/FinText';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

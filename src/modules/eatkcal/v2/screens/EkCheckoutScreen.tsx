@@ -11,7 +11,8 @@
 // Paynkolay dışı sağlayıcı (eski Tosla satır içi kart formu) v2'de YOK →
 // bugünkü Checkout ekranına devredilir.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { Check, Clock, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';

@@ -22,6 +22,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -368,7 +369,7 @@ export function ComposerScreen({
   return (
     <KeyboardAvoidingView
       style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={SCREEN_KEYBOARD_BEHAVIOR}
     >
       {/* Koyu temada durum çubuğu açık renk (App geneli 'dark'). */}
       <StatusBar style={t.isDark ? 'light' : 'dark'} />

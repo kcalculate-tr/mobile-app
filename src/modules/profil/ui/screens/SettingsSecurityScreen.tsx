@@ -18,7 +18,8 @@
  * cihazda oturum açık mı" dürüstçe gösterilir (1 cihaz = bu cihaz).
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import {
   FinScreen,
   FinHeader,

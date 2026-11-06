@@ -3,7 +3,8 @@
 // ürün fotoğrafı varsa o; yoksa yer tutucu "çıkartma çerçevesi" + ad (gerçek
 // çıkartmalar sonra gelecek).
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Check } from '../../../../../components/icons';
 import { CachedImage } from '../../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';

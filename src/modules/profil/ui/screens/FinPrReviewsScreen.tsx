@@ -3,7 +3,8 @@
 // açılışta `reply_seen_at` ile damgalar ("YENİ" rozeti açılış anındaki sete bağlı).
 // Yalnız `yeni_kabuk` açıkken Profil hub'ından açılır; eski ekran bayrak kapalı yolda kalır.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';

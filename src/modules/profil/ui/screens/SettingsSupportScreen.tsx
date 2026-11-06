@@ -8,7 +8,8 @@
  * sonuna "--- Ekli Görseller ---" + URL'ler); özellik kaybı yok.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';

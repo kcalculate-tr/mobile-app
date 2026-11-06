@@ -2,7 +2,8 @@
 // bilinmiyorsa (bkz. quotaStore.ts) hiç render edilmez — tahmini sayı
 // gösterilmez.
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { Sparkle } from '../../../../components/icons';
 import { useT } from '../../../../core/i18n';
 

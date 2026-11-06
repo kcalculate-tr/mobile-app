@@ -12,7 +12,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
   Pressable,
@@ -20,6 +19,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { ArrowLeft, X } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';

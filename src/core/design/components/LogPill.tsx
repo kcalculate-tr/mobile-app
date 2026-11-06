@@ -52,7 +52,7 @@ export function LogPill({
             haptic('selection');
             onLongPress?.();
           }}
-          android_ripple={{ color: 'rgba(0,0,0,0.08)' }}
+          // G16-S2: Android ripple yok — basma hâli iOS ile aynı (Final; haptik + pop).
           style={styles.main}
           accessibilityRole="button"
           accessibilityLabel={label}
@@ -77,7 +77,6 @@ export function LogPill({
             haptic('selection');
             onExpand?.();
           }}
-          android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: false }}
           style={styles.chevron}
           accessibilityRole="button"
           accessibilityLabel="Seçenekler"

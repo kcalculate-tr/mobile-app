@@ -21,6 +21,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
@@ -401,7 +402,7 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
   return (
     <View style={[styles.screen, { backgroundColor: t.color.bg }]}>
       {header}
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.fill} behavior={SCREEN_KEYBOARD_BEHAVIOR}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.pad}>
             {/* Yazar */}

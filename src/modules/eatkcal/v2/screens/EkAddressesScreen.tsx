@@ -8,7 +8,8 @@
 //  - seçim: `useAddressStore.setSelectedAddress` (:227-231)
 // `selectMode` → seçilen adresle Sipariş özetine döner (EkCheckout).
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { EmptyErrorCard, Sheet, Toast, haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';

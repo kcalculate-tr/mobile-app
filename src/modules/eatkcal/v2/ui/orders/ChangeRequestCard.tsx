@@ -10,7 +10,8 @@
 //  - adres: kullanıcının adresleri (aynı select), seçilince address_change talebi
 //  - hemen teslimde 30 dk sonra: destek (ProfileSupport)
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Sheet, haptic } from '../../../../../core/design';
 import { CalendarBlank, MapPin, XCircle, Headset } from '../../../../../components/icons';

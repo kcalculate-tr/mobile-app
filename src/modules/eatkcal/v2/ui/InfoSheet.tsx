@@ -13,7 +13,8 @@
 // "Çok yakında" listesi ve soğuk zincir notu bugünkü sheet'te de SABİT metin
 // (iş vaadi, DB durumu değil — DeliveryZonesSheet.tsx:168-176).
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { Sheet, haptic } from '../../../../core/design';
 import { Clock, CalendarBlank, Storefront, Fire, Snowflake, CaretDown } from '../../../../components/icons';
 import IzmirTeslimatHaritasi from '../../../../components/IzmirTeslimatHaritasi';

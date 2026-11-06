@@ -18,7 +18,8 @@
  *    `get_nutrition_summary`'den; hedef yoksa kart gösterilmez).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import Svg, { Line } from 'react-native-svg';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';

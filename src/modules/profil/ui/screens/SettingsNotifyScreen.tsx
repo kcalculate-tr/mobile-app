@@ -9,7 +9,8 @@
  * mevcut `behavioral_enabled` kolonuna eşlenir.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Switch, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import * as Notifications from 'expo-notifications';
 import { Flame, Package, ChatCircleDots, Tag } from '../../../../components/icons';
 import { setStreakReminderEnabled, syncStreakReminder, cancelStreakReminders } from '../../streakReminder';

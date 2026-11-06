@@ -300,6 +300,12 @@ module.exports = {
             './node_modules/@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf',
             './node_modules/@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf',
             './node_modules/@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf',
+            // G16-S2: Final başlık fontu da gömülü (Android aile adı = dosya adı).
+            './assets/fonts/BricolageGrotesque_400Regular.ttf',
+            './assets/fonts/BricolageGrotesque_500Medium.ttf',
+            './assets/fonts/BricolageGrotesque_600SemiBold.ttf',
+            './assets/fonts/BricolageGrotesque_700Bold.ttf',
+            './assets/fonts/BricolageGrotesque_800ExtraBold.ttf',
           ],
         },
       ],

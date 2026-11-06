@@ -3,7 +3,8 @@
 // + mevcut getPendingModificationsForUser (src/lib/orders.ts). Yalnız okur.
 // Bayrak `yeni_siparis` kapalıyken bu ekran kayıtlı değildir.
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { CachedImage } from '../../../../components/CachedImage';
 import { useProductImages } from '../ui/orders/useProductImages';

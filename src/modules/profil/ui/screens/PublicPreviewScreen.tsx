@@ -10,7 +10,8 @@
 // türetilir, yoksa nötr zemin. Uydurma veri YOK. Dev vitrini `vitrinPosts` ile
 // Final örneğindeki içeriği gösterir (üretimde geçilmez).
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Image, Pressable, View, useWindowDimensions } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../../../core/design';

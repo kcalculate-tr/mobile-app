@@ -2,7 +2,8 @@
 // tek kurtarma aksiyonu. Sepet, ürün, sipariş özeti ve adres ekranlarında
 // kullanılır. Hata rengi animasyonsuz (koreografi kuralı); kart opak.
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { MapPin, Package, Tag, Ticket } from '../../../../components/icons';
 import { haptic } from '../../../../core/design';
 import { ekType, money, useEk } from './kit';

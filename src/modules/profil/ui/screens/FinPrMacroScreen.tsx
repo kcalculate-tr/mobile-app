@@ -13,7 +13,8 @@
 // MacroScreen.tsx'teki "Yakında" kartı). "Teslimat günleri / Duraklat / Yönet"
 // satırları uydurulmadı; sade boş-durum gösterilir.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 

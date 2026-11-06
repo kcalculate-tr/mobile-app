@@ -11,7 +11,8 @@
 // `aggregate` / `subScores` props'u ileride gerçek veriyle beslenirse bölümler
 // kendiliğinden görünür (uydurma yok — veri yoksa çizilmez).
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { Sheet } from '../../../../core/design';
 import { yorumTarihi, kaynakEtiketi, type VitrinYorumu } from '../../../../lib/socialProofRules';
 import { EkStars, ekType, useEk } from './kit';

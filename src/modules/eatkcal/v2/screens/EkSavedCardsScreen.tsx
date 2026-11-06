@@ -13,7 +13,8 @@
 //  - aşağı çekip yenile · boş durum · hata satırı
 //  - "Yeni kart" yalnız kart özelliği bu kullanıcıya açıksa (bugünkü kural).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { CreditCard, Plus, Shield, Trash } from '../../../../components/icons';

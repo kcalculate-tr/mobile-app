@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
   type KeyboardTypeOptions,
@@ -14,6 +13,7 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Sheet, haptic } from '../../../../../core/design';
 import { CaretDown, Check, House, MapPin, Storefront } from '../../../../../components/icons';
 import { ekType, useEk } from '../kit';

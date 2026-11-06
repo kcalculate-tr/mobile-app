@@ -16,7 +16,8 @@
 // FinMoDeliver (uygulanabilir kısmı): ekran açıkken sipariş "delivered" olursa
 // son aşama noktası sıçrar + success haptik (usePop; azaltılmışta yalnız haptik).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import Animated from 'react-native-reanimated';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../../../core/AuthContext';

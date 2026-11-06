@@ -302,6 +302,9 @@ function TabNavigatorR3() {
       <StatusBar style={designTheme.isDark ? 'light' : 'dark'} />
       <Tab.Navigator
         initialRouteName={initialRouteName}
+        // G16-S2 (Android geri tuşu): sekme kökünde geri = uygulamadan çıkış (önce
+        // 'firstRoute' → başka sekmeden Ana sayfa'ya dönüyordu). Yalnız yeni kabuk.
+        backBehavior="none"
         tabBar={(props) => <TabBarR3 {...props} />}
         screenOptions={{
           headerShown: false,

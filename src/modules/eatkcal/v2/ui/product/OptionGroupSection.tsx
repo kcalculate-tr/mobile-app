@@ -3,7 +3,8 @@
 // zorunlu grup, kullanıcı eklemeyi denediyse başlık zemini vurgulanır
 // (renk animasyonsuz — hata kuralı).
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { fontFamily } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { OptionCard, type OptionCardModel } from './OptionCard';

@@ -5,7 +5,8 @@
 // durumu `profiles.verified` (get_public_profile) ile okunur, alttaki satırda
 // yazılır; sunucuya erişilemezse kilitli varsayılır.
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';

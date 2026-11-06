@@ -5,7 +5,8 @@
  * okunur — yeni/ayrı bir sözleşme metni yazılmaz, yalnız Fin kabuğu.
  */
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { CONTRACTS } from '../../../../data/contractsData';

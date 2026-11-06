@@ -4,7 +4,8 @@
 // Detay: core/design Sheet + kod kopyala. Yalnız `yeni_kabuk` açıkken Profil'den
 // açılır; eski ekran bayrak kapalı yolda kalır.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Clipboard, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useNavigation } from '@react-navigation/native';
 import { Sheet, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';

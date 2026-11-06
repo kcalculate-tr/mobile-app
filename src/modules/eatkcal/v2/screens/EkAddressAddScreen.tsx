@@ -21,10 +21,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
+import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
+import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
@@ -425,7 +426,7 @@ export default function EkAddressAddScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-address-add">
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.fill} behavior={SCREEN_KEYBOARD_BEHAVIOR}>
         <ScrollView
           style={styles.fill}
           keyboardShouldPersistTaps="handled"

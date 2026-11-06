@@ -3,7 +3,8 @@
 // — DURATION.fast; azaltılmış harekette anında). Değerler seçim değiştikçe
 // güncellenir; halka dolumu ortak ProgressRing (UI thread).
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
+import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { BlurView } from 'expo-blur';
 import { DURATION, ProgressRing, fontFamily, useReducedMotion } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
