@@ -116,6 +116,26 @@ function motion(key: string, props?: Record<string, unknown>): VitrinTarget {
 const tab = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name, params }] } },
 ];
+/** G15-S3 — FinCompose kareleri: Final'deki örnek metin/medya/kart (yalnız vitrin). */
+const PH_URI = 'https://example.invalid/vitrin-placeholder.jpg';
+const COMPOSE_PREFILL = {
+  serbest: {
+    body: 'Kordon’da sabah koşusu, deniz yine çok güzeldi.',
+    photos: [
+      { uri: PH_URI, width: 1080, height: 1350 },
+      { uri: `${PH_URI}?2`, width: 1080, height: 1350 },
+    ],
+  },
+  ogun: {
+    body: 'Bugünkü öğle: tavuk, kinoa ve avokado.',
+    photos: [{ uri: '__vitrinPhoto:tavukKinoa', width: 1080, height: 1350 }],
+    meal: { name: 'Tavuk kinoa bowl', kcal: 540, protein_g: 42, carbs_g: 48, fat_g: 18, photo_url: '__vitrinPhoto:thTavukKinoa' },
+  },
+  etkinlik: {
+    body: 'Kordon’da 45 dakika.',
+    activity: { type: 'kosu', minutes: 45, distanceKm: 8.2 },
+  },
+};
 /** Keşfet sekmesi (yeni kabuk) + isteğe bağlı vitrin parametreleri. */
 const kes = (params?: Record<string, unknown>): RouteSpec[] => tab('KesfetTab', { asTab: true, ...params });
 const ek = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
@@ -159,8 +179,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // G15-S3: Keşfet sahneleri Final örnek içeriğiyle (vitrinKesfet.ts). `vitrin*` rota
   // parametreleri yalnız vitrinin açtığı ara durumlar içindir (üretimde hiç verilmez).
   ['FinFeed', 'kesfet', route(kes({ vitrinXray: true }))],
-  ['FinFeedScrollR3', 'kesfet', route(kes({ vitrinScroll: true })), { collapse: 1, scene: 'scrolled' }],
-  ['FinFeedTip', 'kesfet', route(kes()), { scene: 'tip' }],
+  ['FinFeedScrollR3', 'kesfet', route(kes({ vitrinScroll: 440 })), { collapse: 1, scene: 'scrolled' }],
+  ['FinFeedTip', 'kesfet', route(kes({ vitrinScroll: 300 })), { scene: 'tip' }],
   ['FinFollowingEmpty', 'kesfet', route(kes({ initialTab: 'following' })), { data: 'default', scene: 'following' }],
   ['FinDetail', 'kesfet', route([...kes(), { name: 'SharedPost', params: { postId: 'post-d1' } }]), { scene: 'detail' }],
   ['FinSerbest', 'kesfet', route(kes()), { scene: 'serbest' }],
@@ -185,12 +205,13 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   [
     'FinCompose',
     'kesfet',
-    route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest' } }]),
+    // Final örnek içerik: `__vitrinPhoto:<ad>` vitrinSetup'ta dev görsel URI'sine çevrilir.
+    route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest', vitrinPrefill: COMPOSE_PREFILL.serbest } }]),
     {
       scene: 'compose',
       frames: {
-        2: { target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'ogun' } }]) },
-        3: { target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'etkinlik' } }]) },
+        2: { target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'ogun', vitrinPrefill: COMPOSE_PREFILL.ogun } }]) },
+        3: { target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'etkinlik', vitrinPrefill: COMPOSE_PREFILL.etkinlik } }]) },
       },
     },
   ],
@@ -223,10 +244,10 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinNotifications', 'kesfet', route([...kes(), { name: 'KesfetNotifications' }]), { scene: 'notifications' }],
   ['FinAddSheet', 'kesfet', comp('addToDaySheet')],
   ['FinAddToast', 'kesfet', route(kes({ vitrin: 'addToast' }))],
-  ['FinPostMenu', 'kesfet', comp('postMenu', { step: 'menu' })],
-  ['FinPostMenuBlock', 'kesfet', comp('postMenu', { step: 'block' })],
-  ['FinReport', 'kesfet', comp('postMenu', { step: 'report' })],
-  ['FinReportDone', 'kesfet', comp('postMenu', { step: 'reportDone' })],
+  ['FinPostMenu', 'kesfet', route(kes({ vitrin: 'menu' }))],
+  ['FinPostMenuBlock', 'kesfet', route(kes({ vitrin: 'block' }))],
+  ['FinReport', 'kesfet', route(kes({ vitrin: 'report', vitrinNote: 'Günde 600 kcal öneriyor, tehlikeli.' }))],
+  ['FinReportDone', 'kesfet', route(kes({ vitrin: 'reportDone' }))],
   ['FinReportNotice', 'kesfet', route([...kes(), { name: 'KesfetNotifications' }]), { scene: 'reportNotice' }],
 
   // ── Gün halkası / etkinlik ─────────────────────────────────────────────────

@@ -13,10 +13,10 @@ test('başlangıçta görülmedi', async () => {
   expect(await feedTipSeen()).toBe(false);
 });
 
-test('kapat (x) → onDismiss çağrılır + bayrak işaretlenir', async () => {
+test('Tamam → onDismiss çağrılır + bayrak işaretlenir', async () => {
   const onDismiss = jest.fn();
   const { getByLabelText } = render(<FeedTip onDismiss={onDismiss} />);
-  fireEvent.press(getByLabelText('Kapat'));
+  fireEvent.press(getByLabelText('Tamam'));
   expect(onDismiss).toHaveBeenCalledTimes(1);
   expect(await feedTipSeen()).toBe(true);
 });
