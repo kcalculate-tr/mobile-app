@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
 import { AppText, fontFamily, haptic, useTheme } from '../../../core/design';
@@ -254,7 +255,7 @@ function ReportResultCard({ n, nowMs, onDetails }: { n: SocialNotification; nowM
         </AppText>
         <View style={styles.reportFoot}>
           <AppText variant="caption" tone="secondary" style={styles.caption13}>
-            {time}
+            {time ? time.charAt(0).toLocaleUpperCase(lang === 'tr' ? 'tr-TR' : 'en-US') + time.slice(1) : ''}
           </AppText>
           {onDetails ? (
             <Pressable onPress={onDetails} accessibilityRole="link" hitSlop={6} style={styles.detailsBtn}>
@@ -343,6 +344,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
       <View style={styles.header}>
         <Pressable
           onPress={() => navigation.goBack()}

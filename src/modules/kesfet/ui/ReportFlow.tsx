@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { StatusBar } from 'expo-status-bar';
 import { AppText, fontFamily, haptic, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { REPORT_REASONS, type ReportReason } from './format';
@@ -134,6 +135,7 @@ export function ReportModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[styles.fill, { backgroundColor: t.color.bg, paddingTop: insets.top }]}
       >
+        <StatusBar style={t.isDark ? 'light' : 'dark'} />
         {step === 'reason' ? (
           <>
             <View style={styles.header}>
