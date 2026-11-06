@@ -95,7 +95,7 @@ export function PlateMedia({
               ))}
             </>
           ) : null}
-          {fitsGoal ? (
+          {fitsGoal && open ? (
             <View
               style={styles.goalChip}
               accessible

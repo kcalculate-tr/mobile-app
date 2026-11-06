@@ -257,6 +257,18 @@ export function KesfetScreen() {
     return () => clearTimeout(id);
   }, [vitrinScroll, posts.length]);
 
+  // Vitrin (FinAddToast): loglama sonrası toast'ı göster ("Öğle’ye loglandı · Geri al · Gör").
+  useEffect(() => {
+    if (vitrin !== 'addToast' || posts.length === 0) return;
+    setToast({
+      message: tr('kesfet.ui.logged_to', { meal: tr('kesfet.ui.meal_dat.lunch') }),
+      undoLabel: tr('common.undo'),
+      onUndo: () => {},
+      actionLabel: tr('kesfet.ui.view_day'),
+      onAction: () => {},
+    });
+  }, [vitrin, posts.length, tr]);
+
   // "Logla izi" oynadıktan sonra örtüyü kaldır (iz ~logTrail + tampon sürede biter).
   useEffect(() => {
     if (!trail) return;
@@ -452,6 +464,13 @@ export function KesfetScreen() {
     },
     [tr],
   );
+
+  // G15 — YALNIZ __DEV__ vitrini: FinComments kare 1–3 — ilk gönderinin yorumları açık.
+  useEffect(() => {
+    if ((vitrin !== 'comments' && vitrin !== 'commentsMenu') || posts.length === 0) return;
+    setCommentsPost(posts[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrin, posts.length]);
 
   // G15 — YALNIZ __DEV__ vitrini: FinPostMenu / Block / Report / ReportDone — ilk
   // gönderinin ⋯ menüsü ilgili adımda açılır.
@@ -773,8 +792,10 @@ export function KesfetScreen() {
           visible={commentsPost != null}
           postId={commentsPost?.id ?? null}
           currentUser={null}
+          count={commentsPost?.stats.comments}
           onClose={() => setCommentsPost(null)}
           onToast={(message) => setToast({ message })}
+          vitrinMenu={vitrin === 'commentsMenu'}
         />
       ) : null}
 
