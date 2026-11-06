@@ -37,6 +37,13 @@ import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { initFBSDK, track } from './src/lib/analytics';
 
+// G14-S1 — Ekran vitrini (kcal://dev/screen/<Pano>). YALNIZ __DEV__: üretimde
+// `__DEV__` false sabitine katlanır, require dalı ve src/dev paketten DÜŞER
+// (bkz. src/dev/__tests__/vitrinTreeShake.test.ts).
+const VitrinGate: React.ComponentType<{ children: React.ReactNode }> | null = __DEV__
+  ? require('./src/dev/VitrinGate').default
+  : null;
+
 // Sentry ONCE baslatilmali: setupGlobalErrorHandler'in yakaladigi hatalar
 // captureError'a gidiyor ve o da Sentry hazir degilse sessizce yutuyor.
 initSentry();
@@ -166,9 +173,17 @@ function App() {
                 içinde. BU OTURUMDA hiçbir ekran useFeature kullanmaz; provider
                 yalnız arka planda değer çözer, canlı davranış değişmez. */}
             <FlagsProvider>
-              <NavigationContainer ref={navigationRef} theme={navDarkTheme} linking={linking}>
-                <AppContent />
-              </NavigationContainer>
+              {VitrinGate ? (
+                <VitrinGate>
+                  <NavigationContainer ref={navigationRef} theme={navDarkTheme} linking={linking}>
+                    <AppContent />
+                  </NavigationContainer>
+                </VitrinGate>
+              ) : (
+                <NavigationContainer ref={navigationRef} theme={navDarkTheme} linking={linking}>
+                  <AppContent />
+                </NavigationContainer>
+              )}
             </FlagsProvider>
           </AuthProvider>
           {/* Global "Kapat" barı — her iki platformda. Klavye yüksekliğini takip

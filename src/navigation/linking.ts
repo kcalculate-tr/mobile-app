@@ -28,7 +28,11 @@ export const linking: LinkingOptions<RootStackParamList> = {
     'https://l.eatkcal.com',
     'http://l.eatkcal.com',
   ],
-  filter: (url) => !url.includes('auth-callback') && !url.includes('payment-callback'),
+  // `dev/screen/` = YALNIZ __DEV__ ekran vitrini (src/dev/VitrinGate) — kendi kökünü açar.
+  filter: (url) =>
+    !url.includes('auth-callback') &&
+    !url.includes('payment-callback') &&
+    !url.includes('dev/screen/'),
   config: {
     screens: {
       SharedPost: 'p/:postId',

@@ -32,9 +32,16 @@ type CollapseContext = {
 
 const TabBarCollapseContext = createContext<CollapseContext | null>(null);
 
+// YALNIZ __DEV__ ekran vitrini (FinTabBar-mid/min): kabuk bu daralma değeriyle
+// açılır. Üretimde daima 0 (setter __DEV__ dışında no-op).
+let devInitialCollapse = 0;
+export function setDevInitialCollapse(v: number): void {
+  if (__DEV__) devInitialCollapse = v;
+}
+
 /** R3 tab navigatörünü sarmalar; `collapsed` SharedValue'yu üretir. */
 export function TabBarCollapseProvider({ children }: { children: React.ReactNode }) {
-  const collapsed = useSharedValue(0);
+  const collapsed = useSharedValue(__DEV__ ? devInitialCollapse : 0);
   const value = useMemo<CollapseContext>(() => ({ collapsed }), [collapsed]);
   return (
     <TabBarCollapseContext.Provider value={value}>{children}</TabBarCollapseContext.Provider>

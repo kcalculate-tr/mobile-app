@@ -45,7 +45,7 @@ export type SocialSignInResult = {
   familyName?: string;
 };
 
-type AuthContextValue = {
+export type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
@@ -60,6 +60,10 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+// YALNIZ __DEV__ ekran vitrini (src/dev) sahte oturum sağlamak için kullanır.
+// Üretim kodu bunu import etmez.
+export const AuthContextForDev = AuthContext;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);

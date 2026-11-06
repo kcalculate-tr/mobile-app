@@ -88,8 +88,16 @@ supabase/.temp/
 
 # Dev-only "Demo Scroll" debug aracı (#if DEBUG altında, production'a sızmıyor
 # ama henüz repo'nun parçası değil — src/dev/ + Expo config plugin'i)
-src/dev/
+src/dev/*
 plugins/
+# G14-S1 ekran vitrini (YALNIZ __DEV__, üretim paketinden düşer) — repo'nun parçası.
+!src/dev/screenCatalog.ts
+!src/dev/VitrinGate.tsx
+!src/dev/vitrinScreens.tsx
+!src/dev/vitrinSetup.ts
+!src/dev/vitrinState.ts
+!src/dev/vitrinFixtures.ts
+!src/dev/__tests__/
 
 # Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
 tools/**/.env

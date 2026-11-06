@@ -112,6 +112,30 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * YALNIZ __DEV__ ekran vitrini (src/dev): bir alt ağaca SABİT bayrak haritası
+ * verir (sunucu/önbellek yok, ready=true). Üretim kodu kullanmaz.
+ */
+export function FlagsOverrideProvider({
+  flags,
+  children,
+}: {
+  flags: Record<FlagKey, boolean>;
+  children: React.ReactNode;
+}) {
+  const value = useMemo<FlagsContextValue>(
+    () => ({
+      flags,
+      ready: true,
+      refresh: async () => {},
+      devOverrides: {},
+      setDevOverride: async () => {},
+    }),
+    [flags],
+  );
+  return <FlagsContext.Provider value={value}>{children}</FlagsContext.Provider>;
+}
+
+/**
  * Bir bayrağın değeri. Provider yoksa (olmamalı) güvenli YEREL VARSAYILANI
  * döner — asla çökmez. HİÇBİR canlı ekran şu an bunu kullanmıyor.
  */
