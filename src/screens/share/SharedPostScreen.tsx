@@ -14,7 +14,8 @@ import { AppText, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getKesfetClient } from '../../modules/kesfet';
 import type { FeedPost } from '../../modules/kesfet/types';
-import { PostCard } from '../../modules/kesfet/ui/PostCard';
+// G15-S3 — bayrak kapalı yol: dondurulmuş kart (Keşfet kartı Final'e giydirildi).
+import { PostCard } from './legacy/LegacyPostCard';
 import { postCardModel, postLink } from '../../modules/kesfet/ui/format';
 import { RootStackParamList } from '../../navigation/types';
 import { useFeature } from '../../core/flags';
