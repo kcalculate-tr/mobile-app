@@ -18,7 +18,7 @@ import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
 // G13-S2 — eatkcal yeni arayüzü (yalnız `yeni_siparis` açıkken kaydolur/görünür).
-import { EkHomeTab, ekV2Routes, resolveHomeTab } from '../modules/eatkcal/v2/routes';
+import { EkHomeTab, ekV2Routes, resolveHomeTab, savedCardsScreenFor } from '../modules/eatkcal/v2/routes';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
 //  · WelcomeGate: oturumsuz soğuk açılışın ilk ekranı (initialRouteName).
@@ -468,7 +468,7 @@ export default function AppNavigator() {
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileOrders" component={OrdersLazy} />
       <Stack.Screen name="OrderDetail" component={OrderDetailLazy} />
-      <Stack.Screen name="ProfileSavedCards" component={SavedCardsLazy} />
+      <Stack.Screen name="ProfileSavedCards" component={savedCardsScreenFor(yeniSiparis, SavedCardsLazy)} />
       <Stack.Screen name="ProfileAddCard" component={AddCardLazy} />
       <Stack.Screen name="ProfileCoupons" component={CouponsLazy} />
       <Stack.Screen name="ProfileSupport" component={SupportLazy} />

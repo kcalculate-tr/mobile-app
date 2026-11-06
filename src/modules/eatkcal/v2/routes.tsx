@@ -61,3 +61,16 @@ export function ekV2Routes(enabled: boolean): EkRoute[] {
     options: EK_V2_FROM_BOTTOM.has(name) ? BOTTOM : undefined,
   }));
 }
+
+/**
+ * G15-S5 md.1 — FinPrCards: `ProfileSavedCards` rotasının bileşeni.
+ * `yeni_siparis` açık → v2 görünüm (Profil ve ödeme aynı rotadan açar);
+ * kapalı → verilen bugünkü SavedCardsScreen AYNEN.
+ */
+const EkSavedCards = withSuspense(lazy(() => import('./screens/EkSavedCardsScreen')));
+export function savedCardsScreenFor<P extends object>(
+  enabled: boolean,
+  legacy: React.ComponentType<P>,
+): React.ComponentType<P> {
+  return enabled ? (EkSavedCards as React.ComponentType<P>) : legacy;
+}
