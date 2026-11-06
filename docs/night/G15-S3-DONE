@@ -1,0 +1,7 @@
+G15-S3 — Keşfet + Sosyal: TAMAM
+Dal: night15/kesfet (taban night14/visual) · worktree .claude/worktrees/g15-s3
+Panolar: 38 satır (Light + Dark, çok kareli panoların her karesi) → 21 aynı, 17 küçük fark, 0 büyük fark
+Eski tasarım: 0
+Bayrak kapalı: aynı (SharedPost dondurulmuş kart + parite testi; Tracker flagOff snapshot 1/1)
+tsc: 0 · test:unit 531 geçti / 1 atlandı / 0 hata · test:components 93/93 · expo export --platform ios: geçti (9.39 MB)
+Ayrıntı: docs/night/G15-S3-LOG.md
