@@ -98,6 +98,9 @@ plugins/
 !src/dev/vitrinState.ts
 !src/dev/vitrinFixtures.ts
 !src/dev/__tests__/
+# G15-S3 — Keşfet vitrin verisi + Final örnek fotoğrafları (YALNIZ __DEV__).
+!src/dev/vitrinKesfet.ts
+!src/dev/assets/
 
 # Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
 tools/**/.env

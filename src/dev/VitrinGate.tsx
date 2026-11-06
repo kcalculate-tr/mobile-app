@@ -88,7 +88,7 @@ function VitrinRoot({ entry }: { entry: ResolvedEntry }) {
     (async () => {
       restoreNetwork();
       setDevInitialCollapse(entry.collapse ?? 0);
-      installMockClients(entry.data);
+      installMockClients(entry.data, entry.area, entry.scene);
       // Sahne hazırlığı gerçek (okuma) ağıyla yapılır; durum taklidi sonra kurulur.
       const prepared = await prepareScene(entry).catch(() => ({ routes: null, mockRoutes: [] }));
       if (!alive) return;
