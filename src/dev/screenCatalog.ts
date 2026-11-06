@@ -222,7 +222,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinEkStore', 'eatkcal', route(ek('EkStore', { brandKey: '__first__' }))],
   ['FinEkReviews', 'eatkcal', route(ek('EkStore', { brandKey: '__first__', vitrinReviews: true, vitrinAggregate: { average: 4.7, count: 128, distribution: [96, 22, 6, 2, 2] }, vitrinSubScores: { taste: 4.8, delivery: 4.6, calorieFit: 4.9 } })), { scene: 'reviews' }],
   ['FinEkProduct', 'eatkcal', route(ek('EkProduct', { productId: '__first__' }))],
-  ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__' })), { scene: 'scrolled' }],
+  ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinScroll: true })), { scene: 'scrolled' }],
   ['FinEkCart', 'eatkcal', route(ek('EkCart')), { scene: 'cart' }],
   ['FinEkCartEmpty', 'eatkcal', route(ek('EkCart')), { data: 'empty' }],
   ['FinEkCartSkeleton', 'eatkcal', route(ek('EkCart')), { data: 'loading', scene: 'cart' }],

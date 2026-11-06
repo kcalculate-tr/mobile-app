@@ -1,0 +1,556 @@
+// eatkcal v2 (G15-S5 md.5) — Güvenli ödeme (PaynKolay 3D Secure sayfası) yeni görünüm.
+//
+// `yeni_siparis` açıkken `PaymentScreen` rotası bu bileşenle kaydolur (routes.tsx
+// v2ScreenFor); kapalıyken src/modules/eatkcal/screens/PaymentScreen.tsx AYNEN.
+// MANTIK (init/poll/dönüş URL'i/düşüş kaydı/sepet temizleme/OrderSuccess) o
+// dosyadan SATIR SATIR KOPYA — yalnız JSX ve stiller v2 (tema, kit, 1.0.7 siyah
+// başlık/yeşil yükleyici yok). Kaynak dosyada değişiklik yapılırsa buraya da
+// uygulanmalı (LOG › SORULAR: tek kaynağa indirme önerisi).
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { WebView } from 'react-native-webview';
+import { CaretLeft, Lock } from '../../../../components/icons';
+import { ekType, useEk } from '../ui/kit';
+import { payWithSavedCard } from '../../../../lib/cards';
+import { PAYMENT_PAGE_ERROR_MESSAGE, toRenderableFormHtml } from '../../../../lib/paymentHtml';
+import { matchesPaynkolayReturn } from '../../../../lib/paynkolayReturn';
+import {
+  LoadGuard,
+  PAYMENT_PAGE_LOAD_FAILED_MESSAGE,
+  START_REQUEST_TIMEOUT_MS,
+  createLoadGuard,
+  fetchWithTimeout,
+  isBenignWebViewError,
+  isFatalHttpError,
+  isProviderPageReady,
+  userMessageForError,
+  withDeadline,
+} from '../../../../lib/webviewResilience';
+import { RootStackParamList } from '../../../../navigation/types';
+import { haptic } from '../../../../utils/haptics';
+import { useCartStore } from '../../../../store/cartStore';
+import { getSupabaseClient } from '../../../../core/supabase';
+import { logEvent, track } from '../../../../lib/analytics';
+import { recordPaymentDrop } from '../../../../lib/orders';
+import { dususEtiketi, type OdemeAsamasi, type DususSebebi } from '../../../../lib/paymentDrop';
+import {
+  PAYMENT_PROVIDER,
+  PAYNKOLAY_INIT_URL,
+  PAYNKOLAY_VPOS_ORIGIN,
+} from '../../../../config/payment';
+
+type PaymentScreenRouteProp = RouteProp<RootStackParamList, 'PaymentScreen'>;
+type PaymentScreenNavProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Edge function cagrilarinda apikey header'i (publishable anahtar).
+const SUPABASE_ANON_KEY = 'sb_publishable_tjeQHxsEgZIObTyf1UHz5Q_Bh4jqS29';
+
+export default function EkPaymentScreen() {
+  // Tek saglayici PaynKolay (bkz. src/config/payment.ts). Ekran dogrudan hosted
+  // odeme akisini acar.
+  const route = useRoute<PaymentScreenRouteProp>();
+  return (
+    <PaynkolayPaymentFlow
+      orderId={route.params.orderId}
+      amount={route.params.amount}
+      orderCode={route.params.orderCode}
+      noticeMessage={route.params.noticeMessage}
+      payMode={route.params.payMode}
+      cardId={route.params.cardId}
+      saveCard={route.params.saveCard}
+    />
+  );
+}
+// ── Paynkolay hosted (Ortak Odeme) akisi ────────────────────────────────────
+//  - init -> paynkolay-payment-init { orderId, amount } -> { success, formHtml }
+//  - WebView source = { html: formHtml, baseUrl } (form-POST)
+//  - callback eatkcal.com/payment/success|fail'e redirect eder
+type PaynkolayFlowProps = {
+  orderId: string;
+  amount: number;
+  orderCode?: string;
+  noticeMessage?: string;
+  // Ödeme yöntemi Sipariş Özeti'nde (CheckoutScreen) seçilir; bu ekran ara
+  // seçim ekranı göstermeden doğrudan başlatır. payMode yoksa (ör. Macro
+  // satın alma) yeni kart / hosted akışı kartı KAYDETMEDEN başlar.
+  payMode?: 'saved_card' | 'new_card';
+  cardId?: string;
+  saveCard?: boolean;
+};
+
+type PaynkolayInitResponse = {
+  success?: boolean;
+  formHtml?: string;
+  error?: string;
+  pending?: boolean;
+};
+
+// 16×1500ms = 24sn marj. Callback dönüş zincirinde senkron koştuğu için normalde
+// 1. denemede paid görülür; bu sadece gateway timing varyansına karşı sigorta.
+const PAYNKOLAY_POLL_MAX_ATTEMPTS = 16;
+const PAYNKOLAY_POLL_INTERVAL_MS = 1500;
+
+// Ödeme ekranı hangi aşamada: başlatılıyor / sonuç bekleniyor (WebView) /
+// bu sipariş için önceki bir ödeme hâlâ inceleniyor (yeni deneme başlatılmaz).
+type PaynkolayStage = 'processing' | 'review_pending';
+
+function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMode, cardId, saveCard }: PaynkolayFlowProps) {
+  const navigation = useNavigation<PaymentScreenNavProp>();
+  const insets = useSafeAreaInsets();
+  const clearCart = useCartStore((s) => s.clearCart);
+  const { c, t, theme } = useEk();
+
+  const [formHtml, setFormHtml] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string>('');
+  const [verifying, setVerifying] = useState(false);
+  // ERKEN KAPATMA GUARD: donus URL'i bir kez islensin; WebView poll bitene kadar
+  // MOUNTED kalir (callback POST'u ucustayken kapanmaz — Tosla'daki notla ayni).
+  const handledRef = useRef(false);
+
+  // ÖDEME DÜŞÜŞ NOKTASI (27.09.2026)
+  // Müşteri ödemeyi tamamlamadığında şimdiye kadar sipariş satırına hiçbir şey
+  // yazılmıyordu; 167 expired siparişin 173'ünde sebep boş. Burada müşterinin
+  // ulaştığı son aşamayı ref'te tutuyoruz ve akış koptuğunda siparişe
+  // yazıyoruz. Ref, çünkü değer render'ı etkilemiyor ve unmount sırasında
+  // güncel olmalı.
+  const asamaRef = useRef<OdemeAsamasi>('init');
+  const dususYazildiRef = useRef(false);
+  // Oturum kimliği ref'te: unmount sırasında (müşteri geri çıktığında) async
+  // getSession çağrısı için vakit yok, o an elde hazır olmalı.
+  const userIdRef = useRef<string | null>(null);
+
+  const dususuKaydet = (reason: DususSebebi, detay?: string | null) => {
+    if (dususYazildiRef.current) return;
+    dususYazildiRef.current = true;
+    const uid = userIdRef.current;
+    if (!uid) return;
+    // Beklemiyoruz: ölçüm için yazılan bir satır ödeme akışını bekletmemeli.
+    void recordPaymentDrop({
+      supabase: getSupabaseClient(),
+      orderId: String(orderId),
+      userId: uid,
+      dropStage: dususEtiketi({ stage: asamaRef.current, reason }),
+      failureReason: detay ?? null,
+    });
+  };
+
+  // StrictMode/yeniden-render'a karsi guard: mount-baslatma effect'i ekran
+  // basina EN FAZLA 1 kez gercekten calisir (syncSavedCards 8 kez cagrilmis
+  // gozlemi — 2026-09-16 canli test — buna karsi eklendi).
+  const initStartedRef = useRef(false);
+  const [stage, setStage] = useState<PaynkolayStage>('processing');
+  // SAĞLAYICI TAKILMASI: sayfa 20 sn içinde açılmazsa ya da onError/onHttpError gelirse WebView
+  // KAPATILMAZ (yavaş ama çalışan bir 3D sayfası yarıda kesilmesin) — üstünde "Tekrar dene /
+  // Geri Dön" bandı çıkar; sayfa sonradan açılırsa bant kalkar. Kullanıcı kilitli kalmaz.
+  const [stalled, setStalled] = useState<null | 'timeout' | 'error'>(null);
+  const guardRef = useRef<LoadGuard | null>(null);
+  const mainUrlRef = useRef('');
+
+  // Önce bu sipariş için bekleyen bir inceleme var mı diye bak — varsa HİÇ ödeme
+  // denemesi başlatılmaz, kalıcı "kontrol ediliyor" ekranı gösterilir. Yoksa
+  // Checkout'ta seçilen yönteme göre DOĞRUDAN başlar (ara ekran yok):
+  //   saved_card -> paynkolay-cards pay (her zaman 3D),
+  //   diğer      -> hosted init (saveCard: "Kartımı kaydet" işaretliyse true).
+  useEffect(() => {
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: orderRow } = await withDeadline(
+          Promise.resolve(
+            supabase
+              .from('orders')
+              .select('payment_review_pending')
+              .eq('id', orderId)
+              .maybeSingle(),
+          ),
+          8000,
+        );
+        if (orderRow?.payment_review_pending) {
+          setStage('review_pending');
+          return;
+        }
+      } catch {
+        // inceleme kontrolü başarısız olsa da ödeme akışı kilitlenmesin
+      }
+      if (payMode === 'saved_card' && cardId) {
+        await startSavedCardPay(cardId);
+      } else {
+        await startHostedInit(payMode === 'new_card' && saveCard === true);
+      }
+    })();
+    // Ödeme başlatma mount'ta TAM OLARAK BİR KEZ çalışmalı. Herhangi bir
+    // bağımlılık eklenirse aynı sipariş için ikinci bir init isteği gidebilir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startHostedInit = async (shouldSaveCard: boolean) => {
+    setStage('processing');
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      userIdRef.current = session?.user?.id ?? null;
+      if (!session) {
+        const message = 'Oturum bulunamadı.';
+        setInitError(message);
+        handleFailure(message);
+        return;
+      }
+      track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
+
+      // Üst süre: sağlayıcı/sunucu takılırsa "hazırlanıyor" sonsuza kadar sürmez.
+      const res = await fetchWithTimeout(PAYNKOLAY_INIT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ orderId: String(orderId), amount, saveCard: shouldSaveCard }),
+      }, START_REQUEST_TIMEOUT_MS);
+      const json = (await res.json().catch(() => ({}))) as PaynkolayInitResponse;
+      if (json.pending) {
+        handlePendingReview(json.error);
+        return;
+      }
+      if (!res.ok || !json.success || !json.formHtml) {
+        const message = json.error || 'Ödeme başlatılamadı.';
+        setInitError(message);
+        handleFailure(message);
+        return;
+      }
+      const safeHtml = toRenderableFormHtml(json.formHtml);
+      if (!safeHtml) {
+        track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: 'invalid_form_html' });
+        setInitError(PAYMENT_PAGE_ERROR_MESSAGE);
+        handleFailure(PAYMENT_PAGE_ERROR_MESSAGE);
+        return;
+      }
+      asamaRef.current = 'provider_page';
+      setFormHtml(safeHtml);
+    } catch (err) {
+      const message = userMessageForError(err, PAYMENT_PAGE_LOAD_FAILED_MESSAGE);
+      setInitError(message);
+      handleFailure(message);
+    }
+  };
+
+  const startSavedCardPay = async (cardId: string) => {
+    setStage('processing');
+    try {
+      track('payment_attempt', { order_id: String(orderId), price: amount, payment_method: PAYMENT_PROVIDER });
+      const result = await payWithSavedCard(orderId, cardId);
+      if (result.pending) {
+        handlePendingReview(result.error);
+        return;
+      }
+      if (!result.success && !result.alreadyPaid) {
+        const message = result.error || 'Ödeme başlatılamadı.';
+        setInitError(message);
+        handleFailure(message);
+        return;
+      }
+      if (result.alreadyPaid) {
+        handleSuccess();
+        return;
+      }
+      // Saklı kart ödemesi HER ZAMAN 3D'li: geçerli bir form HTML'i yoksa (beklenmeyen
+      // yanıt) ham içerik ASLA gösterilmez ve "başarılı" varsayılmaz — kontrollü hata.
+      const safeHtml = result.requires3D ? toRenderableFormHtml(result.formHtml) : null;
+      if (!safeHtml) {
+        track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: 'invalid_form_html' });
+        setInitError(PAYMENT_PAGE_ERROR_MESSAGE);
+        handleFailure(PAYMENT_PAGE_ERROR_MESSAGE);
+        return;
+      }
+      setFormHtml(safeHtml);
+    } catch (err) {
+      const message = userMessageForError(err, PAYMENT_PAGE_LOAD_FAILED_MESSAGE);
+      setInitError(message);
+      handleFailure(message);
+    }
+  };
+
+  const pollOrderConfirmed = async (): Promise<boolean> => {
+    const supabase = getSupabaseClient();
+    for (let attempt = 0; attempt < PAYNKOLAY_POLL_MAX_ATTEMPTS; attempt++) {
+      const { data } = await withDeadline(
+        Promise.resolve(
+          supabase
+            .from('orders')
+            .select('status, payment_status')
+            .eq('id', orderId)
+            .maybeSingle(),
+        ),
+        8000,
+      ).catch(() => ({ data: null }));
+      if (data?.status === 'confirmed' || data?.payment_status === 'paid') return true;
+      if (attempt < PAYNKOLAY_POLL_MAX_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, PAYNKOLAY_POLL_INTERVAL_MS));
+      }
+    }
+    return false;
+  };
+
+  // handleSuccess düşüş yazmaz; dususYazildiRef ile de korunuyor.
+  const handleSuccess = async () => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    setVerifying(true);
+    haptic.success();
+    logEvent.purchase(String(orderId), Number(amount) || 0);
+    track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
+
+    const paid = await pollOrderConfirmed();
+    if (!paid) {
+      // callback'in order'i guncellemesi gecikmis olabilir; yanlis "basarili"
+      // ekrani gostermek yerine kullaniciyi siparislere yonlendir.
+      setVerifying(false);
+      Alert.alert(
+        'Ödeme doğrulanıyor',
+        'Ödemeniz işleniyor olabilir. Siparişlerim sayfasından durumu kontrol edebilirsiniz.',
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }],
+      );
+      return;
+    }
+
+    if (useCartStore.getState().items.length > 0) clearCart();
+    navigation.replace('OrderSuccess', {
+      orderCode: orderCode ?? String(orderId),
+      orderId: String(orderId),
+      noticeMessage,
+    });
+  };
+
+  const handleFailure = (reason?: string) => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    track('payment_failed', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER, reason: reason ?? 'psp_declined' });
+    // Analytics'e EK OLARAK sipariş satırına da yaz — analytics best-effort
+    // bir kuyruk ve payment_attempt takibi ancak 16.09'da başladı.
+    dususuKaydet(asamaRef.current === 'init' ? 'init_error' : 'failed', reason ?? 'psp_declined');
+    Alert.alert('Ödeme başarısız', reason || 'Ödeme tamamlanamadı. Lütfen tekrar deneyin.', [
+      { text: 'Tamam', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  // Saklı kart odemesi ne hash ne raporla teyit edilebildiginde (needs_manual_review):
+  // siparis durumu SUNUCUDA degistirilmedi — kullaniciya kesin basarisiz demek yerine
+  // kontrol edildigini bildiriyoruz.
+  const handlePendingReview = (message?: string) => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+    track('payment_pending', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
+    Alert.alert(
+      'Ödemen kontrol ediliyor',
+      message || 'Ödemeniz kontrol ediliyor, birkaç dakika içinde bilgilendireceğiz.',
+      [{ text: 'Tamam', onPress: () => navigation.goBack() }],
+    );
+  };
+
+  // TERK ETME KAYDI — en değerli sinyal.
+  // Müşteri geri tuşuna basıp ya da uygulamayı kapatıp ödeme ekranından
+  // sonuçsuz çıktığında şimdiye kadar HİÇBİR ŞEY yazılmıyordu: sipariş
+  // pending_payment kalıyor, 10 dk sonra cron sessizce 'expired' yapıyor.
+  // handledRef doluysa (başarı/başarısızlık/inceleme) buraya girilmez.
+  useEffect(() => {
+    return () => {
+      if (handledRef.current) return;
+      dususuKaydet('abandoned');
+    };
+    // Kasıtlı boş deps: yalnız unmount'ta çalışmalı. dususuKaydet gereken
+    // her şeyi ref'ten okuyor, bayat kapanış riski yok.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleNavigationCheck = (url: string): boolean => {
+    if (handledRef.current) return false;
+    const result = matchesPaynkolayReturn(url);
+    if (result.matches) {
+      asamaRef.current = 'returned';
+      if (result.success) handleSuccess();
+      else handleFailure();
+      return false; // eatkcal.com'a gercek navigasyonu engelle (WebView mounted kalir)
+    }
+    return true;
+  };
+
+  const markProviderReady = (url?: string) => {
+    if (isProviderPageReady(url, PAYNKOLAY_VPOS_ORIGIN)) {
+      guardRef.current?.markReady();
+      setStalled((cur) => (cur === 'timeout' ? null : cur)); // yavaş açıldı: bant kalksın
+    }
+  };
+  const onShouldStartLoadWithRequest = (request: { url: string; isTopFrame?: boolean }) => {
+    const url = request.url || '';
+    if (__DEV__) console.log('[paynkolay] onShouldStartLoadWithRequest:', url);
+    if (request.isTopFrame !== false) mainUrlRef.current = url;
+    return handleNavigationCheck(url);
+  };
+  const onNavStateChange = (state: { url?: string; loading?: boolean }) => {
+    const url = state.url || '';
+    if (__DEV__) console.log('[paynkolay] onNavigationStateChange:', url);
+    if (url) mainUrlRef.current = url;
+    if (!state.loading) markProviderReady(url);
+    handleNavigationCheck(url);
+  };
+  const onLoadStart = (e: { nativeEvent: { url: string } }) => {
+    mainUrlRef.current = e.nativeEvent.url || mainUrlRef.current;
+    handleNavigationCheck(e.nativeEvent.url || '');
+  };
+  const onLoadEnd = (e: { nativeEvent: { url: string } }) => markProviderReady(e.nativeEvent.url);
+  const onWebViewError = (e: { nativeEvent: { code?: number; description?: string } }) => {
+    const ev = e.nativeEvent;
+    // Kendi engellediğimiz dönüş navigasyonu (iOS -999 / ERR_ABORTED) gerçek hata değil.
+    if (isBenignWebViewError(ev) || handledRef.current) return;
+    console.warn('[paynkolay] onError:', { code: ev.code, description: String(ev.description ?? '').slice(0, 120) });
+    setStalled('error');
+  };
+  const onWebViewHttpError = (e: { nativeEvent: { statusCode?: number; url?: string } }) => {
+    const ev = e.nativeEvent;
+    if (handledRef.current) return;
+    if (isFatalHttpError(ev, mainUrlRef.current)) {
+      console.warn('[paynkolay] onHttpError:', { statusCode: ev.statusCode });
+      setStalled('error');
+    }
+  };
+
+  // WebView (form) her açıldığında 20 sn'lik "sağlayıcı sayfası hazır olmalı" bekçisi.
+  useEffect(() => {
+    if (!formHtml) return;
+    setStalled(null);
+    const guard = createLoadGuard({
+      onTimeout: () => { if (!handledRef.current) setStalled((cur) => cur ?? 'timeout'); },
+    });
+    guardRef.current = guard;
+    guard.start();
+    return () => guard.stop();
+  }, [formHtml]);
+
+  // "Tekrar dene": takılan sayfayı bırakıp ödeme başlatmayı baştan yapar (yeni form).
+  const retryAfterStall = () => {
+    guardRef.current?.stop();
+    setStalled(null);
+    setFormHtml(null);
+    setInitError('');
+    if (payMode === 'saved_card' && cardId) startSavedCardPay(cardId);
+    else startHostedInit(payMode === 'new_card' && saveCard === true);
+  };
+
+  const onInk = theme.isDark ? c.bg : '#FFFFFF';
+  return (
+    <View style={[hostedStyles.container, { flex: 1, backgroundColor: c.bg }]} testID="ek-payment">
+      <View style={[hostedStyles.header, { paddingTop: insets.top }]}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={hostedStyles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel={t('eatkcal.v2.common.back')}
+          hitSlop={4}
+        >
+          <CaretLeft size={22} color={c.ink} />
+        </Pressable>
+        <View style={hostedStyles.headerMid}>
+          <Lock size={14} color={c.secondary} />
+          <Text style={[ekType.h20, { color: c.ink }]} accessibilityRole="header" numberOfLines={1}>
+            {t('eatkcal.v2.payment.title')}
+          </Text>
+        </View>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <View style={[hostedStyles.body, { backgroundColor: c.surface }]}>
+        {formHtml ? (
+          <WebView
+            source={{ html: formHtml, baseUrl: PAYNKOLAY_VPOS_ORIGIN }}
+            style={{ flex: 1, backgroundColor: '#fff' }}
+            originWhitelist={['*']}
+            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+            onNavigationStateChange={onNavStateChange}
+            onLoadStart={onLoadStart}
+            onLoadEnd={onLoadEnd}
+            onError={onWebViewError}
+            onHttpError={onWebViewHttpError}
+            startInLoadingState
+          />
+        ) : stage === 'review_pending' ? (
+          <View style={hostedStyles.loaderWrap}>
+            <ActivityIndicator size="large" color={c.ink} />
+            <Text style={[ekType.h20, { color: c.ink, textAlign: 'center', marginTop: 12 }]}>{t('eatkcal.v2.payment.review_title')}</Text>
+            <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center' }]}>{t('eatkcal.v2.payment.review_body')}</Text>
+            <Pressable style={[hostedStyles.retryBtn, { backgroundColor: c.ink }]} onPress={() => navigation.goBack()} accessibilityRole="button">
+              <Text style={[ekType.b15s, { color: onInk }]}>{t('eatkcal.v2.payment.back')}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={hostedStyles.loaderWrap}>
+            {initError ? (
+              <>
+                <Text style={[ekType.b15, { color: c.ink, textAlign: 'center' }]} accessibilityRole="alert">{initError}</Text>
+                <Pressable style={[hostedStyles.retryBtn, { backgroundColor: c.ink }]} onPress={() => navigation.goBack()} accessibilityRole="button">
+                  <Text style={[ekType.b15s, { color: onInk }]}>{t('eatkcal.v2.payment.back')}</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <ActivityIndicator size="large" color={c.ink} />
+                <Text style={[ekType.b15, { color: c.secondary, marginTop: 12 }]}>{t('eatkcal.v2.payment.preparing')}</Text>
+              </>
+            )}
+          </View>
+        )}
+      </View>
+
+      {stalled && formHtml && !verifying ? (
+        <View style={[hostedStyles.stallBanner, { backgroundColor: c.surface, bottom: Math.max(insets.bottom, 16) + 16 }]}>
+          <Text style={[ekType.b15, { color: c.ink, textAlign: 'center' }]}>{PAYMENT_PAGE_LOAD_FAILED_MESSAGE}</Text>
+          <View style={hostedStyles.stallRow}>
+            <Pressable style={[hostedStyles.stallPrimary, { backgroundColor: c.ink }]} onPress={retryAfterStall} accessibilityRole="button">
+              <Text style={[ekType.b15s, { color: onInk }]}>{t('eatkcal.v2.common.retry')}</Text>
+            </Pressable>
+            <Pressable style={[hostedStyles.stallSecondary, { borderColor: c.line }]} onPress={() => navigation.goBack()} accessibilityRole="button">
+              <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.payment.back')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {verifying ? (
+        <View style={[hostedStyles.verifyingOverlay, { backgroundColor: theme.isDark ? 'rgba(0,0,0,0.6)' : 'rgba(243,244,246,0.86)' }]}>
+          <View style={[hostedStyles.verifyPill, { backgroundColor: c.line }]} accessibilityRole="progressbar">
+            <ActivityIndicator color={c.ink} />
+            <Text style={[ekType.b17, { color: c.ink }]}>{t('eatkcal.v2.checkout.pay_wait')}</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const hostedStyles = StyleSheet.create({
+  container: {},
+  header: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 8, paddingBottom: 4 },
+  headerMid: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 8 },
+  retryBtn: { minHeight: 52, minWidth: 160, paddingHorizontal: 24, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  stallBanner: { position: 'absolute', left: 16, right: 16, borderRadius: 20, padding: 16, gap: 12 },
+  stallRow: { flexDirection: 'row', gap: 10 },
+  stallPrimary: { flex: 1, minHeight: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  stallSecondary: { flex: 1, minHeight: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  verifyingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  verifyPill: { minHeight: 52, alignSelf: 'stretch', borderRadius: 26, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+});

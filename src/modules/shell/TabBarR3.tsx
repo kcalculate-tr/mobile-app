@@ -336,6 +336,13 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
     const cartRoute = state.routes.find((r) => r.name === 'Cart');
     if (!cartRoute) return;
     haptic('selection');
+    // G15-S5: `yeni_siparis` açıkken v2 rotaları kökte kayıtlı → v2 sepet (FinEkCart);
+    // kapalıyken (EkCart kayıtlı değil) bugünkü gizli Cart sekmesi AYNEN.
+    const root = navigation.getParent?.();
+    if (root?.getState?.()?.routeNames?.includes('EkCart')) {
+      root.navigate('EkCart' as never);
+      return;
+    }
     navigation.navigate('Cart' as never);
   };
 

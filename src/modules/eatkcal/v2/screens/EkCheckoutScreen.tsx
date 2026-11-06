@@ -266,7 +266,7 @@ export default function EkCheckoutScreen() {
             <Text style={[ekType.c13, { color: c.ink, flex: 1 }]}>
               {t('eatkcal.v2.checkout.contracts_pre')}
               <Text
-                style={ekType.c13s}
+                style={[ekType.c13s, { textDecorationLine: 'underline' }]}
                 onPress={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
                 accessibilityRole="link"
                 suppressHighlighting
@@ -275,7 +275,7 @@ export default function EkCheckoutScreen() {
               </Text>
               {t('eatkcal.v2.checkout.and')}
               <Text
-                style={ekType.c13s}
+                style={[ekType.c13s, { textDecorationLine: 'underline' }]}
                 onPress={() => navigation.navigate('ProfileContracts', { slug: 'distance-sales' })}
                 accessibilityRole="link"
                 suppressHighlighting

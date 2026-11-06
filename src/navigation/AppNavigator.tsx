@@ -18,7 +18,7 @@ import { navigationRef } from './navigationRef';
 import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
 // G13-S2 — eatkcal yeni arayüzü (yalnız `yeni_siparis` açıkken kaydolur/görünür).
-import { EkHomeTab, ekV2Routes, resolveHomeTab, savedCardsScreenFor } from '../modules/eatkcal/v2/routes';
+import { EkHomeTab, ekV2Routes, resolveHomeTab, v2ScreenFor } from '../modules/eatkcal/v2/routes';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
 //  · WelcomeGate: oturumsuz soğuk açılışın ilk ekranı (initialRouteName).
@@ -442,8 +442,8 @@ export default function AppNavigator() {
       <Stack.Screen name="BrandLanding" component={BrandLandingLazy} />
       <Stack.Screen name="ProductDetail" component={ProductDetailLazy} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
-      <Stack.Screen name="Addresses" component={AddressesLazy} />
-      <Stack.Screen name="OrderSuccess" component={OrderSuccessLazy} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
+      <Stack.Screen name="Addresses" component={v2ScreenFor('Addresses', yeniSiparis, AddressesLazy)} />
+      <Stack.Screen name="OrderSuccess" component={v2ScreenFor('OrderSuccess', yeniSiparis, OrderSuccessLazy)} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
       <Stack.Screen name="Offers" component={OffersLazy} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsLazy} />
       {__DEV__ && (
@@ -466,10 +466,10 @@ export default function AppNavigator() {
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
       <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />
-      <Stack.Screen name="ProfileOrders" component={OrdersLazy} />
+      <Stack.Screen name="ProfileOrders" component={v2ScreenFor('ProfileOrders', yeniSiparis, OrdersLazy)} />
       <Stack.Screen name="OrderDetail" component={OrderDetailLazy} />
-      <Stack.Screen name="ProfileSavedCards" component={savedCardsScreenFor(yeniSiparis, SavedCardsLazy)} />
-      <Stack.Screen name="ProfileAddCard" component={AddCardLazy} />
+      <Stack.Screen name="ProfileSavedCards" component={v2ScreenFor('ProfileSavedCards', yeniSiparis, SavedCardsLazy)} />
+      <Stack.Screen name="ProfileAddCard" component={v2ScreenFor('ProfileAddCard', yeniSiparis, AddCardLazy)} />
       <Stack.Screen name="ProfileCoupons" component={CouponsLazy} />
       <Stack.Screen name="ProfileSupport" component={SupportLazy} />
       <Stack.Screen name="ProfileReviews" component={MyReviewsLazy} />
@@ -478,7 +478,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Feedback" component={FeedbackLazy} />
       <Stack.Screen name="PersonalInfo" component={PersonalInfoLazy} />
       <Stack.Screen name="ProfileContracts" component={ContractsLazy} />
-      <Stack.Screen name="PaymentScreen" component={PaymentLazy} />
+      <Stack.Screen name="PaymentScreen" component={v2ScreenFor('PaymentScreen', yeniSiparis, PaymentLazy)} />
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
       <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
       <Stack.Screen name="SharedProfile" component={SharedProfileLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />

@@ -59,7 +59,9 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     }
     if (entry.target.kind === 'route') {
       const brand = products.find((p) => typeof p.brand === 'string' && p.brand)?.brand ?? null;
-      routes = replaceFirst(entry.target.routes, products[0] ? String(products[0].id) : null, brand);
+      // G15-S5: makro verisi olan ilk ürün (Final ürün panosu dolu makro halkalarıyla).
+      const withMacros = products.find((p) => Number(p.calories) > 0) ?? products[0];
+      routes = replaceFirst(entry.target.routes, withMacros ? String(withMacros.id) : null, brand);
     }
   }
 

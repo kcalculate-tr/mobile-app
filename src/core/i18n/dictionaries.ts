@@ -843,6 +843,35 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           add_restaurant: 'Restoranını ekle',
           only_kitchens: 'Sipariş yalnızca Kcalculate mutfaklarından',
         },
+        // G15-S5 — sipariş akışı eski tasarım envanteri (v2 görünümler)
+        success: {
+          title: 'Siparişin alındı',
+          sub: 'Mutfak hazırlamaya başladı · teslimde Bugün’e loglanır',
+          code: 'Sipariş no %{code}',
+          track: 'Siparişi takip et',
+          macros: 'Macro’larım',
+          today: 'Bugün',
+          home: 'Ana sayfa',
+        },
+        payment: {
+          title: 'Güvenli ödeme',
+          preparing: 'Ödeme sayfası hazırlanıyor…',
+          review_title: 'Ödemen kontrol ediliyor',
+          review_body: 'Bu sipariş için önceki ödemen inceleniyor. Sonucu birkaç dakika içinde bildireceğiz — şimdi yeni bir ödeme denemesi başlatılamaz.',
+          back: 'Geri dön',
+        },
+        addcard: {
+          title: 'Yeni kart',
+          info_title: 'Yeni kart ekle',
+          info_body: 'Kartını doğrulamak için 1 TL’lik bir işlem yapılacak ve aynı gün iade edilecek.',
+          continue: 'Devam et',
+          security: 'Kart bilgilerini KCAL görmez ve saklamaz; işlem lisanslı ödeme kuruluşu PaynKolay’ın güvenli sayfasında yapılır.',
+          verifying: 'Kartın doğrulanıyor…',
+          ok: 'Tamam',
+          cancel_retry: 'İptal et ve yeniden dene',
+          load_failed_body: 'Kayıt iptal edildi, 15 dakika beklemen gerekmez. Bir tutar çekildiyse otomatik olarak iade edilir.',
+          back_to_cards: 'Kartlarıma dön',
+        },
         // G15-S5 — FinEkInfo SSS sekmesi (kaynak: HowItWorksModal "Sipariş ve Teslimat")
         faq: {
           q1: 'Siparişimi ne zaman teslim alırım?',
@@ -2057,6 +2086,35 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           no_kitchen_body: "We're listing healthy restaurants.",
           add_restaurant: 'Add your restaurant',
           only_kitchens: 'Orders are only from Kcalculate kitchens',
+        },
+        // G15-S5 — order flow legacy-design inventory (v2 views)
+        success: {
+          title: 'Order received',
+          sub: 'The kitchen has started · logged to Today on delivery',
+          code: 'Order no %{code}',
+          track: 'Track order',
+          macros: 'My Macros',
+          today: 'Today',
+          home: 'Home',
+        },
+        payment: {
+          title: 'Secure payment',
+          preparing: 'Preparing the payment page…',
+          review_title: 'Checking your payment',
+          review_body: 'Your previous payment for this order is being reviewed. We’ll let you know in a few minutes — a new payment can’t be started now.',
+          back: 'Go back',
+        },
+        addcard: {
+          title: 'New card',
+          info_title: 'Add a new card',
+          info_body: 'To verify your card we’ll make a 1 TL transaction and refund it the same day.',
+          continue: 'Continue',
+          security: 'KCAL never sees or stores your card details; this happens on the secure page of licensed payment institution PaynKolay.',
+          verifying: 'Verifying your card…',
+          ok: 'OK',
+          cancel_retry: 'Cancel and try again',
+          load_failed_body: 'The registration was cancelled, no need to wait 15 minutes. Any charged amount is refunded automatically.',
+          back_to_cards: 'Back to my cards',
         },
         // G15-S5 — FinEkInfo FAQ tab (source: HowItWorksModal "Order & delivery")
         faq: {

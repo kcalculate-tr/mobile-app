@@ -65,6 +65,8 @@ export default function EkProductScreen() {
   const { c, t, insets, theme } = useEk();
   const addItem = useCartStore((s) => s.addItem);
   const productId = route.params?.productId;
+  // YALNIZ __DEV__ vitrini (FinEkProductScroll): seçimlere kaydırılmış başlar.
+  const vitrinScroll = __DEV__ ? (route.params as { vitrinScroll?: boolean } | undefined)?.vitrinScroll : undefined;
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -320,6 +322,16 @@ export default function EkProductScreen() {
     const tplId = link.template.id;
     setTemplateSelections((prev) => ({ ...prev, [tplId]: toggleTemplateSelection(link, prev[tplId] || [], Number(itemKey)) }));
   };
+
+  useEffect(() => {
+    if (!vitrinScroll || loading) return;
+    const h = setTimeout(() => {
+      const y = bodyY.current + macroBottom.current + 24;
+      scrollRef.current?.scrollTo({ y, animated: false });
+      if (derived?.macroCardEnabled) setStripVisible(true);
+    }, 600);
+    return () => clearTimeout(h);
+  }, [vitrinScroll, loading, derived?.macroCardEnabled]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (macroBottom.current <= 0 || !derived?.macroCardEnabled) return;
