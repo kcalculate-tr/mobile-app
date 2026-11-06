@@ -1,25 +1,21 @@
-// FinBadges — kazanılan/kilitli rozetler. "Onaylı" rozeti her zaman listelenir;
-// gerçek durum `profiles.verified` (get_public_profile RPC) — kendi handle'ım
-// ile okunur, uydurma yok; sunucuya erişilemezse kilitli varsayılır. Hiç
-// kazanılmış rozet yoksa boş-durum kartı gösterilir.
+// FinBadges — "Doğrulama rozetleri": Keşfet'te ad yanında görünen mührün ve rol
+// çiplerinin açıklaması (Diyetisyen, PT, Sporcu, Kcalculate). Giriş: Profil ›
+// Hesabım › Rozetlerim. Örnek satırlar yalnız rozetin NASIL göründüğünü gösterir
+// (gri avatar + genel "Ad Soyad"; gerçek kişi uydurulmaz). Kullanıcının kendi
+// durumu `profiles.verified` (get_public_profile) ile okunur, alttaki satırda
+// yazılır; sunucuya erişilemezse kilitli varsayılır.
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { Gift } from '../../../../components/icons';
+import { Barbell, CheckCircle, Sneaker } from '../../../../components/icons';
 import { getProfilClient } from '../../client';
-import {
-  FinScreen,
-  FinHeader,
-  FinCard,
-  heading,
-  body,
-  bodySemibold,
-} from '../finUi';
-// G12-S6: S2'nin (Keşfet) gerçek VerifiedBadge'i tek kaynak; S4'ün geçici yerel
-// kopyası kaldırıldı (ENTEGRASYONA — tasarım Final FinBadges/FinComponents).
+import { FinScreen, FinHeader, heading, body, bodyBold, bodySemibold } from '../finUi';
+// G12-S6: S2'nin (Keşfet) gerçek VerifiedBadge'i tek kaynak.
 import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
+
+type Example = { key: string; chip: string; icon: React.ReactNode; brand?: boolean };
 
 export default function BadgesScreen({ onBack, handle }: { onBack: () => void; handle?: string | null }) {
   const t = useTheme();
@@ -44,76 +40,63 @@ export default function BadgesScreen({ onBack, handle }: { onBack: () => void; h
     };
   }, [handle]);
 
-  const earnedCount = verified ? 1 : 0;
+  const icon = (el: (c: string) => React.ReactNode) => el(t.color.ink);
+  const examples: Example[] = [
+    { key: 'dietitian', chip: tr('profil.badge_role_dietitian'), icon: icon((c) => <CheckCircle size={14} color={c} />) },
+    { key: 'pt', chip: tr('profil.badge_role_pt'), icon: icon((c) => <Barbell size={14} color={c} />) },
+    { key: 'athlete', chip: tr('profil.badge_role_athlete'), icon: icon((c) => <Sneaker size={14} color={c} />) },
+    { key: 'official', chip: tr('profil.badge_role_official'), icon: icon((c) => <CheckCircle size={14} color={c} />), brand: true },
+  ];
 
   return (
     <FinScreen scroll>
-      <FinHeader title={tr('profil.badges_title')} onBack={onBack} />
-      <View style={{ paddingHorizontal: 16, gap: 16 }}>
-        <BadgeCard
-          locked={!verified}
-          icon={<VerifiedBadge size={40} />}
-          title={tr('profil.badge_verified')}
-          desc={verified ? tr('profil.badge_verified_desc') : tr('profil.badge_locked')}
-        />
+      <FinHeader title="" onBack={onBack} />
+      <View style={{ paddingHorizontal: 16, gap: 14 }}>
+        <Text style={{ fontFamily: heading, fontSize: 20, color: t.color.ink }}>{tr('profil.badges_title')}</Text>
 
-        {earnedCount === 0 ? (
-          <FinCard style={{ alignItems: 'center', paddingVertical: 28, gap: 12 }}>
+        {examples.map((e) => (
+          <View key={e.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {e.brand ? (
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: '#0A0A0A',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontFamily: heading, fontSize: 13, color: '#FFFFFF' }}>kcal.</Text>
+              </View>
+            ) : (
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: t.color.line }} />
+            )}
+            <Text style={{ fontFamily: bodyBold, fontSize: 15, color: t.color.ink }}>
+              {e.brand ? 'kcal' : tr('profil.badge_example_name')}
+            </Text>
+            <VerifiedBadge size={18} />
             <View
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
+                height: 28,
+                paddingHorizontal: 10,
+                borderRadius: 14,
                 backgroundColor: t.color.line,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: 6,
               }}
             >
-              <Gift size={24} color={t.color.secondary} weight="fill" />
+              {e.icon}
+              <Text style={{ fontFamily: bodySemibold, fontSize: 13, color: t.color.ink }}>{e.chip}</Text>
             </View>
-            <Text style={{ fontFamily: heading, fontSize: 20, color: t.color.ink }}>
-              {tr('profil.badges_title')}
-            </Text>
-            <Text
-              style={{
-                fontFamily: body,
-                fontSize: 15,
-                color: t.color.secondary,
-                textAlign: 'center',
-              }}
-            >
-              {tr('profil.no_badges')}
-            </Text>
-          </FinCard>
-        ) : null}
+          </View>
+        ))}
+
+        <Text style={{ fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary, marginTop: 8 }}>
+          {verified ? tr('profil.badge_verified_desc') : tr('profil.badge_locked')}
+        </Text>
       </View>
     </FinScreen>
-  );
-}
-
-function BadgeCard({
-  locked,
-  icon,
-  title,
-  desc,
-}: {
-  locked: boolean;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
-  const t = useTheme();
-  return (
-    <FinCard style={{ opacity: locked ? 0.5 : 1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ width: 40, alignItems: 'center' }}>{icon}</View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>
-            {title}
-          </Text>
-          <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{desc}</Text>
-        </View>
-      </View>
-    </FinCard>
   );
 }
