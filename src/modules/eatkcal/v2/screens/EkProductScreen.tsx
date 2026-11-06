@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   Pressable,
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -65,6 +66,8 @@ export default function EkProductScreen() {
   const { c, t, insets, theme } = useEk();
   const addItem = useCartStore((s) => s.addItem);
   const productId = route.params?.productId;
+  // YALNIZ __DEV__ vitrini (FinEkProductScroll): seçimlere kaydırılmış başlar.
+  const vitrinScroll = __DEV__ ? (route.params as { vitrinScroll?: boolean } | undefined)?.vitrinScroll : undefined;
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -321,7 +324,30 @@ export default function EkProductScreen() {
     setTemplateSelections((prev) => ({ ...prev, [tplId]: toggleTemplateSelection(link, prev[tplId] || [], Number(itemKey)) }));
   };
 
+  const { height: winH } = useWindowDimensions();
+  const groupsRef = useRef(groupModels);
+  groupsRef.current = groupModels;
+  useEffect(() => {
+    if (!vitrinScroll || loading) return;
+    // Seçim grupları ve bölüm konumları yüklemeden sonra ölçülür → ölçülene kadar dene.
+    let n = 0;
+    const h = setInterval(() => {
+      n += 1;
+      const firstKey = groupsRef.current[0]?.key;
+      const fy = firstKey ? sectionY.current[firstKey] : undefined;
+      if (fy == null && n < 15) return;
+      clearInterval(h);
+      // Final (FinEkProductScroll): ilk seçim grubu üstte, makro halkaları ekran dışında.
+      // Ölçümler görsel yüklenince kayabildiğinden en az fotoğraf + başlık + halkalar kadar in.
+      const y = Math.max(fy != null ? fy - 8 : 0, bodyY.current + macroBottom.current + 24, Math.round(winH * 1.05));
+      scrollRef.current?.scrollTo({ y, animated: false });
+      setStripVisible(true);
+    }, 300);
+    return () => clearInterval(h);
+  }, [vitrinScroll, loading]);
+
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (vitrinScroll) return; // dev vitrini: zorlanan kaydırılmış hâlde şerit açık kalır
     if (macroBottom.current <= 0 || !derived?.macroCardEnabled) return;
     const show = e.nativeEvent.contentOffset.y > bodyY.current + macroBottom.current;
     if (show !== stripVisible) setStripVisible(show);
@@ -384,7 +410,8 @@ export default function EkProductScreen() {
     : tried
       ? t('eatkcal.v2.product.missing_list', { names: missing.map((m) => m.name).join(', ') })
       : t('eatkcal.v2.product.complete_required');
-  const roundBtn = [styles.roundBtn, { backgroundColor: theme.isDark ? 'rgba(28,28,30,0.85)' : 'rgba(255,255,255,0.85)' }];
+  // G15-S5 (FinEkProduct-Dark): fotoğraf üstündeki yuvarlak düğmeler iki temada da açık cam + koyu ikon.
+  const roundBtn = [styles.roundBtn, { backgroundColor: 'rgba(255,255,255,0.85)' }];
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product">
@@ -410,7 +437,7 @@ export default function EkProductScreen() {
               style={roundBtn}
               testID="ek-product-back"
             >
-              <ArrowLeft size={20} color={c.ink} />
+              <ArrowLeft size={20} color="#0A0A0A" />
             </Pressable>
             <Pressable
               onPress={() => navigation.goBack()}
@@ -418,7 +445,7 @@ export default function EkProductScreen() {
               accessibilityLabel={t('eatkcal.v2.product.close')}
               style={roundBtn}
             >
-              <X size={20} color={c.ink} />
+              <X size={20} color="#0A0A0A" />
             </Pressable>
           </View>
         </View>

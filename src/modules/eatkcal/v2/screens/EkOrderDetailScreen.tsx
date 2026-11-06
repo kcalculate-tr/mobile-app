@@ -44,6 +44,9 @@ import {
 } from '../../../../lib/orderFeedback';
 import { track } from '../../../../lib/analytics';
 import { useCartStore } from '../../../../store/cartStore';
+import { CachedImage } from '../../../../components/CachedImage';
+import { useProductImages } from '../ui/orders/useProductImages';
+import { ChangeRequestCard } from '../ui/orders/ChangeRequestCard';
 import { useEkNav, type EkNavList } from '../nav';
 import { EkCard, EkHeader, EkScreen, EkSkeleton, ekType, money, useEk } from '../ui/kit';
 import { EkInkButton, EkStateCard, OrderStatusBadge } from '../ui/orders/OrdersParts';
@@ -148,6 +151,7 @@ export default function EkOrderDetailScreen() {
   }, [status, pop]);
 
   const lines = useMemo(() => (order ? detailLines(order) : []), [order]);
+  const productImg = useProductImages();
 
   const handleReorder = useCallback(async () => {
     if (!order) return;
@@ -296,6 +300,9 @@ export default function EkOrderDetailScreen() {
             </Text>
             {lines.map((line, i) => (
               <View key={`${line.name}-${i}`} style={styles.lineRow}>
+                {productImg(line.productId) ? (
+                  <CachedImage uri={productImg(line.productId)!} style={styles.lineThumb} />
+                ) : null}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.b14, { color: c.ink }]}>{`${line.name} ×${line.quantity}`}</Text>
                   {line.summary ? (
@@ -354,17 +361,12 @@ export default function EkOrderDetailScreen() {
           />
         ) : null}
 
-        {/* Değişiklik talepleri bugünkü ekranda (aynı kurallar). */}
-        {!isTerminalStatus(order.status) ? (
-          <Pressable
-            onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
-            accessibilityRole="button"
-            style={styles.textBtn}
-            testID="ek-order-change-request"
-          >
-            <Text style={[ekType.c13s, { color: c.accentLine }]}>{t('eatkcal.v2.order_detail.change_request')}</Text>
-          </Pressable>
-        ) : null}
+        {/* G15-S5: değişiklik talepleri v2 kartında (1.0.7 OrderDetailScreen'e gidilmez; kurallar aynı). */}
+        <ChangeRequestCard
+          order={order}
+          userId={user?.id ?? null}
+          onSupport={() => navigation.navigate('ProfileSupport')}
+        />
 
         {/* Destek */}
         <EkCard style={{ gap: 10 }}>
@@ -540,6 +542,7 @@ function ReviewCard({ feedback, onDone }: { feedback: PendingFeedbackOrder; onDo
 }
 
 const styles = StyleSheet.create({
+  lineThumb: { width: 44, height: 44, borderRadius: 10 },
   body: { paddingHorizontal: 16, paddingTop: 8, gap: 10 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },

@@ -165,6 +165,8 @@ export default function EkAddressesScreen() {
             description={t('eatkcal.v2.address.empty_body')}
             actionLabel={t('eatkcal.v2.address.empty_action')}
             onAction={openAdd}
+            // G15-S5 (FinEkAddressesEmpty): Final'de kart sayfanın üst üçte birinde (Siparişlerim boş ile aynı).
+            style={{ marginTop: 120 }}
             testID="ek-addresses-empty"
           />
         ) : (

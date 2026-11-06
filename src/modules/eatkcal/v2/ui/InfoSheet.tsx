@@ -8,13 +8,14 @@
 //  - süre: `formatEstimatedDelivery` (deliveryRules) — veri yoksa gösterilmez
 //  - Gel-Al şubeleri: `fetchBranches` (src/lib/branches.ts)
 //  - İzmir haritası: `IzmirTeslimatHaritasi` (açık ilçeler canlı veriden)
-// SSS: uygulamada SSS verisi/kaynağı YOK → sekme GİZLİ (uydurma soru-yanıt yok).
+// SSS (G15-S5 md.3): uygulamadaki mevcut SSS metni (HowItWorksModal "Sipariş ve
+//   Teslimat" bölümü) → i18n `eatkcal.v2.faq.q1..q5`; Final'deki 5 açılır satır.
 // "Çok yakında" listesi ve soğuk zincir notu bugünkü sheet'te de SABİT metin
 // (iş vaadi, DB durumu değil — DeliveryZonesSheet.tsx:168-176).
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Sheet, haptic } from '../../../../core/design';
-import { Clock, CalendarBlank, Storefront, Fire, Snowflake } from '../../../../components/icons';
+import { Clock, CalendarBlank, Storefront, Fire, Snowflake, CaretDown } from '../../../../components/icons';
 import IzmirTeslimatHaritasi from '../../../../components/IzmirTeslimatHaritasi';
 import { ilceleriOzetle } from '../../../../components/DeliveryZonesSheet';
 import {
@@ -35,11 +36,47 @@ type ZoneRow = DeliveryZoneRow & {
   allow_scheduled: boolean | null;
 };
 
-type Tab = 'delivery' | 'zones';
+export type EkInfoTab = 'delivery' | 'faq' | 'zones';
+type Tab = EkInfoTab;
 
-export function EkInfoSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+const FAQ_KEYS = [1, 2, 3, 4, 5] as const;
+
+function FaqItem({ n }: { n: number }) {
   const { c, t } = useEk();
-  const [tab, setTab] = useState<Tab>('delivery');
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={[styles.faq, { borderBottomColor: c.line }]}>
+      <Pressable
+        onPress={() => {
+          haptic('selection');
+          setOpen((v) => !v);
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        style={styles.faqHead}
+        testID={`ek-info-faq-${n}`}
+      >
+        <Text style={[ekType.b15s, { color: c.ink, flex: 1 }]}>{t(`eatkcal.v2.faq.q${n}`)}</Text>
+        <CaretDown size={14} color={c.secondary} style={open ? { transform: [{ rotate: '180deg' }] } : undefined} />
+      </Pressable>
+      {open ? <Text style={[ekType.c13, { color: c.secondary, marginBottom: 8 }]}>{t(`eatkcal.v2.faq.a${n}`)}</Text> : null}
+    </View>
+  );
+}
+
+export function EkInfoSheet({
+  visible,
+  onClose,
+  initialTab = 'delivery',
+}: {
+  visible: boolean;
+  onClose: () => void;
+  /** Açılış sekmesi (vitrin FinEkInfo: 'zones'). */
+  initialTab?: Tab;
+}) {
+  const { c, t, theme } = useEk();
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const { height: winH } = useWindowDimensions();
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [globals, setGlobals] = useState<DeliveryGlobals | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -99,11 +136,14 @@ export function EkInfoSheet({ visible, onClose }: { visible: boolean; onClose: (
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'delivery', label: t('eatkcal.v2.info.tab_delivery') },
+    { key: 'faq', label: t('eatkcal.v2.info.tab_faq') },
     { key: 'zones', label: t('eatkcal.v2.info.tab_zones') },
   ];
 
   return (
     <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.info.title')} product="eat" maxHeightRatio={0.88}>
+      {/* G15-S5: Final sheet sabit yükseklikte (~%85); sekme değişince zıplamaz. */}
+      <View style={{ minHeight: winH * 0.85 - 150 }}>
       <View style={[styles.tabs, { backgroundColor: c.line }]} accessibilityRole="tablist">
         {tabs.map((x) => {
           const on = tab === x.key;
@@ -125,7 +165,13 @@ export function EkInfoSheet({ visible, onClose }: { visible: boolean; onClose: (
         })}
       </View>
 
-      {tab === 'delivery' ? (
+      {tab === 'faq' ? (
+        <View testID="ek-info-faq">
+          {FAQ_KEYS.map((n) => (
+            <FaqItem key={n} n={n} />
+          ))}
+        </View>
+      ) : tab === 'delivery' ? (
         <View testID="ek-info-delivery">
           {rows.map(({ key, Icon, title, body }) => (
             <View key={key} style={[styles.infoRow, { borderBottomColor: c.line }]}>
@@ -141,6 +187,8 @@ export function EkInfoSheet({ visible, onClose }: { visible: boolean; onClose: (
         <View style={styles.zones} testID="ek-info-zones">
           <View style={styles.mapBox}>
             <IzmirTeslimatHaritasi height={170} acikIlceler={fastDistricts.map((d) => d.district)} />
+            {/* G15-S5 (FinEkInfo-Dark): ortak harita bileşeni sabit açık renkli → koyu temada karartma katmanı. */}
+            {theme.isDark ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} /> : null}
           </View>
           {loading ? (
             <View style={styles.center}>
@@ -177,6 +225,7 @@ export function EkInfoSheet({ visible, onClose }: { visible: boolean; onClose: (
           <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.info.others')}</Text>
         </View>
       )}
+      </View>
     </Sheet>
   );
 }
@@ -187,9 +236,12 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   infoText: { flex: 1, gap: 2 },
   zones: { gap: 10, paddingTop: 8, paddingBottom: 8 },
-  mapBox: { borderRadius: 18, overflow: 'hidden' },
+  // Harita SVG'si oranını korur (meet); kenar boşluğu harita zemin rengiyle dolar → tam genişlik.
+  mapBox: { borderRadius: 18, overflow: 'hidden', backgroundColor: '#F7F9F5' },
   center: { paddingVertical: 16, alignItems: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { minHeight: 32, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, justifyContent: 'center' },
   kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  faq: { paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth },
+  faqHead: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

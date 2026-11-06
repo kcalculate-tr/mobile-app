@@ -145,6 +145,12 @@ const ek = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name, params },
 ];
 
+/** G15-S5 FinPrCards örneği: iki kart, ilki varsayılan (Final "Kart •••• [son 4]"). */
+const VITRIN_CARDS = [
+  { id: 'vc1', last4: '4242', brand: null, bank_name: null, card_alias: null, is_default: true, created_at: '2026-01-01T00:00:00.000Z' },
+  { id: 'vc2', last4: '1881', brand: null, bank_name: null, card_alias: null, is_default: false, created_at: '2026-01-02T00:00:00.000Z' },
+];
+
 const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // ── Kabuk ──────────────────────────────────────────────────────────────────
   ['FinTabBar-rest', 'kabuk', route(tab('Tracker')), { collapse: 0 }],
@@ -285,7 +291,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinPrMacroWhat', 'profil', comp('profileSub', { sub: 'macro', what: true, mock: true })],
   ['FinPrMacroHistoryEmpty', 'profil', comp('profileSub', { sub: 'macro', history: true })],
   ['FinPrPersonal', 'profil', comp('profileSub', { sub: 'personal' })],
-  ['FinPrCards', 'profil', comp('profileSub', { sub: 'cards' }), { note: 'G15-S4: Final dili ekran; eski SavedCards (KİMSE) dokunulmadı, aynı lib/cards çağrıları' }],
+  // G15-S5: yeni_siparis açık → v2 EkSavedCardsScreen (servis çağrılmadan vitrin kartlarıyla).
+  ['FinPrCards', 'profil', route([...tab('Profile'), { name: 'ProfileSavedCards', params: { vitrinCards: VITRIN_CARDS } }])],
   ['FinPrNotify', 'profil', comp('profileSub', { sub: 'notify' })],
   ['FinPrSecurity', 'profil', comp('profileSub', { sub: 'security' })],
   ['FinPrAgreements', 'profil', comp('profileSub', { sub: 'agreements' })],
@@ -293,30 +300,32 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinPrFeedback', 'profil', comp('profileSub', { sub: 'feedback' })],
 
   // ── eatkcal ────────────────────────────────────────────────────────────────
-  ['FinCityR1', 'eatkcal', route(ek('EkCityGate')), { scene: 'city' }],
-  ['FinWaitlistR1', 'eatkcal', route(ek('EkCityGate')), { scene: 'waitlist' }],
-  ['FinEatBerlin', 'eatkcal', route(ek('EkCityGate')), { scene: 'berlin' }],
+  // G15-S5: il kapısı eatkcal sekmesinde (sekme çubuğuyla); adım dev-only `vitrinGate` parametresi.
+  ['FinCityR1', 'eatkcal', route(tab('Home')), { scene: 'city' }],
+  ['FinWaitlistR1', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul' })), { scene: 'waitlist' }],
+  ['FinEatBerlin', 'eatkcal', route(tab('Home', { vitrinGate: 'other', vitrinOtherCity: 'Berlin' })), { scene: 'berlin' }],
   ['FinEkHome', 'eatkcal', route(tab('Home'))],
   ['FinEkHomeSkeleton', 'eatkcal', route(tab('Home')), { data: 'loading' }],
-  ['FinEkStore', 'eatkcal', route(ek('EkStore', { brandKey: 'kcal' }))],
-  ['FinEkReviews', 'eatkcal', route(ek('EkStore', { brandKey: 'kcal' })), { scene: 'reviews' }],
+  // G15-S5: `__first__` → vitrinSetup gerçek menüdeki ilk marka anahtarını koyar.
+  ['FinEkStore', 'eatkcal', route(ek('EkStore', { brandKey: '__first__' }))],
+  ['FinEkReviews', 'eatkcal', route(ek('EkStore', { brandKey: '__first__', vitrinReviews: true, vitrinAggregate: { average: 4.7, count: 128, distribution: [96, 22, 6, 2, 2] }, vitrinSubScores: { taste: 4.8, delivery: 4.6, calorieFit: 4.9 } })), { scene: 'reviews' }],
   ['FinEkProduct', 'eatkcal', route(ek('EkProduct', { productId: '__first__' }))],
-  ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__' })), { scene: 'scrolled' }],
+  ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinScroll: true })), { scene: 'scrolled' }],
   ['FinEkCart', 'eatkcal', route(ek('EkCart')), { scene: 'cart' }],
   ['FinEkCartEmpty', 'eatkcal', route(ek('EkCart')), { data: 'empty' }],
-  ['FinEkCartSkeleton', 'eatkcal', route(ek('EkCart')), { data: 'loading', scene: 'cart' }],
+  ['FinEkCartSkeleton', 'eatkcal', route(ek('EkCart', { vitrinSkeleton: true })), { data: 'loading', scene: 'cart' }],
   ['FinEkCheckout', 'eatkcal', route(ek('EkCheckout')), { scene: 'cart' }],
-  ['FinEkCheckoutPayWait', 'eatkcal', route(ek('EkCheckout')), { scene: 'payWait' }],
-  ['FinEkCheckoutPayFail', 'eatkcal', route(ek('EkCheckout')), { scene: 'payFail' }],
-  ['FinEkCheckoutPayUnknown', 'eatkcal', route(ek('EkCheckout')), { scene: 'payUnknown' }],
-  ['FinEkAddress', 'eatkcal', route(ek('EkAddressAdd'))],
-  ['FinEkAddressNoPerm', 'eatkcal', route(ek('EkAddressAdd')), { scene: 'noPerm' }],
-  ['FinEkAddressNoMap', 'eatkcal', route(ek('EkAddressAdd')), { scene: 'noMap' }],
+  ['FinEkCheckoutPayWait', 'eatkcal', route(ek('EkCheckout', { vitrinPay: 'wait' })), { scene: 'payWait' }],
+  ['FinEkCheckoutPayFail', 'eatkcal', route(ek('EkCheckout', { vitrinPay: 'fail' })), { scene: 'payFail' }],
+  ['FinEkCheckoutPayUnknown', 'eatkcal', route(ek('EkCheckout', { vitrinPay: 'unknown' })), { scene: 'payUnknown' }],
+  ['FinEkAddress', 'eatkcal', route(ek('EkAddressAdd', { vitrinForm: { district: 'Konak', neighborhood: 'Alsancak', street: 'Kıbrıs Şehitleri Cd.' } }))],
+  ['FinEkAddressNoPerm', 'eatkcal', route(ek('EkAddressAdd', { vitrinPerm: 'denied', vitrinForm: { district: 'Konak', neighborhood: 'Alsancak', street: 'Kıbrıs Şehitleri Cd.' } })), { scene: 'noPerm' }],
+  ['FinEkAddressNoMap', 'eatkcal', route(ek('EkAddressAdd', { vitrinMap: 'nomap', vitrinForm: { district: 'Konak' } })), { scene: 'noMap' }],
   ['FinEkAddresses', 'eatkcal', route(ek('EkAddresses')), { scene: 'addresses' }],
   ['FinEkAddressesEmpty', 'eatkcal', route(ek('EkAddresses')), { data: 'empty' }],
   ['FinEkOrders', 'eatkcal', route(ek('EkOrders')), { scene: 'orders' }],
   ['FinEkOrdersEmpty', 'eatkcal', route(ek('EkOrders')), { data: 'empty' }],
-  ['FinEkOrdersFilterEmpty', 'eatkcal', route(ek('EkOrders')), { scene: 'filterEmpty' }],
+  ['FinEkOrdersFilterEmpty', 'eatkcal', route(ek('EkOrders', { vitrinFilter: 'cancelled' })), { scene: 'filterEmpty' }],
   ['FinEkOrderDetail', 'eatkcal', route(ek('EkOrderDetail', { orderId: 1 })), { scene: 'orders' }],
   ['FinEkInfo', 'eatkcal', comp('ekInfo')],
   ['FinEkErrors', 'eatkcal', comp('ekErrors')],

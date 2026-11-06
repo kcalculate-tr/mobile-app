@@ -3,7 +3,7 @@
 // kullanılır. Hata rengi animasyonsuz (koreografi kuralı); kart opak.
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MapPin, Tag, WarningCircle } from '../../../../components/icons';
+import { MapPin, Package, Tag, Ticket } from '../../../../components/icons';
 import { haptic } from '../../../../core/design';
 import { ekType, money, useEk } from './kit';
 import type { EkErrorModel } from '../model/errors';
@@ -32,7 +32,8 @@ export function EkErrorCard({
   }
   // G14-S1 — FinEkErrors: ortalı ikon dairesi (48) · başlık (Bricolage 20) ·
   // tek satır açıklama · tam genişlik siyah kurtarma düğmesi (52).
-  const Icon = error.kind === 'coupon' ? Tag : error.kind === 'address' ? MapPin : WarningCircle;
+  // G15-S5: Final ikonları — kupon bilet · stok paket · fiyat etiket · adres iğne.
+  const Icon = error.kind === 'coupon' ? Ticket : error.kind === 'address' ? MapPin : error.kind === 'stock' ? Package : Tag;
   return (
     <View
       style={[styles.card, { backgroundColor: c.surface }]}

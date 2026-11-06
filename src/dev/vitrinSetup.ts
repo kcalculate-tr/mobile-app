@@ -7,8 +7,9 @@ import { seedStorage, type MockRoute } from './vitrinState';
 import { useCartStore } from '../store/cartStore';
 import { useTbDraft } from '../modules/onboarding/takibe/draft';
 import { FEED_TIP_SEEN_FLAG } from '../modules/kesfet/ui/FeedTip';
-import { mockRoutesFor } from './vitrinFixtures';
+import { mockRoutesFor, vitrinHomeAddress } from './vitrinFixtures';
 import { resolveVitrinPhotos } from './vitrinKesfet';
+import { useAddressStore } from '../store/addressStore';
 
 export interface PreparedScene {
   routes: RouteSpec[] | null;
@@ -23,13 +24,14 @@ async function loadProducts(): Promise<any[]> {
   return (list ?? []).filter((p) => p && p.is_active !== false && Number(p.price) > 0);
 }
 
-function replaceFirst(routes: RouteSpec[], id: string | null): RouteSpec[] {
-  return routes.map((r) => ({
-    ...r,
-    params:
-      r.params && r.params.productId === '__first__' ? { ...r.params, productId: id ?? '' } : r.params,
-    state: r.state ? { routes: replaceFirst(r.state.routes, id) } : undefined,
-  }));
+function replaceFirst(routes: RouteSpec[], id: string | null, brand: string | null = null): RouteSpec[] {
+  return routes.map((r) => {
+    let params = r.params;
+    if (params && params.productId === '__first__') params = { ...params, productId: id ?? '' };
+    // G15-S5: mağaza panoları (FinEkStore/Reviews) gerçek menüdeki ilk marka anahtarıyla.
+    if (params && params.brandKey === '__first__') params = { ...params, brandKey: brand ?? '' };
+    return { ...r, params, state: r.state ? { routes: replaceFirst(r.state.routes, id, brand) } : undefined };
+  });
 }
 
 export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene> {
@@ -46,20 +48,39 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
         : null,
   });
 
+  // G15-S5: eatkcal ana sayfa (FinEkHome) teslimat satırı için seçili adres
+  // (gerçekte AuthContext.hydrateSelectedAddress doldurur; vitrin oturumu sahte).
+  const targetJson = JSON.stringify(entry.target);
+  const isEkHomeTab = /"name":"Home"/.test(targetJson) && !/"name":"Ek/.test(targetJson);
+  if (entry.area === 'eatkcal') (useAddressStore.getState() as any).setSelectedAddress?.(
+    (isEkHomeTab || CART_SCENES.has(scene)) && entry.data !== 'empty' && !['city', 'waitlist', 'berlin'].includes(scene)
+      ? vitrinHomeAddress()
+      : null,
+  );
+
   // Sepet: Final sepet/özet sahneleri dolu, boş durumda boş.
   const cart = useCartStore.getState() as any;
   cart.clearCart?.();
   let routes: RouteSpec[] | null = null;
+  // G15-S5: sipariş panoları da gerçek menü ürünlerini kullanır (satır fotoğrafı).
+  const isOrders = /"EkOrders?(Detail)?"|"EkOrders"/.test(JSON.stringify(entry.target));
   const needsProducts =
     entry.data !== 'empty' &&
-    (CART_SCENES.has(scene) || JSON.stringify(entry.target).includes('__first__'));
+    (CART_SCENES.has(scene) || isOrders || JSON.stringify(entry.target).includes('__first__'));
+  let productIds: string[] = [];
   if (needsProducts) {
     const products = await loadProducts().catch(() => []);
+    productIds = products.filter((p) => p.img).map((p) => String(p.id));
     if (CART_SCENES.has(scene)) {
-      for (const p of products.slice(0, 2)) cart.addItem?.(p, {}, 1);
+      // G15-S5: Final sepet örneği makrolu ürünler (satır makro çipleri + özet halkaları).
+      const withMacros = products.filter((p) => Number(p.calories) > 0);
+      for (const p of (withMacros.length >= 2 ? withMacros : products).slice(0, 2)) cart.addItem?.(p, {}, 1);
     }
     if (entry.target.kind === 'route') {
-      routes = replaceFirst(entry.target.routes, products[0] ? String(products[0].id) : null);
+      const brand = products.find((p) => typeof p.brand === 'string' && p.brand)?.brand ?? null;
+      // G15-S5: makro verisi olan ilk ürün (Final ürün panosu dolu makro halkalarıyla).
+      const withMacros = products.find((p) => Number(p.calories) > 0) ?? products[0];
+      routes = replaceFirst(entry.target.routes, withMacros ? String(withMacros.id) : null, brand);
     }
   }
 
@@ -147,5 +168,5 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   const base = routes ?? (entry.target.kind === 'route' ? entry.target.routes : null);
   if (base && JSON.stringify(base).includes('__vitrinPhoto:')) routes = resolveVitrinPhotos(base);
 
-  return { routes, mockRoutes: mockRoutesFor(entry) };
+  return { routes, mockRoutes: mockRoutesFor(entry, productIds) };
 }

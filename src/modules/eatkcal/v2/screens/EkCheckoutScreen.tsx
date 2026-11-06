@@ -11,12 +11,12 @@
 // Paynkolay dışı sağlayıcı (eski Tosla satır içi kart formu) v2'de YOK →
 // bugünkü Checkout ekranına devredilir.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
-import { Check, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
+import { Check, Clock, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
-import { haptic } from '../../../../core/design';
+import { haptic, useReducedMotion } from '../../../../core/design';
 import { mesafeKm } from '../../../../lib/nearestLocation';
 import { formatDeliveryDaysFull, isDeliveryDay } from '../../../../utils/deliveryDays';
 import { useEkNav, type EkV2ParamList } from '../nav';
@@ -36,6 +36,12 @@ export default function EkCheckoutScreen() {
   const route = useRoute<RouteProp<EkV2ParamList, 'EkCheckout'>>();
   const { c, t, lang } = useEk();
   const ctrl = useEkCheckout({ initialAddressId: route.params?.selectedAddressId });
+  // YALNIZ __DEV__ vitrini (FinEkCheckoutPayWait/Fail/Unknown): ödeme ara durumu
+  // yalnız GÖRÜNÜMDE zorlanır; ödeme mantığı (useEkCheckout) değişmez.
+  const vitrinPay = __DEV__
+    ? (route.params as { vitrinPay?: 'wait' | 'fail' | 'unknown' } | undefined)?.vitrinPay
+    : undefined;
+  const payState = vitrinPay ?? ctrl.payState;
   const [open, setOpen] = useState<SectionKey | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -159,15 +165,21 @@ export default function EkCheckoutScreen() {
   // ── Alt bar ─────────────────────────────────────────────────────────────
   const footer = (
     <EkStickyBar testID="ek-checkout-footer">
-      {ctrl.payState === 'wait' ? (
-        <View style={styles.waitRow} accessibilityLiveRegion="polite" testID="ek-pay-wait">
-          <ActivityIndicator color={c.ink} />
-          <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.checkout.pay_wait')}</Text>
+      {payState === 'wait' ? (
+        // FinEkCheckoutPayWait: teslimat notu + gri (pasif) hap düğme · nabız noktası.
+        <View style={{ gap: 6 }} accessibilityLiveRegion="polite" testID="ek-pay-wait">
+          {ctrl.deliveryMethod === 'home_delivery' && ctrl.isDeliverable && ctrl.totals.deliveryFee === 0 ? (
+            <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.checkout.delivery_free_note')}</Text>
+          ) : null}
+          <View style={[styles.cta, styles.waitRow, { backgroundColor: c.line }]} accessibilityRole="progressbar">
+            <PulseDot color={c.accentLine} />
+            <Text style={[ekType.b17, { color: c.ink }]}>{t('eatkcal.v2.checkout.pay_wait')}</Text>
+          </View>
         </View>
-      ) : ctrl.payState === 'fail' ? (
+      ) : payState === 'fail' ? (
         <View style={[styles.payCard, { backgroundColor: c.surface }]} accessibilityRole="alert" testID="ek-pay-fail">
           <View style={[styles.payIcon, { backgroundColor: c.line }]}>
-            <WarningCircle size={24} color={c.ink} />
+            <CreditCard size={24} color={c.ink} />
           </View>
           <Text style={[ekType.h20, { color: c.ink, textAlign: 'center' }]}>{t('eatkcal.v2.checkout.pay_fail_title')}</Text>
           <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center' }]}>
@@ -195,8 +207,11 @@ export default function EkCheckoutScreen() {
             </Pressable>
           ) : null}
         </View>
-      ) : ctrl.payState === 'unknown' ? (
+      ) : payState === 'unknown' ? (
         <View style={[styles.payCard, { backgroundColor: c.surface }]} accessibilityRole="alert" testID="ek-pay-unknown">
+          <View style={[styles.payIcon, { backgroundColor: c.line }]}>
+            <Clock size={24} color={c.ink} />
+          </View>
           <Text style={[ekType.h20, { color: c.ink, textAlign: 'center' }]}>{t('eatkcal.v2.checkout.pay_unknown_title')}</Text>
           <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center' }]}>{t('eatkcal.v2.checkout.pay_unknown_body')}</Text>
           <Pressable
@@ -251,7 +266,7 @@ export default function EkCheckoutScreen() {
             <Text style={[ekType.c13, { color: c.ink, flex: 1 }]}>
               {t('eatkcal.v2.checkout.contracts_pre')}
               <Text
-                style={ekType.c13s}
+                style={[ekType.c13s, { textDecorationLine: 'underline' }]}
                 onPress={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
                 accessibilityRole="link"
                 suppressHighlighting
@@ -260,7 +275,7 @@ export default function EkCheckoutScreen() {
               </Text>
               {t('eatkcal.v2.checkout.and')}
               <Text
-                style={ekType.c13s}
+                style={[ekType.c13s, { textDecorationLine: 'underline' }]}
                 onPress={() => navigation.navigate('ProfileContracts', { slug: 'distance-sales' })}
                 accessibilityRole="link"
                 suppressHighlighting
@@ -628,21 +643,21 @@ export default function EkCheckoutScreen() {
               </View>
             );
           })}
+          {/* G15-S5: Final'de ayrı toplam kartı yok → döküm "Sepet özeti" açılınca;
+              kapalıyken toplam satır özetinde + düğmede, teslimat ücreti alt notta. */}
+          <View style={[styles.totals, { borderTopColor: c.line }]} testID="ek-checkout-totals">
+            <EkKV label={t('eatkcal.v2.cart.subtotal')} value={money(ctrl.totals.subtotal)} />
+            {ctrl.totals.discountAmount > 0 ? (
+              <EkKV label={t('eatkcal.v2.cart.discount')} value={`−${money(ctrl.totals.discountAmount)}`} tone="ok" />
+            ) : null}
+            <EkKV
+              label={t('eatkcal.v2.cart.delivery')}
+              value={ctrl.totals.deliveryFee === 0 ? t('eatkcal.v2.cart.delivery_free') : money(ctrl.totals.deliveryFee)}
+              tone={ctrl.totals.deliveryFee === 0 ? 'ok' : undefined}
+            />
+            <EkKV label={t('eatkcal.v2.cart.total')} value={money(ctrl.totals.totalAmount)} strong />
+          </View>
         </Section>
-
-        {/* Toplamlar — her zaman açık */}
-        <View style={[styles.card, { backgroundColor: c.surface, gap: 8 }]} testID="ek-checkout-totals">
-          <EkKV label={t('eatkcal.v2.cart.subtotal')} value={money(ctrl.totals.subtotal)} />
-          {ctrl.totals.discountAmount > 0 ? (
-            <EkKV label={t('eatkcal.v2.cart.discount')} value={`−${money(ctrl.totals.discountAmount)}`} tone="ok" />
-          ) : null}
-          <EkKV
-            label={t('eatkcal.v2.cart.delivery')}
-            value={ctrl.totals.deliveryFee === 0 ? t('eatkcal.v2.cart.delivery_free') : money(ctrl.totals.deliveryFee)}
-            tone={ctrl.totals.deliveryFee === 0 ? 'ok' : undefined}
-          />
-          <EkKV label={t('eatkcal.v2.cart.total')} value={money(ctrl.totals.totalAmount)} strong />
-        </View>
 
         {ctrl.kazanilacakMacro > 0 ? (
           <View style={[styles.macro, { backgroundColor: c.line }]}>
@@ -653,7 +668,7 @@ export default function EkCheckoutScreen() {
         ) : null}
 
         {stock ? <EkErrorCard error={stock} onAction={() => navigation.navigate('EkCart')} /> : null}
-        {ctrl.payState === 'idle' && (ctrl.screenError || ctrl.checkoutBlockMessage) && !stock ? (
+        {payState === 'idle' && (ctrl.screenError || ctrl.checkoutBlockMessage) && !stock ? (
           <View style={[styles.card, { backgroundColor: c.surface, flexDirection: 'row', gap: 8, alignItems: 'center' }]} accessibilityRole="alert">
             <WarningCircle size={18} color={ctrl.screenError ? c.danger : c.secondary} weight="fill" />
             <Text style={[ekType.c13, { color: c.ink, flex: 1 }]}>{ctrl.screenError || ctrl.checkoutBlockMessage}</Text>
@@ -805,7 +820,26 @@ const styles = StyleSheet.create({
   cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   textBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   textBtnLeft: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  totals: { gap: 8, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   waitRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   payCard: { paddingTop: 20, paddingHorizontal: 16, paddingBottom: 8, borderRadius: 20, gap: 8, alignItems: 'center' },
   payIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
 });
+
+/** Ödeme bekleniyor noktası — 1800 ms nabız; azaltılmış harekette sabit. */
+function PulseDot({ color }: { color: string }) {
+  const reduced = useReducedMotion();
+  const o = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(o, { toValue: 0.35, duration: 900, useNativeDriver: true }),
+        Animated.timing(o, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [o, reduced]);
+  return <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, opacity: o }} />;
+}

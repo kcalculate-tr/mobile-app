@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../core/design';
@@ -48,6 +48,7 @@ import FinScanErrorSheet from '../modules/ai/scan/ui/FinScanErrorSheet';
 import ScanLimitSheet from '../modules/ai/scan/ui/ScanLimitSheet';
 import { EkInfoSheet } from '../modules/eatkcal/v2/ui/InfoSheet';
 import { EkErrorCard } from '../modules/eatkcal/v2/ui/ErrorCard';
+import { EkHeader, ekType, useEk } from '../modules/eatkcal/v2/ui/kit';
 import { addressSaveError, couponError, priceError, stockError } from '../modules/eatkcal/v2/model/errors';
 import { CelebrateOverlay } from '../modules/celebrate/CelebrateOverlay';
 import { NotifyPermissionSheet } from '../modules/celebrate/NotifyPermissionSheet';
@@ -284,6 +285,18 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
   }
 }
 
+function EkErrorsHead() {
+  const { c } = useEk();
+  return (
+    <View style={{ marginHorizontal: -16, gap: 4 }}>
+      <EkHeader title="Hata kartları" onBack={noop} />
+      <Text style={[ekType.c13, { color: c.secondary, paddingHorizontal: 16 }]}>
+        Hepsi aynı kart: başlık · tek satır açıklama · tek kurtarma aksiyonu. Kartlar ilgili ekranda (sepet, ürün, sipariş özeti, adres) görünür.
+      </Text>
+    </View>
+  );
+}
+
 function EkErrorsScene() {
   const insets = useSafeAreaInsets();
   const errors = [
@@ -294,7 +307,9 @@ function EkErrorsScene() {
   ].filter(Boolean) as any[];
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, gap: 12 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 8, gap: 12 }}>
+        {/* G15-S5: FinEkErrors bir katalog panosu — Final'deki sayfa başlığı + açıklama (yalnız vitrin). */}
+        <EkErrorsHead />
         {errors.map((e, i) => (
           <EkErrorCard key={i} error={e} onAction={noop} />
         ))}
@@ -470,7 +485,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
   ),
   ekInfo: () => (
     <Backdrop>
-      <EkInfoSheet visible onClose={noop} />
+      <EkInfoSheet visible onClose={noop} initialTab="zones" />
     </Backdrop>
   ),
   ekErrors: () => <EkErrorsScene />,

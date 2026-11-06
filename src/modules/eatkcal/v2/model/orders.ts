@@ -49,6 +49,18 @@ export interface OrderListRow {
   total_amount: number;
   status: string;
   payment_status: string | null;
+  /** G15-S5: satır fotoğrafı için ilk ürün id'si (orders.items). */
+  first_product_id?: string | null;
+}
+
+/** orders.items JSON'undaki ilk ürün id'si (satır fotoğrafı). */
+export function firstProductId(items: unknown): string | null {
+  if (!Array.isArray(items)) return null;
+  for (const it of items) {
+    const id = (it as Record<string, unknown> | null)?.id;
+    if (id != null && String(id) !== '') return String(id);
+  }
+  return null;
 }
 
 export function filterOrders<T extends { status: string }>(rows: readonly T[], filter: OrdersFilter): T[] {
@@ -182,6 +194,8 @@ export function pastOrderFromRow(row: {
 
 export interface DetailLine {
   name: string;
+  /** G15-S5: satır fotoğrafı için ürün id'si (orders.items[].id; yoksa null). */
+  productId: string | null;
   quantity: number;
   totalPrice: number;
   /** "Basmati · Izgara Tavuk 150 g · Maş Fasulye" — yoksa boş. */
@@ -216,6 +230,7 @@ export function detailLines(raw: { items?: unknown; order_items?: unknown }): De
       const total = it.total_price != null ? Number(it.total_price) : Number((unit * quantity).toFixed(2));
       return {
         name: typeof it.name === 'string' && it.name ? it.name : 'Ürün',
+        productId: it.id != null && String(it.id) !== '' ? String(it.id) : null,
         quantity,
         totalPrice: Number.isFinite(total) ? total : 0,
         summary: selectionSummary(it),
@@ -225,6 +240,7 @@ export function detailLines(raw: { items?: unknown; order_items?: unknown }): De
   const rows = Array.isArray(raw.order_items) ? (raw.order_items as Record<string, unknown>[]) : [];
   return rows.map((item) => ({
     name: String(item.product_name ?? 'Ürün'),
+    productId: null,
     quantity: Number(item.quantity ?? 0),
     totalPrice: Number(item.total_price ?? 0),
     summary: '',

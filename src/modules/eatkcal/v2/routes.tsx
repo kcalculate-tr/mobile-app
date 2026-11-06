@@ -61,3 +61,37 @@ export function ekV2Routes(enabled: boolean): EkRoute[] {
     options: EK_V2_FROM_BOTTOM.has(name) ? BOTTOM : undefined,
   }));
 }
+
+/**
+ * G15-S5 (md.1 + md.5 eski tasarım envanteri) — sipariş akışında bugün 1.0.7
+ * ekranına giden MEVCUT rota adları, `yeni_siparis` açıkken v2 görünümle
+ * kaydolur (çağıranlar — Profil, sekme çubuğu, ödeme dönüşü — aynı adı
+ * kullanmaya devam eder). Kapalıyken verilen bugünkü bileşen AYNEN.
+ * Parametre şekilleri aynı (src/navigation/types.ts):
+ *  - ProfileSavedCards (undefined) → EkSavedCards (FinPrCards)
+ *  - ProfileOrders (undefined)     → EkOrders (FinEkOrders)
+ *  - Addresses ({ selectMode? })   → EkAddresses (FinEkAddresses; aynı parametre)
+ */
+const LEGACY_SWAP = {
+  ProfileSavedCards: withSuspense(lazy(() => import('./screens/EkSavedCardsScreen'))),
+  ProfileOrders: withSuspense(lazy(() => import('./screens/EkOrdersScreen'))),
+  Addresses: withSuspense(lazy(() => import('./screens/EkAddressesScreen'))),
+  // { orderCode, orderId?, noticeMessage? } — ödeme/ücretsiz sipariş dönüşü (FinMoPay son karesi)
+  OrderSuccess: withSuspense(lazy(() => import('./screens/EkOrderSuccessScreen'))),
+  // PaynKolay 3D Secure sayfası — mantık PaymentScreen.tsx'ten satır satır kopya, yalnız görünüm v2
+  PaymentScreen: withSuspense(lazy(() => import('./screens/EkPaymentScreen'))),
+  // Kart doğrulama — mantık AddCardScreen.tsx'ten satır satır kopya, yalnız görünüm v2
+  ProfileAddCard: withSuspense(lazy(() => import('./screens/EkAddCardScreen'))),
+  // Sipariş detayı / ödeme sözleşmeleri → Profil'in Final görünümleri (FinPrSupport / FinPrAgreements)
+  ProfileSupport: withSuspense(lazy(() => import('./screens/EkProfileLinks').then((m) => ({ default: m.EkSupportRoute })))),
+  ProfileContracts: withSuspense(lazy(() => import('./screens/EkProfileLinks').then((m) => ({ default: m.EkContractsRoute })))),
+} as const;
+export type EkLegacySwapName = keyof typeof LEGACY_SWAP;
+
+export function v2ScreenFor<P extends object>(
+  name: EkLegacySwapName,
+  enabled: boolean,
+  legacy: React.ComponentType<P>,
+): React.ComponentType<P> {
+  return enabled ? (LEGACY_SWAP[name] as unknown as React.ComponentType<P>) : legacy;
+}

@@ -4,11 +4,14 @@
 // Bayrak `yeni_siparis` kapalıyken bu ekran kayıtlı değildir.
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
+import { CachedImage } from '../../../../components/CachedImage';
+import { useProductImages } from '../ui/orders/useProductImages';
 import { useAuth } from '../../../../core/AuthContext';
 import { useRequireAuth } from '../../../../hooks/useRequireAuth';
 import { haptic } from '../../../../core/design';
-import { Receipt, Package, WarningCircle } from '../../../../components/icons';
+import { Receipt, WarningCircle } from '../../../../components/icons';
+import { Funnel } from 'phosphor-react-native/lib/commonjs/icons/Funnel';
 import { formatSupabaseErrorForDevLog } from '../../../../lib/supabaseErrors';
 import { getPendingModificationsForUser, type OrderModificationType } from '../../../../lib/orders';
 import { useEkNav } from '../nav';
@@ -44,7 +47,12 @@ export default function EkOrdersScreen() {
   const { user } = useAuth();
   const { isAuthenticated } = useRequireAuth();
 
-  const [filter, setFilter] = useState<OrdersFilter>('all');
+  // YALNIZ __DEV__ vitrini (FinEkOrdersFilterEmpty): başlangıç filtresi.
+  const routeParams = useRoute().params as { vitrinFilter?: OrdersFilter } | undefined;
+  const vitrinFilter = __DEV__ ? routeParams?.vitrinFilter : undefined;
+  const [filter, setFilter] = useState<OrdersFilter>(vitrinFilter ?? 'all');
+  // G15-S5 (FinEkOrders): satır fotoğrafı — ilk ürünün menü görseli.
+  const productImg = useProductImages();
   const [orders, setOrders] = useState<OrderListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -165,7 +173,7 @@ export default function EkOrdersScreen() {
         ) : view === 'filter_empty' ? (
           <View style={styles.stateWrap}>
             <EkStateCard
-              icon={<Package size={24} color={c.ink} />}
+              icon={<Funnel size={24} color={c.ink} />}
               title={t('eatkcal.v2.orders.filter_empty_title')}
               body={t('eatkcal.v2.orders.filter_empty_body')}
               action={t('eatkcal.v2.orders.filter_empty_action')}
@@ -184,6 +192,9 @@ export default function EkOrdersScreen() {
                 testID={`ek-order-row-${order.id}`}
                 style={({ pressed }) => [styles.row, { backgroundColor: c.surface }, pressed && { opacity: 0.85 }]}
               >
+                {productImg(order.first_product_id) ? (
+                  <CachedImage uri={productImg(order.first_product_id)!} style={styles.thumb} />
+                ) : null}
                 <View style={styles.rowBody}>
                   <Text style={[ekType.b15s, { color: c.ink, fontFamily: 'PlusJakartaSans_700Bold' }]} numberOfLines={1}>
                     {orderCodeLabel(order)}
@@ -218,4 +229,5 @@ const styles = StyleSheet.create({
   stateWrap: { marginTop: 120 },
   row: { padding: 14, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 80 },
   rowBody: { flex: 1, gap: 2 },
+  thumb: { width: 52, height: 52, borderRadius: 12 },
 });
