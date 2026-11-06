@@ -88,6 +88,7 @@ const SharedPostScreen = lazy(() => import('../screens/share/SharedPostScreen'))
 const SharedProfileScreen = lazy(() => import('../screens/share/SharedProfileScreen'));
 // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken TrackerScreen'den erişilir.
 const ScanScreen = lazy(() => import('../modules/ai/scan/screens/ScanScreen'));
+const ScanOfflineScreen = lazy(() => import('../modules/ai/scan/screens/ScanOfflineScreen'));
 // eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
 // Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
 const EatHomeScreen = lazy(() => import('../modules/eatkcal/screens/EatHomeScreen'));
@@ -141,6 +142,7 @@ const MyReviewsLazy = withSuspense(MyReviewsScreen);
 const SharedPostLazy = withSuspense(SharedPostScreen);
 const SharedProfileLazy = withSuspense(SharedProfileScreen);
 const ScanLazy = withSuspense(ScanScreen);
+const ScanOfflineLazy = withSuspense(ScanOfflineScreen);
 const EatHomeLazy = withSuspense(EatHomeScreen);
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -507,6 +509,8 @@ export default function AppNavigator() {
         component={ScanLazy}
         options={{ ...AI_MODAL, contentStyle: { backgroundColor: '#2C2C2E' } }}
       />
+      {/* G16-S1 — FinScanOffline: çevrimdışı çekim sonrası sade durum ekranı (yalnız yeni_kabuk+ai_tarama akışından açılır). */}
+      <Stack.Screen name="AiScanOffline" component={ScanOfflineLazy} />
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={HomeScreen} />

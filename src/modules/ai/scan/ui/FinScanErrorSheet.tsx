@@ -68,6 +68,7 @@ export default function FinScanErrorSheet({
   visible,
   kind,
   remaining,
+  pendingCount = 1,
   photoUri,
   onClose,
   onManualEntry,
@@ -78,6 +79,8 @@ export default function FinScanErrorSheet({
   visible: boolean;
   kind: FinScanErrorKind;
   remaining: number;
+  /** Çevrimdışı kuyruktaki fotoğraf sayısı (G16-S1). */
+  pendingCount?: number;
   /** Çekilen foto (failed/offline) — zemin. */
   photoUri?: string | null;
   onClose: () => void;
@@ -123,7 +126,7 @@ export default function FinScanErrorSheet({
     kind === 'failed'
       ? tr('ai_scan.failed_note', { count: remaining })
       : kind === 'offline'
-        ? tr('ai_scan.offline_note', { count: 1 })
+        ? tr('ai_scan.offline_note', { count: pendingCount })
         : null;
   const topChip =
     kind === 'failed'

@@ -38,7 +38,8 @@ import FinPhotoResult from '../ui/FinPhotoResult';
 import FinScanViewfinder from '../ui/FinScanViewfinder';
 import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
 import { fetchProducts } from '../../../../lib/products';
-import { getPendingScanPhoto, setPendingScanPhoto, clearPendingScanPhoto } from '../offlineQueue';
+import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
+import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight } from '../logFlight';
 import { useFeature } from '../../../../core/flags';
 import { FinChip } from '../../../profil/ui/finUi';
@@ -81,47 +82,37 @@ export default function ScanScreen() {
   const [errorKind, setErrorKind] = useState<FinScanErrorKind | null>(null);
   const [mealType, setMealType] = useState<ClientMealType>(() => inferMealTypeFromHour(new Date().getHours()));
   const [pendingToast, setPendingToast] = useState(false);
+  const [pendingMeal, setPendingMeal] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(1);
 
   const insets = useSafeAreaInsets();
 
-  // Ekran açıldığında, önceki bir oturumdan kalmış çevrimdışı bekleyen
-  // fotoğraf varsa ve şimdi bağlantı VARSA sessizce çöz: analiz et, kaydet,
-  // kuyruğu temizle, uçuş olayını yayınla. "Tek kayıt" kuralı: elle giriş bu
-  // arada kuyruğu zaten temizlemiş olabilir — o zaman burada yapılacak iş yok.
+  // Çevrimdışı bekleyen fotoğraflar (G16-S1): ekran açılışında ve bağlantı
+  // geri geldiğinde kuyruk SIRAYLA analiz edilir (processPendingQueue); hak
+  // yalnız başarılı analizde düşer, başarısız/kota biten girdi kuyrukta kalır.
+  // "Tek kayıt": elle giriş kuyruğu zaten boşaltmış olabilir.
   useEffect(() => {
     if (!yeniKabuk || !user?.id) return;
     let cancelled = false;
-    (async () => {
-      const pending = await getPendingScanPhoto();
-      if (!pending || cancelled) return;
-      const net = await NetInfo.fetch();
-      if (!net.isConnected) return;
-      try {
-        const outcome = await runAiScan(getAiScanClient(), {
-          idempotencyKey: pending.id,
-          imageRef: pending.imageUri,
-        });
-        if (cancelled) return;
-        if (outcome.status === 'ok') {
-          await saveAiScanEstimate(getSupabaseClient(), {
-            userId: user.id,
-            mealType: pending.mealType,
-            sourceRef: pending.id,
-            estimate: outcome.estimate,
-          });
-          await clearPendingScanPhoto();
-          const label = t(`meal.${pending.mealType}`);
-          emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: pending.imageUri, mealLabel: label });
-          setPendingToast(true);
-        }
-        // failed/quota_exhausted: bekleyen fotoğraf kuyrukta kalır, bir
-        // sonraki fırsatta (ekran yeniden açıldığında) tekrar denenir.
-      } catch {
-        // Ağ yine kesildi — kuyrukta kalsın, sessizce geç.
+    const drain = () => void drainPendingScans(user.id);
+    const unsubNet = NetInfo.addEventListener((s) => {
+      if (s.isConnected) drain();
+    });
+    const unsubDone = onPendingDrained((res) => {
+      if (cancelled) return;
+      if (res.lastOutcome) recordQuota(res.lastOutcome.remaining, res.lastOutcome.reset_at);
+      for (const p of res.processed) {
+        emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`) });
       }
-    })();
+      if (res.processed.length > 0) {
+        setPendingMeal(res.processed[res.processed.length - 1].entry.mealType);
+        setPendingToast(true);
+      }
+    });
     return () => {
       cancelled = true;
+      unsubNet();
+      unsubDone();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeniKabuk, user?.id]);
@@ -193,6 +184,7 @@ export default function ScanScreen() {
 
     if (!net.isConnected) {
       await setPendingScanPhoto({ id: idempotencyKey, imageUri: uri, mealType, queuedAt: new Date().toISOString() });
+      setPendingCount(await getPendingScanCount());
       setErrorKind('offline');
       return;
     }
@@ -383,8 +375,13 @@ export default function ScanScreen() {
           visible={errorKind !== null}
           kind={errorKind ?? 'failed'}
           remaining={remaining ?? 0}
+          pendingCount={pendingCount}
           photoUri={photoUri}
-          onClose={() => setErrorKind(null)}
+          onClose={() => {
+            // FinScanOffline: çevrimdışı kuyruğa alındı → sade durum ekranı.
+            if (errorKind === 'offline') navigation.replace('AiScanOffline');
+            else setErrorKind(null);
+          }}
           onManualEntry={handleManualEntry}
           onRetry={() => setErrorKind(null)}
           onOpenSettings={() => {
@@ -401,7 +398,7 @@ export default function ScanScreen() {
           <View style={styles.toastLayer} pointerEvents="box-none">
             <Toast
               visible={pendingToast}
-              message={t('ai_scan.logged_to_meal', { meal: t(`meal.${mealType}`) })}
+              message={t('ai_scan.logged_to_meal', { meal: t(`meal.${pendingMeal ?? mealType}`) })}
               onDismiss={() => setPendingToast(false)}
               autoHideMs={2600}
             />

@@ -118,7 +118,7 @@ export default function SignupEatFlowV2({
       />
     );
   }
-  return (
+  const flow = (
     <AddressPhoneFlow
       step={step}
       vitrin={__DEV__ && vitrinStep != null}
@@ -128,6 +128,18 @@ export default function SignupEatFlowV2({
       onLoginRequired={onLoginRequired ?? onBack}
     />
   );
+  // YALNIZ __DEV__ vitrini: Final panolarındaki gri "Klavye" yer tutucusu (gerçekte sistem klavyesi).
+  if (__DEV__ && vitrinStep != null) {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>{flow}</View>
+        <View style={{ height: 300, backgroundColor: '#DCDEE2', alignItems: 'center', justifyContent: 'center' }}>
+          <AppText textRole="helper" style={{ color: '#6B6B70' }}>Klavye</AppText>
+        </View>
+      </View>
+    );
+  }
+  return flow;
 }
 
 // ── Panel 1 · Şehrini seç (alttan sheet) ───────────────────────────────────────
@@ -136,7 +148,12 @@ function CityPanel({ onBack, onPassed }: { onBack: () => void; onPassed: () => v
   const { t } = useT();
   const insets = useSafeAreaInsets();
   const reg = useEatkcalRegistration();
-  const [selected, setSelected] = useState<string | null>(null);
+  // Final (FinSignupEat panel 1): İzmir baştan seçili.
+  const [selected, setSelected] = useState<string | null>('İzmir');
+  const { setCity } = reg;
+  useEffect(() => {
+    setCity('İzmir');
+  }, [setCity]);
   const [notified, setNotified] = useState<Record<string, boolean>>({});
 
   const pick = (city: { name: string; allowed: boolean }) => {

@@ -45,6 +45,7 @@ import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry'
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
 import { EmptyErrorCard, TextScaleCapContext, useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
+import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
 import { buildSlots, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
@@ -1414,7 +1415,7 @@ export default function TrackerScreen() {
   const vitrinParams =
     (__DEV__
       ? (route.params as
-          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey }
+          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey; vitrinOffline?: boolean }
           | undefined)
       : undefined) ?? {};
   const vitrinOpenAuto = __DEV__ ? vitrinParams.vitrinOpenAuto === true : false;
@@ -2447,6 +2448,8 @@ const html = `
                  loglanır (yukarıdaki auto-log etkisi). ── */}
             {yeniKabuk ? (
               <>
+                {/* G16-S1 (FinScanOffline): çevrimdışı çekilen bekleyen fotoğraflar (ai_tarama; kuyruk boşsa çizilmez). */}
+                {aiTarama ? <HomePendingScans forceOffline={__DEV__ && vitrinParams.vitrinOffline === true} onManual={() => openMealFormFor(slotFromHour(new Date().getHours()))} /> : null}
                 <HomeMealSlots
                   slots={homeSlots}
                   eaten={Math.round(consumedTodayMacros.kcal)}

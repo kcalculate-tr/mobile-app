@@ -283,7 +283,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinErrFailed', 'tara', comp('scanError', { kind: 'failed' })],
   ['FinErrOffline', 'tara', comp('scanError', { kind: 'offline' })],
   ['FinErrLimit', 'tara', comp('scanError', { kind: 'limit' })],
-  ['FinScanOffline', 'tara', route(tab('Tracker')), { scene: 'scanOffline' }],
+  ['FinScanOffline', 'tara', route([{ name: 'AiScanOffline', params: { vitrinOffline: true } }]), { scene: 'scanOffline' }],
 
   // ── Profil ─────────────────────────────────────────────────────────────────
   ['FinPrProfile', 'profil', route(tab('Profile'))],
