@@ -6,9 +6,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText, useTheme } from '../../../core/design';
+import { AppText, Sheet, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import BottomSheet from '../../../components/BottomSheet';
 import { Plus, User } from '../../../components/icons';
 import { getTodayConsumptions, type TodayConsumption } from '../todayConsumptions';
 import { shareMealToDay } from '../index';
@@ -121,7 +120,8 @@ function TodayPickerSheet({
   );
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={tt('gun.picker_title')} showCloseButton>
+    // G15-S3 — eski 1.0.7 BottomSheet yerine Final Sheet (28 köşe, tutamaç, kapat, tema).
+    <Sheet visible={visible} onClose={onClose} title={tt('gun.picker_title')}>
       {loading ? (
         <ActivityIndicator style={styles.loader} />
       ) : items.length === 0 ? (
@@ -150,7 +150,7 @@ function TodayPickerSheet({
           )}
         />
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }
 
