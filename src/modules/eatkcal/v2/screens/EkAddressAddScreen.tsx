@@ -84,8 +84,13 @@ export default function EkAddressAddScreen() {
   const route = useRoute<Route>();
   const editId = route.params?.addressId ?? '';
   const selectMode = Boolean(route.params?.selectMode);
-  const vitrin: VitrinAddr = __DEV__ ? ((route.params ?? {}) as VitrinAddr) : {};
-  const vitrinRef = useRef(vitrin);
+  const rv = route.params as VitrinAddr | undefined;
+  // Her erişim ayrı __DEV__ dalında → üretim paketinde vitrin adları kalmaz.
+  const vitrinRef = useRef({
+    perm: __DEV__ ? rv?.vitrinPerm : undefined,
+    map: __DEV__ ? rv?.vitrinMap : undefined,
+    form: __DEV__ ? rv?.vitrinForm : undefined,
+  });
   const { c, t, insets } = useEk();
   const { height: winH } = useWindowDimensions();
   const mapH = Math.round(winH * 0.55);
@@ -100,7 +105,7 @@ export default function EkAddressAddScreen() {
   const [hasProfileContact, setHasProfileContact] = useState(true);
   const [askEmail, setAskEmail] = useState(false);
 
-  const [mapMode, setMapMode] = useState<'map' | 'nomap'>(vitrin.vitrinMap ?? 'map');
+  const [mapMode, setMapMode] = useState<'map' | 'nomap'>(vitrinRef.current.map ?? 'map');
   const [mapKey, setMapKey] = useState(0);
   const [perm, setPerm] = useState<Perm>('checking');
   const [center, setCenter] = useState<Coords | null>(null);
@@ -188,7 +193,7 @@ export default function EkAddressAddScreen() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (vitrinRef.current.vitrinPerm) {
+      if (vitrinRef.current.perm) {
         setPerm('denied');
         return;
       }
@@ -255,7 +260,7 @@ export default function EkAddressAddScreen() {
       const geo = await reverseGeocodeAt(coords.latitude, coords.longitude);
       if (seq !== geoSeq.current) return;
       setGeocoding(false);
-      if (vitrinRef.current.vitrinForm) return; // vitrin: örnek adres sabit kalır
+      if (vitrinRef.current.form) return; // vitrin: örnek adres sabit kalır
       if (!fill || !geo) return;
       const m = matchReverseGeo(geo, indexRef.current);
       setNeedsNeighbourhood(m.needsNeighbourhood);
@@ -294,7 +299,7 @@ export default function EkAddressAddScreen() {
 
   // Vitrin: veri yüklendikten sonra Final'deki örnek adresi forma uygula.
   useEffect(() => {
-    const vf = vitrinRef.current.vitrinForm;
+    const vf = vitrinRef.current.form;
     if (loading || !vf) return;
     setForm((prev) => ({ ...prev, ...vf }));
     setFilledFromMap(mapMode === 'map');

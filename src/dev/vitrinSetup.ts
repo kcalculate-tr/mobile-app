@@ -7,7 +7,8 @@ import { seedStorage, type MockRoute } from './vitrinState';
 import { useCartStore } from '../store/cartStore';
 import { useTbDraft } from '../modules/onboarding/takibe/draft';
 import { FEED_TIP_SEEN_FLAG } from '../modules/kesfet/ui/FeedTip';
-import { mockRoutesFor } from './vitrinFixtures';
+import { mockRoutesFor, vitrinHomeAddress } from './vitrinFixtures';
+import { useAddressStore } from '../store/addressStore';
 
 export interface PreparedScene {
   routes: RouteSpec[] | null;
@@ -40,6 +41,14 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
     'eatkcal-city-gate-passed': ['city', 'waitlist', 'berlin'].includes(scene) ? null : '1',
   });
+
+  // G15-S5: eatkcal ana sayfa (FinEkHome) teslimat satırı için seçili adres
+  // (gerçekte AuthContext.hydrateSelectedAddress doldurur; vitrin oturumu sahte).
+  const targetJson = JSON.stringify(entry.target);
+  const isEkHomeTab = /"name":"Home"/.test(targetJson) && !/"name":"Ek/.test(targetJson);
+  if (entry.area === 'eatkcal') (useAddressStore.getState() as any).setSelectedAddress?.(
+    isEkHomeTab && entry.data !== 'empty' && !['city', 'waitlist', 'berlin'].includes(scene) ? vitrinHomeAddress() : null,
+  );
 
   // Sepet: Final sepet/özet sahneleri dolu, boş durumda boş.
   const cart = useCartStore.getState() as any;

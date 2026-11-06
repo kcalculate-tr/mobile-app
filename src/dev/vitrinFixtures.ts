@@ -118,9 +118,35 @@ function addresses(): any[] {
   ];
 }
 
+/** G15-S5 FinEkHome: seçili adres (Ev · Konak). */
+export function vitrinHomeAddress(): any {
+  return addresses()[0];
+}
+
+/** G15-S5 FinEkHome: canlı sipariş kartı (Hazırlanıyor). */
+function activeOrder(ids: string[]): any[] {
+  return [
+    {
+      id: 1,
+      order_code: 'KCAL-1042',
+      status: 'preparing',
+      total_amount: 742,
+      items: [{ id: ids[0] ?? null, name: 'Tavuklu Bowl', quantity: 1 }],
+      created_at: new Date(Date.now() - 12 * 60000).toISOString(),
+      updated_at: new Date(Date.now() - 4 * 60000).toISOString(),
+      district: 'Konak',
+      delivery_method: 'home_delivery',
+    },
+  ];
+}
+
 export function mockRoutesFor(entry: ResolvedEntry, productIds: string[] = []): MockRoute[] {
   const scene = entry.scene ?? '';
   const target = JSON.stringify(entry.target);
+  const ekHomeTab = /"name":"Home"/.test(target) && !/"name":"Ek/.test(target) && !target.includes('"Tracker"');
+  if (ekHomeTab && !['city', 'waitlist', 'berlin'].includes(scene)) {
+    return [...identityRoutes(entry), { match: '/rest/v1/orders', body: entry.data === 'empty' ? [] : activeOrder(productIds) }];
+  }
   if (/"Ek(Addresses|Checkout|Cart)"/.test(target)) {
     return [...identityRoutes(entry), { match: '/rest/v1/addresses', body: entry.data === 'empty' ? [] : addresses() }];
   }

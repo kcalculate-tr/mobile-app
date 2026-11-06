@@ -40,7 +40,12 @@ export default function EkStoreScreen() {
   const navigation = useEkNav();
   const routeParams = useRoute<R>().params as R['params'] & VitrinParams;
   const { brandKey } = routeParams;
-  const vitrin: VitrinParams = __DEV__ ? routeParams : {};
+  // Her erişim ayrı __DEV__ dalında → üretim paketinde vitrin adları kalmaz.
+  const vitrin = {
+    reviews: __DEV__ ? routeParams.vitrinReviews : undefined,
+    aggregate: __DEV__ ? routeParams.vitrinAggregate : undefined,
+    subScores: __DEV__ ? routeParams.vitrinSubScores : undefined,
+  };
   const addItem = useCartStore((s) => s.addItem);
   const cartCount = useCartStore((s) => s.items.reduce((n, i) => n + (i.parentLineKey ? 0 : i.quantity), 0));
   const { chip } = useDeliveryChip();
@@ -82,8 +87,8 @@ export default function EkStoreScreen() {
   }, [load]);
 
   useEffect(() => {
-    if (vitrin.vitrinReviews && reviews.length > 0) setReviewsOpen(true);
-  }, [vitrin.vitrinReviews, reviews.length]);
+    if (vitrin.reviews && reviews.length > 0) setReviewsOpen(true);
+  }, [vitrin.reviews, reviews.length]);
 
   const chips = useMemo(() => storeCategories(categories, products), [categories, products]);
   const visible = useMemo(() => filterByCategory(products, category), [products, category]);
@@ -282,8 +287,8 @@ export default function EkStoreScreen() {
         visible={reviewsOpen}
         onClose={() => setReviewsOpen(false)}
         reviews={reviews}
-        aggregate={vitrin.vitrinAggregate}
-        subScores={vitrin.vitrinSubScores}
+        aggregate={vitrin.aggregate}
+        subScores={vitrin.subScores}
       />
       <Toast
         visible={toast}

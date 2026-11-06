@@ -25,7 +25,7 @@ import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { useFeature } from '../../../../core/flags';
-import { MagnifyingGlass, Receipt, ShoppingBag, MapPin, CaretRight, X, BellRinging, Info } from '../../../../components/icons';
+import { MagnifyingGlass, Receipt, MapPin, CaretRight, X, BellRinging, Info } from '../../../../components/icons';
 import { EkInfoSheet } from '../ui/InfoSheet';
 import { TAB_BAR_TOTAL } from '../../../../constants/layout';
 
@@ -39,7 +39,6 @@ import { fetchMacroProfile, fetchMacroSettings, DEFAULT_MACRO_SETTINGS, type Mac
 import { fetchBrand, type Brand } from '../../../../lib/brands';
 import { resolveNavigation } from '../../../../lib/navigation';
 import { useAddressStore } from '../../../../store/addressStore';
-import { useCartStore } from '../../../../store/cartStore';
 import { readCityGatePassed, writeCityGatePassed } from '../../cityGateStorage';
 import { CityGateView, type GateStep } from '../ui/gate/CityGateView';
 import type { Product } from '../../../../types';
@@ -84,7 +83,6 @@ function EkHomeContent() {
   const [nearbyNotified, setNearbyNotified] = useState(false);
 
   const address = useAddressStore((s) => s.selectedAddress);
-  const cartCount = useCartStore((s) => s.items.reduce((n, i) => n + (i.parentLineKey ? 0 : i.quantity), 0));
 
   // ── Katalog (HomeScreen.fetchData ile aynı fonksiyonlar) ─────────────────
   const fetchData = useCallback(async () => {
@@ -300,26 +298,16 @@ function EkHomeContent() {
           <Text style={[ekType.h24, { color: c.ink, flex: 1 }]} accessibilityRole="header">
             {t('eatkcal.v2.home.title')}
           </Text>
-          <IconBtn label={t('eatkcal.v2.home.info')} onPress={() => setInfoOpen(true)} testID="ek-home-info">
-            <Info size={22} color={c.ink} />
-          </IconBtn>
+          {/* G15-S5 (FinEkHome): Final sırası ara · siparişler · bilgi. Sepet başlıkta değil,
+              sekme çubuğunun sepet hapında (yeni kabuk; v2 kayıtlıyken EkCart'a gider). */}
           <IconBtn label={t('eatkcal.v2.home.search')} onPress={() => setSearchOpen(true)} testID="ek-home-search">
             <MagnifyingGlass size={22} color={c.ink} />
           </IconBtn>
           <IconBtn label={t('eatkcal.v2.home.orders')} onPress={() => navigation.navigate('EkOrders')} testID="ek-home-orders">
             <Receipt size={22} color={c.ink} />
           </IconBtn>
-          <IconBtn
-            label={cartCount > 0 ? t('eatkcal.v2.home.cart_count', { count: cartCount }) : t('eatkcal.v2.home.cart')}
-            onPress={() => navigation.navigate('EkCart')}
-            testID="ek-home-cart"
-          >
-            <ShoppingBag size={22} color={c.ink} />
-            {cartCount > 0 ? (
-              <View style={[styles.badge, { backgroundColor: c.accent }]}>
-                <Text style={[ekType.c13s, ekType.num, { color: c.onAccent, fontSize: 13, lineHeight: 16 }]}>{cartCount}</Text>
-              </View>
-            ) : null}
+          <IconBtn label={t('eatkcal.v2.home.info')} onPress={() => setInfoOpen(true)} testID="ek-home-info">
+            <Info size={22} color={c.ink} />
           </IconBtn>
         </>
       )}
