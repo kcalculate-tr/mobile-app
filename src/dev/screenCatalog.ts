@@ -234,8 +234,15 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinEkErrors', 'eatkcal', comp('ekErrors')],
 
   // ── Giriş / tanıtım ────────────────────────────────────────────────────────
-  ['FinSignupAI', 'giris', comp('signupAI'), { auth: 'guest' }],
-  ['FinSignupEat', 'giris', comp('signupEat'), { auth: 'guest' }],
+  ['FinSignupAI', 'giris', comp('signupAIV2', { step: 'welcome' }), { auth: 'guest' }],
+  ['FinSignupEat', 'giris', comp('signupEatV2', { step: 'city' }), { auth: 'guest' }],
+  ['FinSignupEatAddress', 'giris', comp('signupEatV2', { step: 'address' }), { auth: 'guest' }],
+  ['FinSignupEatPhone', 'giris', comp('signupEatV2', { step: 'phone' }), { auth: 'guest' }],
+  // G15-S1 Ek karar — v2 adımları (Final'de aynı panonun 2./3. paneli; ayrı çekim için).
+  ['FinLoginEmail', 'giris', comp('loginV2', { step: 'email' }), { auth: 'guest' }],
+  ['FinLoginCode', 'giris', comp('loginV2', { step: 'code' }), { auth: 'guest' }],
+  ['FinSignupAIHandle', 'giris', comp('signupAIV2', { step: 'handle' }), { auth: 'guest' }],
+  ['FinSignupAIProfile', 'giris', comp('signupAIV2', { step: 'profile' }), { auth: 'guest' }],
   ['FinIntro', 'giris', route(tab('Tracker')), { scene: 'intro' }],
   ['FinIntroOrder', 'giris', route(tab('Tracker')), { scene: 'introOrder' }],
 

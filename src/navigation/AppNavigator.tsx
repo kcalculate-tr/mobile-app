@@ -57,11 +57,13 @@ const ComposerScreen = lazy(() => import('../modules/kesfet/ui/ComposerScreen'))
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
 const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
 const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
-const KcalAiSignUpRouteScreen = lazy(() => import('../modules/profil/ui/signup/KcalAiSignUpRoute'));
+// G15-S1 Ek karar: `yeni_onboarding` açıkken Final görünümü (v2), kapalıyken eski
+// ekran AYNEN (kapılar kendi içinde bayrağa bakar).
+const KcalAiSignUpRouteScreen = lazy(() => import('../modules/onboarding/v2/SignupAIGate'));
 const OffersScreen = lazy(() => import('../screens/OffersScreen'));
 const OrderSuccessScreen = lazy(() => import('../modules/eatkcal/screens/OrderSuccessScreen'));
 const ProductDetailScreen = lazy(() => import('../screens/ProductDetailScreen'));
-const UnifiedLoginScreen = lazy(() => import('../screens/auth/UnifiedLoginScreen'));
+const UnifiedLoginScreen = lazy(() => import('../modules/onboarding/v2/LoginGate'));
 const NutritionProfileScreen = lazy(() => import('../screens/tracker/NutritionProfileScreen'));
 const MeasurementHistoryScreen = lazy(() => import('../screens/tracker/MeasurementHistoryScreen'));
 const PaymentScreen = lazy(() => import('../modules/eatkcal/screens/PaymentScreen'));

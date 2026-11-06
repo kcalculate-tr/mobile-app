@@ -12,7 +12,8 @@
 import React, { useCallback } from 'react';
 import { View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import SignupEatScreen from '../../../profil/ui/screens/SignupEatScreen';
+import SignupEatGate from '../../../onboarding/v2/SignupEatGate';
+import { useFeature } from '../../../../core/flags';
 import { writeCityGatePassed } from '../../cityGateStorage';
 import { useAddressStore } from '../../../../store/addressStore';
 import { useEkNav, type EkV2ParamList } from '../nav';
@@ -27,10 +28,14 @@ export default function EkCityGateScreen() {
 
   const onBack = useCallback(() => navigation.goBack(), [navigation]);
 
+  // G15-S1 Ek karar: `yeni_onboarding` açıkken Final 3 panel (şehir → adres → telefon)
+  // SignupEatGate içinde; adres akışın İÇİNDE kaydedilir → ayrıca EkAddressAdd'e gidilmez.
+  const yeniOnboarding = useFeature('yeni_onboarding');
+
   const onAllowed = useCallback(async () => {
-    await writeCityGatePassed();
+    if (!yeniOnboarding) await writeCityGatePassed();
     const hasAddress = Boolean(useAddressStore.getState().selectedAddress);
-    if (!hasAddress) {
+    if (!hasAddress && !yeniOnboarding) {
       navigation.replace('EkAddressAdd', { selectMode: true });
       return;
     }
@@ -41,11 +46,11 @@ export default function EkCityGateScreen() {
     } else {
       navigation.goBack();
     }
-  }, [navigation, params?.next, params?.brandKey]);
+  }, [navigation, params?.next, params?.brandKey, yeniOnboarding]);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top }} testID="ek-city-gate">
-      <SignupEatScreen onBack={onBack} onAllowed={onAllowed} />
+      <SignupEatGate onBack={onBack} onAllowed={onAllowed} onCityAllowed={() => void writeCityGatePassed()} />
     </View>
   );
 }

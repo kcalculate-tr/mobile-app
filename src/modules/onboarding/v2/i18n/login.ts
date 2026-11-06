@@ -1,3 +1,42 @@
 // G15-S1 (Ek karar) — Giriş v2 metinleri (anahtar yolu: onboarding.v2.login.*).
-export const tr: Record<string, string> = {};
-export const en: Record<string, string> = {};
+// Metinler mevcut UnifiedLoginScreen ile aynı içerik; yalnız TR + EN.
+export const tr: Record<string, string> = {
+  title: 'Devam etmek için giriş yap.',
+  sub: 'Hesabın yoksa e-postanla 30 saniyede açılır.',
+  email_label: 'E-posta',
+  email_placeholder: 'ornek@eposta.com',
+  send: 'Kod gönder',
+  or: 'ya da',
+  age: '18 yaşından büyüğüm ve kullanım koşullarını kabul ediyorum.',
+  err_age: 'Devam etmek için 18 yaşından büyük olduğunu onayla.',
+  err_email: 'Geçerli bir e-posta gir.',
+  code_title: 'Kodunu gönderdik.',
+  code_sub: '%{email} adresine 6 haneli kod yolladık.',
+  code_wrong: 'Kod yanlış. Tekrar dene.',
+  code_label: '6 haneli kod',
+  resend: 'Kodu tekrar gönder',
+  resend_now: 'Şimdi',
+  change_email: 'E-postayı değiştir',
+  verify: 'Doğrula',
+  back: 'Geri',
+};
+export const en: Record<string, string> = {
+  title: 'Sign in to continue.',
+  sub: 'No account yet? Your email opens one in 30 seconds.',
+  email_label: 'Email',
+  email_placeholder: 'name@email.com',
+  send: 'Send code',
+  or: 'or',
+  age: 'I am over 18 and accept the terms of use.',
+  err_age: 'Confirm that you are over 18 to continue.',
+  err_email: 'Enter a valid email.',
+  code_title: 'We sent your code.',
+  code_sub: 'We sent a 6-digit code to %{email}.',
+  code_wrong: 'Wrong code. Try again.',
+  code_label: '6-digit code',
+  resend: 'Resend code',
+  resend_now: 'Now',
+  change_email: 'Change email',
+  verify: 'Verify',
+  back: 'Back',
+};

@@ -8,9 +8,9 @@
 (5) Akış Final sırasına çekildi: Karşılama → Niyet → Hesap → Bildirim → Takibe başla (yeni kullanıcı); dönen kullanıcı Hesap'tan Tabs'a. Auth çağrıları aynı.
 (6) Takibe başla: seçili lime kart + tik, siyah/beyaz "Devam et", kg/hafta kaydırıcısı (PanResponder, 4 adım, erişilebilir), tekerlek seçiciler (doğum yılı/boy/kilo), makro kartları, altı çizili "Nasıl hesaplanır?" + Final sheet metni, ikonlu yeşil daire satırlar + açıklamalar.
 (7) FinIntro/IntroOrder: "Siparişin aynı yerde." kenarlıklı kart + çanta ikonu, "Sonra" çerçevesiz mürekkep metin. FinSignupAI: kcal. işareti eklendi.
-(8) Kontrol: tsc 0 · test:unit 527 geçti / 1 atlandı (0 fail) · test:components 90/90 (snapshot 1/1, Tracker flagOff aynı) · `expo export --platform ios` ✓.
-(9) Bayrak kapalı: değişen dosyalar yalnız `yeni_onboarding`/yeni kabuk yolunda (Onboarding, TakibeBasla, IntroOverlay, `yeni_kabuk` içindeki SignupAIScreen) + dictionaries'te onboarding/tb anahtarları; package.json/app.config/KİMSE dosyaları DEĞİŞMEDİ.
-(10) Son commit GERÇEK dosya `docs/night/G15-S1-DONE`. Açık kalanlar SORULAR'da (Login eski tasarım, SignupAI/Eat 2.–3. adımlar, hedef tarihi).
+(8) Ek karar (İlter): Giriş + Kcal AI kayıt 2.–3. adım + eatkcal ilk sipariş kaydı (şehir/harita doğrulamalı adres/telefon) `onboarding/v2/` altında YENİ bileşenler; eski auth/adres dosyalarında diff = 0 (kanıt envanter bölümünde); kapılar bayrak kapalıyken eski ekranı aynen açar. `Eski tasarım: 0`.
+(9) Kontrol: tsc 0 · test:unit 553 geçti / 0 fail / 1 atlandı (v2 mantık +26) · test:components 124/124 (snapshot 1/1, Tracker flagOff aynı; v2 +34) · `expo export --platform ios` ✓. KİMSE/auth/adres mantık dosyalarında diff boş; package.json/app.config değişmedi.
+(10) Son commit GERÇEK dosya `docs/night/G15-S1-DONE`. Açık kalanlar SORULAR'da (SMS metni, harita sıkılığı, gate bayrağı, hedef tarihi).
 
 ## Pano tablosu (önce G14 → sonra G15) — görseller `.claude/night/out/g15/app/`
 Doğrulama: ✓ = çekimi Final ile yan yana okudum; ◦ = aynı bileşen/iskelet, ölçü ve renk token'ları Final'den, tek tek göz karşılaştırması yapılmadı (Light/Dark çiftinin diğeri ✓).
@@ -37,22 +37,30 @@ Doğrulama: ✓ = çekimi Final ile yan yana okudum; ◦ = aynı bileşen/iskele
 | FinTbFirst / -Dark | büyük | aynı ✓ (Dark) / ◦ | |
 | FinIntro / -Dark | küçük | küçük fark ✓ | sheet başlığı 20 (Final 24) |
 | FinIntroOrder / -Dark | büyük | küçük fark ✓ | mock'ta geçmiş sipariş yoksa "Göz at/Sonra" (veri) |
-| FinSignupAI / -Dark | büyük | büyük fark | yalnız 1. adım + logo; 2./3. adım ayrı ekranda (SORULAR 2) |
-| FinSignupEat / -Dark | büyük / yok | büyük fark (değişmedi) | adres/telefon adımları KİMSE mantığı (SORULAR 2) |
+| FinSignupAI / -Dark | büyük | küçük fark ✓ | v2 akış: karşılama (logo) → kod → "Seni nasıl tanısınlar?" → "Profilini tamamla"; handle adımında mevcut "Vazgeç" korundu, vitrin örnek verisi (İlter/@ilter) yok |
+| FinSignupAIHandle / Profile (ek çekim) | — | küçük fark ✓ | Final panosunun 2./3. paneli |
+| FinSignupEat / -Dark | büyük / yok | küçük fark ✓ | şehir sheet'i; arka plan (mutfak listesi) ve İzmir tiki yok |
+| FinSignupEatAddress / Phone (ek çekim) | — | küçük fark ✓ | adres: mantık gereği İlçe/Mahalle alanları + harita doğrulaması; telefon: SMS vaadi yok (SORULAR 2) |
+| FinLoginEmail / Code (ek çekim, Final'de ayrı pano yok → SignupAI 1. adım dili) | — | küçük fark ✓ | Giriş v2 (OTP) |
 
 ## Eski tasarım envanteri (bayraklar açık, kayıt → onboarding → takibe başla → ilk ana sayfa)
-Eski tasarım: 1
-- `Login` rotası (`screens/auth/UnifiedLoginScreen`): Karşılama'daki "Zaten hesabım var" ve Hesap'taki "E-posta ile devam et" buraya gider. Auth dosyası olduğundan (kural: auth'a dokunma) yeniden giydirilmedi. → SORULAR 1.
+Eski tasarım: 0
+- Ek karar (İlter yetkisiyle, görünüm katmanı istisnası): `Login` rotası artık `LoginGate` → `yeni_onboarding` açıkken YENİ `onboarding/v2/LoginV2` (aynı OTP/Apple/Google/18+/redirect mantığı), `KcalAiSignUp` rotası `SignupAIGate` → `SignupAIFlowV2` (karşılama → kod → ad+kullanıcı adı → fotoğraf+bio; aynı `useAuth` + `useKcalculateAiRegistration`), il kapısı `EkCityGate` → `SignupEatGate` → `SignupEatFlowV2` (şehir → harita doğrulamalı adres → telefon; aynı `useEatkcalRegistration` + eatkcal v2 `addressModel/addressGeocode/addressSave`). Bayrak kapalıyken kapılar eski ekranı AYNEN render eder.
+- Eski dosyalar diff = 0 kanıtı: `git diff night14/visual -- src/screens/auth/UnifiedLoginScreen.tsx src/modules/profil/ui/signup/KcalAiSignUpScreen.tsx src/modules/profil/ui/signup/KcalAiSignUpRoute.tsx src/modules/profil/useRegistration.ts src/modules/profil/ui/screens/SignupEatScreen.tsx src/screens/AddressesScreen.tsx src/components/checkout/AddressVerificationSheet.tsx src/lib/{delivery,addresses,geo,deliveryRules,nearestLocation}.ts src/modules/eatkcal/v2/model src/modules/eatkcal/v2/ui src/modules/eatkcal/v2/screens/EkAddressAddScreen.tsx src/components/onboarding` → BOŞ (çıktı yok).
 - Kontrol edilenler temiz: Onboarding 5 ekran, Takibe başla 7 ekran (+ sheet), IntroOverlay yeni bileşenler; ilk ana sayfa G14'te yeni kabukta.
 Yeniden giydirilen (Final'de yok): kg/hafta kaydırıcısında 4 adımlı tempo seçimi korundu (veri aynı); Hesap'taki E-posta yolu korundu.
 
 ## Değişen dosyalar
 `onboarding/components/{onbTheme.ts,OnbScaffold.tsx,pieces.tsx,UnderageView.tsx}`, `onboarding/OnboardingNavigator.tsx`, `onboarding/takibe/{TakibeNavigator.tsx,TbParts.tsx}`, `onboarding/intro/IntroOverlay.tsx`, `profil/ui/screens/SignupAIScreen.tsx` (yalnız logo), `core/i18n/dictionaries.ts` (onboarding/tb: `intent.note`, `underage.body`, `pace.min/max`, `how.*_desc`; `pace.projection` metni "Bu tempoyla hedefine").
+Ek karar dosyaları (YENİ): `onboarding/v2/{FormScreen,LoginV2,LoginGate,loginLogic,SignupAIFlowV2,SignupAIGate,signupAILogic,SignupEatFlowV2,SignupEatGate,signupEatLogic}.ts(x)`, `v2/i18n/{login,signupAI,signupEat}.ts` (dictionaries'e `onboarding.v2.*` olarak bağlı), testler `v2/__tests__/*` (unit: login 9, signupAI 7, signupEat 10) + `v2/__component_tests__/*` (jest: Login 7, SignupAI 12, SignupEat 15; giriş başarılı/hatalı kod/sosyal iptal, kayıt adımları, adres adımı mock'larla, bayrak kapalı = eski ekran).
+Değişen mevcut dosyalar (ENTEGRASYONA — S5/diğer oturumlar için not): `navigation/AppNavigator.tsx` (2 lazy import hedefi → kapılar), `eatkcal/v2/screens/EkCityGateScreen.tsx` (SignupEatScreen → SignupEatGate; bayrak kapalı yol aynı), `dev/screenCatalog.ts` + `dev/vitrinScreens.tsx` + `dev/__tests__/screenCatalog.test.ts` (adım çekimleri, yalnız dev).
 Dev-only: `TbResult` rotası `vitrinHow` parametresi (yalnız `__DEV__`) — FinTbHow vitrini sheet açık başlar.
 
 ## SORULAR
-1. **Login eski tasarım**: UnifiedLoginScreen Final'e giydirilsin mi (auth dosyası, kural gereği dokunulmadı)? Ya da "Zaten hesabım var / E-posta" Final SignupAI e-posta adımına mı yönlensin (şu an Keşfet'e bağlı `KcalAiSignUp` rotası)?
-2. **FinSignupAI 2./3. adım ve FinSignupEat**: gerçek akış `KcalAiSignUpScreen` (profil modülü) içinde; vitrin yalnız 1. adımı gösteriyor. Eat adres/telefon adımları KİMSE (adres mantığı). Bu panolar "aynı/küçük fark" hedefinin dışında kaldı.
+1. **SignupEat telefon metni**: Final "Doğrulama kodu SMS ile gelir" diyor; mevcut akışta SMS doğrulaması yok (telefon adresle kaydediliyor). Uydurma vaat olmasın diye metin "Adresinle birlikte kaydedilir; kurye teslimat için kullanır." yapıldı. SMS doğrulaması kurulacak mı?
+2. **SignupEat harita doğrulaması sıkılaştı**: v2'de pin kullanıcı bırakmadan/konum alınmadan "Devam" ilerlemez (eski adres ekranı varsayılan merkezi koordinat olarak kaydediyordu). Harita hiç açılamazsa elle ilçe/mahalle ile devam edilir. Bu sıkılık istenen mi?
+2b. **Gate bayrağı**: kapılar `useFeature('yeni_onboarding')` kullanıyor (AppNavigator'daki `useColdStartFeature` dışa açık değil); oturum ortasında bayrak değişirse ekran değişebilir. Soğuk-açılış kilidi istenirse bayrak değeri prop olarak geçilir.
+2c. **Giriş adımında Final'de olmayan "Vazgeç"** (handle/kod adımı) eski davranış olduğu için korundu.
 3. **FinTbPace hedef tarihi**: akışta hedef kilo sorulmuyor, tarih hesaplanamaz; satır "—" gösteriyor. Hedef kilo adımı eklensin mi (Final'de yok) yoksa satır kalksın mı?
 4. **Notify metni** (G14 SORULAR 1 ile aynı): "19:30'da hatırlat" vaadinin arkasında zamanlanmış bildirim yok; metin Final'deki gibi bırakıldı.
 5. Tekerlek seçicide varsayılanlar 1995 / 170 cm / 70 kg (kullanıcı değiştirmeden geçebilir); açık rıza + cinsiyet yine zorunlu. Boş başlatma istenirse söyle.
