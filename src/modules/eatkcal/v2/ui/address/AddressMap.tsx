@@ -4,8 +4,9 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import MapView, { type Region } from 'react-native-maps';
-import { MapPin, WifiSlash } from '../../../../../components/icons';
-import { ekType, EkButton, useEk } from '../kit';
+import { MapPin, MapTrifold } from '../../../../../components/icons';
+import { ekType, useEk } from '../kit';
+import { EkInkButton } from '../orders/OrdersParts';
 
 /** Bu sürede `onMapReady` gelmezse harita yüklenemedi sayılır. */
 export const MAP_READY_TIMEOUT_MS = 10000;
@@ -30,7 +31,7 @@ export const AddressMap = forwardRef<AddressMapHandle, Props>(function AddressMa
   { height, initialCenter, zoomedIn, onCenterChange, onMapFailed, status, dragHint, mapLabel },
   ref,
 ) {
-  const { c } = useEk();
+  const { c, theme } = useEk();
   const mapRef = useRef<MapView>(null);
   const readyRef = useRef(false);
   const failedRef = useRef(onMapFailed);
@@ -67,6 +68,7 @@ export const AddressMap = forwardRef<AddressMapHandle, Props>(function AddressMa
         showsUserLocation
         showsMyLocationButton={false}
         toolbarEnabled={false}
+        userInterfaceStyle={theme.isDark ? 'dark' : 'light'}
       />
       <View pointerEvents="none" style={styles.pinWrap}>
         {dragHint ? (
@@ -105,11 +107,14 @@ export function NoMapCard({
     <View style={[styles.noMap, { height, backgroundColor: c.line }]}>
       <View style={[styles.noMapCard, { backgroundColor: c.surface }]} accessibilityRole="alert">
         <View style={[styles.noMapIcon, { backgroundColor: c.line }]}>
-          <WifiSlash size={22} color={c.ink} />
+          <MapTrifold size={22} color={c.ink} />
         </View>
         <Text style={[ekType.h20, { color: c.ink, textAlign: 'center' }]}>{title}</Text>
         <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center', marginBottom: 8 }]}>{body}</Text>
-        <EkButton label={retryLabel} onPress={onRetry} style={{ alignSelf: 'stretch' }} testID="ek-address-nomap-retry" />
+        <View style={{ alignSelf: 'stretch' }}>
+          {/* G15-S5 (FinEkAddressNoMap): Final kurtarma düğmesi mürekkep (lime değil). */}
+          <EkInkButton label={retryLabel} onPress={onRetry} testID="ek-address-nomap-retry" />
+        </View>
       </View>
     </View>
   );

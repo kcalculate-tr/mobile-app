@@ -323,17 +323,24 @@ export default function EkProductScreen() {
     setTemplateSelections((prev) => ({ ...prev, [tplId]: toggleTemplateSelection(link, prev[tplId] || [], Number(itemKey)) }));
   };
 
+  const groupsRef = useRef(groupModels);
+  groupsRef.current = groupModels;
   useEffect(() => {
     if (!vitrinScroll || loading) return;
-    const h = setTimeout(() => {
-      const firstKey = groupModels[0]?.key;
+    // Seçim grupları ve bölüm konumları yüklemeden sonra ölçülür → ölçülene kadar dene.
+    let n = 0;
+    const h = setInterval(() => {
+      n += 1;
+      const firstKey = groupsRef.current[0]?.key;
       const fy = firstKey ? sectionY.current[firstKey] : undefined;
+      if (fy == null && n < 15) return;
+      clearInterval(h);
       const y = fy != null ? Math.max(0, fy - 8) : bodyY.current + macroBottom.current + 24;
       scrollRef.current?.scrollTo({ y, animated: false });
-      if (derived?.macroCardEnabled) setStripVisible(true);
-    }, 600);
-    return () => clearTimeout(h);
-  }, [vitrinScroll, loading, derived?.macroCardEnabled]);
+      setStripVisible(true);
+    }, 300);
+    return () => clearInterval(h);
+  }, [vitrinScroll, loading]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (macroBottom.current <= 0 || !derived?.macroCardEnabled) return;
