@@ -11,6 +11,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Switch, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { Flame, Package, ChatCircleDots, Tag } from '../../../../components/icons';
+import { setStreakReminderEnabled, syncStreakReminder, cancelStreakReminders } from '../../streakReminder';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
@@ -108,6 +110,18 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
       if (error) {
         setPrefs((p) => ({ ...p, [key]: !next }));
         Alert.alert(tr('profil.notify_title'), error.message);
+      } else if (key === 'reminder_enabled') {
+        // G15-S4 — Seri hatırlatması (yerel 19:30): aç/kapa.
+        await setStreakReminderEnabled(next);
+        if (next) {
+          await syncStreakReminder({
+            loggedToday: false,
+            title: tr('profil.streak_reminder_title'),
+            body: tr('profil.streak_reminder_body'),
+          });
+        } else {
+          await cancelStreakReminders();
+        }
       }
     } finally {
       setSaving(null);
@@ -124,28 +138,34 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
     key: PrefKey;
     label: string;
     hint: string;
+    icon: React.ReactNode;
     locked?: boolean;
   }[] = [
-    {
-      key: 'transactional_enabled',
-      label: tr('profil.notify_transactional'),
-      hint: tr('profil.notify_transactional_hint'),
-      locked: true,
-    },
+    // FinPrNotify sırası: Seri hatırlatması · Sipariş durumu · Sosyal · Kampanyalar.
     {
       key: 'reminder_enabled',
       label: tr('profil.notify_reminder'),
       hint: tr('profil.notify_reminder_hint'),
+      icon: <Flame size={20} color={t.color.ink} />,
     },
     {
-      key: 'marketing_enabled',
-      label: tr('profil.notify_marketing'),
-      hint: tr('profil.notify_marketing_hint'),
+      key: 'transactional_enabled',
+      label: tr('profil.notify_transactional'),
+      hint: tr('profil.notify_transactional_hint'),
+      icon: <Package size={20} color={t.color.ink} />,
+      locked: true,
     },
     {
       key: 'behavioral_enabled',
       label: tr('profil.notify_social'),
       hint: tr('profil.notify_social_hint'),
+      icon: <ChatCircleDots size={20} color={t.color.ink} />,
+    },
+    {
+      key: 'marketing_enabled',
+      label: tr('profil.notify_marketing'),
+      hint: tr('profil.notify_marketing_hint'),
+      icon: <Tag size={20} color={t.color.ink} />,
     },
   ];
 
@@ -189,6 +209,7 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
                     borderTopColor: t.color.line,
                   }}
                 >
+                  <View style={{ width: 22, alignItems: 'center' }}>{row.icon}</View>
                   <View style={{ flex: 1, gap: 2 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Text
@@ -196,26 +217,6 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
                       >
                         {row.label}
                       </Text>
-                      {row.locked ? (
-                        <View
-                          style={{
-                            backgroundColor: t.color.accent,
-                            borderRadius: 999,
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: bodySemibold,
-                              fontSize: 10,
-                              color: t.color.onAccent,
-                            }}
-                          >
-                            {tr('profil.notify_recommended')}
-                          </Text>
-                        </View>
-                      ) : null}
                     </View>
                     <Text
                       style={{ fontFamily: bodyMedium, fontSize: 13, color: t.color.secondary }}
@@ -227,7 +228,7 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
                     value={row.locked ? true : value}
                     disabled={row.locked || saving === row.key}
                     onValueChange={(next) => handleToggle(row.key, next)}
-                    trackColor={{ false: t.color.line, true: t.color.accent }}
+                    trackColor={{ false: t.color.line, true: t.color.accentLine }}
                     thumbColor="#FFFFFF"
                     ios_backgroundColor={t.color.line}
                   />

@@ -46,8 +46,9 @@ export function NotifyPermissionSheet({
       containerStyle={{ backgroundColor: t.color.surface }}
     >
       <View style={styles.body}>
-        <View style={[styles.iconWrap, { backgroundColor: t.color.accent }]}>
-          <Bell size={28} color={t.color.onAccent} weight="fill" />
+        {/* G15-S4 — FinSheetNotify: gri daire + çizgi zil, sola dayalı başlık. */}
+        <View style={[styles.iconWrap, { backgroundColor: t.color.bg }]}>
+          <Bell size={24} color={t.color.ink} />
         </View>
 
         <AppText variant="title" tone="ink" style={styles.title}>
@@ -89,10 +90,10 @@ export function NotifyPermissionSheet({
 }
 
 const styles = StyleSheet.create({
-  body: { alignItems: 'center', paddingTop: 8, paddingBottom: 8, gap: 12 },
-  iconWrap: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  title: { textAlign: 'center' },
-  sub: { textAlign: 'center', paddingHorizontal: 8 },
+  body: { alignItems: 'stretch', paddingTop: 8, paddingBottom: 8, gap: 12 },
+  iconWrap: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  title: { textAlign: 'left' },
+  sub: { textAlign: 'left' },
   primary: {
     minHeight: 52,
     alignSelf: 'stretch',
