@@ -46,14 +46,15 @@ Eski tasarım: 0
 Envanter (Profil sekmesi ve açtığı her ekran/sheet, bayraklar açık):
 - Benim: hub, Personal, Notify, Security, Privacy sheet + ayarlar, Agreements, Support, Feedback, Macro (+geçmiş, nedir), Progress, Badges, Collection, Public önizleme, `/u/:handle`, Değerlendirmelerim, Kampanyalar & Kuponlar, Ölçüm geçmişi, EkInfoSheet → Final.
 - Siparişlerim / Adreslerim: `yeni_siparis` açıkken Profil artık eatkcal v2'ye (EkOrders / EkAddresses, G13-S2 Final ekranları) gider; eski ekranlar yalnız bayrak kapalı.
-- Kayıtlı kartlarım (SavedCards, FinPrCards): görev dosyası (G15-S4.md) açıkça "FinPrCards S5'te" diyor ve ekran KİMSE dosyası (ödeme/kart mantığı) → bu görevin kapsamı DIŞINDA; benim alanımda sayılmaz. Hub satırı yalnız kart özelliği açıkken görünür; giydirmesi S5'in işi — SORULAR #2.
+- Kayıtlı kartlarım (FinPrCards): 5. tur — `FinPrCardsScreen` (Final dili). KİMSE'nin `SavedCardsScreen.tsx` dosyasına DOKUNULMADI; yeni ekran AYNI `lib/cards` çağrılarını (syncSavedCards / setDefaultCard / deleteSavedCard / getCardsFeatureStatus) + `consumeCardsStale` kullanır, ödeme/kart mantığı yeniden yazılmadı; "Yeni kart" mevcut `ProfileAddCard` (PaynKolay doğrulama, KİMSE akışı) ekranına gider. Hub satırı (yalnız kart özelliği açıkken) artık bu ekrana gider. Light + Dark simülatörde Final ile aynı. (Not: görev "FinPrCards S5'te" diyordu; S5 ile çakışmaması için S5'e bu dosyayı kullanabileceği LOG notu — dev vitrini `FinPrCards` girişi bu ekrana işaret eder.)
+- Yeni kart ekleme akışı (`ProfileAddCard`, KİMSE): ödeme doğrulama akışı, bu görevin yasak listesinde (ödeme mantığı) → dokunulmadı; Profil sekmesinin kendi ekranı değil, ödeme akışı sayılır.
 - TakibeBasla (Hedefi düzenle): onboarding/hedef akışı (başka sahip, Final FinTb* panoları kapsamı).
 
 Yeniden giydirilen (Final'de yok): Macro aboneliğim, Hesap gizliliği, Rozetlerim girişi, Değerlendirmelerim, Kampanyalar & Kuponlarım, Ölçüm geçmişi, hesap silme onay katmanı, Macro işlem geçmişi listesi, Destek geçmişi sekmesi.
 
 ## SORULAR
 1. Final Güvenlik "En az 8 karakter" diyor; kod 6 doğruluyor (kural değiştirilmedi). 8'e çıkarılsın mı? Final Gizlilik notu "30 gün içinde geri dönebilirsin" — böyle bir bekleme süresi yok, mevcut metin korundu.
-2. KİMSE'nin SavedCards ekranı (FinPrCards) eski tasarımda; KİMSE oturumunda giydirilmeli.
+2. (Kapandı: FinPrCards Final diliyle yapıldı.) Eski SavedCardsScreen + AddCardScreen (KİMSE) bayrak kapalı yolda kalır; temizlik oturumunda (G-TEMİZLİK) silinir. S5 de FinPrCards'a dokunacaksa `FinPrCardsScreen` ile çakışmasın.
 3. FinProfilePublic ızgarası için yazar bazlı gönderi listesi RPC'si gerekiyor (migration dosyası yazılsın mı?); kapak da ilk tabaktan türetilecek.
 4. (Kapandı: bütün Dark panolar okundu.)
 5. Seri hatırlatması öğün silinirse o gün yeniden kurulmaz (gün içi "loglandı" hatırlanır). Kabul mü?

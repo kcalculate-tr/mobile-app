@@ -32,6 +32,7 @@ import SettingsPrivacyScreen from '../modules/profil/ui/screens/SettingsPrivacyS
 import SettingsAgreementsScreen from '../modules/profil/ui/screens/SettingsAgreementsScreen';
 import SettingsSupportScreen from '../modules/profil/ui/screens/SettingsSupportScreen';
 import SettingsFeedbackScreen from '../modules/profil/ui/screens/SettingsFeedbackScreen';
+import FinPrCardsScreen from '../modules/profil/ui/screens/FinPrCardsScreen';
 import FinPrReviewsScreen from '../modules/profil/ui/screens/FinPrReviewsScreen';
 import FinPrCouponsScreen from '../modules/profil/ui/screens/FinPrCouponsScreen';
 import FinPrMeasurementsScreen from '../modules/profil/ui/screens/FinPrMeasurementsScreen';
@@ -169,6 +170,19 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
       return <SettingsAgreementsScreen onBack={noop} />;
     case 'support':
       return <SettingsSupportScreen onBack={noop} />;
+    case 'cards':
+      return (
+        <FinPrCardsScreen
+          {...({
+            onBack: noop,
+            // Final FinPrCards örneği: iki kart, biri varsayılan.
+            vitrinCards: [
+              { id: 'k1', last4: '4242', brand: 'Kart', bank_name: null, card_alias: null, is_default: true, created_at: '2026-10-01' },
+              { id: 'k2', last4: '1881', brand: 'Kart', bank_name: null, card_alias: null, is_default: false, created_at: '2026-10-02' },
+            ],
+          } as any)}
+        />
+      );
     case 'reviews':
       return <FinPrReviewsScreen onBack={noop} />;
     case 'coupons':

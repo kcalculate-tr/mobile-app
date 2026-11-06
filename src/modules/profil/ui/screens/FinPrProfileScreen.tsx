@@ -86,6 +86,7 @@ import CollectionScreen from './CollectionScreen';
 import PublicPreviewScreen from './PublicPreviewScreen';
 import FinPrReviewsScreen from './FinPrReviewsScreen';
 import FinPrCouponsScreen from './FinPrCouponsScreen';
+import FinPrCardsScreen from './FinPrCardsScreen';
 import FinPrMeasurementsScreen from './FinPrMeasurementsScreen';
 import { useFeature } from '../../../../core/flags';
 
@@ -108,7 +109,8 @@ type SubScreen =
   | 'public'
   | 'reviews'
   | 'coupons'
-  | 'measurements';
+  | 'measurements'
+  | 'cards';
 
 export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -217,6 +219,7 @@ export default function FinPrProfileScreen() {
   if (sub === 'badges') return <BadgesScreen onBack={() => setSub('root')} handle={handle} />;
   if (sub === 'collection') return <CollectionScreen onBack={() => setSub('root')} />;
   if (sub === 'reviews') return <FinPrReviewsScreen onBack={() => setSub('root')} />;
+  if (sub === 'cards') return <FinPrCardsScreen onBack={() => setSub('root')} />;
   if (sub === 'coupons') return <FinPrCouponsScreen onBack={() => setSub('root')} />;
   if (sub === 'measurements') return <FinPrMeasurementsScreen onBack={() => setSub('progress')} />;
   if (sub === 'public') {
@@ -325,7 +328,7 @@ export default function FinPrProfileScreen() {
               <FinRow
                 icon={<CreditCard size={18} color={t.color.ink} />}
                 label={tr('profil.saved_cards')}
-                onPress={() => navigation.navigate('ProfileSavedCards')}
+                onPress={() => setSub('cards')}
               />
             ) : null}
             <FinRow
