@@ -112,13 +112,16 @@ export default function FinPrProfileScreen() {
   const [sub, setSub] = useState<SubScreen>('root');
   // G15-S2: koleksiyon şeridi — yerel katalog atamalarından son kartlar (en yeni önce).
   const [collectionStamps, setCollectionStamps] = useState<CollectionStamp[]>([]);
+  const [collectionNew, setCollectionNew] = useState(false);
   useEffect(() => {
     let alive = true;
     loadCollection()
       .then((s) => {
         if (!alive) return;
-        const nos = Object.values(s.assignments).sort((a, b) => b - a);
-        setCollectionStamps(nos.map((no) => ({ no })));
+        const entries = Object.entries(s.assignments).sort((a, b) => b[1] - a[1]);
+        setCollectionStamps(entries.map(([, no]) => ({ no })));
+        // "Yeni": en son kart henüz kazanılmış/görülmüş olarak işaretlenmedi.
+        setCollectionNew(entries.length > 0 && !s.won.includes(entries[0][0]));
       })
       .catch(() => {});
     return () => {
@@ -292,6 +295,7 @@ export default function FinPrProfileScreen() {
               <ProfileCollectionRow
                 count={collectionStamps.length}
                 recent={collectionStamps}
+                isNew={collectionNew}
                 onPress={() => setSub('collection')}
               />
             ) : (

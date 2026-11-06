@@ -64,7 +64,7 @@ test('celebrateContent: ucu de dogru eslenir', () => {
   assert.equal(s3.bigSub, 'gun');
 
   const s7 = celebrateContent('streak7');
-  assert.equal(s7.glass, 'trophy');
+  assert.equal(s7.glass, 'flame'); // G15-S2: Final FinCelebStreak7
   assert.equal(s7.ringProgress, 1);
   assert.equal(s7.big, '7');
   assert.equal(s7.bigSub, 'gun');

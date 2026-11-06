@@ -53,11 +53,14 @@ export function GunViewer({
   onAddToDay,
   vitrinSlide,
   vitrinDone,
+  vitrinCard,
 }: GunViewerProps & {
   /** Yalnız __DEV__ vitrini (FinGunEnd/FinGunDone): özet slaytıyla aç. */
   vitrinSlide?: 'summary';
   /** Yalnız __DEV__ vitrini (FinGunDone): halka dolu göster. */
   vitrinDone?: boolean;
+  /** Yalnız __DEV__ vitrini (FinGunView "Öğle 2/3"): başlangıç kartı. */
+  vitrinCard?: number;
 }) {
   const t = useTheme();
   const { t: tt } = useT();
@@ -90,7 +93,13 @@ export function GunViewer({
       .then((res) => {
         if (!alive) return;
         setCards(res);
-        setCardIdx(__DEV__ && vitrinSlide === 'summary' ? res.length : 0);
+        setCardIdx(
+          __DEV__ && vitrinSlide === 'summary'
+            ? res.length
+            : __DEV__ && vitrinCard != null
+              ? Math.min(vitrinCard, Math.max(res.length - 1, 0))
+              : 0,
+        );
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -343,14 +352,14 @@ const styles = StyleSheet.create({
   closeBtn: { marginLeft: 'auto', width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bottomCard: { position: 'absolute', left: 12, right: 12, borderRadius: 20, padding: 16 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mealName: { flex: 1, marginRight: 8 },
+  mealName: { flex: 1, marginRight: 8, fontSize: 20, lineHeight: 26 },
   kcal: { marginBottom: 2 },
   addBtn: { height: 44, paddingHorizontal: 16, borderRadius: 22, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
   addBtnText: { fontWeight: '700' },
   expiryHint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)' },
   summaryWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 24 },
   summaryPercent: { fontSize: 44 },
-  summaryComplete: { textAlign: 'center' },
+  summaryComplete: { textAlign: 'center', fontSize: 30, lineHeight: 36, maxWidth: 170 },
   summaryThumbs: { flexDirection: 'row', gap: 20 },
   summaryThumbCol: { alignItems: 'center', gap: 6 },
   summaryThumb: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

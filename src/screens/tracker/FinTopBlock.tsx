@@ -20,13 +20,9 @@ import { useT } from '../../core/i18n';
 import { TrophyIcon } from '../../components/icons';
 import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
-import { WATER_STEP_ML, formatLiters } from '../../modules/gun/water';
+import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
 
-/** Yüzde etiketi: TR "%50", EN "50%" (FinHomeEN). */
-export function pctLabel(p: number, lang: string): string {
-  const n = Math.round(p * 100);
-  return lang === 'en' ? `${n}%` : `%${n}`;
-}
+export { pctLabel };
 
 /** FinHomeR3 renkleri (pano tokens()): iz, iç dolgu, Enerji konturu, ikincil. */
 export function finTokens(isDark: boolean) {

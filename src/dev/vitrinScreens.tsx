@@ -143,10 +143,10 @@ function GunViewerScene({ end, done }: { end?: boolean; done?: boolean }) {
   return (
     <Backdrop>
       <GunViewer
-        {...({ vitrinSlide: end || done ? 'summary' : undefined, vitrinDone: done } as any)}
+        {...({ vitrinSlide: end || done ? 'summary' : undefined, vitrinDone: done, vitrinCard: end || done ? undefined : 1 } as any)}
         visible
         rings={rings}
-        startUserId={((end || done ? rings[0] : rings[1] ?? rings[0]) as any).user?.id}
+        startUserId={((rings[1] ?? rings[0]) as any).user?.id}
         onClose={noop}
         onAddToDay={noop}
       />

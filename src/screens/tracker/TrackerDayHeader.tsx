@@ -297,7 +297,7 @@ export function TrackerDayHeader({
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingBottom: 8 },
+  wrap: { paddingBottom: 0 },
   strip: { paddingVertical: 10 },
   ringBlock: { alignItems: 'center', paddingVertical: 12, gap: 12 },
   ringCenterWrap: { alignItems: 'center', justifyContent: 'center' },
