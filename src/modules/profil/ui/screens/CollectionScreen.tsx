@@ -9,12 +9,15 @@
 // atamalarla sınırlı (fotoğraf kaydı eklendikçe Dalga 2'de deriveCards'a beslenir).
 // Grid, kazanılmış kart yokken tasarımdaki kilitli silüetleri gösterir — geçerli
 // bir "yeni kullanıcı" durumu. Ekran yalnız yeni kabuk (yeni_kabuk) altında açılır.
+//
+// G15-S2: kart → FinCollectGrid detayı (CollectionCardDetail) + "Tekrar logla"
+// (bugüne yeni bir elle kayıt; mevcut meal_consumptions biçimi).
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import {
+  CollectionCardDetail,
   CollectionGrid,
-  CollectionWon,
   deriveCards,
   loadCollection,
   type CollectionCard,
@@ -22,11 +25,34 @@ import {
 } from '../../../collection';
 import { FinScreen, FinHeader } from '../finUi';
 import { useT } from '../../../../core/i18n';
+import { useAuth } from '../../../../core/AuthContext';
+import { getSupabaseClient } from '../../../../core/supabase';
+import { toServerMealType } from '../../../../core/meal/mealType';
+
+export async function relogCard(userId: string, card: CollectionCard, meal: string): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from('meal_consumptions')
+    .insert({
+      user_id: userId,
+      source: 'manual',
+      source_ref: null,
+      name: card.name,
+      meal_type: toServerMealType(meal),
+      calories: Math.max(0, Math.round(card.kcal)),
+      protein: Math.max(0, Math.round(card.protein_g ?? 0)),
+      carbs: Math.max(0, Math.round(card.carbs_g ?? 0)),
+      fat: 0,
+      note: null,
+      consumed_at: new Date().toISOString(),
+    });
+  if (error) throw error;
+}
 
 export default function CollectionScreen({ onBack }: { onBack: () => void }) {
   const { t: tr } = useT();
+  const { user } = useAuth();
   const [cards, setCards] = useState<CollectionCard[]>([]);
-  const [won, setWon] = useState<CollectionCard | null>(null);
+  const [open, setOpen] = useState<CollectionCard | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -43,21 +69,22 @@ export default function CollectionScreen({ onBack }: { onBack: () => void }) {
     };
   }, []);
 
+  if (open) {
+    return (
+      <CollectionCardDetail
+        card={open}
+        onBack={() => setOpen(null)}
+        onRelog={user ? (meal) => relogCard(user.id, open, meal) : undefined}
+      />
+    );
+  }
+
   return (
     <FinScreen scroll>
       <FinHeader title={tr('collection.title')} onBack={onBack} />
       <View style={{ paddingHorizontal: 16 }}>
-        <CollectionGrid cards={cards} onOpen={(c) => setWon(c)} />
+        <CollectionGrid cards={cards} onOpen={(c) => setOpen(c)} />
       </View>
-      {won ? (
-        <CollectionWon
-          visible={!!won}
-          card={won}
-          onViewCard={() => setWon(null)}
-          onShare={() => setWon(null)}
-          onClose={() => setWon(null)}
-        />
-      ) : null}
     </FinScreen>
   );
 }

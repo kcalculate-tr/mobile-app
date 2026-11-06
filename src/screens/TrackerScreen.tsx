@@ -43,11 +43,16 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
-import { useTheme } from '../core/design';
+import { EmptyErrorCard, TextScaleCapContext, useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
-import { buildSlots, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
+import { buildSlots, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
+import { WATER_STEP_ML, useWaterToday, waterTargetMl } from '../modules/gun/water';
+import { HomeEatkcalStrip, HomeExploreStrip } from './tracker/HomeStrips';
+import { HomeInkToast } from './tracker/HomeInkToast';
+import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
+import { useT } from '../core/i18n';
 import { pickAutoLogInstances } from '../modules/gun/delivery';
 import { loadAutoLogged, markAutoLogged } from '../modules/gun/autoLogStore';
 import { TAB_BAR_R3_HEIGHT, useTabBarCollapse } from '../modules/shell';
@@ -1343,6 +1348,107 @@ export default function TrackerScreen() {
     dispatchMealForm({ type: 'SET_VISIBLE', payload: true });
   };
 
+  // ─── G15-S2: yeni kabuk Ana sayfa — Su halkası, alt bölümler, teslim anı ────
+  // Hepsi yalnız `yeniKabuk` dalında kullanılır; bayrak kapalıyken hiçbir istek yok.
+  const suTakibi = useFeature('su_takibi' as FlagKey);
+  const yeniOnboarding = useFeature('yeni_onboarding' as FlagKey);
+  const yeniSiparis = useFeature('yeni_siparis' as FlagKey);
+  const { t: tt } = useT();
+  const water = useWaterToday(yeniKabuk && suTakibi, user?.id);
+  const serverWaterTarget = waterTargetMl(nutritionProfile?.target_water);
+  // su_takibi açık → sunucu (water_daily); kapalı → 1.0.7'deki cihaz içi bardak
+  // sayacı (8 × 250 ml) Final Su halkası diliyle (özellik kaybı yok).
+  const homeWater = !yeniKabuk
+    ? null
+    : suTakibi
+      ? serverWaterTarget != null
+        ? { ml: water.ml, targetMl: serverWaterTarget }
+        : null
+      : { ml: waterCount * WATER_STEP_ML, targetMl: 8 * WATER_STEP_ML };
+
+  type HomeToastState =
+    | { kind: 'water'; message: string; ml: number }
+    | { kind: 'delivered'; message: string; id: string };
+  const [homeToast, setHomeToast] = useState<HomeToastState | null>(null);
+  const dismissHomeToast = useCallback(() => setHomeToast(null), []);
+
+  const handleWaterAdd = () => {
+    if (suTakibi) {
+      water.add(WATER_STEP_ML);
+    } else {
+      dispatchData({ type: 'SET_WATER_COUNT', payload: Math.min(waterCount + 1, 8) });
+    }
+    setHomeToast({ kind: 'water', message: tt('gun.water_added', { ml: WATER_STEP_ML }), ml: WATER_STEP_ML });
+  };
+
+  // "…'e logla" hapı (Tara ikonu): ai_tarama açıksa Tara; değilse elle giriş.
+  // ⌄ her zaman elle giriş (öğün seç + kcal).
+  const logToSlot = (slot: SlotKey) => {
+    setPendingSlot(slot);
+    if (aiTarama) navigation.navigate('AiScan');
+    else openMealFormFor(slot);
+  };
+  // Loglama anı · önce: bekleyen yuva damlası; yeni kayıt gelince (ya da 8 sn) söner.
+  const [pendingSlot, setPendingSlot] = useState<SlotKey | null>(null);
+  useEffect(() => {
+    if (!pendingSlot) return;
+    const id = setTimeout(() => setPendingSlot(null), 8000);
+    return () => clearTimeout(id);
+  }, [pendingSlot]);
+  useEffect(() => {
+    setPendingSlot(null);
+  }, [todayConsumed.length]);
+  // Makro ayrıntısı → hedef düzenleme (eski "Makrolar · Detay için tıkla" ile aynı hedef).
+  const openGoal = () => {
+    if (yeniOnboarding) (navigation as any).navigate('TakibeBasla', { editGoal: true });
+    else navigation.navigate('NutritionProfile');
+  };
+  const openEatkcal = () => (navigation as any).navigate('Tabs', { screen: 'Home' });
+  const openProduct = (productId: string) =>
+    yeniSiparis
+      ? (navigation as any).navigate('EkProduct', { productId })
+      : navigation.navigate('ProductDetail', { productId });
+  const openKesfet = () => (navigation as any).navigate('Tabs', { screen: 'KesfetTab' });
+
+  // Vitrin (yalnız __DEV__): ara durumlar — açık porsiyon menüsü, teslim anı.
+  const vitrinParams =
+    (__DEV__
+      ? (route.params as
+          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey }
+          | undefined)
+      : undefined) ?? {};
+  const vitrinOpenAuto = __DEV__ ? vitrinParams.vitrinOpenAuto === true : false;
+  const homeHour = __DEV__ ? vitrinParams.vitrinHour : undefined;
+  const shownPendingSlot = (__DEV__ ? vitrinParams.vitrinPending : undefined) ?? pendingSlot;
+
+  // Teslim anı toast'ı: "Akşam’a loglandı" (öğün = teslim saatinin yuvası).
+  const showDeliveredToastRef = useRef<(id: string, atISO: string | null) => void>(() => {});
+  showDeliveredToastRef.current = (id: string, atISO: string | null) => {
+    const hour = atISO ? new Date(atISO).getHours() : new Date().getHours();
+    setHomeToast({ kind: 'delivered', id, message: tt(`gun.logged_${slotFromHour(hour)}`) });
+  };
+  useEffect(() => {
+    if (!__DEV__ || !yeniKabuk || !vitrinParams.vitrinDelivered || dataLoading) return;
+    const row = todayConsumed.find((r) => r.raw_source === 'order' && r.meal_type === 'dinner');
+    if (row) showDeliveredToastRef.current(row.id, row.consumed_at);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yeniKabuk, dataLoading, todayConsumed.length]);
+
+  const onHomeToastUndo = () => {
+    const cur = homeToast;
+    setHomeToast(null);
+    if (!cur) return;
+    if (cur.kind === 'water') {
+      if (suTakibi) water.add(-cur.ml);
+      else dispatchData({ type: 'SET_WATER_COUNT', payload: Math.max(waterCount - 1, 0) });
+      return;
+    }
+    const row = todayConsumed.find((r) => r.id === cur.id);
+    if (row) {
+      handleRemoveRow({ id: row.id } as HomeMealItem);
+    }
+  };
+
   // Kayıt menüsü › Kaldır — tek satır silinir; dolap kaydıysa tüketildi işareti de kalkar.
   const handleRemoveRow = async (item: HomeMealItem) => {
     if (!user) return;
@@ -1441,6 +1547,7 @@ export default function TrackerScreen() {
         const done = await loadAutoLogged();
         const candidates = pickAutoLogInstances(pantryItems, deliveredToday, consumedInstances, done);
         let lastId: string | null = null;
+        let lastAt: string | null = null;
         for (const c of candidates) {
           dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: c.instanceId });
           const { data: row, error: e2 } = await supabase
@@ -1472,10 +1579,14 @@ export default function TrackerScreen() {
             dispatchData({ type: 'REMOVE_CONSUMED_BY_REF', payload: { source: 'pantry', source_ref: c.instanceId } });
             dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
             lastId = String((row as { id?: unknown }).id ?? '') || lastId;
+            lastAt = c.deliveredAt;
           }
         }
         // FinHomeDelivered: teslim anı → yeni kayıt bir kez vurgulanır.
-        if (lastId) startHighlight(lastId, null);
+        if (lastId) {
+          startHighlight(lastId, null);
+          showDeliveredToastRef.current(lastId, lastAt);
+        }
       } catch (e) {
         if (__DEV__) console.warn(`[home] delivered auto-log failed: ${formatSupabaseErrorForDevLog(e)}`);
       } finally {
@@ -2082,8 +2193,8 @@ const html = `
     fat: nutritionSummary?.targetFat || nutritionProfile?.target_fat || 65,
   };
 
-  if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-    <ActivityIndicator color={COLORS.brand.green} size="large" />
+  if (loading) return <View style={yeniKabuk ? { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: designTheme.color.bg } : { flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <ActivityIndicator color={yeniKabuk ? designTheme.color.secondary : COLORS.brand.green} size="large" />
   </View>;
   if (!isAuthenticated) return null;
 
@@ -2091,9 +2202,24 @@ const html = `
     // G14-S1 — yeni kabukta zemin temadan (koyu temada açık gri zemin üstünde
     // temalı metinler okunmuyordu). Bayrak kapalıyken stil nesnesi AYNEN (snapshot).
     <ScreenContainer edges={['top']} style={yeniKabuk ? [s.container, { backgroundColor: designTheme.color.bg }] : s.container}>
+      {/* G15-S2: yeni kabukta elle giriş Final sheet'i (aynı form durumu + kayıt). */}
+      {yeniKabuk ? (
+        <HomeManualMealSheet
+          visible={mealModalVisible}
+          mealType={mealType}
+          calories={mealCalories}
+          note={mealNote}
+          saving={mealSaving}
+          onMealType={(m) => dispatchMealForm({ type: 'SET_MEAL_TYPE', payload: m })}
+          onCalories={(v) => dispatchMealForm({ type: 'SET_CALORIES', payload: v })}
+          onNote={(v) => dispatchMealForm({ type: 'SET_NOTE', payload: v })}
+          onSave={handleSaveMealLog}
+          onClose={() => dispatchMealForm({ type: 'SET_VISIBLE', payload: false })}
+        />
+      ) : null}
       {/* ── Kalori Ekle Modal ── */}
       <Modal
-        visible={mealModalVisible}
+        visible={!yeniKabuk && mealModalVisible}
         animationType="none"
         transparent
         statusBarTranslucent
@@ -2165,6 +2291,9 @@ const html = `
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* G15-S2 (FinHomeXL): yeni kabukta en büyük yazıda başlık/etiketler kırpılmasın —
+          Final XL ≈ 1.3× tavan. Bayrak kapalıyken değer sınırsız (AppText zaten yok). */}
+      <TextScaleCapContext.Provider value={yeniKabuk ? 1.3 : Number.POSITIVE_INFINITY}>
       <Reanimated.ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[s.scroll, asTab ? { paddingBottom: insets.bottom + TAB_BAR_R3_HEIGHT } : null]}
@@ -2179,6 +2308,7 @@ const html = `
           <HomeGreeting
             name={String(user?.user_metadata?.full_name || '')}
             onBell={() => navigation.navigate('Kesfet' as never)}
+            hour={homeHour}
           />
         ) : (
         <>
@@ -2241,7 +2371,22 @@ const html = `
         </>
         )}
 
-        {dataLoading ? (
+        {/* G15-S2: yeni kabukta yükleniyor/hata durumları Final dilinde. */}
+        {yeniKabuk && dataLoading ? (
+          <View style={s.centered}>
+            <ActivityIndicator color={designTheme.color.secondary} size="large" />
+          </View>
+        ) : yeniKabuk && errorMessage ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
+            <EmptyErrorCard
+              tone="error"
+              title={tt('gun.load_error_title')}
+              description={errorMessage}
+              actionLabel={tt('gun.retry')}
+              onAction={() => fetchData(selectedFilter)}
+            />
+          </View>
+        ) : dataLoading ? (
           <View style={s.centered}>
             <ActivityIndicator color={COLORS.brand.green} size="large" />
           </View>
@@ -2291,6 +2436,10 @@ const html = `
                 macros={consumedTodayMacros}
                 macroTargets={{ protein: targets.protein, carbs: targets.carbs, fat: targets.fat }}
                 hideStrip
+                water={homeWater}
+                onWaterAdd={handleWaterAdd}
+                onFirstLog={() => logToSlot(slotFromHour(new Date().getHours()))}
+                onOpenMacros={openGoal}
               />
             ) : null}
             {/* ── G13-S1: FinHomeR3 öğün yuvaları (yeni_kabuk). Yeni kabukta
@@ -2304,11 +2453,14 @@ const html = `
                   target={targets.kcal}
                   images={consumedImages}
                   highlight={highlight}
-                  onLog={openMealFormFor}
+                  onLog={logToSlot}
                   onChangeMeal={openMealFormFor}
                   onRemove={handleRemoveRow}
                   onPortion={handlePortion}
                   onShare={paylasimKarti ? handleShareRow : undefined}
+                  initialOpenAuto={vitrinOpenAuto}
+                  pendingSlot={shownPendingSlot}
+                  nowHour={homeHour}
                 />
                 {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
                 <TrackerDayStrip />
@@ -2317,6 +2469,9 @@ const html = `
                     <TrackerActivityEntry />
                   </View>
                 ) : null}
+                {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
+                <HomeEatkcalStrip onAll={openEatkcal} onOpen={openProduct} />
+                <HomeExploreStrip onAll={openKesfet} onOpen={openKesfet} />
               </>
             ) : null}
             {/* ── Pantry ── */}
@@ -2461,6 +2616,10 @@ const html = `
               </View>
             ) : null}
 
+            {/* G15-S2: eski Makrolar + Su Takibi kartı YALNIZ bayrak kapalıyken. Yeni
+                 kabukta karşılıkları üst blokta (makro çipleri + Su halkası). */}
+            {!yeniKabuk ? (
+            <>
             {/* ── Macro Rings ── */}
             <View style={s.section}>
               <View style={s.sectionHeader}>
@@ -2530,6 +2689,8 @@ const html = `
                 ))}
               </View>
             </View>
+            </>
+            ) : null}
 
             {/* ── Bugün Tüketilenler — yeni kabukta yukarıdaki öğün yuvaları bunun
                  yerini alır (aynı kayıtlar). Bayrak kapalıyken bugünküyle aynı. ── */}
@@ -2604,6 +2765,7 @@ const html = `
           </FadeSwap>
         )}
       </Reanimated.ScrollView>
+      </TextScaleCapContext.Provider>
 
       {/* Paylaşım kartı modalı (G5-S4) — yalnız bayrak açıkken. */}
       {paylasimKarti ? (
@@ -2625,6 +2787,21 @@ const html = `
           todayKey={formatDayKey(new Date())}
           todayStartISO={startOfTodayISO()}
           ready={!dataLoading}
+        />
+      ) : null}
+
+      {/* G15-S2: FinHomeDelivered teslim anı (kase + "Akşam’a loglandı · Geri al · Gör")
+          ve Su hızlı ekleme toast'ı — yalnız yeni kabukta. */}
+      {yeniKabuk ? (
+        <HomeInkToast
+          visible={homeToast != null}
+          message={homeToast?.message ?? ''}
+          bowl={homeToast?.kind === 'delivered'}
+          bottom={insets.bottom + TAB_BAR_R3_HEIGHT + 8}
+          onUndo={homeToast ? onHomeToastUndo : undefined}
+          onView={homeToast?.kind === 'delivered' ? () => setHomeToast(null) : undefined}
+          onDismiss={dismissHomeToast}
+          autoHideMs={__DEV__ && vitrinParams.vitrinDelivered ? 0 : 4000}
         />
       ) : null}
 

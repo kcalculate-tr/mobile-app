@@ -7,8 +7,8 @@
 // ile native kamerayı açıyoruz (profildeki galeri seçimiyle aynı paket,
 // bkz. src/screens/ProfileScreen.tsx) — tasarımdaki vitrin/çerçeve zemini
 // statik kalır, deklanşöre basınca sistem kamerası açılır.
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import NetInfo from '@react-native-community/netinfo';
@@ -35,6 +35,9 @@ import ScanQuotaChip from '../ui/ScanQuotaChip';
 import ScanLimitSheet from '../ui/ScanLimitSheet';
 import FinScanErrorSheet, { type FinScanErrorKind } from '../ui/FinScanErrorSheet';
 import FinPhotoResult from '../ui/FinPhotoResult';
+import FinScanViewfinder from '../ui/FinScanViewfinder';
+import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
+import { fetchProducts } from '../../../../lib/products';
 import { getPendingScanPhoto, setPendingScanPhoto, clearPendingScanPhoto } from '../offlineQueue';
 import { emitLogFlight } from '../logFlight';
 import { useFeature } from '../../../../core/flags';
@@ -126,7 +129,10 @@ export default function ScanScreen() {
   const captureOnce = async (): Promise<string | null> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(t('ai_scan.permission_denied'));
+      // G15-S2: yeni kabukta "Kameraya erişim kapalı" ayrı durum (FinScanError);
+      // bayrak kapalıyken bugünkü uyarı aynen.
+      if (yeniKabuk) setErrorKind('camera');
+      else Alert.alert(t('ai_scan.permission_denied'));
       return null;
     }
     const picked = await ImagePicker.launchCameraAsync({
@@ -254,12 +260,13 @@ export default function ScanScreen() {
     if (!user?.id || saving || saved) return;
     setSaving(true);
     try {
-      await saveAiScanEstimate(getSupabaseClient(), {
+      const row = await saveAiScanEstimate(getSupabaseClient(), {
         userId: user.id,
         mealType,
         sourceRef: scanRef ?? `${user.id}-${photoUri ?? ''}`,
         estimate: adjusted,
       });
+      savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
       setResult(adjusted);
       setSaved(true);
       const label = t(`meal.${mealType}`);
@@ -268,6 +275,38 @@ export default function ScanScreen() {
       setErrorKind('failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // G15-S2 (FinCollectCut): tek tabak sonucunda eatkcal menüsüyle eşleşme yüzdesi.
+  const [matchPct, setMatchPct] = useState<number | null>(null);
+  useEffect(() => {
+    setMatchPct(null);
+    if (!yeniKabuk || !result || result.ingredients.length > 1) return;
+    let alive = true;
+    fetchProducts()
+      .then((list) => {
+        if (alive) setMatchPct(bestMatchPercent(result.name, (list ?? []).map((p) => p.name)));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [yeniKabuk, result]);
+
+  // G15-S2 (FinPhotoR1 toast "Geri al"): az önce yazılan kendi kaydını siler.
+  const savedRowIdRef = useRef<string | null>(null);
+  const handleUndoFin = async () => {
+    const id = savedRowIdRef.current;
+    if (!id || !user?.id) return;
+    const { error } = await getSupabaseClient()
+      .from('meal_consumptions')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('id', id);
+    if (!error) {
+      savedRowIdRef.current = null;
+      setSaved(false);
     }
   };
 
@@ -316,69 +355,46 @@ export default function ScanScreen() {
           onChangeMealType={setMealType}
           onSave={handleSaveFin}
           onRetry={handleRetry}
+          onUndo={() => void handleUndoFin()}
+          onView={() => navigation.goBack()}
+          onAddToPlan={(a) =>
+            schedulePlanReminder({ title: t('ai_scan.plan_title'), body: `${a.name} · ${Math.round(a.kcal)} kcal` })
+          }
+          onSaveMeal={async (a) => {
+            await saveMealToCollection(a.name);
+          }}
+          match={matchPct}
         />
       );
     }
     return (
-      <View style={styles.viewfinder}>
-        <View style={styles.cameraPlaceholder} />
-        <ScanFrame active={stage === 'scanning'} />
-        <View style={[styles.topBar, { top: insets.top + 8 }]}>
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <X size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.chipRow, { top: insets.top + 8 }]}>
-          <FinChip label={t('ai_scan.mode_photo')} selected onPress={() => {}} />
-          <FinChip label={t('ai_scan.mode_barcode')} onPress={() => {}} />
-          <FinChip label={t('ai_scan.mode_manual')} onPress={handleManualEntry} />
-        </View>
-
-        <View style={[styles.chipWrap, { top: insets.top + 56 }]}>
-          <ScanQuotaChip remaining={remaining} />
-        </View>
-
-        {stage !== 'scanning' ? (
-          <Text style={styles.frameHint}>{t('ai_scan.frame_hint')}</Text>
-        ) : null}
-
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(28, insets.bottom + 8) }]}>
-          {stage === 'scanning' ? (
-            <View style={styles.scanningWrap}>
-              <ActivityIndicator color="#FFFFFF" />
-              <Text style={styles.scanningText}>{t('ai_scan.scanning')}</Text>
-            </View>
-          ) : (
-            <View style={styles.shutterRow}>
-              <TouchableOpacity
-                style={styles.galleryBtn}
-                onPress={handleGalleryPick}
-                activeOpacity={0.8}
-                accessibilityLabel={t('ai_scan.gallery_pick')}
-              >
-                <ImageIcon size={20} color="#FFFFFF" />
-                <Text style={styles.galleryBtnText}>{t('ai_scan.gallery')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.shutter} onPress={handleCapture} activeOpacity={0.85}>
-                <View style={styles.shutterInner} />
-              </TouchableOpacity>
-              <View style={{ width: 64 }} />
-            </View>
-          )}
-        </View>
+      <View style={styles.fill}>
+        {/* G15-S2 — FinScanR2 düzeni: alt mod çubuğu, lime deklanşör, hak hapı, flaş. */}
+        <FinScanViewfinder
+          remaining={remaining}
+          scanning={stage === 'scanning'}
+          onClose={() => navigation.goBack()}
+          onCapture={handleCapture}
+          onGallery={handleGalleryPick}
+          onManual={handleManualEntry}
+        />
 
         <FinScanErrorSheet
           visible={errorKind !== null}
           kind={errorKind ?? 'failed'}
           remaining={remaining ?? 0}
+          photoUri={photoUri}
           onClose={() => setErrorKind(null)}
           onManualEntry={handleManualEntry}
           onRetry={() => setErrorKind(null)}
+          onOpenSettings={() => {
+            setErrorKind(null);
+            void Linking.openSettings();
+          }}
+          onGallery={() => {
+            setErrorKind(null);
+            void handleGalleryPick();
+          }}
         />
 
         {pendingToast ? (
@@ -540,6 +556,7 @@ function MacroPill({ label, value, lang }: { label: string; value: number; lang:
 
 const styles = StyleSheet.create({
   viewfinder: { flex: 1, backgroundColor: '#2C2C2E' },
+  fill: { flex: 1 },
   cameraPlaceholder: { flex: 1 },
   topBar: { position: 'absolute', left: 8, flexDirection: 'row' },
   closeBtn: {

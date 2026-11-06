@@ -1,6 +1,8 @@
 import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useTheme as useDesignTheme } from '../core/design';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../core/AuthContext';
@@ -272,6 +274,7 @@ function useColdStartFeature(key: FlagKey): boolean {
 // bugünkü TabNavigator'dakiyle aynı (Tracker/KesfetTab/Profile oturumsuzsa Login).
 function TabNavigatorR3() {
   const { session } = useAuth();
+  const designTheme = useDesignTheme();
   const kesfet = useColdStartFeature('kesfet');
   const initialRouteName = resolveInitialShellTab({
     session: !!session,
@@ -290,12 +293,16 @@ function TabNavigatorR3() {
   });
   return (
     <TabBarCollapseProvider>
+      {/* G15-S2: yeni kabukta durum çubuğu temadan (App.tsx'teki global
+          style="dark" koyu temada ikonları görünmez yapıyordu). Yalnız R3
+          kabuğunda mount edilir → bayrak kapalıyken bugünküyle aynı. */}
+      <StatusBar style={designTheme.isDark ? 'light' : 'dark'} />
       <Tab.Navigator
         initialRouteName={initialRouteName}
         tabBar={(props) => <TabBarR3 {...props} />}
         screenOptions={{
           headerShown: false,
-          sceneStyle: { backgroundColor: '#f6f6f6' },
+          sceneStyle: { backgroundColor: designTheme.color.bg },
           // Sekme geçişine animasyon EKLENMEZ (24.09.2026 kararı, bkz. TabNavigator).
         }}
       >

@@ -41,6 +41,9 @@ export const FLAG_DEFAULTS = {
   // S6 migration dosyası olarak yazar. Kapalıyken uygulama bugünküyle AYNI.
   yeni_onboarding: false, // Onboarding + Takibe başla + mevcut müşteriye tanıtım (G12-S1)
   yeni_siparis: false, // eatkcal yeni arayüzü: ana sayfa, mağaza, ürün, sepet, özet, adres, siparişler (G12-S5)
+  // G15-S2 — Ana sayfa Su halkası + hızlı su ekleme (water_daily + log_water).
+  // Sunucu satırı: 20261106000100_g15_water.sql (kapalı, min_app_version 1.1.0).
+  su_takibi: false, // Su takibi (Ana sayfa Su halkası)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

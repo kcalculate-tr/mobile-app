@@ -82,6 +82,7 @@ export const FINAL_FLAGS: FlagKey[] = [
   'etkinlik',
   'sosyal_bildirim',
   'paylasim_karti',
+  'su_takibi',
 ];
 
 /** Final'de -Dark görseli OLMAYAN panolar (design/final/png). */
@@ -108,6 +109,7 @@ function motion(key: string, props?: Record<string, unknown>): VitrinTarget {
 const tab = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name, params }] } },
 ];
+const HOME_VITRIN = { vitrinOpenAuto: true, vitrinHour: 9 };
 const ek = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name: 'Home' }] } },
   { name, params },
@@ -136,14 +138,17 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinTbFirst', 'takibe', route([{ name: 'TakibeBasla', params: { screen: 'TbFirst' } }]), { scene: 'draft' }],
 
   // ── Ana sayfa (Tracker, yeni kabuk) ────────────────────────────────────────
-  ['FinHomeR3', 'ana', route(tab('Tracker')), { scene: 'meals' }],
-  ['FinHomeEmptyR1', 'ana', route(tab('Tracker')), { data: 'empty' }],
-  ['FinHomeDelivered', 'ana', route(tab('Tracker')), { scene: 'delivered' }],
-  ['FinHomeEN', 'ana', route(tab('Tracker')), { lang: 'en', scene: 'meals' }],
-  ['FinHomeXL', 'ana', route(tab('Tracker')), { textSize: 'accessibility-extra-large', scene: 'meals' }],
-  ['FinHomeLogBefore', 'ana', route(tab('Tracker')), { scene: 'meals' }],
-  ['FinHomeLogFlow', 'ana', route(tab('Tracker')), { scene: 'meals' }],
-  ['FinHomeLogMerged', 'ana', route(tab('Tracker')), { scene: 'meals' }],
+  // G15-S2: vitrin* parametreleri (yalnız __DEV__) — Final'in ara durumları:
+  // açık porsiyon menüsü (pano state editing:true), sabah selamı, teslim anı,
+  // bekleyen-log damlası.
+  ['FinHomeR3', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
+  ['FinHomeEmptyR1', 'ana', route(tab('Tracker', { vitrinHour: 9 })), { data: 'empty' }],
+  ['FinHomeDelivered', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinDelivered: true })), { scene: 'delivered' }],
+  ['FinHomeEN', 'ana', route(tab('Tracker', HOME_VITRIN)), { lang: 'en', scene: 'meals' }],
+  ['FinHomeXL', 'ana', route(tab('Tracker', HOME_VITRIN)), { textSize: 'accessibility-extra-large', scene: 'meals' }],
+  ['FinHomeLogBefore', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinPending: 'dinner' })), { scene: 'meals' }],
+  ['FinHomeLogFlow', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinPending: 'dinner' })), { scene: 'meals' }],
+  ['FinHomeLogMerged', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
 
   // ── Keşfet ─────────────────────────────────────────────────────────────────
   ['FinFeed', 'kesfet', route(tab('KesfetTab', { asTab: true }))],
@@ -180,10 +185,10 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinScanR2', 'tara', route([...tab('Tracker'), { name: 'AiScan' }])],
   ['FinPhotoR1', 'tara', comp('photoResult')],
   ['FinPhotoEN', 'tara', comp('photoResult'), { lang: 'en' }],
-  ['FinScanError', 'tara', comp('scanError', { kind: 'unrecognized' })],
+  ['FinScanError', 'tara', comp('scanError', { kind: 'camera' })],
   ['FinErrFailed', 'tara', comp('scanError', { kind: 'failed' })],
   ['FinErrOffline', 'tara', comp('scanError', { kind: 'offline' })],
-  ['FinErrLimit', 'tara', comp('scanLimit')],
+  ['FinErrLimit', 'tara', comp('scanError', { kind: 'limit' })],
   ['FinScanOffline', 'tara', route(tab('Tracker')), { scene: 'scanOffline' }],
 
   // ── Profil ─────────────────────────────────────────────────────────────────
@@ -253,14 +258,14 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinSheetNotify', 'kutlama', comp('notifySheet')],
   ['FinCollectCut', 'kutlama', comp('photoResult', { reduced: true })],
   ['FinCollectWon', 'kutlama', comp('collectWon')],
-  ['FinCollectGrid', 'kutlama', comp('profileSub', { sub: 'collection' })],
+  ['FinCollectGrid', 'kutlama', comp('collectDetail')],
   ['FinCollectEntry', 'kutlama', route(tab('Profile'))],
 
   // ── Stres (kabul testi) ────────────────────────────────────────────────────
-  ['FinStressLong', 'stres', route(ek('EkCheckout')), { scene: 'cartLong' }],
-  ['FinStressXL', 'stres', route(ek('EkCheckout')), { textSize: 'accessibility-extra-large', scene: 'cart' }],
-  ['FinStressEN', 'stres', route(ek('EkCheckout')), { lang: 'en', scene: 'cart' }],
-  ['FinStressDark', 'stres', comp('ekErrors'), { note: 'scheme=dark; durum matrisi panosu' }],
+  ['FinStressLong', 'stres', comp('stress', { kind: 'long' })],
+  ['FinStressXL', 'stres', comp('stress', { kind: 'xl' }), { textSize: 'accessibility-extra-large' }],
+  ['FinStressEN', 'stres', comp('stress', { kind: 'en' }), { lang: 'en' }],
+  ['FinStressDark', 'stres', comp('stress', { kind: 'dark' }), { note: 'scheme=dark; durum matrisi panosu' }],
 
   // ── Bileşenler ─────────────────────────────────────────────────────────────
   ['FinComponents', 'bilesen', comp('components')],

@@ -26,7 +26,7 @@ export function EmptyErrorCard({
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
-  /** 'error' başlığı danger tonuyla yazar; kart yine opak ve sarsıntısız. */
+  /** G15-S2: Final (FinEkErrors, FinStressDark, FinScanError) hata kartında da başlık mürekkep; 'error' yalnız anlamsal. */
   tone?: 'empty' | 'error';
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -50,7 +50,7 @@ export function EmptyErrorCard({
       ]}
     >
       {icon ? <View style={[styles.icon, { backgroundColor: t.color.line }]}>{icon}</View> : null}
-      <AppText textRole="section" tone={tone === 'error' ? 'danger' : 'ink'} style={[styles.center, styles.title]}>
+      <AppText textRole="section" tone="ink" style={[styles.center, styles.title]}>
         {title}
       </AppText>
       {description ? (

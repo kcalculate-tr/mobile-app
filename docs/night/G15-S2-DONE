@@ -1,0 +1,6 @@
+G15-S2 tamamlandı — dal night15/home (taban night14/visual a1fe71f).
+Madde 1–7 commit edildi; LOG: docs/night/G15-S2-LOG.md.
+Panolar (son tur, 3a52f64): 56 görüntü → aynı 4 · küçük fark 52 · büyük fark 0. Eski tasarım: 0.
+Bayrak kapalı = bugünkü uygulama (TrackerScreen.flagOff snapshot 3a52f64'te aynı; KİMSE diff boş).
+tsc 0 · test:unit 536/536 · test:components 92/92 · expo export --platform ios ✓ (9.34 MB).
+Migration yalnız dosya: supabase/migrations/20261106000100_g15_water.sql (uygulanmadı; G6-APPLY #18).

@@ -441,14 +441,18 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                           pointerEvents="none"
                           style={[styles.badge, { backgroundColor: g.accent }, badgeStyle]}
                         >
-                          <Text style={[styles.badgeText, { color: g.cut }]} numberOfLines={1}>
+                          <Text maxFontSizeMultiplier={1} style={[styles.badgeText, { color: g.cut }]} numberOfLines={1}>
                             +{badge}
                           </Text>
                         </Animated.View>
                       ) : null}
                     </View>
+                    {/* G15-S2 (FinHomeXL/FinStressXL): sabit yükseklikli cam çubukta
+                        etiket en büyük yazıda kırpılıyordu ("An…") → ölçek sabit;
+                        erişilebilirlik etiketi + Large Content Viewer metni taşır. */}
                     <Text
                       numberOfLines={1}
+                      maxFontSizeMultiplier={1}
                       style={[
                         styles.label,
                         { color: g.ink, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
@@ -497,7 +501,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                 accessibilityLabel={i18n.t('shell.scan')}
               >
                 <ScanIcon size={22} color={g.ink} />
-                <Text style={[styles.scanLabel, { color: g.ink }]}>{i18n.t('shell.scan')}</Text>
+                <Text maxFontSizeMultiplier={1} style={[styles.scanLabel, { color: g.ink }]}>{i18n.t('shell.scan')}</Text>
               </Pressable>
             </Animated.View>
           </Animated.View>

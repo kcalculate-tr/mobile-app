@@ -162,6 +162,14 @@ test('yuvalar: 4 öğün, kaynak etiketi, boş yuvada "…’e logla"; Dolabınd
   expect(tree.getByText('600 / 2.000 kcal')).toBeTruthy(); // gün toplamı
   // otomatik (eatkcal) kayıtta "Düzenle" görünür
   expect(tree.getByText('Düzenle')).toBeTruthy();
+  // G15-S2 — eski tasarım bölümleri yeni kabukta YOK (Final karşılıkları üst blokta).
+  expect(tree.queryByText('Makrolar')).toBeNull();
+  expect(tree.queryByText('Su Takibi')).toBeNull();
+  expect(tree.queryByText('Kalori Ekle')).toBeNull();
+  expect(tree.queryByText('Detay için tıkla →')).toBeNull();
+  // Su halkası: su_takibi kapalıyken cihaz içi bardak sayacı (8 × 250 ml) Final halka diliyle.
+  expect(tree.getByText('Su')).toBeTruthy();
+  expect(tree.getByText('/ 2 L')).toBeTruthy();
 });
 
 test('logFlight → yeni kayıt bir kez vurgulanır (nokta → satır → halka); logUndo geri alır', async () => {

@@ -33,6 +33,7 @@ export function celebrateContent(moment: CelebrateMoment): CelebrateContent {
     case 'streak3':
       return { moment, glass: 'flame', ringProgress: 3 / 7, big: '3', bigSub: 'gun' };
     case 'streak7':
-      return { moment, glass: 'trophy', ringProgress: 1, big: '7', bigSub: 'gun' };
+      // G15-S2: Final FinCelebStreak7'de cam nesne alev (kupa değil).
+      return { moment, glass: 'flame', ringProgress: 1, big: '7', bigSub: 'gun' };
   }
 }

@@ -48,6 +48,8 @@ import { addressSaveError, couponError, priceError, stockError } from '../module
 import { CelebrateOverlay } from '../modules/celebrate/CelebrateOverlay';
 import { NotifyPermissionSheet } from '../modules/celebrate/NotifyPermissionSheet';
 import { CollectionWon } from '../modules/collection/CollectionWon';
+import { CollectionCardDetail } from '../modules/collection/CollectionCardDetail';
+import { StressScene } from './vitrinStress';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginV2 from '../modules/onboarding/v2/LoginV2';
@@ -129,11 +131,20 @@ function SheetOver({ children }: { children: React.ReactNode }) {
 }
 
 function AddToDayScene() {
-  const post = useMockPost((p: any) => !!p.meal);
-  const meal = (post as any)?.meal ?? null;
+  // G15-S2: mock gönderilerde alan `meal_card` (eski `meal` hiç yoktu → sheet açılmıyordu).
+  // Final FinAddSheet örneği: Tavuk kinoa bowl · 540 kcal · P42 K48 Y18 · @kcal.
+  const meal = {
+    name: 'Tavuk kinoa bowl',
+    kcal: 540,
+    protein_g: 42,
+    carbs_g: 48,
+    fat_g: 18,
+    is_author: false,
+    photo_url: null,
+  } as any;
   return (
     <SheetOver>
-      <AddToDaySheet visible onClose={noop} meal={meal} authorHandle={(post as any)?.author?.handle ?? ''} onAdd={noop} />
+      <AddToDaySheet visible onClose={noop} meal={meal} authorHandle="kcal · haftanın tabağı" onAdd={noop} />
     </SheetOver>
   );
 }
@@ -147,10 +158,10 @@ function GunViewerScene({ end, done }: { end?: boolean; done?: boolean }) {
   return (
     <Backdrop>
       <GunViewer
-        {...({ vitrinSlide: end || done ? 'summary' : undefined, vitrinDone: done } as any)}
+        {...({ vitrinSlide: end || done ? 'summary' : undefined, vitrinDone: done, vitrinCard: end || done ? undefined : 1 } as any)}
         visible
         rings={rings}
-        startUserId={(rings[0] as any).user?.id}
+        startUserId={((rings[1] ?? rings[0]) as any).user?.id}
         onClose={noop}
         onAddToDay={noop}
       />
@@ -214,9 +225,9 @@ function EkErrorsScene() {
 
 const SAMPLE_ESTIMATE = {
   name: 'Tavuk kinoa bowl',
-  kcal: 520,
-  protein_g: 38,
-  carbs_g: 52,
+  kcal: 540,
+  protein_g: 42,
+  carbs_g: 48,
   fat_g: 16,
   isEstimate: true,
   portion: 1,
@@ -229,16 +240,81 @@ const SAMPLE_ESTIMATE = {
   ],
 };
 
+/** G15-S2 — FinPhotoR1 / FinPhotoEN örneği (460 kcal · P24 K62 Y13; kayıt sonrası toast açık). */
+function PhotoResultScene({ reduced }: { reduced?: boolean }) {
+  const { lang } = useT();
+  const en = lang === 'en';
+  const estimate = reduced
+    ? // FinCollectCut: tek tabak tanındı (540 kcal · P42 · K48 · Y18).
+      { ...SAMPLE_ESTIMATE, fat_g: 18, ingredients: [{ name: 'Tavuk kinoa bowl', grams: 380, kcal: 540 }] }
+    : {
+        name: en ? 'Ezogelin soup, rice pilaf, ayran' : 'Ezogelin çorbası, pilav, ayran',
+        kcal: 460,
+        protein_g: 24,
+        carbs_g: 62,
+        fat_g: 13,
+        isEstimate: true,
+        portion: 1,
+        photo_url: null,
+        ingredients: [
+          { name: en ? 'Ezogelin soup' : 'Ezogelin çorbası', grams: 250, kcal: 180 },
+          { name: en ? 'Rice pilaf' : 'Pilav', grams: 150, kcal: 210 },
+          { name: en ? 'Ayran (yogurt drink)' : 'Ayran', grams: 200, kcal: 70 },
+        ],
+      };
+  return (
+    <FinPhotoResult
+      {...({
+        estimate,
+        photoUri: null,
+        mealType: 'lunch',
+        saving: false,
+        saved: !reduced,
+        lang: en ? 'en' : 'tr',
+        onChangeMealType: noop,
+        onSave: noop,
+        onRetry: noop,
+        onUndo: noop,
+        onView: noop,
+        onAddToPlan: async () => true,
+        onSaveMeal: async () => {},
+        // Gerçekte bestMatchPercent(ad, menü) — vitrinde Final örneği.
+        match: reduced ? 92 : null,
+      } as any)}
+    />
+  );
+}
+
+/** G15-S2 — FinCelebrate/Streak örneği: kart metinleri HomeCelebrations ile aynı anahtarlar. */
+function CelebrateScene({ kind }: { kind: 'first' | 'streak3' | 'streak7' }) {
+  const { t } = useT();
+  const sub =
+    kind === 'first' ? t('celebrate.card_sub_first', { name: 'Menemen', kcal: 320 }) : t(`celebrate.card_sub_${kind}`);
+  return (
+    <Backdrop>
+      <CelebrateOverlay
+        visible
+        moment={kind}
+        dateLabel="6 Kasım"
+        cardTitle={t(`celebrate.card_${kind}`)}
+        cardSub={sub}
+        onShare={noop}
+        onDone={noop}
+      />
+    </Backdrop>
+  );
+}
+
 const SAMPLE_CARD = {
   id: 'c-43',
   no: 43,
   name: 'Tavuk kinoa bowl',
   meal: 'lunch',
-  dateISO: '2026-11-06T12:30:00.000+03:00',
+  dateISO: '2026-11-02T12:30:00.000+03:00',
   photoUri: null,
-  kcal: 520,
-  protein_g: 38,
-  carbs_g: 52,
+  kcal: 540,
+  protein_g: 42,
+  carbs_g: 48,
   firstTime: true,
 };
 
@@ -284,25 +360,20 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
       <GunEmpty onLogMeal={noop} onShared={noop} />
     </Backdrop>
   ),
-  photoResult: () => (
-    <FinPhotoResult
-      {...({
-        estimate: SAMPLE_ESTIMATE,
-        photoUri: null,
-        mealType: 'lunch',
-        saving: false,
-        saved: false,
-        lang: 'tr',
-        onChangeMealType: noop,
-        onSave: noop,
-        onRetry: noop,
-      } as any)}
-    />
-  ),
+  photoResult: (p) => <PhotoResultScene {...P(p)} />,
   scanError: ({ kind }: { kind?: string }) => (
     <Backdrop>
       <FinScanErrorSheet
-        {...({ visible: true, kind: kind ?? 'failed', remaining: 2, onClose: noop, onManualEntry: noop, onRetry: noop } as any)}
+        {...({
+          visible: true,
+          kind: kind ?? 'failed',
+          remaining: kind === 'limit' ? 0 : 2,
+          onClose: noop,
+          onManualEntry: noop,
+          onRetry: noop,
+          onOpenSettings: noop,
+          onGallery: noop,
+        } as any)}
       />
     </Backdrop>
   ),
@@ -340,24 +411,14 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
       <SignupEatFlowV2 onBack={noop} onAllowed={noop} vitrinStep={step} />
     </InScreen>
   ),
-  celebrate: ({ kind }: { kind?: 'first' | 'streak3' | 'streak7' }) => (
-    <Backdrop>
-      <CelebrateOverlay
-        visible
-        moment={kind ?? 'first'}
-        dateLabel="6 Kasım"
-        cardTitle="Tavuk kinoa bowl"
-        cardSub="520 kcal"
-        onShare={noop}
-        onDone={noop}
-      />
-    </Backdrop>
-  ),
+  celebrate: ({ kind }: { kind?: 'first' | 'streak3' | 'streak7' }) => <CelebrateScene kind={kind ?? 'first'} />,
   notifySheet: () => (
     <Backdrop>
       <NotifyPermissionSheet visible onClose={noop} />
     </Backdrop>
   ),
+  stress: (p) => <StressScene {...P(p)} />,
+  collectDetail: () => <CollectionCardDetail card={SAMPLE_CARD as any} onBack={noop} onRelog={async () => {}} />,
   collectWon: () => (
     <Backdrop>
       <CollectionWon visible card={SAMPLE_CARD as any} onViewCard={noop} onShare={noop} onClose={noop} />

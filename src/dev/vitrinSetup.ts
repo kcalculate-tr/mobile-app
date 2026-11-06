@@ -38,6 +38,11 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
     'eatkcal-city-gate-passed': ['city', 'waitlist', 'berlin'].includes(scene) ? null : '1',
+    // G15-S2 — FinCollectEntry: profilde koleksiyon şeridi (4 kart).
+    '@kcal_collection_v1':
+      entry.pano === 'FinCollectEntry'
+        ? JSON.stringify({ assignments: { 'Tavuk kinoa bowl': 43, Menemen: 31, 'Mercimek çorbası': 24, 'Yulaf kasesi': 19 }, won: [] })
+        : null,
   });
 
   // Sepet: Final sepet/özet sahneleri dolu, boş durumda boş.
@@ -71,6 +76,72 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
       d.setActivity('moderate' as any);
     }, 400);
   }
+
+  // G15-S2 — Gün görüntüleyici: Final örneği (Dyt. · Kahvaltı/Öğle/Akşam · Tavuk kinoa bowl).
+  if (entry.target.kind === 'component' && entry.target.key === 'gunViewer') {
+    const { setGunClient, createMockGunClient } = require('../modules/gun');
+    const base = createMockGunClient();
+    const today = (h: number) => {
+      const d = new Date();
+      d.setHours(h, 30, 0, 0);
+      return d.toISOString();
+    };
+    const cards = [
+      ['Yulaf kasesi', 'breakfast', 8, 340, 14, 52, 9],
+      ['Tavuk kinoa bowl', 'lunch', 12, 540, 42, 48, 18],
+      ['Mercimek çorbası', 'dinner', 19, 260, 14, 38, 6],
+    ];
+    setGunClient({
+      ...base,
+      getDayRings: async () => [
+        { user: { id: 'me', display_name: 'Ben', avatar_url: null }, progress: 0.4, streak: 3, has_new: false },
+        { user: { id: 'dyt', display_name: 'Dyt. Elif', avatar_url: null }, progress: 0.72, streak: 6, has_new: true },
+      ],
+      getDayCards: async ({ user }: { user: string }) =>
+        cards.map(([name, meal, h, kcal, p, c, f], i) => ({
+          id: `v-${user}-${i}`,
+          consumption_id: `v-c-${user}-${i}`,
+          name,
+          meal_type: meal,
+          consumed_at: today(h as number),
+          photo_url: null,
+          kcal,
+          protein_g: p,
+          carbs_g: c,
+          fat_g: f,
+        })),
+    });
+  }
+
+  // G15-S2 — Tara: hak hapı görünsün (Final "Bugün N/3 tarama hakkın kaldı").
+  if (JSON.stringify(entry.target).includes('AiScan')) {
+    const { useScanQuotaStore } = require('../modules/ai/scan/quotaStore');
+    useScanQuotaStore.getState().recordQuota(3, new Date(Date.now() + 864e5).toISOString());
+  }
+
+  // G15-S2 — Ana sayfa alt bölümleri: Final örneği (eatkcal şeridi + Keşfet videoları).
+  const { setHomeStripsProvider } = require('../screens/tracker/HomeStrips');
+  setHomeStripsProvider({
+    eta: '30–55 dk',
+    city: 'İzmir',
+    dishes: async () => [
+      { id: 'v-d1', name: 'Tavuklu Bowl', kcal: 560, price: 265, photo: null },
+      { id: 'v-d2', name: 'Izgara Somon Bowl', kcal: 520, price: 285, photo: null },
+      { id: 'v-d3', name: 'Peynirli omlet', kcal: 340, price: 195, photo: null },
+    ],
+    videos: async (lang: string) =>
+      lang === 'en'
+        ? [
+            { id: 'post-1', title: 'Simit, X-rayed', thumb: null },
+            { id: 'post-2', title: 'Calorie Court: Kumpir', thumb: null },
+            { id: 'post-3', title: 'Label Detective: light', thumb: null },
+          ]
+        : [
+            { id: 'post-1', title: 'Simidin röntgeni', thumb: null },
+            { id: 'post-2', title: 'Kalori Mahkemesi: Kumpir', thumb: null },
+            { id: 'post-3', title: 'Etiket Dedektifi: light', thumb: null },
+          ],
+  });
 
   return { routes, mockRoutes: mockRoutesFor(entry) };
 }
