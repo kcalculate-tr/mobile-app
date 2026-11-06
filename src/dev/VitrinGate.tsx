@@ -10,7 +10,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { DevSettings, Linking, LogBox, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, NavigationIndependentTree, DefaultTheme } from '@react-navigation/native';
 import type { Session, User } from '@supabase/supabase-js';
 import ErrorBoundary from 'react-native-error-boundary';
@@ -152,17 +153,40 @@ function Missing({ name }: { name: string }) {
   );
 }
 
+// Panolar arası geçişte JS baştan yüklenir (store/singleton/gezgin durumu
+// sızmasın; ör. Tabs → Onboarding geçişinde StackRouter 'stale' hatası).
+// Bekleyen pano adı yeniden yüklemeden sonra buradan okunur.
+const PENDING_KEY = 'g14-vitrin-pending';
+
 export default function VitrinGate({ children }: { children: React.ReactNode }) {
   const [pano, setPano] = useState<string | null>(null);
+  const active = React.useRef(false);
 
   useEffect(() => {
-    void Linking.getInitialURL().then((url) => {
-      const p = parseVitrinUrl(url);
-      if (p) setPano(p);
-    });
+    const open = (p: string) => {
+      active.current = true;
+      // Vitrin görüntüsü temiz kalsın (uyarı şeritleri/kırmızı kutu yok).
+      LogBox.ignoreAllLogs(true);
+      setPano(p);
+    };
+    void (async () => {
+      const pending = await AsyncStorage.getItem(PENDING_KEY).catch(() => null);
+      if (pending) {
+        await AsyncStorage.removeItem(PENDING_KEY).catch(() => {});
+        open(pending);
+        return;
+      }
+      const p = parseVitrinUrl(await Linking.getInitialURL());
+      if (p) open(p);
+    })();
     const sub = Linking.addEventListener('url', ({ url }) => {
       const p = parseVitrinUrl(url);
-      if (p) setPano(p);
+      if (!p) return;
+      if (!active.current) {
+        open(p);
+        return;
+      }
+      void AsyncStorage.setItem(PENDING_KEY, p).then(() => DevSettings.reload());
     });
     return () => sub.remove();
   }, []);

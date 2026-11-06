@@ -26,7 +26,8 @@ if [ -z "$UDID" ]; then
   echo "G14 iPhone simülatörü yok: xcrun simctl create \"G14 iPhone\" \"iPhone 17 Pro\"" >&2
   exit 1
 fi
-WAIT="${G14_WAIT:-3}"
+# Panolar arası geçişte JS yeniden yüklenir (VitrinGate) → varsayılan 5 sn.
+WAIT="${G14_WAIT:-5}"
 OUT="${G14_OUT:-$ROOT/.claude/night/out/g14/app}"
 mkdir -p "$OUT"
 

@@ -60,17 +60,26 @@ function summary(empty: boolean): any[] {
 
 const HOME_SCENES = new Set(['meals', 'delivered', 'activity', 'streak', 'scanOffline', 'intro', 'introOrder', 'longNames']);
 
+/** Oturumlu her sahne: kimlik satırı + hedef özeti (Profil başlığı, Hedefim). */
+function identityRoutes(entry: ResolvedEntry): MockRoute[] {
+  if (entry.auth !== 'user') return [];
+  return [
+    { match: '/rest/v1/profiles', body: [{ id: 'me', handle: 'deniz', is_private: false, avatar_url: null, display_name: 'Deniz Kaya' }] },
+    { match: '/rest/v1/user_nutrition_profiles', body: PROFILE },
+    { match: '/rpc/get_nutrition_summary', body: summary(entry.data === 'empty') },
+  ];
+}
+
 export function mockRoutesFor(entry: ResolvedEntry): MockRoute[] {
   const scene = entry.scene ?? '';
   const target = JSON.stringify(entry.target);
   const isHome = target.includes('"Tracker"') && (HOME_SCENES.has(scene) || entry.data === 'empty' || scene === '');
-  if (!isHome) return [];
+  if (!isHome) return identityRoutes(entry);
   const empty = entry.data === 'empty';
   return [
-    { match: '/rest/v1/user_nutrition_profiles', body: PROFILE },
+    ...identityRoutes(entry),
     { match: '/rest/v1/meal_consumptions', body: () => (empty ? [] : meals(scene === 'longNames')) },
     { match: '/rest/v1/body_measurements', body: [] },
     { match: '/rest/v1/orders', body: [] },
-    { match: '/rpc/get_nutrition_summary', body: summary(empty) },
   ];
 }
