@@ -49,6 +49,7 @@ import { CelebrateOverlay } from '../modules/celebrate/CelebrateOverlay';
 import { NotifyPermissionSheet } from '../modules/celebrate/NotifyPermissionSheet';
 import { CollectionWon } from '../modules/collection/CollectionWon';
 import { CollectionCardDetail } from '../modules/collection/CollectionCardDetail';
+import { StressScene } from './vitrinStress';
 
 const noop = () => {};
 const P = (props: Record<string, unknown> | undefined) => (props ?? {}) as any;
@@ -373,6 +374,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
       <NotifyPermissionSheet visible onClose={noop} />
     </Backdrop>
   ),
+  stress: (p) => <StressScene {...P(p)} />,
   collectDetail: () => <CollectionCardDetail card={SAMPLE_CARD as any} onBack={noop} onRelog={async () => {}} />,
   collectWon: () => (
     <Backdrop>

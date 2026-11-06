@@ -255,10 +255,10 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinCollectEntry', 'kutlama', route(tab('Profile'))],
 
   // ── Stres (kabul testi) ────────────────────────────────────────────────────
-  ['FinStressLong', 'stres', route(ek('EkCheckout')), { scene: 'cartLong' }],
-  ['FinStressXL', 'stres', route(ek('EkCheckout')), { textSize: 'accessibility-extra-large', scene: 'cart' }],
-  ['FinStressEN', 'stres', route(ek('EkCheckout')), { lang: 'en', scene: 'cart' }],
-  ['FinStressDark', 'stres', comp('ekErrors'), { note: 'scheme=dark; durum matrisi panosu' }],
+  ['FinStressLong', 'stres', comp('stress', { kind: 'long' })],
+  ['FinStressXL', 'stres', comp('stress', { kind: 'xl' }), { textSize: 'accessibility-extra-large' }],
+  ['FinStressEN', 'stres', comp('stress', { kind: 'en' }), { lang: 'en' }],
+  ['FinStressDark', 'stres', comp('stress', { kind: 'dark' }), { note: 'scheme=dark; durum matrisi panosu' }],
 
   // ── Bileşenler ─────────────────────────────────────────────────────────────
   ['FinComponents', 'bilesen', comp('components')],

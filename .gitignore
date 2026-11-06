@@ -97,6 +97,7 @@ plugins/
 !src/dev/vitrinSetup.ts
 !src/dev/vitrinState.ts
 !src/dev/vitrinFixtures.ts
+!src/dev/vitrinStress.tsx
 !src/dev/__tests__/
 
 # Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
