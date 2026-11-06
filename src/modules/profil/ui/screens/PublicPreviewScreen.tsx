@@ -1,24 +1,28 @@
-// FinProfilePublic — "başkaları profilimi böyle görüyor" salt-okur önizleme.
-// Açık profil başlığının (avatar, ad, @handle, 3 sütun sayaç) birebir
-// görünümünü taşır ama takip düğmesi yok. Sayaçlar get_public_profile RPC'den
-// gerçek gelir; gelmezse 0 gösterilir, uydurma veri yok.
+// FinProfilePublic — "başkaları profilimi böyle görüyor" salt-okur önizleme
+// (giriş: Profil'de avatara dokunmak). Final düzeni: kapak, üst üste binen
+// avatar + "Takip et" (önizlemede etkileşimsiz), ad + doğrulama mührü, @handle
+// + rol çipi, bio, sayaçlar, Tabaklar / Gönderiler sekmeleri ve ızgara.
+//
+// Veri yalnız GERÇEK kaynaklardan (get_public_profile): ad, @handle, bio, rol,
+// doğrulama, takipçi/gönderi sayıları. Yazar bazlı gönderi listesi RPC'si henüz
+// yok (kesfet.getFeed yazar süzgeci almıyor) → ızgara `posts` verisi gelince
+// dolar, gelene kadar boş durum gösterilir; kapak görseli de ilk tabaktan
+// türetilir, yoksa nötr zemin. Uydurma veri YOK. Dev vitrini `vitrinPosts` ile
+// Final örneğindeki içeriği gösterir (üretimde geçilmez).
 import React, { useEffect, useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { LockSimple } from '../../../../components/icons';
+import { ArrowLeft } from '../../../../components/icons';
 import { getProfilClient } from '../../client';
 import type { PublicProfile } from '../../types';
-import {
-  FinScreen,
-  FinHeader,
-  FinCard,
-  FinChip,
-  heading,
-  body,
-  bodySemibold,
-} from '../finUi';
+import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
+import { roleBadgeKey } from '../../../kesfet/ui/format';
+import { FinScreen, heading, body, bodyBold, bodySemibold } from '../finUi';
+
+export type PublicPost = { id: string; photoUrl: string | null; adds: number };
 
 export default function PublicPreviewScreen({
   onBack,
@@ -26,19 +30,29 @@ export default function PublicPreviewScreen({
   displayName,
   avatarUrl,
   isPrivate,
+  vitrinPosts,
+  vitrinProfile,
 }: {
   onBack: () => void;
   handle?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
   isPrivate?: boolean;
+  /** YALNIZ dev vitrini: Final örneğiyle aynı içerikte tabaklar. */
+  vitrinPosts?: PublicPost[];
+  /** YALNIZ dev vitrini: sunucu yerine hazır profil. */
+  vitrinProfile?: PublicProfile;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
+  const insets = useSafeAreaInsets();
 
-  const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [profile, setProfile] = useState<PublicProfile | null>(vitrinProfile ?? null);
+  const [tab, setTab] = useState<'plates' | 'posts'>('plates');
+  const posts: PublicPost[] = vitrinPosts ?? [];
 
   useEffect(() => {
+    if (vitrinProfile) return;
     let alive = true;
     const h = (handle ?? '').trim().replace(/^@/, '');
     if (!h) return;
@@ -53,98 +67,179 @@ export default function PublicPreviewScreen({
     return () => {
       alive = false;
     };
-  }, [handle]);
+  }, [handle, vitrinProfile]);
 
-  const name = (displayName ?? '').trim();
-  const firstLetter = name ? name.charAt(0).toUpperCase() : null;
+  const name = (profile?.display_name || displayName || '').trim();
+  const firstLetter = name ? name.charAt(0).toLocaleUpperCase('tr') : null;
+  const h = (handle ?? profile?.handle ?? '').replace(/^@/, '');
+  const roleKey = profile ? roleBadgeKey(profile.role) : null;
+  const roleLabel = roleKey ? tr(`kesfet.ui.badge.${roleKey}`) : null;
   const privateAccount = isPrivate ?? profile?.is_private ?? false;
+  const bio = (profile?.bio ?? '').trim();
+  const avatar = avatarUrl ?? profile?.avatar_url ?? null;
+  const cover = posts.find((p) => p.photoUrl)?.photoUrl ?? null;
+  const totalAdds = posts.reduce((n, p) => n + p.adds, 0);
+
+  const stat = (value: number, label: string) => (
+    <Text key={label} style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
+      <Text style={{ fontFamily: bodyBold, color: t.color.ink }}>{value}</Text> {label}
+    </Text>
+  );
 
   return (
-    <FinScreen scroll>
-      <FinHeader title={tr('profil.public_profile_title')} onBack={onBack} />
-      <View style={{ paddingHorizontal: 16, gap: 16 }}>
-        <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
-          {tr('profil.public_preview_note')}
-        </Text>
+    <FinScreen scroll contentStyle={{ paddingBottom: 40 }}>
+      {/* Kapak */}
+      <View style={{ height: 232, backgroundColor: t.color.line }}>
+        {cover ? <Image source={{ uri: cover }} style={{ width: '100%', height: '100%' }} /> : null}
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel={tr('profil.public_profile_title')}
+          hitSlop={8}
+          style={{
+            position: 'absolute',
+            top: insets.top + 6,
+            left: 12,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: 'rgba(10,10,10,0.55)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ArrowLeft size={20} color="#FFFFFF" weight="bold" />
+        </Pressable>
+      </View>
 
-        <View style={{ alignItems: 'center', gap: 8 }}>
+      <View style={{ paddingHorizontal: 16, marginTop: -44 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <View
             style={{
-              width: 76,
-              height: 76,
-              borderRadius: 38,
+              width: 92,
+              height: 92,
+              borderRadius: 46,
+              borderWidth: 4,
+              borderColor: t.color.bg,
+              backgroundColor: t.color.line,
               overflow: 'hidden',
-              backgroundColor: t.color.surface,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
             ) : firstLetter ? (
-              <Text style={{ fontFamily: heading, fontSize: 28, color: t.color.ink }}>
-                {firstLetter}
-              </Text>
+              <Text style={{ fontFamily: heading, fontSize: 32, color: t.color.ink }}>{firstLetter}</Text>
             ) : null}
           </View>
-
-          {name ? (
-            <Text style={{ fontFamily: heading, fontSize: 24, color: t.color.ink }}>{name}</Text>
-          ) : null}
-
-          {handle ? (
-            <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary }}>
-              @{handle.replace(/^@/, '')}
-            </Text>
-          ) : null}
-
-          <View style={{ marginTop: 4 }}>
-            {privateAccount ? (
-              <FinChip
-                label={tr('profil.private_account_badge')}
-                selected={false}
-                onPress={undefined}
-              />
-            ) : (
-              <FinChip label={tr('profil.public_account')} selected={false} onPress={undefined} />
-            )}
+          {/* Önizleme: başkalarının göreceği düğme; kendi profilinde etkileşimsiz. */}
+          <View
+            accessibilityElementsHidden
+            style={{
+              height: 44,
+              paddingHorizontal: 22,
+              borderRadius: 22,
+              backgroundColor: t.color.ink,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 6,
+            }}
+          >
+            <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.bg }}>{tr('profil.follow')}</Text>
           </View>
         </View>
 
-        <FinCard>
-          <View style={{ flexDirection: 'row' }}>
-            <PreviewCounter value={profile?.posts ?? 0} label={tr('profil.posts_short')} />
-            <PreviewCounter value={profile?.followers ?? 0} label={tr('profil.followers_short')} />
-            <PreviewCounter value={profile?.following ?? 0} label={tr('profil.following_short')} />
-          </View>
-        </FinCard>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
+          <Text style={{ fontFamily: heading, fontSize: 24, color: t.color.ink, flexShrink: 1 }} numberOfLines={1}>
+            {name}
+          </Text>
+          {profile?.verified ? <VerifiedBadge size={20} /> : null}
+        </View>
 
-        {privateAccount ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <LockSimple size={16} color={t.color.secondary} weight="fill" />
-            <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
-              {tr('profil.private_account_badge')}
-            </Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+          {h ? (
+            <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary }}>@{h}</Text>
+          ) : null}
+          {roleLabel ? (
+            <View style={{ height: 24, paddingHorizontal: 10, borderRadius: 12, backgroundColor: t.color.line, justifyContent: 'center' }}>
+              <Text style={{ fontFamily: bodySemibold, fontSize: 13, color: t.color.ink }}>{roleLabel}</Text>
+            </View>
+          ) : null}
+          {privateAccount ? (
+            <View style={{ height: 24, paddingHorizontal: 10, borderRadius: 12, backgroundColor: t.color.line, justifyContent: 'center' }}>
+              <Text style={{ fontFamily: bodySemibold, fontSize: 13, color: t.color.ink }}>
+                {tr('profil.private_account_badge')}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {bio ? (
+          <Text style={{ fontFamily: body, fontSize: 15, lineHeight: 21, color: t.color.ink, marginTop: 12 }}>{bio}</Text>
         ) : null}
-      </View>
-    </FinScreen>
-  );
-}
 
-function PreviewCounter({ value, label }: { value: number; label: string }) {
-  const t = useTheme();
-  return (
-    <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-      <Text style={{ fontFamily: heading, fontSize: 20, color: t.color.ink }}>{value}</Text>
-      <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{label}</Text>
-    </View>
+        <View style={{ flexDirection: 'row', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+          {stat(profile?.followers ?? 0, tr('profil.followers_short'))}
+          {stat(profile?.posts ?? 0, tr('profil.plates_short'))}
+          {posts.length > 0 ? stat(totalAdds, tr('profil.added_total')) : null}
+        </View>
+      </View>
+
+      {/* Sekmeler */}
+      <View style={{ flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.color.line }}>
+        {(['plates', 'posts'] as const).map((k) => {
+          const on = tab === k;
+          return (
+            <Pressable
+              key={k}
+              onPress={() => setTab(k)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              style={{ flex: 1, height: 48, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontFamily: on ? bodyBold : body, fontSize: 15, color: on ? t.color.ink : t.color.secondary }}>
+                {tr(k === 'plates' ? 'profil.tab_plates' : 'profil.tab_posts')}
+              </Text>
+              {on ? (
+                <View style={{ position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2, backgroundColor: t.color.ink }} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {tab === 'plates' && posts.length > 0 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 }}>
+          {posts.map((p) => (
+            <View key={p.id} style={{ width: '33%', flexGrow: 1, aspectRatio: 1, backgroundColor: t.color.line }}>
+              {p.photoUrl ? <Image source={{ uri: p.photoUrl }} style={{ width: '100%', height: '100%' }} /> : null}
+              {p.adds > 0 ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: 8,
+                    bottom: 8,
+                    height: 24,
+                    paddingHorizontal: 8,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(10,10,10,0.6)',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontFamily: bodySemibold, fontSize: 11, color: '#FFFFFF' }}>
+                    {tr('profil.added_by', { n: p.adds })}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, textAlign: 'center', paddingVertical: 40 }}>
+          {tr('profil.public_empty')}
+        </Text>
+      )}
+    </FinScreen>
   );
 }

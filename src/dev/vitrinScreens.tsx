@@ -188,7 +188,28 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
     case 'public':
       return (
         <PublicPreviewScreen
-          {...({ onBack: noop, handle: 'deniz', displayName: 'Deniz Kaya', avatarUrl: null, isPrivate: false } as any)}
+          {...({
+            onBack: noop,
+            handle: 'dytisyen',
+            displayName: 'Dyt. Ayşe Soyad',
+            avatarUrl: null,
+            isPrivate: false,
+            vitrinProfile: {
+              id: 'vitrin-public',
+              display_name: 'Dyt. Ayşe Soyad',
+              handle: 'dytisyen',
+              avatar_url: null,
+              bio: 'İzmir’de diyetisyen, hafta sonları koşucu. Pratik tabaklar, mevsim sebzeleri ve hafta içi hazırlanabilen tarifler.',
+              role: 'dietitian',
+              verified: true,
+              is_private: false,
+              followers: 12400,
+              following: 180,
+              posts: 86,
+              me_following: 'none',
+            },
+            vitrinPosts: [128, 96, 211, 74, 52, 33].map((adds, i) => ({ id: `v${i}`, photoUrl: null, adds })),
+          } as any)}
         />
       );
     default:
