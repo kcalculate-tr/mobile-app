@@ -109,6 +109,7 @@ export function PostCard({
   plateOpen = false,
   onOpen,
   tip,
+  onOpenVideo,
 }: {
   model: PostCardModel;
   /** Akışta sıra — girişte ardışık animasyon için (en fazla 6 gecikir). */
@@ -141,6 +142,8 @@ export function PostCard({
   onOpen?: () => void;
   /** G15 — FinFeedTip balonu: öğün kartının logla düğmesinin altına çapalı. */
   tip?: React.ReactNode;
+  /** G15 — videoya dokun = tam ekran oynatıcı (FinVideo kare 2). */
+  onOpenVideo?: () => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -258,7 +261,7 @@ export function PostCard({
           ) : model.media.length > 0 ? (
             <Pressable onPress={onMediaTap} accessibilityRole="imagebutton" accessibilityLabel={tr('kesfet.ui.a11y.like')}>
               <View>
-                <MediaGrid media={model.media} postId={model.id} isVisible={isVisible} />
+                <MediaGrid media={model.media} postId={model.id} isVisible={isVisible} onOpenVideo={onOpenVideo} />
                 <Animated.View pointerEvents="none" style={[styles.heartOverlay, heartStyle]}>
                   <Icon name="heartFill" size={88} color={t.color.accentLine} />
                 </Animated.View>

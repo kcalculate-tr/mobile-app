@@ -40,6 +40,7 @@ import { Icon } from './icons';
 import { PostCard } from './PostCard';
 import { GunViewer } from '../../gun/ui';
 import { RingStrip } from './RingStrip';
+import { VideoPlayer } from './VideoPlayer';
 import type { DayCard } from '../../gun/types';
 import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
@@ -206,6 +207,9 @@ export function KesfetScreen() {
   const [suggestions, setSuggestions] = useState<SuggestedAccount[]>([]);
   const [viewerUserId, setViewerUserId] = useState<string | null>(null);
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
+  // G15 — FinVideo kare 2: tam ekran oynatıcı (videoya dokun).
+  const [videoPostId, setVideoPostId] = useState<string | null>(null);
+  const videoPost = videoPostId ? posts.find((p) => p.id === videoPostId) ?? null : null;
   const [pushPromptOpen, setPushPromptOpen] = useState(false);
   // G12-S2 — FinFeedTip: akışa ilk kez girişte bir kez ipucu şeridi.
   const [showFeedTip, setShowFeedTip] = useState(false);
@@ -257,6 +261,13 @@ export function KesfetScreen() {
     const id = setTimeout(() => listRef.current?.scrollToOffset?.({ offset: vitrinScroll, animated: false }), 600);
     return () => clearTimeout(id);
   }, [vitrinScroll, posts.length]);
+
+  // Vitrin (FinVideo kare 2): ilk video gönderisini tam ekran aç.
+  useEffect(() => {
+    if (vitrin !== 'videoFull') return;
+    const v = posts.find((p) => p.media.some((m) => m.kind === 'video'));
+    if (v) setVideoPostId(v.id);
+  }, [vitrin, posts]);
 
   // Vitrin (FinAddToast): loglama sonrası toast'ı göster ("Öğle’ye loglandı · Geri al · Gör").
   useEffect(() => {
@@ -572,6 +583,7 @@ export function KesfetScreen() {
           fitsGoal={remainingKcal != null && item.meal_card != null ? item.meal_card.kcal <= remainingKcal : undefined}
           plateOpen={vitrinXray}
           onOpen={() => navigation.navigate('SharedPost', { postId: item.id })}
+          onOpenVideo={() => setVideoPostId(item.id)}
           onLike={() => {
             touchSocial();
             void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
@@ -782,6 +794,22 @@ export function KesfetScreen() {
         }}
       />
       {/* Vitrin (YALNIZ __DEV__) karesinde toast kendiliğinden kapanmaz — görüntü alınabilsin. */}
+      <VideoPlayer
+        post={videoPost}
+        onClose={() => setVideoPostId(null)}
+        onLike={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'like', !videoPost.me.liked)}
+        onSave={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'save', !videoPost.me.saved)}
+        onShare={() => videoPost && void onShare(videoPost)}
+        onComment={
+          kesfetYorum
+            ? () => {
+                const p = videoPost;
+                setVideoPostId(null);
+                if (p) setCommentsPost(p);
+              }
+            : undefined
+        }
+      />
       <AddToast toast={toast} onDismiss={() => (vitrin ? undefined : setToast(null))} />
 
       {trail ? (

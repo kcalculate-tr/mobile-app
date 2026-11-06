@@ -23,6 +23,8 @@ export const VITRIN_PHOTO = {
   get thMercimek() { return uri(require('./assets/th-mercimek.png')); },
   get thYogurt() { return uri(require('./assets/th-yogurt.png')); },
   get thCoban() { return uri(require('./assets/th-coban.png')); },
+  /** 42 sn örnek video (kısır fotoğrafından, 480², ~100 KB). */
+  get videoKisir() { return uri(require('./assets/vitrin-kisir.mp4')); },
 };
 
 /** Yüklenemeyen görsel → bileşen gri yer tutucu gösterir (Final'deki "Fotoğraf · …" kutusu). */
@@ -175,7 +177,7 @@ function videoPosts(): FeedPost[] {
     post('post-v1', {
       published_at: ago(120),
       body: '60 saniyede bulgur salatası. Sessiz izle, sonra kaydet.',
-      media: [{ url: PLACEHOLDER, width: 1080, height: 1080, kind: 'video', duration_s: 42, thumb_path: null }],
+      media: [{ url: VITRIN_PHOTO.videoKisir, width: 1080, height: 1048, kind: 'video', duration_s: 42, thumb_path: null }],
       post_type: 'ogun',
       meal_card: {
         name: 'Kısır',

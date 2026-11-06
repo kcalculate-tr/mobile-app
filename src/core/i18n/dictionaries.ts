@@ -197,6 +197,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           video_unmute: 'Sesi aç',
           video_fullscreen: 'Tam ekran',
           video_play: 'Oynat',
+          video_pause: 'Duraklat',
         },
         badge: { official: 'Resmi', dietitian: 'Diyetisyen', producer: 'Üretici' },
         meal_card: {
@@ -1490,6 +1491,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           video_unmute: 'Unmute',
           video_fullscreen: 'Fullscreen',
           video_play: 'Play',
+          video_pause: 'Pause',
         },
         badge: { official: 'Official', dietitian: 'Dietitian', producer: 'Producer' },
         meal_card: {

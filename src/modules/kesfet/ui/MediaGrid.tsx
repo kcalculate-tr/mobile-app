@@ -28,11 +28,13 @@ function Cell({
   postId,
   isVisible,
   style,
+  onOpenVideo,
 }: {
   media: FeedMedia;
   postId: string;
   isVisible: boolean;
   style?: object;
+  onOpenVideo?: () => void;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
@@ -52,6 +54,10 @@ function Cell({
           fullscreen: tr('kesfet.ui.a11y.video_fullscreen'),
           play: tr('kesfet.ui.a11y.video_play'),
         }}
+        onOpen={onOpenVideo}
+        phColor={t.isDark ? '#3A3A3C' : '#CFD2D7'}
+        phIconColor={t.isDark ? '#A1A1A6' : '#45454A'}
+        durationS={media.duration_s ?? null}
       />
     );
   }
@@ -78,10 +84,13 @@ export function MediaGrid({
   media,
   postId,
   isVisible = false,
+  onOpenVideo,
 }: {
   media: FeedMedia[];
   postId: string;
   isVisible?: boolean;
+  /** G15 — videoya dokun = tam ekran oynatıcı (FinVideo). */
+  onOpenVideo?: () => void;
 }) {
   const { width } = useWindowDimensions();
   if (media.length === 0) return null;
@@ -93,7 +102,7 @@ export function MediaGrid({
   const h =
     one && one.width > 0 && one.height > 0 ? Math.round(Math.min(320, Math.max(180, (w * one.height) / one.width))) : H;
 
-  const cell = (m: FeedMedia) => <Cell media={m} postId={postId} isVisible={isVisible} />;
+  const cell = (m: FeedMedia) => <Cell media={m} postId={postId} isVisible={isVisible} onOpenVideo={onOpenVideo} />;
 
   let body: React.ReactNode;
   if (items.length === 1) {
