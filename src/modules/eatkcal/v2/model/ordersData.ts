@@ -48,6 +48,8 @@ export interface OrderDetailRow {
   delivery_method: string | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
+  /** G15-S5: değişiklik talebi (teslimat günleri) için. */
+  address_id: string | null;
   items: unknown;
   order_items: unknown;
 }
@@ -74,6 +76,7 @@ export async function fetchOrderDetail(orderId: number): Promise<OrderDetailRow>
     delivery_method: raw.delivery_method ? String(raw.delivery_method) : null,
     scheduled_date: raw.scheduled_date ? String(raw.scheduled_date) : null,
     scheduled_time: raw.scheduled_time ? String(raw.scheduled_time) : null,
+    address_id: raw.address_id != null ? String(raw.address_id) : null,
     items: raw.items,
     order_items: raw.order_items,
   };

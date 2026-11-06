@@ -46,6 +46,7 @@ import { track } from '../../../../lib/analytics';
 import { useCartStore } from '../../../../store/cartStore';
 import { CachedImage } from '../../../../components/CachedImage';
 import { useProductImages } from '../ui/orders/useProductImages';
+import { ChangeRequestCard } from '../ui/orders/ChangeRequestCard';
 import { useEkNav, type EkNavList } from '../nav';
 import { EkCard, EkHeader, EkScreen, EkSkeleton, ekType, money, useEk } from '../ui/kit';
 import { EkInkButton, EkStateCard, OrderStatusBadge } from '../ui/orders/OrdersParts';
@@ -360,17 +361,12 @@ export default function EkOrderDetailScreen() {
           />
         ) : null}
 
-        {/* Değişiklik talepleri bugünkü ekranda (aynı kurallar). */}
-        {!isTerminalStatus(order.status) ? (
-          <Pressable
-            onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
-            accessibilityRole="button"
-            style={styles.textBtn}
-            testID="ek-order-change-request"
-          >
-            <Text style={[ekType.c13s, { color: c.accentLine }]}>{t('eatkcal.v2.order_detail.change_request')}</Text>
-          </Pressable>
-        ) : null}
+        {/* G15-S5: değişiklik talepleri v2 kartında (1.0.7 OrderDetailScreen'e gidilmez; kurallar aynı). */}
+        <ChangeRequestCard
+          order={order}
+          userId={user?.id ?? null}
+          onSupport={() => navigation.navigate('ProfileSupport')}
+        />
 
         {/* Destek */}
         <EkCard style={{ gap: 10 }}>
