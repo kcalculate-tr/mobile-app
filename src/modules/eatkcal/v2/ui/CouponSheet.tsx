@@ -34,8 +34,8 @@ export function CouponSheet({
   cartTotal: number;
   items: CouponCartItem[];
   onApplied: (result: CouponValidationSuccess) => void;
-  /** "Kuponlarımı gör" — hata kartının tek kurtarma aksiyonu. */
-  onSeeCoupons: () => void;
+  /** "Kuponlarımı gör" — hata kartının kurtarma aksiyonu (sheet içi listeye döner; ek iş isteğe bağlı). */
+  onSeeCoupons?: () => void;
 }) {
   const { c, t, theme } = useEk();
   const [list, setList] = useState<Campaign[]>([]);
@@ -121,8 +121,11 @@ export function CouponSheet({
           <EkErrorCard
             error={error}
             onAction={() => {
-              onClose();
-              onSeeCoupons();
+              // G15-S5: "Kuponlarımı gör" → kuponların listelendiği bu sheet'te kal
+              // (hata kapanır, aşağıdaki "Kuponlarım" listesi görünür). Önceden
+              // 1.0.7 OffersAndCouponsScreen açılıyordu (eski tasarım).
+              setError(null);
+              onSeeCoupons?.();
             }}
           />
         ) : null}

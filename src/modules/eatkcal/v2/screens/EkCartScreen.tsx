@@ -498,7 +498,6 @@ export default function EkCartScreen() {
         cartTotal={subtotal}
         items={couponItems}
         onApplied={handleCouponApplied}
-        onSeeCoupons={() => navigation.navigate('ProfileCoupons')}
       />
       <Toast visible={!!toast} message={toast ?? ''} onDismiss={() => setToast(null)} autoHideMs={2400} />
     </EkScreen>

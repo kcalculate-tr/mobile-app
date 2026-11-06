@@ -471,13 +471,13 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileSavedCards" component={v2ScreenFor('ProfileSavedCards', yeniSiparis, SavedCardsLazy)} />
       <Stack.Screen name="ProfileAddCard" component={v2ScreenFor('ProfileAddCard', yeniSiparis, AddCardLazy)} />
       <Stack.Screen name="ProfileCoupons" component={CouponsLazy} />
-      <Stack.Screen name="ProfileSupport" component={SupportLazy} />
+      <Stack.Screen name="ProfileSupport" component={v2ScreenFor('ProfileSupport', yeniSiparis, SupportLazy)} />
       <Stack.Screen name="ProfileReviews" component={MyReviewsLazy} />
       <Stack.Screen name="ProfileSecurity" component={SecurityLazy} />
       <Stack.Screen name="ProfileNotificationPreferences" component={NotificationPreferencesLazy} />
       <Stack.Screen name="Feedback" component={FeedbackLazy} />
       <Stack.Screen name="PersonalInfo" component={PersonalInfoLazy} />
-      <Stack.Screen name="ProfileContracts" component={ContractsLazy} />
+      <Stack.Screen name="ProfileContracts" component={v2ScreenFor('ProfileContracts', yeniSiparis, ContractsLazy)} />
       <Stack.Screen name="PaymentScreen" component={v2ScreenFor('PaymentScreen', yeniSiparis, PaymentLazy)} />
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
       <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />

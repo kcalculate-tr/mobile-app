@@ -82,6 +82,9 @@ const LEGACY_SWAP = {
   PaymentScreen: withSuspense(lazy(() => import('./screens/EkPaymentScreen'))),
   // Kart doğrulama — mantık AddCardScreen.tsx'ten satır satır kopya, yalnız görünüm v2
   ProfileAddCard: withSuspense(lazy(() => import('./screens/EkAddCardScreen'))),
+  // Sipariş detayı / ödeme sözleşmeleri → Profil'in Final görünümleri (FinPrSupport / FinPrAgreements)
+  ProfileSupport: withSuspense(lazy(() => import('./screens/EkProfileLinks').then((m) => ({ default: m.EkSupportRoute })))),
+  ProfileContracts: withSuspense(lazy(() => import('./screens/EkProfileLinks').then((m) => ({ default: m.EkContractsRoute })))),
 } as const;
 export type EkLegacySwapName = keyof typeof LEGACY_SWAP;
 
