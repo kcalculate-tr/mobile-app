@@ -261,6 +261,10 @@ function PhotoResultScene({ reduced }: { reduced?: boolean }) {
         onRetry: noop,
         onUndo: noop,
         onView: noop,
+        onAddToPlan: async () => true,
+        onSaveMeal: async () => {},
+        // Gerçekte bestMatchPercent(ad, menü) — vitrinde Final örneği.
+        match: reduced ? 92 : null,
       } as any)}
     />
   );

@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { AppText, ProgressRing, haptic, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ArrowLeft, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
+import { ArrowLeft, BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
@@ -76,7 +76,16 @@ export default function FinPhotoResult({
   onUndo,
   onView,
   reducedVariant: _reduced,
+  onAddToPlan,
+  onSaveMeal,
+  match = null,
 }: {
+  /** "Planıma ekle" — yerel plan hatırlatması; izin yoksa false. */
+  onAddToPlan?: (adjusted: Omit<ScanEstimate, 'isEstimate'>) => Promise<boolean>;
+  /** "Bu öğünü kaydet" — tabak koleksiyonuna. */
+  onSaveMeal?: (adjusted: Omit<ScanEstimate, 'isEstimate'>) => Promise<void>;
+  /** Tek tabak sonucu: menüyle eşleşme yüzdesi (yoksa null → gösterilmez). */
+  match?: number | null;
   estimate: Omit<ScanEstimate, 'isEstimate'>;
   photoUri: string | null;
   mealType: ClientMealType;
@@ -100,6 +109,8 @@ export default function FinPhotoResult({
   const [bars, setBars] = useState(false);
   const [adding, setAdding] = useState(false);
   const [toastHidden, setToastHidden] = useState(false);
+  const [planDone, setPlanDone] = useState<null | 'ok' | 'denied'>(null);
+  const [savedMeal, setSavedMeal] = useState(false);
 
   const [rows, setRows] = useState<Row[]>(() =>
     estimate.ingredients.map((ing: ScanIngredient) => ({
@@ -177,7 +188,7 @@ export default function FinPhotoResult({
         <View style={styles.cutChipWrap} pointerEvents="none">
           <View style={[styles.cutChip, { backgroundColor: k.glass }]}>
             <AppText style={styles.foundText} numberOfLines={1}>
-              {estimate.name}
+              {match != null ? tr('ai_scan.match_chip', { name: estimate.name, pct: match }) : estimate.name}
             </AppText>
           </View>
         </View>
@@ -380,6 +391,37 @@ export default function FinPhotoResult({
               <Plus size={18} color={t.color.ink} />
               <AppText style={styles.btnText}>{tr('ai_scan.add_missing')}</AppText>
             </Pressable>
+            {onAddToPlan || onSaveMeal ? (
+              <View style={styles.actionRow}>
+                {onAddToPlan ? (
+                  <ActionBtn
+                    icon={<CalendarPlus size={18} color={t.color.ink} />}
+                    label={planDone === 'ok' ? tr('ai_scan.plan_added') : planDone === 'denied' ? tr('ai_scan.plan_denied') : tr('ai_scan.add_to_plan')}
+                    done={planDone === 'ok'}
+                    line={k.line2}
+                    onPress={async () => {
+                      if (planDone === 'ok') return;
+                      haptic('light');
+                      setPlanDone((await onAddToPlan(adjusted)) ? 'ok' : 'denied');
+                    }}
+                  />
+                ) : null}
+                {onSaveMeal ? (
+                  <ActionBtn
+                    icon={<BookmarkSimple size={18} color={t.color.ink} weight={savedMeal ? 'fill' : 'regular'} />}
+                    label={savedMeal ? tr('ai_scan.meal_saved') : tr('ai_scan.save_meal')}
+                    done={savedMeal}
+                    line={k.line2}
+                    onPress={async () => {
+                      if (savedMeal) return;
+                      haptic('light');
+                      await onSaveMeal(adjusted);
+                      setSavedMeal(true);
+                    }}
+                  />
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </ScrollView>
       </View>
@@ -463,6 +505,34 @@ export default function FinPhotoResult({
         }}
       />
     </View>
+  );
+}
+
+function ActionBtn({
+  icon,
+  label,
+  done,
+  line,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  done: boolean;
+  line: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: done }}
+      style={[styles.actionBtn, { borderColor: line }]}
+    >
+      {done ? <Check size={16} weight="bold" /> : icon}
+      <AppText style={styles.btnText} numberOfLines={1}>
+        {label}
+      </AppText>
+    </Pressable>
   );
 }
 
@@ -582,6 +652,8 @@ const styles = StyleSheet.create({
   portionText: { fontSize: 13, fontWeight: '600' },
   addMissing: { height: 48, borderRadius: 24, borderWidth: 1, borderStyle: 'dashed', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   btnText: { fontSize: 14, fontWeight: '600' },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  actionBtn: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
   toast: { position: 'absolute', left: 16, right: 16, height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center', paddingLeft: 18, paddingRight: 6, gap: 8 },
   toastText: { flex: 1, fontSize: 14, fontWeight: '600' },
   toastAct: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },

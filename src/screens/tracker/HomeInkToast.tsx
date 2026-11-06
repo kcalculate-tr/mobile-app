@@ -16,6 +16,7 @@ export function HomeInkToast({
   message,
   bottom,
   bowl = false,
+  dot = false,
   onUndo,
   onView,
   onDismiss,
@@ -29,6 +30,8 @@ export function HomeInkToast({
   bowl?: boolean;
   onUndo?: () => void;
   onView?: () => void;
+  /** FinCollectEntry: solda lime nokta. */
+  dot?: boolean;
   onDismiss: () => void;
   autoHideMs?: number;
 }) {
@@ -63,6 +66,7 @@ export function HomeInkToast({
         accessibilityLiveRegion="polite"
         style={[styles.bar, { backgroundColor: t.color.ink }]}
       >
+        {dot ? <View style={[styles.dot, { backgroundColor: t.color.accent }]} /> : null}
         <AppText style={[styles.msg, { color: t.color.bg }]} numberOfLines={1}>
           {message}
         </AppText>
@@ -107,6 +111,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   msg: { flex: 1, fontSize: 14, fontWeight: '600' },
+  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
   undo: { minWidth: 44, height: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   view: { minWidth: 44, height: 44, paddingHorizontal: 18, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   act: { fontSize: 14, fontWeight: '600' },

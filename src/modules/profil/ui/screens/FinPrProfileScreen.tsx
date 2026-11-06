@@ -81,7 +81,9 @@ import FinPrMacroScreen from './FinPrMacroScreen';
 import FinPrProgressScreen from './ProgressScreen';
 import BadgesScreen from './BadgesScreen';
 import CollectionScreen from './CollectionScreen';
-import { loadCollection, ProfileCollectionRow, type CollectionStamp } from '../../../collection';
+import { loadCollection, markWon, ProfileCollectionRow, type CollectionStamp } from '../../../collection';
+import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
+import { TAB_BAR_R3_HEIGHT } from '../../../shell';
 import PublicPreviewScreen from './PublicPreviewScreen';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -113,6 +115,7 @@ export default function FinPrProfileScreen() {
   // G15-S2: koleksiyon şeridi — yerel katalog atamalarından son kartlar (en yeni önce).
   const [collectionStamps, setCollectionStamps] = useState<CollectionStamp[]>([]);
   const [collectionNew, setCollectionNew] = useState(false);
+  const [collectionToast, setCollectionToast] = useState(false);
   useEffect(() => {
     let alive = true;
     loadCollection()
@@ -121,7 +124,13 @@ export default function FinPrProfileScreen() {
         const entries = Object.entries(s.assignments).sort((a, b) => b[1] - a[1]);
         setCollectionStamps(entries.map(([, no]) => ({ no })));
         // "Yeni": en son kart henüz kazanılmış/görülmüş olarak işaretlenmedi.
-        setCollectionNew(entries.length > 0 && !s.won.includes(entries[0][0]));
+        const isNew = entries.length > 0 && !s.won.includes(entries[0][0]);
+        setCollectionNew(isNew);
+        // FinCollectEntry: yeni kart için bir kez "Koleksiyonuna eklendi · Gör"; görüldü işaretlenir.
+        if (isNew) {
+          setCollectionToast(true);
+          void markWon(entries[0][0]);
+        }
       })
       .catch(() => {});
     return () => {
@@ -385,6 +394,18 @@ export default function FinPrProfileScreen() {
         ) : null}
       </ScrollView>
       <EkInfoSheet visible={infoOpen} onClose={() => setInfoOpen(false)} />
+      <HomeInkToast
+        visible={collectionToast}
+        dot
+        message={tr('collection.added_toast')}
+        bottom={insets.bottom + TAB_BAR_R3_HEIGHT + 8}
+        onView={() => {
+          setCollectionToast(false);
+          setSub('collection');
+        }}
+        onDismiss={() => setCollectionToast(false)}
+        autoHideMs={__DEV__ && collectionNew ? 0 : 4000}
+      />
     </FinScreen>
   );
 }

@@ -36,6 +36,8 @@ import ScanLimitSheet from '../ui/ScanLimitSheet';
 import FinScanErrorSheet, { type FinScanErrorKind } from '../ui/FinScanErrorSheet';
 import FinPhotoResult from '../ui/FinPhotoResult';
 import FinScanViewfinder from '../ui/FinScanViewfinder';
+import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
+import { fetchProducts } from '../../../../lib/products';
 import { getPendingScanPhoto, setPendingScanPhoto, clearPendingScanPhoto } from '../offlineQueue';
 import { emitLogFlight } from '../logFlight';
 import { useFeature } from '../../../../core/flags';
@@ -276,6 +278,22 @@ export default function ScanScreen() {
     }
   };
 
+  // G15-S2 (FinCollectCut): tek tabak sonucunda eatkcal menüsüyle eşleşme yüzdesi.
+  const [matchPct, setMatchPct] = useState<number | null>(null);
+  useEffect(() => {
+    setMatchPct(null);
+    if (!yeniKabuk || !result || result.ingredients.length > 1) return;
+    let alive = true;
+    fetchProducts()
+      .then((list) => {
+        if (alive) setMatchPct(bestMatchPercent(result.name, (list ?? []).map((p) => p.name)));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [yeniKabuk, result]);
+
   // G15-S2 (FinPhotoR1 toast "Geri al"): az önce yazılan kendi kaydını siler.
   const savedRowIdRef = useRef<string | null>(null);
   const handleUndoFin = async () => {
@@ -339,6 +357,13 @@ export default function ScanScreen() {
           onRetry={handleRetry}
           onUndo={() => void handleUndoFin()}
           onView={() => navigation.goBack()}
+          onAddToPlan={(a) =>
+            schedulePlanReminder({ title: t('ai_scan.plan_title'), body: `${a.name} · ${Math.round(a.kcal)} kcal` })
+          }
+          onSaveMeal={async (a) => {
+            await saveMealToCollection(a.name);
+          }}
+          match={matchPct}
         />
       );
     }
