@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppText, CURVE, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
-import { X, ShareNetwork } from '../../components/icons';
+import { X, Export } from '../../components/icons';
 import { GlassObject } from './GlassObject';
 import { celebrateContent, type CelebrateMoment } from './types';
 
@@ -178,7 +178,7 @@ export function CelebrateOverlay({
 
           {/* Cam nesne — kartin sag ustunde, pop + glow. */}
           <View style={styles.glassOnCard} pointerEvents="none">
-            <GlassObject name={content.glass} size={112} glow pop />
+            <GlassObject name={content.glass} size={92} glow pop />
           </View>
         </View>
 
@@ -216,7 +216,7 @@ export function CelebrateOverlay({
             accessibilityLabel={tt('celebrate.share')}
             style={[styles.btn, { backgroundColor: t.color.accent }]}
           >
-            <ShareNetwork size={20} color={t.color.onAccent} weight="fill" />
+            <Export size={20} color={t.color.onAccent} weight="bold" />
             <AppText variant="body" tone="onAccent" style={styles.btnText}>
               {tt('celebrate.share')}
             </AppText>
@@ -226,7 +226,7 @@ export function CelebrateOverlay({
             onPress={onDone}
             accessibilityRole="button"
             accessibilityLabel={tt('celebrate.done')}
-            style={[styles.btnOutline, { borderColor: t.color.line }]}
+            style={[styles.btnOutline, { borderColor: t.isDark ? '#48484A' : '#C3C7CC' }]}
           >
             <AppText variant="body" tone="ink" style={styles.btnText}>
               {tt('celebrate.done')}
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     height: CARD_H,
     backgroundColor: CARD_BG,
     borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: '#333',
     padding: 20,
     transform: [{ rotate: '-3deg' }],
@@ -276,10 +276,10 @@ const styles = StyleSheet.create({
   cardBottom: { gap: 2 },
   cardTitle: { color: '#FFFFFF', fontSize: 18 },
   cardSub: { color: CARD_SUB, fontSize: 13 },
-  glassOnCard: { position: 'absolute', top: -34, right: -28, zIndex: 5 },
+  glassOnCard: { position: 'absolute', top: -46, right: -22, zIndex: 5 },
   titleBlock: { position: 'absolute', top: 470, left: 24, right: 24, alignItems: 'center', gap: 10 },
-  h1: { fontSize: 32, lineHeight: 40, textAlign: 'center' },
-  mark: { fontSize: 32, lineHeight: 40, borderRadius: 8, overflow: 'hidden' },
+  h1: { fontSize: 28, lineHeight: 36, textAlign: 'center' },
+  mark: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 28, lineHeight: 36, borderRadius: 8, overflow: 'hidden' },
   body: { textAlign: 'center', maxWidth: 330 },
   why: { textAlign: 'center' },
   actions: { position: 'absolute', bottom: 40, left: 24, right: 24, gap: 12 },
@@ -294,9 +294,9 @@ const styles = StyleSheet.create({
   btnOutline: {
     minHeight: 52,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnText: {},
+  btnText: { fontWeight: '700' },
 });

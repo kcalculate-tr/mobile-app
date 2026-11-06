@@ -135,7 +135,7 @@ function GunViewerScene({ end, done }: { end?: boolean; done?: boolean }) {
         {...({ vitrinSlide: end || done ? 'summary' : undefined, vitrinDone: done } as any)}
         visible
         rings={rings}
-        startUserId={(rings[0] as any).user?.id}
+        startUserId={((end || done ? rings[0] : rings[1] ?? rings[0]) as any).user?.id}
         onClose={noop}
         onAddToDay={noop}
       />
@@ -254,6 +254,26 @@ function PhotoResultScene({ reduced }: { reduced?: boolean }) {
   );
 }
 
+/** G15-S2 — FinCelebrate/Streak örneği: kart metinleri HomeCelebrations ile aynı anahtarlar. */
+function CelebrateScene({ kind }: { kind: 'first' | 'streak3' | 'streak7' }) {
+  const { t } = useT();
+  const sub =
+    kind === 'first' ? t('celebrate.card_sub_first', { name: 'Menemen', kcal: 320 }) : t(`celebrate.card_sub_${kind}`);
+  return (
+    <Backdrop>
+      <CelebrateOverlay
+        visible
+        moment={kind}
+        dateLabel="6 Kasım"
+        cardTitle={t(`celebrate.card_${kind}`)}
+        cardSub={sub}
+        onShare={noop}
+        onDone={noop}
+      />
+    </Backdrop>
+  );
+}
+
 const SAMPLE_CARD = {
   id: 'c-43',
   no: 43,
@@ -345,19 +365,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
   ekErrors: () => <EkErrorsScene />,
   signupAI: () => <SignupAIScreen onSkip={noop} />,
   signupEat: () => <SignupEatScreen onBack={noop} onAllowed={noop} />,
-  celebrate: ({ kind }: { kind?: 'first' | 'streak3' | 'streak7' }) => (
-    <Backdrop>
-      <CelebrateOverlay
-        visible
-        moment={kind ?? 'first'}
-        dateLabel="6 Kasım"
-        cardTitle="Tavuk kinoa bowl"
-        cardSub="520 kcal"
-        onShare={noop}
-        onDone={noop}
-      />
-    </Backdrop>
-  ),
+  celebrate: ({ kind }: { kind?: 'first' | 'streak3' | 'streak7' }) => <CelebrateScene kind={kind ?? 'first'} />,
   notifySheet: () => (
     <Backdrop>
       <NotifyPermissionSheet visible onClose={noop} />

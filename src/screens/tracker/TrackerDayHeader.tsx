@@ -114,7 +114,7 @@ export function TrackerDayStrip() {
   const onAddToDay = useCallback(async (card: DayCard) => {
     await getGunClient().addDayCardToDay({
       card: card.id,
-      mealType: inferMealTypeFromHour(new Date().getHours()),
+      mealType: card.meal_type ?? inferMealTypeFromHour(new Date().getHours()),
       idempotencyKey: `tracker-${card.id}`,
     });
   }, []);
@@ -198,7 +198,7 @@ export function TrackerDayHeader({
   const onAddToDay = useCallback(async (card: DayCard) => {
     await getGunClient().addDayCardToDay({
       card: card.id,
-      mealType: inferMealTypeFromHour(new Date().getHours()),
+      mealType: card.meal_type ?? inferMealTypeFromHour(new Date().getHours()),
       idempotencyKey: `tracker-${card.id}`,
     });
   }, []);

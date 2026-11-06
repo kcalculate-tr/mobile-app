@@ -40,6 +40,7 @@ export { CheckCircle, CheckCircleIcon } from 'phosphor-react-native/lib/commonjs
 export { ChefHat, ChefHatIcon } from 'phosphor-react-native/lib/commonjs/icons/ChefHat';
 export { Clock } from 'phosphor-react-native/lib/commonjs/icons/Clock';
 export { CameraSlash } from 'phosphor-react-native/lib/commonjs/icons/CameraSlash';
+export { Export } from 'phosphor-react-native/lib/commonjs/icons/Export';
 export { ClockCounterClockwise } from 'phosphor-react-native/lib/commonjs/icons/ClockCounterClockwise';
 export { Confetti, ConfettiIcon } from 'phosphor-react-native/lib/commonjs/icons/Confetti';
 export { CookingPot } from 'phosphor-react-native/lib/commonjs/icons/CookingPot';

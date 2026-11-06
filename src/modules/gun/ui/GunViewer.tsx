@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, useTheme, ProgressRing } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CachedImage } from '../../../components/CachedImage';
-import { User, X } from '../../../components/icons';
+import { Plus, User, X } from '../../../components/icons';
 import { getGunClient } from '../client';
 import type { DayCard, DayRing } from '../types';
 import { buildViewerQueue } from './viewerQueue';
@@ -45,7 +45,20 @@ export interface GunViewerProps {
   onAddToDay?: (card: DayCard) => Promise<void>;
 }
 
-export function GunViewer({ visible, rings, startUserId, onClose, onAddToDay }: GunViewerProps) {
+export function GunViewer({
+  visible,
+  rings,
+  startUserId,
+  onClose,
+  onAddToDay,
+  vitrinSlide,
+  vitrinDone,
+}: GunViewerProps & {
+  /** Yalnız __DEV__ vitrini (FinGunEnd/FinGunDone): özet slaytıyla aç. */
+  vitrinSlide?: 'summary';
+  /** Yalnız __DEV__ vitrini (FinGunDone): halka dolu göster. */
+  vitrinDone?: boolean;
+}) {
   const t = useTheme();
   const { t: tt } = useT();
   const insets = useSafeAreaInsets();
@@ -60,6 +73,7 @@ export function GunViewer({ visible, rings, startUserId, onClose, onAddToDay }: 
   const currentUserId = queue[userIdx];
   const currentRing = rings.find((r) => r.user.id === currentUserId) ?? null;
   const isLastCard = cardIdx >= cards.length; // true → özet kartı
+  const summary = isLastCard && !loading;
 
   useEffect(() => {
     if (!visible) return;
@@ -76,7 +90,7 @@ export function GunViewer({ visible, rings, startUserId, onClose, onAddToDay }: 
       .then((res) => {
         if (!alive) return;
         setCards(res);
-        setCardIdx(0);
+        setCardIdx(__DEV__ && vitrinSlide === 'summary' ? res.length : 0);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -153,10 +167,15 @@ export function GunViewer({ visible, rings, startUserId, onClose, onAddToDay }: 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Animated.View style={[styles.root, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
         {/* Zemin: fotoğraf varsa o, yoksa tema yüzeyi. */}
-        {card?.photo_url ? (
+        {summary ? (
+          // G15-S2 (FinGunEnd/FinGunDone): özet slaytı tema zemininde, mürekkep başlık.
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: t.color.bg }]} />
+        ) : card?.photo_url ? (
           <CachedImage uri={card.photo_url} style={StyleSheet.absoluteFillObject} />
         ) : (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: t.isDark ? t.color.surface : t.color.bg }]} />
+          // G15-S2 (FinGunView): foto yokken de görüntüleyici koyu zemin — beyaz
+          // başlık/ilerleme çubukları açık zeminde okunmuyordu.
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#2C2C2E' }]} />
         )}
         {card ? <View style={styles.photoScrim} /> : null}
 
@@ -175,37 +194,52 @@ export function GunViewer({ visible, rings, startUserId, onClose, onAddToDay }: 
                 key={i}
                 style={[
                   styles.progressBar,
-                  { backgroundColor: i <= cardIdx ? '#FFFFFF' : 'rgba(255,255,255,0.4)' },
+                  {
+                    backgroundColor: summary
+                      ? t.color.ink
+                      : i <= cardIdx
+                        ? '#FFFFFF'
+                        : 'rgba(255,255,255,0.4)',
+                  },
                 ]}
               />
             ))}
           </View>
           <View style={styles.headerRow}>
-            <View style={[styles.avatarSmall, { backgroundColor: t.color.line }]}>
+            <View style={[styles.avatarSmall, { backgroundColor: t.color.line, borderColor: t.color.accent }]}>
               {currentRing.user.avatar_url ? (
                 <CachedImage uri={currentRing.user.avatar_url} style={styles.avatarSmallImg} />
               ) : (
                 <User size={16} color={t.color.secondary} weight="fill" />
               )}
             </View>
-            <AppText variant="body" style={styles.headerName}>
+            <AppText variant="body" style={[styles.headerName, summary ? { color: t.color.ink } : null]}>
               {currentRing.user.display_name}
             </AppText>
-            {card ? (
+            {summary ? (
+              <AppText variant="caption" tone="secondary">
+                {tt('gun.day_summary')}
+              </AppText>
+            ) : card ? (
               <AppText variant="caption" style={styles.headerMeta}>
                 {tt(MEAL_I18N[card.meal_type] ?? 'meal.snack')} · {cardIdx + 1} / {cards.length}
               </AppText>
             ) : null}
             <Pressable onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={tt('common.close')}>
-              <X size={20} color="#FFFFFF" weight="bold" />
+              <X size={20} color={summary ? t.color.ink : '#FFFFFF'} weight="bold" />
             </Pressable>
           </View>
         </View>
 
         {isLastCard ? (
-          <SummaryCard ring={currentRing} cards={cards} />
+          <SummaryCard ring={__DEV__ && vitrinDone ? { ...currentRing, progress: 1 } : currentRing} cards={cards} />
         ) : card ? (
-          <View style={[styles.bottomCard, { backgroundColor: 'rgba(255,255,255,0.82)' }]}>
+          <View
+            style={[
+              styles.bottomCard,
+              { bottom: insets.bottom + 40, backgroundColor: t.isDark ? 'rgba(28,28,30,0.82)' : 'rgba(255,255,255,0.82)' },
+            ]}
+          >
             <View style={styles.bottomRow}>
               <AppText variant="heading" style={styles.mealName} numberOfLines={1}>
                 {card.name}
@@ -229,15 +263,17 @@ export function GunViewer({ visible, rings, startUserId, onClose, onAddToDay }: 
                 style={[styles.addBtn, { backgroundColor: t.color.accent, opacity: onAddToDay ? 1 : 0.5 }]}
                 accessibilityRole="button"
               >
+                {/* G15-S2 (FinGunView): "+ Öğle’ye logla" — kartın öğününe loglanır. */}
+                <Plus size={16} color={t.color.onAccent} weight="bold" />
                 <AppText variant="body" tone="onAccent" style={styles.addBtnText}>
-                  {tt('kesfet.add_to_day')}
+                  {tt(`gun.log_to_${MEAL_I18N[card.meal_type] ? card.meal_type : 'snack'}`)}
                 </AppText>
               </Pressable>
             </View>
           </View>
         ) : null}
 
-        <AppText variant="caption" style={[styles.expiryHint, { bottom: insets.bottom + 14 }]}>
+        <AppText variant="caption" style={[styles.expiryHint, { bottom: insets.bottom + 14 }, summary ? { color: t.color.secondary } : null]}>
           {tt('gun.expires_in_24h')}
         </AppText>
       </Animated.View>
@@ -252,7 +288,7 @@ function SummaryCard({ ring, cards }: { ring: DayRing; cards: DayCard[] }) {
 
   return (
     <View style={styles.summaryWrap}>
-      <ProgressRing progress={ring.progress} size={220} strokeWidth={16} color={t.color.accentLine}>
+      <ProgressRing progress={ring.progress} size={236} strokeWidth={18} color={t.color.accentLine}>
         {complete ? (
           <AppText variant="heading" style={styles.summaryComplete}>
             {tt('gun.day_complete')}
@@ -271,11 +307,11 @@ function SummaryCard({ ring, cards }: { ring: DayRing; cards: DayCard[] }) {
       <View style={styles.summaryThumbs}>
         {cards.slice(0, 3).map((c) => (
           <View key={c.id} style={styles.summaryThumbCol}>
-            <View style={[styles.summaryThumb, { backgroundColor: t.color.surface }]}>
+            <View style={[styles.summaryThumb, { backgroundColor: t.color.surfaceRaised }]}>
               {c.photo_url ? (
                 <CachedImage uri={c.photo_url} style={styles.summaryThumbImg} />
               ) : (
-                <User size={20} color={t.color.secondary} />
+                null
               )}
             </View>
             <AppText variant="caption" tone="secondary">
@@ -300,16 +336,16 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', gap: 4 },
   progressBar: { flex: 1, height: 3, borderRadius: 2 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, height: 36 },
-  avatarSmall: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarSmall: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarSmallImg: { width: '100%', height: '100%' },
   headerName: { color: '#FFFFFF', fontWeight: '700' },
   headerMeta: { color: 'rgba(255,255,255,0.8)' },
   closeBtn: { marginLeft: 'auto', width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  bottomCard: { position: 'absolute', left: 12, right: 12, bottom: 54, borderRadius: 24, padding: 16 },
+  bottomCard: { position: 'absolute', left: 12, right: 12, borderRadius: 20, padding: 16 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mealName: { flex: 1, marginRight: 8 },
   kcal: { marginBottom: 2 },
-  addBtn: { height: 44, paddingHorizontal: 16, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  addBtn: { height: 44, paddingHorizontal: 16, borderRadius: 22, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
   addBtnText: { fontWeight: '700' },
   expiryHint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)' },
   summaryWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 24 },
@@ -317,7 +353,7 @@ const styles = StyleSheet.create({
   summaryComplete: { textAlign: 'center' },
   summaryThumbs: { flexDirection: 'row', gap: 20 },
   summaryThumbCol: { alignItems: 'center', gap: 6 },
-  summaryThumb: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  summaryThumb: { width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   summaryThumbImg: { width: '100%', height: '100%' },
   summaryFooter: { textAlign: 'center' },
 });
