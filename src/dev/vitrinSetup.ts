@@ -41,6 +41,18 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
     'eatkcal-city-gate-passed': ['city', 'waitlist', 'berlin'].includes(scene) ? null : '1',
+    // G16-S1 — FinScanOffline: bugün 13:05'te çekilmiş 1 bekleyen fotoğraf.
+    '@kcal_ai_scan_pending_queue':
+      scene === 'scanOffline'
+        ? JSON.stringify([
+            {
+              id: 'vitrin-pending-1',
+              imageUri: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200',
+              mealType: 'lunch',
+              queuedAt: new Date(new Date().setHours(13, 5, 0, 0)).toISOString(),
+            },
+          ])
+        : null,
     // G15-S2 — FinCollectEntry: profilde koleksiyon şeridi (4 kart).
     '@kcal_collection_v1':
       entry.pano === 'FinCollectEntry'

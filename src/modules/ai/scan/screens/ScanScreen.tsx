@@ -39,7 +39,7 @@ import FinScanViewfinder from '../ui/FinScanViewfinder';
 import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
 import { fetchProducts } from '../../../../lib/products';
 import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
-import { processPendingQueue } from '../pendingProcessor';
+import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight } from '../logFlight';
 import { useFeature } from '../../../../core/flags';
 import { FinChip } from '../../../profil/ui/finUi';
@@ -94,43 +94,25 @@ export default function ScanScreen() {
   useEffect(() => {
     if (!yeniKabuk || !user?.id) return;
     let cancelled = false;
-    let running = false;
-    const drain = async () => {
-      if (running) return;
-      running = true;
-      try {
-        const res = await processPendingQueue({
-          client: getAiScanClient(),
-          isCancelled: () => cancelled,
-          save: (entry, estimate) =>
-            saveAiScanEstimate(getSupabaseClient(), {
-              userId: user.id,
-              mealType: entry.mealType,
-              sourceRef: entry.id,
-              estimate,
-            }),
-        });
-        if (cancelled) return;
-        if (res.lastOutcome) recordQuota(res.lastOutcome.remaining, res.lastOutcome.reset_at);
-        for (const p of res.processed) {
-          emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`) });
-        }
-        if (res.processed.length > 0) {
-          setPendingMeal(res.processed[res.processed.length - 1].entry.mealType);
-          setPendingToast(true);
-        }
-      } catch {
-        // Ağ yine kesildi — kuyrukta kalsın.
-      } finally {
-        running = false;
+    const drain = () => void drainPendingScans(user.id);
+    const unsubNet = NetInfo.addEventListener((s) => {
+      if (s.isConnected) drain();
+    });
+    const unsubDone = onPendingDrained((res) => {
+      if (cancelled) return;
+      if (res.lastOutcome) recordQuota(res.lastOutcome.remaining, res.lastOutcome.reset_at);
+      for (const p of res.processed) {
+        emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`) });
       }
-    };
-    const unsub = NetInfo.addEventListener((s) => {
-      if (s.isConnected) void drain();
+      if (res.processed.length > 0) {
+        setPendingMeal(res.processed[res.processed.length - 1].entry.mealType);
+        setPendingToast(true);
+      }
     });
     return () => {
       cancelled = true;
-      unsub();
+      unsubNet();
+      unsubDone();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeniKabuk, user?.id]);
