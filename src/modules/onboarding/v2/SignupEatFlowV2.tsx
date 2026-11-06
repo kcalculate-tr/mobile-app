@@ -136,7 +136,12 @@ function CityPanel({ onBack, onPassed }: { onBack: () => void; onPassed: () => v
   const { t } = useT();
   const insets = useSafeAreaInsets();
   const reg = useEatkcalRegistration();
-  const [selected, setSelected] = useState<string | null>(null);
+  // Final (FinSignupEat panel 1): İzmir baştan seçili.
+  const [selected, setSelected] = useState<string | null>('İzmir');
+  const { setCity } = reg;
+  useEffect(() => {
+    setCity('İzmir');
+  }, [setCity]);
   const [notified, setNotified] = useState<Record<string, boolean>>({});
 
   const pick = (city: { name: string; allowed: boolean }) => {
