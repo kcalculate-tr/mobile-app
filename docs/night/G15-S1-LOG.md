@@ -13,28 +13,28 @@
 (10) Son commit GERÇEK dosya `docs/night/G15-S1-DONE`. Açık kalanlar SORULAR'da (SMS metni, harita sıkılığı, gate bayrağı, hedef tarihi).
 
 ## Pano tablosu (önce G14 → sonra G15) — görseller `.claude/night/out/g15/app/`
-Doğrulama: ✓ = çekimi Final ile yan yana okudum; ◦ = aynı bileşen/iskelet, ölçü ve renk token'ları Final'den, tek tek göz karşılaştırması yapılmadı (Light/Dark çiftinin diğeri ✓).
+Doğrulama: ✓ = çekimi Final ile yan yana okudum (referans|uygulama çiftleri `.claude/night/out/g14/pair-g15/`, 2. tur çekim `out/g14/g15/`). Kalan küçük farklar yalnız ölçü/kopya: başlık Bricolage ağırlığı, kart içi dikey boşluk (~8–12 px), Final'deki mock "[N]" değerleri yerine gerçek hesaplanan değerler, sheet başlığı 20 (Final 24).
 
 | Pano | G14 | G15 | Not |
 |---|---|---|---|
 | FinOnbWelcome | büyük | aynı ✓ | |
-| FinOnbWelcome-Dark | küçük | aynı ◦ | |
+| FinOnbWelcome-Dark | küçük | aynı ✓ | |
 | FinOnbIntent | büyük | küçük fark ✓ | başlık ölçüsü (30→32 ayarlandı), satır iç boşluğu |
-| FinOnbIntent-Dark | büyük | küçük fark ◦ | |
-| FinOnbAccount / -Dark | büyük | küçük fark ◦ | Apple siyah (Dark'ta beyaz), geri oku, damla ölçüsü Final'de |
+| FinOnbIntent-Dark | büyük | küçük fark ✓ | |
+| FinOnbAccount / -Dark | büyük | küçük fark ✓ ✓ | Apple siyah (Dark'ta beyaz), geri oku, damla ölçüsü Final'de |
 | FinOnbNotify | büyük | aynı ✓ | |
-| FinOnbNotify-Dark | büyük | küçük fark ◦ | |
-| FinOnbUnderage / -Dark | büyük | küçük fark ◦ | |
-| FinTbGoal / -Dark | büyük | küçük fark ◦ | kupa, noktalar, lime + tik, Devam et |
-| FinTbPace | büyük | küçük fark ✓ | hedef tarih satırı değeri "—" (SORULAR 3) |
+| FinOnbNotify-Dark | büyük | küçük fark ✓ | |
+| FinOnbUnderage / -Dark | büyük | küçük fark ✓ | |
+| FinTbGoal / -Dark | büyük | küçük fark ✓ | kupa, noktalar, lime + tik, Devam et |
+| FinTbPace | büyük | küçük fark ✓ | hedef tarih satırı yerinde, yalnız değer "—" (Final'de de mock "[Tarih]"; hedef kilo verisi akışta yok, uydurma tarih yazılmadı — SORULAR 3) |
 | FinTbPace-Dark | büyük | küçük fark ✓ | |
 | FinTbAbout | büyük | küçük fark ✓ | tekerlek ölçüleri |
-| FinTbAbout-Dark | büyük | küçük fark ◦ | |
-| FinTbActivity | büyük | küçük fark ◦ | |
-| FinTbResult / -Dark | küçük/büyük | aynı ✓ (Dark) / ◦ | makro kartları, altı çizili link |
+| FinTbAbout-Dark | büyük | küçük fark ✓ | |
+| FinTbActivity | büyük | küçük fark ✓ | |
+| FinTbResult / -Dark | küçük/büyük | aynı ✓ | makro kartları, altı çizili link |
 | FinTbHow | büyük | küçük fark ✓ | sheet başlığı 20 (Sheet ortak bileşeni, Final 24) |
-| FinTbHow-Dark | büyük | küçük fark ◦ | |
-| FinTbFirst / -Dark | büyük | aynı ✓ (Dark) / ◦ | |
+| FinTbHow-Dark | büyük | küçük fark ✓ | |
+| FinTbFirst / -Dark | büyük | aynı ✓ | |
 | FinIntro / -Dark | küçük | küçük fark ✓ | sheet başlığı 20 (Final 24) |
 | FinIntroOrder / -Dark | büyük | küçük fark ✓ | mock'ta geçmiş sipariş yoksa "Göz at/Sonra" (veri) |
 | FinSignupAI / -Dark | büyük | küçük fark ✓ | v2 akış: karşılama (logo) → kod → "Seni nasıl tanısınlar?" → "Profilini tamamla"; handle adımında mevcut "Vazgeç" korundu, vitrin örnek verisi (İlter/@ilter) yok |
@@ -42,6 +42,11 @@ Doğrulama: ✓ = çekimi Final ile yan yana okudum; ◦ = aynı bileşen/iskele
 | FinSignupEat / -Dark | büyük / yok | küçük fark ✓ | şehir sheet'i; arka plan (mutfak listesi) ve İzmir tiki yok |
 | FinSignupEatAddress / Phone (ek çekim) | — | küçük fark ✓ | adres: mantık gereği İlçe/Mahalle alanları + harita doğrulaması; telefon: SMS vaadi yok (SORULAR 2) |
 | FinLoginEmail / Code (ek çekim, Final'de ayrı pano yok → SignupAI 1. adım dili) | — | küçük fark ✓ | Giriş v2 (OTP) |
+
+## Bayrak kapalı parite kanıtı
+- `v2/__component_tests__/gates.flagOff.test.tsx` (4/4): `yeni_onboarding` KAPALI → `LoginGate` = UnifiedLoginScreen, `SignupAIGate` = KcalAiSignUpRoute, `SignupEatGate` = SignupEatScreen (v2 render edilmez); AÇIK → üçü de v2.
+- Onboarding (5 ekran) ve Takibe başla (7 ekran) rotaları bayrak kapalıyken kaydolmaz/erişilmez (AppNavigator `yeniOnboarding` initialRoute; TakibeBasla yalnız onboarding Hesap + Profil › Hedefim'den); Tracker flagOff snapshot testi (components, snapshot 1/1) aynı; `EkCityGateScreen` bayrak kapalıyken `writeCityGatePassed → EkAddressAdd` yolunu aynen izler.
+- Eski dosyalar için diff = 0 kanıtı aşağıda.
 
 ## Eski tasarım envanteri (bayraklar açık, kayıt → onboarding → takibe başla → ilk ana sayfa)
 Eski tasarım: 0
