@@ -165,9 +165,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   authLabel: { fontWeight: '600' },
+  // G14-S1 — Final ikincil düğme: dolu koyu hap (çerçevesiz düz metin değil).
   ghost: {
-    minHeight: 44,
+    minHeight: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
 });

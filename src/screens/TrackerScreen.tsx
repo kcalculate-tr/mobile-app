@@ -2294,11 +2294,6 @@ const html = `
                  loglanır (yukarıdaki auto-log etkisi). ── */}
             {yeniKabuk ? (
               <>
-                {etkinlik ? (
-                  <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
-                    <TrackerActivityEntry />
-                  </View>
-                ) : null}
                 <HomeMealSlots
                   slots={homeSlots}
                   eaten={Math.round(consumedTodayMacros.kcal)}
@@ -2311,8 +2306,13 @@ const html = `
                   onPortion={handlePortion}
                   onShare={paylasimKarti ? handleShareRow : undefined}
                 />
-                {/* G14-S1: Final sırası — gün halkası şeridi öğünlerin altında. */}
+                {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
                 <TrackerDayStrip />
+                {etkinlik ? (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                    <TrackerActivityEntry />
+                  </View>
+                ) : null}
               </>
             ) : null}
             {/* ── Pantry ── */}

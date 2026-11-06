@@ -48,13 +48,13 @@ function WelcomeScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'Onb
   const enter = useEnter();
   const root = useRootNav(navigation);
   return (
-    <OnbScaffold glass={require('../../../assets/glass/bowl.png')} glowY={0.34}>
-      <View style={styles.flexTop}>
-        <AppText textRole="screenTitle" style={[styles.brand, { color: ONB.accent }]}>
+    <OnbScaffold glass={require('../../../assets/glass/bowl.png')} glowY={0.3} dots={{ count: 4, index: 0 }}>
+      <View style={styles.flexTop} />
+      <Animated.View style={[styles.bottom, enter.style]}>
+        {/* G14-S1 — FinOnbWelcome: marka kartın üstünde, küçük. */}
+        <AppText textRole="screenTitle" style={[styles.brand, { color: ONB.ink }]}>
           {i18n.t('onboarding.welcome.brand')}
         </AppText>
-      </View>
-      <Animated.View style={[styles.bottom, enter.style]}>
         <AppText style={[styles.headline, { color: ONB.ink }]}>
           {i18n.t('onboarding.welcome.headline')}
         </AppText>
@@ -89,7 +89,7 @@ function IntentScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbI
   };
 
   return (
-    <OnbScaffold glowY={0.16} topRight={{ label: i18n.t('onboarding.intent.skip'), onPress: () => root?.navigate('Tabs', { screen: 'Home' }) }}>
+    <OnbScaffold glowY={0.16} dots={{ count: 4, index: 1 }} topRight={{ label: i18n.t('onboarding.intent.skip'), onPress: () => root?.navigate('Tabs', { screen: 'Home' }) }}>
       <Animated.View style={[styles.flexTop, { justifyContent: 'flex-start', paddingTop: 48 }, enter.style]}>
         <AppText textRole="screenTitle" style={[styles.title, { color: ONB.ink }]}>
           {i18n.t('onboarding.intent.title')}
@@ -151,7 +151,7 @@ function NotifyScreen({ navigation, route }: NativeStackScreenProps<OnbParamList
   };
 
   return (
-    <OnbScaffold glass={require('../../../assets/glass/flame.png')} glowY={0.28}>
+    <OnbScaffold glass={require('../../../assets/glass/flame.png')} glowY={0.28} dots={{ count: 4, index: 2 }}>
       <View style={styles.flexTop} />
       <Animated.View style={[styles.bottom, enter.style]}>
         <AppText textRole="screenTitle" style={[styles.title, { color: ONB.ink }]}>
@@ -208,7 +208,7 @@ function AccountScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'Onb
   };
 
   return (
-    <OnbScaffold glass={require('../../../assets/glass/drop.png')} glowY={0.26}>
+    <OnbScaffold glass={require('../../../assets/glass/drop.png')} glowY={0.26} dots={{ count: 4, index: 3 }}>
       <View style={styles.flexTop} />
       <Animated.View style={[styles.bottom, enter.style]}>
         <AppText textRole="screenTitle" style={[styles.title, { color: ONB.ink }]}>
@@ -285,8 +285,15 @@ export default function OnboardingNavigator() {
 const styles = StyleSheet.create({
   flexTop: { flex: 1, justifyContent: 'center' },
   center: { flex: 1, justifyContent: 'center' },
-  bottom: { paddingBottom: 8 },
-  brand: { fontSize: 40, lineHeight: 44 },
+  // G14-S1 — Final onboarding kartı (yarı saydam, ince kenar, 28 köşe).
+  bottom: {
+    padding: 20,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  brand: { fontSize: 20, lineHeight: 24, marginBottom: 12 },
   headline: { fontFamily: 'BricolageGrotesque_800ExtraBold', fontSize: 34, lineHeight: 40, letterSpacing: -0.5 },
   title: { marginBottom: 8 },
   lead: { marginTop: 8 },
