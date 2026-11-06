@@ -143,7 +143,16 @@ function GunViewerScene({ end, done }: { end?: boolean; done?: boolean }) {
   );
 }
 
-function ProfileSubScene({ sub, what }: { sub: string; what?: boolean }) {
+// Final FinPrMacro örneğiyle aynı içerik: 3/5 Macro, iki ödül kuponu.
+const MACRO_MOCK = {
+  balance: 3,
+  coupons: [
+    { id: 'c1', code: 'MACRO-1', description: 'Ücretsiz öğün', end_date: '2026-12-31T00:00:00Z' },
+    { id: 'c2', code: 'MACRO-2', description: 'Ücretsiz öğün', end_date: '2027-01-15T00:00:00Z' },
+  ],
+};
+
+function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boolean; history?: boolean; mock?: boolean }) {
   switch (sub) {
     case 'personal':
       return <SettingsPersonalScreen onBack={noop} />;
@@ -160,7 +169,16 @@ function ProfileSubScene({ sub, what }: { sub: string; what?: boolean }) {
     case 'feedback':
       return <SettingsFeedbackScreen onBack={noop} />;
     case 'macro':
-      return <FinPrMacroScreen {...({ onBack: noop, vitrinWhatOpen: what } as any)} />;
+      return (
+        <FinPrMacroScreen
+          {...({
+            onBack: noop,
+            vitrinWhatOpen: what,
+            vitrinHistory: history,
+            vitrinData: mock ? MACRO_MOCK : undefined,
+          } as any)}
+        />
+      );;
     case 'progress':
       return <FinPrProgressScreen {...({ onBack: noop, goalKcal: 2000, onAddMeasurement: noop } as any)} />;
     case 'badges':
