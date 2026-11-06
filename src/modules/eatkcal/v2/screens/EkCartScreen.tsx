@@ -6,7 +6,7 @@
 // src/modules/eatkcal/screens/CartScreen.tsx (KİMSE) ile AYNI sırada.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Basket, CaretRight, Minus, Plus, Tag, Trash } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
@@ -50,6 +50,9 @@ export default function EkCartScreen() {
   const { c, t } = useEk();
   const { user } = useAuth();
   const hydrated = useCartHydrated();
+  // YALNIZ __DEV__ vitrini (FinEkCartSkeleton): iskelet hâlinde başlar.
+  const routeParams = useRoute().params as { vitrinSkeleton?: boolean } | undefined;
+  const vitrinSkeleton = __DEV__ ? routeParams?.vitrinSkeleton === true : false;
 
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -232,14 +235,22 @@ export default function EkCartScreen() {
   const goStores = () => navigation.navigate('Tabs', { screen: 'Home' });
 
   // ── İskelet ─────────────────────────────────────────────────────────────
-  if (!hydrated) {
+  if (!hydrated || vitrinSkeleton) {
+    // G15-S5 (FinEkCartSkeleton): 3 ürün kartı (76 görsel · 2 satır · 44 hap) + özet bloğu.
     return (
       <EkScreen header={<EkHeader title={t('eatkcal.v2.cart.title')} onBack={navigation.canGoBack() ? navigation.goBack : undefined} />}>
         <View style={{ padding: 16, gap: 12 }} testID="ek-cart-skeleton">
-          <EkSkeleton height={100} radius={20} />
-          <EkSkeleton height={100} radius={20} />
-          <EkSkeleton height={56} radius={18} />
-          <EkSkeleton height={180} radius={20} />
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={[styles.skCard, { backgroundColor: c.surface }]}>
+              <EkSkeleton width={76} height={76} radius={14} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <EkSkeleton height={14} radius={7} />
+                <EkSkeleton height={14} radius={7} />
+                <EkSkeleton height={44} radius={22} />
+              </View>
+            </View>
+          ))}
+          <EkSkeleton height={160} radius={20} />
         </View>
       </EkScreen>
     );
@@ -530,6 +541,7 @@ function MacroChips({ m }: { m: ItemMacros }) {
 void stockError;
 
 const styles = StyleSheet.create({
+  skCard: { flexDirection: 'row', gap: 12, padding: 12, borderRadius: 20 },
   line: { flexDirection: 'row', gap: 12, padding: 12, borderRadius: 20 },
   img: { width: 76, height: 76, borderRadius: 14 },
   icon44: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

@@ -225,7 +225,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinScroll: true })), { scene: 'scrolled' }],
   ['FinEkCart', 'eatkcal', route(ek('EkCart')), { scene: 'cart' }],
   ['FinEkCartEmpty', 'eatkcal', route(ek('EkCart')), { data: 'empty' }],
-  ['FinEkCartSkeleton', 'eatkcal', route(ek('EkCart')), { data: 'loading', scene: 'cart' }],
+  ['FinEkCartSkeleton', 'eatkcal', route(ek('EkCart', { vitrinSkeleton: true })), { data: 'loading', scene: 'cart' }],
   ['FinEkCheckout', 'eatkcal', route(ek('EkCheckout')), { scene: 'cart' }],
   ['FinEkCheckoutPayWait', 'eatkcal', route(ek('EkCheckout', { vitrinPay: 'wait' })), { scene: 'payWait' }],
   ['FinEkCheckoutPayFail', 'eatkcal', route(ek('EkCheckout', { vitrinPay: 'fail' })), { scene: 'payFail' }],
