@@ -435,7 +435,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
                     }
                   >
                     <View>
-                      <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.bubble} />
+                      <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.cut} />
                       {showBadge ? (
                         <Animated.View
                           pointerEvents="none"
@@ -471,7 +471,7 @@ export function TabBarR3({ state, navigation }: BottomTabBarProps) {
               accessibilityLabel={i18n.t('shell.expand')}
             >
               <View style={styles.miniCenter}>
-                <MiniIcon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled cutColor={g.bubble} />
+                <MiniIcon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled cutColor={g.cut} />
               </View>
             </Pressable>
           </Animated.View>

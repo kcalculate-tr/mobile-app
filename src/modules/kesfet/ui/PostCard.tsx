@@ -289,7 +289,7 @@ export function PostCard({
           <View style={styles.actions}>
             <Action
               icon={model.me.liked ? 'heartFill' : 'heart'}
-              color={model.me.liked ? t.color.accentLine : t.color.secondary}
+              color={model.me.liked ? t.color.ink : t.color.secondary}
               label={tr('kesfet.ui.a11y.like')}
               count={model.stats.likes}
               fmtCount={(n) => fmt(n)}
@@ -297,7 +297,7 @@ export function PostCard({
             />
             {showComment && onComment ? (
               <Action
-                icon="chat"
+                icon="chatCircle"
                 color={t.color.secondary}
                 label={tr('kesfet.ui.a11y.comment')}
                 count={model.stats.comments}
@@ -307,7 +307,7 @@ export function PostCard({
             ) : null}
             <Action
               icon={model.me.saved ? 'bookmarkFill' : 'bookmark'}
-              color={model.me.saved ? t.color.accentLine : t.color.secondary}
+              color={model.me.saved ? t.color.ink : t.color.secondary}
               label={tr('kesfet.ui.a11y.save')}
               count={model.stats.saves}
               fmtCount={(n) => fmt(n)}

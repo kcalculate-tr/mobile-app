@@ -4,7 +4,8 @@
 // (bayrak kapalıyken ya da sunucu henüz `kind` göndermiyorsa düz kapak görseli
 // — bugünkü davranışla birebir aynı).
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Icon } from './icons';
 import { Image } from 'expo-image';
 import { useTheme } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
@@ -56,14 +57,20 @@ function Cell({
   }
 
   const posterUri = media.kind === 'video' ? (media.thumb_path ? publicUrlForPath(media.thumb_path) : media.url) : media.url;
+  // G15 — yüklenirken/yüklenemezse Final yer tutucusu: gri zemin + görsel ikonu.
   return (
-    <Image
-      source={{ uri: posterUri }}
-      style={[{ flex: 1, backgroundColor: t.color.line }, style]}
-      contentFit="cover"
-      transition={120}
-      accessibilityIgnoresInvertColors
-    />
+    <View style={[{ flex: 1, backgroundColor: t.isDark ? '#3A3A3C' : '#DCDEE2' }, style]}>
+      <View style={[StyleSheet.absoluteFill, styles.ph]}>
+        <Icon name="image" size={24} color={t.color.secondary} />
+      </View>
+      <Image
+        source={{ uri: posterUri }}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        transition={120}
+        accessibilityIgnoresInvertColors
+      />
+    </View>
   );
 }
 
@@ -76,8 +83,15 @@ export function MediaGrid({
   postId: string;
   isVisible?: boolean;
 }) {
+  const { width } = useWindowDimensions();
   if (media.length === 0) return null;
   const items = media.slice(0, 4);
+  // G15 — tek görselde yükseklik en-boy oranından (Final: yatay ~220, kare ~300);
+  // ölçü yoksa 220. Genişlik = ekran − 16·2 − 40 avatar − 12 aralık.
+  const one = items.length === 1 ? items[0] : null;
+  const w = Math.max(0, width - 84);
+  const h =
+    one && one.width > 0 && one.height > 0 ? Math.round(Math.min(320, Math.max(180, (w * one.height) / one.width))) : H;
 
   const cell = (m: FeedMedia) => <Cell media={m} postId={postId} isVisible={isVisible} />;
 
@@ -122,11 +136,12 @@ export function MediaGrid({
     );
   }
 
-  return <View style={styles.wrap}>{body}</View>;
+  return <View style={[styles.wrap, { height: h }]}>{body}</View>;
 }
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 10, height: H, borderRadius: 16, overflow: 'hidden' },
   rowFill: { flex: 1, flexDirection: 'row' },
   colFill: { flex: 1 },
+  ph: { alignItems: 'center', justifyContent: 'center' },
 });

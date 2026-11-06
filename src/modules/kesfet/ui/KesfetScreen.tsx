@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
+import { StatusBar } from 'expo-status-bar';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
@@ -719,6 +720,8 @@ export function KesfetScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
+      {/* G15 — koyu temada durum çubuğu yazısı açık (Final -Dark panoları). */}
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
       <Header
         onSearch={() => {}}
         onNotifications={() => navigation.navigate('KesfetNotifications')}

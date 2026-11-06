@@ -58,7 +58,8 @@ function post(id: string, o: Partial<FeedPost>): FeedPost {
   };
 }
 
-const img = (url: string) => [{ url, width: 1080, height: 720, kind: 'image' as const }];
+// Final oranları: akış fotoğrafı ~309×220, serbest kare ~309×300.
+const img = (url: string, h = 770) => [{ url, width: 1080, height: h, kind: 'image' as const }];
 
 /** FinFeed: kcal haftanın tabağı (foto + besinler) · Dyt metin · Üretici öğün kartı · Dyt çorba. */
 function feedPosts(): FeedPost[] {
@@ -136,7 +137,7 @@ function serbestPosts(): FeedPost[] {
     post('post-s1', {
       published_at: ago(12),
       body: 'Antrenman bitti, şimdi kahve.',
-      media: img(PLACEHOLDER),
+      media: img(PLACEHOLDER, 1048),
       me: { liked: true, saved: false, is_author: false },
       stats: { likes: 18, saves: 2, adds: 0, comments: 4, did_it: 0 },
     }),
