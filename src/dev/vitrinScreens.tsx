@@ -32,6 +32,9 @@ import SettingsPrivacyScreen from '../modules/profil/ui/screens/SettingsPrivacyS
 import SettingsAgreementsScreen from '../modules/profil/ui/screens/SettingsAgreementsScreen';
 import SettingsSupportScreen from '../modules/profil/ui/screens/SettingsSupportScreen';
 import SettingsFeedbackScreen from '../modules/profil/ui/screens/SettingsFeedbackScreen';
+import FinPrReviewsScreen from '../modules/profil/ui/screens/FinPrReviewsScreen';
+import FinPrCouponsScreen from '../modules/profil/ui/screens/FinPrCouponsScreen';
+import FinPrMeasurementsScreen from '../modules/profil/ui/screens/FinPrMeasurementsScreen';
 import FinPrMacroScreen from '../modules/profil/ui/screens/FinPrMacroScreen';
 import FinPrProgressScreen from '../modules/profil/ui/screens/ProgressScreen';
 import BadgesScreen from '../modules/profil/ui/screens/BadgesScreen';
@@ -166,6 +169,12 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
       return <SettingsAgreementsScreen onBack={noop} />;
     case 'support':
       return <SettingsSupportScreen onBack={noop} />;
+    case 'reviews':
+      return <FinPrReviewsScreen onBack={noop} />;
+    case 'coupons':
+      return <FinPrCouponsScreen onBack={noop} />;
+    case 'measurements':
+      return <FinPrMeasurementsScreen onBack={noop} />;
     case 'feedback':
       return <SettingsFeedbackScreen onBack={noop} />;
     case 'macro':

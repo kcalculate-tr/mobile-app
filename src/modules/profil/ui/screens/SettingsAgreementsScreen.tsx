@@ -51,6 +51,7 @@ export default function AgreementsScreen({
       <FinHeader title={tr('profil.agreements_title')} onBack={onBack} />
       <ScrollView
         horizontal
+        style={{ flexGrow: 0 }}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}
         keyboardShouldPersistTaps="handled"
