@@ -1,3 +1,4 @@
 G15-S1 tamam — dal night15/onb. Rapor: docs/night/G15-S1-LOG.md
-Eski tasarım: 0 · tsc 0 · unit 556/556 (+1 atlandı; bayrak kapalı rota sözleşmesi dahil) · components 128/128 (kapı paritesi dahil) · expo export ios ✓
+Eski tasarım: 0 · tsc 0 · unit 556/556 (+1 atlandı) · components 128/128 · expo export ios ✓
+Bayrak kapalı: kapı testi 4/4 + rota sözleşmesi 3/3 + cihazda temiz kurulum eski WelcomeGate'le açıldı (flagoff-launch.png).
 Panolar Final ile yan yana okundu (pair-g15) → aynı / küçük fark. Eski auth/adres dosyalarında git diff boş.

@@ -46,6 +46,7 @@ Doğrulama: ✓ = çekimi Final ile yan yana okudum (referans|uygulama çiftleri
 ## Bayrak kapalı parite kanıtı
 - `v2/__component_tests__/gates.flagOff.test.tsx` (4/4): `yeni_onboarding` KAPALI → `LoginGate` = UnifiedLoginScreen, `SignupAIGate` = KcalAiSignUpRoute, `SignupEatGate` = SignupEatScreen (v2 render edilmez); AÇIK → üçü de v2.
 - `v2/__tests__/flagOffRoutes.test.ts` (3/3, `test:unit`): initialRoute ifadesi `session ? 'Tabs' : yeniOnboarding ? 'Onboarding' : 'WelcomeGate'` (kapalı → WelcomeGate); `'TakibeBasla'`ya giden TÜM `navigate` çağrıları kaynak taramasıyla yalnız `OnboardingNavigator.tsx` (bayrak açık akış) ve `FinPrProfileScreen.tsx` (Final profil); Login/Kcal AI kayıt rotaları yalnız bayrak kapılarına bağlı.
+- ÇALIŞTIRMA (cihaz): temiz kurulumlu simülatörde (vitrin dışı, bayraklar varsayılan = kapalı) gerçek uygulama oturumsuz açılışta bugünkü eski `WelcomeGate`'i ("Gün boyu ne yiyeceğim diye düşünme." + "Giriş yap / Hesap oluştur") gösterdi, Onboarding'i DEĞİL — `.claude/night/out/g15/flagoff-launch.png`.
 - Onboarding (5 ekran) ve Takibe başla (7 ekran) rotaları bayrak kapalıyken kaydolmaz/erişilmez (AppNavigator `yeniOnboarding` initialRoute; TakibeBasla yalnız onboarding Hesap + Profil › Hedefim'den); Tracker flagOff snapshot testi (components, snapshot 1/1) aynı; `EkCityGateScreen` bayrak kapalıyken `writeCityGatePassed → EkAddressAdd` yolunu aynen izler.
 - Eski dosyalar için diff = 0 kanıtı aşağıda.
 
