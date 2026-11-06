@@ -13,7 +13,7 @@ import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/nati
 import { EmptyErrorCard, Sheet, Toast, haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
-import { PencilSimple, Plus, Trash } from '../../../../components/icons';
+import { MapPin, PencilSimple, Plus, Trash } from '../../../../components/icons';
 import { normalizeAddress } from '../../../../lib/addresses';
 import { formatSupabaseErrorForDevLog, mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
 import { useAddressStore } from '../../../../store/addressStore';
@@ -159,6 +159,7 @@ export default function EkAddressesScreen() {
           </View>
         ) : addresses.length === 0 && !errorMessage ? (
           <EmptyErrorCard
+            icon={<MapPin size={24} color={c.ink} />}
             tone="empty"
             title={t('eatkcal.v2.address.empty_title')}
             description={t('eatkcal.v2.address.empty_body')}

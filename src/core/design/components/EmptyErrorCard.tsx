@@ -16,10 +16,13 @@ export function EmptyErrorCard({
   actionLabel,
   onAction,
   tone = 'empty',
+  icon,
   style,
   testID,
 }: {
   title: string;
+  /** G14-S1: Final boş/hata kartı ikonu (48'lik gri daire içinde, 24 ikon). */
+  icon?: React.ReactNode;
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
@@ -37,16 +40,17 @@ export function EmptyErrorCard({
         styles.wrap,
         {
           backgroundColor: t.color.surface,
-          borderColor: t.color.line,
-          borderWidth: t.stroke.hairline,
-          borderRadius: t.radius.lg,
-          padding: t.space['2xl'],
-          gap: t.space.md,
+          borderRadius: 20,
+          paddingTop: 20,
+          paddingHorizontal: 16,
+          paddingBottom: 16,
+          gap: 8,
         },
         style,
       ]}
     >
-      <AppText textRole="section" tone={tone === 'error' ? 'danger' : 'ink'} style={styles.center}>
+      {icon ? <View style={[styles.icon, { backgroundColor: t.color.line }]}>{icon}</View> : null}
+      <AppText textRole="section" tone={tone === 'error' ? 'danger' : 'ink'} style={[styles.center, styles.title]}>
         {title}
       </AppText>
       {description ? (
@@ -57,7 +61,7 @@ export function EmptyErrorCard({
       {actionLabel ? (
         <Button
           label={actionLabel}
-          variant="secondary"
+          variant="primary"
           tone="ink"
           onPress={onAction}
           style={styles.action}
@@ -70,5 +74,7 @@ export function EmptyErrorCard({
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center' },
   center: { textAlign: 'center' },
-  action: { marginTop: 4 },
+  action: { marginTop: 8, alignSelf: 'stretch' },
+  icon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  title: { marginTop: 4 },
 });

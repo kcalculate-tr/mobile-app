@@ -14,7 +14,7 @@
 //
 // Hareket yalnız core/design/motion token/hook'ları + core/design imza bileşenleri.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import {
@@ -28,7 +28,7 @@ import {
 } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { useFeature } from '../../core/flags';
-import { TrophyIcon } from '../../components/icons';
+import { Bell, TrophyIcon } from '../../components/icons';
 import { getGunClient } from '../../modules/gun';
 import type { DayRing, DayCard } from '../../modules/gun';
 import { GunRingStrip, GunViewer, RollingNumber } from '../../modules/gun/ui';
@@ -46,6 +46,89 @@ export interface TrackerDayHeaderProps {
   lastMealLabel?: string | null;
   /** Saat (0–23) — sessiz an koşulu. Dışarıdan verilmezse yerel saat. */
   hour?: number;
+  /**
+   * G14-S1 (FinHomeR3): makro özetleri. Verilirse üst blok Final düzeninde
+   * çizilir — Enerji halkası (yüzde + kalan kcal) + Protein halkası + P·K·Y
+   * mini çipleri. Su verisi uygulamada yok → Su halkası gösterilmez.
+   */
+  macros?: { protein: number; carbs: number; fat: number };
+  macroTargets?: { protein: number; carbs: number; fat: number };
+  /** G14-S1: gün halkası şeridini burada çizme (TrackerDayStrip öğünlerin altında çizer). */
+  hideStrip?: boolean;
+}
+
+/** Saate göre selamlama anahtarı (05–11 sabah, 11–18 gün, diğer akşam). */
+function greetingKey(hour: number): string {
+  if (hour >= 5 && hour < 11) return 'gun.greeting';
+  if (hour >= 11 && hour < 18) return 'gun.greeting_day';
+  return 'gun.greeting_evening';
+}
+
+/** G14-S1 — FinHomeR3 üst satırı: "Günaydın, <ad>" + zil. */
+export function HomeGreeting({ name, onBell }: { name: string; onBell?: () => void }) {
+  const t = useTheme();
+  const { t: tt } = useT();
+  const first = name.trim().split(/\s+/)[0] ?? '';
+  return (
+    <View style={styles.greetRow}>
+      <AppText variant="heading" style={styles.greetText} numberOfLines={1} accessibilityRole="header">
+        {first ? `${tt(greetingKey(new Date().getHours()))}, ${first}` : tt(greetingKey(new Date().getHours()))}
+      </AppText>
+      {onBell ? (
+        <Pressable onPress={onBell} hitSlop={8} accessibilityRole="button" accessibilityLabel={tt('gun.notifications')} style={styles.bell}>
+          <Bell size={22} color={t.color.ink} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** G14-S1 — gün halkası şeridi (öğünlerin altında; Final sırası). */
+export function TrackerDayStrip() {
+  const gunHalkasi = useFeature('gun_halkasi');
+  const [rings, setRings] = useState<DayRing[]>([]);
+  const [openUserId, setOpenUserId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!gunHalkasi) return;
+    let alive = true;
+    getGunClient()
+      .getDayRings()
+      .then((r) => alive && setRings(r))
+      .catch(() => alive && setRings([]));
+    return () => {
+      alive = false;
+    };
+  }, [gunHalkasi]);
+  const onAddToDay = useCallback(async (card: DayCard) => {
+    await getGunClient().addDayCardToDay({
+      card: card.id,
+      mealType: inferMealTypeFromHour(new Date().getHours()),
+      idempotencyKey: `tracker-${card.id}`,
+    });
+  }, []);
+  if (!gunHalkasi || rings.length === 0) return null;
+  return (
+    <View style={styles.strip}>
+      <GunRingStrip rings={rings} onOpen={(id) => setOpenUserId(id)} />
+      {openUserId ? (
+        <GunViewer visible rings={rings} startUserId={openUserId} onClose={() => setOpenUserId(null)} onAddToDay={onAddToDay} />
+      ) : null}
+    </View>
+  );
+}
+
+function MiniMacro({ label, value, target }: { label: string; value: number; target: number }) {
+  const t = useTheme();
+  const p = target > 0 ? Math.min(value / target, 1) : 0;
+  return (
+    <View style={[styles.miniChip, { backgroundColor: t.color.surface }]}>
+      <ProgressRing progress={p} size={24} strokeWidth={4} />
+      <View>
+        <AppText tone="secondary" style={styles.miniLabel}>{label}</AppText>
+        <AppText style={styles.miniValue}>{`${Math.round(value)}/${Math.round(target)} g`}</AppText>
+      </View>
+    </View>
+  );
 }
 
 export function TrackerDayHeader({
@@ -54,6 +137,9 @@ export function TrackerDayHeader({
   logToken = 0,
   lastMealLabel,
   hour,
+  macros,
+  macroTargets,
+  hideStrip = false,
 }: TrackerDayHeaderProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -127,13 +213,60 @@ export function TrackerDayHeader({
         />
       </View>
 
-      {gunHalkasi && rings.length > 0 ? (
+      {!hideStrip && gunHalkasi && rings.length > 0 ? (
         <View style={styles.strip}>
           <GunRingStrip rings={rings} onOpen={(id) => setOpenUserId(id)} />
         </View>
       ) : null}
 
-      {/* Günlük halka dolumu imza anı. */}
+      {macros && macroTargets ? (
+        <View style={styles.finBlock}>
+          <View style={styles.finRings}>
+            <Animated.View style={[styles.finRingCol, popStyle]}>
+              <ProgressRing progress={progress} size={112} strokeWidth={12}>
+                <AppText variant="heading" style={styles.finPct}>{`%${Math.round(progress * 100)}`}</AppText>
+              </ProgressRing>
+              <AppText tone="secondary" style={styles.finCap}>{tt('gun.status_energy')}</AppText>
+              <RollingNumber
+                value={Math.max(0, Math.round(target - kcal))}
+                lang={lang as NumLang}
+                fontSize={22}
+                color={t.color.ink}
+                accessibilityLabel={tt('gun.goal_kcal', { kcal, target })}
+              />
+              <AppText tone="secondary" style={styles.finCap}>{tt('gun.kcal_left')}</AppText>
+            </Animated.View>
+            <View style={styles.finRingCol}>
+              <ProgressRing
+                progress={macroTargets.protein > 0 ? Math.min(macros.protein / macroTargets.protein, 1) : 0}
+                size={72}
+                strokeWidth={8}
+              >
+                <AppText style={styles.finPctSm}>
+                  {`%${macroTargets.protein > 0 ? Math.round(Math.min(macros.protein / macroTargets.protein, 1) * 100) : 0}`}
+                </AppText>
+              </ProgressRing>
+              <AppText tone="secondary" style={styles.finCap}>{tt('gun.macro_protein')}</AppText>
+              <AppText style={styles.finVal}>{Math.round(macros.protein)}</AppText>
+              <AppText tone="secondary" style={styles.finCap}>{`/${Math.round(macroTargets.protein)} g`}</AppText>
+            </View>
+          </View>
+          <View style={styles.miniRow}>
+            <MiniMacro label={tt('gun.macro_protein')} value={macros.protein} target={macroTargets.protein} />
+            <MiniMacro label={tt('gun.macro_carbs')} value={macros.carbs} target={macroTargets.carbs} />
+            <MiniMacro label={tt('gun.macro_fat')} value={macros.fat} target={macroTargets.fat} />
+          </View>
+          {streak > 0 ? (
+            <View style={[styles.streakChip, styles.streakCenter, { backgroundColor: t.color.accent }]}>
+              <TrophyIcon size={14} color={t.color.onAccent} weight="fill" />
+              <AppText variant="caption" tone="onAccent" style={styles.streakText}>
+                {tt('gun.streak', { count: streak })}
+              </AppText>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+      /* Günlük halka dolumu imza anı. */
       <View style={styles.ringBlock}>
         <Animated.View style={[styles.ringCenterWrap, popStyle]}>
           <ProgressRing progress={progress} size={200} strokeWidth={18}>
@@ -171,6 +304,7 @@ export function TrackerDayHeader({
           </AppText>
         ) : null}
       </View>
+      )}
 
       {/* Logla izi (öğün loglanınca). Mutlak katman — yerleşimi bozmaz. */}
       {logToken > 0 ? (
@@ -210,4 +344,20 @@ const styles = StyleSheet.create({
   silent: { textAlign: 'center' },
   trailLayer: { position: 'absolute', top: 60, left: 0, right: 0, alignItems: 'center' },
   toastLayer: { position: 'absolute', top: 0, left: 12, right: 12, zIndex: 10 },
+  // G14-S1 — FinHomeR3 üst blok
+  greetRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, minHeight: 44 },
+  greetText: { flex: 1, fontSize: 22, lineHeight: 28 },
+  bell: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  finBlock: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, gap: 14 },
+  finRings: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-around' },
+  finRingCol: { alignItems: 'center' },
+  finPct: { fontSize: 20, lineHeight: 24 },
+  finPctSm: { fontSize: 14, lineHeight: 18, fontWeight: '700' },
+  finCap: { fontSize: 13, lineHeight: 17, marginTop: 2 },
+  finVal: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
+  miniRow: { flexDirection: 'row', gap: 8 },
+  miniChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 8 },
+  miniLabel: { fontSize: 13, lineHeight: 16 },
+  miniValue: { fontSize: 13, lineHeight: 16, fontWeight: '600' },
+  streakCenter: { alignSelf: 'center' },
 });

@@ -3,7 +3,7 @@
 // kullanılır. Hata rengi animasyonsuz (koreografi kuralı); kart opak.
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { WarningCircle } from '../../../../components/icons';
+import { MapPin, Tag, WarningCircle } from '../../../../components/icons';
 import { haptic } from '../../../../core/design';
 import { ekType, money, useEk } from './kit';
 import type { EkErrorModel } from '../model/errors';
@@ -30,17 +30,20 @@ export function EkErrorCard({
   } else if (!body) {
     body = t(error.kind === 'coupon' ? 'eatkcal.v2.errors.coupon_body' : 'eatkcal.v2.errors.address_body');
   }
+  // G14-S1 — FinEkErrors: ortalı ikon dairesi (48) · başlık (Bricolage 20) ·
+  // tek satır açıklama · tam genişlik siyah kurtarma düğmesi (52).
+  const Icon = error.kind === 'coupon' ? Tag : error.kind === 'address' ? MapPin : WarningCircle;
   return (
     <View
-      style={[styles.card, { backgroundColor: c.surface, borderColor: c.line }]}
+      style={[styles.card, { backgroundColor: c.surface }]}
       accessibilityRole="alert"
       testID={testID ?? `ek-error-${error.kind}`}
     >
-      <View style={styles.row}>
-        <WarningCircle size={20} color={c.danger} weight="fill" />
-        <Text style={[ekType.b15s, { color: c.ink, flex: 1 }]}>{t(error.titleKey)}</Text>
+      <View style={[styles.icon, { backgroundColor: c.line }]}>
+        <Icon size={24} color={c.ink} />
       </View>
-      <Text style={[ekType.c13, { color: c.secondary }]} numberOfLines={2}>
+      <Text style={[ekType.h20, styles.center, { color: c.ink, marginTop: 4 }]}>{t(error.titleKey)}</Text>
+      <Text style={[ekType.b15, styles.center, { color: c.secondary, marginBottom: 8 }]} numberOfLines={2}>
         {body}
       </Text>
       <Pressable
@@ -49,17 +52,18 @@ export function EkErrorCard({
           onAction();
         }}
         accessibilityRole="button"
-        style={styles.action}
+        style={[styles.action, { backgroundColor: c.ink }]}
         testID={`ek-error-${error.kind}-action`}
       >
-        <Text style={[ekType.c13s, { color: c.accentLine }]}>{t(error.actionKey)}</Text>
+        <Text style={[ekType.b15s, { color: c.surface, fontSize: 16 }]}>{t(error.actionKey)}</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 20, padding: 14, borderWidth: 1, gap: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  action: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  card: { borderRadius: 20, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 16, gap: 8, alignItems: 'center' },
+  icon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  center: { textAlign: 'center' },
+  action: { alignSelf: 'stretch', height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
 });

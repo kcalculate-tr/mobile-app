@@ -42,7 +42,7 @@ import { useAuth } from '../core/AuthContext';
 import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
-import { TrackerDayHeader } from './tracker/TrackerDayHeader';
+import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
@@ -2168,6 +2168,16 @@ const html = `
         onScroll={asTab ? scrollHandler : undefined}
         scrollEventThrottle={16}
       >
+        {/* ── G14-S1: yeni kabukta Final başlığı (FinHomeR3: "Günaydın, <ad>" + zil).
+             Eski logo/Geçmiş/Hedef + Özet-Grafik + tarih hapları YALNIZ bayrak
+             kapalıyken (bugünkü davranış bayt bayt aynı). ── */}
+        {yeniKabuk ? (
+          <HomeGreeting
+            name={String(user?.user_metadata?.full_name || '')}
+            onBell={() => navigation.navigate('Kesfet' as never)}
+          />
+        ) : (
+        <>
         {/* ── Header ── */}
         <View style={s.header}>
           <Image
@@ -2224,6 +2234,8 @@ const html = `
             </TouchableOpacity>
           ))}
         </ScrollView>
+        </>
+        )}
 
         {dataLoading ? (
           <View style={s.centered}>
@@ -2272,6 +2284,9 @@ const html = `
                 target={targets.kcal}
                 logToken={logToken}
                 lastMealLabel={lastMealLabel}
+                macros={consumedTodayMacros}
+                macroTargets={{ protein: targets.protein, carbs: targets.carbs, fat: targets.fat }}
+                hideStrip
               />
             ) : null}
             {/* ── G13-S1: FinHomeR3 öğün yuvaları (yeni_kabuk). Yeni kabukta
@@ -2296,6 +2311,8 @@ const html = `
                   onPortion={handlePortion}
                   onShare={paylasimKarti ? handleShareRow : undefined}
                 />
+                {/* G14-S1: Final sırası — gün halkası şeridi öğünlerin altında. */}
+                <TrackerDayStrip />
               </>
             ) : null}
             {/* ── Pantry ── */}

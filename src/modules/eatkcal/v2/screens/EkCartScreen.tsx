@@ -7,7 +7,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { CaretRight, Minus, Plus, Tag, Trash } from '../../../../components/icons';
+import { Basket, CaretRight, Minus, Plus, Tag, Trash } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { EmptyErrorCard, Toast, haptic } from '../../../../core/design';
@@ -249,8 +249,9 @@ export default function EkCartScreen() {
   if (items.length === 0) {
     return (
       <EkScreen header={<EkHeader title={t('eatkcal.v2.cart.title')} onBack={navigation.canGoBack() ? navigation.goBack : undefined} />}>
-        <View style={{ padding: 16, paddingTop: 48 }} testID="ek-cart-empty">
+        <View style={{ padding: 16, paddingTop: 128 }} testID="ek-cart-empty">
           <EmptyErrorCard
+            icon={<Basket size={24} color={c.ink} />}
             title={t('eatkcal.v2.cart.empty_title')}
             description={t('eatkcal.v2.cart.empty_body')}
             actionLabel={t('eatkcal.v2.cart.empty_action')}

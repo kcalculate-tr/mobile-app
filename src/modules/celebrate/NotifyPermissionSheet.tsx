@@ -62,9 +62,10 @@ export function NotifyPermissionSheet({
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel={tt('celebrate.notify_allow')}
-          style={[styles.primary, { backgroundColor: t.color.accent, opacity: busy ? 0.6 : 1 }]}
+          style={[styles.primary, { backgroundColor: t.color.ink, opacity: busy ? 0.6 : 1 }]}
         >
-          <AppText variant="body" tone="onAccent">
+          {/* G14-S1 — FinSheetNotify: birincil siyah, ikincil çerçeveli. */}
+          <AppText variant="body" style={{ color: t.color.surface, fontWeight: '600' }}>
             {tt('celebrate.notify_allow')}
           </AppText>
         </Pressable>
@@ -76,9 +77,9 @@ export function NotifyPermissionSheet({
           }}
           accessibilityRole="button"
           accessibilityLabel={tt('celebrate.notify_later')}
-          style={styles.secondary}
+          style={[styles.secondary, { borderColor: t.color.line }]}
         >
-          <AppText variant="body" tone="secondary">
+          <AppText variant="body" tone="ink" style={{ fontWeight: '600' }}>
             {tt('celebrate.notify_later')}
           </AppText>
         </Pressable>
@@ -100,5 +101,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
   },
-  secondary: { minHeight: 52, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  secondary: {
+    minHeight: 52,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+  },
 });

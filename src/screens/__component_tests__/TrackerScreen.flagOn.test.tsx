@@ -182,14 +182,14 @@ test('logFlight → yeni kayıt bir kez vurgulanır (nokta → satır → halka)
   expect(tree.getByText('Keşfet')).toBeTruthy();
   // 'dot' evresi: lime nokta; halka henüz yeni kaydı saymaz (600 kcal)
   expect(tree.getByTestId('home-dot-c3')).toBeTruthy();
-  expect(tree.getByText('600 / 2000 kcal')).toBeTruthy();
+  expect(tree.getByLabelText('600 / 2000 kcal')).toBeTruthy(); // G14-S1: Enerji halkası etiketi
   // 'row' evresi: satır yanar, saat "şimdi"
   await advance(TIMING.logTrail);
   expect(tree.queryByTestId('home-dot-c3')).toBeNull();
   expect(tree.getByText('şimdi')).toBeTruthy();
   // 'ring' evresi: halka yeni kaydı sayar
   await advance(DURATION.base);
-  expect(tree.getByText('1080 / 2000 kcal')).toBeTruthy();
+  expect(tree.getByLabelText('1080 / 2000 kcal')).toBeTruthy();
   // Geri al → vurgu kalkar, kayıt listeden düşer
   mockDb.today = [...BASE_ROWS];
   await act(async () => {

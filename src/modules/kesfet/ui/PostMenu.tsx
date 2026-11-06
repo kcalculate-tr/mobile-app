@@ -119,10 +119,10 @@ export function PostMenu({
                 label={tr('kesfet.ui.menu.report')}
                 onPress={() => setView('report')}
               />
+              {/* G14-S1 — FinPostMenu: Engelle satırı mürekkep (kırmızı değil); onay adımı kırmızı kalır. */}
               <MenuRow
                 icon="slash"
                 label={tr('kesfet.ui.menu.block')}
-                danger
                 onPress={() => setView('block')}
               />
             </>

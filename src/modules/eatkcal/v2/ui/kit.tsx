@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { useTheme, useReducedMotion, fontFamily, haptic, Button } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ArrowLeft, Star } from '../../../../components/icons';
+import { ArrowLeft, CaretLeft, Star } from '../../../../components/icons';
 import { tl } from '../../../../lib/money';
 
 // ── Tipografi rolleri (FinComponents) ──────────────────────────────────────
@@ -134,18 +134,23 @@ export function EkHeader({
           hitSlop={4}
           style={styles.iconBtn}
         >
-          <ArrowLeft size={22} color={c.ink} />
+          {large ? <ArrowLeft size={22} color={c.ink} /> : <CaretLeft size={22} color={c.ink} />}
         </Pressable>
       ) : null}
       <Text
-        style={[large ? ekType.h24 : ekType.h20, { color: c.ink, flex: 1 }]}
+        style={[
+          large ? ekType.h24 : ekType.h20,
+          { color: c.ink, flex: 1 },
+          // G14-S1 (FinEkCart/Checkout/Addresses/Orders): alt sayfa başlığı ortalı.
+          !large ? { textAlign: 'center' } : null,
+        ]}
         numberOfLines={1}
         accessibilityRole="header"
         maxFontSizeMultiplier={1.3}
       >
         {title}
       </Text>
-      {right}
+      {right ?? (!large ? <View style={styles.iconBtn} /> : null)}
     </View>
   );
 }

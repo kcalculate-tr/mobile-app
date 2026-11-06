@@ -114,3 +114,4 @@ export { XCircle, XCircleIcon } from 'phosphor-react-native/lib/commonjs/icons/X
 // G14-S1 — FinPrProfile (Destek › Nerelere teslimat, Ayarlar › Dil)
 export { MapTrifold } from 'phosphor-react-native/lib/commonjs/icons/MapTrifold';
 export { Translate } from 'phosphor-react-native/lib/commonjs/icons/Translate';
+export { Basket } from 'phosphor-react-native/lib/commonjs/icons/Basket';
