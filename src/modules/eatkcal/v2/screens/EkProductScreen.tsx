@@ -339,7 +339,7 @@ export default function EkProductScreen() {
       clearInterval(h);
       // Final (FinEkProductScroll): ilk seçim grubu üstte, makro halkaları ekran dışında.
       // Ölçümler görsel yüklenince kayabildiğinden en az fotoğraf + başlık + halkalar kadar in.
-      const y = Math.max(fy != null ? fy - 8 : 0, bodyY.current + macroBottom.current + 24, Math.round(winH * 0.78));
+      const y = Math.max(fy != null ? fy - 8 : 0, bodyY.current + macroBottom.current + 24, Math.round(winH * 1.05));
       scrollRef.current?.scrollTo({ y, animated: false });
       setStripVisible(true);
     }, 300);
@@ -347,6 +347,7 @@ export default function EkProductScreen() {
   }, [vitrinScroll, loading]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (vitrinScroll) return; // dev vitrini: zorlanan kaydırılmış hâlde şerit açık kalır
     if (macroBottom.current <= 0 || !derived?.macroCardEnabled) return;
     const show = e.nativeEvent.contentOffset.y > bodyY.current + macroBottom.current;
     if (show !== stripVisible) setStripVisible(show);
