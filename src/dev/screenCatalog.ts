@@ -59,12 +59,20 @@ export interface CatalogEntry {
   /** Final'de `-Dark` görseli var mı. */
   hasDark: boolean;
   note?: string;
+  /**
+   * G15 — çok kareli panolar (ör. FinComments 1·2·3): `FinComments~2` ya da
+   * `FinComments~2-Dark` istenirse bu kareye ait alanlar kaydın üstüne yazılır.
+   * allPanoNames'e GİRMEZ (Final görsel listesiyle birebir eşleşme korunur).
+   */
+  frames?: Record<number, Partial<Pick<CatalogEntry, 'target' | 'scene' | 'data' | 'collapse'>>>;
 }
 
 export interface ResolvedEntry extends CatalogEntry {
   /** İstenen ad (ör. `FinFeed-Dark`). */
   requested: string;
   scheme: VitrinScheme;
+  /** Çok kareli panoda istenen kare (1 = varsayılan). */
+  frame?: number;
 }
 
 /** Final'deki bütün yeni yüzeyler: hepsi AÇIK (Final = bayraklar açık hâli). */
@@ -108,6 +116,8 @@ function motion(key: string, props?: Record<string, unknown>): VitrinTarget {
 const tab = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name, params }] } },
 ];
+/** Keşfet sekmesi (yeni kabuk) + isteğe bağlı vitrin parametreleri. */
+const kes = (params?: Record<string, unknown>): RouteSpec[] => tab('KesfetTab', { asTab: true, ...params });
 const ek = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name: 'Home' }] } },
   { name, params },
@@ -146,26 +156,78 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinHomeLogMerged', 'ana', route(tab('Tracker')), { scene: 'meals' }],
 
   // ── Keşfet ─────────────────────────────────────────────────────────────────
-  ['FinFeed', 'kesfet', route(tab('KesfetTab', { asTab: true }))],
-  ['FinFeedScrollR3', 'kesfet', route(tab('KesfetTab', { asTab: true })), { collapse: 1, scene: 'scrolled' }],
-  ['FinFeedTip', 'kesfet', route(tab('KesfetTab', { asTab: true })), { scene: 'tip' }],
-  ['FinFollowingEmpty', 'kesfet', route(tab('KesfetTab', { asTab: true, initialTab: 'following' })), { data: 'empty' }],
-  ['FinDetail', 'kesfet', route([...tab('KesfetTab', { asTab: true }), { name: 'SharedPost', params: { postId: 'post-1' } }])],
-  ['FinSerbest', 'kesfet', route(tab('KesfetTab', { asTab: true }))],
-  ['FinActivityCard', 'kesfet', comp('postCard', { variant: 'activity' })],
-  ['FinVideo', 'kesfet', comp('postCard', { variant: 'video' })],
-  ['FinCompose', 'kesfet', route([...tab('KesfetTab', { asTab: true }), { name: 'Composer' }])],
-  ['FinPosting', 'kesfet', route(tab('KesfetTab', { asTab: true })), { scene: 'posting' }],
+  // G15-S3: Keşfet sahneleri Final örnek içeriğiyle (vitrinKesfet.ts). `vitrin*` rota
+  // parametreleri yalnız vitrinin açtığı ara durumlar içindir (üretimde hiç verilmez).
+  ['FinFeed', 'kesfet', route(kes({ vitrinXray: true }))],
+  ['FinFeedScrollR3', 'kesfet', route(kes({ vitrinScroll: true })), { collapse: 1, scene: 'scrolled' }],
+  ['FinFeedTip', 'kesfet', route(kes()), { scene: 'tip' }],
+  ['FinFollowingEmpty', 'kesfet', route(kes({ initialTab: 'following' })), { data: 'default', scene: 'following' }],
+  ['FinDetail', 'kesfet', route([...kes(), { name: 'SharedPost', params: { postId: 'post-d1' } }]), { scene: 'detail' }],
+  ['FinSerbest', 'kesfet', route(kes()), { scene: 'serbest' }],
+  [
+    'FinActivityCard',
+    'kesfet',
+    route(kes()),
+    {
+      scene: 'activity',
+      frames: {
+        2: { scene: 'didIt', target: route(kes({ vitrin: 'didIt' })) },
+        3: { scene: 'didItToast', target: route(kes({ vitrin: 'didItToast' })) },
+      },
+    },
+  ],
+  [
+    'FinVideo',
+    'kesfet',
+    route(kes()),
+    { scene: 'video', frames: { 2: { scene: 'videoFull', target: route(kes({ vitrin: 'videoFull' })) } } },
+  ],
+  [
+    'FinCompose',
+    'kesfet',
+    route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest' } }]),
+    {
+      scene: 'compose',
+      frames: {
+        2: { target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'ogun' } }]) },
+        3: { target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'etkinlik' } }]) },
+      },
+    },
+  ],
+  [
+    'FinPosting',
+    'kesfet',
+    route(kes({ vitrin: 'posting' })),
+    {
+      scene: 'posting',
+      frames: {
+        2: { scene: 'reviewing', target: route(kes({ vitrin: 'reviewing' })) },
+        3: { scene: 'published', target: route(kes({ vitrin: 'published' })) },
+        4: { scene: 'rejected', target: route(kes({ vitrin: 'rejected' })) },
+      },
+    },
+  ],
   ['FinRules', 'kesfet', comp('rulesSheet')],
-  ['FinComments', 'kesfet', comp('commentsSheet')],
-  ['FinNotifications', 'kesfet', comp('notificationsSheet')],
+  [
+    'FinComments',
+    'kesfet',
+    route(kes({ vitrin: 'comments' })),
+    {
+      scene: 'activity',
+      frames: {
+        2: { target: route(kes({ vitrin: 'commentsMenu' })) },
+        3: { scene: 'commentsEmpty', target: route(kes({ vitrin: 'comments' })) },
+      },
+    },
+  ],
+  ['FinNotifications', 'kesfet', route([...kes(), { name: 'KesfetNotifications' }]), { scene: 'notifications' }],
   ['FinAddSheet', 'kesfet', comp('addToDaySheet')],
-  ['FinAddToast', 'kesfet', comp('addToast')],
+  ['FinAddToast', 'kesfet', route(kes({ vitrin: 'addToast' }))],
   ['FinPostMenu', 'kesfet', comp('postMenu', { step: 'menu' })],
   ['FinPostMenuBlock', 'kesfet', comp('postMenu', { step: 'block' })],
   ['FinReport', 'kesfet', comp('postMenu', { step: 'report' })],
   ['FinReportDone', 'kesfet', comp('postMenu', { step: 'reportDone' })],
-  ['FinReportNotice', 'kesfet', comp('postMenu', { step: 'notice' })],
+  ['FinReportNotice', 'kesfet', route([...kes(), { name: 'KesfetNotifications' }]), { scene: 'reportNotice' }],
 
   // ── Gün halkası / etkinlik ─────────────────────────────────────────────────
   ['FinGunView', 'gun', comp('gunViewer')],
@@ -314,12 +376,17 @@ export function allPanoNames(): string[] {
 export function resolvePano(requested: string): ResolvedEntry | null {
   const name = requested.trim();
   const isDark = name.endsWith('-Dark');
-  const base = isDark ? name.slice(0, -'-Dark'.length) : name;
+  const noDark = isDark ? name.slice(0, -'-Dark'.length) : name;
+  const fm = /^(.*)~(\d+)$/.exec(noDark);
+  const base = fm ? fm[1] : noDark;
+  const frame = fm ? Number(fm[2]) : undefined;
   const entry = SCREEN_CATALOG[base];
   if (!entry) return null;
   if (isDark && !entry.hasDark) return null;
+  if (frame != null && frame > 1 && !entry.frames?.[frame]) return null;
   const scheme: VitrinScheme = isDark || base === 'FinStressDark' ? 'dark' : 'light';
-  return { ...entry, requested: name, scheme };
+  const over = frame != null ? entry.frames?.[frame] ?? {} : {};
+  return { ...entry, ...over, requested: name, scheme, frame };
 }
 
 /**
@@ -328,6 +395,6 @@ export function resolvePano(requested: string): ResolvedEntry | null {
  */
 export function parseVitrinUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  const m = /dev\/screen\/([A-Za-z0-9-]+)/.exec(url);
+  const m = /dev\/screen\/([A-Za-z0-9~-]+)/.exec(url);
   return m ? m[1] : null;
 }

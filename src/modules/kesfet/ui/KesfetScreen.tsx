@@ -152,6 +152,9 @@ export function KesfetScreen() {
   // tab barına göre — `TAB_BAR_R3_HEIGHT` (tek kaynak, S2 layout.ts = 96). Stack
   // olarak açılınca (bildirim/derin bağlantı) bugünkü boşluk korunur.
   const asTab = route.params?.asTab === true;
+  // G15 — YALNIZ __DEV__ vitrini: Final ara durumlarını açar (ör. 'comments',
+  // 'didIt', 'posting'). Üretimde parametre hiç verilmez → undefined.
+  const vitrin: string | undefined = __DEV__ ? route.params?.vitrin : undefined;
   const listBottomPad = insets.bottom + (asTab ? TAB_BAR_R3_HEIGHT : 120);
   // Kaydırınca tab barı küçült (yalnız sekme bağlamında; stack'te provider yok
   // → useTabBarCollapse no-op). scrollY → useTabBarCollapse (G11-CONTRACT m.39).
