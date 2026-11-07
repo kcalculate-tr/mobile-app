@@ -1323,6 +1323,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         checkout: {
           title: 'Sipariş özeti',
           method_time: 'Yöntem ve zaman',
+          pick_method_time: 'Yöntem ve zaman seç',
           home_delivery: 'Eve teslim',
           pickup: 'Gel-Al',
           immediate: 'Hemen',
@@ -2869,6 +2870,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         checkout: {
           title: 'Order summary',
           method_time: 'Method and time',
+          pick_method_time: 'Choose method and time',
           home_delivery: 'Delivery',
           pickup: 'Pickup',
           immediate: 'Now',
