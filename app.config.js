@@ -333,6 +333,20 @@ module.exports = {
             'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         },
       ],
+      // G17-S2 md.1/3 (İlter onayı 7 Kas 15:35): canlı Tara vizörü. İzin metni
+      // locales/tr.json `ios.NSCameraUsageDescription` ile birebir (EN çevirisi
+      // locales/en.json'dan gelir). Android: yalnız CAMERA (ses kaydı yok →
+      // RECORD_AUDIO eklenmez). YENİ NATIVE DERLEME gerekir (OTA değil).
+      [
+        'expo-camera',
+        {
+          cameraPermission:
+            'Profil fotoğrafınızı çekmek, video kaydetmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.',
+          microphonePermission:
+            'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+          recordAudioAndroid: false,
+        },
+      ],
       'expo-video',
       [
         'expo-location',
