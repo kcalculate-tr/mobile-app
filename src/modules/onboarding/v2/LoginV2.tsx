@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppText } from '../../../core/design/components/AppText';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
+import { useFeature } from '../../../core/flags';
 import { getSupabaseClient } from '../../../core/supabase';
 import { resolvePostSocialAuth } from '../../../lib/postSocialAuth';
 import { Check } from '../../../components/icons';
@@ -109,6 +110,8 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
   const route = useRoute<LoginRouteProp>();
   const { user, signInWithApple, signInWithGoogle, signInWithOtp, verifyEmailOtp } = useAuth();
   const redirectTarget = route.params?.redirectTo;
+  // G17-S1 md.4: yeni kabukta giriş sonrası ilk hedef Ana sayfa (Tracker).
+  const yeniKabuk = useFeature('yeni_kabuk');
   const tv = (k: string, p?: Record<string, string | number>) => i18n.t(`onboarding.v2.login.${k}`, p);
 
   const dev = __DEV__ ? vitrinStep : undefined;
@@ -152,7 +155,7 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
       async () => getSupabaseClient() as unknown as GoalClient,
       user?.id,
     );
-    const target = resolveLoginTarget(redirectTarget, hasGoal);
+    const target = resolveLoginTarget(redirectTarget, hasGoal, yeniKabuk);
     if (target.name === 'Checkout') navigation.replace('Checkout');
     else if (target.name === 'Addresses') navigation.replace('Addresses');
     else if (target.name === 'NutritionProfile') navigation.replace('NutritionProfile', target.params);

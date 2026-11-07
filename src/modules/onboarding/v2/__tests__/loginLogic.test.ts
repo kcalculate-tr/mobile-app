@@ -51,6 +51,13 @@ test('hedef çözümü: Checkout/Addresses araya girilmez', () => {
   assert.deepEqual(resolveLoginTarget(undefined, true), { name: 'Tabs', params: { screen: 'Home' } });
 });
 
+test('resolveLoginTarget (yeni kabuk, G17-S1 md.4): hedefi olan/olmayan herkes Ana sayfa (Tracker); Checkout/Addresses yönlendirmesi korunur', () => {
+  assert.deepEqual(resolveLoginTarget(undefined, false, true), { name: 'Tabs', params: { screen: 'Tracker' } });
+  assert.deepEqual(resolveLoginTarget(undefined, true, true), { name: 'Tabs', params: { screen: 'Tracker' } });
+  assert.deepEqual(resolveLoginTarget('Checkout', false, true), { name: 'Checkout' });
+  assert.deepEqual(resolveLoginTarget('Addresses', true, true), { name: 'Addresses' });
+});
+
 function client(over: { uid?: string | null; data?: unknown; error?: unknown; throws?: boolean }): () => Promise<GoalClient> {
   return async () => {
     if (over.throws) throw new Error('x');

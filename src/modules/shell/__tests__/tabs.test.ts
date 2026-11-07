@@ -7,6 +7,7 @@ import {
   resolveShellTabs,
   shouldShowScan,
   resolveInitialShellTab,
+  postAuthShellTab,
   LEGACY_TABS,
 } from '../tabs';
 
@@ -62,20 +63,19 @@ test('Tara yalnız ai_tarama açıkken görünür', () => {
   assert.equal(shouldShowScan({ ai_tarama: false }), false);
 });
 
-// ── Açılış sekmesi kuralı ────────────────────────────────────────────────────
-test('açılış sekmesi: oturum yok → Home', () => {
+// ── Açılış sekmesi kuralı (G17-S1 md.4: oturumlu her hesapta Ana sayfa) ──────
+test('açılış sekmesi: oturum yok → Home (eatkcal)', () => {
   assert.equal(resolveInitialShellTab({ session: false }), 'Home');
   assert.equal(resolveInitialShellTab({ session: false, hasOrderHistory: false }), 'Home');
 });
 
-test('açılış sekmesi: oturum var + sipariş geçmişi var → Home', () => {
-  assert.equal(resolveInitialShellTab({ session: true, hasOrderHistory: true }), 'Home');
-});
-
-test('açılış sekmesi: oturum var + sipariş geçmişi YOK → Tracker', () => {
+test('açılış sekmesi: oturum var → sipariş geçmişinden bağımsız Tracker (Ana sayfa)', () => {
+  assert.equal(resolveInitialShellTab({ session: true, hasOrderHistory: true }), 'Tracker');
   assert.equal(resolveInitialShellTab({ session: true, hasOrderHistory: false }), 'Tracker');
+  assert.equal(resolveInitialShellTab({ session: true }), 'Tracker');
 });
 
-test('açılış sekmesi: oturum var + sipariş geçmişi bilinmiyor → Home', () => {
-  assert.equal(resolveInitialShellTab({ session: true }), 'Home');
+test('giriş sonrası sekme: yeni kabuk → Tracker, eski kabuk → Home (bugünkü)', () => {
+  assert.equal(postAuthShellTab(true), 'Tracker');
+  assert.equal(postAuthShellTab(false), 'Home');
 });

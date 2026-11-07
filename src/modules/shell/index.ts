@@ -11,6 +11,7 @@ export {
   resolveShellTabs,
   shouldShowScan,
   resolveInitialShellTab,
+  postAuthShellTab,
   LEGACY_TABS,
   type ShellTabDef,
   type ShellTabRoute,

@@ -283,8 +283,8 @@ function TabNavigatorR3() {
   const kesfet = useColdStartFeature('kesfet');
   const initialRouteName = resolveInitialShellTab({
     session: !!session,
-    // Sipariş geçmişi için YENİ sorgu yok; mevcut önbellek bunu vermiyor →
-    // undefined (→ Home). S6 bir önbellek bağlarsa Tracker-ilk kuralı devreye girer.
+    // G17-S1 md.4: oturumlu her hesapta açılış Ana sayfa (Tracker); sipariş
+    // geçmişi açılış sekmesini değiştirmez (IntroOverlay sessizce tanır).
     hasOrderHistory: undefined,
   });
   const authGate = (navigation: any) => ({

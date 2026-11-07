@@ -49,15 +49,19 @@ export type LoginTarget =
   | { name: 'Checkout' }
   | { name: 'Addresses' }
   | { name: 'NutritionProfile'; params: { firstTime: true } }
-  | { name: 'Tabs'; params: { screen: 'Home' } };
+  | { name: 'Tabs'; params: { screen: 'Home' | 'Tracker' } };
 
 /**
  * navigateByTarget kararı: Checkout/Addresses'e giderken ASLA araya girilmez;
  * yalnız anasayfaya dönen ve hedefi olmayan kullanıcı NutritionProfile'a gider.
  */
-export function resolveLoginTarget(redirect: LoginRedirect, hasGoal: boolean): LoginTarget {
+export function resolveLoginTarget(redirect: LoginRedirect, hasGoal: boolean, newShell = false): LoginTarget {
   if (redirect === 'Checkout') return { name: 'Checkout' };
   if (redirect === 'Addresses') return { name: 'Addresses' };
+  // G17-S1 md.4: yeni kabukta her hesabın ilk hedefi Ana sayfa (Tracker). Hedef
+  // kurulumu Ana sayfa makro kartından Final "Takibe başla" akışıyla açılır
+  // (eski NutritionProfile ekranına düşmez).
+  if (newShell) return { name: 'Tabs', params: { screen: 'Tracker' } };
   if (!hasGoal) return { name: 'NutritionProfile', params: { firstTime: true } };
   return { name: 'Tabs', params: { screen: 'Home' } };
 }

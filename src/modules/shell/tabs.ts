@@ -55,21 +55,24 @@ export function shouldShowScan(flags: Pick<ShellFlags, 'ai_tarama'>): boolean {
 }
 
 /**
- * Açılış (initial) sekmesi — G11-CONTRACT:
- *   · oturum yok                      → Home (eatkcal)
- *   · oturum var + sipariş geçmişi var → Home
- *   · oturum var + sipariş geçmişi YOK → Tracker (AI)
- *   · sipariş geçmişi bilinmiyor        → Home
- * Sipariş geçmişi için YENİ sorgu yok; `hasOrderHistory` yalnız mevcut
- * store/önbellekten bilinebiliyorsa verilir, aksi halde undefined (→ Home).
+ * Açılış (initial) sekmesi — G17-S1 md.4 (İlter telefon testi, 7 Kas):
+ *   · oturum var (yeni/eski, sipariş geçmişi olan/olmayan) → Tracker (Ana sayfa)
+ *   · oturum yok                                          → Home (eatkcal; oturumsuz gezilebilen tek sekme)
+ * Eski kural (sipariş geçmişi varsa eatkcal) kalktı: mevcut müşteri sipariş
+ * geçmişinden SESSİZCE tanınır (IntroOverlay "Siparişe devam" kartı), açılış
+ * sekmesi değişmez. `hasOrderHistory` imza uyumu için kabul edilir, etkisizdir.
+ * Yalnız yeni kabuk (TabNavigatorR3) kullanır → bayrak kapalı yol aynı.
  */
 export function resolveInitialShellTab(opts: {
   session: boolean;
   hasOrderHistory?: boolean;
 }): ShellTabRoute {
-  if (!opts.session) return 'Home';
-  if (opts.hasOrderHistory === false) return 'Tracker';
-  return 'Home';
+  return opts.session ? 'Tracker' : 'Home';
+}
+
+/** Oturum açıldıktan sonra gidilecek sekme: yeni kabukta Ana sayfa (Tracker). */
+export function postAuthShellTab(newShell: boolean): 'Tracker' | 'Home' {
+  return newShell ? 'Tracker' : 'Home';
 }
 
 /**

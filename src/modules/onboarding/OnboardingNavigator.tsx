@@ -2,8 +2,10 @@
 // açık + oturumsuz soğuk açılışta AppNavigator bu iç yığını `Onboarding` rotasına
 // kurar. Kapalıyken HİÇ kaydolmaz → WelcomeGate bugünküyle aynı.
 //
-// Akış (Final): Karşılama → Niyet → (Sipariş: eatkcal'e) / (Takip·İkisi: Hesap →
-// Bildirim → Takibe başla). Hesap mevcut auth fonksiyonlarını (AuthContext +
+// Akış (Final): Karşılama → Hesap → Bildirim → Takibe başla. G17-S1 md.4: "Seni
+// buraya ne getirdi?" (Niyet) adımı akıştan çıktı — bileşen ve rota kayıtlı
+// kalır ama hiçbir düğme oraya gitmez; mevcut müşteri sipariş geçmişinden
+// sessizce tanınır (IntroOverlay). Dönen kullanıcı → Ana sayfa (yeni kabukta Tracker). Hesap mevcut auth fonksiyonlarını (AuthContext +
 // postSocialAuth) ÇAĞIRIR, auth dosyalarına dokunmaz. Yeni kullanıcı → Bildirim →
 // Takibe başla; dönen kullanıcı → Tabs. 18 yaş engeli (FinOnbUnderage) Takibe
 // başla'nın yaş adımından gelir; burada paylaşılan ekran olarak da kayıtlıdır.
@@ -17,6 +19,8 @@ import { AppText } from '../../core/design/components/AppText';
 import { DURATION } from '../../core/design/motion';
 import { useT } from '../../core/i18n';
 import { useAuth } from '../../core/AuthContext';
+import { useFeature } from '../../core/flags';
+import { postAuthShellTab } from '../shell/tabs';
 import { resolvePostSocialAuth } from '../../lib/postSocialAuth';
 import { registerForPushNotifications } from '../../core/notifications';
 import type { RootStackParamList } from '../../navigation/types';
@@ -61,10 +65,10 @@ function WelcomeScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'Onb
     <OnbScaffold
       glass={GLASS.bowl}
       cardTop={430}
-      dots={{ count: 4, index: 0 }}
+      dots={{ count: 3, index: 0 }}
       footer={
         <View style={{ gap: 8 }}>
-          <OnbButton kind="lime" label={i18n.t('onboarding.welcome.start')} onPress={() => navigation.navigate('OnbIntent')} />
+          <OnbButton kind="lime" label={i18n.t('onboarding.welcome.start')} onPress={() => navigation.navigate('OnbAccount', { intent: 'track' })} />
           <OnbButton kind="chip" label={i18n.t('onboarding.welcome.haveAccount')} onPress={() => root?.navigate('Login')} />
         </View>
       }
@@ -139,6 +143,7 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const P = useOnb();
   const root = useRootNav(navigation);
   const { signInWithApple, signInWithGoogle } = useAuth();
+  const yeniKabuk = useFeature('yeni_kabuk');
   const [busy, setBusy] = useState(false);
 
   const afterAuth = async (result: {
@@ -155,9 +160,9 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
       familyName: result.familyName,
     });
     if (post.outcome === 'error') return;
-    // Yeni kullanıcı → Bildirim → Takibe başla; dönen kullanıcı → eatkcal/Tabs.
-    if (post.outcome === 'new_user') navigation.navigate('OnbNotify', { intent: route.params.intent });
-    else root?.navigate('Tabs');
+    // Yeni kullanıcı → Bildirim → Takibe başla; dönen kullanıcı → Ana sayfa.
+    if (post.outcome === 'new_user') navigation.navigate('OnbNotify', { intent: route.params?.intent ?? 'track' });
+    else root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
   };
 
   const run = async (provider: 'apple' | 'google') => {
@@ -177,7 +182,7 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
       glass={GLASS.drop}
       cardTop={262}
       onBack={() => navigation.goBack()}
-      dots={{ count: 4, index: 2 }}
+      dots={{ count: 3, index: 1 }}
       footer={
         <View>
           <View style={{ gap: 10 }}>
@@ -226,7 +231,7 @@ function NotifyScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbN
       glass={GLASS.flame}
       cardTop={400}
       onBack={() => navigation.goBack()}
-      dots={{ count: 4, index: 3 }}
+      dots={{ count: 3, index: 2 }}
       footer={
         <View style={styles.row}>
           <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.later')} onPress={next} />
