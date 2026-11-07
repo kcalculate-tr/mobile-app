@@ -27,6 +27,7 @@ import { stockError } from '../model/errors';
 import { EK_TIME_SLOTS } from '../model/checkoutModel';
 import { groupCartLines, linePrice, lineSummary } from '../model/cartModel';
 import { useEkCheckout } from '../checkout/useEkCheckout';
+import { methodTimeState } from '../model/methodTime';
 
 type SectionKey = 'md' | 'ad' | 'ct' | 'nt' | 'py' | 'bk';
 const TR_DAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
@@ -45,6 +46,28 @@ export default function EkCheckoutScreen() {
   const payState = vitrinPay ?? ctrl.payState;
   const [open, setOpen] = useState<SectionKey | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  // G17-S1 md.6 — Yöntem ve zaman ÖNCEDEN SEÇİLİ gelmez (YALNIZ görünüm katmanı;
+  // useEkCheckout varsayılanları ve sipariş/ödeme mantığı aynı). Kullanıcı ikisini
+  // de seçmeden "Öde" pasif. Seçilen zaman türü mantık tarafından değiştirilir ya
+  // da geçersizleşirse (dükkân kapandı, bölge izin vermiyor, dilim doldu) seçim
+  // düşer ve yeniden istenir.
+  const [pickedMethod, setPickedMethod] = useState<'home_delivery' | 'pickup' | null>(null);
+  const [pickedTime, setPickedTime] = useState<'immediate' | 'scheduled' | null>(null);
+  const { methodReady, timeStillValid, ready: methodTimeReady } = methodTimeState({
+    pickedMethod,
+    pickedTime,
+    deliveryMethod: ctrl.deliveryMethod,
+    deliveryTimeType: ctrl.deliveryTimeType,
+    rulesSettled: ctrl.deliveryRulesSettled,
+    canPickImmediate: ctrl.canPickImmediate,
+    canPickScheduled: ctrl.canPickScheduled,
+    hasScheduledDate: !!ctrl.scheduledDate,
+    hasOpenSlot: !!ctrl.timeSlot && !ctrl.timeSlot.disabled,
+  });
+  useEffect(() => {
+    if (pickedTime !== null && !timeStillValid) setPickedTime(null);
+  }, [pickedTime, timeStillValid]);
 
   // Paynkolay dışı → bugünkü ekran (yeni ödeme yolu yazılmaz).
   useEffect(() => {
@@ -112,7 +135,13 @@ export default function EkCheckoutScreen() {
         ]
           .filter(Boolean)
           .join(' · ');
-  const mdSum = `${methodLabel} · ${timeLabel}`;
+  const mdSum = !methodReady
+    ? t('eatkcal.v2.checkout.pick_method_time')
+    : ctrl.deliveryMethod === 'pickup'
+      ? methodLabel
+      : pickedTime
+        ? `${methodLabel} · ${timeLabel}`
+        : `${methodLabel} · ${t('eatkcal.v2.checkout.pick_method_time')}`;
 
   const branch = ctrl.branches.find((b) => b.id === ctrl.selectedBranchId) ?? null;
   const adSum =
@@ -158,10 +187,14 @@ export default function EkCheckoutScreen() {
   const stock = stockError(ctrl.closedItemNames);
   const lines = groupCartLines(ctrl.items);
   const hasDraft = !!ctrl.draftOrder;
-  const ctaLabel = hasDraft
-    ? t('eatkcal.v2.checkout.complete', { amount: money(ctrl.draftOrder?.totalAmount || ctrl.totals.totalAmount) })
-    : t('eatkcal.v2.checkout.place', { amount: money(ctrl.totals.totalAmount) });
-  const ctaDisabled = ctrl.isCheckoutDisabled || !ctrl.contractsAccepted;
+  // G17-S1 md.6: taslak (ödeme bekleyen) sipariş yokken yöntem+zaman seçilmeden "Öde" pasif.
+  const needsMethodTime = !hasDraft && !methodTimeReady;
+  const ctaLabel = needsMethodTime
+    ? t('eatkcal.v2.checkout.pick_method_time')
+    : hasDraft
+      ? t('eatkcal.v2.checkout.complete', { amount: money(ctrl.draftOrder?.totalAmount || ctrl.totals.totalAmount) })
+      : t('eatkcal.v2.checkout.place', { amount: money(ctrl.totals.totalAmount) });
+  const ctaDisabled = ctrl.isCheckoutDisabled || !ctrl.contractsAccepted || needsMethodTime;
 
   // ── Alt bar ─────────────────────────────────────────────────────────────
   const footer = (
@@ -291,7 +324,7 @@ export default function EkCheckoutScreen() {
           ) : null}
           <Pressable
             onPress={onPlace}
-            disabled={ctrl.placing || ctrl.isCheckoutDisabled}
+            disabled={ctrl.placing || ctrl.isCheckoutDisabled || needsMethodTime}
             accessibilityRole="button"
             accessibilityState={{ disabled: ctaDisabled }}
             style={[styles.cta, { backgroundColor: ctaDisabled ? c.line : c.ink }]}
@@ -324,8 +357,13 @@ export default function EkCheckoutScreen() {
               { key: 'home_delivery', label: t('eatkcal.v2.checkout.home_delivery') },
               { key: 'pickup', label: t('eatkcal.v2.checkout.pickup') },
             ]}
-            value={ctrl.deliveryMethod}
-            onChange={(k) => ctrl.setDeliveryMethod(k as 'home_delivery' | 'pickup')}
+            value={pickedMethod !== null ? ctrl.deliveryMethod : null}
+            onChange={(k) => {
+              const m = k as 'home_delivery' | 'pickup';
+              setPickedMethod(m);
+              if (m !== ctrl.deliveryMethod) setPickedTime(null);
+              ctrl.setDeliveryMethod(m);
+            }}
           />
           {ctrl.deliveryMethod === 'home_delivery' ? (
             <Segmented
@@ -344,8 +382,11 @@ export default function EkCheckoutScreen() {
                   disabled: ctrl.deliveryRulesSettled && !ctrl.canPickScheduled,
                 },
               ]}
-              value={ctrl.deliveryTimeType}
-              onChange={(k) => ctrl.setDeliveryTimeType(k as 'immediate' | 'scheduled')}
+              value={pickedTime !== null ? ctrl.deliveryTimeType : null}
+              onChange={(k) => {
+                setPickedTime(k as 'immediate' | 'scheduled');
+                ctrl.setDeliveryTimeType(k as 'immediate' | 'scheduled');
+              }}
             />
           ) : null}
           {ctrl.deliveryMethod === 'home_delivery' && ctrl.deliveryTimeType === 'scheduled' ? (
@@ -734,7 +775,8 @@ function Segmented({
   onChange,
 }: {
   items: { key: string; label: string; disabled?: boolean }[];
-  value: string;
+  /** null → hiçbiri seçili değil (G17-S1 md.6). */
+  value: string | null;
   onChange: (k: string) => void;
 }) {
   const { c } = useEk();
