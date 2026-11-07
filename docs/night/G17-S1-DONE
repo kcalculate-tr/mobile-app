@@ -1,0 +1,7 @@
+G17-S1 DONE — 7 Kas 2026
+Dal: night17/fix (taban night16/ui 3c00660)
+14/14 madde commit edildi. LOG: docs/night/G17-S1-LOG.md
+Tara: yükleme (user-media/<uid>/scans/<anahtar>.jpg) + analiz, testli (scanUpload.test.ts 7/7, kuyruk +2).
+Rota denetimi: LOG md.13 (17 kök rota + gizli Abonelik sekmesi Final'e bağlandı; noLegacyWhenFlagsOn rota bazında 10/10).
+Kontrol: tsc 0 · unit 617/0 fail · jest 146/146 · prebuild iOS+Android ✓ · expo export ios ✓ android ✓ · KİMSE diff 0 · bayrak kapalı aynı.
+OTA ile gönderilebilir (yalnız JS; expo-camera eklenmedi).
