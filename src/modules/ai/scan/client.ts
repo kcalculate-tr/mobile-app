@@ -6,6 +6,13 @@
 // anahtarı; image_path = user-media kovasındaki kendi yolu. Yanıt (items+total)
 // istemcinin düz ScanEstimate biçimine maplenir.
 import type { AiScanClient, ReserveResult, ScanEstimate } from './types';
+import {
+  MAX_SCAN_IMAGE_BYTES,
+  base64Bytes,
+  isStoragePath,
+  scanImagePath,
+  sniffImageType,
+} from './scanPath';
 
 type SupabaseModule = typeof import('../../../core/supabase');
 function sb() {
@@ -31,6 +38,29 @@ export const realAiScanClient: AiScanClient = {
       p_idempotency_key: idempotencyKey,
     });
     if (error) rpcError('release_ai_scan', error);
+  },
+
+  async uploadImage({ idempotencyKey, localUri }): Promise<string> {
+    // G17-S1 md.1: edge fonksiyonu yalnız `<uid>/…` kova yolunu kabul eder.
+    // Yerel fotoğraf → base64 (expo-file-system/legacy) → user-media'ya yükle.
+    const client = sb();
+    const { data: sess } = await client.auth.getSession();
+    const userId = sess.session?.user?.id ?? '';
+    if (!userId) throw new Error('scan_upload: no_user');
+    if (isStoragePath(localUri, userId)) return localUri; // zaten yüklü
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const FileSystem = require('expo-file-system/legacy') as typeof import('expo-file-system/legacy');
+    const { decode } = require('base64-arraybuffer') as typeof import('base64-arraybuffer');
+    /* eslint-enable @typescript-eslint/no-require-imports */
+    const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
+    if (base64Bytes(base64) > MAX_SCAN_IMAGE_BYTES) throw new Error('scan_upload: image_too_large');
+    const path = scanImagePath(userId, idempotencyKey);
+    const { error } = await client.storage.from('user-media').upload(path, decode(base64), {
+      contentType: sniffImageType(base64),
+      upsert: true, // aynı anahtar yeniden denenirse (kuyruk) üzerine yaz
+    });
+    if (error) throw new Error(`scan_upload: ${error.message}`);
+    return path;
   },
 
   async analyzeImage({ idempotencyKey, imageRef }): Promise<Omit<ScanEstimate, 'isEstimate'>> {

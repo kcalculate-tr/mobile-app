@@ -128,7 +128,7 @@ export default function ScanScreen() {
     }
     const picked = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+      quality: 0.5, // G17-S1: edge sınırı 5 MB — yükleme boyutu
     });
     if (picked.canceled || !picked.assets?.[0]?.uri) return null;
     return picked.assets[0].uri;
@@ -167,7 +167,7 @@ export default function ScanScreen() {
     }
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+      quality: 0.5, // G17-S1: edge sınırı 5 MB — yükleme boyutu
     });
     if (picked.canceled || !picked.assets?.[0]?.uri) return null;
     return picked.assets[0].uri;

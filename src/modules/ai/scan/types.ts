@@ -51,6 +51,10 @@ export interface AiScanClient {
   reserveScan(params: { idempotencyKey: string }): Promise<ReserveResult>;
   // release_ai_scan(p_idempotency_key) — başarısız analizde hakkı iade eder.
   releaseScan(params: { idempotencyKey: string }): Promise<void>;
-  // Görsel → besin tahmini (analiz adımı). Hata fırlatırsa hak iade edilir.
+  // G17-S1: yerel fotoğrafı `user-media/<uid>/scans/<anahtar>.jpg` yoluna yükler,
+  // kova yolunu döner. Analizden ÖNCE çağrılır; hata fırlatırsa hak iade edilir.
+  // İsteğe bağlı: yoksa (mock/vitrin) imageRef olduğu gibi analize gider.
+  uploadImage?(params: { idempotencyKey: string; localUri: string }): Promise<string>;
+  // Görsel → besin tahmini (analiz adımı). imageRef = kova yolu. Hata fırlatırsa hak iade edilir.
   analyzeImage(params: AnalyzeParams): Promise<Omit<ScanEstimate, 'isEstimate'>>;
 }

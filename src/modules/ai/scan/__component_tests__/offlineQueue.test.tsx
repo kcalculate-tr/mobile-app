@@ -98,6 +98,42 @@ describe('processPendingQueue', () => {
     expect(await getPendingScanQueue(now)).toHaveLength(2);
   });
 
+  // G17-S1 md.1 — kuyruk da canlı Tara ile AYNI yükleme adımını kullanır.
+  it('kuyruk: önce user-media yüklemesi, analize kova yolu gider', async () => {
+    const now = Date.now();
+    await setPendingScanPhoto(fresh('a', now), now);
+    const calls: string[] = [];
+    const analyze = jest.fn(async ({ imageRef }: { imageRef: string }) => {
+      calls.push(`analyze:${imageRef}`);
+      return est;
+    });
+    const c = {
+      ...client(analyze as unknown as jest.Mock),
+      uploadImage: jest.fn(async ({ localUri }: { localUri: string }) => {
+        calls.push(`upload:${localUri}`);
+        return 'uid-1/scans/a.jpg';
+      }),
+    } as AiScanClient;
+    const res = await processPendingQueue({ client: c, save: jest.fn().mockResolvedValue(undefined), now });
+    expect(res.stoppedBy).toBe('empty');
+    expect(calls).toEqual(['upload:file://a.jpg', 'analyze:uid-1/scans/a.jpg']);
+  });
+
+  it('kuyruk: yükleme başarısız → iade, analiz yok, girdi kuyrukta kalır', async () => {
+    const now = Date.now();
+    await setPendingScanPhoto(fresh('a', now), now);
+    const analyze = jest.fn();
+    const c = {
+      ...client(analyze),
+      uploadImage: jest.fn().mockRejectedValue(new Error('upload')),
+    } as AiScanClient;
+    const res = await processPendingQueue({ client: c, save: jest.fn(), now });
+    expect(res.stoppedBy).toBe('failed');
+    expect(analyze).not.toHaveBeenCalled();
+    expect(c.releaseScan).toHaveBeenCalledTimes(1);
+    expect(await getPendingScanQueue(now)).toHaveLength(1);
+  });
+
   it('kota bitmişse analiz çağrılmaz, kuyruk korunur', async () => {
     const now = Date.now();
     await setPendingScanPhoto(fresh('a', now), now);

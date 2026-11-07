@@ -1,4 +1,4 @@
-// AI tarama akışı — reserve → analiz → (başarısızsa) release.
+// AI tarama akışı — reserve → yükle (user-media) → analiz → (başarısızsa) release.
 // Bu saf orkestrasyon: istemci enjekte edilir, native bağımlılık yok (test eder).
 import type { AiScanClient, AiScanOutcome, AnalyzeParams } from './types';
 
@@ -17,9 +17,14 @@ export async function runAiScan(
     };
   }
 
-  // 2) Analiz. Başarısızsa hakkı İADE et (release) ve remaining'i geri yükle.
+  // 2) Yükleme + analiz. Edge fonksiyonu yerel `file://` URI'sini okuyamaz
+  //    (403) — önce fotoğraf kovaya yüklenir, analize KOVA YOLU gider.
+  //    Herhangi biri başarısızsa hakkı İADE et (release) ve remaining'i geri yükle.
   try {
-    const raw = await client.analyzeImage(params);
+    const imageRef = client.uploadImage
+      ? await client.uploadImage({ idempotencyKey: params.idempotencyKey, localUri: params.imageRef })
+      : params.imageRef;
+    const raw = await client.analyzeImage({ ...params, imageRef });
     return {
       status: 'ok',
       estimate: { ...raw, isEstimate: true }, // her zaman "tahmin"
