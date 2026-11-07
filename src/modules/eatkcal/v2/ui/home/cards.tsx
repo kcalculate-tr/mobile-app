@@ -157,7 +157,11 @@ export function StoreCard({
   );
 }
 
-/** Kampanya kartı (300×104): banner görseli + "Kampanya" + başlık + "İncele". */
+/**
+ * Kampanya kartı (300×104): bannerın TAMAMI dokunulabilir, kendi bağlantısını açar.
+ * G17-S1 md.11: soluk siyah katman ve "İncele" düğmesi kalktı — görsel olduğu gibi
+ * (banner görselleri kendi metnini taşır). Başlık erişilebilirlik etiketinde.
+ */
 export function CampaignCard({
   imageUri,
   title,
@@ -167,7 +171,7 @@ export function CampaignCard({
   title?: string | null;
   onPress: () => void;
 }) {
-  const { c, t } = useEk();
+  const { t } = useEk();
   const src = transformImageUrl(imageUri, ImagePreset.bannerMedium) || imageUri;
   return (
     <Pressable
@@ -175,24 +179,12 @@ export function CampaignCard({
         haptic('selection');
         onPress();
       }}
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={title ? `${t('eatkcal.v2.home.campaign')}: ${title}` : t('eatkcal.v2.home.campaign')}
       style={({ pressed }) => [styles.campaign, pressed && { opacity: 0.85 }]}
+      testID="ek-campaign-card"
     >
       <CachedImage uri={src} style={StyleSheet.absoluteFill as never} />
-      {/* Fotoğraf üstü metin okunurluğu için soldan koyu geçiş (pano: linear-gradient). */}
-      <View style={[StyleSheet.absoluteFill, styles.campaignShade]} />
-      {title ? (
-        <View style={styles.campaignText}>
-          <Text style={[ekType.c13s, { color: '#FFFFFF', opacity: 0.85 }]}>{t('eatkcal.v2.home.campaign')}</Text>
-          <Text style={[styles.campaignTitle]} numberOfLines={2}>
-            {title}
-          </Text>
-        </View>
-      ) : null}
-      <View style={[styles.campaignCta, { backgroundColor: c.accent }]}>
-        <Text style={[ekType.c13s, { color: c.onAccent }]}>{t('eatkcal.v2.home.campaign_cta')}</Text>
-      </View>
     </Pressable>
   );
 }
@@ -230,10 +222,6 @@ const styles = StyleSheet.create({
   storeBody: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, gap: 2 },
   storeName: { ...ekType.b17, fontFamily: ekType.h20.fontFamily },
   campaign: { width: 300, height: 104, borderRadius: 20, overflow: 'hidden' },
-  campaignShade: { backgroundColor: 'rgba(0,0,0,0.38)' },
-  campaignText: { position: 'absolute', left: 14, top: 12, right: 110, gap: 2 },
-  campaignTitle: { fontFamily: ekType.h20.fontFamily, fontSize: 17, lineHeight: 20, color: '#FFFFFF' },
-  campaignCta: { position: 'absolute', right: 12, bottom: 12, minHeight: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: 'center' },
   review: { width: 260, padding: 14, borderRadius: 20, borderWidth: 1, gap: 8 },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   quote: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 20 },

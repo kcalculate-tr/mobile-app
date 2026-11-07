@@ -249,6 +249,8 @@ function EkHomeContent() {
       else if (target.kind === 'store') openStore(target.brandKey);
       else if (target.kind === 'category') selectCategory(target.categoryName);
       else if (target.kind === 'legacy') resolveNavigation(navigation, target.dest);
+      // G17-S1 md.11: bannerın hedefi yoksa kampanya sayfası (Kampanyalar ve kuponlar).
+      else (navigation as unknown as { navigate: (n: string) => void }).navigate('ProfileCoupons');
     },
     [openProduct, openStore, selectCategory, navigation],
   );
