@@ -151,6 +151,18 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   if (JSON.stringify(entry.target).includes('AiScan')) {
     const { useScanQuotaStore } = require('../modules/ai/scan/quotaStore');
     useScanQuotaStore.getState().recordQuota(3, new Date(Date.now() + 864e5).toISOString());
+    // G17-S2: vitrin ağı sahte → analiz yanıtı yok. Yalnız vitrinde, FinMoScan
+    // analiz katmanı görünsün diye 2,5 sn gecikmeli bellek içi istemci.
+    const { setAiScanClient } = require('../modules/ai/scan/client');
+    const { createMockAiScanClient } = require('../modules/ai/scan/mock');
+    const mock = createMockAiScanClient({ cap: 3 });
+    setAiScanClient({
+      ...mock,
+      analyzeImage: async (p: { idempotencyKey: string; imageRef: string }) => {
+        await new Promise((r) => setTimeout(r, 2500));
+        return mock.analyzeImage(p);
+      },
+    });
   }
 
   // G15-S2 — Ana sayfa alt bölümleri: Final örneği (eatkcal şeridi + Keşfet videoları).

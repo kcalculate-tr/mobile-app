@@ -91,7 +91,6 @@ export default function FinScanCamera({
 
   const ref = useRef<InstanceType<ExpoCameraModule['CameraView']> | null>(null);
   const [perm, setPerm] = useState<Perm>('unknown');
-  const [ready, setReady] = useState(false);
   const [pictureSize, setPictureSize] = useState<string | undefined>(undefined);
   const [mode, setMode] = useState<ScanCameraMode>('photo');
   const [flashOn, setFlashOn] = useState(false);
@@ -141,18 +140,31 @@ export default function FinScanCamera({
   }, [checkPermission]);
 
   // ── Çekim ───────────────────────────────────────────────────────────────────
-  const onReady = async () => {
-    setReady(true);
+  // Çekim boyutu (uzun kenar ≤ 1600): görüntü açılınca ve onCameraReady'de istenir
+  // (iOS simülatöründe onCameraReady hiç gelmez; Android hazır olmadan reddedebilir).
+  const loadSizes = useCallback(async () => {
     try {
       const sizes = await ref.current?.getAvailablePictureSizesAsync();
-      setPictureSize(pickPictureSize(sizes));
+      const picked = pickPictureSize(sizes);
+      if (picked) setPictureSize(picked);
     } catch {
       // boyut listesi yoksa cihaz varsayılanı (5 MB yükleme sınırı yine korunur)
     }
+  }, []);
+  useEffect(() => {
+    if (perm !== 'granted') return;
+    const id = setTimeout(() => void loadSizes(), 300);
+    return () => clearTimeout(id);
+  }, [perm, loadSizes]);
+
+  const onReady = () => {
+    void loadSizes();
   };
 
   const shoot = async () => {
-    if (!ref.current || !ready || capturing || analyzing || mode !== 'photo') return;
+    // `ready` beklenmez: simülatörde onCameraReady gelmez; cihazda hazır olmadan
+    // basılırsa takePictureAsync reddeder (aşağıda yutulur, tekrar basılabilir).
+    if (!ref.current || capturing || analyzing || mode !== 'photo') return;
     haptic('medium');
     setCapturing(true);
     try {
@@ -200,7 +212,7 @@ export default function FinScanCamera({
             flash={mode === 'photo' && flashOn ? 'on' : 'off'}
             enableTorch={mode === 'barcode' && flashOn}
             pictureSize={pictureSize}
-            onCameraReady={() => void onReady()}
+            onCameraReady={onReady}
             barcodeScannerSettings={mode === 'barcode' ? { barcodeTypes: [...SCAN_BARCODE_TYPES] } : undefined}
             onBarcodeScanned={mode === 'barcode' && !barcode ? onBarcode : undefined}
             accessibilityLabel={tt('ai_scan.camera_label')}
@@ -214,7 +226,7 @@ export default function FinScanCamera({
             <View style={[styles.hintWrap, { top: '50%', marginTop: frameH / 2 + 16 }]} pointerEvents="none">
               <View style={[styles.hint, { backgroundColor: k.glass }]}>
                 <AppText style={[styles.hintText, { color: k.ink }]} numberOfLines={1}>
-                  {!ready ? tt('ai_scan.camera_starting') : mode === 'barcode' ? tt('ai_scan.barcode_hint') : tt('ai_scan.frame_hint')}
+                  {mode === 'barcode' ? tt('ai_scan.barcode_hint') : tt('ai_scan.frame_hint')}
                 </AppText>
               </View>
             </View>
@@ -298,10 +310,10 @@ export default function FinScanCamera({
           </Pressable>
           <Pressable
             onPress={() => void shoot()}
-            disabled={locked || !ready || mode !== 'photo'}
+            disabled={locked || !live || mode !== 'photo'}
             accessibilityRole="button"
             accessibilityLabel={tt('ai_scan.capture')}
-            accessibilityState={{ disabled: locked || !ready || mode !== 'photo', busy: analyzing }}
+            accessibilityState={{ disabled: locked || !live || mode !== 'photo', busy: analyzing }}
             style={({ pressed }) => [
               styles.shutter,
               { borderColor: k.ring, opacity: mode === 'photo' ? 1 : 0.4, transform: [{ scale: pressed ? 0.9 : 1 }] },
