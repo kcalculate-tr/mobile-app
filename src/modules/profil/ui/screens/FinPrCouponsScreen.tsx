@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sheet, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
@@ -21,6 +22,7 @@ import { FinHeader, FinScreen, FinCard, FinSegmented, FinSecondaryButton, body, 
 
 export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { t: tr } = useT();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
@@ -68,15 +70,15 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <FinScreen contentStyle={{ paddingTop: 0 }}>
+    // G17-S1 md.5: TEK dikey kaydırma (başlık dahil) — iç içe flex ScrollView
+    // yerine FinScreen'in kaydırması; sonda güvenli alan + 16.
+    <FinScreen
+      scroll
+      contentStyle={{ paddingBottom: insets.bottom + 16 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={t.color.ink} />}
+    >
       <FinHeader title={tr('profil.coupons_title')} onBack={onBack} />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, gap: 14 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={t.color.ink} />}
-      >
+      <View style={{ paddingHorizontal: 16, gap: 14 }}>
         <FinSegmented options={[tr('profil.coupons_tab_offers'), tr('profil.coupons_tab_mine')]} index={tab} onChange={setTab} />
 
         {loading ? (
@@ -91,7 +93,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
         ) : (
           <>
             {tab === 0 && banners.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }} style={{ marginHorizontal: -16 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }} style={{ marginHorizontal: -16, flexGrow: 0, height: 140 }}>
                 <View style={{ width: 4 }} />
                 {banners.map((b) => (
                   <Pressable key={b.id} onPress={() => resolveNavigation(navigation, b.navigate_to, 'Offers')}>
@@ -176,7 +178,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
             )}
           </>
         )}
-      </ScrollView>
+      </View>
 
       <Sheet
         visible={!!selected}
