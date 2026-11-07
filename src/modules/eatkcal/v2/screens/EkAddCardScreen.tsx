@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
+import { PaynkolayText } from '../ui/PaynkolayLogo';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WebView } from 'react-native-webview';
@@ -404,7 +405,7 @@ export default function EkAddCardScreen() {
               <Secondary label={t('eatkcal.v2.cards.cancel')} onPress={goBackToCards} />
               <View style={[s.securityNote, { backgroundColor: c.line }]}>
                 <Lock size={16} color={c.secondary} />
-                <Text style={[ekType.c13, { color: c.secondary, flex: 1 }]}>{t('eatkcal.v2.addcard.security')}</Text>
+                <PaynkolayText text={t('eatkcal.v2.addcard.security')} style={[ekType.c13, { color: c.secondary, flex: 1 }]} isDark={theme.isDark} />
               </View>
             </>
           )}

@@ -13,6 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
+import { PaynkolayText } from '../ui/PaynkolayLogo';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { Check, Clock, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
@@ -36,7 +37,7 @@ const EN_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function EkCheckoutScreen() {
   const navigation = useEkNav();
   const route = useRoute<RouteProp<EkV2ParamList, 'EkCheckout'>>();
-  const { c, t, lang } = useEk();
+  const { c, t, lang, theme } = useEk();
   const ctrl = useEkCheckout({ initialAddressId: route.params?.selectedAddressId });
   // YALNIZ __DEV__ vitrini (FinEkCheckoutPayWait/Fail/Unknown): ödeme ara durumu
   // yalnız GÖRÜNÜMDE zorlanır; ödeme mantığı (useEkCheckout) değişmez.
@@ -655,7 +656,7 @@ export default function EkCheckoutScreen() {
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Lock size={14} color={c.secondary} />
-            <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.checkout.secure')}</Text>
+            <PaynkolayText text={t('eatkcal.v2.checkout.secure')} style={[ekType.c13, { color: c.secondary }]} isDark={theme.isDark} />
           </View>
         </Section>
 

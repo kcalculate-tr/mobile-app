@@ -15,6 +15,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
+import { PaynkolayText } from '../ui/PaynkolayLogo';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { CreditCard, Plus, Shield, Trash } from '../../../../components/icons';
@@ -219,7 +220,7 @@ export default function EkSavedCardsScreen() {
 
       <View style={[styles.note, { backgroundColor: c.line }]}>
         <Shield size={20} color={c.secondary} />
-        <Text style={[ekType.c13, { color: c.secondary, flex: 1 }]}>{t('eatkcal.v2.cards.note')}</Text>
+        <PaynkolayText text={t('eatkcal.v2.cards.note')} style={[ekType.c13, { color: c.secondary, flex: 1 }]} isDark={theme.isDark} />
       </View>
     </EkScreen>
   );

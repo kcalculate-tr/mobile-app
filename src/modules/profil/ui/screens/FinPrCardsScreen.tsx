@@ -7,6 +7,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
+import { PaynkolayText } from '../../../eatkcal/v2/ui/PaynkolayLogo';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
@@ -190,7 +191,7 @@ export default function FinPrCardsScreen({
 
         <View style={{ flexDirection: 'row', gap: 10, padding: 14, borderRadius: 16, backgroundColor: t.color.line }}>
           <Shield size={18} color={t.color.secondary} />
-          <Text style={{ flex: 1, fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary }}>{tr('profil.cards_note')}</Text>
+          <PaynkolayText text={tr('profil.cards_note')} style={{ flex: 1, fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary }} isDark={t.isDark} />
         </View>
       </View>
     </FinScreen>
