@@ -154,7 +154,7 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   PaymentScreen: { kind: 'v2swap', file: 'modules/eatkcal/v2/screens/EkPaymentScreen.tsx' },
   SharedPost: { kind: 'internal', why: 'kesfet açıkken KesfetPostDetail (PostDetailScreen), değilse Legacy*' },
   SharedProfile: { kind: 'finalRoute' },
-  AiScan: { kind: 'internal', why: 'ScanScreen yeni_kabuk ile dallanır (FinScanViewfinder/FinPhotoResult/FinScanErrorSheet)' },
+  AiScan: { kind: 'internal', why: 'ScanScreen yeni_kabuk ile dallanır (G17-S2: FinScanCamera canlı + FinScanAnalyzing/FinPhotoResult/FinScanErrorSheet; eski derlemede FinScanViewfinder yedeği)' },
   AiScanOffline: { kind: 'final', file: 'modules/ai/scan/screens/ScanOfflineScreen.tsx' },
   EatCatalog: { kind: 'finalRoute' },
 };

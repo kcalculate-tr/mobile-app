@@ -7,7 +7,7 @@
 // ile native kamerayı açıyoruz (profildeki galeri seçimiyle aynı paket,
 // bkz. src/screens/ProfileScreen.tsx) — tasarımdaki vitrin/çerçeve zemini
 // statik kalır, deklanşöre basınca sistem kamerası açılır.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -37,12 +37,14 @@ import ScanLimitSheet from '../ui/ScanLimitSheet';
 import FinScanErrorSheet, { type FinScanErrorKind } from '../ui/FinScanErrorSheet';
 import FinPhotoResult from '../ui/FinPhotoResult';
 import FinScanViewfinder from '../ui/FinScanViewfinder';
+import FinScanCamera, { loadExpoCamera } from '../ui/FinScanCamera';
 import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
 import { fetchProducts } from '../../../../lib/products';
 import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight } from '../logFlight';
 import { useFeature } from '../../../../core/flags';
+import { haptic } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
@@ -63,6 +65,9 @@ export default function ScanScreen() {
   // değişkenin TÜM etkisi sıfırdır: aşağıdaki JSX dallarından yalnız eski dal
   // render olur, yeni state'ler hiç okunmaz/yazılmaz.
   const yeniKabuk = useFeature('yeni_kabuk');
+  // G17-S2 md.1: canlı kamera (expo-camera) YALNIZ yeni kabukta yüklenir; native
+  // modül olmayan eski derlemede null → G17-S1 kartı (sistem kamerası) yedeği.
+  const liveCam = useMemo(() => (yeniKabuk ? loadExpoCamera() : null), [yeniKabuk]);
 
   const [stage, setStage] = useState<Stage>('viewfinder');
   const [limitVisible, setLimitVisible] = useState(false);
@@ -206,6 +211,7 @@ export default function ScanScreen() {
       }
       // FinMoScan: başarı animasyonu/sonucu YALNIZ gerçek sonuçtan sonra —
       // burada stage 'result' olana dek hiçbir optimistik gösterim yok.
+      haptic('success'); // FinMoScan: medium (deklanşör) → success (sonuç)
       setResult(outcome.estimate);
       setSaved(false);
       setStage('result');
@@ -368,15 +374,32 @@ export default function ScanScreen() {
     }
     return (
       <View style={styles.fill}>
-        {/* G15-S2 — FinScanR2 düzeni: alt mod çubuğu, lime deklanşör, hak hapı, flaş. */}
-        <FinScanViewfinder
-          remaining={remaining}
-          scanning={stage === 'scanning'}
-          onClose={() => navigation.goBack()}
-          onCapture={handleCapture}
-          onGallery={handleGalleryPick}
-          onManual={handleManualEntry}
-        />
+        {/* G17-S2 — FinScanR2 CANLI kamera + FinMoScan analiz katmanı (aynı ekran). */}
+        {liveCam ? (
+          <FinScanCamera
+            cam={liveCam}
+            remaining={remaining}
+            analyzing={stage === 'scanning'}
+            photoUri={photoUri}
+            paused={errorKind !== null}
+            onClose={() => navigation.goBack()}
+            onCaptured={(uri) => void runFinCapture(uri)}
+            onGallery={handleGalleryPick}
+            onManual={handleManualEntry}
+            onPermissionDenied={() => setErrorKind('camera')}
+            onPermissionGranted={() => setErrorKind((k) => (k === 'camera' ? null : k))}
+          />
+        ) : (
+          // Eski derleme (ExpoCamera native modülü yok) — G15-S2/G17-S1 düzeni yedek.
+          <FinScanViewfinder
+            remaining={remaining}
+            scanning={stage === 'scanning'}
+            onClose={() => navigation.goBack()}
+            onCapture={handleCapture}
+            onGallery={handleGalleryPick}
+            onManual={handleManualEntry}
+          />
+        )}
 
         <FinScanErrorSheet
           visible={errorKind !== null}

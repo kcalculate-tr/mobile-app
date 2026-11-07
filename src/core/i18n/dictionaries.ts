@@ -1012,6 +1012,15 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G15-S2 — FinScanR2 / FinScanError.
       quota_left_of: 'Bugün %{count}/%{cap} tarama hakkın kaldı',
       flash_hint: 'Flaşı kamerada açabilirsin',
+      // G17-S2 — canlı kamera (expo-camera), FinMoScan, barkod modu.
+      flash_on: 'Flaş açık',
+      flash_off: 'Flaş kapalı',
+      analyzing: 'Analiz ediliyor',
+      barcode_hint: 'Barkodu çerçeveye hizala',
+      barcode_soon_title: 'Barkod yakında',
+      barcode_soon_body: 'Barkodla ürün ekleme yakında geliyor. Şimdilik tabağını fotoğrafla ya da elle gir.',
+      barcode_read: 'Okunan barkod: %{code}',
+      camera_starting: 'Kamera açılıyor',
       gallery_pick_short: 'Galeriden seç',
       plan_added: 'Yarına planlandı',
       plan_denied: 'Bildirim izni gerekli',
@@ -2559,6 +2568,15 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G15-S2 — FinScanR2 / FinScanError.
       quota_left_of: '%{count}/%{cap} scans left today',
       flash_hint: 'Turn on flash in the camera',
+      // G17-S2 — live camera (expo-camera), FinMoScan, barcode mode.
+      flash_on: 'Flash on',
+      flash_off: 'Flash off',
+      analyzing: 'Analyzing',
+      barcode_hint: 'Line up the barcode in the frame',
+      barcode_soon_title: 'Barcode coming soon',
+      barcode_soon_body: 'Adding products by barcode is coming soon. For now, snap your plate or enter it manually.',
+      barcode_read: 'Barcode read: %{code}',
+      camera_starting: 'Starting camera',
       gallery_pick_short: 'Pick from gallery',
       plan_added: 'Planned for tomorrow',
       plan_denied: 'Notification permission needed',

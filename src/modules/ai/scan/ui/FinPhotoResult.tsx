@@ -10,7 +10,8 @@
  * Kaydetme HER ZAMAN `saveAiScanEstimate`'i çağırır (ScanScreen) — burada yeni
  * kaydetme mantığı YOK; yalnız gram/porsiyon/eksik besin düzeltmesi hesaplanır.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import {
   ActivityIndicator,
   Image,
@@ -25,7 +26,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { AppText, ProgressRing, haptic, useTheme } from '../../../../core/design';
+import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
@@ -55,6 +56,25 @@ function tokens(isDark: boolean) {
   return isDark
     ? { photo: '#2C2C2E', sheet: '#1C1C1E', glass: 'rgba(28,28,30,0.72)', line: '#2C2C2E', line2: '#48484A', track: '#2C2C2E', field: '#2C2C2E' }
     : { photo: '#D3D6DA', sheet: '#FFFFFF', glass: 'rgba(255,255,255,0.86)', line: '#E9EBEE', line2: '#C3C7CC', track: '#E3E5E9', field: '#FFFFFF' };
+}
+
+/** G17-S2 md.2 (FinMoScan "sonuç sheet'i"): alttan AI 260/24 yayıyla yerleşir. */
+export const SHEET_ENTER_SHIFT = 320;
+function useSheetEnter() {
+  const reduced = useReducedMotion();
+  const v = useSharedValue(0);
+  useEffect(() => {
+    v.value = reduced ? withTiming(1, { duration: REDUCED.duration }) : withSpring(1, SPRING.ai);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return useAnimatedStyle(() =>
+    reduced
+      ? { opacity: v.value }
+      : {
+          opacity: interpolate(v.value, [0, 0.25], [0, 1], 'clamp'),
+          transform: [{ translateY: interpolate(v.value, [0, 1], [SHEET_ENTER_SHIFT, 0]) }],
+        },
+  );
 }
 
 function rowKcal(r: Row): number {
@@ -111,6 +131,8 @@ export default function FinPhotoResult({
   const [toastHidden, setToastHidden] = useState(false);
   const [planDone, setPlanDone] = useState<null | 'ok' | 'denied'>(null);
   const [savedMeal, setSavedMeal] = useState(false);
+  // G17-S2 md.2: sonuç sheet'i AI 260/24 yayıyla yerleşir; azaltılmışta 200 ms opaklık.
+  const sheetIn = useSheetEnter();
 
   const [rows, setRows] = useState<Row[]>(() =>
     estimate.ingredients.map((ing: ScanIngredient) => ({
@@ -193,7 +215,7 @@ export default function FinPhotoResult({
             </AppText>
           </View>
         </View>
-        <View style={[styles.cutSheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(16, insets.bottom + 8) }]}>
+        <Animated.View style={[styles.cutSheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(16, insets.bottom + 8) }, sheetIn]}>
           <AppText tone="secondary" style={styles.cap}>
             {tr('ai_scan.photo_result')}
           </AppText>
@@ -229,7 +251,7 @@ export default function FinPhotoResult({
               <CaretDown size={16} color={t.color.onAccent} weight="bold" />
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       </View>
     );
   }
@@ -253,7 +275,7 @@ export default function FinPhotoResult({
         </View>
       </View>
 
-      <View style={[styles.sheet, { backgroundColor: k.sheet }]}>
+      <Animated.View style={[styles.sheet, { backgroundColor: k.sheet }, sheetIn]}>
         <View style={[styles.handle, { backgroundColor: k.line2 }]} />
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
           <View style={styles.pad}>
@@ -426,7 +448,7 @@ export default function FinPhotoResult({
             ) : null}
           </View>
         </ScrollView>
-      </View>
+      </Animated.View>
 
       {saved && !toastHidden ? (
         <View style={[styles.toast, { bottom: Math.max(16, insets.bottom + 8) + 64, backgroundColor: t.color.ink }]}>
