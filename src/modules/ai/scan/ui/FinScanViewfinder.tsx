@@ -9,15 +9,16 @@
 // Canlı önizleme YOK (expo-camera kurulu değil, yeni paket yasak): deklanşör
 // sistem kamerasını açar (mevcut expo-image-picker). Flaş sistem kamerasının
 // kendi denetiminde → flaş düğmesi kısa bir bilgi hapı gösterir.
+// G17-S1 md.2: orta alanda gri sahte vizör + çerçeve YERİNE "Kamerayı aç" kartı
+// (expo-camera İlter onayına bağlı — SORULAR). Onay gelirse burası canlı vizör olur.
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { AppText, haptic, useTheme } from '../../../../core/design';
+import { AppText, Button, haptic, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { X } from '../../../../components/icons';
-import ScanFrame from './ScanFrame';
+import { CameraIcon, X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 
 const FLASH_D = 'M13 2 4 14h7l-1 8 9-12h-7l1-8Z';
@@ -50,9 +51,8 @@ export default function FinScanViewfinder({
   const [flashHint, setFlashHint] = useState(false);
 
   return (
-    <View style={[styles.fill, { backgroundColor: k.cam }]}>
+    <View style={[styles.fill, { backgroundColor: k.panel }]}>
       <View style={styles.camArea}>
-        <ScanFrame active={scanning} color={k.corner} width={296} height={328} style={styles.frame} />
         <View style={[styles.top, { top: insets.top + 6 }]}>
           <Pressable
             onPress={onClose}
@@ -70,11 +70,26 @@ export default function FinScanViewfinder({
             </View>
           ) : null}
         </View>
-        <View style={styles.hintWrap} pointerEvents="none">
-          <View style={[styles.hint, { backgroundColor: k.glass }]}>
-            <AppText style={[styles.hintText, { color: k.ink }]}>
-              {scanning ? tt('ai_scan.scanning') : flashHint ? tt('ai_scan.flash_hint') : tt('ai_scan.frame_hint')}
+        {/* G17-S1 md.2: canlı önizleme yok (expo-camera onayı bekliyor) → sahte
+            vizör/çerçeve YERİNE dürüst "Kamerayı aç" kartı; sistem kamerasını açar. */}
+        <View style={[styles.cardWrap, { paddingTop: insets.top + 60 }]}>
+          <View style={[styles.card, { backgroundColor: t.color.surface }]} testID="fin-scan-open-camera">
+            <View style={[styles.cardIcon, { backgroundColor: t.color.bg }]}>
+              {scanning ? <ActivityIndicator color={t.color.ink} /> : <CameraIcon size={28} color={t.color.ink} />}
+            </View>
+            <AppText style={[styles.cardTitle, { color: t.color.ink }]} accessibilityRole="header">
+              {scanning ? tt('ai_scan.scanning') : tt('ai_scan.camera_open_title')}
             </AppText>
+            <AppText style={[styles.cardBody, { color: t.color.secondary }]}>
+              {flashHint ? tt('ai_scan.flash_hint') : tt('ai_scan.camera_open_body')}
+            </AppText>
+            <Button
+              label={tt('ai_scan.camera_open_cta')}
+              onPress={onCapture}
+              disabled={scanning}
+              haptic="medium"
+              style={styles.cardCta}
+            />
           </View>
         </View>
       </View>
@@ -139,14 +154,16 @@ export default function FinScanViewfinder({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   camArea: { flex: 1 },
-  frame: { justifyContent: 'center', paddingBottom: 8 },
+  cardWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, paddingBottom: 16 },
+  card: { borderRadius: 24, padding: 24, alignItems: 'center' },
+  cardIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  cardBody: { marginTop: 8, fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  cardCta: { marginTop: 20, alignSelf: 'stretch' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   quota: { height: 44, borderRadius: 22, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginLeft: 12 },
   quotaText: { fontSize: 13, fontWeight: '600' },
-  hintWrap: { position: 'absolute', left: 0, right: 0, bottom: 74, alignItems: 'center' },
-  hint: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center' },
-  hintText: { fontSize: 13, fontWeight: '600' },
   panel: { paddingTop: 14 },
   modes: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
   mode: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: 'center' },
