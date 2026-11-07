@@ -14,7 +14,7 @@
 // Barkod: EAN-13/8, UPC-A/E okunur; uygulamada barkod akışı YOK → "Barkod yakında"
 // hâli (okunan kod gösterilir, sahte ürün/sonuç yok).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AppState, DeviceEventEmitter, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { requireOptionalNativeModule } from 'expo';
@@ -51,6 +51,9 @@ export function loadExpoCamera(): ExpoCameraModule | null {
     return null;
   }
 }
+
+/** YALNIZ __DEV__ vitrini (FinMoScan): dokunma aracı olmadan deklanşör. */
+export const DEV_SCAN_SHUTTER_EVENT = 'kcal:dev:scanShutter';
 
 export type ScanCameraMode = 'photo' | 'barcode';
 type Perm = 'unknown' | 'granted' | 'denied';
@@ -176,6 +179,14 @@ export default function FinScanCamera({
       setCapturing(false);
     }
   };
+
+  const shootRef = useRef(shoot);
+  shootRef.current = shoot;
+  useEffect(() => {
+    if (!__DEV__) return;
+    const sub = DeviceEventEmitter.addListener(DEV_SCAN_SHUTTER_EVENT, () => void shootRef.current());
+    return () => sub.remove();
+  }, []);
 
   const onBarcode = (r: { type: string; data: string }) => {
     if (barcode) return;

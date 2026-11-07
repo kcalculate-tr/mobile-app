@@ -374,7 +374,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinMoLogB', 'hareket', route(tab('Tracker')), { scene: 'meals' }],
   ['FinMoRing', 'hareket', route(tab('Tracker')), { scene: 'meals' }],
   ['FinMoStreak', 'hareket', comp('celebrate', { kind: 'streak3' })],
-  ['FinMoScan', 'hareket', comp('photoResult')],
+  // G17-S2: canlı Tara → otomatik deklanşör → FinMoScan analiz katmanı → sonuç sheet'i.
+  ['FinMoScan', 'hareket', route([...tab('Tracker'), { name: 'AiScan' }]), { scene: 'autoShutter' }],
   ['FinMoLike', 'hareket', comp('postCard', { variant: 'liked' })],
   ['FinMoLoad', 'hareket', route(tab('Home')), { data: 'loading' }],
   ['FinMoSheet', 'hareket', comp('addToDaySheet')],

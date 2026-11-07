@@ -156,6 +156,12 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     const { setAiScanClient } = require('../modules/ai/scan/client');
     const { createMockAiScanClient } = require('../modules/ai/scan/mock');
     const mock = createMockAiScanClient({ cap: 3 });
+    // FinMoScan: dokunma aracı olmadan deklanşör (yalnız __DEV__ dinleyicisi).
+    if (scene === 'autoShutter') {
+      const { DeviceEventEmitter } = require('react-native');
+      const { DEV_SCAN_SHUTTER_EVENT } = require('../modules/ai/scan/ui/FinScanCamera');
+      setTimeout(() => DeviceEventEmitter.emit(DEV_SCAN_SHUTTER_EVENT), 3000);
+    }
     setAiScanClient({
       ...mock,
       analyzeImage: async (p: { idempotencyKey: string; imageRef: string }) => {
