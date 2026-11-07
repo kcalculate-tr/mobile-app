@@ -1,6 +1,7 @@
 // AI tarama tipleri — G5-CONTRACT.md "AI tarama kotası (S2)".
 // İlke: sonuç HER ZAMAN "tahmin" etiketli ve kaydetmeden önce düzeltilebilir
 // (porsiyon/malzeme). Kota bitince barkod ve elle giriş çalışmaya devam eder.
+import type { ScanFailureInfo } from './scanError';
 
 export interface ReserveResult {
   ok: boolean;
@@ -37,7 +38,14 @@ export interface ScanEstimate {
 export type AiScanOutcome =
   | { status: 'ok'; estimate: ScanEstimate; remaining: number; reset_at: string }
   | { status: 'quota_exhausted'; remaining: number; reset_at: string }
-  | { status: 'failed'; error: string; remaining: number; reset_at: string };
+  | {
+      status: 'failed';
+      error: string;
+      remaining: number;
+      reset_at: string;
+      /** G17-S2 md.6: teşhis — aşama + edge `error` kodu + HTTP durumu. */
+      failure?: ScanFailureInfo;
+    };
 
 export interface AnalyzeParams {
   idempotencyKey: string;
@@ -57,4 +65,7 @@ export interface AiScanClient {
   uploadImage?(params: { idempotencyKey: string; localUri: string }): Promise<string>;
   // Görsel → besin tahmini (analiz adımı). imageRef = kova yolu. Hata fırlatırsa hak iade edilir.
   analyzeImage(params: AnalyzeParams): Promise<Omit<ScanEstimate, 'isEstimate'>>;
+  // G17-S2 md.6: yükleme/analiz hatası teşhisi → LOG + Sentry (gerçek istemci).
+  // İsteğe bağlı; mock/vitrin uygulamayabilir. Asla fırlatmamalı.
+  reportFailure?(info: ScanFailureInfo): void;
 }

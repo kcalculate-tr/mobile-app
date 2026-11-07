@@ -13,6 +13,7 @@ import {
   scanImagePath,
   sniffImageType,
 } from './scanPath';
+import { ScanStageError, analyzeErrorFromInvoke } from './scanError';
 
 type SupabaseModule = typeof import('../../../core/supabase');
 function sb() {
@@ -69,7 +70,8 @@ export const realAiScanClient: AiScanClient = {
     const { data, error } = await sb().functions.invoke('analyze-ai-scan', {
       body: { reservation_id: idempotencyKey, image_path: imageRef },
     });
-    if (error) throw new Error(`analyze-ai-scan: ${error.message}`);
+    // G17-S2 md.6: edge gövdesindeki `error` kodu (config/server/timeout/…) korunur.
+    if (error) throw await analyzeErrorFromInvoke(error);
     const res = data as {
       items?: { name: string; grams: number; kcal: number; protein_g: number; carb_g: number; fat_g: number }[];
       total?: { kcal: number; protein_g: number; carb_g: number; fat_g: number };
@@ -88,6 +90,20 @@ export const realAiScanClient: AiScanClient = {
       ingredients: items.map((i) => ({ name: i.name, grams: i.grams })),
       photo_url: null,
     };
+  },
+
+  reportFailure(info) {
+    // G17-S2 md.6: LOG (konsol/cihaz günlüğü) + Sentry. Kişisel veri YOK —
+    // yalnız aşama, edge kodu, HTTP durumu (yol/uid/foto gönderilmez).
+    const tags = { stage: info.stage, code: info.code, http_status: info.httpStatus };
+    console.warn('[ai-scan] başarısız', tags);
+    try {
+      /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+      const { captureError } = require('../../../lib/sentry') as typeof import('../../../lib/sentry');
+      captureError(new ScanStageError(info.stage, info.code, info.httpStatus), { ai_scan: tags });
+    } catch {
+      // Sentry yoksa (test/vitrin) sessiz geç
+    }
   },
 };
 

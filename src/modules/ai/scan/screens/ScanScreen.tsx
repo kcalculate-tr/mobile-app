@@ -25,6 +25,7 @@ import { useAuth } from '../../../../core/AuthContext';
 import { RootStackParamList } from '../../../../navigation/types';
 import { runAiScan } from '../runScan';
 import { getAiScanClient } from '../client';
+import { scanFailureInfo } from '../scanError';
 import { useScanQuotaStore } from '../quotaStore';
 import { inferMealTypeFromHour } from '../mealTypeFromHour';
 import type { ClientMealType } from '../../../../core/meal/mealType';
@@ -208,7 +209,13 @@ export default function ScanScreen() {
       setResult(outcome.estimate);
       setSaved(false);
       setStage('result');
-    } catch {
+    } catch (e) {
+      // G17-S2 md.6: rezervasyon (RPC) hatası da LOG + Sentry'ye gider.
+      try {
+        getAiScanClient().reportFailure?.(scanFailureInfo(e, 'reserve'));
+      } catch {
+        // teşhis akışı bozmaz
+      }
       setStage('viewfinder');
       setErrorKind('failed');
     }
