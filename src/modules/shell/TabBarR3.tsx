@@ -15,7 +15,8 @@
 //
 // Hareket (yalnız core/design/motion token'ları + usePop + haptic):
 //   · İlk açılış: bar aşağıdan yükselir (SPRING.ai).
-//   · Aktif gösterge: nokta → hap morfu + sekme değişiminde kayar (SPRING.ai).
+//   · Aktif gösterge: nokta → hap morfu + sekme değişiminde kayar (G17-S2: 200 standard;
+//     yarı saydam gri hap, ikon/etiket mürekkep).
 //   · Tara: basışta usePop + haptic. Küçülme/büyüme: base 300 (collapsed SV).
 //   · Azaltılmış harekette: yalnız opaklık/kısa timing (REDUCED).
 // Sekme İÇERİĞİ arasında geçiş animasyonu YOK (AppNavigator 24.09 kararı).
@@ -47,6 +48,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../core/design/ThemeProvider';
 import { useT } from '../../core/i18n';
 import {
+  CURVE,
   DURATION,
   REDUCED,
   SPRING,
@@ -59,6 +61,7 @@ import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
+import { SELECTED_PILL, SELECTED_PILL_MS } from './selectedPill';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
@@ -77,10 +80,11 @@ function glassTokens(dark: boolean) {
       glass: 'rgba(44,44,46,0.55)',
       edge: 'rgba(255,255,255,0.14)',
       hi: 'rgba(255,255,255,0.10)',
-      // G17-S1 md.10: seçili sekme — koyu temada açık hap + koyu ikon/etiket.
-      bubble: '#F5F5F5',
+      // G17-S2 md.5: seçili sekme — Instagram gibi YARI SAYDAM gri hap;
+      // ikon/etiket normal mürekkep (G17-S1'deki ters renkli hap geri alındı).
+      bubble: SELECTED_PILL.dark.bubble,
       bubbleEdge: 'rgba(255,255,255,0.10)',
-      activeInk: '#1C1C1E',
+      activeInk: SELECTED_PILL.dark.activeInk,
       cut: '#2C2C2E',
       accent: '#C6FF3A',
       tint: 'dark' as const,
@@ -91,10 +95,10 @@ function glassTokens(dark: boolean) {
     glass: 'rgba(255,255,255,0.58)',
     edge: 'rgba(10,10,10,0.08)',
     hi: 'rgba(255,255,255,0.7)',
-    // G17-S1 md.10: seçili sekme — açık temada #1C1C1E hap + beyaz ikon/etiket.
-    bubble: '#1C1C1E',
+    // G17-S2 md.5: seçili sekme — yarı saydam gri hap, ikon/etiket mürekkep.
+    bubble: SELECTED_PILL.light.bubble,
     bubbleEdge: 'rgba(10,10,10,0.06)',
-    activeInk: '#FFFFFF',
+    activeInk: SELECTED_PILL.light.activeInk,
     cut: '#FFFFFF',
     accent: '#8AD400',
     tint: 'light' as const,
@@ -254,16 +258,13 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
         ? withTiming(1, { duration: REDUCED.duration })
         : withTiming(1, { duration: TIMING.enter }); // nokta→hap
     } else {
-      posX.value = reduced
-        ? withTiming(target, { duration: REDUCED.duration })
-        : withSpring(target, SPRING.ai); // sekme değişiminde kayar
-      if (!reduced) {
-        // Jöle: kayma yönünde uzayıp toparlanır (scaleX 1→1.6→1, fast 200).
-        stretch.value = withSequence(
-          withTiming(1.6, { duration: DURATION.fast / 2, easing: Easing.bezier(0.2, 0, 0, 1) }),
-          withTiming(1, { duration: DURATION.fast / 2, easing: Easing.bezier(0.2, 0, 0, 1) }),
-        );
-      }
+      // G17-S2 md.5: seçili hap geçişi 200 standard (yay/jöle yok); azaltılmış
+      // harekette de aynı süre (yalnız konum, uzama yok).
+      posX.value = withTiming(target, {
+        duration: reduced ? REDUCED.duration : SELECTED_PILL_MS,
+        easing: CURVE.standard,
+      });
+      stretch.value = 1;
     }
   }, [activeIndex, tabW, reduced, appeared, posX, stretch]);
 
@@ -461,7 +462,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                         size={TAB_BAR_R3.ICON_SIZE}
                         color={isActive ? g.activeInk : g.ink}
                         filled={isActive}
-                        cutColor={isActive ? g.bubble : g.cut}
+                        cutColor={g.cut}
                       />
                       {showBadge ? (
                         <Animated.View
