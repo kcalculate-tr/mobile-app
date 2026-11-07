@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { AppText, ProgressRing, haptic, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ArrowLeft, BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
+import { BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
@@ -180,10 +180,11 @@ export default function FinPhotoResult({
         <Pressable
           onPress={onRetry}
           accessibilityRole="button"
-          accessibilityLabel={tr('ai_scan.retry')}
+          accessibilityLabel={tr('common.close')}
+          accessibilityHint={tr('ai_scan.retry')}
           style={[styles.back, { top: insets.top + 6, backgroundColor: k.glass }]}
         >
-          <ArrowLeft size={20} color={t.color.ink} />
+          <X size={20} color={t.color.ink} />
         </Pressable>
         <View style={styles.cutChipWrap} pointerEvents="none">
           <View style={[styles.cutChip, { backgroundColor: k.glass }]}>
@@ -240,10 +241,11 @@ export default function FinPhotoResult({
         <Pressable
           onPress={onRetry}
           accessibilityRole="button"
-          accessibilityLabel={tr('ai_scan.retry')}
+          accessibilityLabel={tr('common.close')}
+          accessibilityHint={tr('ai_scan.retry')}
           style={[styles.back, { top: insets.top + 6, backgroundColor: k.glass }]}
         >
-          <ArrowLeft size={20} color={t.color.ink} />
+          <X size={20} color={t.color.ink} />
         </Pressable>
         <View style={[styles.found, { backgroundColor: k.glass }]}>
           <Check size={14} color={t.color.ink} weight="bold" />
@@ -615,7 +617,8 @@ function MissingFoodSheet({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   photo: { height: 360 },
-  back: { position: 'absolute', left: 16, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  // G17-S1 md.7: Tara modalı → kapat X SAĞDA (sol geri oku yok).
+  back: { position: 'absolute', right: 16, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   found: { position: 'absolute', left: 16, bottom: 16, height: 32, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
   foundText: { fontSize: 13, fontWeight: '600' },
   sheet: { flex: 1, marginTop: -16, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8 },

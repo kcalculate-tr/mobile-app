@@ -160,9 +160,10 @@ const styles = StyleSheet.create({
   cardTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   cardBody: { marginTop: 8, fontSize: 15, lineHeight: 21, textAlign: 'center' },
   cardCta: { marginTop: 20, alignSelf: 'stretch' },
-  top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // G17-S1 md.7: modal → kapat X SAĞDA (row-reverse), hak hapı solda.
+  top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  quota: { height: 44, borderRadius: 22, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginLeft: 12 },
+  quota: { height: 44, borderRadius: 22, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginRight: 12 },
   quotaText: { fontSize: 13, fontWeight: '600' },
   panel: { paddingTop: 14 },
   modes: { flexDirection: 'row', justifyContent: 'center', gap: 4 },

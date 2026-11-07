@@ -174,7 +174,8 @@ export function VideoPlayer({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000000' },
   video: { position: 'absolute', left: 0, right: 0, backgroundColor: '#2C2C2E', overflow: 'hidden' },
-  close: { position: 'absolute', left: 4, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  close: { position: 'absolute', right: 4, width: 44, // G17-S1 md.7: modal → X sağda
+    height: 44, alignItems: 'center', justifyContent: 'center' },
   sideCol: { position: 'absolute', right: 12, gap: 20 },
   side: { alignItems: 'center', gap: 2, minWidth: 44 },
   sideText: { color: WHITE, fontFamily: fontFamily.bodySemibold, fontSize: 13, lineHeight: 17 },

@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   close: {
     position: 'absolute',
     top: 56,
-    left: 16,
+    right: 16, // G17-S1 md.7: modal → X sağda
     width: 44,
     height: 44,
     alignItems: 'center',

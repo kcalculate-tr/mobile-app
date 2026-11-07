@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { ArrowLeft, X } from '../../../../components/icons';
+import { ArrowLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -439,14 +439,7 @@ export default function EkProductScreen() {
             >
               <ArrowLeft size={20} color="#0A0A0A" />
             </Pressable>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              accessibilityRole="button"
-              accessibilityLabel={t('eatkcal.v2.product.close')}
-              style={roundBtn}
-            >
-              <X size={20} color="#0A0A0A" />
-            </Pressable>
+            {/* G17-S1 md.7: itilen sayfada yalnız sol geri (sağdaki X kalktı). */}
           </View>
         </View>
 

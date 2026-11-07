@@ -52,6 +52,7 @@ import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, type LocalPhoto } 
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { RulesSheet, rulesSeen } from './RulesSheet';
 import { ComposeIcon, type ComposeIconName } from './compose/icons';
+import { X } from '../../../components/icons';
 import { ActivityTile, F, MealPreview, SourceTile, composeTones } from './compose/pieces';
 import { fetchLastScanMeal } from './compose/lastScan';
 
@@ -373,17 +374,8 @@ export function ComposerScreen({
     >
       {/* Koyu temada durum çubuğu açık renk (App geneli 'dark'). */}
       <StatusBar style={t.isDark ? 'light' : 'dark'} />
-      {/* Üst çubuk: İptal · Paylaş */}
+      {/* Üst çubuk (G17-S1 md.7: modal → kapat X SAĞDA): Paylaş · X */}
       <View style={styles.header}>
-        <Pressable
-          onPress={() => navigation?.goBack()}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={tr('kesfet.compose.cancel')}
-          style={styles.cancel}
-        >
-          <AppText style={[styles.cancelText, F.semibold]}>{tr('kesfet.compose.cancel')}</AppText>
-        </Pressable>
         <Pressable
           onPress={handleSharePress}
           disabled={!canSubmit}
@@ -399,6 +391,16 @@ export function ComposerScreen({
           <AppText style={[styles.shareText, F.semibold, { color: canSubmit ? tone.onInk : t.color.secondary }]}>
             {tr('kesfet.compose.post_btn')}
           </AppText>
+        </Pressable>
+        <Pressable
+          onPress={() => navigation?.goBack()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={tr('kesfet.compose.cancel')}
+          style={styles.cancel}
+          testID="composer-close"
+        >
+          <X size={22} color={t.color.ink} />
         </Pressable>
       </View>
 
@@ -727,8 +729,8 @@ export default ComposerScreen;
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
-  cancel: { minHeight: 44, justifyContent: 'center' },
+  header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, paddingLeft: 16, paddingRight: 6 },
+  cancel: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   cancelText: { fontSize: 15, lineHeight: 20 },
   shareBtn: { height: 36, paddingHorizontal: 18, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   shareText: { fontSize: 15, lineHeight: 20 },

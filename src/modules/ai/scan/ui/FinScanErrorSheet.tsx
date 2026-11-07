@@ -212,9 +212,10 @@ export default function FinScanErrorSheet({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, justifyContent: 'flex-end' },
-  top: { position: 'absolute', left: 4, right: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // G17-S1 md.7: modal → kapat X SAĞDA.
+  top: { position: 'absolute', left: 8, right: 4, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  topChip: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginLeft: 12 },
+  topChip: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginRight: 12 },
   topChipText: { fontSize: 13, fontWeight: '600' },
   sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 16 },
   iconCircle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },

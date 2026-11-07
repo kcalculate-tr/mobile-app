@@ -139,12 +139,13 @@ export function ReportModal({
         {step === 'reason' ? (
           <>
             <View style={styles.header}>
+              {/* G17-S1 md.7: modal → başlık solda, kapat X sağda. */}
+              <AppText accessibilityRole="header" style={[styles.h1, { color: t.color.ink, flex: 1, paddingLeft: 12 }]}>
+                {tr('kesfet.report.title')}
+              </AppText>
               <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} style={styles.iconBtn}>
                 <LineIcon name="x" color={t.color.ink} />
               </Pressable>
-              <AppText accessibilityRole="header" style={[styles.h1, { color: t.color.ink }]}>
-                {tr('kesfet.report.title')}
-              </AppText>
             </View>
             <ScrollView contentContainerStyle={{ paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
               <AppText variant="body" tone="secondary" style={styles.lead}>

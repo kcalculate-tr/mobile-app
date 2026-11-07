@@ -135,7 +135,8 @@ export function RulesSheet({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 },
+  // G17-S1 md.7: modal → X sağda.
+  header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   titleBlock: { paddingHorizontal: 16, paddingTop: 4 },
   title: { fontSize: 28, lineHeight: 32 },
