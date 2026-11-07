@@ -3,11 +3,11 @@
 // zorunlu grup, kullanıcı eklemeyi denediyse başlık zemini vurgulanır
 // (renk animasyonsuz — hata kuralı).
 import React from 'react';
-import { ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { fontFamily } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
-import { OptionCard, type OptionCardModel } from './OptionCard';
+import { OptionRow, type OptionCardModel } from './OptionCard';
 
 export interface OptionGroupModel {
   key: string;
@@ -57,17 +57,12 @@ export function OptionGroupSection({
       {group.description ? (
         <Text style={[ekType.c13, { color: c.secondary }]}>{group.description}</Text>
       ) : null}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.scroller}
-        contentContainerStyle={styles.row}
-        accessibilityRole={group.multi ? undefined : 'radiogroup'}
-      >
+      {/* G17-S1 md.12: seçenekler dikey SATIRLAR (görsel 44 / Android 48, yazıyla büyür). */}
+      <View style={styles.list} accessibilityRole={group.multi ? undefined : 'radiogroup'}>
         {group.items.map((item) => (
-          <OptionCard key={item.key} model={item} multi={group.multi} onPress={() => onToggle(item.key)} />
+          <OptionRow key={item.key} model={item} multi={group.multi} onPress={() => onToggle(item.key)} />
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -86,6 +81,5 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: fontFamily.bodyBold, fontSize: 16, lineHeight: 21 },
   badge: { minHeight: 22, paddingHorizontal: 8, borderRadius: 11, justifyContent: 'center' },
-  scroller: { marginHorizontal: -16 },
-  row: { gap: 10, paddingHorizontal: 16 },
+  list: { gap: 8 },
 });
