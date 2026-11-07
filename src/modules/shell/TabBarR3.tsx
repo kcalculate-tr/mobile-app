@@ -77,8 +77,10 @@ function glassTokens(dark: boolean) {
       glass: 'rgba(44,44,46,0.55)',
       edge: 'rgba(255,255,255,0.14)',
       hi: 'rgba(255,255,255,0.10)',
-      bubble: 'rgba(255,255,255,0.16)',
+      // G17-S1 md.10: seçili sekme — koyu temada açık hap + koyu ikon/etiket.
+      bubble: '#F5F5F5',
       bubbleEdge: 'rgba(255,255,255,0.10)',
+      activeInk: '#1C1C1E',
       cut: '#2C2C2E',
       accent: '#C6FF3A',
       tint: 'dark' as const,
@@ -89,8 +91,10 @@ function glassTokens(dark: boolean) {
     glass: 'rgba(255,255,255,0.58)',
     edge: 'rgba(10,10,10,0.08)',
     hi: 'rgba(255,255,255,0.7)',
-    bubble: 'rgba(255,255,255,0.92)',
+    // G17-S1 md.10: seçili sekme — açık temada #1C1C1E hap + beyaz ikon/etiket.
+    bubble: '#1C1C1E',
     bubbleEdge: 'rgba(10,10,10,0.06)',
+    activeInk: '#FFFFFF',
     cut: '#FFFFFF',
     accent: '#8AD400',
     tint: 'light' as const,
@@ -432,7 +436,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                 ]}
               />
             ) : null}
-            <View style={styles.tabsInner} pointerEvents="box-none">
+            <View style={styles.tabsInner} pointerEvents="box-none" accessibilityRole="tablist">
               {visibleTabs.map((def, i) => {
                 const route = state.routes.find((r) => r.name === def.route);
                 const isActive = i === activeIndex;
@@ -453,7 +457,12 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                     }
                   >
                     <View>
-                      <Icon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled={isActive} cutColor={g.cut} />
+                      <Icon
+                        size={TAB_BAR_R3.ICON_SIZE}
+                        color={isActive ? g.activeInk : g.ink}
+                        filled={isActive}
+                        cutColor={isActive ? g.bubble : g.cut}
+                      />
                       {showBadge ? (
                         <Animated.View
                           pointerEvents="none"
@@ -473,7 +482,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                       maxFontSizeMultiplier={1}
                       style={[
                         styles.label,
-                        { color: g.ink, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
+                        { color: isActive ? g.activeInk : g.ink, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
                       ]}
                     >
                       {label}
