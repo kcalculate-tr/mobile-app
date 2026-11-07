@@ -54,7 +54,7 @@ function Action({
   const roll = useCountRoll(count ?? 0);
   // Final (G15): ikon + yalnız sayı; etiket erişilebilirlik adında ("Beğen · N").
   const num = count != null ? (fmtCount ? fmtCount(count) : String(count)) : null;
-  const text = num != null ? `${label} · ${num}` : label;
+  const text = num != null ? `${label} (${num})` : label;
   return (
     <Pressable
       onPress={() => {
@@ -211,7 +211,7 @@ export function PostCard({
             ) : null}
             <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.handle}>
               @{model.handle}
-              {model.time ? ` · ${model.time}` : ''}
+              {model.time ? `, ${model.time}` : ''}
             </AppText>
             <Pressable
               onPress={onOpenMenu}

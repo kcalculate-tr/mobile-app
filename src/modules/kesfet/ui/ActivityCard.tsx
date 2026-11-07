@@ -60,7 +60,7 @@ export function ActivityCard({
             {typeLabel}
           </AppText>
           <AppText variant="caption" tone="secondary" style={styles.meta} numberOfLines={1}>
-            {parts.join(' · ')}
+            {parts.join(', ')}
           </AppText>
         </View>
       </View>

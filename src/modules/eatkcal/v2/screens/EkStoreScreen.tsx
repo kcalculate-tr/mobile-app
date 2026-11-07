@@ -187,7 +187,7 @@ export default function EkStoreScreen() {
             <View style={styles.eta}>
               <Lightning size={14} color={c.secondary} weight="fill" />
               <Text style={[ekType.c13, { color: c.secondary }]}>
-                {`${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')} · ${chip.estimate}`}
+                {`${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')}, ${chip.estimate}`}
               </Text>
             </View>
           ) : null}

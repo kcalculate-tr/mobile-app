@@ -402,7 +402,7 @@ export default function EkCartScreen() {
                   key={product.id}
                   onPress={() => navigation.navigate('EkProduct', { productId: String(product.id) })}
                   accessibilityRole="button"
-                  accessibilityLabel={`${product.name} · ${SUGGESTION_BADGES[reason]}`}
+                  accessibilityLabel={`${product.name}, ${SUGGESTION_BADGES[reason]}`}
                   style={[styles.sugg, { backgroundColor: c.surface }]}
                 >
                   {product.img ? (

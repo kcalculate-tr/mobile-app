@@ -56,13 +56,13 @@ export function CollectionCardDetail({
         </View>
         <View style={styles.pad}>
           <AppText tone="secondary" style={styles.no}>
-            {card.firstTime ? `${formatNo(card.no)} · ${tr('collection.first_time')}` : formatNo(card.no)}
+            {card.firstTime ? `${formatNo(card.no)} (${tr('collection.first_time')})` : formatNo(card.no)}
           </AppText>
           <AppText textRole="screenTitle" style={styles.name}>
             {card.name}
           </AppText>
           <AppText tone="secondary" style={styles.meta}>
-            {`${date} · ${tr(`meal.${card.meal}`)} · ${source}`}
+            {`${date}, ${tr(`meal.${card.meal}`)}, ${source}`}
           </AppText>
         </View>
         <View style={[styles.stats, { borderTopColor: line, borderBottomColor: line }]}>

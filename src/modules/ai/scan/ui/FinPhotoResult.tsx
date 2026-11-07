@@ -200,7 +200,7 @@ export default function FinPhotoResult({
             {estimate.name}
           </AppText>
           <AppText tone="secondary" style={styles.cap}>
-            {`${adjusted.kcal} kcal · P ${adjusted.protein_g} g · K ${adjusted.carbs_g} g · Y ${adjusted.fat_g} g`}
+            {`${adjusted.kcal} kcal, P ${adjusted.protein_g} g, K ${adjusted.carbs_g} g, Y ${adjusted.fat_g} g`}
           </AppText>
           <View style={[styles.logPill, styles.cutPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
             <Pressable

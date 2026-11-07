@@ -20,7 +20,7 @@ export function lineSummary(item: CartItem, children: readonly CartItem[] = []):
   for (const o of item.selected_options ?? []) if (o?.value_name) parts.push(String(o.value_name));
   for (const b of item.bundle_selections ?? []) if (b?.name) parts.push(String(b.name));
   for (const c of children) if (c?.name) parts.push(String(c.name));
-  return Array.from(new Set(parts)).join(' · ');
+  return Array.from(new Set(parts)).join(', ');
 }
 
 /** Satır fiyatı (ana + bağlı satırlar), eski fiyat varsa o da. */

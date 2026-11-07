@@ -133,7 +133,7 @@ test('ürün satırları: items JSON (seçim özetiyle), yoksa order_items', () 
     ],
     order_items: [{ product_name: 'X', quantity: 9, total_price: 1 }],
   });
-  assert.deepEqual(fromJson, [{ name: 'Tavuk Bowl', productId: '42', quantity: 1, totalPrice: 300, summary: 'Basmati · Izgara Tavuk 150 g · Maş Fasulye' }]);
+  assert.deepEqual(fromJson, [{ name: 'Tavuk Bowl', productId: '42', quantity: 1, totalPrice: 300, summary: 'Basmati, Izgara Tavuk 150 g, Maş Fasulye' }]);
   const fromRel = detailLines({ items: [], order_items: [{ product_name: 'Somon', quantity: 2, total_price: 640 }] });
   assert.deepEqual(fromRel, [{ name: 'Somon', productId: null, quantity: 2, totalPrice: 640, summary: '' }]);
   assert.equal(selectionSummary({}), '');

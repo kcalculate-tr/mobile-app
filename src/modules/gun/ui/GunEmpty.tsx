@@ -142,7 +142,7 @@ function TodayPickerSheet({
               <View style={{ flex: 1 }}>
                 <AppText variant="body">{item.name}</AppText>
                 <AppText variant="caption" tone="secondary">
-                  {item.meal_type ? tt(MEAL_I18N[item.meal_type] ?? 'meal.snack') : ''} · {item.kcal} kcal
+                  {item.meal_type ? `${tt(MEAL_I18N[item.meal_type] ?? 'meal.snack')}, ` : ''}{item.kcal} kcal
                 </AppText>
               </View>
               {sharingId === item.id ? <ActivityIndicator /> : null}

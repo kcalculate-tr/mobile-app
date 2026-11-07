@@ -34,7 +34,7 @@ export function ProfileCollectionRow({
   const { t: tr } = useT();
   const last = recent[0];
   const sub = last
-    ? `${tr('collection.count', { n: count, total: COLLECTION_TARGET })} · ${tr('collection.last', { no: formatNo(last.no) })}`
+    ? `${tr('collection.count', { n: count, total: COLLECTION_TARGET })}, ${tr('collection.last', { no: formatNo(last.no) })}`
     : tr('collection.count', { n: count, total: COLLECTION_TARGET });
   const band = t.isDark ? 'rgba(198,240,79,0.12)' : 'rgba(198,240,79,0.28)';
   const stamp = t.isDark ? '#3A3A3C' : '#D3D6DA';

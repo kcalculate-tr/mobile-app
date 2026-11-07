@@ -122,7 +122,7 @@ export function EkInfoSheet({
 
   const nowBody = [eta ? t('eatkcal.v2.info.now_body_eta', { eta }) : t('eatkcal.v2.info.now_body'), free ? t('eatkcal.v2.info.free_suffix') : '']
     .filter(Boolean)
-    .join(' · ');
+    .join(', ');
   const branchNames = branches.map((b) => b.name).join(t('eatkcal.v2.info.pickup_join'));
 
   const rows: { key: string; Icon: typeof Clock; title: string; body: string }[] = [

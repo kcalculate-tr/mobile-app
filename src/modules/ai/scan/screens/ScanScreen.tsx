@@ -350,7 +350,7 @@ export default function ScanScreen() {
           onUndo={() => void handleUndoFin()}
           onView={() => navigation.goBack()}
           onAddToPlan={(a) =>
-            schedulePlanReminder({ title: t('ai_scan.plan_title'), body: `${a.name} · ${Math.round(a.kcal)} kcal` })
+            schedulePlanReminder({ title: t('ai_scan.plan_title'), body: `${a.name}, ${Math.round(a.kcal)} kcal` })
           }
           onSaveMeal={async (a) => {
             await saveMealToCollection(a.name);
@@ -439,7 +439,7 @@ export default function ScanScreen() {
               <View key={`${ing.name}-${i}`} style={styles.tag}>
                 <Text style={styles.tagText}>
                   {ing.name}
-                  {ing.kcal != null ? ` · ${Math.round(ing.kcal)} kcal` : ''}
+                  {ing.kcal != null ? ` (${Math.round(ing.kcal)} kcal)` : ''}
                 </Text>
               </View>
             ))}

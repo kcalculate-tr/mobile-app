@@ -114,9 +114,9 @@ export default function ScanOfflineScreen() {
           <View key={r.id} style={[styles.card, { backgroundColor: surface }]}>
             <View style={[styles.thumb, { backgroundColor: th.color.surface }]} />
             <View style={styles.cardText}>
-              <AppText style={[styles.title, { color: th.color.ink }]} numberOfLines={1}>{`${r.name} · ${r.kcal} kcal`}</AppText>
+              <AppText style={[styles.title, { color: th.color.ink }]} numberOfLines={1}>{`${r.name}, ${r.kcal} kcal`}</AppText>
               <AppText style={[styles.sub, { color: th.color.secondary }]} numberOfLines={1}>
-                {`${t(`meal.${r.meal}`)} · ${t(`gun.src_${r.source}`)} · ${r.time}`}
+                {`${t(`meal.${r.meal}`)}, ${t(`gun.src_${r.source}`)}, ${r.time}`}
               </AppText>
             </View>
           </View>
@@ -132,7 +132,7 @@ export default function ScanOfflineScreen() {
             <View style={styles.cardText}>
               <AppText style={[styles.title, { color: th.color.ink }]} numberOfLines={1}>{t('ai_scan.pending_title')}</AppText>
               <AppText style={[styles.sub, { color: th.color.secondary }]} numberOfLines={1}>
-                {`${t(`meal.${e.mealType}`)} · ${t('ai_scan.pending_sub')} · ${hhmm(e.queuedAt)}`}
+                {`${t(`meal.${e.mealType}`)}, ${t('ai_scan.pending_sub')}, ${hhmm(e.queuedAt)}`}
               </AppText>
             </View>
           </View>

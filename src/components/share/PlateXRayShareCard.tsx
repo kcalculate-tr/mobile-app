@@ -112,7 +112,7 @@ const PlateXRayShareCard = forwardRef<React.ElementRef<typeof Svg>, { data: Plat
         {items.map((item, i) => {
           const pos = positions[i];
           if (!pos) return null;
-          const label = item.kcal != null ? `${item.name} · ${Math.round(item.kcal)} kcal` : item.name;
+          const label = item.kcal != null ? `${item.name} (${Math.round(item.kcal)} kcal)` : item.name;
           return <Tag key={`${item.name}-${i}`} x={pos.x} y={pos.y} label={label} />;
         })}
 

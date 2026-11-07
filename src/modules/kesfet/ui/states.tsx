@@ -150,7 +150,7 @@ function SuggestionRow({
         </View>
         <AppText style={[styles.sugSub, { color: t.color.secondary }]} numberOfLines={2}>
           @{account.handle}
-          {account.bio ? ` · ${account.bio}` : ''}
+          {account.bio ? `, ${account.bio}` : ''}
         </AppText>
       </View>
       <Pressable

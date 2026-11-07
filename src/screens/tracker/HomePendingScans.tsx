@@ -76,7 +76,7 @@ export function HomePendingScans({ onManual, forceOffline = false }: { onManual:
               {tr('ai_scan.pending_title')}
             </AppText>
             <AppText style={[styles.sub, { color: t.color.secondary }]} numberOfLines={1}>
-              {`${tr(`meal.${e.mealType}`)} · ${tr('ai_scan.pending_sub')} · ${hhmm(e.queuedAt)}`}
+              {`${tr(`meal.${e.mealType}`)}, ${tr('ai_scan.pending_sub')}, ${hhmm(e.queuedAt)}`}
             </AppText>
           </View>
         </View>

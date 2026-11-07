@@ -155,7 +155,7 @@ test('yuvalar: 4 öğün, kaynak etiketi, boş yuvada "…’e logla"; Dolabınd
   expect(tree.queryByText('Bugün Tüketilenler')).toBeNull();
   for (const n of ['Kahvaltı', 'Öğle', 'Akşam', 'Ara öğün']) expect(tree.getByText(n)).toBeTruthy();
   expect(tree.getByText('Tavuklu Bowl')).toBeTruthy();
-  expect(tree.getByText('eatkcal · teslim edildi')).toBeTruthy(); // pantry → eatkcal
+  expect(tree.getByText('eatkcal (teslim edildi)')).toBeTruthy(); // pantry → eatkcal
   expect(tree.getByText('Elle')).toBeTruthy(); // manual
   expect(tree.getByText('Kahvaltı’ya logla')).toBeTruthy(); // boş yuva
   expect(tree.getByText('Akşam’a logla')).toBeTruthy();

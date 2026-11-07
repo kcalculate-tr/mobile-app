@@ -124,7 +124,7 @@ export default function FinPrMeasurementsScreen({ onBack }: { onBack: () => void
                 <FinCard key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>{fmt(item.date)}</Text>
-                    <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{parts.join(' · ')}</Text>
+                    <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{parts.join(', ')}</Text>
                   </View>
                   <Delta v={diff(item.weight_kg, prev?.weight_kg ?? null)} />
                 </FinCard>

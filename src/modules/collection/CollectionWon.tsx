@@ -107,7 +107,7 @@ export function CollectionWon({
               <AppText style={[styles.dishName, { color: ct.ink }]} numberOfLines={2}>
                 {card.name}
               </AppText>
-              <AppText style={[styles.dateMeal, { color: ct.sec }]}>{`${dateLabel} · ${mealLabel}`}</AppText>
+              <AppText style={[styles.dateMeal, { color: ct.sec }]}>{`${dateLabel}, ${mealLabel}`}</AppText>
 
               {tags.length > 0 ? (
                 <View style={styles.tagRow}>
@@ -125,7 +125,7 @@ export function CollectionWon({
             {/* Lime çip: "No. NNN · İlk kez" — kartın sol üst köşesinde. */}
             <View style={[styles.limeChip, { backgroundColor: t.color.accent }]}>
               <AppText tone="onAccent" style={styles.limeText}>
-                {card.firstTime ? `${formatNo(card.no)} · ${tr('collection.first_time')}` : formatNo(card.no)}
+                {card.firstTime ? `${formatNo(card.no)} (${tr('collection.first_time')})` : formatNo(card.no)}
               </AppText>
             </View>
           </Animated.View>

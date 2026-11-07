@@ -35,7 +35,7 @@ function PlayIcon({ size = 24 }: { size?: number }) {
 
 function SideAction({ icon, count, label, onPress }: { icon: IconName; count?: string; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count ? `${label} · ${count}` : label} hitSlop={6} style={styles.side}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count ? `${label} (${count})` : label} hitSlop={6} style={styles.side}>
       <Icon name={icon} size={28} color={WHITE} />
       {count ? <AppText style={styles.sideText}>{count}</AppText> : null}
     </Pressable>

@@ -565,7 +565,7 @@ export function ComposerScreen({
                       key={p.id}
                       onPress={() => pickProduct(p)}
                       accessibilityRole="button"
-                      accessibilityLabel={`${p.name} · ${fmt(p.kcal)} kcal`}
+                      accessibilityLabel={`${p.name}, ${fmt(p.kcal)} kcal`}
                       style={({ pressed }) => [styles.searchRow, { borderTopColor: t.color.line }, pressed && { opacity: 0.85 }]}
                     >
                       <AppText style={[styles.searchName, F.bold]} numberOfLines={1}>{p.name}</AppText>

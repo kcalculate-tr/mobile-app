@@ -231,7 +231,7 @@ export function GunViewer({
               </AppText>
             ) : card ? (
               <AppText variant="caption" style={styles.headerMeta}>
-                {tt(MEAL_I18N[card.meal_type] ?? 'meal.snack')} · {cardIdx + 1} / {cards.length}
+                {`${tt(MEAL_I18N[card.meal_type] ?? 'meal.snack')} (${cardIdx + 1}/${cards.length})`}
               </AppText>
             ) : null}
             <Pressable onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={tt('common.close')}>
@@ -263,7 +263,7 @@ export function GunViewer({
                   {card.kcal} kcal
                 </AppText>
                 <AppText variant="caption" tone="secondary">
-                  P {card.protein_g} g · K {card.carbs_g ?? '—'} g · Y {card.fat_g ?? '—'} g
+                  P {card.protein_g} g, K {card.carbs_g ?? '—'} g, Y {card.fat_g ?? '—'} g
                 </AppText>
               </View>
               <Pressable

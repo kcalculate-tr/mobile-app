@@ -75,7 +75,7 @@ export default function AgreementsScreen({
           <Text style={{ fontFamily: heading, fontSize: 20, color: t.color.ink }}>{active.title}</Text>
           {updated ? (
             <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
-              {tr('profil.agreements_updated')} · {updated}
+              {tr('profil.agreements_updated')}: {updated}
             </Text>
           ) : null}
           {paragraphs.map((p, i) => (

@@ -140,7 +140,7 @@ export function CouponSheet({
           list.map((camp) => {
             const kod = String(camp.code);
             const cond = camp.min_cart_total
-              ? `${camp.title ?? kod} · ≥ ${camp.min_cart_total} TL`
+              ? `${camp.title ?? kod} (≥ ${camp.min_cart_total} TL)`
               : (camp.title ?? kod);
             return (
               <View key={camp.id} style={[styles.coupon, { borderColor: theme.color.line }]}>
@@ -150,7 +150,7 @@ export function CouponSheet({
                     {kod}
                   </Text>
                   <Text style={[ekType.c13, { color: c.secondary }]} numberOfLines={2}>
-                    {camp.end_date ? `${cond} · ${t('eatkcal.v2.coupon.until', { date: formatDate(camp.end_date) })}` : cond}
+                    {camp.end_date ? `${cond}, ${t('eatkcal.v2.coupon.until', { date: formatDate(camp.end_date) })}` : cond}
                   </Text>
                 </View>
                 <Pressable

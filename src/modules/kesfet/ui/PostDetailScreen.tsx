@@ -78,7 +78,7 @@ export function detailTimestamp(iso: string, lang: UiLang): string {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   const mon = MONTHS[lang][d.getMonth()];
-  return lang === 'en' ? `${hh}:${mm} · ${mon} ${d.getDate()}` : `${hh}:${mm} · ${d.getDate()} ${mon}`;
+  return lang === 'en' ? `${hh}:${mm}, ${mon} ${d.getDate()}` : `${hh}:${mm}, ${d.getDate()} ${mon}`;
 }
 
 function IconCount({
@@ -100,7 +100,7 @@ function IconCount({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole="button"
-      accessibilityLabel={count != null ? `${label} · ${count}` : label}
+      accessibilityLabel={count != null ? `${label} (${count})` : label}
       hitSlop={8}
       style={styles.iconCount}
     >
@@ -202,7 +202,7 @@ function CommentRow({
           ) : null}
           <AppText variant="caption" tone="secondary" style={[styles.commentMeta, styles.shrink]} numberOfLines={1}>
             {comment.author.handle ? `@${comment.author.handle}` : ''}
-            {time ? ` · ${time}` : ''}
+            {time ? `, ${time}` : ''}
           </AppText>
         </View>
         <AppText variant="caption" style={styles.commentText}>

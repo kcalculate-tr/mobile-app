@@ -267,7 +267,7 @@ function EkHomeContent() {
   const searchResults = useMemo(() => filterProductsByQuery(products, query), [products, query]);
   const macro = userId ? macroStrip(macroProfile, macroSettings) : null;
   const deliveryText = address
-    ? [address.title, [address.district, address.city || 'İzmir'].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+    ? [address.title, [address.district, address.city || 'İzmir'].filter(Boolean).join(', ')].filter(Boolean).join(', ')
     : null;
 
   // ── Üst bar ───────────────────────────────────────────────────────────────
@@ -405,7 +405,7 @@ function EkHomeContent() {
               {chip ? (
                 <View style={[styles.chip, { backgroundColor: c.line }]}>
                   <Text style={[ekType.c13s, { color: c.ink }]}>
-                    {`${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')} · ${chip.estimate}`}
+                    {`${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')}, ${chip.estimate}`}
                   </Text>
                 </View>
               ) : null}
@@ -444,7 +444,7 @@ function EkHomeContent() {
                     // Mağaza puanı/değerlendirme sayısı verisi YOK (yalnız onaylı vitrin
                     // yorumları var, marka bazında değil) → alt satırda gerçek veri:
                     // bölge tahmini süresi, yoksa markanın kendi sloganı.
-                    subtitle={chip ? `${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')} · ${chip.estimate}` : s.brand.tagline}
+                    subtitle={chip ? `${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')}, ${chip.estimate}` : s.brand.tagline}
                     onPress={() => openStore(s.key)}
                   />
                 ))}

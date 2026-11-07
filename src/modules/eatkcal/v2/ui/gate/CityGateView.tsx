@@ -234,7 +234,7 @@ export function CityGateView({
         </View>
         <View style={styles.nearHead}>
           <Text style={[ekType.b17, styles.bric, { color: c.ink }]}>{t('eatkcal.v2.city.nearby_title')}</Text>
-          <Text style={[ekType.c13, { color: c.secondary }]}>{` · ${t('eatkcal.v2.gate.soon')}`}</Text>
+          <Text style={[ekType.c13, { color: c.secondary }]}>{` (${t('eatkcal.v2.gate.soon')})`}</Text>
         </View>
         <Pressable
           onPress={() => Linking.openURL(RESTAURANT_MAIL).catch(() => {})}

@@ -83,7 +83,7 @@ function CommentRow({
           {comment.author.verified ? <Icon name="seal" size={13} color={t.color.accentLine} /> : null}
           <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.rowHandle}>
             {comment.author.handle ? `@${comment.author.handle}` : ''}
-            {time ? `${comment.author.handle ? ' · ' : ''}${time}` : ''}
+            {time ? `${comment.author.handle ? ', ' : ''}${time}` : ''}
           </AppText>
           {!comment.can_delete ? (
             <Pressable
@@ -270,7 +270,7 @@ export function CommentsSheet({
           >
             <View style={[styles.handle, { backgroundColor: line2 }]} />
             <AppText accessibilityRole="header" style={[styles.title, { color: t.color.ink }]}>
-              {`${tr('kesfet.comments.title')} · ${fmt(shownCount)}`}
+              {`${tr('kesfet.comments.title')} (${fmt(shownCount)})`}
             </AppText>
 
             {loading && items.length === 0 ? (

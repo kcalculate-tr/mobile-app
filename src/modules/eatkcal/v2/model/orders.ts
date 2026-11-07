@@ -215,7 +215,7 @@ export function selectionSummary(item: Record<string, unknown>): string {
   }
   const tmpl = Array.isArray(item.selected_options) ? (item.selected_options as SelectedOption[]) : [];
   for (const o of tmpl) if (o && typeof o.value_name === 'string' && o.value_name.trim()) parts.push(o.value_name.trim());
-  return Array.from(new Set(parts)).join(' · ');
+  return Array.from(new Set(parts)).join(', ');
 }
 
 /**

@@ -72,7 +72,7 @@ export function PlateMedia({
   // Foto genişliği: ekran − 16·2 kenar − 40 avatar − 12 aralık.
   const photoW = Math.max(0, width - 84);
   const totalGrams = items.reduce((s, it) => s + it.grams, 0);
-  const pky = (p: number, k: number, y: number) => `${fmt(Math.round(p))} · ${fmt(Math.round(k))} · ${fmt(Math.round(y))}`;
+  const pky = (p: number, k: number, y: number) => `${fmt(Math.round(p))} / ${fmt(Math.round(k))} / ${fmt(Math.round(y))}`;
 
   return (
     <>

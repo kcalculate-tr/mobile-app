@@ -130,7 +130,7 @@ export function HomeEatkcalStrip({ onAll, onOpen }: { onAll: () => void; onOpen:
         {dishes.map((d) => {
           const meta = [d.kcal != null ? tt('gun.item_kcal', { kcal: nf(d.kcal) }) : null, d.price != null ? `₺${nf(Math.round(d.price))}` : null]
             .filter(Boolean)
-            .join(' · ');
+            .join(', ');
           return (
             <Pressable key={d.id} onPress={() => onOpen(d.id)} accessibilityRole="button" accessibilityLabel={`${d.name}, ${meta}`} style={styles.dish}>
               <View style={[styles.dishPhoto, { backgroundColor: ph }]}>

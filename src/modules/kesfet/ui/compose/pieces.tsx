@@ -121,7 +121,7 @@ export function MealPreview({ data, mealLabel }: { data: MealPreviewData; mealLa
     <View
       style={[styles.preview, { backgroundColor: t.color.surface, borderColor: t.color.line }]}
       accessible
-      accessibilityLabel={`${data.name} · ${fmt(Math.round(data.kcal))} kcal`}
+      accessibilityLabel={`${data.name}, ${fmt(Math.round(data.kcal))} kcal`}
     >
       <View style={styles.previewRow}>
         <View style={[styles.previewThumb, { backgroundColor: t.color.line }]}>

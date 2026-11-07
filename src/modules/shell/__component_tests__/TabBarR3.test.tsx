@@ -102,7 +102,7 @@ describe('TabBarR3 (yeni kabuk)', () => {
     const homeIndex = R3_ROUTES.indexOf('Home');
     const { props, navigate } = makeProps(R3_ROUTES, homeIndex);
     const { getByText } = render(<TabBarR3 {...props} />);
-    const pill = getByText('Sepet · 2');
+    const pill = getByText('Sepet (2)');
     expect(pill).not.toBeNull();
     const { fireEvent } = require('@testing-library/react-native');
     fireEvent.press(pill);

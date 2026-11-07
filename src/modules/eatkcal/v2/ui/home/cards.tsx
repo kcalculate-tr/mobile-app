@@ -206,7 +206,7 @@ export function ReviewCard({ review }: { review: VitrinYorumu }) {
       <View style={styles.reviewHead}>
         <EkStars value={review.rating} size={13} />
         <Text style={[ekType.c13, { color: c.secondary, flex: 1 }]} numberOfLines={1}>
-          {date ? `${review.ad} · ${date}` : review.ad}
+          {date ? `${review.ad}, ${date}` : review.ad}
         </Text>
       </View>
       <Text style={[styles.quote, { color: c.ink }]} numberOfLines={4}>

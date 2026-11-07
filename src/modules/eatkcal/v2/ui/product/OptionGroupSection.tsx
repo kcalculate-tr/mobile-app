@@ -50,7 +50,7 @@ export function OptionGroupSection({
         </Text>
         <View style={[styles.badge, { backgroundColor: c.line }]}>
           <Text style={[ekType.c13s, { color: c.secondary }]} numberOfLines={1}>
-            {badgeParts.join(' · ')}
+            {badgeParts.join(', ')}
           </Text>
         </View>
       </View>

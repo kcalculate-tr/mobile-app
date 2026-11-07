@@ -194,7 +194,7 @@ export function ChangeRequestCard({
           {latest.type === 'date_change' && latest.new_scheduled_date ? (
             <Text style={[ekType.c13, { color: c.ink }]}>
               {t('eatkcal.v2.change.new_date', {
-                date: `${fmtDate(latest.new_scheduled_date)}${latest.new_scheduled_time ? ` · ${latest.new_scheduled_time.slice(0, 5)}` : ''}`,
+                date: `${fmtDate(latest.new_scheduled_date)}${latest.new_scheduled_time ? `, ${latest.new_scheduled_time.slice(0, 5)}` : ''}`,
               })}
             </Text>
           ) : null}

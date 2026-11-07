@@ -624,10 +624,10 @@ function CartPill({
         onPress={onPress}
         style={[styles.cartPill, { backgroundColor: glass.ink }]}
         accessibilityRole="button"
-        accessibilityLabel={`${i18n.t('shell.cart')} · ${count}`}
+        accessibilityLabel={`${i18n.t('shell.cart')} (${count})`}
       >
         <Animated.Text style={[styles.cartPillText, { color: glass.cut }, popStyle]}>
-          {i18n.t('shell.cart')} · {count}
+          {`${i18n.t('shell.cart')} (${count})`}
         </Animated.Text>
       </Pressable>
     </View>

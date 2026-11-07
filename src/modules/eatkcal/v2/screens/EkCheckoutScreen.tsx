@@ -129,33 +129,33 @@ export default function EkCheckoutScreen() {
   const methodLabel = ctrl.deliveryMethod === 'home_delivery' ? t('eatkcal.v2.checkout.home_delivery') : t('eatkcal.v2.checkout.pickup');
   const timeLabel =
     ctrl.deliveryTimeType === 'immediate'
-      ? [t('eatkcal.v2.checkout.immediate'), ctrl.deliveryMethod === 'home_delivery' ? eta : null].filter(Boolean).join(' · ')
+      ? [t('eatkcal.v2.checkout.immediate'), ctrl.deliveryMethod === 'home_delivery' ? eta : null].filter(Boolean).join(', ')
       : [
           t('eatkcal.v2.checkout.scheduled'),
           ctrl.scheduledDate ? `${dayLabel(ctrl.scheduledDate)} ${ctrl.timeSlot?.label ?? ''}`.trim() : null,
         ]
           .filter(Boolean)
-          .join(' · ');
+          .join(', ');
   const mdSum = !methodReady
     ? t('eatkcal.v2.checkout.pick_method_time')
     : ctrl.deliveryMethod === 'pickup'
       ? methodLabel
       : pickedTime
-        ? `${methodLabel} · ${timeLabel}`
-        : `${methodLabel} · ${t('eatkcal.v2.checkout.pick_method_time')}`;
+        ? `${methodLabel}, ${timeLabel}`
+        : `${methodLabel}, ${t('eatkcal.v2.checkout.pick_method_time')}`;
 
   const branch = ctrl.branches.find((b) => b.id === ctrl.selectedBranchId) ?? null;
   const adSum =
     ctrl.deliveryMethod === 'home_delivery'
       ? ctrl.selectedAddress
-        ? `${ctrl.selectedAddress.title} · ${ctrl.selectedAddress.full_address}`
+        ? `${ctrl.selectedAddress.title}, ${ctrl.selectedAddress.full_address}`
         : ctrl.addressesLoading
           ? '…'
           : t('eatkcal.v2.checkout.add_address')
       : branch
         ? branch.name
         : '—';
-  const ctSum = [ctrl.customerName, ctrl.customerPhone].filter(Boolean).join(' · ') || '—';
+  const ctSum = [ctrl.customerName, ctrl.customerPhone].filter(Boolean).join(', ') || '—';
   const selectedCard = ctrl.savedCards.find((x) => x.id === ctrl.selectedCardId) ?? null;
   const pySum = selectedCard?.last4
     ? t('eatkcal.v2.checkout.card', { last4: selectedCard.last4 })
@@ -373,7 +373,7 @@ export default function EkCheckoutScreen() {
                   key: 'immediate',
                   label:
                     ctrl.deliveryRulesSettled && !ctrl.canPickImmediate
-                      ? `${t('eatkcal.v2.checkout.immediate')} · ${t('eatkcal.v2.checkout.closed')}`
+                      ? `${t('eatkcal.v2.checkout.immediate')} (${t('eatkcal.v2.checkout.closed')})`
                       : t('eatkcal.v2.checkout.immediate'),
                   disabled: ctrl.deliveryRulesSettled && !ctrl.canPickImmediate,
                 },
@@ -443,7 +443,7 @@ export default function EkCheckoutScreen() {
                         ]}
                       >
                         <Text style={[ekType.b15s, ekType.num, { color: sel ? c.onAccent : c.ink }]}>
-                          {slot.disabled ? `${slot.label} · ${t('eatkcal.v2.checkout.slot_full')}` : slot.label}
+                          {slot.disabled ? `${slot.label} (${t('eatkcal.v2.checkout.slot_full')})` : slot.label}
                         </Text>
                       </Pressable>
                     );
@@ -536,7 +536,7 @@ export default function EkCheckoutScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[ekType.b15s, { color: sel ? c.onAccent : c.ink }]}>{b.name}</Text>
                       <Text style={[ekType.c13, { color: sel ? c.onAccent : c.secondary }]} numberOfLines={2}>
-                        {km != null ? `${km.toFixed(1)} km · ${b.address}` : b.address}
+                        {km != null ? `${km.toFixed(1)} km, ${b.address}` : b.address}
                       </Text>
                     </View>
                     {sel ? <Check size={18} color={c.onAccent} weight="bold" /> : null}

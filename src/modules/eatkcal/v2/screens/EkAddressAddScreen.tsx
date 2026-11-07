@@ -387,7 +387,7 @@ export default function EkAddressAddScreen() {
         zone.free ? t('eatkcal.v2.address.zone_free') : null,
       ]
         .filter(Boolean)
-        .join(' · ');
+        .join(', ');
     }
     if (zone.kind === 'next_day') return t('eatkcal.v2.address.zone_next_day');
     if (zone.kind === 'none') return t('eatkcal.v2.address.zone_none');
@@ -418,7 +418,7 @@ export default function EkAddressAddScreen() {
           filledFromMap ? t('eatkcal.v2.address.filled_from_map') : '',
         ]
           .filter(Boolean)
-          .join(' · ');
+          .join(', ');
 
   if (authLoading || !user) {
     return <View style={[styles.fill, { backgroundColor: c.bg }]} />;
