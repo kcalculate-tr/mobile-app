@@ -7,10 +7,10 @@
 (4) **Barkod (md.4):** EAN-13/8, UPC-A/E okunur + sağlama doğrulanır; uygulamada barkod akışı YOK → "Barkod yakında" kartı (okunan kod gösterilir, sahte ürün/sonuç yok) + "Elle gir".
 (5) **Tab bar (md.5):** seçili sekme YARI SAYDAM gri hap — açık `rgba(10,10,10,0.08)`, koyu `rgba(255,255,255,0.14)`; ikon/etiket normal mürekkep (beyaz ikon yok); kayma 200 standard (yay/jöle yok).
 (6) **analyze-ai-scan 500 (md.6):** istemci edge gövdesindeki `error` kodunu (config/server/timeout/parse/model/…) + HTTP durumu + aşamayı (reserve/upload/analyze) `console.warn('[ai-scan] başarısız', …)` ve Sentry'ye (`captureError`, kişisel veri yok) yazar; kullanıcı FinErrFailed, hak iadesi aynen. Sunucu DEĞİŞMEDİ.
-(7) Kontrol: SONUÇLAR aşağıda (tsc · unit · components · parite · prebuild iOS/Android · export iOS/Android · simülatör).
+(7) Kontrol: tsc 0 · unit 641 (640 ✓, 1 skip önceden) · components 30 suite / 156 ✓ (snapshot 2/2) · prebuild iOS ✓ Android ✓ · export iOS ✓ (9.4 MB) Android ✓ (9.5 MB). Canlı kamera/FinMoScan bileşen testleriyle doğrulandı; simülatör çekimi DİSK DOLU yüzünden yapılamadı (iOS pod install/xcodebuild).
 (8) **Bayrak kapalı parite:** `yeni_kabuk` kapalıyken Tara ağacı `night17/fix` tabanındaki ScanScreen ile birebir (snapshot tabanda üretildi) ve expo-camera HİÇ yüklenmez; tab bar değişikliği yalnız yeni kabukta (TabBarR3).
 (9) **YENİ NATIVE DERLEME GEREKİR** (expo-camera): OTA ile gelen JS eski derlemede çökmesin diye `requireOptionalNativeModule('ExpoCamera')` yoksa G17-S1 kartı (sistem kamerası) yedeği. EAS'i İlter çalıştırır.
-(10) SORULAR: 2 madde (canlı log okuması izinle reddedildi; simülatörde kamera görüntüsü yok). Son commit GERÇEK dosya `docs/night/G17-S2-DONE`.
+(10) SORULAR: 2 madde (canlı edge log okuması izinle reddedildi; disk dolu → simülatör derlemesi/çekimi bekliyor). Son commit GERÇEK dosya `docs/night/G17-S2-DONE`.
 
 ## Commit'ler
 | Madde | Commit | Özet |
