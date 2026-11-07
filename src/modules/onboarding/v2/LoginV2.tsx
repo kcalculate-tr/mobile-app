@@ -291,9 +291,8 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
   return (
     <FormScreen
       onBack={() => navigation.goBack()}
-      footer={
+      fixedFooter={
         <View>
-          <OnbButton label={tv('send')} onPress={handleSendCode} disabled={sending} />
           <View style={styles.socials}>
             {Platform.OS === 'ios' ? (
               <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={socialDisabled} onPress={() => runSocial('apple')} />
@@ -356,6 +355,10 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
           </AppText>
         </Pressable>
       ) : null}
+      {/* G17-S1 md.3: "Kod gönder" formun içinde (klavye üst çubuğuna bağlanmaz). */}
+      <View style={styles.sendWrap}>
+        <OnbButton label={tv('send')} onPress={handleSendCode} disabled={sending} />
+      </View>
     </FormScreen>
   );
 }
@@ -371,7 +374,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   markText: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, color: '#FFFFFF' },
-  socials: { gap: 10, marginTop: 10 },
+  socials: { gap: 10 },
+  sendWrap: { marginTop: 20 },
   err: { color: '#E5484D', marginTop: 10, textAlign: 'center' },
   linkRow: { minHeight: 44, justifyContent: 'center', marginTop: 8 },
   ageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, minHeight: 44 },

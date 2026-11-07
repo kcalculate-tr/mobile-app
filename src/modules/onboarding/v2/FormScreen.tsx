@@ -50,6 +50,7 @@ export function FormScreen({
   title,
   subtitle,
   footer,
+  fixedFooter,
   scroll = true,
   children,
 }: {
@@ -62,13 +63,19 @@ export function FormScreen({
   title?: string;
   subtitle?: string;
   footer?: React.ReactNode;
+  /**
+   * G17-S1 md.3: klavyeyle YÜKSELMEYEN alt alan (ör. Apple/Google). Sayfada sabit
+   * durur; klavye açılınca altında kalır — klavye araç çubuğu gibi yapışmaz.
+   * Klavyeden kaçınma yalnız üst çubuk + kaydırılabilir gövdeye uygulanır.
+   */
+  fixedFooter?: React.ReactNode;
   scroll?: boolean;
   children?: React.ReactNode;
 }) {
   const P = useOnb();
   const insets = useSafeAreaInsets();
   const Body = scroll ? ScrollView : View;
-  return (
+  const content = (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: P.bg, paddingTop: insets.top }]}
       behavior={SCREEN_KEYBOARD_BEHAVIOR}
@@ -115,6 +122,13 @@ export function FormScreen({
       </Body>
       {footer ? <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 4 }]}>{footer}</View> : null}
     </KeyboardAvoidingView>
+  );
+  if (!fixedFooter) return content;
+  return (
+    <View style={[styles.root, { backgroundColor: P.bg }]}>
+      {content}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 4 }]}>{fixedFooter}</View>
+    </View>
   );
 }
 
