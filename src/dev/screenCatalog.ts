@@ -454,6 +454,23 @@ function resolveParity(name: string): ResolvedEntry | null {
       lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
     };
   }
+  // G17-S1 md.13 — `Route-<RootRota>`: Tabs (Ana sayfa) üstüne GERÇEK kök rota itilir,
+  // bütün bayraklar açık → rota denetimi (eski bileşene düşen yol var mı).
+  const rt = /^Route-([A-Za-z]+)$/.exec(name);
+  if (rt) {
+    const ROUTE_PARAMS: Record<string, Record<string, unknown>> = {
+      ProductDetail: { productId: '__first__' },
+      BrandLanding: { brandKey: 'kcal' },
+      OrderDetail: { orderId: 1 },
+      CategoryProducts: { categoryName: 'Bowl' },
+      SharedProfile: { handle: 'deniz' },
+    };
+    return {
+      pano: name, area: 'eatkcal',
+      target: route([...tab('Tracker'), { name: rt[1], params: ROUTE_PARAMS[rt[1]] }]),
+      data: 'default', flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

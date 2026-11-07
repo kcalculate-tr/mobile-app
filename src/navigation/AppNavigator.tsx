@@ -21,6 +21,7 @@ import { useNavGate } from '../store/navGateStore';
 import { RootStackParamList, TabParamList } from './types';
 // G13-S2 — eatkcal yeni arayüzü (yalnız `yeni_siparis` açıkken kaydolur/görünür).
 import { EkHomeTab, ekV2Routes, resolveHomeTab, v2ScreenFor } from '../modules/eatkcal/v2/routes';
+import { FINAL_ROUTES, checkoutScreenFor, finalScreenFor } from './finalRoutes';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
 //  · WelcomeGate: oturumsuz soğuk açılışın ilk ekranı (initialRouteName).
@@ -345,7 +346,8 @@ function TabNavigatorR3() {
         />
         <Tab.Screen
           name="Subscriptions"
-          component={SubscriptionScreen}
+          // G17-S1 md.13: yeni kabukta (R3 yalnız bayrak açıkken çizilir) Final Macro.
+          component={FINAL_ROUTES.Subscriptions.component}
           options={{ tabBarButton: () => null }}
         />
       </Tab.Navigator>
@@ -394,6 +396,10 @@ export default function AppNavigator() {
   const yeniOnboarding = useColdStartFeature('yeni_onboarding');
   // G13-S2 — eatkcal v2 rotaları; kapalıyken `ekV2Routes(false)` → [] (hiç kayıt yok).
   const yeniSiparis = useColdStartFeature('yeni_siparis');
+  // G17-S1 md.13 — rota bazında Final eşlemesi (bayrak kapalıyken eski bileşen AYNEN).
+  const yeniKabukRoutes = useColdStartFeature('yeni_kabuk');
+  const kesfetRoutes = useColdStartFeature('kesfet');
+  const finalFlag = { yeni_kabuk: yeniKabukRoutes, yeni_siparis: yeniSiparis, yeni_onboarding: yeniOnboarding, kesfet: kesfetRoutes };
   const initialRouteName = session
     ? 'Tabs'
     : yeniOnboarding
@@ -455,14 +461,14 @@ export default function AppNavigator() {
           bağlar) açılır. Mevcut beslenme profili servisini kullanır. */}
       <Stack.Screen name="TakibeBasla" component={TakibeBaslaNavigator} />
       <Stack.Screen name="Tabs" component={TabsRoot} />
-      <Stack.Screen name="Categories" component={CategoriesLazy} />
-      <Stack.Screen name="CategoryProducts" component={CategoryProductsLazy} />
-      <Stack.Screen name="BrandLanding" component={BrandLandingLazy} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailLazy} />
-      <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
+      <Stack.Screen name="Categories" component={finalScreenFor('Categories', finalFlag.yeni_siparis, CategoriesLazy)} />
+      <Stack.Screen name="CategoryProducts" component={finalScreenFor('CategoryProducts', finalFlag.yeni_siparis, CategoryProductsLazy)} />
+      <Stack.Screen name="BrandLanding" component={finalScreenFor('BrandLanding', finalFlag.yeni_siparis, BrandLandingLazy)} />
+      <Stack.Screen name="ProductDetail" component={finalScreenFor('ProductDetail', finalFlag.yeni_siparis, ProductDetailLazy)} />
+      <Stack.Screen name="Checkout" component={checkoutScreenFor(finalFlag.yeni_siparis, CheckoutScreen)} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
       <Stack.Screen name="Addresses" component={v2ScreenFor('Addresses', yeniSiparis, AddressesLazy)} />
       <Stack.Screen name="OrderSuccess" component={v2ScreenFor('OrderSuccess', yeniSiparis, OrderSuccessLazy)} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
-      <Stack.Screen name="Offers" component={OffersLazy} />
+      <Stack.Screen name="Offers" component={finalScreenFor('Offers', finalFlag.yeni_kabuk, OffersLazy)} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsLazy} />
       {__DEV__ && (
         <Stack.Screen name="DesignShowcase" component={DesignShowcaseLazy} options={{ headerShown: false }} />
@@ -485,24 +491,24 @@ export default function AppNavigator() {
       <Stack.Screen name="PublicProfile" component={PublicProfileLazy} options={AI_PUSH} />
       <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} options={AI_PUSH} />
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
-      <Stack.Screen name="NutritionProfile" component={NutritionProfileLazy} />
-      <Stack.Screen name="MeasurementHistory" component={MeasurementHistoryLazy} options={{ headerShown: false }} />
+      <Stack.Screen name="NutritionProfile" component={finalScreenFor('NutritionProfile', finalFlag.yeni_onboarding, NutritionProfileLazy)} />
+      <Stack.Screen name="MeasurementHistory" component={finalScreenFor('MeasurementHistory', finalFlag.yeni_kabuk, MeasurementHistoryLazy)} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileOrders" component={v2ScreenFor('ProfileOrders', yeniSiparis, OrdersLazy)} />
-      <Stack.Screen name="OrderDetail" component={OrderDetailLazy} />
+      <Stack.Screen name="OrderDetail" component={finalScreenFor('OrderDetail', finalFlag.yeni_siparis, OrderDetailLazy)} />
       <Stack.Screen name="ProfileSavedCards" component={v2ScreenFor('ProfileSavedCards', yeniSiparis, SavedCardsLazy)} />
       <Stack.Screen name="ProfileAddCard" component={v2ScreenFor('ProfileAddCard', yeniSiparis, AddCardLazy)} />
-      <Stack.Screen name="ProfileCoupons" component={CouponsLazy} />
+      <Stack.Screen name="ProfileCoupons" component={finalScreenFor('ProfileCoupons', finalFlag.yeni_kabuk, CouponsLazy)} />
       <Stack.Screen name="ProfileSupport" component={v2ScreenFor('ProfileSupport', yeniSiparis, SupportLazy)} />
-      <Stack.Screen name="ProfileReviews" component={MyReviewsLazy} />
-      <Stack.Screen name="ProfileSecurity" component={SecurityLazy} />
-      <Stack.Screen name="ProfileNotificationPreferences" component={NotificationPreferencesLazy} />
-      <Stack.Screen name="Feedback" component={FeedbackLazy} />
-      <Stack.Screen name="PersonalInfo" component={PersonalInfoLazy} />
+      <Stack.Screen name="ProfileReviews" component={finalScreenFor('ProfileReviews', finalFlag.yeni_kabuk, MyReviewsLazy)} />
+      <Stack.Screen name="ProfileSecurity" component={finalScreenFor('ProfileSecurity', finalFlag.yeni_kabuk, SecurityLazy)} />
+      <Stack.Screen name="ProfileNotificationPreferences" component={finalScreenFor('ProfileNotificationPreferences', finalFlag.yeni_kabuk, NotificationPreferencesLazy)} />
+      <Stack.Screen name="Feedback" component={finalScreenFor('Feedback', finalFlag.yeni_kabuk, FeedbackLazy)} />
+      <Stack.Screen name="PersonalInfo" component={finalScreenFor('PersonalInfo', finalFlag.yeni_kabuk, PersonalInfoLazy)} />
       <Stack.Screen name="ProfileContracts" component={v2ScreenFor('ProfileContracts', yeniSiparis, ContractsLazy)} />
       <Stack.Screen name="PaymentScreen" component={v2ScreenFor('PaymentScreen', yeniSiparis, PaymentLazy)} />
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
       <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
-      <Stack.Screen name="SharedProfile" component={SharedProfileLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      <Stack.Screen name="SharedProfile" component={finalScreenFor('SharedProfile', finalFlag.kesfet, SharedProfileLazy)} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
       {/* AI tarama (G6-S4) — tam ekran kamera görünümü. */}
       <Stack.Screen
         name="AiScan"
@@ -513,7 +519,7 @@ export default function AppNavigator() {
       <Stack.Screen name="AiScanOffline" component={ScanOfflineLazy} />
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
-      <Stack.Screen name="EatCatalog" component={HomeScreen} />
+      <Stack.Screen name="EatCatalog" component={finalScreenFor('EatCatalog', finalFlag.yeni_siparis, HomeScreen)} />
       {/* G13-S2 — eatkcal yeni arayüzü (src/modules/eatkcal/v2/routes.tsx). Yalnız
           `yeni_siparis` açıkken; kapalıyken liste boş, bugünkü akış AYNEN. */}
       {ekV2Routes(yeniSiparis).map((r) => (
