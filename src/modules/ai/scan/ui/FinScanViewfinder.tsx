@@ -9,6 +9,8 @@
 // Canlı önizleme YOK (expo-camera kurulu değil, yeni paket yasak): deklanşör
 // sistem kamerasını açar (mevcut expo-image-picker). Flaş sistem kamerasının
 // kendi denetiminde → flaş düğmesi kısa bir bilgi hapı gösterir.
+// G17-S2: artık YALNIZ yedek — ExpoCamera native modülü olmayan eski derlemede
+// (OTA) gösterilir; yeni derlemede canlı vizör FinScanCamera.tsx.
 // G17-S1 md.2: orta alanda gri sahte vizör + çerçeve YERİNE "Kamerayı aç" kartı
 // (expo-camera İlter onayına bağlı — SORULAR). Onay gelirse burası canlı vizör olur.
 import React, { useState } from 'react';

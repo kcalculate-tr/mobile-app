@@ -2,11 +2,11 @@
 // arkasında; giriş noktası TrackerScreen'deki "AI ile tara" butonu (bayrak
 // kapalıyken o buton hiç render olmaz, bu ekrana hiç erişilmez).
 //
-// Canlı kamera önizlemesi YOK: `expo-camera` paketi kurulu değil ve RULES.md
-// yeni paket kurulmasını yasaklıyor. Bunun yerine mevcut `expo-image-picker`
-// ile native kamerayı açıyoruz (profildeki galeri seçimiyle aynı paket,
-// bkz. src/screens/ProfileScreen.tsx) — tasarımdaki vitrin/çerçeve zemini
-// statik kalır, deklanşöre basınca sistem kamerası açılır.
+// Bayrak KAPALI (eski dal): canlı önizleme yok, deklanşör `expo-image-picker`
+// ile sistem kamerasını açar (bugünkü davranış AYNEN).
+// G17-S2: yeni kabukta (FinScanR2) CANLI kamera — `expo-camera` (İlter onayı
+// 7 Kas 15:35), bkz. ui/FinScanCamera.tsx; ExpoCamera native modülü olmayan eski
+// derlemede FinScanViewfinder (sistem kamerası) yedeği.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
