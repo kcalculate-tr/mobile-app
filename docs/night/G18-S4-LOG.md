@@ -8,7 +8,7 @@
 (5) **Tara "Detay ekle" (md.5):** deklanşörün üstünde hap → tek satır alan (≤ 160), not analiz isteğine `hint`, boşsa ek adım yok, sonuç sheet'inde "Notun:" satırı. **Canlı edge v7 `hint` okumuyor** → repo dosyası güncellendi, DEPLOY GEREKİR.
 (6) **Tab bar (md.6):** FinTabBar-rest/mid/min ölçüleri birebir (hap 289, hap–Tara 10, etiket 13, pasif ikincil renk, rozet, küçük durumda 44 iç daire + 22 ikon, Tara ikonu 18); gri hap aynen (ORTAK #4).
 (7) Kontrol (son kodda yeniden): tsc 0 · unit 671 (670 ✓, 1 skip önceden) · components 32 suite / 167 ✓ (snapshot 2/2) · `noLegacyWhenFlagsOn` ✓ · `noLocalMotionTokens` ✓ · export iOS ✓ (9,94 MB) Android ✓ (9,97 MB). Karşılaştırma tablosu ÖLÇÜLMÜŞ (`scripts/dev/g18-diff.ts`).
-(8) **Eski tasarım: 0** · bayrak kapalı parite: eski yol değer değişikliği yok (aşağıda).
+(8) **Eski tasarım: 0** · bayrak kapalı parite ÇALIŞTIRILDI: taban ↔ HEAD `Off-*` çekimleri piksel karşılaştırması (Profil/Sepet/Abonelik %0; Tracker/Home farkları animasyon anı + dönen banner, kod değil).
 (9) Simülatör "G18-4 iPhone" (`D014ACFC-…307B`, G17-2 klonu, expo-camera'lı dev client), Metro 8104, vitrin `G14_MODE=storage`; 27 çekim + yan yana çiftler `~/kcal-reports/g18-s4/`.
 (10) SORULAR: 4 madde (edge deploy, push sunucu satırı, FinMoPopover S2 bekleniyor, canlı veri okuması reddedildi). Son commit GERÇEK dosya `docs/night/G18-S4-DONE`.
 
@@ -104,6 +104,18 @@ Test: `modules/shell/__tests__/tabBarFinal.test.ts` 3/3.
 - Eski ekranların `core/design`'dan aldıkları (AppText, useTheme, EmptyErrorCard, LegacyPostCard'da `DURATION.micro/standard`, `SPRING.eat`, `CURVE.in`) değişmedi. `KcalAiSignUpScreen` değişikliği `yeniKabuk` arkasında.
 - Snapshot'lar (Tara, Tracker flagOff) aynı.
 
+#### Bayrak kapalı parite — ÇALIŞTIRILDI (simülatör, piksel)
+Yöntem: aynı simülatör ("G18-4 iPhone"), aynı vitrin sahneleri `Off-<Sekme>` (BÜTÜN bayraklar kapalı = 1.0.7 kabuğu), aynı Metro portu (8104): önce bu dal (HEAD `a5dae4a`), sonra worktree'de `git checkout 249b89b -- src` ile TABAN (`night17/camera`) kaynağı → çekim → `git checkout HEAD -- src` (çalışma ağacı temiz, `git status` 0). Karşılaştırma `npx tsx scripts/dev/g18-parity.ts <taban> <yeni> Off-…` (durum çubuğu hariç, kanal farkı > 24 olan piksel %).
+| Sahne (bayraklar kapalı) | Farklı piksel % | Fark kutusu | Açıklama |
+|---|---|---|---|
+| Off-Profile | 0,000 | — | birebir |
+| Off-Cart | 0,000 | — | birebir |
+| Off-Subscriptions | 0,000 | — | birebir |
+| Off-Tracker | 0,094 | kalori sayısı (450,1752–751,1836 px) | Taban çekimi eski `1.0??` sayı yuvarlanma animasyonu bitmeden alınmış (soluk gölge rakamlar), HEAD'de bitmiş; son değer ikisinde de `1.080`. Eski TrackerScreen/animasyon kodu bu dalda değişmedi. |
+| Off-Home | 7,885 | banner + kayan duyuru şeridi | Zamanla dönen banner karuseli (taban: fotoğraf karesi, HEAD: "İlk Siparişe Özel 250 TL İndirim!" karesi) ve kayan duyuru şeridinin konumu; geri kalan (başlık, Konak hapı, Deneyimin nasıldı penceresi, ürünler, eski tab bar) aynı. HomeScreen/AnnouncementStrip bu dalda değişmedi. |
+Kanıt görselleri: `~/kcal-reports/g18-s4/parity/` (base-/head- Off-Tracker, Off-Home, Off-Profile).
+Kod düzeyinde: bayrak kapalı yoldan erişilen dosyalardan bu dalda değişen yalnız 4 dosya var (`git diff --name-only 249b89b HEAD` — screens/, components/, core/ui, hooks, utils, CustomTabBar, eatkcal/screens v1 = 0 değişiklik): `constants/motion.ts` (aynı değerleri `LEGACY_MOTION`'dan veren ince katman), `AppNavigator.tsx` (stack süreleri aynı 300; R3 değişiklikleri yalnız `TabNavigatorR3`), `core/notifications.ts` (yalnız `data.fin` bildirimleri), `KcalAiSignUpScreen.tsx` (yalnız `yeniKabuk`).
+
 ### Vitrin karşılaştırması (`G14_MODE=storage`, "G18-4 iPhone", Metro 8104) — ÖLÇÜLMÜŞ
 Çekimler `.claude/night/out/g18-s4/` (worktree) + yan yana çiftler `.claude/night/out/g14/pair-g18s4/`; kopya `~/kcal-reports/g18-s4/`.
 **Yöntem:** `npx tsx scripts/dev/g18-diff.ts .claude/night/out/g18-s4 <Pano…>` — pano (`design/final/png/<Pano>.webp`) ve çekim 393 pt genişliğe ölçeklenir; durum çubuğu (üst 54 pt) hariç ortak yükseklikte, en büyük kanal farkı ≤ 24 olan piksel oranı = **uyum %**. Çok kareli panolarda 1. telefon karesi (x 24, y 48, 393 × 852) kırpılır; FinTabBar şerit panoları (393 × 100) çekimin alt 100 pt'siyle; `G18_MAXY` / `G18_MINY` ile veri/kamera bağımsız bölge ayrıca ölçüldü. Fotoğraflar, örnek isim/sayılar ([Ad], [N]) ve yer tutucu kutular piksel farkı üretir — % yerleşim+renk uyumunun alt sınırıdır.
@@ -139,6 +151,18 @@ EN: FinFeedEmptyEN, FinFollowingEmptyEN, FinPushEN, FinScanR2EN, FinPhotoEN çek
 1. `supabase/functions/analyze-ai-scan/index.ts` — `hint` desteği (deploy; canlı v7 okumuyor).
 2. `supabase/migrations/20261108000400_g18_finpush_templates.sql` — 7 `fin_*` şablonu (uygulanacak).
 3. `send-notification`: FinPush aksiyon düğmelerinin uzak bildirimde çıkması için Expo mesajına `categoryId` + `channelId` eklenmeli; önerilen satır (gövde map'ine): `...(content.templateKey?.startsWith('fin_') ? { categoryId: FIN_TEMPLATES[content.templateKey].categoryId, channelId: 'fin' } : {})` — bu oturumda gönderim kodu DEĞİŞTİRİLMEDİ (görev: "yalnız şablon metinleri dosyada"). Çağıran `data.fin` (+ orderId/postId/commentId/meal) verir.
+
+## Final'den bilinçli farklar (kural/görev gereği — "birebir"in kapsamı)
+Final panolarıyla birebir uygulanmayan her nokta bir kurala ya da görev maddesine dayanır; tasarım dışı karar yok (ORTAK #11):
+| Fark | Dayanak |
+|---|---|
+| Tab bar seçili hap gri (Final #1C1C1E siyah) | ORTAK #4 / SON_HAL İSTİSNA 1 |
+| Tara "Detay ekle" hapı (FinScanR2'de yok) | Görev md.5 — G17-S2 Ek 9, İlter onaylı ek |
+| "Başlangıç için" kartları yalnız gerçek kcal gönderisi varken; Sana Özel boşken gizli | ORTAK #6 / SON_HAL "Panodaki sayı/isim örnektir; veri yoksa bölüm gizli" + görev md.4 "yalnız gerçekte varsa" |
+| FinPhotoR1 sol geri → sağ X, FinCompose "İptal" → sağ X, nokta ayraçsız etiketler | Görev md.2 gezinme kuralı (FinComponents), G17-S1 |
+| FinScanR2 kamera alanı (simülatörde siyah) | Simülatörde kamera görüntüsü yok; kontrol paneli %88–90 |
+| Tab bar mid karesinde hap uzaması yok | FinMoMap "Sekme değişimi: hap kayar fast 200 · jöle/uzama yok" (G17-S2) |
+Deploy / canlı uygulama bu oturumda YASAK (ORTAK #8: "deploy yok, canlı DB yazma yok … Claude/İlter uygular"); bu yüzden edge `hint` deploy'u, FinPush migration'ı ve `send-notification` gönderim satırı yukarıda "CANLIYA UYGULANACAK / DEPLOY GEREKİR" olarak bırakıldı.
 
 ## SORULAR
 1. Edge `hint` deploy'u ve FinPush migration'ı — onay/uygulama İlter/Claude'da (yukarıda).
