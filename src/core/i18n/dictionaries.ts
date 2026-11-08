@@ -29,6 +29,31 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete: 'Sil',
       you: 'Sen',
     },
+    // G18-S4 md.3 — FinPush şablonları (core/push/finPush.ts FIN_PUSH_TEXT ile birebir).
+    push: {
+      fin: {
+        order_title: 'Siparişin yolda',
+        order_body: '%{order} numaralı siparişin kuryede. Tahmini varış %{min} dk.',
+        order_body_noeta: '%{order} numaralı siparişin kuryede.',
+        streak_title: 'Serin %{n}. gününde',
+        streak_body: 'Bugün bir öğün logla, serin devam etsin. Gün bitmeden vaktin var.',
+        social_title: '%{name} yorum yaptı',
+        social_body: 'Paylaşımına yorum yazdı: “%{excerpt}”',
+        reminder_title_breakfast: 'Kahvaltı öğününü henüz loglamadın',
+        reminder_title_lunch: 'Öğle öğününü henüz loglamadın',
+        reminder_title_dinner: 'Akşam öğününü henüz loglamadın',
+        reminder_title_snack: 'Ara öğününü henüz loglamadın',
+        reminder_body: 'Şimdi loglarsan günlük dengen güncel kalır. Bir dokunuşla ekleyebilirsin.',
+        hidden_preview: 'Bildirim',
+        action_track: 'Siparişi izle',
+        action_reply: 'Yanıtla',
+        action_reply_send: 'Gönder',
+        action_reply_placeholder: 'Yanıtını yaz',
+        action_snooze: '30 dk ertele',
+        action_mute: 'Bugün sessize al',
+        channel_name: 'Bildirimler',
+      },
+    },
     // G11-S2 — yeni kabuk (TabBarR3) metinleri.
     shell: {
       tab: { home: 'Ana sayfa', explore: 'Keşfet', eat: 'eatkcal', profile: 'Profil' },
@@ -1604,6 +1629,31 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       estimate: 'estimate',
       delete: 'Delete',
       you: 'You',
+    },
+    // G18-S4 md.3 — FinPush templates (identical to core/push/finPush.ts FIN_PUSH_TEXT).
+    push: {
+      fin: {
+        order_title: 'Your order is on its way',
+        order_body: 'Order %{order} is with the courier. Arriving in about %{min} min.',
+        order_body_noeta: 'Order %{order} is with the courier.',
+        streak_title: 'Day %{n} of your streak',
+        streak_body: 'Log one meal today to keep your streak going. There’s still time.',
+        social_title: '%{name} commented',
+        social_body: 'Commented on your post: “%{excerpt}”',
+        reminder_title_breakfast: 'You haven’t logged breakfast yet',
+        reminder_title_lunch: 'You haven’t logged lunch yet',
+        reminder_title_dinner: 'You haven’t logged dinner yet',
+        reminder_title_snack: 'You haven’t logged a snack yet',
+        reminder_body: 'Log now to keep your daily balance up to date. It takes one tap.',
+        hidden_preview: 'Notification',
+        action_track: 'Track order',
+        action_reply: 'Reply',
+        action_reply_send: 'Send',
+        action_reply_placeholder: 'Write a reply',
+        action_snooze: 'Snooze 30 min',
+        action_mute: 'Mute for today',
+        channel_name: 'Notifications',
+      },
     },
     // G11-S2 — new shell (TabBarR3) strings.
     shell: {

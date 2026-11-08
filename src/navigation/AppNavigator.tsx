@@ -13,6 +13,8 @@ import { haptic } from '../utils/haptics';
 // bayrak kapalı yolda da aynı (push/modal base 300) → eski kabuk bayt bayt aynı.
 import { PREMIUM } from '../core/design/motion';
 import { tabSceneLayout } from '../modules/shell/TabSceneFade';
+import { useT } from '../core/i18n';
+import { useFinPushSetup } from '../core/push/finPushNative';
 import { CustomTabBar } from './CustomTabBar';
 import {
   TabBarR3,
@@ -285,6 +287,10 @@ function useColdStartFeature(key: FlagKey): boolean {
 function TabNavigatorR3() {
   const { session } = useAuth();
   const designTheme = useDesignTheme();
+  // G18-S4 md.3: FinPush kategorileri/aksiyonları + gizli önizleme — YALNIZ yeni
+  // kabukta kaydedilir (bayrak kapalıyken bildirim davranışı bugünküyle aynı).
+  const { t: tPush, lang: pushLang } = useT();
+  useFinPushSetup(tPush, pushLang);
   const kesfet = useColdStartFeature('kesfet');
   const initialRouteName = resolveInitialShellTab({
     session: !!session,
