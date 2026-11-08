@@ -10,7 +10,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
-import { CURVE, TIMING, useBreath, useEnter, useFloat, useReducedMotion } from '../motion';
+import { CURVE, DURATION, useBreath, useEnter, useFloat, useReducedMotion } from '../motion';
 
 /**
  * GlassObject — sahnede süzülen "cam" nesne (PNG).
@@ -48,7 +48,7 @@ export function GlassObject({
   const reduced = useReducedMotion();
   const enter = useEnter();
   const floatA = useFloat({ tilt: true });
-  const breath = useBreath({ min: 0.15, max: 0.4 });
+  const breath = useBreath({ min: 0.15, max: 0.4, loop: false });
 
   // Işık süpürmesi: 0→1, girişten hemen sonra bir kez.
   const sweep = useSharedValue(0);
@@ -59,8 +59,8 @@ export function GlassObject({
     }
     sweep.value = 0;
     sweep.value = withDelay(
-      TIMING.enter - 200,
-      withTiming(1, { duration: TIMING.sweep, easing: CURVE.move }),
+      DURATION.base, // girişin son fast 200 diliminde başlar (cam: süpürme yalnız girişte slow 500)
+      withTiming(1, { duration: DURATION.slow, easing: CURVE.standard }),
     );
   }, [reduced, sweep]);
 

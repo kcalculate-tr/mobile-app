@@ -23,7 +23,8 @@ import {
 import { FinText as Text } from '../../../core/design/components/FinText';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../core/design';
+import { PREMIUM, RN_CURVE, useTheme } from '../../../core/design';
+import { FinErrorReveal } from '../../../core/design/components/FinTransitions';
 import type { Theme } from '../../../core/design';
 import { fontFamily } from '../../../core/design/typography';
 import { ArrowLeft, CaretRight } from '../../../components/icons';
@@ -422,15 +423,25 @@ export function useFinShake() {
   const anim = useRef(new Animated.Value(0)).current;
   const shake = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Animated.sequence([
-      Animated.timing(anim, { toValue: 1, duration: 55, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: -1, duration: 55, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 0.6, duration: 55, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 0, duration: 55, useNativeDriver: true }),
-    ]).start();
+    // PREMIUM.shake: tek geçiş base 300 · standard; ±8 → 0 (yerel süre yok).
+    anim.setValue(0);
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: PREMIUM.shake.duration,
+      easing: RN_CURVE.standard,
+      useNativeDriver: true,
+    }).start();
   }, [anim]);
+  const a = PREMIUM.shake.amplitude;
   const style = {
-    transform: [{ translateX: anim.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] }) }],
+    transform: [
+      {
+        translateX: anim.interpolate({
+          inputRange: [0, 0.25, 0.5, 0.75, 1],
+          outputRange: [0, a, -a, a * 0.6, 0],
+        }),
+      },
+    ],
   };
   return { style, shake };
 }
@@ -438,10 +449,13 @@ export function useFinShake() {
 /** Form alanı hata metni — FinMoShake ile birlikte, alanın altında. */
 export function FinFieldError({ children }: { children: React.ReactNode }) {
   const t = useTheme();
+  // PREMIUM.error: alanın altında fast 200 (opaklık + y 4→0).
   return (
-    <Text style={{ fontFamily: bodyMedium, fontSize: 12, color: t.color.danger, marginTop: 2 }}>
-      {children}
-    </Text>
+    <FinErrorReveal>
+      <Text style={{ fontFamily: bodyMedium, fontSize: 12, color: t.color.danger, marginTop: 2 }}>
+        {children}
+      </Text>
+    </FinErrorReveal>
   );
 }
 

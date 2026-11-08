@@ -9,7 +9,10 @@ import { useAuth } from '../core/AuthContext';
 import { useFeature, useFlagsContext, type FlagKey } from '../core/flags';
 
 import { haptic } from '../utils/haptics';
-import { DURATION } from '../constants/motion';
+// G18-S4: geçiş token'ları TEK modülden (FinMoTokens premium geçiş seti). Değerler
+// bayrak kapalı yolda da aynı (push/modal base 300) → eski kabuk bayt bayt aynı.
+import { PREMIUM } from '../core/design/motion';
+import { tabSceneLayout } from '../modules/shell/TabSceneFade';
 import { CustomTabBar } from './CustomTabBar';
 import {
   TabBarR3,
@@ -149,16 +152,17 @@ const EatHomeLazy = withSuspense(EatHomeScreen);
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// AI (Kcalculate AI) stack rotalarının geçiş token'ları — DURATION.base ile
-// tutarlı (G11-S2 madde 5). eatkcal rotalarına DOKUNULMAZ (onlar kendi
-// slide_from_bottom/slide_from_right ayarlarını korur).
+// AI (Kcalculate AI) stack rotalarının geçiş token'ları — PREMIUM.push (base 300
+// enter · geri base 300 exit, parmakla sürülür/kesilebilir: native stack) ve
+// PREMIUM.sheet (tam ekran modal: açılış base 300). eatkcal rotaları kendi
+// slide_from_bottom/slide_from_right ayarlarını korur (aynı token).
 const AI_PUSH = {
   animation: 'slide_from_right' as const,
-  animationDuration: DURATION.base,
+  animationDuration: PREMIUM.push.enter,
 };
 const AI_MODAL = {
   animation: 'slide_from_bottom' as const,
-  animationDuration: DURATION.base,
+  animationDuration: PREMIUM.sheet.enter,
 };
 
 // Home sekmesi — `restoran_yakinda` bayrağı açıkken T20Eat (EatHomeScreen),
@@ -309,10 +313,14 @@ function TabNavigatorR3() {
         // 'firstRoute' → başka sekmeden Ana sayfa'ya dönüyordu). Yalnız yeni kabuk.
         backBehavior="none"
         tabBar={(props) => <TabBarR3 {...props} />}
+        // G18-S4 md.1: sekme değişimi = içerik crossfade PREMIUM.tab (fast 200 ·
+        // standard). Navigatörün kendi animasyonu KULLANILMAZ (24.09.2026 kararı,
+        // bkz. TabNavigator); sarmalayıcı yalnız opaklık, sekmeler mount'ta kalır →
+        // kaydırma konumu korunur. Yalnız yeni kabuk.
+        screenLayout={tabSceneLayout}
         screenOptions={{
           headerShown: false,
           sceneStyle: { backgroundColor: designTheme.color.bg },
-          // Sekme geçişine animasyon EKLENMEZ (24.09.2026 kararı, bkz. TabNavigator).
         }}
       >
         <Tab.Screen
@@ -435,7 +443,7 @@ export default function AppNavigator() {
         headerShown: false,
         gestureEnabled: true,
         animation: 'slide_from_right',
-        animationDuration: DURATION.base,
+        animationDuration: PREMIUM.push.enter,
         // Bu stack'teki ekranlarin HEPSI acik temali (#f6f6f6). Varsayilan
         // #0A0A0A idi: ekran kendi zeminini boyayana kadar gecis boyunca
         // siyah bir kare goruluyordu ("Hedef Duzenle"ye basinca siyah ekran).
@@ -465,9 +473,9 @@ export default function AppNavigator() {
       <Stack.Screen name="CategoryProducts" component={finalScreenFor('CategoryProducts', finalFlag.yeni_siparis, CategoryProductsLazy)} />
       <Stack.Screen name="BrandLanding" component={finalScreenFor('BrandLanding', finalFlag.yeni_siparis, BrandLandingLazy)} />
       <Stack.Screen name="ProductDetail" component={finalScreenFor('ProductDetail', finalFlag.yeni_siparis, ProductDetailLazy)} />
-      <Stack.Screen name="Checkout" component={checkoutScreenFor(finalFlag.yeni_siparis, CheckoutScreen)} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
+      <Stack.Screen name="Checkout" component={checkoutScreenFor(finalFlag.yeni_siparis, CheckoutScreen)} options={AI_MODAL} />
       <Stack.Screen name="Addresses" component={v2ScreenFor('Addresses', yeniSiparis, AddressesLazy)} />
-      <Stack.Screen name="OrderSuccess" component={v2ScreenFor('OrderSuccess', yeniSiparis, OrderSuccessLazy)} options={{ animation: 'slide_from_bottom', animationDuration: DURATION.base }} />
+      <Stack.Screen name="OrderSuccess" component={v2ScreenFor('OrderSuccess', yeniSiparis, OrderSuccessLazy)} options={AI_MODAL} />
       <Stack.Screen name="Offers" component={finalScreenFor('Offers', finalFlag.yeni_kabuk, OffersLazy)} />
       <Stack.Screen name="DevDiagnostics" component={DevDiagnosticsLazy} />
       {__DEV__ && (

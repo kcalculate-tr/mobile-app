@@ -15,7 +15,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -54,7 +53,8 @@ export default function FinScanAnalyzing({
       return;
     }
     enter.value = withTiming(1, { duration: DURATION.instant, easing: CURVE.standard });
-    flash.value = withSequence(withTiming(0.8, { duration: 0 }), withTiming(0, { duration: DURATION.fast, easing: CURVE.standard }));
+    flash.value = 0.8;
+    flash.value = withTiming(0, { duration: DURATION.fast, easing: CURVE.standard });
     shrink.value = withDelay(DURATION.fast, withTiming(1, { duration: DURATION.base, easing: CURVE.standard }));
     breath.value = withDelay(
       DURATION.fast,

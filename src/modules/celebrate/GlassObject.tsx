@@ -6,9 +6,10 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { CURVE, TIMING, useBreath, useEnter, useFloat, useReducedMotion } from '../../core/design';
+import { CURVE, DURATION, SPRING, TIMING, useBreath, useEnter, useFloat, useReducedMotion } from '../../core/design';
 
 /**
  * Kutlama modulunun cam nesnesi (FinMoGlass). Core'daki GlassObject REFERANS
@@ -60,7 +61,7 @@ export function GlassObject({
   const reduced = useReducedMotion();
   const enter = useEnter();
   const floatA = useFloat({ tilt: true });
-  const breath = useBreath({ min: 0.14, max: 0.4 });
+  const breath = useBreath({ min: 0.14, max: 0.4, loop: false });
   const source = SOURCES[name];
 
   // Pop: giristen sonra bir kez (TIMING.enter sonrasi). Azaltilmista atlanir.
@@ -74,8 +75,8 @@ export function GlassObject({
     popS.value = withDelay(
       TIMING.enter,
       withSequence(
-        withTiming(1.08, { duration: TIMING.pop / 2, easing: CURVE.out }),
-        withTiming(1, { duration: TIMING.pop / 2, easing: CURVE.in }),
+        withTiming(1.08, { duration: DURATION.instant, easing: CURVE.standard }),
+        withSpring(1, SPRING.bouncy),
       ),
     );
   }, [pop, reduced, popS, replayKey]);
@@ -91,8 +92,8 @@ export function GlassObject({
     }
     sweep.value = 0;
     sweep.value = withDelay(
-      TIMING.enter - 200,
-      withTiming(1, { duration: TIMING.sweep, easing: CURVE.move }),
+      DURATION.base, // girişin son fast 200 diliminde başlar
+      withTiming(1, { duration: DURATION.slow, easing: CURVE.standard }),
     );
   }, [reduced, sweep, replayKey]);
 

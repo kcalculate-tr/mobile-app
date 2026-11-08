@@ -22,17 +22,17 @@ import {
   DURATION,
   REDUCED,
   SPRING,
-  STAGGER,
-  TIMING,
+  PREMIUM,
+  listEnterDelay,
   useReducedMotion,
 } from '../../core/design';
 
 type AnyStyle = ReturnType<typeof useAnimatedStyle>;
 
 /**
- * Akış kartı girişi — kartlar sırayla akar (opaklık 0→1 + 10 px yukarı kayma).
- * Sıralama STAGGER.list, en fazla STAGGER.listMaxItems kart gecikir; gerisi
- * birlikte gelir (sözleşme: "en fazla 6"). Azaltılmışta: yalnız opaklık.
+ * Akış kartı girişi — FinMoTokens "Liste girişi" (PREMIUM.list): fast 200 enter ·
+ * kademe instant 100 · yalnız ilk 4 öğe · kayma 8 pt · toplam ≤ 500 ms.
+ * Azaltılmışta: yalnız 200 ms opaklık.
  */
 export function useFeedCardEnter(index: number): { style: AnyStyle } {
   const reduced = useReducedMotion();
@@ -41,13 +41,11 @@ export function useFeedCardEnter(index: number): { style: AnyStyle } {
   useEffect(() => {
     cancelAnimation(p);
     p.value = 0;
-    const slot = Math.min(Math.max(index, 0), STAGGER.listMaxItems - 1);
-    const delay = slot * STAGGER.list;
     p.value = withDelay(
-      delay,
+      reduced ? 0 : listEnterDelay(index),
       withTiming(1, {
-        duration: reduced ? REDUCED.duration : DURATION.standard,
-        easing: CURVE.out,
+        duration: reduced ? REDUCED.duration : PREMIUM.list.duration,
+        easing: PREMIUM.list.curve,
       }),
     );
     return () => cancelAnimation(p);
@@ -56,7 +54,7 @@ export function useFeedCardEnter(index: number): { style: AnyStyle } {
   }, [reduced]);
 
   const style = useAnimatedStyle(() => {
-    const shift = reduced ? 0 : interpolate(p.value, [0, 1], [10, 0]);
+    const shift = reduced ? 0 : interpolate(p.value, [0, 1], [PREMIUM.list.shift, 0]);
     return { opacity: p.value, transform: [{ translateY: shift }] };
   });
   return { style };
@@ -74,8 +72,8 @@ export function useIconPop(): { style: AnyStyle; pop: () => void } {
     if (reduced) return;
     cancelAnimation(s);
     s.value = withSequence(
-      withTiming(1.12, { duration: TIMING.pop / 2, easing: CURVE.out }),
-      withTiming(1, { duration: TIMING.pop / 2, easing: CURVE.in }),
+      withTiming(1.12, { duration: DURATION.instant, easing: CURVE.standard }),
+      withSpring(1, SPRING.bouncy),
     );
   };
   const style = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
@@ -134,7 +132,8 @@ export function useCountRoll(value: number): { style: AnyStyle } {
 }
 
 /**
- * Alttan açılan sayfa (sheet) yükselişi — SPRING.sheet ile yukarı kayar; arka
+ * Alttan açılan sayfa (sheet) yükselişi — PREMIUM.sheet: base 300 enter (Kcalculate
+ * sheet'leri yay değil, süre tokeni); arka
  * plan kararması eş zamanlı solarak gelir (motion.tsx TRANSITION.sheet). Panel
  * yüksekliği onLayout ile ölçülür; görünür olunca p 0→1 yay, kapanınca 1→0.
  * Azaltılmışta: yay yerine kısa timing. Kapanış animasyonu Modal'ın kendi
@@ -154,7 +153,7 @@ export function useSheetRise(visible: boolean): {
     if (visible) {
       p.value = reduced
         ? withTiming(1, { duration: REDUCED.duration, easing: CURVE.out })
-        : withSpring(1, SPRING.sheet);
+        : withTiming(1, { duration: PREMIUM.sheet.enter, easing: CURVE.enter });
     } else {
       p.value = 0;
     }

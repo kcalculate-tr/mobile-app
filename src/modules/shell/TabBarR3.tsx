@@ -32,12 +32,10 @@ import {
 } from 'react-native';
 import { FinText as Text } from '../../core/design/components/FinText';
 import Animated, {
-  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -171,10 +169,8 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   geomRef.current = { reduced, rootHeight, tabW, anaIndex, winH };
 
   const popBadge = useCallback(() => {
-    badgePop.value = withSequence(
-      withTiming(0, { duration: 0 }),
-      withSpring(1, SPRING.bouncy),
-    );
+    badgePop.value = 0;
+    badgePop.value = withSpring(1, SPRING.bouncy);
   }, [badgePop]);
 
   // Rozet + toast + haptik (uçuş varışında VEYA azaltılmışta doğrudan).
@@ -564,7 +560,7 @@ function LogFlight({
   useEffect(() => {
     p.value = withTiming(
       1,
-      { duration: TIMING.logTrail, easing: Easing.bezier(0.3, 1.15, 0.4, 1) },
+      { duration: TIMING.logTrail, easing: CURVE.enter },
       (fin) => {
         if (fin) {
           runOnJS(onArrive)();

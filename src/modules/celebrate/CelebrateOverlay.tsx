@@ -6,10 +6,9 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { AppText, CURVE, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
+import { AppText, CURVE, PREMIUM, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { X, Export } from '../../components/icons';
 import { GlassObject } from './GlassObject';
@@ -92,11 +91,8 @@ export function CelebrateOverlay({
       pulse.value = 1;
       return;
     }
-    pulse.value = withRepeat(
-      withTiming(1, { duration: TIMING.glow / 2, easing: CURVE.move }),
-      -1,
-      true,
-    );
+    // Kutlama (FinMoTokens): story 900 tek sahne — tekrar ya da döngü yok.
+    pulse.value = withTiming(1, { duration: PREMIUM.celebrate.duration, easing: CURVE.standard });
   }, [reduced, pulse]);
   const confettiStyle = useAnimatedStyle(() => ({ opacity: 0.4 + pulse.value * 0.5 }));
 

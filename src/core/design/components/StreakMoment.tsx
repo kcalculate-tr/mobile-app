@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../ThemeProvider';
-import { CURVE, haptic, useReducedMotion } from '../motion';
+import { CURVE, DURATION, haptic, useReducedMotion } from '../motion';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -54,8 +54,9 @@ export function StreakMoment({
     }
     draw.value = 0;
     ring.value = 0;
-    draw.value = withTiming(1, { duration: 900, easing: CURVE.out });
-    ring.value = withDelay(820, withTiming(1, { duration: 520, easing: CURVE.out }));
+    // Seri anı (FinMoMap): kutlama story 900 tek sahne · ardından halka slow 500.
+    draw.value = withTiming(1, { duration: DURATION.story, easing: CURVE.enter });
+    ring.value = withDelay(DURATION.story, withTiming(1, { duration: DURATION.slow, easing: CURVE.enter }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playToken]);
 
