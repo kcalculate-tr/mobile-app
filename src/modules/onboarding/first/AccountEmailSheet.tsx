@@ -19,8 +19,6 @@ import {
   View,
 } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { AppText } from '../../../core/design/components/AppText';
@@ -50,7 +48,6 @@ export function AccountEmailSheet({
   const P = useOnb();
   const i18n = useT();
   const reduced = useReducedMotion();
-  const insets = useSafeAreaInsets();
   const { signInWithOtp, verifyEmailOtp } = useAuth();
   const [mounted, setMounted] = useState(visible);
   const [email, setEmail] = useState('');
@@ -133,7 +130,9 @@ export function AccountEmailSheet({
 
   if (!mounted) return null;
 
-  const sheetBg = P.isDark ? 'rgba(28,28,30,0.80)' : 'rgba(255,255,255,0.78)';
+  // Pano: rgba(255,255,255,0.78) + 30 px bulanıklık, %32 karartma üstünde → görünen yüzey.
+  // Bulanıklık arkadaki kartı lekeliyordu (vitrin çekimi) → aynı görünen tonda düz yüzey.
+  const sheetBg = P.isDark ? '#1C1C1E' : '#F2F2F2';
   const sheetEdge = P.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)';
   const fieldBg = P.isDark ? '#1C1C1E' : '#FFFFFF';
   const xBg = P.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(10,10,10,0.06)';
@@ -161,13 +160,11 @@ export function AccountEmailSheet({
             styles.sheet,
             {
               borderTopColor: sheetEdge,
-              paddingBottom: focused ? 0 : insets.bottom,
             },
             sheetStyle,
           ]}
           testID="fin-onb-email-sheet"
         >
-          <BlurView intensity={40} tint={P.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: sheetBg }]} />
           <View style={styles.head}>
             <AppText style={[styles.title, { color: P.ink }]} accessibilityRole="header">
