@@ -27,7 +27,7 @@ export function UnderageView({ onFix, onOk }: { onFix: () => void; onOk: () => v
         </View>
       }
     >
-      <OnbTitle>{i18n.t('onboarding.underage.title')}</OnbTitle>
+      <OnbTitle style={{ fontSize: 28, lineHeight: 30 }}>{i18n.t('onboarding.underage.title')}</OnbTitle>
       <OnbLead>{i18n.t('onboarding.underage.body')}</OnbLead>
       <AppText
         textRole="bodySm"

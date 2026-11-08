@@ -81,6 +81,7 @@ function WelcomeScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     <OnbScaffold
       glass={GLASS.bowl}
       cardTop={430}
+      cardPad={[28, 20, 20]}
       dots={{ count: 2, index: 0 }}
       footer={
         <View style={{ gap: 8 }}>
@@ -91,7 +92,7 @@ function WelcomeScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     >
       <AppText style={[styles.brand, { color: P.ink }]}>{i18n.t('onboarding.welcome.brand')}</AppText>
       <AppText style={[styles.headline, { color: P.ink }]}>{i18n.t(`onboarding.welcome.${headlineKey}`)}</AppText>
-      <OnbLead style={{ marginTop: 12 }}>{i18n.t('onboarding.welcome.sub')}</OnbLead>
+      <OnbLead style={{ marginTop: 10, fontSize: 15, lineHeight: 21 }}>{i18n.t('onboarding.welcome.sub')}</OnbLead>
     </OnbScaffold>
     {/* G18-S1 md.1 — FinOpen: yalnız ilk açılış; Karşılama'ya erir. */}
     <OpenSignature forcePlay={vOpen} frozenAt={__DEV__ ? route.params?.vitrinOpenAt : undefined} />
@@ -271,7 +272,7 @@ function NotifyScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbN
         </View>
       }
     >
-      <OnbTitle>{i18n.t('onboarding.notify.title')}</OnbTitle>
+      <OnbTitle style={{ fontSize: 28, lineHeight: 30 }}>{i18n.t('onboarding.notify.title')}</OnbTitle>
       <OnbLead>{i18n.t('onboarding.notify.sub')}</OnbLead>
     </OnbScaffold>
   );
@@ -313,8 +314,9 @@ export default function OnboardingNavigator() {
 }
 
 const styles = StyleSheet.create({
-  brand: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 20, lineHeight: 24, marginBottom: 12 },
-  headline: { fontFamily: 'BricolageGrotesque_800ExtraBold', fontSize: 34, lineHeight: 38, letterSpacing: -0.5 },
+  // FinOnbWelcome: kart içi dikey 14 boşluk; "kcal." 700/18; başlık 700/40, satır 1.08.
+  brand: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 18, lineHeight: 23, marginBottom: 14 },
+  headline: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 40, lineHeight: 43 },
   legal: { marginTop: 14, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1, paddingHorizontal: 8 },

@@ -82,6 +82,7 @@ function TbFrame({
   onSkip,
   footer,
   scroll,
+  cardPad,
   children,
 }: {
   step: number;
@@ -91,11 +92,13 @@ function TbFrame({
   onSkip: () => void;
   footer?: React.ReactNode;
   scroll?: boolean;
+  cardPad?: [number, number, number];
   children: React.ReactNode;
 }) {
   const i18n = useT();
   return (
     <OnbScaffold
+      cardPad={cardPad}
       cardTop={cardTop}
       glass={glass}
       onBack={onBack}
@@ -216,6 +219,7 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
     <TbFrame
       step={2}
       cardTop={168}
+      cardPad={[30, 18, 18]}
       glass={GLASS.drop}
       onBack={() => navigation.goBack()}
       onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
@@ -382,6 +386,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
     <TbFrame
       step={4}
       cardTop={112}
+      cardPad={[24, 20, 20]}
       onBack={() => navigation.goBack()}
       onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
       footer={
@@ -432,7 +437,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
           <HowRow title={i18n.t('tb.how.bmr')} desc={i18n.t('tb.how.bmr_desc')} />
           <HowRow title={i18n.t('tb.how.activity')} desc={i18n.t('tb.how.activity_desc')} />
           <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} last />
-          <AppText textRole="helper" style={{ color: P.sec, marginTop: 12, marginBottom: 12 }}>
+          <AppText textRole="helper" style={{ color: P.sec, marginTop: 12, marginBottom: 16 }}>
             {i18n.t('tb.how.note')}
           </AppText>
         </View>
@@ -446,7 +451,7 @@ function HowRow({ title, desc, value, last }: { title: string; desc: string; val
   return (
     <View style={[styles.howRow, !last ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: P.line } : null]}>
       <View style={styles.howHead}>
-        <AppText textRole="body" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, flex: 1 }}>
+        <AppText textRole="body" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20, flex: 1 }}>
           {title}
         </AppText>
         {value ? (
@@ -455,7 +460,7 @@ function HowRow({ title, desc, value, last }: { title: string; desc: string; val
           </AppText>
         ) : null}
       </View>
-      <AppText textRole="bodySm" style={{ color: P.sec, marginTop: 2 }}>
+      <AppText textRole="bodySm" style={{ color: P.sec, marginTop: 2, fontSize: 14, lineHeight: 20 }}>
         {desc}
       </AppText>
     </View>

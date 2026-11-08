@@ -187,8 +187,9 @@ function GoogleLogo({ size = 18 }: { size?: number }) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 32, lineHeight: 35, letterSpacing: -0.4 },
-  lead: { marginTop: 8 },
+  // Final FinOnb*/FinTb* h1: Bricolage 700 · 30 · satır 1.08; p: 15 · 1.4, başlıkla arası 14 − 4 = 10.
+  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 32 },
+  lead: { marginTop: 10, fontSize: 15, lineHeight: 21 },
   btn: {
     minHeight: 52,
     borderRadius: 26,

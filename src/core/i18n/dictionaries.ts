@@ -1689,8 +1689,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       welcome: {
         brand: 'kcal.',
         headline: 'Track. Create. Share.',
-        headline_b: 'Turn your meals into your story',
-        headline_c: 'From your plate to your community',
+        headline_b: 'Turn meals into stories',
+        headline_c: 'From plate to community',
         sub: 'Snap a photo of your plate; its calories and macros go straight into your log.',
         start: 'Get started',
         haveAccount: 'I already have an account',

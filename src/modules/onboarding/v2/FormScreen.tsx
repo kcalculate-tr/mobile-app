@@ -115,7 +115,7 @@ export function FormScreen({
           : {})}
       >
         <View style={scroll ? undefined : { flex: 1, paddingHorizontal: 20 }}>
-          {title ? <OnbTitle style={{ marginTop: 14 }}>{title}</OnbTitle> : null}
+          {title ? <OnbTitle style={{ marginTop: 14, fontSize: 28, lineHeight: 30 }}>{title}</OnbTitle> : null}
           {subtitle ? <OnbLead>{subtitle}</OnbLead> : null}
           {children}
         </View>
