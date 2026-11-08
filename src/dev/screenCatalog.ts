@@ -200,6 +200,9 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinFollowingEmpty', 'kesfet', route(kes({ initialTab: 'following' })), { data: 'default', scene: 'following' }],
   // G18-S4 md.4 — Sana Özel boş (gerçek içerik yok → başlangıç/üretici alanları gizli).
   ['FinFeedEmpty', 'kesfet', route(kes()), { data: 'empty' }],
+  // G18-S4 — EN çekimleri (ORTAK #10: yeni ekranlar cihaz dili EN iken).
+  ['FinFeedEmptyEN', 'kesfet', route(kes()), { data: 'empty', lang: 'en' }],
+  ['FinFollowingEmptyEN', 'kesfet', route(kes({ initialTab: 'following' })), { data: 'default', scene: 'following', lang: 'en' }],
   ['FinDetail', 'kesfet', route([...kes(), { name: 'SharedPost', params: { postId: 'post-d1' } }]), { scene: 'detail' }],
   ['FinSerbest', 'kesfet', route(kes()), { scene: 'serbest' }],
   [
@@ -279,6 +282,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
 
   // ── Tara ───────────────────────────────────────────────────────────────────
   ['FinScanR2', 'tara', route([...tab('Tracker'), { name: 'AiScan' }])],
+  ['FinScanR2EN', 'tara', route([...tab('Tracker'), { name: 'AiScan' }]), { lang: 'en' }],
   ['FinPhotoR1', 'tara', comp('photoResult')],
   ['FinPhotoEN', 'tara', comp('photoResult'), { lang: 'en' }],
   ['FinScanError', 'tara', comp('scanError', { kind: 'camera' })],
@@ -372,6 +376,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // ── Hareket (son kare; zamanlama kodda token'la doğrulanır) ───────────────
   // G18-S4 md.3 — FinPush 4 şablon (üretim metinleri, dar/genişletilmiş/gizli).
   ['FinPush', 'bildirim', comp('pushPreview')],
+  ['FinPushEN', 'bildirim', comp('pushPreview'), { lang: 'en' }],
   ['FinMoTokens', 'hareket', motion('tokens')],
   ['FinMoMap', 'hareket', motion('tokens')],
   ['FinMoLogA', 'hareket', route(tab('Tracker')), { scene: 'meals' }],

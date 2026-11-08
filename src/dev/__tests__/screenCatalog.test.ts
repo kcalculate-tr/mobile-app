@@ -58,7 +58,7 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
   // G15-S1: Final'de tek panoda 3 panel olan akışların adım çekimleri (ek kayıtlar).
   // G17-S2: FinOnbIntent Final'den çıktı (8 Kas, Tur 26) — Niyet adımı G17-S1 md.4 ile
   // akış dışı; bileşen ve vitrin kaydı korunur (silme yok).
-  const EXTRA = /^Fin(LoginEmail|LoginCode|SignupAIHandle|SignupAIProfile|SignupEatAddress|SignupEatPhone|OnbIntent)(-Dark)?$/;
+  const EXTRA = /^Fin(LoginEmail|LoginCode|SignupAIHandle|SignupAIProfile|SignupEatAddress|SignupEatPhone|OnbIntent|FeedEmptyEN|FollowingEmptyEN|PushEN|ScanR2EN)(-Dark)?$/;
   // G17-S2: Tur 26 panoları (design/final/png, 8 Kas 19:37) henüz uygulanmadı → G18.
   // G18 her panoyu kataloğa ekledikçe buradan SİLER; liste boşalınca kural yine birebir.
   const PENDING_TUR26 = new Set(
