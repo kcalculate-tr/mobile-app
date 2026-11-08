@@ -7,10 +7,10 @@
 (4) **Barkod (md.4):** EAN-13/8, UPC-A/E okunur + sağlama doğrulanır; uygulamada barkod akışı YOK → "Barkod yakında" kartı (okunan kod gösterilir, sahte ürün/sonuç yok) + "Elle gir".
 (5) **Tab bar (md.5):** seçili sekme YARI SAYDAM gri hap — açık `rgba(10,10,10,0.08)`, koyu `rgba(255,255,255,0.14)`; ikon/etiket normal mürekkep (beyaz ikon yok); kayma 200 standard (yay/jöle yok).
 (6) **analyze-ai-scan 500 (md.6):** istemci edge gövdesindeki `error` kodunu (config/server/timeout/parse/model/…) + HTTP durumu + aşamayı (reserve/upload/analyze) `console.warn('[ai-scan] başarısız', …)` ve Sentry'ye (`captureError`, kişisel veri yok) yazar; kullanıcı FinErrFailed, hak iadesi aynen. Sunucu DEĞİŞMEDİ.
-(7) Kontrol: tsc 0 · unit 641 (640 ✓, 1 skip önceden) · components 30 suite / 156 ✓ (snapshot 2/2) · prebuild iOS ✓ Android ✓ · export iOS ✓ (9.4 MB) Android ✓ (9.5 MB). Canlı kamera/FinMoScan bileşen testleriyle doğrulandı; simülatör çekimi DİSK DOLU yüzünden yapılamadı (iOS pod install/xcodebuild).
+(7) Kontrol: tsc 0 · unit 641 (640 ✓, 1 skip önceden) · components 30 suite / 156 ✓ (snapshot 2/2) · prebuild iOS ✓ (+ pod install + xcodebuild BUILD SUCCEEDED) Android ✓ · export iOS ✓ (9.4 MB) Android ✓ (9.5 MB). **Simülatörde doğrulandı** ("G17-2 iPhone", gerçek expo-camera derlemesi): canlı vizör, deklanşör → FinMoScan analiz katmanı → sonuç sheet'i; tab bar gri hap açık + koyu.
 (8) **Bayrak kapalı parite:** `yeni_kabuk` kapalıyken Tara ağacı `night17/fix` tabanındaki ScanScreen ile birebir (snapshot tabanda üretildi) ve expo-camera HİÇ yüklenmez; tab bar değişikliği yalnız yeni kabukta (TabBarR3).
 (9) **YENİ NATIVE DERLEME GEREKİR** (expo-camera): OTA ile gelen JS eski derlemede çökmesin diye `requireOptionalNativeModule('ExpoCamera')` yoksa G17-S1 kartı (sistem kamerası) yedeği. EAS'i İlter çalıştırır.
-(10) SORULAR: 2 madde (canlı edge log okuması izinle reddedildi; disk dolu → simülatör derlemesi/çekimi bekliyor). Son commit GERÇEK dosya `docs/night/G17-S2-DONE`.
+(10) SORULAR: 3 madde (canlı edge log okuması izinle reddedildi; disk neredeyse dolu; Tur 26 panoları G18'e). Son commit GERÇEK dosya `docs/night/G17-S2-DONE`.
 
 ## Commit'ler
 | Madde | Commit | Özet |
@@ -22,6 +22,8 @@
 | 1·2 | `85fc6a4` | Deklanşör `onCameraReady`'ye bağlı değil (iOS simülatöründe olay gelmez), boyut listesi görüntü açılınca da istenir; vitrinde gecikmeli bellek içi AI istemcisi |
 | — | `b55b560` | Başlık notları |
 | 2 | `3ac916a` | Vitrin `FinMoScan` = canlı Tara + yalnız `__DEV__` otomatik deklanşör olayı |
+| 1 | `e50570f` | Kamera ekranında durum çubuğu açık renk (simülatör çekiminde bulundu) |
+| 7 | `08323ed` | Vitrin katalog testi: 8 Kas'ta design/final/png'ye eklenen Tur 26 panoları G18'e bekleyen liste; FinOnbIntent Final'den çıktı (taban `night17/fix`'te de aynı test kırılıyordu) |
 | 7 | bu LOG + `G17-S2-DONE` | Kontroller |
 
 ## 1 — Tara canlı kamera
@@ -54,18 +56,23 @@ G17-S1 md.10'un opak hapı (`#1C1C1E` + beyaz ikon / koyuda `#F5F5F5` + koyu iko
 - `npm run test:unit` → 641 test, 640 geçti, 0 kaldı, 1 atlandı (önceden var). Yeni: selectedPill 4, scanError 7, cameraConfig 3, camera 9.
 - `npm run test:components` (jest) → 30 suite / 156 test geçti, snapshot 2/2 (yeni `ScanScreen.flagParity` snapshot'ı `night17/fix` tabanındaki ScanScreen ile üretildi, sonra yeni kodla `--ci` geçti).
 - Bayrak kapalı parite: Tara snapshot birebir + `loadExpoCamera` çağrılmıyor; TrackerScreen flagOff snapshot ✓; TabBarR3 eski kabuk ✓; `noLegacyWhenFlagsOn` ✓.
-- Prebuild: `expo prebuild --platform ios` ✔ "Finished prebuild"; `--platform android --no-install` ✔ (manifest CAMERA). iOS `pod install` + `xcodebuild` DİSK DOLU (`No space left on device`, boş 209 MB) yüzünden tamamlanamadı (SORULAR 2).
+- Prebuild: `expo prebuild --platform ios` ✔ "Finished prebuild"; `--platform android --no-install` ✔ (manifest CAMERA). İlk denemede `pod install` disk dolu (`No space left on device`) yüzünden düştü; ikinci denemede (yalnız aktif mimari, dizin deposu kapalı, boş alan < 400 MB olursa yalnız kendi sürecini durduran bekçi) `pod install` ✓ + `xcodebuild` **BUILD SUCCEEDED**.
 - `expo export --platform ios` ✓ (9.4 MB) · `--platform android` ✓ (9.5 MB) — son commit'ten sonra yeniden.
-- **Canlı kamera + tarama animasyonu kanıtı:** bileşen testleri (`FinScanCamera.test.tsx`: izin iste → canlı görüntü, deklanşör → `takePictureAsync(0.5)` → `onCaptured`, analizde `fin-scan-analyzing` + "Analiz ediliyor" + önizleme duraklar, flaş/torch, barkod; `ScanScreen.flagParity`: bayrak açık → `fin-scan-camera`, kart yok). Simülatör çekimi disk yüzünden yapılamadı; hazır komut aşağıda.
+- **Canlı kamera + tarama animasyonu — simülatör ("G17-2 iPhone", Metro 8100, vitrin storage modu):**
+  - `FinScanR2`: gerçek `CameraView` bağlı (simülatörde görüntü siyah), beyaz köşe çerçevesi, "Tabağı tam çerçevele", hak hapı solda + X sağda, Fotoğraf · Barkod · Elle, lime deklanşör, flaş kapalı ikonu. "Kamerayı aç" kartı YOK. İlk çekimde durum çubuğu siyah zeminde koyu kalıyordu → `e50570f` ile açık renk, yeniden çekimde doğrulandı.
+  - `FinMoScan` (otomatik deklanşör, 0,7 sn aralıklı 16 kare): ~4,9 sn → `takePictureAsync` simülatör karesi (tarih görüntüsü) donar, çerçeve daralmış, lime tarama çizgisi, lime nokta, "Analiz ediliyor" + üç nokta; ~5,6 sn → FinPhotoR1 sheet'i alttan yerleşmiş ("2 öğe bulundu", 640 kcal, makro halkaları, "Akşam'a logla").
+  - `FinHomeR3` / `-Dark`: seçili "Ana sayfa" yarı saydam gri hap, ikon/etiket mürekkep (açıkta siyah, koyuda beyaz) — opak siyah/beyaz hap yok.
+  - Kanıt görselleri: `.claude/night/out/g17-s2/` (worktree) + `~/kcal-reports/g17-s2/` — FinScanR2, FinMoScan-analiz, FinMoScan-sonuc, FinHomeR3, FinHomeR3-Dark.
+- Bileşen testleri de aynı akışı kapsar: (`FinScanCamera.test.tsx`: izin iste → canlı görüntü, deklanşör → `takePictureAsync(0.5)` → `onCaptured`, analizde `fin-scan-analyzing` + "Analiz ediliyor" + önizleme duraklar, flaş/torch, barkod; `ScanScreen.flagParity`: bayrak açık → `fin-scan-camera`, kart yok). 
 
 Eski tasarım: 0 (Tara bayrak açık yol: FinScanCamera / FinScanAnalyzing / FinPhotoResult / FinScanErrorSheet; eski `ScanLimitSheet`/`ScanFrame`-beyaz-eski dal yalnız bayrak kapalı). Yeniden giydirilen (Final'de yok): "Barkod yakında" kartı (Final kart diliyle).
 
 ## YENİ DERLEME GEREKİR
 `expo-camera` native modül → OTA ile canlı kamera GELMEZ (eski derlemede yedek kart). EAS derlemesini İlter çalıştırır. Tab bar (md.5) ve hata teşhisi (md.6) JS — OTA ile de gider.
 
-## Simülatör doğrulaması (disk açılınca)
+## Simülatör doğrulaması (tekrar çalıştırma)
 ```
-bash ~/.claude/jobs/8717c6d0/tmp/build-ios.sh   # prebuild + pod install + xcodebuild (RCT_METRO_PORT=8100)
+# worktree/ios: pod install + xcodebuild -destination id=<UDID> ONLY_ACTIVE_ARCH=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
 xcrun simctl install EE3E3A0A-A2DC-4DC1-8D06-8CE0EA6AAB86 <dd>/Build/Products/Debug-iphonesimulator/Kcalculate.app
 xcrun simctl privacy EE3E3A0A-A2DC-4DC1-8D06-8CE0EA6AAB86 grant camera com.kcalmobile.app
 npx expo start --dev-client --port 8100
@@ -75,4 +82,5 @@ Simülatör "G17-2 iPhone" (`EE3E3A0A-…AAB86`, `4FED1BB8` kopyası). Not: iOS 
 
 ## SORULAR
 1. **Canlı edge log okuması reddedildi** (`supabase-prod query_logs`, otomatik mod sınıflandırıcısı). 500'ün kodu bu oturumda doğrulanamadı; yeni istemci teşhisi ilk başarısız taramada Sentry'de `ai_scan.code` olarak görünecek (ya da Dashboard → Edge Functions → analyze-ai-scan logları). ~200 ms → büyük olasılıkla `config` (ANTHROPIC_API_KEY secret'ı yok) ya da `server`.
-2. **Disk dolu** (`/System/Volumes/Data` 427/460 GB, iş sırasında 209 MB–3.3 GB boş): iOS `pod install` + `xcodebuild` yarıda kaldı, simülatörde canlı kamera/FinMoScan çekimi yapılamadı. Kural gereği eski worktree'ler (32 GB) ve başka oturumların DerivedData'sı (6.4 GB) silinmedi. Yer açılınca yukarıdaki komutlar. Bu oturumun ürettiği `ios/` (≈1 GB, gitignore) worktree'de duruyor.
+2. **Disk neredeyse dolu** (`/System/Volumes/Data` 426/460 GB; iş sırasında 209 MB–5 GB boş): ilk iOS derlemesi bu yüzden düştü, ikincisi küçük ayak iziyle geçti. Kural gereği eski worktree'ler (32 GB) ve DerivedData (6.4 GB) silinmedi; paralel oturumlar için yer açılması önerilir. Bu oturumun ürettikleri: worktree `ios/` (~1 GB) + DerivedData `~/.claude/jobs/8717c6d0/tmp/dd` (iş silinince gider).
+3. **Tur 26 (8 Kas 19:37):** design/final/png'ye 22 yeni pano (FinOrient1–4, FinHomeFocusB/C, FinWaitlistAdd/Suggest, FinPush, FinOpen …) geldi, FinOnbIntent çıktı. Vitrin katalog testi `PENDING_TUR26` listesiyle geçiyor; G18 her panoyu uyguladıkça listeden silmeli.
