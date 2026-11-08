@@ -18,6 +18,7 @@ import { AppState, DeviceEventEmitter, Pressable, StyleSheet, View, useWindowDim
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { requireOptionalNativeModule } from 'expo';
+import { StatusBar } from 'expo-status-bar';
 
 import { AppText, Button, haptic, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
@@ -212,6 +213,8 @@ export default function FinScanCamera({
   return (
     <View style={[styles.fill, { backgroundColor: k.panel }]}>
       <View style={[styles.camArea, { backgroundColor: '#000000' }]}>
+        {/* Kamera alanı her temada siyah → durum çubuğu açık (G17-S2 simülatör çekimi). */}
+        <StatusBar style="light" />
         {live ? (
           <CameraView
             ref={ref}
