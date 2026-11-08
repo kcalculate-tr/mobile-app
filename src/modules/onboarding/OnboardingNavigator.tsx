@@ -2,7 +2,13 @@
 // açık + oturumsuz soğuk açılışta AppNavigator bu iç yığını `Onboarding` rotasına
 // kurar. Kapalıyken HİÇ kaydolmaz → WelcomeGate bugünküyle aynı.
 //
-// Akış (Final): Karşılama → Hesap → Bildirim → Takibe başla. G17-S1 md.4: "Seni
+// G18-S1 (Tur 26): FinOpen (yalnız ilk açılış, Karşılama'nın üstünde) → Karşılama →
+// Hesap → Ana sayfa (HER hesapta). Bildirim izni onboarding'de YOK: ilk öğün
+// kaydından SONRA bir kez (HomeCelebrations → FinSheetNotify). Hedef kurulumu Ana
+// sayfadaki "Profilini oluşturalım" kartından (HomeOnboardingSlot) açılır. OnbNotify
+// rotası kayıtlı kalır (vitrin/özellik kaybı yok) ama akıştan hiçbir düğme gitmez.
+//
+// Önceki akış (Final): Karşılama → Hesap → Bildirim → Takibe başla. G17-S1 md.4: "Seni
 // buraya ne getirdi?" (Niyet) adımı akıştan çıktı — bileşen ve rota kayıtlı
 // kalır ama hiçbir düğme oraya gitmez; mevcut müşteri sipariş geçmişinden
 // sessizce tanınır (IntroOverlay). Dönen kullanıcı → Ana sayfa (yeni kabukta Tracker). Hesap mevcut auth fonksiyonlarını (AuthContext +
@@ -29,14 +35,19 @@ import { OnbScaffold } from './components/OnbScaffold';
 import { AuthButton, OnbButton, OnbLead, OnbTitle, OptionRow } from './components/pieces';
 import { UnderageView } from './components/UnderageView';
 import { useOnb } from './components/onbTheme';
+import { OpenSignature } from './first/OpenSignature';
+import { AccountEmailSheet } from './first/AccountEmailSheet';
+import { welcomeVariant } from './first/state';
 
 export type OnbIntent = 'track' | 'order' | 'both';
 
 export type OnbParamList = {
-  OnbWelcome: undefined;
+  /** `vitrinOpen`: YALNIZ vitrin — FinOpen'ı bayrağa bakmadan oynat / kareyi dondur. */
+  OnbWelcome: { vitrinOpen?: boolean; vitrinOpenAt?: number } | undefined;
   OnbIntent: undefined;
   OnbNotify: { intent: Exclude<OnbIntent, 'order'> };
-  OnbAccount: { intent: Exclude<OnbIntent, 'order'> };
+  /** `vitrinSheet`: YALNIZ vitrin — e-posta sheet'i açık (FinOnbAccountEmail/Keyboard). */
+  OnbAccount: { intent: Exclude<OnbIntent, 'order'>; vitrinSheet?: 'email' | 'keyboard' };
   OnbUnderage: undefined;
 };
 
@@ -57,15 +68,20 @@ const GLASS = {
 };
 
 // ── Karşılama ─────────────────────────────────────────────────────────────────
-function WelcomeScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbWelcome'>) {
+function WelcomeScreen({ navigation, route }: NativeStackScreenProps<OnbParamList, 'OnbWelcome'>) {
   const i18n = useT();
   const P = useOnb();
   const root = useRootNav(navigation);
+  // G18-S1 md.2: başlık varyantı uzaktan (`onb_welcome_variant_b/_c`), varsayılan A.
+  const variant = welcomeVariant({ b: useFeature('onb_welcome_variant_b'), c: useFeature('onb_welcome_variant_c') });
+  const headlineKey = variant === 'a' ? 'headline' : `headline_${variant}`;
+  const vOpen = __DEV__ && route.params?.vitrinOpen === true;
   return (
+    <View style={{ flex: 1 }}>
     <OnbScaffold
       glass={GLASS.bowl}
       cardTop={430}
-      dots={{ count: 3, index: 0 }}
+      dots={{ count: 2, index: 0 }}
       footer={
         <View style={{ gap: 8 }}>
           <OnbButton kind="lime" label={i18n.t('onboarding.welcome.start')} onPress={() => navigation.navigate('OnbAccount', { intent: 'track' })} />
@@ -74,9 +90,12 @@ function WelcomeScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'Onb
       }
     >
       <AppText style={[styles.brand, { color: P.ink }]}>{i18n.t('onboarding.welcome.brand')}</AppText>
-      <AppText style={[styles.headline, { color: P.ink }]}>{i18n.t('onboarding.welcome.headline')}</AppText>
+      <AppText style={[styles.headline, { color: P.ink }]}>{i18n.t(`onboarding.welcome.${headlineKey}`)}</AppText>
       <OnbLead style={{ marginTop: 12 }}>{i18n.t('onboarding.welcome.sub')}</OnbLead>
     </OnbScaffold>
+    {/* G18-S1 md.1 — FinOpen: yalnız ilk açılış; Karşılama'ya erir. */}
+    <OpenSignature forcePlay={vOpen} frozenAt={__DEV__ ? route.params?.vitrinOpenAt : undefined} />
+    </View>
   );
 }
 
@@ -145,6 +164,10 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const { signInWithApple, signInWithGoogle } = useAuth();
   const yeniKabuk = useFeature('yeni_kabuk');
   const [busy, setBusy] = useState(false);
+  // G18-S1 md.3: "E-posta ile devam et" → kaydırılabilir sheet (eski Login ekranı yerine).
+  const vSheet = __DEV__ ? route.params?.vitrinSheet : undefined;
+  const [emailOpen, setEmailOpen] = useState(vSheet != null);
+  const goHome = () => root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
 
   const afterAuth = async (result: {
     error: string | null;
@@ -160,9 +183,9 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
       familyName: result.familyName,
     });
     if (post.outcome === 'error') return;
-    // Yeni kullanıcı → Bildirim → Takibe başla; dönen kullanıcı → Ana sayfa.
-    if (post.outcome === 'new_user') navigation.navigate('OnbNotify', { intent: route.params?.intent ?? 'track' });
-    else root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
+    // G18-S1 md.4: yeni ya da dönen HER hesap → Ana sayfa (Niyet/Bildirim adımı yok;
+    // hedef kurulumu Ana sayfa profil kartından, bildirim izni ilk kayıttan sonra).
+    goHome();
   };
 
   const run = async (provider: 'apple' | 'google') => {
@@ -182,13 +205,13 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
       glass={GLASS.drop}
       cardTop={262}
       onBack={() => navigation.goBack()}
-      dots={{ count: 3, index: 1 }}
+      dots={{ count: 2, index: 1 }}
       footer={
         <View>
           <View style={{ gap: 10 }}>
             <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={busy} onPress={() => run('apple')} />
             <AuthButton kind="google" label={i18n.t('onboarding.account.google')} disabled={busy} onPress={() => run('google')} />
-            <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy} onPress={() => root?.navigate('Login')} />
+            <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy} onPress={() => setEmailOpen(true)} />
           </View>
           <AppText textRole="helper" style={[styles.legal, { color: P.sec }]}>
             {i18n.t('onboarding.account.legal_pre')}
@@ -202,6 +225,15 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     >
       <OnbTitle>{i18n.t('onboarding.account.title')}</OnbTitle>
       <OnbLead>{i18n.t('onboarding.account.sub')}</OnbLead>
+      <AccountEmailSheet
+        visible={emailOpen}
+        onClose={() => setEmailOpen(false)}
+        onVerified={() => {
+          setEmailOpen(false);
+          goHome();
+        }}
+        vitrinFocus={vSheet === 'keyboard'}
+      />
     </OnbScaffold>
   );
 }
