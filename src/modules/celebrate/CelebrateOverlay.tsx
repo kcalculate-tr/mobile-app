@@ -14,6 +14,7 @@ import { useT } from '../../core/i18n';
 import { X, Export } from '../../components/icons';
 import { GlassObject } from './GlassObject';
 import { celebrateContent, type CelebrateMoment } from './types';
+import { useOverlayGate } from '../onboarding/first/overlayGate';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -55,6 +56,7 @@ export function CelebrateOverlay({
   const { t: tt } = useT();
   const reduced = useReducedMotion();
   const content = celebrateContent(moment);
+  useOverlayGate(visible); // G18-S1 temas: açıkken oryantasyon ipucu beklesin
 
   // Giriste bir kez hero haptik.
   useEffect(() => {

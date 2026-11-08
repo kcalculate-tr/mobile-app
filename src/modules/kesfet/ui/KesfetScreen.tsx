@@ -38,6 +38,7 @@ import type { FeedPost, MealType, ReportTargetType } from '../types';
 
 import { Icon } from './icons';
 import { PostCard } from './PostCard';
+import { useOrientTarget } from '../../onboarding/first/orient/useOrientTarget'; // G18-S1 temas: Orient4
 import { GunViewer } from '../../gun/ui';
 import { RingStrip } from './RingStrip';
 import { VideoPlayer } from './VideoPlayer';
@@ -137,7 +138,7 @@ function Tabs({
   if (showFollowing) items.push({ key: 'following', label: tr('kesfet.ui.tab.following') });
 
   return (
-    <View style={[styles.tabs, { borderBottomColor: t.color.line }]} accessibilityRole="tablist">
+    <View {...useOrientTarget('kesfet')} style={[styles.tabs, { borderBottomColor: t.color.line }]} accessibilityRole="tablist">
       {items.map((it) => {
         const active = tab === it.key;
         return (

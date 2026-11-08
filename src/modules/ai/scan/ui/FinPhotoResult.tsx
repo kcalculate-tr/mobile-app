@@ -34,6 +34,7 @@ import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
 import type { ScanEstimate, ScanIngredient } from '../types';
 import { getKesfetClient, type ProductSearchItem } from '../../../kesfet';
+import { useOrientTarget } from '../../../onboarding/first/orient/useOrientTarget'; // G18-S1 temas: Orient2
 
 const PORTIONS = [0.5, 1, 1.5];
 const MEAL_CYCLE: ClientMealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -123,6 +124,7 @@ export default function FinPhotoResult({
   reducedVariant?: boolean;
 }) {
   const t = useTheme();
+  const orientLog = useOrientTarget('log'); // G18-S1 temas: Orient2 (Tara sonucu · logla)
   const k = tokens(t.isDark);
   const { t: tr } = useT();
   const insets = useSafeAreaInsets();
@@ -225,7 +227,7 @@ export default function FinPhotoResult({
           <AppText tone="secondary" style={styles.cap}>
             {`${adjusted.kcal} kcal, P ${adjusted.protein_g} g, K ${adjusted.carbs_g} g, Y ${adjusted.fat_g} g`}
           </AppText>
-          <View style={[styles.logPill, styles.cutPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
+          <View {...orientLog} style={[styles.logPill, styles.cutPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
             <Pressable
               onPress={() => {
                 haptic('light');
@@ -475,7 +477,7 @@ export default function FinPhotoResult({
       ) : null}
 
       <View style={[styles.bottom, { backgroundColor: k.sheet, borderTopColor: k.line, paddingBottom: Math.max(16, insets.bottom + 4) }]}>
-        <View style={[styles.logPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
+        <View {...orientLog} style={[styles.logPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
           <Pressable
             onPress={() => {
               haptic('light');

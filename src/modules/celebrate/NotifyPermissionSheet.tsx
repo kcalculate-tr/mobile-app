@@ -4,6 +4,7 @@ import { AppText, Sheet, haptic, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { requestPushPermissionOnly } from '../../core/notifications';
 import { Bell } from '../../components/icons';
+import { useOverlayGate } from '../onboarding/first/overlayGate';
 
 /**
  * FinSheetNotify — ILK ogun kutlamasindan sonra teklif edilen bildirim izni
@@ -22,6 +23,7 @@ export function NotifyPermissionSheet({
   const t = useTheme();
   const { t: tt } = useT();
   const [busy, setBusy] = useState(false);
+  useOverlayGate(visible); // G18-S1 temas: açıkken oryantasyon ipucu beklesin
 
   const onAllow = async () => {
     if (busy) return;
