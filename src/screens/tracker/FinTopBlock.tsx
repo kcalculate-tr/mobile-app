@@ -21,7 +21,7 @@ import { TrophyIcon } from '../../components/icons';
 import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
 import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
-import { useOrientTarget } from '../../modules/onboarding/first'; // G18-S1 temas: Orient3 hedefi
+import { HomeOnboardingSlot, useOrientTarget } from '../../modules/onboarding/first'; // G18-S1 temas: profil kartı yuvası + Orient3 hedefi
 
 export { pctLabel };
 
@@ -75,8 +75,9 @@ function StatusRing({
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={accessibilityLabel}
       style={styles.ringCol}
+      {...targetProps}
     >
-      <Animated.View style={animStyle} {...targetProps}>
+      <Animated.View style={animStyle}>
         <ProgressRing progress={Math.min(progress, 1)} size={size} strokeWidth={big ? 10 : 7} color={color} trackColor={k.track}>
           <AppText style={[styles.ringPct, { fontSize: big ? 15 : 13 }]} numberOfLines={1}>
             {pct}
@@ -265,6 +266,9 @@ export function FinTopBlock({
           </AppText>
         </Pressable>
       ) : null}
+
+      {/* G18-S1 temas — FinHomeProfileCard / FinHomeEmptyR1: kart hero (+ İlk öğün) ile makro satırı arasında. */}
+      <HomeOnboardingSlot />
 
       <Pressable
         onPress={onOpenMacros}

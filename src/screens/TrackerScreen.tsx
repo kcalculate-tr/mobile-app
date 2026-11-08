@@ -48,7 +48,6 @@ import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
-import { HomeOnboardingSlot } from '../modules/onboarding/first'; // G18-S1 temas
 import { buildSlots, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 import { WATER_STEP_ML, useWaterToday, waterTargetMl } from '../modules/gun/water';
 import { HomeEatkcalStrip, HomeExploreStrip } from './tracker/HomeStrips';
@@ -2444,7 +2443,6 @@ const html = `
                 onOpenMacros={openGoal}
               />
             ) : null}
-            {yeniKabuk ? <HomeOnboardingSlot /> : null}
             {/* ── G13-S1: FinHomeR3 öğün yuvaları (yeni_kabuk). Yeni kabukta
                  "Dolabındakiler" şeridi YOK — teslim edilen sipariş otomatik
                  loglanır (yukarıdaki auto-log etkisi). ── */}
