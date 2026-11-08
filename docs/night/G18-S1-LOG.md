@@ -8,7 +8,7 @@
 (5) **Profil kartı** (hero ile makro satırı arasında, panodaki yerde) → Takibe başla → **"Profil hazır"** (900 ms tek sahne) → oryantasyon; kapatılırsa bir daha zorla açılmaz, oryantasyon yine başlar.
 (6) **FinOrient1–4:** gerçek ekran üstünde delikli örtü + balon (n/4 · Atla · Sonraki/Tamam); `useOrientTarget(id)` + kök `OrientHost`; kutlama/izin sheet'i açıkken bekler. **(7)** FinHomeEmptyR1 içerik bileşenleri (montaj S2). **(8)** Kalıcı bayraklar AsyncStorage + `profiles.onboarding_state` (CANLIYA UYGULANACAK).
 (9) **Ölçülmüş karşılaştırma** (SSIM, negatif kontrollü — aşağıda): kendi bileşen bölgeleri 0,80–0,96 (σ1,5), yanlış ekran kontrolleri 0,47–0,76; dikey konum farkı ≤ 4 pt (alta sabitli öğelerde 6–10 pt = 874/852 cihaz ölçeği).
-(10) Kontrol: tsc 0 · unit 653/653 (1 skip önceden) · jest 31/165, snapshot 2/2 · `noLegacyWhenFlagsOn` 11/11 · `expo export` iOS 9.98 MB ✓ Android 10 MB ✓ · **Eski tasarım: 0** · bayrak kapalı = 1.0.7. Dal `night18/onb`, simülatör "G18-1 iPhone" `AEAE20D2-…65CC`, Metro 8101, kanıt `~/kcal-reports/g18-s1/`.
+(10) Kontrol: tsc 0 · unit 653/653 (1 skip önceden) · jest 31/165, snapshot 2/2 · `noLegacyWhenFlagsOn` 11/11 · `expo export` iOS 9.99 MB ✓ Android 10 MB ✓ · **Eski tasarım: 0** · bayrak kapalı = 1.0.7. Dal `night18/onb`, simülatör "G18-1 iPhone" `AEAE20D2-…65CC`, Metro 8101, kanıt `~/kcal-reports/g18-s1/`.
 
 ## Commit'ler
 | Madde | Commit | Özet |
@@ -18,7 +18,7 @@
 | 5–7 | `e259aeb` | `ProfileCard`, `CelebrateProfile`, `HomeOnboardingSlot`, `OrientHost` + `useOrientTarget` + `geometry`, `overlayGate`, `HomeEmptyR1`, Tb Sonuç → Profil hazır, bileşen testleri |
 | temas | `0b34da9`, `aff5f4d` | diğer oturum dosyalarına bağlar; profil kartı yuvası FinTopBlock'ta hero ile makro satırı arasına taşındı, Orient3 hedefi Enerji sütunu |
 | 9 | `90b4eb3`, `e6558f9`, `e26f37a` | vitrin (12 pano + Dark), `EN-<Pano>`, `FinMoOpen~1–7`, `Part-HomeEmptyR1` (ölçüm) |
-| düzeltme | `b0ab891`, `b785c1b`, `4dceffb` | e-posta sheet yüzeyi; FinTbHow hizası; onboarding tipografisi panolarla (karşılaştırmada bulundu) |
+| düzeltme | `b0ab891`, `b785c1b`, `4dceffb`, `07169c2` | e-posta sheet yüzeyi; FinTbHow hizası + çerçevesi; onboarding tipografisi; Hesap ikonları (karşılaştırmada bulundu) |
 | — | bu LOG + `docs/night/G18-S1-DONE` | |
 
 ## Maddeler
@@ -60,8 +60,8 @@ Bayrak kapalıyken: `useOrientTarget` `{}` (prop yok), `OrientHost`/`HomeOnboard
 | FinOnbWelcomeB | kart | 0,860 | 0,827 | −8 | 0,861 | B iki satırdı → panodaki gibi üç satır | ✓ `4dceffb` (0,791→0,860) |
 | FinOnbWelcomeC | kart | 0,873 | 0,838 | −8 | 0,863 | | ✓ |
 | FinOnbWelcomeEN | kart | 0,862 | 0,835 | −8 | 0,864 | EN B/C metinleri panodaki | ✓ |
-| FinOnbAccount | kart 16,262,361×566 | 0,899 | 0,874 | 4 | 0,890 | başlık 32→30, Apple/Google ikonları resmî logo (SORULAR 2) | ✓ tipografi / ikon soru |
-| FinOnbAccount-Dark | kart | 0,890 | 0,851 | 4 | 0,857 | | ✓ |
+| FinOnbAccount | kart 16,262,361×566 | 0,907 | 0,882 | 4 | 0,871 | başlık 32→30; Apple/Google ikonları panodaki Phosphor glifleri (resmî renkli logo yerine — SORULAR 2) | ✓ `4dceffb`, `07169c2` |
+| FinOnbAccount-Dark | kart | 0,898 | 0,860 | 4 | 0,836 | | ✓ |
 | FinOnbAccountEmail | sheet 0,562,393×290 | 0,846 | 0,804 | 0 | 0,880 | ilk çekimde bulanıklık lekesi + alt boşluk +30 pt | ✓ `b0ab891` |
 | FinOnbAccountEmail-Dark | sheet | 0,847 | 0,802 | 0 | 0,856 | | ✓ |
 | FinOnbAccountKeyboard | sheet 0,262,393×290 | 0,881 | 0,842 | 2 | 0,794* | *tam ekran: gerçek iOS klavyesi ↔ panodaki gri "Klavye" kutusu | — |
@@ -79,7 +79,8 @@ Bayrak kapalıyken: `useOrientTarget` `{}` (prop yok), `OrientHost`/`HomeOnboard
 | FinHomeEmptyR1 — İlk öğün kartı | 16,283,361×166 | 0,914 | 0,830 | −6 | — | | — |
 | FinHomeEmptyR1 — Profil kartı | 16,461,361×160 | 0,901 | 0,827 | −4 | — | | — |
 | FinHomeEmptyR1 — Bugün/Demo | 16,760,361×180 | 0,889 | 0,791 | −6 | — | | — |
-| FinTbHow | sheet hizalı 0,400,393×380 | 0,847 | 0,795 | −2 | 0,779 | satırlar 20 pt içeride + 16/15 yazı → 15/14; kalan ≈12 pt sheet başlık/alt boşluğu ortak `Sheet` bileşeninde (S4) | ✓ `b785c1b`, `4dceffb` |
+| FinTbHow | sheet hizalı 0,400,393×380 | 0,842 | 0,782 | −2 | 0,806 | satırlar 20 pt içeride + 16/15 yazı → 15/14; ortak `Sheet` çerçevesi panodan farklıydı → ekrana özel `HowSheet` (8/20/32, 28 köşe, bulanık 0,86, 36×5 tutamaç, 20/700 başlık, 1 pt çizgiler); yükseklik farkı ≈4 pt (874/852 ölçek) | ✓ `b785c1b`, `4dceffb`, `07169c2` |
+| FinTbHow-Dark | sheet hizalı | 0,838 | — | −2 | 0,775 | | ✓ |
 | FinTbFirst | kart 16,213,361×615 | 0,920 | 0,890 | −4 | 0,882 | başlık 32→30 | ✓ `4dceffb` |
 Kanıt: `~/kcal-reports/g18-s1/` (her pano PNG, `cmp-*.png` yan yana, `ssim-full.tsv`, `ssim-roi.tsv`).
 
@@ -108,13 +109,18 @@ Kareler: `flow/flow-contact-1fps.png`, `flow/open-10fps.png`, `FinMoOpen-storybo
 - `npm run test:unit` → 654 test, 653 geçti, 0 kaldı, 1 atlandı (önceden). Yeni: `first/__tests__/first.test.ts` 12/12; `flagOffRoutes` güncel.
 - `npm run test:components` → 31 suite / 165 test, snapshot 2/2. Yeni: `first/__component_tests__/first.test.tsx` 9/9.
 - `noLegacyWhenFlagsOn` 11/11 (yeni `modules/onboarding/first` dahil).
-- `expo export --platform ios` ✓ 9.98 MB · `--platform android` ✓ 10 MB (son kod commit'inden sonra). Native/yeni paket YOK.
+- `expo export --platform ios` ✓ 9.99 MB · `--platform android` ✓ 10 MB (son kod commit'i `07169c2`'den sonra). Native/yeni paket YOK.
 - Bayrak kapalı parite: `Off-Tracker`/`Off-Home` = 1.0.7 kabuğu; `TrackerScreen.flagOff` snapshot aynı; hedef kancası kapalıyken prop eklemiyor (jest); FinTopBlock yalnız yeni kabukta çizilir.
 
 **Eski tasarım: 0** — yeni ekranlar yalnız Fin dili (onbTheme/homeTokens, FinMoTokens); eski COLORS/BottomSheet/logo import yok (test).
 **Yeniden giydirilen (Final'de yok):** yok.
 
+## Piksel-özdeşliğin sınırları (ölçümü okurken)
+- Pano tarayıcıda (393×852, 2×) çizilmiş; uygulama iOS'ta (402×874, 3×). Aynı font/ölçü/renkle bile yazı kenar yumuşatma ve satır kırılımı birkaç pikselde farklıdır → ham SSIM metin bölgelerinde ≈0,70–0,88'de tavan yapar (ör. Orient balonlarının büyütülmüş kırpımı `cmp-tips.png`: metin, ölçü, dolgu, ok, düğmeler aynı; skor 0,70–0,75).
+- Tam ekran skorlarında bileşen dışı alan var: Ana sayfa kahramanı (FinHomeR3) ve Ana sayfa yerleşimi S2'nin işi (bu dalda yok); Keşfet akışındaki gönderiler; gerçek iOS klavyesi ↔ panodaki gri "Klavye" kutusu. Bunlar G18-S1 bileşenlerinin uyumunu ölçmez; S2 birleşince S5 tam ekran kabulünü yeniden alır.
+- Alta sabitli öğelerde dy 6–10 pt: cihaz 874 pt, pano 852 pt.
+
 ## SORULAR
-1. **FinTbFirst akıştaki yeri:** FinTur26 #5 kartlı akışı "FinTbGoal … FinTbResult → FinCelebrateProfile" veriyor (TbFirst yok) ve "Profil hazır" metni "dört kısa ipucu"na geçiyor → Sonuç → Profil hazır → oryantasyon uygulandı. TbFirst rotası kayıtlı ve panoyla aynı (0,920); istenirse Sonuç'tan sonra tek satır.
-2. **Apple/Google düğme ikonları:** FinOnbAccount Phosphor çizgi ikonları çiziyor (tek renk "G", çizgi elma). Kodda resmî Apple logosu + 4 renkli Google "G" KALDI: Apple "Sign in with Apple" ve Google marka kuralları resmî işaret istiyor; App Review reddi riski. Tek fark bu; karar İlter'in (değişirse `pieces.tsx` AuthButton, 2 ikon).
+1. **FinTbFirst akıştaki yeri — pano ile doğrulandı:** FinTbResult panosunda "Devam et" bağlantısı doğrudan `FinCelebrateProfile`'a gidiyor (FinTur26 #5 ile aynı). Uygulama böyle; TbFirst rotası kayıtlı ve panoyla aynı (0,920). Soru kalmadı, bilgi için.
+2. **Apple/Google düğme ikonları:** Pano Phosphor çizgi glifleri çiziyor (tek renk "G", çizgi elma) → panoya göre uygulandı (`07169c2`, ORTAK #11). RİSK: Apple "Sign in with Apple" ve Google "Sign in with Google" marka kuralları resmî işaretleri istiyor; App Review reddi olasılığı. Resmî logolara dönmek `pieces.tsx` AuthButton'da 2 ikon (eski path'ler `4dceffb` sürümünde). Karar İlter'in.
 3. **Canlı şema okuması reddedildi** (`supabase-prod execute_sql`, otomatik mod) → `profiles` kolonları `docs/night/S1-SCHEMA_DUMP.md`'den; migration dosyası yazıldı.
