@@ -1,4 +1,5 @@
 G18-S4 tamamlandı — dal night18/sys (taban night17/camera 249b89b).
 7 madde: geçiş seti tek token modülü (motion.tsx PREMIUM), gezinme kuralı, FinPush, Keşfet boş hâlleri, Tara "Detay ekle", tab bar ölçüleri, kontrol + noLocalMotionTokens.
-tsc 0 · unit 670 (669 ✓, 1 skip) · components 32 suite / 166 ✓ · export iOS ✓ Android ✓ · Eski tasarım: 0 · bayrak kapalı aynı.
+tsc 0 · unit 671 (670 ✓, 1 skip) · components 32 suite / 167 ✓ · export iOS ✓ Android ✓ · Eski tasarım: 0 · bayrak kapalı aynı.
+Karşılaştırma tablosu ölçülmüş (scripts/dev/g18-diff.ts); gezinme taraması kapsayıcı (59 dosya, navRule).
 Ayrıntı: docs/night/G18-S4-LOG.md
