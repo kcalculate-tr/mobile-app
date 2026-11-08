@@ -134,6 +134,24 @@ test('FinPush: dokunma hedefleri — sipariş detayı, Ana sayfa logla açık, y
   assert.equal(finPushRoute({ deep_link: 'x' }), null, 'FinPush olmayan bildirim bugünkü işleyicide kalır');
 });
 
+test('FinPush: send-notification fin_* şablonlarında categoryId + channelId ekler (diğerleri aynen)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const path = require('node:path') as typeof import('node:path');
+  const src = fs.readFileSync(
+    path.resolve(__dirname, '../../../../supabase/functions/send-notification/index.ts'),
+    'utf8',
+  );
+  assert.match(src, /import \{ FIN_TEMPLATES, type FinTemplateKey \} from '\.\/finPushTemplates\.ts'/);
+  assert.match(src, /if \(!templateKey \|\| !\(templateKey in FIN_TEMPLATES\)\) return \{\}/);
+  assert.match(src, /\.\.\.finPushExtras\(content\.templateKey\),/);
+  for (const t of Object.values(FIN_TEMPLATES)) {
+    assert.ok(Object.values(FIN_PUSH_CATEGORY).includes(t.categoryId));
+    assert.equal(t.channelId, 'fin');
+  }
+});
+
 test('FinPush: "Bugün sessize al" gün sonuna kadar', () => {
   const now = new Date(2026, 10, 8, 13, 0, 0);
   const until = muteUntilEndOfDay(now);

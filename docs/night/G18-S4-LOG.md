@@ -7,7 +7,7 @@
 (4) **Keşfet (md.4):** FinFeedEmpty + FinFollowingEmpty Final: başlık/açıklama, "Başlangıç için" Marka/Editör kartları (yalnız gerçek kcal gönderisi), "Davetli üreticiler" (yoksa gizli), "İlk paylaşımını hazırla"; boş akışta halka şeridi yalnız "Günüm" + açıklama. Diğer Keşfet panoları vitrinde yeniden karşılaştırıldı (ölçülmüş uyum %, `scripts/dev/g18-diff.ts`).
 (5) **Tara "Detay ekle" (md.5):** deklanşörün üstünde hap → tek satır alan (≤ 160), not analiz isteğine `hint`, boşsa ek adım yok, sonuç sheet'inde "Notun:" satırı. **Canlı edge v7 `hint` okumuyor** → repo dosyası güncellendi, DEPLOY GEREKİR.
 (6) **Tab bar (md.6):** FinTabBar-rest/mid/min ölçüleri birebir (hap 289, hap–Tara 10, etiket 13, pasif ikincil renk, rozet, küçük durumda 44 iç daire + 22 ikon, Tara ikonu 18); gri hap aynen (ORTAK #4).
-(7) Kontrol (son kodda yeniden): tsc 0 · unit 671 (670 ✓, 1 skip önceden) · components 32 suite / 167 ✓ (snapshot 2/2) · `noLegacyWhenFlagsOn` ✓ · `noLocalMotionTokens` ✓ · export iOS ✓ (9,94 MB) Android ✓ (9,97 MB). Karşılaştırma tablosu ÖLÇÜLMÜŞ (`scripts/dev/g18-diff.ts`).
+(7) Kontrol (son kodda yeniden): tsc 0 · unit 672 (671 ✓, 1 skip önceden) · components 32 suite / 167 ✓ (snapshot 2/2) · `noLegacyWhenFlagsOn` ✓ · `noLocalMotionTokens` ✓ · export iOS ✓ (9,94 MB) Android ✓ (9,97 MB). Karşılaştırma tablosu ÖLÇÜLMÜŞ (`scripts/dev/g18-diff.ts`).
 (8) **Eski tasarım: 0** · bayrak kapalı parite ÇALIŞTIRILDI: taban ↔ HEAD `Off-*` çekimleri piksel karşılaştırması (Profil/Sepet/Abonelik %0; Tracker/Home farkları animasyon anı + dönen banner, kod değil).
 (9) Simülatör "G18-4 iPhone" (`D014ACFC-…307B`, G17-2 klonu, expo-camera'lı dev client), Metro 8104, vitrin `G14_MODE=storage`; 27 çekim + yan yana çiftler `~/kcal-reports/g18-s4/`.
 (10) SORULAR: 4 madde (edge deploy, push sunucu satırı, FinMoPopover S2 bekleniyor, canlı veri okuması reddedildi). Son commit GERÇEK dosya `docs/night/G18-S4-DONE`.
@@ -91,7 +91,7 @@ Test: `modules/shell/__tests__/tabBarFinal.test.ts` 3/3.
 
 ## 7 — Kontrol
 - `npx tsc --noEmit` → 0.
-- `npm run test:unit` → 671 test, 670 ✓, 0 ✗, 1 atlandı (önceden var). Yeni: noLocalMotionTokens 3, navRule 4, finPush 9, scanNote 5, starters 4, tabBarFinal 3, i18nKeys 1 (TR/EN eksik anahtar 0, iki yön).
+- `npm run test:unit` → 672 test, 671 ✓, 0 ✗, 1 atlandı (önceden var). Yeni: noLocalMotionTokens 3, navRule 4, finPush 9, scanNote 5, starters 4, tabBarFinal 3, i18nKeys 1 (TR/EN eksik anahtar 0, iki yön).
 - `npm run test:components` → 32 suite / 167 ✓, snapshot 2/2 (ScanScreen.flagParity, TrackerScreen flagOff). Yeni: RingStrip boş hâl.
 - `noLegacyWhenFlagsOn` ✓ (unit içinde). `screenCatalog` ✓ (FinFeedEmpty, FinPush artık katalogda).
 - `expo export --platform ios` ✓ (9,94 MB) · `--platform android` ✓ (9,97 MB) — son koddan sonra yeniden.
@@ -150,7 +150,7 @@ EN: FinFeedEmptyEN, FinFollowingEmptyEN, FinPushEN, FinScanR2EN, FinPhotoEN çek
 ## CANLIYA UYGULANACAK / DEPLOY GEREKİR
 1. `supabase/functions/analyze-ai-scan/index.ts` — `hint` desteği (deploy; canlı v7 okumuyor).
 2. `supabase/migrations/20261108000400_g18_finpush_templates.sql` — 7 `fin_*` şablonu (uygulanacak).
-3. `send-notification`: FinPush aksiyon düğmelerinin uzak bildirimde çıkması için Expo mesajına `categoryId` + `channelId` eklenmeli; önerilen satır (gövde map'ine): `...(content.templateKey?.startsWith('fin_') ? { categoryId: FIN_TEMPLATES[content.templateKey].categoryId, channelId: 'fin' } : {})` — bu oturumda gönderim kodu DEĞİŞTİRİLMEDİ (görev: "yalnız şablon metinleri dosyada"). Çağıran `data.fin` (+ orderId/postId/commentId/meal) verir.
+3. `supabase/functions/send-notification/index.ts` — FinPush kategori bağlantısı YAPILDI (dosya; DEPLOY GEREKİR): `fin_*` şablon anahtarlarında Expo mesajına `categoryId` (aksiyon düğmeleri) + `channelId: 'fin'` (Android gizli önizleme) eklenir (`finPushExtras`); diğer bütün bildirimler bayt bayt aynı gövde. Test: `finPush.test.ts` (10/10). Çağıran `data.fin` (+ orderId/postId/commentId/meal) verir.
 
 ## Final'den bilinçli farklar (kural/görev gereği — "birebir"in kapsamı)
 Final panolarıyla birebir uygulanmayan her nokta bir kurala ya da görev maddesine dayanır; tasarım dışı karar yok (ORTAK #11):
@@ -162,10 +162,10 @@ Final panolarıyla birebir uygulanmayan her nokta bir kurala ya da görev maddes
 | FinPhotoR1 sol geri → sağ X, FinCompose "İptal" → sağ X, nokta ayraçsız etiketler | Görev md.2 gezinme kuralı (FinComponents), G17-S1 |
 | FinScanR2 kamera alanı (simülatörde siyah) | Simülatörde kamera görüntüsü yok; kontrol paneli %88–90 |
 | Tab bar mid karesinde hap uzaması yok | FinMoMap "Sekme değişimi: hap kayar fast 200 · jöle/uzama yok" (G17-S2) |
-Deploy / canlı uygulama bu oturumda YASAK (ORTAK #8: "deploy yok, canlı DB yazma yok … Claude/İlter uygular"); bu yüzden edge `hint` deploy'u, FinPush migration'ı ve `send-notification` gönderim satırı yukarıda "CANLIYA UYGULANACAK / DEPLOY GEREKİR" olarak bırakıldı.
+Deploy / canlı uygulama bu oturumda YASAK (ORTAK #8: "deploy yok, canlı DB yazma yok … Claude/İlter uygular"); bu yüzden edge `hint` ve `send-notification` kodları repoda HAZIR, deploy'ları ve FinPush migration'ının uygulanması yukarıda "CANLIYA UYGULANACAK / DEPLOY GEREKİR" olarak bırakıldı.
 
 ## SORULAR
 1. Edge `hint` deploy'u ve FinPush migration'ı — onay/uygulama İlter/Claude'da (yukarıda).
-2. `send-notification` `categoryId/channelId` satırı eklensin mi? (eklenmezse uzak FinPush'larda aksiyon düğmesi çıkmaz; yerel ertelenen hatırlatmada çıkar).
+2. `send-notification` kategori bağlantısı repoda yapıldı (yalnız `fin_*` şablonları etkilenir) — deploy onayı İlter'de.
 3. FinMoPopover (S2) bu dalda yok → Keşfet MealCard ve FinPhotoR1 "logla ⌄" çentikleri bugünkü davranışta (Keşfet: mevcut menü; Tara: öğün döngüsü). S2 bileşeni gelince 1'er satır `onPress` bağlanmalı (S5).
 4. Canlı veri okuması (`execute_sql`, Marka/Editör gönderisi var mı) otomatik mod sınıflandırıcısınca reddedildi; kural gereği başlangıç kartları yalnız gerçek gönderi varsa çıkar, yoksa gizli — canlıda kaç `kurum`/`moderator` gönderisi olduğu doğrulanamadı. FinDetail yorum listesi vitrinde doğrulanamadı.
