@@ -38,6 +38,7 @@ import FinScanErrorSheet, { type FinScanErrorKind } from '../ui/FinScanErrorShee
 import FinPhotoResult from '../ui/FinPhotoResult';
 import FinScanViewfinder from '../ui/FinScanViewfinder';
 import FinScanCamera, { loadExpoCamera } from '../ui/FinScanCamera';
+import { normalizeScanNote } from '../ui/ScanNote';
 import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
 import { fetchProducts } from '../../../../lib/products';
 import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
@@ -90,6 +91,8 @@ export default function ScanScreen() {
   const [pendingToast, setPendingToast] = useState(false);
   const [pendingMeal, setPendingMeal] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(1);
+  // G18-S4 md.5 — "Detay ekle" notu (isteğe bağlı; boşsa ekstra adım yok).
+  const [scanNote, setScanNote] = useState('');
 
   const insets = useSafeAreaInsets();
 
@@ -188,8 +191,15 @@ export default function ScanScreen() {
     const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
     setScanRef(idempotencyKey);
 
+    const hint = normalizeScanNote(scanNote);
     if (!net.isConnected) {
-      await setPendingScanPhoto({ id: idempotencyKey, imageUri: uri, mealType, queuedAt: new Date().toISOString() });
+      await setPendingScanPhoto({
+        id: idempotencyKey,
+        imageUri: uri,
+        mealType,
+        queuedAt: new Date().toISOString(),
+        ...(hint ? { hint } : {}),
+      });
       setPendingCount(await getPendingScanCount());
       setErrorKind('offline');
       return;
@@ -197,7 +207,11 @@ export default function ScanScreen() {
 
     setStage('scanning');
     try {
-      const outcome = await runAiScan(getAiScanClient(), { idempotencyKey, imageRef: uri });
+      const outcome = await runAiScan(getAiScanClient(), {
+        idempotencyKey,
+        imageRef: uri,
+        ...(hint ? { hint } : {}),
+      });
       recordQuota(outcome.remaining, outcome.reset_at);
       if (outcome.status === 'quota_exhausted') {
         setStage('viewfinder');
@@ -326,6 +340,7 @@ export default function ScanScreen() {
   const handleRetry = () => {
     setResult(null);
     setPhotoUri(null);
+    setScanNote(''); // yeni çekim = yeni not (yeniden analiz hakkı yok)
     setErrorKind(null);
     setStage('viewfinder');
   };
@@ -369,6 +384,7 @@ export default function ScanScreen() {
             await saveMealToCollection(a.name);
           }}
           match={matchPct}
+          note={normalizeScanNote(scanNote)}
         />
       );
     }
@@ -388,6 +404,8 @@ export default function ScanScreen() {
             onManual={handleManualEntry}
             onPermissionDenied={() => setErrorKind('camera')}
             onPermissionGranted={() => setErrorKind((k) => (k === 'camera' ? null : k))}
+            note={scanNote}
+            onNoteChange={setScanNote}
           />
         ) : (
           // Eski derleme (ExpoCamera native modülü yok) — G15-S2/G17-S1 düzeni yedek.

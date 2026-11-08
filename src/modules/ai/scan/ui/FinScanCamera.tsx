@@ -26,6 +26,7 @@ import { X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 import ScanFrame from './ScanFrame';
 import FinScanAnalyzing from './FinScanAnalyzing';
+import { ScanNoteField, ScanNotePill, normalizeScanNote } from './ScanNote';
 import { finScanTokens } from './FinScanViewfinder';
 import {
   CAPTURE_QUALITY,
@@ -71,7 +72,12 @@ export default function FinScanCamera({
   onManual,
   onPermissionDenied,
   onPermissionGranted,
+  note = '',
+  onNoteChange,
 }: {
+  /** G18-S4 md.5: "Detay ekle" notu (ScanScreen tutar). onNoteChange yoksa hap çizilmez. */
+  note?: string;
+  onNoteChange?: (v: string) => void;
   cam: ExpoCameraModule;
   remaining: number | null;
   /** Analiz sürüyor → çekilen kare + FinMoScan katmanı; kontroller kilitli. */
@@ -100,6 +106,7 @@ export default function FinScanCamera({
   const [flashOn, setFlashOn] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [barcode, setBarcode] = useState<string | null>(null);
+  const [noteOpen, setNoteOpen] = useState(false);
   const deniedReported = useRef(false);
 
   // ── İzin akışı ──────────────────────────────────────────────────────────────
@@ -269,6 +276,18 @@ export default function FinScanCamera({
           </View>
         ) : null}
 
+        {/* G18-S4 md.5 — "Detay ekle" hapı: deklanşörün üstünde (kamera alanının altı). */}
+        {live && mode === 'photo' && !analyzing && onNoteChange && !noteOpen ? (
+          <View style={styles.noteWrap} pointerEvents="box-none">
+            <ScanNotePill
+              note={normalizeScanNote(note)}
+              disabled={locked}
+              onOpen={() => setNoteOpen(true)}
+              k={k}
+            />
+          </View>
+        ) : null}
+
         <View style={[styles.top, { top: insets.top + 6 }]}>
           <Pressable
             onPress={onClose}
@@ -361,6 +380,10 @@ export default function FinScanCamera({
           </Pressable>
         </View>
       </View>
+
+      {noteOpen && onNoteChange ? (
+        <ScanNoteField value={note} onChange={onNoteChange} onClose={() => setNoteOpen(false)} />
+      ) : null}
     </View>
   );
 }
@@ -371,6 +394,7 @@ const styles = StyleSheet.create({
   hintWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   hint: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center' },
   hintText: { fontSize: 14, fontWeight: '500' },
+  noteWrap: { position: 'absolute', left: 16, right: 16, bottom: 16, alignItems: 'center' },
   soonWrap: { position: 'absolute', left: 16, right: 16, bottom: 16 },
   soon: { borderRadius: 24, padding: 20 },
   soonTitle: { fontSize: 18, fontWeight: '700' },
