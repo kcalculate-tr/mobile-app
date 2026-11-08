@@ -15,7 +15,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppText } from '../../../core/design/components/AppText';
-import { Sheet } from '../../../core/design/components/Sheet';
 import { ProgressRing } from '../../../core/design/components/ProgressRing';
 import { DURATION, haptic } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
@@ -38,6 +37,7 @@ import {
   type TbGoal,
 } from './calc';
 import { saveTakibeProfile } from './save';
+import { HowSheet } from './HowSheet';
 import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
 
@@ -427,21 +427,23 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
         </Pressable>
       </View>
 
-      <Sheet
+      <HowSheet
         visible={howOpen}
         onClose={() => setHowOpen(false)}
         title={i18n.t('tb.how.title')}
+        closeLabel={i18n.t('common.close')}
         footer={<OnbButton label={i18n.t('tb.how.ok')} onPress={() => setHowOpen(false)} />}
       >
+        {/* FinTbHow: üç satırın hepsi alt çizgili; not 13 · üst 12 · alt 16. */}
         <View>
           <HowRow title={i18n.t('tb.how.bmr')} desc={i18n.t('tb.how.bmr_desc')} />
           <HowRow title={i18n.t('tb.how.activity')} desc={i18n.t('tb.how.activity_desc')} />
-          <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} last />
-          <AppText textRole="helper" style={{ color: P.sec, marginTop: 12, marginBottom: 16 }}>
+          <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} />
+          <AppText style={{ color: P.sec, marginTop: 12, marginBottom: 16, fontSize: 13, lineHeight: 18 }}>
             {i18n.t('tb.how.note')}
           </AppText>
         </View>
-      </Sheet>
+      </HowSheet>
     </TbFrame>
   );
 }
@@ -449,7 +451,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
 function HowRow({ title, desc, value, last }: { title: string; desc: string; value?: string; last?: boolean }) {
   const P = useOnb();
   return (
-    <View style={[styles.howRow, !last ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: P.line } : null]}>
+    <View style={[styles.howRow, !last ? { borderBottomWidth: 1, borderBottomColor: P.line } : null]}>
       <View style={styles.howHead}>
         <AppText textRole="body" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20, flex: 1 }}>
           {title}
