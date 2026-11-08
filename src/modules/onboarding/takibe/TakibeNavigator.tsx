@@ -428,7 +428,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
         title={i18n.t('tb.how.title')}
         footer={<OnbButton label={i18n.t('tb.how.ok')} onPress={() => setHowOpen(false)} />}
       >
-        <View style={{ paddingHorizontal: 20 }}>
+        <View>
           <HowRow title={i18n.t('tb.how.bmr')} desc={i18n.t('tb.how.bmr_desc')} />
           <HowRow title={i18n.t('tb.how.activity')} desc={i18n.t('tb.how.activity_desc')} />
           <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} last />
