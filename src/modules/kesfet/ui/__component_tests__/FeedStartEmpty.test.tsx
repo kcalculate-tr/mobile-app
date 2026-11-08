@@ -60,6 +60,18 @@ test('FinFeedEmpty: gerçek içerik yoksa başlangıç ve üretici alanları Gİ
   expect(tree.getByText('İlk paylaşımını hazırla')).toBeTruthy();
 });
 
+test('RingStrip boş hâl (FinFeedEmpty üstü): yalnız Günüm + açıklama; akış doluyken çizilmez', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RingStrip } = require('../RingStrip') as typeof import('../RingStrip');
+  const empty = render(<RingStrip rings={[]} onOpen={() => {}} emptyHint />);
+  expect(empty.getByText('Günüm')).toBeTruthy();
+  expect(
+    empty.getByText('İlk öğününü logladığında günün burada başlar. Takip ettiklerinin günleri yanına eklenir.'),
+  ).toBeTruthy();
+  const none = render(<RingStrip rings={[]} onOpen={() => {}} />);
+  expect(none.toJSON()).toBeNull();
+});
+
 test('Paylaşım kapalıysa "İlk paylaşımını hazırla" kartı yok', () => {
   const tree = render(<FeedStartEmpty variant="for_you" starters={[STARTER]} creators={[]} onOpenPost={() => {}} onFollow={() => {}} />);
   expect(tree.getByText('Logladıkça ve takip ettikçe burada sana uygun paylaşımlar görürsün. Şimdilik kcal’ın seçtikleri:')).toBeTruthy();

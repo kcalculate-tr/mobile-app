@@ -21,15 +21,57 @@ export function RingStrip({
   rings,
   onOpen,
   onAddMine,
+  emptyHint = false,
 }: {
   rings: DayRing[];
   onOpen: (userId: string) => void;
   onAddMine?: () => void;
+  /**
+   * G18-S4 md.4 — FinFeedEmpty / FinFollowingEmpty: başka halka yokken "Günüm" +
+   * "İlk öğününü logladığında günün burada başlar…" açıklaması.
+   */
+  emptyHint?: boolean;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
-  if (rings.length === 0) return null;
   const track = t.isDark ? '#3A3A3C' : '#DCDEE2';
+  if (emptyHint && rings.length <= 1) {
+    const me = rings[0];
+    return (
+      <View style={[styles.wrap, styles.hintRow, { borderBottomColor: t.color.line }]} accessibilityLabel={tr('kesfet.ui.ring_strip')} testID="fin-ring-strip-empty">
+        <View style={styles.item}>
+          <Pressable
+            onPress={me ? () => onOpen(me.user.id) : onAddMine}
+            disabled={!me && !onAddMine}
+            accessibilityRole="button"
+            accessibilityLabel={tr('gun.my_ring')}
+            style={styles.ringBox}
+          >
+            <ProgressRing progress={me?.progress ?? 0} size={SIZE} strokeWidth={STROKE} color={t.color.accentLine} trackColor={track}>
+              <View style={[styles.avatar, { backgroundColor: track }]}>
+                {me?.user.avatar_url ? <CachedImage uri={me.user.avatar_url} style={styles.avatarImg} /> : null}
+              </View>
+            </ProgressRing>
+          </Pressable>
+          <Pressable
+            onPress={onAddMine ?? (me ? () => onOpen(me.user.id) : undefined)}
+            disabled={!onAddMine && !me}
+            accessibilityRole="button"
+            accessibilityLabel={onAddMine ? tr('kesfet.ui.a11y.compose') : tr('gun.my_ring')}
+            hitSlop={10}
+            style={[styles.plus, { backgroundColor: t.color.accent }]}
+          >
+            <Icon name="plus" size={14} color={t.color.onAccent} />
+          </Pressable>
+          <AppText numberOfLines={1} style={[styles.label, { fontFamily: fontFamily.bodyBold, color: t.color.ink }]}>
+            {tr('gun.my_ring')}
+          </AppText>
+        </View>
+        <AppText style={[styles.hint, { color: t.color.secondary }]}>{tr('kesfet.ui.ring_empty_hint')}</AppText>
+      </View>
+    );
+  }
+  if (rings.length === 0) return null;
 
   return (
     <View style={[styles.wrap, { borderBottomColor: t.color.line }]} accessibilityLabel={tr('kesfet.ui.ring_strip')}>
@@ -84,6 +126,8 @@ export function RingStrip({
 
 const styles = StyleSheet.create({
   wrap: { borderBottomWidth: StyleSheet.hairlineWidth },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 12, paddingBottom: 14, paddingHorizontal: 16 },
+  hint: { flex: 1, minWidth: 0, fontFamily: fontFamily.bodyRegular, fontSize: 13, lineHeight: 18 },
   row: { gap: 10, paddingTop: 12, paddingBottom: 14, paddingHorizontal: 16 },
   item: { width: 68, alignItems: 'center', gap: 8 },
   ringBox: { width: SIZE, height: SIZE },

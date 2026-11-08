@@ -472,8 +472,14 @@ export function vitrinKesfetClient(scene: string, empty: boolean): KesfetClient 
 }
 
 /** Gün istemcisi: Final halka şeridi (Keşfet sahneleri). */
-export function vitrinGunClient(base: GunClient): GunClient {
-  return { ...base, async getDayRings() { return vitrinRings(); } } as GunClient;
+export function vitrinGunClient(base: GunClient, onlyMe = false): GunClient {
+  // G18-S4: FinFeedEmpty / FinFollowingEmpty — yeni kullanıcı: yalnız boş "Günüm".
+  return {
+    ...base,
+    async getDayRings() {
+      return onlyMe ? vitrinRings().slice(0, 1).map((r) => ({ ...r, progress: 0, streak: 0 })) : vitrinRings();
+    },
+  } as GunClient;
 }
 
 /**

@@ -324,6 +324,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         following_empty_desc: 'Takip ettiklerinin paylaşımları burada sırayla görünür.',
         suggested_title: 'Önerilen hesaplar',
         // G18-S4 md.4 — FinFeedEmpty / FinFollowingEmpty.
+        ring_empty_hint: 'İlk öğününü logladığında günün burada başlar. Takip ettiklerinin günleri yanına eklenir.',
         start_foryou_title: 'Akışın seninle şekillenecek',
         start_foryou_desc: 'Logladıkça ve takip ettikçe burada sana uygun paylaşımlar görürsün. Şimdilik kcal’ın seçtikleri:',
         start_foryou_desc_nostart: 'Logladıkça ve takip ettikçe burada sana uygun paylaşımlar görürsün.',
@@ -1935,6 +1936,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         following_empty_desc: 'Posts from people you follow will appear here in order.',
         suggested_title: 'Suggested accounts',
         // G18-S4 md.4 — FinFeedEmpty / FinFollowingEmpty.
+        ring_empty_hint: 'Your day starts here once you log your first meal. Days of people you follow appear next to it.',
         start_foryou_title: 'Your feed will take shape with you',
         start_foryou_desc: 'As you log and follow, posts that suit you show up here. For now, kcal’s picks:',
         start_foryou_desc_nostart: 'As you log and follow, posts that suit you show up here.',

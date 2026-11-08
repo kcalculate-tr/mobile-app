@@ -672,16 +672,20 @@ export function KesfetScreen() {
     [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
+  // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa
+  // "Günüm" + açıklama satırı; akış doluyken bugünkü davranış aynen.
+  const feedIsEmpty = !loading && !error && posts.length === 0;
   const ringStrip = useMemo(
     () =>
-      rings.length > 0 ? (
+      rings.length > 0 || feedIsEmpty ? (
         <RingStrip
           rings={rings}
           onOpen={(userId) => setViewerUserId(userId)}
           onAddMine={kesfetPaylasim ? () => navigation.navigate('Composer') : undefined}
+          emptyHint={feedIsEmpty}
         />
       ) : null,
-    [rings, kesfetPaylasim, navigation],
+    [rings, kesfetPaylasim, navigation, feedIsEmpty],
   );
 
   const feedHeader = (
