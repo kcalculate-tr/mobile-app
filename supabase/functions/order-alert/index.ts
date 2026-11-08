@@ -152,6 +152,43 @@ Deno.serve(async (req) => {
     return json({ sent: res.ok, resend: res, to: [alici] })
   }
 
+  // D-S1 — Adisyo webhook sağlık alarmı. Siparişe bağlı değil.
+  // Çağıran: public.fn_adisyo_webhook_health_check() (pg_cron, 15 dk'da bir;
+  // açık saatte son webhook > 90 dk ise KESİNTİ BAŞINA TEK uyarı).
+  // Alıcı: GLOBAL_TO + admin_allowlist e-postaları (yöneticiler).
+  if (type === 'webhook_health') {
+    const admin = createClient(SUPABASE_URL, SERVICE)
+    const { data: admins } = await admin.from('admin_allowlist').select('email')
+    const to = Array.from(new Set([GLOBAL_TO, ...((admins ?? []) as { email: string | null }[])
+      .map((a) => String(a.email ?? '').trim()).filter((e) => e.includes('@'))]))
+    const kacis = (v: unknown) =>
+      String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const fmt = (v: unknown) => {
+      if (!v) return 'hiç yok'
+      const d = new Date(String(v))
+      return Number.isNaN(d.getTime()) ? kacis(v) : d.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
+    }
+    const dk = Number(body.gap_minutes ?? 0)
+    const subject = `⚠️ Adisyo webhook ${dk} dakikadır sessiz`
+    const html = `
+      <h2 style="color:#c1282e">Adisyo'dan sipariş olayı gelmiyor</h2>
+      <p><b>Son olay:</b> ${fmt(body.last_event_at)} · <b>Son geçerli imzalı olay:</b> ${fmt(body.last_valid_at)}</p>
+      <p><b>Sessizlik:</b> ${dk} dk (açık saatlerde eşik ${kacis(body.threshold_minutes ?? 90)} dk)</p>
+      <p>Uygulama siparişleri Adisyo'ya GİTMEYE devam eder (SaveOrder ayrı yol); etkilenen:
+      sipariş durum güncellemeleri ve tüm kanalların (Yemeksepeti, Trendyol, salon…) KPI verisi.</p>
+      <p><b>Teşhis sırası:</b></p>
+      <ol>
+        <li>Adisyo paneli → Entegrasyonlar → Webhook: kayıt duruyor mu, URL
+          <code>https://xtjakvinklthlvsfcncu.supabase.co/functions/v1/adisyo-webhook-receiver</code> mi, olaylar (order.created / order.updated) işaretli mi?</li>
+        <li>Supabase → Edge Functions → adisyo-webhook-receiver: son çağrılar / 401-404-5xx var mı? <code>verify_jwt = false</code> kalmış mı (true olursa Adisyo 401 alır)?</li>
+        <li>İmza: son olaylarda <code>signature_valid = false</code> ise Adisyo panelinde webhook yeniden oluşturulmuş olabilir → yeni API anahtarı <code>ADISYO_WEBHOOK_API_KEY</code> secret'ına girilmeli.</li>
+        <li>Adisyo hesabı / lisans / restoran anahtarı değişti mi? (Adisyo destek)</li>
+      </ol>
+      <p>Olay yeniden gelmeye başlayınca alarm kendiliğinden sıfırlanır; bir sonraki kesintide yine tek e-posta gelir.</p>`
+    const res = await sendEmail(to, subject, html)
+    return json({ sent: res.ok, resend: res, to })
+  }
+
   const orderId = body.order_id
   if (!orderId) return json({ error: 'order_id_required' }, 400)
 
