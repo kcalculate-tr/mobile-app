@@ -484,6 +484,15 @@ export function resolvePano(requested: string): ResolvedEntry | null {
  */
 const OFF_AREA: Record<string, string> = { Tracker: 'ana', Home: 'eatkcal', Profile: 'profil', Cart: 'eatkcal', Subscriptions: 'profil' };
 function resolveParity(name: string): ResolvedEntry | null {
+  // G18-S1 — `Part-HomeEmptyR1`: boş hâl içerik bileşenleri (Ana sayfa montajı S2) pano
+  // konumlarında, ölçüm (ROI SSIM) için. Final panosu değil → allPanoNames'e girmez.
+  if (name === 'Part-HomeEmptyR1' || name === 'Part-HomeEmptyR1-Dark') {
+    const dark = name.endsWith('-Dark');
+    return {
+      pano: name, area: 'ana', target: comp('homeEmptyParts'), data: 'empty', flags: FINAL_FLAGS,
+      lang: 'tr', auth: 'user', hasDark: true, requested: name, scheme: dark ? 'dark' : 'light',
+    };
+  }
   // G18-S1 (ORTAK #10) — `EN-<Pano>`: aynı pano cihaz dili EN iken (yeni ekranların EN çekimi).
   const en = /^EN-(.+)$/.exec(name);
   if (en) {
