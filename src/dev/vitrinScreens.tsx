@@ -44,6 +44,8 @@ import PublicPreviewScreen from '../modules/profil/ui/screens/PublicPreviewScree
 import SignupAIScreen from '../modules/profil/ui/screens/SignupAIScreen';
 import SignupEatScreen from '../modules/profil/ui/screens/SignupEatScreen';
 import FinPhotoResult from '../modules/ai/scan/ui/FinPhotoResult';
+import { OrientHost } from '../modules/onboarding/first/orient/OrientHost';
+import { CelebrateProfile } from '../modules/onboarding/first/CelebrateProfile';
 import FinScanErrorSheet from '../modules/ai/scan/ui/FinScanErrorSheet';
 import ScanLimitSheet from '../modules/ai/scan/ui/ScanLimitSheet';
 import { EkInfoSheet } from '../modules/eatkcal/v2/ui/InfoSheet';
@@ -414,6 +416,14 @@ const SAMPLE_CARD = {
 };
 
 export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
+  // G18-S1 — FinOrient2 (Tara sonucu üstünde ipucu 2/4) + FinCelebrateProfile.
+  orientLog: () => (
+    <View style={{ flex: 1 }}>
+      <PhotoResultScene />
+      <OrientHost />
+    </View>
+  ),
+  celebrateProfile: ({ kcal }: { kcal?: number }) => <CelebrateProfile visible kcal={kcal ?? null} onDone={noop} />,
   postCard: (p) => <PostCardScene {...P(p)} />,
   rulesSheet: () => (
     <SheetOver>

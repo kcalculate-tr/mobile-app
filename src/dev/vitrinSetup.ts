@@ -34,6 +34,18 @@ function replaceFirst(routes: RouteSpec[], id: string | null, brand: string | nu
   });
 }
 
+/** G18-S1 — `@kcal_onb_first_v1` vitrin tohumu (bkz. modules/onboarding/first/state.ts). */
+function onbFirstSeed(scene: string, pano: string) {
+  const seen = (n: number) => ({ 1: n >= 1, 2: n >= 2, 3: n >= 3, 4: n >= 4 });
+  const m = /^orient([1-4])$/.exec(scene);
+  if (m) {
+    const step = Number(m[1]);
+    return { profileCard: 'dismissed', orient: { started: true, skipped: false, seen: seen(step - 1) } };
+  }
+  const cardOpen = scene === 'profileCard' || pano === 'FinHomeEmptyR1';
+  return { profileCard: cardOpen ? 'open' : 'done', orient: { started: true, skipped: true, seen: seen(0) } };
+}
+
 export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene> {
   const scene = entry.scene ?? '';
 
@@ -41,6 +53,9 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
     'eatkcal-city-gate-passed': ['city', 'waitlist', 'berlin'].includes(scene) ? null : '1',
+    // G18-S1 — ilk 60 saniye bayrakları: varsayılan kart tamam + oryantasyon atlandı
+    // (diğer panolara karışmasın); kendi sahnelerinde açık.
+    '@kcal_onb_first_v1': JSON.stringify(onbFirstSeed(scene, entry.pano)),
     // G16-S1 — FinScanOffline: bugün 13:05'te çekilmiş 1 bekleyen fotoğraf.
     '@kcal_ai_scan_pending_queue':
       scene === 'scanOffline'

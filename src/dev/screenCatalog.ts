@@ -101,6 +101,10 @@ const NO_DARK = new Set<string>([
   'FinStressEN',
   'FinStressLong',
   'FinStressXL',
+  // G18-S1 (Tur 26): yalnız açık tema panoları.
+  'FinOnbWelcomeB',
+  'FinOnbWelcomeC',
+  'FinOnbWelcomeEN',
 ]);
 
 type Partial2 = Partial<Omit<CatalogEntry, 'pano' | 'area' | 'target' | 'hasDark'>>;
@@ -118,6 +122,10 @@ const tab = (name: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Tabs', state: { routes: [{ name, params }] } },
 ];
 const HOME_VITRIN = { vitrinOpenAuto: true, vitrinHour: 9 };
+/** G18-S1 — Onboarding iç ekranı. */
+const onb = (screen: string, params?: Record<string, unknown>): RouteSpec[] => [
+  { name: 'Onboarding', params: { screen, params } },
+];
 /**
  * G16-S2 — Profil alt ekranı GERÇEK kabukta (Profil sekmesi içinde, TabBarR3 ile):
  * `<Pano>~2`. Alt ekranda tab bar gizli, altta yalnız güvenli alan olmalı.
@@ -168,6 +176,23 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinOnbAccount', 'onboarding', route([{ name: 'Onboarding', params: { screen: 'OnbAccount', params: { intent: 'track' } } }]), { auth: 'guest' }],
   ['FinOnbNotify', 'onboarding', route([{ name: 'Onboarding', params: { screen: 'OnbNotify', params: { intent: 'track' } } }]), { auth: 'guest' }],
   ['FinOnbUnderage', 'onboarding', route([{ name: 'Onboarding', params: { screen: 'OnbUnderage' } }]), { auth: 'guest' }],
+  // G18-S1 (Tur 26) — İlk 60 saniye. FinOpen panosu 2150 ms karesi (katman Karşılama'ya
+  // eriyor); FinMoOpen storyboard kareleri `FinMoOpen~1..6` (150/600/1150/1650/1950/2300).
+  ['FinOpen', 'onboarding', route(onb('OnbWelcome', { vitrinOpen: true, vitrinOpenAt: 2150 })), { auth: 'guest' }],
+  [
+    'FinMoOpen', 'hareket', route(onb('OnbWelcome', { vitrinOpen: true, vitrinOpenAt: 1650 })),
+    {
+      auth: 'guest',
+      frames: Object.fromEntries(
+        [150, 600, 1150, 1650, 1950, 2300].map((ms, i) => [i + 1, { target: route(onb('OnbWelcome', { vitrinOpen: true, vitrinOpenAt: ms })) }]),
+      ),
+    },
+  ],
+  ['FinOnbWelcomeB', 'onboarding', route(onb('OnbWelcome')), { auth: 'guest', flags: [...FINAL_FLAGS, 'onb_welcome_variant_b'] }],
+  ['FinOnbWelcomeC', 'onboarding', route(onb('OnbWelcome')), { auth: 'guest', flags: [...FINAL_FLAGS, 'onb_welcome_variant_c'] }],
+  ['FinOnbWelcomeEN', 'onboarding', route(onb('OnbWelcome')), { auth: 'guest', lang: 'en' }],
+  ['FinOnbAccountEmail', 'onboarding', route(onb('OnbAccount', { intent: 'track', vitrinSheet: 'email' })), { auth: 'guest' }],
+  ['FinOnbAccountKeyboard', 'onboarding', route(onb('OnbAccount', { intent: 'track', vitrinSheet: 'keyboard' })), { auth: 'guest' }],
 
   // ── Takibe başla ───────────────────────────────────────────────────────────
   ['FinTbGoal', 'takibe', route([{ name: 'TakibeBasla', params: { screen: 'TbGoal' } }])],
@@ -183,7 +208,13 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // açık porsiyon menüsü (pano state editing:true), sabah selamı, teslim anı,
   // bekleyen-log damlası.
   ['FinHomeR3', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
-  ['FinHomeEmptyR1', 'ana', route(tab('Tracker', { vitrinHour: 9 })), { data: 'empty' }],
+  ['FinHomeEmptyR1', 'ana', route(tab('Tracker', { vitrinHour: 9, vitrinProfileCard: true })), { data: 'empty' }],
+  // G18-S1: profil kartı (hedefi olmayan hesap) + oryantasyon ipuçları gerçek ekran üstünde.
+  ['FinHomeProfileCard', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinProfileCard: true })), { scene: 'profileCard' }],
+  ['FinOrient1', 'ana', route(tab('Tracker', { vitrinHour: 9 })), { data: 'empty', scene: 'orient1' }],
+  ['FinOrient2', 'tara', comp('orientLog'), { scene: 'orient2' }],
+  ['FinOrient3', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'orient3' }],
+  ['FinOrient4', 'kesfet', route(tab('KesfetTab', { asTab: true })), { scene: 'orient4' }],
   ['FinHomeDelivered', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinDelivered: true })), { scene: 'delivered' }],
   ['FinHomeEN', 'ana', route(tab('Tracker', HOME_VITRIN)), { lang: 'en', scene: 'meals' }],
   ['FinHomeXL', 'ana', route(tab('Tracker', HOME_VITRIN)), { textSize: 'accessibility-extra-large', scene: 'meals' }],
@@ -353,6 +384,7 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinCelebStreak3', 'kutlama', comp('celebrate', { kind: 'streak3' })],
   ['FinCelebStreak7', 'kutlama', comp('celebrate', { kind: 'streak7' })],
   ['FinSheetNotify', 'kutlama', comp('notifySheet')],
+  ['FinCelebrateProfile', 'kutlama', comp('celebrateProfile', { kcal: 2180 })],
   ['FinCollectCut', 'kutlama', comp('photoResult', { reduced: true })],
   ['FinCollectWon', 'kutlama', comp('collectWon')],
   ['FinCollectGrid', 'kutlama', comp('collectDetail')],
