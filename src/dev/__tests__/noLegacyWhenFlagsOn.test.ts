@@ -79,6 +79,8 @@ const list = (dir: string, re?: RegExp) => walk(path.join(SRC, dir)).filter((f) 
 const ENTRIES: Record<string, string[]> = {
   'eatkcal v2': list('modules/eatkcal/v2'),
   'onboarding v2': list('modules/onboarding/v2'),
+  // G18-S1 — ilk 60 saniye (FinOpen, e-posta sheet'i, profil kartı, Profil hazır, Orient1–4, boş hâl).
+  'onboarding ilk 60 sn': list('modules/onboarding/first'),
   'onboarding (Final)': ['modules/onboarding/OnboardingNavigator.tsx', 'modules/onboarding/takibe/TakibeNavigator.tsx'].map((p) => path.join(SRC, p)),
   'profil Fin*': list('modules/profil/ui/screens', /\/Fin[A-Z]/),
   'kesfet Final': list('modules/kesfet/ui', /\/(Fin[A-Z]|FeedCard|Composer|Comments|Notifications)/),

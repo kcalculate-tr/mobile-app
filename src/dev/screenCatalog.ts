@@ -183,9 +183,13 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
     'FinMoOpen', 'hareket', route(onb('OnbWelcome', { vitrinOpen: true, vitrinOpenAt: 1650 })),
     {
       auth: 'guest',
-      frames: Object.fromEntries(
-        [150, 600, 1150, 1650, 1950, 2300].map((ms, i) => [i + 1, { target: route(onb('OnbWelcome', { vitrinOpen: true, vitrinOpenAt: ms })) }]),
-      ),
+      // ~7: canlı oynatma (dondurulmamış) — video kaydı için.
+      frames: {
+        ...Object.fromEntries(
+          [150, 600, 1150, 1650, 1950, 2300].map((ms, i) => [i + 1, { target: route(onb('OnbWelcome', { vitrinOpen: true, vitrinOpenAt: ms })) }]),
+        ),
+        7: { target: route(onb('OnbWelcome', { vitrinOpen: true })) },
+      },
     },
   ],
   ['FinOnbWelcomeB', 'onboarding', route(onb('OnbWelcome')), { auth: 'guest', flags: [...FINAL_FLAGS, 'onb_welcome_variant_b'] }],
@@ -480,6 +484,12 @@ export function resolvePano(requested: string): ResolvedEntry | null {
  */
 const OFF_AREA: Record<string, string> = { Tracker: 'ana', Home: 'eatkcal', Profile: 'profil', Cart: 'eatkcal', Subscriptions: 'profil' };
 function resolveParity(name: string): ResolvedEntry | null {
+  // G18-S1 (ORTAK #10) — `EN-<Pano>`: aynı pano cihaz dili EN iken (yeni ekranların EN çekimi).
+  const en = /^EN-(.+)$/.exec(name);
+  if (en) {
+    const r = resolvePano(en[1]);
+    return r ? { ...r, lang: 'en', requested: name } : null;
+  }
   const off = /^Off-(Tracker|Home|Profile|Cart|Subscriptions)$/.exec(name);
   if (off) {
     return {
