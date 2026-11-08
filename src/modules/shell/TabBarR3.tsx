@@ -75,6 +75,10 @@ function glassTokens(dark: boolean) {
   if (dark) {
     return {
       ink: '#F5F5F5',
+      // FinTabBar: seçili olmayan sekme ikincil metin rengi.
+      sec: '#A1A1A6',
+      dotBg: '#C6F04F',
+      dotFg: '#0A0A0A',
       glass: 'rgba(44,44,46,0.55)',
       edge: 'rgba(255,255,255,0.14)',
       hi: 'rgba(255,255,255,0.10)',
@@ -90,6 +94,9 @@ function glassTokens(dark: boolean) {
   }
   return {
     ink: '#0A0A0A',
+    sec: '#6B6B70',
+    dotBg: '#4A6B00',
+    dotFg: '#FFFFFF',
     glass: 'rgba(255,255,255,0.58)',
     edge: 'rgba(10,10,10,0.08)',
     hi: 'rgba(255,255,255,0.7)',
@@ -148,7 +155,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   // ── Geometri ──────────────────────────────────────────────────────────────
   const containerW = winW - 2 * TAB_BAR_R3.SIDE_INSET;
   const scanFull = showScan ? TAB_BAR_R3.SCAN_SIZE : 0;
-  const scanGap = showScan ? TAB_BAR_R3.GAP : 0;
+  const scanGap = showScan ? TAB_BAR_R3.SCAN_GAP : 0;
   const pillFullW = containerW - scanGap - scanFull;
   const nTabs = Math.max(visibleTabs.length, 1);
   const tabW = (pillFullW - 2 * TAB_BAR_R3.BUBBLE_PAD) / nTabs;
@@ -297,6 +304,18 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
     const size = interpolate(c, [0, 1], [TAB_BAR_R3.SCAN_SIZE, TAB_BAR_R3.SCAN_SIZE_MINI]);
     return { width: size, height: size, borderRadius: size / 2 };
   });
+  // FinTabBar-min: Tara ikonu 22 → 18 (ölçek; yalnız transform).
+  const scanIconStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: interpolate(
+          collapsedShared?.value ?? 0,
+          [0, 1],
+          [1, TAB_BAR_R3.SCAN_ICON_MINI / TAB_BAR_R3.SCAN_ICON],
+        ),
+      },
+    ],
+  }));
 
   // Tara basış pop'u
   const scanPop = usePop();
@@ -449,23 +468,23 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                     accessibilityState={{ selected: isActive }}
                     accessibilityLabel={
                       showBadge
-                        ? `${label} · ${i18n.t('shell.logged_badge', { count: badge })}`
+                        ? `${label}, ${i18n.t('shell.logged_badge', { count: badge })}`
                         : label
                     }
                   >
                     <View>
                       <Icon
                         size={TAB_BAR_R3.ICON_SIZE}
-                        color={isActive ? g.activeInk : g.ink}
+                        color={isActive ? g.activeInk : g.sec}
                         filled={isActive}
                         cutColor={g.cut}
                       />
                       {showBadge ? (
                         <Animated.View
                           pointerEvents="none"
-                          style={[styles.badge, { backgroundColor: g.accent }, badgeStyle]}
+                          style={[styles.badge, { backgroundColor: g.dotBg }, badgeStyle]}
                         >
-                          <Text maxFontSizeMultiplier={1} style={[styles.badgeText, { color: g.cut }]} numberOfLines={1}>
+                          <Text maxFontSizeMultiplier={1} style={[styles.badgeText, { color: g.dotFg }]} numberOfLines={1}>
                             +{badge}
                           </Text>
                         </Animated.View>
@@ -479,7 +498,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                       maxFontSizeMultiplier={1}
                       style={[
                         styles.label,
-                        { color: isActive ? g.activeInk : g.ink, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
+                        { color: isActive ? g.activeInk : g.sec, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
                       ]}
                     >
                       {label}
@@ -500,7 +519,10 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
             >
               {/* G15 — flex:1: ikon dairenin ortasında (önce üstte kalıyordu). */}
               <View style={[styles.miniCenter, styles.fill1]}>
-                <MiniIcon size={TAB_BAR_R3.ICON_SIZE} color={g.ink} filled cutColor={g.cut} />
+                {/* FinTabBar-min: seçili 44'lük iç daire (G17-S2 gri hap istisnası) + 22 ikon. */}
+                <View style={[styles.miniInner, { backgroundColor: g.bubble }]}>
+                  <MiniIcon size={TAB_BAR_R3.MINI_ICON} color={g.activeInk} filled cutColor={g.cut} />
+                </View>
               </View>
             </Pressable>
           </Animated.View>
@@ -525,7 +547,9 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                 accessibilityRole="button"
                 accessibilityLabel={i18n.t('shell.scan')}
               >
-                <ScanIcon size={22} color={g.ink} />
+                <Animated.View style={scanIconStyle}>
+                  <ScanIcon size={TAB_BAR_R3.SCAN_ICON} color={g.ink} />
+                </Animated.View>
                 <Text maxFontSizeMultiplier={1} style={[styles.scanLabel, { color: g.ink }]}>{i18n.t('shell.scan')}</Text>
               </Pressable>
             </Animated.View>
@@ -538,8 +562,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
 
 /**
  * LogFlight — "logla izi" uçan öğesi. Mount'ta kaynak konumdan Ana sayfa
- * sekmesine yay çizerek iner (slow 500, hafif aşma cubic-bezier 0.3,1.15,0.4,1
- * — FinMoLogA fly1), varışta `onArrive` (rozet/toast/haptik), sonra solup
+ * sekmesine iner (slow 500 · enter — FinMoTokens eşlemesi; yerel eğri yok), varışta `onArrive` (rozet/toast/haptik), sonra solup
  * `onDone` ile kapanır. Kabuk kök View'ı kırpmadığından bar üstünde çizilir.
  */
 function LogFlight({
@@ -694,13 +717,14 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   label: {
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: TAB_BAR_R3.LABEL_SIZE,
+    lineHeight: 16,
   },
+  // FinTabBar: rozet sekme üstünden 6, ortanın 8 sağında (ikona göre −4 / 20).
   badge: {
     position: 'absolute',
-    top: -6,
-    left: 12,
+    top: -4,
+    left: 20,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
@@ -710,8 +734,8 @@ const styles = StyleSheet.create({
     // STROKE'SUZ rozet (FinMoLogA).
   },
   badgeText: {
-    fontSize: 11,
-    lineHeight: 13,
+    fontSize: 13,
+    lineHeight: 16,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   flight: {
@@ -757,8 +781,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
+  miniInner: {
+    width: TAB_BAR_R3.MINI_INNER,
+    height: TAB_BAR_R3.MINI_INNER,
+    borderRadius: TAB_BAR_R3.MINI_INNER / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scanLabel: {
-    fontSize: 12,
+    fontSize: TAB_BAR_R3.LABEL_SIZE,
     lineHeight: 13,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },

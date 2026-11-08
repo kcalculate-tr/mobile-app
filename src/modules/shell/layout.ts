@@ -28,8 +28,18 @@ export const TAB_BAR_R3 = {
   BOTTOM_GAP_NO_INSET: 8,
   /** Barın üstünde içerik için nefes payı (son liste öğesi barın altında kalmasın). */
   CONTENT_BREATH: 10,
-  /** Hap ile Tara dairesi arası boşluk. */
+  /** Sepet hapı ile bar arası boşluk (yüzen sepet çubuğu). */
   GAP: 12,
+  /** Hap ile Tara dairesi arası boşluk — FinTabBar-rest: 393 − 16 − 289 − 10 − 62 − 16. */
+  SCAN_GAP: 10,
+  /** Küçük durumda hap içindeki seçili daire (FinTabBar-min: 44, ikon 22). */
+  MINI_INNER: 44,
+  MINI_ICON: 22,
+  /** Tara ikonu — tam 22 / küçük 18. */
+  SCAN_ICON: 22,
+  SCAN_ICON_MINI: 18,
+  /** Sekme ve Tara etiketi (13 pt; seçili 600, diğerleri 500). */
+  LABEL_SIZE: 13,
   /** Tara dairesi — tam durum. */
   SCAN_SIZE: 62,
   /** Tara dairesi — küçük (kaydırınca) durum. */
