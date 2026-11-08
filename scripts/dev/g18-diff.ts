@@ -79,10 +79,14 @@ for (const pano of names) {
     frameNote = 'çok kareli: 1. kare';
   }
   const aRef = ref;
-  const h = Math.min(aRef.height, b.height);
+  // G18_MAXY: yalnız üst bölgeyi ölç (ör. veri bağımlı alanların üstü — başlık/şerit/metin).
+  const maxY = Number(process.env.G18_MAXY ?? 0);
+  const h = Math.min(aRef.height, b.height, maxY > 0 ? maxY : Infinity);
   let same = 0;
   let total = 0;
-  for (let y = TOP; y < h; y++) {
+  // G18_MINY: yalnız alt bölge (ör. Tara: simülatör kamerası siyah, pano gri yer tutucu → yalnız kontrol paneli).
+  const minY = Math.max(TOP, Number(process.env.G18_MINY ?? 0));
+  for (let y = minY; y < h; y++) {
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
       const d = Math.max(

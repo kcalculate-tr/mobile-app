@@ -2,12 +2,12 @@
 
 ## ÖZET (10 satır)
 (1) **Geçiş seti tek modülde (md.1):** `src/core/design/motion.tsx` → `PREMIUM` (FinMoTokens 9 satır): sekme 200 standard crossfade (kaydırma korunur, `TabSceneFade`), push/geri 300 enter/exit (native stack, parmakla sürülür), sheet 300 enter / 200 exit (eatkcal 200/28), liste 200 · kademe 100 · ilk 4 · 8 pt · ≤ 500, basma 100 · 0,98 · AI 260/24 bırakma, yükleniyor→içerik 200 (`FinLoadSwap`), hata 200 alan altında (`FinErrorReveal`). `constants/motion.ts` artık değer taşımaz (`LEGACY_MOTION`, bayt bayt aynı değer). Final yolunda yerel süre/eğri/yay **0** (grep raporu aşağıda).
-(2) **Gezinme kuralı (md.2):** G17-S1 tablosu üstüne yeniden tarama; 2 ihlal düzeltildi (FinSignupAI kod/ad adımlarında sağdaki "Vazgeç"; tab bar a11y etiketinde nokta ayraç). `navRule` testi.
+(2) **Gezinme kuralı (md.2):** G17-S1 tablosu üstüne KAPSAYICI yeniden tarama (geri oku/X çizen 59 dosyanın hepsi sınıflandırıldı); 2 ihlal düzeltildi (FinSignupAI kod/ad adımlarında sağdaki "Vazgeç"; tab bar a11y etiketinde nokta ayraç). `navRule` testi.
 (3) **FinPush (md.3):** 4 şablon (sipariş · seri · sosyal + "Yanıtla" · hatırlatma + "30 dk ertele"/"Bugün sessize al"), başlık ≤ 35 / gövde ≤ 90 / 0–2 aksiyon test edildi; expo-notifications kategorileri + gizli önizleme ("Bildirim", Android PRIVATE kanal) YALNIZ yeni kabukta; aksiyon işleyicileri; TR/EN. Sunucu: şablon metin dosyası + migration (**deploy/uygulama gerekir**).
-(4) **Keşfet (md.4):** FinFeedEmpty + FinFollowingEmpty Final: başlık/açıklama, "Başlangıç için" Marka/Editör kartları (yalnız gerçek kcal gönderisi), "Davetli üreticiler" (yoksa gizli), "İlk paylaşımını hazırla". Diğer Keşfet panoları vitrinde yeniden karşılaştırıldı.
+(4) **Keşfet (md.4):** FinFeedEmpty + FinFollowingEmpty Final: başlık/açıklama, "Başlangıç için" Marka/Editör kartları (yalnız gerçek kcal gönderisi), "Davetli üreticiler" (yoksa gizli), "İlk paylaşımını hazırla"; boş akışta halka şeridi yalnız "Günüm" + açıklama. Diğer Keşfet panoları vitrinde yeniden karşılaştırıldı (ölçülmüş uyum %, `scripts/dev/g18-diff.ts`).
 (5) **Tara "Detay ekle" (md.5):** deklanşörün üstünde hap → tek satır alan (≤ 160), not analiz isteğine `hint`, boşsa ek adım yok, sonuç sheet'inde "Notun:" satırı. **Canlı edge v7 `hint` okumuyor** → repo dosyası güncellendi, DEPLOY GEREKİR.
 (6) **Tab bar (md.6):** FinTabBar-rest/mid/min ölçüleri birebir (hap 289, hap–Tara 10, etiket 13, pasif ikincil renk, rozet, küçük durumda 44 iç daire + 22 ikon, Tara ikonu 18); gri hap aynen (ORTAK #4).
-(7) Kontrol: tsc 0 · unit 670 (669 ✓, 1 skip önceden) · components 32 suite / 166 ✓ (snapshot 2/2) · `noLegacyWhenFlagsOn` ✓ · `noLocalMotionTokens` ✓ · export iOS ✓ (9,94 MB) Android ✓ (9,96 MB).
+(7) Kontrol (son kodda yeniden): tsc 0 · unit 671 (670 ✓, 1 skip önceden) · components 32 suite / 167 ✓ (snapshot 2/2) · `noLegacyWhenFlagsOn` ✓ · `noLocalMotionTokens` ✓ · export iOS ✓ (9,94 MB) Android ✓ (9,97 MB). Karşılaştırma tablosu ÖLÇÜLMÜŞ (`scripts/dev/g18-diff.ts`).
 (8) **Eski tasarım: 0** · bayrak kapalı parite: eski yol değer değişikliği yok (aşağıda).
 (9) Simülatör "G18-4 iPhone" (`D014ACFC-…307B`, G17-2 klonu, expo-camera'lı dev client), Metro 8104, vitrin `G14_MODE=storage`; 27 çekim + yan yana çiftler `~/kcal-reports/g18-s4/`.
 (10) SORULAR: 4 madde (edge deploy, push sunucu satırı, FinMoPopover S2 bekleniyor, canlı veri okuması reddedildi). Son commit GERÇEK dosya `docs/night/G18-S4-DONE`.
@@ -22,6 +22,7 @@
 | 6 | `2b64de1` | Tab bar ölçüleri + `tabBarFinal` testi |
 | 2 | `a0fcc16` | Gezinme kuralı düzeltmeleri + `navRule` testi; vitrin hareket haritası metinleri |
 | 7 | `ccacb8b`, `7fec7d2` | Vitrin: FinFeedEmpty, FinPush (+EN kayıtları), Tur 26 bekleyen listeden çıktı |
+| 2 · 4 · 7 | `dd096d8` + sonraki | Boş akış halka şeridi (Günüm + açıklama), vitrin yeni kullanıcı halkası, kapsayıcı `navRule`, `g18-diff` piksel ölçüm betiği, ölçülmüş tablo |
 | 7 | bu LOG + `G18-S4-DONE` | Kontroller |
 
 ## 1 — Premium geçiş seti (FinMoTokens + FinMoMap)
@@ -47,7 +48,7 @@ Desen: `duration: <sayı>`, `animationDuration: <sayı>`, `delay: <sayı>`, `wit
 - Test: `src/dev/__tests__/noLocalMotionTokens.test.ts` — tüm `src` taranır; LEGACY dosyası yalnız kayıtlı adet kadar; Final dizinleri LEGACY'ye eklenemez; PREMIUM değerleri FinMoTokens ile birebir; DURATION/TIMING bandı yalnız 100/200/300/500/900.
 
 ## 2 — Gezinme kuralı (G17-S1 tablosu üstüne)
-Tarama: Final dizinlerinde geri oku (`ArrowLeft/CaretLeft`) kullanan 16, kapat X kullanan 16 dosya; ikisi birden olan dosya 0. Sunum biçimi rota seçeneklerinden (AI_PUSH/AI_MODAL, Sheet) okundu.
+Tarama KAPSAYICI: `src` altında geri oku (`ArrowLeft/CaretLeft/ChevronLeft`) ya da kapat X'i çizen **59 dosyanın tamamı** sınıflandırıldı — 18 sheet/modal (geri oku yok, X sağda: kod satırlarıyla kontrol edildi: `closeBtn right`, `row-reverse`, başlık satırında sağda), 15 itilen sayfa/başlık (X yok), 4 yerinde denetim (not temizle, arama kapat, ek kaldır, vitrin), 22 yalnız bayrak kapalı 1.0.7 dosyası (bayrak açıkken `finalRoutes`/`v2ScreenFor` Final karşılığını verir). İkisi birden çizen Final dosyası 0. `navRule` testi bu sınıflandırmayı zorlar: yeni dosya sınıflandırılmazsa kırılır. Sunum biçimi rota seçeneklerinden (AI_PUSH/AI_MODAL, Sheet, Modal) okundu.
 | Ekran | Sunum | Önce | Sonra |
 |---|---|---|---|
 | FinSignupAI kod adımı (`SignupAIFlowV2`) | push | sol geri + sağda "Vazgeç" | yalnız sol geri |
@@ -90,10 +91,10 @@ Test: `modules/shell/__tests__/tabBarFinal.test.ts` 3/3.
 
 ## 7 — Kontrol
 - `npx tsc --noEmit` → 0.
-- `npm run test:unit` → 670 test, 669 ✓, 0 ✗, 1 atlandı (önceden var). Yeni: noLocalMotionTokens 3, navRule 4, finPush 9, scanNote 5, starters 4, tabBarFinal 3, i18nKeys 1 (TR/EN eksik anahtar 0, iki yön).
-- `npm run test:components` → 32 suite / 166 ✓, snapshot 2/2 (ScanScreen.flagParity, TrackerScreen flagOff).
+- `npm run test:unit` → 671 test, 670 ✓, 0 ✗, 1 atlandı (önceden var). Yeni: noLocalMotionTokens 3, navRule 4, finPush 9, scanNote 5, starters 4, tabBarFinal 3, i18nKeys 1 (TR/EN eksik anahtar 0, iki yön).
+- `npm run test:components` → 32 suite / 167 ✓, snapshot 2/2 (ScanScreen.flagParity, TrackerScreen flagOff). Yeni: RingStrip boş hâl.
 - `noLegacyWhenFlagsOn` ✓ (unit içinde). `screenCatalog` ✓ (FinFeedEmpty, FinPush artık katalogda).
-- `expo export --platform ios` ✓ (9,94 MB) · `--platform android` ✓ (9,96 MB).
+- `expo export --platform ios` ✓ (9,94 MB) · `--platform android` ✓ (9,97 MB) — son koddan sonra yeniden.
 - Yeni native derleme / yeni paket YOK (expo-notifications kategorileri mevcut paket; OTA ile gider).
 
 ### Bayrak kapalı parite
@@ -103,23 +104,27 @@ Test: `modules/shell/__tests__/tabBarFinal.test.ts` 3/3.
 - Eski ekranların `core/design`'dan aldıkları (AppText, useTheme, EmptyErrorCard, LegacyPostCard'da `DURATION.micro/standard`, `SPRING.eat`, `CURVE.in`) değişmedi. `KcalAiSignUpScreen` değişikliği `yeniKabuk` arkasında.
 - Snapshot'lar (Tara, Tracker flagOff) aynı.
 
-### Vitrin karşılaştırması (`G14_MODE=storage`, "G18-4 iPhone", Metro 8104)
+### Vitrin karşılaştırması (`G14_MODE=storage`, "G18-4 iPhone", Metro 8104) — ÖLÇÜLMÜŞ
 Çekimler `.claude/night/out/g18-s4/` (worktree) + yan yana çiftler `.claude/night/out/g14/pair-g18s4/`; kopya `~/kcal-reports/g18-s4/`.
-| Pano | Uyum % | Fark | Düzeltildi mi |
-|---|---|---|---|
-| FinFeedEmpty (+Dark, EN) | 95 | Halka şeridinde arkadaş halkaları vitrin verisinden (Final'de yalnız Günüm + açıklama — gerçek veride arkadaş yoksa aynı); başlangıç/üretici alanları veri yok → gizli | Gizleme kuralı gereği (veri) |
-| FinFollowingEmpty (+Dark, EN) | 95 | Vitrin verisinde 1 kcal gönderisi → 1 başlangıç kartı (Final 2); üreticiler satırı Final düzeninde | Veri |
-| FinPush (+EN) | 100 metin / – çizim | Metinler, sınırlar (24/35·63/90 vb.), aksiyon etiketleri pano ile birebir; OS bildirim kartı vitrinde temsilî | — |
-| FinTabBar-rest / mid / min (+Dark) | 97 | Seçili hap gri (istisna); mid'de hap iki sekmeyi kaplamaz (FinMoMap: "jöle/uzama yok", G17-S2 kayma) | İstisna |
-| FinScanR2 (+Dark, EN) | 96 | "Detay ekle" hapı (G17-S2 Ek 9, panoda yok — İlter onaylı ek); simülatörde kamera siyah | — |
-| FinPhotoR1 (+Dark), FinPhotoEN | 97 | Sol üst geri oku yerine sağ X (gezinme kuralı, G17-S1) | Kural |
-| FinScanError | 97 | — | — |
-| FinFeed | 96 | "@kcal, 2 sa" (nokta ayraçsız, G17-S1 kararı) | Kural |
-| FinDetail | 90 | "[N] görüntülenme" verisi yok → gizli; detay altındaki yorum listesi vitrin verisinde görünmedi (doğrulanamadı) | SORULAR 4 |
-| FinComments (kare 1) | 97 | Başlık "Yorumlar (5)" (nokta ayraçsız) | Kural |
-| FinCompose | 96 | Sol "İptal" yerine sağ X (G17-S1 gezinme kuralı) | Kural |
-| FinVideo, FinPosting | 96 | — | — |
-EN: FinFeedEmptyEN, FinFollowingEmptyEN, FinPushEN, FinScanR2EN çekildi (yeni metinlerin hepsi EN sözlükte; yeni `i18nKeys` testi: iki dilde eksik anahtar 0).
+**Yöntem:** `npx tsx scripts/dev/g18-diff.ts .claude/night/out/g18-s4 <Pano…>` — pano (`design/final/png/<Pano>.webp`) ve çekim 393 pt genişliğe ölçeklenir; durum çubuğu (üst 54 pt) hariç ortak yükseklikte, en büyük kanal farkı ≤ 24 olan piksel oranı = **uyum %**. Çok kareli panolarda 1. telefon karesi (x 24, y 48, 393 × 852) kırpılır; FinTabBar şerit panoları (393 × 100) çekimin alt 100 pt'siyle; `G18_MAXY` / `G18_MINY` ile veri/kamera bağımsız bölge ayrıca ölçüldü. Fotoğraflar, örnek isim/sayılar ([Ad], [N]) ve yer tutucu kutular piksel farkı üretir — % yerleşim+renk uyumunun alt sınırıdır.
+| Pano | Uyum % (tam) | Uyum % (bölge) | Fark (çiftten) | Düzeltildi mi |
+|---|---|---|---|---|
+| FinFeedEmpty / -Dark / EN | 74,9 / 47,4 / 74,1 | üst 340 pt: 89,4 / 87,9 / 87,6 | Halka şeridi Final'deki gibi yalnız "Günüm" + açıklama (bu oturumda eklendi; önce arkadaş halkaları vardı). Alt fark: Final'de "Başlangıç için" kartları var; Sana Özel akışı boşsa gerçek kcal gönderisi de yoktur (for_you = dildeki tüm yayınlar) → kural #6 gereği gizli | Şerit ✓ düzeltildi · kartlar veri bağımlı |
+| FinFollowingEmpty / -Dark / EN | 72,8 / 57,0 / 72,7 | üst 340 pt: 88,5 / 86,9 / 87,4 | Vitrin verisinde 1 kcal gönderisi → 1 başlangıç kartı (Final 2 örnek); "Davetli üreticiler" satırları Final düzeninde | Veri bağımlı |
+| FinPush / EN | 86,0 / 85,8 (1. kare) | — | Metinler, sınırlar (24/35 · 63/90 …) ve aksiyon etiketleri üretim kodundan; kart çizimi vitrinde temsilî (gerçek kartı OS çizer) | — |
+| FinTabBar-rest / -Dark | 83,1 / 69,8 | şerit | Seçili hap gri (ORTAK #4 istisnası; Final siyah); bar alt boşluğu home indicator + 4 (G16-S2) | İstisna |
+| FinTabBar-mid / -Dark | 78,4 / 67,3 | şerit | + mid karede Final hapı iki sekmeyi kaplıyor; kod kayma (FinMoMap "jöle/uzama yok") | İstisna |
+| FinTabBar-min / -Dark | 90,0 / 85,7 | şerit | 44 iç daire + 22 ikon, Tara 52/18 (bu oturumda düzeltildi) | ✓ |
+| FinScanR2 / -Dark / EN | 24,5 / 26,3 / 24,2 | kontrol paneli (660 pt altı): 88,9 / 89,6 / 87,9 | Kamera alanı simülatörde siyah (pano gri yer tutucu); "Detay ekle" hapı panoda yok (G17-S2 Ek 9, görev md.5 gereği) | Simülatör/ek |
+| FinPhotoR1 / -Dark, FinPhotoEN | 81,4 / 82,2 / 81,8 | — | Sol üst geri oku yerine sağ X (gezinme kuralı, G17-S1); fotoğraf alanı | Kural |
+| FinScanError | 95,0 | — | — | — |
+| FinFeed | 75,7 (ilk 854 pt) | — | Örnek isim/sayılar ([Ad]/[N]) gerçek veriyle; "@kcal, 2 sa" nokta ayraçsız (G17-S1) | Kural |
+| FinDetail | 74,8 (ilk 854 pt) | — | "[N] görüntülenme" verisi yok → gizli; detay altındaki yorum listesi vitrin verisinde yok (doğrulanamadı) | SORULAR 4 |
+| FinComments (1. kare) | 88,7 | — | "Yorumlar (5)" nokta ayraçsız | Kural |
+| FinCompose (1. kare) | 94,3 | — | Sol "İptal" yerine sağ X (G17-S1 gezinme kuralı) | Kural |
+| FinVideo (1. kare) | 59,5 | — | Pano gri "Video" yer tutucusu, çekimde gerçek görsel + vitrin halkaları; düzen (kart, 0:42, ses düğmesi, öğün kartı) aynı | Veri |
+| FinPosting (1. kare) | 90,6 | — | — | — |
+EN: FinFeedEmptyEN, FinFollowingEmptyEN, FinPushEN, FinScanR2EN, FinPhotoEN çekildi (yeni metinlerin hepsi EN sözlükte; yeni `i18nKeys` testi: iki dilde eksik anahtar 0).
 
 **Eski tasarım: 0** — S4 alanında (kabuk/geçişler, Keşfet, bildirim, Tara) bayraklar açıkken 1.0.7 bileşeni çizilmiyor (`noLegacyWhenFlagsOn` ✓; yeni bileşenler yalnız core/design + Fin*). Yeniden giydirilen (Final'de yok): "Önerilen hesaplar" → "Davetli üreticiler" satırları; Tara "Detay ekle" hapı (G17-S2 Ek 9).
 
