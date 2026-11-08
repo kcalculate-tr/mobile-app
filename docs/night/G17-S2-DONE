@@ -1,5 +1,6 @@
-G17-S2 — Canlı kamera + tab bar — TAMAM (7 Kas 2026)
+G17-S2 — Canlı kamera + tab bar — TAMAM (8 Kas 2026)
 Dal: night17/camera (taban night17/fix c96330a) · worktree .claude/worktrees/g17-s2
 7 madde commit edildi; ayrıntı ve SORULAR: docs/night/G17-S2-LOG.md
-Kontrol: tsc 0 · unit 640/641 (1 skip önceden) · components 156/156 (snapshot 2/2) · bayrak kapalı parite ✓ · prebuild iOS ✓ Android ✓ · expo export iOS ✓ Android ✓
-YENİ NATIVE DERLEME GEREKİR (expo-camera). Simülatör çekimi disk dolu olduğu için bekliyor (LOG › SORULAR 2).
+Kontrol: tsc 0 · unit 640/641 (1 skip önceden) · components 156/156 (snapshot 2/2) · bayrak kapalı parite ✓ · prebuild iOS ✓ (xcodebuild BUILD SUCCEEDED) Android ✓ · expo export iOS ✓ Android ✓
+Simülatör "G17-2 iPhone": canlı vizör + FinMoScan analiz katmanı + sonuç sheet'i + tab bar yarı saydam gri hap (açık/koyu) doğrulandı; görseller .claude/night/out/g17-s2/
+YENİ NATIVE DERLEME GEREKİR (expo-camera).
