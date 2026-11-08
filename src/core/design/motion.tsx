@@ -326,13 +326,13 @@ export interface MotionMapRow {
 }
 
 export const MOTION_MAP: readonly MotionMapRow[] = [
-  { id: 'tab', label: 'Sekme değişimi', token: 'içerik anında · ikon 0.9→1 fast 200 · standard', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
+  { id: 'tab', label: 'Sekme değişimi', token: 'içerik crossfade fast 200 · standard · kaydırma konumu korunur', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
   { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '200 ms opaklık' },
-  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 · x %100→0, eski −%30 · AI 260/24', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'pop', label: 'Pop / geri', token: 'fast 200 · 0→%100 · exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış slow 500 · kapanış fast 200 · scrim 0→0.4 · AI 260/24', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış slow 500 · kapanış fast 200 · scrim 0→0.4 · eatkcal 200/28', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'modal', label: 'Tam ekran modal', token: 'açılış slow 500 (y %100→0) · kapanış fast 200 · AI 260/24', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 enter · x %100→0, eski −%30 · parmakla sürülür', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'pop', label: 'Pop / geri', token: 'base 300 exit · 0→%100 · kesilebilir', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış base 300 enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
+  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış eatkcal 200/28 · scrim base 300 · kapanış fast 200', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
+  { id: 'modal', label: 'Tam ekran modal', token: 'açılış base 300 (y %100→0) enter · kapanış fast 200 exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
   { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
   { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
   { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 200 ms opaklık' },
