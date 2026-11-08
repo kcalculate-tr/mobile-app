@@ -519,6 +519,10 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
       <CollectionWon visible card={SAMPLE_CARD as any} onViewCard={noop} onShare={noop} onClose={noop} />
     </Backdrop>
   ),
+  pushPreview: () => {
+    const { PushPreviewScene } = require('./vitrinPush') as typeof import('./vitrinPush');
+    return <PushPreviewScene />;
+  },
   components: () => {
     const DesignShowcase = require('../screens/DesignShowcaseScreen').default;
     return <DesignShowcase />;
