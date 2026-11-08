@@ -23,8 +23,16 @@ function useCells(m: DisplayMacros) {
   ];
 }
 
+/** Final (FinEkProduct `c.ring*`): kcal lime çizgi, P mürekkep, K ikincil, Y açık gri. */
+export function ringColor(key: string, dark: boolean): string {
+  if (key === 'kcal') return dark ? '#C6F04F' : '#4A6B00';
+  if (key === 'p') return dark ? '#F5F5F5' : '#0A0A0A';
+  if (key === 'k') return dark ? '#A1A1A6' : '#6B6B70';
+  return dark ? '#48484A' : '#C3C7CC';
+}
+
 export function MacroRings({ macros }: { macros: DisplayMacros }) {
-  const { c, t } = useEk();
+  const { c, t, theme } = useEk();
   const cells = useCells(macros);
   return (
     <View
@@ -35,7 +43,7 @@ export function MacroRings({ macros }: { macros: DisplayMacros }) {
     >
       {cells.map((cell) => (
         <View key={cell.key} style={styles.cell} importantForAccessibility="no-hide-descendants">
-          <ProgressRing progress={cell.progress} size={60} strokeWidth={6} color={c.accentLine} trackColor={c.line} />
+          <ProgressRing progress={cell.progress} size={60} strokeWidth={6} color={ringColor(cell.key, theme.isDark)} trackColor={theme.isDark ? '#2C2C2E' : '#DCDEE2'} />
           <Text style={[num, { color: c.ink }]}>{cell.value}</Text>
           <Text style={[ekType.c13, { color: c.secondary }]}>{cell.label}</Text>
         </View>

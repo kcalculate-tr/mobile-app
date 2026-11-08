@@ -22,7 +22,7 @@ import { haptic, useReducedMotion } from '../../../../core/design';
 import { mesafeKm } from '../../../../lib/nearestLocation';
 import { formatDeliveryDaysFull, isDeliveryDay } from '../../../../utils/deliveryDays';
 import { useEkNav, type EkV2ParamList } from '../nav';
-import { EkHeader, EkScreen, EkStickyBar, ekType, money, useEk, EkKV } from '../ui/kit';
+import { EkHeader, EkScreen, EkStickyBar, ekType, money, refmtTl, useEk, EkKV } from '../ui/kit';
 import { EkErrorCard } from '../ui/ErrorCard';
 import { stockError } from '../model/errors';
 import { EK_TIME_SLOTS } from '../model/checkoutModel';
@@ -218,7 +218,7 @@ export default function EkCheckoutScreen() {
           </View>
           <Text style={[ekType.h20, { color: c.ink, textAlign: 'center' }]}>{t('eatkcal.v2.checkout.pay_fail_title')}</Text>
           <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center' }]}>
-            {ctrl.screenError || t('eatkcal.v2.checkout.pay_fail_body')}
+            {ctrl.screenError ? refmtTl(ctrl.screenError) : t('eatkcal.v2.checkout.pay_fail_body')}
           </Text>
           <Pressable
             onPress={onPlace}
@@ -714,7 +714,7 @@ export default function EkCheckoutScreen() {
         {payState === 'idle' && (ctrl.screenError || ctrl.checkoutBlockMessage) && !stock ? (
           <View style={[styles.card, { backgroundColor: c.surface, flexDirection: 'row', gap: 8, alignItems: 'center' }]} accessibilityRole="alert">
             <WarningCircle size={18} color={ctrl.screenError ? c.danger : c.secondary} weight="fill" />
-            <Text style={[ekType.c13, { color: c.ink, flex: 1 }]}>{ctrl.screenError || ctrl.checkoutBlockMessage}</Text>
+            <Text style={[ekType.c13, { color: c.ink, flex: 1 }]}>{refmtTl(ctrl.screenError || ctrl.checkoutBlockMessage)}</Text>
             {ctrl.ruleStatus.status === 'error' ? (
               <Pressable onPress={ctrl.retryRules} accessibilityRole="button" style={styles.textBtn}>
                 <Text style={[ekType.c13s, { color: c.ink }]}>{t('eatkcal.v2.common.retry')}</Text>

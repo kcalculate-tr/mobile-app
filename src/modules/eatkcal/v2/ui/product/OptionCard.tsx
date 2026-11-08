@@ -1,4 +1,4 @@
-// eatkcal v2 — FinEkProduct seçenek kutusu (136×184, 18 köşe). Seçili: lime
+// eatkcal v2 — FinEkProduct seçenek kutusu (Tur 26d: 136×166, iç 8,5, görsel 54/12, 18 köşe). Seçili: lime
 // dolgu + koyu metin + sağ üstte onay rozeti (chkIn: bouncy). Görsel: seçeneğin
 // ürün fotoğrafı varsa o; yoksa yer tutucu "çıkartma çerçevesi" + ad (gerçek
 // çıkartmalar sonra gelecek).
@@ -9,7 +9,8 @@ import { Check } from '../../../../../components/icons';
 import { CachedImage } from '../../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { haptic, useReducedMotion } from '../../../../../core/design';
-import { ekType, money, useEk } from '../kit';
+import { ekType, useEk } from '../kit';
+import { formatPriceDelta } from '../../../../../lib/money';
 
 export interface OptionCardModel {
   key: string;
@@ -52,7 +53,7 @@ export function OptionCard({
   }, [model.selected, pop, reduced]);
 
   const fg = model.selected ? c.onAccent : c.ink;
-  const priceText = model.priceDelta > 0 ? `+${money(model.priceDelta)}` : model.priceDelta < 0 ? `−${money(-model.priceDelta)}` : t('eatkcal.v2.product.no_diff');
+  const priceText = model.priceDelta !== 0 ? formatPriceDelta(model.priceDelta) : t('eatkcal.v2.product.no_diff');
   let kcalText: string | null = null;
   if (model.kcal != null) kcalText = t('eatkcal.v2.product.kcal_n', { n: model.kcal });
   else if (model.kcalDelta) kcalText = `${model.kcalDelta > 0 ? '+' : '−'}${t('eatkcal.v2.product.kcal_n', { n: Math.abs(Math.round(model.kcalDelta)) })}`;
@@ -116,9 +117,9 @@ export function OptionCard({
         <Animated.View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={[styles.check, { backgroundColor: c.ink, transform: [{ scale: pop }] }]}
+          style={[styles.check, { backgroundColor: '#0A0A0A', transform: [{ scale: pop }] }]}
         >
-          <Check size={14} color={c.surface} weight="bold" />
+          <Check size={14} color="#C6F04F" weight="bold" />
         </Animated.View>
       ) : null}
     </Pressable>
@@ -128,17 +129,17 @@ export function OptionCard({
 const styles = StyleSheet.create({
   card: {
     width: 136,
-    minHeight: 184,
-    padding: 10,
+    minHeight: 166,
+    padding: 8.5,
     borderRadius: 18,
     borderWidth: 1,
     gap: 4,
   },
   media: { marginTop: 2, marginBottom: 6 },
-  photo: { width: 64, height: 64, borderRadius: 14 },
+  photo: { width: 54, height: 54, borderRadius: 12 },
   sticker: {
-    width: 64,
-    height: 64,
+    width: 54,
+    height: 54,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 36,
     borderBottomRightRadius: 30,
