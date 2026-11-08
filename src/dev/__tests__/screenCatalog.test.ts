@@ -56,6 +56,23 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
     .map((f) => f.slice(0, -'.webp'.length))
     .sort();
   // G15-S1: Final'de tek panoda 3 panel olan akışların adım çekimleri (ek kayıtlar).
-  const EXTRA = /^Fin(LoginEmail|LoginCode|SignupAIHandle|SignupAIProfile|SignupEatAddress|SignupEatPhone)(-Dark)?$/;
-  assert.deepEqual([...allPanoNames()].filter((n) => !EXTRA.test(n)).sort(), finals);
+  // G17-S2: FinOnbIntent Final'den çıktı (8 Kas, Tur 26) — Niyet adımı G17-S1 md.4 ile
+  // akış dışı; bileşen ve vitrin kaydı korunur (silme yok).
+  const EXTRA = /^Fin(LoginEmail|LoginCode|SignupAIHandle|SignupAIProfile|SignupEatAddress|SignupEatPhone|OnbIntent)(-Dark)?$/;
+  // G17-S2: Tur 26 panoları (design/final/png, 8 Kas 19:37) henüz uygulanmadı → G18.
+  // G18 her panoyu kataloğa ekledikçe buradan SİLER; liste boşalınca kural yine birebir.
+  const PENDING_TUR26 = new Set(
+    [
+      'FinCelebrateProfile', 'FinEkOrderSuccess', 'FinFeedEmpty', 'FinHomeFocusB', 'FinHomeFocusC',
+      'FinHomeIzmir', 'FinHomeOutside', 'FinHomeProfileCard', 'FinOnbAccountEmail', 'FinOnbAccountKeyboard',
+      'FinOpen', 'FinOrient1', 'FinOrient2', 'FinOrient3', 'FinOrient4', 'FinPush', 'FinWaitlistAdd',
+      'FinWaitlistSuggest',
+    ].flatMap((n) => [n, `${n}-Dark`]).concat([
+      'FinMoFocus', 'FinMoOpen', 'FinMoPopover', 'FinOnbWelcomeB', 'FinOnbWelcomeC', 'FinOnbWelcomeEN', 'FinTur26',
+    ]),
+  );
+  assert.deepEqual(
+    [...allPanoNames()].filter((n) => !EXTRA.test(n)).sort(),
+    finals.filter((n) => !PENDING_TUR26.has(n)),
+  );
 });
