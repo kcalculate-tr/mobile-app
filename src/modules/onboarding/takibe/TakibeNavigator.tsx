@@ -38,6 +38,7 @@ import {
   type TbGoal,
 } from './calc';
 import { saveTakibeProfile } from './save';
+import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
 
 export type TbParamList = {
@@ -361,7 +362,18 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
       root?.goBack();
       return;
     }
-    navigation.navigate('TbFirst');
+    // G18-S1 md.5 (Tur 26 #5): profil kartından gelen akış Sonuç'ta biter →
+    // profil kaydı → Ana sayfa'da "Profil hazır" (FinCelebrateProfile) → oryantasyon.
+    // TbFirst ("İlk öğününü logla") kayıtlı kalır; görevi Ana sayfa "İlk öğününü
+    // ekle" kartı + Orient1 (Tara) üstlenir (LOG › SORULAR 1).
+    setSaving(true);
+    if (user) await saveTakibeProfile(user.id, draft, nowYear());
+    setSaving(false);
+    const kcal = result?.macros?.calories ?? null;
+    draft.reset();
+    useOnbFirst.getState().setCard('done');
+    useOnbFirst.getState().queueCelebrate(kcal != null ? Math.round(kcal) : null);
+    root?.navigate('Tabs', { screen: 'Tracker' });
   };
 
   const m = result?.macros;
