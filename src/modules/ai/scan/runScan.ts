@@ -42,16 +42,22 @@ export async function runAiScan(
     } catch {
       // teşhis akışı bozmaz
     }
-    try {
-      await client.releaseScan({ idempotencyKey: params.idempotencyKey });
-    } catch {
-      // iade de başarısızsa yut — sunucudaki günlük sıfırlama yine de düzeltir
+    // G19-S1 md.2: sayaç yalnız iade GERÇEKTEN yapıldıysa +1. Önbellekten dönen
+    // (cached) rezervasyon hak düşürmemişti → iade de yok, sayaç aynı kalır.
+    let released = false;
+    if (!reservation.cached) {
+      try {
+        await client.releaseScan({ idempotencyKey: params.idempotencyKey });
+        released = true;
+      } catch {
+        // iade de başarısızsa yut — sunucudaki günlük sıfırlama yine de düzeltir
+      }
     }
     return {
       status: 'failed',
       failure,
       error: e instanceof Error ? e.message : 'analyze_failed',
-      remaining: reservation.remaining + 1, // iade sonrası hak geri geldi
+      remaining: released ? reservation.remaining + 1 : reservation.remaining,
       reset_at: reservation.reset_at,
     };
   }

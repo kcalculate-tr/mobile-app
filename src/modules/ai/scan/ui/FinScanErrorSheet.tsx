@@ -75,7 +75,10 @@ export default function FinScanErrorSheet({
   onRetry,
   onOpenSettings,
   onGallery,
+  reason,
 }: {
+  /** G19-S1 md.4: 'failed' alt nedeni — dosya 5 MB üstü / bulunamadı (hak harcanmadı). */
+  reason?: 'too_large' | 'missing';
   visible: boolean;
   kind: FinScanErrorKind;
   remaining: number;
@@ -116,7 +119,11 @@ export default function FinScanErrorSheet({
           : tr('ai_scan.limit_title');
   const body =
     kind === 'failed'
-      ? tr('ai_scan.failed_body')
+      ? reason === 'too_large'
+        ? tr('ai_scan.failed_body_large')
+        : reason === 'missing'
+          ? tr('ai_scan.failed_body_missing')
+          : tr('ai_scan.failed_body')
       : kind === 'offline'
         ? tr('ai_scan.offline_body')
         : kind === 'camera'
@@ -130,7 +137,9 @@ export default function FinScanErrorSheet({
         : null;
   const topChip =
     kind === 'failed'
-      ? tr('ai_scan.photo_saved')
+      ? reason
+        ? null
+        : tr('ai_scan.photo_saved')
       : kind === 'offline'
         ? tr('ai_scan.offline_chip')
         : kind === 'limit'
@@ -182,7 +191,7 @@ export default function FinScanErrorSheet({
 
           {kind === 'failed' ? (
             <>
-              <Btn primary label={tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
+              <Btn primary label={reason ? tr('ai_scan.retake') : tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
               <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />
             </>
           ) : kind === 'offline' ? (

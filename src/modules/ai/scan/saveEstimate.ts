@@ -27,11 +27,49 @@ export interface InsertableSupabase {
       select(columns: string): {
         // PromiseLike: Supabase'in PostgrestBuilder'ı tam Promise değil (catch/finally
         // yok) ama await ile çalışır; gerçek istemciyle uyumlu olsun diye gevşek tip.
-        single(): PromiseLike<{ data: MealConsumptionRow | null; error: { message: string } | null }>;
+        single(): PromiseLike<{ data: MealConsumptionRow | null; error: { message: string; code?: string } | null }>;
       };
     };
   };
 }
+
+const COLUMNS = 'id,name,meal_type,calories,protein,carbs,fat,consumed_at';
+
+type DbError = { message: string; code?: string };
+
+export function isUniqueViolation(error: DbError | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === '23505' || /duplicate key|unique constraint/i.test(error.message ?? '');
+}
+
+type SelectableSupabase = {
+  from(table: string): {
+    select(columns: string): {
+      eq(c: string, v: string): {
+        eq(c: string, v: string): {
+          eq(c: string, v: string): { maybeSingle(): PromiseLike<{ data: MealConsumptionRow | null; error: DbError | null }> };
+        };
+      };
+    };
+  };
+};
+
+async function fetchExisting(supabase: InsertableSupabase, userId: string, sourceRef: string): Promise<MealConsumptionRow | null> {
+  try {
+    const db = supabase as unknown as SelectableSupabase;
+    const { data } = await db
+      .from('meal_consumptions')
+      .select(COLUMNS)
+      .eq('user_id', userId)
+      .eq('source', 'ai_scan')
+      .eq('source_ref', sourceRef)
+      .maybeSingle();
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 
 export async function saveAiScanEstimate(
   supabase: InsertableSupabase,
@@ -53,9 +91,18 @@ export async function saveAiScanEstimate(
       note: null,
       consumed_at: new Date().toISOString(),
     })
-    .select('id,name,meal_type,calories,protein,carbs,fat,consumed_at')
+    .select(COLUMNS)
     .single();
-  if (error) throw new Error(`meal_consumptions.insert: ${error.message}`);
+  if (error) {
+    // G19-S1 md.2: (user_id, source, source_ref) UNIQUE — aynı tarama zaten loglandıysa
+    // (çift dokunma, yanıtı kaybolan yeniden deneme, kuyruk + elle aynı anda) hata
+    // DEĞİL: mevcut satır döner, ikinci kayıt oluşmaz.
+    if (isUniqueViolation(error)) {
+      const existing = await fetchExisting(supabase, userId, sourceRef);
+      if (existing) return existing;
+    }
+    throw new Error(`meal_consumptions.insert: ${error.message}`);
+  }
   if (!data) throw new Error('meal_consumptions.insert: boş yanıt');
   return data;
 }
