@@ -30,6 +30,13 @@ function trackCalls(): Call[] {
   for (const f of FILES) {
     const src = readFileSync(f, 'utf8');
     for (const m of src.matchAll(/\btrack\(\s*'([a-z0-9_]+)'/g)) calls.push({ file: relative(ROOT, f), name: m[1] });
+    // G19-S4: G19-S1 Tara (trackScan) ve G19-S2 takip (trackEvent) sarmalayıcıları da
+    // aynı track()'e gider; adları sözlükte olmalı. scanMetrics sonuç eşlemesi (saf) dahil.
+    for (const m of src.matchAll(/\btrackScan\(\s*'([a-z0-9_]+)'/g)) calls.push({ file: relative(ROOT, f), name: m[1] });
+    for (const m of src.matchAll(/\btrackEvent\(\s*\{\s*name:\s*'([a-z0-9_]+)'/g)) calls.push({ file: relative(ROOT, f), name: m[1] });
+    if (f.endsWith(join('scan', 'scanMetrics.ts'))) {
+      for (const m of src.matchAll(/\{\s*name:\s*'([a-z0-9_]+)'/g)) calls.push({ file: relative(ROOT, f), name: m[1] });
+    }
   }
   return calls;
 }
