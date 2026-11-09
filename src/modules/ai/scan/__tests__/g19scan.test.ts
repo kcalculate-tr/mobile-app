@@ -10,6 +10,7 @@ import { runAiScan } from '../runScan';
 import { createMockAiScanClient } from '../mock';
 import { classifyScanFailure, scanFailureInfo } from '../scanError';
 import { SCAN_EVENT_NAMES, scanEventProps, setScanEventSink, trackScan } from '../scanEvents';
+import { isClientEvent } from '../../../../lib/metrics/events';
 import { ORPHAN_TTL_MS, clearOrphanResult, keepOrphanResult, takeOrphanResult } from '../orphanResult';
 import { QUEUE_DIR_NAME, isQueuedImageUri, judgeLocalImage } from '../localImage';
 import { saveAiScanEstimate, isUniqueViolation, type InsertableSupabase } from '../saveEstimate';
@@ -257,25 +258,30 @@ test('orphanResult: aynı kullanıcıya bir kez, 10 dk içinde; başka kullanıc
 });
 
 // ── md.6: ölçüm olayları ───────────────────────────────────────────────────
-test('scanEvents: D-S1 sözlük adları + kişisel veri beyaz listesi', () => {
-  for (const n of ['scan_start', 'scan_success', 'scan_failed', 'log_meal']) {
-    assert.ok((SCAN_EVENT_NAMES as readonly string[]).includes(n), `${n} sözlükte var`);
+test('scanEvents: kanonik sözlük adları (G19-S3) + kişisel veri beyaz listesi', () => {
+  // G19-S4: istemci kanonik adları yazar; D-S1 eski adları (scan_start/scan_failed/log_meal) yalnız alias.
+  for (const n of ['scan_open', 'scan_capture', 'scan_success', 'scan_fail', 'scan_limit', 'scan_offline', 'scan_log']) {
+    assert.ok((SCAN_EVENT_NAMES as readonly string[]).includes(n), `${n} listede var`);
+    assert.ok(isClientEvent(n), `${n} istemci sözlüğünde var`);
+  }
+  for (const old of ['scan_start', 'scan_failed', 'log_meal']) {
+    assert.ok(!(SCAN_EVENT_NAMES as readonly string[]).includes(old), `${old} istemciden yazılmaz`);
   }
   assert.deepEqual(scanEventProps('scan_success', { n_items: 3, kcal: 459.6, name: 'Pilav', photo: 'file://x' }), {
     n_items: 3,
     kcal: 460,
   });
-  assert.deepEqual(scanEventProps('scan_start', { source: 'camera', has_note: true, note: 'gizli' }), {
-    source: 'camera',
-    has_note: true,
+  assert.deepEqual(scanEventProps('scan_capture', { via: 'camera', has_hint: true, note: 'gizli' }), {
+    via: 'camera',
+    has_hint: true,
   });
   const got: unknown[] = [];
   setScanEventSink((name, props) => got.push([name, props]));
-  trackScan('scan_failed', { reason: 'parse', stage: 'analyze', user_id: 'u1' });
+  trackScan('scan_fail', { code: 'parse', stage: 'analyze', user_id: 'u1' });
   trackScan('scan_limit', { remaining: 0 });
   setScanEventSink(null);
   assert.deepEqual(got, [
-    ['scan_failed', { reason: 'parse', stage: 'analyze' }],
+    ['scan_fail', { code: 'parse', stage: 'analyze' }],
     ['scan_limit', {}],
   ]);
 });

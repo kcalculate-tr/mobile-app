@@ -261,10 +261,11 @@ test('olaylar: 7 ad, beyaz liste dışı özellik (ad/not) gönderilmez', () => 
     for (const k of TRACK_PROP_WHITELIST[n]) assert.doesNotMatch(k, /name|note|email|phone|address/);
   }
   assert.equal(logSourceOf('ai_scan'), 'scan');
-  assert.equal(logSourceOf('pantry'), 'order');
+  assert.equal(logSourceOf('pantry'), 'pantry'); // G19-S4: tek eşleme (lib/metrics/logSource)
+  assert.equal(logSourceOf('eatkcal'), 'order');
   assert.equal(logSourceOf('post'), 'kesfet');
   assert.equal(logSourceOf(null), 'manual');
-  assert.deepEqual(sanitize({ name: 'streak_day', props: { streak: 3 } }), { streak: 3 });
+  assert.deepEqual(sanitize({ name: 'streak_day', props: { days: 3 } }), { days: 3 });
 });
 
 // ─── Sunucu dosyaları ↔ istemci sözleşmesi ───────────────────────────────────

@@ -36,7 +36,8 @@ import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
-import { initFBSDK, track } from './src/lib/analytics';
+import { initFBSDK, startMetrics, track, type ClientEventName } from './src/lib/analytics';
+import { setTrackSink } from './src/modules/gun/track/events';
 
 // G14-S1 — Ekran vitrini (kcal://dev/screen/<Pano>). YALNIZ __DEV__: üretimde
 // `__DEV__` false sabitine katlanır, require dalı ve src/dev paketten DÜŞER
@@ -93,8 +94,17 @@ function AppContent() {
     });
   }, []);
 
+  // G19-S3: ölçüm istemcisi — ilk açılış kaynağı (first_touch), app_open,
+  // arka plana geçişte / ağ geri gelince kuyruk boşaltma.
+  // G19-S4: G19-S2 takip olayları (log_*/water_add/activity_add/streak_day/ring_complete)
+  // tek track()'e bağlanır — sözlük beyaz listesi + kuyruk + Meta kapısı aynı yoldan.
   useEffect(() => {
-    track('app_open');
+    setTrackSink((name, props) => track(name as ClientEventName, props as never));
+    const stop = startMetrics();
+    return () => {
+      stop();
+      setTrackSink(null);
+    };
   }, []);
 
   useEffect(() => {

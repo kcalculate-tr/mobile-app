@@ -44,6 +44,7 @@ import { PostMenu } from './PostMenu';
 import { AddToast, type ToastState } from './AddToast';
 import { Icon } from './icons';
 import { postLink, relativeTime, roleBadgeKey, type ReportReason, type UiLang } from './format';
+import { track } from '../../../lib/analytics';
 
 // Final ikonları: yorum (ChatCircle) ve "ben de logla" (tarama çerçevesi + artı).
 const CHAT =
@@ -312,7 +313,9 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
 
   const onShare = useCallback(() => {
     if (!post) return;
-    void Share.share({ message: postLink(post.id), url: postLink(post.id) }).catch(() => {});
+    void Share.share({ message: postLink(post.id), url: postLink(post.id) })
+      .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'post_detail' }); })
+      .catch(() => {});
   }, [post]);
 
   const send = useCallback(async () => {

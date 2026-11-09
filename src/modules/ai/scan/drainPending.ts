@@ -7,6 +7,7 @@ import { processPendingQueue, type ProcessResult } from './pendingProcessor';
 import { getSupabaseClient } from '../../../core/supabase';
 import { deleteQueuedImage } from './localImage';
 import { trackScan } from './scanEvents';
+import { trackScanLog, trackScanOutcome } from './scanTrack';
 
 type Listener = (r: ProcessResult) => void;
 const listeners = new Set<Listener>();
@@ -41,23 +42,18 @@ export function drainPendingScans(
     .catch(() => null)
     .then((r) => {
       if (r) {
-        // G19-S1 md.4/6: işlenen ve düşen kuyruk fotoğrafları silinir; ölçüm olayları.
+        // G19-S1 md.4/6 + G19-S3 (G19-S4 birleştirme): işlenen ve düşen kuyruk fotoğrafları
+        // silinir; her fotoğraf için tam 1 sonuç olayı + kayıt olayı (scan_log + log_add).
         for (const p of r.processed) {
           void deleteQueuedImage(p.entry.imageUri);
-          trackScan('scan_success', { n_items: p.estimate.ingredients.length, kcal: p.estimate.kcal });
-          trackScan('log_meal', { source: 'scan', n_items: p.estimate.ingredients.length, kcal: p.estimate.kcal, edited: false, meal_type: p.entry.mealType });
+          trackScanOutcome({ status: 'ok', estimate: p.estimate, remaining: 0, reset_at: '' }, 'queue');
+          trackScanLog(p.estimate, false, p.entry.mealType);
         }
         for (const d of r.dropped ?? []) {
           void deleteQueuedImage(d.imageUri);
-          trackScan('scan_failed', { reason: 'queue_dropped', stage: 'queue' });
+          trackScan('scan_fail', { code: 'queue_dropped', stage: 'queue', via: 'queue' });
         }
-        if (r.lastOutcome?.status === 'quota_exhausted') trackScan('scan_limit');
-        else if (r.lastOutcome?.status === 'unavailable') {
-          trackScan('scan_failed', { reason: r.lastOutcome.reason, stage: 'reserve' });
-        }
-        else if (r.lastOutcome?.status === 'failed') {
-          trackScan('scan_failed', { reason: r.lastOutcome.failure?.code ?? 'unknown', stage: r.lastOutcome.failure?.stage ?? 'analyze' });
-        }
+        if (r.lastOutcome && r.lastOutcome.status !== 'ok') trackScanOutcome(r.lastOutcome, 'queue');
       }
       if (r && (r.processed.length > 0 || r.lastOutcome || (r.dropped?.length ?? 0) > 0)) listeners.forEach((l) => l(r));
       return r;

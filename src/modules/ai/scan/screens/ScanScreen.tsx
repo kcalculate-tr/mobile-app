@@ -53,6 +53,8 @@ import { haptic } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
+import { trackScanLog, trackScanOutcome } from '../scanTrack';
+import type { ScanVia } from '../scanMetrics';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -126,7 +128,6 @@ export default function ScanScreen() {
   // md.1: önceki açılışta analiz sürerken kapatıldıysa sonucu geri getir.
   useEffect(() => {
     if (!yeniKabuk) return;
-    trackScan('scan_open', { camera: liveCam ? 'live' : 'fallback' });
     const o = takeOrphanResult(user?.id);
     if (o) {
       setPhotoUri(o.photoUri);
@@ -169,7 +170,7 @@ export default function ScanScreen() {
       if (cancelled) return;
       if (res.lastOutcome) recordQuota(res.lastOutcome.remaining, res.lastOutcome.reset_at);
       for (const p of res.processed) {
-        emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`) });
+        emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`), source: 'scan', kcal: p.estimate.kcal });
       }
       if (res.processed.length > 0) {
         setPendingMeal(res.processed[res.processed.length - 1].entry.mealType);
@@ -183,6 +184,12 @@ export default function ScanScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeniKabuk, user?.id]);
+
+  // G19-S1 md.6 + G19-S3: scan_open — her açılışta bir kez (eski ve yeni kabuk; G19-S4 tek çağrı).
+  useEffect(() => {
+    trackScan('scan_open', { camera: !yeniKabuk ? 'legacy' : liveCam ? 'live' : 'fallback' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const captureOnce = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -208,7 +215,9 @@ export default function ScanScreen() {
     setStage('scanning');
     const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
     setScanRef(idempotencyKey);
+    trackScan('scan_capture', { via: 'legacy', has_hint: false, retry: false, offline: false });
     const outcome = await runAiScan(getAiScanClient(), { idempotencyKey, imageRef: uri });
+    trackScanOutcome(outcome, 'legacy');
     recordQuota(outcome.remaining, outcome.reset_at);
 
     if (outcome.status === 'quota_exhausted') {
@@ -272,7 +281,7 @@ export default function ScanScreen() {
       // md.4: dosya yok / 5 MB üstü → rezervasyon YOK (hak harcanmaz), belleğe okunmaz.
       const local = await checkLocalImage(uri);
       if (local !== 'ok') {
-        trackScan('scan_failed', { reason: local === 'too_large' ? 'image_too_large' : 'file_missing', stage: 'local' });
+        trackScan('scan_fail', { code: local === 'too_large' ? 'image_too_large' : 'file_missing', stage: 'local', via: source });
         if (!mountedRef.current) return;
         setFailReason(local);
         setErrorKind('failed');
@@ -283,7 +292,7 @@ export default function ScanScreen() {
       // isConnected null = henüz bilinmiyor (Android açılışı) → çevrimiçi say; gerçekten
       // bağlantı yoksa analiz 'network' hatasıyla düşer, hak iade edilir, Tekrar dene.
       const offline = net.isConnected === false;
-      trackScan('scan_start', { source, has_note: !!hint, retry, offline });
+      trackScan('scan_capture', { via: source, has_hint: !!hint, retry, offline });
       if (offline) {
         const stored = await persistQueuedImage(uri, idempotencyKey);
         await setPendingScanPhoto({
@@ -295,6 +304,7 @@ export default function ScanScreen() {
           ...(hint ? { hint } : {}),
         });
         const count = await getPendingScanCount();
+        trackScan('scan_offline', { pending: count });
         if (!mountedRef.current) return;
         setPendingCount(count);
         setErrorKind('offline');
@@ -309,9 +319,10 @@ export default function ScanScreen() {
           lang: scanLang,
           ...(hint ? { hint } : {}),
         });
+        // G19-S4: sonuç → tam 1 olay (scan_success | scan_limit | scan_fail).
+        trackScanOutcome(outcome, source);
         recordQuota(outcome.remaining, outcome.reset_at);
         if (outcome.status === 'quota_exhausted') {
-          trackScan('scan_limit');
           if (!mountedRef.current) return;
           setStage('viewfinder');
           setErrorKind('limit');
@@ -319,20 +330,17 @@ export default function ScanScreen() {
         }
         if (outcome.status === 'unavailable') {
           // G19-S1 (İlter 9 Kas): acil kapatma / genel tavan — "hakkını kullandın" DEĞİL.
-          trackScan('scan_failed', { reason: outcome.reason, stage: 'reserve' });
           if (!mountedRef.current) return;
           setStage('viewfinder');
           setErrorKind('unavailable');
           return;
         }
         if (outcome.status === 'failed') {
-          trackScan('scan_failed', { reason: outcome.failure?.code ?? 'unknown', stage: outcome.failure?.stage ?? 'analyze' });
           if (!mountedRef.current) return;
           setStage('viewfinder');
           setErrorKind('failed');
           return;
         }
-        trackScan('scan_success', { n_items: outcome.estimate.ingredients.length, kcal: outcome.estimate.kcal });
         if (!mountedRef.current) {
           // Kapatıldı: hak düştü, sonuç kaybolmasın → Tara yeniden açılınca gösterilir.
           if (user?.id) {
@@ -354,7 +362,7 @@ export default function ScanScreen() {
         } catch {
           // teşhis akışı bozmaz
         }
-        trackScan('scan_failed', { reason: info.code, stage: 'reserve' });
+        trackScan('scan_fail', { code: info.code, stage: info.stage, via: source });
         if (!mountedRef.current) return;
         setStage('viewfinder');
         setErrorKind('failed');
@@ -419,12 +427,14 @@ export default function ScanScreen() {
     if (!result || !user?.id || saving) return;
     setSaving(true);
     try {
+      const legacyMeal = inferMealTypeFromHour(new Date().getHours());
       await saveAiScanEstimate(getSupabaseClient(), {
         userId: user.id,
-        mealType: inferMealTypeFromHour(new Date().getHours()),
+        mealType: legacyMeal,
         sourceRef: scanRef ?? `${user.id}-${photoUri ?? ''}`,
         estimate: result,
       });
+      trackScanLog(result, false, legacyMeal);
       setSaved(true);
       setLogToken((n) => n + 1); // Logla izi oynar
       setSavedToast(true);
@@ -448,20 +458,17 @@ export default function ScanScreen() {
         estimate: adjusted,
       });
       savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
-      trackScan('log_meal', {
-        source: 'scan',
-        n_items: adjusted.ingredients.length,
-        kcal: adjusted.kcal,
-        edited:
-          !!result &&
+      trackScanLog(
+        adjusted,
+        !!result &&
           (Math.round(result.kcal) !== Math.round(adjusted.kcal) || result.ingredients.length !== adjusted.ingredients.length),
-        meal_type: mealType,
-      });
+        mealType,
+      );
       if (!mountedRef.current) return;
       setResult(adjusted);
       setSaved(true);
       const label = t(`meal.${mealType}`);
-      emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label });
+      emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label, source: 'scan', kcal: adjusted.kcal });
     } catch {
       // G19-S1 md.1: önceden errorKind='failed' yazılıyordu ama sonuç ekranında hata
       // sayfası çizilmiyordu → kayıt hatası SESSİZDİ. Artık toast; logla yeniden denenebilir

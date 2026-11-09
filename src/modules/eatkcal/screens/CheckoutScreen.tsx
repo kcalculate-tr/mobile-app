@@ -93,7 +93,7 @@ import { useAddressStore } from '../../../store/addressStore';
 import { normalizeAddress } from '../../../lib/addresses';
 import { Address, DeliveryRuleStatus } from '../../../types';
 import { haptic } from '../../../utils/haptics';
-import { logEvent, track } from '../../../lib/analytics';
+import { track } from '../../../lib/analytics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../../../constants/theme';
 import DeliveryZonesSheet from '../../../components/DeliveryZonesSheet';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../../utils/deliveryDays';
@@ -1639,7 +1639,6 @@ export default function CheckoutScreen() {
     // InitiateCheckout sadece YENİ draft akışında — retry/pending'de tekrarlanmaz.
     if (!retryPaymentOrderId && !pendingPaymentOrderIdFromRoute) {
       const numItems = items.reduce((sum, item) => sum + item.quantity, 0);
-      logEvent.initiateCheckout(totalAmount, numItems);
       track('begin_checkout', {
         price: totalAmount,
         num_items: numItems,

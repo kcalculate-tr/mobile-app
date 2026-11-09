@@ -94,6 +94,7 @@ import { formatSupabaseErrorForDevLog, mapSupabaseErrorToUserMessage } from '../
 import { RootStackParamList } from '../navigation/types';
 import { usePantryStore, PantryItem } from '../store/pantryStore';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
+import { track } from '../lib/analytics';
 
 type TrackerNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type FilterType = 'today' | 'yesterday' | 'week' | 'last14' | 'last30';
@@ -1718,6 +1719,7 @@ export default function TrackerScreen() {
         .eq('user_id', user.id)
         .eq('id', row.id);
       if (error) throw error;
+      track('log_delete', { source: logSourceOf(row.raw_source), count: 1 });
     } catch (e) {
       console.error('[home] remove error:', formatSupabaseErrorForDevLog(e));
       dispatchData({ type: 'PREPEND_CONSUMED', payload: row });
@@ -1765,6 +1767,7 @@ export default function TrackerScreen() {
         .eq('user_id', user.id)
         .eq('id', row.id);
       if (error) throw error;
+      track('log_edit', { field: 'portion' });
     } catch (e) {
       console.error('[home] portion error:', formatSupabaseErrorForDevLog(e));
       dispatchData({ type: 'REPLACE_CONSUMED', payload: row });
@@ -1841,10 +1844,13 @@ export default function TrackerScreen() {
             continue;
           }
           await markAutoLogged([c.instanceId]);
-          trackEvent({
-            name: 'log_add',
-            props: { source: 'order', slot: normalizeMealType(null, c.deliveredAt), kcal: Math.round(c.item.calories || 0), offline: false },
-          });
+          // G19-S4: tek olay (S2 tipli olay, S3 kuralı: yalnız yeni satırda — 23505 = zaten sayıldı).
+          if (!e2) {
+            trackEvent({
+              name: 'log_add',
+              props: { source: 'order', slot: normalizeMealType(null, c.deliveredAt), kcal: Math.round(c.item.calories || 0), offline: false },
+            });
+          }
           if (row) {
             dispatchData({ type: 'REMOVE_CONSUMED_BY_REF', payload: { source: 'pantry', source_ref: c.instanceId } });
             dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
@@ -1906,6 +1912,7 @@ export default function TrackerScreen() {
           .eq('source', 'pantry')
           .eq('source_ref', instanceId);
         if (error) throw error;
+        track('log_delete', { source: 'pantry', count: 1 });
       } else {
         // Consume: optimistik atomik ekle + DB'ye yaz
         dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: instanceId });
@@ -1944,6 +1951,7 @@ export default function TrackerScreen() {
         } else if (error) {
           throw error;
         } else {
+          track('log_add', { source: 'pantry', kcal: Math.round(item.calories || 0) });
           // upsert başarılı. DO UPDATE yolunda satır bugünün listesinde ZATEN
           // olabilir; önce aynı source_ref'i çıkarıp sonra ekliyoruz, yoksa
           // kalori sayacı aynı öğünü iki kez toplardı.
@@ -2131,6 +2139,7 @@ export default function TrackerScreen() {
         .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
         .single();
       if (error) throw error;
+      track('log_add', { source: 'manual', kcal: calNum });
       if (row) {
         dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
       }

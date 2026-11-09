@@ -1,0 +1,7 @@
+G19-S3 DONE — night19/metrics
+md.1 track() + sozluk (52 olay) + PII beyaz liste + kuyruk ........ tamam
+md.2 46 cagri sozluge bagli + huni olaylari ......................... tamam
+md.3 kaynak takibi (first_touch, siparis kaynagi) .................... tamam
+md.4 riza (ATT + uygulama ici) + KVKK metni i18n ..................... tamam (riza ekrani tasarim bekliyor: LOG SORULAR 2)
+md.5 testler: birim 768/768, bilesen 199/199, PGlite 8/8, tsc 0 ...... tamam
+LOG: docs/night/G19-S3-LOG.md

@@ -1,6 +1,7 @@
 // G19-S2 md.7 — Keşfet / Tara / eatkcal loglarını TEK yerden ölçer: hepsi zaten
 // `kcal:logFlight` yayınlıyor (shell/logEvents). Böylece her çağrı noktasına ayrı
 // olay eklemeye gerek yok (G19-S3 çağrı noktalarına log_add EKLEMEMELİ — çift sayım).
+// İstisna (G19-S4): Tara (source='scan') log_add'ı scanTrack'ten gider, köprü atlar.
 // Ana sayfadaki elle giriş (logFlight yayınlamaz) TrackerScreen'den ölçülür.
 import { onLogFlight, onLogUndo } from '../../shell/logEvents';
 import { slotFromHour, type SlotKey } from '../homeData';
@@ -31,6 +32,9 @@ export function wireLogEventsBridge(): void {
   if (wired) return;
   wired = true;
   onLogFlight((p) => {
+    // G19-S4: Tara kaydı log_add'ını kendisi gönderir (scanTrack.trackScanLog — eski ve
+    // yeni kabuk, kuyruk dahil); köprü saymaz → her Tara kaydı tam 1 log_add.
+    if (p.source === 'scan') return;
     const source = logSourceOf(p.source === 'eatkcal' ? 'order' : p.source ?? 'manual');
     const slot = slotFromLabel(p.mealLabel);
     if (p.id) recent.set(p.id, { source, slot });

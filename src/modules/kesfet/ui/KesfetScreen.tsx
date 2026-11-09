@@ -60,6 +60,7 @@ import { FeedStartEmpty } from './FeedStartEmpty';
 import { deriveStarters, isInvitedCreatorRole } from '../starters';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
 import { reportReasonText } from './ReportFlow';
+import { track } from '../../../lib/analytics';
 
 function Header({
   onSearch,
@@ -432,7 +433,8 @@ export function KesfetScreen() {
 
   const onShare = useCallback(async (post: FeedPost) => {
     try {
-      await Share.share({ message: postLink(post.id), url: postLink(post.id) });
+      const r = await Share.share({ message: postLink(post.id), url: postLink(post.id) });
+      if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'kesfet' });
     } catch {
       // kullanıcı iptal etti
     }
@@ -581,7 +583,8 @@ export function KesfetScreen() {
       haptic('selection');
       setSuggestions((prev) => prev.filter((s) => s.id !== userId));
       try {
-        await getProfilClient().follow({ user: userId, on: true });
+        const res = await getProfilClient().follow({ user: userId, on: true });
+        track('follow', { on: true, state: res?.state, surface: 'kesfet_suggest' });
         if (useKesfetStore.getState().tab === 'following') void useKesfetStore.getState().refresh();
       } catch {
         // yut — öneri zaten listeden düştü

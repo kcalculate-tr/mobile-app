@@ -10,6 +10,7 @@
 import { tr as loginTr, en as loginEn } from '../../modules/onboarding/v2/i18n/login';
 import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/i18n/signupAI';
 import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
+import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -19,6 +20,8 @@ export const DEFAULT_LANG: Lang = 'tr';
 // Not: i18n-js iç içe nesneyi noktayla adresler ("kesfet.tab.for_you").
 export const translations: Record<Lang, Record<string, unknown>> = {
   tr: {
+    // G19-S3 — ölçüm / KVKK aydınlatması / reklam rızası.
+    metrics: metricsTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1853,6 +1856,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
   },
   en: {
+    metrics: metricsEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

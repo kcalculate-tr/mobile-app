@@ -34,6 +34,7 @@ import { addDays } from '../../modules/gun/track/dayClock';
 import { celebrationStreak, displayStreak, loggedDays } from '../../modules/gun/track/streak';
 import { trackEvent } from '../../modules/gun/track/events';
 import { cancelMealReminders, syncMealReminders } from '../../modules/gun/track/mealReminder';
+import { track } from '../../lib/analytics';
 
 const NOTIFY_OFFERED_KEY = '@kcal_celebrate_notify_offered';
 /** G19-S2 md.7: streak_day / ring_complete günde bir kez (kullanıcı + gün). */
@@ -170,7 +171,7 @@ export function HomeCelebrations({
   useEffect(() => {
     if (!ready || !userId || todayCount === 0) return;
     void onceForDay(userId, 'streak_day', todayKey).then((first) => {
-      if (first) trackEvent({ name: 'streak_day', props: { streak: shownStreak } });
+      if (first) trackEvent({ name: 'streak_day', props: { days: shownStreak } });
     });
   }, [ready, userId, todayCount, todayKey, shownStreak]);
 
@@ -228,7 +229,9 @@ export function HomeCelebrations({
   const onShare = useCallback(() => {
     if (!shown) return;
     const msg = `${tt(`celebrate.${shown}_title1`)} ${tt(`celebrate.${shown}_mark`)} · ${cardSub} · Kcalculate`;
-    void Share.share({ message: msg }).catch(() => {});
+    void Share.share({ message: msg })
+      .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'streak', surface: 'celebration' }); })
+      .catch(() => {});
   }, [shown, cardSub, tt]);
 
   return (
