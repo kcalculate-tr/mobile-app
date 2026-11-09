@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '../../../core/supabase';
 import {
   EMPTY_SYNCED,
+  confirmAge,
   markSeen,
   mergeSynced,
   parseSynced,
@@ -119,6 +120,37 @@ export const useOnbFirst = create<OnbFirstStore>((set, get) => ({
   clearCelebrate: () => set({ celebrate: null }),
   _reset: (s) => set({ hydrated: true, userId: null, synced: s ?? EMPTY_SYNCED, celebrate: null }),
 }));
+
+/**
+ * G20-S3 md.6 (B-10): 18+ beyanını hesaba yaz → `profiles.onboarding_state.age_ok`
+ * (+ `age_ok_at`). Profildeki mevcut durum OKUNUP birleştirilir (başka alanlar
+ * ezilmez). Kolon yok / çevrimdışı → sessizce geçer (false döner); beyan yine de
+ * giriş ekranında verilmiştir. Yerel durum yalnız aynı kullanıcıya aitse güncellenir.
+ */
+export async function saveAgeOk(userId: string, at: string = new Date().toISOString()): Promise<boolean> {
+  if (!userId) return false;
+  const st = useOnbFirst.getState();
+  if (st.userId === userId && !st.synced.age_ok) {
+    const next = confirmAge(st.synced, at);
+    useOnbFirst.setState({ synced: next });
+    AsyncStorage.setItem(ONB_FIRST_KEY, JSON.stringify(next)).catch(() => {});
+  }
+  try {
+    const { data, error } = await getSupabaseClient()
+      .from('profiles')
+      .select('onboarding_state')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) return false;
+    const remote = parseSynced((data as { onboarding_state?: unknown } | null)?.onboarding_state);
+    if (remote.age_ok) return true;
+    const merged = confirmAge(mergeSynced(remote, useOnbFirst.getState().userId === userId ? useOnbFirst.getState().synced : remote), at);
+    const { error: upErr } = await getSupabaseClient().from('profiles').update({ onboarding_state: merged }).eq('id', userId);
+    return !upErr;
+  } catch {
+    return false;
+  }
+}
 
 /** Açılış imzası görüldü mü (yalnız cihaz). Okuma hatası → görülmüş say (imza zorla oynamasın). */
 export async function readOpenSeen(): Promise<boolean> {

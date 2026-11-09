@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { getSupabaseClient } from '../../core/supabase';
 import { getConsent, setAdConsent, setFirstPartyConsent } from '../analytics';
+import { saveAgeOk } from '../../modules/onboarding/first/store';
 import {
   DEFAULT_VERSIONS,
   DOC_SLUG,
@@ -169,6 +170,13 @@ async function record(rows: ConsentRow[]): Promise<void> {
   if (uid) await flushPending(uid);
 }
 
+/** G20-S3: başka rıza modülleri (ai_photo) aynı kuyruk + yazım yolunu kullanır. */
+export const recordConsentRows = record;
+/** G20-S3: değişikliği dinleyicilere duyur (ayar sayfası yenilensin). */
+export const emitConsentChange = emit;
+export const consentPlatform = platform;
+export const consentAppVersion = appVersion;
+
 // ── Eylemler ──────────────────────────────────────────────────────────────────
 /**
  * Politika kabulü (hesap oluşturma bloğu · bilgilendirme · tekrar kabul):
@@ -178,6 +186,8 @@ export async function acceptPolicies(i: {
   source: Extract<ConsentSource, 'signup_email' | 'signup_social' | 'notice' | 'reconsent'>;
   adOn: boolean;
   versions?: DocVersions;
+  /** G20-S3 md.6: kutu 18+ beyanını da içeriyordu → profiles.onboarding_state.age_ok. */
+  ageOk?: boolean;
 }): Promise<void> {
   const versions = i.versions ?? (await fetchDocVersions());
   await setAdConsent(i.adOn ? 'granted' : 'denied');
@@ -193,6 +203,23 @@ export async function acceptPolicies(i: {
       at: new Date().toISOString(),
     }),
   );
+  if (i.ageOk) await recordAgeOk();
+}
+
+export const AGE_CONFIRMED_KEY = '@kcal_age_18_confirmed';
+
+/**
+ * 18+ beyanı: cihaz (eski giriş ekranıyla aynı anahtar) + oturum varsa hesaba
+ * (`profiles.onboarding_state.age_ok`). Hata yutulur — beyan ekranda verildi.
+ */
+export async function recordAgeOk(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(AGE_CONFIRMED_KEY, 'true');
+  } catch {
+    /* cihaz kaydı yazılamadı */
+  }
+  const uid = await currentUserId();
+  if (uid) await saveAgeOk(uid).catch(() => false);
 }
 
 /** Ayarlar: reklam ölçümü (Meta) aç/kapa. */

@@ -30,6 +30,12 @@ export interface OrientState {
 export interface SyncedState {
   profileCard: ProfileCardState;
   orient: OrientState;
+  /**
+   * G20-S3 md.6 (B-10): 18+ beyanı hesaba yazılır (yalnız "beyan edildi" + zaman;
+   * doğum tarihi saklanmaz). Yoksa alan hiç yazılmaz (eski kayıtlarla aynı biçim).
+   */
+  age_ok?: true;
+  age_ok_at?: string;
 }
 
 export const EMPTY_ORIENT: OrientState = {
@@ -52,18 +58,40 @@ export function parseSynced(raw: unknown): SyncedState {
   const r = raw as Record<string, unknown>;
   const o = (r.orient && typeof r.orient === 'object' ? r.orient : {}) as Record<string, unknown>;
   const seen = (o.seen && typeof o.seen === 'object' ? o.seen : {}) as Record<string, unknown>;
-  return {
-    profileCard: asCard(r.profileCard),
-    orient: {
-      started: o.started === true,
-      skipped: o.skipped === true,
-      seen: { 1: seen['1'] === true, 2: seen['2'] === true, 3: seen['3'] === true, 4: seen['4'] === true },
+  return withAge(
+    {
+      profileCard: asCard(r.profileCard),
+      orient: {
+        started: o.started === true,
+        skipped: o.skipped === true,
+        seen: { 1: seen['1'] === true, 2: seen['2'] === true, 3: seen['3'] === true, 4: seen['4'] === true },
+      },
     },
-  };
+    r.age_ok === true,
+    typeof r.age_ok_at === 'string' ? r.age_ok_at : undefined,
+  );
+}
+
+function withAge(s: SyncedState, ok: boolean, at: string | undefined): SyncedState {
+  if (!ok) return s;
+  return at ? { ...s, age_ok: true, age_ok_at: at } : { ...s, age_ok: true };
+}
+
+/** 18+ beyanını işle (zaten varsa ilk zaman korunur). */
+export function confirmAge(s: SyncedState, at: string): SyncedState {
+  return withAge(s, true, s.age_ok ? s.age_ok_at ?? at : at);
 }
 
 /** İki kaynağı birleştir: ileri durum kazanır (VEYA). */
 export function mergeSynced(a: SyncedState, b: SyncedState): SyncedState {
+  const ats = [a.age_ok ? a.age_ok_at : undefined, b.age_ok ? b.age_ok_at : undefined].filter(
+    (x): x is string => typeof x === 'string',
+  );
+  // 18+ beyanı bir kez verildiyse kalır (VEYA); en erken zaman.
+  return withAge(mergeCore(a, b), !!(a.age_ok || b.age_ok), ats.sort()[0]);
+}
+
+function mergeCore(a: SyncedState, b: SyncedState): SyncedState {
   return {
     profileCard: CARD_RANK[a.profileCard] >= CARD_RANK[b.profileCard] ? a.profileCard : b.profileCard,
     orient: {

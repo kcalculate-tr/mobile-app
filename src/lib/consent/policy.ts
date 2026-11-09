@@ -213,6 +213,38 @@ export function toggleRow(i: {
 }
 
 /** Bekleyen satırlar en çok bu kadar tutulur (eski olanlar düşer). */
+// ── G20-S3 md.2 — Yapay zekâ fotoğraf analizi izni (Apple 5.1.2(i)) ──────────
+// İlk taramadan ÖNCE bir kez sorulur. Cihaz kaydı + user_consents (kind ai_photo,
+// source scan | settings). İzin yoksa fotoğraf hiçbir yola (canlı analiz,
+// çevrimdışı kuyruk boşaltma) GÖNDERİLMEZ.
+export const AI_PHOTO_KEY = '@kcal_ai_photo_consent';
+
+export interface AiPhotoRecord {
+  granted: boolean;
+  at: string;
+}
+
+export function parseAiPhoto(raw: string | null | undefined): AiPhotoRecord | null {
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw) as { granted?: unknown; at?: unknown };
+    if (!o || typeof o.granted !== 'boolean') return null;
+    return { granted: o.granted, at: typeof o.at === 'string' ? o.at : '' };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Tara açılışında karar: cihaz kaydı varsa o geçerli (ayardan geri alma dahil);
+ * yoksa sunucu (başka cihazda verilmiş izin). Sunucu okunamadı → sor (izin
+ * olmadan gönderilmez — burada fail-open YOK).
+ */
+export function aiPhotoDecision(local: AiPhotoRecord | null, server: boolean | null | undefined): 'ok' | 'ask' {
+  if (local) return local.granted ? 'ok' : 'ask';
+  return server === true ? 'ok' : 'ask';
+}
+
 export const PENDING_MAX = 50;
 export function appendPending(prev: ConsentRow[], add: ConsentRow[]): ConsentRow[] {
   const all = [...prev, ...add];

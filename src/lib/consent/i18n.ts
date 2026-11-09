@@ -10,6 +10,9 @@ export const tr = {
     privacy: 'Gizlilik Politikası',
     accept_post: '’nı okudum, kabul ediyorum.',
     accept_a11y: 'Kullanım Koşulları ve Gizlilik Politikası’nı kabul ediyorum',
+    // G20-S3 md.2b + md.6: hesap oluşturma / giriş kutusu 18+ beyanını da içerir.
+    accept_age_pre: '18 yaşından büyüğüm; ',
+    accept_age_a11y: '18 yaşından büyüğüm; Kullanım Koşulları ve Gizlilik Politikası’nı kabul ediyorum',
     kvkk_pre: 'Kişisel verilerin ',
     kvkk: 'KVKK Aydınlatma Metni',
     kvkk_post: ' kapsamında işlenir.',
@@ -24,7 +27,7 @@ export const tr = {
   },
   sheet: {
     details_title: 'Politikalar ve izinler',
-    details_lead: 'Devam ederek Kullanım Koşulları ve Gizlilik Politikası’nı kabul edersin. Reklam ölçümünü buradan kapatabilirsin.',
+    details_lead: 'Devam etmek için Kullanım Koşulları ve Gizlilik Politikası’nı kabul etmelisin. Reklam ölçümünü buradan kapatabilirsin.',
     details_ok: 'Tamam',
     notice_title: 'Gizlilik ve izinler',
     notice_lead:
@@ -33,6 +36,13 @@ export const tr = {
     reconsent_title: 'Koşullarımız güncellendi',
     reconsent_lead: 'Devam etmek için güncel Kullanım Koşulları ve Gizlilik Politikası’nı okuyup kabul etmelisin.',
     reconsent_ok: 'Kabul et ve devam et',
+    // G20-S3 md.2 (Apple 5.1.2(i)): ilk taramadan önce bir kez.
+    ai_photo_title: 'Fotoğraf analizi',
+    ai_photo_lead:
+      'Tabak fotoğrafın kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Eklediğin not da fotoğrafla birlikte gönderilir.',
+    ai_photo_hint: 'Vazgeçersen öğününü elle girebilirsin. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
+    ai_photo_ok: 'Kabul et',
+    ai_photo_cancel: 'Vazgeç',
     close: 'Kapat',
   },
   settings: {
@@ -40,11 +50,19 @@ export const tr = {
     row_sub: 'Kullanım ölçümü ve reklam ölçümü',
     title: 'Veri ve reklam izinleri',
     measure_section: 'Ölçüm',
+    ai_section: 'Yapay zekâ',
+    ai_photo_label: 'Fotoğraf analizi',
+    ai_photo_desc: 'Tara fotoğrafların kalori tahmini için hizmet sağlayıcımıza (ABD) gönderilir.',
     docs_section: 'Metinler',
     att_denied: 'iPhone’da izleme izni verilmediği için reklam ölçümü kapalı. Açmak için iPhone Ayarları’na git.',
     att_open: 'iPhone Ayarları’nı aç',
     footer: 'Tercihlerin hesabına kaydedilir; istediğin zaman değiştirebilirsin.',
     error: 'Tercih kaydedilemedi. Tekrar dene.',
+  },
+  // G20-S3 md.6 (B-11): pazarlama bildirimi ayrı onay, varsayılan KAPALI.
+  marketing: {
+    label: 'Kampanya ve fırsat bildirimleri de gelsin',
+    hint: 'İstediğin zaman Bildirim ayarlarından kapatabilirsin.',
   },
 };
 
@@ -56,6 +74,8 @@ export const en: typeof tr = {
     privacy: 'Privacy Policy',
     accept_post: '.',
     accept_a11y: 'I accept the Terms of Use and the Privacy Policy',
+    accept_age_pre: 'I am 18 or older and I have read and accept the ',
+    accept_age_a11y: 'I am 18 or older and accept the Terms of Use and the Privacy Policy',
     kvkk_pre: 'Your personal data is processed as described in the ',
     kvkk: 'KVKK Privacy Notice',
     kvkk_post: '.',
@@ -70,7 +90,7 @@ export const en: typeof tr = {
   },
   sheet: {
     details_title: 'Policies and permissions',
-    details_lead: 'By continuing you accept the Terms of Use and the Privacy Policy. You can turn ad measurement off here.',
+    details_lead: 'To continue, please accept the Terms of Use and the Privacy Policy. You can turn ad measurement off here.',
     details_ok: 'Done',
     notice_title: 'Privacy and permissions',
     notice_lead:
@@ -79,6 +99,12 @@ export const en: typeof tr = {
     reconsent_title: 'Our terms have been updated',
     reconsent_lead: 'To continue, please read and accept the updated Terms of Use and Privacy Policy.',
     reconsent_ok: 'Accept and continue',
+    ai_photo_title: 'Photo analysis',
+    ai_photo_lead:
+      'Your plate photo is sent to our AI service provider (USA) to estimate its calories. Any note you add is sent along with the photo.',
+    ai_photo_hint: 'If you cancel, you can enter your meal manually. You can withdraw this in Profile › Privacy › Data and ad permissions.',
+    ai_photo_ok: 'Accept',
+    ai_photo_cancel: 'Cancel',
     close: 'Close',
   },
   settings: {
@@ -86,10 +112,17 @@ export const en: typeof tr = {
     row_sub: 'Usage analytics and ad measurement',
     title: 'Data and ad permissions',
     measure_section: 'Measurement',
+    ai_section: 'AI',
+    ai_photo_label: 'Photo analysis',
+    ai_photo_desc: 'Your scan photos are sent to our service provider (USA) to estimate calories.',
     docs_section: 'Documents',
     att_denied: 'Ad measurement is off because tracking isn’t allowed on this iPhone. Go to iPhone Settings to turn it on.',
     att_open: 'Open iPhone Settings',
     footer: 'Your choices are saved to your account; you can change them any time.',
     error: 'Couldn’t save your choice. Try again.',
+  },
+  marketing: {
+    label: 'Also send me offers and campaign notifications',
+    hint: 'You can turn this off any time in notification settings.',
   },
 };

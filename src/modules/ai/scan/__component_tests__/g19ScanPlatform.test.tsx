@@ -26,6 +26,12 @@ jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { addEventListener: () => () => {}, fetch: () => Promise.resolve({ isConnected: true }) },
 }));
+// G20-S3 md.2: yapay zekâ fotoğraf izni bu testlerde VERİLMİŞ (izin akışı g20s3AiPhoto testinde).
+jest.mock('../../../../lib/consent/aiPhoto', () => ({
+  resolveAiPhotoConsent: () => Promise.resolve('ok'),
+  setAiPhotoConsent: () => Promise.resolve(),
+  hasLocalAiPhotoConsent: () => Promise.resolve(true),
+}));
 jest.mock('../drainPending', () => ({ drainPendingScans: () => Promise.resolve(), onPendingDrained: () => () => {} }));
 jest.mock('../../../../lib/products', () => ({ fetchProducts: () => Promise.resolve([]) }));
 // Eski derleme: ExpoCamera native modülü yok.

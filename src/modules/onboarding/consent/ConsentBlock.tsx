@@ -4,8 +4,8 @@
 //   • "Reklam ölçümü (Meta)" anahtarı — AÇIK gelir, kapatılabilir (İlter kararı 9 Kas)
 // Tasarım yeni pano BEKLEMEZ: FinOnbAccount alt yazı dili (helper, ikincil renk,
 // altı çizili bağlantı) + FinPrivacySettings satır dili (başlık 15/600, alt 13,
-// sağda anahtar) + Onb paleti. `accepted` verilmezse onay kutusu çizilmez
-// (Apple/Google ayrıntı sheet'i: kabul "Devam ederek …" satırıyla).
+// sağda anahtar) + Onb paleti. `accepted` verilmezse onay kutusu çizilmez.
+// G20-S3 md.2b: Apple/Google'da da kabul ZORUNLU onay kutusuyla (PolicyAcceptRow).
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -20,12 +20,83 @@ import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 const CHECK_D =
   'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z';
 
+/**
+ * Koşullar + Gizlilik kabul satırı (onay kutusu, zorunlu). G20-S3 md.2b: Hesap
+ * ekranında Apple/Google/e-posta düğmelerinin altında da AYNI kutu (işaretlenmeden
+ * düğmeler pasif). `withAge` → metin 18+ beyanını da içerir (B-10; eski giriş
+ * ekranındaki "18 yaşından büyüğüm ve … kabul ediyorum" diliyle aynı).
+ */
+export function PolicyAcceptRow({
+  accepted,
+  onAcceptedChange,
+  showRequired,
+  withAge,
+  testID = 'consent-block',
+}: {
+  accepted: boolean;
+  onAcceptedChange?: (v: boolean) => void;
+  showRequired?: boolean;
+  withAge?: boolean;
+  testID?: string;
+}) {
+  const P = useOnb();
+  const i18n = useT();
+  const [doc, setDoc] = useState<LegalSlug | null>(null);
+  const link = { color: P.ink, textDecorationLine: 'underline' as const, fontFamily: 'PlusJakartaSans_600SemiBold' };
+  const open = (s: LegalSlug) => () => setDoc(s);
+  return (
+    <>
+      <Pressable
+        onPress={() => onAcceptedChange?.(!accepted)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: !!accepted }}
+        accessibilityLabel={i18n.t(withAge ? 'consent.block.accept_age_a11y' : 'consent.block.accept_a11y')}
+        style={styles.acceptRow}
+        testID={`${testID}-accept`}
+      >
+        <View
+          style={[
+            styles.box,
+            accepted
+              ? { backgroundColor: P.ink, borderColor: P.ink }
+              : { borderColor: showRequired ? '#E5484D' : P.line2 },
+          ]}
+        >
+          {accepted ? (
+            <Svg width={14} height={14} viewBox="0 0 256 256">
+              <Path d={CHECK_D} fill={P.onInk} />
+            </Svg>
+          ) : null}
+        </View>
+        <AppText textRole="helper" style={[styles.flex, { color: P.ink }]}>
+          {i18n.t(withAge ? 'consent.block.accept_age_pre' : 'consent.block.accept_pre')}
+          <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.terms)} accessibilityRole="link" testID={`${testID}-terms`}>
+            {i18n.t('consent.block.terms')}
+          </AppText>
+          {i18n.t('consent.block.accept_mid')}
+          <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.privacy)} accessibilityRole="link" testID={`${testID}-privacy`}>
+            {i18n.t('consent.block.privacy')}
+          </AppText>
+          {i18n.t('consent.block.accept_post')}
+        </AppText>
+      </Pressable>
+      {showRequired && !accepted ? (
+        <AppText textRole="helper" style={styles.err} accessibilityLiveRegion="polite">
+          {i18n.t('consent.block.required')}
+        </AppText>
+      ) : null}
+      <LegalDocModal slug={doc} onClose={() => setDoc(null)} />
+    </>
+  );
+}
+
 export function ConsentBlock({
   accepted,
   onAcceptedChange,
   adOn,
   onAdChange,
   showRequired,
+  withAge,
   testID = 'consent-block',
 }: {
   /** undefined → onay kutusu yok (kabul başka satırla). */
@@ -35,6 +106,8 @@ export function ConsentBlock({
   onAdChange: (v: boolean) => void;
   /** Kabul edilmeden "Devam"a basıldıysa uyarı satırı. */
   showRequired?: boolean;
+  /** G20-S3: kabul metni 18+ beyanını da içerir (hesap oluşturma / giriş). */
+  withAge?: boolean;
   testID?: string;
 }) {
   const P = useOnb();
@@ -48,45 +121,13 @@ export function ConsentBlock({
   return (
     <View style={styles.wrap} testID={testID}>
       {hasBox ? (
-        <Pressable
-          onPress={() => onAcceptedChange?.(!accepted)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: !!accepted }}
-          accessibilityLabel={i18n.t('consent.block.accept_a11y')}
-          style={styles.acceptRow}
-          testID={`${testID}-accept`}
-        >
-          <View
-            style={[
-              styles.box,
-              accepted
-                ? { backgroundColor: P.ink, borderColor: P.ink }
-                : { borderColor: showRequired ? '#E5484D' : P.line2 },
-            ]}
-          >
-            {accepted ? (
-              <Svg width={14} height={14} viewBox="0 0 256 256">
-                <Path d={CHECK_D} fill={P.onInk} />
-              </Svg>
-            ) : null}
-          </View>
-          <AppText textRole="helper" style={[styles.flex, { color: P.ink }]}>
-            {i18n.t('consent.block.accept_pre')}
-            <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.terms)} accessibilityRole="link" testID={`${testID}-terms`}>
-              {i18n.t('consent.block.terms')}
-            </AppText>
-            {i18n.t('consent.block.accept_mid')}
-            <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.privacy)} accessibilityRole="link" testID={`${testID}-privacy`}>
-              {i18n.t('consent.block.privacy')}
-            </AppText>
-            {i18n.t('consent.block.accept_post')}
-          </AppText>
-        </Pressable>
-      ) : null}
-      {hasBox && showRequired && !accepted ? (
-        <AppText textRole="helper" style={styles.err} accessibilityLiveRegion="polite">
-          {i18n.t('consent.block.required')}
-        </AppText>
+        <PolicyAcceptRow
+          accepted={!!accepted}
+          onAcceptedChange={onAcceptedChange}
+          showRequired={showRequired}
+          withAge={withAge}
+          testID={testID}
+        />
       ) : null}
 
       <AppText textRole="helper" style={{ color: P.sec }}>

@@ -10,6 +10,8 @@
  *  • Reklam ölçümü (Meta) aç/kapa → setAdConsent (+ user_consents). iOS'ta açınca
  *    ATT henüz sorulmadıysa Apple sorusu gelir; ATT reddi = Meta kapalı (anahtar
  *    kapalı kalır, "iPhone Ayarları'nı aç" bağlantısı).
+ *  • G20-S3 md.2: Fotoğraf analizi (yapay zekâ) aç/kapa → ai_photo (+ user_consents).
+ *    Kapalıyken Tara ilk çekimde izin sheet'ini yeniden gösterir; kuyruk gönderilmez.
  *  • Metinler: Kullanım Koşulları · Gizlilik Politikası · KVKK Aydınlatma Metni.
  */
 import React, { useEffect, useState } from 'react';
@@ -20,6 +22,7 @@ import { useT } from '../../../../core/i18n';
 import { getConsent, requestAttForAds } from '../../../../lib/analytics';
 import { metaAllowed } from '../../../../lib/metrics/consent';
 import { onConsentChange, setAdMeasurement, setUsageMeasurement } from '../../../../lib/consent/store';
+import { hasLocalAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/consent/aiPhoto';
 import { LegalDocModal, type LegalSlug } from '../../../onboarding/consent/LegalDocModal';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
 import { FileText } from '../../../../components/icons';
@@ -97,11 +100,36 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
   const t = useTheme();
   const { t: tr } = useT();
   const [state, setState] = useState(readState);
-  const [saving, setSaving] = useState<'usage' | 'ads' | null>(null);
+  const [saving, setSaving] = useState<'usage' | 'ads' | 'ai' | null>(null);
   const [error, setError] = useState(false);
   const [doc, setDoc] = useState<LegalSlug | null>(null);
+  const [aiOn, setAiOn] = useState(false);
+  const refreshAi = () => {
+    void hasLocalAiPhotoConsent()
+      .then(setAiOn)
+      .catch(() => {});
+  };
 
-  useEffect(() => onConsentChange(() => setState(readState())), []);
+  useEffect(() => onConsentChange(() => {
+    setState(readState());
+    refreshAi();
+  }), []);
+  useEffect(refreshAi, []);
+
+  const toggleAi = async (on: boolean) => {
+    if (saving) return;
+    setSaving('ai');
+    setError(false);
+    setAiOn(on);
+    try {
+      await setAiPhotoConsent(on, 'settings');
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(null);
+      refreshAi();
+    }
+  };
 
   const toggleUsage = async (on: boolean) => {
     if (saving) return;
@@ -177,6 +205,18 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
             </Pressable>
           </View>
         ) : null}
+        <FinSectionLabel>{tr('consent.settings.ai_section')}</FinSectionLabel>
+        <View style={flatGroup(t)}>
+          <ToggleRow
+            first
+            title={tr('consent.settings.ai_photo_label')}
+            desc={tr('consent.settings.ai_photo_desc')}
+            value={aiOn}
+            onChange={toggleAi}
+            disabled={saving === 'ai'}
+            testID="consent-ai-photo-switch"
+          />
+        </View>
         {error ? (
           <Text style={{ fontFamily: bodyMedium, fontSize: 13, color: '#E5484D', paddingHorizontal: 4 }} accessibilityLiveRegion="polite">
             {tr('consent.settings.error')}

@@ -5,6 +5,11 @@
 //   notice    — mevcut kullanıcı, bir sonraki açılışta BİR KEZ: aynı içerik + "Devam et".
 //   reconsent — yeni belge sürümü: onay kutusu zorunlu, "Kabul et ve devam et".
 //               Kapatılamaz (karartma/geri tuşu kapatmaz).
+//   ai_photo  — G20-S3 md.2 (Apple 5.1.2(i)): ilk taramadan önce BİR KEZ —
+//               "Tabak fotoğrafın … yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir"
+//               + Kabul et / Vazgeç. Karartma / X / geri = Vazgeç.
+// G20-S3 md.2b: details kipinde `accepted` verilirse Hesap ekranındaki AYNI zorunlu
+// kutu (Koşullar + Gizlilik + 18+) burada da gösterilir.
 // Hareket: sheet base 300 enter / fast 200 exit, karartma 0→0.32; azaltılmış 200 ms opaklık.
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -21,7 +26,7 @@ import { ConsentBlock } from './ConsentBlock';
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
 
-export type ConsentSheetMode = 'details' | 'notice' | 'reconsent';
+export type ConsentSheetMode = 'details' | 'notice' | 'reconsent' | 'ai_photo';
 
 export function ConsentSheet({
   visible,
@@ -31,16 +36,22 @@ export function ConsentSheet({
   onConfirm,
   onClose,
   busy,
+  accepted: acceptedProp,
+  onAcceptedChange,
 }: {
   visible: boolean;
   mode: ConsentSheetMode;
-  adOn: boolean;
-  onAdChange: (v: boolean) => void;
-  /** Birincil düğme (details: Tamam · notice: Devam et · reconsent: Kabul et). */
+  /** ai_photo kipinde kullanılmaz. */
+  adOn?: boolean;
+  onAdChange?: (v: boolean) => void;
+  /** Birincil düğme (details: Tamam · notice: Devam et · reconsent: Kabul et · ai_photo: Kabul et). */
   onConfirm: () => void;
-  /** Yalnız details kipinde (karartma / X / geri). */
+  /** details: karartma / X / geri · ai_photo: Vazgeç (aynı yollar). */
   onClose?: () => void;
   busy?: boolean;
+  /** details: Hesap ekranıyla ortak zorunlu kutu (verilmezse kutu yok). */
+  accepted?: boolean;
+  onAcceptedChange?: (v: boolean) => void;
 }) {
   const P = useOnb();
   const i18n = useT();
@@ -50,7 +61,8 @@ export function ConsentSheet({
   const [showRequired, setShowRequired] = useState(false);
   const y = useSharedValue(1);
   const o = useSharedValue(0);
-  const dismissable = mode === 'details';
+  const dismissable = mode === 'details' || mode === 'ai_photo';
+  const isAi = mode === 'ai_photo';
 
   useEffect(() => {
     if (visible) {
@@ -145,23 +157,42 @@ export function ConsentSheet({
           </View>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
             <AppText style={[styles.lead, { color: P.sec }]}>{lead}</AppText>
-            <ConsentBlock
-              accepted={mode === 'reconsent' ? accepted : undefined}
-              onAcceptedChange={(v) => {
-                setAccepted(v);
-                if (v) setShowRequired(false);
-              }}
-              showRequired={showRequired}
-              adOn={adOn}
-              onAdChange={onAdChange}
-              testID={`consent-sheet-${mode}-block`}
-            />
-            <OnbButton
-              kind={mode === 'details' ? 'ink' : 'lime'}
-              label={ok}
-              onPress={confirm}
-              disabled={busy || (mode === 'reconsent' && !accepted)}
-            />
+            {isAi ? (
+              <>
+                <AppText textRole="helper" style={{ color: P.sec }}>
+                  {i18n.t('consent.sheet.ai_photo_hint')}
+                </AppText>
+                <OnbButton kind="lime" label={ok} onPress={confirm} disabled={busy} testID="consent-sheet-ai_photo-accept" />
+                <OnbButton
+                  kind="chip"
+                  label={i18n.t('consent.sheet.ai_photo_cancel')}
+                  onPress={close}
+                  testID="consent-sheet-ai_photo-cancel"
+                />
+              </>
+            ) : (
+              <>
+                <ConsentBlock
+                  accepted={mode === 'reconsent' ? accepted : mode === 'details' ? acceptedProp : undefined}
+                  onAcceptedChange={(v) => {
+                    if (mode === 'details') onAcceptedChange?.(v);
+                    else setAccepted(v);
+                    if (v) setShowRequired(false);
+                  }}
+                  showRequired={showRequired}
+                  withAge={mode === 'details'}
+                  adOn={adOn ?? true}
+                  onAdChange={(v) => onAdChange?.(v)}
+                  testID={`consent-sheet-${mode}-block`}
+                />
+                <OnbButton
+                  kind={mode === 'details' ? 'ink' : 'lime'}
+                  label={ok}
+                  onPress={confirm}
+                  disabled={busy || (mode === 'reconsent' && !accepted)}
+                />
+              </>
+            )}
           </ScrollView>
         </Animated.View>
       </View>

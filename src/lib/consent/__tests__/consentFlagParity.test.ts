@@ -43,10 +43,10 @@ test('App.tsx: Meta/ATT yalnız ConsentGate üzerinden (doğrudan initFBSDK ça�
 test('rıza bloğu yeni kabuk Hesap ekranında ve e-posta sheet’inde', () => {
   const nav = read('src/modules/onboarding/OnboardingNavigator.tsx');
   assert.match(nav, /<ConsentSheet[\s\S]*mode="details"/);
-  assert.match(nav, /acceptPolicies\(\{ source: 'signup_social', adOn \}\)/);
+  assert.match(nav, /acceptPolicies\(\{ source: 'signup_social', adOn, ageOk: true \}\)/);
   const sheet = read('src/modules/onboarding/first/AccountEmailSheet.tsx');
   assert.match(sheet, /<ConsentBlock/);
-  assert.match(sheet, /acceptPolicies\(\{ source: 'signup_email', adOn \}\)/);
+  assert.match(sheet, /acceptPolicies\(\{ source: 'signup_email', adOn, ageOk: true \}\)/);
 });
 
 test('Keşfet tek toast: uçuş ownToast + kabuk ikinci toast çizmez, Geri al yalnız undo ile', () => {

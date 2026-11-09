@@ -37,6 +37,8 @@ const X_D =
 export function AccountEmailSheet({
   adOn = true,
   onAdChange,
+  accepted: acceptedProp,
+  onAcceptedChange,
   visible,
   onClose,
   onVerified,
@@ -46,6 +48,9 @@ export function AccountEmailSheet({
   /** G20-S1: reklam ölçümü (Meta) — Hesap ekranıyla ortak durum. */
   adOn?: boolean;
   onAdChange?: (v: boolean) => void;
+  /** G20-S3 md.2b: Hesap ekranıyla ORTAK zorunlu kutu (verilmezse sheet kendi tutar). */
+  accepted?: boolean;
+  onAcceptedChange?: (v: boolean) => void;
   visible: boolean;
   onClose: () => void;
   /** Kod doğrulandı (oturum açıldı) → Ana sayfa. */
@@ -67,7 +72,12 @@ export function AccountEmailSheet({
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
   // G20-S1 md.1: Koşullar + Gizlilik kabulü zorunlu (onay kutusu), "Kod gönder" öncesi.
-  const [accepted, setAccepted] = useState(false);
+  const [acceptedOwn, setAcceptedOwn] = useState(false);
+  const accepted = acceptedProp ?? acceptedOwn;
+  const setAccepted = (v: boolean) => {
+    if (onAcceptedChange) onAcceptedChange(v);
+    else setAcceptedOwn(v);
+  };
   const [showRequired, setShowRequired] = useState(false);
   const releaseRef = useRef<(() => void) | null>(null);
   const release = () => {
@@ -153,7 +163,7 @@ export function AccountEmailSheet({
       setError(i18n.t('onboarding.email.err_code'));
       return;
     }
-    await acceptPolicies({ source: 'signup_email', adOn }).catch(() => {});
+    await acceptPolicies({ source: 'signup_email', adOn, ageOk: true }).catch(() => {});
     release();
     onVerified();
   };
@@ -255,6 +265,7 @@ export function AccountEmailSheet({
                   </AppText>
                 ) : null}
                 <ConsentBlock
+                  withAge
                   accepted={accepted}
                   onAcceptedChange={(v) => {
                     setAccepted(v);

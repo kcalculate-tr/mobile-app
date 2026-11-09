@@ -38,8 +38,7 @@ import { useOnb } from './components/onbTheme';
 import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
 import { ConsentSheet } from './consent/ConsentSheet';
-import { LegalDocModal, type LegalSlug } from './consent/LegalDocModal';
-import { LEGAL_SLUG } from '../../lib/legal/slugs';
+import { PolicyAcceptRow } from './consent/ConsentBlock';
 import { acceptPolicies, holdGate } from '../../lib/consent/store';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
@@ -184,8 +183,11 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   // G20-S1 md.1: reklam ölçümü (Meta) AÇIK gelir, kapatılabilir; Apple/Google'da
   // "Ayrıntılar" sheet'i, e-postada sheet içindeki blok aynı durumu değiştirir.
   const [adOn, setAdOn] = useState(true);
+  // G20-S3 md.2b (İlter kararı): Apple/Google/e-posta — ZORUNLU onay kutusu
+  // (Koşullar + Gizlilik + 18+ beyanı); işaretlenmeden düğmeler pasif. E-posta
+  // sheet'i ve ayrıntı sheet'i AYNI durumu gösterir/değiştirir.
+  const [accepted, setAccepted] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [doc, setDoc] = useState<LegalSlug | null>(null);
   const goHome = () => root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
 
   const afterAuth = async (result: {
@@ -208,15 +210,15 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   };
 
   const run = async (provider: 'apple' | 'google') => {
-    if (busy) return;
+    if (busy || !accepted) return;
     setBusy(true);
     // Oturum, kabul kaydı yazılmadan açılabilir → kapı bu sırada "mevcut kullanıcı"
     // sheet'i / ATT göstermesin.
     const release = holdGate();
     try {
       const result = await (provider === 'apple' ? signInWithApple() : signInWithGoogle());
-      // "Devam ederek Koşullar ve Gizlilik'i kabul edersin" + reklam ölçümü tercihi.
-      if (!result.cancelled && !result.error) await acceptPolicies({ source: 'signup_social', adOn });
+      // Onay kutusu (Koşullar + Gizlilik + 18+) + reklam ölçümü tercihi.
+      if (!result.cancelled && !result.error) await acceptPolicies({ source: 'signup_social', adOn, ageOk: true });
       await afterAuth(result);
     } finally {
       release();
@@ -234,21 +236,14 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
       footer={
         <View>
           <View style={{ gap: 10 }}>
-            <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={busy} onPress={() => run('apple')} />
-            <AuthButton kind="google" label={i18n.t('onboarding.account.google')} disabled={busy} onPress={() => run('google')} />
-            <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy} onPress={() => setEmailOpen(true)} />
+            <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={busy || !accepted} onPress={() => run('apple')} />
+            <AuthButton kind="google" label={i18n.t('onboarding.account.google')} disabled={busy || !accepted} onPress={() => run('google')} />
+            <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy || !accepted} onPress={() => setEmailOpen(true)} />
           </View>
-          <AppText textRole="helper" style={[styles.legal, { color: P.sec }]}>
-            {i18n.t('onboarding.account.legal_pre')}
-            <AppText textRole="helper" style={link} onPress={() => setDoc(LEGAL_SLUG.terms)} accessibilityRole="link" testID="onb-account-terms">
-              {i18n.t('onboarding.account.terms')}
-            </AppText>
-            {i18n.t('onboarding.account.legal_mid')}
-            <AppText textRole="helper" style={link} onPress={() => setDoc(LEGAL_SLUG.privacy)} accessibilityRole="link" testID="onb-account-privacy">
-              {i18n.t('onboarding.account.privacy')}
-            </AppText>
-            {i18n.t('onboarding.account.legal_post')}
-          </AppText>
+          {/* G20-S3 md.2b: "Devam ederek … kabul edersin" satırı yerine zorunlu kutu (aynı yer, aynı helper dili). */}
+          <View style={styles.legalBox}>
+            <PolicyAcceptRow accepted={accepted} onAcceptedChange={setAccepted} withAge testID="onb-account-consent" />
+          </View>
           {/* G20-S1: Apple/Google için kısa satır + ayrıntı sheet'i (aynı blok). */}
           <AppText textRole="helper" style={[styles.legalAds, { color: P.sec }]} testID="onb-account-ads-line">
             {i18n.t(adOn ? 'consent.account.ads_on' : 'consent.account.ads_off')}
@@ -266,13 +261,16 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
         mode="details"
         adOn={adOn}
         onAdChange={setAdOn}
+        accepted={accepted}
+        onAcceptedChange={setAccepted}
         onConfirm={() => setDetailsOpen(false)}
         onClose={() => setDetailsOpen(false)}
       />
-      <LegalDocModal slug={doc} onClose={() => setDoc(null)} />
       <AccountEmailSheet
         adOn={adOn}
         onAdChange={setAdOn}
+        accepted={accepted}
+        onAcceptedChange={setAccepted}
         visible={emailOpen}
         onClose={() => setEmailOpen(false)}
         onVerified={() => {
@@ -377,7 +375,7 @@ const styles = StyleSheet.create({
   // FinOnbWelcome: kart içi dikey 14 boşluk; "kcal." 700/18; başlık 700/40, satır 1.08.
   brand: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 18, lineHeight: 23, marginBottom: 14 },
   headline: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 40, lineHeight: 43 },
-  legal: { marginTop: 14, textAlign: 'center' },
+  legalBox: { marginTop: 14 },
   legalAds: { marginTop: 4, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1, paddingHorizontal: 8 },

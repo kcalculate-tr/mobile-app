@@ -38,6 +38,7 @@ export function OnbButton({
   icon,
   disabled = false,
   style,
+  testID,
 }: {
   label: string;
   onPress: () => void;
@@ -45,6 +46,7 @@ export function OnbButton({
   icon?: (color: string) => React.ReactNode;
   disabled?: boolean;
   style?: object;
+  testID?: string;
 }) {
   const P = useOnb();
   const bg = disabled ? P.dis : kind === 'ink' ? P.ink : kind === 'lime' ? P.accent : P.chip;
@@ -59,6 +61,7 @@ export function OnbButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
+      testID={testID}
       style={[
         styles.btn,
         { backgroundColor: bg },

@@ -55,6 +55,8 @@ import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModa
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
 import { trackScanLog, trackScanOutcome } from '../scanTrack';
 import type { ScanVia } from '../scanMetrics';
+import { ConsentSheet } from '../../../onboarding/consent/ConsentSheet';
+import { resolveAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/consent/aiPhoto';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -117,6 +119,32 @@ export default function ScanScreen() {
   const [failReason, setFailReason] = useState<LocalImageCheck | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [galleryDenied, setGalleryDenied] = useState(false);
+  // G20-S3 md.2 (Apple 5.1.2(i)): ilk taramadan önce BİR KEZ yapay zekâ fotoğraf
+  // izni. İzin yokken hiçbir fotoğraf gönderilmez (çekim/galeri/tekrar dene bekçili).
+  // Vazgeç → Elle gir (mevcut "Elle gir" yolu).
+  const aiConsentRef = useRef<'ok' | 'ask' | null>(null);
+  const aiLookupRef = useRef<Promise<'ok' | 'ask'> | null>(null);
+  const [aiSheet, setAiSheet] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const lookup = resolveAiPhotoConsent().catch(() => 'ask' as const);
+    aiLookupRef.current = lookup;
+    void lookup.then((d) => {
+      if (aiConsentRef.current === null) aiConsentRef.current = d;
+      if (alive && aiConsentRef.current === 'ask') setAiSheet(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  /** İzin yoksa sheet'i aç ve true dön (çağıran durur). Sorgu sürüyorsa bekler. */
+  const aiBlocked = async (): Promise<boolean> => {
+    const d = aiConsentRef.current ?? (aiLookupRef.current ? await aiLookupRef.current : 'ask');
+    if (d === 'ok') return false;
+    setAiSheet(true);
+    return true;
+  };
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -209,6 +237,7 @@ export default function ScanScreen() {
   };
 
   const handleCaptureLegacy = async () => {
+    if (await aiBlocked()) return;
     const uri = (await captureOnce())?.uri;
     if (!uri) return;
     setPhotoUri(uri);
@@ -269,6 +298,7 @@ export default function ScanScreen() {
     busyRef.current = true;
     lastSourceRef.current = source;
     try {
+      if (await aiBlocked()) return;
       // İlter 9 Kas: uzun kenar ≤ 1600 (expo-image-manipulator; native yoksa aynı URI).
       // Yeniden denemede foto zaten küçük → boyut verilmez, aynı URI = aynı anahtar.
       const uri = await shrinkForScan(rawUri, size);
@@ -374,6 +404,7 @@ export default function ScanScreen() {
 
   const handleCaptureFin = async () => {
     if (busyRef.current) return;
+    if (await aiBlocked()) return;
     const asset = await captureOnce();
     if (!asset?.uri) return;
     await runFinCapture(asset.uri, 'camera', false, asset);
@@ -410,6 +441,7 @@ export default function ScanScreen() {
 
   const handleGalleryPick = async () => {
     if (busyRef.current || stage === 'scanning') return;
+    if (await aiBlocked()) return;
     if (yeniKabuk) {
       const asset = await pickFromGalleryFin();
       if (!asset?.uri) return;
@@ -537,6 +569,30 @@ export default function ScanScreen() {
     navigation.goBack();
   };
 
+  const aiSheetEl = (
+    <ConsentSheet
+      visible={aiSheet}
+      mode="ai_photo"
+      busy={aiBusy}
+      onConfirm={() => {
+        if (aiBusy) return;
+        setAiBusy(true);
+        void setAiPhotoConsent(true, 'scan')
+          .catch(() => {})
+          .finally(() => {
+            aiConsentRef.current = 'ok';
+            setAiBusy(false);
+            setAiSheet(false);
+          });
+      }}
+      onClose={() => {
+        setAiSheet(false);
+        void setAiPhotoConsent(false, 'scan').catch(() => {});
+        handleManualEntry();
+      }}
+    />
+  );
+
   const shareData: PlateXRayData | null = result
     ? {
         photoUri,
@@ -589,7 +645,7 @@ export default function ScanScreen() {
             remaining={remaining}
             analyzing={stage === 'scanning'}
             photoUri={photoUri}
-            paused={errorKind !== null}
+            paused={errorKind !== null || aiSheet}
             onClose={() => navigation.goBack()}
             onCaptured={(uri, size) => void runFinCapture(uri, 'camera', false, size)}
             onGallery={handleGalleryPick}
@@ -644,6 +700,8 @@ export default function ScanScreen() {
             void handleGalleryPick();
           }}
         />
+
+        {aiSheetEl}
 
         {galleryDenied ? (
           <View style={styles.toastLayer} pointerEvents="box-none">
@@ -794,6 +852,7 @@ export default function ScanScreen() {
         onClose={() => setLimitVisible(false)}
         onManualEntry={handleManualEntry}
       />
+      {aiSheetEl}
     </View>
   );
 }
