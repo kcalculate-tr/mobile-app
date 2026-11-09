@@ -118,7 +118,7 @@ Yüzde kovası kullanıcı başına sabit (`fnv1a32(key:user_id) % 100`) → %10
 | 3 | `kesfet_paylasim`, `kesfet_video` | Herkes paylaşır, video | kesfet %50 | %10 | %50 | %100 | yalnız creator paylaşır / video yok |
 | 3 | `sosyal_bildirim` | Sosyal bildirimler + push | kesfet %50 | %10 | %50 | %100 | zil/liste gizlenir |
 | 4 | `yeni_siparis` | eatkcal yeni arayüz (ana sayfa → ödeme) | yeni_kabuk %50 | %10 | %50 | %100 | eski sipariş akışı; **ödeme hatası alarmı** (failed_payments, Paynkolay) en sıkı |
-| 5 | `ogun_hatirlatma` | Öğün saati yerel hatırlatma | yeni_kabuk **%100'den sonra** | %10 | %50 | %100 | kurulu hatırlatmalar sonraki açılışta iptal |
+| 5 | `ogun_hatirlatma` | Öğün saati yerel hatırlatma — 10:30 · 14:30 · 21:00 (İstanbul) + yalnız son 7 günde kaydı olana (**İlter onayı 10 Kas**) | yeni_kabuk **%100'den sonra** | %10 | %50 | %100 | kurulu hatırlatmalar sonraki açılışta iptal |
 | Deney | `onb_welcome_variant_b`, `_c` | Karşılama başlığı B/C (A varsayılan) | yeni_onboarding %100 | B %33, C %50 (B kazanır → ≈ A/B/C üçte bir) | — | — | A'ya döner |
 | Kapalı kalır | `restoran_yakinda`, `kcalculate_ai_tracking`, `log_meal`, `barcode_scan`, `discover`, `ai_coach`, `dietitian`, `inbox`, `eatkcal_ordering` | eski/kullanılmayan anahtarlar | — | — | — | — | — |
 
