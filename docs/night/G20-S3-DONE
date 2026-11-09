@@ -1,0 +1,5 @@
+G20-S3 DONE — 9 Kas 2026
+Dal: night20/fix (taban night20/store @ 66b4eb4)
+Maddeler: 0-1 b02da89 · 2/2b/18+ f834721 · 3 ad8741b · 4 f64c1f4 · 6 pazarlama 0f1a82e · 7 6572c43 · 5 yalniz LOG (istemci degisikligi gerekmedi) · 8 LOG d625e92
+Kontrol: tsc 0 · unit 873/874 (1 atlandi) · bilesen 278/278, snapshot 2/2 · expo export iOS + Android OK · deno check OK
+Canliya dokunulmadi (migration yalniz DOSYA, deploy yok). Ayrinti: docs/night/G20-S3-LOG.md (CANLIYA UYGULANACAK, DEPLOY GEREKIR, SORULAR)
