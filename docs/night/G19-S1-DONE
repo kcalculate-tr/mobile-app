@@ -7,7 +7,10 @@ gece yarısı düzeltmesi, dakika + anahtar başına sınır, görsel boyut, mod
 · 5 izinler/platform (galeri izinsiz, eski derleme yedek yolu, iOS izin metni) · 6 ölçüm olayları (D-S1 adları)
 · 7 docs/night/TARA_ACILIS.md · 8 kontroller.
 
-Kontrol: tsc 0 · unit 738 (737 ✓, 1 atlandı) · jest 38/205, snapshot 2/2 · PGlite 20/20 ·
+İlter 9 Kas cevapları uygulandı: acil kapatma ayrı durum ("Tara şu an kullanılamıyor", ai_scan_enabled),
+expo-image-manipulator ile ≤ 1600 küçültme (korumalı, aynı native derleme), elle P/K/Y hesabı (arayüz Tur 26f).
+
+Kontrol: tsc 0 · unit 740 (739 ✓, 1 atlandı) · jest 39/210, snapshot 2/2 · PGlite 25/25 ·
 noLegacyWhenFlagsOn ✓ (Eski tasarım: 0) · bayrak kapalı parite ✓ · expo export iOS ✓ + Android ✓ ·
 TR/EN kare dizisi (docs/night/g19-s1/).
 Canlıya uygulanacak / deploy / SORULAR: docs/night/G19-S1-LOG.md
