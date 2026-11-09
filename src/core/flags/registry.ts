@@ -49,6 +49,9 @@ export const FLAG_DEFAULTS = {
   // (varsayılan). Sunucu satırları: 20261108000100_g18_onboarding_state.sql (kapalı).
   onb_welcome_variant_b: false, // Karşılama başlığı B
   onb_welcome_variant_c: false, // Karşılama başlığı C
+  // G19-S2 md.5 — öğün saatinde kayıt yoksa yerel hatırlatma (fin_reminder_*).
+  // Yalnız yeni kabukta etkili. Sunucu satırı: 20261109200100_g19_s2_track.sql (kapalı).
+  ogun_hatirlatma: false, // Öğün hatırlatmaları (yerel bildirim)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

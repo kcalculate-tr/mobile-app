@@ -4,6 +4,9 @@
 // etiketleri ve durum halkaları üretilir. Panodaki sayı/isim ÖRNEK; burada hep
 // gerçek veriden; veri yoksa bölüm gizlenir (uydurma yok).
 
+import { istanbulHHMM, istanbulHour } from './track/dayClock';
+import { roundKcal } from './track/totals';
+
 export type SlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 /** FinHomeR3 kaynak rozeti türleri. */
@@ -63,7 +66,8 @@ export function normalizeMealType(raw: string | null | undefined, consumedAtISO?
     if (k) return k;
   }
   // Bilinmeyen/boş → saatten çıkar.
-  const h = consumedAtISO ? new Date(consumedAtISO).getHours() : 12;
+  // G19-S2 md.1: yuva İstanbul saatiyle (gün sınırıyla aynı saat; bkz. track/dayClock).
+  const h = consumedAtISO ? istanbulHour(new Date(consumedAtISO)) : 12;
   return slotFromHour(h);
 }
 
@@ -94,12 +98,9 @@ export function sourceInfo(source: string): { kind: HomeSource; auto: boolean } 
   }
 }
 
-/** ISO zaman damgasından HH:MM (cihaz yerel saati). */
+/** ISO zaman damgasından HH:MM — G19-S2 md.1: İstanbul saati (gün/yuva ile aynı). */
 export function hhmm(iso: string): string {
-  const d = new Date(iso);
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+  return istanbulHHMM(iso);
 }
 
 /**
@@ -122,7 +123,7 @@ export function buildSlots(
     bySlot[slot].push({
       id: r.id,
       name: r.name,
-      kcal: Math.round(r.calories),
+      kcal: roundKcal(r.calories), // G19-S2 md.1: yuvarlama tek yerde (track/totals)
       source: info.kind,
       auto: info.auto,
       time: hhmm(r.consumed_at),

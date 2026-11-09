@@ -6,6 +6,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Bayraklar: yalnız yeni_kabuk açık. ───────────────────────────────────────
 jest.mock('../../core/flags', () => ({ useFeature: (k: string) => k === 'yeni_kabuk' }));
+// G19-S2: çevrimdışı kuyruk NetInfo dinler — testte paketin resmî sahtesi.
+jest.mock('@react-native-community/netinfo', () => require('@react-native-community/netinfo/jest/netinfo-mock.js'));
+// Test renderer measureInWindow çağırmaz → popover çapası sabit (home.test ile aynı).
+jest.mock('../../modules/gun/home/MealMenuPopover', () => {
+  const actual = jest.requireActual('../../modules/gun/home/MealMenuPopover');
+  return {
+    ...actual,
+    useAnchorMeasure: () => ({ ref: { current: null }, measure: async () => ({ x: 58, y: 200, width: 190, height: 44 }) }),
+  };
+});
 
 jest.mock('@react-navigation/native', () => {
   const R = jest.requireActual('react');
@@ -24,12 +34,12 @@ jest.mock('../../core/AuthContext', () => {
 jest.mock('../../hooks/useRequireAuth', () => ({
   useRequireAuth: () => ({ session: {}, loading: false, isAuthenticated: true }),
 }));
+// G19-S2: hedef testte değiştirilebilir (hedef yok → "Hedef belirlenmedi").
+const DEFAULT_SUMMARY = { targetKcal: 2000, targetProtein: 120, targetCarb: 250, targetFat: 65 };
+const mockSummary: { value: Record<string, number> | null } = { value: DEFAULT_SUMMARY };
 jest.mock('../../hooks/useNutritionSummary', () => {
-  const v = {
-    summary: { targetKcal: 2000, targetProtein: 120, targetCarb: 250, targetFat: 65 },
-    refetch: () => {},
-  };
-  return { useNutritionSummary: () => v };
+  const refetch = () => {};
+  return { useNutritionSummary: () => ({ summary: mockSummary.value, refetch }) };
 });
 jest.mock('../../lib/products', () => ({ fetchProductImagesByName: () => Promise.resolve({}) }));
 jest.mock('expo-print', () => ({ printToFileAsync: () => Promise.resolve({ uri: '' }) }));
@@ -145,6 +155,7 @@ beforeEach(async () => {
   mockDb.orders = [];
   mockDb.calls = [];
   usePantryStore.setState({ items: [] });
+  mockSummary.value = DEFAULT_SUMMARY;
   await AsyncStorage.clear();
 });
 
@@ -286,7 +297,8 @@ test('ilk öğün: gerçek sinyalle kutlama bir kez + ardından bildirim izni sh
   await flush();
   expect(tree.queryByText('İlk öğün eklendi')).toBeNull();
   expect(tree.getByText('Serini korumak için akşam 19:30’da hatırlatayım mı?')).toBeTruthy();
-  const shown = JSON.parse((await AsyncStorage.getItem('@kcal_celebrate_shown')) ?? '{}');
+  // G19-S2 md.4: anahtar kullanıcıya özel.
+  const shown = JSON.parse((await AsyncStorage.getItem('@kcal_celebrate_shown:u1')) ?? '{}');
   expect(shown.first).toBe(true);
   // Yeniden mount → ömür boyu bir kez: tekrar gösterilmez.
   tree.unmount();
@@ -302,4 +314,106 @@ test('ilk öğün değil + seri yok → kutlama yok', async () => {
   await advance(TIMING.logTrail + DURATION.base + TIMING.dailyRing);
   expect(tree.queryByText('İlk öğün eklendi')).toBeNull();
   expect(tree.queryByText('3 günlük seri')).toBeNull();
+});
+
+// ─── G19-S2 — günlük takip açılışı ───────────────────────────────────────────
+test('G19-S2 md.2: Kaldır → "Kayıt kaldırıldı · Geri al" → aynı id ile geri eklenir', async () => {
+  const tree = render(<TrackerScreen />);
+  await flush();
+  fireEvent(tree.getByLabelText(/Sütlü kahve, Elle/), 'longPress');
+  fireEvent.press(tree.getByLabelText('Kaldır'));
+  await flush();
+  expect(tree.queryByText('Sütlü kahve')).toBeNull();
+  expect(tree.getByText('Kayıt kaldırıldı')).toBeTruthy();
+  expect(tree.getByText('560 / 2.000 kcal')).toBeTruthy(); // toplam = kalan kayıtlar
+  fireEvent.press(tree.getByText('Geri al'));
+  await flush();
+  const ins = mockDb.calls.find((c) => c.table === 'meal_consumptions' && c.op === 'insert');
+  expect(ins).toBeTruthy();
+  expect(ins!.payload).toEqual(
+    expect.objectContaining({ id: 'c2', source: 'manual', name: 'Sütlü kahve', calories: 40, consumed_at: '2026-11-06T15:40:00.000Z', user_id: 'u1' }),
+  );
+  expect(tree.getByText('Sütlü kahve')).toBeTruthy();
+  expect(tree.getByText('600 / 2.000 kcal')).toBeTruthy();
+});
+
+test('G19-S2 md.1: hedef yoksa uydurma 2.000 yok → "hedef belirlenmedi"', async () => {
+  mockSummary.value = null;
+  const tree = render(<TrackerScreen />);
+  await flush();
+  expect(tree.getByText('600 kcal, hedef belirlenmedi')).toBeTruthy();
+  expect(tree.queryByText('600 / 2.000 kcal')).toBeNull();
+  expect(tree.getByText('Hedef belirlenmedi')).toBeTruthy();
+});
+
+test('G19-S2 md.1: gün toplamı = kayıtların toplamı (ondalık kcal tek yerde yuvarlanır)', async () => {
+  mockDb.today = [
+    { ...BASE_ROWS[0], id: 'd1', calories: 100.4 },
+    { ...BASE_ROWS[0], id: 'd2', calories: 100.4, name: 'Çay' },
+    { ...BASE_ROWS[1], id: 'd3', calories: 199.6 },
+  ];
+  const tree = render(<TrackerScreen />);
+  await flush();
+  // 100 + 100 + 200 = 400 (satır başına tam sayı); yuvalar da aynı toplamı verir.
+  expect(tree.getByText('400 / 2.000 kcal')).toBeTruthy();
+});
+
+test('G19-S2 md.2: kaydı başka öğüne taşı (FinMoPopover) → meal_type güncellenir', async () => {
+  const tree = render(<TrackerScreen />);
+  await flush();
+  fireEvent(tree.getByLabelText(/Sütlü kahve, Elle/), 'longPress');
+  fireEvent.press(tree.getByTestId('home-item-meal-c2'));
+  await flush();
+  fireEvent.press(tree.getByTestId('meal-menu-dinner'));
+  await flush();
+  const up = mockDb.calls.find((c) => c.table === 'meal_consumptions' && c.op === 'update');
+  expect(up).toBeTruthy();
+  expect(up!.payload).toEqual({ meal_type: 'aksam' });
+  expect(up!.filters.eq).toEqual(expect.arrayContaining([['id', 'c2']]));
+  expect(tree.getByText('Akşam öğününe taşındı')).toBeTruthy();
+});
+
+test('G19-S2 md.1: İstanbul gece yarısı geçince açık ekran yeni günü yükler', async () => {
+  jest.setSystemTime(new Date('2026-11-06T20:59:50.000Z')); // 23:59:50 İstanbul
+  const tree = render(<TrackerScreen />);
+  await flush();
+  expect(tree.getByText('Sütlü kahve')).toBeTruthy();
+  mockDb.today = []; // yeni gün: sunucuda bugün kayıt yok
+  mockDb.calls = [];
+  await advance(12_000); // gece yarısı + 1 sn pay → fetchData yeni günü okur
+  await flush();
+  expect(tree.queryByText('Sütlü kahve')).toBeNull();
+  expect(tree.queryByText('Tavuklu Bowl')).toBeNull();
+});
+
+// G19-S2 md.6 — React Profiler bulgusu: Ana sayfa commit sayıları (bütçe testi).
+// Sayılar LOG'a yazıldı; bütçe aşılırsa gereksiz yeniden çizim geri gelmiş demektir.
+test('G19-S2 md.6: Profiler — ilk yükleme, kaldır ve logFlight commit bütçesi', async () => {
+  const commits: { phase: string; ms: number }[] = [];
+  const onRender = (_id: string, phase: string, actual: number) => commits.push({ phase, ms: actual });
+  const tree = render(
+    <React.Profiler id="home" onRender={onRender}>
+      <TrackerScreen />
+    </React.Profiler>,
+  );
+  await flush();
+  await flush();
+  const mount = commits.length;
+  commits.length = 0;
+  fireEvent(tree.getByLabelText(/Sütlü kahve, Elle/), 'longPress');
+  fireEvent.press(tree.getByLabelText('Kaldır'));
+  await flush();
+  const remove = commits.length;
+  commits.length = 0;
+  mockDb.today = [...BASE_ROWS, { ...BASE_ROWS[0], id: 'c9', name: 'Ayran', source: 'ai_scan' }];
+  await act(async () => {
+    emitLogFlight({ id: 'c9', x: 0, y: 0, w: 0, h: 0 });
+  });
+  await advance(TIMING.logTrail + DURATION.base + TIMING.dailyRing);
+  const flight = commits.length;
+  process.stdout.write(`[G19-S2 profiler] mount=${mount} remove=${remove} logFlight=${flight}\n`);
+  // Ölçüm (9 Kas): mount=5 · remove=4 · logFlight=5 → bütçe ölçüm + küçük pay.
+  expect(mount).toBeLessThanOrEqual(8);
+  expect(remove).toBeLessThanOrEqual(6);
+  expect(flight).toBeLessThanOrEqual(8);
 });

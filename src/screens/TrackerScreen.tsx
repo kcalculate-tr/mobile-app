@@ -1,6 +1,6 @@
 // Gün sınırı ve gün anahtarı tek kaynaktan (bkz. src/lib/dayKey.ts).
 import { DURATION } from '../constants/motion';
-import { dayKey, startOfDayIso } from '../lib/dayKey';
+import { dayKey, lastDayKeys, startOfDayIso } from '../lib/dayKey';
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   Animated,
@@ -50,7 +50,26 @@ import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
 import { WaitlistFormSheet } from '../modules/eatkcal/v2/ui/gate/WaitlistFormSheet'; // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
 import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
-import { buildSlots, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
+import { buildSlots, normalizeMealType, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
+// G19-S2 — günlük takip açılışı: İstanbul gün saati, tek yuvarlama, çevrimdışı kuyruk, olaylar.
+import { useDayRollover } from '../modules/gun/track/useDayRollover';
+import { dayTotals, goalState, ringComplete, roundKcal, storeMacro } from '../modules/gun/track/totals';
+import { istanbulHour } from '../modules/gun/track/dayClock';
+import { logSourceOf, trackEvent } from '../modules/gun/track/events';
+import { applyPending } from '../modules/gun/track/logQueue';
+import {
+  bindLogQueue,
+  isOffline,
+  newRowId,
+  onLogQueueDrop,
+  pendingOps,
+  submitLogOp,
+  wireLogQueueTriggers,
+} from '../modules/gun/track/logQueueNative';
+import { wireLogEventsBridge } from '../modules/gun/track/logEventsBridge';
+import { deleteActivityLog } from '../modules/gun/track/activityUndo';
+import { applyWater, WATER_DAY_MAX_ML } from '../modules/gun/track/limits';
+import { toServerMealType } from '../core/meal/mealType';
 import { WATER_STEP_ML, useWaterToday, waterTargetMl } from '../modules/gun/water';
 import { HomeExploreStrip } from './tracker/HomeStrips';
 // G18-S2 — Ana sayfa Tur 26: öne çıkanlar banner'ı, bölge bölümü, boş hâl (S1 bileşeni).
@@ -132,7 +151,7 @@ type ConsumedRow = {
   consumed_at: string;
 };
 
-type WeeklyDay = { label: string; date: string; kcal: number; protein: number; carbs: number; fat: number };
+type WeeklyDay = { label: string; date: string; kcal: number; protein: number; carbs: number; fat: number; count?: number };
 
 // UI state
 type UIState = {
@@ -967,6 +986,9 @@ export default function TrackerScreen() {
     }
   }, [mealModalVisible, mealBackdropOpacity, mealSheetTranslateY]);
 
+  // G19-S2: fetchData bağımlılıkları değişmesin diye bayrak ref'te.
+  const yeniKabukRef = useRef(yeniKabuk);
+  yeniKabukRef.current = yeniKabuk;
   const fetchData = useCallback(
     async (filter: FilterType) => {
       if (!user) {
@@ -1048,7 +1070,11 @@ export default function TrackerScreen() {
         }
 
         if (Array.isArray(todayConsumedRes.data)) {
-          const rows = todayConsumedRes.data.map(normalizeConsumedRow);
+          // G19-S2 md.2: bekleyen çevrimdışı işlemler görünür kalır (kuyruk yalnız yeni
+          // kabukta dolar; bayrak kapalıyken boş → satırlar AYNEN).
+          const pend = pendingOps();
+          const base = todayConsumedRes.data.map(normalizeConsumedRow);
+          const rows = pend.length ? applyPending(base, pend).map(normalizeConsumedRow) : base;
           dispatchData({ type: 'SET_TODAY_CONSUMED', payload: rows });
         }
 
@@ -1071,6 +1097,15 @@ export default function TrackerScreen() {
           dispatchData({ type: 'SET_CONSUMED_INSTANCES', payload: pantryRefs });
 
           const days: WeeklyDay[] = [];
+          if (yeniKabukRef.current) {
+            // G19-S2 md.1/md.4: anahtarlar doğrudan İstanbul günlerinden (lastDayKeys).
+            // Cihazın yerel gece yarısından türetmek UTC+3'ten ileri saat dilimlerinde
+            // (ör. Tokyo) bugünün kovasını kaçırıyor, seri yanlış hesaplanıyordu.
+            for (const key of lastDayKeys(30)) {
+              const wd = new Date(`${key}T12:00:00Z`).getUTCDay();
+              days.push({ label: WEEK_DAYS[(wd + 6) % 7], date: key, kcal: 0, protein: 0, carbs: 0, fat: 0, count: 0 });
+            }
+          } else {
           for (let i = 29; i >= 0; i--) {
             const d = new Date();
             d.setHours(0, 0, 0, 0);
@@ -1082,12 +1117,15 @@ export default function TrackerScreen() {
               kcal: 0, protein: 0, carbs: 0, fat: 0,
             });
           }
+          }
           const idx = new Map(days.map((d, i) => [d.date, i]));
           for (const raw of weeklyConsumedRes.data as any[]) {
             const key = formatDayKey(new Date(String(raw.consumed_at)));
             const i = idx.get(key);
             if (i == null) continue;
             const target = days[i];
+            // G19-S2: seri = o gün en az 1 kayıt (0 kcal dahil, sunucu kuralı).
+            if (target.count != null) target.count += 1;
             target.kcal += toNum(raw.calories);
             target.protein += toNum(raw.protein);
             target.carbs += toNum(raw.carbs);
@@ -1253,6 +1291,13 @@ export default function TrackerScreen() {
     fat:     t.fat     + (Number(r.fat)||0),
   }), { kcal:0, protein:0, carbs:0, fat:0 }), [todayConsumed]);
 
+  // G19-S2 md.1: yeni kabukta gün toplamı TEK yuvarlama kuralıyla (track/totals) —
+  // halka, makro çipleri, "Bugün" başlığı ve yuva toplamları aynı sayıyı gösterir.
+  const homeTotals = useMemo(
+    () => (yeniKabuk ? dayTotals(todayConsumed) : { kcal: 0, protein: 0, carbs: 0, fat: 0, count: 0 }),
+    [yeniKabuk, todayConsumed],
+  );
+
   // Historical (today dışı) sayaç: meal_consumptions'tan seçili filtre aralığının
   // günlük ortalaması. weeklyConsumption artık 30 günlük bucket (date=YYYY-MM-DD,
   // yerel). getFilterRange sınırlarına göre dilimle, topla, getDayCount'a böl.
@@ -1307,7 +1352,9 @@ export default function TrackerScreen() {
       .lt('consumed_at', startOfTomorrowISO())
       .order('consumed_at', { ascending: false });
     if (error) throw error;
-    const next = (Array.isArray(rows) ? rows : []).map(normalizeConsumedRow);
+    const base = (Array.isArray(rows) ? rows : []).map(normalizeConsumedRow);
+    const pend = pendingOps();
+    const next = pend.length ? applyPending(base, pend).map(normalizeConsumedRow) : base;
     dispatchData({ type: 'SET_TODAY_CONSUMED', payload: next });
     return next;
   }, [user]);
@@ -1327,7 +1374,7 @@ export default function TrackerScreen() {
   const heldKcal = useMemo(() => {
     if (!highlight || highlight.phase === 'ring') return 0;
     const r = todayConsumed.find((c) => c.id === highlight.id);
-    return r ? r.calories : 0;
+    return r ? roundKcal(r.calories) : 0;
   }, [highlight, todayConsumed]);
 
   // FinHomeR3 dört öğün yuvası — ham kaynakla (Tara/Keşfet/eatkcal/Elle etiketi).
@@ -1378,18 +1425,86 @@ export default function TrackerScreen() {
 
   type HomeToastState =
     | { kind: 'water'; message: string; ml: number }
-    | { kind: 'delivered'; message: string; id: string };
+    | { kind: 'delivered'; message: string; id: string }
+    // G19-S2 md.2: silinen kayıt (Geri al = aynı id ile geri ekle) ve bilgi toast'ı.
+    | { kind: 'removed'; message: string; row: ConsumedRow }
+    | { kind: 'activity'; message: string; id: string; type: string; minutes: number }
+    | { kind: 'info'; message: string };
   const [homeToast, setHomeToast] = useState<HomeToastState | null>(null);
   const dismissHomeToast = useCallback(() => setHomeToast(null), []);
 
   const handleWaterAdd = () => {
     if (suTakibi) {
-      water.add(WATER_STEP_ML);
-    } else {
-      dispatchData({ type: 'SET_WATER_COUNT', payload: Math.min(waterCount + 1, 8) });
+      // G19-S2 md.3: sunucu sınırı (gün ≤ 20 L) — tavanda eklenen kadar geri alınır.
+      const cur = water.ml ?? 0;
+      const applied = applyWater(cur, WATER_STEP_ML) - cur;
+      if (applied <= 0 || cur >= WATER_DAY_MAX_ML) {
+        setHomeToast({ kind: 'info', message: tt('gun.water_limit') });
+        return;
+      }
+      setHomeToast({ kind: 'water', message: tt('gun.water_added', { ml: applied }), ml: applied });
+      void water.add(WATER_STEP_ML).then((done) => {
+        if (done) trackEvent({ name: 'water_add', props: { ml: done, total_ml: cur + done, undo: false } });
+        else setHomeToast((t) => (t?.kind === 'water' ? null : t));
+      });
+      return;
     }
+    dispatchData({ type: 'SET_WATER_COUNT', payload: Math.min(waterCount + 1, 8) });
+    trackEvent({ name: 'water_add', props: { ml: WATER_STEP_ML, total_ml: Math.min(waterCount + 1, 8) * WATER_STEP_ML, undo: false } });
     setHomeToast({ kind: 'water', message: tt('gun.water_added', { ml: WATER_STEP_ML }), ml: WATER_STEP_ML });
   };
+
+  // ─── G19-S2 md.1/md.2: gece yarısı, ön plana dönüş, sekme odağı → tazele ─────
+  const ogunHatirlatma = useFeature('ogun_hatirlatma' as FlagKey);
+  const refreshTodayRef = useRef(refreshToday);
+  refreshTodayRef.current = refreshToday;
+  const waterRefresh = water.refresh;
+  const [activityRefresh, setActivityRefresh] = useState(0);
+  const softRefresh = useCallback(() => {
+    void refreshTodayRef.current().catch(() => {});
+    waterRefresh();
+    setActivityRefresh((n) => n + 1);
+  }, [waterRefresh]);
+  const homeDayKey = useDayRollover({
+    enabled: yeniKabuk && !!user,
+    onNewDay: () => {
+      // Yeni gün: bugünün listesi, 30 günlük kova (seri), hedef özeti ve su sıfırdan.
+      void fetchData(selectedFilter);
+      refetchNutritionSummary();
+      waterRefresh();
+      setActivityRefresh((n) => n + 1);
+    },
+    onResume: softRefresh,
+  });
+  const focusedOnceRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!yeniKabuk || !user) return;
+      // İlk odak = ilk yükleme (fetchData); sonrakiler başka sekme/cihazdaki kayıtlar için.
+      if (!focusedOnceRef.current) {
+        focusedOnceRef.current = true;
+        return;
+      }
+      softRefresh();
+    }, [yeniKabuk, user, softRefresh]),
+  );
+  // Çevrimdışı kuyruk: kullanıcıya bağla, ağ dönünce boşalt; kalıcı hatada satırı geri al.
+  useEffect(() => {
+    if (!yeniKabuk) return;
+    wireLogQueueTriggers();
+    wireLogEventsBridge();
+    void bindLogQueue(user?.id ?? null);
+    const offDrop = onLogQueueDrop(() => {
+      void refreshTodayRef.current().catch(() => {});
+      Alert.alert(tt('gun.save_failed_title'), tt('gun.save_failed_body'));
+    });
+    // Başarılı senkronda yeniden okuma YOK: iyimser durum zaten doğru; başka cihazdaki
+    // değişiklikler odak / ön plan dönüşünde gelir (gereksiz istek ve titreme yok).
+    return () => {
+      offDrop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yeniKabuk, user?.id]);
 
   // "…'e logla" hapı (Tara ikonu): ai_tarama açıksa Tara; değilse elle giriş.
   // ⌄ her zaman elle giriş (öğün seç + kcal).
@@ -1439,7 +1554,7 @@ export default function TrackerScreen() {
   const [pushMenuSlot, setPushMenuSlot] = useState<SlotKey | null>(null);
   useEffect(() => {
     if (!yeniKabuk || !finOpenLog) return;
-    setPushMenuSlot(finOpenLog === true ? slotFromHour(new Date().getHours()) : finOpenLog);
+    setPushMenuSlot(finOpenLog === true ? slotFromHour(istanbulHour()) : finOpenLog);
     (navigation as any).setParams?.({ finOpenLog: undefined });
   }, [finOpenLog, yeniKabuk, navigation]);
   const openWaitlist = (kind: 'add' | 'suggest') =>
@@ -1472,7 +1587,7 @@ export default function TrackerScreen() {
   // Teslim anı toast'ı: "Akşam’a loglandı" (öğün = teslim saatinin yuvası).
   const showDeliveredToastRef = useRef<(id: string, atISO: string | null) => void>(() => {});
   showDeliveredToastRef.current = (id: string, atISO: string | null) => {
-    const hour = atISO ? new Date(atISO).getHours() : new Date().getHours();
+    const hour = istanbulHour(atISO ? new Date(atISO) : new Date());
     setHomeToast({ kind: 'delivered', id, message: tt(`gun.logged_${slotFromHour(hour)}`) });
   };
   useEffect(() => {
@@ -1486,25 +1601,116 @@ export default function TrackerScreen() {
     const cur = homeToast;
     setHomeToast(null);
     if (!cur) return;
+    if (cur.kind === 'info') return;
     if (cur.kind === 'water') {
-      if (suTakibi) water.add(-cur.ml);
+      if (suTakibi) void water.add(-cur.ml);
       else dispatchData({ type: 'SET_WATER_COUNT', payload: Math.max(waterCount - 1, 0) });
+      trackEvent({ name: 'water_add', props: { ml: -cur.ml, total_ml: Math.max(0, (water.ml ?? 0) - cur.ml), undo: true } });
+      return;
+    }
+    if (cur.kind === 'removed') {
+      void restoreRow(cur.row);
+      return;
+    }
+    if (cur.kind === 'activity') {
+      // G19-S2 md.3: etkinlik geri al → satır silinir, bölüm yeniden okunur.
+      void deleteActivityLog(cur.id).then((ok) => {
+        if (!ok) {
+          failToast('gun.save_failed_body');
+          return;
+        }
+        trackEvent({ name: 'activity_add', props: { type: cur.type, minutes: -cur.minutes, undo: true } });
+        setActivityRefresh((n) => n + 1);
+      });
       return;
     }
     const row = todayConsumed.find((r) => r.id === cur.id);
     if (row) {
-      handleRemoveRow({ id: row.id } as HomeMealItem);
+      handleRemoveRow({ id: row.id } as HomeMealItem, { silent: true });
     }
   };
 
+  const failToast = (key: 'gun.queue_full' | 'gun.save_failed_body') =>
+    Alert.alert(tt('gun.save_failed_title'), tt(key));
+
+  // G19-S2 md.2: silinen kaydı AYNI id ve değerlerle geri ekle (kuyruk; idempotent).
+  const restoreRow = async (row: ConsumedRow) => {
+    if (!user) return;
+    const pantryRef = row.raw_source === 'pantry' ? row.source_ref : null;
+    dispatchData({ type: 'PREPEND_CONSUMED', payload: row });
+    if (pantryRef) dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: pantryRef });
+    const ok = await submitLogOp({
+      kind: 'insert',
+      id: row.id,
+      at: Date.now(),
+      row: {
+        id: row.id,
+        source: row.raw_source,
+        source_ref: row.source_ref,
+        name: row.name,
+        meal_type: row.meal_type,
+        calories: row.calories,
+        protein: row.protein,
+        carbs: row.carbs,
+        fat: row.fat,
+        note: row.note,
+        consumed_at: row.consumed_at,
+      },
+    });
+    if (!ok) {
+      dispatchData({ type: 'REMOVE_CONSUMED_BY_ID', payload: row.id });
+      if (pantryRef) dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: pantryRef });
+      failToast('gun.queue_full');
+      return;
+    }
+    trackEvent({
+      name: 'log_delete',
+      props: { source: logSourceOf(row.raw_source), slot: normalizeMealType(row.meal_type, row.consumed_at), undone: true },
+    });
+    setHomeToast({ kind: 'info', message: tt('gun.restored_toast') });
+  };
+
+  // G19-S2 md.2: kaydı başka öğüne taşı (FinMoPopover) — meal_type sunucu koduyla.
+  const handleMoveMeal = async (item: HomeMealItem, slot: SlotKey) => {
+    if (!user) return;
+    const row = todayConsumed.find((c) => c.id === item.id);
+    if (!row) return;
+    const meal_type = toServerMealType(slot);
+    dispatchData({ type: 'REPLACE_CONSUMED', payload: { ...row, meal_type } });
+    const ok = await submitLogOp({ kind: 'update', id: row.id, patch: { meal_type }, at: Date.now() });
+    if (!ok) {
+      dispatchData({ type: 'REPLACE_CONSUMED', payload: row });
+      failToast('gun.queue_full');
+      return;
+    }
+    trackEvent({ name: 'log_edit', props: { field: 'meal', slot } });
+    setHomeToast({ kind: 'info', message: tt('gun.meal_moved', { meal: tt(`meal.${slot}`) }) });
+  };
+
   // Kayıt menüsü › Kaldır — tek satır silinir; dolap kaydıysa tüketildi işareti de kalkar.
-  const handleRemoveRow = async (item: HomeMealItem) => {
+  const handleRemoveRow = async (item: HomeMealItem, opts?: { silent?: boolean }) => {
     if (!user) return;
     const row = todayConsumed.find((c) => c.id === item.id);
     if (!row) return;
     const pantryRef = row.raw_source === 'pantry' ? row.source_ref : null;
     dispatchData({ type: 'REMOVE_CONSUMED_BY_ID', payload: row.id });
     if (pantryRef) dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: pantryRef });
+    // G19-S2 md.2: yeni kabukta silme kuyruktan (çevrimdışı çalışır) + "Geri al" toast'ı.
+    if (yeniKabuk) {
+      const ok = await submitLogOp({ kind: 'delete', id: row.id, at: Date.now() });
+      if (!ok) {
+        dispatchData({ type: 'PREPEND_CONSUMED', payload: row });
+        if (pantryRef) dispatchData({ type: 'ADD_CONSUMED_INSTANCE', payload: pantryRef });
+        failToast('gun.queue_full');
+        return;
+      }
+      trackEvent({
+        name: 'log_delete',
+        props: { source: logSourceOf(row.raw_source), slot: normalizeMealType(row.meal_type, row.consumed_at), undone: false },
+      });
+      if (!opts?.silent) setHomeToast({ kind: 'removed', message: tt('gun.removed_toast'), row });
+      return;
+    }
     try {
       const { error } = await getSupabaseClient()
         .from('meal_consumptions')
@@ -1540,6 +1746,18 @@ export default function TrackerScreen() {
       fat: r1(base.fat * factor),
     };
     dispatchData({ type: 'REPLACE_CONSUMED', payload: { ...row, ...patch } });
+    if (yeniKabuk) {
+      // G19-S2 md.2: yeni kabukta porsiyon kuyruktan (çevrimdışı; ardışık seçimler birleşir).
+      const fixed = { ...patch, protein: storeMacro(patch.protein), carbs: storeMacro(patch.carbs), fat: storeMacro(patch.fat) };
+      const ok = await submitLogOp({ kind: 'update', id: row.id, patch: fixed, at: Date.now() });
+      if (!ok) {
+        dispatchData({ type: 'REPLACE_CONSUMED', payload: row });
+        failToast('gun.queue_full');
+        return;
+      }
+      trackEvent({ name: 'log_edit', props: { field: 'portion', slot: normalizeMealType(row.meal_type, row.consumed_at), factor } });
+      return;
+    }
     try {
       const { error } = await getSupabaseClient()
         .from('meal_consumptions')
@@ -1623,6 +1841,10 @@ export default function TrackerScreen() {
             continue;
           }
           await markAutoLogged([c.instanceId]);
+          trackEvent({
+            name: 'log_add',
+            props: { source: 'order', slot: normalizeMealType(null, c.deliveredAt), kcal: Math.round(c.item.calories || 0), offline: false },
+          });
           if (row) {
             dispatchData({ type: 'REMOVE_CONSUMED_BY_REF', payload: { source: 'pantry', source_ref: c.instanceId } });
             dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
@@ -1848,6 +2070,46 @@ export default function TrackerScreen() {
     // G18-S2: yeni kabukta yerinde menünün porsiyonu (½·1·1½·2); bayrak kapalıyken 1.
     const calNum = yeniKabuk ? Math.round(calRaw * (logPortionRef.current || 1)) : calRaw;
     dispatchMealForm({ type: 'SET_SAVING', payload: true });
+    if (yeniKabuk) {
+      // G19-S2 md.2: istemcide üretilen id ile kuyruğa — çevrimdışı da kaydeder,
+      // yeniden deneme çift kayıt üretmez (23505 = zaten yazılmış).
+      try {
+        const trimmed = (mealNote || '').trim();
+        const id = newRowId();
+        const row = {
+          id,
+          source: 'manual',
+          source_ref: null,
+          name: trimmed || mealType,
+          meal_type: mealType,
+          calories: calNum,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          note: trimmed || null,
+          consumed_at: new Date().toISOString(),
+        };
+        const ok = await submitLogOp({ kind: 'insert', id, row, at: Date.now() });
+        if (!ok) {
+          failToast('gun.queue_full');
+          return;
+        }
+        dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
+        const savedLabelNew =
+          ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null;
+        startHighlight(id, savedLabelNew);
+        dispatchMealForm({ type: 'RESET_FORM' });
+        const offline = await isOffline();
+        trackEvent({
+          name: 'log_add',
+          props: { source: 'manual', slot: normalizeMealType(mealType), kcal: calNum, offline },
+        });
+        if (offline) setHomeToast({ kind: 'info', message: tt('gun.offline_queued') });
+      } finally {
+        dispatchMealForm({ type: 'SET_SAVING', payload: false });
+      }
+      return;
+    }
     try {
       const supabase = getSupabaseClient();
       const trimmedNote = (mealNote || '').trim();
@@ -2236,6 +2498,8 @@ const html = `
   // Görev 1.1: hedefler artık tek sunucu kaynağından (get_nutrition_summary RPC,
   // bkz. useNutritionSummary) okunuyor — Profil ekranıyla birebir aynı değer.
   // nutritionProfile (ayrı sorgu) sadece hook henüz dönmemişken fallback.
+  // G19-S2 md.1: hedef yoksa uydurma 2000 YOK → "Hedef belirlenmedi" (yeni kabuk).
+  const homeGoal = goalState(nutritionSummary?.targetKcal, nutritionProfile?.target_calories);
   const targets = {
     kcal: nutritionSummary?.targetKcal || nutritionProfile?.target_calories || 2000,
     protein: nutritionSummary?.targetProtein || nutritionProfile?.target_protein || 120,
@@ -2483,19 +2747,19 @@ const html = `
                  kapalıyken render OLMAZ (eski kalori halkası aşağıda kalır). ── */}
             {yeniKabuk ? (
               <TrackerDayHeader
-                kcal={Math.round(displayMacros.kcal - heldKcal)}
-                target={targets.kcal}
+                kcal={Math.max(0, homeTotals.kcal - heldKcal)}
+                target={homeGoal.has ? homeGoal.kcal : targets.kcal}
                 logToken={logToken}
                 lastMealLabel={lastMealLabel}
-                macros={consumedTodayMacros}
+                macros={homeTotals}
                 macroTargets={{ protein: targets.protein, carbs: targets.carbs, fat: targets.fat }}
                 hideStrip
                 water={homeWater}
                 onWaterAdd={handleWaterAdd}
-                onFirstLog={() => logToSlot(slotFromHour(new Date().getHours()))}
-                onFirstManual={() => openMealFormFor(slotFromHour(new Date().getHours()))}
+                onFirstLog={() => logToSlot(slotFromHour(istanbulHour()))}
+                onFirstManual={() => openMealFormFor(slotFromHour(istanbulHour()))}
                 onOpenMacros={openGoal}
-                hasTarget={!!(nutritionSummary?.targetKcal || nutritionProfile?.target_calories)}
+                hasTarget={homeGoal.has}
               />
             ) : null}
             {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
@@ -2508,11 +2772,13 @@ const html = `
             {yeniKabuk ? (
               <>
                 {/* G16-S1 (FinScanOffline): çevrimdışı çekilen bekleyen fotoğraflar (ai_tarama; kuyruk boşsa çizilmez). */}
-                {aiTarama ? <HomePendingScans forceOffline={__DEV__ && vitrinParams.vitrinOffline === true} onManual={() => openMealFormFor(slotFromHour(new Date().getHours()))} /> : null}
+                {aiTarama ? <HomePendingScans forceOffline={__DEV__ && vitrinParams.vitrinOffline === true} onManual={() => openMealFormFor(slotFromHour(istanbulHour()))} /> : null}
                 <HomeMealSlots
                   slots={homeSlots}
-                  eaten={Math.round(consumedTodayMacros.kcal)}
-                  target={targets.kcal}
+                  eaten={homeTotals.kcal}
+                  target={homeGoal.has ? homeGoal.kcal : targets.kcal}
+                  hasTarget={homeGoal.has}
+                  onMoveMeal={handleMoveMeal}
                   images={consumedImages}
                   highlight={highlight}
                   onLog={logToSlot}
@@ -2531,16 +2797,23 @@ const html = `
                 {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
                 <TrackerDayStrip />
                 {/* G18-S2 md.6: FinHomeR3 "Bugünkü etkinlikler" bölümü (başlık + satırlar + Etkinlik ekle). */}
-                {etkinlik ? <HomeActivitySection /> : null}
+                {etkinlik ? (
+                  <HomeActivitySection
+                    refreshKey={activityRefresh}
+                    onLogged={(r) => {
+                      if (r) setHomeToast({ kind: 'activity', message: tt('gun.activity_added'), id: r.id, type: r.type, minutes: r.minutes });
+                    }}
+                  />
+                ) : null}
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
                 <HomeExploreStrip onAll={openKesfet} onOpen={openKesfet} />
                 {/* G18-S2 md.4: bölge — İzmir tek öneri kartı / İzmir dışı bekleme listesi satırları. */}
                 <HomeRegionSection
                   region={homeRegion}
-                  slot={slotFromHour(homeHour ?? new Date().getHours())}
-                  proteinLeft={Math.max(0, targets.protein - consumedTodayMacros.protein)}
+                  slot={slotFromHour(homeHour ?? istanbulHour())}
+                  proteinLeft={Math.max(0, targets.protein - homeTotals.protein)}
                   proteinTarget={targets.protein}
-                  kcalLeft={Math.max(0, targets.kcal - consumedTodayMacros.kcal)}
+                  kcalLeft={Math.max(0, targets.kcal - homeTotals.kcal)}
                   onOpenProduct={openProduct}
                   onWaitlist={openWaitlist}
                 />
@@ -2871,9 +3144,13 @@ const html = `
           userId={user?.id ?? null}
           today={todayConsumed}
           days={weeklyConsumption}
-          todayKey={formatDayKey(new Date())}
+          todayKey={homeDayKey}
           todayStartISO={startOfTodayISO()}
           ready={!dataLoading}
+          ringDone={ringComplete(homeTotals.kcal, homeGoal)}
+          kcal={homeTotals.kcal}
+          target={homeGoal.kcal}
+          mealReminders={ogunHatirlatma}
         />
       ) : null}
 
@@ -2885,7 +3162,7 @@ const html = `
           message={homeToast?.message ?? ''}
           bowl={homeToast?.kind === 'delivered'}
           bottom={tabBarContentInset(insets.bottom) + 8}
-          onUndo={homeToast ? onHomeToastUndo : undefined}
+          onUndo={homeToast && homeToast.kind !== 'info' ? onHomeToastUndo : undefined}
           onView={homeToast?.kind === 'delivered' ? () => setHomeToast(null) : undefined}
           onDismiss={dismissHomeToast}
           autoHideMs={__DEV__ && vitrinParams.vitrinDelivered ? 0 : 4000}

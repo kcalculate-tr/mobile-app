@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, useTheme, ProgressRing } from '../../../core/design';
+import { AppText, useTheme, ProgressRing, SPRING, REDUCED, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CachedImage } from '../../../components/CachedImage';
 import { Plus, User, X } from '../../../components/icons';
@@ -141,6 +141,10 @@ export function GunViewer({
   }, [cardIdx, userIdx, goToUser]);
 
   // Aşağı kaydır: kapat.
+  // G19-S2 md.4: geri yaylanma token yayı (SPRING.ai); azaltılmış harekette 200 ms düz dönüş.
+  const reduced = useReducedMotion();
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
   const translateY = useRef(new Animated.Value(0)).current;
   const panResponder = useRef(
     PanResponder.create({
@@ -153,7 +157,11 @@ export function GunViewer({
           onClose();
           translateY.setValue(0);
         } else {
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+          if (reducedRef.current) {
+            Animated.timing(translateY, { toValue: 0, duration: REDUCED.duration, useNativeDriver: true }).start();
+          } else {
+            Animated.spring(translateY, { toValue: 0, ...SPRING.ai, useNativeDriver: true }).start();
+          }
         }
       },
     }),

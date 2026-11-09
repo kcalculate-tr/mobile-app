@@ -100,6 +100,10 @@ export interface HomeMealSlotsProps {
   onChangeMeal: (slot: SlotKey) => void;
   onRemove: (item: HomeMealItem) => void;
   onPortion?: (item: HomeMealItem, factor: number) => void;
+  /** G19-S2 md.2: kaydı başka öğüne taşı (FinMoPopover; yalnız yeni kabuk). */
+  onMoveMeal?: (item: HomeMealItem, slot: SlotKey) => void;
+  /** G19-S2 md.1: hedef yoksa başlık "1.240 kcal · Hedef belirlenmedi". */
+  hasTarget?: boolean;
   /** Verilirse kayıt menüsünde "Paylaş" görünür (paylasim_karti). */
   onShare?: (item: HomeMealItem) => void;
   /** Vitrin (yalnız __DEV__): ilk eatkcal kaydının porsiyon menüsü açık başlar (FinHomeR3). */
@@ -150,6 +154,8 @@ export function HomeMealSlots({
   onChangeMeal,
   onRemove,
   onPortion,
+  onMoveMeal,
+  hasTarget = true,
   onShare,
   initialOpenAuto = false,
   pendingSlot = null,
@@ -170,10 +176,12 @@ export function HomeMealSlots({
   const [portion, setPortion] = useState<Record<string, number>>({});
 
   const allEmpty = slots.every((s) => s.empty);
-  const dayTotal = tt('gun.day_total', {
-    eaten: groupThousands(eaten, numLang),
-    target: groupThousands(target, numLang),
-  });
+  const dayTotal = hasTarget
+    ? tt('gun.day_total', {
+        eaten: groupThousands(eaten, numLang),
+        target: groupThousands(target, numLang),
+      })
+    : tt('gun.day_total_nogoal', { eaten: groupThousands(eaten, numLang) });
 
   const toggleMenu = useCallback((id: string) => {
     haptic('selection');
@@ -250,6 +258,15 @@ export function HomeMealSlots({
                   onRemove(it);
                 }}
                 onShare={onShare ? () => onShare(it) : undefined}
+                slot={sl.key}
+                onMoveMeal={
+                  onMoveMeal
+                    ? (m) => {
+                        setOpenId(null);
+                        if (m !== sl.key) onMoveMeal(it, m);
+                      }
+                    : undefined
+                }
                 numLang={numLang}
               />
             ))}
@@ -358,8 +375,12 @@ function SlotItem({
   onPick,
   onRemove,
   onShare,
+  slot,
+  onMoveMeal,
   numLang,
 }: {
+  slot?: SlotKey;
+  onMoveMeal?: (slot: SlotKey) => void;
   item: HomeMealItem;
   image?: string;
   phase: HighlightPhase | null;
@@ -398,6 +419,9 @@ function SlotItem({
 
   const sourceLabel = tt(`gun.src_${item.source}`);
   const time = lit ? tt('gun.just_now') : item.time;
+  // G19-S2 md.2: "Öğün ⌄" → FinMoPopover (öğün + porsiyon) bu kayıt için.
+  const { ref: moveRef, measure: measureMove } = useAnchorMeasure();
+  const [moveAnchor, setMoveAnchor] = useState<Rect | null>(null);
 
   return (
     <View
@@ -494,6 +518,35 @@ function SlotItem({
             </>
           ) : null}
           <View style={styles.menuSpacer} />
+          {onMoveMeal && slot ? (
+            <View ref={moveRef} collapsable={false}>
+              <Pressable
+                onPress={async () => {
+                  haptic('selection');
+                  const r = await measureMove();
+                  if (r) setMoveAnchor(r);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={tt('gun.change_meal', { meal: tt(`meal.${slot}`) })}
+                accessibilityState={{ expanded: moveAnchor != null }}
+                style={styles.menuBtn}
+                testID={`home-item-meal-${item.id}`}
+              >
+                <AppText variant="caption" style={styles.menuBtnText}>
+                  {tt(`meal.${slot}`)}
+                </AppText>
+                <CaretDown size={14} color={t.color.ink} weight="bold" />
+              </Pressable>
+              <MealMenuPopover
+                anchor={moveAnchor}
+                meal={slot}
+                portion={portion}
+                onPickMeal={(m) => onMoveMeal(m)}
+                onPickPortion={onPick}
+                onClosed={() => setMoveAnchor(null)}
+              />
+            </View>
+          ) : null}
           {onShare ? (
             <Pressable
               onPress={onShare}

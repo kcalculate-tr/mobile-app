@@ -11,16 +11,16 @@ import { useT } from '../../../core/i18n';
 import { getKesfetClient } from '../../kesfet';
 import type { DayActivity } from '../../kesfet/types';
 import { ComposeIcon, type ComposeIconName } from '../../kesfet/ui/compose/icons';
-import { TrackerActivityEntry } from '../../kesfet/ui/TrackerActivityEntry';
+import { TrackerActivityEntry, type ActivityLogged } from '../../kesfet/ui/TrackerActivityEntry';
 import { BRICOLAGE_SEMI, useHomeTokens } from '../../onboarding/first/homeTokens';
+import { istanbulHHMM } from '../track/dayClock';
 
-function hhmm(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
+// G19-S2 md.1: saat İstanbul (öğün satırlarıyla aynı kural, track/dayClock).
+const hhmm = istanbulHHMM;
 
-export function HomeActivitySection() {
+// G19-S2 md.3: `onLogged` → Ana sayfa "Etkinlik eklendi · Geri al" toast'ı;
+// `refreshKey` değişince (geri al / gece yarısı / ön plan) liste yeniden okunur.
+export function HomeActivitySection({ onLogged, refreshKey = 0 }: { onLogged?: (r?: ActivityLogged) => void; refreshKey?: number } = {}) {
   const k = useHomeTokens();
   const { t: tt, fmt } = useT();
   const [day, setDay] = useState<DayActivity | null>(null);
@@ -32,7 +32,7 @@ export function HomeActivitySection() {
   }, []);
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, refreshKey]);
 
   const items = day?.items ?? [];
   const has = items.length > 0;
@@ -71,7 +71,13 @@ export function HomeActivitySection() {
         </View>
       ))}
       <View style={[styles.add, { borderTopColor: k.line }]}>
-        <TrackerActivityEntry variant="home" onLogged={refresh} />
+        <TrackerActivityEntry
+          variant="home"
+          onLogged={(r) => {
+            refresh();
+            onLogged?.(r);
+          }}
+        />
       </View>
     </View>
   );

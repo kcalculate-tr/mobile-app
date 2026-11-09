@@ -12,13 +12,22 @@ import { ACTIVITY_TYPES, type ActivityType, type DayActivity } from '../types';
 import { activityDraftCard, type ActivityDraft } from '../composer';
 import { BottomSheet } from './BottomSheet';
 import { Icon } from './icons';
+import { activityLimitError } from '../../gun/track/limits';
+import { trackEvent } from '../../gun/track/events';
 
 const emptyDraft = (): ActivityDraft => ({ type: 'kosu', minutes: '', distanceKm: '', note: '' });
 
 // G18-S2 TEMAS (Ana sayfa "Bugünkü etkinlikler", FinHomeR3): variant="home" → düğme panodaki
 // "+ Etkinlik ekle" (44, köşe 22, line2 çerçeve, 14/600), gün toplamı bölüm başlığında (burada yok);
 // onLogged → bölüm satırlarını tazeler. Varsayılan (prop yok) davranış AYNEN.
-export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; onLogged?: () => void } = {}) {
+// G19-S2 md.3: onLogged eklenen kaydın kimliğini verir (Ana sayfa "Geri al" toast'ı).
+export interface ActivityLogged {
+  id: string;
+  type: ActivityType;
+  minutes: number;
+}
+
+export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; onLogged?: (r?: ActivityLogged) => void } = {}) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
   const [day, setDay] = useState<DayActivity | null>(null);
@@ -26,6 +35,9 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
   const [draft, setDraft] = useState<ActivityDraft>(emptyDraft);
   const [saving, setSaving] = useState(false);
   const seq = useRef(0);
+  // G19-S2 md.3: idempotency anahtarı TASLAK başına — ağ hatasında yeniden deneme
+  // çift kayıt üretmez (önceden her denemede yeni anahtar üretiliyordu).
+  const draftKey = useRef<string | null>(null);
 
   const refresh = useCallback(() => {
     getKesfetClient()
@@ -39,25 +51,31 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
   }, [refresh]);
 
   const preview = activityDraftCard(draft);
-  const canSave = preview != null && !saving;
+  const limitErr = preview ? activityLimitError(preview.minutes, preview.distance_km) : null;
+  const canSave = preview != null && !saving && limitErr == null;
 
   const save = useCallback(async () => {
-    if (!preview || saving) return;
+    if (!preview || saving || activityLimitError(preview.minutes, preview.distance_km)) return;
     setSaving(true);
     haptic('light');
     try {
-      seq.current += 1;
-      await getKesfetClient().logActivity({
+      if (!draftKey.current) {
+        seq.current += 1;
+        draftKey.current = `tracker-activity-${seq.current}-${Date.now()}`;
+      }
+      const res = await getKesfetClient().logActivity({
         type: preview.type,
         minutes: preview.minutes,
         distanceKm: preview.distance_km,
         note: preview.note,
-        idempotencyKey: `tracker-activity-${seq.current}-${Date.now()}`,
+        idempotencyKey: draftKey.current,
       });
+      draftKey.current = null;
       setSheet(false);
       setDraft(emptyDraft());
       refresh();
-      onLogged?.();
+      trackEvent({ name: 'activity_add', props: { type: preview.type, minutes: preview.minutes, undo: false } });
+      onLogged?.(res?.activity_log_id ? { id: res.activity_log_id, type: preview.type, minutes: preview.minutes } : undefined);
     } catch {
       // sessiz — kullanıcı tekrar deneyebilir
     } finally {
@@ -101,7 +119,10 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
               return (
                 <Pressable
                   key={at}
-                  onPress={() => setDraft((d) => ({ ...d, type: at }))}
+                  onPress={() => {
+                    draftKey.current = null;
+                    setDraft((d) => ({ ...d, type: at }));
+                  }}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
                   accessibilityLabel={tr(`kesfet.activity.type.${at}`)}
@@ -120,7 +141,10 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
               <AppText variant="caption" tone="secondary" style={styles.label}>{tr('kesfet.compose.minutes')}</AppText>
               <TextInput
                 value={draft.minutes}
-                onChangeText={(v) => setDraft((d) => ({ ...d, minutes: v }))}
+                onChangeText={(v) => {
+                  draftKey.current = null;
+                  setDraft((d) => ({ ...d, minutes: v }));
+                }}
                 keyboardType="numeric"
                 placeholder="0"
                 placeholderTextColor={t.color.secondary}
@@ -132,7 +156,10 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
               <AppText variant="caption" tone="secondary" style={styles.label}>{tr('kesfet.compose.distance')}</AppText>
               <TextInput
                 value={draft.distanceKm}
-                onChangeText={(v) => setDraft((d) => ({ ...d, distanceKm: v }))}
+                onChangeText={(v) => {
+                  draftKey.current = null;
+                  setDraft((d) => ({ ...d, distanceKm: v }));
+                }}
                 keyboardType="numeric"
                 placeholder="0"
                 placeholderTextColor={t.color.secondary}
@@ -144,7 +171,13 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
           <View style={[styles.kcalLive, { borderColor: t.color.line }]}>
             <Icon name="fire" size={16} color={t.color.accentLine} />
             <AppText variant="body" style={{ fontWeight: '700' }}>
-              {preview ? tr('kesfet.activity.kcal_est', { kcal: fmt(preview.kcal_est) }) : tr('kesfet.compose.kcal_hint')}
+              {limitErr === 'minutes_high'
+                ? tr('gun.activity_err_minutes_high')
+                : limitErr === 'distance_high'
+                  ? tr('gun.activity_err_distance_high')
+                  : preview
+                    ? tr('kesfet.activity.kcal_est', { kcal: fmt(preview.kcal_est) })
+                    : tr('kesfet.compose.kcal_hint')}
             </AppText>
           </View>
           <Pressable

@@ -6,8 +6,9 @@
 //    satırı yok (tek `limit(1)` sorgusu; hata → "eski kayıt var" sayılır,
 //    yanlış "ilk öğün" kutlaması olmaz).
 //  • 3/7 gün seri — 30 günlük kova (TrackerScreen weeklyConsumption) üzerinden
-//    bugün dahil kesintisiz kayıtlı gün sayısı (computeStreak).
-// Her kutlama ömür boyu bir kez (`@kcal_celebrate_shown`, useCelebrations).
+//    bugün dahil kesintisiz kayıtlı gün sayısı (G19-S2: track/streak, sunucu kuralı).
+// Her kutlama kullanıcı başına bir kez (`@kcal_celebrate_shown:<uid>`), ekrana
+// geldiği an işaretlenir; 7'lik gösterilince 3'lük de gösterilmiş sayılır.
 // Kutlama kapanınca, izin henüz verilmemişse ve daha önce teklif edilmediyse
 // bildirim izni sheet'i (FinSheetNotify) açılır — mevcut izin akışı:
 // requestPushPermissionOnly → granted ise registerForPushNotifications.
@@ -26,17 +27,35 @@ import {
   useCelebrations,
   type CelebrateMoment,
 } from '../../modules/celebrate';
-import { computeStreak, isFirstMeal, type DayBucket } from '../../modules/celebrate/signals';
+import { isFirstMeal, type DayBucket } from '../../modules/celebrate/signals';
 import { syncStreakReminder } from '../../modules/profil/streakReminder';
+import { normalizeMealType } from '../../modules/gun/homeData';
+import { addDays } from '../../modules/gun/track/dayClock';
+import { celebrationStreak, displayStreak, loggedDays } from '../../modules/gun/track/streak';
+import { trackEvent } from '../../modules/gun/track/events';
+import { cancelMealReminders, syncMealReminders } from '../../modules/gun/track/mealReminder';
 
 const NOTIFY_OFFERED_KEY = '@kcal_celebrate_notify_offered';
+/** G19-S2 md.7: streak_day / ring_complete günde bir kez (kullanıcı + gün). */
+const DAY_EVENT_KEY = (uid: string, ev: string) => `@kcal_track_day_event:${ev}:${uid}`;
+
+async function onceForDay(uid: string, ev: string, day: string): Promise<boolean> {
+  try {
+    const k = DAY_EVENT_KEY(uid, ev);
+    if ((await AsyncStorage.getItem(k)) === day) return false;
+    await AsyncStorage.setItem(k, day);
+    return true;
+  } catch {
+    return false;
+  }
+}
 /** Kutlama, Logla izi B halka dolumundan SONRA gelsin (üst üste binmesin). */
 const SHOW_DELAY = TIMING.logTrail + DURATION.base + TIMING.dailyRing;
 
 export interface HomeCelebrationsProps {
   userId: string | null;
   /** Bugünün kayıtları (en yeni önce) — ilk öğün kartı adı/kcal'ı buradan. */
-  today: readonly { name: string; calories: number; consumed_at: string }[];
+  today: readonly { name: string; calories: number; consumed_at: string; meal_type?: string | null }[];
   /** Son 30 gün kovası (YYYY-MM-DD + kcal). */
   days: readonly DayBucket[];
   /** Bugünün yerel gün anahtarı. */
@@ -45,6 +64,13 @@ export interface HomeCelebrationsProps {
   todayStartISO: string;
   /** false iken (veri yükleniyor) değerlendirme yapılmaz. */
   ready: boolean;
+  /** G19-S2: gün halkası tamamlandı mı (hedef varsa kcal ≥ hedef). */
+  ringDone?: boolean;
+  /** G19-S2: ring_complete olayı için gün toplamı + hedef. */
+  kcal?: number;
+  target?: number;
+  /** G19-S2 md.5: `ogun_hatirlatma` bayrağı — açıkken öğün hatırlatmaları eşitlenir. */
+  mealReminders?: boolean;
 }
 
 export function HomeCelebrations({
@@ -54,14 +80,30 @@ export function HomeCelebrations({
   todayKey,
   todayStartISO,
   ready,
+  ringDone = false,
+  kcal = 0,
+  target = 0,
+  mealReminders = false,
 }: HomeCelebrationsProps) {
   const { t: tt, lang } = useT();
-  const { pending, evaluate, dismiss } = useCelebrations();
+  const { pending, evaluate, dismiss, markSeen } = useCelebrations(userId);
   const [shown, setShown] = useState<CelebrateMoment | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const hasEarlierRef = useRef<{ user: string; value: boolean } | null>(null);
   const todayCount = today.length;
-  const streak = computeStreak(days, todayKey);
+  // G19-S2 md.4: seri kuralı sunucuyla aynı (track/streak). Kova 30 gün; bugünün
+  // kayıtları kovaya henüz yansımamış olabilir (yeni log) → bugün ayrıca eklenir.
+  const logged = loggedDays(days);
+  if (todayCount > 0) logged.add(todayKey);
+  const streak = celebrationStreak(logged, todayKey);
+  const shownStreak = displayStreak(logged, todayKey);
+  // Son 7 günde kayıt var mı (öğün hatırlatması yalnız takip eden kullanıcıya).
+  let recentlyActive = false;
+  for (let i = 0; i < 7 && !recentlyActive; i += 1) recentlyActive = logged.has(addDays(todayKey, -i));
+  const slotsKey = today
+    .map((r) => normalizeMealType(r.meal_type ?? null, r.consumed_at))
+    .sort()
+    .join(',');
 
   // Değerlendir: bugün kayıt varsa, gerçek sinyalle.
   useEffect(() => {
@@ -108,12 +150,48 @@ export function HomeCelebrations({
     });
   }, [ready, userId, todayCount, tt]);
 
+  // G19-S2 md.5: öğün hatırlatmaları (fin_reminder) — yuva loglanınca o günün
+  // bildirimi kalkar; bayrak kapalıyken kurulu olanlar da iptal edilir.
+  useEffect(() => {
+    if (!ready || !userId) return;
+    if (!mealReminders) {
+      void cancelMealReminders();
+      return;
+    }
+    void syncMealReminders({
+      userId,
+      lang: lang === 'en' ? 'en' : 'tr',
+      loggedToday: new Set(slotsKey ? slotsKey.split(',') : []),
+      recentlyActive,
+    });
+  }, [ready, userId, mealReminders, slotsKey, recentlyActive, lang, todayKey]);
+
+  // G19-S2 md.7: streak_day — bugünün ilk kaydı seriyi uzattığında, günde bir kez.
+  useEffect(() => {
+    if (!ready || !userId || todayCount === 0) return;
+    void onceForDay(userId, 'streak_day', todayKey).then((first) => {
+      if (first) trackEvent({ name: 'streak_day', props: { streak: shownStreak } });
+    });
+  }, [ready, userId, todayCount, todayKey, shownStreak]);
+
+  // G19-S2 md.7: ring_complete — hedef tamamlandığında, günde bir kez.
+  useEffect(() => {
+    if (!ready || !userId || !ringDone) return;
+    void onceForDay(userId, 'ring_complete', todayKey).then((first) => {
+      if (first) trackEvent({ name: 'ring_complete', props: { kcal, target } });
+    });
+  }, [ready, userId, ringDone, todayKey, kcal, target]);
+
   // pending → kısa gecikmeyle göster (halka dolumu bitsin).
   useEffect(() => {
     if (!pending || shown) return;
-    const id = setTimeout(() => setShown(pending), SHOW_DELAY);
+    const id = setTimeout(() => {
+      setShown(pending);
+      // G19-S2 md.4: ekrana geldiği AN kalıcı işaret — açıkken uygulama kapansa da tekrar çıkmaz.
+      void markSeen(pending);
+    }, SHOW_DELAY);
     return () => clearTimeout(id);
-  }, [pending, shown]);
+  }, [pending, shown, markSeen]);
 
   const offerNotify = useCallback(async () => {
     try {
