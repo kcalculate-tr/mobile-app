@@ -385,3 +385,35 @@ test('G19-S2 md.1: İstanbul gece yarısı geçince açık ekran yeni günü yü
   expect(tree.queryByText('Sütlü kahve')).toBeNull();
   expect(tree.queryByText('Tavuklu Bowl')).toBeNull();
 });
+
+// G19-S2 md.6 — React Profiler bulgusu: Ana sayfa commit sayıları (bütçe testi).
+// Sayılar LOG'a yazıldı; bütçe aşılırsa gereksiz yeniden çizim geri gelmiş demektir.
+test('G19-S2 md.6: Profiler — ilk yükleme, kaldır ve logFlight commit bütçesi', async () => {
+  const commits: { phase: string; ms: number }[] = [];
+  const onRender = (_id: string, phase: string, actual: number) => commits.push({ phase, ms: actual });
+  const tree = render(
+    <React.Profiler id="home" onRender={onRender}>
+      <TrackerScreen />
+    </React.Profiler>,
+  );
+  await flush();
+  await flush();
+  const mount = commits.length;
+  commits.length = 0;
+  fireEvent(tree.getByLabelText(/Sütlü kahve, Elle/), 'longPress');
+  fireEvent.press(tree.getByLabelText('Kaldır'));
+  await flush();
+  const remove = commits.length;
+  commits.length = 0;
+  mockDb.today = [...BASE_ROWS, { ...BASE_ROWS[0], id: 'c9', name: 'Ayran', source: 'ai_scan' }];
+  await act(async () => {
+    emitLogFlight({ id: 'c9', x: 0, y: 0, w: 0, h: 0 });
+  });
+  await advance(TIMING.logTrail + DURATION.base + TIMING.dailyRing);
+  const flight = commits.length;
+  process.stdout.write(`[G19-S2 profiler] mount=${mount} remove=${remove} logFlight=${flight}\n`);
+  // Ölçüm (9 Kas): mount=5 · remove=4 · logFlight=5 → bütçe ölçüm + küçük pay.
+  expect(mount).toBeLessThanOrEqual(8);
+  expect(remove).toBeLessThanOrEqual(6);
+  expect(flight).toBeLessThanOrEqual(8);
+});
