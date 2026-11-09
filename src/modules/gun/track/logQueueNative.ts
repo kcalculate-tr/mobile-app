@@ -183,7 +183,7 @@ export function wireLogQueueTriggers(): void {
   wired = true;
   try {
     NetInfo.addEventListener((s) => {
-      if (s.isConnected && s.isInternetReachable !== false) {
+      if (s?.isConnected && s.isInternetReachable !== false) {
         attempt = 0;
         void flushLogQueue();
       }
@@ -194,4 +194,14 @@ export function wireLogQueueTriggers(): void {
   AppState.addEventListener('change', (st) => {
     if (st === 'active') void flushLogQueue();
   });
+}
+
+/** Çevrimdışı mı (bilinmiyorsa false). Toast "çevrimdışı kaydedildi" için. */
+export async function isOffline(): Promise<boolean> {
+  try {
+    const s = await NetInfo.fetch();
+    return s?.isConnected === false || s?.isInternetReachable === false;
+  } catch {
+    return false;
+  }
 }
