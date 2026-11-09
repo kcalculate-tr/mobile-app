@@ -87,6 +87,18 @@ it('ağ hatası deneme SAYILMAZ (kuyruk korunur, attempts artmaz)', async () => 
   expect(q[0].attempts ?? 0).toBe(0);
 });
 
+it('Tara kapalıyken (disabled) kuyruk korunur, deneme sayılmaz', async () => {
+  const now = Date.now();
+  await setPendingScanPhoto(mk('a', now), now);
+  const c = client(jest.fn(), jest.fn());
+  (c.reserveScan as jest.Mock).mockResolvedValue({ ok: false, reason: 'disabled', remaining: 2, reset_at: 'r' });
+  const r = await processPendingQueue({ client: c, save: jest.fn(), now });
+  expect(r.stoppedBy).toBe('unavailable');
+  const q = await getPendingScanQueue(now);
+  expect(q).toHaveLength(1);
+  expect(q[0].attempts ?? 0).toBe(0);
+});
+
 it('girdinin dili analize gider (EN cihazda çekilen → EN adlar)', async () => {
   const now = Date.now();
   await setPendingScanPhoto(mk('en', now, { lang: 'en' }), now);

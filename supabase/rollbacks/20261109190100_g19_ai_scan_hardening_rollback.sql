@@ -88,7 +88,7 @@ alter table public.ai_scan_reservations
   drop column if exists attempts,
   drop column if exists last_attempt_at;
 
-delete from public.app_settings where key in ('ai_scan_per_minute', 'ai_scan_max_key_attempts');
+delete from public.app_settings where key in ('ai_scan_per_minute', 'ai_scan_max_key_attempts', 'ai_scan_enabled');
 
 do $$
 begin

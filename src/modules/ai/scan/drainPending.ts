@@ -52,6 +52,9 @@ export function drainPendingScans(
           trackScan('scan_failed', { reason: 'queue_dropped', stage: 'queue' });
         }
         if (r.lastOutcome?.status === 'quota_exhausted') trackScan('scan_limit');
+        else if (r.lastOutcome?.status === 'unavailable') {
+          trackScan('scan_failed', { reason: r.lastOutcome.reason, stage: 'reserve' });
+        }
         else if (r.lastOutcome?.status === 'failed') {
           trackScan('scan_failed', { reason: r.lastOutcome.failure?.code ?? 'unknown', stage: r.lastOutcome.failure?.stage ?? 'analyze' });
         }

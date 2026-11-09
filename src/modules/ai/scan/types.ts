@@ -9,6 +9,9 @@ export interface ReserveResult {
   reset_at: string; // ISO; Europe/Istanbul gece yarısı
   /** G19-S1 md.2: anahtar zaten 'consumed' → hak DÜŞMEDİ, edge önbellekteki sonucu döner. */
   cached?: boolean;
+  /** G19-S1 (İlter 9 Kas): ok:false nedeni — 'disabled' (acil kapatma) | 'global_cap'
+   *  (günlük genel tavan). Yoksa kullanıcının kendi hakkı bitti. */
+  reason?: 'disabled' | 'global_cap';
 }
 
 export interface ScanIngredient {
@@ -45,6 +48,8 @@ export interface ScanEstimate {
 export type AiScanOutcome =
   | { status: 'ok'; estimate: ScanEstimate; remaining: number; reset_at: string }
   | { status: 'quota_exhausted'; remaining: number; reset_at: string }
+  // unavailable → Tara geçici kapalı (acil anahtar / genel tavan): "hakkını kullandın" DEĞİL
+  | { status: 'unavailable'; reason: 'disabled' | 'global_cap'; remaining: number; reset_at: string }
   | {
       status: 'failed';
       error: string;

@@ -215,6 +215,11 @@ export default function ScanScreen() {
       setLimitVisible(true);
       return;
     }
+    if (outcome.status === 'unavailable') {
+      setStage('viewfinder');
+      Alert.alert(t('ai_scan.unavailable_title'), t('ai_scan.unavailable_body'));
+      return;
+    }
     if (outcome.status === 'failed') {
       setStage('viewfinder');
       Alert.alert(t('ai_scan.failed'));
@@ -301,6 +306,14 @@ export default function ScanScreen() {
           if (!mountedRef.current) return;
           setStage('viewfinder');
           setErrorKind('limit');
+          return;
+        }
+        if (outcome.status === 'unavailable') {
+          // G19-S1 (İlter 9 Kas): acil kapatma / genel tavan — "hakkını kullandın" DEĞİL.
+          trackScan('scan_failed', { reason: outcome.reason, stage: 'reserve' });
+          if (!mountedRef.current) return;
+          setStage('viewfinder');
+          setErrorKind('unavailable');
           return;
         }
         if (outcome.status === 'failed') {

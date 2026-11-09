@@ -20,7 +20,7 @@ export interface ProcessResult {
   /** G19-S1 md.4: kalıcı hata ya da deneme sınırı yüzünden kuyruktan düşen girdiler. */
   dropped?: PendingScanPhoto[];
   /** Durma sebebi: boş / başarısız / kota / iptal */
-  stoppedBy: 'empty' | 'failed' | 'quota_exhausted' | 'cancelled';
+  stoppedBy: 'empty' | 'failed' | 'quota_exhausted' | 'unavailable' | 'cancelled';
   lastOutcome?: AiScanOutcome;
 }
 
@@ -49,8 +49,9 @@ export async function processPendingQueue(opts: {
       // rezervasyon (RPC) hatası — ağ/sunucu; girdi kalır, sonra yeniden denenir
       return { processed, dropped, stoppedBy: 'failed' };
     }
-    if (outcome.status === 'quota_exhausted') {
-      return { processed, dropped, stoppedBy: 'quota_exhausted', lastOutcome: outcome };
+    if (outcome.status === 'quota_exhausted' || outcome.status === 'unavailable') {
+      // Kapalı/tavan: girdi kuyrukta kalır (açılınca analiz edilir), deneme sayılmaz.
+      return { processed, dropped, stoppedBy: outcome.status, lastOutcome: outcome };
     }
     if (outcome.status === 'failed') {
       const cls = classifyScanFailure(outcome.failure?.code);

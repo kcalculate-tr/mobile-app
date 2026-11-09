@@ -11,6 +11,15 @@ export async function runAiScan(
   //    girişe düşer (rezerve edilmediği için iade de gerekmez).
   const reservation = await client.reserveScan({ idempotencyKey: params.idempotencyKey });
   if (!reservation.ok) {
+    // G19-S1: acil kapatma / genel tavan → ayrı durum ("Tara şu an kullanılamıyor").
+    if (reservation.reason === 'disabled' || reservation.reason === 'global_cap') {
+      return {
+        status: 'unavailable',
+        reason: reservation.reason,
+        remaining: reservation.remaining,
+        reset_at: reservation.reset_at,
+      };
+    }
     return {
       status: 'quota_exhausted',
       remaining: reservation.remaining,

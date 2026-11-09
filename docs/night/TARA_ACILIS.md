@@ -34,13 +34,13 @@ Notlar
 ## 2. Kapatma anahtarları (hızdan yavaşa)
 | Anahtar | Etki | Ne zaman |
 |---|---|---|
-| `update app_settings set value='0' where key='ai_scan_daily_cap';` | SUNUCU: tüm yeni rezervasyonlar `ok:false` → kullanıcı FinErrLimit görür (hak/maliyet sıfır). Anında, uygulama güncellemesi gerekmez. | Maliyet patlaması, model kötüye kullanımı |
-| `update app_settings set value='1' where key='ai_scan_per_minute';` | Dakikada 1 tarama (429 `rate_limit` → FinErrFailed, hak iade) | Bot/döngü şüphesi |
+| `update app_settings set value='false'::jsonb where key='ai_scan_enabled';` | SUNUCU: yeni rezervasyon yok → `{ok:false, reason:'disabled'}` → kullanıcı **"Tara şu an kullanılamıyor · Kısa süre içinde geri gelecek"** görür (hak/maliyet 0; "hakkını kullandın" DEĞİL). Anında, uygulama güncellemesi gerekmez. Kuyruktaki fotoğraflar beklemede kalır, açılınca analiz edilir. Geri açma: `value='true'`. | Maliyet patlaması, model kötüye kullanımı, sağlayıcı sorunu |
+| `update app_settings set value='1'::jsonb where key='ai_scan_per_minute';` | Dakikada 1 tarama (429 `rate_limit` → FinErrFailed, hak iade) | Bot/döngü şüphesi |
+| `ai_scan_daily_cap` (genel günlük tavan) | Dolunca `reason:'global_cap'` → aynı "kullanılamıyor" ekranı (kendi hakkı bitmediği için "kullandın" denmez) | Bütçe koruması (her zaman açık) |
 | `update feature_flags set enabled=false where key='ai_tarama';` | Giriş düğmesi kaybolur (bayraklar yeniden çekilince: açılış/ön plana dönüş) | Arayüz/akış hatası |
-| `supabase secrets unset ANTHROPIC_API_KEY` (son çare) | edge `config` 500 → FinErrFailed, hak iade | Sağlayıcı sorunu |
 
-Uyarı: `ai_scan_daily_cap=0` kullanıcıya "Bugünkü 3 taramanı kullandın" gösterir (doğru değil ama
-güvenli). Ayrı "geçici kapalı" metni Final'de yok → SORULAR.
+Not: `ai_scan_enabled` ve `reason` alanı migration 20261109190100 ile gelir; uygulama sürümü G19 öncesiyse
+`disabled` yanıtını "hakkını kullandın" olarak gösterir (eski istemci `reason`'ı bilmez) → `min_app_version` G19 sürümü olmalı.
 
 ## 3. İzlenecek metrikler
 Kaynak: `analytics_events` (G19-S3 `track` → D-S1 sözlüğü) + `ai_scan_usage` / `ai_scan_reservations`.
@@ -51,7 +51,7 @@ Kaynak: `analytics_events` (G19-S3 `track` → D-S1 sözlüğü) + `ai_scan_usag
 | Başarı oranı | `scan_success` / (`scan_success` + `scan_failed` where stage ≠ 'local') | < %90 (1 saatlik pencere) |
 | Logla oranı | `log_meal{source:'scan'}` / `scan_success` | < %50 (sonuç güvenilmez) |
 | Düzeltme oranı | `log_meal{edited:true}` / `log_meal{source:'scan'}` | > %60 (model kalitesi) |
-| Hata kırılımı | `scan_failed.reason` dağılımı | `model`+`parse` > %3 · `timeout` > %5 · `network` > %15 |
+| Hata kırılımı | `scan_failed.reason` dağılımı (`disabled`/`global_cap` = kapatma, hata değil) | `model`+`parse` > %3 · `timeout` > %5 · `network` > %15 |
 | Limit | `scan_limit` / DAU(Tara) | bilgi (Pro talebi) |
 | Kuyruk | `scan_start{offline:true}` ve `scan_failed{reason:'queue_dropped'}` | `queue_dropped` > %2 |
 | Maliyet | `select day, sum(used) from ai_scan_usage group by day` × model birim fiyatı | günlük bütçenin %80'i |

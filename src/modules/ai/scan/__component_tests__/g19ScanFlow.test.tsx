@@ -243,6 +243,21 @@ test('NetInfo isConnected=null (bilinmiyor) çevrimdışı SAYILMAZ → analiz y
   expect(c.reserveScan).toHaveBeenCalledTimes(1);
 });
 
+test('acil kapatma → "Tara şu an kullanılamıyor" (hakkını kullandın DEĞİL), analiz yok', async () => {
+  const c = client(jest.fn(async () => EST));
+  c.reserveScan.mockResolvedValue({ ok: false, reason: 'disabled', remaining: 2, reset_at: new Date(Date.now() + 864e5).toISOString() });
+  setAiScanClient(c);
+  const tree = render(<ScanScreen />);
+  await waitFor(() => expect(tree.getByTestId('fin-scan-camera')).toBeTruthy());
+  await shutter(tree);
+  await waitFor(() => expect(tree.getByText('Tara şu an kullanılamıyor')).toBeTruthy());
+  expect(tree.getByText('Kısa süre içinde geri gelecek. Bu arada elle girebilirsin.')).toBeTruthy();
+  expect(tree.queryByText('Bugünkü 3 taramanı kullandın')).toBeNull();
+  expect(c.analyzeImage).not.toHaveBeenCalled();
+  expect(events.find((e) => e[0] === 'scan_failed')?.[1]).toEqual({ reason: 'disabled', stage: 'reserve' });
+  expect(events.some((e) => e[0] === 'scan_limit')).toBe(false);
+});
+
 test('kota bitti → FinErrLimit + scan_limit olayı, analiz yok', async () => {
   const c = client(jest.fn(async () => EST));
   c.reserveScan.mockResolvedValue({ ok: false, remaining: 0, reset_at: new Date(Date.now() + 864e5).toISOString() });

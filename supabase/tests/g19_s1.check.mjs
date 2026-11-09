@@ -146,6 +146,25 @@ check('başkasının anahtarı → hata (G10 korunur)', threw);
 r = await reserve('u2-a');
 check('U2 kendi kotası bağımsız', r.ok && r.remaining === 2);
 
+// Acil kapatma (İlter 9 Kas): ai_scan_enabled=false → reason 'disabled'; genel tavan → 'global_cap'.
+console.log('acil kapatma:');
+await as(U2);
+const u2Before = await used(U2);
+await db.exec(`update public.app_settings set value='false'::jsonb where key='ai_scan_enabled'`);
+r = await reserve('u2-b');
+check('kapalı → ok:false, reason disabled, hak düşmez', r.ok === false && r.reason === 'disabled' && (await used(U2)) === u2Before);
+check('kapalıyken kalan hak doğru (0 değil)', r.remaining === 2);
+await db.exec(`update public.app_settings set value='"false"'::jsonb where key='ai_scan_enabled'`);
+r = await reserve('u2-b');
+check('"false" (metin) de kapalı sayılır', r.reason === 'disabled');
+await db.exec(`update public.app_settings set value='true'::jsonb where key='ai_scan_enabled'`);
+await db.exec(`update public.app_settings set value='0'::jsonb where key='ai_scan_daily_cap'`);
+r = await reserve('u2-b');
+check('genel tavan dolu → reason global_cap (hakkını kullandın DEĞİL)', r.ok === false && r.reason === 'global_cap' && r.remaining === 2);
+await db.exec(`update public.app_settings set value='1000'::jsonb where key='ai_scan_daily_cap'`);
+r = await reserve('u2-b');
+check('açılınca normal', r.ok === true && !r.reason);
+
 // Negatif kontrol: rollback (G10 RPC) ile hata GERÇEKTEN vardı.
 console.log('negatif kontrol (eski RPC):');
 await db.exec(read(RB));

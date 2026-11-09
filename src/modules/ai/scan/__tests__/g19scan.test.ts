@@ -184,6 +184,32 @@ test('runAiScan: aynı anahtarla "Tekrar dene" iki kez hak düşürmez (idempote
   assert.equal(c._remaining(), 2);
 });
 
+// ── İlter 9 Kas: acil kapatma ayrı durum ───────────────────────────────────
+test('runAiScan: sunucu reason disabled/global_cap → unavailable (quota_exhausted DEĞİL), analiz yok', async () => {
+  for (const reason of ['disabled', 'global_cap'] as const) {
+    const calls: string[] = [];
+    const c: AiScanClient = {
+      async reserveScan() {
+        return { ok: false, reason, remaining: 2, reset_at: 'r' };
+      },
+      async releaseScan() {
+        calls.push('release');
+      },
+      async analyzeImage() {
+        calls.push('analyze');
+        return est;
+      },
+    };
+    const out = await runAiScan(c, { idempotencyKey: 'k', imageRef: 'file://a.jpg' });
+    assert.equal(out.status, 'unavailable');
+    if (out.status === 'unavailable') {
+      assert.equal(out.reason, reason);
+      assert.equal(out.remaining, 2, 'kendi hakkı bitmedi');
+    }
+    assert.deepEqual(calls, []);
+  }
+});
+
 // ── md.4: kuyruk sınıflandırma / yerel dosya ───────────────────────────────
 test('classifyScanFailure: dosya/izin kalıcı · ağ/zaman aşımı/dakika sınırı geçici · model sayılır', () => {
   assert.equal(classifyScanFailure('file_missing'), 'permanent');

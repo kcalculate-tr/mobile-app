@@ -21,7 +21,8 @@ import { useT } from '../../../../core/i18n';
 import { CameraSlash, Check, Clock, WarningCircle, WifiSlash, X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 
-export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera';
+// G19-S1: 'unavailable' = Tara geçici kapalı (acil anahtar / genel tavan; İlter 9 Kas).
+export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera' | 'unavailable';
 
 function tokens(isDark: boolean) {
   return isDark
@@ -105,6 +106,8 @@ export default function FinScanErrorSheet({
       <WifiSlash size={24} color={iconColor} />
     ) : kind === 'camera' ? (
       <CameraSlash size={24} color={iconColor} />
+    ) : kind === 'unavailable' ? (
+      <WarningCircle size={24} color={iconColor} />
     ) : (
       <Clock size={24} color={iconColor} />
     );
@@ -116,7 +119,9 @@ export default function FinScanErrorSheet({
         ? tr('ai_scan.offline_title')
         : kind === 'camera'
           ? tr('ai_scan.camera_denied_title')
-          : tr('ai_scan.limit_title');
+          : kind === 'unavailable'
+            ? tr('ai_scan.unavailable_title')
+            : tr('ai_scan.limit_title');
   const body =
     kind === 'failed'
       ? reason === 'too_large'
@@ -128,7 +133,9 @@ export default function FinScanErrorSheet({
         ? tr('ai_scan.offline_body')
         : kind === 'camera'
           ? tr('ai_scan.camera_denied_body')
-          : tr('ai_scan.limit_body');
+          : kind === 'unavailable'
+            ? tr('ai_scan.unavailable_body')
+            : tr('ai_scan.limit_body');
   const note =
     kind === 'failed'
       ? tr('ai_scan.failed_note', { count: remaining })
@@ -198,6 +205,11 @@ export default function FinScanErrorSheet({
             <>
               <Btn primary label={tr('ai_scan.offline_ok')} onPress={onClose} style={styles.first} />
               <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />
+            </>
+          ) : kind === 'unavailable' ? (
+            <>
+              <Btn primary label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.first} />
+              <Btn label={tr('ai_scan.offline_ok')} onPress={onClose} style={styles.next} />
             </>
           ) : kind === 'camera' ? (
             <>

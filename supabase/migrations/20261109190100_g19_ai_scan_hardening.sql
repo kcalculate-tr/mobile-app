@@ -20,6 +20,9 @@
 --     rezervasyon `day` sütununu GÜNCELLEMEDİĞİ için sonsuza dek 'expired' kalıyordu.
 --     Artık yeniden rezervasyon bugünün gününe taşınır; dünden kalan 'reserved'
 --     anahtarın dünkü sayacı iade edilir.
+--  4. Acil kapatma (İlter 9 Kas): `app_settings.ai_scan_enabled=false` ve genel tavan
+--     dolduğunda `reason` döner ('disabled' | 'global_cap') → istemci "Tara şu an
+--     kullanılamıyor, kısa süre içinde geri gelecek." (önceden "hakkını kullandın").
 --  3. Dakika sınırı için `attempts` + `last_attempt_at` (edge yazar/okur) ve sonuç
 --     önbelleği için `result` sütunları.
 
@@ -58,6 +61,7 @@ declare
   v_status     text;
   v_day        date;
   v_has_result boolean;
+  v_enabled    boolean;
 begin
   if v_uid is null then
     raise exception 'auth required';
@@ -72,6 +76,11 @@ begin
   select coalesce((value::text)::int, 1000)
     into v_global_cap from public.app_settings where key = 'ai_scan_daily_cap';
   v_global_cap := coalesce(v_global_cap, 1000);
+  -- (4) Acil kapatma anahtarı (İlter 9 Kas): false → {ok:false, reason:'disabled'};
+  --     istemci "Tara şu an kullanılamıyor" gösterir ("hakkını kullandın" DEĞİL).
+  select coalesce((value #>> '{}')::boolean, true)
+    into v_enabled from public.app_settings where key = 'ai_scan_enabled';
+  v_enabled := coalesce(v_enabled, true);
 
   -- Anahtar sahipliği (G10): başkasına aitse reddet. Satır kilitlenir (eşzamanlı
   -- aynı anahtar çağrıları seri).
@@ -90,6 +99,12 @@ begin
   -- (1) Tamamlanmış + sonucu kayıtlı: hak DÜŞMEZ, edge önbellekten döner.
   if v_status = 'consumed' and v_has_result then
     return jsonb_build_object('ok', true, 'cached', true,
+      'remaining', greatest(0, v_user_limit - v_used), 'reset_at', v_reset);
+  end if;
+
+  -- (4) Kapalıyken yeni rezervasyon yok (önbellekli sonuç yukarıda yine döner — maliyet 0).
+  if not v_enabled then
+    return jsonb_build_object('ok', false, 'reason', 'disabled',
       'remaining', greatest(0, v_user_limit - v_used), 'reset_at', v_reset);
   end if;
 
@@ -122,7 +137,9 @@ begin
   select coalesce(sum(used), 0) into v_global
     from public.ai_scan_usage where day = v_today;
   if v_global >= v_global_cap then
-    return jsonb_build_object('ok', false,
+    -- (4) Genel tavan dolu: kullanıcının KENDİ hakkı bitmedi → 'global_cap' (istemci
+    --     "kullanılamıyor" gösterir; önceden "Bugünkü 3 taramanı kullandın" diyordu).
+    return jsonb_build_object('ok', false, 'reason', 'global_cap',
       'remaining', greatest(0, v_user_limit - v_used), 'reset_at', v_reset);
   end if;
 
@@ -147,6 +164,7 @@ grant execute on function public.reserve_ai_scan(text) to authenticated;
 -- Dakika sınırı / deneme ayarları (edge okur; yoksa edge varsayılanı).
 insert into public.app_settings (key, value, description) values
   ('ai_scan_per_minute',       '4'::jsonb, 'G19-S1: kullanıcı başına dakikada en fazla farklı tarama (analyze-ai-scan, 429 rate_limit).'),
+  ('ai_scan_enabled',          'true'::jsonb, 'G19-S1: acil kapatma anahtarı. false → reserve_ai_scan {ok:false, reason:disabled}; istemci "Tara şu an kullanılamıyor".'),
   ('ai_scan_max_key_attempts', '4'::jsonb, 'G19-S1: aynı tarama anahtarıyla en fazla model çağrısı (analyze-ai-scan, 429 rate_limit).')
 on conflict (key) do nothing;
 
