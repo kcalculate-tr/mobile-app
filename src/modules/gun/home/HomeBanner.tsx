@@ -87,9 +87,12 @@ function Bar({ on, color, offColor, reduced }: { on: boolean; color: string; off
 export function HomeBanner({
   items,
   onOpen,
+  initialIndex = 0,
 }: {
   items: HomeBannerItem[];
   onOpen: (item: HomeBannerItem) => void;
+  /** Yalnız vitrin (__DEV__): kaydırılmış başlangıç kartı (FinMoBanner 2 / 4). */
+  initialIndex?: number;
 }) {
   const k = useHomeTokens();
   const { t: tt } = useT();
@@ -97,7 +100,7 @@ export function HomeBanner({
   const { width } = useWindowDimensions();
   const cardW = Math.max(240, width - SIDE * 2);
   const step = cardW + GAP;
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(initialIndex);
 
   // Giriş bir kez (bileşen ömrü boyunca); kaydırınca tekrar oynamaz.
   const op = useSharedValue(0);
@@ -138,6 +141,7 @@ export function HomeBanner({
         snapToInterval={step}
         snapToAlignment="start"
         disableIntervalMomentum
+        contentOffset={initialIndex > 0 ? { x: initialIndex * step, y: 0 } : undefined}
         contentContainerStyle={styles.row}
         onScroll={onScroll}
         scrollEventThrottle={32}
@@ -178,9 +182,10 @@ export function HomeBanner({
 const styles = StyleSheet.create({
   section: { marginTop: 24 },
   row: { gap: GAP, paddingHorizontal: SIDE },
-  card: { height: 256, borderRadius: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  // 256 = görsel 180 + metin 76; büyük yazıda (FinHomeXL) metin alanı uzar, kırpılmaz.
+  card: { minHeight: 256, borderRadius: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
   photo: { height: 180, overflow: 'hidden' },
-  text: { height: 76, paddingTop: 10, paddingHorizontal: 16 },
+  text: { minHeight: 76, paddingTop: 10, paddingBottom: 6, paddingHorizontal: 16 },
   eyebrow: { fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_600SemiBold' },
   title: { fontSize: 18, lineHeight: 24, fontFamily: BRICOLAGE_SEMI },
   meta: { fontSize: 13, lineHeight: 18 },

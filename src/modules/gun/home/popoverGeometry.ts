@@ -30,7 +30,9 @@ export function placePopover(
   const up = anchor.y + anchor.height + POP_GAP + POP_H > win.height - TAB_BAR_H;
   const maxLeft = win.width - EDGE - POP_W;
   const left = Math.max(EDGE, Math.min(anchor.x, maxLeft));
-  const top = up ? anchor.y - POP_GAP - POP_H : anchor.y + anchor.height + POP_GAP;
+  // Ekran içinde kalır (üst 48 = durum çubuğu payı, alt = tab bar).
+  const raw = up ? anchor.y - POP_GAP - POP_H : anchor.y + anchor.height + POP_GAP;
+  const top = Math.max(48, Math.min(raw, win.height - TAB_BAR_H - POP_H));
   const chevronX = anchor.x + anchor.width - 22;
   const originX = Math.max(0, Math.min(POP_W, chevronX - left));
   return { left, top, up, originX };

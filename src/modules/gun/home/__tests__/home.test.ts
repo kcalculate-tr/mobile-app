@@ -131,6 +131,13 @@ test('popover: alt kenara yakınsa (tab bar 100) yukarı açılır', () => {
   assert.equal(p.top, 600 - 4 - 293);
 });
 
+test('popover: çapa ekran dışında olsa da menü ekran içinde kalır', () => {
+  const p = placePopover({ x: 58, y: 1100, width: 190, height: 44 }, WIN);
+  assert.equal(p.top, 852 - 100 - 293);
+  const q = placePopover({ x: 58, y: -400, width: 190, height: 44 }, WIN);
+  assert.equal(q.top, 48);
+});
+
 test('popover: sağa taşarsa sola kayar (16 pt pay)', () => {
   const p = placePopover({ x: 200, y: 200, width: 190, height: 44 }, WIN);
   assert.equal(p.left, 393 - 16 - 240);

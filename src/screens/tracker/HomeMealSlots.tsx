@@ -115,6 +115,8 @@ export interface HomeMealSlotsProps {
   emptyContent?: React.ReactNode;
   /** Vitrin (yalnız __DEV__): bu yuvanın yerinde menüsü açık başlar (FinMoPopover). */
   initialMenuSlot?: SlotKey | null;
+  /** Vitrin (yalnız __DEV__): açılan menü 2 sn sonra kapanır (aç/kapa kare dizisi). */
+  menuCycle?: boolean;
 }
 
 /** FinMoLogA "goo" damlası: r11 baş + r6 kuyruk (pano: #4A6B00, koyuda lime). */
@@ -152,6 +154,7 @@ export function HomeMealSlots({
   nowHour,
   emptyContent,
   initialMenuSlot = null,
+  menuCycle = false,
 }: HomeMealSlotsProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -249,7 +252,7 @@ export function HomeMealSlots({
             ))}
             {sl.empty ? (
               <View style={styles.slotEmpty}>
-                <SlotLogPill slot={sl.key} onLog={onLog} onChangeMeal={onChangeMeal} autoOpen={__DEV__ && initialMenuSlot === sl.key} />
+                <SlotLogPill slot={sl.key} onLog={onLog} onChangeMeal={onChangeMeal} autoOpen={__DEV__ && initialMenuSlot === sl.key} autoCycle={menuCycle} />
               </View>
             ) : null}
           </View>
@@ -264,11 +267,13 @@ function SlotLogPill({
   onLog,
   onChangeMeal,
   autoOpen = false,
+  autoCycle = false,
 }: {
   slot: SlotKey;
   onLog: (slot: SlotKey, portion?: number) => void;
   onChangeMeal: (slot: SlotKey) => void;
   autoOpen?: boolean;
+  autoCycle?: boolean;
 }) {
   const t = useTheme();
   const { t: tt } = useT();
@@ -283,7 +288,7 @@ function SlotLogPill({
     if (!autoOpen) return;
     const id = setTimeout(() => {
       measure().then((r) => r && setAnchor(r));
-    }, 1200);
+    }, 3500);
     return () => clearTimeout(id);
   }, [autoOpen, measure]);
   const label = tt(`gun.log_to_${meal}`);
@@ -331,6 +336,7 @@ function SlotLogPill({
         onPickMeal={setMeal}
         onPickPortion={setPortion}
         onClosed={() => setAnchor(null)}
+        autoCloseMs={autoOpen && __DEV__ && autoCycle ? 2000 : undefined}
       />
     </View>
   );

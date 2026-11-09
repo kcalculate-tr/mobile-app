@@ -1441,11 +1441,19 @@ export default function TrackerScreen() {
   const vitrinParams =
     (__DEV__
       ? (route.params as
-          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey; vitrinOffline?: boolean; vitrinMealMenu?: SlotKey }
+          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey; vitrinOffline?: boolean; vitrinMealMenu?: SlotKey; vitrinScroll?: number; vitrinBanner?: number; vitrinMenuCycle?: boolean }
           | undefined)
       : undefined) ?? {};
   const vitrinOpenAuto = __DEV__ ? vitrinParams.vitrinOpenAuto === true : false;
   const homeHour = __DEV__ ? vitrinParams.vitrinHour : undefined;
+  // Vitrin (yalnız __DEV__): pano kaydırma konumu (ör. FinHomeIzmir/Outside 1580).
+  const homeScrollRef = useRef<any>(null);
+  const vitrinScroll = __DEV__ ? vitrinParams.vitrinScroll : undefined;
+  useEffect(() => {
+    if (!vitrinScroll) return;
+    const id = setTimeout(() => homeScrollRef.current?.scrollTo?.({ y: vitrinScroll, animated: false }), 2500);
+    return () => clearTimeout(id);
+  }, [vitrinScroll]);
   const shownPendingSlot = (__DEV__ ? vitrinParams.vitrinPending : undefined) ?? pendingSlot;
 
   // Teslim anı toast'ı: "Akşam’a loglandı" (öğün = teslim saatinin yuvası).
@@ -2324,6 +2332,8 @@ const html = `
           Final XL ≈ 1.3× tavan. Bayrak kapalıyken değer sınırsız (AppText zaten yok). */}
       <TextScaleCapContext.Provider value={yeniKabuk ? 1.3 : Number.POSITIVE_INFINITY}>
       <Reanimated.ScrollView
+        // Yalnız vitrin (__DEV__ + vitrinScroll); bayrak kapalı ağaçta prop YOK (snapshot paritesi).
+        ref={__DEV__ && vitrinScroll ? homeScrollRef : undefined}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[s.scroll, asTab ? { paddingBottom: tabBarContentInset(insets.bottom) } : null]}
         showsVerticalScrollIndicator={false}
@@ -2474,7 +2484,9 @@ const html = `
               />
             ) : null}
             {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
-            {yeniKabuk ? <HomeBanner items={homeBanners} onOpen={openBanner} /> : null}
+            {yeniKabuk ? (
+              <HomeBanner items={homeBanners} onOpen={openBanner} initialIndex={__DEV__ ? vitrinParams.vitrinBanner ?? 0 : 0} />
+            ) : null}
             {/* ── G13-S1: FinHomeR3 öğün yuvaları (yeni_kabuk). Yeni kabukta
                  "Dolabındakiler" şeridi YOK — teslim edilen sipariş otomatik
                  loglanır (yukarıdaki auto-log etkisi). ── */}
@@ -2498,6 +2510,7 @@ const html = `
                   nowHour={homeHour}
                   emptyContent={<HomeEmptyToday />}
                   initialMenuSlot={__DEV__ ? vitrinParams.vitrinMealMenu ?? null : null}
+                  menuCycle={__DEV__ && vitrinParams.vitrinMenuCycle === true}
                 />
                 {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
                 <TrackerDayStrip />

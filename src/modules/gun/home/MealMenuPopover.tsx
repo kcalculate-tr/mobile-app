@@ -32,9 +32,11 @@ export interface MealMenuPopoverProps {
   onPickPortion: (p: number) => void;
   /** Kapanış animasyonu bitince (dışarı dokunma / öğün seçimi). */
   onClosed: () => void;
+  /** Yalnız vitrin (__DEV__): açıldıktan N ms sonra kendiliğinden kapanır (kare dizisi çekimi). */
+  autoCloseMs?: number;
 }
 
-export function MealMenuPopover({ anchor, meal, portion, onPickMeal, onPickPortion, onClosed }: MealMenuPopoverProps) {
+export function MealMenuPopover({ anchor, meal, portion, onPickMeal, onPickPortion, onClosed, autoCloseMs }: MealMenuPopoverProps) {
   const k = useHomeTokens();
   const { t: tt } = useT();
   const reduced = useReducedMotion();
@@ -63,6 +65,12 @@ export function MealMenuPopover({ anchor, meal, portion, onPickMeal, onPickPorti
       if (fin) runOnJS(onClosed)();
     });
   }, [closing, reduced, op, sc, onClosed]);
+
+  useEffect(() => {
+    if (!__DEV__ || !visible || !autoCloseMs) return;
+    const id = setTimeout(close, autoCloseMs);
+    return () => clearTimeout(id);
+  }, [visible, autoCloseMs, close]);
 
   const anim = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ scale: sc.value }] }));
   if (!anchor) return null;

@@ -28,6 +28,10 @@ export interface RollingNumberProps {
   style?: ViewStyle;
   /** Erişilebilirlik etiketi (hane kolonları okunmasın diye). */
   accessibilityLabel?: string;
+  /** G18-S2: yazı ailesi (ör. FinHomeR3 Bricolage 700). Verilmezse sistem (bugünkü). */
+  fontFamily?: string;
+  /** G18-S2: hane yuvası genişliği / punto (varsayılan 0.62 — bugünkü). */
+  slotRatio?: number;
 }
 
 export function RollingNumber({
@@ -38,10 +42,12 @@ export function RollingNumber({
   color = '#0A0A0A',
   style,
   accessibilityLabel,
+  fontFamily,
+  slotRatio = 0.62,
 }: RollingNumberProps) {
   const text = groupDigits(value, lang);
   const lineHeight = Math.round(fontSize * 1.2);
-  const slotWidth = Math.ceil(fontSize * 0.62);
+  const slotWidth = Math.ceil(fontSize * slotRatio);
   const chars = text.split('');
 
   // En sağdaki hanenin index'i (gecikme sırası sağdan sola artar → sağ en çok döner).
@@ -52,7 +58,9 @@ export function RollingNumber({
     return -1;
   })();
 
-  const textStyle: TextStyle = { fontSize, lineHeight, fontWeight: weight, color, textAlign: 'center' };
+  const textStyle: TextStyle = fontFamily
+    ? { fontSize, lineHeight, fontFamily, color, textAlign: 'center' }
+    : { fontSize, lineHeight, fontWeight: weight, color, textAlign: 'center' };
 
   return (
     <View
