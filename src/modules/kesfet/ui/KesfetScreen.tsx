@@ -476,6 +476,10 @@ export function KesfetScreen() {
           mealLabel,
           source: 'kesfet',
           kcal,
+          // G20-S1 md.4: Keşfet kendi toast'ını (Geri al = kaydı siler) gösterir →
+          // kabukta ikinci toast yok; Ana sayfa vurgusu / rozet bu kayda eşlenir.
+          id: consumptionId,
+          ownToast: true,
         });
       }
       // "Logla izi" — ekran içi kısa yankı (yemek noktaya iner, yay çizip uçar).
@@ -486,9 +490,15 @@ export function KesfetScreen() {
         message: tr('kesfet.ui.logged_to', { meal: tr(`kesfet.ui.meal_dat.${mealType}`) }),
         undoLabel: tr('common.undo'),
         onUndo: () => {
-          void useKesfetStore.getState().undoAddToDay(post.id, consumptionId, key);
+          // G20-S1 md.4: tek toast; "Geri al" meal_consumptions satırını SİLER.
           emitLogUndo({ id: consumptionId });
-          trackEvent({ name: 'log_delete', props: { source: 'kesfet', slot: mealType, undone: false } });
+          void useKesfetStore
+            .getState()
+            .undoAddToDay(post.id, consumptionId, key)
+            .then((ok) => {
+              if (ok) trackEvent({ name: 'log_delete', props: { source: 'kesfet', slot: mealType, undone: false } });
+              else setToast({ message: tr('kesfet.ui.undo_failed') });
+            });
         },
         actionLabel: tr('kesfet.ui.view_day'),
         onAction: onViewDay,

@@ -39,6 +39,17 @@ export interface LogFlightPayload {
   name?: string | null;
   /** Kalori (koleksiyon/vurgu için). */
   kcal?: number | null;
+  /**
+   * G20-S1 md.4: kaynak ekran kendi toast'ını gösteriyorsa (Keşfet: "<Öğün>'ye
+   * loglandı · Geri al · Gör") kabuk yalnız uçuş + rozet çizer, İKİNCİ toast YOK.
+   */
+  ownToast?: boolean;
+  /**
+   * G20-S1 md.4: kaydı GERÇEKTEN silen geri alma. Kabuk toast'ı "Geri al"ı yalnız
+   * bu verilirse gösterir (önceden yalnız rozeti azaltıyor, kaydı silmiyordu).
+   * Süreç içi olay (DeviceEventEmitter) → fonksiyon referansı taşınabilir.
+   */
+  undo?: (() => void | Promise<void>) | null;
 }
 
 export interface LogUndoPayload {

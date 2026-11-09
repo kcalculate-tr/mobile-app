@@ -22,6 +22,8 @@ import { CameraSlash, Check, Clock, WarningCircle, WifiSlash, X } from '../../..
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 
 // G19-S1: 'unavailable' = Tara geçici kapalı (acil anahtar / genel tavan; İlter 9 Kas).
+// G20-S1 md.4: FinErrLimit kartı diliyle — kamera alanı zemini, üstte durum hapı,
+// saat ikonu, başlık + gövde, birincil "Elle gir" + ikincil çerçeveli (metin farklı).
 export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera' | 'unavailable';
 
 function tokens(isDark: boolean) {
@@ -107,7 +109,8 @@ export default function FinScanErrorSheet({
     ) : kind === 'camera' ? (
       <CameraSlash size={24} color={iconColor} />
     ) : kind === 'unavailable' ? (
-      <WarningCircle size={24} color={iconColor} />
+      // G20-S1 md.4: FinErrLimit kartı dili — geçici durum = saat ikonu (limit ile aynı).
+      <Clock size={24} color={iconColor} />
     ) : (
       <Clock size={24} color={iconColor} />
     );
@@ -151,7 +154,9 @@ export default function FinScanErrorSheet({
         ? tr('ai_scan.offline_chip')
         : kind === 'limit'
           ? tr('ai_scan.quota_left_of', { count: remaining, cap: SCAN_QUOTA_CAP })
-          : null;
+          : kind === 'unavailable'
+            ? tr('ai_scan.unavailable_chip')
+            : null;
   const bg = photoUri && (kind === 'failed' || kind === 'offline') ? null : kind === 'failed' || kind === 'offline' ? k.photo : k.camOff;
 
   return (

@@ -377,8 +377,10 @@ module.exports = {
       [
         'expo-tracking-transparency',
         {
+          // G20-S1: ATT amacı rıza bloğuyla aynı (reklam ölçümü — kişiselleştirilmiş reklam DEĞİL).
+          // EN: locales/en.json ios.NSUserTrackingUsageDescription.
           userTrackingPermission:
-            'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
+            'Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin.',
         },
       ],
       [
@@ -402,7 +404,7 @@ module.exports = {
           autoLogAppEventsEnabled: true,
           isAutoInitEnabled: false,
           iosUserTrackingPermission:
-            'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
+            'Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin.',
         },
       ],
     ],

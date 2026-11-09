@@ -343,6 +343,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         ring_strip: 'Gün halkası',
         meal_dat: { breakfast: 'Kahvaltı’ya', lunch: 'Öğle’ye', dinner: 'Akşam’a', snack: 'Ara öğüne' },
         logged_to: '%{meal} loglandı',
+        undo_failed: 'Geri alınamadı. Kayıt Ana sayfada duruyor.',
         plate: {
           label: '%{name}, %{kcal} kcal',
           fits_goal: 'Kalori hedefine uyar',
@@ -1238,6 +1239,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G19-S4 md.3: acil kapatma metni (reason disabled | global_cap) — tek cümle başlıkta.
       unavailable_title: 'Tara şu an kullanılamıyor, kısa süre içinde geri gelecek.',
       unavailable_body: 'Bu arada elle girebilirsin.',
+      unavailable_chip: 'Tara geçici olarak kapalı',
       save_failed: 'Loglanamadı. Bağlantını kontrol edip yeniden dene.',
       gallery_denied: 'Fotoğraflara erişim kapalı. Ayarlar’dan izin verebilirsin.',
       failed_note: 'Ücretsiz hakkından düşülmedi, bugün %{count} hakkın kaldı',
@@ -2172,6 +2174,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         ring_strip: 'Day rings',
         meal_dat: { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' },
         logged_to: 'Logged to %{meal}',
+        undo_failed: 'Couldn’t undo. The entry is still on Home.',
         plate: {
           label: '%{name}, %{kcal} kcal',
           fits_goal: 'Fits your calorie goal',
@@ -3057,6 +3060,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       retake: 'Retake',
       unavailable_title: 'Scan isn’t available right now, it’ll be back shortly.',
       unavailable_body: 'You can enter it manually meanwhile.',
+      unavailable_chip: 'Scan is temporarily off',
       save_failed: 'Couldn’t log it. Check your connection and try again.',
       gallery_denied: 'Photo access is off. You can allow it in Settings.',
       failed_note: 'Your free scan wasn’t used, %{count} left today',

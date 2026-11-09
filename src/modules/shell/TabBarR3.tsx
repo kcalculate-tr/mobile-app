@@ -170,7 +170,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   // ── "Logla izi" durumu ──────────────────────────────────────────────────────
   const [badge, setBadge] = useState(0);
   const [flight, setFlight] = useState<FlightState | null>(null);
-  const [toast, setToast] = useState<{ id: string; message: string } | null>(null);
+  const [toast, setToast] = useState<{ id: string; message: string; undo?: (() => void | Promise<void>) | null } | null>(null);
   const badgePop = useSharedValue(0); // 0 gizli, 1 açık (bouncy)
   const flightKey = useRef(0);
   // Olay dinleyicisi mount'ta bir kez kurulur; en güncel geometri/ayar ref'ten.
@@ -190,11 +190,13 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
         if (n === 0) popBadge();
         return n + 1;
       });
+      // G20-S1 md.4: kaynak kendi toast'ını gösteriyorsa (Keşfet) ikinci toast yok.
+      if (payload.ownToast) return;
       const id = payload.id ?? `log-${flightKey.current}`;
       const message = payload.mealLabel
         ? i18n.t('shell.logged', { meal: payload.mealLabel })
         : i18n.t('shell.logged_generic');
-      setToast({ id, message });
+      setToast({ id, message, undo: payload.undo ?? null });
     },
     [i18n, popBadge],
   );
@@ -370,8 +372,16 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
     navigation.navigate('Cart' as never);
   };
 
+  // G20-S1 md.4: "Geri al" kaydı gerçekten siler (kaynağın verdiği `undo`); `undo`
+  // yoksa düğme hiç çizilmez (yalnız rozeti azaltan yanıltıcı geri al YOK).
   const onToastUndo = useCallback(() => {
-    if (toast) DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: toast.id } as LogUndoPayload);
+    if (!toast?.undo) return;
+    try {
+      void Promise.resolve(toast.undo()).catch(() => {});
+    } catch {
+      /* kaynak hatası kabuğu düşürmez */
+    }
+    DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: toast.id } as LogUndoPayload);
     setBadge((n) => Math.max(0, n - 1));
     setToast(null);
   }, [toast]);
@@ -416,7 +426,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
           <Toast
             visible
             message={toast.message}
-            onUndo={onToastUndo}
+            onUndo={toast.undo ? onToastUndo : undefined}
             onView={onToastView}
             onDismiss={() => setToast(null)}
           />
