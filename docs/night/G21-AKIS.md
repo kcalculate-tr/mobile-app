@@ -29,8 +29,8 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 | Durum | Adet |
 |---|---|
 | ✓ doğru | 136 |
-| ✗ düzeltildi (bu oturum, testli) | 6 |
-| ✗ devredildi (sahibi başka oturum; düzeltme tarifli, aşağıda #D1–#D4) | 4 |
+| ✗ düzeltildi (bu oturum, testli; #D1–#D5 dahil) | 10 |
+| ✗ devredildi | 0 |
 | ✗ tasarım gerekir (tablo satırı; liste #T1–#T4) | 2 |
 | ⚠ risk | 13 |
 | **Toplam satır** | **161** |
@@ -66,7 +66,7 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 |---|---|---|---|---|---|---|
 | TbGoal | geri | önceki ekran (yığın boşsa kök geri) | `canGoBack ? goBack : root.goBack` | ✓ | push-right | n/a |
 | TbGoal…TbFirst | Atla (ilk kurulum) | Ana sayfa | Tabs/Tracker | ✓ | push-right | n/a |
-| TbGoal…TbActivity | Atla (**editGoal**, Profil › Hedefim'den) | Profil'e dön | Tabs/**Tracker**'a gidiyor; Profil'den gelen kullanıcı Ana sayfaya atılır | ✗ devredildi (#D3) | push-right | n/a |
+| TbGoal…TbActivity | Atla (**editGoal**, Profil › Hedefim'den) | Profil'e dön | Tabs/**Tracker**'a gidiyor; Profil'den gelen kullanıcı Ana sayfaya atılır | ✗ düzeltildi (#D3, `c13727e`: Hedefim'de Atla = geri) | push-right | n/a |
 | TbAbout | yaş/boy/kilo | sayısal giriş, kaydırılabilir | TbFrame `scroll` | ✓ | — | sayı alanları |
 | TbResult | Kaydet (editGoal) | kaydet + geri | `root.goBack()` | ✓ | push-right | n/a |
 | TbResult | Devam | İlk adım | `navigate('TbFirst')` | ✓ | push-right | n/a |
@@ -107,7 +107,7 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 | FinScanCamera | kamera izni yok | ayarlar / galeri / elle | FinScanErrorSheet `camera` | ✓ | sheet | n/a |
 | FinScanCamera | çevrimdışı | sade durum ekranı | `replace('AiScanOffline')` | ✓ | push-right | n/a |
 | AiScanOffline | Ana sayfa | Tracker | Tabs/Tracker | ✓ | tab-none | n/a |
-| Tara | **Elle gir** (kamera / hata / kota / izin Vazgeç) | Ana sayfa + elle giriş sheet'i açık | yalnız `goBack()`; kullanıcı Ana sayfada ikinci kez dokunmak zorunda | ✗ devredildi (#D2; Tracker tarafı hazır: `finOpenManual` param) | modal-bottom | elle giriş |
+| Tara | **Elle gir** (kamera / hata / kota / izin Vazgeç) | Ana sayfa + elle giriş sheet'i açık | yalnız `goBack()`; kullanıcı Ana sayfada ikinci kez dokunmak zorunda | ✗ düzeltildi (#D2, `c13727e`: yeni kabukta Tabs/Tracker {finOpenManual}) | modal-bottom | elle giriş |
 | Tara | kota bitti | FinErrLimit sheet'i | ScanLimitSheet; ikonlar koyu temada görünmüyordu | ✗ düzeltildi (ikon `th.color.ink`) | sheet | n/a |
 | Tara | barkod | OFF sonucu / bulunamadı | md.2 oturumu (FinBarcodeResult) | ✓ (md.2 raporu) | state | ad / porsiyon |
 | FinPhotoResult | porsiyon / öğün / düzelt | düzenlenebilir | `onChangeMealType`, düzelt alanları | ✓ | state | ad / kcal |
@@ -146,7 +146,7 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 | PostCard | ⋯ menü | düzenle / sil / bildir / sessize al | PostMenu → ReportFlow | ✓ | sheet | bildirim notu |
 | PostCard | video | tam ekran oynatıcı | `setVideoPostId` | ✓ | modal-bottom | n/a |
 | PostCard | Yaptım (etkinlik) | süre sheet'i → kayıt | DidItSheet | ✓ | sheet | dakika |
-| Keşfet | logla toast'ı "Gör" | Ana sayfa (gün) | `navigate('Home')` = yeni kabukta **eatkcal** sekmesi | ✗ devredildi (#D1; KesfetScreen md.4 sahibinde) | tab-none | n/a |
+| Keşfet | logla toast'ı "Gör" | Ana sayfa (gün) | `navigate('Home')` = yeni kabukta **eatkcal** sekmesi | ✗ düzeltildi (md.4 `fe6d6c7`: Keşfet kendi toast'ını göstermez; kabuk toast'ı "Gör" = Tabs/Tracker) | tab-none | n/a |
 | Keşfet | Yaptım toast'ı "Günüme paylaş" | güne paylaş | `onAction: () => {}` — eylem yok | ✗ tasarım gerekir (#T2) | — | n/a |
 | Keşfet | boş akış / Takip boş | başlangıç hesapları + takip | FeedStartEmpty `onFollow` | ✓ | — | n/a |
 | Keşfet | yükleniyor | iskelet | FeedSkeleton (a11y etiketi "Yükleniyor" sabit TR) | ⚠ (#K12) | — | n/a |
@@ -228,7 +228,7 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 | FinPrProfile | Sözleşmeler | SettingsAgreements | ProfileSub agreements (yerel metin) | ✓ | push-right | n/a |
 | FinPrProfile | Yardım ve destek | SettingsSupport | ProfileSub support; ek imzalı URL, telefon | ✓ | push-right | konu, mesaj |
 | FinPrProfile | Öneri ve görüş | SettingsFeedback | ProfileSub feedback | ✓ | push-right | metin |
-| FinPrProfile | **Çıkış** | Karşılama/onboarding (yeni_onboarding) | `signOut` sonrası sıfırlama yok: Profil sekmesindeki `useRequireAuth` **Giriş**'i iter; Giriş'ten geri → oturumsuz Profil sekmesi | ✗ devredildi (#D4) | push-right | n/a |
+| FinPrProfile | **Çıkış** | Karşılama/onboarding (yeni_onboarding) | `signOut` sonrası sıfırlama yok: Profil sekmesindeki `useRequireAuth` **Giriş**'i iter; Giriş'ten geri → oturumsuz Profil sekmesi | ✗ düzeltildi (#D4, `c13727e`: yığın Onboarding/WelcomeGate'e sıfırlanır) | push-right | n/a |
 | Tab çubuğu | Profil / Ana sayfa / Keşfet (oturumsuz) | Giriş | `authGate` → Login | ✓ | push-right | n/a |
 | Tab çubuğu | Sepet hapı | v2 sepet | EkCart kayıtlıysa EkCart | ✓ | push-right | n/a |
 | Tab çubuğu | kabuk toast'ı Gör | Ana sayfa | `navigate('Tracker')` | ✓ | tab-none | n/a |
@@ -257,7 +257,7 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 
 (TrackerScreen parçaları ana oturumun `fe6d6c7` commit'ine diskteki hâliyle girdi; bağımlı dosyalar `b055b8f`'te.)
 
-## Diğer oturumlara devredilen (sahibi başka oturum)
+## Devredilenler — hepsi düzeltildi (`c13727e`, test `src/navigation/__component_tests__/g21Handoff.test.tsx`; #D1 "Gör" kısmı md.4 `fe6d6c7`)
 - **#D1** `src/modules/kesfet/ui/KesfetScreen.tsx:446-450` `onViewDay`: `navigation.navigate('Home')` → `navigation.navigate('Tabs', { screen: 'Tracker' })` (yeni kabukta Home = eatkcal). Aynı dosyada PostCard'a (≈:675) `onOpenAuthor={() => navigation.navigate('PublicProfile', { handle: item.author.handle })}` ekle.
 - **#D2** `src/modules/ai/scan/screens/ScanScreen.tsx:565-570` `handleManualEntry`: yeni kabukta `navigation.goBack()` yerine `navigation.navigate('Tabs', { screen: 'Tracker', params: { finOpenManual: true } })` (eski kabukta goBack kalsın). Tracker tarafı hazır.
 - **#D3** `src/modules/onboarding/takibe/TakibeNavigator.tsx:139,166,228,334,394` `onSkip`: editGoal modunda `root?.goBack()` (Profil'e dön), değilse bugünkü Tabs/Tracker. `draft.editGoal` store'da mevcut (:361).
@@ -274,5 +274,90 @@ md.9 sonrası Profil alt sayfaları `ProfileSub` yığın ekranı (push-right); 
 OnbIntent ölü ekran · Apple/Google sessiz hata · FinPhotoResult "Gör" açıldığı sekmeye döner · GunRingStrip ve FeedSkeleton a11y etiketleri sabit TR (#K12, #K13) · bildirim yükleme hatası boş görünür · takip hatası sessiz · EkProduct iskeletinde geri yok / zaman aşımı yok · adres ekranlarında Giriş sonrası özet bağlamı kaybı · FinPrMacro `Promise.all` · EkPayment uyarısı sabit TR (#E1) · derin bağlantı koyu zemin parlaması · hesap silme sonrası Giriş.
 
 ## Kapsam dışı / yapılmadı
-- Cihazda koşu ve simülatör kareleri (`docs/shots/g21/`) bu denetimin parçası değil — statik izleme. Ödeme/sipariş ve hesap silme onayı bilinçli olarak yapılmadı.
+- Cihazda dokunmalı koşu yapılmadı (Erişilebilirlik izni yok); kareler vitrin ile alındı (aşağıda). Ödeme/sipariş ve hesap silme onayı bilinçli olarak yapılmadı.
 - `onboarding/v2` (eski giriş/kayıt formları; kendi sözlüğü) anahtar taramasının dışında.
+
+
+---
+
+## Geçiş türleri (md.9, commit `838a979`) — her sayfa içi gezinme
+
+Alt sekmeler arası: **tab-none** (bugünkü gibi; sekme içeriği crossfade). Sekme içinde bir satıra/sayfaya basınca:
+**push-right** = kök yığında `slide_from_right`, PREMIUM.push 300 ms, iOS kenar jesti ile geri (soldan kapanır);
+azaltılmış harekette 200 ms opaklık (`src/navigation/transitions.ts`). Modal/sheet'ler aşağıdan (değişmedi).
+
+| Ekran | Öğe | Geçiş |
+|---|---|---|
+| Profil | her alt sayfa satırı (Kişisel, Bildirimler, Gizlilik, Güvenlik, Sözleşmeler, Destek, Geri bildirim, Macro, İlerleme, Rozetler, Koleksiyon, Değerlendirmeler, Kuponlar, Kartlar), avatar → açık profil önizleme, koleksiyon toast "Gör" | push-right (`ProfileSub {sub}`; önce sekme içi `setSub` durum değişimiydi) |
+| Gizlilik | → Güvenlik / Veri ve reklam izinleri | push-right (üstüne; geri → Gizlilik) |
+| İlerleme | → Ölçümler | push-right (üstüne; geri → İlerleme) |
+| Profil | Siparişlerim / Adreslerim (EkOrders/EkAddresses), Hedefim (TakibeBasla) | push-right |
+| Keşfet | gönderi → SharedPost, zil → KesfetNotifications, yazar → PublicProfile | push-right |
+| Keşfet | Composer | modal-bottom |
+| Keşfet | Senin için ↔ Takip | section-slide (içerik yatay kayar, alt çizgi kayar) |
+| Açık profil önizleme | Tabaklar ↔ Gönderiler | section-slide |
+| Macro ve Abonelik · Destek | bölüm sekmesi | section-slide |
+| Kuponlar | bölüm sekmesi | gösterge kayar; içerik sarılmadı (SORULAR) |
+| eatkcal | mağaza → ürün → sepet (EkStore/EkProduct/EkCart) | push-right |
+| eatkcal | ödeme özeti, şehir kapısı | modal-bottom |
+| Ana sayfa | Gün halkası → GunViewer | modal-fade (hikâye görüntüleyici; bilinçli) |
+| Ana sayfa | Tara (AiScan), Checkout, OrderSuccess | modal-bottom |
+| Alt sekme çubuğu | sekme değişimi | tab-none (ikon hareketi Design Tur 26h bekliyor — dokunulmadı) |
+
+## Klavye (md.10, commit `fafa889`) — giriş alanlı katmanlar
+
+Kök neden: ortak `Sheet` (core/design) ve Keşfet `BottomSheet` RN `Modal` içinde klavyeyi dinlemiyordu (iOS'ta
+Modal penceresi klavyeyle küçülmez → katman ekran altında, klavyenin altında); `position:absolute; bottom:0`
+katmanlar `KeyboardAvoidingView` dolgusunu yok sayıyordu (RN ≥ 0.74); Android'de `behavior` verilmiyordu.
+Düzeltme ortak `useSheetKeyboard` + `KeyboardLiftView` (src/core/design/keyboard.ts): katman klavyenin üstüne
+kayar (klavyenin süresiyle), yükseklik klavye açıkken sınırlanır, içerik kaydırılabilir,
+`keyboardShouldPersistTaps="handled"`. Kanıt: `g21SheetKeyboard.test.tsx` (16 test).
+
+| Katman | Bileşen | Klavye |
+|---|---|---|
+| Sepet › Kupon kodu ekle | `CouponSheet` → `Sheet scroll` | klavyenin üstüne çıkar, kaydırılır ✓ |
+| Profil › Kuponlar kod girişi | `FinPrCouponsScreen` → `FinScreen scroll` | sayfa kaydırılır, alan görünür ✓ |
+| Kupon detayı | `Sheet scroll` | çıkar ✓ |
+| Yorum | `CommentsSheet` → `KeyboardLiftView` | çıkar, liste kısalır ✓ |
+| Elle giriş (Kalori ekle) | `HomeManualMealSheet` → `KeyboardLiftView` | çıkar ✓ |
+| E-posta kodu | `AccountEmailSheet` → `KeyboardLiftView` | çıkar, kaydırılır ✓ |
+| Tara › eksik ekle | `FinPhotoResult` eksik öğe katmanı | çıkar ✓ |
+| Keşfet düzenle / etkinlik ekle | `kesfet/BottomSheet` | çıkar ✓ |
+| "Çok yakında" formu | `WaitlistFormSheet` | alt kenar klavye yüksekliğinde ✓ |
+| Destek / Geri bildirim / Kişisel bilgiler | `FinScreen` | kaydırılır, alan görünür ✓ |
+| Adres ekle | `EkAddressAddScreen` (ekran) | zaten dolgu — değişmedi ✓ |
+| Tara notu | `ScanNote` | zaten klavyeyi izliyor — değişmedi ✓ |
+
+## TR / EN · açık / koyu
+
+- EN: koddaki 1844 sabit anahtarın tamamı TR + EN (kalıcı test `usedKeysExist`); bu oturumun yeni metinleri
+  (barkod, kaynak satırı, geri) TR + EN. Kareler: `FinFeedEN`, `FinEkHomeEN` (+Dark).
+- Koyu: md.3 sonrası yeni kabuk telefon temasını izler (`AppSchemeGate`); eski kabuk açık (parite). Yığın zemini,
+  Suspense yer tutucusu, paylaşılan gönderi/profil zemini yeni kabukta temadan.
+
+## Simülatör kareleri — `docs/shots/g21/` (34 kare, açık + koyu)
+
+Yöntem: "G19-4 iPhone" (mevcut dev client, native derleme YOK) + bu worktree'den Metro 8114 + vitrin
+(`scripts/dev/g14-shots.sh`, `G14_MODE=storage`; Erişilebilirlik izni gerekmez). Vitrin temayı kendisi zorlar
+(`ThemeProvider forceScheme`), bu yüzden koyu kareler `userInterfaceStyle` derlemesinden bağımsız.
+
+| Pano | Açık | Koyu |
+|---|---|---|
+| FinOpen (kase → halka merkezinde alev) | FinOpen.jpg | FinOpen-Dark.jpg |
+| FinOnbAccount (kase) | FinOnbAccount.jpg | FinOnbAccount-Dark.jpg |
+| FinOnbNotify (kupa) | FinOnbNotify.jpg | FinOnbNotify-Dark.jpg |
+| FinTbAbout (alev) | FinTbAbout.jpg | FinTbAbout-Dark.jpg |
+| E-posta sheet'i (klavye kipi) | FinOnbAccountKeyboard.jpg | FinOnbAccountKeyboard-Dark.jpg |
+| Ana sayfa | FinHomeR3.jpg | FinHomeR3-Dark.jpg |
+| Keşfet (TR / EN) | FinFeed.jpg · FinFeedEN.jpg | FinFeed-Dark.jpg · FinFeedEN-Dark.jpg |
+| Bildirimler | FinNotifications.jpg | FinNotifications-Dark.jpg |
+| Gün halkası | FinGunView.jpg | FinGunView-Dark.jpg |
+| Tara | FinScanR2.jpg | FinScanR2-Dark.jpg |
+| eatkcal (TR / EN) | FinEkHome.jpg · FinEkHomeEN.jpg | FinEkHome-Dark.jpg · FinEkHomeEN-Dark.jpg |
+| Ürün | FinEkProduct.jpg | FinEkProduct-Dark.jpg |
+| Sepet | FinEkCart.jpg | FinEkCart-Dark.jpg |
+| Profil | FinPrProfile.jpg | FinPrProfile-Dark.jpg |
+| Gizlilik ayarları | FinPrivacySettings.jpg | FinPrivacySettings-Dark.jpg |
+
+Klavye açık kare alınamadı: simülatörde donanım klavyesi bağlı (yazılım klavyesi çıkmıyor; Simulator ayarını
+değiştirmek kullanıcı tercihini değiştirir → yapılmadı). Klavye davranışı bileşen testleriyle kanıtlı.
