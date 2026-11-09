@@ -70,6 +70,16 @@ export default function EkCheckoutScreen() {
   useEffect(() => {
     if (pickedTime !== null && !timeStillValid) setPickedTime(null);
   }, [pickedTime, timeStillValid]);
+  // Ödeme bekleyen taslak varsa seçim zaten yapılmıştır (FinEkCheckoutPayWait/Fail/Unknown):
+  // özet mantığın yöntem/zamanını gösterir, bölüm kapalı durur. Yalnız görünüm.
+  const draftShown = useRef(false);
+  useEffect(() => {
+    if (!ctrl.draftOrder || draftShown.current) return;
+    draftShown.current = true;
+    setPickedMethod((m) => m ?? ctrl.deliveryMethod);
+    setPickedTime((x) => x ?? ctrl.deliveryTimeType);
+    setOpen((o) => (o === 'md' ? null : o));
+  }, [ctrl.draftOrder, ctrl.deliveryMethod, ctrl.deliveryTimeType]);
 
   // Paynkolay dışı → bugünkü ekran (yeni ödeme yolu yazılmaz).
   useEffect(() => {
