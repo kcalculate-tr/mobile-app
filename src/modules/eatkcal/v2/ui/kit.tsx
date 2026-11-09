@@ -66,6 +66,7 @@ export function EkScreen({
   children,
   scroll = true,
   footer,
+  overlay,
   header,
   refreshControl,
   contentStyle,
@@ -78,6 +79,8 @@ export function EkScreen({
   scroll?: boolean;
   /** Alt sabit bar (EkStickyBar). İçerik altına onun yüksekliği kadar boşluk bırakılır. */
   footer?: React.ReactNode;
+  /** Kaydırmanın ÜSTÜNDE yüzen katman (ör. lime sepet çubuğu, mutlak konumlu). */
+  overlay?: React.ReactNode;
   header?: React.ReactNode;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   contentStyle?: StyleProp<ViewStyle>;
@@ -115,6 +118,7 @@ export function EkScreen({
         <View style={[styles.fill, contentStyle]}>{children}</View>
       )}
       {footer}
+      {overlay}
     </KeyboardAvoidingView>
   );
 }

@@ -406,8 +406,9 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
         </View>
       ) : null}
 
-      {/* Sepet hapı — yalnız eatkcal sekmesinde + sepette ürün varken */}
-      {onEat && cartCount > 0 ? (
+      {/* Sepet hapı — yalnız eatkcal sekmesinde + sepette ürün varken. G18-S3 (temas): yeni_siparis
+          açıkken (EkCart kayıtlı) yerini FinEkHome'un lime sepet çubuğu alır → hap çizilmez. */}
+      {onEat && cartCount > 0 && !navigation.getParent?.()?.getState?.()?.routeNames?.includes('EkCart') ? (
         <CartPill count={cartCount} glass={g} onPress={onCartPress} reduced={reduced} />
       ) : null}
 

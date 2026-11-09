@@ -14,12 +14,13 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
-import { EkSkeleton, EkToastLayer, ekType, useEk } from '../ui/kit';
+import { EkSkeleton, ekType, useEk } from '../ui/kit';
+import { EkCartBar, CART_BAR_GAP, CART_BAR_H, cartBarBottom, useCartSummary } from '../ui/home/CartBar';
 import { useEkNav, type EkV2ParamList } from '../nav';
 import { CategoryPill, ProductCard } from '../ui/home/cards';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { ReviewsSheet, type ReviewAggregate, type ReviewSubScores } from '../ui/ReviewsSheet';
-import { EmptyErrorCard, haptic, Toast } from '../../../../core/design';
+import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { CachedImage } from '../../../../components/CachedImage';
 import { ArrowLeft, Lightning, ShoppingBag } from '../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
@@ -60,7 +61,7 @@ export default function EkStoreScreen() {
   const [category, setCategory] = useState<string | null>(null);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [adding, setAdding] = useState<Record<string, boolean>>({});
-  const [toast, setToast] = useState(false);
+  const cartSummary = useCartSummary();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,7 +134,6 @@ export default function EkStoreScreen() {
         1,
       );
       haptic('success');
-      setToast(true);
     } catch {
       // Opsiyonlar öğrenilemediyse eklemek güvenli değil → detayda seçilir (mevcut kural).
       openProduct(item.id);
@@ -151,7 +151,9 @@ export default function EkStoreScreen() {
         style={styles.fill}
         stickyHeaderIndices={chips.length > 0 ? [2] : undefined}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{
+          paddingBottom: cartSummary.count > 0 ? cartBarBottom(insets.bottom, false) + CART_BAR_H + CART_BAR_GAP : insets.bottom + 40,
+        }}
       >
         {/* 0 — Kapak 220 */}
         <View style={styles.hero}>
@@ -291,18 +293,9 @@ export default function EkStoreScreen() {
         aggregate={vitrin.aggregate}
         subScores={vitrin.subScores}
       />
-      {/* G16-S2: Toast yüzen katmanda (önce kök sütunda ~69 pt yer tutup ızgarayı alttan kesiyordu). */}
-      <EkToastLayer bottom={insets.bottom + 16}>
-        <Toast
-          visible={toast}
-          message={t('eatkcal.v2.store.added')}
-          onView={() => {
-            setToast(false);
-            navigation.navigate('EkCart');
-          }}
-          onDismiss={() => setToast(false)}
-        />
-      </EkToastLayer>
+      {/* Tur 26 md.12 (FinEkStore, FinMoCart): eklemenin geri bildirimi yüzen lime sepet çubuğu
+          (görünür/güncellenir; "Sepete git" → sepet). "Sepete eklendi" toast'ının yerini aldı. */}
+      <EkCartBar bottom={cartBarBottom(insets.bottom, false)} onPress={() => navigation.navigate('EkCart')} />
     </View>
   );
 }
