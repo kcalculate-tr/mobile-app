@@ -15,8 +15,20 @@
 //           (Vault: ADISYO_WEBHOOK_API_KEY)
 //
 // Event types (camelCase):
-//   - order.created      → log only (siparişi biz zaten SaveOrder ile oluşturuyoruz)
-//   - order.updated      → GET /Order/{id} çağır, status mapping ile orders.status güncelle
+//   - order.created      → uygulama siparişi: log only (SaveOrder ile zaten oluşturuyoruz)
+//                          uygulama DIŞI (Yemeksepeti, Trendyol, salon…): GET /Order/{id}
+//                          → public.adisyo_orders upsert (D-S1)
+//   - order.updated      → uygulama siparişi: GET /Order/{id}, status mapping ile
+//                          orders.status güncelle (DEĞİŞMEDİ) + aynı yanıtla
+//                          adisyo_orders upsert (yan iş, sonucu etkilemez)
+//                          uygulama DIŞI: GET /Order/{id} → adisyo_orders upsert
+//
+// D-S1 (9 Kas 2026): adisyo_orders senkronu. Uygulama siparişi davranışı
+// (orders güncellemesi, process_error, processed, yanıt gövdesi, adisyo_api_log)
+// bayt bayt aynıdır; adisyo_orders yazımı yalnız ao_* kolonlarını yazar.
+// Hata → ao_error + ao_next_retry_at; adisyo-reconcile her gece yeniden dener.
+// Uygulama dışı siparişlerin GET yanıtı KİŞİSEL VERİ içerdiği için
+// adisyo_api_log'a GÖVDESİZ yazılır.
 //   - stock.depleted     → log only (Faz 4)
 //   - stock.restocked    → log only (Faz 4)
 //
@@ -35,6 +47,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createHmac } from "node:crypto";
+import {
+  fetchAdisyoOrderRaw,
+  retryDelayMinutes,
+  toAdisyoOrderRow,
+} from "../_shared/adisyo-orders.ts";
 
 const ADISYO_API_KEY         = Deno.env.get("ADISYO_API_KEY") ?? "";
 const ADISYO_API_SECRET      = Deno.env.get("ADISYO_API_SECRET") ?? "";
@@ -211,12 +228,22 @@ serve(async (req) => {
   // 10. Event handler dispatch
   let processError: string | null = null;
   let processedFlag = true;
+  // D-S1: uygulama siparişinin GET yanıtı — adisyo_orders yan senkronu için.
+  let appOrderBodyForSync: unknown = null;
 
   try {
     switch (eventType) {
       case "order.created":
         // SaveOrder akışımızla zaten 'confirmed' olarak başlatılıyor; bu event audit
         // amaçlı kaydedilir, status değiştirmez.
+        // D-S1: uygulama DIŞI sipariş → adisyo_orders.
+        if (!supabaseOrderId && adisyoOrderId) {
+          const r = await syncExternalOrder(supabase, inserted.id, adisyoOrderId);
+          if (r.error) {
+            processError = `adisyo_orders_sync_failed: ${r.error}`;
+            processedFlag = false;
+          }
+        }
         break;
 
       case "order.updated": {
@@ -226,10 +253,14 @@ serve(async (req) => {
           break;
         }
         if (!supabaseOrderId) {
-          // Adisyo bizim sistemimizde bilmediğimiz bir order için event attı.
-          // Manuel oluşturulmuş Adisyo siparişi olabilir; status update'i yok sayılır.
-          processError = `unknown_adisyo_order_id: ${adisyoOrderId}`;
-          processedFlag = false;
+          // Adisyo bizim sistemimizde bilmediğimiz bir order için event attı
+          // (Yemeksepeti / Trendyol / salon / telefon…). orders'a DOKUNULMAZ;
+          // D-S1: sipariş adisyo_orders'a yazılır.
+          const r = await syncExternalOrder(supabase, inserted.id, adisyoOrderId);
+          if (r.error) {
+            processError = `adisyo_orders_sync_failed: ${r.error}`;
+            processedFlag = false;
+          }
           break;
         }
 
@@ -239,6 +270,7 @@ serve(async (req) => {
           processedFlag = false;
           break;
         }
+        appOrderBodyForSync = orderRes.body;
 
         const remoteStatusId: number | null =
           orderRes.body?.statusId ?? orderRes.body?.StatusId ?? null;
@@ -289,6 +321,17 @@ serve(async (req) => {
     })
     .eq("id", inserted.id);
 
+  // 11b. D-S1 yan iş: uygulama siparişini de adisyo_orders'a yaz (aynı GET
+  // yanıtıyla, ek Adisyo çağrısı YOK). Yalnız ao_* kolonları; yukarıdaki
+  // processed/process_error ve aşağıdaki yanıt bundan ETKİLENMEZ.
+  if (appOrderBodyForSync && adisyoOrderId) {
+    try {
+      await upsertAdisyoOrderRow(supabase, inserted.id, adisyoOrderId, appOrderBodyForSync, 0);
+    } catch (e) {
+      console.error("[adisyo_orders] app side sync failed:", e);
+    }
+  }
+
   return json({
     ok: processedFlag,
     event_id: eventId,
@@ -302,6 +345,67 @@ serve(async (req) => {
 });
 
 // --- helpers ---
+
+// D-S1: uygulama dışı sipariş → GET /Order/{id} → adisyo_orders.
+// adisyo_api_log'a gövde YAZILMAZ (müşteri adı/telefon/adres içerir).
+async function syncExternalOrder(
+  supabase: SupabaseClient,
+  eventRowId: number,
+  adisyoOrderId: number,
+): Promise<{ error: string | null }> {
+  try {
+    const res = await fetchAdisyoOrderRaw(
+      { apiKey: ADISYO_API_KEY, apiSecret: ADISYO_API_SECRET, apiConsumer: ADISYO_API_CONSUMER },
+      adisyoOrderId,
+    );
+    await logApi(supabase, null, "GetOrder.external", { adisyoOrderId }, res.status, null, res.error, res.ms);
+    if (!res.ok) {
+      await markAoFailure(supabase, eventRowId, 0, `get_order_failed: ${res.error}`);
+      return { error: `get_order_failed: ${res.error}` };
+    }
+    return await upsertAdisyoOrderRow(supabase, eventRowId, adisyoOrderId, res.body, 0);
+  } catch (e) {
+    await markAoFailure(supabase, eventRowId, 0, `exception: ${String(e)}`);
+    return { error: `exception: ${String(e)}` };
+  }
+}
+
+async function upsertAdisyoOrderRow(
+  supabase: SupabaseClient,
+  eventRowId: number,
+  adisyoOrderId: number,
+  body: unknown,
+  priorAttempts: number,
+): Promise<{ error: string | null }> {
+  const row = await toAdisyoOrderRow(body, adisyoOrderId);
+  if (!row) {
+    await markAoFailure(supabase, eventRowId, priorAttempts, "order_body_unreadable");
+    return { error: "order_body_unreadable" };
+  }
+  const { error } = await supabase.rpc("adisyo_order_upsert", { p: row });
+  if (error) {
+    await markAoFailure(supabase, eventRowId, priorAttempts, `upsert_failed: ${error.message}`);
+    return { error: `upsert_failed: ${error.message}` };
+  }
+  await supabase
+    .from("adisyo_webhook_events")
+    .update({ ao_synced_at: new Date().toISOString(), ao_error: null, ao_next_retry_at: null })
+    .eq("id", eventRowId);
+  return { error: null };
+}
+
+async function markAoFailure(
+  supabase: SupabaseClient,
+  eventRowId: number,
+  priorAttempts: number,
+  error: string,
+) {
+  const next = new Date(Date.now() + retryDelayMinutes(priorAttempts) * 60_000).toISOString();
+  await supabase
+    .from("adisyo_webhook_events")
+    .update({ ao_attempts: priorAttempts + 1, ao_error: error.slice(0, 500), ao_next_retry_at: next })
+    .eq("id", eventRowId);
+}
 
 async function fetchAdisyoOrder(
   supabase: SupabaseClient,

@@ -1,0 +1,6 @@
+D-S1 tamam — 9 Kas 2026
+Dal: night19/data
+7/7 madde commit edildi.
+Test: PGlite 109/109 (3 migration x 2 kosu + rollback + yeniden uygulama), Deno 16 birim + 7 alici karsilastirma.
+LOG: docs/night/D-S1-LOG.md · KPI: docs/night/KPI_SOZLUGU.md
+SORULAR: 8 madde (LOG).

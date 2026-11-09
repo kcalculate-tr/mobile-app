@@ -86,6 +86,11 @@ entrypoint = "./functions/order-alert/index.ts"
 enabled = true
 verify_jwt = false
 
+# D-S1: gece mutabakatı (pg_cron 04:00 İstanbul, service_role ile çağrılır)
+[functions.adisyo-reconcile]
+enabled = true
+verify_jwt = true
+
 [functions.apple-link-token]
 enabled = true
 verify_jwt = true
