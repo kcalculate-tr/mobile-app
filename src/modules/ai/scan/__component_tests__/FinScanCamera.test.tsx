@@ -92,7 +92,7 @@ test('deklanşör: takePictureAsync kalite 0.5 → onCaptured(uri)', async () =>
     fireEvent.press(tree.getByTestId('fin-scan-shutter'));
   });
   expect(f.takePictureAsync).toHaveBeenCalledWith(expect.objectContaining({ quality: 0.5 }));
-  expect(p.onCaptured).toHaveBeenCalledWith('file:///cache/shot.jpg');
+  expect(p.onCaptured).toHaveBeenCalledWith('file:///cache/shot.jpg', { width: 1200, height: 1600 }); // G19-S1: boyut da gider
 });
 
 test('analiz sürerken FinMoScan katmanı + "Analiz ediliyor"; önizleme duraklar, deklanşör kilitli', async () => {
@@ -184,6 +184,6 @@ test('Detay ekle: not boşken deklanşör ek adım olmadan doğrudan çeker', as
   await act(async () => {
     fireEvent.press(tree.getByTestId('fin-scan-shutter'));
   });
-  expect(p.onCaptured).toHaveBeenCalledWith('file:///cache/shot.jpg');
+  expect(p.onCaptured).toHaveBeenCalledWith('file:///cache/shot.jpg', { width: 1200, height: 1600 }); // G19-S1: boyut da gider
   expect(tree.queryByTestId('fin-scan-note-field')).toBeNull();
 });

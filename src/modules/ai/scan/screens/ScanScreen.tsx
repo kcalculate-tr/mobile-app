@@ -46,6 +46,7 @@ import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight } from '../logFlight';
 import { checkLocalImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
 import { trackScan } from '../scanEvents';
+import { shrinkForScan, type ImageSize } from '../imageResize';
 import { keepOrphanResult, takeOrphanResult } from '../orphanResult';
 import { useFeature } from '../../../../core/flags';
 import { haptic } from '../../../../core/design';
@@ -183,7 +184,7 @@ export default function ScanScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeniKabuk, user?.id]);
 
-  const captureOnce = async (): Promise<string | null> => {
+  const captureOnce = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       // G15-S2: yeni kabukta "Kameraya erişim kapalı" ayrı durum (FinScanError);
@@ -197,11 +198,11 @@ export default function ScanScreen() {
       quality: 0.5, // G17-S1: edge sınırı 5 MB — yükleme boyutu
     });
     if (picked.canceled || !picked.assets?.[0]?.uri) return null;
-    return picked.assets[0].uri;
+    return picked.assets[0];
   };
 
   const handleCaptureLegacy = async () => {
-    const uri = await captureOnce();
+    const uri = (await captureOnce())?.uri;
     if (!uri) return;
     setPhotoUri(uri);
     setStage('scanning');
@@ -249,11 +250,19 @@ export default function ScanScreen() {
   // gösterilir — Alert.alert YOK. Kamera ve galeri aynı akışı paylaşır.
   // G19-S1: `retry` = FinErrFailed "Tekrar dene" → AYNI foto, AYNI anahtar (idempotent:
   // iade edilmiş hak yeniden ayrılır, sunucuda tamamlanmışsa önbellekten, hak düşmeden).
-  const runFinCapture = async (uri: string, source: 'camera' | 'gallery', retry = false) => {
+  const runFinCapture = async (
+    rawUri: string,
+    source: 'camera' | 'gallery',
+    retry = false,
+    size?: ImageSize | null,
+  ) => {
     if (busyRef.current) return;
     busyRef.current = true;
     lastSourceRef.current = source;
     try {
+      // İlter 9 Kas: uzun kenar ≤ 1600 (expo-image-manipulator; native yoksa aynı URI).
+      // Yeniden denemede foto zaten küçük → boyut verilmez, aynı URI = aynı anahtar.
+      const uri = await shrinkForScan(rawUri, size);
       setPhotoUri(uri);
       setFailReason(null);
       const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
@@ -357,15 +366,15 @@ export default function ScanScreen() {
 
   const handleCaptureFin = async () => {
     if (busyRef.current) return;
-    const uri = await captureOnce();
-    if (!uri) return;
-    await runFinCapture(uri, 'camera');
+    const asset = await captureOnce();
+    if (!asset?.uri) return;
+    await runFinCapture(asset.uri, 'camera', false, asset);
   };
 
   // G19-S1 md.5: yeni kabukta galeri İZİN İSTEMEDEN açılır (iOS PHPicker / Android
   // Photo Picker izin gerektirmez; "sınırlı erişim" de sorun değil). Yalnız açılamazsa
   // izin istenir; reddedilirse Alert DEĞİL, toast (Ayarlar yolu metinde).
-  const pickFromGalleryFin = async (): Promise<string | null> => {
+  const pickFromGalleryFin = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
     const open = () =>
       ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -388,12 +397,18 @@ export default function ScanScreen() {
       }
     }
     if (picked.canceled || !picked.assets?.[0]?.uri) return null;
-    return picked.assets[0].uri;
+    return picked.assets[0];
   };
 
   const handleGalleryPick = async () => {
     if (busyRef.current || stage === 'scanning') return;
-    const uri = yeniKabuk ? await pickFromGalleryFin() : await pickFromGallery();
+    if (yeniKabuk) {
+      const asset = await pickFromGalleryFin();
+      if (!asset?.uri) return;
+      await runFinCapture(asset.uri, 'gallery', false, asset);
+      return;
+    }
+    const uri = await pickFromGallery();
     if (!uri) return;
     await runFinCapture(uri, 'gallery');
   };
@@ -569,7 +584,7 @@ export default function ScanScreen() {
             photoUri={photoUri}
             paused={errorKind !== null}
             onClose={() => navigation.goBack()}
-            onCaptured={(uri) => void runFinCapture(uri, 'camera')}
+            onCaptured={(uri, size) => void runFinCapture(uri, 'camera', false, size)}
             onGallery={handleGalleryPick}
             onManual={handleManualEntry}
             onPermissionDenied={() => setErrorKind('camera')}
