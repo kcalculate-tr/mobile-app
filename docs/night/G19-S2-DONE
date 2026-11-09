@@ -1,0 +1,8 @@
+G19-S2 DONE — 9 Kas 2026
+Dal: night19/track (taban night18/release 94f3bf8)
+Commitler: f0569fb c77439a 9ac6abe ba046da 329a5ae 9ae9d9e (+ bu dosya)
+Kontrol: tsc 0 · unit 741 (740 ✓, 1 atlandı, 0 ✗) · jest 35 suite / 194 ✓, snapshot 2/2 · expo export iOS ✓ · Android ✓
+Gün sınırı (Europe/Istanbul) ve toplam doğruluğu testli: src/modules/gun/track/__tests__/g19track.test.ts (5 saat diliminde) + TrackerScreen.flagOn.test.tsx
+Açılış listesi: docs/night/TAKIP_ACILIS.md
+LOG: docs/night/G19-S2-LOG.md (tamamlanamayan kısım ve nedeni: SORULAR — simülatör karşılaştırması yapılmadı, vb.)
+Canlıya dokunulmadı; migration yalnız dosya: supabase/migrations/20261109200100_g19_s2_track.sql (+ rollback)
