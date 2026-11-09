@@ -134,6 +134,17 @@ test('manualRow: ad + 1–3000 kcal zorunlu; gram boşsa 100', () => {
   assert.equal(Math.round(rowKcal({ ...r!, grams: 50 })), 40, 'gram değişince orantılı');
 });
 
+test('manualRow: isteğe bağlı P/K/Y (Tur 26f arayüzü için hazır) toplama katkı verir; boş → 0', () => {
+  const rows = rowsFromEstimate(est).map((r) => ({ ...r, removed: true }));
+  const withMacros = manualRow('Lor', '180', '200', { p: '22', c: '6', f: '8' });
+  const a = computeAdjusted(est, [...rows, withMacros!]);
+  assert.deepEqual([a.kcal, a.protein_g, a.carbs_g, a.fat_g], [180, 22, 6, 8]);
+  const half = computeAdjusted(est, [...rows, { ...withMacros!, grams: 100 }]);
+  assert.deepEqual([half.kcal, half.protein_g], [90, 11], 'gram değişince makro da orantılı');
+  const none = computeAdjusted(est, [...rows, manualRow('Lor', '180', '200', { p: 'x', c: '9999' })!]);
+  assert.deepEqual([none.protein_g, none.carbs_g, none.fat_g], [0, 0, 0]);
+});
+
 // ── md.2: hak / sayaç ──────────────────────────────────────────────────────
 test('effectiveRemaining: İstanbul gece yarısı (reset_at) geçince dünkü sayı gösterilmez', () => {
   const resetAt = '2026-11-10T00:00:00+03:00';

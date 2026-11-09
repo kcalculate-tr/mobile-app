@@ -77,28 +77,42 @@ export const MANUAL_NAME_MAX = 60;
 export const MANUAL_KCAL_MAX = 3000;
 export const MANUAL_GRAMS_MAX = 2000;
 
+export const MANUAL_MACRO_MAX = 500;
+
 /**
  * "Eksik besin ekle" → ELLE: ad + kcal (+ isteğe bağlı gram, varsayılan 100).
- * Geçersizse null (ad boş, kcal ≤ 0 ya da sınır dışı). Makrolar bilinmez → 0.
+ * Geçersizse null (ad boş, kcal ≤ 0 ya da sınır dışı).
+ * İsteğe bağlı P/K/Y (gram, girilen miktar için): İlter 9 Kas kararı — alanlar Tur 26f
+ * tasarımıyla arayüze gelecek; hesap şimdiden hazır. Boş/geçersiz → 0 (bugünkü davranış).
  */
-export function manualRow(name: string, kcalText: string, gramsText = ''): AdjustRow | null {
+export function manualRow(
+  name: string,
+  kcalText: string,
+  gramsText = '',
+  macros: { p?: string; c?: string; f?: string } = {},
+): AdjustRow | null {
   const nm = name.replace(/\s+/g, ' ').trim().slice(0, MANUAL_NAME_MAX);
   const kcal = Number(String(kcalText).replace(',', '.').replace(/[^0-9.]/g, ''));
   const gramsRaw = Number(String(gramsText).replace(/[^0-9]/g, ''));
   const grams = gramsText.trim() === '' ? 100 : gramsRaw;
   if (!nm || !Number.isFinite(kcal) || kcal <= 0 || kcal > MANUAL_KCAL_MAX) return null;
   if (!Number.isFinite(grams) || grams <= 0 || grams > MANUAL_GRAMS_MAX) return null;
+  const m = (t?: string) => {
+    const v = Number(String(t ?? '').replace(',', '.').replace(/[^0-9.]/g, ''));
+    return Number.isFinite(v) && v > 0 && v <= MANUAL_MACRO_MAX ? v : 0;
+  };
+  const [mp, mc, mf] = [m(macros.p), m(macros.c), m(macros.f)];
   return {
     name: nm,
     baseGrams: grams,
     baseKcal: kcal,
-    baseP: 0,
-    baseC: 0,
-    baseF: 0,
+    baseP: mp,
+    baseC: mc,
+    baseF: mf,
     grams,
     portion: 1,
     removed: false,
-    per100: { kcal: (kcal * 100) / grams, p: 0, c: 0, f: 0 },
+    per100: { kcal: (kcal * 100) / grams, p: (mp * 100) / grams, c: (mc * 100) / grams, f: (mf * 100) / grams },
     manual: true,
   };
 }
