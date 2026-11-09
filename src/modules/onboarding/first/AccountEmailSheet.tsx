@@ -27,18 +27,25 @@ import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { isCodeComplete, isValidEmail, sanitizeCode } from '../v2/loginLogic';
 import { OnbButton } from '../components/pieces';
+import { ConsentBlock } from '../consent/ConsentBlock';
+import { acceptPolicies, holdGate } from '../../../lib/consent/store';
 import { useOnb } from '../components/onbTheme';
 
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
 
 export function AccountEmailSheet({
+  adOn = true,
+  onAdChange,
   visible,
   onClose,
   onVerified,
   onClosed,
   vitrinFocus,
 }: {
+  /** G20-S1: reklam ölçümü (Meta) — Hesap ekranıyla ortak durum. */
+  adOn?: boolean;
+  onAdChange?: (v: boolean) => void;
   visible: boolean;
   onClose: () => void;
   /** Kod doğrulandı (oturum açıldı) → Ana sayfa. */
@@ -59,6 +66,15 @@ export function AccountEmailSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
+  // G20-S1 md.1: Koşullar + Gizlilik kabulü zorunlu (onay kutusu), "Kod gönder" öncesi.
+  const [accepted, setAccepted] = useState(false);
+  const [showRequired, setShowRequired] = useState(false);
+  const releaseRef = useRef<(() => void) | null>(null);
+  const release = () => {
+    releaseRef.current?.();
+    releaseRef.current = null;
+  };
+  useEffect(() => release, []);
   const inputRef = useRef<TextInput>(null);
 
   const y = useSharedValue(1);
@@ -80,6 +96,8 @@ export function AccountEmailSheet({
         setSent(false);
         setCode('');
         setError('');
+        setShowRequired(false);
+        release();
         onClosed?.();
       };
       if (reduced) {
@@ -104,6 +122,10 @@ export function AccountEmailSheet({
 
   const send = async () => {
     if (busy) return;
+    if (!accepted) {
+      setShowRequired(true);
+      return;
+    }
     if (!isValidEmail(email)) {
       setError(i18n.t('onboarding.email.err_email'));
       return;
@@ -116,6 +138,8 @@ export function AccountEmailSheet({
       setError(err);
       return;
     }
+    // Kod doğrulanınca oturum, kabul kaydından önce açılır → kapı beklesin.
+    if (!releaseRef.current) releaseRef.current = holdGate();
     setSent(true);
   };
 
@@ -129,6 +153,8 @@ export function AccountEmailSheet({
       setError(i18n.t('onboarding.email.err_code'));
       return;
     }
+    await acceptPolicies({ source: 'signup_email', adOn }).catch(() => {});
+    release();
     onVerified();
   };
 
@@ -228,6 +254,17 @@ export function AccountEmailSheet({
                     {error}
                   </AppText>
                 ) : null}
+                <ConsentBlock
+                  accepted={accepted}
+                  onAcceptedChange={(v) => {
+                    setAccepted(v);
+                    if (v) setShowRequired(false);
+                  }}
+                  showRequired={showRequired}
+                  adOn={adOn}
+                  onAdChange={(v) => onAdChange?.(v)}
+                  testID="fin-onb-email-consent"
+                />
                 <OnbButton kind="lime" label={i18n.t('onboarding.email.send')} onPress={send} disabled={busy} />
               </>
             ) : (

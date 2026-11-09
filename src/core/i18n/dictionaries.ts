@@ -11,6 +11,7 @@ import { tr as loginTr, en as loginEn } from '../../modules/onboarding/v2/i18n/l
 import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/i18n/signupAI';
 import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
 import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
+import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -22,6 +23,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
   tr: {
     // G19-S3 — ölçüm / KVKK aydınlatması / reklam rızası.
     metrics: metricsTr,
+    // G20-S1 — rıza ve politika akışı.
+    consent: consentTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1858,6 +1861,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
   },
   en: {
     metrics: metricsEn,
+    consent: consentEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

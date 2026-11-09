@@ -77,6 +77,7 @@ import SettingsNotifyScreen from './SettingsNotifyScreen';
 import SettingsSecurityScreen from './SettingsSecurityScreen';
 import SettingsPrivacyScreen from './SettingsPrivacyScreen';
 import SettingsAgreementsScreen from './SettingsAgreementsScreen';
+import SettingsDataConsentScreen from './SettingsDataConsentScreen';
 import SettingsSupportScreen from './SettingsSupportScreen';
 import SettingsFeedbackScreen from './SettingsFeedbackScreen';
 import FinPrMacroScreen from './FinPrMacroScreen';
@@ -101,6 +102,7 @@ type SubScreen =
   | 'notify'
   | 'security'
   | 'privacy'
+  | 'dataConsent'
   | 'agreements'
   | 'support'
   | 'feedback'
@@ -142,7 +144,7 @@ export default function FinPrProfileScreen() {
     useCallback(() => {
       if (sub === 'root') return undefined;
       const h = BackHandler.addEventListener('hardwareBackPress', () => {
-        setSub(sub === 'measurements' ? 'progress' : 'root');
+        setSub(sub === 'measurements' ? 'progress' : sub === 'dataConsent' ? 'privacy' : 'root');
         return true;
       });
       return () => h.remove();
@@ -245,7 +247,16 @@ export default function FinPrProfileScreen() {
   if (sub === 'personal') return <SettingsPersonalScreen onBack={() => setSub('root')} />;
   if (sub === 'notify') return <SettingsNotifyScreen onBack={() => setSub('root')} />;
   if (sub === 'security') return <SettingsSecurityScreen onBack={() => setSub('root')} />;
-  if (sub === 'privacy') return <SettingsPrivacyScreen onBack={() => setSub('root')} onOpenSecurity={() => setSub('security')} />;
+  if (sub === 'privacy') {
+    return (
+      <SettingsPrivacyScreen
+        onBack={() => setSub('root')}
+        onOpenSecurity={() => setSub('security')}
+        onOpenDataConsent={() => setSub('dataConsent')}
+      />
+    );
+  }
+  if (sub === 'dataConsent') return <SettingsDataConsentScreen onBack={() => setSub('privacy')} />;
   if (sub === 'agreements') return <SettingsAgreementsScreen onBack={() => setSub('root')} />;
   if (sub === 'support') return <SettingsSupportScreen onBack={() => setSub('root')} />;
   if (sub === 'feedback') return <SettingsFeedbackScreen onBack={() => setSub('root')} />;

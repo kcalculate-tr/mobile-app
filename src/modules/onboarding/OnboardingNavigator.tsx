@@ -37,6 +37,9 @@ import { UnderageView } from './components/UnderageView';
 import { useOnb } from './components/onbTheme';
 import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
+import { ConsentSheet } from './consent/ConsentSheet';
+import { LegalDocModal, type LegalSlug } from './consent/LegalDocModal';
+import { acceptPolicies, holdGate } from '../../lib/consent/store';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
 import { track } from '../../lib/analytics';
@@ -177,6 +180,11 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const vSheet = __DEV__ ? route.params?.vitrinSheet : undefined;
   const [emailOpen, setEmailOpen] = useState(vSheet != null);
   const homeAfterClose = useRef(false);
+  // G20-S1 md.1: reklam ölçümü (Meta) AÇIK gelir, kapatılabilir; Apple/Google'da
+  // "Ayrıntılar" sheet'i, e-postada sheet içindeki blok aynı durumu değiştirir.
+  const [adOn, setAdOn] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [doc, setDoc] = useState<LegalSlug | null>(null);
   const goHome = () => root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
 
   const afterAuth = async (result: {
@@ -201,10 +209,16 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const run = async (provider: 'apple' | 'google') => {
     if (busy) return;
     setBusy(true);
+    // Oturum, kabul kaydı yazılmadan açılabilir → kapı bu sırada "mevcut kullanıcı"
+    // sheet'i / ATT göstermesin.
+    const release = holdGate();
     try {
       const result = await (provider === 'apple' ? signInWithApple() : signInWithGoogle());
+      // "Devam ederek Koşullar ve Gizlilik'i kabul edersin" + reklam ölçümü tercihi.
+      if (!result.cancelled && !result.error) await acceptPolicies({ source: 'signup_social', adOn });
       await afterAuth(result);
     } finally {
+      release();
       setBusy(false);
     }
   };
@@ -225,17 +239,39 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
           </View>
           <AppText textRole="helper" style={[styles.legal, { color: P.sec }]}>
             {i18n.t('onboarding.account.legal_pre')}
-            <AppText textRole="helper" style={link}>{i18n.t('onboarding.account.terms')}</AppText>
+            <AppText textRole="helper" style={link} onPress={() => setDoc('terms')} accessibilityRole="link" testID="onb-account-terms">
+              {i18n.t('onboarding.account.terms')}
+            </AppText>
             {i18n.t('onboarding.account.legal_mid')}
-            <AppText textRole="helper" style={link}>{i18n.t('onboarding.account.privacy')}</AppText>
+            <AppText textRole="helper" style={link} onPress={() => setDoc('privacy')} accessibilityRole="link" testID="onb-account-privacy">
+              {i18n.t('onboarding.account.privacy')}
+            </AppText>
             {i18n.t('onboarding.account.legal_post')}
+          </AppText>
+          {/* G20-S1: Apple/Google için kısa satır + ayrıntı sheet'i (aynı blok). */}
+          <AppText textRole="helper" style={[styles.legalAds, { color: P.sec }]} testID="onb-account-ads-line">
+            {i18n.t(adOn ? 'consent.account.ads_on' : 'consent.account.ads_off')}
+            <AppText textRole="helper" style={link} onPress={() => setDetailsOpen(true)} accessibilityRole="link" testID="onb-account-details">
+              {i18n.t('consent.account.details')}
+            </AppText>
           </AppText>
         </View>
       }
     >
       <OnbTitle>{i18n.t('onboarding.account.title')}</OnbTitle>
       <OnbLead>{i18n.t('onboarding.account.sub')}</OnbLead>
+      <ConsentSheet
+        visible={detailsOpen}
+        mode="details"
+        adOn={adOn}
+        onAdChange={setAdOn}
+        onConfirm={() => setDetailsOpen(false)}
+        onClose={() => setDetailsOpen(false)}
+      />
+      <LegalDocModal slug={doc} onClose={() => setDoc(null)} />
       <AccountEmailSheet
+        adOn={adOn}
+        onAdChange={setAdOn}
         visible={emailOpen}
         onClose={() => setEmailOpen(false)}
         onVerified={() => {
@@ -341,6 +377,7 @@ const styles = StyleSheet.create({
   brand: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 18, lineHeight: 23, marginBottom: 14 },
   headline: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 40, lineHeight: 43 },
   legal: { marginTop: 14, textAlign: 'center' },
+  legalAds: { marginTop: 4, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1, paddingHorizontal: 8 },
 });

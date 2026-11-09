@@ -74,7 +74,7 @@ const applyFbSettings = (): void => {
   }
 };
 
-/** Uygulama içi reklam rızası (ayar ekranı bağlanınca çağrılır; ekran tasarımı bekliyor). */
+/** Uygulama içi reklam rızası (G20-S1: hesap oluşturma bloğu + Veri ve reklam izinleri sayfası). */
 export const setAdConsent = async (value: Exclude<AdConsent, 'unset'>): Promise<void> => {
   adConsent = value;
   try {
@@ -104,16 +104,55 @@ export const setFirstPartyConsent = async (on: boolean): Promise<void> => {
 // ── Meta SDK ─────────────────────────────────────────────────────────────
 let initialized = false;
 
-export const initFBSDK = async (): Promise<void> => {
+export type AttOutcome = { status: AttStatus; asked: boolean };
+
+/**
+ * G20-S1: ATT sorusu. Uygulama içi reklam ölçümü kapalıysa ('denied') Apple
+ * sorusu HİÇ gösterilmez (yalnız mevcut durum okunur) — kullanıcı zaten hayır dedi.
+ */
+const resolveAtt = async (): Promise<AttOutcome> => {
+  await loadConsent();
+  if (adConsent === 'denied') {
+    const get = (TrackingTransparency as { getTrackingPermissionsAsync?: () => Promise<{ status: string }> })
+      .getTrackingPermissionsAsync;
+    const cur = get ? await get().catch(() => ({ status: 'undetermined' })) : { status: 'undetermined' };
+    return { status: toAttStatus(Platform.OS, cur.status), asked: false };
+  }
+  const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
+  return { status: toAttStatus(Platform.OS, status), asked: true };
+};
+
+/**
+ * G20-S1 — Ayarlar'da reklam ölçümü açılınca (iOS): ATT henüz sorulmadıysa sorar.
+ * Dönen durum 'denied'/'restricted' ise Meta kapalı kalır (ATT reddi = Meta kapalı).
+ */
+export const requestAttForAds = async (): Promise<AttStatus> => {
+  if (Platform.OS !== 'ios') return 'unavailable';
+  try {
+    const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
+    att = toAttStatus(Platform.OS, status);
+    if (initialized) applyFbSettings();
+  } catch {
+    /* modül yoksa mevcut durum */
+  }
+  return att;
+};
+
+export const initFBSDK = async (opts?: { onAtt?: (o: AttOutcome) => void }): Promise<void> => {
   if (initialized) return;
   try {
     // Önemli sıra: iOS'ta ATT prompt'unu explicit tetikle ve advertiser
     // tracking durumunu set et, SDK init'i ondan SONRA çağır. Tersi sırada
     // Meta IDFA'yı izin gelmeden okumaya çalışır.
     if (Platform.OS === 'ios') {
-      const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
-      att = toAttStatus(Platform.OS, status);
-      await loadConsent();
+      const outcome = await resolveAtt();
+      const status = outcome.status;
+      att = status;
+      try {
+        opts?.onAtt?.(outcome);
+      } catch {
+        /* kayıt hatası SDK başlatmayı engellemez */
+      }
       const s = fbSettingsFor({ platform: Platform.OS, att, adConsent });
       await Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
       // IDFA toplama YALNIZCA ATT izni verildiyse (ve uygulama içi reklam rızası

@@ -36,7 +36,8 @@ import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
-import { initFBSDK, startMetrics, track, type ClientEventName } from './src/lib/analytics';
+import { startMetrics, track, type ClientEventName } from './src/lib/analytics';
+import { ConsentGate } from './src/modules/onboarding/consent/ConsentGate';
 import { setTrackSink } from './src/modules/gun/track/events';
 
 // G14-S1 — Ekran vitrini (kcal://dev/screen/<Pano>). YALNIZ __DEV__: üretimde
@@ -88,11 +89,8 @@ function AppContent() {
     return cleanup;
   }, []);
 
-  useEffect(() => {
-    initFBSDK().catch((err) => {
-      console.warn('[App] FB SDK init failed:', err);
-    });
-  }, []);
+  // G20-S1: Meta SDK + iOS ATT başlatma ConsentGate'te. Bayrak kapalıyken açılışta
+  // (bugünkü gibi); açıkken politika bloğu / bilgilendirme sheet'inden SONRA.
 
   // G19-S3: ölçüm istemcisi — ilk açılış kaynağı (first_touch), app_open,
   // arka plana geçişte / ağ geri gelince kuyruk boşaltma.
@@ -134,6 +132,8 @@ function AppContent() {
       {/* Zorunlu guncelleme kilidi varken bildirim hatirlatmasini hic mount etme
           — iki modal ust uste binmesin. */}
       {!forceUpdate && <PushPermissionPrompt />}
+      {/* G20-S1: rıza kapısı (zorunlu güncelleme kilidi varken sheet açılmaz). */}
+      <ConsentGate suppressed={forceUpdate} />
     </>
   );
 }
