@@ -53,7 +53,13 @@ export default function EkCityGateScreen() {
       {yeniOnboarding ? (
         <SignupEatGate onBack={onBack} onAllowed={onAllowed} onCityAllowed={() => void writeCityGatePassed()} />
       ) : (
-        <CityGateView onAllowed={onAllowed} onExit={onBack} otherCityName={address?.city ?? null} showTabSpace={false} />
+        <CityGateView
+          onAllowed={onAllowed}
+          onExit={onBack}
+          onPrivacy={() => navigation.navigate('ProfileContracts', { slug: 'kvkk' })}
+          otherCityName={address?.city ?? null}
+          showTabSpace={false}
+        />
       )}
     </View>
   );

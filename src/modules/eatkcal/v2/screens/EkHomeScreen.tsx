@@ -592,6 +592,8 @@ type HomeTabParams = {
   vitrinGate?: GateStep;
   vitrinCity?: string;
   vitrinOtherCity?: string;
+  /** YALNIZ __DEV__ vitrini: açık form sheet'i (FinWaitlistAdd / FinWaitlistSuggest). */
+  vitrinSheet?: 'restaurant_add' | 'restaurant_suggest';
 };
 
 export default function EkHomeScreen() {
@@ -635,6 +637,8 @@ export default function EkHomeScreen() {
         onTrack={onTrack}
         initialStep={__DEV__ ? params.vitrinGate : undefined}
         initialCityKey={__DEV__ ? params.vitrinCity : undefined}
+        initialSheet={__DEV__ ? params.vitrinSheet : undefined}
+        onPrivacy={() => navigation.navigate('ProfileContracts', { slug: 'kvkk' })}
         otherCityName={(__DEV__ ? params.vitrinOtherCity : undefined) ?? address?.city ?? null}
       />
     );

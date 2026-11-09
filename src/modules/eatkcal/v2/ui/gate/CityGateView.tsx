@@ -1,44 +1,50 @@
-// eatkcal v2 (G15-S5 md.2) — fotoğraflı il kapısı: FinCityR1 · FinWaitlistR1 · FinEatBerlin.
+// eatkcal v2 (G15-S5 md.2 → G18-S3 md.1) — il kapısı: FinCityR1 · FinWaitlistR1 · FinEatBerlin
+// + FinWaitlistAdd / FinWaitlistSuggest form sheet'leri.
 //
-// Şehir listesi (SignupEatScreen) YERİNE Final'deki üç adım; MANTIK AYNI:
-//  - şehir doğrulama: `useEatkcalRegistration()` → setCity + checkCity
-//    (checkDeliveryCity RPC; SignupEatScreen.tsx:52-62 ile aynı sıra: şehir
-//    seçilince setCity, onay dokunuşunda checkCity)
-//  - "Haber ver": `addNotifyCity` (yalnız yerel tercih; sunucuya gitmez)
-//  - geçiş: çağıran `onAllowed` (writeCityGatePassed + adres/ileri) yapar.
-// Veri olmayan Final öğeleri GİZLİ (uydurma yok): "[N] kişi listede" (bekleme
-// listesi sayısı sunucuda yok), Berlin restoran satırları (restoran verisi yok).
-// Şehir fotoğrafları henüz varlık olarak yok → aynı ölçüde yer tutucu yüzey
-// (`CITY_PHOTOS`'a görsel eklenince kendiliğinden görünür; LOG › SORULAR).
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+// Tur 26 md.10: ülke → il. İzmir "Açık" (tek hizmet verilen il) → MANTIK AYNI:
+// `useEatkcalRegistration()` → setCity + checkCity (checkDeliveryCity RPC) →
+// çağıranın `onAllowed`'u (writeCityGatePassed + adres/ileri). Diğer 80 il ve
+// "Diğer ülke" → "Çok yakında" sayfası; SİPARİŞ AKIŞI BAŞLAMAZ. Oradaki iki eylem
+// form sheet açar; gönderim `eatkcal_waitlist_requests` tablosuna (migration
+// dosyası, CANLIYA UYGULANACAK), tablo/oturum yokken cihaz kuyruğunda bekler.
+// Veri olmayan Final öğeleri GİZLİ (uydurma yok): şehir fotoğrafı (yer tutucu
+// yüzey), Berlin restoran satırları.
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { haptic } from '../../../../../core/design';
-import { ArrowLeft, Bell, CaretDown, CaretRight, Check, MapPin, Plus, Storefront } from '../../../../../components/icons';
+import { ArrowLeft, CaretDown, CaretRight, Check, MagnifyingGlass, MapPin, Plus, Storefront } from '../../../../../components/icons';
 import { TAB_BAR_TOTAL } from '../../../../../constants/layout';
+import { tabBarBottomOffset, TAB_BAR_R3 } from '../../../../shell/layout';
+import { useInR3Shell } from '../../../../shell';
 import { useEatkcalRegistration } from '../../../../profil/useRegistration';
-import { CITY_CATALOG, type CityOption } from '../../../cityGate';
-import { addNotifyCity, readNotifyCities } from '../../../cityGateStorage';
+import { CITY_CATALOG } from '../../../cityGate';
 import { ekType, useEk } from '../kit';
+import { IZMIR, filterProvinces, gateTarget, orderedProvinces } from '../../model/provinces';
+import { WaitlistFormSheet } from './WaitlistFormSheet';
+import { flushWaitlistQueue } from './waitlistSend';
+import type { WaitlistKind } from '../../model/waitlist';
 
 export type GateStep = 'city' | 'waitlist' | 'other';
 
-/** Şehir fotoğrafları (varlık eklenince doldurulur). */
+/** Şehir fotoğrafları (varlık eklenince doldurulur; anahtar il adı). */
 const CITY_PHOTOS: Partial<Record<string, ImageSourcePropType>> = {};
 
-/** Restoran ekleme başvurusu — sözleşmelerdeki resmi iletişim adresi (src/data/contractsData.ts). */
-const RESTAURANT_MAIL = 'mailto:info@eatkcal.com?subject=Restoran%20ba%C5%9Fvurusu';
-
-const IZMIR = CITY_CATALOG.find((x) => x.active) ?? CITY_CATALOG[0];
-const SOON = CITY_CATALOG.filter((x) => !x.active).slice(0, 2);
+const IZMIR_TR = CITY_CATALOG.find((x) => x.active)?.labelTr ?? IZMIR;
 
 function usePalette() {
-  const { c, theme } = useEk();
+  const { theme } = useEk();
+  const dark = theme.isDark;
   return {
-    ph: theme.isDark ? '#3A3A3C' : '#DCDEE2',
-    glass: theme.isDark ? 'rgba(28,28,30,0.62)' : 'rgba(255,255,255,0.72)',
-    outline: theme.isDark ? 'rgba(255,255,255,0.22)' : '#C3C7CC',
-    tint: (theme.isDark ? 'dark' : 'light') as 'dark' | 'light',
+    ph: dark ? '#3A3A3C' : '#DCDEE2',
+    glass: dark ? 'rgba(28,28,30,0.62)' : 'rgba(255,255,255,0.72)',
+    outline: dark ? 'rgba(255,255,255,0.22)' : '#C3C7CC',
+    line2: dark ? '#48484A' : '#C3C7CC',
+    nested: dark ? '#1C1C1E' : '#E9EBEE',
+    card: dark ? '#1C1C1E' : '#FFFFFF',
+    dis: dark ? '#2C2C2E' : '#DCDEE2',
+    disText: dark ? '#8E8E93' : '#6B6B70',
+    tint: (dark ? 'dark' : 'light') as 'dark' | 'light',
   };
 }
 
@@ -52,35 +58,14 @@ function Mark({ children, size }: { children: string; size: number }) {
   );
 }
 
-function Photo({ cityKey, height, radius, children }: { cityKey: string; height: number; radius: number; children?: React.ReactNode }) {
-  const p = usePalette();
-  const src = CITY_PHOTOS[cityKey];
-  return (
-    <View style={{ height, borderRadius: radius, backgroundColor: p.ph, overflow: 'hidden' }}>
-      {src ? <Image source={src} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-      {children}
-    </View>
-  );
-}
-
-function GlassChip({ label }: { label: string }) {
-  const { c } = useEk();
-  const p = usePalette();
-  return (
-    <View style={styles.chip}>
-      <BlurView intensity={30} tint={p.tint} style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: p.glass }]} />
-      <Text style={[ekType.c13, { color: c.ink }]}>{label}</Text>
-    </View>
-  );
-}
-
 export function CityGateView({
   onAllowed,
   onExit,
   onTrack,
+  onPrivacy,
   initialStep = 'city',
   initialCityKey,
+  initialSheet,
   otherCityName,
   showTabSpace = true,
 }: {
@@ -89,121 +74,161 @@ export function CityGateView({
   onExit?: () => void;
   /** "Bu arada takibe devam et" (Ana sayfa). */
   onTrack?: () => void;
+  /** Aydınlatma metni (form sheet'inde bağlantı). */
+  onPrivacy?: () => void;
   initialStep?: GateStep;
+  /** YALNIZ vitrin: bekleme sayfasının ili (il adı ya da eski katalog anahtarı). */
   initialCityKey?: string;
+  /** YALNIZ vitrin: açık başlayan form sheet'i. */
+  initialSheet?: WaitlistKind;
   /** "Diğer şehir" adımında gösterilecek şehir adı (kayıtlı adresten). */
   otherCityName?: string | null;
   /** Sekme içinde: alt sekme çubuğu kadar boşluk. */
   showTabSpace?: boolean;
 }) {
-  const { c, t, lang, insets } = useEk();
+  const { c, t, insets } = useEk();
   const p = usePalette();
   const reg = useEatkcalRegistration();
+  const inR3 = useInR3Shell();
   const [step, setStep] = useState<GateStep>(initialStep);
-  const [waitCity, setWaitCity] = useState<CityOption>(
-    CITY_CATALOG.find((x) => x.key === initialCityKey) ?? SOON[0] ?? IZMIR,
-  );
-  const [notified, setNotified] = useState<string[]>([]);
-  const label = (x: CityOption) => (lang === 'en' ? x.labelEn : x.labelTr);
-  // Sekme çubuğu yüzer: görünür yüksekliği TAB_BAR_TOTAL + alt güvenli alan.
-  const bottomSpace = showTabSpace ? TAB_BAR_TOTAL + insets.bottom + 4 : insets.bottom;
+  const [country, setCountry] = useState<'TR' | 'OTHER'>('TR');
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [il, setIl] = useState<string | null>(() => {
+    if (!initialCityKey) return null;
+    const cat = CITY_CATALOG.find((x) => x.key === initialCityKey);
+    return cat?.labelTr ?? initialCityKey;
+  });
+  const [q, setQ] = useState('');
+  const [sheet, setSheet] = useState<WaitlistKind | null>(initialSheet ?? null);
+  const all = useMemo(() => orderedProvinces(), []);
+  const list = useMemo(() => filterProvinces(all, q), [all, q]);
 
-  // İzmir varsayılan seçili (Final); doğrulama şehri baştan ayarlı.
-  const { setCity } = reg;
+  // Sekme çubuğunun üstünde 12 (Final: alt 112 = 100 sekme alanı + 12).
+  const bottomSpace = showTabSpace
+    ? inR3
+      ? tabBarBottomOffset(insets.bottom) + TAB_BAR_R3.PILL_HEIGHT + 12
+      : TAB_BAR_TOTAL + insets.bottom + 12
+    : Math.max(insets.bottom, 16) + 12;
+
+  // Bekleyen form gönderimleri (tablo/oturum hazır olunca).
   useEffect(() => {
-    setCity(IZMIR.labelTr);
-  }, [setCity]);
-  useEffect(() => {
-    readNotifyCities().then(setNotified).catch(() => {});
+    flushWaitlistQueue().catch(() => {});
   }, []);
 
-  const confirmIzmir = useCallback(async () => {
-    if (reg.status === 'checking') return;
+  const target = gateTarget(country, il);
+  const waitCity = country === 'OTHER' ? otherCityName || t('eatkcal.v2.gate.region') : il ?? '';
+  const checking = reg.status === 'checking';
+  const { setCity } = reg;
+  // Doğrulama şehri baştan İzmir (SignupEatScreen ile aynı: setCity, onayda checkCity).
+  useEffect(() => {
+    setCity(IZMIR_TR);
+  }, [setCity]);
+
+  const onContinue = useCallback(async () => {
+    if (!target || checking) return;
     haptic('selection');
+    if (target === 'waitlist') {
+      setStep('waitlist');
+      return;
+    }
+    // İzmir: bugünkü doğrulama (checkCity — şehir açılışta ayarlı), sonra onAllowed.
     const ok = await reg.checkCity();
     if (ok) {
       haptic('success');
       onAllowed();
     }
-  }, [reg, onAllowed]);
+  }, [target, checking, reg, onAllowed]);
 
-  const openWaitlist = (x: CityOption) => {
+  const openSheet = (k: WaitlistKind) => {
     haptic('selection');
-    setWaitCity(x);
-    setStep('waitlist');
+    setSheet(k);
   };
-
-  const notify = async () => {
-    haptic('success');
-    setNotified(await addNotifyCity(waitCity.key));
-  };
+  const sheetEl = (
+    <WaitlistFormSheet
+      kind={sheet ?? 'restaurant_add'}
+      visible={sheet != null}
+      city={country === 'OTHER' ? otherCityName ?? '' : il ?? ''}
+      country={country}
+      onClose={() => setSheet(null)}
+      onPrivacy={() => {
+        setSheet(null);
+        onPrivacy?.();
+      }}
+    />
+  );
 
   // ── FinWaitlistR1 ────────────────────────────────────────────────────────
   if (step === 'waitlist') {
-    const done = notified.includes(waitCity.key);
-    const name = label(waitCity);
+    const photo = il ? CITY_PHOTOS[il] : undefined;
     return (
       <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-gate-waitlist">
-        <View style={[styles.hero, { backgroundColor: p.ph }]}>
-          {CITY_PHOTOS[waitCity.key] ? (
-            <Image source={CITY_PHOTOS[waitCity.key]!} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          ) : null}
+        <View
+          style={[styles.hero, { backgroundColor: p.ph }]}
+          accessible={!!photo}
+          accessibilityRole={photo ? 'image' : undefined}
+          accessibilityLabel={photo ? t('eatkcal.v2.gate.photo_a11y', { city: waitCity }) : undefined}
+        >
+          {photo ? <Image source={photo} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
         </View>
         <Pressable
-          onPress={() => setStep('city')}
+          onPress={() => {
+            haptic('selection');
+            setStep('city');
+          }}
           accessibilityRole="button"
           accessibilityLabel={t('eatkcal.v2.common.back')}
-          style={[styles.backGlass, { top: insets.top + 6 }]}
+          style={[styles.backGlass, { top: insets.top }]}
+          testID="ek-gate-back"
         >
           <BlurView intensity={30} tint={p.tint} style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: p.glass }]} />
-          <ArrowLeft size={20} color={c.ink} />
+          <ArrowLeft size={22} color={c.ink} />
         </Pressable>
         <View style={styles.waitText}>
-          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.wait_a11y', { city: name })}>
-            {lang === 'en' ? (
-              <>
-                <Text style={[ekType.h24, styles.t34, { color: c.ink }]}>{t('eatkcal.v2.gate.wait_pre')}</Text>
-                <Mark size={34}>{name}</Mark>
-              </>
-            ) : (
-              <>
-                <Mark size={34}>{name}</Mark>
-                <Text style={[ekType.h24, styles.t34, { color: c.ink }]}>
-                  {t(`eatkcal.v2.gate.wait_post_${waitCity.key}`) || t('eatkcal.v2.gate.wait_post')}
-                </Text>
-              </>
-            )}
+          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.soon')}>
+            <Mark size={34}>{t('eatkcal.v2.gate.soon')}</Mark>
           </View>
+          <Text style={[styles.body16, { color: c.ink }]}>{t('eatkcal.v2.gate.wait_body', { city: waitCity })}</Text>
         </View>
-        <View style={[styles.waitActions, { bottom: bottomSpace + 13 }]}>
+        <View style={[styles.waitActions, { bottom: bottomSpace }]}>
           <Pressable
-            onPress={done ? undefined : notify}
-            disabled={done}
+            onPress={() => openSheet('restaurant_add')}
             accessibilityRole="button"
-            accessibilityState={{ disabled: done }}
-            style={({ pressed }) => [
-              styles.notifyBtn,
-              { backgroundColor: done ? c.surface : c.accent },
-              pressed && { opacity: 0.85 },
-            ]}
-            testID="ek-gate-notify"
+            accessibilityLabel={`${t('eatkcal.v2.gate.add_restaurant')}, ${t('eatkcal.v2.gate.add_sub')}`}
+            style={({ pressed }) => [styles.actCard, { backgroundColor: c.accent }, pressed && { opacity: 0.9 }]}
+            testID="ek-gate-add-restaurant"
           >
-            {done ? <Check size={20} color={c.ink} /> : <Bell size={20} color={c.onAccent} />}
-            <Text style={[ekType.b15s, { color: done ? c.ink : c.onAccent }]}>
-              {done ? t('eatkcal.v2.gate.notify_done') : t('eatkcal.v2.gate.notify')}
-            </Text>
+            <Storefront size={22} color={c.onAccent} />
+            <View style={styles.fill}>
+              <Text style={[styles.actT, { color: c.onAccent }]}>{t('eatkcal.v2.gate.add_restaurant')}</Text>
+              <Text style={[ekType.c13, { color: c.onAccent }]}>{t('eatkcal.v2.gate.add_sub')}</Text>
+            </View>
+            <CaretRight size={18} color={c.onAccent} />
+          </Pressable>
+          <Pressable
+            onPress={() => openSheet('restaurant_suggest')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('eatkcal.v2.gate.suggest')}, ${t('eatkcal.v2.gate.suggest_sub')}`}
+            style={({ pressed }) => [styles.actCard, { backgroundColor: p.card, borderColor: p.line2, borderWidth: 1 }, pressed && { opacity: 0.9 }]}
+            testID="ek-gate-suggest"
+          >
+            <MapPin size={22} color={c.ink} weight="fill" />
+            <View style={styles.fill}>
+              <Text style={[styles.actT, { color: c.ink }]}>{t('eatkcal.v2.gate.suggest')}</Text>
+              <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.suggest_sub')}</Text>
+            </View>
+            <CaretRight size={18} color={c.secondary} />
           </Pressable>
           {onTrack ? (
-            <Pressable onPress={onTrack} accessibilityRole="button" style={styles.textBtn}>
-              <Text style={[ekType.b15m, { color: c.ink }]}>{t('eatkcal.v2.gate.keep_tracking')}</Text>
+            <Pressable onPress={onTrack} accessibilityRole="button" style={styles.textBtn} testID="ek-gate-track">
+              <Text style={[styles.link15, { color: c.ink }]}>{t('eatkcal.v2.gate.keep_tracking')}</Text>
             </Pressable>
           ) : null}
         </View>
+        {sheetEl}
       </View>
     );
   }
-
   // ── FinEatBerlin (mutfak olmayan şehir) ──────────────────────────────────
   if (step === 'other') {
     return (
@@ -237,7 +262,10 @@ export function CityGateView({
           <Text style={[ekType.c13, { color: c.secondary }]}>{` (${t('eatkcal.v2.gate.soon')})`}</Text>
         </View>
         <Pressable
-          onPress={() => Linking.openURL(RESTAURANT_MAIL).catch(() => {})}
+          onPress={() => {
+            setCountry('OTHER');
+            openSheet('restaurant_add');
+          }}
           accessibilityRole="button"
           style={[styles.addRow, { borderTopColor: c.line, borderBottomColor: c.line }]}
           testID="ek-gate-add-restaurant"
@@ -249,90 +277,177 @@ export function CityGateView({
           <CaretRight size={18} color={c.ink} />
         </Pressable>
         <Text style={[ekType.c13, styles.footnote, { color: c.secondary }]}>{t('eatkcal.v2.gate.only_kitchens')}</Text>
+        {sheetEl}
       </View>
     );
   }
-
   // ── FinCityR1 ────────────────────────────────────────────────────────────
-  const checking = reg.status === 'checking';
+  const countryLabel = country === 'TR' ? t('eatkcal.v2.gate.country_tr') : t('eatkcal.v2.gate.country_other');
   return (
-    <View style={[styles.fill, styles.cityWrap, { backgroundColor: c.bg, paddingTop: insets.top + 8 }]} testID="ek-gate-city">
-      {onExit ? (
-        <Pressable onPress={onExit} accessibilityRole="button" accessibilityLabel={t('eatkcal.v2.common.back')} style={styles.exitBtn}>
-          <ArrowLeft size={22} color={c.ink} />
-        </Pressable>
-      ) : null}
-      <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={`${t('eatkcal.v2.gate.where_pre')}${t('eatkcal.v2.gate.where_mark')}`}>
-        <Text style={[ekType.h24, styles.t30, { color: c.ink }]}>{t('eatkcal.v2.gate.where_pre')}</Text>
-        <Mark size={30}>{t('eatkcal.v2.gate.where_mark')}</Mark>
-      </View>
-
-      <Pressable
-        onPress={confirmIzmir}
-        accessibilityRole="button"
-        accessibilityState={{ selected: true, busy: checking }}
-        accessibilityLabel={`${label(IZMIR)}, ${t('eatkcal.v2.gate.open_now')}`}
-        style={styles.izmir}
-        testID="ek-gate-izmir"
-      >
-        <View style={[styles.izmirOutline, { borderColor: c.ink }]}>
-          <Photo cityKey={IZMIR.key} height={176} radius={20} />
+    <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top + 8 }]} testID="ek-gate-city">
+      <View style={[styles.cityWrap, { paddingBottom: bottomSpace + 52 + 26 + 12 }]}>
+        {onExit ? (
+          <Pressable onPress={onExit} accessibilityRole="button" accessibilityLabel={t('eatkcal.v2.common.back')} style={styles.exitBtn}>
+            <ArrowLeft size={22} color={c.ink} />
+          </Pressable>
+        ) : null}
+        <View style={{ gap: 6 }}>
+          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={`${t('eatkcal.v2.gate.where_pre')}${t('eatkcal.v2.gate.where_mark')}`}>
+            <Text style={[ekType.h24, styles.t30, { color: c.ink }]}>{t('eatkcal.v2.gate.where_pre')}</Text>
+            <Mark size={30}>{t('eatkcal.v2.gate.where_mark')}</Mark>
+          </View>
+          <Text style={[ekType.b15, { color: c.secondary }]}>{t('eatkcal.v2.gate.sub')}</Text>
         </View>
-        <View style={styles.izmirMeta}>
-          <View style={styles.fill}>
-            <Text style={[ekType.h20, { color: c.ink }]}>{label(IZMIR)}</Text>
-            <View style={styles.openRow}>
-              <View style={[styles.dot, { backgroundColor: c.ink }]} />
-              <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.open_now')}</Text>
+
+        <View style={{ gap: 6 }}>
+          <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.gate.country')}</Text>
+          <Pressable
+            onPress={() => {
+              haptic('selection');
+              setCountryOpen((o) => !o);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('eatkcal.v2.gate.country')}: ${countryLabel}`}
+            accessibilityState={{ expanded: countryOpen }}
+            style={[styles.select, { backgroundColor: p.card, borderColor: c.line }]}
+            testID="ek-gate-country"
+          >
+            <Text style={[styles.selectText, { color: c.ink }]}>{countryLabel}</Text>
+            <CaretDown size={18} color={c.secondary} />
+          </Pressable>
+          {countryOpen ? (
+            <View style={[styles.listCard, { backgroundColor: p.card }]} accessibilityRole="radiogroup">
+              {(['TR', 'OTHER'] as const).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => {
+                    haptic('selection');
+                    setCountry(k);
+                    setIl(null);
+                    setCountryOpen(false);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: country === k }}
+                  style={[styles.row, { borderBottomColor: c.line }]}
+                  testID={`ek-gate-country-${k}`}
+                >
+                  <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15s.fontFamily }]}>
+                    {k === 'TR' ? t('eatkcal.v2.gate.country_tr') : t('eatkcal.v2.gate.country_other')}
+                  </Text>
+                  <Radio on={country === k} ring={p.line2} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        {country === 'TR' ? (
+          <View style={styles.cityCol}>
+            <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.gate.city_label')}</Text>
+            <View style={[styles.search, { backgroundColor: p.nested }]}>
+              <MagnifyingGlass size={18} color={c.secondary} />
+              <TextInput
+                value={q}
+                onChangeText={setQ}
+                placeholder={t('eatkcal.v2.gate.search')}
+                placeholderTextColor={c.secondary}
+                autoCorrect={false}
+                returnKeyType="search"
+                accessibilityLabel={t('eatkcal.v2.gate.search')}
+                style={[styles.searchInput, { color: c.ink }]}
+                testID="ek-gate-search"
+              />
+            </View>
+            <ScrollView
+              style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t('eatkcal.v2.gate.city_label')}
+              testID="ek-gate-list"
+            >
+              {list.map((name) => {
+                const open = name === IZMIR;
+                const sel = il === name;
+                return (
+                  <Pressable
+                    key={name}
+                    onPress={() => {
+                      haptic('selection');
+                      setIl(name);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: sel }}
+                    accessibilityLabel={`${name}, ${open ? t('eatkcal.v2.gate.open') : t('eatkcal.v2.gate.soon')}`}
+                    style={[styles.row, { borderBottomColor: c.line }]}
+                    testID={`ek-gate-il-${name}`}
+                  >
+                    <Text style={[styles.rowText, { color: c.ink, fontFamily: open ? ekType.b15s.fontFamily : ekType.b15m.fontFamily }]}>{name}</Text>
+                    {open ? (
+                      <View style={[styles.openChip, { backgroundColor: c.accent }]}>
+                        <Text style={[ekType.c13s, { color: c.onAccent }]}>{t('eatkcal.v2.gate.open')}</Text>
+                      </View>
+                    ) : (
+                      <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.soon')}</Text>
+                    )}
+                    <Radio on={sel} ring={p.line2} />
+                  </Pressable>
+                );
+              })}
+              {list.length === 0 ? <Text style={[ekType.b15, styles.noMatch, { color: c.secondary }]}>{t('eatkcal.v2.gate.no_match')}</Text> : null}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={[styles.otherCard, { backgroundColor: p.card }]} testID="ek-gate-other-country">
+            <View style={[styles.otherPin, { backgroundColor: p.nested }]}>
+              <MapPin size={20} color={c.ink} weight="fill" />
+            </View>
+            <View style={[styles.fill, { gap: 2 }]}>
+              <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.gate.other_title')}</Text>
+              <Text style={[ekType.b15, { color: c.secondary }]}>{t('eatkcal.v2.gate.other_body')}</Text>
             </View>
           </View>
-          <View style={[styles.radio, { backgroundColor: c.ink }]}>
-            {checking ? <ActivityIndicator size="small" color={c.bg} /> : <Check size={16} color={c.bg} weight="bold" />}
-          </View>
-        </View>
-        {reg.status === 'blocked' || reg.status === 'error' ? (
-          <Text style={[ekType.c13, { color: c.danger }]} accessibilityRole="alert">
-            {reg.status === 'blocked' ? t('eatkcal.city_gate.blocked') : t('eatkcal.city_gate.error')}
-          </Text>
-        ) : null}
-      </Pressable>
-
-      <View style={styles.grid}>
-        {SOON.map((x) => (
-          <Pressable
-            key={x.key}
-            onPress={() => openWaitlist(x)}
-            accessibilityRole="button"
-            accessibilityLabel={`${label(x)}, ${t('eatkcal.v2.gate.soon')}`}
-            style={styles.gridItem}
-            testID={`ek-gate-soon-${x.key}`}
-          >
-            <Photo cityKey={x.key} height={128} radius={18}>
-              <GlassChip label={t('eatkcal.v2.gate.soon')} />
-            </Photo>
-            <Text style={[ekType.b17, styles.bric, { color: c.ink }]}>{label(x)}</Text>
-          </Pressable>
-        ))}
+        )}
       </View>
 
-      <Pressable
-        onPress={() => {
-          haptic('selection');
-          setStep('other');
-        }}
-        accessibilityRole="button"
-        style={[styles.otherRow, { borderTopColor: c.line, borderBottomColor: c.line }]}
-        testID="ek-gate-other-city"
-      >
-        <View style={[styles.otherIcon, { backgroundColor: c.surface }]}>
-          <MapPin size={22} color={c.ink} />
-        </View>
-        <Text style={[ekType.b17, styles.bric, { color: c.ink, flex: 1 }]}>{t('eatkcal.v2.gate.other_city')}</Text>
-        <View style={styles.chev}>
-          <CaretRight size={18} color={c.secondary} />
-        </View>
-      </Pressable>
-      <View style={{ height: bottomSpace }} />
+      <View style={[styles.cityCta, { bottom: bottomSpace }]}>
+        {!target ? (
+          <Text style={[styles.help, { color: c.secondary }]} testID="ek-gate-help">
+            {t('eatkcal.v2.gate.pick_city')}
+          </Text>
+        ) : null}
+        <Pressable
+          onPress={onContinue}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !target, busy: checking }}
+          accessibilityHint={!target ? t('eatkcal.v2.gate.pick_city') : undefined}
+          style={[styles.cta, { backgroundColor: target ? c.ink : p.dis }]}
+          testID="ek-gate-continue"
+        >
+          {checking ? (
+            <ActivityIndicator color={c.surface} />
+          ) : (
+            <Text style={[styles.ctaText, { color: target ? c.surface : p.disText }]}>{t('eatkcal.v2.gate.continue')}</Text>
+          )}
+        </Pressable>
+        {reg.messageKey && reg.status !== 'checking' ? (
+          <Text style={[ekType.c13, { color: c.danger, textAlign: 'center' }]}>{t(reg.messageKey)}</Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function Radio({ on, ring }: { on: boolean; ring: string }) {
+  const { c } = useEk();
+  return (
+    <View
+      style={[
+        styles.radio,
+        on ? { backgroundColor: c.ink } : { borderWidth: 1.5, borderColor: ring },
+      ]}
+    >
+      {on ? <Check size={14} color={c.surface} weight="bold" /> : null}
     </View>
   );
 }
@@ -341,43 +456,28 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   bric: { fontFamily: ekType.h20.fontFamily },
   t30: { fontSize: 30, lineHeight: 36 },
-  t34: { fontSize: 34, lineHeight: 41 },
   mark: { borderRadius: 8, paddingHorizontal: 6 },
-  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  cityWrap: { paddingHorizontal: 16, gap: 16 },
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  cityWrap: { flex: 1, paddingHorizontal: 16, gap: 16 },
+  cityCol: { flex: 1, minHeight: 0, gap: 6 },
   exitBtn: { width: 44, height: 44, marginLeft: -10, marginBottom: -8, alignItems: 'center', justifyContent: 'center' },
-  izmir: { gap: 8 },
-  izmirOutline: { borderWidth: 2, borderRadius: 24, padding: 2 },
-  izmirMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 2 },
-  openRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  radio: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  grid: { flexDirection: 'row', gap: 12 },
-  gridItem: { flex: 1, gap: 6 },
-  chip: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    height: 26,
-    paddingHorizontal: 10,
-    borderRadius: 13,
-    overflow: 'hidden',
-    justifyContent: 'center',
-  },
-  otherRow: {
-    marginHorizontal: -16,
-    paddingVertical: 10,
-    paddingLeft: 16,
-    paddingRight: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  otherIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  chev: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  hero: { position: 'absolute', top: 0, left: 0, right: 0, height: 400, overflow: 'hidden' },
+  select: { height: 52, borderRadius: 16, borderWidth: 1, paddingLeft: 14, paddingRight: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  selectText: { fontFamily: ekType.b15s.fontFamily, fontSize: 16, lineHeight: 21 },
+  search: { height: 48, borderRadius: 16, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchInput: { flex: 1, minWidth: 0, fontFamily: ekType.b15.fontFamily, fontSize: 16, paddingVertical: 0 },
+  listCard: { borderRadius: 20, overflow: 'hidden' },
+  row: { minHeight: 52, paddingHorizontal: 14, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowText: { flex: 1, fontSize: 16, lineHeight: 21 },
+  openChip: { height: 26, paddingHorizontal: 10, borderRadius: 13, justifyContent: 'center' },
+  radio: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  noMatch: { paddingVertical: 16, paddingHorizontal: 14 },
+  otherCard: { padding: 16, borderRadius: 20, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  otherPin: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  cityCta: { position: 'absolute', left: 16, right: 16, gap: 6 },
+  help: { textAlign: 'center', fontFamily: ekType.c13.fontFamily, fontSize: 13, lineHeight: 18 },
+  cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  ctaText: { fontFamily: ekType.b15s.fontFamily, fontSize: 16, lineHeight: 21 },
+  hero: { position: 'absolute', top: 0, left: 0, right: 0, height: 340, overflow: 'hidden' },
   backGlass: {
     position: 'absolute',
     left: 16,
@@ -388,10 +488,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  waitText: { position: 'absolute', top: 424, left: 16, right: 16, gap: 10 },
-  waitActions: { position: 'absolute', left: 16, right: 16, gap: 4 },
-  notifyBtn: { height: 56, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  waitText: { position: 'absolute', top: 364, left: 16, right: 16, gap: 10 },
+  body16: { fontFamily: ekType.b15.fontFamily, fontSize: 16, lineHeight: 22 },
+  waitActions: { position: 'absolute', left: 16, right: 16, gap: 10 },
+  actCard: { minHeight: 64, paddingVertical: 10, paddingLeft: 18, paddingRight: 16, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  actT: { fontFamily: ekType.b15s.fontFamily, fontSize: 16, lineHeight: 21 },
   textBtn: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  link15: { fontFamily: ekType.b15s.fontFamily, fontSize: 15, lineHeight: 20 },
   otherHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, minHeight: 52, gap: 12 },
   cityPill: {
     flexDirection: 'row',

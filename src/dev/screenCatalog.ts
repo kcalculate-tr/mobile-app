@@ -96,6 +96,8 @@ export const FINAL_FLAGS: FlagKey[] = [
 /** Final'de -Dark görseli OLMAYAN panolar (design/final/png). */
 const NO_DARK = new Set<string>([
   'FinComponents',
+  // G18-S3: ölçü karşılaştırma panosu (yalnız Light).
+  'FinEkProductCompare',
   'FinScanOffline',
   'FinStressDark',
   'FinStressEN',
@@ -155,6 +157,18 @@ const VITRIN_CARDS = [
   { id: 'vc1', last4: '4242', brand: null, bank_name: null, card_alias: null, is_default: true, created_at: '2026-01-01T00:00:00.000Z' },
   { id: 'vc2', last4: '1881', brand: null, bank_name: null, card_alias: null, is_default: false, created_at: '2026-01-02T00:00:00.000Z' },
 ];
+
+/** G18-S3: Final'de EN (+Dark) karşılığı olan eatkcal panoları (`<Pano>EN`). */
+const EK_EN = [
+  'FinCityR1', 'FinWaitlistR1', 'FinWaitlistAdd', 'FinWaitlistSuggest', 'FinEatBerlin',
+  'FinEkHome', 'FinEkHomeSkeleton', 'FinEkStore', 'FinEkReviews',
+  'FinEkProduct', 'FinEkProductScroll', 'FinEkProductSelected', 'FinEkProductAdded',
+  'FinEkCart', 'FinEkCartEmpty', 'FinEkCartSkeleton',
+  'FinEkCheckout', 'FinEkCheckoutPayWait', 'FinEkCheckoutPayFail', 'FinEkCheckoutPayUnknown',
+  'FinEkAddress', 'FinEkAddressNoPerm', 'FinEkAddressNoMap', 'FinEkAddresses', 'FinEkAddressesEmpty',
+  'FinEkOrders', 'FinEkOrdersEmpty', 'FinEkOrdersFilterEmpty', 'FinEkOrderDetail', 'FinEkOrderSuccess',
+  'FinEkInfo', 'FinEkErrors',
+] as const;
 
 const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // ── Kabuk ──────────────────────────────────────────────────────────────────
@@ -308,6 +322,9 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // G15-S5: il kapısı eatkcal sekmesinde (sekme çubuğuyla); adım dev-only `vitrinGate` parametresi.
   ['FinCityR1', 'eatkcal', route(tab('Home')), { scene: 'city' }],
   ['FinWaitlistR1', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul' })), { scene: 'waitlist' }],
+  // G18-S3 md.1: "Çok yakında" form sheet'leri (dev-only `vitrinSheet`).
+  ['FinWaitlistAdd', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul', vitrinSheet: 'restaurant_add' })), { scene: 'waitlist' }],
+  ['FinWaitlistSuggest', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul', vitrinSheet: 'restaurant_suggest' })), { scene: 'waitlist' }],
   ['FinEatBerlin', 'eatkcal', route(tab('Home', { vitrinGate: 'other', vitrinOtherCity: 'Berlin' })), { scene: 'berlin' }],
   ['FinEkHome', 'eatkcal', route(tab('Home'))],
   ['FinEkHomeSkeleton', 'eatkcal', route(tab('Home')), { data: 'loading' }],
@@ -316,6 +333,11 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinEkReviews', 'eatkcal', route(ek('EkStore', { brandKey: '__first__', vitrinReviews: true, vitrinAggregate: { average: 4.7, count: 128, distribution: [96, 22, 6, 2, 2] }, vitrinSubScores: { taste: 4.8, delivery: 4.6, calorieFit: 4.9 } })), { scene: 'reviews' }],
   ['FinEkProduct', 'eatkcal', route(ek('EkProduct', { productId: '__first__' }))],
   ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinScroll: true })), { scene: 'scrolled' }],
+  // G18-S3 md.4 (Tur 26d/26e): tek alt katman hâlleri — seçim yapılmış / sepete eklendi ("Sepete git").
+  ['FinEkProductSelected', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinState: 'selected' })), { scene: 'selected' }],
+  ['FinEkProductAdded', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinState: 'added' })), { scene: 'added' }],
+  ['FinEkProductCompare', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinScroll: true })), { scene: 'scrolled' }],
+  ['FinMoProductBar', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinState: 'added' })), { scene: 'added' }],
   ['FinEkCart', 'eatkcal', route(ek('EkCart')), { scene: 'cart' }],
   ['FinEkCartEmpty', 'eatkcal', route(ek('EkCart')), { data: 'empty' }],
   ['FinEkCartSkeleton', 'eatkcal', route(ek('EkCart', { vitrinSkeleton: true })), { data: 'loading', scene: 'cart' }],
@@ -334,6 +356,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinEkOrderDetail', 'eatkcal', route(ek('EkOrderDetail', { orderId: 1 })), { scene: 'orders' }],
   ['FinEkInfo', 'eatkcal', comp('ekInfo')],
   ['FinEkErrors', 'eatkcal', comp('ekErrors')],
+  // G18-S3 md.6: doğrulanmış sipariş kutlaması (dev-only `vitrinVerified`; sipariş VERİLMEZ).
+  ['FinEkOrderSuccess', 'eatkcal', route(ek('OrderSuccess', { orderCode: 'KCAL-0000', vitrinVerified: true }))],
 
   // ── Giriş / tanıtım ────────────────────────────────────────────────────────
   ['FinSignupAI', 'giris', comp('signupAIV2', { step: 'welcome' }), { auth: 'guest' }],
@@ -404,6 +428,11 @@ function build(): Record<string, CatalogEntry> {
       hasDark: !NO_DARK.has(pano) && !pano.startsWith('FinMo'),
       ...extra,
     };
+  }
+  // G18-S3 (Tur 26e): eatkcal EN panoları — aynı hedef, cihaz dili EN (+Dark).
+  for (const base of EK_EN) {
+    const e = out[base];
+    if (e) out[`${base}EN`] = { ...e, pano: `${base}EN`, lang: 'en' };
   }
   return out;
 }

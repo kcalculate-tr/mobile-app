@@ -63,12 +63,20 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
   // G18 her panoyu kataloğa ekledikçe buradan SİLER; liste boşalınca kural yine birebir.
   const PENDING_TUR26 = new Set(
     [
-      'FinCelebrateProfile', 'FinEkOrderSuccess', 'FinFeedEmpty', 'FinHomeFocusB', 'FinHomeFocusC',
+      'FinCelebrateProfile', 'FinFeedEmpty', 'FinHomeFocusB', 'FinHomeFocusC',
       'FinHomeIzmir', 'FinHomeOutside', 'FinHomeProfileCard', 'FinOnbAccountEmail', 'FinOnbAccountKeyboard',
-      'FinOpen', 'FinOrient1', 'FinOrient2', 'FinOrient3', 'FinOrient4', 'FinPush', 'FinWaitlistAdd',
-      'FinWaitlistSuggest',
+      'FinOpen', 'FinOrient1', 'FinOrient2', 'FinOrient3', 'FinOrient4', 'FinPush',
+      // G18-S3: Tur 26d/26e (9 Kas, 430 pano) — eatkcal dışı yeni panolar; sahibi oturum
+      // kataloğa ekledikçe SİLER (eatkcal panolarının hepsi G18-S3'te eklendi).
+      'FinHomeBannerB', 'FinHomeBannerBEN', 'FinRecipe', 'FinRecipeEN', 'FinHomeXLEN', 'FinHomeEmptyR1EN',
+      'FinActivityCardEN', 'FinAddSheetEN', 'FinAddToastEN', 'FinCommentsEN', 'FinComposeEN', 'FinDetailEN',
+      'FinFeedEN', 'FinFeedEmptyEN', 'FinFeedScrollR3EN', 'FinFeedTipEN', 'FinFollowingEmptyEN', 'FinNotificationsEN',
+      'FinPostMenuBlockEN', 'FinPostMenuEN', 'FinPostingEN', 'FinProfilePublicEN', 'FinReportDoneEN', 'FinReportEN',
+      'FinReportNoticeEN', 'FinRulesEN', 'FinSerbestEN', 'FinStreakEN', 'FinTrackerEN', 'FinTrackerEmptyEN',
+      'FinVideoEN', 'FinTabBarEN-mid', 'FinTabBarEN-min', 'FinTabBarEN-rest',
     ].flatMap((n) => [n, `${n}-Dark`]).concat([
       'FinMoFocus', 'FinMoOpen', 'FinMoPopover', 'FinOnbWelcomeB', 'FinOnbWelcomeC', 'FinOnbWelcomeEN', 'FinTur26',
+      'FinMoBanner', 'FinMoBannerEN',
     ]),
   );
   assert.deepEqual(

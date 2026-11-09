@@ -43,13 +43,16 @@ type Phase = 'checking' | 'celebrate' | 'static';
 export default function EkOrderSuccessScreen() {
   const { c, t, lang, insets, theme } = useEk();
   const navigation = useEkNav();
-  const { orderCode, orderId, noticeMessage } = useRoute<R>().params;
+  const routeParams = useRoute<R>().params;
+  const { orderCode, orderId, noticeMessage } = routeParams;
+  // YALNIZ __DEV__ vitrini (FinEkOrderSuccess): doğrulanmış sipariş hâli, sorgu/sipariş YOK.
+  const vitrinVerified = __DEV__ ? (routeParams as { vitrinVerified?: boolean }).vitrinVerified === true : false;
   const { session, isAuthenticated } = useRequireAuth();
   const userId = session?.user?.id;
   const reduced = useReducedMotion();
   const [macro, setMacro] = useState<number | null>(null);
   const [row, setRow] = useState<SuccessOrderRow | null>(null);
-  const [phase, setPhase] = useState<Phase>(orderId ? 'checking' : 'static');
+  const [phase, setPhase] = useState<Phase>(vitrinVerified ? 'celebrate' : orderId ? 'checking' : 'static');
   const { chip } = useDeliveryChip();
 
   // ── Sipariş satırı: doğrulama + teslim türü + Macro (yalnız okuma) ─────────
