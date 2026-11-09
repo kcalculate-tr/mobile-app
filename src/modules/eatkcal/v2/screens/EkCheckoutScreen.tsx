@@ -45,7 +45,8 @@ export default function EkCheckoutScreen() {
     ? (route.params as { vitrinPay?: 'wait' | 'fail' | 'unknown' } | undefined)?.vitrinPay
     : undefined;
   const payState = vitrinPay ?? ctrl.payState;
-  const [open, setOpen] = useState<SectionKey | null>(null);
+  // Tur 26 md.14 (FinEkCheckout): "Yöntem ve zaman" boş ve AÇIK başlar ("Seçilmedi" + "Kapat").
+  const [open, setOpen] = useState<SectionKey | null>('md');
   const scrollRef = useRef<ScrollView>(null);
 
   // G17-S1 md.6 — Yöntem ve zaman ÖNCEDEN SEÇİLİ gelmez (YALNIZ görünüm katmanı;
@@ -137,7 +138,7 @@ export default function EkCheckoutScreen() {
           .filter(Boolean)
           .join(', ');
   const mdSum = !methodReady
-    ? t('eatkcal.v2.checkout.pick_method_time')
+    ? t('eatkcal.v2.checkout.not_selected')
     : ctrl.deliveryMethod === 'pickup'
       ? methodLabel
       : pickedTime
