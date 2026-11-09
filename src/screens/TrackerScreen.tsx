@@ -50,7 +50,13 @@ import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
 import { buildSlots, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 import { WATER_STEP_ML, useWaterToday, waterTargetMl } from '../modules/gun/water';
-import { HomeEatkcalStrip, HomeExploreStrip } from './tracker/HomeStrips';
+import { HomeExploreStrip } from './tracker/HomeStrips';
+// G18-S2 — Ana sayfa Tur 26: öne çıkanlar banner'ı, bölge bölümü, boş hâl (S1 bileşeni).
+import { HomeBanner, useHomeBanners } from '../modules/gun/home/HomeBanner';
+import { HomeRegionSection } from '../modules/gun/home/HomeRegion';
+import { useHomeRegion } from '../modules/gun/home/useHomeRegion';
+import type { HomeBannerItem } from '../modules/gun/home/banner';
+import { HomeEmptyToday } from '../modules/onboarding/first';
 import { HomeInkToast } from './tracker/HomeInkToast';
 import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
 import { useT } from '../core/i18n';
@@ -1384,7 +1390,13 @@ export default function TrackerScreen() {
 
   // "…'e logla" hapı (Tara ikonu): ai_tarama açıksa Tara; değilse elle giriş.
   // ⌄ her zaman elle giriş (öğün seç + kcal).
-  const logToSlot = (slot: SlotKey) => {
+  // G18-S2 md.2: yerinde menüde (FinMoPopover) seçilen porsiyon elle girişte kcal'ı çarpar.
+  const logPortionRef = useRef(1);
+  useEffect(() => {
+    if (!mealModalVisible) logPortionRef.current = 1;
+  }, [mealModalVisible]);
+  const logToSlot = (slot: SlotKey, portion = 1) => {
+    logPortionRef.current = aiTarama ? 1 : portion;
     setPendingSlot(slot);
     if (aiTarama) navigation.navigate('AiScan');
     else openMealFormFor(slot);
@@ -1410,12 +1422,26 @@ export default function TrackerScreen() {
       ? (navigation as any).navigate('EkProduct', { productId })
       : navigation.navigate('ProductDetail', { productId });
   const openKesfet = () => (navigation as any).navigate('Tabs', { screen: 'KesfetTab' });
+  // G18-S2 md.3/6b: banner kartı tek dokunuş — gönderi detayı (FinDetail) ya da eatkcal.
+  const openBanner = (b: HomeBannerItem) => {
+    if (b.target.type === 'post') (navigation as any).navigate('SharedPost', { postId: b.target.postId });
+    else openEatkcal();
+  };
+  // G18-S2 md.4: İzmir dışı satırlar → S3'ün FinWaitlistAdd / FinWaitlistSuggest sheet'leri.
+  // TEMAS (S5 bağlar): S3 sheet'leri gelene dek eatkcal il kapısı (FinWaitlistR1, aynı iki seçenek).
+  const openWaitlist = (_kind: 'add' | 'suggest') =>
+    yeniSiparis ? (navigation as any).navigate('EkCityGate') : openEatkcal();
+  // G18-S2 md.4: bölge (kayıtlı adres → seçilen il → izinli konum); md.3/6b: banner verisi.
+  // Bayrak kapalıyken ikisi de hiçbir okuma/istek yapmaz.
+  const homeRegion = useHomeRegion(yeniKabuk);
+  const dayEmpty = todayConsumed.length === 0;
+  const homeBanners = useHomeBanners(yeniKabuk, homeRegion === 'izmir', dayEmpty);
 
   // Vitrin (yalnız __DEV__): ara durumlar — açık porsiyon menüsü, teslim anı.
   const vitrinParams =
     (__DEV__
       ? (route.params as
-          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey; vitrinOffline?: boolean }
+          | { vitrinOpenAuto?: boolean; vitrinDelivered?: boolean; vitrinHour?: number; vitrinPending?: SlotKey; vitrinOffline?: boolean; vitrinMealMenu?: SlotKey }
           | undefined)
       : undefined) ?? {};
   const vitrinOpenAuto = __DEV__ ? vitrinParams.vitrinOpenAuto === true : false;
@@ -1796,8 +1822,10 @@ export default function TrackerScreen() {
 
   const handleSaveMealLog = async () => {
     if (!user || !mealCalories) return;
-    const calNum = parseInt(mealCalories, 10);
-    if (!Number.isFinite(calNum) || calNum <= 0) return;
+    const calRaw = parseInt(mealCalories, 10);
+    if (!Number.isFinite(calRaw) || calRaw <= 0) return;
+    // G18-S2: yeni kabukta yerinde menünün porsiyonu (½·1·1½·2); bayrak kapalıyken 1.
+    const calNum = yeniKabuk ? Math.round(calRaw * (logPortionRef.current || 1)) : calRaw;
     dispatchMealForm({ type: 'SET_SAVING', payload: true });
     try {
       const supabase = getSupabaseClient();
@@ -2440,9 +2468,13 @@ const html = `
                 water={homeWater}
                 onWaterAdd={handleWaterAdd}
                 onFirstLog={() => logToSlot(slotFromHour(new Date().getHours()))}
+                onFirstManual={() => openMealFormFor(slotFromHour(new Date().getHours()))}
                 onOpenMacros={openGoal}
+                hasTarget={!!(nutritionSummary?.targetKcal || nutritionProfile?.target_calories)}
               />
             ) : null}
+            {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
+            {yeniKabuk ? <HomeBanner items={homeBanners} onOpen={openBanner} /> : null}
             {/* ── G13-S1: FinHomeR3 öğün yuvaları (yeni_kabuk). Yeni kabukta
                  "Dolabındakiler" şeridi YOK — teslim edilen sipariş otomatik
                  loglanır (yukarıdaki auto-log etkisi). ── */}
@@ -2464,6 +2496,8 @@ const html = `
                   initialOpenAuto={vitrinOpenAuto}
                   pendingSlot={shownPendingSlot}
                   nowHour={homeHour}
+                  emptyContent={<HomeEmptyToday />}
+                  initialMenuSlot={__DEV__ ? vitrinParams.vitrinMealMenu ?? null : null}
                 />
                 {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
                 <TrackerDayStrip />
@@ -2473,8 +2507,17 @@ const html = `
                   </View>
                 ) : null}
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
-                <HomeEatkcalStrip onAll={openEatkcal} onOpen={openProduct} />
                 <HomeExploreStrip onAll={openKesfet} onOpen={openKesfet} />
+                {/* G18-S2 md.4: bölge — İzmir tek öneri kartı / İzmir dışı bekleme listesi satırları. */}
+                <HomeRegionSection
+                  region={homeRegion}
+                  slot={slotFromHour(homeHour ?? new Date().getHours())}
+                  proteinLeft={Math.max(0, targets.protein - consumedTodayMacros.protein)}
+                  proteinTarget={targets.protein}
+                  kcalLeft={Math.max(0, targets.kcal - consumedTodayMacros.kcal)}
+                  onOpenProduct={openProduct}
+                  onWaitlist={openWaitlist}
+                />
               </>
             ) : null}
             {/* ── Pantry ── */}

@@ -65,8 +65,12 @@ export interface TrackerDayHeaderProps {
   onWaterAdd?: () => void;
   /** Gün boşken "İlk öğününü logla" (FinHomeEmptyR1). */
   onFirstLog?: () => void;
+  /** G18-S2: "İlk öğününü ekle" → Elle gir. */
+  onFirstManual?: () => void;
   /** Enerji/Protein halkası ya da makro çipleri → makro ayrıntısı. */
   onOpenMacros?: () => void;
+  /** G18-S2: kayıtlı hedef var mı (yoksa "Hedef belirlenmedi"). */
+  hasTarget?: boolean;
 }
 
 /** Saate göre selamlama anahtarı (05–11 sabah, 11–18 gün, diğer akşam). */
@@ -142,7 +146,9 @@ export function TrackerDayHeader({
   water,
   onWaterAdd,
   onFirstLog,
+  onFirstManual,
   onOpenMacros,
+  hasTarget,
 }: TrackerDayHeaderProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -231,7 +237,9 @@ export function TrackerDayHeader({
           water={water}
           onWaterAdd={onWaterAdd}
           onFirstLog={onFirstLog}
+          onFirstManual={onFirstManual}
           onOpenMacros={onOpenMacros}
+          hasTarget={hasTarget}
           popStyle={popStyle}
           streak={streak}
         />

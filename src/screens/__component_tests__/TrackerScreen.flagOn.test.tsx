@@ -169,7 +169,8 @@ test('yuvalar: 4 öğün, kaynak etiketi, boş yuvada "…’e logla"; Dolabınd
   expect(tree.queryByText('Detay için tıkla →')).toBeNull();
   // Su halkası: su_takibi kapalıyken cihaz içi bardak sayacı (8 × 250 ml) Final halka diliyle.
   expect(tree.getByText('Su')).toBeTruthy();
-  expect(tree.getByText('/ 2 L')).toBeTruthy();
+  // G18-S2 (FinHomeR3 Tur 26 hero): Su satırı tek etiket "0 / 2 L" + 4 pt çubuk.
+  expect(tree.getByText('0 / 2 L')).toBeTruthy();
 });
 
 test('logFlight → yeni kayıt bir kez vurgulanır (nokta → satır → halka); logUndo geri alır', async () => {
