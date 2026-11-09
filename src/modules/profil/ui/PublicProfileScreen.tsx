@@ -26,6 +26,7 @@ import { PrivacySheet } from './PrivacySheet';
 import PublicPreviewScreen from './screens/PublicPreviewScreen';
 import { useFeature } from '../../../core/flags';
 import { TakibeBaslaCTA } from './TakibeBaslaCTA';
+import { track } from '../../../lib/analytics';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Rp = RouteProp<RootStackParamList, 'PublicProfile'>;
@@ -86,6 +87,7 @@ export default function PublicProfileScreen() {
       const turningOn = profile.me_following === 'none';
       const res = await getProfilClient().follow({ user: profile.id, on: turningOn });
       setProfile((p) => (p ? { ...p, me_following: res.state } : p));
+      track('follow', { on: turningOn, state: res.state, surface: 'profile' });
       // Takip düğmesi pop'u — yalnız takip/istek AÇILIRKEN (olumlu an); bırakırken sessiz.
       if (turningOn && (res.state === 'following' || res.state === 'requested')) followPop();
     } finally {

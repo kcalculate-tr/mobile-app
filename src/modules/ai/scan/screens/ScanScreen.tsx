@@ -49,6 +49,9 @@ import { haptic } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
+import { track } from '../../../../lib/analytics';
+import { trackScanLog, trackScanOutcome } from '../scanTrack';
+import type { ScanVia } from '../scanMetrics';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -126,6 +129,11 @@ export default function ScanScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeniKabuk, user?.id]);
 
+  // G19-S3: scan_open — Tara ekranı her açılışta bir kez.
+  useEffect(() => {
+    track('scan_open');
+  }, []);
+
   const captureOnce = async (): Promise<string | null> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -150,7 +158,9 @@ export default function ScanScreen() {
     setStage('scanning');
     const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
     setScanRef(idempotencyKey);
+    track('scan_capture', { via: 'legacy', has_hint: false });
     const outcome = await runAiScan(getAiScanClient(), { idempotencyKey, imageRef: uri });
+    trackScanOutcome(outcome, 'legacy');
     recordQuota(outcome.remaining, outcome.reset_at);
 
     if (outcome.status === 'quota_exhausted') {
@@ -185,7 +195,7 @@ export default function ScanScreen() {
   // Yeni kabuk — çevrimdışıysa hiç rezervasyon denemeden kuyruğa al (hak
   // harcanmasın); hata/limit/çevrimdışı tek sheet (FinScanErrorSheet) ile
   // gösterilir — Alert.alert YOK. Kamera ve galeri aynı akışı paylaşır.
-  const runFinCapture = async (uri: string) => {
+  const runFinCapture = async (uri: string, via: ScanVia = 'camera') => {
     setPhotoUri(uri);
     const net = await NetInfo.fetch();
     const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
@@ -200,18 +210,22 @@ export default function ScanScreen() {
         queuedAt: new Date().toISOString(),
         ...(hint ? { hint } : {}),
       });
-      setPendingCount(await getPendingScanCount());
+      const pending = await getPendingScanCount();
+      setPendingCount(pending);
+      track('scan_offline', { pending });
       setErrorKind('offline');
       return;
     }
 
     setStage('scanning');
+    track('scan_capture', { via, has_hint: !!hint });
     try {
       const outcome = await runAiScan(getAiScanClient(), {
         idempotencyKey,
         imageRef: uri,
         ...(hint ? { hint } : {}),
       });
+      trackScanOutcome(outcome, via);
       recordQuota(outcome.remaining, outcome.reset_at);
       if (outcome.status === 'quota_exhausted') {
         setStage('viewfinder');
@@ -231,8 +245,10 @@ export default function ScanScreen() {
       setStage('result');
     } catch (e) {
       // G17-S2 md.6: rezervasyon (RPC) hatası da LOG + Sentry'ye gider.
+      const reserveFailure = scanFailureInfo(e, 'reserve');
+      track('scan_fail', { code: reserveFailure.code, stage: reserveFailure.stage, via });
       try {
-        getAiScanClient().reportFailure?.(scanFailureInfo(e, 'reserve'));
+        getAiScanClient().reportFailure?.(reserveFailure);
       } catch {
         // teşhis akışı bozmaz
       }
@@ -250,7 +266,7 @@ export default function ScanScreen() {
   const handleGalleryPick = async () => {
     const uri = await pickFromGallery();
     if (!uri) return;
-    await runFinCapture(uri);
+    await runFinCapture(uri, 'gallery');
   };
 
   const handleCapture = yeniKabuk ? handleCaptureFin : handleCaptureLegacy;
@@ -265,6 +281,7 @@ export default function ScanScreen() {
         sourceRef: scanRef ?? `${user.id}-${photoUri ?? ''}`,
         estimate: result,
       });
+      trackScanLog(result, false);
       setSaved(true);
       setLogToken((n) => n + 1); // Logla izi oynar
       setSavedToast(true);
@@ -286,6 +303,7 @@ export default function ScanScreen() {
         estimate: adjusted,
       });
       savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
+      trackScanLog(adjusted, !!result && (adjusted.kcal !== result.kcal || adjusted.portion !== result.portion));
       setResult(adjusted);
       setSaved(true);
       const label = t(`meal.${mealType}`);

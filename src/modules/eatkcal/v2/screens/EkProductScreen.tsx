@@ -30,7 +30,7 @@ import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
 import { fetchProductImagesByName, fetchProductOptionGroups, getGroupSelectionLimits, mapProductRow } from '../../../../lib/products';
 import { fetchProductOptionLinks } from '../../../../lib/productOptions';
-import { logEvent, track } from '../../../../lib/analytics';
+import { track } from '../../../../lib/analytics';
 import { getEffectivePrice } from '../../../../utils/price';
 import { useCartStore } from '../../../../store/cartStore';
 import type { OptionGroup, Product, ProductOptionLink } from '../../../../types';
@@ -140,9 +140,9 @@ export default function EkProductScreen() {
   useEffect(() => {
     if (!product?.id) return;
     const price = Number(getEffectivePrice(product)) || 0;
-    logEvent.viewContent(String(product.id), product.name ?? '', price);
     track('product_view', {
       product_id: String(product.id),
+      product_name: product.name ?? '',
       price,
       category: product.category ?? undefined,
       brand: product.brand ?? undefined,

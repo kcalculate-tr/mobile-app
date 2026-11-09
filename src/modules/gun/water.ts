@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../core/supabase';
 
 import { istanbulDay } from './waterFormat';
+import { track } from '../../lib/analytics';
 
 // Saf yardımcılar tek kaynakta (birim testli): waterFormat.ts.
 export { WATER_STEP_ML, formatLiters, istanbulDay, waterTargetMl } from './waterFormat';
@@ -27,6 +28,7 @@ export async function fetchWaterToday(userId: string): Promise<number> {
 export async function logWater(ml: number): Promise<number | null> {
   const { data, error } = await supabase.rpc('log_water', { p_ml: Math.round(ml) });
   if (error) throw error;
+  track('water_add', { ml: Math.round(ml) });
   return typeof data === 'number' ? data : null;
 }
 

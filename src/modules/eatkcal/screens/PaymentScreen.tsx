@@ -32,7 +32,7 @@ import { RootStackParamList } from '../../../navigation/types';
 import { haptic } from '../../../utils/haptics';
 import { useCartStore } from '../../../store/cartStore';
 import { getSupabaseClient } from '../../../core/supabase';
-import { logEvent, track } from '../../../lib/analytics';
+import { track } from '../../../lib/analytics';
 import { recordPaymentDrop } from '../../../lib/orders';
 import { dususEtiketi, type OdemeAsamasi, type DususSebebi } from '../../../lib/paymentDrop';
 import { COLORS } from '../../../constants/theme';
@@ -301,7 +301,6 @@ function PaynkolayPaymentFlow({ orderId, amount, orderCode, noticeMessage, payMo
     handledRef.current = true;
     setVerifying(true);
     haptic.success();
-    logEvent.purchase(String(orderId), Number(amount) || 0);
     track('payment_success', { order_id: String(orderId), price: Number(amount) || 0, payment_method: PAYMENT_PROVIDER });
 
     const paid = await pollOrderConfirmed();

@@ -28,6 +28,7 @@ import {
 } from '../../modules/celebrate';
 import { computeStreak, isFirstMeal, type DayBucket } from '../../modules/celebrate/signals';
 import { syncStreakReminder } from '../../modules/profil/streakReminder';
+import { track } from '../../lib/analytics';
 
 const NOTIFY_OFFERED_KEY = '@kcal_celebrate_notify_offered';
 /** Kutlama, Logla izi B halka dolumundan SONRA gelsin (üst üste binmesin). */
@@ -150,7 +151,9 @@ export function HomeCelebrations({
   const onShare = useCallback(() => {
     if (!shown) return;
     const msg = `${tt(`celebrate.${shown}_title1`)} ${tt(`celebrate.${shown}_mark`)} · ${cardSub} · Kcalculate`;
-    void Share.share({ message: msg }).catch(() => {});
+    void Share.share({ message: msg })
+      .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'streak', surface: 'celebration' }); })
+      .catch(() => {});
   }, [shown, cardSub, tt]);
 
   return (

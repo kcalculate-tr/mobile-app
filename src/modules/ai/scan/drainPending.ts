@@ -5,6 +5,7 @@ import { getAiScanClient } from './client';
 import { saveAiScanEstimate } from './saveEstimate';
 import { processPendingQueue, type ProcessResult } from './pendingProcessor';
 import { getSupabaseClient } from '../../../core/supabase';
+import { trackScanLog, trackScanOutcome } from './scanTrack';
 
 type Listener = (r: ProcessResult) => void;
 const listeners = new Set<Listener>();
@@ -33,6 +34,14 @@ export function drainPendingScans(userId: string, isCancelled?: () => boolean): 
   })
     .catch(() => null)
     .then((r) => {
+      // G19-S3: kuyruktan analiz edilen her fotoğraf scan_success + scan_log; durma sebebi limit/başarısızlık.
+      if (r) {
+        for (const p of r.processed) {
+          trackScanOutcome({ status: 'ok', estimate: p.estimate, remaining: 0, reset_at: '' }, 'queue');
+          trackScanLog(p.estimate, false);
+        }
+        if (r.lastOutcome && r.lastOutcome.status !== 'ok') trackScanOutcome(r.lastOutcome, 'queue');
+      }
       if (r && (r.processed.length > 0 || r.lastOutcome)) listeners.forEach((l) => l(r));
       return r;
     })

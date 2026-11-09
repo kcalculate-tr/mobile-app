@@ -20,6 +20,7 @@ import { postCardModel, postLink } from '../../modules/kesfet/ui/format';
 import { RootStackParamList } from '../../navigation/types';
 import { useFeature } from '../../core/flags';
 import { PostDetailScreen } from '../../modules/kesfet/ui/PostDetailScreen';
+import { track } from '../../lib/analytics';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SharedPost'>;
 
@@ -110,7 +111,9 @@ function LegacySharedPostScreen() {
             .catch(() => {});
         }}
         onShare={() => {
-          void Share.share({ message: postLink(post.id), url: postLink(post.id) }).catch(() => {});
+          void Share.share({ message: postLink(post.id), url: postLink(post.id) })
+            .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'shared_post' }); })
+            .catch(() => {});
         }}
         onQuickLog={goHome}
         onOpenSheet={goHome}

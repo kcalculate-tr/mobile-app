@@ -39,6 +39,7 @@ import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
+import { track } from '../../lib/analytics';
 
 export type OnbIntent = 'track' | 'order' | 'both';
 
@@ -305,10 +306,16 @@ function UnderageScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'On
   );
 }
 
+const ONB_STEPS: string[] = ['OnbWelcome', 'OnbIntent', 'OnbAccount', 'OnbNotify', 'OnbUnderage'];
+
 export default function OnboardingNavigator() {
   const P = useOnb();
   return (
     <Stack.Navigator
+      // G19-S3: onb_step — her adım odaklandığında (geri dönüş dahil) bir kez.
+      screenListeners={({ route }) => ({
+        focus: () => track('onb_step', { flow: 'first', step: route.name, index: ONB_STEPS.indexOf(route.name) }),
+      })}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',

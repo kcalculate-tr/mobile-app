@@ -62,7 +62,7 @@ import {
 } from '../../../../lib/macros';
 import { normalizeAddress } from '../../../../lib/addresses';
 import { fetchSettingsMinCart, fetchZoneRuleFor } from './data';
-import { logEvent, track } from '../../../../lib/analytics';
+import { track } from '../../../../lib/analytics';
 import { tl } from '../../../../lib/money';
 import { haptic } from '../../../../core/design';
 import type { Address, DeliveryRuleStatus } from '../../../../types';
@@ -577,7 +577,6 @@ export function useEkCheckout(opts: { initialAddressId?: string }) {
 
     if (!draftOrderId) {
       const numItems = items.reduce((sum, item) => sum + item.quantity, 0);
-      logEvent.initiateCheckout(totals.totalAmount, numItems);
       track('begin_checkout', {
         price: totals.totalAmount,
         num_items: numItems,

@@ -12,6 +12,7 @@ import { ACTIVITY_TYPES, type ActivityType, type DayActivity } from '../types';
 import { activityDraftCard, type ActivityDraft } from '../composer';
 import { BottomSheet } from './BottomSheet';
 import { Icon } from './icons';
+import { track } from '../../../lib/analytics';
 
 const emptyDraft = (): ActivityDraft => ({ type: 'kosu', minutes: '', distanceKm: '', note: '' });
 
@@ -54,6 +55,7 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
         note: preview.note,
         idempotencyKey: `tracker-activity-${seq.current}-${Date.now()}`,
       });
+      track('activity_add', { type: preview.type, minutes: preview.minutes });
       setSheet(false);
       setDraft(emptyDraft());
       refresh();

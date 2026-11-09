@@ -1,5 +1,6 @@
 import { supabase } from '../core/supabase';
 import type { CouponValidationResponse } from './couponMessages';
+import { trackCouponResult } from './analytics';
 
 // Not: Banner + fetchBanners/fetchPromoBanners yeni banner_rows + banner_cells
 // sistemine taşındı — src/lib/banners.ts. Campaign tipi ve fetchCampaigns
@@ -80,7 +81,13 @@ export async function validateCoupon(
     p_items: items && items.length > 0 ? items : null,
   });
   if (error || !data) {
+    // Ağ/RPC hatası kupon sonucu değildir → ölçülmez.
     return { valid: false, reason: 'not_found' };
   }
-  return data as CouponValidationResponse;
+  const result = data as CouponValidationResponse;
+  // G19-S3: coupon_apply / saha_code_apply (kod 'SAHA…' ya da saha bağlantısından gelen kod).
+  trackCouponResult(code, result.valid
+    ? { valid: true, discount_amount: result.discount_amount }
+    : { valid: false, reason: result.reason });
+  return result;
 }

@@ -40,6 +40,7 @@ import { saveTakibeProfile } from './save';
 import { HowSheet } from './HowSheet';
 import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
+import { track } from '../../../lib/analytics';
 
 export type TbParamList = {
   TbGoal: undefined;
@@ -535,6 +536,8 @@ function UnderageScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbU
   );
 }
 
+const TB_ROUTE_ORDER: string[] = ['TbGoal', 'TbPace', 'TbAbout', 'TbActivity', 'TbResult', 'TbFirst', 'TbUnderage'];
+
 export default function TakibeBaslaNavigator({
   route,
 }: NativeStackScreenProps<RootStackParamList, 'TakibeBasla'>) {
@@ -549,6 +552,10 @@ export default function TakibeBaslaNavigator({
   }
   return (
     <Stack.Navigator
+      // G19-S3: onb_step — her adım odaklandığında (geri dönüş dahil) bir kez.
+      screenListeners={({ route }) => ({
+        focus: () => track('onb_step', { flow: 'takibe', step: route.name, index: TB_ROUTE_ORDER.indexOf(route.name) }),
+      })}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',

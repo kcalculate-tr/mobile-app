@@ -11,6 +11,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { track } from './analytics';
 
 // react-native-svg <Svg> instance'ının açtığı yüzey. Tam tip paketten gelir;
 // burada yalnız ihtiyacımız olan metodu daraltıyoruz (import döngüsü olmasın).
@@ -94,4 +95,6 @@ export async function sharePngBase64(base64: string, mealName: string, seed?: st
     dialogTitle: 'Öğün kartını paylaş',
     UTI: 'public.png',
   });
+  // G19-S3: shareAsync iptali bildirmez — paylaşım sayfası açıldıysa sayılır.
+  track('share', { target: 'meal', surface: 'meal_card' });
 }

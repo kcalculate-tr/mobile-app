@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildCartLineKey, normalizeSelectedOptions } from '../lib/cart';
 import { supabase } from '../core/supabase';
 import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '../utils/price';
-import { logEvent, track } from '../lib/analytics';
+import { track } from '../lib/analytics';
 import { computeLineMacros, computeUnitMacros } from '../lib/itemMacros';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
 
@@ -115,7 +115,6 @@ export const useCartStore = create<CartState>()(
         // Sadece parent kalem için AddToCart event'i (child ekstralar
         // parent ile birlikte zaten sayıldı — çift event olmasın).
         if (!parentLineKey) {
-          logEvent.addToCart(String(product.id), unitPrice, quantity);
           track('add_to_cart', {
             product_id: String(product.id),
             price: unitPrice,
