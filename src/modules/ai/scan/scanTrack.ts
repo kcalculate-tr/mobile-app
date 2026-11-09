@@ -26,3 +26,13 @@ export function trackScanLog(
   trackScan('scan_log', { n_items: n, kcal, edited, ...(mealType ? { meal_type: mealType } : {}) });
   trackEvent({ name: 'log_add', props: { source: 'scan', slot: normalizeMealType(mealType ?? null), kcal, offline: false } });
 }
+
+/**
+ * G21-S1 md.2: barkod (Open Food Facts) sonucu güne kaydedildi → log_add{source:'barcode'}
+ * (scan_log YAZILMAZ: AI tarama hunisi ayrı kalsın). Uçuş source='scan' yayınlanır;
+ * köprü onu saymaz → tam 1 log_add.
+ */
+export function trackBarcodeLog(estimate: { kcal: number }, mealType?: string | null): void {
+  const kcal = Math.round(estimate.kcal || 0);
+  trackEvent({ name: 'log_add', props: { source: 'barcode', slot: normalizeMealType(mealType ?? null), kcal, offline: false } });
+}

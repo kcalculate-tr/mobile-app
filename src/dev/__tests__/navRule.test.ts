@@ -20,6 +20,7 @@ const MODAL_FILES = [
   'modules/ai/scan/ui/FinScanViewfinder.tsx',
   'modules/ai/scan/ui/FinScanErrorSheet.tsx',
   'modules/ai/scan/ui/FinPhotoResult.tsx',
+  'modules/ai/scan/ui/FinBarcodeResult.tsx', // G21-S1 md.2: barkod sonucu (Tara modalı, X sağda)
   'modules/celebrate/CelebrateOverlay.tsx',
   'modules/kesfet/ui/RulesSheet.tsx',
   'modules/kesfet/ui/ReportFlow.tsx',

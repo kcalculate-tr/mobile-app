@@ -54,14 +54,22 @@ type SelectableSupabase = {
   };
 };
 
-async function fetchExisting(supabase: InsertableSupabase, userId: string, sourceRef: string): Promise<MealConsumptionRow | null> {
+/** G21-S1 md.2: barkod (Open Food Facts) kaydı `source='barcode'` (migration 20261110000100). */
+export type ScanSaveSource = 'ai_scan' | 'barcode';
+
+async function fetchExisting(
+  supabase: InsertableSupabase,
+  userId: string,
+  sourceRef: string,
+  src: ScanSaveSource = 'ai_scan',
+): Promise<MealConsumptionRow | null> {
   try {
     const db = supabase as unknown as SelectableSupabase;
     const { data } = await db
       .from('meal_consumptions')
       .select(COLUMNS)
       .eq('user_id', userId)
-      .eq('source', 'ai_scan')
+      .eq('source', src)
       .eq('source_ref', sourceRef)
       .maybeSingle();
     return data ?? null;
@@ -73,14 +81,22 @@ async function fetchExisting(supabase: InsertableSupabase, userId: string, sourc
 
 export async function saveAiScanEstimate(
   supabase: InsertableSupabase,
-  params: { userId: string; mealType: string; sourceRef: string; estimate: Omit<ScanEstimate, 'isEstimate'> },
+  params: {
+    userId: string;
+    mealType: string;
+    sourceRef: string;
+    estimate: Omit<ScanEstimate, 'isEstimate'>;
+    /** Varsayılan 'ai_scan'; Tara › Barkod 'barcode'. */
+    source?: ScanSaveSource;
+  },
 ): Promise<MealConsumptionRow> {
   const { userId, mealType, sourceRef, estimate } = params;
+  const src: ScanSaveSource = params.source ?? 'ai_scan';
   const { data, error } = await supabase
     .from('meal_consumptions')
     .insert({
       user_id: userId,
-      source: 'ai_scan',
+      source: src,
       source_ref: sourceRef,
       name: estimate.name,
       meal_type: toServerMealType(mealType),
@@ -98,7 +114,7 @@ export async function saveAiScanEstimate(
     // (çift dokunma, yanıtı kaybolan yeniden deneme, kuyruk + elle aynı anda) hata
     // DEĞİL: mevcut satır döner, ikinci kayıt oluşmaz.
     if (isUniqueViolation(error)) {
-      const existing = await fetchExisting(supabase, userId, sourceRef);
+      const existing = await fetchExisting(supabase, userId, sourceRef, src);
       if (existing) return existing;
     }
     throw new Error(`meal_consumptions.insert: ${error.message}`);

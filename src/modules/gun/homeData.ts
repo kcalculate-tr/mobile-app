@@ -84,6 +84,7 @@ export function sourceInfo(source: string): { kind: HomeSource; auto: boolean } 
   switch (source) {
     case 'ai_scan':
     case 'scan':
+    case 'barcode': // G21-S1 md.2: Tara › Barkod — Tara rozeti
       return { kind: 'scan', auto: false };
     case 'kesfet':
     case 'feed':

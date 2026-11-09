@@ -43,7 +43,8 @@ import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '..
 import { fetchProducts } from '../../../../lib/products';
 import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
-import { emitLogFlight } from '../logFlight';
+import { emitLogFlight, emitLogUndo } from '../logFlight';
+import { deleteScanConsumption, scanFlightUndo } from '../scanUndo';
 import { checkLocalImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
 import { trackScan } from '../scanEvents';
 import { shrinkForScan, type ImageSize } from '../imageResize';
@@ -53,7 +54,10 @@ import { haptic } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
-import { trackScanLog, trackScanOutcome } from '../scanTrack';
+import { trackBarcodeLog, trackScanLog, trackScanOutcome } from '../scanTrack';
+import { lookupBarcode, productDisplayName } from '../barcode/off';
+import FinBarcodeResult, { type BarcodeResultProduct } from '../ui/FinBarcodeResult';
+import type { ScanCameraMode } from '../ui/FinScanCamera';
 import type { ScanVia } from '../scanMetrics';
 import { ConsentSheet } from '../../../onboarding/consent/ConsentSheet';
 import { resolveAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/consent/aiPhoto';
@@ -198,7 +202,12 @@ export default function ScanScreen() {
       if (cancelled) return;
       if (res.lastOutcome) recordQuota(res.lastOutcome.remaining, res.lastOutcome.reset_at);
       for (const p of res.processed) {
-        emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`), source: 'scan', kcal: p.estimate.kcal });
+        // G21-S1 md.4: uçuş kayıt id'sini + gerçek silmeyi taşır → kabuk "Geri al" bu kaydı siler.
+        emitLogFlight({
+          x: 0, y: 0, w: 0, h: 0, imageUri: p.entry.imageUri, mealLabel: t(`meal.${p.entry.mealType}`), source: 'scan', kcal: p.estimate.kcal,
+          id: p.rowId ?? null,
+          undo: scanFlightUndo(getSupabaseClient, user.id, p.rowId),
+        });
       }
       if (res.processed.length > 0) {
         setPendingMeal(res.processed[res.processed.length - 1].entry.mealType);
@@ -500,7 +509,18 @@ export default function ScanScreen() {
       setResult(adjusted);
       setSaved(true);
       const label = t(`meal.${mealType}`);
-      emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label, source: 'scan', kcal: adjusted.kcal });
+      // G21-S1 md.4: kabuk toast'ının "Geri al"ı bu Tara kaydını GERÇEKTEN siler; ekran
+      // hâlâ açıksa "kaydedildi" durumu geri döner (yeniden loglanabilir).
+      const rowId = savedRowIdRef.current;
+      emitLogFlight({
+        x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label, source: 'scan', kcal: adjusted.kcal,
+        id: rowId,
+        undo: scanFlightUndo(getSupabaseClient, user.id, rowId, (ok) => {
+          if (!ok || !mountedRef.current || savedRowIdRef.current !== rowId) return;
+          savedRowIdRef.current = null;
+          setSaved(false);
+        }),
+      });
     } catch {
       // G19-S1 md.1: önceden errorKind='failed' yazılıyordu ama sonuç ekranında hata
       // sayfası çizilmiyordu → kayıt hatası SESSİZDİ. Artık toast; logla yeniden denenebilir
@@ -533,14 +553,12 @@ export default function ScanScreen() {
   const handleUndoFin = async () => {
     const id = savedRowIdRef.current;
     if (!id || !user?.id) return;
-    const { error } = await getSupabaseClient()
-      .from('meal_consumptions')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('id', id);
-    if (!error) {
+    const ok = await deleteScanConsumption(getSupabaseClient(), user.id, id);
+    if (ok) {
       savedRowIdRef.current = null;
       setSaved(false);
+      // G21-S1 md.4: kabuk rozeti/toast'ı ve Ana sayfa vurgusu da geri alınsın.
+      emitLogUndo({ id });
     }
   };
 
@@ -567,6 +585,123 @@ export default function ScanScreen() {
     setErrorKind(null);
     void clearPendingScanPhoto();
     navigation.goBack();
+  };
+
+  // ── G21-S1 md.2 — Barkod → Open Food Facts (yalnız yeni kabuk canlı kamera) ──
+  // AI hakkı TÜKETMEZ (rezervasyon/analiz yok); fotoğraf gönderilmez. Bulunursa mevcut
+  // sonuç düzeninin barkod kipi (FinBarcodeResult), bulunamazsa FinScanError düzeni.
+  const [barcodeBusy, setBarcodeBusy] = useState(false);
+  const [barcodeCode, setBarcodeCode] = useState<string | null>(null);
+  const [barcodeProduct, setBarcodeProduct] = useState<BarcodeResultProduct | null>(null);
+  const [cameraMode, setCameraMode] = useState<ScanCameraMode>('photo');
+  const [cameraModeKey, setCameraModeKey] = useState(0);
+  const barcodeBusyRef = useRef(false);
+  const barcodeRefRef = useRef<string | null>(null);
+  const barcodeRowIdRef = useRef<string | null>(null);
+
+  const handleBarcode = async (code: string) => {
+    if (barcodeBusyRef.current) return;
+    barcodeBusyRef.current = true;
+    setBarcodeBusy(true);
+    setBarcodeCode(code);
+    setCameraMode('barcode');
+    try {
+      const net = await NetInfo.fetch().catch(() => null);
+      const offline = net?.isConnected === false;
+      trackScan('barcode_scan', { offline });
+      const res = await lookupBarcode(code, { offline });
+      if (!mountedRef.current) return;
+      if (res.status === 'found') {
+        trackScan('barcode_found', { cached: res.cached, has_serving: res.product.servingGrams != null });
+        barcodeRefRef.current = `barcode-${code}-${Date.now()}`;
+        barcodeRowIdRef.current = null;
+        setSaved(false);
+        setSaveFailed(false);
+        setBarcodeProduct({
+          code: res.product.code,
+          name: productDisplayName(res.product, scanLang),
+          brand: res.product.brand,
+          imageUrl: res.product.imageUrl,
+          per100: res.product.per100,
+          servingGrams: res.product.servingGrams,
+        });
+        haptic('success');
+        return;
+      }
+      trackScan('barcode_not_found', { reason: res.reason });
+      setErrorKind(
+        res.status === 'not_found'
+          ? res.reason === 'no_kcal'
+            ? 'barcode_nokcal'
+            : 'barcode_missing'
+          : res.reason === 'offline'
+            ? 'barcode_offline'
+            : 'barcode_error',
+      );
+    } finally {
+      barcodeBusyRef.current = false;
+      if (mountedRef.current) setBarcodeBusy(false);
+    }
+  };
+
+  const handleSaveBarcode = async (estimate: Omit<ScanEstimate, 'isEstimate'>) => {
+    if (!user?.id || !barcodeProduct || savingRef.current || saving || saved) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveFailed(false);
+    try {
+      const row = await saveAiScanEstimate(getSupabaseClient(), {
+        userId: user.id,
+        mealType,
+        sourceRef: barcodeRefRef.current ?? `barcode-${barcodeProduct.code}-${Date.now()}`,
+        estimate,
+        source: 'barcode',
+      });
+      const rowId = (row as { id?: string } | null)?.id ?? null;
+      barcodeRowIdRef.current = rowId;
+      trackBarcodeLog(estimate, mealType);
+      if (!mountedRef.current) return;
+      setSaved(true);
+      emitLogFlight({
+        x: 0, y: 0, w: 0, h: 0, imageUri: barcodeProduct.imageUrl, mealLabel: t(`meal.${mealType}`), source: 'scan',
+        kcal: estimate.kcal, name: estimate.name,
+        id: rowId,
+        undo: scanFlightUndo(getSupabaseClient, user.id, rowId, (ok) => {
+          if (!ok || !mountedRef.current || barcodeRowIdRef.current !== rowId) return;
+          barcodeRowIdRef.current = null;
+          setSaved(false);
+        }),
+      });
+    } catch {
+      if (mountedRef.current) setSaveFailed(true);
+    } finally {
+      savingRef.current = false;
+      if (mountedRef.current) setSaving(false);
+    }
+  };
+
+  const closeBarcodeResult = () => {
+    setBarcodeProduct(null);
+    setSaved(false);
+    setSaveFailed(false);
+    setCameraMode('barcode');
+  };
+
+  // Android geri: barkod sonucundan kameraya (Tara'yı kapatmaz).
+  useEffect(() => {
+    if (!barcodeProduct) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeBarcodeResult();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barcodeProduct]);
+
+  const barcodePhotoScan = () => {
+    setErrorKind(null);
+    setCameraMode('photo');
+    setCameraModeKey((n) => n + 1);
   };
 
   const aiSheetEl = (
@@ -604,6 +739,27 @@ export default function ScanScreen() {
     : null;
 
   if (yeniKabuk) {
+    // G21-S1 md.2: barkod sonucu (Open Food Facts) — mevcut sonuç düzeninin barkod kipi.
+    if (barcodeProduct) {
+      return (
+        <View style={styles.fill}>
+          <FinBarcodeResult
+            product={barcodeProduct}
+            mealType={mealType}
+            saving={saving}
+            saved={saved}
+            onChangeMealType={setMealType}
+            onSave={(e) => void handleSaveBarcode(e)}
+            onClose={closeBarcodeResult}
+          />
+          {saveFailed ? (
+            <View style={styles.toastLayer} pointerEvents="box-none">
+              <Toast visible={saveFailed} message={t('ai_scan.save_failed')} onDismiss={() => setSaveFailed(false)} autoHideMs={3200} />
+            </View>
+          ) : null}
+        </View>
+      );
+    }
     if (stage === 'result' && result) {
       return (
         <View style={styles.fill}>
@@ -654,6 +810,10 @@ export default function ScanScreen() {
             onPermissionGranted={() => setErrorKind((k) => (k === 'camera' ? null : k))}
             note={scanNote}
             onNoteChange={setScanNote}
+            onBarcode={(code) => void handleBarcode(code)}
+            barcodeBusy={barcodeBusy}
+            initialMode={cameraMode}
+            modeKey={cameraModeKey}
           />
         ) : (
           // Eski derleme (ExpoCamera native modülü yok) — G15-S2/G17-S1 düzeni yedek.
@@ -680,7 +840,15 @@ export default function ScanScreen() {
             else setErrorKind(null);
           }}
           onManualEntry={handleManualEntry}
+          barcode={barcodeCode}
+          onPhotoScan={barcodePhotoScan}
           onRetry={() => {
+            // G21-S1 md.2: barkod sorgusu (zaman aşımı/ağ) aynı kodla yeniden.
+            if (errorKind === 'barcode_error') {
+              setErrorKind(null);
+              if (barcodeCode) void handleBarcode(barcodeCode);
+              return;
+            }
             // G19-S1 md.1: "Fotoğrafın duruyor; tekrar denediğinde baştan çekmen gerekmez" —
             // önceden yalnız sayfayı kapatıyordu (yeniden çekim gerekiyordu). Artık aynı foto
             // yeniden analiz edilir. Dosya sorunu (büyük/yok) → yeni çekim.

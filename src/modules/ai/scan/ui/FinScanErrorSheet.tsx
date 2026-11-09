@@ -18,13 +18,26 @@ import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { CameraSlash, Check, Clock, WarningCircle, WifiSlash, X } from '../../../../components/icons';
+import { CameraSlash, Check, Clock, MagnifyingGlass, WarningCircle, WifiSlash, X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 
 // G19-S1: 'unavailable' = Tara geçici kapalı (acil anahtar / genel tavan; İlter 9 Kas).
 // G20-S1 md.4: FinErrLimit kartı diliyle — kamera alanı zemini, üstte durum hapı,
 // saat ikonu, başlık + gövde, birincil "Elle gir" + ikincil çerçeveli (metin farklı).
-export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera' | 'unavailable';
+// G21-S1 md.2: barkod → Open Food Facts durumları (aynı FinScanError düzeni):
+//   barcode_missing / barcode_nokcal → "Ürün bulunamadı" + [Fotoğrafla tara] [Elle ekle]
+//   barcode_error (zaman aşımı / ağ / 5xx) → [Tekrar dene] [Elle ekle]
+//   barcode_offline → mevcut çevrimdışı hâli (ikon/hap/başlık) + barkod metni.
+export type FinScanErrorKind =
+  | 'failed'
+  | 'offline'
+  | 'limit'
+  | 'camera'
+  | 'unavailable'
+  | 'barcode_missing'
+  | 'barcode_nokcal'
+  | 'barcode_error'
+  | 'barcode_offline';
 
 function tokens(isDark: boolean) {
   return isDark
@@ -78,8 +91,14 @@ export default function FinScanErrorSheet({
   onRetry,
   onOpenSettings,
   onGallery,
+  onPhotoScan,
+  barcode,
   reason,
 }: {
+  /** G21-S1 md.2: barkod durumlarında "Fotoğrafla tara" (foto moduna döner). */
+  onPhotoScan?: () => void;
+  /** G21-S1 md.2: okunan barkod — durum hapında gösterilir. */
+  barcode?: string | null;
   /** G19-S1 md.4: 'failed' alt nedeni — dosya 5 MB üstü / bulunamadı (hak harcanmadı). */
   reason?: 'too_large' | 'missing';
   visible: boolean;
@@ -101,8 +120,15 @@ export default function FinScanErrorSheet({
   const insets = useSafeAreaInsets();
 
   const iconColor = t.color.ink;
+  const isBarcode = kind.startsWith('barcode_');
   const icon =
-    kind === 'failed' ? (
+    kind === 'barcode_missing' || kind === 'barcode_nokcal' ? (
+      <MagnifyingGlass size={24} color={iconColor} />
+    ) : kind === 'barcode_error' ? (
+      <WarningCircle size={24} color={iconColor} />
+    ) : kind === 'barcode_offline' ? (
+      <WifiSlash size={24} color={iconColor} />
+    ) : kind === 'failed' ? (
       <WarningCircle size={24} color={iconColor} />
     ) : kind === 'offline' ? (
       <WifiSlash size={24} color={iconColor} />
@@ -116,7 +142,13 @@ export default function FinScanErrorSheet({
     );
 
   const title =
-    kind === 'failed'
+    kind === 'barcode_missing' || kind === 'barcode_nokcal'
+      ? tr('ai_scan.barcode_missing_title')
+      : kind === 'barcode_error'
+        ? tr('ai_scan.barcode_error_title')
+        : kind === 'barcode_offline'
+          ? tr('ai_scan.offline_title')
+          : kind === 'failed'
       ? tr('ai_scan.failed_title')
       : kind === 'offline'
         ? tr('ai_scan.offline_title')
@@ -126,7 +158,15 @@ export default function FinScanErrorSheet({
             ? tr('ai_scan.unavailable_title')
             : tr('ai_scan.limit_title');
   const body =
-    kind === 'failed'
+    kind === 'barcode_missing'
+      ? tr('ai_scan.barcode_missing_body')
+      : kind === 'barcode_nokcal'
+        ? tr('ai_scan.barcode_nokcal_body')
+        : kind === 'barcode_error'
+          ? tr('ai_scan.barcode_error_body')
+          : kind === 'barcode_offline'
+            ? tr('ai_scan.barcode_offline_body')
+            : kind === 'failed'
       ? reason === 'too_large'
         ? tr('ai_scan.failed_body_large')
         : reason === 'missing'
@@ -146,7 +186,13 @@ export default function FinScanErrorSheet({
         ? tr('ai_scan.offline_note', { count: pendingCount })
         : null;
   const topChip =
-    kind === 'failed'
+    kind === 'barcode_offline'
+      ? tr('ai_scan.offline_chip')
+      : isBarcode
+        ? barcode
+          ? tr('ai_scan.barcode_read', { code: barcode })
+          : null
+        : kind === 'failed'
       ? reason
         ? null
         : tr('ai_scan.photo_saved')
@@ -201,7 +247,22 @@ export default function FinScanErrorSheet({
             </View>
           ) : null}
 
-          {kind === 'failed' ? (
+          {kind === 'barcode_missing' || kind === 'barcode_nokcal' ? (
+            <>
+              <Btn primary label={tr('ai_scan.barcode_photo_scan')} onPress={onPhotoScan} style={styles.first} />
+              <Btn label={tr('ai_scan.barcode_manual')} onPress={onManualEntry} style={styles.next} />
+            </>
+          ) : kind === 'barcode_error' ? (
+            <>
+              <Btn primary label={tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
+              <Btn label={tr('ai_scan.barcode_manual')} onPress={onManualEntry} style={styles.next} />
+            </>
+          ) : kind === 'barcode_offline' ? (
+            <>
+              <Btn primary label={tr('ai_scan.offline_ok')} onPress={onClose} style={styles.first} />
+              <Btn label={tr('ai_scan.barcode_manual')} onPress={onManualEntry} style={styles.next} />
+            </>
+          ) : kind === 'failed' ? (
             <>
               <Btn primary label={reason ? tr('ai_scan.retake') : tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
               <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />

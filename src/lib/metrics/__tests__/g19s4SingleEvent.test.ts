@@ -105,7 +105,7 @@ test('statik: aynı eylem için ikinci çağrı yok', () => {
   assert.equal(count(read('src/modules/ai/scan/screens/ScanScreen.tsx'), /'scan_success'/g), 0);
   // logFlight köprüsü Tara uçuşlarını saymaz; Tara uçuşları source='scan' taşır.
   assert.match(read('src/modules/gun/track/logEventsBridge.ts'), /SELF_REPORTED\.has\(p\.source\)\) return;/);
-  assert.equal(count(read('src/modules/ai/scan/screens/ScanScreen.tsx'), /emitLogFlight\(\{.*source: 'scan'/g), 2);
+  assert.equal(count(read('src/modules/ai/scan/screens/ScanScreen.tsx'), /emitLogFlight\(\{\s*(?:\/\/[^\n]*\s*)?[^\n]*source: 'scan'/g), 3); // G21-S1: çok satırlı yük; foto + kuyruk + barkod (md.2)
   // Keşfet logu: KesfetScreen'de tek log_add + geri alda tek log_delete; köprü 'kesfet' saymaz.
   const kesfet = read('src/modules/kesfet/ui/KesfetScreen.tsx');
   assert.equal(count(kesfet, /name: 'log_add'/g), 1);

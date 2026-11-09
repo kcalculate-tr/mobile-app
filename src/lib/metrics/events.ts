@@ -52,7 +52,9 @@ export interface EventDef {
 const SIGNUP_METHODS = ['apple', 'google', 'email', 'phone', 'unknown'] as const;
 const SCAN_VIA = ['camera', 'gallery', 'queue', 'legacy'] as const;
 // G19-S4: G19-S2 kaynaklarıyla birleşik tek liste (logSource.ts aynı kümeyi üretir).
-const LOG_SOURCES = ['scan', 'manual', 'order', 'pantry', 'kesfet', 'day_card', 'quick'] as const;
+const LOG_SOURCES = ['scan', 'manual', 'order', 'pantry', 'kesfet', 'day_card', 'quick', 'barcode'] as const;
+// G21-S1 md.2: barkod (Open Food Facts) sonucu bulunamama nedenleri.
+const BARCODE_MISS = ['missing', 'no_kcal', 'timeout', 'network', 'http', 'offline'] as const;
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 const SHARE_TARGETS = ['post', 'day', 'meal', 'product', 'app', 'report', 'streak'] as const;
 const UI = ['ek_v2', 'legacy', 'fin'] as const;
@@ -149,6 +151,18 @@ export const EVENTS = {
   scan_log: {
     category: 'tracking', tr: 'Tarama sonucu güne kaydedildi', en: 'Scan result logged to the day',
     props: { n_items: 'number', kcal: 'number', edited: 'boolean', meal_type: 'text' },
+  },
+  // G21-S1 md.2 — barkod → Open Food Facts (AI hakkı tüketmez).
+  barcode_scan: {
+    category: 'tracking', tr: 'Barkod okundu (Tara)', en: 'Barcode read (Scan)', props: { offline: 'boolean' },
+  },
+  barcode_found: {
+    category: 'tracking', tr: 'Barkodlu ürün Open Food Facts’te bulundu', en: 'Barcode product found on Open Food Facts',
+    props: { cached: 'boolean', has_serving: 'boolean' },
+  },
+  barcode_not_found: {
+    category: 'tracking', tr: 'Barkodlu ürün bulunamadı (yok / kcal yok / bağlantı)', en: 'Barcode product not found (missing / no kcal / connection)',
+    props: { reason: BARCODE_MISS },
   },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
