@@ -63,12 +63,14 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
   // G18 her panoyu kataloğa ekledikçe buradan SİLER; liste boşalınca kural yine birebir.
   const PENDING_TUR26 = new Set(
     [
-      'FinCelebrateProfile', 'FinEkOrderSuccess', 'FinHomeFocusB', 'FinHomeFocusC',
-      'FinHomeIzmir', 'FinHomeOutside', 'FinHomeProfileCard', 'FinOnbAccountEmail', 'FinOnbAccountKeyboard',
-      'FinOpen', 'FinOrient1', 'FinOrient2', 'FinOrient3', 'FinOrient4', 'FinWaitlistAdd',
+      // G18-S1: FinCelebrateProfile, FinHomeProfileCard, FinOnbAccountEmail/Keyboard,
+      // FinOpen, FinOrient1–4, FinMoOpen, FinOnbWelcomeB/C/EN kataloğa eklendi → listeden çıktı.
+      // G18-S4: FinFeedEmpty, FinPush kataloğa eklendi → listeden çıktı.
+      'FinEkOrderSuccess', 'FinHomeFocusB', 'FinHomeFocusC',
+      'FinHomeIzmir', 'FinHomeOutside', 'FinWaitlistAdd',
       'FinWaitlistSuggest',
     ].flatMap((n) => [n, `${n}-Dark`]).concat([
-      'FinMoFocus', 'FinMoOpen', 'FinMoPopover', 'FinOnbWelcomeB', 'FinOnbWelcomeC', 'FinOnbWelcomeEN', 'FinTur26',
+      'FinMoFocus', 'FinMoPopover', 'FinTur26',
     ]),
   );
   assert.deepEqual(

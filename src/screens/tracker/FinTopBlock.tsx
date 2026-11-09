@@ -21,6 +21,7 @@ import { TrophyIcon } from '../../components/icons';
 import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
 import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
+import { HomeOnboardingSlot, useOrientTarget } from '../../modules/onboarding/first'; // G18-S1 temas: profil kartı yuvası + Orient3 hedefi
 
 export { pctLabel };
 
@@ -49,6 +50,7 @@ function StatusRing({
   onPress,
   accessibilityLabel,
   animStyle,
+  targetProps,
 }: {
   big?: boolean;
   progress: number;
@@ -61,6 +63,7 @@ function StatusRing({
   onPress?: () => void;
   accessibilityLabel: string;
   animStyle?: object;
+  targetProps?: object; // G18-S1 temas
 }) {
   const t = useTheme();
   const k = finTokens(t.isDark);
@@ -72,6 +75,7 @@ function StatusRing({
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={accessibilityLabel}
       style={styles.ringCol}
+      {...targetProps}
     >
       <Animated.View style={animStyle}>
         <ProgressRing progress={Math.min(progress, 1)} size={size} strokeWidth={big ? 10 : 7} color={color} trackColor={k.track}>
@@ -173,6 +177,7 @@ export function FinTopBlock({
   const p = target > 0 ? kcal / target : 0;
   const group = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, numLang === 'tr' ? '.' : ',');
 
+  const orientRing = useOrientTarget('ring', { ready: !empty }); // G18-S1 temas: Orient3 (ilk kayıttan sonra)
   const energyLabel = empty ? tt('gun.target_today') : tt('gun.status_energy');
   const energyUnit = empty ? 'kcal' : over ? tt('gun.kcal_over') : tt('gun.kcal_left');
   const energyNum = empty ? group(target) : over ? `+${group(kcal - target)}` : null;
@@ -205,6 +210,7 @@ export function FinTopBlock({
           onPress={onOpenMacros}
           accessibilityLabel={`${energyLabel}: ${energyNum ?? group(Math.max(0, target - kcal))} ${energyUnit}`}
           animStyle={popStyle}
+          targetProps={orientRing}
         />
         <StatusRing
           progress={pP}
@@ -260,6 +266,9 @@ export function FinTopBlock({
           </AppText>
         </Pressable>
       ) : null}
+
+      {/* G18-S1 temas — FinHomeProfileCard / FinHomeEmptyR1: kart hero (+ İlk öğün) ile makro satırı arasında. */}
+      <HomeOnboardingSlot />
 
       <Pressable
         onPress={onOpenMacros}

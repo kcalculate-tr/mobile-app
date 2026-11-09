@@ -44,6 +44,10 @@ import PublicPreviewScreen from '../modules/profil/ui/screens/PublicPreviewScree
 import SignupAIScreen from '../modules/profil/ui/screens/SignupAIScreen';
 import SignupEatScreen from '../modules/profil/ui/screens/SignupEatScreen';
 import FinPhotoResult from '../modules/ai/scan/ui/FinPhotoResult';
+import { OrientHost } from '../modules/onboarding/first/orient/OrientHost';
+import { CelebrateProfile } from '../modules/onboarding/first/CelebrateProfile';
+import { HomeEmptyRing, HomeFirstMealCard, HomeEmptyToday } from '../modules/onboarding/first/HomeEmptyR1';
+import { ProfileCard } from '../modules/onboarding/first/ProfileCard';
 import FinScanErrorSheet from '../modules/ai/scan/ui/FinScanErrorSheet';
 import ScanLimitSheet from '../modules/ai/scan/ui/ScanLimitSheet';
 import { EkInfoSheet } from '../modules/eatkcal/v2/ui/InfoSheet';
@@ -413,7 +417,35 @@ const SAMPLE_CARD = {
   firstTime: true,
 };
 
+/** G18-S1 — boş hâl parçaları FinHomeEmptyR1 panosundaki konumlarında (yalnız ölçüm). */
+function HomeEmptyPartsScene() {
+  const t = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: t.color.bg }}>
+      <View style={{ position: 'absolute', left: 16, top: 112 }}>
+        <HomeEmptyRing hasTarget={false} />
+      </View>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 243 }}>
+        <HomeFirstMealCard onScan={noop} onManual={noop} />
+        <ProfileCard onCreate={noop} onDismiss={noop} />
+      </View>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 600 }}>
+        <HomeEmptyToday />
+      </View>
+    </View>
+  );
+}
+
 export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
+  // G18-S1 — FinOrient2 (Tara sonucu üstünde ipucu 2/4) + FinCelebrateProfile.
+  orientLog: () => (
+    <View style={{ flex: 1 }}>
+      <PhotoResultScene />
+      <OrientHost />
+    </View>
+  ),
+  celebrateProfile: ({ kcal }: { kcal?: number }) => <CelebrateProfile visible kcal={kcal ?? null} onDone={noop} />,
+  homeEmptyParts: () => <HomeEmptyPartsScene />,
   postCard: (p) => <PostCardScene {...P(p)} />,
   rulesSheet: () => (
     <SheetOver>

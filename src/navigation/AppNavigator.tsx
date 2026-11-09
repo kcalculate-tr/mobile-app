@@ -37,7 +37,7 @@ import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 // G12-S1 — yeni onboarding yığını (koyu zemin; beyaz flash olmasın diye eager
 // import, WelcomeGate gibi). Yalnız `yeni_onboarding` açık + oturumsuz soğuk
 // açılışta initialRouteName buna gelir.
-import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay } from '../modules/onboarding';
+import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay, OrientHost } from '../modules/onboarding';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../modules/eatkcal/screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -443,6 +443,7 @@ export default function AppNavigator() {
   if (authLoading) return null;
 
   return (
+    <>
     <Stack.Navigator
       initialRouteName={initialRouteName}
       screenOptions={{
@@ -540,5 +541,8 @@ export default function AppNavigator() {
         <Stack.Screen key={r.name} name={r.name as never} component={r.component} options={r.options} />
       ))}
     </Stack.Navigator>
+    {/* G18-S1 temas — FinOrient1–4 ipuçları (yalnız yeni_onboarding; kapalıyken null). */}
+    <OrientHost />
+    </>
   );
 }

@@ -15,7 +15,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppText } from '../../../core/design/components/AppText';
-import { Sheet } from '../../../core/design/components/Sheet';
 import { ProgressRing } from '../../../core/design/components/ProgressRing';
 import { DURATION, haptic } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
@@ -38,6 +37,8 @@ import {
   type TbGoal,
 } from './calc';
 import { saveTakibeProfile } from './save';
+import { HowSheet } from './HowSheet';
+import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
 
 export type TbParamList = {
@@ -81,6 +82,7 @@ function TbFrame({
   onSkip,
   footer,
   scroll,
+  cardPad,
   children,
 }: {
   step: number;
@@ -90,11 +92,13 @@ function TbFrame({
   onSkip: () => void;
   footer?: React.ReactNode;
   scroll?: boolean;
+  cardPad?: [number, number, number];
   children: React.ReactNode;
 }) {
   const i18n = useT();
   return (
     <OnbScaffold
+      cardPad={cardPad}
       cardTop={cardTop}
       glass={glass}
       onBack={onBack}
@@ -215,6 +219,7 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
     <TbFrame
       step={2}
       cardTop={168}
+      cardPad={[30, 18, 18]}
       glass={GLASS.drop}
       onBack={() => navigation.goBack()}
       onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
@@ -361,7 +366,18 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
       root?.goBack();
       return;
     }
-    navigation.navigate('TbFirst');
+    // G18-S1 md.5 (Tur 26 #5): profil kartından gelen akış Sonuç'ta biter →
+    // profil kaydı → Ana sayfa'da "Profil hazır" (FinCelebrateProfile) → oryantasyon.
+    // TbFirst ("İlk öğününü logla") kayıtlı kalır; görevi Ana sayfa "İlk öğününü
+    // ekle" kartı + Orient1 (Tara) üstlenir (LOG › SORULAR 1).
+    setSaving(true);
+    if (user) await saveTakibeProfile(user.id, draft, nowYear());
+    setSaving(false);
+    const kcal = result?.macros?.calories ?? null;
+    draft.reset();
+    useOnbFirst.getState().setCard('done');
+    useOnbFirst.getState().queueCelebrate(kcal != null ? Math.round(kcal) : null);
+    root?.navigate('Tabs', { screen: 'Tracker' });
   };
 
   const m = result?.macros;
@@ -370,6 +386,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
     <TbFrame
       step={4}
       cardTop={112}
+      cardPad={[24, 20, 20]}
       onBack={() => navigation.goBack()}
       onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
       footer={
@@ -410,21 +427,23 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
         </Pressable>
       </View>
 
-      <Sheet
+      <HowSheet
         visible={howOpen}
         onClose={() => setHowOpen(false)}
         title={i18n.t('tb.how.title')}
+        closeLabel={i18n.t('common.close')}
         footer={<OnbButton label={i18n.t('tb.how.ok')} onPress={() => setHowOpen(false)} />}
       >
-        <View style={{ paddingHorizontal: 20 }}>
+        {/* FinTbHow: üç satırın hepsi alt çizgili; not 13 · üst 12 · alt 16. */}
+        <View>
           <HowRow title={i18n.t('tb.how.bmr')} desc={i18n.t('tb.how.bmr_desc')} />
           <HowRow title={i18n.t('tb.how.activity')} desc={i18n.t('tb.how.activity_desc')} />
-          <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} last />
-          <AppText textRole="helper" style={{ color: P.sec, marginTop: 12, marginBottom: 12 }}>
+          <HowRow title={i18n.t('tb.how.goal')} desc={i18n.t('tb.how.goal_desc')} />
+          <AppText style={{ color: P.sec, marginTop: 12, marginBottom: 16, fontSize: 13, lineHeight: 18 }}>
             {i18n.t('tb.how.note')}
           </AppText>
         </View>
-      </Sheet>
+      </HowSheet>
     </TbFrame>
   );
 }
@@ -432,9 +451,9 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
 function HowRow({ title, desc, value, last }: { title: string; desc: string; value?: string; last?: boolean }) {
   const P = useOnb();
   return (
-    <View style={[styles.howRow, !last ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: P.line } : null]}>
+    <View style={[styles.howRow, !last ? { borderBottomWidth: 1, borderBottomColor: P.line } : null]}>
       <View style={styles.howHead}>
-        <AppText textRole="body" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, flex: 1 }}>
+        <AppText textRole="body" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20, flex: 1 }}>
           {title}
         </AppText>
         {value ? (
@@ -443,7 +462,7 @@ function HowRow({ title, desc, value, last }: { title: string; desc: string; val
           </AppText>
         ) : null}
       </View>
-      <AppText textRole="bodySm" style={{ color: P.sec, marginTop: 2 }}>
+      <AppText textRole="bodySm" style={{ color: P.sec, marginTop: 2, fontSize: 14, lineHeight: 20 }}>
         {desc}
       </AppText>
     </View>

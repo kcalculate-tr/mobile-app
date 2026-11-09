@@ -69,6 +69,7 @@ import {
   type LogFlightPayload,
   type LogUndoPayload,
 } from './logEvents';
+import { useOrientTarget } from '../onboarding/first/orient/useOrientTarget'; // G18-S1 temas
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
 function glassTokens(dark: boolean) {
@@ -133,6 +134,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
 
   const aiTarama = useFeature('ai_tarama');
   const showScan = shouldShowScan({ ai_tarama: aiTarama });
+  const orientScan = useOrientTarget('scan', { ready: state.routes[state.index]?.name === 'Tracker' }); // G18-S1 temas: Orient1
   const cartCount = useCartStore((s) => s.items.reduce((sum, it) => sum + it.quantity, 0));
 
   // Görünür sekmeler: tasarım sırası + yalnız navigatörde KAYITLI olanlar
@@ -530,7 +532,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
 
         {/* Ayrık Tara dairesi */}
         {showScan ? (
-          <Animated.View style={scanPop.style}>
+          <Animated.View style={scanPop.style} {...orientScan}>
             <Animated.View style={[styles.scanWrap, scanSizeStyle]}>
               <BlurView
                 intensity={28}

@@ -39,6 +39,7 @@ test("'TakibeBasla'ya yalnız Onboarding, Final Profil › Hedefim ve Ana sayfa 
     .sort();
   assert.deepEqual(hits, [
     'modules/onboarding/OnboardingNavigator.tsx',
+    'modules/onboarding/first/HomeOnboardingSlot.tsx', // G18-S1: profil kartı; yalnız `yeni_onboarding` açıkken (kapalıyken null)
     'modules/profil/ui/screens/FinPrProfileScreen.tsx',
     'screens/TrackerScreen.tsx', // G15-S2: makro ayrıntısı; yalnız `yeni_onboarding` açıkken, kapalıyken NutritionProfile
   ]);

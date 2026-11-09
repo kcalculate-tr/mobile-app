@@ -44,6 +44,11 @@ export const FLAG_DEFAULTS = {
   // G15-S2 — Ana sayfa Su halkası + hızlı su ekleme (water_daily + log_water).
   // Sunucu satırı: 20261106000100_g15_water.sql (kapalı, min_app_version 1.1.0).
   su_takibi: false, // Su takibi (Ana sayfa Su halkası)
+  // G18-S1 — Karşılama başlığı varyantı (`onb_welcome_variant`, SON_HAL Tur 26).
+  // Bayraklar boolean olduğundan iki anahtar: _b → B, _c → C, ikisi kapalı → A
+  // (varsayılan). Sunucu satırları: 20261108000100_g18_onboarding_state.sql (kapalı).
+  onb_welcome_variant_b: false, // Karşılama başlığı B
+  onb_welcome_variant_c: false, // Karşılama başlığı C
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

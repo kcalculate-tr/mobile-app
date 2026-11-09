@@ -47,6 +47,7 @@ export function OnbScaffold({
   footer,
   scroll = false,
   contentStyle,
+  cardPad = [36, 20, 20],
   children,
 }: {
   glass?: OnbGlass;
@@ -65,6 +66,8 @@ export function OnbScaffold({
   footer?: React.ReactNode;
   scroll?: boolean;
   contentStyle?: ViewStyle;
+  /** Kart iç boşluğu [üst, yan, alt] — Final panoları: çoğu 36/20/20, Karşılama 28, Sonuç 24, Seni tanıyalım 30/18/18. */
+  cardPad?: [number, number, number];
   children: React.ReactNode;
 }) {
   const P = useOnb();
@@ -164,7 +167,7 @@ export function OnbScaffold({
       <Animated.View
         style={[
           styles.card,
-          { top: cardTop * s, backgroundColor: P.card, borderColor: P.cardEdge },
+          { top: cardTop * s, backgroundColor: P.card, borderColor: P.cardEdge, paddingTop: cardPad[0], paddingHorizontal: cardPad[1], paddingBottom: cardPad[2] },
           enter.style,
         ]}
       >
@@ -209,11 +212,8 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 24,
-    borderRadius: 28,
+    borderRadius: 32,
     borderWidth: 1,
-    paddingHorizontal: 21,
-    paddingTop: 22,
-    paddingBottom: 22,
     zIndex: 2,
   },
   body: { flex: 1 },
