@@ -65,11 +65,31 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
     [
       // G18-S1: FinCelebrateProfile, FinHomeProfileCard, FinOnbAccountEmail/Keyboard,
       // FinOpen, FinOrient1–4, FinMoOpen, FinOnbWelcomeB/C/EN kataloğa eklendi → listeden çıktı.
-      'FinEkOrderSuccess', 'FinFeedEmpty', 'FinHomeFocusB', 'FinHomeFocusC',
-      'FinHomeIzmir', 'FinHomeOutside', 'FinPush', 'FinWaitlistAdd',
+      // G18-S2: FinHomeIzmir, FinHomeOutside, FinHomeEmptyR1EN, FinHomeXLEN, FinMoFocus,
+      // FinMoPopover, FinMoBanner(EN) kataloğa eklendi → listeden çıktı.
+      'FinEkOrderSuccess', 'FinFeedEmpty', 'FinPush', 'FinWaitlistAdd',
       'FinWaitlistSuggest',
+      // Tur 26d/26e (design/final yenilendi, 9 Kas; 430 pano): diğer oturumların
+      // panoları — sahibi kataloğa ekledikçe buradan siler (S3 eatkcal, S4 sistem/EN, S5).
+      'FinActivityCardEN', 'FinAddSheetEN', 'FinAddToastEN', 'FinCityR1EN', 'FinCommentsEN',
+      'FinComposeEN', 'FinDetailEN', 'FinEatBerlinEN', 'FinEkAddressEN', 'FinEkAddressNoMapEN',
+      'FinEkAddressNoPermEN', 'FinEkAddressesEN', 'FinEkAddressesEmptyEN', 'FinEkCartEN',
+      'FinEkCartEmptyEN', 'FinEkCartSkeletonEN', 'FinEkCheckoutEN', 'FinEkCheckoutPayFailEN',
+      'FinEkCheckoutPayUnknownEN', 'FinEkCheckoutPayWaitEN', 'FinEkErrorsEN', 'FinEkHomeEN',
+      'FinEkHomeSkeletonEN', 'FinEkInfoEN', 'FinEkOrderDetailEN', 'FinEkOrderSuccessEN',
+      'FinEkOrdersEN', 'FinEkOrdersEmptyEN', 'FinEkOrdersFilterEmptyEN', 'FinEkProductAdded',
+      'FinEkProductAddedEN', 'FinEkProductCompare', 'FinEkProductEN', 'FinEkProductScrollEN',
+      'FinEkProductSelected', 'FinEkProductSelectedEN', 'FinEkReviewsEN', 'FinEkStoreEN',
+      'FinFeedEN', 'FinFeedEmptyEN', 'FinFeedScrollR3EN', 'FinFeedTipEN', 'FinFollowingEmptyEN',
+      'FinNotificationsEN', 'FinPostMenuBlockEN', 'FinPostMenuEN', 'FinPostingEN',
+      'FinProfilePublicEN', 'FinRecipe', 'FinRecipeEN', 'FinReportDoneEN', 'FinReportEN',
+      'FinReportNoticeEN', 'FinRulesEN', 'FinSerbestEN', 'FinStreakEN', 'FinTabBarEN-mid',
+      'FinTabBarEN-min', 'FinTabBarEN-rest', 'FinTrackerEN', 'FinTrackerEmptyEN', 'FinVideoEN',
+      'FinWaitlistAddEN', 'FinWaitlistR1EN', 'FinWaitlistSuggestEN',
+      // YALNIZ REFERANS (SON_HAL v3: odak = a, banner = a; B/C uygulanmaz) — kalıcı.
+      'FinHomeFocusB', 'FinHomeFocusC', 'FinHomeBannerB', 'FinHomeBannerBEN',
     ].flatMap((n) => [n, `${n}-Dark`]).concat([
-      'FinMoFocus', 'FinMoPopover', 'FinTur26',
+      'FinMoProductBar', 'FinTur26',
     ]),
   );
   assert.deepEqual(
