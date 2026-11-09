@@ -1,19 +1,24 @@
--- G20-S1 — Rıza ve politika kaydı. UYGULANMADI (yalnız dosya).
+-- G20-S1 — Rıza ve politika kaydı.
+-- DURUM: CANLIDA (Claude 9 Kas uyguladı; bu dosya G20-S3 md.0'da canlıyla EŞİTLENDİ:
+--   kind'a 'ai_photo', source'a 'scan', requires_acceptance canlı slug'larla,
+--   my_consent_status() 'ai_photo' döner). Yeniden çalıştırılabilir (idempotent).
 -- Rollback: supabase/rollbacks/20261109210100_g20_s1_user_consents_rollback.sql
 --
--- 1) legal_documents.version (int, varsayılan 1). Mevcut 4 satır (terms,
---    distance-sales, privacy, kvkk — src/data/contractsData.ts ile aynı slug'lar)
---    sürüm 1 olur. Yeni sürüm yayınlamak = metni güncelle + version'ı 1 artır →
---    istemci bir sonraki açılışta tekrar kabul sheet'i gösterir.
---    requires_acceptance: kabul zorunlu belgeler (terms, privacy). kvkk yalnız
---    bilgilendirme (aydınlatma metni kabul edilmez, okunur).
+-- 1) legal_documents.version (int, varsayılan 1). Canlı 4 satır (kullanim-kosullari,
+--    gizlilik-politikasi, kvkk, mesafeli-satis — src/lib/legal/slugs.ts ve
+--    src/data/contractsData.ts ile aynı slug'lar) sürüm 1 olur. Yeni sürüm
+--    yayınlamak = metni güncelle + version'ı 1 artır → istemci bir sonraki
+--    açılışta tekrar kabul sheet'i gösterir.
+--    requires_acceptance: kabul zorunlu belgeler (kullanim-kosullari,
+--    gizlilik-politikasi). kvkk yalnız bilgilendirme (aydınlatma metni kabul
+--    edilmez, okunur).
 -- 2) user_consents — yalnız EKLEME yapılan kayıt defteri (append-only):
 --    kimin, hangi belgenin hangi sürümünü / hangi izni, ne zaman, nereden verdiği.
 --    RLS: kullanıcı yalnız KENDİ satırlarını okur ve ekler; güncelleme/silme yok
 --    (hesap silinince auth.users ON DELETE CASCADE ile gider).
 -- 3) my_consent_status() — istemcinin "tekrar kabul gerekiyor mu?" sorusu:
 --    zorunlu her belge için güncel sürüm + kullanıcının kabul ettiği en yüksek sürüm,
---    ve reklam / kullanım ölçümü izinlerinin son değeri.
+--    ve reklam / kullanım ölçümü / yapay zekâ fotoğraf analizi izinlerinin son değeri.
 begin;
 
 -- 1) Sürüm alanı ------------------------------------------------------------
@@ -31,7 +36,7 @@ end $$;
 
 update public.legal_documents
    set requires_acceptance = true
- where slug in ('terms', 'privacy')
+ where slug in ('kullanim-kosullari', 'gizlilik-politikasi')
    and requires_acceptance = false;
 
 -- 2) Rıza kayıt defteri -------------------------------------------------------
@@ -41,13 +46,15 @@ create table if not exists public.user_consents (
   -- policy: belge kabulü (doc_slug + doc_version dolu)
   -- ad_measurement: Meta reklam ölçümü · first_party: uygulama içi kullanım ölçümü
   -- att: iOS App Tracking Transparency sonucu (granted = izin verildi)
-  kind        text not null check (kind in ('policy', 'ad_measurement', 'first_party', 'att')),
+  -- ai_photo: Tara fotoğrafının yapay zekâ hizmet sağlayıcısına (ABD) gönderilmesi
+  --           izni (Apple 5.1.2(i), G20-S3 md.2)
+  kind        text not null check (kind in ('policy', 'ad_measurement', 'first_party', 'att', 'ai_photo')),
   doc_slug    text,
   doc_version integer,
   granted     boolean not null,
   -- signup_email · signup_social · notice (mevcut kullanıcı bilgilendirmesi)
-  -- reconsent (yeni sürüm) · settings · att
-  source      text not null check (source in ('signup_email', 'signup_social', 'notice', 'reconsent', 'settings', 'att')),
+  -- reconsent (yeni sürüm) · settings · att · scan (Tara ilk tarama izni)
+  source      text not null check (source in ('signup_email', 'signup_social', 'notice', 'reconsent', 'settings', 'att', 'scan')),
   platform    text check (platform in ('ios', 'android', 'web')),
   app_version text,
   created_at  timestamptz not null default now(),
@@ -56,6 +63,16 @@ create table if not exists public.user_consents (
     or (kind <> 'policy' and doc_slug is null and doc_version is null)
   )
 );
+
+-- Tablo zaten varsa (canlı) CHECK listeleri de güncel olsun (ai_photo / scan).
+alter table public.user_consents drop constraint if exists user_consents_kind_check;
+alter table public.user_consents
+  add constraint user_consents_kind_check
+  check (kind in ('policy', 'ad_measurement', 'first_party', 'att', 'ai_photo'));
+alter table public.user_consents drop constraint if exists user_consents_source_check;
+alter table public.user_consents
+  add constraint user_consents_source_check
+  check (source in ('signup_email', 'signup_social', 'notice', 'reconsent', 'settings', 'att', 'scan'));
 
 create index if not exists user_consents_user_kind_idx
   on public.user_consents (user_id, kind, created_at desc);
@@ -106,6 +123,11 @@ as $$
     'first_party', (
       select c.granted from public.user_consents c
        where c.user_id = auth.uid() and c.kind = 'first_party'
+       order by c.created_at desc limit 1
+    ),
+    'ai_photo', (
+      select c.granted from public.user_consents c
+       where c.user_id = auth.uid() and c.kind = 'ai_photo'
        order by c.created_at desc limit 1
     )
   );

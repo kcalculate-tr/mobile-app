@@ -6,11 +6,27 @@
 //   Mevcut kullanıcı: bir sonraki açılışta bir kez bilgilendirme sheet'i.
 //   Yeni belge sürümü (legal_documents.version artınca): tekrar kabul sheet'i.
 
-/** Kabulü zorunlu belgeler (legal_documents.requires_acceptance ile aynı). */
+import { LEGAL_SLUG } from '../legal/slugs';
+
+/** Kabulü zorunlu belgeler (legal_documents.requires_acceptance ile aynı). İç anahtar. */
 export const REQUIRED_DOCS = ['terms', 'privacy'] as const;
 export type RequiredDoc = (typeof REQUIRED_DOCS)[number];
+/**
+ * G20-S3 md.1: iç anahtar → canlı `legal_documents.slug` (kullanim-kosullari,
+ * gizlilik-politikasi). Sunucuya giden / sunucudan gelen her ad budur.
+ */
+export const DOC_SLUG: Record<RequiredDoc, string> = {
+  terms: LEGAL_SLUG.terms,
+  privacy: LEGAL_SLUG.privacy,
+};
+/** Canlı ad → iç anahtar (bilinmeyen → null). */
+export function docKeyOf(slug: unknown): RequiredDoc | null {
+  if (slug === DOC_SLUG.terms) return 'terms';
+  if (slug === DOC_SLUG.privacy) return 'privacy';
+  return null;
+}
 /** Yalnız bilgilendirme (aydınlatma metni okunur, kabul edilmez). */
-export const INFO_DOC = 'kvkk' as const;
+export const INFO_DOC = LEGAL_SLUG.kvkk;
 
 export type DocVersions = Record<RequiredDoc, number>;
 export const DEFAULT_VERSIONS: DocVersions = { terms: 1, privacy: 1 };
@@ -24,8 +40,9 @@ export interface PolicyRecord {
   at: string;
 }
 
-export type ConsentSource = 'signup_email' | 'signup_social' | 'notice' | 'reconsent' | 'settings' | 'att';
-export type ConsentKind = 'policy' | 'ad_measurement' | 'first_party' | 'att';
+// G20-S3: canlıda kind'a ai_photo, source'a scan eklendi (Claude 9 Kas).
+export type ConsentSource = 'signup_email' | 'signup_social' | 'notice' | 'reconsent' | 'settings' | 'att' | 'scan';
+export type ConsentKind = 'policy' | 'ad_measurement' | 'first_party' | 'att' | 'ai_photo';
 
 /** user_consents satırı (user_id yazım anında eklenir). */
 export interface ConsentRow {
@@ -44,6 +61,8 @@ export interface ServerStatus {
   docs: { slug: string; version: number; accepted_version: number | null }[];
   ad_measurement: boolean | null;
   first_party: boolean | null;
+  /** G20-S3 md.2: yapay zekâ fotoğraf analizi izninin son değeri. */
+  ai_photo: boolean | null;
 }
 
 const posInt = (v: unknown): number | null => {
@@ -79,9 +98,10 @@ export function parsePending(raw: string | null | undefined): ConsentRow[] {
 export function versionsFrom(rows: { slug?: unknown; version?: unknown }[] | null | undefined): DocVersions {
   const out: DocVersions = { ...DEFAULT_VERSIONS };
   for (const r of rows ?? []) {
-    if (r.slug === 'terms' || r.slug === 'privacy') {
+    const key = docKeyOf(r.slug);
+    if (key) {
       const n = posInt(r.version);
-      if (n != null) out[r.slug] = n;
+      if (n != null) out[key] = n;
     }
   }
   return out;
@@ -97,8 +117,9 @@ export function acceptedFromStatus(s: ServerStatus | null): DocVersions | null {
   if (!s) return null;
   const acc: Partial<DocVersions> = {};
   for (const d of s.docs) {
-    if ((d.slug === 'terms' || d.slug === 'privacy') && posInt(d.accepted_version) != null) {
-      acc[d.slug] = d.accepted_version as number;
+    const key = docKeyOf(d.slug);
+    if (key && posInt(d.accepted_version) != null) {
+      acc[key] = d.accepted_version as number;
     }
   }
   return acc.terms != null && acc.privacy != null ? (acc as DocVersions) : null;
@@ -163,7 +184,7 @@ export function policyRows(i: {
     ...REQUIRED_DOCS.map<ConsentRow>((slug) => ({
       ...base,
       kind: 'policy',
-      doc_slug: slug,
+      doc_slug: DOC_SLUG[slug],
       doc_version: i.versions[slug],
       granted: true,
     })),
@@ -172,7 +193,7 @@ export function policyRows(i: {
 }
 
 export function toggleRow(i: {
-  kind: 'ad_measurement' | 'first_party' | 'att';
+  kind: 'ad_measurement' | 'first_party' | 'att' | 'ai_photo';
   granted: boolean;
   source: ConsentSource;
   platform: string | null;

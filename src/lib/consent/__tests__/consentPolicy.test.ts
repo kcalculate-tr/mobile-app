@@ -10,6 +10,9 @@ import {
   appendPending,
   covers,
   decideGate,
+  DOC_SLUG,
+  docKeyOf,
+  INFO_DOC,
   parsePending,
   parsePolicyRecord,
   policyRows,
@@ -21,11 +24,12 @@ import {
 const ROOT = join(__dirname, '..', '..', '..', '..');
 const status = (terms: [number, number | null], privacy: [number, number | null], ad: boolean | null = null): ServerStatus => ({
   docs: [
-    { slug: 'privacy', version: privacy[0], accepted_version: privacy[1] },
-    { slug: 'terms', version: terms[0], accepted_version: terms[1] },
+    { slug: 'gizlilik-politikasi', version: privacy[0], accepted_version: privacy[1] },
+    { slug: 'kullanim-kosullari', version: terms[0], accepted_version: terms[1] },
   ],
   ad_measurement: ad,
   first_party: null,
+  ai_photo: null,
 });
 const rec = (terms: number, privacy: number) => ({ v: { terms, privacy }, at: '2026-11-09T20:00:00Z' });
 
@@ -63,8 +67,16 @@ test('yeni belge sürümü → tekrar kabul (reconsent)', () => {
 
 test('versionsFrom: sürüm alanı yoksa / bozuksa 1', () => {
   assert.deepEqual(versionsFrom(null), DEFAULT_VERSIONS);
-  assert.deepEqual(versionsFrom([{ slug: 'terms' }, { slug: 'privacy', version: 'x' }]), { terms: 1, privacy: 1 });
-  assert.deepEqual(versionsFrom([{ slug: 'terms', version: 3 }, { slug: 'kvkk', version: 9 }]), { terms: 3, privacy: 1 });
+  assert.deepEqual(versionsFrom([{ slug: 'kullanim-kosullari' }, { slug: 'gizlilik-politikasi', version: 'x' }]), { terms: 1, privacy: 1 });
+  assert.deepEqual(versionsFrom([{ slug: 'kullanim-kosullari', version: 3 }, { slug: 'kvkk', version: 9 }]), { terms: 3, privacy: 1 });
+});
+
+test('G20-S3 md.1: canlı slug\'lar — eski terms/privacy adları sunucu satırında TANINMAZ', () => {
+  assert.deepEqual(DOC_SLUG, { terms: 'kullanim-kosullari', privacy: 'gizlilik-politikasi' });
+  assert.equal(INFO_DOC, 'kvkk');
+  assert.deepEqual(versionsFrom([{ slug: 'terms', version: 5 }, { slug: 'privacy', version: 4 }]), DEFAULT_VERSIONS);
+  assert.equal(docKeyOf('mesafeli-satis'), null);
+  assert.equal(docKeyOf('kullanim-kosullari'), 'terms');
 });
 
 test('acceptedFromStatus / covers', () => {
@@ -90,8 +102,8 @@ test('policyRows: iki zorunlu belge (sürümlü) + reklam izni, kişisel veri yo
   assert.deepEqual(
     rows.map((r) => [r.kind, r.doc_slug, r.doc_version, r.granted, r.source]),
     [
-      ['policy', 'terms', 2, true, 'signup_email'],
-      ['policy', 'privacy', 1, true, 'signup_email'],
+      ['policy', 'kullanim-kosullari', 2, true, 'signup_email'],
+      ['policy', 'gizlilik-politikasi', 1, true, 'signup_email'],
       ['ad_measurement', null, null, true, 'signup_email'],
     ],
   );
@@ -121,7 +133,11 @@ test('migration dosyası: user_consents + RLS kendi satırı + güncelleme/silme
   assert.match(sql, /add column if not exists version integer not null default 1/);
   assert.match(sql, /references auth\.users\(id\) on delete cascade/);
   // istemcinin yazdığı kaynak/kind değerleri CHECK listesinde
-  for (const v of ['signup_email', 'signup_social', 'notice', 'reconsent', 'settings', 'att']) assert.ok(sql.includes(`'${v}'`), v);
+  for (const v of ['signup_email', 'signup_social', 'notice', 'reconsent', 'settings', 'att', 'scan', 'ai_photo']) assert.ok(sql.includes(`'${v}'`), v);
+  // G20-S3 md.0/1: canlıyla eşit — zorunlu belgeler canlı slug'larla, my_consent_status ai_photo döner.
+  assert.match(sql, /where slug in \('kullanim-kosullari', 'gizlilik-politikasi'\)/);
+  assert.doesNotMatch(sql, /slug in \('terms', 'privacy'\)/);
+  assert.match(sql, /'ai_photo', \(/);
   const back = readFileSync(rb, 'utf8');
   assert.match(back, /drop table if exists public\.user_consents/);
   assert.match(back, /drop column if exists version/);

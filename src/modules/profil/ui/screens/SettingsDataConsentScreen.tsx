@@ -21,6 +21,7 @@ import { getConsent, requestAttForAds } from '../../../../lib/analytics';
 import { metaAllowed } from '../../../../lib/metrics/consent';
 import { onConsentChange, setAdMeasurement, setUsageMeasurement } from '../../../../lib/consent/store';
 import { LegalDocModal, type LegalSlug } from '../../../onboarding/consent/LegalDocModal';
+import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
 import { FileText } from '../../../../components/icons';
 import { FinScreen, FinHeader, FinSectionLabel, FinRow, body, bodyMedium, bodySemibold } from '../finUi';
 
@@ -184,9 +185,9 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
 
         <FinSectionLabel>{tr('consent.settings.docs_section')}</FinSectionLabel>
         <View style={flatGroup(t)}>
-          <FinRow first icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.terms')} onPress={() => setDoc('terms')} />
-          <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.privacy')} onPress={() => setDoc('privacy')} />
-          <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.kvkk')} onPress={() => setDoc('kvkk')} />
+          <FinRow first icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.terms')} onPress={() => setDoc(LEGAL_SLUG.terms)} />
+          <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.privacy')} onPress={() => setDoc(LEGAL_SLUG.privacy)} />
+          <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.kvkk')} onPress={() => setDoc(LEGAL_SLUG.kvkk)} />
         </View>
 
         <Text

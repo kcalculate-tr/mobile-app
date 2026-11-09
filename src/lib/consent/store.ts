@@ -12,6 +12,7 @@ import { getSupabaseClient } from '../../core/supabase';
 import { getConsent, setAdConsent, setFirstPartyConsent } from '../analytics';
 import {
   DEFAULT_VERSIONS,
+  DOC_SLUG,
   PENDING_KEY,
   POLICY_KEY,
   appendPending,
@@ -104,7 +105,7 @@ export async function fetchDocVersions(): Promise<DocVersions> {
     const { data, error } = await getSupabaseClient()
       .from('legal_documents')
       .select('slug, version')
-      .in('slug', ['terms', 'privacy']);
+      .in('slug', [DOC_SLUG.terms, DOC_SLUG.privacy]);
     if (error || !Array.isArray(data)) return { ...DEFAULT_VERSIONS };
     return versionsFrom(data as { slug: unknown; version: unknown }[]);
   } catch {
@@ -123,6 +124,7 @@ export async function fetchServerStatus(): Promise<ServerStatus | null> {
       docs: d.docs,
       ad_measurement: typeof d.ad_measurement === 'boolean' ? d.ad_measurement : null,
       first_party: typeof d.first_party === 'boolean' ? d.first_party : null,
+      ai_photo: typeof d.ai_photo === 'boolean' ? d.ai_photo : null,
     };
   } catch {
     return null;

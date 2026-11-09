@@ -54,7 +54,7 @@ jest.mock('../../../../core/supabase', () => {
       q.then = (res: any) =>
         Promise.resolve(
           table === 'legal_documents'
-            ? { data: [{ slug: 'terms', version: 1 }, { slug: 'privacy', version: 1 }], error: null }
+            ? { data: [{ slug: 'kullanim-kosullari', version: 1 }, { slug: 'gizlilik-politikasi', version: 1 }], error: null }
             : { data: [], error: null },
         ).then(res);
       return q;
@@ -132,8 +132,8 @@ describe('ConsentGate — sıra: politika → ATT', () => {
     expect(mockConsent.adConsent).toBe('granted');
     const rows = mockInserts.flat() as { kind: string; doc_slug: string | null; source: string; user_id: string }[];
     expect(rows.map((r) => [r.kind, r.doc_slug, r.source, r.user_id])).toEqual([
-      ['policy', 'terms', 'notice', 'u1'],
-      ['policy', 'privacy', 'notice', 'u1'],
+      ['policy', 'kullanim-kosullari', 'notice', 'u1'],
+      ['policy', 'gizlilik-politikasi', 'notice', 'u1'],
       ['ad_measurement', null, 'notice', 'u1'],
     ]);
     expect(await AsyncStorage.getItem(PENDING_KEY)).toBeNull();
@@ -168,8 +168,8 @@ describe('ConsentGate — sıra: politika → ATT', () => {
     mockRpc = {
       data: {
         docs: [
-          { slug: 'privacy', version: 1, accepted_version: 1 },
-          { slug: 'terms', version: 2, accepted_version: 1 },
+          { slug: 'gizlilik-politikasi', version: 1, accepted_version: 1 },
+          { slug: 'kullanim-kosullari', version: 2, accepted_version: 1 },
         ],
         ad_measurement: true,
         first_party: null,
@@ -190,8 +190,8 @@ describe('ConsentGate — sıra: politika → ATT', () => {
       (r) => r.kind === 'policy',
     );
     expect(policy.map((r) => [r.doc_slug, r.doc_version, r.source])).toEqual([
-      ['terms', 2, 'reconsent'],
-      ['privacy', 1, 'reconsent'],
+      ['kullanim-kosullari', 2, 'reconsent'],
+      ['gizlilik-politikasi', 1, 'reconsent'],
     ]);
     expect(JSON.parse((await AsyncStorage.getItem(POLICY_KEY)) as string).v).toEqual({ terms: 2, privacy: 1 });
   });
@@ -209,7 +209,7 @@ describe('ConsentGate — sıra: politika → ATT', () => {
   test('başka cihazda kabul (sunucu) → sheet yok, cihaz kaydı yazılır', async () => {
     signIn();
     mockRpc = {
-      data: { docs: [{ slug: 'privacy', version: 1, accepted_version: 1 }, { slug: 'terms', version: 1, accepted_version: 1 }], ad_measurement: false, first_party: true },
+      data: { docs: [{ slug: 'gizlilik-politikasi', version: 1, accepted_version: 1 }, { slug: 'kullanim-kosullari', version: 1, accepted_version: 1 }], ad_measurement: false, first_party: true },
       error: null,
     };
     const ui = render(<ConsentGate />);

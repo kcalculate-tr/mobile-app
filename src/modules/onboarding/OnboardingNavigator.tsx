@@ -39,6 +39,7 @@ import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
 import { ConsentSheet } from './consent/ConsentSheet';
 import { LegalDocModal, type LegalSlug } from './consent/LegalDocModal';
+import { LEGAL_SLUG } from '../../lib/legal/slugs';
 import { acceptPolicies, holdGate } from '../../lib/consent/store';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
@@ -239,11 +240,11 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
           </View>
           <AppText textRole="helper" style={[styles.legal, { color: P.sec }]}>
             {i18n.t('onboarding.account.legal_pre')}
-            <AppText textRole="helper" style={link} onPress={() => setDoc('terms')} accessibilityRole="link" testID="onb-account-terms">
+            <AppText textRole="helper" style={link} onPress={() => setDoc(LEGAL_SLUG.terms)} accessibilityRole="link" testID="onb-account-terms">
               {i18n.t('onboarding.account.terms')}
             </AppText>
             {i18n.t('onboarding.account.legal_mid')}
-            <AppText textRole="helper" style={link} onPress={() => setDoc('privacy')} accessibilityRole="link" testID="onb-account-privacy">
+            <AppText textRole="helper" style={link} onPress={() => setDoc(LEGAL_SLUG.privacy)} accessibilityRole="link" testID="onb-account-privacy">
               {i18n.t('onboarding.account.privacy')}
             </AppText>
             {i18n.t('onboarding.account.legal_post')}

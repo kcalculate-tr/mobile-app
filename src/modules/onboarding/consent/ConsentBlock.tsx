@@ -15,6 +15,7 @@ import { useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useOnb } from '../components/onbTheme';
 import { LegalDocModal, type LegalSlug } from './LegalDocModal';
+import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 
 const CHECK_D =
   'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z';
@@ -71,11 +72,11 @@ export function ConsentBlock({
           </View>
           <AppText textRole="helper" style={[styles.flex, { color: P.ink }]}>
             {i18n.t('consent.block.accept_pre')}
-            <AppText textRole="helper" style={link} onPress={open('terms')} accessibilityRole="link" testID={`${testID}-terms`}>
+            <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.terms)} accessibilityRole="link" testID={`${testID}-terms`}>
               {i18n.t('consent.block.terms')}
             </AppText>
             {i18n.t('consent.block.accept_mid')}
-            <AppText textRole="helper" style={link} onPress={open('privacy')} accessibilityRole="link" testID={`${testID}-privacy`}>
+            <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.privacy)} accessibilityRole="link" testID={`${testID}-privacy`}>
               {i18n.t('consent.block.privacy')}
             </AppText>
             {i18n.t('consent.block.accept_post')}
@@ -90,7 +91,7 @@ export function ConsentBlock({
 
       <AppText textRole="helper" style={{ color: P.sec }}>
         {i18n.t('consent.block.kvkk_pre')}
-        <AppText textRole="helper" style={link} onPress={open('kvkk')} accessibilityRole="link" testID={`${testID}-kvkk`}>
+        <AppText textRole="helper" style={link} onPress={open(LEGAL_SLUG.kvkk)} accessibilityRole="link" testID={`${testID}-kvkk`}>
           {i18n.t('consent.block.kvkk')}
         </AppText>
         {i18n.t('consent.block.kvkk_post')}

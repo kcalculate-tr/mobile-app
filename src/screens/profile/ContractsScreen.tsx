@@ -10,6 +10,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { CaretLeft } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CONTRACTS } from '../../data/contractsData';
+import { normalizeLegalSlug } from '../../lib/legal/slugs';
 import { RootStackParamList } from '../../navigation/types';
 
 type ContractsRoute = RouteProp<RootStackParamList, 'ProfileContracts'>;
@@ -21,7 +22,8 @@ export default function ContractsScreen() {
 
   const initialSlug = route.params?.slug;
   const initialIndex = useMemo(() => {
-    const i = CONTRACTS.findIndex((c) => c.slug === initialSlug);
+    const want = normalizeLegalSlug(initialSlug);
+    const i = CONTRACTS.findIndex((c) => c.slug === want);
     return i >= 0 ? i : 0;
   }, [initialSlug]);
 

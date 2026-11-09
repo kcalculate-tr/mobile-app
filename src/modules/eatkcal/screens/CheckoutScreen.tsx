@@ -97,6 +97,7 @@ import { track } from '../../../lib/analytics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../../../constants/theme';
 import DeliveryZonesSheet from '../../../components/DeliveryZonesSheet';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../../utils/deliveryDays';
+import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 
 type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -2889,9 +2890,9 @@ export default function CheckoutScreen() {
               onAddProducts={() =>
                 navigation.navigate('CategoryProducts', { categoryName: 'Tüm Ürünler' })
               }
-              onPressTerms={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
+              onPressTerms={() => navigation.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms })}
               onPressDistanceSales={() =>
-                navigation.navigate('ProfileContracts', { slug: 'distance-sales' })
+                navigation.navigate('ProfileContracts', { slug: LEGAL_SLUG.distanceSales })
               }
             />
           );

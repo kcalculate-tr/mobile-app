@@ -5,8 +5,10 @@
 import React from 'react';
 import { Modal } from 'react-native';
 import SettingsAgreementsScreen from '../../profil/ui/screens/SettingsAgreementsScreen';
+import type { LegalSlug } from '../../../lib/legal/slugs';
 
-export type LegalSlug = 'terms' | 'privacy' | 'kvkk';
+// G20-S3 md.1: canlı belge adları (kullanim-kosullari, gizlilik-politikasi, kvkk).
+export type { LegalSlug };
 
 export function LegalDocModal({ slug, onClose }: { slug: LegalSlug | null; onClose: () => void }) {
   if (!slug) return null;

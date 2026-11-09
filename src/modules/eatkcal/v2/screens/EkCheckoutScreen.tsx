@@ -29,6 +29,7 @@ import { EK_TIME_SLOTS } from '../model/checkoutModel';
 import { groupCartLines, linePrice, lineSummary } from '../model/cartModel';
 import { useEkCheckout } from '../checkout/useEkCheckout';
 import { methodTimeState } from '../model/methodTime';
+import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
 
 type SectionKey = 'md' | 'ad' | 'ct' | 'nt' | 'py' | 'bk';
 const TR_DAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
@@ -319,7 +320,7 @@ export default function EkCheckoutScreen() {
               {t('eatkcal.v2.checkout.contracts_pre')}
               <Text
                 style={[ekType.c13s, { textDecorationLine: 'underline' }]}
-                onPress={() => navigation.navigate('ProfileContracts', { slug: 'terms' })}
+                onPress={() => navigation.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms })}
                 accessibilityRole="link"
                 suppressHighlighting
               >
@@ -328,7 +329,7 @@ export default function EkCheckoutScreen() {
               {t('eatkcal.v2.checkout.and')}
               <Text
                 style={[ekType.c13s, { textDecorationLine: 'underline' }]}
-                onPress={() => navigation.navigate('ProfileContracts', { slug: 'distance-sales' })}
+                onPress={() => navigation.navigate('ProfileContracts', { slug: LEGAL_SLUG.distanceSales })}
                 accessibilityRole="link"
                 suppressHighlighting
               >

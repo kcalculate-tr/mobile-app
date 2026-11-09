@@ -10,6 +10,7 @@ import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { CONTRACTS } from '../../../../data/contractsData';
+import { normalizeLegalSlug } from '../../../../lib/legal/slugs';
 import { FinScreen, FinHeader, FinCard, FinChip, body, heading } from '../finUi';
 
 export default function AgreementsScreen({
@@ -23,7 +24,8 @@ export default function AgreementsScreen({
   const { t: tr } = useT();
 
   const initialIndex = useMemo(() => {
-    const i = CONTRACTS.findIndex(c => c.slug === initialSlug);
+    const want = normalizeLegalSlug(initialSlug);
+    const i = CONTRACTS.findIndex(c => c.slug === want);
     return i >= 0 ? i : 0;
   }, [initialSlug]);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
