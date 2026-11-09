@@ -142,6 +142,7 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   Composer: { kind: 'final', file: 'modules/kesfet/ui/ComposerScreen.tsx' },
   KesfetNotifications: { kind: 'final', file: 'modules/kesfet/ui/NotificationsScreen.tsx' },
   PublicProfile: { kind: 'internal', why: 'PublicProfileScreen yeni_kabuk ile dallanır (Final dal: profil/ui)' },
+  ProfileSub: { kind: 'final', file: 'modules/profil/ui/screens/ProfileSubRoute.tsx' }, // G21-S1 md.9: FinPrProfile alt sayfaları (yalnız yeni kabuktan açılır)
   KcalAiSignUp: { kind: 'gate', file: 'modules/onboarding/v2/SignupAIFlowV2.tsx' },
   Login: { kind: 'gate', file: 'modules/onboarding/v2/LoginV2.tsx' },
   NutritionProfile: { kind: 'finalRoute' },

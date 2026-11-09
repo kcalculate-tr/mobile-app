@@ -33,6 +33,7 @@ import {
   bodySemibold,
   bodyBold,
 } from '../finUi';
+import { SectionSlide } from '../../../../core/design/sectionSlide';
 
 const TOPIC_OPTIONS = [
   'Sipariş Sorunu',
@@ -256,6 +257,7 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
           onChange={setTab}
         />
 
+        <SectionSlide index={tab}>
         {tab === 0 ? (
           <FinCard style={{ gap: 14, padding: 16 }}>
             <View style={{ gap: 10 }}>
@@ -387,6 +389,7 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
             ))}
           </View>
         )}
+        </SectionSlide>
       </View>
     </FinScreen>
   );

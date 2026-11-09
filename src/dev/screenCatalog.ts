@@ -129,10 +129,12 @@ const onb = (screen: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Onboarding', params: { screen, params } },
 ];
 /**
- * G16-S2 — Profil alt ekranı GERÇEK kabukta (Profil sekmesi içinde, TabBarR3 ile):
- * `<Pano>~2`. Alt ekranda tab bar gizli, altta yalnız güvenli alan olmalı.
+ * G16-S2 — Profil alt ekranı GERÇEK kabukta: `<Pano>~2`. G21-S1 md.9: alt sayfa artık
+ * kök yığında `ProfileSub` (Profil sekmesinin üstüne itilir → tab bar yok, altta
+ * yalnız güvenli alan).
  */
-const inProfileTab = (sub: string) => ({ frames: { 2: { target: route(tab('Profile', { vitrinSub: sub })) } } });
+const profileSubRoute = (sub: string): RouteSpec[] => [...tab('Profile'), { name: 'ProfileSub', params: { sub } }];
+const inProfileTab = (sub: string) => ({ frames: { 2: { target: route(profileSubRoute(sub)) } } });
 /** G15-S3 — FinCompose kareleri: Final'deki örnek metin/medya/kart (yalnız vitrin). */
 const PH_URI = 'https://example.invalid/vitrin-placeholder.jpg';
 const COMPOSE_PREFILL = {
@@ -610,7 +612,7 @@ function resolveParity(name: string): ResolvedEntry | null {
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {
-      pano: name, area: 'profil', target: route(tab('Profile', { vitrinSub: sub[1] })), data: 'default',
+      pano: name, area: 'profil', target: route(profileSubRoute(sub[1])), data: 'default',
       flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
     };
   }

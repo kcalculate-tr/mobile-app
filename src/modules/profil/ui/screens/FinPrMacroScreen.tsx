@@ -50,6 +50,7 @@ import {
   bodySemibold,
   heading,
 } from '../finUi';
+import { SectionSlide } from '../../../../core/design/sectionSlide';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -162,6 +163,7 @@ export default function FinPrMacroScreen({
         onChange={setTabIndex}
       />
 
+      <SectionSlide index={tabIndex}>
       {loading ? (
         <View style={{ paddingVertical: 60, alignItems: 'center' }}>
           <ActivityIndicator color={t.color.ink} />
@@ -177,6 +179,7 @@ export default function FinPrMacroScreen({
       ) : (
         <SubscriptionTab onSubscribe={goOrder} />
       )}
+      </SectionSlide>
 
       {/* FinPrMacroWhat — alttan sayfa: başlık sol + kapat, numaralı satırlar, siyah "Anladım". */}
       <Sheet

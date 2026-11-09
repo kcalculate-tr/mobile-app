@@ -4,7 +4,7 @@
  * Kilo/boy/BMI YOK. Bölümler: Kcalculate AI (Hedefim/İlerleme/Koleksiyon),
  * eatkcal (Macro ve Abonelik/Siparişlerim/Adreslerim/Kayıtlı kartlarım/
  * Kuponlarım/Değerlendirmelerim — mevcut ekranlara GERÇEK navigasyon),
- * Ayarlar (S4'ün yeni Fin* ekranları, yerel alt-yığın — `onBack` ile geri),
+ * Ayarlar (S4'ün yeni Fin* ekranları; G21-S1 md.9: kök yığında `ProfileSub`, sağdan kayar),
  * Destek, Çıkış. `src/screens/ProfileScreen.tsx` yalnız `yeni_kabuk` AÇIKKEN
  * bu bileşeni render eder; kapalıyken kendi eski JSX'i bayt bayt aynı kalır.
  *
@@ -16,9 +16,9 @@
  * akışı Dalga 2 — bkz. CollectionScreen.tsx).
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { BackHandler, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ScrollView, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -72,50 +72,13 @@ import {
   FinRow,
   FinSecondaryButton,
 } from '../finUi';
-import SettingsPersonalScreen from './SettingsPersonalScreen';
-import SettingsNotifyScreen from './SettingsNotifyScreen';
-import SettingsSecurityScreen from './SettingsSecurityScreen';
-import SettingsPrivacyScreen from './SettingsPrivacyScreen';
-import SettingsAgreementsScreen from './SettingsAgreementsScreen';
-import SettingsDataConsentScreen from './SettingsDataConsentScreen';
-import SettingsSupportScreen from './SettingsSupportScreen';
-import SettingsFeedbackScreen from './SettingsFeedbackScreen';
-import FinPrMacroScreen from './FinPrMacroScreen';
-import FinPrProgressScreen from './ProgressScreen';
-import BadgesScreen from './BadgesScreen';
-import CollectionScreen from './CollectionScreen';
+import type { ProfileSubName, ProfileSubParams } from './profileSub';
 import { loadCollection, markWon, ProfileCollectionRow, type CollectionStamp } from '../../../collection';
 import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
 import { tabBarContentInset } from '../../../shell';
-import PublicPreviewScreen from './PublicPreviewScreen';
-import FinPrReviewsScreen from './FinPrReviewsScreen';
-import FinPrCouponsScreen from './FinPrCouponsScreen';
-import FinPrCardsScreen from './FinPrCardsScreen';
-import FinPrMeasurementsScreen from './FinPrMeasurementsScreen';
 import { useFeature } from '../../../../core/flags';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-type SubScreen =
-  | 'root'
-  | 'personal'
-  | 'notify'
-  | 'security'
-  | 'privacy'
-  | 'dataConsent'
-  | 'agreements'
-  | 'support'
-  | 'feedback'
-  | 'macro'
-  | 'macroSub'
-  | 'progress'
-  | 'badges'
-  | 'collection'
-  | 'public'
-  | 'reviews'
-  | 'coupons'
-  | 'measurements'
-  | 'cards';
 
 export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -127,34 +90,20 @@ export default function FinPrProfileScreen() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
 
-  // G16-S2 — YALNIZ __DEV__ vitrini: alt ekranı sekme içinde (gerçek kabukla) açar.
-  const route = useRoute<any>();
-  const [sub, setSub] = useState<SubScreen>(
-    () => (__DEV__ ? (route.params?.vitrinSub as SubScreen | undefined) : undefined) ?? 'root',
-  );
-  // G16-S2 (İlter, 6 Kas): alt ekranlar (Ayarlar alt ekranları, Makro, İlerleme…)
-  // sekme içinde yığın ekranı gibi açılır → yüzen tab bar ve bar boşluğu YOK;
-  // altta yalnız insets.bottom (FinScreen). Kökte bar geri gelir. Bu ekran
-  // yalnız `yeni_kabuk` açıkken çizilir → bayrak kapalı kabuk etkilenmez.
-  useEffect(() => {
-    (navigation as any).setOptions?.({ tabBarStyle: sub === 'root' ? undefined : { display: 'none' } });
-  }, [navigation, sub]);
-  // Android geri tuşu: alt ekrandan bir üst seviyeye döner (uygulamadan çıkmaz).
-  useFocusEffect(
-    useCallback(() => {
-      if (sub === 'root') return undefined;
-      const h = BackHandler.addEventListener('hardwareBackPress', () => {
-        setSub(sub === 'measurements' ? 'progress' : sub === 'dataConsent' ? 'privacy' : 'root');
-        return true;
-      });
-      return () => h.remove();
-    }, [sub]),
+  // G21-S1 md.9: alt sayfalar kök yığında `ProfileSub` rotası (sağdan kayar, iOS
+  // kenar jesti, Android geri tuşu yığından). Önceki sekme içi `setSub` + tab bar
+  // gizleme + BackHandler kalktı. Kimlik alanları açık profil / rozetler için taşınır.
+  const openSub = useCallback(
+    (sub: ProfileSubName, extra?: Omit<ProfileSubParams, 'sub'>) =>
+      (navigation as any).navigate('ProfileSub', { sub, ...(extra ?? {}) }),
+    [navigation],
   );
   // G15-S2: koleksiyon şeridi — yerel katalog atamalarından son kartlar (en yeni önce).
   const [collectionStamps, setCollectionStamps] = useState<CollectionStamp[]>([]);
   const [collectionNew, setCollectionNew] = useState(false);
   const [collectionToast, setCollectionToast] = useState(false);
-  useEffect(() => {
+  useFocusEffect(
+    useCallback(() => {
     let alive = true;
     loadCollection()
       .then((s) => {
@@ -174,7 +123,8 @@ export default function FinPrProfileScreen() {
     return () => {
       alive = false;
     };
-  }, [sub]);
+  }, []),
+  );
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [handle, setHandle] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -244,57 +194,6 @@ export default function FinPrProfileScreen() {
     useNavGate.getState().refresh();
   };
 
-  if (sub === 'personal') return <SettingsPersonalScreen onBack={() => setSub('root')} />;
-  if (sub === 'notify') return <SettingsNotifyScreen onBack={() => setSub('root')} />;
-  if (sub === 'security') return <SettingsSecurityScreen onBack={() => setSub('root')} />;
-  if (sub === 'privacy') {
-    return (
-      <SettingsPrivacyScreen
-        onBack={() => setSub('root')}
-        onOpenSecurity={() => setSub('security')}
-        onOpenDataConsent={() => setSub('dataConsent')}
-      />
-    );
-  }
-  if (sub === 'dataConsent') return <SettingsDataConsentScreen onBack={() => setSub('privacy')} />;
-  if (sub === 'agreements') return <SettingsAgreementsScreen onBack={() => setSub('root')} />;
-  if (sub === 'support') return <SettingsSupportScreen onBack={() => setSub('root')} />;
-  if (sub === 'feedback') return <SettingsFeedbackScreen onBack={() => setSub('root')} />;
-  if (sub === 'macro') return <FinPrMacroScreen onBack={() => setSub('root')} />;
-  // "Macro aboneliğim": eski Subscriptions ekranı yerine Final Macro ve Abonelik'in "Öğün Aboneliği" sekmesi.
-  if (sub === 'macroSub') return <FinPrMacroScreen onBack={() => setSub('root')} initialTab={1} />;
-  if (sub === 'progress') {
-    return (
-      <FinPrProgressScreen
-        onBack={() => setSub('root')}
-        goalKcal={summary?.targetKcal}
-        targets={{
-          protein: summary?.targetProtein,
-          carbs: summary?.targetCarb,
-          fat: summary?.targetFat,
-        }}
-        onAddMeasurement={() => setSub('measurements')}
-      />
-    );
-  }
-  if (sub === 'badges') return <BadgesScreen onBack={() => setSub('root')} handle={handle} />;
-  if (sub === 'collection') return <CollectionScreen onBack={() => setSub('root')} />;
-  if (sub === 'reviews') return <FinPrReviewsScreen onBack={() => setSub('root')} />;
-  if (sub === 'cards') return <FinPrCardsScreen onBack={() => setSub('root')} />;
-  if (sub === 'coupons') return <FinPrCouponsScreen onBack={() => setSub('root')} />;
-  if (sub === 'measurements') return <FinPrMeasurementsScreen onBack={() => setSub('progress')} />;
-  if (sub === 'public') {
-    return (
-      <PublicPreviewScreen
-        onBack={() => setSub('root')}
-        handle={handle}
-        displayName={userName}
-        avatarUrl={avatarUrl}
-        isPrivate={isPrivate}
-      />
-    );
-  }
-
   // Hedef halkası: bugünkü tüketim / hedef (veri yoksa boş halka).
   const goalRatio =
     summary?.targetKcal && summary.targetKcal > 0
@@ -311,8 +210,8 @@ export default function FinPrProfileScreen() {
         <ProfileSocialHeader
           name={userName}
           avatarUrl={avatarUrl}
-          onAvatarPress={() => setSub('public')}
-          onOpenSubscriptions={() => setSub('macro')}
+          onAvatarPress={() => openSub('public', { handle, displayName: userName, avatarUrl, isPrivate })}
+          onOpenSubscriptions={() => openSub('macro')}
         />
 
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
@@ -355,7 +254,7 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<ChartLine size={18} color={t.color.ink} />}
               label={tr('profil.progress')}
-              onPress={() => setSub('progress')}
+              onPress={() => openSub('progress')}
             />
             {/* G15-S2 (FinCollectEntry): en az 1 tabak kartı varsa koleksiyon şeridi. */}
             {collectionStamps.length > 0 ? (
@@ -363,13 +262,13 @@ export default function FinPrProfileScreen() {
                 count={collectionStamps.length}
                 recent={collectionStamps}
                 isNew={collectionNew}
-                onPress={() => setSub('collection')}
+                onPress={() => openSub('collection')}
               />
             ) : (
               <FinRow
                 icon={<TrophyIcon size={18} color={t.color.ink} />}
                 label={tr('profil.collection')}
-                onPress={() => setSub('collection')}
+                onPress={() => openSub('collection')}
               />
             )}
           </FinRowGroup>
@@ -383,7 +282,7 @@ export default function FinPrProfileScreen() {
               icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
               label={tr('profil.macro_and_sub')}
               value={macroProgressInfo.balance > 0 ? `${macroProgressInfo.balance} Macro` : undefined}
-              onPress={() => setSub('macro')}
+              onPress={() => openSub('macro')}
             />
             <FinRow
               icon={<Package size={18} color={t.color.ink} />}
@@ -399,18 +298,18 @@ export default function FinPrProfileScreen() {
               <FinRow
                 icon={<CreditCard size={18} color={t.color.ink} />}
                 label={tr('profil.saved_cards')}
-                onPress={() => setSub('cards')}
+                onPress={() => openSub('cards')}
               />
             ) : null}
             <FinRow
               icon={<Tag size={18} color={t.color.ink} />}
               label={tr('profil.coupons')}
-              onPress={() => setSub('coupons')}
+              onPress={() => openSub('coupons')}
             />
             <FinRow
               icon={<Star size={18} color={t.color.ink} />}
               label={tr('profil.reviews')}
-              onPress={() => setSub('reviews')}
+              onPress={() => openSub('reviews')}
             />
           </FinRowGroup>
         </View>
@@ -424,7 +323,7 @@ export default function FinPrProfileScreen() {
               first
               icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
               label={tr('profil.macro_subscription')}
-              onPress={() => setSub('macroSub')}
+              onPress={() => openSub('macroSub')}
             />
             <FinRow
               icon={<LockSimple size={18} color={t.color.ink} />}
@@ -435,7 +334,7 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<SealCheck size={18} color={t.color.ink} />}
               label={tr('profil.my_badges')}
-              onPress={() => setSub('badges')}
+              onPress={() => openSub('badges', { handle })}
             />
           </FinRowGroup>
         </View>
@@ -443,25 +342,25 @@ export default function FinPrProfileScreen() {
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_settings')}</FinSectionLabel>
           <FinRowGroup>
-            <FinRow first icon={<User size={18} color={t.color.ink} />} label={tr('profil.personal')} onPress={() => setSub('personal')} />
-            <FinRow icon={<Bell size={18} color={t.color.ink} />} label={tr('profil.notify')} onPress={() => setSub('notify')} />
-            <FinRow icon={<LockSimple size={18} color={t.color.ink} />} label={tr('profil.privacy_row')} onPress={() => setSub('privacy')} />
-            <FinRow icon={<Shield size={18} color={t.color.ink} />} label={tr('profil.security')} onPress={() => setSub('security')} />
+            <FinRow first icon={<User size={18} color={t.color.ink} />} label={tr('profil.personal')} onPress={() => openSub('personal')} />
+            <FinRow icon={<Bell size={18} color={t.color.ink} />} label={tr('profil.notify')} onPress={() => openSub('notify')} />
+            <FinRow icon={<LockSimple size={18} color={t.color.ink} />} label={tr('profil.privacy_row')} onPress={() => openSub('privacy')} />
+            <FinRow icon={<Shield size={18} color={t.color.ink} />} label={tr('profil.security')} onPress={() => openSub('security')} />
             <FinRow
               icon={<Translate size={18} color={t.color.ink} />}
               label={tr('profil.language')}
               value={tr(lang === 'en' ? 'profil.lang_en' : 'profil.lang_tr')}
               onPress={() => setLang(lang === 'en' ? 'tr' : 'en')}
             />
-            <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('profil.agreements')} onPress={() => setSub('agreements')} />
+            <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('profil.agreements')} onPress={() => openSub('agreements')} />
           </FinRowGroup>
         </View>
 
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_support')}</FinSectionLabel>
           <FinRowGroup>
-            <FinRow first icon={<Headset size={18} color={t.color.ink} />} label={tr('profil.help_support')} onPress={() => setSub('support')} />
-            <FinRow icon={<ChatText size={18} color={t.color.ink} />} label={tr('profil.feedback')} onPress={() => setSub('feedback')} />
+            <FinRow first icon={<Headset size={18} color={t.color.ink} />} label={tr('profil.help_support')} onPress={() => openSub('support')} />
+            <FinRow icon={<ChatText size={18} color={t.color.ink} />} label={tr('profil.feedback')} onPress={() => openSub('feedback')} />
             <FinRow icon={<MapTrifold size={18} color={t.color.ink} />} label={tr('profil.delivery_where')} onPress={() => setInfoOpen(true)} />
           </FinRowGroup>
         </View>
@@ -490,7 +389,7 @@ export default function FinPrProfileScreen() {
         bottom={tabBarContentInset(insets.bottom) + 8}
         onView={() => {
           setCollectionToast(false);
-          setSub('collection');
+          openSub('collection');
         }}
         onDismiss={() => setCollectionToast(false)}
         autoHideMs={__DEV__ && collectionNew ? 0 : 4000}

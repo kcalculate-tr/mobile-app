@@ -22,6 +22,7 @@ import type { PublicProfile } from '../../types';
 import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
 import { roleBadgeKey } from '../../../kesfet/ui/format';
 import { FinScreen, heading, body, bodyBold, bodySemibold } from '../finUi';
+import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../../core/design/sectionSlide';
 
 export type PublicPost = { id: string; photoUrl: string | null; adds: number };
 
@@ -61,6 +62,7 @@ export default function PublicPreviewScreen({
 
   const [profile, setProfile] = useState<PublicProfile | null>(vitrinProfile ?? null);
   const [tab, setTab] = useState<'plates' | 'posts'>('plates');
+  const [tabsW, onTabsLayout] = useRowWidth();
   const posts: PublicPost[] = vitrinPosts ?? [];
 
   useEffect(() => {
@@ -212,7 +214,20 @@ export default function PublicPreviewScreen({
       </View>
 
       {/* Sekmeler */}
-      <View style={{ flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.color.line }}>
+      <View
+        onLayout={onTabsLayout}
+        accessibilityRole="tablist"
+        style={{ flexDirection: 'row', marginTop: 18, borderTopWidth: 1, borderBottomWidth: 1, borderColor: t.color.line }}
+      >
+        {/* G21-S1 md.9: alt çizgi seçili sekmeye kayar (azaltılmışta opaklık). */}
+        <SlidingIndicator
+          testID="public-tab-indicator"
+          index={tab === 'plates' ? 0 : 1}
+          count={2}
+          containerWidth={tabsW}
+          itemWidth={56}
+          style={{ bottom: 0, height: 3, borderRadius: 2, backgroundColor: t.color.ink }}
+        />
         {(['plates', 'posts'] as const).map((k) => {
           const on = tab === k;
           return (
@@ -226,14 +241,12 @@ export default function PublicPreviewScreen({
               <Text style={{ fontFamily: on ? bodyBold : body, fontSize: 15, color: on ? t.color.ink : t.color.secondary }}>
                 {tr(k === 'plates' ? 'profil.tab_plates' : 'profil.tab_posts')}
               </Text>
-              {on ? (
-                <View style={{ position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2, backgroundColor: t.color.ink }} />
-              ) : null}
             </Pressable>
           );
         })}
       </View>
 
+      <SectionSlide index={tab === 'plates' ? 0 : 1}>
       {blocked ? (
         <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, textAlign: 'center', paddingVertical: 40 }}>
           {tr('profil.blocked_title')}
@@ -274,6 +287,7 @@ export default function PublicPreviewScreen({
           {tr('profil.public_empty')}
         </Text>
       )}
+      </SectionSlide>
     </FinScreen>
   );
 }
