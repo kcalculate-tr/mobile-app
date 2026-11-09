@@ -7,13 +7,15 @@
 // öğün seçici sayfasını (FinAddSheet) açar. Lime YALNIZ dolgu; üstündeki metin
 // koyu (onAccent). Hızlı loglarken görselin ekrandaki karesi ölçülüp uçuş
 // (`kcal:logFlight`) için çağırana verilir.
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { AppText, fontFamily, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Icon } from './icons';
-import type { MealCard as MealCardData } from '../types';
+import type { MealCard as MealCardData, MealType } from '../types';
+import { MealMenuPopover } from '../../gun/home/MealMenuPopover'; // G18-S5 md.8: S2 FinMoPopover
+import type { Rect } from '../../gun/home/popoverGeometry';
 
 export interface LogOriginFrame {
   x: number;
@@ -29,7 +31,11 @@ export function MealCard({
   onQuickLog,
   onOpenSheet,
   logLabel,
+  quickMeal,
 }: {
+  /** G18-S5 md.8 — verilirse ⌄ yerinde menüyü (FinMoPopover: öğün + porsiyon) açar; seçilen öğün
+   *  etiketi günceller, ana yarı o öğüne + porsiyonla loglar. Uzun bas = seçici sayfası (korundu). */
+  quickMeal?: MealType;
   meal: MealCardData;
   /** G15 — düğmenin tam metni (doğru yönelme ekiyle, "Kahvaltı’ya logla"). */
   logLabel?: string;
@@ -38,14 +44,29 @@ export function MealCard({
   /** Hızlı loglanacak öğünün etiketi (saate göre), örn. "Öğle". */
   quickMealLabel: string;
   /** Dokun = saate göre öğüne doğrudan logla; görselin ekran karesini döner. */
-  onQuickLog: (frame: LogOriginFrame) => void;
+  onQuickLog: (frame: LogOriginFrame, meal?: MealType, portion?: number) => void;
   /** ⌄ / uzun bas = porsiyon + öğün seçici sayfası. */
   onOpenSheet: () => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
   const thumbRef = useRef<View>(null);
-  const logText = logLabel ?? tr('kesfet.ui.meal_card.log_to_meal', { meal: quickMealLabel });
+  const btnRef = useRef<View>(null);
+  const [menuMeal, setMenuMeal] = useState<MealType | null>(null);
+  const [portion, setPortion] = useState(1);
+  const [anchor, setAnchor] = useState<Rect | null>(null);
+  const meal0 = menuMeal ?? quickMeal;
+  const logText =
+    quickMeal && menuMeal && menuMeal !== quickMeal
+      ? tr('kesfet.ui.meal_card.log_to', { meal: tr(`kesfet.ui.meal_dat.${menuMeal}`) })
+      : logLabel ?? tr('kesfet.ui.meal_card.log_to_meal', { meal: quickMealLabel });
+  const openMenu = () => {
+    if (!quickMeal) return onOpenSheet();
+    if (anchor) return;
+    const node = btnRef.current;
+    if (!node || typeof node.measureInWindow !== 'function') return onOpenSheet();
+    node.measureInWindow((x, y, width, height) => setAnchor({ x, y, width, height }));
+  };
 
   const chip = (label: string, value: number) => (
     <View style={[styles.chip, { backgroundColor: t.color.line }]}>
@@ -58,9 +79,9 @@ export function MealCard({
   const quickLog = () => {
     const node = thumbRef.current;
     if (node && typeof node.measureInWindow === 'function') {
-      node.measureInWindow((x, y, w, h) => onQuickLog({ x, y, w, h }));
+      node.measureInWindow((x, y, w, h) => onQuickLog({ x, y, w, h }, quickMeal ? meal0 : undefined, quickMeal ? portion : undefined));
     } else {
-      onQuickLog({ x: 0, y: 0, w: 0, h: 0 });
+      onQuickLog({ x: 0, y: 0, w: 0, h: 0 }, quickMeal ? meal0 : undefined, quickMeal ? portion : undefined);
     }
   };
 
@@ -111,7 +132,7 @@ export function MealCard({
           <View style={styles.added} />
         )}
         {/* Lime "⟨Öğün⟩'ye logla ⌄" — iki parçalı: etiket (hızlı logla) + ⌄ (seçici). */}
-        <View style={[styles.logBtn, { backgroundColor: t.color.accent }]}>
+        <View ref={btnRef} collapsable={false} style={[styles.logBtn, { backgroundColor: t.color.accent }]}>
           <Pressable
             onPress={quickLog}
             onLongPress={onOpenSheet}
@@ -127,14 +148,26 @@ export function MealCard({
           </Pressable>
           <View style={[styles.logDivider, { backgroundColor: 'rgba(10,10,10,0.28)' }]} />
           <Pressable
-            onPress={onOpenSheet}
+            onPress={openMenu}
+            onLongPress={quickMeal ? onOpenSheet : undefined}
             accessibilityRole="button"
             accessibilityLabel={tr('kesfet.ui.meal_card.pick_meal')}
+            accessibilityState={quickMeal ? { expanded: anchor != null } : undefined}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             style={({ pressed }) => [styles.logCaret, pressed && { opacity: 0.85 }]}
           >
             <Icon name="caretDown" size={14} color={t.color.onAccent} />
           </Pressable>
+          {quickMeal ? (
+            <MealMenuPopover
+              anchor={anchor}
+              meal={meal0 ?? quickMeal}
+              portion={portion}
+              onPickMeal={setMenuMeal}
+              onPickPortion={setPortion}
+              onClosed={() => setAnchor(null)}
+            />
+          ) : null}
         </View>
       </View>
     </View>

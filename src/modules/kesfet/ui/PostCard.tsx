@@ -29,6 +29,7 @@ import { VerifiedBadge } from './VerifiedBadge';
 import { Icon, type IconName } from './icons';
 import { useFeedCardEnter, useIconPop, useDotBurst, useCountRoll } from '../motion';
 import type { PostCardModel } from './format';
+import type { MealType } from '../types';
 
 function Action({
   icon,
@@ -98,6 +99,7 @@ export function PostCard({
   onSave,
   onShare,
   onQuickLog,
+  quickMeal,
   onOpenSheet,
   onOpenMenu,
   onComment,
@@ -122,7 +124,9 @@ export function PostCard({
   onSave: () => void;
   onShare: () => void;
   /** Öğün kartında dokun = saate göre doğrudan logla (görsel karesiyle). */
-  onQuickLog?: (frame: LogOriginFrame) => void;
+  onQuickLog?: (frame: LogOriginFrame, meal?: MealType, portion?: number) => void;
+  /** G18-S5 md.8 — yerinde öğün menüsü (FinMoPopover) için saate göre öğün; yoksa ⌄ seçici sayfası. */
+  quickMeal?: MealType;
   /** Öğün kartında ⌄ / uzun bas = porsiyon + öğün seçici. */
   onOpenSheet?: () => void;
   onOpenMenu: () => void;
@@ -277,7 +281,8 @@ export function PostCard({
                 loggedCount={model.stats.adds}
                 quickMealLabel={quickMealLabel ?? ''}
                 logLabel={quickLogLabel}
-                onQuickLog={(frame) => onQuickLog?.(frame)}
+                quickMeal={quickMeal}
+                onQuickLog={(frame, meal, portion) => onQuickLog?.(frame, meal, portion)}
                 onOpenSheet={() => onOpenSheet?.()}
               />
             </View>

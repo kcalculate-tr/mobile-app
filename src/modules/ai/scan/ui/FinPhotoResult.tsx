@@ -10,7 +10,7 @@
  * Kaydetme HER ZAMAN `saveAiScanEstimate`'i çağırır (ScanScreen) — burada yeni
  * kaydetme mantığı YOK; yalnız gram/porsiyon/eksik besin düzeltmesi hesaplanır.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import {
   ActivityIndicator,
@@ -35,6 +35,8 @@ import type { ClientMealType } from '../../../../core/meal/mealType';
 import type { ScanEstimate, ScanIngredient } from '../types';
 import { getKesfetClient, type ProductSearchItem } from '../../../kesfet';
 import { useOrientTarget } from '../../../onboarding/first/orient/useOrientTarget'; // G18-S1 temas: Orient2
+import { MealMenuPopover } from '../../../gun/home/MealMenuPopover'; // G18-S5 temas (md.8): S2 FinMoPopover
+import type { Rect } from '../../../gun/home/popoverGeometry';
 
 const PORTIONS = [0.5, 1, 1.5];
 const MEAL_CYCLE: ClientMealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -130,6 +132,19 @@ export default function FinPhotoResult({
 }) {
   const t = useTheme();
   const orientLog = useOrientTarget('log'); // G18-S1 temas: Orient2 (Tara sonucu · logla)
+  // G18-S5 md.8: "logla ⌄" çentiği S2'nin yerinde menüsünü (FinMoPopover) açar. Ölçüm ref'i
+  // oryantasyon hedefiyle aynı düğüm (iki ref'e de yazılır).
+  const pillRef = useRef<View | null>(null);
+  const orientRef = orientLog.ref;
+  const setPillRef = useCallback(
+    (n: View | null) => {
+      pillRef.current = n;
+      if (orientRef) (orientRef as React.MutableRefObject<View | null>).current = n;
+    },
+    [orientRef],
+  );
+  const [menuAnchor, setMenuAnchor] = useState<Rect | null>(null);
+  const [platePortion, setPlatePortion] = useState(1);
   const k = tokens(t.isDark);
   const { t: tr } = useT();
   const insets = useSafeAreaInsets();
@@ -186,9 +201,31 @@ export default function FinPhotoResult({
   const slot = mealType === 'breakfast' || mealType === 'lunch' || mealType === 'dinner' ? mealType : 'snack';
   const cycleMeal = () => {
     haptic('selection');
-    const idx = MEAL_CYCLE.indexOf(mealType);
-    onChangeMealType(MEAL_CYCLE[(idx + 1) % MEAL_CYCLE.length]);
+    if (menuAnchor) return;
+    const node = pillRef.current;
+    if (!node || typeof node.measureInWindow !== 'function') {
+      // Ölçülemezse eski davranış: sıradaki öğün.
+      const idx = MEAL_CYCLE.indexOf(mealType);
+      onChangeMealType(MEAL_CYCLE[(idx + 1) % MEAL_CYCLE.length]);
+      return;
+    }
+    node.measureInWindow((x, y, width, height) => setMenuAnchor({ x, y, width, height }));
   };
+  // Menüdeki porsiyon = bütün tabak; satır porsiyon çipleriyle aynı hesap (gram = taban × p).
+  const pickPlatePortion = (p: number) => {
+    setPlatePortion(p);
+    setRows((prev) => prev.map((r) => (r.removed ? r : { ...r, portion: p, grams: r.baseGrams * p })));
+  };
+  const menuEl = (
+    <MealMenuPopover
+      anchor={menuAnchor}
+      meal={slot}
+      portion={platePortion}
+      onPickMeal={(m) => onChangeMealType(m)}
+      onPickPortion={pickPlatePortion}
+      onClosed={() => setMenuAnchor(null)}
+    />
+  );
   const update = (i: number, patch: Partial<Row>) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const count = rows.filter((r) => !r.removed).length;
 
@@ -232,7 +269,8 @@ export default function FinPhotoResult({
           <AppText tone="secondary" style={styles.cap}>
             {`${adjusted.kcal} kcal, P ${adjusted.protein_g} g, K ${adjusted.carbs_g} g, Y ${adjusted.fat_g} g`}
           </AppText>
-          <View {...orientLog} style={[styles.logPill, styles.cutPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
+          {menuEl}
+          <View {...orientLog} ref={setPillRef} collapsable={false} style={[styles.logPill, styles.cutPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
             <Pressable
               onPress={() => {
                 haptic('light');
@@ -253,6 +291,7 @@ export default function FinPhotoResult({
               disabled={saving || saved}
               accessibilityRole="button"
               accessibilityLabel={tr('gun.change_meal', { meal: tr(`meal.${slot}`) })}
+              accessibilityState={{ expanded: menuAnchor != null }}
               style={styles.logCaret}
             >
               <CaretDown size={16} color={t.color.onAccent} weight="bold" />
@@ -483,7 +522,8 @@ export default function FinPhotoResult({
       ) : null}
 
       <View style={[styles.bottom, { backgroundColor: k.sheet, borderTopColor: k.line, paddingBottom: Math.max(16, insets.bottom + 4) }]}>
-        <View {...orientLog} style={[styles.logPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
+        {menuEl}
+        <View {...orientLog} ref={setPillRef} collapsable={false} style={[styles.logPill, { backgroundColor: t.color.accent, opacity: saving ? 0.6 : 1 }]}>
           <Pressable
             onPress={() => {
               haptic('light');
@@ -510,6 +550,7 @@ export default function FinPhotoResult({
             disabled={saving || saved}
             accessibilityRole="button"
             accessibilityLabel={tr('gun.change_meal', { meal: tr(`meal.${slot}`) })}
+            accessibilityState={{ expanded: menuAnchor != null }}
             style={styles.logCaret}
           >
             <CaretDown size={16} color={t.color.onAccent} weight="bold" />

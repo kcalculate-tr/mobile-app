@@ -203,6 +203,8 @@ export function KesfetScreen() {
   // G8 bayrakları — her biri kapalıyken ilgili davranış HİÇ render olmaz.
   const kesfetPaylasim = useFeature('kesfet_paylasim');
   const kesfetYorum = useFeature('kesfet_yorum');
+  // G18-S5 md.8: yerinde öğün menüsü (FinMoPopover) yalnız yeni kabukta; kapalıyken ⌄ = seçici sayfası (aynen).
+  const yeniKabukMenu = useFeature('yeni_kabuk');
   const sosyalBildirim = useFeature('sosyal_bildirim');
 
   const unread = useNotificationsStore((s) => s.unread);
@@ -498,10 +500,10 @@ export function KesfetScreen() {
 
   // Hızlı logla — öğün kartında dokununca saate göre öğüne, porsiyon 1 ile logla.
   const onQuickLog = useCallback(
-    (post: FeedPost, frame: LogOriginFrame) => {
+    (post: FeedPost, frame: LogOriginFrame, meal?: MealType, portion?: number) => {
       touchSocial();
-      const mealType = inferMealTypeFromHour(new Date().getHours());
-      void logMeal(post, mealType, 1, frame);
+      const mealType = meal ?? inferMealTypeFromHour(new Date().getHours());
+      void logMeal(post, mealType, portion ?? 1, frame);
     },
     [logMeal, touchSocial],
   );
@@ -657,7 +659,8 @@ export function KesfetScreen() {
             }}
             onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
             onShare={() => onShare(item)}
-            onQuickLog={(frame) => onQuickLog(item, frame)}
+            quickMeal={yeniKabukMenu ? quickMealType : undefined}
+            onQuickLog={(frame, meal, portion) => onQuickLog(item, frame, meal, portion)}
             onOpenSheet={() => setSheetPost(item)}
             onOpenMenu={() => setMenuPost(item)}
             onComment={() => {
@@ -670,7 +673,7 @@ export function KesfetScreen() {
         </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
+    [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa
