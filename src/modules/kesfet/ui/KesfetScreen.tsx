@@ -661,6 +661,12 @@ export function KesfetScreen() {
             fitsGoal={remainingKcal != null && item.meal_card != null ? item.meal_card.kcal <= remainingKcal : undefined}
             plateOpen={vitrinXray}
             onOpen={() => navigation.navigate('SharedPost', { postId: item.id })}
+            // G21-S1 md.8 (#D1): avatar / ad → açık profil (takip düğmesi oradan; önce yalnız bildirimden ulaşılıyordu).
+            onOpenAuthor={
+              item.author.handle
+                ? () => navigation.navigate('PublicProfile', { handle: item.author.handle.replace(/^@/, '') })
+                : undefined
+            }
             onOpenVideo={() => setVideoPostId(item.id)}
             onLike={() => {
               touchSocial();

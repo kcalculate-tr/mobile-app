@@ -179,7 +179,8 @@ test('bulunamadı → "Ürün bulunamadı" + [Fotoğrafla tara] (foto moduna) + 
   });
   await waitFor(() => expect(tree.getByText('Elle ekle')).toBeTruthy());
   fireEvent.press(tree.getByText('Elle ekle'));
-  expect(mockNav.goBack).toHaveBeenCalled();
+  // G21-S1 md.8 (#D2): Elle ekle → Ana sayfa elle giriş sheet'i açık.
+  expect(mockNav.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Tracker', params: { finOpenManual: true } });
   expect(reserve).not.toHaveBeenCalled();
 });
 

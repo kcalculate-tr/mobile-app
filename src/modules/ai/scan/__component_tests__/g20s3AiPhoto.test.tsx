@@ -131,7 +131,8 @@ test('Vazgeç → ret kaydı + Elle gir yolu (Tara kapanır), fotoğraf gönderi
     fireEvent.press(tree.getByTestId('consent-sheet-ai_photo-cancel'));
   });
   expect(mockSetAi).toHaveBeenCalledWith(false, 'scan');
-  expect(mockNav.goBack).toHaveBeenCalledTimes(1);
+  // G21-S1 md.8 (#D2): Vazgeç → Elle gir → Ana sayfa elle giriş sheet'i açık.
+  expect(mockNav.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Tracker', params: { finOpenManual: true } });
   expect(c.reserveScan).not.toHaveBeenCalled();
 });
 

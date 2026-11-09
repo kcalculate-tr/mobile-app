@@ -584,6 +584,15 @@ export default function ScanScreen() {
     setLimitVisible(false);
     setErrorKind(null);
     void clearPendingScanPhoto();
+    // G21-S1 md.8 (#D2): yeni kabukta "Elle gir/ekle" Ana sayfaya dönüp elle giriş sheet'ini
+    // AÇAR (önce yalnız geri dönüyordu). Eski kabuk bugünkü gibi geri döner (parite).
+    if (yeniKabuk) {
+      (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate('Tabs', {
+        screen: 'Tracker',
+        params: { finOpenManual: true },
+      });
+      return;
+    }
     navigation.goBack();
   };
 

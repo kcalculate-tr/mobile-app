@@ -6,7 +6,7 @@ export type TabParamList = {
   Cart: undefined;
   Subscriptions: undefined;
   // G18-S4 md.3: FinPush seri/hatırlatma dokunuşu → logla sheet'i açık (S2 tüketir).
-  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack' } | undefined;
+  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack'; finOpenManual?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack' } | undefined;
   Profile: undefined;
   // G11-S2 yeni kabuk: Keşfet sekmesi (yalnız `kesfet` + `yeni_kabuk` açıkken
   // R3 tab navigatörüne eklenir). `asTab` ekrana tab bağlamında olduğunu söyler

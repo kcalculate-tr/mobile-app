@@ -18,6 +18,8 @@
  * cihazda oturum açık mı" dürüstçe gösterilir (1 cihaz = bu cihaz).
  */
 import React, { useEffect, useState } from 'react';
+import { useFeature } from '../../../../core/flags';
+import { resetToSignedOut } from '../../../../navigation/signOutReset';
 import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import {
@@ -83,6 +85,7 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
   const t = useTheme();
   const x = finExtras(t);
   const { t: tr } = useT();
+  const yeniOnboardingFlag = useFeature('yeni_onboarding');
   const { user, signOut } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -173,7 +176,9 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
       }
       await unregisterPushToken();
       await signOut();
-      // Imperatif reset YOK — signOut null user ile state-driven Auth akışına geçer.
+      // G21-S1 md.8 (#D4): yığın oturumsuz soğuk açılışla aynı ilk ekrana sıfırlanır
+      // (önce oturumsuz Profil sekmesi + üstüne Login kalıyordu).
+      resetToSignedOut(yeniOnboardingFlag);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : tr('profil.delete_confirm_body');
       Alert.alert(tr('profil.delete_account'), msg);

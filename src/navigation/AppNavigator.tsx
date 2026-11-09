@@ -550,8 +550,8 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileContracts" component={v2ScreenFor('ProfileContracts', yeniSiparis, ContractsLazy)} />
       <Stack.Screen name="PaymentScreen" component={v2ScreenFor('PaymentScreen', yeniSiparis, PaymentLazy)} />
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
-      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...aiPush, contentStyle: { backgroundColor: '#0A0A0A' } }} />
-      <Stack.Screen name="SharedProfile" component={finalScreenFor('SharedProfile', finalFlag.kesfet, SharedProfileLazy)} options={{ ...aiPush, contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...aiPush, contentStyle: { backgroundColor: yeniKabukRoutes ? stackBg : '#0A0A0A' } }} />
+      <Stack.Screen name="SharedProfile" component={finalScreenFor('SharedProfile', finalFlag.kesfet, SharedProfileLazy)} options={{ ...aiPush, contentStyle: { backgroundColor: yeniKabukRoutes ? stackBg : '#0A0A0A' } }} />
       {/* AI tarama (G6-S4) — tam ekran kamera görünümü. */}
       <Stack.Screen
         name="AiScan"

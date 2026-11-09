@@ -77,6 +77,7 @@ import { loadCollection, markWon, ProfileCollectionRow, type CollectionStamp } f
 import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
 import { tabBarContentInset } from '../../../shell';
 import { useFeature } from '../../../../core/flags';
+import { resetToSignedOut } from '../../../../navigation/signOutReset';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -89,6 +90,7 @@ export default function FinPrProfileScreen() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
+  const yeniOnboardingFlag = useFeature('yeni_onboarding');
 
   // G21-S1 md.9: alt sayfalar kök yığında `ProfileSub` rotası (sağdan kayar, iOS
   // kenar jesti, Android geri tuşu yığından). Önceki sekme içi `setSub` + tab bar
@@ -192,6 +194,8 @@ export default function FinPrProfileScreen() {
     await signOut();
     await AsyncStorage.multiRemove(['@kcal_onboarding_done', '@kcal_needs_nutrition_profile']);
     useNavGate.getState().refresh();
+    // G21-S1 md.8 (#D4): oturumsuz soğuk açılışla aynı ilk ekrana sıfırla.
+    resetToSignedOut(yeniOnboardingFlag);
   };
 
   // Hedef halkası: bugünkü tüketim / hedef (veri yoksa boş halka).

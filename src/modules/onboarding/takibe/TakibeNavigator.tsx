@@ -74,6 +74,20 @@ const GLASS: Record<'trophy' | 'flame' | 'drop' | 'foot' | 'bowl' | 'flameAbout'
   flameAbout: { source: require('../../../../assets/glass/flame.png'), x: 282, y: 101, w: 76, h: 93 },
 };
 
+/**
+ * G21-S1 md.8 (#D3): "Atla" — Profil › Hedefim (editGoal) düzenlemesinde açıldığı yere
+ * (Profil) geri döner; yeni kullanıcı akışında bugünkü gibi Ana sayfa.
+ */
+export function tbSkipTarget(editGoal: boolean, canGoBack: boolean): 'back' | 'home' {
+  return editGoal && canGoBack ? 'back' : 'home';
+}
+
+function tbSkipOut(root: NativeStackNavigationProp<RootStackParamList> | undefined) {
+  if (!root) return;
+  if (tbSkipTarget(useTbDraft.getState().editGoal === true, root.canGoBack()) === 'back') root.goBack();
+  else root.navigate('Tabs', { screen: 'Tracker' });
+}
+
 const TB_STEPS = 6;
 
 /** Takibe başla iskeleti: "Takibe başla" başlığı + 6 nokta + geri + Atla. */
@@ -136,7 +150,7 @@ function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'
       cardTop={213}
       glass={GLASS.trophy}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : root?.goBack())}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={next} />}
     >
       <OnbTitle>{i18n.t('tb.goal.title')}</OnbTitle>
@@ -163,7 +177,7 @@ function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'
       cardTop={213}
       glass={GLASS.flame}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={() => navigation.navigate('TbAbout')} />}
     >
       <OnbTitle>{i18n.t('tb.pace.title')}</OnbTitle>
@@ -225,7 +239,7 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
       cardPad={[30, 18, 18]}
       glass={GLASS.flameAbout}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       scroll
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={next} disabled={!complete} />}
     >
@@ -331,7 +345,7 @@ function ActivityScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbA
       cardTop={213}
       glass={GLASS.foot}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={next} />}
     >
       <OnbTitle>{i18n.t('tb.activity.title')}</OnbTitle>
@@ -391,7 +405,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
       cardTop={112}
       cardPad={[24, 20, 20]}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={
         <OnbButton
           label={draft.editGoal ? i18n.t('common.save') : i18n.t('tb.continue')}
