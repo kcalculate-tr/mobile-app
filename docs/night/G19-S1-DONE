@@ -1,0 +1,13 @@
+G19-S1 tamamlandı — 9 Kas 2026, dal night19/scan (taban night18/release 94f3bf8).
+
+8 madde: 1 uçtan uca denetim (14 hata + 5 ek bulgu düzeltildi, testli; tablo LOG'da)
+· 2 hak/maliyet (sayaç, İstanbul gece yarısı, iade, idempotent logla; sunucu: sonuç önbelleği,
+gece yarısı düzeltmesi, dakika + anahtar başına sınır, görsel boyut, model zaman aşımı → DOSYA)
+· 3 sonuç kalitesi (öğe kcal/makro, düzeltme hesabı, elle ekleme, EN adlar, not) · 4 çevrimdışı/zayıf ağ
+· 5 izinler/platform (galeri izinsiz, eski derleme yedek yolu, iOS izin metni) · 6 ölçüm olayları (D-S1 adları)
+· 7 docs/night/TARA_ACILIS.md · 8 kontroller.
+
+Kontrol: tsc 0 · unit 738 (737 ✓, 1 atlandı) · jest 38/205, snapshot 2/2 · PGlite 20/20 ·
+noLegacyWhenFlagsOn ✓ (Eski tasarım: 0) · bayrak kapalı parite ✓ · expo export iOS ✓ + Android ✓ ·
+TR/EN kare dizisi (docs/night/g19-s1/).
+Canlıya uygulanacak / deploy / SORULAR: docs/night/G19-S1-LOG.md
