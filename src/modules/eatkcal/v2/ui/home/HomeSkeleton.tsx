@@ -15,16 +15,14 @@ export function HomeSkeleton() {
   );
   return (
     <View accessible accessibilityLabel={t('eatkcal.v2.common.loading')} testID="ek-home-skeleton">
-      <View style={styles.gutter}>
+      {/* Tur 26 md.11 (FinEkHomeSkeleton): sipariş kartı 88 · Macro 44 · teslimat 52 · banner 104
+          (yalnız görsel) + altında başlık satırı. */}
+      <View style={[styles.gutter, { gap: 10 }]}>
+        <EkSkeleton height={88} radius={20} />
         <EkSkeleton height={44} radius={22} />
-        <EkSkeleton height={52} radius={18} style={{ marginTop: 10 }} />
-      </View>
-      <View style={{ marginTop: 10 }}>
-        <HRow>
-          {[0, 1].map((i) => (
-            <EkSkeleton key={i} width={300} height={104} radius={20} />
-          ))}
-        </HRow>
+        <EkSkeleton height={52} radius={18} />
+        <EkSkeleton height={104} radius={20} />
+        <EkSkeleton width={180} height={14} radius={7} style={{ marginTop: -2 }} />
       </View>
       <View style={{ marginTop: 10 }}>
         <HRow>

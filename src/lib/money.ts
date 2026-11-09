@@ -30,3 +30,25 @@ export const tlFark = (value: number, ondalik = 0): string => {
   const isaret = n > 0 ? '+' : n < 0 ? '-' : '';
   return `${isaret}${Math.abs(n).toFixed(ondalik)} ${PARA_BIRIMI}`;
 };
+
+/**
+ * G18 (İlter 8 Kas) — Final fiyat biçimi, yeni arayüzün TEK kaynağı:
+ * `285 TL`, `285,50 TL` (ondalık virgül, binlik nokta ayracı YOK, ₺ YOK).
+ * EN arayüzde de aynı. Eski (bayrak kapalı) ekranlar `tl`'yi kullanmaya devam eder.
+ */
+export const formatPrice = (value: number): string => {
+  const n = Math.round((Number(value) || 0) * 100) / 100;
+  const abs = Math.abs(n);
+  const body = Number.isInteger(abs) ? String(abs) : abs.toFixed(2).replace('.', ',');
+  return `${n < 0 ? '-' : ''}${body} ${PARA_BIRIMI}`;
+};
+
+/** `+150 TL` / `-20 TL` / `+12,50 TL` — seçenek farkı, indirim satırı. */
+export const formatPriceDelta = (value: number): string => {
+  const n = Number(value) || 0;
+  return `${n > 0 ? '+' : n < 0 ? '-' : ''}${formatPrice(Math.abs(n))}`;
+};
+
+/** Hazır metindeki `tl()` çıktılarını (`300.00 TL`) `formatPrice` biçimine çevirir; binlikli `1.250 TL` dokunulmaz. */
+export const reformatLegacyTl = (text: string): string =>
+  text.replace(/(^|[^\d.])(\d+)\.(\d{1,2}) TL/g, (_m, pre: string, i: string, d: string) => `${pre}${formatPrice(Number(`${i}.${d}`))}`);

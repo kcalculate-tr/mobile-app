@@ -26,7 +26,7 @@ import {
   type DeliveryZoneRow,
 } from '../../../../lib/delivery';
 import { fetchBranches, type Branch } from '../../../../lib/branches';
-import { tlGruplu } from '../../../../lib/money';
+import { formatPrice } from '../../../../lib/money';
 import { ekType, useEk } from './kit';
 import { commonImmediateEta, immediateDeliveryFree, minOrderSummary } from '../model/addressInfo';
 
@@ -213,7 +213,7 @@ export function EkInfoSheet({
                 <View style={styles.kv}>
                   <Text style={[ekType.b15, { color: c.ink, fontSize: 14 }]}>{t('eatkcal.v2.info.min_order')}</Text>
                   <Text style={[ekType.b15s, ekType.num, { color: c.ink, fontSize: 14 }]}>
-                    {minOrder === 'varies' ? t('eatkcal.v2.info.min_order_varies') : tlGruplu(minOrder)}
+                    {minOrder === 'varies' ? t('eatkcal.v2.info.min_order_varies') : formatPrice(minOrder)}
                   </Text>
                 </View>
               ) : null}

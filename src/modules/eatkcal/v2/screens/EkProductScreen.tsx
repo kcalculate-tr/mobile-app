@@ -10,6 +10,8 @@
 // Yeni fiyat/sipariş mantığı YOK. Yalnız `yeni_siparis` açıkken kayıtlı rota.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   ScrollView,
   StyleSheet,
   View,
@@ -21,11 +23,11 @@ import {
 } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { ArrowLeft } from '../../../../components/icons';
+import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { getSupabaseClient } from '../../../../core/supabase';
-import { haptic } from '../../../../core/design';
+import { DURATION, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
 import { fetchProductImagesByName, fetchProductOptionGroups, getGroupSelectionLimits, mapProductRow } from '../../../../lib/products';
 import { fetchProductOptionLinks } from '../../../../lib/productOptions';
@@ -33,7 +35,7 @@ import { logEvent, track } from '../../../../lib/analytics';
 import { getEffectivePrice } from '../../../../utils/price';
 import { useCartStore } from '../../../../store/cartStore';
 import type { OptionGroup, Product, ProductOptionLink } from '../../../../types';
-import { EkButton, EkSkeleton, ekType, useEk } from '../ui/kit';
+import { EkButton, EkSkeleton, ekType, money, useEk } from '../ui/kit';
 import { useEkNav, type EkNavList } from '../nav';
 import {
   addTotal,
@@ -52,22 +54,27 @@ import {
   type TemplateSelections,
 } from '../model/productModel';
 import { OptionGroupSection, type OptionGroupModel } from '../ui/product/OptionGroupSection';
-import { LiveMacroStrip, MacroRings } from '../ui/product/MacroRings';
-import { ProductBottomBar } from '../ui/product/ProductBottomBar';
+import { MacroRings } from '../ui/product/MacroRings';
+import { ProductBottomBar, STD_EASE } from '../ui/product/ProductBottomBar';
 
 const HERO_H = 330;
-const BAR_H = 96;
-/** FinMoCart: "Sepette ✓" anı → geri dönüş. */
-const ADDED_HOLD_MS = 650;
+/** Final gövde alt boşluğu (tek alt katman açıkken 124 + 20 + pay). */
+const BODY_PAD_BOTTOM = 172;
+/** Tur 26d: kaydırma > 500 → üst satır açılır; < 40 → seçimle açılan satır kapanır. */
+const OPEN_AFTER_Y = 500;
+const CLOSE_BEFORE_Y = 40;
 
 export default function EkProductScreen() {
   const route = useRoute<RouteProp<EkNavList, 'EkProduct'>>();
   const navigation = useEkNav();
-  const { c, t, insets, theme } = useEk();
+  const { c, t, insets } = useEk();
+  const reduced = useReducedMotion();
   const addItem = useCartStore((s) => s.addItem);
   const productId = route.params?.productId;
   // YALNIZ __DEV__ vitrini (FinEkProductScroll): seçimlere kaydırılmış başlar.
   const vitrinScroll = __DEV__ ? (route.params as { vitrinScroll?: boolean } | undefined)?.vitrinScroll : undefined;
+  // YALNIZ __DEV__ vitrini (FinEkProductSelected / FinEkProductAdded): seçim yapılmış / eklendi hâli.
+  const vitrinState = __DEV__ ? (route.params as { vitrinState?: 'selected' | 'added' } | undefined)?.vitrinState : undefined;
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -83,16 +90,16 @@ export default function EkProductScreen() {
   const [quantity, setQuantity] = useState(1);
   const [tried, setTried] = useState(false);
   const [added, setAdded] = useState(false);
-  const [stripVisible, setStripVisible] = useState(false);
+  /** Kaydırma > 500 (Final `sv`). */
+  const [scrolledOpen, setScrolledOpen] = useState(false);
+  /** Seçim yapıldı (Final `sel`) — üste dönünce kapanır. */
+  const [selOpen, setSelOpen] = useState(false);
+  const [ingOpen, setIngOpen] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const bodyY = useRef(0);
   const macroBottom = useRef(0);
   const sectionY = useRef<Record<string, number>>({});
-  const addTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (addTimer.current) clearTimeout(addTimer.current);
-  }, []);
 
   // ── Ürün (ProductDetailScreen.tsx:229-279 ile aynı sorgu) ────────────────
   useEffect(() => {
@@ -305,6 +312,9 @@ export default function EkProductScreen() {
   };
 
   const onToggle = (groupKey: string, itemKey: string) => {
+    // Tur 26d/26e: seçim üst satırı açar; eklendikten sonra değişirse "Sepete ekle" geri gelir.
+    setSelOpen(true);
+    setAdded(false);
     if (groupKey === 'gramaj') {
       setGramajIndex(Number(itemKey));
       return;
@@ -341,16 +351,22 @@ export default function EkProductScreen() {
       // Ölçümler görsel yüklenince kayabildiğinden en az fotoğraf + başlık + halkalar kadar in.
       const y = Math.max(fy != null ? fy - 8 : 0, bodyY.current + macroBottom.current + 24, Math.round(winH * 1.05));
       scrollRef.current?.scrollTo({ y, animated: false });
-      setStripVisible(true);
+      setScrolledOpen(true);
     }, 300);
     return () => clearInterval(h);
   }, [vitrinScroll, loading]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (vitrinScroll) return; // dev vitrini: zorlanan kaydırılmış hâlde şerit açık kalır
-    if (macroBottom.current <= 0 || !derived?.macroCardEnabled) return;
-    const show = e.nativeEvent.contentOffset.y > bodyY.current + macroBottom.current;
-    if (show !== stripVisible) setStripVisible(show);
+    if (vitrinScroll || vitrinState) return; // dev vitrini: zorlanan hâl açık kalır
+    const y = e.nativeEvent.contentOffset.y;
+    const sv = y > OPEN_AFTER_Y;
+    if (sv !== scrolledOpen) setScrolledOpen(sv);
+    if (y < CLOSE_BEFORE_Y && selOpen) setSelOpen(false);
+  };
+
+  const onQuantity = (q: number) => {
+    setQuantity(q);
+    setAdded(false);
   };
 
   const handleAdd = () => {
@@ -368,11 +384,41 @@ export default function EkProductScreen() {
       addItem(call.product, call.options, call.quantity, call.parentLineKey),
     );
     haptic('light');
+    // Tur 26e: sayfada kalınır, aynı düğme "Sepete git" olur (otomatik geri dönüş yok).
     setAdded(true);
-    addTimer.current = setTimeout(() => {
-      if (navigation.canGoBack()) navigation.goBack();
-    }, ADDED_HOLD_MS);
   };
+
+  // YALNIZ __DEV__ vitrini: seçili / eklendi hâli (Final off 330).
+  useEffect(() => {
+    if (!vitrinState || loading) return;
+    const h = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: HERO_H, animated: false });
+      setSelOpen(true);
+      if (vitrinState === 'added') setAdded(true);
+    }, 900);
+    return () => clearTimeout(h);
+  }, [vitrinState, loading]);
+
+  // ── İçerik (Final "İçerik"): seçili bileşenlerden kısa özet + "Tüm içerik" satırları ──
+  const ingredients = useMemo(() => {
+    const gram = groupModels.find((g) => g.key === 'gramaj')?.items.find((i) => i.selected);
+    const rows: { key: string; name: string; value: string }[] = [];
+    groupModels.forEach((g) => {
+      if (g.key === 'gramaj') return;
+      g.items
+        .filter((i) => i.selected)
+        .forEach((i) => {
+          const kcal = i.kcal != null ? t('eatkcal.v2.product.kcal_n', { n: Math.round(i.kcal) }) : '';
+          rows.push({ key: `${g.key}:${i.key}`, name: i.name, value: rows.length === 0 && gram ? gram.name : kcal });
+        });
+    });
+    const names = rows.map((r) => r.name);
+    const summary =
+      names.length <= 1
+        ? names.join('')
+        : t('eatkcal.v2.product.list_and', { head: names.slice(0, -1).join(', '), last: names[names.length - 1] });
+    return { rows, summary, gram: gram?.name ?? null };
+  }, [groupModels, t]);
 
   // ── Durumlar ────────────────────────────────────────────────────────────
   if (loading) {
@@ -383,7 +429,7 @@ export default function EkProductScreen() {
           <EkSkeleton height={14} width="30%" />
           <EkSkeleton height={26} width="70%" />
           <EkSkeleton height={84} radius={20} />
-          <EkSkeleton height={184} width={136} radius={18} />
+          <EkSkeleton height={166} width={136} radius={18} />
         </View>
       </View>
     );
@@ -401,15 +447,21 @@ export default function EkProductScreen() {
 
   const heroUri = product.img && !heroError ? transformImageUrl(product.img, ImagePreset.productDetail) ?? product.img : null;
   const price = addTotal(derived, quantity);
-  const originalPrice = derived.hasDiscount ? addTotal(derived, quantity, 'original') : null;
-  const kcalTotal = derived.macroCardEnabled ? Math.round(derived.macros.kcal * quantity) : null;
-  const subline = ready
-    ? kcalTotal != null
-      ? t('eatkcal.v2.product.total_kcal', { n: kcalTotal })
-      : ''
-    : tried
-      ? t('eatkcal.v2.product.missing_list', { names: missing.map((m) => m.name).join(', ') })
-      : t('eatkcal.v2.product.complete_required');
+  // Başlıktaki fiyat satırı (Final): birim fiyat, indirimliyse eski fiyat üstü çizili + rozet.
+  const unitPrice = addTotal(derived, 1);
+  const unitOriginal = derived.hasDiscount ? addTotal(derived, 1, 'original') : null;
+  const layerMacros = derived.macroCardEnabled
+    ? {
+        kcal: derived.macros.kcal * quantity,
+        protein: derived.macros.protein * quantity,
+        carbs: derived.macros.carbs * quantity,
+        fats: derived.macros.fats * quantity,
+      }
+    : null;
+  const firstPick = ingredients.rows[0]?.name ?? null;
+  const infoAmount = ingredients.gram ?? firstPick ?? product.name ?? '';
+  const infoName = ingredients.gram ? firstPick ?? product.name : firstPick ? product.name : null;
+  const layerOpen = scrolledOpen || selOpen || (tried && !ready);
   // G15-S5 (FinEkProduct-Dark): fotoğraf üstündeki yuvarlak düğmeler iki temada da açık cam + koyu ikon.
   const roundBtn = [styles.roundBtn, { backgroundColor: 'rgba(255,255,255,0.85)' }];
 
@@ -421,7 +473,7 @@ export default function EkProductScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: BAR_H + insets.bottom + 56 }}
+        contentContainerStyle={{ paddingBottom: BODY_PAD_BOTTOM + Math.max(0, insets.bottom - 34) }}
       >
         <View style={{ height: HERO_H }}>
           {heroUri ? (
@@ -437,7 +489,7 @@ export default function EkProductScreen() {
               style={roundBtn}
               testID="ek-product-back"
             >
-              <ArrowLeft size={20} color="#0A0A0A" />
+              <CaretLeft size={22} color="#0A0A0A" />
             </Pressable>
             {/* G17-S1 md.7: itilen sayfada yalnız sol geri (sağdaki X kalktı). */}
           </View>
@@ -454,7 +506,20 @@ export default function EkProductScreen() {
             <Text style={[ekType.h24, { color: c.ink }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
               {product.name}
             </Text>
-            {product.desc ? <Text style={[ekType.b15, { color: c.secondary }]}>{product.desc}</Text> : null}
+            {product.desc ? <Text style={[styles.desc, { color: c.secondary }]}>{product.desc}</Text> : null}
+            <View style={styles.priceRow} testID="ek-product-price">
+              <Text style={[ekType.b17, ekType.num, styles.bold, { color: c.ink }]}>{money(unitPrice)}</Text>
+              {unitOriginal != null ? (
+                <Text style={[ekType.c13, ekType.num, { color: c.secondary, textDecorationLine: 'line-through' }]}>
+                  {money(unitOriginal)}
+                </Text>
+              ) : null}
+              {derived.hasDiscount && derived.discountBadge ? (
+                <View style={[styles.discount, { backgroundColor: c.accent }]}>
+                  <Text style={[ekType.c13, styles.bold, { color: c.onAccent }]}>{derived.discountBadge}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
 
           {derived.macroCardEnabled ? (
@@ -480,23 +545,50 @@ export default function EkProductScreen() {
           ))}
 
           {optionsError ? <Text style={[ekType.c13, { color: c.danger }]}>{optionsError}</Text> : null}
+
+          {ingredients.rows.length > 0 ? (
+            <View style={styles.ingSection} accessibilityLabel={t('eatkcal.v2.product.ingredients')} testID="ek-product-ingredients">
+              <Text style={[styles.h16, { color: c.ink }]} accessibilityRole="header">
+                {t('eatkcal.v2.product.ingredients')}
+              </Text>
+              <View style={[styles.ingCard, { backgroundColor: c.surface }]}>
+                <Text style={[styles.ingSum, { color: c.ink }]}>{ingredients.summary}</Text>
+                {ingOpen ? (
+                  <IngredientRows rows={ingredients.rows} reduced={reduced} lineColor={c.line} ink={c.ink} sec={c.secondary} />
+                ) : null}
+                <Pressable
+                  onPress={() => setIngOpen((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: ingOpen }}
+                  style={styles.ingToggle}
+                  testID="ek-product-ing-toggle"
+                >
+                  <Text style={[styles.ingToggleText, { color: c.ink }]}>
+                    {ingOpen ? t('eatkcal.v2.product.show_less') : t('eatkcal.v2.product.all_ingredients')}
+                  </Text>
+                  <View style={{ transform: [{ rotate: ingOpen ? '180deg' : '0deg' }] }}>
+                    <CaretDown size={16} color={c.ink} />
+                  </View>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
-      {derived.macroCardEnabled ? (
-        <LiveMacroStrip macros={derived.macros} visible={stripVisible} bottom={BAR_H + insets.bottom + 4} />
-      ) : null}
-
       <ProductBottomBar
         quantity={quantity}
-        onQuantity={setQuantity}
+        onQuantity={onQuantity}
         price={price}
-        originalPrice={originalPrice}
-        discountBadge={derived.hasDiscount ? derived.discountBadge : null}
-        subline={subline}
         ready={ready}
-        added={added}
+        missing={tried && !ready}
+        open={layerOpen}
+        added={added && ready}
+        infoAmount={infoAmount}
+        infoName={infoName}
+        macros={layerMacros}
         onAdd={handleAdd}
+        onGoCart={() => navigation.navigate('EkCart')}
       />
     </View>
   );
@@ -508,6 +600,18 @@ const styles = StyleSheet.create({
   hero: { width: '100%', height: HERO_H },
   heroBar: { position: 'absolute', left: 4, right: 4, flexDirection: 'row', justifyContent: 'space-between' },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  desc: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 20 },
+  bold: { fontFamily: fontFamily.bodyBold },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' },
+  discount: { height: 22, paddingHorizontal: 6, borderRadius: 11, justifyContent: 'center', alignSelf: 'center' },
+  h16: { fontFamily: fontFamily.bodyBold, fontSize: 16, lineHeight: 21 },
+  ingSection: { gap: 8 },
+  ingCard: { paddingTop: 12, paddingHorizontal: 16, paddingBottom: 4, borderRadius: 20 },
+  ingSum: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 21, marginBottom: 4 },
+  ingToggle: { alignSelf: 'flex-start', minHeight: 44, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ingToggleText: { fontFamily: fontFamily.bodyBold, fontSize: 14, lineHeight: 19 },
+  ingRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderTopWidth: 1 },
+  ingRowText: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 19 },
   body: {
     marginTop: -24,
     paddingTop: 18,
@@ -517,3 +621,33 @@ const styles = StyleSheet.create({
     gap: 16,
   },
 });
+
+/** "Tüm içerik" satırları — 200 ms opaklıkla açılır (Final `fadeIn`). */
+function IngredientRows({
+  rows,
+  reduced,
+  lineColor,
+  ink,
+  sec,
+}: {
+  rows: { key: string; name: string; value: string }[];
+  reduced: boolean;
+  lineColor: string;
+  ink: string;
+  sec: string;
+}) {
+  const o = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(o, { toValue: 1, duration: DURATION.fast, easing: reduced ? Easing.linear : STD_EASE, useNativeDriver: true }).start();
+  }, [o, reduced]);
+  return (
+    <Animated.View style={{ opacity: o, marginTop: 4 }} testID="ek-product-ing-rows">
+      {rows.map((r) => (
+        <View key={r.key} style={[styles.ingRow, { borderTopColor: lineColor }]}>
+          <Text style={[styles.ingRowText, { color: ink, flexShrink: 1 }]}>{r.name}</Text>
+          {r.value ? <Text style={[styles.ingRowText, ekType.num, { color: sec }]}>{r.value}</Text> : null}
+        </View>
+      ))}
+    </Animated.View>
+  );
+}

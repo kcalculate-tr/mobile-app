@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EkScreen, EkSection, EkChip, EkButton, ekType, useEk } from '../ui/kit';
 import { useEkNav } from '../nav';
 import { HRow, ProductCard, StoreCard, CampaignCard, ReviewCard, CategoryPill } from '../ui/home/cards';
+import { EkCartBar, CART_BAR_GAP, CART_BAR_H, cartBarBottom, useCartSummary } from '../ui/home/CartBar';
 import { LiveOrderCard } from '../ui/home/LiveOrderCard';
 import { HomeSkeleton } from '../ui/home/HomeSkeleton';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
@@ -64,6 +65,7 @@ function EkHomeContent() {
   // bayrak kapalı kabukta (CustomTabBar) bugünkü değer AYNEN.
   const inR3 = useInR3Shell();
   const navigation = useEkNav();
+  const cartSummary = useCartSummary();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const restoranYakinda = useFeature('restoran_yakinda');
@@ -321,11 +323,15 @@ function EkHomeContent() {
     </View>
   );
 
-  const bottom = inR3 ? tabBarContentInset(insets.bottom) - insets.bottom : TAB_BAR_TOTAL + 24;
+  const baseBottom = inR3 ? tabBarContentInset(insets.bottom) - insets.bottom : TAB_BAR_TOTAL + 24;
+  // Tur 26 md.12: yüzen lime sepet çubuğu (sekme çubuğunun 12 üstü); görünürken son kart altında kalmasın.
+  const cartBarAt = inR3 ? cartBarBottom(insets.bottom, true) : insets.bottom + TAB_BAR_TOTAL + CART_BAR_GAP;
+  const bottom = cartSummary.count > 0 ? cartBarAt + CART_BAR_H + CART_BAR_GAP - insets.bottom : baseBottom;
+  const cartBar = <EkCartBar bottom={cartBarAt} onPress={() => navigation.navigate('EkCart')} />;
 
   if (searchOpen) {
     return (
-      <EkScreen header={header} bottomInset={bottom} testID="ek-home">
+      <EkScreen header={header} bottomInset={bottom} testID="ek-home" overlay={cartBar}>
         <View style={styles.grid}>
           {searchResults.length === 0 ? (
             <Text style={[ekType.b15, { color: c.secondary, padding: 16 }]}>{t('eatkcal.v2.home.search_empty')}</Text>
@@ -346,6 +352,7 @@ function EkHomeContent() {
       header={header}
       bottomInset={bottom}
       testID="ek-home"
+      overlay={cartBar}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.secondary} />}
     >
       {loading ? (
@@ -585,6 +592,8 @@ type HomeTabParams = {
   vitrinGate?: GateStep;
   vitrinCity?: string;
   vitrinOtherCity?: string;
+  /** YALNIZ __DEV__ vitrini: açık form sheet'i (FinWaitlistAdd / FinWaitlistSuggest). */
+  vitrinSheet?: 'restaurant_add' | 'restaurant_suggest';
 };
 
 export default function EkHomeScreen() {
@@ -628,6 +637,8 @@ export default function EkHomeScreen() {
         onTrack={onTrack}
         initialStep={__DEV__ ? params.vitrinGate : undefined}
         initialCityKey={__DEV__ ? params.vitrinCity : undefined}
+        initialSheet={__DEV__ ? params.vitrinSheet : undefined}
+        onPrivacy={() => navigation.navigate('ProfileContracts', { slug: 'kvkk' })}
         otherCityName={(__DEV__ ? params.vitrinOtherCity : undefined) ?? address?.city ?? null}
       />
     );

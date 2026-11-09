@@ -7,7 +7,7 @@ import { CachedImage } from '../../../../../components/CachedImage';
 import { Plus } from '../../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { yorumTarihi, type VitrinYorumu } from '../../../../../lib/socialProofRules';
-import { haptic } from '../../../../../core/design';
+import { fontFamily, haptic } from '../../../../../core/design';
 import { EkStars, ekType, money, useEk } from '../kit';
 import { cardKcal, cardPrice } from '../../model/homeData';
 
@@ -171,8 +171,10 @@ export function CampaignCard({
   title?: string | null;
   onPress: () => void;
 }) {
-  const { t } = useEk();
+  const { c, t } = useEk();
   const src = transformImageUrl(imageUri, ImagePreset.bannerMedium) || imageUri;
+  // Tur 26 md.11 (FinEkHome): banner yalnız görsel (karartma / "İncele" yok), tamamı
+  // dokunulur; "Kampanya" + başlık görselin ALTINDA.
   return (
     <Pressable
       onPress={() => {
@@ -184,7 +186,17 @@ export function CampaignCard({
       style={({ pressed }) => [styles.campaign, pressed && { opacity: 0.85 }]}
       testID="ek-campaign-card"
     >
-      <CachedImage uri={src} style={StyleSheet.absoluteFill as never} />
+      <View style={styles.campaignImg}>
+        <CachedImage uri={src} style={StyleSheet.absoluteFill as never} />
+      </View>
+      <View style={styles.campaignText}>
+        <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.home.campaign')}</Text>
+        {title ? (
+          <Text style={[styles.campaignTitle, { color: c.ink }]} numberOfLines={2}>
+            {title}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -221,7 +233,10 @@ const styles = StyleSheet.create({
   storePhoto: { width: 236, height: 92 },
   storeBody: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, gap: 2 },
   storeName: { ...ekType.b17, fontFamily: ekType.h20.fontFamily },
-  campaign: { width: 300, height: 104, borderRadius: 20, overflow: 'hidden' },
+  campaign: { width: 300, gap: 8 },
+  campaignImg: { width: 300, height: 104, borderRadius: 20, overflow: 'hidden' },
+  campaignText: { gap: 2, paddingHorizontal: 2 },
+  campaignTitle: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 19 },
   review: { width: 260, padding: 14, borderRadius: 20, borderWidth: 1, gap: 8 },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   quote: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 20 },

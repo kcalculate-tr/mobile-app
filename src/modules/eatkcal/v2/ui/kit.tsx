@@ -27,7 +27,7 @@ import { BlurView } from 'expo-blur';
 import { useTheme, useReducedMotion, fontFamily, haptic, Button, DURATION, RN_CURVE } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { ArrowLeft, CaretLeft, Star } from '../../../../components/icons';
-import { tl } from '../../../../lib/money';
+import { formatPrice, reformatLegacyTl } from '../../../../lib/money';
 
 // ── Tipografi rolleri (FinComponents) ──────────────────────────────────────
 export const ekType = {
@@ -48,8 +48,10 @@ export const ekType = {
   num: { fontVariant: ['tabular-nums'] } as TextStyle,
 } as const;
 
-/** Para biçimi tek kaynaktan (src/lib/money.ts). */
-export const money = (v: number) => tl(v);
+/** Para biçimi tek kaynaktan (src/lib/money.ts formatPrice — G18: `285 TL`, `285,50 TL`). */
+export const money = (v: number) => formatPrice(v);
+/** Mantık katmanından gelen hazır metindeki eski `300.00 TL` tutarlarını Final biçimine çevirir (yalnız görünüm). */
+export const refmtTl = reformatLegacyTl;
 
 /** Tema + çeviri + güvenli alan — her v2 ekranının ilk satırı. */
 export function useEk() {
@@ -64,6 +66,7 @@ export function EkScreen({
   children,
   scroll = true,
   footer,
+  overlay,
   header,
   refreshControl,
   contentStyle,
@@ -76,6 +79,8 @@ export function EkScreen({
   scroll?: boolean;
   /** Alt sabit bar (EkStickyBar). İçerik altına onun yüksekliği kadar boşluk bırakılır. */
   footer?: React.ReactNode;
+  /** Kaydırmanın ÜSTÜNDE yüzen katman (ör. lime sepet çubuğu, mutlak konumlu). */
+  overlay?: React.ReactNode;
   header?: React.ReactNode;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   contentStyle?: StyleProp<ViewStyle>;
@@ -113,6 +118,7 @@ export function EkScreen({
         <View style={[styles.fill, contentStyle]}>{children}</View>
       )}
       {footer}
+      {overlay}
     </KeyboardAvoidingView>
   );
 }

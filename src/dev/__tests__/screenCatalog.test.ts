@@ -63,34 +63,19 @@ test('katalog = Final görselleri (birebir, Light + Dark)', { skip: !fs.existsSy
   // G18 her panoyu kataloğa ekledikçe buradan SİLER; liste boşalınca kural yine birebir.
   const PENDING_TUR26 = new Set(
     [
-      // G18-S1: FinCelebrateProfile, FinHomeProfileCard, FinOnbAccountEmail/Keyboard,
-      // FinOpen, FinOrient1–4, FinMoOpen, FinOnbWelcomeB/C/EN kataloğa eklendi → listeden çıktı.
-      // G18-S4: FinFeedEmpty, FinPush kataloğa eklendi → listeden çıktı.
-      // G18-S2: FinHomeIzmir, FinHomeOutside, FinHomeEmptyR1EN, FinHomeXLEN, FinMoFocus,
-      // FinMoPopover, FinMoBanner(EN) kataloğa eklendi → listeden çıktı.
-      'FinEkOrderSuccess', 'FinWaitlistAdd',
-      'FinWaitlistSuggest',
-      // Tur 26d/26e (design/final yenilendi, 9 Kas; 430 pano): diğer oturumların
-      // panoları — sahibi kataloğa ekledikçe buradan siler (S3 eatkcal, S4 sistem/EN, S5).
-      'FinActivityCardEN', 'FinAddSheetEN', 'FinAddToastEN', 'FinCityR1EN', 'FinCommentsEN',
-      'FinComposeEN', 'FinDetailEN', 'FinEatBerlinEN', 'FinEkAddressEN', 'FinEkAddressNoMapEN',
-      'FinEkAddressNoPermEN', 'FinEkAddressesEN', 'FinEkAddressesEmptyEN', 'FinEkCartEN',
-      'FinEkCartEmptyEN', 'FinEkCartSkeletonEN', 'FinEkCheckoutEN', 'FinEkCheckoutPayFailEN',
-      'FinEkCheckoutPayUnknownEN', 'FinEkCheckoutPayWaitEN', 'FinEkErrorsEN', 'FinEkHomeEN',
-      'FinEkHomeSkeletonEN', 'FinEkInfoEN', 'FinEkOrderDetailEN', 'FinEkOrderSuccessEN',
-      'FinEkOrdersEN', 'FinEkOrdersEmptyEN', 'FinEkOrdersFilterEmptyEN', 'FinEkProductAdded',
-      'FinEkProductAddedEN', 'FinEkProductCompare', 'FinEkProductEN', 'FinEkProductScrollEN',
-      'FinEkProductSelected', 'FinEkProductSelectedEN', 'FinEkReviewsEN', 'FinEkStoreEN',
-      'FinFeedEN', 'FinFeedEmptyEN', 'FinFeedScrollR3EN', 'FinFeedTipEN', 'FinFollowingEmptyEN',
-      'FinNotificationsEN', 'FinPostMenuBlockEN', 'FinPostMenuEN', 'FinPostingEN',
-      'FinProfilePublicEN', 'FinRecipe', 'FinRecipeEN', 'FinReportDoneEN', 'FinReportEN',
-      'FinReportNoticeEN', 'FinRulesEN', 'FinSerbestEN', 'FinStreakEN', 'FinTabBarEN-mid',
-      'FinTabBarEN-min', 'FinTabBarEN-rest', 'FinTrackerEN', 'FinTrackerEmptyEN', 'FinVideoEN',
-      'FinWaitlistAddEN', 'FinWaitlistR1EN', 'FinWaitlistSuggestEN',
+      // G18-S1/S2/S3/S4 kataloğa ekledikleri listeden çıktı (G18-S5 birleştirmesi:
+      // kalan = dört dalın ortak bekleyenleri). Tur 26d/26e EN panoları — G18-S5 ekler.
+      'FinActivityCardEN', 'FinAddSheetEN', 'FinAddToastEN', 'FinCommentsEN', 'FinComposeEN',
+      'FinDetailEN', 'FinFeedEN', 'FinFeedEmptyEN', 'FinFeedScrollR3EN', 'FinFeedTipEN',
+      'FinFollowingEmptyEN', 'FinNotificationsEN', 'FinPostMenuBlockEN', 'FinPostMenuEN',
+      'FinPostingEN', 'FinProfilePublicEN', 'FinRecipe', 'FinRecipeEN', 'FinReportDoneEN',
+      'FinReportEN', 'FinReportNoticeEN', 'FinRulesEN', 'FinSerbestEN', 'FinStreakEN',
+      'FinTabBarEN-mid', 'FinTabBarEN-min', 'FinTabBarEN-rest', 'FinTrackerEN',
+      'FinTrackerEmptyEN', 'FinVideoEN',
       // YALNIZ REFERANS (SON_HAL v3: odak = a, banner = a; B/C uygulanmaz) — kalıcı.
       'FinHomeFocusB', 'FinHomeFocusC', 'FinHomeBannerB', 'FinHomeBannerBEN',
     ].flatMap((n) => [n, `${n}-Dark`]).concat([
-      'FinMoProductBar', 'FinTur26',
+      'FinTur26',
     ]),
   );
   assert.deepEqual(

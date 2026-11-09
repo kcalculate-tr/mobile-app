@@ -32,3 +32,26 @@ test('fark biçimi işaret taşır', () => {
   assert.equal(tlFark(-120), '-120 TL');
   assert.equal(tlFark(0), '0 TL');
 });
+
+test('formatPrice — Final biçimi (G18): tam sayı ondalıksız, kuruş virgülle, ayraç yok', async () => {
+  const { formatPrice, formatPriceDelta } = await import('../money');
+  assert.equal(formatPrice(285), '285 TL');
+  assert.equal(formatPrice(285.5), '285,50 TL');
+  assert.equal(formatPrice(1250), '1250 TL');
+  assert.equal(formatPrice(0), '0 TL');
+  assert.equal(formatPrice(Number.NaN), '0 TL');
+  assert.equal(formatPrice(12.999), '13 TL');
+  assert.doesNotMatch(formatPrice(12345.5), /[₺.]/);
+  assert.equal(formatPriceDelta(150), '+150 TL');
+  assert.equal(formatPriceDelta(-20), '-20 TL');
+  assert.equal(formatPriceDelta(12.5), '+12,50 TL');
+});
+
+test('reformatLegacyTl — mantık metnindeki eski tutarlar Final biçimine', async () => {
+  const { reformatLegacyTl } = await import('../money');
+  assert.equal(reformatLegacyTl('Minimum sepet: 300.00 TL — Kalan: 50.50 TL'), 'Minimum sepet: 300 TL — Kalan: 50,50 TL');
+  assert.equal(reformatLegacyTl('Eşik 1.250 TL'), 'Eşik 1.250 TL');
+  assert.equal(reformatLegacyTl('Bu bölgeye teslimat yok'), 'Bu bölgeye teslimat yok');
+  assert.equal(reformatLegacyTl('Bu kupon 299.9 TL ve üzeri'), 'Bu kupon 299,90 TL ve üzeri');
+  assert.equal(reformatLegacyTl('Bu kupon 300 TL ve üzeri'), 'Bu kupon 300 TL ve üzeri');
+});

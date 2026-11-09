@@ -1,15 +1,16 @@
-// eatkcal v2 — FinEkProduct seçenek kutusu (136×184, 18 köşe). Seçili: lime
+// eatkcal v2 — FinEkProduct seçenek kutusu (Tur 26d: 136×166, iç 8,5, görsel 54/12, 18 köşe). Seçili: lime
 // dolgu + koyu metin + sağ üstte onay rozeti (chkIn: bouncy). Görsel: seçeneğin
 // ürün fotoğrafı varsa o; yoksa yer tutucu "çıkartma çerçevesi" + ad (gerçek
 // çıkartmalar sonra gelecek).
 import React, { useEffect, useRef } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Check } from '../../../../../components/icons';
 import { CachedImage } from '../../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
-import { ekType, money, useEk } from '../kit';
+import { ekType, useEk } from '../kit';
+import { formatPriceDelta } from '../../../../../lib/money';
 
 export interface OptionCardModel {
   key: string;
@@ -52,7 +53,7 @@ export function OptionCard({
   }, [model.selected, pop, reduced]);
 
   const fg = model.selected ? c.onAccent : c.ink;
-  const priceText = model.priceDelta > 0 ? `+${money(model.priceDelta)}` : model.priceDelta < 0 ? `−${money(-model.priceDelta)}` : t('eatkcal.v2.product.no_diff');
+  const priceText = model.priceDelta !== 0 ? formatPriceDelta(model.priceDelta) : t('eatkcal.v2.product.no_diff');
   let kcalText: string | null = null;
   if (model.kcal != null) kcalText = t('eatkcal.v2.product.kcal_n', { n: model.kcal });
   else if (model.kcalDelta) kcalText = `${model.kcalDelta > 0 ? '+' : '−'}${t('eatkcal.v2.product.kcal_n', { n: Math.abs(Math.round(model.kcalDelta)) })}`;
@@ -116,9 +117,9 @@ export function OptionCard({
         <Animated.View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={[styles.check, { backgroundColor: c.ink, transform: [{ scale: pop }] }]}
+          style={[styles.check, { backgroundColor: '#0A0A0A', transform: [{ scale: pop }] }]}
         >
-          <Check size={14} color={c.surface} weight="bold" />
+          <Check size={14} color="#C6F04F" weight="bold" />
         </Animated.View>
       ) : null}
     </Pressable>
@@ -128,17 +129,17 @@ export function OptionCard({
 const styles = StyleSheet.create({
   card: {
     width: 136,
-    minHeight: 184,
-    padding: 10,
+    minHeight: 166,
+    padding: 8.5,
     borderRadius: 18,
     borderWidth: 1,
     gap: 4,
   },
   media: { marginTop: 2, marginBottom: 6 },
-  photo: { width: 64, height: 64, borderRadius: 14 },
+  photo: { width: 54, height: 54, borderRadius: 12 },
   sticker: {
-    width: 64,
-    height: 64,
+    width: 54,
+    height: 54,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 36,
     borderBottomRightRadius: 30,
@@ -164,84 +165,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
-
-/**
- * G17-S1 md.12 — Seçenek SATIRI (ürün sayfası). Görsel yükseklik en az 44;
- * Android'de dokunma alanı ≥ 48 dp (minHeight 48); yükseklik SABİT DEĞİL →
- * büyük yazıda (Dynamic Type / font ölçeği) satır kendiliğinden büyür.
- * Seçili: lime dolgu + koyu metin + onay; çoklu seçimde kare, tekli seçimde
- * yuvarlak gösterge. Fotoğraf varsa 32'lik küçük kare; kcal ve fiyat sağda.
- */
-export function OptionRow({
-  model,
-  multi,
-  onPress,
-}: {
-  model: OptionCardModel;
-  multi: boolean;
-  onPress: () => void;
-}) {
-  const { c, t } = useEk();
-  const fg = model.selected ? c.onAccent : c.ink;
-  const priceText = model.priceDelta > 0 ? `+${money(model.priceDelta)}` : model.priceDelta < 0 ? `−${money(-model.priceDelta)}` : t('eatkcal.v2.product.no_diff');
-  let kcalText: string | null = null;
-  if (model.kcal != null) kcalText = t('eatkcal.v2.product.kcal_n', { n: model.kcal });
-  else if (model.kcalDelta) kcalText = `${model.kcalDelta > 0 ? '+' : '−'}${t('eatkcal.v2.product.kcal_n', { n: Math.abs(Math.round(model.kcalDelta)) })}`;
-  const uri = model.imageUrl ? transformImageUrl(model.imageUrl, ImagePreset.productCard) ?? model.imageUrl : null;
-
-  return (
-    <Pressable
-      onPress={() => {
-        if (model.disabled) return;
-        haptic('selection');
-        onPress();
-      }}
-      disabled={model.disabled}
-      accessibilityRole={multi ? 'checkbox' : 'radio'}
-      accessibilityState={{ checked: model.selected, disabled: model.disabled }}
-      accessibilityLabel={[model.name, priceText !== '—' ? priceText : null, kcalText].filter(Boolean).join(', ')}
-      style={({ pressed }) => [
-        rowStyles.row,
-        {
-          backgroundColor: model.selected ? c.accent : c.surface,
-          borderColor: model.selected ? 'transparent' : c.line,
-          opacity: model.disabled ? 0.45 : pressed ? 0.85 : 1,
-        },
-      ]}
-      testID={`ek-option-${model.key}`}
-    >
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={[
-          multi ? rowStyles.box : rowStyles.radio,
-          { borderColor: model.selected ? c.ink : c.secondary, backgroundColor: model.selected ? c.ink : 'transparent' },
-        ]}
-      >
-        {model.selected ? <Check size={12} color={c.surface} weight="bold" /> : null}
-      </View>
-      {uri ? <CachedImage uri={uri} style={rowStyles.thumb} contentFit="cover" /> : null}
-      <Text style={[ekType.b15s, { color: fg, flex: 1 }]}>{model.name}</Text>
-      {kcalText ? <Text style={[ekType.c13, ekType.num, { color: fg, opacity: 0.72 }]}>{kcalText}</Text> : null}
-      <Text style={[ekType.c13s, ekType.num, { color: fg, minWidth: 44, textAlign: 'right' }]}>{priceText}</Text>
-    </Pressable>
-  );
-}
-
-const rowStyles = StyleSheet.create({
-  row: {
-    // Görsel 44 (iOS); Android dokunma hedefi 48 dp. Sabit `height` YOK → yazı büyüyünce satır uzar.
-    minHeight: Platform.OS === 'android' ? 48 : 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  box: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  thumb: { width: 32, height: 32, borderRadius: 8 },
 });
