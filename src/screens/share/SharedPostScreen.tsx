@@ -133,7 +133,9 @@ function KesfetPostDetail() {
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   };
-  return <PostDetailScreen postId={postId} onBack={onBack} />;
+  // G21-S1 md.8: yazar → açık profil (takip/geri dönüş yığında).
+  const onOpenAuthor = (handle: string) => navigation.navigate('PublicProfile', { handle: handle.replace(/^@/, '') });
+  return <PostDetailScreen postId={postId} onBack={onBack} onOpenAuthor={onOpenAuthor} />;
 }
 
 export default function SharedPostScreen() {

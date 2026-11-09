@@ -25,6 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PREMIUM, RN_CURVE, useTheme } from '../../../core/design';
 import { FinErrorReveal } from '../../../core/design/components/FinTransitions';
+import { SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 import type { Theme } from '../../../core/design';
 import { fontFamily } from '../../../core/design/typography';
 import { ArrowLeft, CaretRight } from '../../../components/icons';
@@ -327,7 +328,11 @@ export function FinSecondaryButton({
   );
 }
 
-/** Segment denetimi (tab) — eşit sütunlar, seçili beyaz/ink. */
+/**
+ * Segment denetimi (tab) — eşit sütunlar, seçili beyaz/ink. G21-S1 md.9: seçili
+ * hap yeni sekmeye KAYAR (FinMoTokens; azaltılmışta 200 ms opaklık). Satır
+ * ölçülene kadar seçili düğme kendi zeminini çizer (ilk karede boşluk yok).
+ */
 export function FinSegmented({
   options,
   index,
@@ -338,8 +343,13 @@ export function FinSegmented({
   onChange: (i: number) => void;
 }) {
   const t = useTheme();
+  const [rowW, onRowLayout] = useRowWidth();
+  const measured = rowW > 0;
   return (
     <View
+      onLayout={onRowLayout}
+      accessibilityRole="tablist"
+      testID="fin-segmented"
       style={{
         flexDirection: 'row',
         padding: 4,
@@ -348,6 +358,15 @@ export function FinSegmented({
         gap: 4,
       }}
     >
+      <SlidingIndicator
+        testID="fin-segmented-indicator"
+        index={index}
+        count={options.length}
+        containerWidth={rowW}
+        inset={4}
+        gap={4}
+        style={{ top: 4, height: 40, borderRadius: 18, backgroundColor: t.color.surface }}
+      />
       {options.map((o, i) => {
         const on = i === index;
         return (
@@ -362,7 +381,7 @@ export function FinSegmented({
               borderRadius: 18,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: on ? t.color.surface : 'transparent',
+              backgroundColor: on && !measured ? t.color.surface : 'transparent',
             }}
           >
             <Text style={{ fontFamily: bodySemibold, fontSize: 14, color: t.color.ink }}>{o}</Text>

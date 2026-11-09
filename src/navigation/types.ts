@@ -1,4 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import type { ProfileSubParams } from '../modules/profil/ui/screens/profileSub';
 
 export type TabParamList = {
   Home: undefined;
@@ -62,6 +63,8 @@ export type RootStackParamList = {
   ProfileSavedCards: undefined;
   ProfileAddCard: undefined;
   ProfileCoupons: undefined;
+  // G21-S1 md.9 — FinPrProfile alt sayfaları (sağdan kayan yığın ekranı).
+  ProfileSub: ProfileSubParams;
   ProfileSupport: undefined;
   ProfileReviews: undefined;
   ProfileSecurity: undefined;

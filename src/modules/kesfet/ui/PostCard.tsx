@@ -112,6 +112,7 @@ export function PostCard({
   onOpen,
   tip,
   onOpenVideo,
+  onOpenAuthor,
 }: {
   model: PostCardModel;
   /** Akışta sıra — girişte ardışık animasyon için (en fazla 6 gecikir). */
@@ -148,6 +149,8 @@ export function PostCard({
   tip?: React.ReactNode;
   /** G15 — videoya dokun = tam ekran oynatıcı (FinVideo kare 2). */
   onOpenVideo?: () => void;
+  /** G21-S1 md.8 — avatar / ada dokun = yazarın açık profili (FinProfilePublic; takip oradan). */
+  onOpenAuthor?: () => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -200,11 +203,20 @@ export function PostCard({
   return (
     <Animated.View style={[styles.article, { borderBottomColor: t.color.line }, enter.style]}>
       <View style={styles.row}>
-        <Avatar name={model.authorName} url={model.avatarUrl} official={model.isOfficial} />
+        <Pressable
+          onPress={onOpenAuthor}
+          disabled={!onOpenAuthor}
+          accessibilityRole={onOpenAuthor ? 'link' : undefined}
+          accessibilityLabel={onOpenAuthor ? `${model.authorName} @${model.handle}` : undefined}
+          hitSlop={4}
+          testID="post-card-author"
+        >
+          <Avatar name={model.authorName} url={model.avatarUrl} official={model.isOfficial} />
+        </Pressable>
         <View style={[styles.body, tip ? styles.bodyTip : null]}>
           {/* Yazar satırı */}
           <View style={styles.authorRow}>
-            <AppText variant="caption" style={styles.name} numberOfLines={1}>
+            <AppText variant="caption" style={styles.name} numberOfLines={1} onPress={onOpenAuthor}>
               {model.authorName}
             </AppText>
             {model.verified ? <VerifiedBadge size={16} /> : null}

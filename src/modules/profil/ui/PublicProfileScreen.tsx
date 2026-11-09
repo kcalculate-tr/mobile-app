@@ -52,6 +52,8 @@ export default function PublicProfileScreen() {
     getProfilClient()
       .getPublicProfile({ handle })
       .then(setProfile)
+      // G21-S1 md.8: ağ hatası işlenmemiş ret bırakmasın (ekran "bulunamadı" + geri).
+      .catch(() => setProfile(null))
       .finally(() => setLoading(false));
   }, [handle]);
 
@@ -59,9 +61,21 @@ export default function PublicProfileScreen() {
     load();
   }, [load]);
 
+  // G21-S1 md.8: derin bağlantıyla gelindiyse geri = Tabs (çıkmaz yok).
+  const goBack = () => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Tabs' as never));
+  // Yükleniyor / bulunamadı hâllerinde de geri düğmesi (önce yalnız iOS kenar jesti vardı).
+  const backBar = (
+    <View style={[styles.topBar, { position: 'absolute', top: insets.top + 8, left: 0, right: 0 }]}>
+      <Pressable onPress={goBack} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={tt('common.back')} testID="public-profile-back">
+        <CaretLeft size={22} color={t.color.ink} weight="bold" />
+      </Pressable>
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: t.color.bg }]}>
+        {backBar}
         <ActivityIndicator />
       </View>
     );
@@ -70,6 +84,7 @@ export default function PublicProfileScreen() {
   if (!profile) {
     return (
       <View style={[styles.center, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
+        {backBar}
         <AppText variant="body" tone="secondary">
           {tt('profil.not_found')}
         </AppText>

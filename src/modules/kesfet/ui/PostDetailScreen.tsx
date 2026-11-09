@@ -225,7 +225,16 @@ function CommentRow({
   );
 }
 
-export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: () => void }) {
+export function PostDetailScreen({
+  postId,
+  onBack,
+  onOpenAuthor,
+}: {
+  postId: string;
+  onBack: () => void;
+  /** G21-S1 md.8 — yazara dokun = açık profil (handle, @ olmadan). */
+  onOpenAuthor?: (handle: string) => void;
+}) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { t: tr, fmt, lang } = useT();
@@ -409,7 +418,13 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.pad}>
             {/* Yazar */}
-            <View style={styles.author}>
+            <Pressable
+              style={styles.author}
+              onPress={onOpenAuthor && post.author.handle ? () => onOpenAuthor(post.author.handle) : undefined}
+              disabled={!onOpenAuthor || !post.author.handle}
+              accessibilityRole={onOpenAuthor ? 'link' : undefined}
+              testID="post-detail-author"
+            >
               <Avatar name={post.author.display_name} url={post.author.avatar_url} official={badge === 'official'} />
               <View style={styles.authorText}>
                 <View style={styles.nameRow}>
@@ -436,7 +451,7 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
               >
                 <Icon name="more" size={20} color={t.color.secondary} />
               </Pressable>
-            </View>
+            </Pressable>
 
             {post.body ? (
               <AppText variant="body" style={styles.body}>

@@ -34,6 +34,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       estimate: 'tahmin',
       delete: 'Sil',
       you: 'Sen',
+      back: 'Geri',
     },
     // G18-S4 md.3 — FinPush şablonları (core/push/finPush.ts FIN_PUSH_TEXT ile birebir).
     push: {
@@ -1875,6 +1876,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       estimate: 'estimate',
       delete: 'Delete',
       you: 'You',
+      back: 'Back',
     },
     // G18-S4 md.3 — FinPush templates (identical to core/push/finPush.ts FIN_PUSH_TEXT).
     push: {
