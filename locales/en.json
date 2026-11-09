@@ -3,7 +3,8 @@
     "NSCameraUsageDescription": "Camera access is used to scan your plate and estimate its calories, take your profile photo, record video, and upload product images.",
     "NSMicrophoneUsageDescription": "Microphone access is required to record audio when sharing a video.",
     "NSPhotoLibraryUsageDescription": "Photo library access is used to scan a plate photo and to pick profile photos, images, and videos.",
-    "NSPhotoLibraryAddUsageDescription": "Permission is required to save your order images to your photo library.",
-    "NSUserTrackingUsageDescription": "We ask for this to measure how our ad campaigns perform. You can use the whole app without allowing it."
+    "NSPhotoLibraryAddUsageDescription": "Permission is required to save share cards and images to your photo library.",
+    "NSUserTrackingUsageDescription": "We ask for this to measure how our ad campaigns perform. You can use the whole app without allowing it.",
+    "NSLocationWhenInUseUsageDescription": "We use your location to verify your delivery address on the map and find your nearest branch."
   }
 }

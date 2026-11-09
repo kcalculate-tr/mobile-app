@@ -1,0 +1,377 @@
+{
+  "name": "Kcalculate",
+  "slug": "kcal-mobile",
+  "version": "1.1.0",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "userInterfaceStyle": "light",
+  "scheme": "kcal",
+  "jsEngine": "hermes",
+  "locales": {
+    "tr": "./locales/tr.json",
+    "en": "./locales/en.json"
+  },
+  "assetBundlePatterns": [
+    "**/*"
+  ],
+  "notification": {
+    "icon": "./assets/notification-icon.png",
+    "color": "#B9EF14",
+    "iosDisplayInForeground": true,
+    "androidMode": "default",
+    "androidCollapsedTitle": "Kcalculate"
+  },
+  "ios": {
+    "supportsTablet": false,
+    "bundleIdentifier": "com.kcalmobile.app",
+    "buildNumber": "1",
+    "userInterfaceStyle": "light",
+    "associatedDomains": [
+      "applinks:l.eatkcal.com"
+    ],
+    "infoPlist": {
+      "ITSAppUsesNonExemptEncryption": false,
+      "NSCameraUsageDescription": "Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.",
+      "NSMicrophoneUsageDescription": "Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.",
+      "NSPhotoLibraryUsageDescription": "Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.",
+      "NSPhotoLibraryAddUsageDescription": "Paylaşım kartlarını ve görselleri fotoğraflarına kaydetmek için izin gereklidir.",
+      "NSLocationWhenInUseUsageDescription": "Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.",
+      "NSUserTrackingUsageDescription": "Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin.",
+      "SKAdNetworkItems": [
+        {
+          "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+        },
+        {
+          "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+        }
+      ]
+    },
+    "privacyManifests": {
+      "NSPrivacyTracking": true,
+      "NSPrivacyTrackingDomains": [
+        "ep1.facebook.com"
+      ],
+      "NSPrivacyCollectedDataTypes": [
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeName",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhoneNumber",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhysicalAddress",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePreciseLocation",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeHealth",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeFitness",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotosorVideos",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePurchaseHistory",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": true,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+            "NSPrivacyCollectedDataTypePurposeAnalytics",
+            "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeProductInteraction",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": true,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+            "NSPrivacyCollectedDataTypePurposeAnalytics",
+            "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": true,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+            "NSPrivacyCollectedDataTypePurposeAnalytics"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
+          "NSPrivacyCollectedDataTypeLinked": false,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePerformanceData",
+          "NSPrivacyCollectedDataTypeLinked": false,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        }
+      ],
+      "NSPrivacyAccessedAPITypes": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1",
+            "0A2A.1",
+            "3B52.1"
+          ]
+        },
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "CA92.1",
+            "C56D.1"
+          ]
+        },
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "35F9.1"
+          ]
+        },
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "E174.1",
+            "85F4.1"
+          ]
+        }
+      ]
+    }
+  },
+  "android": {
+    "package": "com.kcalmobile.app",
+    "versionCode": 10,
+    "userInterfaceStyle": "light",
+    "adaptiveIcon": {
+      "backgroundColor": "#000000",
+      "foregroundImage": "./assets/adaptive-icon-foreground.png",
+      "backgroundImage": "./assets/adaptive-icon-background.png",
+      "monochromeImage": "./assets/adaptive-icon-monochrome.png"
+    },
+    "predictiveBackGestureEnabled": false,
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "category": [
+          "BROWSABLE",
+          "DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "https",
+            "host": "l.eatkcal.com",
+            "pathPrefix": "/p/"
+          },
+          {
+            "scheme": "https",
+            "host": "l.eatkcal.com",
+            "pathPrefix": "/u/"
+          },
+          {
+            "scheme": "https",
+            "host": "l.eatkcal.com",
+            "pathPrefix": "/k/"
+          },
+          {
+            "scheme": "https",
+            "host": "l.eatkcal.com",
+            "pathPrefix": "/s/"
+          },
+          {
+            "scheme": "https",
+            "host": "l.eatkcal.com",
+            "path": "/kesfet"
+          }
+        ]
+      }
+    ],
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.RECORD_AUDIO",
+      "com.google.android.gms.permission.AD_ID",
+      "android.permission.INTERNET"
+    ]
+  },
+  "web": {
+    "favicon": "./assets/favicon.png"
+  },
+  "updates": {
+    "enabled": true,
+    "url": "https://u.expo.dev/5a65d66c-617a-423a-8346-d6a19e1bfca8",
+    "fallbackToCacheTimeout": 0
+  },
+  "runtimeVersion": {
+    "policy": "appVersion"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "5a65d66c-617a-423a-8346-d6a19e1bfca8"
+    },
+    "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss.apps.googleusercontent.com",
+    "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "173333296344-vnu2l4uv6a71hsl26afltb5gpg0bl3jq.apps.googleusercontent.com"
+  },
+  "plugins": [
+    "expo-asset",
+    [
+      "expo-font",
+      {
+        "fonts": [
+          "./node_modules/@expo-google-fonts/plus-jakarta-sans/400Regular/PlusJakartaSans_400Regular.ttf",
+          "./node_modules/@expo-google-fonts/plus-jakarta-sans/500Medium/PlusJakartaSans_500Medium.ttf",
+          "./node_modules/@expo-google-fonts/plus-jakarta-sans/600SemiBold/PlusJakartaSans_600SemiBold.ttf",
+          "./node_modules/@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf",
+          "./node_modules/@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf",
+          "./assets/fonts/BricolageGrotesque_400Regular.ttf",
+          "./assets/fonts/BricolageGrotesque_500Medium.ttf",
+          "./assets/fonts/BricolageGrotesque_600SemiBold.ttf",
+          "./assets/fonts/BricolageGrotesque_700Bold.ttf",
+          "./assets/fonts/BricolageGrotesque_800ExtraBold.ttf"
+        ]
+      }
+    ],
+    [
+      "expo-splash-screen",
+      {
+        "image": "./assets/icon.png",
+        "imageWidth": 170,
+        "resizeMode": "contain",
+        "backgroundColor": "#000000"
+      }
+    ],
+    [
+      "expo-image-picker",
+      {
+        "photosPermission": "Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.",
+        "cameraPermission": "Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.",
+        "microphonePermission": "Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir."
+      }
+    ],
+    [
+      "expo-camera",
+      {
+        "cameraPermission": "Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.",
+        "microphonePermission": "Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.",
+        "recordAudioAndroid": false
+      }
+    ],
+    "expo-video",
+    [
+      "expo-location",
+      {
+        "locationWhenInUsePermission": "Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.",
+        "locationAlwaysAndWhenInUsePermission": false,
+        "locationAlwaysPermission": false
+      }
+    ],
+    [
+      "expo-notifications",
+      {
+        "icon": "./assets/notification-icon.png",
+        "color": "#B9EF14",
+        "defaultChannel": "default",
+        "sounds": []
+      }
+    ],
+    "expo-apple-authentication",
+    [
+      "@react-native-google-signin/google-signin",
+      {
+        "iosUrlScheme": "com.googleusercontent.apps.173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss"
+      }
+    ],
+    [
+      "expo-tracking-transparency",
+      {
+        "userTrackingPermission": "Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin."
+      }
+    ],
+    [
+      "react-native-fbsdk-next",
+      {
+        "appID": "4403872953189106",
+        "clientToken": "<REDACTED: app.config.js>",
+        "displayName": "KCAL",
+        "scheme": "fb4403872953189106",
+        "advertiserIDCollectionEnabled": false,
+        "autoLogAppEventsEnabled": true,
+        "isAutoInitEnabled": false,
+        "iosUserTrackingPermission": "Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin."
+      }
+    ]
+  ],
+  "sdkVersion": "54.0.0",
+  "platforms": [
+    "ios",
+    "android"
+  ],
+  "androidStatusBar": {
+    "backgroundColor": "#000000"
+  }
+}

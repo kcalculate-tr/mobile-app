@@ -23,6 +23,10 @@ module.exports = {
     // expo-clipboard) — OTA ile gidemez, yeni build sart. runtimeVersion policy
     // 'appVersion' oldugu icin bu satir ayni zamanda 1.0.7 cihazlarin bu paketi
     // ALMASINI engelleyen emniyet kilididir (OTA kanali yeni surume baglanir).
+    // G20-S2 (mağaza hazırlığı): sürüm 1.1.0 olarak kalır. Build numarası EAS
+    // remote'tan gelir (eas.json appVersionSource: 'remote' + production
+    // autoIncrement) → aşağıdaki ios.buildNumber / android.versionCode alanları
+    // EAS derlemesinde KULLANILMAZ; bilerek dokunulmadı.
     version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -48,10 +52,12 @@ module.exports = {
       bundleIdentifier: 'com.kcalmobile.app',
       buildNumber: '1',
       userInterfaceStyle: 'light',
-      // DERİN BAĞLANTI (G5-S4) — Universal Links. l.eatkcal.com'daki
-      // .well-known/apple-app-site-association (Vercel landing-page) bu bundle'a
-      // (A63MT69ASR.com.kcalmobile.app) /p/* ve /u/* yollarını eşler. Alan adı
-      // yayına girene ve YENİ BUILD çıkana kadar mevcut 1.0.7 cihazlarda etkisiz.
+      // DERİN BAĞLANTI (G5-S4, G20-S2) — Universal Links. l.eatkcal.com'daki
+      // .well-known/apple-app-site-association bu bundle'a
+      // (A63MT69ASR.com.kcalmobile.app) /p/* (gönderi), /u/* (profil),
+      // /k/* (kutu kartı QR), /s/* (saha kodu) ve /kesfet yollarını eşler.
+      // İçerik: docs/store/well-known/apple-app-site-association (web'e konacak).
+      // Alan adı tek giriş yeterli; yollar AASA'da. Yeni build şart (OTA değil).
       associatedDomains: ['applinks:l.eatkcal.com'],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -62,7 +68,7 @@ module.exports = {
         NSPhotoLibraryUsageDescription:
           'Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
         NSPhotoLibraryAddUsageDescription:
-          'Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir.',
+          'Paylaşım kartlarını ve görselleri fotoğraflarına kaydetmek için izin gereklidir.',
         NSLocationWhenInUseUsageDescription:
           'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
       },
@@ -219,18 +225,24 @@ module.exports = {
         monochromeImage: './assets/adaptive-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      // DERİN BAĞLANTI (G5-S4) — Android App Links. autoVerify, l.eatkcal.com'daki
+      // DERİN BAĞLANTI (G5-S4, G20-S2) — Android App Links. autoVerify, l.eatkcal.com'daki
       // .well-known/assetlinks.json ile imza parmak izini eşleştirir (parmak izi
-      // İlter tarafından eklenecek — bkz. docs/night/G5-S4-LINKS.md). Yalnız /p
-      // ve /u yolları; diğer yollar tarayıcıda açılır. Alan adı + yeni build şart.
+      // İlter tarafından eklenecek — bkz. docs/store/well-known/README.md).
+      // Yollar AASA ile aynı: /p/ /u/ /k/ /s/ + tam /kesfet. Önek SONUNDA "/"
+      // var: eski '/p' öneki l.eatkcal.com/privacy sayfasını da uygulamaya
+      // çekiyordu (pathPrefix '/p' → '/privacy' eşleşir). Diğer yollar
+      // (privacy, terms, account-deletion) tarayıcıda açılır. Yeni build şart.
       intentFilters: [
         {
           action: 'VIEW',
           autoVerify: true,
           category: ['BROWSABLE', 'DEFAULT'],
           data: [
-            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/p' },
-            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/u' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/p/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/u/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/k/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/s/' },
+            { scheme: 'https', host: 'l.eatkcal.com', path: '/kesfet' },
           ],
         },
       ],
@@ -348,11 +360,23 @@ module.exports = {
         },
       ],
       'expo-video',
+      // expo-image-manipulator (~14.0.8, G19-S1 Tara uzun kenar ≤ 1600): bu
+      // paketin config plugin'i YOK (app.plugin.js yok) → plugins dizisine
+      // eklenemez (eklenirse `expo config` "does not contain a valid config
+      // plugin" hatası verir). Yerel modül autolinking ile derlemeye girer;
+      // izin/Info.plist gerektirmez. YENİ NATIVE DERLEME şart (G20-S2 KARAR).
       [
         'expo-location',
         {
-          locationAlwaysAndWhenInUsePermission:
+          // G20-S2: yalnız "uygulama kullanılırken" konum. Önceden yalnız
+          // AlwaysAndWhenInUse verildiği için eklenti NSLocationAlwaysUsageDescription'ı
+          // İngilizce varsayılanla ("Allow $(PRODUCT_NAME) to access your location")
+          // Info.plist'e yazıyordu; uygulama arka plan konumu KULLANMIYOR.
+          // false = anahtarı Info.plist'ten sil (config-plugins applyPermissions).
+          locationWhenInUsePermission:
             'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
+          locationAlwaysAndWhenInUsePermission: false,
+          locationAlwaysPermission: false,
         },
       ],
       [
