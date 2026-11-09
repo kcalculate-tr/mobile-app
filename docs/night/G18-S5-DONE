@@ -1,0 +1,11 @@
+G18-S5 tamamlandı — 9 Kas 2026, dal night18/release (taban night17/camera 249b89b).
+
+Dört dal birleşti: night18/sys → night18/onb → night18/home → night18/eatkcal.
+Maddeler: 1 birleştirme + temas · 2 uçtan uca gerçek akış (40 kare + EN + FinOpen 10 fps; 4 hata düzeltildi)
+· 3 Final pano kabul tablosu (430 pano, eksik 0, σ1,5 SSIM ölçülmüş, dayanaklı farklar) · 4 Eski tasarım: 0 +
+bayrak kapalı parite (piksel) · 5 iOS dev derlemesi + canlı Tara · 6 kontroller · 7 resmî Apple/Google işaretleri
+· 8 FinMoPopover bağlantıları · 9 ölçüt (σ1,5 SSIM + dy) · 10 dal G19 tabanı.
+
+Kontrol: tsc 0 · unit 718 (717 ✓, 1 atlandı) · jest 35/188, snapshot 2/2 · prebuild iOS + Android ✓ ·
+expo export iOS ✓ + Android ✓.
+Ayrıntı ve SORULAR: docs/night/G18-S5-LOG.md
