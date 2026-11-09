@@ -1,0 +1,9 @@
+G19-S4 DONE — 2026-11-09 15:05
+dal: night19/release (taban night18/release 94f3bf8)
+md.1 birlestirme: scan df0f0bf · track bd5670b · metrics 36a9ca4 · data (supabase/+docs/) 22c7f32
+md.2 cift olay: 36a9ca4 + bfeb75b (her eylem tam 1 olay, testli)
+md.3 Tara acil kapatma metni: eb8d603
+md.4 uctan uca akis + olay denetimi: 1dd268f (Kesfet olay hatasi duzeltildi), tablo LOG'da
+md.5 kontrol: tsc 0 · unit 819/0 · bilesen 235/0 · snapshot 2/2 · noLegacy · i18n 0 · ₺ 0 · prebuild iOS+Android · export iOS+Android
+md.6 LOG: docs/night/G19-S4-LOG.md (910a180)
+tamamlanamayan: iOS dev derlemesi (disk < 20 GB) — LOG SORULAR 7
