@@ -131,6 +131,14 @@ export function CityGateView({
       setStep('waitlist');
       return;
     }
+    // G18-S5 (uçtan uca akışta bulundu): kapı denetimi `restoran_yakinda` bayrağına bağlı
+    // (useEatkcalRegistration.enabled). Bayrak kapalıyken checkCity sessizce false döner ve
+    // İzmir "Devam et" çıkmaza giriyordu → denetim kapalıyken İzmir (açık il) doğrudan geçer.
+    if (!reg.enabled) {
+      haptic('success');
+      onAllowed();
+      return;
+    }
     // İzmir: bugünkü doğrulama (checkCity — şehir açılışta ayarlı), sonra onAllowed.
     const ok = await reg.checkCity();
     if (ok) {

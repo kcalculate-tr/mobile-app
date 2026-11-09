@@ -85,13 +85,15 @@ export function LogTrail({
     const baseY = interpolate(p.value, [0, 1], [startY, endY]);
     const lift = Math.sin(p.value * Math.PI) * arcHeight;
     const scale = interpolate(p.value, [0, 1], [1, 0.22]);
-    const opacity = interpolate(p.value, [0, 0.08, 0.85, 1], [1, 1, 1, 0.5]);
+    // G18-S5: varışta tamamen söner (önceden 0,5'te kalıp Ana sayfada leke bırakıyordu).
+    const opacity = interpolate(p.value, [0, 0.08, 0.85, 1], [1, 1, 1, 0]);
     return { transform: [{ translateX: x }, { translateY: baseY - lift }, { scale }], opacity };
   });
 
   const targetStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(pulse.value, [0, 1], [1, 1.5]) }],
-    opacity: interpolate(pulse.value, [0, 1], [0.5, 1]),
+    // G18-S5: hedef noktası yalnız varış nabzında görünür (dinlenmede 0 — kalıcı leke yok).
+    opacity: interpolate(pulse.value, [0, 1], [0, 1]),
   }));
 
   return (

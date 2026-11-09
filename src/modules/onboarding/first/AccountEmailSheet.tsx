@@ -36,12 +36,15 @@ export function AccountEmailSheet({
   visible,
   onClose,
   onVerified,
+  onClosed,
   vitrinFocus,
 }: {
   visible: boolean;
   onClose: () => void;
   /** Kod doğrulandı (oturum açıldı) → Ana sayfa. */
   onVerified: () => void;
+  /** Kapanış animasyonu bitip Modal kalktığında (G18-S5: gezinme bundan SONRA yapılır). */
+  onClosed?: () => void;
   /** YALNIZ vitrin: klavye açık hâli (FinOnbAccountKeyboard). */
   vitrinFocus?: boolean;
 }) {
@@ -77,6 +80,7 @@ export function AccountEmailSheet({
         setSent(false);
         setCode('');
         setError('');
+        onClosed?.();
       };
       if (reduced) {
         o.value = withTiming(0, { duration: REDUCED.duration }, (ok) => ok && runOnJS(end)());

@@ -16,7 +16,7 @@
 // Takibe başla; dönen kullanıcı → Tabs. 18 yaş engeli (FinOnbUnderage) Takibe
 // başla'nın yaş adımından gelir; burada paylaşılan ekran olarak da kayıtlıdır.
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -38,6 +38,7 @@ import { useOnb } from './components/onbTheme';
 import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
 import { welcomeVariant } from './first/state';
+import { writeIntroSeen } from './intro/storage';
 
 export type OnbIntent = 'track' | 'order' | 'both';
 
@@ -76,6 +77,12 @@ function WelcomeScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const variant = welcomeVariant({ b: useFeature('onb_welcome_variant_b'), c: useFeature('onb_welcome_variant_c') });
   const headlineKey = variant === 'a' ? 'headline' : `headline_${variant}`;
   const vOpen = __DEV__ && route.params?.vitrinOpen === true;
+  // G18-S5 (uçtan uca akışta bulundu): "Kcalculate'e yeni şeyler geldi" tanıtımı YALNIZ
+  // yükseltme kullanıcısı içindir; Karşılama'yı gören kurulum yeni deneyimle başladı →
+  // tanıtım görülmüş sayılır (yükseltme kullanıcısı Karşılama'yı hiç görmez, değişmez).
+  useEffect(() => {
+    void writeIntroSeen();
+  }, []);
   return (
     <View style={{ flex: 1 }}>
     <OnbScaffold
@@ -168,6 +175,7 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   // G18-S1 md.3: "E-posta ile devam et" → kaydırılabilir sheet (eski Login ekranı yerine).
   const vSheet = __DEV__ ? route.params?.vitrinSheet : undefined;
   const [emailOpen, setEmailOpen] = useState(vSheet != null);
+  const homeAfterClose = useRef(false);
   const goHome = () => root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
 
   const afterAuth = async (result: {
@@ -230,7 +238,15 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
         visible={emailOpen}
         onClose={() => setEmailOpen(false)}
         onVerified={() => {
+          // G18-S5 düzeltme (uçtan uca akışta bulundu): önce sheet kapanır, Modal kalkınca
+          // Ana sayfaya geçilir. Aynı anda gezinince Hesap ekranı donduruluyor, kapanış geri
+          // çağrısı işlenmiyor ve şeffaf Modal bütün dokunuşları yutuyordu.
+          homeAfterClose.current = true;
           setEmailOpen(false);
+        }}
+        onClosed={() => {
+          if (!homeAfterClose.current) return;
+          homeAfterClose.current = false;
           goHome();
         }}
         vitrinFocus={vSheet === 'keyboard'}

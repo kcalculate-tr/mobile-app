@@ -102,6 +102,9 @@ plugins/
 # G15-S3 — Keşfet vitrin verisi + Final örnek fotoğrafları (YALNIZ __DEV__).
 !src/dev/vitrinKesfet.ts
 !src/dev/assets/
+# G18-S4 FinPush vitrini + G18-S5 uçtan uca akış kökü (YALNIZ __DEV__).
+!src/dev/vitrinPush.tsx
+!src/dev/vitrinE2E.tsx
 
 # Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
 tools/**/.env

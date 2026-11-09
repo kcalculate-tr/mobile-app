@@ -209,6 +209,15 @@ export default function VitrinGate({ children }: { children: React.ReactNode }) 
   }, []);
 
   if (!pano) return <>{children}</>;
+  // G18-S5 md.2 — uçtan uca gerçek akış (sahne zorlanmaz; bkz. vitrinE2E.tsx).
+  if (pano === 'E2E' || pano === 'E2E-EN') {
+    const { E2ERoot } = require('./vitrinE2E') as typeof import('./vitrinE2E');
+    return (
+      <ErrorBoundary key={pano} FallbackComponent={({ error }) => <Crashed pano={pano} error={error} />}>
+        <E2ERoot lang={pano === 'E2E-EN' ? 'en' : 'tr'} />
+      </ErrorBoundary>
+    );
+  }
   const entry = resolvePano(pano);
   if (!entry) {
     return (

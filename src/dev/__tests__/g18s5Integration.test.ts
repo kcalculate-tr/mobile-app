@@ -58,3 +58,16 @@ test('ORTAK #14: cam nesne anlamları — Enerji halkası alev, seri kupa, ilk �
   assert.match(c, /glass: 'trophy', ringProgress: 1, big: '7'/);
   assert.match(c, /glass: 'bowl', ringProgress: 1, big: '1\.'/);
 });
+
+test('uçtan uca akış düzeltmeleri (G18-S5): e-posta sheet\'i kapanmadan gezinme yok; İzmir kapısı bayrak kapalıyken çıkmaz değil; LogTrail leke bırakmaz; yeni kurulumda yükseltme tanıtımı yok', () => {
+  const onb = read('modules/onboarding/OnboardingNavigator.tsx');
+  // onVerified yalnız kapatır; Ana sayfa kapanış (Modal kalktı) geri çağrısında.
+  assert.match(onb, /onVerified=\{\(\) => \{[\s\S]*?homeAfterClose\.current = true;\s*setEmailOpen\(false\);\s*\}\}/);
+  assert.match(onb, /onClosed=\{\(\) => \{[\s\S]*?goHome\(\);/);
+  assert.match(read('modules/onboarding/first/AccountEmailSheet.tsx'), /onClosed\?\.\(\);/);
+  assert.match(onb, /writeIntroSeen\(\)/);
+  assert.match(read('modules/eatkcal/v2/ui/gate/CityGateView.tsx'), /if \(!reg\.enabled\) \{\s*haptic\('success'\);\s*onAllowed\(\);/);
+  const trail = read('core/design/components/LogTrail.tsx');
+  assert.match(trail, /\[0, 0\.08, 0\.85, 1\], \[1, 1, 1, 0\]/);
+  assert.match(trail, /interpolate\(pulse\.value, \[0, 1\], \[0, 1\]\)/);
+});
