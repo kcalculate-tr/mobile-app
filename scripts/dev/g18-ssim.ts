@@ -27,14 +27,20 @@ const H = Math.round(852 / SC);
 const Y = (v: number) => Math.round(v / SC);
 
 function gray(src: string, tag: string): Float64Array {
+  // Genişliğe ölçekle (oran korunur), sonra ÜSTTEN bir ekran boyu kırp: uzun (kaydırmalı)
+  // Final panoları sıkıştırılmaz, ilk ekranı karşılaştırılır.
   const dst = join(TMP, `${tag}.png`);
-  execFileSync('sips', ['-s', 'format', 'png', '-z', String(H), String(W), src, '--out', dst], { stdio: 'ignore' });
+  execFileSync('sips', ['-s', 'format', 'png', '--resampleWidth', String(W), src, '--out', dst], { stdio: 'ignore' });
   const png = PNG.sync.read(readFileSync(dst));
-  const out = new Float64Array(W * H);
-  for (let i = 0; i < W * H; i++) {
-    const r = png.data[i * 4], g = png.data[i * 4 + 1], b = png.data[i * 4 + 2], a = png.data[i * 4 + 3] / 255;
-    // saydam kenarları beyaz say (pano köşeleri)
-    out[i] = (0.299 * r + 0.587 * g + 0.114 * b) * a + 255 * (1 - a);
+  const out = new Float64Array(W * H).fill(255);
+  const rows = Math.min(H, png.height);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < W && x < png.width; x++) {
+      const i = y * png.width + x;
+      const r = png.data[i * 4], g = png.data[i * 4 + 1], b = png.data[i * 4 + 2], a = png.data[i * 4 + 3] / 255;
+      // saydam kenarları beyaz say (pano köşeleri)
+      out[y * W + x] = (0.299 * r + 0.587 * g + 0.114 * b) * a + 255 * (1 - a);
+    }
   }
   return out;
 }
