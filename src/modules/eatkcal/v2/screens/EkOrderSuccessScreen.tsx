@@ -35,6 +35,7 @@ const BOWL = require('../../../../../assets/glass/bowl.png');
 const EAT_EASE = Easing.bezier(0.25, 0.9, 0.3, 1);
 const STD_EASE = Easing.bezier(0.2, 0, 0, 1);
 const RAIN_EASE = Easing.bezier(0.4, 0, 1, 1);
+const GLOW_RINGS = Array.from({ length: 12 }, (_, i) => Math.round(115 - i * 9.5));
 /** Doğrulama sorgusu en fazla bu kadar beklenir; sonra kutlamasız kalıcı durum. */
 const VERIFY_TIMEOUT_MS = 4000;
 
@@ -191,15 +192,16 @@ export default function EkOrderSuccessScreen() {
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {[0.22, 0.16, 0.12, 0.08].map((o, i) => (
+          {/* Final radial-gradient (lime 0,55 → 0,22 @%35 → 0 @%68): 12 üst üste saydam halka. */}
+          {GLOW_RINGS.map((r) => (
             <View
-              key={i}
+              key={r}
               style={{
                 position: 'absolute',
-                width: 240 - i * 40,
-                height: 240 - i * 40,
-                borderRadius: (240 - i * 40) / 2,
-                backgroundColor: `rgba(198,240,79,${theme.isDark ? o * 0.8 : o})`,
+                width: r * 2,
+                height: r * 2,
+                borderRadius: r,
+                backgroundColor: `rgba(198,240,79,${theme.isDark ? 0.055 : 0.07})`,
               }}
             />
           ))}
