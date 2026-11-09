@@ -120,7 +120,7 @@ function orders(ids: string[]): any[] {
     legacy_selected_options: {},
   });
   return [
-    { id: 1, order_code: 'KCAL-1042', created_at: daysAgo(0), delivered_at: null, total_amount: 742, status: 'on_way', payment_status: 'paid', address: 'Ev · Kıbrıs Şehitleri Cd. No 12, Alsancak', delivery_method: 'delivery', scheduled_date: null, scheduled_time: null, items: [item(0, 'Tavuklu Bowl', 389), item(1, 'Somon Salata', 353)], order_items: [{ product_name: 'Tavuklu Bowl', quantity: 1, unit_price: 389, total_price: 389 }, { product_name: 'Somon Salata', quantity: 1, unit_price: 353, total_price: 353 }] },
+    { id: 1, order_code: 'KCAL-1042', created_at: daysAgo(0), delivered_at: null, total_amount: 742, status: 'on_way', payment_status: 'paid', address: 'Ev: Kıbrıs Şehitleri Cd. No 12, Alsancak', delivery_method: 'delivery', scheduled_date: null, scheduled_time: null, items: [item(0, 'Tavuklu Bowl', 389), item(1, 'Somon Salata', 353)], order_items: [{ product_name: 'Tavuklu Bowl', quantity: 1, unit_price: 389, total_price: 389 }, { product_name: 'Somon Salata', quantity: 1, unit_price: 353, total_price: 353 }] },
     { id: 2, order_code: 'KCAL-1031', created_at: daysAgo(3), delivered_at: daysAgo(3), total_amount: 405, status: 'delivered', payment_status: 'paid', items: [item(1, 'Somon Salata', 405)] },
     { id: 3, order_code: 'KCAL-1019', created_at: daysAgo(8), delivered_at: daysAgo(8), total_amount: 355.5, status: 'delivered', payment_status: 'paid', items: [item(2, 'Mercimek Çorbası', 355.5)] },
     { id: 4, order_code: 'KCAL-1004', created_at: daysAgo(15), delivered_at: null, total_amount: 382.5, status: 'refunded', payment_status: 'refunded', items: [item(3, 'Izgara Köfte', 382.5)] },

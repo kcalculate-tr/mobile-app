@@ -16,7 +16,7 @@ export const tr = {
     error_title: 'Siparişler yüklenemedi',
     error_body: 'Bağlantını kontrol edip tekrar dene.',
     error_action: 'Tekrar dene',
-    row_meta: '%{date}, %{amount}',
+    row_meta: '%{date}\u2002%{amount}',
     mod_pending: {
       cancel: 'İptal talebi',
       date_change: 'Tarih değişikliği',
@@ -94,7 +94,7 @@ export const en: typeof tr = {
     error_title: 'Couldn’t load orders',
     error_body: 'Check your connection and try again.',
     error_action: 'Try again',
-    row_meta: '%{date}, %{amount}',
+    row_meta: '%{date}\u2002%{amount}',
     mod_pending: {
       cancel: 'Cancel request',
       date_change: 'Date change',
