@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { buildAppleClientSecret, revokeAppleRefreshToken } from '../_shared/apple-auth.ts'
 import { deleteCardFromPaynkolay } from '../_shared/paynkolay-cards.ts'
+import {
+  ORDER_ANON_EXTRA,
+  cleanupUserRecords,
+  collectPostMediaPaths,
+  removeUserStorage,
+} from './cleanup.ts'
 
 // Hesap silme (App Store 5.1.1(v)) — SecurityScreen "Hesabımı Sil" tarafından
 // çağrılır. Kullanıcı SADECE kendi hesabını silebilir (auth.uid() ile alınan
@@ -22,11 +28,19 @@ import { deleteCardFromPaynkolay } from '../_shared/paynkolay-cards.ts'
 //     revoke isteği — best-effort, başarısız olsa da silme durmaz.
 //  3) Saklı kart varsa PaynKolay'dan da silinir (best-effort — başarısız olsa
 //     da lokal kayıt CASCADE ile zaten silinecek, sadece loglanır).
+//  3b) G20-S3 md.7 (B-09): Storage nesneleri — avatars (<uid>.*), user-media
+//     (<uid>/…, Tara fotoğrafları), post-media (posts/<uid>/… + gönderi medyası
+//     kayıtlarındaki yollar), support-attachments (tickets/<uid>/…). Best-effort.
 //  4) orders: user_id/address_id/customer_id NULL + kişisel alanlar maskelenir
-//     (KAYIT SİLİNMEZ — yasal saklama/muhasebe delili gereksinimi).
+//     (KAYIT SİLİNMEZ — yasal saklama/muhasebe delili gereksinimi). G20-S3:
+//     il/ilçe/mahalle + external_payload da boşaltılır.
+//  4b) G20-S3: ilişkili kayıtlar — support_tickets (FK engeli + kişisel mesaj),
+//     posts/post_media, follows, push_tokens, notification_sends, analytics_events
+//     silinir; feedback/campaign_targets e-postası, order_modifications adres metni
+//     boşaltılır. Best-effort (cleanup.ts).
 //  5) user_apple_tokens satırı temizlenir.
 //  6) auth.admin.deleteUser() — profiles/addresses/user_nutrition_profiles/
-//     branch_users/push_tokens/user_cards/... CASCADE ile gider.
+//     branch_users/user_cards/user_consents/... CASCADE ile gider.
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -206,6 +220,10 @@ Deno.serve(async (req: Request) => {
       console.error('[delete-account] card delete step error:', String(e))
     }
 
+    // 3b) G20-S3 md.7: Storage nesneleri (gönderi medyası yolları kayıt silinmeden ÖNCE toplanır).
+    const { postIds, paths: postMediaPaths } = await collectPostMediaPaths(admin, userId)
+    const report = await removeUserStorage(admin, userId, postMediaPaths)
+
     // 4) Siparişleri anonimleştir (kayıt kalır, kişi kalkar).
     const { error: anonError } = await admin
       .from('orders')
@@ -218,12 +236,20 @@ Deno.serve(async (req: Request) => {
         phone: null,
         address: null,
         note: null,
+        ...ORDER_ANON_EXTRA,
       })
       .eq('user_id', userId)
     if (anonError) {
       console.error('[delete-account] orders anonymize failed:', anonError.message)
       return jsonResponse({ error: 'Sipariş geçmişi anonimleştirilemedi, lütfen tekrar deneyin.' }, 500)
     }
+
+    // 4b) G20-S3 md.7: ilişkili kayıtlar (best-effort; hata silmeyi durdurmaz).
+    await cleanupUserRecords(admin, userId, postIds, report)
+    if (report.errors.length > 0) {
+      console.error('[delete-account] cleanup uyarıları:', report.errors.join(' | '))
+    }
+    console.log('[delete-account] storage silinen:', JSON.stringify(report.storage))
 
     // 5) Apple token kaydını temizle.
     await admin.from('user_apple_tokens').delete().eq('user_id', userId)
