@@ -21,7 +21,8 @@ import { useT } from '../../../../core/i18n';
 import { CameraSlash, Check, Clock, WarningCircle, WifiSlash, X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 
-export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera';
+// G19-S1: 'unavailable' = Tara geçici kapalı (acil anahtar / genel tavan; İlter 9 Kas).
+export type FinScanErrorKind = 'failed' | 'offline' | 'limit' | 'camera' | 'unavailable';
 
 function tokens(isDark: boolean) {
   return isDark
@@ -75,7 +76,10 @@ export default function FinScanErrorSheet({
   onRetry,
   onOpenSettings,
   onGallery,
+  reason,
 }: {
+  /** G19-S1 md.4: 'failed' alt nedeni — dosya 5 MB üstü / bulunamadı (hak harcanmadı). */
+  reason?: 'too_large' | 'missing';
   visible: boolean;
   kind: FinScanErrorKind;
   remaining: number;
@@ -102,6 +106,8 @@ export default function FinScanErrorSheet({
       <WifiSlash size={24} color={iconColor} />
     ) : kind === 'camera' ? (
       <CameraSlash size={24} color={iconColor} />
+    ) : kind === 'unavailable' ? (
+      <WarningCircle size={24} color={iconColor} />
     ) : (
       <Clock size={24} color={iconColor} />
     );
@@ -113,15 +119,23 @@ export default function FinScanErrorSheet({
         ? tr('ai_scan.offline_title')
         : kind === 'camera'
           ? tr('ai_scan.camera_denied_title')
-          : tr('ai_scan.limit_title');
+          : kind === 'unavailable'
+            ? tr('ai_scan.unavailable_title')
+            : tr('ai_scan.limit_title');
   const body =
     kind === 'failed'
-      ? tr('ai_scan.failed_body')
+      ? reason === 'too_large'
+        ? tr('ai_scan.failed_body_large')
+        : reason === 'missing'
+          ? tr('ai_scan.failed_body_missing')
+          : tr('ai_scan.failed_body')
       : kind === 'offline'
         ? tr('ai_scan.offline_body')
         : kind === 'camera'
           ? tr('ai_scan.camera_denied_body')
-          : tr('ai_scan.limit_body');
+          : kind === 'unavailable'
+            ? tr('ai_scan.unavailable_body')
+            : tr('ai_scan.limit_body');
   const note =
     kind === 'failed'
       ? tr('ai_scan.failed_note', { count: remaining })
@@ -130,7 +144,9 @@ export default function FinScanErrorSheet({
         : null;
   const topChip =
     kind === 'failed'
-      ? tr('ai_scan.photo_saved')
+      ? reason
+        ? null
+        : tr('ai_scan.photo_saved')
       : kind === 'offline'
         ? tr('ai_scan.offline_chip')
         : kind === 'limit'
@@ -182,13 +198,18 @@ export default function FinScanErrorSheet({
 
           {kind === 'failed' ? (
             <>
-              <Btn primary label={tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
+              <Btn primary label={reason ? tr('ai_scan.retake') : tr('ai_scan.failed_retry')} onPress={onRetry} style={styles.first} />
               <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />
             </>
           ) : kind === 'offline' ? (
             <>
               <Btn primary label={tr('ai_scan.offline_ok')} onPress={onClose} style={styles.first} />
               <Btn label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.next} />
+            </>
+          ) : kind === 'unavailable' ? (
+            <>
+              <Btn primary label={tr('ai_scan.manual_entry')} onPress={onManualEntry} style={styles.first} />
+              <Btn label={tr('ai_scan.offline_ok')} onPress={onClose} style={styles.next} />
             </>
           ) : kind === 'camera' ? (
             <>

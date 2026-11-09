@@ -7,6 +7,11 @@ export interface ReserveResult {
   ok: boolean;
   remaining: number;
   reset_at: string; // ISO; Europe/Istanbul gece yarısı
+  /** G19-S1 md.2: anahtar zaten 'consumed' → hak DÜŞMEDİ, edge önbellekteki sonucu döner. */
+  cached?: boolean;
+  /** G19-S1 (İlter 9 Kas): ok:false nedeni — 'disabled' (acil kapatma) | 'global_cap'
+   *  (günlük genel tavan). Yoksa kullanıcının kendi hakkı bitti. */
+  reason?: 'disabled' | 'global_cap';
 }
 
 export interface ScanIngredient {
@@ -15,6 +20,11 @@ export interface ScanIngredient {
   // Bileşen başına kalori — sunucu döndürmezse paylaşım kartı etiketi yalnız
   // adı gösterir (uydurma sayı yok, bkz. PlateXRayShareCard).
   kcal?: number;
+  /** G19-S1 md.3: öğe başına makro (sunucu verirse) — öğe silme/gram düzeltmesi
+   *  toplamı öğe öğe yeniden hesaplar. Yoksa toplam kcal oranıyla ölçeklenir. */
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
 }
 
 export interface ScanEstimate {
@@ -38,6 +48,8 @@ export interface ScanEstimate {
 export type AiScanOutcome =
   | { status: 'ok'; estimate: ScanEstimate; remaining: number; reset_at: string }
   | { status: 'quota_exhausted'; remaining: number; reset_at: string }
+  // unavailable → Tara geçici kapalı (acil anahtar / genel tavan): "hakkını kullandın" DEĞİL
+  | { status: 'unavailable'; reason: 'disabled' | 'global_cap'; remaining: number; reset_at: string }
   | {
       status: 'failed';
       error: string;
@@ -53,6 +65,8 @@ export interface AnalyzeParams {
   imageRef: string;
   /** G18-S4 md.5: isteğe bağlı kullanıcı notu (≤ 160) → edge `hint`. Boşsa gönderilmez. */
   hint?: string;
+  /** G19-S1 md.3: cihaz dili → edge `lang` (yiyecek adları bu dilde). */
+  lang?: 'tr' | 'en';
 }
 
 // İstemci arayüzü — gerçek RPC/edge (client.ts) ve mock (mock.ts) uygular.

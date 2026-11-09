@@ -8,7 +8,7 @@
 // 7 Kas 15:35), bkz. ui/FinScanCamera.tsx; ExpoCamera native modülü olmayan eski
 // derlemede FinScanViewfinder (sistem kamerası) yedeği.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import NetInfo from '@react-native-community/netinfo';
@@ -26,7 +26,7 @@ import { RootStackParamList } from '../../../../navigation/types';
 import { runAiScan } from '../runScan';
 import { getAiScanClient } from '../client';
 import { scanFailureInfo } from '../scanError';
-import { useScanQuotaStore } from '../quotaStore';
+import { useScanQuotaStore, useScanRemaining } from '../quotaStore';
 import { inferMealTypeFromHour } from '../mealTypeFromHour';
 import type { ClientMealType } from '../../../../core/meal/mealType';
 import { saveAiScanEstimate } from '../saveEstimate';
@@ -44,6 +44,10 @@ import { fetchProducts } from '../../../../lib/products';
 import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight } from '../logFlight';
+import { checkLocalImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
+import { trackScan } from '../scanEvents';
+import { shrinkForScan, type ImageSize } from '../imageResize';
+import { keepOrphanResult, takeOrphanResult } from '../orphanResult';
 import { useFeature } from '../../../../core/flags';
 import { haptic } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
@@ -60,7 +64,8 @@ export default function ScanScreen() {
   const { user } = useAuth();
   const paylasimKarti = useFeature('paylasim_karti');
 
-  const remaining = useScanQuotaStore((s) => s.remaining);
+  // G19-S1 md.2: İstanbul gece yarısı geçince dünkü sayı gösterilmez (bilinmiyor → gizli).
+  const remaining = useScanRemaining();
   const recordQuota = useScanQuotaStore((s) => s.recordQuota);
   // G12-S4 — yeni kabuk Tara (FinScanR2/FinPhotoR1). Bayrak kapalıyken bu
   // değişkenin TÜM etkisi sıfırdır: aşağıdaki JSX dallarından yalnız eski dal
@@ -95,6 +100,59 @@ export default function ScanScreen() {
   const [scanNote, setScanNote] = useState('');
 
   const insets = useSafeAreaInsets();
+  const scanLang: 'tr' | 'en' = lang === 'en' ? 'en' : 'tr';
+
+  // G19-S1 md.1 — yarış korumaları.
+  //  • busyRef: deklanşör → (dosya/ağ denetimi) → rezervasyon arasında ikinci dokunma
+  //    / galeri seçimi İKİNCİ rezervasyon açmaz (önceden NetInfo beklenirken açılıyordu).
+  //  • savingRef: "logla"ya iki hızlı dokunma tek kayıt (state güncellemesi gecikir).
+  //  • mountedRef: analiz sürerken ekran kapatılırsa setState yok; sonuç sahipsiz
+  //    olarak saklanır (orphanResult) ve Tara yeniden açılınca gösterilir.
+  const busyRef = useRef(false);
+  const savingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const lastSourceRef = useRef<'camera' | 'gallery'>('camera');
+  const [failReason, setFailReason] = useState<LocalImageCheck | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [galleryDenied, setGalleryDenied] = useState(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // G19-S1 md.6: scan_open (yalnız yeni kabuk — bayrak kapalı parite).
+  // md.1: önceki açılışta analiz sürerken kapatıldıysa sonucu geri getir.
+  useEffect(() => {
+    if (!yeniKabuk) return;
+    trackScan('scan_open', { camera: liveCam ? 'live' : 'fallback' });
+    const o = takeOrphanResult(user?.id);
+    if (o) {
+      setPhotoUri(o.photoUri);
+      setScanRef(o.scanRef);
+      setScanNote(o.note);
+      setResult(o.estimate);
+      setSaved(false);
+      setStage('result');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yeniKabuk]);
+
+  // md.1: analiz sürerken Android geri tuşu ekranı kapatmaz (iOS'ta kaydırma kapalı);
+  // kapat X her zaman çalışır — sonuç orphanResult'ta korunur.
+  useEffect(() => {
+    if (!yeniKabuk) return;
+    const scanning = stage === 'scanning';
+    try {
+      navigation.setOptions({ gestureEnabled: !scanning });
+    } catch {
+      // test/vitrin gezgini setOptions vermeyebilir
+    }
+    if (!scanning) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [yeniKabuk, stage, navigation]);
 
   // Çevrimdışı bekleyen fotoğraflar (G16-S1): ekran açılışında ve bağlantı
   // geri geldiğinde kuyruk SIRAYLA analiz edilir (processPendingQueue); hak
@@ -103,7 +161,7 @@ export default function ScanScreen() {
   useEffect(() => {
     if (!yeniKabuk || !user?.id) return;
     let cancelled = false;
-    const drain = () => void drainPendingScans(user.id);
+    const drain = () => void drainPendingScans(user.id, undefined, lang === 'en' ? 'en' : 'tr');
     const unsubNet = NetInfo.addEventListener((s) => {
       if (s.isConnected) drain();
     });
@@ -126,7 +184,7 @@ export default function ScanScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yeniKabuk, user?.id]);
 
-  const captureOnce = async (): Promise<string | null> => {
+  const captureOnce = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       // G15-S2: yeni kabukta "Kameraya erişim kapalı" ayrı durum (FinScanError);
@@ -140,11 +198,11 @@ export default function ScanScreen() {
       quality: 0.5, // G17-S1: edge sınırı 5 MB — yükleme boyutu
     });
     if (picked.canceled || !picked.assets?.[0]?.uri) return null;
-    return picked.assets[0].uri;
+    return picked.assets[0];
   };
 
   const handleCaptureLegacy = async () => {
-    const uri = await captureOnce();
+    const uri = (await captureOnce())?.uri;
     if (!uri) return;
     setPhotoUri(uri);
     setStage('scanning');
@@ -156,6 +214,11 @@ export default function ScanScreen() {
     if (outcome.status === 'quota_exhausted') {
       setStage('viewfinder');
       setLimitVisible(true);
+      return;
+    }
+    if (outcome.status === 'unavailable') {
+      setStage('viewfinder');
+      Alert.alert(t('ai_scan.unavailable_title'), t('ai_scan.unavailable_body'));
       return;
     }
     if (outcome.status === 'failed') {
@@ -185,72 +248,169 @@ export default function ScanScreen() {
   // Yeni kabuk — çevrimdışıysa hiç rezervasyon denemeden kuyruğa al (hak
   // harcanmasın); hata/limit/çevrimdışı tek sheet (FinScanErrorSheet) ile
   // gösterilir — Alert.alert YOK. Kamera ve galeri aynı akışı paylaşır.
-  const runFinCapture = async (uri: string) => {
-    setPhotoUri(uri);
-    const net = await NetInfo.fetch();
-    const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
-    setScanRef(idempotencyKey);
-
-    const hint = normalizeScanNote(scanNote);
-    if (!net.isConnected) {
-      await setPendingScanPhoto({
-        id: idempotencyKey,
-        imageUri: uri,
-        mealType,
-        queuedAt: new Date().toISOString(),
-        ...(hint ? { hint } : {}),
-      });
-      setPendingCount(await getPendingScanCount());
-      setErrorKind('offline');
-      return;
-    }
-
-    setStage('scanning');
+  // G19-S1: `retry` = FinErrFailed "Tekrar dene" → AYNI foto, AYNI anahtar (idempotent:
+  // iade edilmiş hak yeniden ayrılır, sunucuda tamamlanmışsa önbellekten, hak düşmeden).
+  const runFinCapture = async (
+    rawUri: string,
+    source: 'camera' | 'gallery',
+    retry = false,
+    size?: ImageSize | null,
+  ) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    lastSourceRef.current = source;
     try {
-      const outcome = await runAiScan(getAiScanClient(), {
-        idempotencyKey,
-        imageRef: uri,
-        ...(hint ? { hint } : {}),
-      });
-      recordQuota(outcome.remaining, outcome.reset_at);
-      if (outcome.status === 'quota_exhausted') {
-        setStage('viewfinder');
-        setErrorKind('limit');
-        return;
-      }
-      if (outcome.status === 'failed') {
-        setStage('viewfinder');
+      // İlter 9 Kas: uzun kenar ≤ 1600 (expo-image-manipulator; native yoksa aynı URI).
+      // Yeniden denemede foto zaten küçük → boyut verilmez, aynı URI = aynı anahtar.
+      const uri = await shrinkForScan(rawUri, size);
+      setPhotoUri(uri);
+      setFailReason(null);
+      const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
+      setScanRef(idempotencyKey);
+      const hint = normalizeScanNote(scanNote);
+
+      // md.4: dosya yok / 5 MB üstü → rezervasyon YOK (hak harcanmaz), belleğe okunmaz.
+      const local = await checkLocalImage(uri);
+      if (local !== 'ok') {
+        trackScan('scan_failed', { reason: local === 'too_large' ? 'image_too_large' : 'file_missing', stage: 'local' });
+        if (!mountedRef.current) return;
+        setFailReason(local);
         setErrorKind('failed');
         return;
       }
-      // FinMoScan: başarı animasyonu/sonucu YALNIZ gerçek sonuçtan sonra —
-      // burada stage 'result' olana dek hiçbir optimistik gösterim yok.
-      haptic('success'); // FinMoScan: medium (deklanşör) → success (sonuç)
-      setResult(outcome.estimate);
-      setSaved(false);
-      setStage('result');
-    } catch (e) {
-      // G17-S2 md.6: rezervasyon (RPC) hatası da LOG + Sentry'ye gider.
-      try {
-        getAiScanClient().reportFailure?.(scanFailureInfo(e, 'reserve'));
-      } catch {
-        // teşhis akışı bozmaz
+
+      const net = await NetInfo.fetch();
+      // isConnected null = henüz bilinmiyor (Android açılışı) → çevrimiçi say; gerçekten
+      // bağlantı yoksa analiz 'network' hatasıyla düşer, hak iade edilir, Tekrar dene.
+      const offline = net.isConnected === false;
+      trackScan('scan_start', { source, has_note: !!hint, retry, offline });
+      if (offline) {
+        const stored = await persistQueuedImage(uri, idempotencyKey);
+        await setPendingScanPhoto({
+          id: idempotencyKey,
+          imageUri: stored,
+          mealType,
+          queuedAt: new Date().toISOString(),
+          lang: scanLang,
+          ...(hint ? { hint } : {}),
+        });
+        const count = await getPendingScanCount();
+        if (!mountedRef.current) return;
+        setPendingCount(count);
+        setErrorKind('offline');
+        return;
       }
-      setStage('viewfinder');
-      setErrorKind('failed');
+
+      setStage('scanning');
+      try {
+        const outcome = await runAiScan(getAiScanClient(), {
+          idempotencyKey,
+          imageRef: uri,
+          lang: scanLang,
+          ...(hint ? { hint } : {}),
+        });
+        recordQuota(outcome.remaining, outcome.reset_at);
+        if (outcome.status === 'quota_exhausted') {
+          trackScan('scan_limit');
+          if (!mountedRef.current) return;
+          setStage('viewfinder');
+          setErrorKind('limit');
+          return;
+        }
+        if (outcome.status === 'unavailable') {
+          // G19-S1 (İlter 9 Kas): acil kapatma / genel tavan — "hakkını kullandın" DEĞİL.
+          trackScan('scan_failed', { reason: outcome.reason, stage: 'reserve' });
+          if (!mountedRef.current) return;
+          setStage('viewfinder');
+          setErrorKind('unavailable');
+          return;
+        }
+        if (outcome.status === 'failed') {
+          trackScan('scan_failed', { reason: outcome.failure?.code ?? 'unknown', stage: outcome.failure?.stage ?? 'analyze' });
+          if (!mountedRef.current) return;
+          setStage('viewfinder');
+          setErrorKind('failed');
+          return;
+        }
+        trackScan('scan_success', { n_items: outcome.estimate.ingredients.length, kcal: outcome.estimate.kcal });
+        if (!mountedRef.current) {
+          // Kapatıldı: hak düştü, sonuç kaybolmasın → Tara yeniden açılınca gösterilir.
+          if (user?.id) {
+            keepOrphanResult({ userId: user.id, scanRef: idempotencyKey, photoUri: uri, note: hint ?? '', estimate: outcome.estimate });
+          }
+          return;
+        }
+        // FinMoScan: başarı animasyonu/sonucu YALNIZ gerçek sonuçtan sonra —
+        // burada stage 'result' olana dek hiçbir optimistik gösterim yok.
+        haptic('success'); // FinMoScan: medium (deklanşör) → success (sonuç)
+        setResult(outcome.estimate);
+        setSaved(false);
+        setStage('result');
+      } catch (e) {
+        // G17-S2 md.6: rezervasyon (RPC) hatası da LOG + Sentry'ye gider.
+        const info = scanFailureInfo(e, 'reserve');
+        try {
+          getAiScanClient().reportFailure?.(info);
+        } catch {
+          // teşhis akışı bozmaz
+        }
+        trackScan('scan_failed', { reason: info.code, stage: 'reserve' });
+        if (!mountedRef.current) return;
+        setStage('viewfinder');
+        setErrorKind('failed');
+      }
+    } finally {
+      busyRef.current = false;
     }
   };
 
   const handleCaptureFin = async () => {
-    const uri = await captureOnce();
-    if (!uri) return;
-    await runFinCapture(uri);
+    if (busyRef.current) return;
+    const asset = await captureOnce();
+    if (!asset?.uri) return;
+    await runFinCapture(asset.uri, 'camera', false, asset);
+  };
+
+  // G19-S1 md.5: yeni kabukta galeri İZİN İSTEMEDEN açılır (iOS PHPicker / Android
+  // Photo Picker izin gerektirmez; "sınırlı erişim" de sorun değil). Yalnız açılamazsa
+  // izin istenir; reddedilirse Alert DEĞİL, toast (Ayarlar yolu metinde).
+  const pickFromGalleryFin = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
+    const open = () =>
+      ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.5, // G17-S1: edge sınırı 5 MB — yükleme boyutu
+      });
+    let picked: ImagePicker.ImagePickerResult;
+    try {
+      picked = await open();
+    } catch {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => null);
+      if (!permission?.granted) {
+        setGalleryDenied(true);
+        return null;
+      }
+      try {
+        picked = await open();
+      } catch {
+        setGalleryDenied(true);
+        return null;
+      }
+    }
+    if (picked.canceled || !picked.assets?.[0]?.uri) return null;
+    return picked.assets[0];
   };
 
   const handleGalleryPick = async () => {
+    if (busyRef.current || stage === 'scanning') return;
+    if (yeniKabuk) {
+      const asset = await pickFromGalleryFin();
+      if (!asset?.uri) return;
+      await runFinCapture(asset.uri, 'gallery', false, asset);
+      return;
+    }
     const uri = await pickFromGallery();
     if (!uri) return;
-    await runFinCapture(uri);
+    await runFinCapture(uri, 'gallery');
   };
 
   const handleCapture = yeniKabuk ? handleCaptureFin : handleCaptureLegacy;
@@ -276,8 +436,10 @@ export default function ScanScreen() {
   };
 
   const handleSaveFin = async (adjusted: Omit<ScanEstimate, 'isEstimate'>) => {
-    if (!user?.id || saving || saved) return;
+    if (!user?.id || savingRef.current || saving || saved) return;
+    savingRef.current = true;
     setSaving(true);
+    setSaveFailed(false);
     try {
       const row = await saveAiScanEstimate(getSupabaseClient(), {
         userId: user.id,
@@ -286,14 +448,28 @@ export default function ScanScreen() {
         estimate: adjusted,
       });
       savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
+      trackScan('log_meal', {
+        source: 'scan',
+        n_items: adjusted.ingredients.length,
+        kcal: adjusted.kcal,
+        edited:
+          !!result &&
+          (Math.round(result.kcal) !== Math.round(adjusted.kcal) || result.ingredients.length !== adjusted.ingredients.length),
+        meal_type: mealType,
+      });
+      if (!mountedRef.current) return;
       setResult(adjusted);
       setSaved(true);
       const label = t(`meal.${mealType}`);
       emitLogFlight({ x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label });
     } catch {
-      setErrorKind('failed');
+      // G19-S1 md.1: önceden errorKind='failed' yazılıyordu ama sonuç ekranında hata
+      // sayfası çizilmiyordu → kayıt hatası SESSİZDİ. Artık toast; logla yeniden denenebilir
+      // (aynı source_ref → çift kayıt yok).
+      if (mountedRef.current) setSaveFailed(true);
     } finally {
-      setSaving(false);
+      savingRef.current = false;
+      if (mountedRef.current) setSaving(false);
     }
   };
 
@@ -338,6 +514,8 @@ export default function ScanScreen() {
   };
 
   const handleRetry = () => {
+    setFailReason(null);
+    setSaveFailed(false);
     setResult(null);
     setPhotoUri(null);
     setScanNote(''); // yeni çekim = yeni not (yeniden analiz hakkı yok)
@@ -365,6 +543,7 @@ export default function ScanScreen() {
   if (yeniKabuk) {
     if (stage === 'result' && result) {
       return (
+        <View style={styles.fill}>
         <FinPhotoResult
           estimate={result}
           photoUri={photoUri}
@@ -386,6 +565,12 @@ export default function ScanScreen() {
           match={matchPct}
           note={normalizeScanNote(scanNote)}
         />
+        {saveFailed ? (
+          <View style={styles.toastLayer} pointerEvents="box-none">
+            <Toast visible={saveFailed} message={t('ai_scan.save_failed')} onDismiss={() => setSaveFailed(false)} autoHideMs={3200} />
+          </View>
+        ) : null}
+        </View>
       );
     }
     return (
@@ -399,7 +584,7 @@ export default function ScanScreen() {
             photoUri={photoUri}
             paused={errorKind !== null}
             onClose={() => navigation.goBack()}
-            onCaptured={(uri) => void runFinCapture(uri)}
+            onCaptured={(uri, size) => void runFinCapture(uri, 'camera', false, size)}
             onGallery={handleGalleryPick}
             onManual={handleManualEntry}
             onPermissionDenied={() => setErrorKind('camera')}
@@ -425,13 +610,24 @@ export default function ScanScreen() {
           remaining={remaining ?? 0}
           pendingCount={pendingCount}
           photoUri={photoUri}
+          reason={failReason === 'too_large' ? 'too_large' : failReason === 'missing' ? 'missing' : undefined}
           onClose={() => {
             // FinScanOffline: çevrimdışı kuyruğa alındı → sade durum ekranı.
             if (errorKind === 'offline') navigation.replace('AiScanOffline');
             else setErrorKind(null);
           }}
           onManualEntry={handleManualEntry}
-          onRetry={() => setErrorKind(null)}
+          onRetry={() => {
+            // G19-S1 md.1: "Fotoğrafın duruyor; tekrar denediğinde baştan çekmen gerekmez" —
+            // önceden yalnız sayfayı kapatıyordu (yeniden çekim gerekiyordu). Artık aynı foto
+            // yeniden analiz edilir. Dosya sorunu (büyük/yok) → yeni çekim.
+            setErrorKind(null);
+            if (photoUri && !failReason) void runFinCapture(photoUri, lastSourceRef.current, true);
+            else {
+              setFailReason(null);
+              setPhotoUri(null);
+            }
+          }}
           onOpenSettings={() => {
             setErrorKind(null);
             void Linking.openSettings();
@@ -441,6 +637,12 @@ export default function ScanScreen() {
             void handleGalleryPick();
           }}
         />
+
+        {galleryDenied ? (
+          <View style={styles.toastLayer} pointerEvents="box-none">
+            <Toast visible={galleryDenied} message={t('ai_scan.gallery_denied')} onDismiss={() => setGalleryDenied(false)} autoHideMs={3200} />
+          </View>
+        ) : null}
 
         {pendingToast ? (
           <View style={styles.toastLayer} pointerEvents="box-none">

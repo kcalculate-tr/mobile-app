@@ -1,8 +1,8 @@
 {
   "ios": {
-    "NSCameraUsageDescription": "Camera access is required to take your profile photo, record video, and upload product images.",
+    "NSCameraUsageDescription": "Camera access is used to scan your plate and estimate its calories, take your profile photo, record video, and upload product images.",
     "NSMicrophoneUsageDescription": "Microphone access is required to record audio when sharing a video.",
-    "NSPhotoLibraryUsageDescription": "Photo library access is required to select your profile photo, images, and videos.",
+    "NSPhotoLibraryUsageDescription": "Photo library access is used to scan a plate photo and to pick profile photos, images, and videos.",
     "NSPhotoLibraryAddUsageDescription": "Permission is required to save your order images to your photo library."
   }
 }

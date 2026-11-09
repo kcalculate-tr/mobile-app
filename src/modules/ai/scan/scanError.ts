@@ -66,6 +66,21 @@ export async function analyzeErrorFromInvoke(error: unknown): Promise<ScanStageE
   return new ScanStageError('analyze', code ?? (status ? `http_${status}` : 'unknown'), status);
 }
 
+/**
+ * G19-S1 md.4 — kuyruk kararı: bu hata AYNI fotoğrafla tekrar denense de düzelmez mi?
+ * (dosya yok/çok büyük/tür/izin) → girdi düşer. Ağ/zaman aşımı/dakika sınırı → sayılmaz,
+ * bağlantı gelince yeniden denenir. Diğerleri (model/parse/server) deneme sayılır.
+ */
+export type ScanFailureClass = 'permanent' | 'transient' | 'counted';
+export function classifyScanFailure(code: string | null | undefined): ScanFailureClass {
+  const c = code ?? 'unknown';
+  if (['file_missing', 'image_too_large', 'image_type', 'image_not_found', 'forbidden', 'no_user', 'bad_request'].includes(c)) {
+    return 'permanent';
+  }
+  if (['network', 'relay', 'timeout', 'rate_limit', 'storage', 'upload_failed'].includes(c)) return 'transient';
+  return 'counted';
+}
+
 /** Yakalanan herhangi bir hatadan teşhis bilgisi (aşama bilinmiyorsa çağıranınki). */
 export function scanFailureInfo(e: unknown, fallbackStage: ScanFailureStage): ScanFailureInfo {
   if (e instanceof ScanStageError) {
@@ -74,7 +89,7 @@ export function scanFailureInfo(e: unknown, fallbackStage: ScanFailureStage): Sc
   const message = e instanceof Error ? e.message : String(e ?? 'unknown');
   let code = 'unknown';
   if (fallbackStage === 'upload') {
-    const m = /^scan_upload:\s*(no_user|image_too_large)$/.exec(message);
+    const m = /^scan_upload:\s*(no_user|image_too_large|file_missing)$/.exec(message);
     code = m ? m[1] : /^scan_upload:/.test(message) ? 'storage' : 'upload_failed';
   }
   return { stage: fallbackStage, code, httpStatus: null, message };

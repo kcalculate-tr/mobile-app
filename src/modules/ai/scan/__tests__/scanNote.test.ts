@@ -1,6 +1,7 @@
 // G18-S4 md.5 — Tara "Detay ekle" notu: normalleştirme + analiz isteğine `hint`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildAnalyzeBody } from '../client';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -52,8 +53,11 @@ test('runAiScan: not yoksa hint alanı hiç yok (bugünkü istek aynen)', async 
 
 test('client.analyzeImage: gövdeye hint yalnız varsa eklenir; edge dosyası hint okur', () => {
   const root = path.resolve(__dirname, '../../../../..');
+  // G19-S1: gövde buildAnalyzeBody'de (lang her zaman, hint yalnız doluysa) — davranış testi.
+  assert.equal('hint' in buildAnalyzeBody({ idempotencyKey: 'k', imageRef: 'p' }), false);
+  assert.equal(buildAnalyzeBody({ idempotencyKey: 'k', imageRef: 'p', hint: 'not' }).hint, 'not');
   const client = fs.readFileSync(path.join(root, 'src/modules/ai/scan/client.ts'), 'utf8');
-  assert.match(client, /hint\s*\?\s*\{ reservation_id: idempotencyKey, image_path: imageRef, hint \}/);
+  assert.match(client, /body: buildAnalyzeBody\(\{ idempotencyKey, imageRef, hint, lang \}\)/);
   const edge = fs.readFileSync(path.join(root, 'supabase/functions/analyze-ai-scan/index.ts'), 'utf8');
   assert.match(edge, /hint\?: unknown/);
   assert.match(edge, /slice\(0, 160\)/);

@@ -26,6 +26,10 @@ export interface PendingScanPhoto {
   /** G18-S4 md.5: çekimdeki isteğe bağlı not — bağlantı gelince analize `hint` olarak gider. */
   hint?: string;
   queuedAt: string; // ISO
+  /** G19-S1 md.4: başarısız analiz denemesi sayısı (ağ hatası sayılmaz). */
+  attempts?: number;
+  /** G19-S1 md.3: çekim anındaki uygulama dili → analizde yiyecek adları. */
+  lang?: 'tr' | 'en';
 }
 
 function isFresh(e: PendingScanPhoto, now: number): boolean {
@@ -91,6 +95,19 @@ export async function setPendingScanPhoto(entry: PendingScanPhoto, now: number =
 export async function removePendingScanPhoto(id: string): Promise<void> {
   const q = (await readRaw()).filter((e) => e.id !== id);
   await write(q);
+}
+
+/** G19-S1 md.4: girdinin deneme sayısını 1 artırır; yeni değeri döner (yoksa 0). */
+export async function bumpPendingAttempt(id: string): Promise<number> {
+  const q = await readRaw();
+  let next = 0;
+  const out = q.map((e) => {
+    if (e.id !== id) return e;
+    next = (e.attempts ?? 0) + 1;
+    return { ...e, attempts: next };
+  });
+  await write(out);
+  return next;
 }
 
 /** Elle giriş yapıldığında tüm kuyruğu boşaltır. */

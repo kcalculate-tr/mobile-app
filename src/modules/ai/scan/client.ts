@@ -53,6 +53,11 @@ export const realAiScanClient: AiScanClient = {
     const FileSystem = require('expo-file-system/legacy') as typeof import('expo-file-system/legacy');
     const { decode } = require('base64-arraybuffer') as typeof import('base64-arraybuffer');
     /* eslint-enable @typescript-eslint/no-require-imports */
+    // G19-S1 md.4 (Android düşük bellek): 5 MB üstü dosya base64'e HİÇ okunmaz —
+    // önce dosya bilgisi; yoksa (önbellek temizlendi) açık kod.
+    const info = await FileSystem.getInfoAsync(localUri);
+    if (!info.exists) throw new Error('scan_upload: file_missing');
+    if (typeof info.size === 'number' && info.size > MAX_SCAN_IMAGE_BYTES) throw new Error('scan_upload: image_too_large');
     const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
     if (base64Bytes(base64) > MAX_SCAN_IMAGE_BYTES) throw new Error('scan_upload: image_too_large');
     const path = scanImagePath(userId, idempotencyKey);
@@ -64,35 +69,18 @@ export const realAiScanClient: AiScanClient = {
     return path;
   },
 
-  async analyzeImage({ idempotencyKey, imageRef, hint }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
+  async analyzeImage({ idempotencyKey, imageRef, hint, lang }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
     // Edge fonksiyonu adı ve gövdesi G6-CONTRACT.md ile birebir:
     // reservation_id = rezervasyon anahtarı (idempotencyKey), image_path = user-media yolu.
     const { data, error } = await sb().functions.invoke('analyze-ai-scan', {
-      // G18-S4 md.5: not varsa `hint` (≤ 160); yoksa alan hiç gönderilmez.
-      body: hint
-        ? { reservation_id: idempotencyKey, image_path: imageRef, hint }
-        : { reservation_id: idempotencyKey, image_path: imageRef },
+      body: buildAnalyzeBody({ idempotencyKey, imageRef, hint, lang }),
+      // G19-S1 md.4: zayıf ağda sonsuz "analiz ediliyor" yok — edge model sınırı
+      // 20 sn + indirme/yükleme payı. Aşılırsa FunctionsFetchError → 'network'.
+      timeout: ANALYZE_CLIENT_TIMEOUT_MS,
     });
     // G17-S2 md.6: edge gövdesindeki `error` kodu (config/server/timeout/…) korunur.
     if (error) throw await analyzeErrorFromInvoke(error);
-    const res = data as {
-      items?: { name: string; grams: number; kcal: number; protein_g: number; carb_g: number; fat_g: number }[];
-      total?: { kcal: number; protein_g: number; carb_g: number; fat_g: number };
-      lang?: string;
-    };
-    const items = res.items ?? [];
-    const total = res.total ?? { kcal: 0, protein_g: 0, carb_g: 0, fat_g: 0 };
-    // items+total → düz ScanEstimate (carb_g → carbs_g). Ad = öğelerin birleşimi.
-    return {
-      name: items.length ? items.map((i) => i.name).join(', ') : (res.lang === 'en' ? 'Food' : 'Yemek'),
-      kcal: total.kcal,
-      protein_g: total.protein_g,
-      carbs_g: total.carb_g,
-      fat_g: total.fat_g,
-      portion: 1,
-      ingredients: items.map((i) => ({ name: i.name, grams: i.grams })),
-      photo_url: null,
-    };
+    return mapAnalyzeResponse(data, lang);
   },
 
   reportFailure(info) {
@@ -109,6 +97,60 @@ export const realAiScanClient: AiScanClient = {
     }
   },
 };
+
+/** İstemci tarafı analiz zaman aşımı (ms). Edge model sınırı 20 sn (+ indirme). */
+export const ANALYZE_CLIENT_TIMEOUT_MS = 45_000;
+
+/** Edge gövdesi — not (`hint`, ≤ 160) yalnız doluysa; `lang` her zaman (varsayılan tr). */
+export function buildAnalyzeBody(p: { idempotencyKey: string; imageRef: string; hint?: string; lang?: 'tr' | 'en' }) {
+  const body: { reservation_id: string; image_path: string; lang: 'tr' | 'en'; hint?: string } = {
+    reservation_id: p.idempotencyKey,
+    image_path: p.imageRef,
+    lang: p.lang === 'en' ? 'en' : 'tr',
+  };
+  if (p.hint) body.hint = p.hint;
+  return body;
+}
+
+function n(v: unknown): number {
+  const x = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(x) && x > 0 ? x : 0;
+}
+
+/**
+ * Edge yanıtı (items + total) → düz ScanEstimate. G19-S1 md.3: öğe başına kcal ve
+ * makrolar KORUNUR (önceden yalnız ad+gram alınıyordu → sonuçta satırlar "0 kcal"
+ * görünüyor, gram düzeltmesi/öğe silme toplamı değiştirmiyordu).
+ */
+export function mapAnalyzeResponse(data: unknown, lang?: 'tr' | 'en'): Omit<ScanEstimate, 'isEstimate'> {
+  const res = (data ?? {}) as {
+    items?: { name?: unknown; grams?: unknown; kcal?: unknown; protein_g?: unknown; carb_g?: unknown; fat_g?: unknown }[];
+    total?: { kcal?: unknown; protein_g?: unknown; carb_g?: unknown; fat_g?: unknown };
+    lang?: string;
+  };
+  const en = (res.lang ?? lang) === 'en';
+  const items = Array.isArray(res.items) ? res.items : [];
+  const ingredients = items.map((i) => ({
+    name: typeof i.name === 'string' && i.name.trim() ? i.name.trim() : en ? 'Food' : 'Yemek',
+    grams: n(i.grams),
+    kcal: n(i.kcal),
+    protein_g: n(i.protein_g),
+    carbs_g: n(i.carb_g),
+    fat_g: n(i.fat_g),
+  }));
+  const total = res.total ?? {};
+  return {
+    // Ad = öğelerin birleşimi.
+    name: ingredients.length ? ingredients.map((i) => i.name).join(', ') : en ? 'Food' : 'Yemek',
+    kcal: n(total.kcal),
+    protein_g: n(total.protein_g),
+    carbs_g: n(total.carb_g),
+    fat_g: n(total.fat_g),
+    portion: 1,
+    ingredients,
+    photo_url: null,
+  };
+}
 
 let activeClient: AiScanClient = realAiScanClient;
 

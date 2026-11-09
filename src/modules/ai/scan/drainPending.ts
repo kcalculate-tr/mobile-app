@@ -5,6 +5,8 @@ import { getAiScanClient } from './client';
 import { saveAiScanEstimate } from './saveEstimate';
 import { processPendingQueue, type ProcessResult } from './pendingProcessor';
 import { getSupabaseClient } from '../../../core/supabase';
+import { deleteQueuedImage } from './localImage';
+import { trackScan } from './scanEvents';
 
 type Listener = (r: ProcessResult) => void;
 const listeners = new Set<Listener>();
@@ -18,11 +20,16 @@ export function onPendingDrained(l: Listener): () => void {
 
 let inflight: Promise<ProcessResult | null> | null = null;
 
-export function drainPendingScans(userId: string, isCancelled?: () => boolean): Promise<ProcessResult | null> {
+export function drainPendingScans(
+  userId: string,
+  isCancelled?: () => boolean,
+  lang?: 'tr' | 'en',
+): Promise<ProcessResult | null> {
   if (inflight) return Promise.resolve(null); // başka çağrı zaten işliyor
   inflight = processPendingQueue({
     client: getAiScanClient(),
     isCancelled,
+    lang,
     save: (entry, estimate) =>
       saveAiScanEstimate(getSupabaseClient(), {
         userId,
@@ -33,7 +40,26 @@ export function drainPendingScans(userId: string, isCancelled?: () => boolean): 
   })
     .catch(() => null)
     .then((r) => {
-      if (r && (r.processed.length > 0 || r.lastOutcome)) listeners.forEach((l) => l(r));
+      if (r) {
+        // G19-S1 md.4/6: işlenen ve düşen kuyruk fotoğrafları silinir; ölçüm olayları.
+        for (const p of r.processed) {
+          void deleteQueuedImage(p.entry.imageUri);
+          trackScan('scan_success', { n_items: p.estimate.ingredients.length, kcal: p.estimate.kcal });
+          trackScan('log_meal', { source: 'scan', n_items: p.estimate.ingredients.length, kcal: p.estimate.kcal, edited: false, meal_type: p.entry.mealType });
+        }
+        for (const d of r.dropped ?? []) {
+          void deleteQueuedImage(d.imageUri);
+          trackScan('scan_failed', { reason: 'queue_dropped', stage: 'queue' });
+        }
+        if (r.lastOutcome?.status === 'quota_exhausted') trackScan('scan_limit');
+        else if (r.lastOutcome?.status === 'unavailable') {
+          trackScan('scan_failed', { reason: r.lastOutcome.reason, stage: 'reserve' });
+        }
+        else if (r.lastOutcome?.status === 'failed') {
+          trackScan('scan_failed', { reason: r.lastOutcome.failure?.code ?? 'unknown', stage: r.lastOutcome.failure?.stage ?? 'analyze' });
+        }
+      }
+      if (r && (r.processed.length > 0 || r.lastOutcome || (r.dropped?.length ?? 0) > 0)) listeners.forEach((l) => l(r));
       return r;
     })
     .finally(() => {

@@ -61,19 +61,21 @@ export function createMockAiScanClient(options: MockAiScanOptions = {}): AiScanC
         }
       : {}),
 
-    async analyzeImage({ imageRef }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
+    async analyzeImage({ imageRef, lang }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
       calls.push(`analyze:${imageRef}`);
       if (options.failAnalysis) throw new Error('mock: analiz başarısız');
+      // G19-S1: gerçek edge yanıtı gibi öğe başına kcal/makro + `lang` ile ad dili.
+      const en = lang === 'en';
       return {
-        name: 'Tabak (tahmini)',
+        name: en ? 'Plate (estimate)' : 'Tabak (tahmini)',
         kcal: 640,
         protein_g: 35,
         carbs_g: 60,
         fat_g: 22,
         portion: 1,
         ingredients: [
-          { name: 'Tavuk', grams: 120 },
-          { name: 'Pirinç', grams: 150 },
+          { name: en ? 'Chicken' : 'Tavuk', grams: 120, kcal: 260, protein_g: 30, carbs_g: 0, fat_g: 15 },
+          { name: en ? 'Rice' : 'Pirinç', grams: 150, kcal: 380, protein_g: 5, carbs_g: 60, fat_g: 7 },
         ],
         photo_url: null,
       };

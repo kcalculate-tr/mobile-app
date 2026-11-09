@@ -32,7 +32,7 @@ const hhmm = (iso: string) => {
 
 export default function ScanOfflineScreen() {
   const th = useTheme();
-  const { t } = useT();
+  const { t, lang } = useT();
   const { user } = useAuth();
   const nav = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -77,7 +77,7 @@ export default function ScanOfflineScreen() {
       const on = s.isConnected !== false;
       if (forceOffline) return;
       setOnline(on);
-      if (on && user?.id) void drainPendingScans(user.id);
+      if (on && user?.id) void drainPendingScans(user.id, undefined, lang === 'en' ? 'en' : 'tr');
     });
     const unsubDone = onPendingDrained(() => void load());
     return () => {

@@ -86,7 +86,8 @@ export default function FinScanCamera({
   /** Hata sheet'i vb. açıkken önizleme duraklar (pil/ısı). */
   paused?: boolean;
   onClose: () => void;
-  onCaptured: (uri: string) => void;
+  /** size: çekim boyutu (varsa) — `pictureSize` seçilemediyse ScanScreen ≤ 1600'e küçültür. */
+  onCaptured: (uri: string, size?: { width: number; height: number }) => void;
   onGallery: () => void;
   onManual: () => void;
   onPermissionDenied: () => void;
@@ -180,7 +181,7 @@ export default function FinScanCamera({
     setCapturing(true);
     try {
       const pic = await ref.current.takePictureAsync({ quality: CAPTURE_QUALITY, exif: false });
-      if (pic?.uri) onCaptured(pic.uri);
+      if (pic?.uri) onCaptured(pic.uri, pic.width && pic.height ? { width: pic.width, height: pic.height } : undefined);
     } catch {
       // çekim başarısız (kamera meşgul) — kullanıcı tekrar basabilir
     } finally {
