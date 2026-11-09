@@ -4,8 +4,9 @@
  * `support_tickets` tablosu `src/screens/profile/SupportScreen.tsx` ile AYNI
  * kolonlarla okunur/yazılır (user_id/user_email/subject/message/order_code/
  * status). G15-S4: "Görsel ekle" geri geldi — eski ekranla AYNI mekanik
- * (en fazla 3 görsel, 5 MB sınırı, `support-attachments` kovası, mesajın
- * sonuna "--- Ekli Görseller ---" + URL'ler); özellik kaybı yok.
+ * (en fazla 3 görsel, 5 MB sınırı, `support-attachments` kovası); özellik kaybı yok.
+ * G20-S3 md.4 (B-08): kova ÖZEL — talepte yalnız nesne yolu (`attachments`),
+ * geçmişte "Ek N" → kısa ömürlü imzalı URL (createSignedUrl) ile açılır.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Pressable, TextInput, View } from 'react-native';
@@ -15,6 +16,7 @@ import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
+import { signedAttachmentUrl, ticketMessage, ticketView, uploadSupportImages } from '../../../../lib/support/attachments';
 import { Phone, ImageSquare, X as XIcon } from '../../../../components/icons';
 import {
   FinScreen,
@@ -47,6 +49,7 @@ type Ticket = {
   id: string;
   subject: string;
   message: string;
+  attachments?: unknown;
   admin_reply: string | null;
   status: string;
   order_code: string | null;
@@ -56,6 +59,47 @@ type Ticket = {
 type Picked = { uri: string; fileName: string; type: string };
 
 const STATUS_LABEL: Record<string, string> = { open: 'Açık', answered: 'Cevaplandı', closed: 'Kapalı' };
+
+/**
+ * G20-S3 md.4: talep metni + ekler. Ek → dokununca kısa ömürlü imzalı URL alınır ve
+ * açılır (kova özel; herkese açık URL yok). Eski talepteki URL bölümü metinden atılır.
+ */
+function TicketBody({ ticket }: { ticket: { message: string; attachments?: unknown } }) {
+  const t = useTheme();
+  const { t: tr } = useT();
+  const { body: text, paths } = ticketView(ticket);
+  const [failed, setFailed] = useState(false);
+  const open = async (path: string) => {
+    setFailed(false);
+    const url = await signedAttachmentUrl(getSupabaseClient() as never, path);
+    if (!url) {
+      setFailed(true);
+      return;
+    }
+    Linking.openURL(url).catch(() => setFailed(true));
+  };
+  return (
+    <>
+      <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{text}</Text>
+      {paths.length > 0 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} testID="support-ticket-attachments">
+          {paths.map((p, i) => (
+            <Pressable key={p} onPress={() => void open(p)} accessibilityRole="link" hitSlop={8} testID={`support-attachment-${i}`}>
+              <Text style={{ fontFamily: bodyMedium, fontSize: 13, color: t.color.ink, textDecorationLine: 'underline' }}>
+                {tr('profil.support_attachment', { n: i + 1 })}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      {failed ? (
+        <Text style={{ fontFamily: bodyMedium, fontSize: 12, color: '#E5484D' }} accessibilityLiveRegion="polite">
+          {tr('profil.support_attachment_error')}
+        </Text>
+      ) : null}
+    </>
+  );
+}
 
 export default function SettingsSupportScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
@@ -83,7 +127,7 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
     setTicketsLoading(true);
     const { data } = await supabase
       .from('support_tickets')
-      .select('id,subject,message,admin_reply,status,order_code,created_at')
+      .select('id,subject,message,attachments,admin_reply,status,order_code,created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     setTickets(Array.isArray(data) ? (data as Ticket[]) : []);
@@ -138,26 +182,9 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
     }
     setSending(true);
     try {
-      const uploadedUrls: string[] = [];
-      for (const img of images) {
-        try {
-          const response = await fetch(img.uri);
-          const blob = await response.blob();
-          const path = `tickets/${user.id}/${Date.now()}_${img.fileName}`;
-          const { error: uploadError } = await supabase.storage
-            .from('support-attachments')
-            .upload(path, blob, { contentType: img.type, upsert: false });
-          if (uploadError) continue;
-          const { data: pub } = supabase.storage.from('support-attachments').getPublicUrl(path);
-          if (pub?.publicUrl) uploadedUrls.push(pub.publicUrl);
-        } catch {
-          /* tek görsel yüklenemedi — talep yine gönderilir (eski ekranla aynı) */
-        }
-      }
-      const finalMessage =
-        uploadedUrls.length > 0
-          ? `${trimmed}\n\n--- Ekli Görseller ---\n${uploadedUrls.join('\n')}`
-          : trimmed;
+      // Tek görsel yüklenemezse talep yine gönderilir (eski ekranla aynı).
+      const paths = await uploadSupportImages(supabase as never, user.id, images);
+      const finalMessage = ticketMessage(trimmed, paths.length);
 
       const { error } = await supabase.from('support_tickets').insert([
         {
@@ -166,6 +193,7 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
           order_code: orderCode.trim() || null,
           subject,
           message: finalMessage,
+          attachments: paths.length > 0 ? paths : null,
           admin_reply: null,
           status: 'open',
           updated_at: new Date().toISOString(),
@@ -349,7 +377,7 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
                     {STATUS_LABEL[ticket.status] ?? ticket.status}
                   </Text>
                 </View>
-                <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{ticket.message}</Text>
+                <TicketBody ticket={ticket} />
                 {ticket.admin_reply ? (
                   <Text style={{ fontFamily: bodyMedium, fontSize: 13, color: t.color.ink, marginTop: 4 }}>
                     {ticket.admin_reply}
