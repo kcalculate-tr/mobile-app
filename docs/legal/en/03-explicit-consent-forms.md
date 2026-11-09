@@ -2,7 +2,7 @@
 
 > **DRAFT for legal review (İlter Öziseven). Not published.**
 > Version: `v0.1-draft` · Draft date: 2026-11-09 · Effective: `[EFFECTIVE DATE]`
-> Controller: `[FULL LEGAL NAME]` (SEKULART Ltd.) · `[ADDRESS]` · `[KEP]` · `[privacy@…]`
+> Controller: SEKULART LTD · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · `[privacy@…]`
 > Translation of `tr/03-acik-riza-metinleri.md`. For users in Türkiye the Turkish text prevails.
 
 ## Common principles
@@ -151,7 +151,7 @@
 - GDPR Art. 6(1)(a) and ePrivacy Directive Art. 13.
 
 **Checkbox text:**
-> ☐ I agree to receive commercial electronic messages about campaigns, discounts and announcements from `[FULL LEGAL NAME]` through the channels I selected, and to the processing of my order history and preferences for personalisation for this purpose.
+> ☐ I agree to receive commercial electronic messages about campaigns, discounts and announcements from SEKULART LTD through the channels I selected, and to the processing of my order history and preferences for personalisation for this purpose.
 
 > **[Reviewer note]**
 > 1. SMS, call and e-mail opt-ins must be uploaded to İYS. An opt-in not in İYS is not valid, and no message may be sent to a recipient without an İYS record.

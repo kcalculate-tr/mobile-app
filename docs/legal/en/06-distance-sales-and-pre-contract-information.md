@@ -18,14 +18,13 @@ This form informs you, before your order becomes binding, under Turkish Consumer
 
 | | |
 |---|---|
-| Trade name | `[FULL TRADE NAME]` (short name: SEKULART Ltd.) |
+| Trade name | SEKULART LTD |
 | Brand | eatkcal — kitchen brands: kcal., tera, Breaking Fast |
-| MERSIS no. | `[MERSIS]` *(value in current texts to be verified)* |
-| Tax office / no. | `[TAX OFFICE]` / `[TAX ID]` |
-| Address | `[ADDRESS]` |
+| MERSIS no. | 0759-1148-7410-0001 |
+| Tax ID | 7591148741 |
+| Address | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye |
 | Phone | `[PHONE]` |
 | E-mail | `[support@…]` |
-| Registered e-mail (KEP) | `[KEP]` |
 | Complaints and requests | App › Support, `[support@…]`, `[PHONE]` |
 
 ### A.2 Main characteristics of the goods and services
@@ -99,7 +98,7 @@ Personal data in your order is processed in line with the KVKK Privacy Notice: `
 
 ### Clause 1 — Parties
 
-**1.1 Seller:** `[FULL TRADE NAME]` ("SEKULART Ltd." or the "Seller"), MERSIS `[MERSIS]`, tax ID `[TAX ID]`, address `[ADDRESS]`, phone `[PHONE]`, e-mail `[support@…]`, KEP `[KEP]`.
+**1.1 Seller:** SEKULART LTD (the "Seller"), MERSIS 0759-1148-7410-0001, tax ID 7591148741, address Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye, phone `[PHONE]`, e-mail `[support@…]`.
 
 **1.2 Buyer:** {{ALICI_AD_SOYAD}}, e-mail {{ALICI_EPOSTA}}, phone {{ALICI_TELEFON}}, delivery address {{TESLIMAT_ADRESI}} (the "Buyer").
 
@@ -201,4 +200,4 @@ Personal data given for the order is processed under the Seller's KVKK Privacy N
 
 **Acceptance:** ☐ *I have read and accept the Distance Sales Agreement.* (separate from the pre-contract confirmation; for Macro packages additionally ☐ *I request immediate activation of the package and understand that my right of withdrawal ends for the part I use.*)
 
-**Seller:** `[FULL TRADE NAME]` · **Buyer:** {{ALICI_AD_SOYAD}} · **Date:** {{ONAY_TARIHI}} · **Document version:** {{BELGE_SURUMU}}
+**Seller:** SEKULART LTD · **Buyer:** {{ALICI_AD_SOYAD}} · **Date:** {{ONAY_TARIHI}} · **Document version:** {{BELGE_SURUMU}}

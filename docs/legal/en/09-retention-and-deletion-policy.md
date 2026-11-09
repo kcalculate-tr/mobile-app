@@ -4,13 +4,13 @@
 > Version: `v0.1-taslak` · Date: 2026-11-09 · Source inventory: `docs/legal/VERI_ENVANTERI.md`
 > The Turkish version (`tr/09-saklama-ve-imha-politikasi.md`) prevails in case of conflict.
 
-**Data controller:** SEKULART Ltd. — `[TAM UNVAN]` · MERSİS `[MERSİS]` · Tax ID `[VKN]` · Address `[ADRES]` · Registered e-mail (KEP) `[KEP]` · Contact `[privacy@…]`
+**Data controller:** SEKULART LTD · MERSİS 0759-1148-7410-0001 · Tax ID 7591148741 · Address Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · Contact `[privacy@…]`
 
 ---
 
 ## 1. Purpose
 
-This Policy sets how long SEKULART Ltd. (the "Company") keeps the personal data it processes, and how that data is deleted, destroyed or anonymised when the period ends. It covers data processed through:
+This Policy sets how long SEKULART LTD (the "Company") keeps the personal data it processes, and how that data is deleted, destroyed or anonymised when the period ends. It covers data processed through:
 - the Kcalculate AI app;
 - the eatkcal ordering service;
 - the kcal., tera and Breaking Fast brands;

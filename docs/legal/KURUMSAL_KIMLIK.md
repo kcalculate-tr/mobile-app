@@ -2,6 +2,7 @@
 
 > **Durum:** TASLAK · hukuki inceleme için (İlter Öziseven) · yayın yok · 2026-11-09 · dal `legal/global`
 > Mevzuat atıfları teyit edilmelidir. Yer tutucular köşeli parantez içindedir.
+> **Karar (İlter, 9 Kas 2026):** şirket adı her yerde, TR ve EN metinlerde aynı biçimde yalnız **SEKULART LTD** yazılır. MERSİS, VKN ve adres mevcut yayındaki metinden (`web:apps/eatkcal/content/legal/mesafeli.ts`) alındı. Vergi dairesi ve KEP mevcut metinlerde olmadığı için eklenmedi (`BOSLUKLAR.md` B-20).
 
 ## 1. Tüzel kişi kimlik kartı (tek kaynak)
 
@@ -9,19 +10,17 @@ Bu blok tüm metinlerde **tek kaynaktan** üretilmelidir (bkz. `ENTEGRASYON.md` 
 
 | Alan | Değer | Mevcut kaynakta görülen | Not |
 |---|---|---|---|
-| Kısa ad (iç/gayriresmî) | **SEKULART Ltd.** | — | Yalnız §2.2'deki yerlerde |
-| Tam ticaret unvanı | `[TAM UNVAN]` | "SEKÜLART SAĞLIKLI GIDA ÜRÜNLERİ SAN. VE TİC. LTD. ŞTİ." (`web:apps/eatkcal/content/legal/gizlilik.ts:14-20`) | Ticaret sicilindeki yazımla **birebir** (Ü dahil); ticaret sicil gazetesinden teyit |
-| MERSİS no | `[MERSİS]` | 0759-1148-7410-0001 (web + mobil metinler) | Teyit |
-| Vergi dairesi / VKN | `[VERGİ DAİRESİ]` / `[VKN]` | VKN 7591148741 (web, landing) | Vergi dairesi adı hiçbir yerde yok |
+| Şirket adı (tüm metinler, TR + EN) | **SEKULART LTD** | Eski metinlerde uzun unvan biçimleri (`web:apps/eatkcal/content/legal/gizlilik.ts:14-20`) | Karar 9 Kas 2026: kısa ad = metinlerde kullanılan ad; başka biçim ("Ltd.", "Ltd. Şti.", uzun unvan) yazılmaz |
+| MERSİS no | 0759-1148-7410-0001 | web + mobil metinler (`mesafeli.ts`) | |
+| VKN | 7591148741 | web, landing (`mesafeli.ts`) | Vergi dairesi mevcut metinlerde yok — eklenmedi |
 | Ticaret sicil müdürlüğü / no | `[SİCİL MÜDÜRLÜĞÜ]` / `[TİCARET SİCİL NO]` | **yok** | ETK künyesi ve TTK belge kuralı için gerekli |
-| Merkez adresi | `[ADRES]` | "Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir" | Posta kodu bazı yerlerde eksik — tek biçim |
-| KEP adresi | `[KEP]` | **yok** | Ltd. şirketler için KEP zorunluluğu (TTK md.18/3, Tebliğ) — teyit |
+| Merkez adresi | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir | `mesafeli.ts` | Posta kodu bazı yerlerde eksik — bu biçim tek biçimdir; EN metinlerde sonuna ", Türkiye" |
 | Telefon | `[TELEFON]` | "0232 332 21 00" / "+90 (232) 33 22 100" / "0232 33 22 100" | Tek biçim: **+90 232 332 21 00** |
 | DUNS | `[DUNS]` | 751169177 (yalnız `landing-page/`) | Mağaza hesapları için; tüketici metinlerinde gerekmez |
 | Web | eatkcal.com · kcalculate.ai | | |
 | E-posta | §4 | yalnız info@eatkcal.com | |
 
-> **[İnceleme notu]** "SEKULART" (ASCII) yazımı uluslararası metinlerde **transliterasyon** olarak kullanılabilir. Ancak hukuki belgelerde ve faturada tescilli unvan (SEKÜLART …) aynen yazılmalı. Unvanın yabancı dilde karşılığı tescil edilmemişse "SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti." çevrilmeden kullanılır. İngilizce metinlerde yanına açıklama eklenebilir: "(a limited liability company incorporated in Türkiye)".
+> **[İnceleme notu]** KEP adresi taslaklara eklenmedi (mevcut metinlerde yok). Ltd. şirketler için KEP zorunluluğu (TTK md.18/3, Tebliğ) ayrıca teyit edilmeli; adres alınırsa kimlik bloklarına geri eklenir (`BOSLUKLAR.md` B-20). İngilizce metinlerde istenirse ada açıklama eklenebilir: "(a limited liability company incorporated in Türkiye)".
 
 ## 2. Yasal ad kullanım kuralı
 
@@ -40,12 +39,11 @@ Bu blok tüm metinlerde **tek kaynaktan** üretilmelidir (bkz. `ENTEGRASYON.md` 
 | Ambalaj / gıda etiketi | Gıda işletmecisinin adı/unvanı ve adresi, işletme kayıt/onay no | Türk Gıda Kodeksi Etiketleme ve Tüketiciyi Bilgilendirme Yönetmeliği |
 | Resmî başvurular (KVK Kurulu, Ticaret Bakanlığı, mahkeme) | Tam unvan, MERSİS, VKN, adres, KEP | İlgili usul mevzuatı |
 
-### 2.2 Kısa ad "SEKULART Ltd." kullanılabilecek yerler
+### 2.2 "SEKULART LTD" yazım kuralı
 
-- İç belgeler, bu `docs/legal` taslakları, proje dokümanları.
-- Metinlerde tam unvan **bir kez** tanımlandıktan sonra tekrar eden atıflar. Örnek: *"SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti. ("SEKULART" veya "biz")"* — sonra "SEKULART".
-- Uygulama içi kısa telif satırı (§3.1).
-- Basın bülteni / sosyal medya biyografisi ("Kcalculate AI, SEKULART Ltd. tarafından geliştirilir").
+- §2.1'deki tüm yerlerde (fatura, sözleşme, künye, aydınlatma, mağaza satıcı bilgisi) ve iç belgelerde şirket adı **SEKULART LTD** olarak yazılır; TR ve EN aynıdır.
+- Metinde ad **bir kez** kimlik bloğuyla tanımlandıktan sonra akış içinde kısa atıf kullanılabilir. Örnek: *"SEKULART LTD ("SEKULART" veya "biz")"* — sonra "SEKULART".
+- Uygulama içi kısa telif satırı (§3.1), basın bülteni / sosyal medya biyografisi ("Kcalculate AI, SEKULART LTD tarafından geliştirilir").
 
 ### 2.3 Marka adları (kimlik yerine geçmez)
 
@@ -58,31 +56,31 @@ Bu blok tüm metinlerde **tek kaynaktan** üretilmelidir (bkz. `ENTEGRASYON.md` 
 ### 3.1 Mobil uygulama (Kcalculate AI; eatkcal modülü dahil)
 
 - **Profil › Hakkında / Sözleşmeler ekranı altı (TR):**
-  > Kcalculate AI ve eatkcal, SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti. tarafından işletilir. MERSİS `[MERSİS]` · `[ADRES]` · `[privacy@kcalculate.ai]` · Sürüm {{APP_VERSION}}
+  > Kcalculate AI ve eatkcal, SEKULART LTD tarafından işletilir. MERSİS 0759-1148-7410-0001 · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · `[privacy@kcalculate.ai]` · Sürüm {{APP_VERSION}}
 - **EN:**
-  > Kcalculate AI and eatkcal are operated by SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti., Türkiye. `[ADDRESS]` · `[privacy@kcalculate.ai]` · Version {{APP_VERSION}}
+  > Kcalculate AI and eatkcal are operated by SEKULART LTD, Türkiye. Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · `[privacy@kcalculate.ai]` · Version {{APP_VERSION}}
 - **Ödeme / sipariş özeti ekranı:** satıcı satırı:
-  > "Satıcı: SEKÜLART … Ltd. Şti. · Ön Bilgilendirme Formu · Mesafeli Satış Sözleşmesi"
+  > "Satıcı: SEKULART LTD · Ön Bilgilendirme Formu · Mesafeli Satış Sözleşmesi"
 - **Paylaşım kartları / ekran görselleri** (`src/components/share/*`): yalnız marka ve alan adı (`l.eatkcal.com`). Unvan gerekmez.
 
 ### 3.2 Web — eatkcal.com (satış sitesi: tam künye)
 
 ```
-© {{YIL}} SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.
-[ADRES] · MERSİS [MERSİS] · [TİCARET SİCİL MÜDÜRLÜĞÜ] Sicil No [NO] · KEP [KEP]
+© {{YIL}} SEKULART LTD
+Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · MERSİS 0759-1148-7410-0001 · VKN 7591148741 · [TİCARET SİCİL MÜDÜRLÜĞÜ] Sicil No [NO]
 Tel +90 232 332 21 00 · [support@eatkcal.com]
 Gizlilik Politikası · KVKK Aydınlatma · Çerez Politikası · Çerez ayarları · Kullanım Koşulları
 Mesafeli Satış Sözleşmesi · Ön Bilgilendirme Formu · Hesap Silme · Veri Sahibi Başvurusu
 kcal., tera ve Breaking Fast, SEKULART mutfak markalarıdır.
 ```
 
-**Bugünkü footer'da eksik olanlar:** Çerez Politikası, Hesap Silme, Ön Bilgilendirme, Başvuru bağlantıları; MERSİS, sicil, KEP (`web:apps/eatkcal/components/site.tsx:31-75`).
+**Bugünkü footer'da eksik olanlar:** Çerez Politikası, Hesap Silme, Ön Bilgilendirme, Başvuru bağlantıları; MERSİS, sicil (`web:apps/eatkcal/components/site.tsx:31-75`). KEP mevcut metinlerde yok (eklenmedi).
 
 ### 3.3 Web — kcalculate.ai (global, EN birincil)
 
 ```
-© {{YEAR}} SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti., a company incorporated in Türkiye.
-[ADDRESS], Türkiye · [privacy@kcalculate.ai] · EU representative: [AB TEMSİLCİSİ] · UK representative: [UK TEMSİLCİSİ]
+© {{YEAR}} SEKULART LTD, a company incorporated in Türkiye.
+Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · [privacy@kcalculate.ai] · EU representative: [AB TEMSİLCİSİ] · UK representative: [UK TEMSİLCİSİ]
 Privacy · Terms · Community Guidelines · Cookies · Cookie settings · Delete account · Your privacy choices (US)
 ```
 
@@ -95,16 +93,16 @@ Privacy · Terms · Community Guidelines · Cookies · Cookie settings · Delete
 | İşlem (sipariş, hesap, OTP, destek yanıtı) | `noreply@eatkcal.com` / `noreply@kcalculate.ai` — **yanıt adresi** `support@…` | Tam unvan, adres, MERSİS, web; "Bu e-posta hesabın/siparişinle ilgili bilgilendirmedir." Pazarlama içeriği **eklenmez** |
 | Pazarlama / bülten | `hello@…` `[ÖNERİ]` | İşlem alt bilgisi + **tek tıkla ret bağlantısı** + "İYS üzerinden de ret hakkını kullanabilirsin" + onayın alındığı kanal/tarih (ETK md.6; Yönetmelik) |
 | Şube iç bildirimi (order-alert) | `noreply@…` | "İç kullanım — kişisel veri içerir, iletme." Alıcı kurumsal adres olmalı (bugün kişisel Gmail yedeği var: `supabase/functions/order-alert/index.ts:13`) |
-| Veri sahibi başvuru yanıtları | `privacy@…` | Tam unvan, KEP, başvuru no |
+| Veri sahibi başvuru yanıtları | `privacy@…` | SEKULART LTD, adres, başvuru no |
 
 **Kural:** `noreply@` hiçbir metinde başvuru veya iletişim adresi olarak gösterilmez. Bugün gösteriliyor: `landing-page/privacy.html:95`.
 
 ### 3.5 Fatura (e-arşiv / e-fatura)
 
-- **Zorunlu:** tam unvan, merkez adresi, vergi dairesi, VKN.
+- **Zorunlu:** SEKULART LTD, merkez adresi, vergi dairesi, VKN (vergi dairesi adı mevcut metinlerde yok — fatura sisteminden alınır).
 - **Önerilen:** MERSİS, web sitesi, ticaret sicil no.
 - **Satıcı satırı:** marka ("eatkcal", "kcal.") ancak unvanın **yanında** gösterilebilir. Örnek:
-  > SEKÜLART … Ltd. Şti. (eatkcal)
+  > SEKULART LTD (eatkcal)
 - Fatura PDF alt bilgisinde KVKK aydınlatma bağlantısı (kısa URL) önerilir.
 
 ## 4. İletişim adresleri önerisi
@@ -119,7 +117,6 @@ Privacy · Terms · Community Guidelines · Cookies · Cookie settings · Delete
 | `report@kcalculate.ai` `[ÖNERİ]` | Hukuka aykırı içerik bildirimi (DSA md.16, 5651), kayıtlı olmayanlar için | Topluluk Kuralları, web bildirim formu | Moderasyon |
 | `security@kcalculate.ai` | Güvenlik açığı bildirimi (`/.well-known/security.txt`) | web | Teknik lider |
 | `info@eatkcal.com` | Genel (mevcut; 27 yerde geçiyor) | Geçiş döneminde korunur | → ilgili kutu |
-| `[KEP]` | Resmî tebligat, KVKK yazılı başvuru kanalı | KVKK Aydınlatma, künye | Hukuk |
 | `[AB TEMSİLCİSİ]` / `[UK REPRESENTATIVE]` | GDPR Art.27 / DSA md.13 | kcalculate.ai Gizlilik | Temsilci firma |
 
 > **[İnceleme notu]** KVKK başvuru yöntemi olarak e-posta, Başvuru Tebliği md.5'e göre "ilgili kişi tarafından veri sorumlusuna daha önce bildirilen ve veri sorumlusunun sisteminde kayıtlı bulunan elektronik posta adresi" üzerinden kabul edilir. Kayıtlı olmayan adresten gelen başvuru için kimlik doğrulama adımı gerekir (`tr/08`).
@@ -128,7 +125,7 @@ Privacy · Terms · Community Guidelines · Cookies · Cookie settings · Delete
 
 | Ad | Tür | Pazar / dil | Alan adı / kanal | Ne için kullanılır | Yasal metinlerde rolü | Tescil durumu |
 |---|---|---|---|---|---|---|
-| **SEKÜLART … Ltd. Şti.** ("SEKULART") | Tüzel kişi (şemsiye) | TR (merkez), global sözleşme tarafı | — | Sözleşme tarafı, veri sorumlusu, satıcı, fatura | **Tek taraf** | Ticaret sicili `[NO]` |
+| **SEKULART LTD** ("SEKULART") | Tüzel kişi (şemsiye) | TR (merkez), global sözleşme tarafı | — | Sözleşme tarafı, veri sorumlusu, satıcı, fatura | **Tek taraf** | Ticaret sicili `[NO]` |
 | **Kcalculate AI** | Ürün markası — mobil uygulama (kalori/makro takibi, AI tabak tarama, Keşfet) | Global, EN + TR | kcalculate.ai · App Store / Google Play | Uygulama adı, mağaza listesi, kcalculate.ai | "Uygulama"; işleten SEKULART | `[TÜRKPATENT / WIPO Madrid / EUIPO — başvuru no]` |
 | **eatkcal** | Hizmet markası — sipariş platformu / restoran (İzmir) | TR (İzmir), TR + EN arayüz | eatkcal.com · l.eatkcal.com · uygulama içi eatkcal modülü · Trendyol Go vb. pazaryerleri | Sipariş, teslimat, web satış | "Platform"; satıcı SEKULART | `[NO]` |
 | **kcal.** | Yemek (mutfak) markası | TR | eatkcal üzerinde | Ürün/menü markası, ambalaj | Üründe marka; üretici/satıcı SEKULART | `[NO]` — "kcal" tanımlayıcı terim; ayırt edicilik riski |

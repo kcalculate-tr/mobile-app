@@ -70,7 +70,25 @@ docs/legal/{tr,en}/*.md  ──(derleme betiği)──►  legal_documents (DB, 
 
 ## 3. Kimlik bloğu tek kaynaktan
 
-- `company_identity` (tek satırlık ayar tablosu **veya** repoda paylaşılan JSON) alanları: tam unvan, kısa ad, MERSİS, VKN, vergi dairesi, sicil, adres, KEP, telefon, e-posta adresleri, AB/UK temsilcisi.
+- `company_identity` (tek satırlık ayar tablosu **veya** repoda paylaşılan JSON) alanları: ad, MERSİS, VKN, sicil, adres, telefon, e-posta adresleri, AB/UK temsilcisi. Vergi dairesi ve KEP mevcut metinlerde yok; alan olarak eklenmedi (alınırsa eklenir). Örnek (karar 9 Kas 2026):
+
+```json
+{
+  "legal_name": "SEKULART LTD",
+  "short_name": "SEKULART LTD",
+  "mersis": "0759-1148-7410-0001",
+  "tax_id": "7591148741",
+  "trade_registry_no": null,
+  "address_tr": "Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir",
+  "address_en": "Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye",
+  "phone": null,
+  "emails": { "general": "info@eatkcal.com", "privacy": null, "legal": null, "support": null },
+  "eu_representative": null,
+  "uk_representative": null
+}
+```
+
+  `null` alanlar henüz karar verilmemiş bilgilerdir (`L-S2-NOT.md`).
 - Metinlerde `{{COMPANY.LEGAL_NAME}}` gibi yer tutucularla kullanılır.
 - Kcalculate AI ayrı şirkete geçerse kimlik **marka başına** seçilir (`brand: 'kcalculate' | 'eatkcal'`).
 
@@ -245,7 +263,7 @@ Sağlık rızasını vermeyen kullanıcının mevcut takip verisi için karar ge
 - VERBİS kaydı (B-04).
 - AB/UK temsilcisi ve DSA yasal temsilcisi (B-12).
 - İYS kaydı (B-11).
-- KEP adresi.
+- KEP adresi (taslaklara eklenmedi; alınırsa kimlik bloklarına eklenecek — `BOSLUKLAR.md` B-20).
 - Marka tescil kontrolü (KURUMSAL_KIMLIK §5).
 
 ---

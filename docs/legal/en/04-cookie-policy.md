@@ -8,8 +8,8 @@
 
 This policy explains how we use cookies and similar technologies on our websites.
 
-**Controller:** SEKULART Ltd. — `[FULL LEGAL NAME]` (SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.)
-MERSIS: `[MERSIS]` · Tax ID: `[VKN]` · Address: `[ADDRESS]` (Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye) · Registered e-mail (KEP): `[KEP]` · E-mail: `[privacy@…]` (today: info@eatkcal.com)
+**Controller:** SEKULART LTD
+MERSIS: 0759-1148-7410-0001 · Tax ID: 7591148741 · Address: Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · E-mail: `[privacy@…]` (today: info@eatkcal.com)
 
 Brands: **Kcalculate AI** (kcalculate.ai), **eatkcal** (eatkcal.com), kitchen brands **kcal.**, **tera**, **Breaking Fast**.
 

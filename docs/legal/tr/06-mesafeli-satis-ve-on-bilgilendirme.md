@@ -17,14 +17,13 @@ Bu form, siparişiniz kesinleşmeden önce 6502 sayılı Tüketicinin Korunması
 
 | | |
 |---|---|
-| Ticaret unvanı | `[TAM UNVAN]` (kısa ad: SEKULART Ltd.) |
+| Ticaret unvanı | SEKULART LTD |
 | Marka | eatkcal — mutfak markaları: kcal., tera, Breaking Fast |
-| MERSİS no | `[MERSİS]` *(mevcut metindeki değer teyit edilmeli)* |
-| Vergi dairesi / no | `[VERGİ DAİRESİ]` / `[VKN]` |
-| Adres | `[ADRES]` |
+| MERSİS no | 0759-1148-7410-0001 |
+| VKN | 7591148741 |
+| Adres | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir |
 | Telefon | `[TELEFON]` |
 | E-posta | `[support@…]` |
-| KEP adresi | `[KEP]` |
 | Şikâyet ve talepler | Uygulama › Destek, `[support@…]`, `[TELEFON]` |
 
 ### A.2 Sipariş edilen mal ve hizmetin temel nitelikleri
@@ -98,7 +97,7 @@ Siparişinizdeki kişisel veriler KVKK Aydınlatma Metni'ne uygun olarak işleni
 
 ### Madde 1 — Taraflar
 
-**1.1 Satıcı:** `[TAM UNVAN]` ("SEKULART Ltd." veya "Satıcı"), MERSİS `[MERSİS]`, VKN `[VKN]`, adres `[ADRES]`, telefon `[TELEFON]`, e-posta `[support@…]`, KEP `[KEP]`.
+**1.1 Satıcı:** SEKULART LTD ("Satıcı"), MERSİS 0759-1148-7410-0001, VKN 7591148741, adres Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, telefon `[TELEFON]`, e-posta `[support@…]`.
 
 **1.2 Alıcı:** {{ALICI_AD_SOYAD}}, e-posta {{ALICI_EPOSTA}}, telefon {{ALICI_TELEFON}}, teslimat adresi {{TESLIMAT_ADRESI}} ("Alıcı").
 
@@ -200,4 +199,4 @@ Sipariş için verilen kişisel veriler, Satıcı'nın KVKK Aydınlatma Metni'ne
 
 **Onay:** ☐ *Mesafeli Satış Sözleşmesi'ni okudum ve kabul ediyorum.* (Ön Bilgilendirme teyidinden ayrı kutu; Macro paketinde ayrıca ☐ *Paketin hemen kullanıma açılmasını talep ediyorum; yararlandığım kısım için cayma hakkımın sona ereceğini biliyorum.*)
 
-**Satıcı:** `[TAM UNVAN]` · **Alıcı:** {{ALICI_AD_SOYAD}} · **Tarih:** {{ONAY_TARIHI}} · **Belge sürümü:** {{BELGE_SURUMU}}
+**Satıcı:** SEKULART LTD · **Alıcı:** {{ALICI_AD_SOYAD}} · **Tarih:** {{ONAY_TARIHI}} · **Belge sürümü:** {{BELGE_SURUMU}}

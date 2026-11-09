@@ -3,13 +3,13 @@
 > **TASLAK — hukuki inceleme için (İlter Öziseven). Yayımlanmadı.**
 > Sürüm: `v0.1-taslak` · Tarih: 2026-11-09 · Dayanak envanter: `docs/legal/VERI_ENVANTERI.md`
 
-**Veri sorumlusu:** SEKULART Ltd. — `[TAM UNVAN]` · MERSİS `[MERSİS]` · VKN `[VKN]` · Adres `[ADRES]` · KEP `[KEP]` · İletişim `[privacy@…]`
+**Veri sorumlusu:** SEKULART LTD · MERSİS 0759-1148-7410-0001 · VKN 7591148741 · Adres Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · İletişim `[privacy@…]`
 
 ---
 
 ## 1. Amaç
 
-Bu Politika; SEKULART Ltd.'nin ("Şirket") Kcalculate AI uygulaması, eatkcal sipariş hizmeti, kcal., tera ve Breaking Fast markaları ile eatkcal.com ve kcalculate.ai web siteleri üzerinden işlediği kişisel verilerin ne kadar süre saklanacağını ve bu süre sonunda nasıl silineceğini, yok edileceğini veya anonim hâle getirileceğini belirler.
+Bu Politika; SEKULART LTD'nin ("Şirket") Kcalculate AI uygulaması, eatkcal sipariş hizmeti, kcal., tera ve Breaking Fast markaları ile eatkcal.com ve kcalculate.ai web siteleri üzerinden işlediği kişisel verilerin ne kadar süre saklanacağını ve bu süre sonunda nasıl silineceğini, yok edileceğini veya anonim hâle getirileceğini belirler.
 
 Politika şu düzenlemelere dayanır:
 - 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") md.4, md.7 ve md.12;

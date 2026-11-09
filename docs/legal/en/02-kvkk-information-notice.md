@@ -10,12 +10,11 @@
 
 | | |
 |---|---|
-| Legal name | `[FULL LEGAL NAME]` (short name: SEKULART Ltd.) |
-| MERSIS no. | `[MERSIS]` |
-| Tax ID | `[TAX ID]` |
+| Legal name | SEKULART LTD |
+| MERSIS no. | 0759-1148-7410-0001 |
+| Tax ID | 7591148741 |
 | Trade registry no. | `[TRADE REGISTRY NO]` |
-| Address | `[ADDRESS]`, Türkiye |
-| Registered e-mail (KEP) | `[KEP]` |
+| Address | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye |
 | E-mail | `[privacy@…]` (currently info@eatkcal.com) |
 | Phone | `[PHONE]` |
 | Services | Kcalculate AI (mobile app, kcalculate.ai), eatkcal (ordering, eatkcal.com), kitchen brands kcal., tera, Breaking Fast |
@@ -155,11 +154,10 @@ You may withdraw consent at any time. Withdrawal does not affect the lawfulness 
 
 Under Art. 5 of the Communiqué on the Procedures and Principles of Application to the Data Controller, you can apply:
 
-1. **in writing**, with a wet-signed letter delivered by hand or post to `[ADDRESS]`;
-2. by **KEP** to `[KEP]`;
-3. with a **secure electronic or mobile signature** to `[privacy@…]`;
-4. from the **e-mail address registered** in our system to `[privacy@…]`;
-5. through the **in-app request form** at `[Settings › Privacy › Data request]`.
+1. **in writing**, with a wet-signed letter delivered by hand or post to Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye;
+2. with a **secure electronic or mobile signature** to `[privacy@…]`;
+3. from the **e-mail address registered** in our system to `[privacy@…]`;
+4. through the **in-app request form** at `[Settings › Privacy › Data request]`.
 
 **Your application must include:**
 - your name, surname, and signature (for written applications);

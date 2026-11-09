@@ -6,8 +6,8 @@
 
 ## 1. Taraflar ve kabul
 
-1.1. Bu Koşullar, Hizmet'i kullanan sen ("**Kullanıcı**") ile **SEKULART Ltd.** arasındadır:
-`[TAM UNVAN]` (SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.) · MERSİS: `[MERSİS]` · VKN: `[VKN]` · Adres: `[ADRES]` (Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir) · KEP: `[KEP]` · Telefon: `[TELEFON]` · E-posta: `[legal@…]` (bugün: info@eatkcal.com) — "**SEKULART**", "**biz**".
+1.1. Bu Koşullar, Hizmet'i kullanan sen ("**Kullanıcı**") ile **SEKULART LTD** arasındadır:
+SEKULART LTD · MERSİS: 0759-1148-7410-0001 · VKN: 7591148741 · Adres: Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · Telefon: `[TELEFON]` · E-posta: `[legal@…]` (bugün: info@eatkcal.com) — "**SEKULART**", "**biz**".
 
 1.2. Hesap oluştururken bu Koşulları ve Gizlilik Politikası'nı okuduğunu, **onay kutusunu işaretleyerek** kabul edersin. Kabul ettiğin sürüm ve kabul zamanı hesabınla birlikte kaydedilir. Hesap açmadan yalnızca web sitelerini gezmen, bu Koşullar'ın genel kullanım kurallarına (§9, §10) tabidir; ancak sitede gezinmen hiçbir sözleşmeyi ya da rızayı kabul ettiğin anlamına gelmez.
 
@@ -194,4 +194,4 @@ Bu Koşullar'ın bir hükmü geçersiz sayılırsa diğer hükümler geçerlili�
 
 ## 22. İletişim
 
-SEKULART Ltd. · `[ADRES]` · `[legal@…]` · Destek: `[support@…]` (bugün: info@eatkcal.com) · Telefon: `[TELEFON]` · KEP: `[KEP]`
+SEKULART LTD · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · `[legal@…]` · Destek: `[support@…]` (bugün: info@eatkcal.com) · Telefon: `[TELEFON]`

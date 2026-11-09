@@ -2,7 +2,7 @@
 
 > **TASLAK — hukuki inceleme için (İlter Öziseven). Yayımlanmadı.**
 > Sürüm: `v0.1-taslak` · Hazırlanma: 2026-11-09 · Yürürlük: `[YÜRÜRLÜK TARİHİ]`
-> Veri sorumlusu: `[TAM UNVAN]` ("SEKULART Ltd."), MERSİS `[MERSİS]` *(mevcut metindeki değer teyit edilmeli)*, adres `[ADRES]`, KEP `[KEP]`, e-posta `[privacy@…]`.
+> Veri sorumlusu: SEKULART LTD, MERSİS 0759-1148-7410-0001, adres Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, e-posta `[privacy@…]`.
 > Kapsam: Kcalculate AI uygulaması (eatkcal modülü dahil), eatkcal.com, kcalculate.ai.
 > Dayanak: KVKK md.11, 13, 14; Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ ("Başvuru Tebliği"); GDPR Art.12, 15–22; CCPA/CPRA (Cal. Civ. Code §1798.100 vd.) ve diğer ABD eyalet yasaları (uygulanabildiği ölçüde).
 
@@ -17,8 +17,7 @@ Kişisel verilerinizle ilgili haklarınızı kullanmak için bu formu doldurabil
 **Başvuru yolları**
 - Uygulamada: Profil › Gizlilik › **Veri talebi** (giriş yapmış olarak — en hızlı yol, kimliğinizi ayrıca doğrulamamız gerekmez)
 - Sistemimizde kayıtlı e-posta adresinizden `[privacy@…]` adresine
-- KEP ile `[KEP]` adresine (güvenli elektronik imza veya mobil imza ile)
-- Islak imzalı dilekçeyle `[ADRES]` adresine (elden veya noter aracılığıyla)
+- Islak imzalı dilekçeyle Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir adresine (elden veya noter aracılığıyla)
 - Web formu: `[eatkcal.com/legal/veri-talebi]` / `[kcalculate.ai/legal/data-request]`
 
 ### 1. Kimlik ve iletişim
@@ -28,7 +27,7 @@ Kişisel verilerinizle ilgili haklarınızı kullanmak için bu formu doldurabil
 | Ad, soyad | Evet | |
 | Hesabınıza kayıtlı e-posta adresi | Evet (hesabınız varsa) | Talebi hesabınızla eşleştirmek için |
 | Hesabınıza kayıtlı telefon (son 4 hane yeterli) | Hayır | Ek doğrulama için |
-| T.C. kimlik no / yabancılar için uyruk ve pasaport veya kimlik no | Yalnız yazılı veya KEP başvurusunda | Uygulama içinden veya kayıtlı e-postadan gelen başvurularda **istenmez** |
+| T.C. kimlik no / yabancılar için uyruk ve pasaport veya kimlik no | Yalnız yazılı (ıslak imzalı) başvuruda | Uygulama içinden veya kayıtlı e-postadan gelen başvurularda **istenmez** |
 | Tebligata esas adres veya e-posta | Evet | Yanıtı nereye göndereceğimiz |
 | Hesabınız yoksa: bizimle ilişkiniz | Gerekirse | Örn. web formu, sipariş alıcısı, kurye teslimi |
 
@@ -64,7 +63,7 @@ Kişisel verilerinizle ilgili haklarınızı kullanmak için bu formu doldurabil
 
 ### 4. Yanıt kanalı
 
-☐ Uygulama içi bildirim ve e-posta ☐ Yalnız e-posta ☐ KEP ☐ Posta (adres: ________)
+☐ Uygulama içi bildirim ve e-posta ☐ Yalnız e-posta ☐ Posta (adres: ________)
 
 ### 5. Beyan
 
@@ -123,7 +122,7 @@ R = yapar · A = hesap verir · C = danışılır · I = bilgilendirilir
 | Uygulama içi (oturum açık) | Yeterli; ek bilgi istenmez |
 | Kayıtlı e-posta | Gönderen adres `auth.users.email` ile eşleşir → yeterli. Silme ve kopya taleplerinde uygulamadan veya e-postaya gönderilen tek kullanımlık kodla teyit |
 | Kayıtlı olmayan e-posta / web formu | Hesap e-postasına doğrulama bağlantısı; hesap yoksa talep edilen veriye göre (örn. sipariş no + telefonun son 4 hanesi) |
-| KEP / ıslak imza | Başvuru Tebliği unsurları; TCKN yalnız bu kanalda |
+| Islak imza | Başvuru Tebliği unsurları; TCKN yalnız bu kanalda |
 | Yetkili temsilci | Vekâletname / yazılı yetki + ilgili kişinin teyidi |
 
 Kimlik doğrulanamazsa talep reddedilmez; gerekçesiyle ek bilgi istenir. Doğrulama için toplanan ek veriler yalnız bu amaçla kullanılır ve başvuru kaydıyla birlikte saklanır.
@@ -153,7 +152,7 @@ Tablo ve sütunlar için: `VERI_ENVANTERI.md`.
 ### 2.6 Yanıt şablonları
 
 **(a) Alındı**
-> Merhaba {{AD}}, {{TARIH}} tarihli kişisel veri başvurunuz {{TALEP_NO}} numarasıyla kaydedildi. Başvurunuzu en geç {{SON_TARIH}} tarihine kadar yanıtlayacağız. — SEKULART Ltd. Gizlilik Ekibi
+> Merhaba {{AD}}, {{TARIH}} tarihli kişisel veri başvurunuz {{TALEP_NO}} numarasıyla kaydedildi. Başvurunuzu en geç {{SON_TARIH}} tarihine kadar yanıtlayacağız. — SEKULART LTD Gizlilik Ekibi
 
 **(b) Kimlik bilgisi isteği**
 > Başvurunuzun size ait olduğunu doğrulamak için {{ISTENEN_BILGI}} bilgisine ihtiyacımız var. Bu bilgi yalnız doğrulama için kullanılacaktır. Bilgi bize ulaşana kadar başvurunuzu sonuçlandıramıyoruz.

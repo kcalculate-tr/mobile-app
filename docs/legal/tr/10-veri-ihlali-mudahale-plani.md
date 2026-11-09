@@ -3,7 +3,7 @@
 > **TASLAK — hukuki inceleme için (İlter Öziseven). Yayımlanmadı.**
 > Sürüm: `v0.1-taslak` · Tarih: 2026-11-09 · Dayanak envanter: `docs/legal/VERI_ENVANTERI.md`
 
-**Veri sorumlusu:** SEKULART Ltd. — `[TAM UNVAN]` · MERSİS `[MERSİS]` · VKN `[VKN]` · Adres `[ADRES]` · KEP `[KEP]` · İletişim `[privacy@…]`
+**Veri sorumlusu:** SEKULART LTD · MERSİS 0759-1148-7410-0001 · VKN 7591148741 · Adres Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · İletişim `[privacy@…]`
 
 ---
 
@@ -178,7 +178,7 @@ T0 = Şirket'in ihlali **öğrendiği** an (işleyenin Şirket'e bildirdiği an 
 > Sorularınız ve KVKK md.11 kapsamındaki haklarınız için: [privacy@…] · [TEL].
 >
 > Özür dileriz.
-> SEKULART Ltd. ([marka]) — [TAM UNVAN], [ADRES]
+> SEKULART LTD ([marka]) — Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir
 
 ### 9.3 Kullanıcı bildirimi — EN şablonu
 Bkz. `en/10-data-breach-response-plan.md` §9.3.

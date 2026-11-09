@@ -8,8 +8,8 @@
 
 Bu politika, web sitelerimizde çerezleri ve benzer teknolojileri nasıl kullandığımızı açıklar.
 
-**Veri sorumlusu:** SEKULART Ltd. — `[TAM UNVAN]` (SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.)
-MERSİS: `[MERSİS]` · VKN: `[VKN]` · Adres: `[ADRES]` (Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir) · KEP: `[KEP]` · E-posta: `[privacy@…]` (bugün: info@eatkcal.com)
+**Veri sorumlusu:** SEKULART LTD
+MERSİS: 0759-1148-7410-0001 · VKN: 7591148741 · Adres: Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · E-posta: `[privacy@…]` (bugün: info@eatkcal.com)
 
 Markalar: **Kcalculate AI** (kcalculate.ai), **eatkcal** (eatkcal.com), mutfak markaları **kcal.**, **tera**, **Breaking Fast**.
 

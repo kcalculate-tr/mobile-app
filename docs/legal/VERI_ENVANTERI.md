@@ -2,7 +2,7 @@
 
 > **Durum:** TASLAK · hukuki inceleme için (İlter Öziseven, avukat) · canlıya/kullanıcıya YAYIN YOK
 > **Tarih:** 2026-11-09 · **Dal:** `legal/global` (taban `night19/release`, `da8edf4`)
-> **Veri sorumlusu:** SEKULART Ltd. (`[TAM UNVAN]` — referans: "SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.", `[MERSİS]`, `[VKN]`, `[ADRES]`, `[KEP]`)
+> **Veri sorumlusu:** SEKULART LTD · MERSİS 0759-1148-7410-0001 · VKN 7591148741 · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir
 > **Kapsam:** mobil uygulama (Kcalculate AI + eatkcal modülü, `src/`), Supabase arka ucu (`supabase/`), web (`~/dev/kcal-web`: eatkcal.com + kcalculate.ai), statik açılış sayfası (`landing-page/`, l.eatkcal.com).
 
 ## 0. Yöntem ve kanıt gösterimi

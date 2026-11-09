@@ -6,8 +6,8 @@
 
 ## 1. Parties and acceptance
 
-1.1. These Terms are between you (the "**User**") and **SEKULART Ltd.**:
-`[FULL LEGAL NAME]` (SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.) · MERSIS: `[MERSIS]` · Tax ID: `[VKN]` · Address: `[ADDRESS]` (Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye) · Registered e-mail (KEP): `[KEP]` · Phone: `[PHONE]` · E-mail: `[legal@…]` (today: info@eatkcal.com) — "**SEKULART**", "**we**".
+1.1. These Terms are between you (the "**User**") and **SEKULART LTD**:
+SEKULART LTD · MERSIS: 0759-1148-7410-0001 · Tax ID: 7591148741 · Address: Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · Phone: `[PHONE]` · E-mail: `[legal@…]` (today: info@eatkcal.com) — "**SEKULART**", "**we**".
 
 1.2. When you create an account you confirm that you have read these Terms and the Privacy Policy and accept them **by ticking the checkbox**. The version you accepted and the time of acceptance are stored with your account. Browsing the websites without an account is subject to the general rules of use in these Terms (§9, §10), but browsing alone does not mean you accept any contract or give any consent.
 
@@ -194,4 +194,4 @@ If any provision of these Terms is held invalid, the remaining provisions remain
 
 ## 22. Contact
 
-SEKULART Ltd. · `[ADDRESS]` · `[legal@…]` · Support: `[support@…]` (today: info@eatkcal.com) · Phone: `[PHONE]` · KEP: `[KEP]`
+SEKULART LTD · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · `[legal@…]` · Support: `[support@…]` (today: info@eatkcal.com) · Phone: `[PHONE]`

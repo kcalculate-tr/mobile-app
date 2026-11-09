@@ -4,7 +4,7 @@
 > Version: `v0.1-taslak` · Date: 2026-11-09 · Source inventory: `docs/legal/VERI_ENVANTERI.md`
 > The Turkish version (`tr/10-veri-ihlali-mudahale-plani.md`) prevails in case of conflict.
 
-**Data controller:** SEKULART Ltd. — `[TAM UNVAN]` · MERSİS `[MERSİS]` · Tax ID `[VKN]` · Address `[ADRES]` · KEP `[KEP]` · Contact `[privacy@…]`
+**Data controller:** SEKULART LTD · MERSİS 0759-1148-7410-0001 · Tax ID 7591148741 · Address Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · Contact `[privacy@…]`
 
 ---
 
@@ -206,7 +206,7 @@ See `tr/10-veri-ihlali-mudahale-plani.md` §9.2.
 > For questions or to exercise your data protection rights, contact [privacy@…] · [PHONE].
 >
 > We apologise for this.
-> SEKULART Ltd. ([brand]) — [TAM UNVAN], [ADRES]
+> SEKULART LTD ([brand]) — Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye
 
 ### 9.4 Internal incident record
 

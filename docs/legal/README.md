@@ -29,11 +29,11 @@
 
 ## Gösterim kuralları
 
-- `[YER TUTUCU]` — doldurulacak bilgi: `[TAM UNVAN]`, `[MERSİS]`, `[VKN]`, `[ADRES]`, `[KEP]`, `[privacy@…]` vb.
+- `[YER TUTUCU]` — doldurulacak bilgi: `[TİCARET SİCİL NO]`, `[TELEFON]`, `[privacy@…]` vb. (Şirket adı, MERSİS, VKN ve adres L-S2'de dolduruldu; kalanlar: `L-S2-NOT.md`.)
 - `{{DİNAMİK}}` — çalışma anında doldurulan alan (sipariş no, tutar…).
 - `> **[İnceleme notu]**` / `> **[Reviewer note]**` — avukatın karar vermesi gereken nokta. Yayından önce silinir.
 - Türkçe metin bağlayıcıdır; İngilizce metinler tam çeviridir (GDPR/ABD okuru için ek bölümler EN'de de vardır).
-- Kimlik bloğu kısa adı: **SEKULART Ltd.** (tam unvan referansı: SEKÜLART Sağlıklı Gıda Ürünleri San. ve Tic. Ltd. Şti.).
+- Şirket adı: her yerde (TR + EN) **SEKULART LTD** — karar 9 Kas 2026. MERSİS 0759-1148-7410-0001 · VKN 7591148741 · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir. Vergi dairesi ve KEP eklenmedi (`BOSLUKLAR.md` B-20).
 
 ## Yayından önce mutlaka
 

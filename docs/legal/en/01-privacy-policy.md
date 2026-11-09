@@ -8,7 +8,7 @@
 
 ## 1. Who we are
 
-This Privacy Policy explains how **SEKULART Ltd.** (full legal name: `[FULL LEGAL NAME]`; "SEKULART", "we", "us") processes personal data through the following services:
+This Privacy Policy explains how **SEKULART LTD** ("SEKULART", "we", "us") processes personal data through the following services:
 
 | Service | What it does | Where |
 |---|---|---|
@@ -21,12 +21,11 @@ This Privacy Policy explains how **SEKULART Ltd.** (full legal name: `[FULL LEGA
 
 | | |
 |---|---|
-| Legal name | `[FULL LEGAL NAME]` |
-| MERSIS no. | `[MERSIS]` |
-| Tax ID | `[TAX ID]` |
+| Legal name | SEKULART LTD |
+| MERSIS no. | 0759-1148-7410-0001 |
+| Tax ID | 7591148741 |
 | Trade registry no. | `[TRADE REGISTRY NO]` |
-| Address | `[ADDRESS]`, Türkiye |
-| Registered e-mail (KEP) | `[KEP]` |
+| Address | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye |
 | Phone | `[PHONE]` |
 | Privacy contact | `[privacy@…]` |
 
@@ -250,7 +249,7 @@ We keep data only as long as the purpose requires and the law mandates. After th
 **Complaints:** you may complain to the Turkish Personal Data Protection Board (KVKK Art. 14) and to the supervisory authority in your EU member state (GDPR Art. 77).
 
 **How to make a request:**
-- Channels: the in-app form `[Settings › Privacy › Data request]`, `[privacy@…]`, `[KEP]`, or in writing to `[ADDRESS]`.
+- Channels: the in-app form `[Settings › Privacy › Data request]`, `[privacy@…]`, or in writing to Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye.
 - Form and process: `08-data-subject-request-form-and-process.md`.
 - Under KVKK Art. 13 we respond free of charge **within 30 days at the latest**.
 - Under GDPR Art. 12(3) the deadline is **one month**, extendable by two months; we will tell you if we extend it.
@@ -334,4 +333,4 @@ Our services are for people **aged 18 and over**. We do not knowingly collect da
 
 ## 21. Contact
 
-`[FULL LEGAL NAME]` · `[ADDRESS]` · `[KEP]` · `[privacy@…]` (currently info@eatkcal.com) · `[PHONE]`
+SEKULART LTD · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye · `[privacy@…]` (currently info@eatkcal.com) · `[PHONE]`

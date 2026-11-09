@@ -2,7 +2,7 @@
 
 > **TASLAK — hukuki inceleme için (İlter Öziseven). Yayımlanmadı.**
 > Sürüm: `v0.1-taslak` · Taslak tarihi: 2026-11-09 · Yürürlük: `[YÜRÜRLÜK TARİHİ]`
-> Veri sorumlusu: `[TAM UNVAN]` (SEKULART Ltd.) · `[ADRES]` · `[KEP]` · `[privacy@…]`
+> Veri sorumlusu: SEKULART LTD · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · `[privacy@…]`
 
 ## Ortak ilkeler
 
@@ -131,7 +131,7 @@
 - GDPR Art.6(1)(a) ve ePrivacy Direktifi md.13.
 
 **Onay kutusu metni:**
-> ☐ `[TAM UNVAN]` tarafından kampanya, indirim ve duyurular hakkında seçtiğim kanallardan ticari elektronik ileti gönderilmesine ve bu amaçla sipariş geçmişim ile tercihlerimin kişiselleştirme için işlenmesine onay veriyorum.
+> ☐ SEKULART LTD tarafından kampanya, indirim ve duyurular hakkında seçtiğim kanallardan ticari elektronik ileti gönderilmesine ve bu amaçla sipariş geçmişim ile tercihlerimin kişiselleştirme için işlenmesine onay veriyorum.
 
 > **[İnceleme notu]**
 > 1. SMS, arama ve e-posta onayları İYS'ye kaydedilmeli. İYS'ye yüklenmeyen onaylar geçersiz sayılır; bildirim kaydı İYS'de olmayan alıcıya ileti gönderilemez.

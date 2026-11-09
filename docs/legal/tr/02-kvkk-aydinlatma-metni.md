@@ -10,12 +10,11 @@
 
 | | |
 |---|---|
-| Ticaret unvanı | `[TAM UNVAN]` (kısa ad: SEKULART Ltd.) |
-| MERSİS no | `[MERSİS]` |
-| VKN | `[VKN]` |
+| Ticaret unvanı | SEKULART LTD |
+| MERSİS no | 0759-1148-7410-0001 |
+| VKN | 7591148741 |
 | Ticaret sicil no | `[TİCARET SİCİL NO]` |
-| Adres | `[ADRES]` |
-| KEP adresi | `[KEP]` |
+| Adres | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir |
 | E-posta | `[privacy@…]` (şimdilik info@eatkcal.com) |
 | Telefon | `[TELEFON]` |
 | Hizmetler | Kcalculate AI (mobil uygulama, kcalculate.ai), eatkcal (sipariş, eatkcal.com), mutfak markaları kcal., tera, Breaking Fast |
@@ -135,11 +134,10 @@ Açık rızaya dayalı işlemelerde rızanızı her zaman geri alabilirsiniz. Ge
 
 Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ md.5 uyarınca başvurunuzu şu yollarla yapabilirsiniz:
 
-1. **Yazılı olarak**, ıslak imzalı dilekçeyle `[ADRES]` adresine elden veya posta yoluyla;
-2. **KEP** ile `[KEP]` adresine;
-3. **Güvenli elektronik imza veya mobil imza** ile `[privacy@…]` adresine;
-4. Daha önce bize bildirdiğiniz ve sistemimizde **kayıtlı e-posta adresinizden** `[privacy@…]` adresine;
-5. Başvuru amacına yönelik geliştirilmiş **uygulama içi form** ile: `[Ayarlar › Gizlilik › Veri talebi]`.
+1. **Yazılı olarak**, ıslak imzalı dilekçeyle Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir adresine elden veya posta yoluyla;
+2. **Güvenli elektronik imza veya mobil imza** ile `[privacy@…]` adresine;
+3. Daha önce bize bildirdiğiniz ve sistemimizde **kayıtlı e-posta adresinizden** `[privacy@…]` adresine;
+4. Başvuru amacına yönelik geliştirilmiş **uygulama içi form** ile: `[Ayarlar › Gizlilik › Veri talebi]`.
 
 **Başvuruda bulunması gerekenler:** ad, soyad, imza (yazılı başvuruda); TCKN (yabancılar için uyruk ve pasaport/kimlik no); tebligata esas yerleşim veya iş yeri adresi; varsa bildirime esas e-posta, telefon veya faks; talep konusu. Form: `08-veri-sahibi-basvuru-formu-ve-sureci.md`.
 

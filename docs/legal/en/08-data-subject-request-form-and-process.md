@@ -3,7 +3,7 @@
 > **DRAFT — for legal review (İlter Öziseven). Not published.**
 > Version: `v0.1-draft` · Prepared: 2026-11-09 · Effective: `[EFFECTIVE DATE]`
 > **Convenience translation.** The Turkish text (`tr/08-veri-sahibi-basvuru-formu-ve-sureci.md`) is the binding version.
-> Controller: `[FULL TRADE NAME]` ("SEKULART Ltd."), MERSIS `[MERSIS]` *(value in current texts to be verified)*, address `[ADDRESS]`, KEP `[KEP]`, e-mail `[privacy@…]`.
+> Controller: SEKULART LTD, MERSIS 0759-1148-7410-0001, address Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye, e-mail `[privacy@…]`.
 > Scope: Kcalculate AI app (including the eatkcal module), eatkcal.com, kcalculate.ai.
 > Legal basis: KVKK Art.11, 13, 14; Communiqué on the Procedures and Principles of Applications to the Data Controller (the "Application Communiqué"); GDPR Art.12, 15–22; CCPA/CPRA (Cal. Civ. Code §1798.100 et seq.) and other US state laws (where applicable).
 
@@ -18,8 +18,7 @@ Use this form to exercise your rights over your personal data. We answer free of
 **How to submit**
 - In the app: Profile › Privacy › **Data request** (while signed in — fastest; no separate identity check needed)
 - By e-mail to `[privacy@…]` from the e-mail address registered with us
-- By KEP to `[KEP]` (with secure e-signature or mobile signature)
-- By signed letter to `[ADDRESS]` (by hand or via notary)
+- By signed letter to Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir, Türkiye (by hand or via notary)
 - Web form: `[eatkcal.com/legal/veri-talebi]` / `[kcalculate.ai/legal/data-request]`
 
 ### 1. Identity and contact
@@ -29,7 +28,7 @@ Use this form to exercise your rights over your personal data. We answer free of
 | First and last name | Yes | |
 | E-mail registered to your account | Yes (if you have an account) | To match the request to your account |
 | Phone registered to your account (last 4 digits enough) | No | For additional verification |
-| Turkish ID no. / for foreigners nationality and passport or ID no. | Only for written or KEP requests | **Not requested** for requests from the app or the registered e-mail |
+| Turkish ID no. / for foreigners nationality and passport or ID no. | Only for written (wet-signed) requests | **Not requested** for requests from the app or the registered e-mail |
 | Address or e-mail for our reply | Yes | Where we send the answer |
 | If you have no account: your relationship with us | If needed | E.g. web form, order recipient, courier delivery |
 
@@ -65,7 +64,7 @@ Use this form to exercise your rights over your personal data. We answer free of
 
 ### 4. Reply channel
 
-☐ In-app notification and e-mail ☐ E-mail only ☐ KEP ☐ Post (address: ________)
+☐ In-app notification and e-mail ☐ E-mail only ☐ Post (address: ________)
 
 ### 5. Declaration
 
@@ -124,7 +123,7 @@ R = responsible · A = accountable · C = consulted · I = informed
 | In-app (signed in) | Sufficient; nothing more requested |
 | Registered e-mail | Sender matches `auth.users.email` → sufficient. For erasure and copy requests, confirm with a one-time code in the app or by e-mail |
 | Unregistered e-mail / web form | Verification link to the account e-mail; without an account, depending on the data requested (e.g. order no. + last 4 digits of phone) |
-| KEP / wet signature | Application Communiqué elements; Turkish ID no. only in this channel |
+| Wet signature | Application Communiqué elements; Turkish ID no. only in this channel |
 | Authorised agent | Power of attorney / written authorisation + confirmation by the data subject |
 
 If identity cannot be verified, the request is not refused outright; additional information is requested with reasons. Extra data collected for verification is used only for that purpose and kept with the request record.
@@ -154,7 +153,7 @@ For tables and columns see `VERI_ENVANTERI.md`.
 ### 2.6 Response templates
 
 **(a) Acknowledgement**
-> Hello {{NAME}}, your personal data request dated {{DATE}} has been logged as no. {{REQUEST_NO}}. We will reply by {{DEADLINE}} at the latest. — SEKULART Ltd. Privacy Team
+> Hello {{NAME}}, your personal data request dated {{DATE}} has been logged as no. {{REQUEST_NO}}. We will reply by {{DEADLINE}} at the latest. — SEKULART LTD Privacy Team
 
 **(b) Identity information request**
 > To verify that this request is yours, we need {{REQUESTED_INFO}}. It will be used only for verification. We cannot complete your request until we receive it.

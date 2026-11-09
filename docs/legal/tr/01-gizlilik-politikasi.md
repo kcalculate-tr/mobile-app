@@ -8,7 +8,7 @@
 
 ## 1. Biz kimiz?
 
-Bu Gizlilik Politikası, **SEKULART Ltd.**'nin (tam unvan: `[TAM UNVAN]`; "SEKULART", "biz") aşağıdaki hizmetler aracılığıyla işlediği kişisel verileri açıklar:
+Bu Gizlilik Politikası, **SEKULART LTD**'nin ("SEKULART", "biz") aşağıdaki hizmetler aracılığıyla işlediği kişisel verileri açıklar:
 
 | Hizmet | Ne yapar | Adres |
 |---|---|---|
@@ -21,12 +21,11 @@ Bu Gizlilik Politikası, **SEKULART Ltd.**'nin (tam unvan: `[TAM UNVAN]`; "SEKUL
 
 | | |
 |---|---|
-| Ticaret unvanı | `[TAM UNVAN]` |
-| MERSİS no | `[MERSİS]` |
-| Vergi kimlik no | `[VKN]` |
+| Ticaret unvanı | SEKULART LTD |
+| MERSİS no | 0759-1148-7410-0001 |
+| Vergi kimlik no | 7591148741 |
 | Ticaret sicil no | `[TİCARET SİCİL NO]` |
-| Adres | `[ADRES]` |
-| KEP | `[KEP]` |
+| Adres | Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir |
 | Telefon | `[TELEFON]` |
 | Gizlilik iletişimi | `[privacy@…]` |
 
@@ -230,7 +229,7 @@ Verileri amaç için gereken ve mevzuatın zorunlu kıldığı süre kadar sakla
 **Şikâyet hakkı:** Kişisel Verileri Koruma Kurulu'na (KVKK md.14) ve AB'de bulunduğunuz yerdeki veri koruma otoritesine (GDPR Art.77) şikâyette bulunabilirsiniz.
 
 **Nasıl başvurulur:**
-- Uygulama içi başvuru formu `[Ayarlar › Gizlilik › Veri talebi]`, `[privacy@…]`, `[KEP]` veya yazılı olarak `[ADRES]`.
+- Uygulama içi başvuru formu `[Ayarlar › Gizlilik › Veri talebi]`, `[privacy@…]` veya yazılı olarak Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir.
 - Başvuru formu ve süreç: `08-veri-sahibi-basvuru-formu-ve-sureci.md`.
 - KVKK md.13 uyarınca başvurunuzu **en geç 30 gün** içinde ücretsiz sonuçlandırırız.
 - GDPR Art.12(3) uyarınca yanıt süresi **bir aydır**; gerekirse iki ay uzatılır ve uzatmayı size bildiririz.
@@ -311,4 +310,4 @@ Hizmetlerimiz **18 yaş ve üzerindeki** kişiler içindir. 18 yaşından küç�
 
 ## 21. İletişim
 
-`[TAM UNVAN]` · `[ADRES]` · `[KEP]` · `[privacy@…]` (şimdilik info@eatkcal.com) · `[TELEFON]`
+SEKULART LTD · Basın Sitesi Mah. 177/3 Sk. No:3A, 35150 Karabağlar / İzmir · `[privacy@…]` (şimdilik info@eatkcal.com) · `[TELEFON]`
