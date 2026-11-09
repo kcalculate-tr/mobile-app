@@ -4,7 +4,8 @@ export type TabParamList = {
   Home: undefined;
   Cart: undefined;
   Subscriptions: undefined;
-  Tracker: undefined;
+  // G18-S4 md.3: FinPush seri/hatırlatma dokunuşu → logla sheet'i açık (S2 tüketir).
+  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack' } | undefined;
   Profile: undefined;
   // G11-S2 yeni kabuk: Keşfet sekmesi (yalnız `kesfet` + `yeni_kabuk` açıkken
   // R3 tab navigatörüne eklenir). `asTab` ekrana tab bağlamında olduğunu söyler
@@ -71,7 +72,7 @@ export type RootStackParamList = {
   NutritionProfile: { firstTime?: boolean } | undefined;
   MeasurementHistory: undefined;
   // Derin bağlantı hedefleri (G5-S4) — l.eatkcal.com/p/:postId, /u/:handle.
-  SharedPost: { postId: string };
+  SharedPost: { postId: string; commentId?: string };
   SharedProfile: { handle: string };
   // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken erişilir.
   AiScan: undefined;

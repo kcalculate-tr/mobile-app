@@ -2,9 +2,9 @@
 // Gün halkası şeridinin altında). Durum `postingStore`'dan gelir.
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { AppText, fontFamily, useReducedMotion, useTheme } from '../../../core/design';
+import { AppText, CURVE, DURATION, fontFamily, useReducedMotion, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { postingProgress, type PostingPhase } from '../postingStore';
 
@@ -32,7 +32,8 @@ function Spinner({ color }: { color: string }) {
   const rot = useSharedValue(0);
   useEffect(() => {
     if (reduced) return;
-    rot.value = withRepeat(withTiming(360, { duration: 900, easing: Easing.linear }), -1, false);
+    // Gerçek yükleme sürerken döner (işlem bitince bileşen kalkar) — story 900 · standard.
+    rot.value = withRepeat(withTiming(360, { duration: DURATION.story, easing: CURVE.standard }), -1, false);
   }, [reduced, rot]);
   const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${rot.value}deg` }] }));
   return (

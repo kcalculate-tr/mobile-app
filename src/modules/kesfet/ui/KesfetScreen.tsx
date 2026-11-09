@@ -8,6 +8,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   Share,
   StyleSheet,
   View,
@@ -53,7 +54,9 @@ import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 import { FeedTip, feedTipSeen } from './FeedTip';
 import { AddToast, type ToastState } from './AddToast';
 import { DidItSheet } from './DidItSheet';
-import { FeedSkeleton, FeedError, FeedOffline, FeedEmpty, FollowingEmpty, useIsOnline, type SuggestedAccount } from './states';
+import { FeedSkeleton, FeedError, FeedOffline, useIsOnline, type SuggestedAccount } from './states';
+import { FeedStartEmpty } from './FeedStartEmpty';
+import { deriveStarters, isInvitedCreatorRole } from '../starters';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
 import { reportReasonText } from './ReportFlow';
 
@@ -228,6 +231,9 @@ export function KesfetScreen() {
   const [menuPost, setMenuPost] = useState<FeedPost | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestedAccount[]>([]);
+  // G18-S4 md.4 — FinFollowingEmpty "Başlangıç için": for_you'daki kcal (Marka/Editör)
+  // gönderileri; Takip boşken bir kez okunur. Gerçek veri yoksa bölüm gizli.
+  const [starterPool, setStarterPool] = useState<FeedPost[]>([]);
   const [viewerUserId, setViewerUserId] = useState<string | null>(null);
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
   // G15 — FinVideo kare 2: tam ekran oynatıcı (videoya dokun).
@@ -399,8 +405,9 @@ export function KesfetScreen() {
     let alive = true;
     void (async () => {
       let list = suggestions;
+      const page = await getKesfetClient().getFeed({ tab: 'for_you', lang }).catch(() => null);
+      if (alive && page) setStarterPool(page.items);
       if (list.length === 0) {
-        const page = await getKesfetClient().getFeed({ tab: 'for_you', lang }).catch(() => null);
         list = page ? suggestionsFrom(page.items) : [];
       }
       const withBio = await Promise.all(
@@ -665,16 +672,20 @@ export function KesfetScreen() {
     [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
+  // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa
+  // "Günüm" + açıklama satırı; akış doluyken bugünkü davranış aynen.
+  const feedIsEmpty = !loading && !error && posts.length === 0;
   const ringStrip = useMemo(
     () =>
-      rings.length > 0 ? (
+      rings.length > 0 || feedIsEmpty ? (
         <RingStrip
           rings={rings}
           onOpen={(userId) => setViewerUserId(userId)}
           onAddMine={kesfetPaylasim ? () => navigation.navigate('Composer') : undefined}
+          emptyHint={feedIsEmpty}
         />
       ) : null,
-    [rings, kesfetPaylasim, navigation],
+    [rings, kesfetPaylasim, navigation, feedIsEmpty],
   );
 
   const feedHeader = (
@@ -744,19 +755,24 @@ export function KesfetScreen() {
     ) : (
       <FeedOffline onRetry={() => void useKesfetStore.getState().load()} />
     );
-  } else if (showFollowingEmpty) {
-    body = (
-      <>
-        {feedHeader}
-        <FollowingEmpty suggestions={suggestions} onFollow={onFollow} />
-      </>
-    );
   } else if (posts.length === 0) {
+    // G18-S4 md.4 — FinFeedEmpty / FinFollowingEmpty (Final). Başlangıç kartları ve
+    // davetli üreticiler YALNIZ gerçek akış verisinden (yoksa gizli).
+    const startEmpty = (
+      <FeedStartEmpty
+        variant={showFollowingEmpty ? 'following' : 'for_you'}
+        starters={deriveStarters(showFollowingEmpty ? starterPool : posts)}
+        creators={suggestions.filter((a) => isInvitedCreatorRole(a.role))}
+        onOpenPost={(postId) => navigation.navigate('SharedPost', { postId })}
+        onFollow={onFollow}
+        onCompose={kesfetPaylasim ? () => navigation.navigate('Composer') : undefined}
+      />
+    );
     body = (
-      <>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: listBottomPad }}>
         {feedHeader}
-        <FeedEmpty following={tab === 'following'} />
-      </>
+        {startEmpty}
+      </ScrollView>
     );
   } else {
     body = (

@@ -9,8 +9,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
-import { haptic, type HapticKind } from '../motion';
-import { PRESS_SCALE } from '../../../constants/motion';
+import { haptic, PREMIUM, RN_CURVE, type HapticKind } from '../motion';
 
 /**
  * Buton — FinComponents ölçüleri:
@@ -23,7 +22,7 @@ import { PRESS_SCALE } from '../../../constants/motion';
  * `tone="ink"` mürekkep dolgu + yüzey metni (nötr birincil). secondary/text
  * çizgi/accentLine kullanır. Yeni renk sistemi kurulmaz.
  *
- * Basılı ölçek PRESS_SCALE (0.97) — zıplama yok. Varsayılan haptik `selection`.
+ * Basma: PREMIUM.press (instant 100 · 0.98 · AI 260/24 bırakma yayı). Varsayılan haptik `selection`.
  */
 export function Button({
   label,
@@ -51,8 +50,16 @@ export function Button({
   const t = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
 
+  // FinMoTokens "Basma": instant 100 · ölçek 0.98 · bırakınca AI 260/24 yayla geri.
   const springTo = (to: number) =>
-    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 20, bounciness: 0 }).start();
+    to < 1
+      ? Animated.timing(scale, {
+          toValue: to,
+          duration: PREMIUM.press.duration,
+          easing: RN_CURVE.standard,
+          useNativeDriver: true,
+        }).start()
+      : Animated.spring(scale, { toValue: to, useNativeDriver: true, ...PREMIUM.press.release }).start();
 
   const height = variant === 'primary' ? 52 : 44;
   const isFilled = variant === 'primary';
@@ -83,7 +90,7 @@ export function Button({
     <Animated.View style={[{ transform: [{ scale }] }, style]}>
       <Pressable
         onPress={handlePress}
-        onPressIn={() => !disabled && springTo(PRESS_SCALE)}
+        onPressIn={() => !disabled && springTo(PREMIUM.press.scale)}
         onPressOut={() => springTo(1)}
         disabled={disabled}
         accessibilityRole={accessibilityRole}

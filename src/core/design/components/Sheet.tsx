@@ -15,14 +15,15 @@ import {
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
 import { X as XIcon } from '../../../components/icons';
-import { haptic, REDUCED, SHEET, useReducedMotion } from '../motion';
+import { haptic, REDUCED, RN_CURVE, SHEET, useReducedMotion } from '../motion';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * Alttan açılan sayfa (Sheet) — FinComponents: 28 üst köşe · tutamaç · kapat
- * 44×44 · scrim · dialog. FinMoMap hareketi: açılış slow 500 · kapanış fast 200 ·
- * scrim 0→0.4. İki ürün ayrı yay: `product="ai"` (Kcalculate AI) / `"eat"` (eatkcal).
+ * 44×44 · scrim · dialog. FinMoTokens premium geçiş seti: açılış base 300
+ * enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4. `product="ai"` zamanlı
+ * (Kcalculate sheet'leri yay değil); `"eat"` eatkcal 200/28 yayı.
  *
  * Erişilebilirlik: içerik `accessibilityViewIsModal` (iOS — arka plan okunmaz);
  * açılınca odak başlığa/tutamağa taşınır; `onRequestClose` (Android geri / scrim)
@@ -81,15 +82,23 @@ export function Sheet({
           Animated.timing(scrim, {
             toValue: cfg.scrimTo,
             duration: cfg.openDuration,
+            easing: RN_CURVE.enter,
             useNativeDriver: true,
           }),
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            stiffness: cfg.spring.stiffness,
-            damping: cfg.spring.damping,
-            mass: cfg.spring.mass,
-          }),
+          cfg.spring
+            ? Animated.spring(translateY, {
+                toValue: 0,
+                useNativeDriver: true,
+                stiffness: cfg.spring.stiffness,
+                damping: cfg.spring.damping,
+                mass: cfg.spring.mass,
+              })
+            : Animated.timing(translateY, {
+                toValue: 0,
+                duration: cfg.openDuration,
+                easing: RN_CURVE.enter,
+                useNativeDriver: true,
+              }),
         ]).start(() => focusSheet());
       }
     } else if (mounted) {
@@ -108,6 +117,7 @@ export function Sheet({
           : Animated.timing(translateY, {
               toValue: SCREEN_HEIGHT,
               duration: cfg.closeDuration,
+              easing: RN_CURVE.exit,
               useNativeDriver: true,
             }),
       ]).start(() => setMounted(false));

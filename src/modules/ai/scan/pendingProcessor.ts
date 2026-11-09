@@ -30,7 +30,11 @@ export async function processPendingQueue(opts: {
     if (opts.isCancelled?.()) return { processed, stoppedBy: 'cancelled' };
     let outcome: AiScanOutcome;
     try {
-      outcome = await runAiScan(opts.client, { idempotencyKey: entry.id, imageRef: entry.imageUri });
+      outcome = await runAiScan(opts.client, {
+        idempotencyKey: entry.id,
+        imageRef: entry.imageUri,
+        ...(entry.hint ? { hint: entry.hint } : {}),
+      });
     } catch {
       return { processed, stoppedBy: 'failed' };
     }

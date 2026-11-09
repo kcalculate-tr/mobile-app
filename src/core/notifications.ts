@@ -5,18 +5,33 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { resolveNavigation } from '../lib/navigation';
+import { handleFinPushResponse, isFinPushData, shouldSuppressFinPush } from './push/finPushNative';
 
 export const PUSH_PERMISSION_FLAG = '@kcal_push_permission_status';
 
 // Foreground'da notification nasıl gösterilsin
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    // G18-S4 md.3: "Bugün sessize al" denen FinPush hatırlatması ön planda da
+    // gösterilmez. Yalnız `data.fin === 'reminder'` bildirimleri etkilenir;
+    // diğer bütün bildirimler bugünküyle aynı.
+    if (await shouldSuppressFinPush(notification.request.content.data as Record<string, unknown>)) {
+      return {
+        shouldShowAlert: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    }
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 function getProjectId(): string | null {
@@ -174,6 +189,14 @@ type NavigationLike = {
   navigate: (...args: any[]) => void;
 };
 
+// G18-S4 md.3: sosyal bildirimde "Yanıtla" → Keşfet yorum RPC'si (tembel yükleme;
+// Keşfet modülü yalnız gerektiğinde açılır).
+async function sendPushReply(p: { postId: string; parentId: string | null; body: string; key: string }): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getKesfetClient } = require('../modules/kesfet/client') as typeof import('../modules/kesfet/client');
+  await getKesfetClient().addComment({ post: p.postId, body: p.body, parent: p.parentId, idempotencyKey: p.key });
+}
+
 // Notification dinleyicileri. App.tsx'te NavigationContainer ref ile mount.
 // navigationRef: createNavigationContainerRef sonucu — `.isReady()` ve
 // `.navigate()` metotları olan nesne.
@@ -189,6 +212,11 @@ export function setupNotificationListeners(
   const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
     try {
       const data = (response.notification.request.content.data ?? {}) as Record<string, unknown>;
+      // G18-S4 md.3: FinPush şablonları (data.fin) — aksiyonlar + dokunma hedefi.
+      if (isFinPushData(data)) {
+        void handleFinPushResponse(response, navigationRef as never, { reply: sendPushReply });
+        return;
+      }
       const deepLink =
         (typeof data.deep_link === 'string' && data.deep_link) ||
         (typeof data.deepLink === 'string' && data.deepLink) ||

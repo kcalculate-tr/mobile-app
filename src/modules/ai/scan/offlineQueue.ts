@@ -23,6 +23,8 @@ export interface PendingScanPhoto {
   id: string;
   imageUri: string;
   mealType: string;
+  /** G18-S4 md.5: çekimdeki isteğe bağlı not — bağlantı gelince analize `hint` olarak gider. */
+  hint?: string;
   queuedAt: string; // ISO
 }
 

@@ -153,3 +153,37 @@ test('loadExpoCamera: native modül varsa expo-camera; yoksa null (eski derleme 
     expect(load()).toBeNull();
   });
 });
+
+// G18-S4 md.5 — "Detay ekle" hapı: isteğe bağlı; boşsa deklanşör doğrudan çeker.
+test('Detay ekle: hap → tek satır alan (soru + yer tutucu + 160 sınırı); not hapta görünür', async () => {
+  const f = fakeCam({ get: GRANTED });
+  const p = base();
+  function Host() {
+    const [note, setNote] = React.useState('');
+    return <FinScanCamera cam={f.cam} {...p} note={note} onNoteChange={setNote} />;
+  }
+  const tree = render(<Host />);
+  await ready(tree, f);
+  expect(tree.getByText('Detay ekle')).toBeTruthy();
+  fireEvent.press(tree.getByTestId('fin-scan-note-pill'));
+  expect(tree.getByText('Belirtmek istediğin bir detay var mı?')).toBeTruthy();
+  const input = tree.getByTestId('fin-scan-note-input');
+  expect(input.props.placeholder).toBe('ör. kıymalı börek, 500 g');
+  expect(input.props.maxLength).toBe(160);
+  fireEvent.changeText(input, 'kıymalı börek, 500 g');
+  fireEvent(input, 'submitEditing');
+  expect(tree.queryByTestId('fin-scan-note-field')).toBeNull();
+  expect(tree.getByText('kıymalı börek, 500 g')).toBeTruthy();
+});
+
+test('Detay ekle: not boşken deklanşör ek adım olmadan doğrudan çeker', async () => {
+  const f = fakeCam({ get: GRANTED });
+  const p = base();
+  const tree = render(<FinScanCamera cam={f.cam} {...p} note="" onNoteChange={jest.fn()} />);
+  await ready(tree, f);
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('fin-scan-shutter'));
+  });
+  expect(p.onCaptured).toHaveBeenCalledWith('file:///cache/shot.jpg');
+  expect(tree.queryByTestId('fin-scan-note-field')).toBeNull();
+});

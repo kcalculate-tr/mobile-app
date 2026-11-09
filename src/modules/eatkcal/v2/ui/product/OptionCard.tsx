@@ -8,7 +8,7 @@ import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Check } from '../../../../../components/icons';
 import { CachedImage } from '../../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
-import { haptic, useReducedMotion } from '../../../../../core/design';
+import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, money, useEk } from '../kit';
 
 export interface OptionCardModel {
@@ -45,7 +45,7 @@ export function OptionCard({
     }
     if (model.selected) {
       pop.setValue(0.4);
-      Animated.spring(pop, { toValue: 1, useNativeDriver: true, stiffness: 220, damping: 14, mass: 1 }).start();
+      Animated.spring(pop, { toValue: 1, useNativeDriver: true, ...SPRING.bouncy }).start();
     } else {
       pop.setValue(0);
     }

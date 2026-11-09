@@ -12,7 +12,7 @@ import Animated, {
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
-import { REDUCED, SPRING, haptic, useReducedMotion } from '../motion';
+import { CURVE, DURATION, REDUCED, SPRING, haptic, useReducedMotion } from '../motion';
 
 const TABS = ['Ana sayfa', 'Keşfet', 'eatkcal', 'Profil'] as const;
 const INDICATOR_W = 18;
@@ -53,8 +53,8 @@ export function GlassTabBar({ style }: { style?: ViewStyle }) {
     }
     pos.value = withSpring(i, SPRING.ai);
     stretch.value = withSequence(
-      withTiming(1, { duration: 150 }),
-      withTiming(0, { duration: 220 }),
+      withTiming(1, { duration: DURATION.instant, easing: CURVE.standard }),
+      withTiming(0, { duration: DURATION.fast, easing: CURVE.standard }),
     );
   };
 
@@ -62,8 +62,8 @@ export function GlassTabBar({ style }: { style?: ViewStyle }) {
     haptic('medium');
     if (reduced) return;
     scanPulse.value = withSequence(
-      withTiming(1, { duration: 120 }),
-      withTiming(0, { duration: 200 }),
+      withTiming(1, { duration: DURATION.instant, easing: CURVE.standard }),
+      withTiming(0, { duration: DURATION.fast, easing: CURVE.standard }),
     );
   };
 

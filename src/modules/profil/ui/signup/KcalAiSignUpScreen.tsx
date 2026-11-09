@@ -192,7 +192,8 @@ function SignUpFlow({
           >
             <CaretLeft size={22} color={t.color.ink} weight="bold" />
           </Pressable>
-          {step !== 'profile' ? (
+          {step !== 'profile' && yeniKabuk ? null : step !== 'profile' ? (
+            // G18-S4 md.2: yeni kabukta itilen adım yalnız sol geri; bayrak kapalıyken aynen.
             <Pressable onPress={() => finishProfile(true)} style={styles.skipBtn}>
               <AppText variant="body" style={{ fontWeight: '600' }}>
                 {tt('common.cancel')}

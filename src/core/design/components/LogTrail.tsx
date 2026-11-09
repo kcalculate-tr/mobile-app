@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
-import { CURVE, REDUCED, TIMING, haptic, useReducedMotion } from '../motion';
+import { CURVE, DURATION, REDUCED, TIMING, haptic, useReducedMotion } from '../motion';
 
 /**
  * LogTrail — "logla izi". Bir öğün öğesi dokununca küçülüp noktaya iner ve
@@ -66,8 +66,8 @@ export function LogTrail({
     pulse.value = withDelay(
       TIMING.logTrail,
       withSequence(
-        withTiming(1, { duration: 140, easing: CURVE.out }),
-        withTiming(0, { duration: 240, easing: CURVE.in }),
+        withTiming(1, { duration: DURATION.instant, easing: CURVE.enter }),
+        withTiming(0, { duration: DURATION.fast, easing: CURVE.exit }),
       ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps

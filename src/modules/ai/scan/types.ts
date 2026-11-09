@@ -51,6 +51,8 @@ export interface AnalyzeParams {
   idempotencyKey: string;
   // Yerel dosya URI'si veya yüklenmiş görsel referansı (EXIF istemcide temizlenir).
   imageRef: string;
+  /** G18-S4 md.5: isteğe bağlı kullanıcı notu (≤ 160) → edge `hint`. Boşsa gönderilmez. */
+  hint?: string;
 }
 
 // İstemci arayüzü — gerçek RPC/edge (client.ts) ve mock (mock.ts) uygular.

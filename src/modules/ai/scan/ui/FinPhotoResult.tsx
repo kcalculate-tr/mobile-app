@@ -83,6 +83,8 @@ function rowKcal(r: Row): number {
   return (r.baseKcal * r.grams) / r.baseGrams;
 }
 
+import { ScanNoteRow } from './ScanNote';
+
 export default function FinPhotoResult({
   estimate,
   photoUri,
@@ -99,7 +101,10 @@ export default function FinPhotoResult({
   onAddToPlan,
   onSaveMeal,
   match = null,
+  note,
 }: {
+  /** G18-S4 md.5: çekimdeki isteğe bağlı not — sheet'te küçük satır. */
+  note?: string;
   /** "Planıma ekle" — yerel plan hatırlatması; izin yoksa false. */
   onAddToPlan?: (adjusted: Omit<ScanEstimate, 'isEstimate'>) => Promise<boolean>;
   /** "Bu öğünü kaydet" — tabak koleksiyonuna. */
@@ -291,6 +296,7 @@ export default function FinPhotoResult({
             <AppText tone="secondary" style={styles.cap}>
               {tr('ai_scan.grams_hint')}
             </AppText>
+            <ScanNoteRow note={note} />
           </View>
 
           <View style={[styles.section, { borderTopColor: k.line }]}>

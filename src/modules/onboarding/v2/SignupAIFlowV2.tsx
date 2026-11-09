@@ -209,9 +209,9 @@ function Flow({
   // ── Kod adımı ──────────────────────────────────────────────────────────────
   if (step === 'email') {
     return (
+      // G18-S4 md.2 (gezinme kuralı): itilen adım YALNIZ sol geri — sağdaki "Vazgeç" kalktı (FinSignupAI 2).
       <FormScreen
         onBack={goBack}
-        topRight={{ label: tt('common.cancel'), onPress: () => finishProfile(true) }}
         title={tt('profil.signup_code_title')}
         subtitle={email.trim()}
       >
@@ -236,9 +236,9 @@ function Flow({
   if (step === 'handle') {
     const available = reg.handle.status === 'available';
     return (
+      // G18-S4 md.2: FinSignupAI 2 — yalnız sol geri (sağda "Vazgeç" yok).
       <FormScreen
         onBack={goBack}
-        topRight={{ label: tt('common.cancel'), onPress: () => finishProfile(true) }}
         progress={progressFor('handle') ?? undefined}
         title={tt('profil.signup_name_title')}
         footer={

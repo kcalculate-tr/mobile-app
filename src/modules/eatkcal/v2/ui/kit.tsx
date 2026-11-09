@@ -24,7 +24,7 @@ import { FinText as Text } from '../../../../core/design/components/FinText';
 import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { useTheme, useReducedMotion, fontFamily, haptic, Button } from '../../../../core/design';
+import { useTheme, useReducedMotion, fontFamily, haptic, Button, DURATION, RN_CURVE } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { ArrowLeft, CaretLeft, Star } from '../../../../components/icons';
 import { tl } from '../../../../lib/money';
@@ -316,8 +316,8 @@ export function EkSkeleton({
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(o, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(o, { toValue: 0.55, duration: 900, useNativeDriver: true }),
+        Animated.timing(o, { toValue: 1, duration: DURATION.story, easing: RN_CURVE.standard, useNativeDriver: true }),
+        Animated.timing(o, { toValue: 0.55, duration: DURATION.story, easing: RN_CURVE.standard, useNativeDriver: true }),
       ]),
     );
     loop.start();

@@ -100,7 +100,7 @@ export function installMockClients(state: VitrinDataState, area?: string, scene?
   if (area === 'kesfet') {
     // G15-S3 — Keşfet sahneleri Final örnek içeriğiyle (vitrinKesfet.ts).
     setKesfetClient(stateClient(vitrinKesfetClient(scene ?? '', empty), state));
-    setGunClient(stateClient(vitrinGunClient(createMockGunClient({})), state));
+    setGunClient(stateClient(vitrinGunClient(createMockGunClient({}), empty || scene === 'following'), state));
     setProfilClient(stateClient(vitrinProfilClient(createMockProfilClient()), state));
     setAiScanClient(stateClient(createMockAiScanClient(), state));
     return;

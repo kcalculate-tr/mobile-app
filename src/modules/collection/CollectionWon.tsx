@@ -13,7 +13,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import { AppText, CURVE, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
+import { AppText, CURVE, DURATION, REDUCED, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { CachedImage } from '../../components/CachedImage';
 import { StatusBar } from 'expo-status-bar';
@@ -54,9 +54,9 @@ export function CollectionWon({
     haptic('success'); // gösterimde bir kez (success günde 3 ile sınırlı)
     p.value = 0;
     p.value = withDelay(
-      reduced ? 0 : 60,
+      reduced ? 0 : DURATION.instant,
       withTiming(1, {
-        duration: reduced ? 200 : TIMING.enter,
+        duration: reduced ? REDUCED.duration : TIMING.enter,
         easing: reduced ? CURVE.out : CURVE.enter,
       }),
     );

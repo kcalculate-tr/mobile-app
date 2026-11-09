@@ -1,4 +1,13 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { FIN_TEMPLATES, type FinTemplateKey } from './finPushTemplates.ts'
+
+// G18-S4 md.3 — FinPush: `fin_*` şablonlarında Expo mesajına kategori (aksiyon
+// düğmeleri) + Android gizli önizleme kanalı eklenir; diğer bütün bildirimler aynen.
+function finPushExtras(templateKey: string | null): { categoryId?: string; channelId?: string } {
+  if (!templateKey || !(templateKey in FIN_TEMPLATES)) return {}
+  const t = FIN_TEMPLATES[templateKey as FinTemplateKey]
+  return { categoryId: t.categoryId, channelId: t.channelId }
+}
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -234,6 +243,7 @@ async function sendToUsers(
         send_id: h.sendId,
       },
       priority: content.category === 'transactional' ? 'high' : 'normal',
+      ...finPushExtras(content.templateKey),
     }))
 
     try {

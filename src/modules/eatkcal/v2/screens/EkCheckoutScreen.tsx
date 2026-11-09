@@ -18,7 +18,7 @@ import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/nati
 import { Check, Clock, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
-import { haptic, useReducedMotion } from '../../../../core/design';
+import { DURATION, RN_CURVE, haptic, useReducedMotion } from '../../../../core/design';
 import { mesafeKm } from '../../../../lib/nearestLocation';
 import { formatDeliveryDaysFull, isDeliveryDay } from '../../../../utils/deliveryDays';
 import { useEkNav, type EkV2ParamList } from '../nav';
@@ -878,8 +878,8 @@ function PulseDot({ color }: { color: string }) {
     if (reduced) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(o, { toValue: 0.35, duration: 900, useNativeDriver: true }),
-        Animated.timing(o, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(o, { toValue: 0.35, duration: DURATION.story, easing: RN_CURVE.standard, useNativeDriver: true }),
+        Animated.timing(o, { toValue: 1, duration: DURATION.story, easing: RN_CURVE.standard, useNativeDriver: true }),
       ]),
     );
     loop.start();

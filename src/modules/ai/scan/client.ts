@@ -64,11 +64,14 @@ export const realAiScanClient: AiScanClient = {
     return path;
   },
 
-  async analyzeImage({ idempotencyKey, imageRef }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
+  async analyzeImage({ idempotencyKey, imageRef, hint }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
     // Edge fonksiyonu adı ve gövdesi G6-CONTRACT.md ile birebir:
     // reservation_id = rezervasyon anahtarı (idempotencyKey), image_path = user-media yolu.
     const { data, error } = await sb().functions.invoke('analyze-ai-scan', {
-      body: { reservation_id: idempotencyKey, image_path: imageRef },
+      // G18-S4 md.5: not varsa `hint` (≤ 160); yoksa alan hiç gönderilmez.
+      body: hint
+        ? { reservation_id: idempotencyKey, image_path: imageRef, hint }
+        : { reservation_id: idempotencyKey, image_path: imageRef },
     });
     // G17-S2 md.6: edge gövdesindeki `error` kodu (config/server/timeout/…) korunur.
     if (error) throw await analyzeErrorFromInvoke(error);

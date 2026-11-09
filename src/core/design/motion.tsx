@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Easing as RNEasing } from 'react-native';
 import {
   Easing,
   cancelAnimation,
@@ -73,8 +73,8 @@ export const DURATION = {
   emphasis: 500,
   /** @deprecated → story (900). */
   heroMin: 900,
-  /** story 900+ üst ucu (uzun döngü/analiz). */
-  heroMax: 1400,
+  /** @deprecated → story (900). FinMoTokens: 1100–1600 ms → story 900. */
+  heroMax: 900,
 } as const;
 
 /**
@@ -85,14 +85,16 @@ export const DURATION = {
 export const TIMING = {
   enter: 500, // slow
   pop: 300, // base (kutlama sıçraması bouncy yay ile)
-  float: 3200, // story döngü (süzülme)
-  tilt: 4800, // story döngü (eğim)
-  glow: 2400, // story döngü (parıltı/nefes)
-  sweep: 1400, // story+ (analiz/ışık bandı)
+  // G18-S4: FinMoTokens eşlemesi — 3200 · 4800 ms süzülme/eğim döngüsü → story 900
+  // TEK SAHNE (sürekli döngü yok); 2400 parıltı → story 900 yarım nefes; 1100–1600 → story 900.
+  float: 900, // story (tek sahne)
+  tilt: 900, // story (tek sahne)
+  glow: 900, // story (nefesin yarısı; yalnız yüklenirken döner)
+  sweep: 900, // story (analiz/ışık bandı)
   logTrail: 500, // slow (tabak uçuşu)
-  streak: 1400, // story+ (seri anı)
+  streak: 900, // story (seri anı)
   dailyRing: 900, // story (halka dolumu)
-  loading: 1200, // story+ (yükleniyor nabzı)
+  loading: 900, // story (iskelet nabzı)
 } as const;
 
 /**
@@ -132,17 +134,20 @@ export const SPRING = {
   sheet: { stiffness: 260, damping: 24, mass: 1 },
 } as const;
 
-/** Sıralı giriş (stagger) gecikmeleri (ms). */
+/**
+ * Sıralı giriş (stagger) gecikmeleri (ms). FinMoTokens "Liste girişi": kademe
+ * instant 100 · yalnız ilk 4 öğe · toplam ≤ 500 ms (40 ms kademe → instant 100).
+ */
 export const STAGGER = {
-  /** Liste öğeleri — en fazla 6 öğe sıralanır, gerisi birlikte gelir. */
-  list: 40,
-  listMaxItems: 6,
+  /** Liste öğeleri — yalnız ilk 4 öğe sıralanır, gerisi 4. ile birlikte gelir. */
+  list: 100,
+  listMaxItems: 4,
   /** Etiket/rozet grubu. */
-  label: 90,
+  label: 100,
   /** Günlük halkanın dallara ayrılması. */
-  ringSplit: 60,
+  ringSplit: 100,
   /** Tarama köşelerinin belirmesi. */
-  scanCorners: 30,
+  scanCorners: 100,
 } as const;
 
 /** Haptik sözlüğü — FinMoTokens v2 (hangi olayda hangi dokunsal). */
@@ -165,16 +170,16 @@ export const HAPTIC = {
  * token'lara göre kendi hook'unu çağırır; süre/eğri burada değişir.
  */
 export const TRANSITION = {
-  /** Ekranlar arası itme/çekme. */
-  screen: { duration: DURATION.standard, curve: CURVE.out, slide: 16 },
-  /** Alttan açılan sayfa: spring ile yukarı. */
-  sheet: { spring: SPRING.sheet, backdropDuration: DURATION.standard },
-  /** Bildirim (toast): yukarıdan iner, bekler, çıkar. */
-  toast: { inDuration: DURATION.standard, outDuration: DURATION.micro + 80, offset: 24 },
-  /** Sekme geçişi: çapraz solma. */
-  tab: { duration: DURATION.micro + 40, curve: CURVE.move },
-  /** Liste öğesi ekleme/silme. */
-  listItem: { duration: DURATION.standard, curve: CURVE.out, stagger: STAGGER.list },
+  /** Ekranlar arası itme/çekme — push base 300 enter · geri base 300 exit. */
+  screen: { duration: DURATION.base, curve: CURVE.enter, slide: 16 },
+  /** Alttan açılan sayfa: açılış base 300 · scrim aynı sürede. */
+  sheet: { spring: SPRING.sheet, backdropDuration: DURATION.base },
+  /** Bildirim (toast): giriş base 300 · çıkış fast 200 · 4 s. */
+  toast: { inDuration: DURATION.base, outDuration: DURATION.fast, offset: 24, hold: 4000 },
+  /** Sekme geçişi: içerik crossfade fast 200 · standard. */
+  tab: { duration: DURATION.fast, curve: CURVE.standard },
+  /** Liste öğesi girişi: fast 200 enter · kademe instant 100. */
+  listItem: { duration: DURATION.fast, curve: CURVE.enter, stagger: STAGGER.list },
 } as const;
 
 /** Azaltılmış hareket sınırları. Son durum 200 ms opaklık; yer değiştirme/ölçek yok. */
@@ -191,17 +196,21 @@ export const REDUCED = {
 
 /** Alttan açılan sayfa — iki ürün ayrı (FinMoMap: AI 260/24 · eatkcal 200/28). */
 export const SHEET = {
-  /** Kcalculate AI sheet: açılış slow 500 · kapanış fast 200 · scrim 0→0.4. */
+  /**
+   * Kcalculate AI sheet: açılış base 300 enter · kapanış fast 200 exit · scrim aynı
+   * sürede 0→0.4. FinMoTokens: "push/pop ve Kcalculate sheet'leri yay değil, süre
+   * tokeni" → `spring: null` (zamanlı).
+   */
   ai: {
-    openDuration: DURATION.slow,
+    openDuration: DURATION.base,
     closeDuration: DURATION.fast,
     scrimTo: 0.4,
-    spring: SPRING.ai,
+    spring: null,
     detentHaptic: 'light' as HapticKind,
   },
-  /** eatkcal sheet: aynı süreler, eatkcal yayı. */
+  /** eatkcal sheet: açılış eatkcal 200/28 yayı · scrim base 300 · kapanış fast 200. */
   eat: {
-    openDuration: DURATION.slow,
+    openDuration: DURATION.base,
     closeDuration: DURATION.fast,
     scrimTo: 0.4,
     spring: SPRING.eat,
@@ -209,19 +218,93 @@ export const SHEET = {
   },
 } as const;
 
-/** Tam ekran modal: açılış slow 500 (y 100%→0) · kapanış fast 200 · AI yayı. */
+/** Tam ekran modal: sheet ile aynı — açılış base 300 (y 100%→0) enter · kapanış fast 200 exit. */
 export const MODAL = {
-  openDuration: DURATION.slow,
+  openDuration: DURATION.base,
   closeDuration: DURATION.fast,
-  spring: SPRING.ai,
+  spring: null,
 } as const;
 
-/** Ekranlar arası push/pop (FinMoMap). */
+/** Ekranlar arası push/pop (FinMoMap) — parmağa bağlı, her an kesilebilir (native stack). */
 export const SCREEN = {
-  /** Push: yeni ekran base 300 (x %100→0), eski ekran −%30; AI yayı. */
+  /** Push: yeni ekran base 300 (x %100→0), eski ekran −%30; enter. */
   push: { duration: DURATION.base, curve: CURVE.enter, prevShift: -0.3 },
-  /** Pop / geri: ekran fast 200 (0→%100); exit eğrisi. */
-  pop: { duration: DURATION.fast, curve: CURVE.exit },
+  /** Pop / geri: ekran base 300 (0→%100); exit. Kenardan parmakla sürülür. */
+  pop: { duration: DURATION.base, curve: CURVE.exit },
+} as const;
+
+/**
+ * React Native `Animated` tüketicileri için AYNI üç eğri. Reanimated
+ * `Easing.bezier` RN Animated'a verilemez; aynı kontrol noktaları RN Easing ile
+ * ayrıca dışa verilir. Tek kaynak: FinMoTokens.
+ */
+export const RN_CURVE = {
+  standard: RNEasing.bezier(0.2, 0, 0, 1),
+  enter: RNEasing.bezier(0.05, 0.7, 0.1, 1),
+  exit: RNEasing.bezier(0.3, 0, 0.8, 0.15),
+} as const;
+
+/**
+ * PREMIUM GEÇİŞ SETİ — FinMoTokens "Premium geçiş seti" (9 satır) + FinMoMap.
+ * Uygulamadaki her geçiş bu satırlardan biridir; satırı olmayan şey hareket etmez.
+ * Ekranlar süre/eğri/yay YAZMAZ, buradan okur (bkz. `noLocalMotionTokens` testi).
+ */
+export const PREMIUM = {
+  /** Sekme değişimi — içerik crossfade fast 200 · standard; kaydırma konumu korunur. */
+  tab: { duration: DURATION.fast, curve: CURVE.standard, haptic: 'selection' as HapticKind },
+  /** Sayfa push/geri — base 300 enter · base 300 exit; parmakla sürülür, kesilebilir. */
+  push: { enter: DURATION.base, exit: DURATION.base, enterCurve: CURVE.enter, exitCurve: CURVE.exit },
+  /** Sheet — base 300 enter · fast 200 exit; eatkcal yay 200/28; scrim aynı sürede. */
+  sheet: { enter: DURATION.base, exit: DURATION.fast, eatSpring: SPRING.eat, scrimTo: 0.4 },
+  /** Liste girişi — fast 200 enter · kademe instant 100 · ilk 4 öğe · kayma ≤ 8 · toplam ≤ 500. */
+  list: {
+    duration: DURATION.fast,
+    curve: CURVE.enter,
+    stagger: DURATION.instant,
+    maxItems: 4,
+    shift: 8,
+    totalMax: DURATION.slow,
+  },
+  /** Basma — instant 100 · ölçek 0.98 · bırakınca AI 260/24 yayla geri döner. */
+  press: { duration: DURATION.instant, scale: 0.98, curve: CURVE.standard, release: SPRING.ai },
+  /** Yükleniyor → içerik — fast 200 crossfade · aynı yerleşim. */
+  load: { duration: DURATION.fast, curve: CURVE.standard },
+  /** Tara sonucu — kart AI 260/24 yayla oturur, ardından halka slow 500. */
+  scanResult: { spring: SPRING.ai, ring: DURATION.slow },
+  /** Kutlama — story 900 tek sahne; tekrar ya da döngü yok. */
+  celebrate: { duration: DURATION.story },
+  /** Hata — mesaj ilgili alanın altında fast 200 (opaklık + y 4→0) · kenar fast 200 · uyarı haptiği · sallama yok. */
+  error: { duration: DURATION.fast, curve: CURVE.standard, shift: 4, haptic: 'warning' as HapticKind },
+  /** FinMoShake — YALNIZ form alanı doğrulama hatası: ±8 bir kez, base 300 standard + uyarı haptiği. */
+  shake: { duration: DURATION.base, amplitude: 8, haptic: 'warning' as HapticKind },
+} as const;
+
+/** Liste girişi gecikmesi: yalnız ilk 4 öğe kademelenir (≤ 300 ms) → toplam ≤ 500 ms. */
+export function listEnterDelay(index: number): number {
+  'worklet';
+  const slot = Math.min(Math.max(index, 0), PREMIUM.list.maxItems - 1);
+  return slot * PREMIUM.list.stagger;
+}
+
+/**
+ * ESKİ (1.0.7) RN Animated hareket değerleri — YALNIZ bayrak kapalı yolun
+ * ekranları kullanır (`src/constants/motion.ts` bunları aynen yeniden dışa verir).
+ * Değerler 1.0.7 ile bayt bayt aynıdır; bayrak kapalı = bugünkü uygulama.
+ * Yeni (Final) kod bunları KULLANMAZ. G-TEMİZLİK ile silinir.
+ */
+export const LEGACY_MOTION = {
+  DURATION: { instant: 100, fast: 200, base: 300, slow: 500, pulse: 900, sweep: 1400 },
+  EASING: {
+    standard: RNEasing.bezier(0.2, 0, 0, 1),
+    enter: RNEasing.bezier(0.05, 0.7, 0.1, 1),
+    exit: RNEasing.bezier(0.3, 0, 0.8, 0.15),
+    move: RNEasing.bezier(0.2, 0, 0, 1),
+  },
+  SPRING: {
+    press: { speed: 20, bounciness: 0 },
+    enter: { speed: 14, bounciness: 8 },
+  },
+  PRESS_SCALE: 0.97,
 } as const;
 
 /**
@@ -243,13 +326,13 @@ export interface MotionMapRow {
 }
 
 export const MOTION_MAP: readonly MotionMapRow[] = [
-  { id: 'tab', label: 'Sekme değişimi', token: 'içerik anında · ikon 0.9→1 fast 200 · standard', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
+  { id: 'tab', label: 'Sekme değişimi', token: 'içerik crossfade fast 200 · standard · kaydırma konumu korunur', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
   { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '200 ms opaklık' },
-  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 · x %100→0, eski −%30 · AI 260/24', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'pop', label: 'Pop / geri', token: 'fast 200 · 0→%100 · exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış slow 500 · kapanış fast 200 · scrim 0→0.4 · AI 260/24', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış slow 500 · kapanış fast 200 · scrim 0→0.4 · eatkcal 200/28', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'modal', label: 'Tam ekran modal', token: 'açılış slow 500 (y %100→0) · kapanış fast 200 · AI 260/24', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 enter · x %100→0, eski −%30 · parmakla sürülür', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'pop', label: 'Pop / geri', token: 'base 300 exit · 0→%100 · kesilebilir', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış base 300 enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
+  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış eatkcal 200/28 · scrim base 300 · kapanış fast 200', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
+  { id: 'modal', label: 'Tam ekran modal', token: 'açılış base 300 (y %100→0) enter · kapanış fast 200 exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
   { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
   { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
   { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 200 ms opaklık' },
@@ -421,9 +504,10 @@ export function usePop(): PopControls {
     haptic('success');
     if (reduced) return;
     cancelAnimation(s);
+    // FinMoTokens: küçük ödül → instant 100 çıkış + bouncy 220/14 yayla oturma.
     s.value = withSequence(
-      withTiming(1.08, { duration: TIMING.pop / 2, easing: CURVE.out }),
-      withTiming(1, { duration: TIMING.pop / 2, easing: CURVE.in }),
+      withTiming(1.08, { duration: DURATION.instant, easing: CURVE.standard }),
+      withSpring(1, SPRING.bouncy),
     );
   }, [reduced, s]);
 
@@ -450,10 +534,14 @@ export function useFloat(opts?: { tilt?: boolean; amplitude?: number }): { style
       tv.value = withTiming(0, { duration: REDUCED.duration });
       return;
     }
-    // withRepeat(…, -1, true) = 0→1→0 yoyo (sonsuz).
-    f.value = withRepeat(withTiming(1, { duration: TIMING.float / 2, easing: CURVE.move }), -1, true);
+    // G18-S4 (FinMoTokens eşlemesi): süzülme/eğim döngüsü → story 900 TEK SAHNE,
+    // sürekli döngü yok (boşta tekrar eden animasyon yok). Nesne üstten gelip
+    // ortada (0) durur.
+    f.value = 0;
+    f.value = withTiming(0.5, { duration: TIMING.float, easing: CURVE.enter });
     if (tilt) {
-      tv.value = withRepeat(withTiming(1, { duration: TIMING.tilt / 2, easing: CURVE.move }), -1, true);
+      tv.value = 0;
+      tv.value = withTiming(0.5, { duration: TIMING.tilt, easing: CURVE.enter });
     }
     return () => {
       cancelAnimation(f);
@@ -487,11 +575,18 @@ export interface BreathControls {
  * durur (göz yormayan tek kare). `progress` ile aynı nefes birden çok görünüme
  * (ör. GlowDot halo + nokta) UI thread'de verilebilir.
  */
-export function useBreath(opts?: { min?: number; max?: number; period?: number }): BreathControls {
+export function useBreath(opts?: {
+  min?: number;
+  max?: number;
+  period?: number;
+  /** false → tek nefes (0→1, story 900) ve durur. Boşta duran nesneler (cam hale) için. */
+  loop?: boolean;
+}): BreathControls {
   const reduced = useReducedMotion();
   const min = opts?.min ?? 0.5;
   const max = opts?.max ?? 0.9;
   const period = opts?.period ?? TIMING.glow;
+  const loop = opts?.loop ?? true;
   const b = useSharedValue(0);
 
   useEffect(() => {
@@ -500,9 +595,12 @@ export function useBreath(opts?: { min?: number; max?: number; period?: number }
       b.value = 1; // → max opaklık (sabit)
       return;
     }
-    b.value = withRepeat(withTiming(1, { duration: period / 2, easing: CURVE.move }), -1, true);
+    // Nefesin her yarısı `period` (varsayılan story 900). Döngü YALNIZ yüklenirken/
+    // işlem sürerken (iskelet nabzı, analiz); boşta duran nesne `loop: false`.
+    const half = withTiming(1, { duration: period, easing: CURVE.standard });
+    b.value = loop ? withRepeat(half, -1, true) : half;
     return () => cancelAnimation(b);
-  }, [reduced, period, b]);
+  }, [reduced, period, loop, b]);
 
   const style = useAnimatedStyle(() => ({
     opacity: reduced ? max : interpolate(b.value, [0, 1], [min, max]),
