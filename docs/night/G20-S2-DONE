@@ -1,0 +1,6 @@
+G20-S2 DONE — 9 Kas 2026
+Dal: night20/store (taban night20/consent @ 1485180)
+Maddeler: 1 app.config + izin metinleri + AASA/assetlinks (01a192b) · 2 mağaza metinleri TR/EN + inceleme notu (106046f) ·
+3 gizlilik beyanları + manifest (ab5e548) · 4 ekran görüntüsü planı + betik, çekim yok/disk (6fcee8a) · 5 YAYIN_KONTROL (94149cb) · LOG (ab96d7e)
+Açık: LOG SORULAR (P0: üçüncü taraf AI izni, Apple 5.1.2(i)); ekran çekimi disk ≥ 20 GB olunca.
+Kontrol: tsc 0 · unit 845 (844 ✓, 1 atlandı, 0 ✗) · hygiene ✓
