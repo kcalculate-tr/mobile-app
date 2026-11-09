@@ -49,9 +49,13 @@ test('rıza bloğu yeni kabuk Hesap ekranında ve e-posta sheet’inde', () => {
   assert.match(sheet, /acceptPolicies\(\{ source: 'signup_email', adOn, ageOk: true \}\)/);
 });
 
-test('Keşfet tek toast: uçuş ownToast + kabuk ikinci toast çizmez, Geri al yalnız undo ile', () => {
+// G21-S1 md.4: tek toast artık KABUK toast'ı — Keşfet uçuşu id + kaydı silen undo taşır,
+// kendi log toast'ını göstermez (ownToast sözleşmesi başka kaynaklar için duruyor).
+test('Keşfet tek toast: kabuk toast\'ı (id + undo), Keşfet ownToast vermez, Geri al yalnız undo ile', () => {
   const k = read('src/modules/kesfet/ui/KesfetScreen.tsx');
-  assert.match(k, /ownToast: true/);
+  assert.doesNotMatch(k, /ownToast: true/);
+  assert.match(k, /id: consumptionId,/);
+  assert.match(k, /undo: async \(\) => \{/);
   const bar = read('src/modules/shell/TabBarR3.tsx');
   assert.match(bar, /if \(payload\.ownToast\) return;/);
   assert.match(bar, /onUndo=\{toast\.undo \? onToastUndo : undefined\}/);
