@@ -420,10 +420,16 @@ export default function AppNavigator() {
       ? 'Onboarding'
       : 'WelcomeGate';
 
+  // G20-S3 md.3: oturumsuz soğuk açılışta bayraklar (get_anon_features, en çok
+  // ANON_TIMEOUT_MS) çözülene kadar splash açık kalır → yeni kurulumda karşılama /
+  // onboarding bayrak kapalıymış gibi ESKİ yoldan açılmaz. Oturum varsa bugünkü gibi.
+  const flagsCtx = useFlagsContext();
+  const waitFlags = !session && !!flagsCtx && !flagsCtx.ready;
+
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || waitFlags) return;
     SplashScreen.hideAsync().catch(() => {});
-  }, [authLoading]);
+  }, [authLoading, waitFlags]);
 
   // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).
   useEffect(() => {
@@ -440,7 +446,7 @@ export default function AppNavigator() {
   // logo kayboluyor, araya bir "yükleniyor" karesi giriyor, sonra uygulama
   // açılıyordu. Splash yalnızca oturum hazır olunca gizleniyor, böylece
   // açılışta tek bir görsel var: logo → uygulama.
-  if (authLoading) return null;
+  if (authLoading || waitFlags) return null;
 
   return (
     <>

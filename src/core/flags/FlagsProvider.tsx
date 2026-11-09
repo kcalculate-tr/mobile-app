@@ -12,7 +12,7 @@ import { useAuth } from '../AuthContext';
 import { getSupabaseClient } from '../supabase';
 import { FLAG_DEFAULTS, FlagKey } from './registry';
 import { mergeFlags, type FlagMap } from './resolve';
-import { readCachedFlags, writeCachedFlags } from './storage';
+import { readCachedFlags, readFlagsDeviceId, writeCachedFlags } from './storage';
 import { readDevOverrides, setDevOverride as persistDevOverride } from './devOverrides';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,12 +22,38 @@ import { readDevOverrides, setDevOverride as persistDevOverride } from './devOve
 //  • Açılışı ASLA bekletmez: ilk render YEREL VARSAYILANLARLA (hepsi false) olur.
 //  • Giriş yapıldıktan sonra get_my_features RPC'si çağrılır; dönen { key: bool }
 //    haritası AsyncStorage'a önbelleklenir.
+//  • G20-S3 md.3: giriş YOKKEN get_anon_features (cihaz kovası) en çok
+//    ANON_TIMEOUT_MS beklenir → yeni kurulumda karşılama/onboarding bayrak kapalıymış
+//    gibi açılmaz. Fonksiyon yok / ağ yok / süre doldu → önbellek ya da varsayılan.
 //  • Çevrimdışı/hata → önbellek; önbellek de yoksa varsayılan. Asla çökmez.
 //  • __DEV__'de yerel override en üste uygulanır (prod'da yok).
 //
 // Çözümlemenin tek doğruluk kaynağı SUNUCUDUR (rollout/sürüm/platform/kilit
 // orada hesaplanır). İstemci yalnız birleştirir + önbellekler.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Girişsiz açılışta anonim bayrak çözümü için en uzun bekleme (splash açık kalır). */
+export const ANON_TIMEOUT_MS = 2500;
+
+function isFlagMap(v: unknown): v is FlagMap {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    Promise.resolve(p).then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
 
 type FlagsContextValue = {
   flags: Record<FlagKey, boolean>;
@@ -63,9 +89,28 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
       // yut
     }
 
-    // 2) Giriş yoksa RPC çağırma — bayraklar kullanıcı bazlı çözülür.
+    // 2) Giriş yoksa anonim çözüm (cihaz kovası). Kısa süre sınırı; hata → önbellek/varsayılan.
     if (!user) {
-      setReady(true);
+      try {
+        const deviceId = await readFlagsDeviceId();
+        const res = await withTimeout(
+          getSupabaseClient().rpc('get_anon_features', {
+            p_app_version: Constants.expoConfig?.version ?? null,
+            p_platform: Platform.OS,
+            p_device_id: deviceId,
+          }),
+          ANON_TIMEOUT_MS,
+        );
+        if (res && !res.error && isFlagMap(res.data)) {
+          const map = res.data as FlagMap;
+          setRemote(map);
+          void writeCachedFlags(map);
+        }
+      } catch {
+        // yut — önbellek/varsayılan kullanılır
+      } finally {
+        setReady(true);
+      }
       return;
     }
 
