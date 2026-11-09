@@ -52,4 +52,6 @@ test('reformatLegacyTl — mantık metnindeki eski tutarlar Final biçimine', as
   assert.equal(reformatLegacyTl('Minimum sepet: 300.00 TL — Kalan: 50.50 TL'), 'Minimum sepet: 300 TL — Kalan: 50,50 TL');
   assert.equal(reformatLegacyTl('Eşik 1.250 TL'), 'Eşik 1.250 TL');
   assert.equal(reformatLegacyTl('Bu bölgeye teslimat yok'), 'Bu bölgeye teslimat yok');
+  assert.equal(reformatLegacyTl('Bu kupon 299.9 TL ve üzeri'), 'Bu kupon 299,90 TL ve üzeri');
+  assert.equal(reformatLegacyTl('Bu kupon 300 TL ve üzeri'), 'Bu kupon 300 TL ve üzeri');
 });

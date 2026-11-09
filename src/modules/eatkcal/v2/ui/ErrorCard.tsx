@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { MapPin, Package, Tag, Ticket } from '../../../../components/icons';
 import { haptic } from '../../../../core/design';
-import { ekType, money, useEk } from './kit';
+import { ekType, money, refmtTl, useEk } from './kit';
 import type { EkErrorModel } from '../model/errors';
 
 export function EkErrorCard({
@@ -20,7 +20,7 @@ export function EkErrorCard({
 }) {
   const { c, t } = useEk();
   const p = error.params ?? {};
-  let body = error.detail ?? '';
+  let body = refmtTl(error.detail ?? '');
   if (error.kind === 'stock') {
     body = t('eatkcal.v2.errors.stock_body', { names: String(p.names ?? '') });
   } else if (error.kind === 'price') {

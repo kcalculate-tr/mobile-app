@@ -51,4 +51,4 @@ export const formatPriceDelta = (value: number): string => {
 
 /** Hazır metindeki `tl()` çıktılarını (`300.00 TL`) `formatPrice` biçimine çevirir; binlikli `1.250 TL` dokunulmaz. */
 export const reformatLegacyTl = (text: string): string =>
-  text.replace(/(^|[^\d.])(\d+)\.(\d{2}) TL/g, (_m, pre: string, i: string, d: string) => `${pre}${formatPrice(Number(`${i}.${d}`))}`);
+  text.replace(/(^|[^\d.])(\d+)\.(\d{1,2}) TL/g, (_m, pre: string, i: string, d: string) => `${pre}${formatPrice(Number(`${i}.${d}`))}`);

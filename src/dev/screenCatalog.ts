@@ -326,10 +326,11 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinWaitlistAdd', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul', vitrinSheet: 'restaurant_add' })), { scene: 'waitlist' }],
   ['FinWaitlistSuggest', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul', vitrinSheet: 'restaurant_suggest' })), { scene: 'waitlist' }],
   ['FinEatBerlin', 'eatkcal', route(tab('Home', { vitrinGate: 'other', vitrinOtherCity: 'Berlin' })), { scene: 'berlin' }],
-  ['FinEkHome', 'eatkcal', route(tab('Home'))],
+  // G18-S3: Final'de yüzen sepet çubuğu "Sepet (2)" → sepetli sahne.
+  ['FinEkHome', 'eatkcal', route(tab('Home')), { scene: 'cart' }],
   ['FinEkHomeSkeleton', 'eatkcal', route(tab('Home')), { data: 'loading' }],
   // G15-S5: `__first__` → vitrinSetup gerçek menüdeki ilk marka anahtarını koyar.
-  ['FinEkStore', 'eatkcal', route(ek('EkStore', { brandKey: '__first__' }))],
+  ['FinEkStore', 'eatkcal', route(ek('EkStore', { brandKey: '__first__' })), { scene: 'cart' }],
   ['FinEkReviews', 'eatkcal', route(ek('EkStore', { brandKey: '__first__', vitrinReviews: true, vitrinAggregate: { average: 4.7, count: 128, distribution: [96, 22, 6, 2, 2] }, vitrinSubScores: { taste: 4.8, delivery: 4.6, calorieFit: 4.9 } })), { scene: 'reviews' }],
   ['FinEkProduct', 'eatkcal', route(ek('EkProduct', { productId: '__first__' }))],
   ['FinEkProductScroll', 'eatkcal', route(ek('EkProduct', { productId: '__first__', vitrinScroll: true })), { scene: 'scrolled' }],
