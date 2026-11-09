@@ -1,0 +1,6 @@
+G18-S3 eatkcal — TAMAM (9 Kas 2026)
+Dal: night18/eatkcal (taban night17/camera 249b89b) · worktree .claude/worktrees/g18-s3
+Maddeler 1–8 commit edildi; LOG: docs/night/G18-S3-LOG.md (ölçülü karşılaştırma tablosu, SORULAR).
+Kontrol: tsc 0 · test:unit 652/0/1 atlama · jest 31 suite 161 test · expo export iOS ✓ Android ✓
+Sipariş mantığı diff 0 · bayrak kapalı aynı · TL biçimi formatPrice · Eski tasarım: 0
+CANLIYA UYGULANACAK: supabase/migrations/20261108000300_g18_eatkcal_waitlist.sql
