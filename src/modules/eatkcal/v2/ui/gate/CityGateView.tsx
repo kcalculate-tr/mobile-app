@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { haptic } from '../../../../../core/design';
-import { ArrowLeft, CaretDown, CaretRight, Check, MagnifyingGlass, MapPin, Plus, Storefront } from '../../../../../components/icons';
+import { CaretDown, CaretLeft, CaretRight, Check, MagnifyingGlass, MapPin, Plus, Storefront } from '../../../../../components/icons';
 import { TAB_BAR_TOTAL } from '../../../../../constants/layout';
 import { tabBarBottomOffset, TAB_BAR_R3 } from '../../../../shell/layout';
 import { useInR3Shell } from '../../../../shell';
@@ -182,7 +182,7 @@ export function CityGateView({
         >
           <BlurView intensity={30} tint={p.tint} style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: p.glass }]} />
-          <ArrowLeft size={22} color={c.ink} />
+          <CaretLeft size={22} color={c.ink} />
         </Pressable>
         <View style={styles.waitText}>
           <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.soon')}>
@@ -288,7 +288,7 @@ export function CityGateView({
       <View style={[styles.cityWrap, { paddingBottom: bottomSpace + 52 + 26 + 12 }]}>
         {onExit ? (
           <Pressable onPress={onExit} accessibilityRole="button" accessibilityLabel={t('eatkcal.v2.common.back')} style={styles.exitBtn}>
-            <ArrowLeft size={22} color={c.ink} />
+            <CaretLeft size={22} color={c.ink} />
           </Pressable>
         ) : null}
         <View style={{ gap: 6 }}>
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   bric: { fontFamily: ekType.h20.fontFamily },
   t30: { fontSize: 30, lineHeight: 36 },
   mark: { borderRadius: 8, paddingHorizontal: 6 },
-  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   cityWrap: { flex: 1, paddingHorizontal: 16, gap: 16 },
   cityCol: { flex: 1, minHeight: 0, gap: 6 },
   exitBtn: { width: 44, height: 44, marginLeft: -10, marginBottom: -8, alignItems: 'center', justifyContent: 'center' },

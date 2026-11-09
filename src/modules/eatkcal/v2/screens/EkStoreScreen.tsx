@@ -22,7 +22,7 @@ import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { ReviewsSheet, type ReviewAggregate, type ReviewSubScores } from '../ui/ReviewsSheet';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { CachedImage } from '../../../../components/CachedImage';
-import { ArrowLeft, Lightning, ShoppingBag } from '../../../../components/icons';
+import { CaretLeft, Lightning, ShoppingBag } from '../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { fetchBrand, type Brand } from '../../../../lib/brands';
 import { fetchCategories, fetchProductsByBrand, type Category, type CategoryProduct } from '../../../../lib/categories';
@@ -268,7 +268,7 @@ export default function EkStoreScreen() {
           accessibilityLabel={t('eatkcal.v2.common.back')}
           style={[styles.round, { backgroundColor: overlay }]}
         >
-          <ArrowLeft size={22} color={c.ink} />
+          <CaretLeft size={22} color={c.ink} />
         </Pressable>
         <Pressable
           onPress={() => navigation.navigate('EkCart')}

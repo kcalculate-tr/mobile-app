@@ -23,7 +23,7 @@ import {
 } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { ArrowLeft, CaretDown } from '../../../../components/icons';
+import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -490,7 +490,7 @@ export default function EkProductScreen() {
               style={roundBtn}
               testID="ek-product-back"
             >
-              <ArrowLeft size={20} color="#0A0A0A" />
+              <CaretLeft size={22} color="#0A0A0A" />
             </Pressable>
             {/* G17-S1 md.7: itilen sayfada yalnız sol geri (sağdaki X kalktı). */}
           </View>
