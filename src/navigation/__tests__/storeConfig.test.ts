@@ -113,3 +113,28 @@ test('expo-image-manipulator: bağımlılık var, plugins dizisinde YOK (config 
   );
   assert.equal(listed, false);
 });
+
+test('gizlilik manifesti GIZLILIK_BEYANLARI.md ile hizalı (G20-S2 md.3)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const cfg = require('../../../app.config.js') as {
+    expo: { ios: { privacyManifests: { NSPrivacyCollectedDataTypes: Record<string, unknown>[] } } };
+  };
+  const rows = cfg.expo.ios.privacyManifests.NSPrivacyCollectedDataTypes;
+  const by = new Map(rows.map((r) => [String(r.NSPrivacyCollectedDataType).replace('NSPrivacyCollectedDataType', ''), r]));
+  for (const t of ['AudioData', 'OtherUserContent', 'CustomerSupport', 'PaymentInfo']) assert.ok(by.has(t), t);
+  // Sentry setUser → bağlı
+  assert.equal(by.get('CrashData')!.NSPrivacyCollectedDataTypeLinked, true);
+  assert.equal(by.get('PerformanceData')!.NSPrivacyCollectedDataTypeLinked, true);
+  // izleme yalnız Meta'ya giden üç tür
+  const tracked = rows
+    .filter((r) => r.NSPrivacyCollectedDataTypeTracking)
+    .map((r) => String(r.NSPrivacyCollectedDataType))
+    .sort();
+  assert.deepEqual(tracked, [
+    'NSPrivacyCollectedDataTypeDeviceID',
+    'NSPrivacyCollectedDataTypeProductInteraction',
+    'NSPrivacyCollectedDataTypePurchaseHistory',
+  ]);
+  const doc = readFileSync(join(ROOT, 'docs/store/GIZLILIK_BEYANLARI.md'), 'utf8');
+  for (const t of by.keys()) assert.ok(doc.includes(t), `belge ${t} türünü anmalı`);
+});

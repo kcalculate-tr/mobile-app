@@ -134,8 +134,39 @@ module.exports = {
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // profil/görsel seçimi — expo-image-picker
+            // profil/görsel seçimi — expo-image-picker; G20-S2: + AI tarama
+            // fotoğrafı (user-media, Anthropic'e tahmin için), Keşfet foto/video, destek eki
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — Keşfet video gönderilerinin ses izi (galeriden seçilen video)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeAudioData',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — gönderi metni, yorum, değerlendirme (kesfet/client.ts create_post, orderFeedback)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherUserContent',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — destek talepleri (support_tickets, SupportScreen)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCustomerSupport',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — kayıtlı kart: son 4 hane, marka, banka, kart jetonu
+            // (user_cards / user_card_secrets, Paynkolay kart saklama). Kart numarası
+            // uygulamada girilmez ama geliştirici jeton + son 4 haneyi saklıyor.
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePaymentInfo',
             NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
@@ -163,11 +194,15 @@ module.exports = {
             ],
           },
           {
-            // IDFA — react-native-fbsdk-next (ATT sonrası, analytics.ts)
+            // IDFA — react-native-fbsdk-next (ATT sonrası, analytics.ts);
+            // G20-S2: + anon_id (cihazda kalıcı kurulum kimliği, analytics_events) → Analytics
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
             NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: true,
-            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising'],
+            NSPrivacyCollectedDataTypePurposes: [
+              'NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising',
+              'NSPrivacyCollectedDataTypePurposeAnalytics',
+            ],
           },
           {
             // Supabase kullanıcı kimliği — analytics_events.user_id
@@ -180,16 +215,17 @@ module.exports = {
             ],
           },
           {
-            // Sentry — src/lib/sentry.ts
+            // Sentry — src/lib/sentry.ts. G20-S2: Linked true — sentry.ts:68
+            // Sentry.setUser({ id: userId }) kullanıcı UUID'sini olaya bağlıyor.
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCrashData',
-            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // Sentry performans — src/lib/sentry.ts
+            // Sentry performans — src/lib/sentry.ts (setUser → Linked true, G20-S2)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePerformanceData',
-            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
