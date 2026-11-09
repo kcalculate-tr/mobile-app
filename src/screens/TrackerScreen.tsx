@@ -54,6 +54,7 @@ import { HomeExploreStrip } from './tracker/HomeStrips';
 // G18-S2 — Ana sayfa Tur 26: öne çıkanlar banner'ı, bölge bölümü, boş hâl (S1 bileşeni).
 import { HomeBanner, useHomeBanners } from '../modules/gun/home/HomeBanner';
 import { HomeRegionSection } from '../modules/gun/home/HomeRegion';
+import { HomeActivitySection } from '../modules/gun/home/HomeActivitySection';
 import { useHomeRegion } from '../modules/gun/home/useHomeRegion';
 import type { HomeBannerItem } from '../modules/gun/home/banner';
 import { HomeEmptyToday } from '../modules/onboarding/first';
@@ -2334,6 +2335,8 @@ const html = `
       <Reanimated.ScrollView
         // Yalnız vitrin (__DEV__ + vitrinScroll); bayrak kapalı ağaçta prop YOK (snapshot paritesi).
         ref={__DEV__ && vitrinScroll ? homeScrollRef : undefined}
+        // Yalnız vitrin: sayfa yüksekliği ölçümü (G18-S2 md.6; Final Home 2420 / boş 2160).
+        onContentSizeChange={__DEV__ && homeHour != null ? (_w: number, h: number) => console.log('[vitrin] home içerik yüksekliği', Math.round(h)) : undefined}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[s.scroll, asTab ? { paddingBottom: tabBarContentInset(insets.bottom) } : null]}
         showsVerticalScrollIndicator={false}
@@ -2514,11 +2517,8 @@ const html = `
                 />
                 {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
                 <TrackerDayStrip />
-                {etkinlik ? (
-                  <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
-                    <TrackerActivityEntry />
-                  </View>
-                ) : null}
+                {/* G18-S2 md.6: FinHomeR3 "Bugünkü etkinlikler" bölümü (başlık + satırlar + Etkinlik ekle). */}
+                {etkinlik ? <HomeActivitySection /> : null}
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
                 <HomeExploreStrip onAll={openKesfet} onOpen={openKesfet} />
                 {/* G18-S2 md.4: bölge — İzmir tek öneri kartı / İzmir dışı bekleme listesi satırları. */}

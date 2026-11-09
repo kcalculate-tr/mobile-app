@@ -724,6 +724,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       wait_add_sub: 'İşletme sahibiysen bekleme listesine katıl',
       wait_suggest: 'Bize çevrendeki restoranları öner',
       wait_suggest_sub: 'Şehrine geldiğimizde ilk onları arayalım',
+      acts: 'Bugünkü etkinlikler',
+      acts_sum: '%{min} dk, ~%{kcal} kcal',
     },
     meal: {
       breakfast: 'Kahvaltı',
@@ -2403,6 +2405,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       wait_add_sub: 'Own a place? Join the waitlist',
       wait_suggest: 'Suggest restaurants near you',
       wait_suggest_sub: 'We’ll call them first when we reach your city',
+      acts: 'Today’s activities',
+      acts_sum: '%{min} min, ~%{kcal} kcal',
     },
     meal: {
       breakfast: 'Breakfast',

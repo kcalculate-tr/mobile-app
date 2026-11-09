@@ -15,7 +15,10 @@ import { Icon } from './icons';
 
 const emptyDraft = (): ActivityDraft => ({ type: 'kosu', minutes: '', distanceKm: '', note: '' });
 
-export function TrackerActivityEntry() {
+// G18-S2 TEMAS (Ana sayfa "Bugünkü etkinlikler", FinHomeR3): variant="home" → düğme panodaki
+// "+ Etkinlik ekle" (44, köşe 22, line2 çerçeve, 14/600), gün toplamı bölüm başlığında (burada yok);
+// onLogged → bölüm satırlarını tazeler. Varsayılan (prop yok) davranış AYNEN.
+export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; onLogged?: () => void } = {}) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
   const [day, setDay] = useState<DayActivity | null>(null);
@@ -54,12 +57,13 @@ export function TrackerActivityEntry() {
       setSheet(false);
       setDraft(emptyDraft());
       refresh();
+      onLogged?.();
     } catch {
       // sessiz — kullanıcı tekrar deneyebilir
     } finally {
       setSaving(false);
     }
-  }, [preview, saving, refresh]);
+  }, [preview, saving, refresh, onLogged]);
 
   const hasTotal = day != null && day.total_minutes > 0;
 
@@ -70,12 +74,16 @@ export function TrackerActivityEntry() {
         accessibilityRole="button"
         accessibilityLabel={tr('kesfet.activity.add')}
         hitSlop={5}
-        style={({ pressed }) => [styles.addBtn, { borderColor: t.color.line }, pressed && { opacity: 0.85 }]}
+        style={({ pressed }) => [
+          variant === 'home' ? styles.addBtnHome : styles.addBtn,
+          { borderColor: variant === 'home' ? (t.isDark ? '#48484A' : '#C3C7CC') : t.color.line },
+          pressed && { opacity: 0.85 },
+        ]}
       >
-        <Icon name="run" size={16} color={t.color.ink} />
-        <AppText variant="caption" style={styles.addLabel}>{tr('kesfet.activity.add')}</AppText>
+        <Icon name={variant === 'home' ? 'plus' : 'run'} size={variant === 'home' ? 18 : 16} color={t.color.ink} />
+        <AppText variant="caption" style={variant === 'home' ? styles.addLabelHome : styles.addLabel}>{tr('kesfet.activity.add')}</AppText>
       </Pressable>
-      {hasTotal ? (
+      {hasTotal && variant !== 'home' ? (
         <AppText variant="caption" tone="secondary" style={styles.total}>
           {tr('kesfet.activity.day_total', {
             kcal: fmt(day!.total_kcal_est),
@@ -160,6 +168,8 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   addBtn: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 17, borderWidth: 1 },
   addLabel: { fontWeight: '700' },
+  addBtnHome: { height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, borderRadius: 22, borderWidth: 1 },
+  addLabelHome: { fontSize: 14, lineHeight: 18, fontFamily: 'PlusJakartaSans_600SemiBold' },
   total: { flexShrink: 1 },
   sheetTitle: { marginBottom: 10 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
