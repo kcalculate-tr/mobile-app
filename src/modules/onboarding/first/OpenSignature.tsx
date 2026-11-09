@@ -153,7 +153,7 @@ export function OpenSignature({
     bowlO.value = withDelay(T.plateIn, withTiming(1, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter }));
     bowlS.value = withDelay(T.plateIn, withTiming(1, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter }));
     // 2 · 900–1400 standard: Enerji halkası dolar, nokta halkanın ucunda döner.
-    arcO.value = withDelay(T.enterEnd, withTiming(1, { duration: 0 }));
+    arcO.value = withDelay(T.enterEnd, withTiming(1, { duration: T.dotIn, easing: CURVE.standard }));
     arc.value = withDelay(T.enterEnd, withTiming(1, { duration: T.ringEnd - T.enterEnd, easing: CURVE.standard }));
     spin.value = withDelay(T.enterEnd, withTiming(1, { duration: T.ringEnd - T.enterEnd, easing: CURVE.standard }));
     dotO.value = withDelay(T.enterEnd, withTiming(1, { duration: T.dotIn, easing: CURVE.standard }));

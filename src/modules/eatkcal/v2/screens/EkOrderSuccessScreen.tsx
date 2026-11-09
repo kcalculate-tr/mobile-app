@@ -15,10 +15,10 @@
 // Korunan (Final'de ayrı yeri yok, yeni dille): kazanılan Macro (kartta satır →
 // Macro'larım), uyarı notu (kart altında).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { DURATION, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
+import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { CaretRight, X } from '../../../../components/icons';
 import { useRequireAuth } from '../../../../hooks/useRequireAuth';
 import { supabase } from '../../../../core/supabase';
@@ -32,9 +32,10 @@ import { MONTHS_SHORT, RAIN_DOTS, isVerifiedOrder, successEta, type SuccessOrder
 type R = RouteProp<RootStackParamList, 'OrderSuccess'>;
 
 const BOWL = require('../../../../../assets/glass/bowl.png');
-const EAT_EASE = Easing.bezier(0.25, 0.9, 0.3, 1);
-const STD_EASE = Easing.bezier(0.2, 0, 0, 1);
-const RAIN_EASE = Easing.bezier(0.4, 0, 1, 1);
+const EAT_EASE = RN_CURVE.eat;
+const STD_EASE = RN_CURVE.standard;
+/** Nokta yağmuru düşüşü hızlanarak biter → kanonik exit (FinMoTokens; Final 0.4,0,1,1 yerel eğrisi yerine). */
+const RAIN_EASE = RN_CURVE.exit;
 const GLOW_RINGS = Array.from({ length: 12 }, (_, i) => Math.round(115 - i * 9.5));
 /** Doğrulama sorgusu en fazla bu kadar beklenir; sonra kutlamasız kalıcı durum. */
 const VERIFY_TIMEOUT_MS = 4000;
@@ -99,7 +100,7 @@ export default function EkOrderSuccessScreen() {
     if (phase === 'checking') return;
     if (phase === 'static' || reduced) {
       const fade = (v: Animated.Value) =>
-        Animated.timing(v, { toValue: 1, duration: DURATION.fast, easing: Easing.linear, useNativeDriver: true });
+        Animated.timing(v, { toValue: 1, duration: DURATION.fast, easing: RN_CURVE.linear, useNativeDriver: true });
       Animated.parallel([fade(bowl), fade(glow), fade(up)]).start();
       if (phase === 'celebrate') haptic('success');
       return;

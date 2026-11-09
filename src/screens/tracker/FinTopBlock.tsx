@@ -70,8 +70,8 @@ function useFocusEntry() {
       op.value = withTiming(1, { duration: REDUCED.duration });
       return;
     }
-    // Opaklık ilk %30'da (270 ms) dolar; dönme + ölçek 900 ms enter.
-    op.value = withTiming(1, { duration: Math.round(DURATION.story * 0.3), easing: CURVE.enter });
+    // Opaklık ilk ~%30'da dolar (pano 270 ms → en yakın token base 300); dönme + ölçek 900 ms enter.
+    op.value = withTiming(1, { duration: DURATION.base, easing: CURVE.enter });
     rot.value = withTiming(0, { duration: DURATION.story, easing: CURVE.enter });
     sc.value = withTiming(1, { duration: DURATION.story, easing: CURVE.enter });
     // eslint-disable-next-line react-hooks/exhaustive-deps

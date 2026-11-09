@@ -32,6 +32,9 @@ const MODAL_FILES = [
   'components/share/PlateXRayShareModal.tsx',
   'components/share/ShareMealCardModal.tsx',
   'components/checkout/AddressVerificationSheet.tsx',
+  // G18-S5 birleştirme: S3 (eatkcal) yeni yüzeyleri — sağ üst X, geri oku yok.
+  'modules/eatkcal/v2/screens/EkOrderSuccessScreen.tsx',
+  'modules/eatkcal/v2/ui/gate/WaitlistFormSheet.tsx',
 ];
 
 /** İtilen sayfa / sayfa başlığı (bayrak açık yol) — kapat X YOK, yalnız sol geri. */

@@ -8,16 +8,16 @@
 // her eklemede ölçek 1 → 1,03 → 1 (300 ms) + sayı/toplam yukarı yuvarlanır;
 // sepet boşalınca 200 ms çıkış. Azaltılmış: yalnız 200 ms opaklık.
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { CaretRight } from '../../../../../components/icons';
-import { DURATION, SPRING, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
+import { DURATION, RN_CURVE, SPRING, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { useCartStore } from '../../../../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from '../../../../shell/layout';
 import { ekType, money, useEk } from '../kit';
 
-const EAT_EASE = Easing.bezier(0.25, 0.9, 0.3, 1);
-const EXIT_EASE = Easing.bezier(0.3, 0, 0.8, 0.15);
+const EAT_EASE = RN_CURVE.eat;
+const EXIT_EASE = RN_CURVE.exit;
 export const CART_BAR_H = 56;
 export const CART_BAR_GAP = 12;
 
@@ -61,12 +61,12 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
       setMounted(true);
       enter.setValue(0);
       if (reduced) {
-        Animated.timing(enter, { toValue: 1, duration: DURATION.fast, easing: Easing.linear, useNativeDriver: true }).start();
+        Animated.timing(enter, { toValue: 1, duration: DURATION.fast, easing: RN_CURVE.linear, useNativeDriver: true }).start();
       } else {
         Animated.spring(enter, { toValue: 1, useNativeDriver: true, ...SPRING.eat }).start();
       }
     } else {
-      Animated.timing(enter, { toValue: 0, duration: DURATION.fast, easing: reduced ? Easing.linear : EXIT_EASE, useNativeDriver: true }).start(
+      Animated.timing(enter, { toValue: 0, duration: DURATION.fast, easing: reduced ? RN_CURVE.linear : EXIT_EASE, useNativeDriver: true }).start(
         ({ finished }) => finished && setMounted(false),
       );
     }
@@ -80,14 +80,14 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
     if (before === 0 || count === 0 || before === count) return;
     roll.setValue(0);
     if (reduced) {
-      Animated.timing(roll, { toValue: 1, duration: DURATION.fast, easing: Easing.linear, useNativeDriver: true }).start();
+      Animated.timing(roll, { toValue: 1, duration: DURATION.fast, easing: RN_CURVE.linear, useNativeDriver: true }).start();
       return;
     }
+    pop.setValue(0);
     Animated.parallel([
-      Animated.sequence([
-        Animated.timing(pop, { toValue: 1.03, duration: 105, easing: EAT_EASE, useNativeDriver: true }),
-        Animated.timing(pop, { toValue: 1, duration: 195, easing: EAT_EASE, useNativeDriver: true }),
-      ]),
+      // (pop 0 → 1 ilerleme; ölçek interpolasyonla)
+      // 1 → 1,03 → 1 tek base 300 içinde (zirve %35'te).
+      Animated.timing(pop, { toValue: 1, duration: DURATION.base, easing: EAT_EASE, useNativeDriver: true }),
       Animated.timing(roll, { toValue: 1, duration: DURATION.base, easing: EAT_EASE, useNativeDriver: true }),
     ]).start();
   }, [count, reduced, pop, roll]);
@@ -110,7 +110,7 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
           opacity: enter,
           transform: reduced
             ? []
-            : [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }, { scale: pop }],
+            : [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }, { scale: pop.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 1.03, 1] }) }],
         },
       ]}
       testID="ek-cart-bar"

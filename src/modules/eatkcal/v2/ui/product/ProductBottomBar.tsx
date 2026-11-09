@@ -8,18 +8,18 @@
 // Ürün sayfasında yüzen sepet çubuğu YOK (yalnız FinEkHome ve FinEkStore).
 // Azaltılmış hareket: yükseklik/ölçek/tik anında, yalnız 200 ms opaklık.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { CaretRight, Check, Minus, Plus } from '../../../../../components/icons';
-import { DURATION, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
+import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, money, useEk } from '../kit';
 import type { DisplayMacros } from '../../model/productModel';
 
-/** eatkcal yayı 200/28'in CSS karşılığı (FinMoTokens): 0.25, 0.9, 0.3, 1. */
-const EAT_EASE = Easing.bezier(0.25, 0.9, 0.3, 1);
+/** eatkcal yayı 200/28'in CSS karşılığı (FinMoTokens) — tek kaynak motion.tsx. */
+const EAT_EASE = RN_CURVE.eat;
 /** FinMoTokens standard (RN Animated karşılığı). */
-export const STD_EASE = Easing.bezier(0.2, 0, 0, 1);
+export const STD_EASE = RN_CURVE.standard;
 const TOP_H = 52; // 44 satır + 8 alt boşluk
 export const LAYER_CLOSED_H = 72;
 export const LAYER_OPEN_H = 124;
@@ -77,7 +77,7 @@ export function ProductBottomBar({
   useEffect(() => {
     if (reduced) {
       h.setValue(open ? TOP_H : 0);
-      Animated.timing(o, { toValue: open ? 1 : 0, duration: DURATION.fast, easing: Easing.linear, useNativeDriver: false }).start();
+      Animated.timing(o, { toValue: open ? 1 : 0, duration: DURATION.fast, easing: RN_CURVE.linear, useNativeDriver: false }).start();
       return;
     }
     Animated.parallel([
@@ -95,7 +95,7 @@ export function ProductBottomBar({
       return;
     }
     roll.setValue(0);
-    Animated.timing(roll, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.base, easing: reduced ? Easing.linear : EAT_EASE, useNativeDriver: true }).start();
+    Animated.timing(roll, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.base, easing: reduced ? RN_CURVE.linear : EAT_EASE, useNativeDriver: true }).start();
   }, [price, reduced, roll]);
   const mroll = useRef(new Animated.Value(1)).current;
   const macroKey = macros ? `${Math.round(macros.kcal)}-${macros.protein}-${macros.carbs}-${macros.fats}` : '';
@@ -106,7 +106,7 @@ export function ProductBottomBar({
       return;
     }
     mroll.setValue(0);
-    Animated.timing(mroll, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.slow, easing: reduced ? Easing.linear : STD_EASE, useNativeDriver: true }).start();
+    Animated.timing(mroll, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.slow, easing: reduced ? RN_CURVE.linear : STD_EASE, useNativeDriver: true }).start();
   }, [macroKey, reduced, mroll]);
 
   // ── Eklendi / geri dönüş ─────────────────────────────────────────────────
@@ -119,16 +119,14 @@ export function ProductBottomBar({
       if (reduced) {
         fade.setValue(0);
         chk.setValue(1);
-        Animated.timing(fade, { toValue: 1, duration: DURATION.fast, easing: Easing.linear, useNativeDriver: true }).start();
+        Animated.timing(fade, { toValue: 1, duration: DURATION.fast, easing: RN_CURVE.linear, useNativeDriver: true }).start();
       } else {
         fade.setValue(1);
-        pop.setValue(1);
+        pop.setValue(0);
         chk.setValue(0.4);
         Animated.parallel([
-          Animated.sequence([
-            Animated.timing(pop, { toValue: 1.04, duration: 150, easing: EAT_EASE, useNativeDriver: true }),
-            Animated.timing(pop, { toValue: 1, duration: 350, easing: EAT_EASE, useNativeDriver: true }),
-          ]),
+          // 1 → 1,04 → 1 tek slow 500 içinde (zirve %30'da).
+          Animated.timing(pop, { toValue: 1, duration: DURATION.slow, easing: EAT_EASE, useNativeDriver: true }),
           Animated.timing(chk, { toValue: 1, duration: DURATION.base, easing: EAT_EASE, useNativeDriver: true }),
         ]).start();
       }
@@ -136,7 +134,7 @@ export function ProductBottomBar({
       // Geri dönüş: "Sepete ekle ([N] TL)" 200 ms opaklık.
       pop.setValue(1);
       fade.setValue(0);
-      Animated.timing(fade, { toValue: 1, duration: DURATION.fast, easing: reduced ? Easing.linear : STD_EASE, useNativeDriver: true }).start();
+      Animated.timing(fade, { toValue: 1, duration: DURATION.fast, easing: reduced ? RN_CURVE.linear : STD_EASE, useNativeDriver: true }).start();
     }
     wasAdded.current = added;
   }, [added, reduced, pop, chk, fade]);
@@ -252,7 +250,7 @@ export function ProductBottomBar({
         </View>
 
         {added ? (
-          <Animated.View style={[styles.ctaWrap, { opacity: fade, transform: [{ scale: pop }] }]}>
+          <Animated.View style={[styles.ctaWrap, { opacity: fade, transform: [{ scale: pop.interpolate({ inputRange: [0, 0.3, 1], outputRange: [1, 1.04, 1] }) }] }]}>
             <Pressable
               onPress={onGoCart}
               accessibilityRole="link"

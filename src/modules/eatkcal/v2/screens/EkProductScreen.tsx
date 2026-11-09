@@ -11,7 +11,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Easing,
   ScrollView,
   StyleSheet,
   View,
@@ -27,7 +26,7 @@ import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { getSupabaseClient } from '../../../../core/supabase';
-import { DURATION, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
+import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
 import { fetchProductImagesByName, fetchProductOptionGroups, getGroupSelectionLimits, mapProductRow } from '../../../../lib/products';
 import { fetchProductOptionLinks } from '../../../../lib/productOptions';
@@ -638,7 +637,7 @@ function IngredientRows({
 }) {
   const o = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(o, { toValue: 1, duration: DURATION.fast, easing: reduced ? Easing.linear : STD_EASE, useNativeDriver: true }).start();
+    Animated.timing(o, { toValue: 1, duration: DURATION.fast, easing: reduced ? RN_CURVE.linear : STD_EASE, useNativeDriver: true }).start();
   }, [o, reduced]);
   return (
     <Animated.View style={{ opacity: o, marginTop: 4 }} testID="ek-product-ing-rows">

@@ -242,6 +242,10 @@ export const RN_CURVE = {
   standard: RNEasing.bezier(0.2, 0, 0, 1),
   enter: RNEasing.bezier(0.05, 0.7, 0.1, 1),
   exit: RNEasing.bezier(0.3, 0, 0.8, 0.15),
+  /** eatkcal yayı 200/28'in zamanlı (CSS) karşılığı — FinMoTokens eatkcal satırı. Yalnız eatkcal. */
+  eat: RNEasing.bezier(0.25, 0.9, 0.3, 1),
+  /** Azaltılmış hareket: 200 ms düz opaklık (FinMoTokens "Azaltılmış hareket"). */
+  linear: RNEasing.linear,
 } as const;
 
 /**

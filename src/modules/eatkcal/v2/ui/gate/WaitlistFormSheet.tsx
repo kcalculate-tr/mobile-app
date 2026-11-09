@@ -8,7 +8,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -21,14 +20,14 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
-import { DURATION, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
+import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { Check, X } from '../../../../../components/icons';
 import { ekType, useEk } from '../kit';
 import { isDraftComplete, type WaitlistDraft, type WaitlistKind } from '../../model/waitlist';
 import { submitWaitlist } from './waitlistSend';
 
-const EAT_EASE = Easing.bezier(0.25, 0.9, 0.3, 1);
-const STD_EASE = Easing.bezier(0.2, 0, 0, 1);
+const EAT_EASE = RN_CURVE.eat;
+const STD_EASE = RN_CURVE.standard;
 
 type FieldKey = 'restaurant_name' | 'city' | 'contact_name' | 'phone' | 'email' | 'website' | 'district' | 'reason';
 
@@ -81,8 +80,8 @@ export function WaitlistFormSheet({
     slide.setValue(0);
     scrim.setValue(0);
     Animated.parallel([
-      Animated.timing(slide, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.slow, easing: reduced ? Easing.linear : EAT_EASE, useNativeDriver: true }),
-      Animated.timing(scrim, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.base, easing: reduced ? Easing.linear : STD_EASE, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.slow, easing: reduced ? RN_CURVE.linear : EAT_EASE, useNativeDriver: true }),
+      Animated.timing(scrim, { toValue: 1, duration: reduced ? DURATION.fast : DURATION.base, easing: reduced ? RN_CURVE.linear : STD_EASE, useNativeDriver: true }),
     ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -90,7 +89,7 @@ export function WaitlistFormSheet({
   const close = () => {
     haptic('selection');
     Animated.parallel([
-      Animated.timing(slide, { toValue: 0, duration: DURATION.fast, easing: reduced ? Easing.linear : Easing.bezier(0.3, 0, 0.8, 0.15), useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: DURATION.fast, easing: reduced ? RN_CURVE.linear : RN_CURVE.exit, useNativeDriver: true }),
       Animated.timing(scrim, { toValue: 0, duration: DURATION.fast, useNativeDriver: true }),
     ]).start(() => onClose());
   };
@@ -129,7 +128,7 @@ export function WaitlistFormSheet({
       setSending(false);
       setSent(true);
       doneO.setValue(0);
-      Animated.timing(doneO, { toValue: 1, duration: DURATION.fast, easing: reduced ? Easing.linear : STD_EASE, useNativeDriver: true }).start();
+      Animated.timing(doneO, { toValue: 1, duration: DURATION.fast, easing: reduced ? RN_CURVE.linear : STD_EASE, useNativeDriver: true }).start();
       onSent?.();
     }
   };
