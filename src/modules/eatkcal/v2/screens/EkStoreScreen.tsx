@@ -22,7 +22,7 @@ import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { ReviewsSheet, type ReviewAggregate, type ReviewSubScores } from '../ui/ReviewsSheet';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { CachedImage } from '../../../../components/CachedImage';
-import { CaretLeft, Lightning, ShoppingBag } from '../../../../components/icons';
+import { CaretLeft, Lightning } from '../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { fetchBrand, type Brand } from '../../../../lib/brands';
 import { fetchCategories, fetchProductsByBrand, type Category, type CategoryProduct } from '../../../../lib/categories';
@@ -49,7 +49,6 @@ export default function EkStoreScreen() {
     subScores: __DEV__ ? routeParams.vitrinSubScores : undefined,
   };
   const addItem = useCartStore((s) => s.addItem);
-  const cartCount = useCartStore((s) => s.items.reduce((n, i) => n + (i.parentLineKey ? 0 : i.quantity), 0));
   const { chip } = useDeliveryChip();
 
   const [brand, setBrand] = useState<Brand | null>(null);
@@ -257,7 +256,7 @@ export default function EkStoreScreen() {
         )}
       </ScrollView>
 
-      {/* Kapak üstü geri (44, beyaz %85) + sepet */}
+      {/* Kapak üstü geri (44, beyaz %85) */}
       <View style={[styles.topBar, { top: insets.top + 6 }]} pointerEvents="box-none">
         <Pressable
           onPress={() => {
@@ -270,20 +269,7 @@ export default function EkStoreScreen() {
         >
           <CaretLeft size={22} color={c.ink} />
         </Pressable>
-        <Pressable
-          onPress={() => navigation.navigate('EkCart')}
-          accessibilityRole="button"
-          accessibilityLabel={cartCount > 0 ? t('eatkcal.v2.home.cart_count', { count: cartCount }) : t('eatkcal.v2.home.cart')}
-          style={[styles.round, { backgroundColor: overlay }]}
-          testID="ek-store-cart"
-        >
-          <ShoppingBag size={22} color={c.ink} />
-          {cartCount > 0 ? (
-            <View style={[styles.badge, { backgroundColor: c.accent }]}>
-              <Text style={[ekType.c13s, ekType.num, { color: c.onAccent, lineHeight: 16 }]}>{cartCount}</Text>
-            </View>
-          ) : null}
-        </Pressable>
+        {/* Tur 26 (FinEkStore): sağ üst sepet düğmesi yok — sepete geçiş yüzen lime çubukta. */}
       </View>
 
       <ReviewsSheet

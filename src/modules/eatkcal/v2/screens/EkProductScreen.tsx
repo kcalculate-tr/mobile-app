@@ -28,7 +28,6 @@ import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { DURATION, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
-import { STD_EASE } from '../ui/product/ProductBottomBar';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
 import { fetchProductImagesByName, fetchProductOptionGroups, getGroupSelectionLimits, mapProductRow } from '../../../../lib/products';
 import { fetchProductOptionLinks } from '../../../../lib/productOptions';
@@ -56,7 +55,7 @@ import {
 } from '../model/productModel';
 import { OptionGroupSection, type OptionGroupModel } from '../ui/product/OptionGroupSection';
 import { MacroRings } from '../ui/product/MacroRings';
-import { ProductBottomBar } from '../ui/product/ProductBottomBar';
+import { ProductBottomBar, STD_EASE } from '../ui/product/ProductBottomBar';
 
 const HERO_H = 330;
 /** Final gövde alt boşluğu (tek alt katman açıkken 124 + 20 + pay). */
@@ -68,7 +67,7 @@ const CLOSE_BEFORE_Y = 40;
 export default function EkProductScreen() {
   const route = useRoute<RouteProp<EkNavList, 'EkProduct'>>();
   const navigation = useEkNav();
-  const { c, t, insets, theme } = useEk();
+  const { c, t, insets } = useEk();
   const reduced = useReducedMotion();
   const addItem = useCartStore((s) => s.addItem);
   const productId = route.params?.productId;
