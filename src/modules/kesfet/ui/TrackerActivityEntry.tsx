@@ -111,7 +111,7 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
       ) : null}
 
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} accessibilityLabel={tr('kesfet.activity.add')}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" testID="activity-entry-scroll">
           <AppText variant="heading" style={styles.sheetTitle}>{tr('kesfet.activity.add')}</AppText>
           <View style={styles.chipWrap} accessibilityRole="radiogroup">
             {ACTIVITY_TYPES.map((at: ActivityType) => {

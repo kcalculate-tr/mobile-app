@@ -9,9 +9,7 @@
 // Hareket: sheet base 300 enter / fast 200 exit, scrim 0→0.32; azaltılmış 200 ms opaklık.
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +22,7 @@ import Svg, { Path } from 'react-native-svg';
 import { AppText } from '../../../core/design/components/AppText';
 import { CURVE, DURATION, REDUCED, useReducedMotion } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
+import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
 import { useAuth } from '../../../core/AuthContext';
 import { isCodeComplete, isValidEmail, sanitizeCode } from '../v2/loginLogic';
 import { OnbButton } from '../components/pieces';
@@ -189,11 +188,9 @@ export function AccountEmailSheet({
           accessibilityLabel={i18n.t('onboarding.email.close')}
         />
       </Animated.View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.kav}
-        pointerEvents="box-none"
-      >
+      {/* G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView. */}
+      <View style={styles.kav} pointerEvents="box-none">
+        <KeyboardLiftView limitHeight testID="email-sheet-lift">
         <Animated.View
           accessibilityViewIsModal
           style={[
@@ -331,7 +328,8 @@ export function AccountEmailSheet({
             )}
           </ScrollView>
         </Animated.View>
-      </KeyboardAvoidingView>
+        </KeyboardLiftView>
+      </View>
     </Modal>
   );
 }
@@ -340,6 +338,7 @@ const styles = StyleSheet.create({
   kav: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     maxHeight: 720,
+    flexShrink: 1,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
@@ -349,7 +348,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 22, lineHeight: 25, flex: 1 },
   xHit: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   xDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flexGrow: 0 },
+  scroll: { flexGrow: 0, flexShrink: 1 },
   body: { paddingTop: 4, paddingHorizontal: 20, paddingBottom: 28, gap: 14 },
   lead: { fontSize: 15, lineHeight: 21 },
   label: { fontSize: 13, lineHeight: 17, fontFamily: 'PlusJakartaSans_600SemiBold' },

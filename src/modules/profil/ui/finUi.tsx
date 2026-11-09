@@ -13,6 +13,8 @@
 import React, { useCallback, useRef } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleProp,
@@ -28,6 +30,7 @@ import { FinErrorReveal } from '../../../core/design/components/FinTransitions';
 import { SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 import type { Theme } from '../../../core/design';
 import { fontFamily } from '../../../core/design/typography';
+import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
 import { ArrowLeft, CaretRight } from '../../../components/icons';
 
 /** Final panolarında geçen ama anlamsal temada olmayan yardımcı tonlar. */
@@ -82,20 +85,47 @@ export function FinScreen({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  // G21-S1 md.10 — klavye: iOS'ta ScrollView kendi içeriğini klavye kadar içeri
+  // alır ve odaklı alanı görünür tutar (`automaticallyAdjustKeyboardInsets`);
+  // Android kenar-kenar pencerede `adjustResize` çalışmadığından kap padding'le
+  // küçülür (FIN_SCREEN_KEYBOARD). İkisi aynı anda devrede değil → çift boşluk yok.
   if (scroll) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: t.color.bg }}
-        contentContainerStyle={[{ paddingBottom: insets.bottom + 40 }, contentStyle]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={refreshControl}
-      >
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: t.color.bg }} behavior={FIN_SCREEN_KEYBOARD}>
+        <ScrollView
+          style={{ flex: 1, backgroundColor: t.color.bg }}
+          contentContainerStyle={[{ paddingBottom: insets.bottom + 40 }, contentStyle]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+          testID="fin-screen-scroll"
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
-  return <View style={[{ flex: 1, backgroundColor: t.color.bg }, contentStyle]}>{children}</View>;
+  return (
+    <KeyboardAvoidingView style={[{ flex: 1, backgroundColor: t.color.bg }, contentStyle]} behavior={FIN_SCREEN_KEYBOARD}>
+      {children}
+    </KeyboardAvoidingView>
+  );
 }
+
+/**
+ * FinScreen klavye davranışı: Android'de 'padding' (SCREEN_KEYBOARD_BEHAVIOR),
+ * iOS'ta yok — orada içerideki ScrollView'lar `automaticallyAdjustKeyboardInsets`
+ * ile kayar (FIN_SCROLL_KEYBOARD). Kendi ScrollView'ını çizen Fin ekranları bu
+ * özellikleri `FIN_SCROLL_KEYBOARD` ile alır.
+ */
+export const FIN_SCREEN_KEYBOARD = Platform.OS === 'android' ? SCREEN_KEYBOARD_BEHAVIOR : undefined;
+export const FIN_SCROLL_KEYBOARD = {
+  keyboardShouldPersistTaps: 'handled',
+  keyboardDismissMode: 'interactive',
+  automaticallyAdjustKeyboardInsets: true,
+} as const;
 
 /** Üst başlık — 44 geri + ortalı başlık (20). */
 export function FinHeader({

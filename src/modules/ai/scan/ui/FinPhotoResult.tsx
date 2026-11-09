@@ -15,9 +15,7 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, wi
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
+import { KeyboardLiftView } from '../../../../core/design/components/KeyboardLiftView';
 import { BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
@@ -620,9 +619,12 @@ function MissingFoodSheet({
   const name = q.replace(/\s+/g, ' ').trim();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.mfFill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    // G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView;
+    // statusBarTranslucent → Modal koordinatı = ekran koordinatı (kaldırma ölçümü).
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.mfFill}>
         <Pressable style={styles.mfScrim} onPress={onClose} />
+        <KeyboardLiftView limitHeight style={styles.mfLift} testID="scan-missing-lift">
         <View style={[styles.mfSheet, { backgroundColor: k.sheet, paddingBottom: Math.max(16, insets.bottom + 8) }]}>
           <View style={[styles.handle, { backgroundColor: k.line2 }]} />
           <View style={styles.mfHead}>
@@ -720,7 +722,8 @@ function MissingFoodSheet({
             </ScrollView>
           )}
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardLiftView>
+      </View>
     </Modal>
   );
 }
@@ -787,12 +790,13 @@ const styles = StyleSheet.create({
   cutLogText: { fontSize: 15, fontWeight: '700' },
   mfFill: { flex: 1, justifyContent: 'flex-end' },
   mfScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  mfSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, paddingHorizontal: 16, maxHeight: '80%' },
+  mfLift: { maxHeight: '80%' },
+  mfSheet: { flexShrink: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, paddingHorizontal: 16 },
   mfHead: { flexDirection: 'row', alignItems: 'center' },
   mfTitle: { flex: 1 },
   mfClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   mfInput: { marginTop: 8, height: 48, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, fontSize: 15 },
-  mfList: { marginTop: 8 },
+  mfList: { marginTop: 8, flexShrink: 1 },
   mfRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 12, minHeight: 44 },
   mfManualLink: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mfManual: { marginTop: 4, gap: 8 },

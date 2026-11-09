@@ -72,6 +72,9 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   return (
     // G17-S1 md.5: TEK dikey kaydırma (başlık dahil) — iç içe flex ScrollView
     // yerine FinScreen'in kaydırması; sonda güvenli alan + 16.
+    // G21-S1 md.10: FinScreen scroll klavyeye duyarlı (iOS içerik içeri alınır,
+    // Android kap küçülür) + keyboardShouldPersistTaps="handled" → kod alanı
+    // klavye açıkken görünür ve sayfa kaydırılabilir.
     <FinScreen
       scroll
       contentStyle={{ paddingBottom: insets.bottom + 16 }}
@@ -121,6 +124,9 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
                     placeholderTextColor={t.color.secondary}
                     autoCapitalize="characters"
                     autoCorrect={false}
+                    returnKeyType="done"
+                    accessibilityLabel={tr('profil.coupons_code_ph')}
+                    testID="pr-coupon-code"
                     style={{ flex: 1, height: 48, borderRadius: 14, paddingHorizontal: 14, backgroundColor: t.color.line, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}
                   />
                   <Pressable
@@ -187,6 +193,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
           setCopied('');
         }}
         title={selected?.title}
+        scroll
       >
         {selected ? (
           <View style={{ gap: 12 }}>

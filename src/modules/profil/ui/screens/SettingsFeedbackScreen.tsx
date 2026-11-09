@@ -27,6 +27,7 @@ import {
   bodySemibold,
   finExtras,
 } from '../finUi';
+import { FIN_SCROLL_KEYBOARD } from '../finUi';
 
 const CATEGORIES = [
   { key: 'general', label: 'Genel' },
@@ -111,7 +112,7 @@ export default function SettingsFeedbackScreen({ onBack }: { onBack: () => void 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 14 }}
-        keyboardShouldPersistTaps="handled"
+        {...FIN_SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
       >
         <Text style={{ fontFamily: body, fontSize: 15, color: t.color.secondary }}>

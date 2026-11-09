@@ -8,9 +8,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -21,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, Chip, haptic, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { X } from '../../components/icons';
+import { KeyboardLiftView } from '../../core/design/components/KeyboardLiftView';
 
 export type ManualMealType = 'kahvalti' | 'ogle' | 'aksam' | 'atistirma';
 const MEALS: { key: ManualMealType; slot: 'breakfast' | 'lunch' | 'dinner' | 'snack' }[] = [
@@ -63,8 +62,10 @@ export function HomeManualMealSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView. */}
+      <View style={styles.fill}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={tt('common.close')} />
+        <KeyboardLiftView testID="manual-meal-lift">
         <View
           accessibilityViewIsModal
           style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: Math.max(24, insets.bottom + 12) }]}
@@ -145,7 +146,8 @@ export function HomeManualMealSheet({
             )}
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardLiftView>
+      </View>
     </Modal>
   );
 }

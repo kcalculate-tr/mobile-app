@@ -47,6 +47,7 @@ import {
   bodySemibold,
   heading,
 } from '../finUi';
+import { FIN_SCROLL_KEYBOARD } from '../finUi';
 
 type FieldProps = {
   label: string;
@@ -279,7 +280,7 @@ export default function SettingsPersonalScreen({ onBack }: { onBack: () => void 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 16 }}
-        keyboardShouldPersistTaps="handled"
+        {...FIN_SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
       >
         {loading ? (

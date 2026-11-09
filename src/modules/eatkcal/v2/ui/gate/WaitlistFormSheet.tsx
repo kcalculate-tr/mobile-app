@@ -8,9 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +20,7 @@ import {
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { Check, X } from '../../../../../components/icons';
+import { useSheetKeyboard } from '../../../../../core/design/keyboard';
 import { ekType, useEk } from '../kit';
 import { isDraftComplete, type WaitlistDraft, type WaitlistKind } from '../../model/waitlist';
 import { submitWaitlist } from './waitlistSend';
@@ -62,6 +61,7 @@ export function WaitlistFormSheet({
   onSent?: () => void;
 }) {
   const { c, t, lang, insets, theme } = useEk();
+  const kb = useSheetKeyboard(visible);
   const reduced = useReducedMotion();
   const isAdd = kind === 'restaurant_add';
   const empty = (): WaitlistDraft => ({ kind, country, city, restaurant_name: '', lang: lang === 'en' ? 'en' : 'tr' });
@@ -144,10 +144,13 @@ export function WaitlistFormSheet({
       >
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityElementsHidden importantForAccessibility="no" />
       </Animated.View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kav} pointerEvents="box-none">
+      {/* G21-S1 md.10: sheet üstten+alttan sabitli (absolute); KAV padding'i mutlak
+          çocuğu KALDIRMIYORDU (Yoga). Ortak kanca: alt kenar = klavye yüksekliği →
+          kaydırma alanı + "Gönder" klavyenin üstünde. */}
+      <View style={styles.kav} pointerEvents="box-none" onLayout={kb.onLayout} testID="ek-waitlist-root">
         <Animated.View
           accessibilityViewIsModal
-          style={[styles.sheet, { backgroundColor: sheetBg, top: isAdd ? Math.max(64, insets.top + 5) : Math.max(120, insets.top + 61) }, sheetStyle]}
+          style={[styles.sheet, { backgroundColor: sheetBg, top: isAdd ? Math.max(64, insets.top + 5) : Math.max(120, insets.top + 61), bottom: kb.lift }, sheetStyle]}
           testID={isAdd ? 'ek-waitlist-add' : 'ek-waitlist-suggest'}
         >
           <View style={styles.header}>
@@ -219,7 +222,7 @@ export function WaitlistFormSheet({
                   </Text>
                 ) : null}
               </ScrollView>
-              <View style={[styles.footer, { borderTopColor: c.line, paddingBottom: Math.max(insets.bottom, 34) }]}>
+              <View style={[styles.footer, { borderTopColor: c.line, paddingBottom: kb.lift > 0 ? 12 : Math.max(insets.bottom, 34) }]}>
                 {!ok ? (
                   <Text style={[styles.help, { color: c.secondary }]} testID="ek-waitlist-help">
                     {isAdd ? t('eatkcal.v2.gate.add_help') : t('eatkcal.v2.gate.sug_help')}
@@ -240,7 +243,7 @@ export function WaitlistFormSheet({
             </>
           )}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
