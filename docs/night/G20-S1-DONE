@@ -1,0 +1,6 @@
+G20-S1 DONE — 2026-11-09
+Dal: night20/consent (taban night19/release @ da8edf4)
+Maddeler: 1 rıza bloğu (FinOnbAccount + e-posta sheet'i + ayrıntı/bilgilendirme/tekrar kabul sheet'i, politika → ATT) · 2 Veri ve reklam izinleri sayfası · 3 user_consents migration dosyası + rollback · 4 tek toast + Tara kullanılamıyor kartı + kamera/ATT metni · 5 TR/EN, testler, iki platform export
+Kontrol: tsc 0 · unit 836/837 (1 atlandı) · bileşen 254/254 · snapshot 2/2 · hygiene ✓ · export iOS ✓ Android ✓
+Açık: LOG SORULAR (hukuki metin onayı, slug doğrulama, simülatör çekimi yapılamadı)
+LOG: docs/night/G20-S1-LOG.md
