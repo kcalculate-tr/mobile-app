@@ -178,6 +178,19 @@ const EK_EN = [
   'FinEkInfo', 'FinEkErrors',
 ] as const;
 
+/** G18-S5: Keşfet/Gün/Tara/kabuk EN panoları (`<EN pano>`, `<taban pano>`). */
+const OTHER_EN: Array<[string, string]> = [
+  ...[
+    'FinActivityCard', 'FinAddSheet', 'FinAddToast', 'FinComments', 'FinCompose', 'FinDetail',
+    'FinFeed', 'FinFeedScrollR3', 'FinFeedTip', 'FinNotifications', 'FinPostMenuBlock', 'FinPostMenu',
+    'FinPosting', 'FinProfilePublic', 'FinRecipe', 'FinReportDone', 'FinReport', 'FinReportNotice',
+    'FinRules', 'FinSerbest', 'FinStreak', 'FinTracker', 'FinTrackerEmpty', 'FinVideo',
+  ].map((b): [string, string] => [`${b}EN`, b]),
+  ['FinTabBarEN-rest', 'FinTabBar-rest'],
+  ['FinTabBarEN-mid', 'FinTabBar-mid'],
+  ['FinTabBarEN-min', 'FinTabBar-min'],
+];
+
 const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   // ── Kabuk ──────────────────────────────────────────────────────────────────
   ['FinTabBar-rest', 'kabuk', route(tab('Tracker')), { collapse: 0 }],
@@ -493,6 +506,14 @@ function build(): Record<string, CatalogEntry> {
   for (const base of EK_EN) {
     const e = out[base];
     if (e) out[`${base}EN`] = { ...e, pano: `${base}EN`, lang: 'en' };
+  }
+  // G18-S5: FinRecipe (Tur 26e "yeni") — SON_HAL İSTİSNA 4: "Haftanın tarifi" kartı ŞİMDİLİK
+  // FinDetail'e açılır → uygulamadaki karşılık FinDetail (kabul tablosunda ayrı satır).
+  if (out.FinDetail) out.FinRecipe = { ...out.FinDetail, pano: 'FinRecipe' };
+  // G18-S5: S1–S4'ün almadığı Tur 26d/26e EN panoları — aynı hedef, cihaz dili EN (+Dark).
+  for (const [en, base] of OTHER_EN) {
+    const e = out[base];
+    if (e) out[en] = { ...e, pano: en, lang: 'en' };
   }
   return out;
 }
