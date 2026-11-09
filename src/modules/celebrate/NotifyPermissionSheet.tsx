@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { AppText, Sheet, haptic, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { requestPushPermissionOnly } from '../../core/notifications';
 import { Bell } from '../../components/icons';
 import { useOverlayGate } from '../onboarding/first/overlayGate';
+import { setMarketingOptIn } from '../../lib/notify/marketing';
+
+const CHECK_D =
+  'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z';
 
 /**
  * FinSheetNotify — ILK ogun kutlamasindan sonra teklif edilen bildirim izni
  * alttan sayfasi. Yeni izin mantigi KURMAZ; yalniz requestPushPermissionOnly
  * cagirir ve sonucu disari verir.
+ * G20-S3 md.6 (B-11): pazarlama bildirimi AYRI onay kutusu (isaretsiz gelir);
+ * yalniz izin verilip kutu isaretlenirse marketing_enabled acilir.
  */
 export function NotifyPermissionSheet({
   visible,
@@ -23,6 +30,7 @@ export function NotifyPermissionSheet({
   const t = useTheme();
   const { t: tt } = useT();
   const [busy, setBusy] = useState(false);
+  const [marketing, setMarketing] = useState(false);
   useOverlayGate(visible); // G18-S1 temas: açıkken oryantasyon ipucu beklesin
 
   const onAllow = async () => {
@@ -31,6 +39,7 @@ export function NotifyPermissionSheet({
     haptic('selection');
     try {
       const status = await requestPushPermissionOnly();
+      if (status === 'granted' && marketing) await setMarketingOptIn(true);
       onResult?.(status);
     } finally {
       setBusy(false);
@@ -52,6 +61,36 @@ export function NotifyPermissionSheet({
         <AppText variant="body" tone="secondary" style={styles.sub}>
           {tt('celebrate.notify_body')}
         </AppText>
+
+        <Pressable
+          onPress={() => setMarketing((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: marketing }}
+          accessibilityLabel={tt('consent.marketing.label')}
+          style={styles.optRow}
+          testID="notify-marketing-optin"
+        >
+          <View
+            style={[
+              styles.box,
+              marketing ? { backgroundColor: t.color.ink, borderColor: t.color.ink } : { borderColor: t.color.line },
+            ]}
+          >
+            {marketing ? (
+              <Svg width={14} height={14} viewBox="0 0 256 256">
+                <Path d={CHECK_D} fill={t.color.surface} />
+              </Svg>
+            ) : null}
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <AppText variant="body" tone="ink">
+              {tt('consent.marketing.label')}
+            </AppText>
+            <AppText variant="caption" tone="secondary">
+              {tt('consent.marketing.hint')}
+            </AppText>
+          </View>
+        </Pressable>
 
         <Pressable
           onPress={onAllow}
@@ -89,6 +128,16 @@ const styles = StyleSheet.create({
   iconWrap: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   title: { textAlign: 'left' },
   sub: { textAlign: 'left' },
+  optRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, minHeight: 44, marginTop: 4 },
+  box: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
   primary: {
     minHeight: 52,
     alignSelf: 'stretch',

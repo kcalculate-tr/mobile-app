@@ -31,9 +31,10 @@ type Prefs = {
   behavioral_enabled: boolean;
 };
 
+// G20-S3 md.6 (B-11): pazarlama varsayılanı KAPALI (açık onay); kayıtlı tercih aynen.
 const DEFAULT_PREFS: Prefs = {
   transactional_enabled: true,
-  marketing_enabled: true,
+  marketing_enabled: false,
   reminder_enabled: true,
   behavioral_enabled: true,
 };
@@ -99,7 +100,7 @@ export default function NotificationPreferencesScreen() {
       if (data) {
         setPrefs({
           transactional_enabled: data.transactional_enabled ?? true,
-          marketing_enabled: data.marketing_enabled ?? true,
+          marketing_enabled: data.marketing_enabled ?? false,
           reminder_enabled: data.reminder_enabled ?? true,
           behavioral_enabled: data.behavioral_enabled ?? true,
         });
