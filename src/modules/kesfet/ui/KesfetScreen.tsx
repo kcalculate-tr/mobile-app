@@ -27,7 +27,7 @@ import { useIconPop } from '../motion';
 import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
-import { emitLogFlight, emitLogUndo } from '../events';
+import { emitLogFlight } from '../events';
 import { trackEvent } from '../../gun/track/events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { useNutritionSummary } from '../../../hooks/useNutritionSummary';
@@ -62,6 +62,7 @@ import { deriveStarters, isInvitedCreatorRole } from '../starters';
 import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './format';
 import { reportReasonText } from './ReportFlow';
 import { track } from '../../../lib/analytics';
+import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 
 function Header({
   onSearch,
@@ -141,9 +142,20 @@ function Tabs({
     { key: 'for_you', label: tr('kesfet.ui.tab.for_you') },
   ];
   if (showFollowing) items.push({ key: 'following', label: tr('kesfet.ui.tab.following') });
+  const [rowW, onRowLayout] = useRowWidth();
+  const activeIndex = Math.max(0, items.findIndex((it) => it.key === tab));
 
   return (
-    <View {...useOrientTarget('kesfet')} style={[styles.tabs, { borderBottomColor: t.color.line }]} accessibilityRole="tablist">
+    <View {...useOrientTarget('kesfet')} onLayout={onRowLayout} style={[styles.tabs, { borderBottomColor: t.color.line }]} accessibilityRole="tablist">
+      {/* G21-S1 md.9: alt çizgi seçili sekmeye kayar (azaltılmışta opaklık). */}
+      <SlidingIndicator
+        testID="kesfet-tab-indicator"
+        index={activeIndex}
+        count={items.length}
+        containerWidth={rowW}
+        itemWidth={56}
+        style={[styles.tabUnderline, { backgroundColor: t.color.ink }]}
+      />
       {items.map((it) => {
         const active = tab === it.key;
         return (
@@ -158,7 +170,6 @@ function Tabs({
             <AppText variant="caption" tone={active ? 'ink' : 'secondary'} style={{ fontWeight: active ? '700' : '500', fontSize: 15 }}>
               {it.label}
             </AppText>
-            {active ? <View style={[styles.tabUnderline, { backgroundColor: t.color.ink }]} /> : null}
           </Pressable>
         );
       })}
@@ -441,19 +452,9 @@ export function KesfetScreen() {
     }
   }, []);
 
-  // "Gör" — loglanan öğünü görmek için Ana sayfa/Gün'e geç (varsa). Kabuk
-  // bağlamında sekme değişir; bilinmeyen rotada sessizce yutar.
-  const onViewDay = useCallback(() => {
-    try {
-      navigation.navigate('Home');
-    } catch {
-      // rota yoksa no-op
-    }
-  }, [navigation]);
-
   // Tek loglama yolu — hem hızlı logla (dokun) hem seçiciden (sheet) buraya gelir.
-  // addToDay → uçuş olayı (`kcal:logFlight`, frame varsa) → "Logla izi" → toast
-  // ("<Öğün>'ye loglandı · Geri al · Gör"). Geri al tek kaydı geri alır + logUndo.
+  // addToDay → uçuş olayı (`kcal:logFlight`, her yolda) → "Logla izi"; toast'ı kabuk
+  // çizer ("<Öğün> loglandı · Geri al · Gör" — Gör = Ana sayfa). Geri al kaydı siler.
   const logMeal = useCallback(
     async (post: FeedPost, mealType: MealType, portion: number, frame?: LogOriginFrame) => {
       addSeq.current += 1;
@@ -465,46 +466,33 @@ export function KesfetScreen() {
       const kcal = Math.round((post.meal_card?.kcal ?? 0) * portion);
       trackEvent({ name: 'log_add', props: { source: 'kesfet', slot: mealType, kcal, offline: false } });
       const mealLabel = tr(`meal.${mealType}`);
-      // Kabuğun tab barına uçuş (S1 dinler): yemek görseli "Ana sayfa"ya uçar + "+N".
-      if (frame && (frame.w > 0 || frame.h > 0)) {
-        emitLogFlight({
-          x: frame.x,
-          y: frame.y,
-          w: frame.w,
-          h: frame.h,
-          imageUri: post.meal_card?.photo_url ?? null,
-          mealLabel,
-          source: 'kesfet',
-          kcal,
-          // G20-S1 md.4: Keşfet kendi toast'ını (Geri al = kaydı siler) gösterir →
-          // kabukta ikinci toast yok; Ana sayfa vurgusu / rozet bu kayda eşlenir.
-          id: consumptionId,
-          ownToast: true,
-        });
-      }
+      // G21-S1 md.4: logla sonrası TEK toast = kabuk toast'ı ("<Öğün> loglandı · Geri al · Gör").
+      // Uçuş her yolda yayınlanır (çerçevesiz sheet yolunda w/h 0 → kabuk uçuşsuz rozet +
+      // toast); kayıt id'si + kaydı GERÇEKTEN silen `undo` taşınır. Keşfet kendi log
+      // toast'ını artık göstermez (önceden iki toast aynı yerde üst üste biniyordu).
+      const hasFrame = !!frame && (frame.w > 0 || frame.h > 0);
+      emitLogFlight({
+        x: hasFrame ? frame!.x : 0,
+        y: hasFrame ? frame!.y : 0,
+        w: hasFrame ? frame!.w : 0,
+        h: hasFrame ? frame!.h : 0,
+        imageUri: post.meal_card?.photo_url ?? null,
+        mealLabel,
+        source: 'kesfet',
+        kcal,
+        id: consumptionId,
+        // Kabuk "Geri al" → meal_consumptions satırı silinir (logUndo'yu kabuk yayınlar).
+        undo: async () => {
+          const ok = await useKesfetStore.getState().undoAddToDay(post.id, consumptionId, key);
+          if (ok) trackEvent({ name: 'log_delete', props: { source: 'kesfet', slot: mealType, undone: false } });
+          else setToast({ message: tr('kesfet.ui.undo_failed') });
+        },
+      });
       // "Logla izi" — ekran içi kısa yankı (yemek noktaya iner, yay çizip uçar).
       trailSeq.current += 1;
       setTrail({ token: trailSeq.current, label: post.meal_card?.name ?? '' });
-      // Toast: "<Öğün>'ye loglandı · Geri al · Gör".
-      setToast({
-        message: tr('kesfet.ui.logged_to', { meal: tr(`kesfet.ui.meal_dat.${mealType}`) }),
-        undoLabel: tr('common.undo'),
-        onUndo: () => {
-          // G20-S1 md.4: tek toast; "Geri al" meal_consumptions satırını SİLER.
-          emitLogUndo({ id: consumptionId });
-          void useKesfetStore
-            .getState()
-            .undoAddToDay(post.id, consumptionId, key)
-            .then((ok) => {
-              if (ok) trackEvent({ name: 'log_delete', props: { source: 'kesfet', slot: mealType, undone: false } });
-              else setToast({ message: tr('kesfet.ui.undo_failed') });
-            });
-        },
-        actionLabel: tr('kesfet.ui.view_day'),
-        onAction: onViewDay,
-      });
     },
-    [tr, onViewDay],
+    [tr],
   );
 
   // Seçiciden (FinAddSheet) öğün + porsiyon ile logla.
@@ -867,7 +855,10 @@ export function KesfetScreen() {
         }}
       />
       </Animated.View>
-      <View style={styles.content}>{body}</View>
+      {/* G21-S1 md.9: Senin için ↔ Takip — içerik yatay kayarak geçer. */}
+      <SectionSlide index={tab === 'following' ? 1 : 0} style={styles.content} testID="kesfet-section">
+        {body}
+      </SectionSlide>
 
       <AddToDaySheet
         visible={sheetPost != null}

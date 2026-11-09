@@ -204,7 +204,10 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   useEffect(() => {
     const onFlight = (raw: LogFlightPayload) => {
       const geom = geomRef.current;
-      if (geom.reduced || geom.anaIndex < 0) {
+      // G21-S1 md.4: kaynak konumu bilinmiyorsa (w/h 0 — Tara, Keşfet sheet yolu)
+      // sözleşmedeki gibi uçuşsuz rozet + toast (önceden ekranın sol üstünden uçuyordu).
+      const noOrigin = !(raw.w > 0 || raw.h > 0);
+      if (geom.reduced || geom.anaIndex < 0 || noOrigin) {
         // Uçuş yok — doğrudan rozet + toast (FinMoMap: "Uçuş yok").
         arrive(raw);
         return;
@@ -381,8 +384,9 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
     } catch {
       /* kaynak hatası kabuğu düşürmez */
     }
+    // Rozet azaltma + toast kapatma LOG_UNDO_EVENT dinleyicisinde (yukarıda) — burada
+    // ayrıca azaltmak rozeti İKİ düşürüyordu (G21-S1 md.4).
     DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: toast.id } as LogUndoPayload);
-    setBadge((n) => Math.max(0, n - 1));
     setToast(null);
   }, [toast]);
 

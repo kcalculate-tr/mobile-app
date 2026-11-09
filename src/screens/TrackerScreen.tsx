@@ -81,6 +81,7 @@ import type { HomeBannerItem } from '../modules/gun/home/banner';
 import { HomeEmptyToday } from '../modules/onboarding/first';
 import { HomeInkToast } from './tracker/HomeInkToast';
 import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
+import { homeBellTarget } from './tracker/homeBellTarget';
 import { useT } from '../core/i18n';
 import { pickAutoLogInstances } from '../modules/gun/delivery';
 import { loadAutoLogged, markAutoLogged } from '../modules/gun/autoLogStore';
@@ -150,7 +151,13 @@ type ConsumedRow = {
   fat: number;
   note: string | null;
   consumed_at: string;
+  /** G21-S1 md.5: Tara/paylaşım fotoğrafı (özel kova yolu) — geri alınca foto geri gelsin. */
+  photo_path?: string | null;
 };
+
+// G21-S1 md.5 (G19-S2 SORULAR 2): liste `photo_path`'i de seçer; silinip geri alınan
+// Tara kaydı aynı fotoğrafla yeniden yazılır.
+const CONSUMED_SELECT = 'id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at,photo_path';
 
 type WeeklyDay = { label: string; date: string; kcal: number; protein: number; carbs: number; fat: number; count?: number };
 
@@ -462,6 +469,7 @@ const normalizeConsumedRow = (raw: any): ConsumedRow => {
     fat: toNum(r.fat),
     note: r.note != null ? String(r.note) : null,
     consumed_at: String(r.consumed_at ?? new Date().toISOString()),
+    photo_path: r.photo_path != null ? String(r.photo_path) : null,
   };
 };
 
@@ -1034,7 +1042,7 @@ export default function TrackerScreen() {
             .limit(30),
           supabase
             .from('meal_consumptions')
-            .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+            .select(CONSUMED_SELECT)
             .eq('user_id', user.id)
             .gte('consumed_at', todayStartISO)
             .lt('consumed_at', tomorrowStartISO)
@@ -1347,7 +1355,7 @@ export default function TrackerScreen() {
     if (!user) return [];
     const { data: rows, error } = await getSupabaseClient()
       .from('meal_consumptions')
-      .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+      .select(CONSUMED_SELECT)
       .eq('user_id', user.id)
       .gte('consumed_at', startOfTodayISO())
       .lt('consumed_at', startOfTomorrowISO())
@@ -1411,6 +1419,11 @@ export default function TrackerScreen() {
   const suTakibi = useFeature('su_takibi' as FlagKey);
   const yeniOnboarding = useFeature('yeni_onboarding' as FlagKey);
   const yeniSiparis = useFeature('yeni_siparis' as FlagKey);
+  // G21-S1 md.8: Ana sayfa zili → bildirimler (bkz. homeBellTarget).
+  const bellTarget = homeBellTarget({
+    sosyalBildirim: useFeature('sosyal_bildirim' as FlagKey),
+    kesfet: useFeature('kesfet' as FlagKey),
+  });
   const { t: tt } = useT();
   const water = useWaterToday(yeniKabuk && suTakibi, user?.id);
   const serverWaterTarget = waterTargetMl(nutritionProfile?.target_water);
@@ -1542,8 +1555,9 @@ export default function TrackerScreen() {
       : navigation.navigate('ProductDetail', { productId });
   const openKesfet = () => (navigation as any).navigate('Tabs', { screen: 'KesfetTab' });
   // G18-S2 md.3/6b: banner kartı tek dokunuş — gönderi detayı (FinDetail) ya da eatkcal.
+  const openPost = (postId: string) => (navigation as any).navigate('SharedPost', { postId });
   const openBanner = (b: HomeBannerItem) => {
-    if (b.target.type === 'post') (navigation as any).navigate('SharedPost', { postId: b.target.postId });
+    if (b.target.type === 'post') openPost(b.target.postId);
     else openEatkcal();
   };
   // G18-S2 md.4: İzmir dışı satırlar → S3'ün FinWaitlistAdd / FinWaitlistSuggest sheet'leri
@@ -1558,6 +1572,16 @@ export default function TrackerScreen() {
     setPushMenuSlot(finOpenLog === true ? slotFromHour(istanbulHour()) : finOpenLog);
     (navigation as any).setParams?.({ finOpenLog: undefined });
   }, [finOpenLog, yeniKabuk, navigation]);
+  // G21-S1 md.8: Tara'daki "Elle gir / Elle ekle" Ana sayfaya dönünce elle giriş sheet'i
+  // AÇILSIN (önce yalnız geri dönüyordu, kullanıcı ikinci kez dokunmak zorundaydı).
+  // Çağıran: navigate('Tabs', { screen: 'Tracker', params: { finOpenManual: true } }).
+  const finOpenManual = (route.params as { finOpenManual?: true | SlotKey } | undefined)?.finOpenManual;
+  useEffect(() => {
+    if (!yeniKabuk || !finOpenManual) return;
+    (navigation as any).setParams?.({ finOpenManual: undefined });
+    openMealFormFor(finOpenManual === true ? slotFromHour(istanbulHour()) : finOpenManual);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finOpenManual, yeniKabuk, navigation]);
   const openWaitlist = (kind: 'add' | 'suggest') =>
     setWaitlistKind(kind === 'add' ? 'restaurant_add' : 'restaurant_suggest');
   // G18-S2 md.4: bölge (kayıtlı adres → seçilen il → izinli konum); md.3/6b: banner verisi.
@@ -1656,6 +1680,8 @@ export default function TrackerScreen() {
         fat: row.fat,
         note: row.note,
         consumed_at: row.consumed_at,
+        // G21-S1 md.5: fotoğraf yolu da geri yazılır (önceden geri alınan Tara kaydı fotoğrafsız kalıyordu).
+        ...(row.photo_path ? { photo_path: row.photo_path } : {}),
       },
     });
     if (!ok) {
@@ -1837,7 +1863,7 @@ export default function TrackerScreen() {
               },
               { onConflict: 'user_id,source,source_ref' },
             )
-            .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+            .select(CONSUMED_SELECT)
             .maybeSingle();
           if (e2 && (e2 as any)?.code !== '23505') {
             dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: c.instanceId });
@@ -1939,7 +1965,7 @@ export default function TrackerScreen() {
         const { data: row, error } = await supabase
           .from('meal_consumptions')
           .upsert(payload, { onConflict: 'user_id,source,source_ref' })
-          .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+          .select(CONSUMED_SELECT)
           .maybeSingle();
 
         // 23505 = unique_violation: bu source_ref zaten kayıtlı → tüketim
@@ -2136,7 +2162,7 @@ export default function TrackerScreen() {
           note: trimmedNote || null,
           consumed_at: new Date().toISOString(),
         })
-        .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+        .select(CONSUMED_SELECT)
         .single();
       if (error) throw error;
       track('log_add', { source: 'manual', kcal: calNum });
@@ -2634,7 +2660,7 @@ const html = `
         {yeniKabuk ? (
           <HomeGreeting
             name={String(user?.user_metadata?.full_name || '')}
-            onBell={() => navigation.navigate('Kesfet' as never)}
+            onBell={bellTarget ? () => (navigation as any).navigate(bellTarget.name, 'params' in bellTarget ? bellTarget.params : undefined) : undefined}
             hour={homeHour}
           />
         ) : (
@@ -2815,7 +2841,8 @@ const html = `
                   />
                 ) : null}
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
-                <HomeExploreStrip onAll={openKesfet} onOpen={openKesfet} />
+                {/* G21-S1 md.8: kare = o gönderinin detayı (banner'la aynı hedef); "Tümü" = Keşfet sekmesi. */}
+                <HomeExploreStrip onAll={openKesfet} onOpen={openPost} />
                 {/* G18-S2 md.4: bölge — İzmir tek öneri kartı / İzmir dışı bekleme listesi satırları. */}
                 <HomeRegionSection
                   region={homeRegion}

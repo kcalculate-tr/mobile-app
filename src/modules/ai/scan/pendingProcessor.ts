@@ -9,10 +9,13 @@ import { classifyScanFailure } from './scanError';
 /** G19-S1 md.4: sayılan hata bu kadar tekrarlanırsa girdi düşer (kuyruk kilitlenmez). */
 export const PENDING_MAX_ATTEMPTS = 3;
 import type { AiScanClient, AiScanOutcome, ScanEstimate } from './types';
+import { rowIdOf } from './scanUndo';
 
 export interface ProcessedScan {
   entry: PendingScanPhoto;
   estimate: ScanEstimate;
+  /** G21-S1 md.4: yazılan meal_consumptions satır id'si (kabuk Geri al bu kaydı siler). */
+  rowId?: string | null;
 }
 
 export interface ProcessResult {
@@ -65,13 +68,14 @@ export async function processPendingQueue(opts: {
       }
       return { processed, dropped, stoppedBy: 'failed', lastOutcome: outcome };
     }
+    let savedRow: unknown;
     try {
-      await opts.save(entry, outcome.estimate);
+      savedRow = await opts.save(entry, outcome.estimate);
     } catch {
       return { processed, dropped, stoppedBy: 'failed', lastOutcome: outcome };
     }
     await removePendingScanPhoto(entry.id);
-    processed.push({ entry, estimate: outcome.estimate });
+    processed.push({ entry, estimate: outcome.estimate, rowId: rowIdOf(savedRow) });
   }
   return { processed, dropped, stoppedBy: 'empty' };
 }

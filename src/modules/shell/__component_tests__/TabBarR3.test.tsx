@@ -200,3 +200,48 @@ describe('G20-S1 — tek toast, Geri al gerçekten siler', () => {
     expect(ui.queryByText('+1')).toBeNull();
   });
 });
+
+// G21-S1 md.4 — logla sonrası TEK toast = kabuk toast'ı; Keşfet ve Tara uçuşu kayıt
+// id'si + kaydı silen undo taşır; Geri al rozeti TAM 1 düşürür (önceden iki kez).
+describe('G21-S1 — kabuk toast\'ı Keşfet/Tara kaydını gerçekten geri alır', () => {
+  const flight = (extra: Record<string, unknown>) =>
+    act(() => {
+      DeviceEventEmitter.emit('kcal:logFlight', { x: 0, y: 0, w: 0, h: 0, mealLabel: 'Öğle', ...extra });
+    });
+
+  test('iki kayıt + Geri al → rozet +2 → +1 (tek düşüş)', async () => {
+    const { props } = makeProps(R3_ROUTES, 2);
+    const undo = jest.fn(() => Promise.resolve());
+    const ui = render(
+      <ReducedMotionProvider value={true}>
+        <TabBarR3 {...props} />
+      </ReducedMotionProvider>,
+    );
+    flight({ id: 'k-1', source: 'kesfet', undo: jest.fn() });
+    flight({ id: 'k-2', source: 'kesfet', undo });
+    expect(ui.queryByText('+2')).not.toBeNull();
+    await act(async () => {
+      fireEvent.press(ui.getByText('Geri al'));
+    });
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(ui.queryByText('+1')).not.toBeNull();
+  });
+
+  test('Tara uçuşu (id + undo, konum yok) → hareket AÇIKKEN de uçuşsuz rozet + toast + Geri al', async () => {
+    const { props } = makeProps(R3_ROUTES, 2);
+    const undo = jest.fn(() => Promise.resolve());
+    const ui = render(
+      <ReducedMotionProvider value={false}>
+        <TabBarR3 {...props} />
+      </ReducedMotionProvider>,
+    );
+    flight({ id: 'scan-row-1', source: 'scan', undo });
+    expect(ui.queryByText('+1')).not.toBeNull();
+    expect(ui.queryByText(/loglandı/)).not.toBeNull();
+    await act(async () => {
+      fireEvent.press(ui.getByText('Geri al'));
+    });
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(ui.queryByText('+1')).toBeNull();
+  });
+});
