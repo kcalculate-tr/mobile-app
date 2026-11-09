@@ -28,6 +28,10 @@ jest.mock('expo-tracking-transparency', () => ({
     mockCalls.push('requestTracking');
     return Promise.resolve({ status: mockAttStatus });
   },
+  getTrackingPermissionsAsync: () => {
+    mockCalls.push('getTracking');
+    return Promise.resolve({ status: mockAttStatus });
+  },
 }));
 
 jest.mock('@react-native-community/netinfo', () => ({
@@ -114,11 +118,13 @@ describe('initFBSDK — ATT sırası', () => {
     expect(mockCalls).toEqual([]);
   });
 
-  it('iOS ATT granted + uygulama içi reklam rızası denied: IDFA kapalı, Meta olayı yok', async () => {
+  // G20-S1: uygulama içi reklam ölçümü kapalıyken Apple ATT sorusu HİÇ gösterilmez
+  // (yalnız mevcut durum okunur); IDFA/Meta yine kapalı, SDK yine ATT adımından sonra.
+  it('iOS uygulama içi reklam rızası denied: ATT SORULMAZ (durum okunur), IDFA kapalı, Meta olayı yok', async () => {
     const a = load('ios', { '@kcal_consent_ads': 'denied' });
     await a.initFBSDK();
     expect(mockCalls).toEqual([
-      'requestTracking',
+      'getTracking',
       'setAdvertiserTrackingEnabled:false',
       'setAdvertiserIDCollectionEnabled:false',
       'initializeSDK',
@@ -224,5 +230,30 @@ describe('track() — Meta yalnız reklam olayları, parametreler eskisiyle ayn�
     await settle();
     const rows = mockInserts.flat() as Array<{ event_name: string; props: Record<string, unknown> }>;
     expect(rows.map((r) => r.event_name)).toEqual(['login']);
+  });
+});
+
+describe('G20-S1 — initFBSDK onAtt (politika → ATT kaydı)', () => {
+  it('ATT soruldu → onAtt({status, asked:true}) SDK ayarlarından ÖNCE; reddedince Meta kapalı', async () => {
+    mockAttStatus = 'denied';
+    const a = load('ios', { '@kcal_consent_ads': 'granted' });
+    const seen: unknown[] = [];
+    await a.initFBSDK({ onAtt: (o) => seen.push([o, [...mockCalls]]) });
+    expect(seen).toEqual([[{ status: 'denied', asked: true }, ['requestTracking']]]);
+    expect(mockCalls).toEqual([
+      'requestTracking',
+      'setAdvertiserTrackingEnabled:false',
+      'setAdvertiserIDCollectionEnabled:false',
+      'initializeSDK',
+    ]);
+  });
+
+  it('requestAttForAds (Ayarlar): iOS’ta ATT sorar, durumu döner; Android unavailable', async () => {
+    mockAttStatus = 'granted';
+    const a = load('ios');
+    await expect(a.requestAttForAds()).resolves.toBe('granted');
+    expect(mockCalls).toContain('requestTracking');
+    const b = load('android');
+    await expect(b.requestAttForAds()).resolves.toBe('unavailable');
   });
 });

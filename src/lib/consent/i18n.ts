@@ -18,8 +18,8 @@ export const tr = {
     required: 'Devam etmek için koşulları kabul etmelisin.',
   },
   account: {
-    ads_on: 'Reklam ölçümü (Meta) açık · ',
-    ads_off: 'Reklam ölçümü (Meta) kapalı · ',
+    ads_on: 'Reklam ölçümü (Meta) açık. ',
+    ads_off: 'Reklam ölçümü (Meta) kapalı. ',
     details: 'Ayrıntılar',
   },
   sheet: {
@@ -64,8 +64,8 @@ export const en: typeof tr = {
     required: 'Please accept the terms to continue.',
   },
   account: {
-    ads_on: 'Ad measurement (Meta) on · ',
-    ads_off: 'Ad measurement (Meta) off · ',
+    ads_on: 'Ad measurement (Meta) is on. ',
+    ads_off: 'Ad measurement (Meta) is off. ',
     details: 'Details',
   },
   sheet: {

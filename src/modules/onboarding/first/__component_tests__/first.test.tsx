@@ -52,6 +52,14 @@ describe('AccountEmailSheet (FinOnbAccountEmail)', () => {
   test('geçersiz e-posta → kod gönderilmez; geçerli → signInWithOtp, kod adımı → verifyEmailOtp → onVerified', async () => {
     const onVerified = jest.fn();
     const ui = render(<AccountEmailSheet visible onClose={() => {}} onVerified={onVerified} />);
+    // G20-S1: Koşullar + Gizlilik kabulü zorunlu — kabul edilmeden kod gönderilmez.
+    fireEvent.changeText(ui.getByTestId('fin-onb-email-input'), 'ad@ornek.com');
+    await act(async () => fireEvent.press(ui.getByText('Kod gönder')));
+    expect(mockAuth.signInWithOtp).not.toHaveBeenCalled();
+    expect(ui.getByText('Devam etmek için koşulları kabul etmelisin.')).toBeTruthy();
+    fireEvent.press(ui.getByTestId('fin-onb-email-consent-accept'));
+    expect(ui.queryByText('Devam etmek için koşulları kabul etmelisin.')).toBeNull();
+
     fireEvent.changeText(ui.getByTestId('fin-onb-email-input'), 'yanlis');
     await act(async () => fireEvent.press(ui.getByText('Kod gönder')));
     expect(mockAuth.signInWithOtp).not.toHaveBeenCalled();
@@ -72,6 +80,7 @@ describe('AccountEmailSheet (FinOnbAccountEmail)', () => {
     mockAuth.verifyEmailOtp.mockResolvedValue({ error: 'invalid' });
     const onVerified = jest.fn();
     const ui = render(<AccountEmailSheet visible onClose={() => {}} onVerified={onVerified} />);
+    fireEvent.press(ui.getByTestId('fin-onb-email-consent-accept'));
     fireEvent.changeText(ui.getByTestId('fin-onb-email-input'), 'ad@ornek.com');
     await act(async () => fireEvent.press(ui.getByText('Kod gönder')));
     fireEvent.changeText(ui.getByTestId('fin-onb-email-code'), '000000');

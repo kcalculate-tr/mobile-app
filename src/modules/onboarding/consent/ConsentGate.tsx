@@ -9,12 +9,12 @@
 //   • mevcut kullanıcı, kayıt yok   → bir kez bilgilendirme sheet'i (notice)
 //   • yeni belge sürümü             → tekrar kabul sheet'i (reconsent)
 // Sunucu (my_consent_status) okunamazsa yalnız cihaz kaydına bakılır (fail-open).
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '../../../core/AuthContext';
 import { useFeature, useFlagsContext } from '../../../core/flags';
 import { getConsent, initFBSDK } from '../../../lib/analytics';
-import { acceptedFromStatus, decideGate, type DocVersions } from '../../../lib/consent/policy';
+import { acceptedFromStatus, decideGate, versionsFromStatus, type DocVersions, type ServerStatus } from '../../../lib/consent/policy';
 import {
   acceptPolicies,
   fetchServerStatus,
@@ -52,6 +52,9 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
   const [adOn, setAdOn] = useState(true);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
+  // Kabulde yazılacak sürüm = kapının gördüğü sunucu sürümü (ayrı okuma başarısız
+  // olursa eski sürüm yazılıp tekrar kabul sheet'i döngüye girmesin).
+  const serverRef = useRef<ServerStatus | null>(null);
 
   useEffect(() => onConsentChange(() => setTick((x) => x + 1)), []);
 
@@ -70,6 +73,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
         await flushPending(uid);
         server = await fetchServerStatus();
       }
+      serverRef.current = server;
       if (cancelled || gateHeld()) return;
       const d = decideGate({ flagsOn, signedIn: !!uid, local, server });
       if (d === 'ready') {
@@ -107,7 +111,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
       onConfirm={async () => {
         setBusy(true);
         try {
-          await acceptPolicies({ source: sheet, adOn });
+          await acceptPolicies({ source: sheet, adOn, versions: versionsFromStatus(serverRef.current) ?? undefined });
           setOpen(false);
         } finally {
           setBusy(false);
