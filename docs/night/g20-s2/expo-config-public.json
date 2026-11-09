@@ -117,6 +117,38 @@
           ]
         },
         {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeAudioData",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherUserContent",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCustomerSupport",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePaymentInfo",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypeTracking": false,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ]
+        },
+        {
           "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePurchaseHistory",
           "NSPrivacyCollectedDataTypeLinked": true,
           "NSPrivacyCollectedDataTypeTracking": true,
@@ -141,7 +173,8 @@
           "NSPrivacyCollectedDataTypeLinked": true,
           "NSPrivacyCollectedDataTypeTracking": true,
           "NSPrivacyCollectedDataTypePurposes": [
-            "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"
+            "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising",
+            "NSPrivacyCollectedDataTypePurposeAnalytics"
           ]
         },
         {
@@ -155,7 +188,7 @@
         },
         {
           "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeCrashData",
-          "NSPrivacyCollectedDataTypeLinked": false,
+          "NSPrivacyCollectedDataTypeLinked": true,
           "NSPrivacyCollectedDataTypeTracking": false,
           "NSPrivacyCollectedDataTypePurposes": [
             "NSPrivacyCollectedDataTypePurposeAppFunctionality"
@@ -163,7 +196,7 @@
         },
         {
           "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePerformanceData",
-          "NSPrivacyCollectedDataTypeLinked": false,
+          "NSPrivacyCollectedDataTypeLinked": true,
           "NSPrivacyCollectedDataTypeTracking": false,
           "NSPrivacyCollectedDataTypePurposes": [
             "NSPrivacyCollectedDataTypePurposeAppFunctionality"
