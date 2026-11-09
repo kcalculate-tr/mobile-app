@@ -147,7 +147,7 @@ test('popover: sağa taşarsa sola kayar (16 pt pay)', () => {
 test('formatPrice: lira işareti yok, sonunda TL, nokta ayracı yok', () => {
   assert.equal(formatPrice(285), '285 TL');
   assert.equal(formatPrice(285.5), '285,50 TL');
-  assert.equal(formatPrice(285.5, { lang: 'en' }), '285.50 TL');
+  assert.equal(formatPrice(285.5, { lang: 'en' }), '285,50 TL'); // G18-S5: tek kaynak money.ts, EN aynı
   assert.equal(formatPrice(1250), '1250 TL');
   assert.equal(formatPrice(150, { sign: true }), '+150 TL');
   assert.equal(formatPrice(-20), '-20 TL');

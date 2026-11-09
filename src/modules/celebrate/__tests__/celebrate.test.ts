@@ -52,19 +52,19 @@ test('pickCelebration: shown haritasi bastirir', () => {
 
 test('celebrateContent: ucu de dogru eslenir', () => {
   const first = celebrateContent('first');
-  assert.equal(first.glass, 'flame');
+  assert.equal(first.glass, 'bowl'); // G18-S5 ORTAK #14: ilk öğün = kase
   assert.equal(first.ringProgress, 1);
   assert.equal(first.big, '1.');
   assert.equal(first.bigSub, 'first');
 
   const s3 = celebrateContent('streak3');
-  assert.equal(s3.glass, 'flame');
+  assert.equal(s3.glass, 'trophy'); // seri = kupa
   assert.equal(s3.ringProgress, 3 / 7);
   assert.equal(s3.big, '3');
   assert.equal(s3.bigSub, 'gun');
 
   const s7 = celebrateContent('streak7');
-  assert.equal(s7.glass, 'flame'); // G15-S2: Final FinCelebStreak7
+  assert.equal(s7.glass, 'trophy'); // G18-S5 ORTAK #14: seri = kupa (Final alev)
   assert.equal(s7.ringProgress, 1);
   assert.equal(s7.big, '7');
   assert.equal(s7.bigSub, 'gun');

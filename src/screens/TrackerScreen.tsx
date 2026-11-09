@@ -48,6 +48,8 @@ import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
+import { WaitlistFormSheet } from '../modules/eatkcal/v2/ui/gate/WaitlistFormSheet'; // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
+import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
 import { buildSlots, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 import { WATER_STEP_ML, useWaterToday, waterTargetMl } from '../modules/gun/water';
 import { HomeExploreStrip } from './tracker/HomeStrips';
@@ -1428,10 +1430,20 @@ export default function TrackerScreen() {
     if (b.target.type === 'post') (navigation as any).navigate('SharedPost', { postId: b.target.postId });
     else openEatkcal();
   };
-  // G18-S2 md.4: İzmir dışı satırlar → S3'ün FinWaitlistAdd / FinWaitlistSuggest sheet'leri.
-  // TEMAS (S5 bağlar): S3 sheet'leri gelene dek eatkcal il kapısı (FinWaitlistR1, aynı iki seçenek).
-  const openWaitlist = (_kind: 'add' | 'suggest') =>
-    yeniSiparis ? (navigation as any).navigate('EkCityGate') : openEatkcal();
+  // G18-S2 md.4: İzmir dışı satırlar → S3'ün FinWaitlistAdd / FinWaitlistSuggest sheet'leri
+  // (G18-S5 bağladı; Ana sayfadan doğrudan form sheet'i — il alanı boş, kullanıcı yazar).
+  const [waitlistKind, setWaitlistKind] = useState<WaitlistKind | null>(null);
+  // G18-S5 temas (S4 FinPush → `Tracker: { finOpenLog }`): seri/hatırlatma dokunuşu Ana sayfayı
+  // açar ve ilgili öğünün yerinde menüsünü (FinMoPopover) bir kez açar; parametre tüketilir.
+  const finOpenLog = (route.params as { finOpenLog?: true | SlotKey } | undefined)?.finOpenLog;
+  const [pushMenuSlot, setPushMenuSlot] = useState<SlotKey | null>(null);
+  useEffect(() => {
+    if (!yeniKabuk || !finOpenLog) return;
+    setPushMenuSlot(finOpenLog === true ? slotFromHour(new Date().getHours()) : finOpenLog);
+    (navigation as any).setParams?.({ finOpenLog: undefined });
+  }, [finOpenLog, yeniKabuk, navigation]);
+  const openWaitlist = (kind: 'add' | 'suggest') =>
+    setWaitlistKind(kind === 'add' ? 'restaurant_add' : 'restaurant_suggest');
   // G18-S2 md.4: bölge (kayıtlı adres → seçilen il → izinli konum); md.3/6b: banner verisi.
   // Bayrak kapalıyken ikisi de hiçbir okuma/istek yapmaz.
   const homeRegion = useHomeRegion(yeniKabuk);
@@ -2513,6 +2525,7 @@ const html = `
                   nowHour={homeHour}
                   emptyContent={<HomeEmptyToday />}
                   initialMenuSlot={__DEV__ ? vitrinParams.vitrinMealMenu ?? null : null}
+                  openMenuSlot={pushMenuSlot}
                   menuCycle={__DEV__ && vitrinParams.vitrinMenuCycle === true}
                 />
                 {/* G14-S1: Final sırası — öğünler → gün halkası şeridi → bugünkü etkinlikler. */}
@@ -2833,6 +2846,21 @@ const html = `
           onClose={() => setShareMeal(null)}
           data={shareMeal?.data ?? null}
           seed={shareMeal?.seed}
+        />
+      ) : null}
+
+      {/* G18-S5 temas: İzmir dışı bölge satırları → FinWaitlistAdd / FinWaitlistSuggest (S3). */}
+      {yeniKabuk ? (
+        <WaitlistFormSheet
+          kind={waitlistKind ?? 'restaurant_add'}
+          visible={waitlistKind != null}
+          city=""
+          country="TR"
+          onClose={() => setWaitlistKind(null)}
+          onPrivacy={() => {
+            setWaitlistKind(null);
+            (navigation as any).navigate('ProfileContracts', { slug: 'kvkk' });
+          }}
         />
       ) : null}
 

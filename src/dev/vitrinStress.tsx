@@ -59,7 +59,7 @@ function Long() {
   return (
     <>
       <Header title="Stres · uzun metin" />
-      <Label>Ürün kartı · 60 karakter ad · ₺12.345,50</Label>
+      <Label>Ürün kartı · 60 karakter ad · 12345,50 TL</Label>
       <View style={styles.row2}>
         <View style={styles.flex}>
           <ProductCard product={p} photoHeight={170} onPress={() => {}} />
@@ -179,7 +179,7 @@ function XL() {
           <View style={[styles.box, { borderColor: t.color.secondary }]} />
           <AppText style={[styles.b15, styles.flex]}>Kullanım Koşulları ve Mesafeli Satış Sözleşmesi’ni okudum, onaylıyorum.</AppText>
         </View>
-        <EkButton label="Siparişi ver · ₺[N]" onPress={() => {}} />
+        <EkButton label="Siparişi ver · [N] TL" onPress={() => {}} />
       </EkCard>
       <Label>Porsiyon sheet'i</Label>
       <PortionSheet />
@@ -217,7 +217,7 @@ function EN() {
         <View style={[styles.box, { borderColor: t.color.secondary }]} />
         <AppText style={[styles.cap, styles.flex]}>I have read and accept the Terms of Use and the Distance Sales Agreement.</AppText>
       </View>
-      <EkButton label="Place order · ₺[N]" onPress={() => {}} />
+      <EkButton label="Place order · [N] TL" onPress={() => {}} />
       <Label>Add address</Label>
       <EkCard>
         <View style={[styles.okBand, { backgroundColor: t.color.accent }]}>

@@ -44,7 +44,7 @@ export function HomeEmptyRing({ hasTarget }: { hasTarget: boolean }) {
       </Svg>
       <View style={styles.ringCore}>
         <Image
-          source={require('../../../../assets/glass/drop.png')}
+          source={require('../../../../assets/glass/flame.png')} // ORTAK #14: Enerji halkası merkezi = alev
           style={hasTarget ? styles.dropBig : styles.dropSmall}
           resizeMode="contain"
         />

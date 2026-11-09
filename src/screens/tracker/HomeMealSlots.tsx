@@ -115,6 +115,8 @@ export interface HomeMealSlotsProps {
   emptyContent?: React.ReactNode;
   /** Vitrin (yalnız __DEV__): bu yuvanın yerinde menüsü açık başlar (FinMoPopover). */
   initialMenuSlot?: SlotKey | null;
+  /** G18-S5 (FinPush hatırlatma/seri dokunuşu → `finOpenLog`): bu öğünün yerinde menüsünü bir kez açar. */
+  openMenuSlot?: SlotKey | null;
   /** Vitrin (yalnız __DEV__): açılan menü 2 sn sonra kapanır (aç/kapa kare dizisi). */
   menuCycle?: boolean;
 }
@@ -154,6 +156,7 @@ export function HomeMealSlots({
   nowHour,
   emptyContent,
   initialMenuSlot = null,
+  openMenuSlot = null,
   menuCycle = false,
 }: HomeMealSlotsProps) {
   const t = useTheme();
@@ -252,7 +255,7 @@ export function HomeMealSlots({
             ))}
             {sl.empty ? (
               <View style={styles.slotEmpty}>
-                <SlotLogPill slot={sl.key} onLog={onLog} onChangeMeal={onChangeMeal} autoOpen={__DEV__ && initialMenuSlot === sl.key} autoCycle={menuCycle} />
+                <SlotLogPill slot={sl.key} onLog={onLog} onChangeMeal={onChangeMeal} autoOpen={(__DEV__ && initialMenuSlot === sl.key) || openMenuSlot === sl.key} autoOpenDelay={openMenuSlot === sl.key ? DURATION.slow : undefined} autoCycle={menuCycle} />
               </View>
             ) : null}
           </View>
@@ -267,12 +270,15 @@ function SlotLogPill({
   onLog,
   onChangeMeal,
   autoOpen = false,
+  autoOpenDelay = 3500,
   autoCycle = false,
 }: {
   slot: SlotKey;
   onLog: (slot: SlotKey, portion?: number) => void;
   onChangeMeal: (slot: SlotKey) => void;
   autoOpen?: boolean;
+  /** Açılış gecikmesi (vitrin 3500 ms kare çekimi; bildirim dokunuşu DURATION.slow). */
+  autoOpenDelay?: number;
   autoCycle?: boolean;
 }) {
   const t = useTheme();
@@ -288,9 +294,9 @@ function SlotLogPill({
     if (!autoOpen) return;
     const id = setTimeout(() => {
       measure().then((r) => r && setAnchor(r));
-    }, 3500);
+    }, autoOpenDelay);
     return () => clearTimeout(id);
-  }, [autoOpen, measure]);
+  }, [autoOpen, autoOpenDelay, measure]);
   const label = tt(`gun.log_to_${meal}`);
   const open = anchor != null;
   return (
