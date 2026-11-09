@@ -356,6 +356,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinErrFailed', 'tara', comp('scanError', { kind: 'failed' })],
   ['FinErrOffline', 'tara', comp('scanError', { kind: 'offline' })],
   ['FinErrLimit', 'tara', comp('scanError', { kind: 'limit' })],
+  // G20-S1 (Final'de pano yok — ek kayıt): Tara geçici kapalı, FinErrLimit diliyle.
+  ['FinErrUnavailable', 'tara', comp('scanError', { kind: 'unavailable' })],
   ['FinScanOffline', 'tara', route([{ name: 'AiScanOffline', params: { vitrinOffline: true } }]), { scene: 'scanOffline' }],
 
   // ── Profil ─────────────────────────────────────────────────────────────────
@@ -364,6 +366,12 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinBadges', 'profil', comp('profileSub', { sub: 'badges' }), inProfileTab('badges')],
   ['FinPrivacy', 'profil', comp('privacySheet')],
   ['FinPrivacySettings', 'profil', comp('profileSub', { sub: 'privacy' }), inProfileTab('privacy')],
+  // G20-S1 (Final'de pano yok — ek kayıt): Profil › Gizlilik › Veri ve reklam izinleri;
+  // rıza sheet'leri (Apple/Google ayrıntı · mevcut kullanıcı bilgilendirme · tekrar kabul).
+  ['FinConsentData', 'profil', comp('profileSub', { sub: 'dataConsent' }), inProfileTab('dataConsent')],
+  ['FinConsentDetails', 'onboarding', comp('consentSheet', { mode: 'details' })],
+  ['FinConsentNotice', 'onboarding', comp('consentSheet', { mode: 'notice' })],
+  ['FinConsentReconsent', 'onboarding', comp('consentSheet', { mode: 'reconsent' })],
   ['FinPrProgress', 'profil', comp('profileSub', { sub: 'progress' }), inProfileTab('progress')],
   ['FinPrMacro', 'profil', comp('profileSub', { sub: 'macro', mock: true })],
   ['FinPrMacroWhat', 'profil', comp('profileSub', { sub: 'macro', what: true, mock: true })],

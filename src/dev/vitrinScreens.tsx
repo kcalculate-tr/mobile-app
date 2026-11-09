@@ -29,6 +29,8 @@ import SettingsPersonalScreen from '../modules/profil/ui/screens/SettingsPersona
 import SettingsNotifyScreen from '../modules/profil/ui/screens/SettingsNotifyScreen';
 import SettingsSecurityScreen from '../modules/profil/ui/screens/SettingsSecurityScreen';
 import SettingsPrivacyScreen from '../modules/profil/ui/screens/SettingsPrivacyScreen';
+import SettingsDataConsentScreen from '../modules/profil/ui/screens/SettingsDataConsentScreen';
+import { ConsentSheet, type ConsentSheetMode } from '../modules/onboarding/consent/ConsentSheet';
 import SettingsAgreementsScreen from '../modules/profil/ui/screens/SettingsAgreementsScreen';
 import SettingsSupportScreen from '../modules/profil/ui/screens/SettingsSupportScreen';
 import SettingsFeedbackScreen from '../modules/profil/ui/screens/SettingsFeedbackScreen';
@@ -187,6 +189,15 @@ const MACRO_MOCK = {
   ],
 };
 
+function ConsentSheetScene({ mode }: { mode: ConsentSheetMode }) {
+  const [adOn, setAdOn] = React.useState(true);
+  return (
+    <Backdrop>
+      <ConsentSheet visible mode={mode} adOn={adOn} onAdChange={setAdOn} onConfirm={noop} onClose={noop} />
+    </Backdrop>
+  );
+}
+
 function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boolean; history?: boolean; mock?: boolean }) {
   switch (sub) {
     case 'personal':
@@ -196,7 +207,9 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
     case 'security':
       return <SettingsSecurityScreen onBack={noop} />;
     case 'privacy':
-      return <SettingsPrivacyScreen onBack={noop} />;
+      return <SettingsPrivacyScreen onBack={noop} onOpenDataConsent={noop} />;
+    case 'dataConsent':
+      return <SettingsDataConsentScreen onBack={noop} />;
     case 'agreements':
       return <SettingsAgreementsScreen onBack={noop} />;
     case 'support':
@@ -510,6 +523,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
     </Backdrop>
   ),
   profileSub: (p) => <ProfileSubScene {...P(p)} />,
+  consentSheet: ({ mode }: { mode?: string }) => <ConsentSheetScene mode={(mode as ConsentSheetMode) ?? 'details'} />,
   privacySheet: () => (
     <Backdrop>
       <PrivacySheet visible isPrivate={false} onClose={noop} onChanged={noop as any} />
