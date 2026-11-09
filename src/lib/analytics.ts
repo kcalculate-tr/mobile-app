@@ -1,10 +1,107 @@
-import { Platform } from 'react-native';
+// G19-S3 — Ölçüm istemcisi (tek giriş: `track(name, props)`).
+//
+//   track() ──► sözlük (metrics/events.ts) ─► beyaz liste + PII süzgeci (sanitize.ts)
+//          ├─► Meta SDK — YALNIZ reklam olayları (sözlükte `meta`), ATT + rıza açıksa
+//          └─► kuyruk (queue.ts) ─► Supabase analytics_events (toplu, çevrimdışı, yeniden deneme)
+//
+// Kimlik: anon_id (cihazda kalıcı) her satırda; giriş yapılmışsa user_id.
+// Girişte `login`/`signup` olayı iki kimliği birlikte taşır → sunucu anon_id
+// ile girişten önceki olayları kullanıcıya bağlar.
+// Oturum: 30 dk sessizlikte yeni session_id (SessionClock).
+// Kaynak: ilk açılışta first_touch; sipariş olaylarına ilk/son dokunma (attribution.ts).
+// Rıza: consent.ts. Meta'ya ASLA: kişisel veri, beslenme verisi, marj/maliyet.
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import { AppEventsLogger, Settings } from 'react-native-fbsdk-next';
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { getSupabaseClient } from '../core/supabase';
+import { EVENTS, eventDef, isClientEvent, type ClientEventName, type PropsOf } from './metrics/events';
+import { sanitizeProps } from './metrics/sanitize';
+import { EventQueue, SessionClock, genId, isRetryableError, type AnalyticsRow } from './metrics/queue';
+import { activeSahaCode, attributionProps, captureTouch, isSahaCode, type Touch } from './metrics/attribution';
+import {
+  AD_CONSENT_KEY,
+  FIRST_PARTY_KEY,
+  fbSettingsFor,
+  metaAllowed,
+  parseAdConsent,
+  parseFirstParty,
+  toAttStatus,
+  type AdConsent,
+  type AttStatus,
+} from './metrics/consent';
 
+export type { ClientEventName, PropsOf } from './metrics/events';
+
+// ── Rıza durumu ───────────────────────────────────────────────────────────
+let att: AttStatus = Platform.OS === 'ios' ? 'undetermined' : 'unavailable';
+let adConsent: AdConsent = 'unset';
+let firstParty = true;
+let consentLoad: Promise<void> | null = null;
+
+const loadConsent = (): Promise<void> => {
+  if (!consentLoad) {
+    consentLoad = (async () => {
+      try {
+        const [a, f] = await Promise.all([AsyncStorage.getItem(AD_CONSENT_KEY), AsyncStorage.getItem(FIRST_PARTY_KEY)]);
+        adConsent = parseAdConsent(a);
+        firstParty = parseFirstParty(f);
+      } catch {
+        /* varsayılanlar */
+      }
+    })();
+  }
+  return consentLoad;
+};
+
+export const getConsent = () => ({ platform: Platform.OS, att, adConsent, firstParty });
+
+const applyFbSettings = (): void => {
+  const s = fbSettingsFor({ platform: Platform.OS, att, adConsent });
+  if (Platform.OS === 'ios') {
+    void Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
+    Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
+  } else if (adConsent === 'denied') {
+    // Android: bugün hiçbir ayar çağrılmıyordu (rıza 'unset' iken aynen kalır).
+    Settings.setAdvertiserIDCollectionEnabled(false);
+    Settings.setAutoLogAppEventsEnabled(false);
+  } else if (adConsent === 'granted') {
+    Settings.setAdvertiserIDCollectionEnabled(true);
+    Settings.setAutoLogAppEventsEnabled(true);
+  }
+};
+
+/** Uygulama içi reklam rızası (ayar ekranı bağlanınca çağrılır; ekran tasarımı bekliyor). */
+export const setAdConsent = async (value: Exclude<AdConsent, 'unset'>): Promise<void> => {
+  adConsent = value;
+  try {
+    await AsyncStorage.setItem(AD_CONSENT_KEY, value);
+  } catch {
+    /* bellekte geçerli */
+  }
+  if (initialized) {
+    try {
+      applyFbSettings();
+    } catch {
+      /* SDK yoksa yut */
+    }
+  }
+};
+
+/** Birinci taraf kullanım ölçümü aç/kapa (KVKK: itiraz hakkı). */
+export const setFirstPartyConsent = async (on: boolean): Promise<void> => {
+  firstParty = on;
+  try {
+    await AsyncStorage.setItem(FIRST_PARTY_KEY, on ? '1' : '0');
+  } catch {
+    /* bellekte geçerli */
+  }
+};
+
+// ── Meta SDK ─────────────────────────────────────────────────────────────
 let initialized = false;
 
 export const initFBSDK = async (): Promise<void> => {
@@ -15,16 +112,21 @@ export const initFBSDK = async (): Promise<void> => {
     // Meta IDFA'yı izin gelmeden okumaya çalışır.
     if (Platform.OS === 'ios') {
       const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
-      const granted = status === 'granted';
-      await Settings.setAdvertiserTrackingEnabled(granted);
-      // IDFA toplama YALNIZCA ATT izni verildiyse açılır. app.config.js'te
-      // advertiserIDCollectionEnabled=false + isAutoInitEnabled=false olduğu
-      // için SDK uygulama açılışında (ATT öncesi) IDFA'yı hiç okumaz; burada
-      // izin alındıktan SONRA, initializeSDK'dan ÖNCE açıkça etkinleştiriyoruz.
-      // Böylece Apple 5.1.2 (ATT öncesi IDFA toplama) ihlali oluşmaz, izin
-      // verenlerde reklam ölçümü eskisi gibi çalışır.
-      Settings.setAdvertiserIDCollectionEnabled(granted);
+      att = toAttStatus(Platform.OS, status);
+      await loadConsent();
+      const s = fbSettingsFor({ platform: Platform.OS, att, adConsent });
+      await Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
+      // IDFA toplama YALNIZCA ATT izni verildiyse (ve uygulama içi reklam rızası
+      // reddedilmediyse) açılır. app.config.js'te advertiserIDCollectionEnabled=false
+      // + isAutoInitEnabled=false olduğu için SDK uygulama açılışında (ATT öncesi)
+      // IDFA'yı hiç okumaz; burada izin alındıktan SONRA, initializeSDK'dan ÖNCE
+      // açıkça etkinleştiriyoruz. Böylece Apple 5.1.2 (ATT öncesi IDFA toplama)
+      // ihlali oluşmaz, izin verenlerde reklam ölçümü eskisi gibi çalışır.
+      Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
       if (__DEV__) console.log('[analytics] ATT status:', status);
+    } else {
+      await loadConsent();
+      applyFbSettings();
     }
     Settings.initializeSDK();
     initialized = true;
@@ -36,82 +138,72 @@ export const initFBSDK = async (): Promise<void> => {
 
 const safeLog = (eventName: string, params: Record<string, string | number>): void => {
   try {
-    if (__DEV__) console.log(`[analytics] event=${eventName}`, params);
+    if (__DEV__) console.log(`[analytics] meta=${eventName}`, params);
     AppEventsLogger.logEvent(eventName, params);
   } catch (err) {
     if (__DEV__) console.warn(`[analytics] logEvent ${eventName} failed:`, err);
   }
 };
 
-export const logEvent = {
-  viewContent: (productId: string, productName: string, price: number): void => {
-    safeLog(AppEventsLogger.AppEvents.ViewedContent, {
-      content_id: productId,
-      content_name: productName,
-      currency: 'TRY',
-      value: price,
-    });
-  },
-
-  addToCart: (productId: string, price: number, quantity: number): void => {
-    safeLog(AppEventsLogger.AppEvents.AddedToCart, {
-      content_id: productId,
-      currency: 'TRY',
-      value: Number((price * quantity).toFixed(2)),
-      num_items: quantity,
-    });
-  },
-
-  initiateCheckout: (totalValue: number, numItems: number): void => {
-    safeLog(AppEventsLogger.AppEvents.InitiatedCheckout, {
-      currency: 'TRY',
-      value: Number(totalValue.toFixed(2)),
-      num_items: numItems,
-    });
-  },
-
-  purchase: (orderId: string, totalValue: number): void => {
-    try {
-      if (__DEV__) {
-        console.log('[analytics] event=Purchase', { orderId, totalValue });
-      }
-      AppEventsLogger.logPurchase(Number(totalValue.toFixed(2)), 'TRY', {
-        order_id: orderId,
-      });
-    } catch (err) {
-      if (__DEV__) console.warn('[analytics] logPurchase failed:', err);
-    }
-  },
-
-  completeRegistration: (method: string): void => {
-    safeLog(AppEventsLogger.AppEvents.CompletedRegistration, {
-      registration_method: method,
-    });
-  },
+const num = (v: unknown): number => {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
 };
 
-// ─── Görev 1.2: analytics_events (tek olay tablosu) ─────────────────────────
-//
-// NOT: Mevcut 5 Meta event'i (yukarıdaki logEvent.*) kasıtlı olarak burada
-// otomatik tetiklenmiyor — çağıranlar hem logEvent.xxx(...) hem track(...) çağırır
-// (bkz. ProductDetailScreen/cartStore/CheckoutScreen/PaymentScreen). Böylece
-// Meta'ya giden veri/parametreler ve çağrı sırası hiç değişmez, çift event riski
-// olmaz. track() yalnızca Supabase'e yazar.
-//
-// Meta'ya ASLA gönderilmeyenler: marj/maliyet (order_financials ayrı, kilitli
-// bir view), telefon, e-posta, beslenme verisi. track() bu alanları zaten hiç
-// almıyor/Meta'ya iletmiyor.
+/**
+ * Meta uyarlayıcısı — parametreler G3 dönemindeki `logEvent.*` ile BİREBİR
+ * (content_id, content_name, currency TRY, value, num_items, order_id,
+ * registration_method). Yalnız sözlükte `meta` alanı olan olaylar buraya gelir.
+ */
+const forwardToMeta = (name: ClientEventName, raw: Record<string, unknown>): void => {
+  const adapter = eventDef(name)?.meta;
+  if (!adapter) return;
+  if (!metaAllowed({ platform: Platform.OS, att, adConsent })) return;
+  switch (adapter) {
+    case 'viewContent':
+      safeLog(AppEventsLogger.AppEvents.ViewedContent, {
+        content_id: String(raw.product_id ?? ''),
+        content_name: String(raw.product_name ?? ''),
+        currency: 'TRY',
+        value: num(raw.price),
+      });
+      return;
+    case 'addToCart': {
+      const quantity = num(raw.quantity);
+      safeLog(AppEventsLogger.AppEvents.AddedToCart, {
+        content_id: String(raw.product_id ?? ''),
+        currency: 'TRY',
+        value: Number((num(raw.price) * quantity).toFixed(2)),
+        num_items: quantity,
+      });
+      return;
+    }
+    case 'initiateCheckout':
+      safeLog(AppEventsLogger.AppEvents.InitiatedCheckout, {
+        currency: 'TRY',
+        value: Number(num(raw.price).toFixed(2)),
+        num_items: num(raw.num_items),
+      });
+      return;
+    case 'purchase':
+      try {
+        if (__DEV__) console.log('[analytics] meta=Purchase', { order_id: raw.order_id, price: raw.price });
+        AppEventsLogger.logPurchase(Number(num(raw.price).toFixed(2)), 'TRY', { order_id: String(raw.order_id ?? '') });
+      } catch (err) {
+        if (__DEV__) console.warn('[analytics] logPurchase failed:', err);
+      }
+      return;
+    case 'completeRegistration':
+      safeLog(AppEventsLogger.AppEvents.CompletedRegistration, {
+        registration_method: String(raw.method ?? 'unknown'),
+      });
+      return;
+  }
+};
 
+// ── Kimlik + kuyruk ──────────────────────────────────────────────────────
 const ANON_ID_KEY = '@kcal_analytics_anon_id';
-const QUEUE_KEY = '@kcal_analytics_queue';
-const MAX_QUEUE_SIZE = 50;
-
-const genId = (): string =>
-  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-
-// Modül yüklendiğinde (soğuk başlangıçta) bir kez üretilir — JS motoru
-// yeniden başlamadıkça (uygulama kapatılıp açılmadıkça) sabit kalır.
-const sessionId = genId();
+const session = new SessionClock();
 let cachedAnonId: string | null = null;
 
 const getAnonId = async (): Promise<string> => {
@@ -127,94 +219,211 @@ const getAnonId = async (): Promise<string> => {
     cachedAnonId = fresh;
     return fresh;
   } catch {
-    return genId();
+    cachedAnonId = cachedAnonId ?? genId();
+    return cachedAnonId;
   }
 };
 
-type AnalyticsRow = {
-  event_name: string;
-  props: Record<string, unknown>;
-  user_id: string | null;
-  anon_id: string;
-  session_id: string;
-  platform: string;
-  app_version: string;
-  created_at: string;
+const currentUserId = async (): Promise<string | null> => {
+  const { data } = await getSupabaseClient().auth.getSession();
+  return data?.session?.user?.id ?? null;
 };
 
-const readQueue = async (): Promise<AnalyticsRow[]> => {
-  try {
-    const raw = await AsyncStorage.getItem(QUEUE_KEY);
-    return raw ? (JSON.parse(raw) as AnalyticsRow[]) : [];
-  } catch {
-    return [];
-  }
-};
+const queue = new EventQueue({
+  storage: AsyncStorage,
+  currentUserId,
+  schedule: (fn, ms) => setTimeout(fn, ms),
+  cancel: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+  send: async (rows: AnalyticsRow[]) => {
+    // insert dönüşü istenmez (returning=minimal): istemcinin SELECT yetkisi yok (D-S1 A5).
+    const { error, status } = await getSupabaseClient().from('analytics_events').insert(rows);
+    if (!error) return { ok: true };
+    if (__DEV__) console.warn('[analytics] flush failed:', error.message);
+    return { ok: false, retryable: isRetryableError({ code: error.code, status, message: error.message }), message: error.message };
+  },
+});
 
-const writeQueue = async (queue: AnalyticsRow[]): Promise<void> => {
-  try {
-    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(-MAX_QUEUE_SIZE)));
-  } catch {
-    /* kuyruk yazılamadıysa event kaybolur — track() zaten best-effort */
-  }
-};
-
-let flushing = false;
-
-// Kuyruktaki (önceki başarısız) event'leri göndermeyi dener. Basit tutuldu:
-// her track() çağrısında bir kez denenir, tekrar başarısız olursa kuyrukta kalır.
-const flushQueue = async (): Promise<void> => {
-  if (flushing) return;
-  flushing = true;
-  try {
-    const queue = await readQueue();
-    if (queue.length === 0) return;
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.from('analytics_events').insert(queue);
-    if (!error) await writeQueue([]);
-  } catch {
-    /* sessizce yut, kuyruk kalıcı kalır */
-  } finally {
-    flushing = false;
-  }
-};
+const appVersion = (): string => Constants.expoConfig?.version ?? '0.0.0';
 
 /**
- * Tek analytics giriş noktası. Supabase `analytics_events` tablosuna yazar;
- * hata uygulamayı bozmaz (sessizce loglanır, kuyruğa alınıp bir sonraki
- * track() çağrısında tekrar denenir). Meta'ya YÖNLENDİRME yapmaz — bkz.
- * yukarıdaki not.
+ * Tek ölçüm giriş noktası. Ad ve prop'lar sözlükle tiplidir; listede olmayan
+ * prop ve kişisel veri gibi görünen değer düşer. Hata uygulamayı bozmaz.
  */
-export const track = (eventName: string, props: Record<string, unknown> = {}): void => {
+export function track<N extends ClientEventName>(name: N, props?: PropsOf<N>): void {
+  const raw = (props ?? {}) as Record<string, unknown>;
+  // Tip dışından (JS, eski çağrı) gelen bilinmeyen/sunucu adı yazılmaz.
+  if (!isClientEvent(name)) {
+    if (__DEV__) console.warn(`[analytics] bilinmeyen/sunucu olayı yok sayıldı: ${String(name)}`);
+    return;
+  }
+  try {
+    forwardToMeta(name, raw);
+  } catch {
+    /* Meta hatası birinci taraf ölçümü engellemez */
+  }
+  const createdAt = new Date().toISOString();
+  const sessionId = session.touch().id;
   void (async () => {
     try {
-      const supabase = getSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const anonId = await getAnonId();
+      await loadConsent();
+      if (!firstParty) return;
+      const def = EVENTS[name] as { attribution?: boolean };
+      const merged = def.attribution ? { ...raw, ...(await attributionProps(AsyncStorage)) } : raw;
       const row: AnalyticsRow = {
-        event_name: eventName,
-        props,
-        user_id: session?.user?.id ?? null,
-        anon_id: anonId,
+        event_name: name,
+        props: sanitizeProps(name, merged),
+        user_id: await currentUserId().catch(() => null),
+        anon_id: await getAnonId(),
         session_id: sessionId,
         platform: Platform.OS,
-        app_version: Constants.expoConfig?.version ?? '0.0.0',
-        created_at: new Date().toISOString(),
+        app_version: appVersion(),
+        created_at: createdAt,
       };
-
-      await flushQueue();
-
-      const { error } = await supabase.from('analytics_events').insert(row);
-      if (error) {
-        if (__DEV__) console.warn(`[analytics] track(${eventName}) failed, queued:`, error.message);
-        const queue = await readQueue();
-        queue.push(row);
-        await writeQueue(queue);
-      } else if (__DEV__) {
-        console.log(`[analytics] track(${eventName})`, props);
-      }
+      await queue.enqueue(row);
+      if (__DEV__) console.log(`[analytics] track(${name})`, row.props);
     } catch (err) {
-      if (__DEV__) console.warn(`[analytics] track(${eventName}) failed:`, err);
+      if (__DEV__) console.warn(`[analytics] track(${name}) failed:`, err);
     }
   })();
+}
+
+// ── Kimlik bağlama (AuthContext SIGNED_IN) ────────────────────────────────
+const SIGNUP_SENT_KEY = '@kcal_analytics_signup_sent';
+const NEW_USER_WINDOW_MS = 10 * 60 * 1000;
+const identified = new Set<string>();
+
+type AuthUserLike = {
+  id: string;
+  created_at?: string;
+  app_metadata?: { provider?: string } | null;
+};
+
+export const signupMethod = (provider: string | undefined): 'apple' | 'google' | 'email' | 'phone' | 'unknown' =>
+  provider === 'apple' || provider === 'google' || provider === 'email' || provider === 'phone' ? provider : 'unknown';
+
+/** Oturum açıldığında bir kez: yeni hesapsa `signup` (Meta: CompletedRegistration), değilse `login`. */
+export const identifyUser = async (user: AuthUserLike | null | undefined, now: number = Date.now()): Promise<void> => {
+  if (!user?.id || identified.has(user.id)) return;
+  identified.add(user.id);
+  const method = signupMethod(user.app_metadata?.provider);
+  const created = user.created_at ? Date.parse(user.created_at) : NaN;
+  const isNew = Number.isFinite(created) && now - created >= 0 && now - created <= NEW_USER_WINDOW_MS;
+  if (isNew) {
+    let sent: string[] = [];
+    try {
+      sent = JSON.parse((await AsyncStorage.getItem(SIGNUP_SENT_KEY)) ?? '[]') as string[];
+    } catch {
+      sent = [];
+    }
+    if (!sent.includes(user.id)) {
+      try {
+        await AsyncStorage.setItem(SIGNUP_SENT_KEY, JSON.stringify([...sent, user.id].slice(-20)));
+      } catch {
+        /* en kötü: aynı cihazda ikinci signup */
+      }
+      await rememberIdentified(user.id);
+      track('signup', { method });
+      return;
+    }
+  }
+  // Oturum geri yüklemesinde (SIGNED_IN tekrar gelebilir) aynı cihaz-kullanıcı
+  // çifti bir kez bağlanır; hesap değişince yeniden `login`.
+  let last: string | null = null;
+  try {
+    last = await AsyncStorage.getItem(IDENTIFIED_KEY);
+  } catch {
+    last = null;
+  }
+  if (last === user.id) return;
+  await rememberIdentified(user.id);
+  track('login', { method });
+};
+
+const IDENTIFIED_KEY = '@kcal_analytics_identified_uid';
+const rememberIdentified = async (uid: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(IDENTIFIED_KEY, uid);
+  } catch {
+    /* en kötü: bir fazla login */
+  }
+};
+
+// ── Kupon / saha kodu ────────────────────────────────────────────────────
+/** validateCoupon sonucu: saha kodu (SAHA… ya da bağlantıdan gelen kod) → saha_code_apply, değilse coupon_apply. */
+export const trackCouponResult = (
+  code: string,
+  result: { valid: boolean; reason?: string; discount_amount?: number },
+): void => {
+  void (async () => {
+    const linkCode = await activeSahaCode(AsyncStorage).catch(() => null);
+    const base = {
+      code,
+      ok: result.valid,
+      reason: result.valid ? undefined : result.reason,
+      discount: result.valid ? result.discount_amount : undefined,
+    };
+    if (isSahaCode(code, linkCode)) {
+      track('saha_code_apply', { ...base, from_link: !!linkCode && code.trim().toUpperCase() === linkCode });
+    } else {
+      track('coupon_apply', base);
+    }
+  })();
+};
+
+// ── Açılış: kaynak yakalama, app_open, arka plan/ağ tetikleyicileri ─────────
+const touchProps = (t: Touch) => ({
+  source: t.source,
+  medium: t.medium,
+  campaign: t.campaign,
+  content: t.content,
+  term: t.term,
+  code: t.code,
+  link: t.link,
+});
+
+let started = false;
+
+/** App.tsx'te bir kez çağrılır; dönen fonksiyon dinleyicileri kaldırır. */
+export const startMetrics = (): (() => void) => {
+  if (started) return () => {};
+  started = true;
+  void loadConsent();
+  void queue.load().then(() => queue.flushNow());
+
+  void (async () => {
+    let initialUrl: string | null = null;
+    try {
+      initialUrl = await Linking.getInitialURL();
+    } catch {
+      initialUrl = null;
+    }
+    const res = await captureTouch(AsyncStorage, initialUrl, { initial: true });
+    track('app_open', { cold: true, first: res.firstOpen });
+    if (res.firstOpen && res.firstTouch) track('first_touch', touchProps(res.firstTouch));
+  })();
+
+  const linkSub = Linking.addEventListener('url', ({ url }) => {
+    void captureTouch(AsyncStorage, url, { initial: false });
+  });
+
+  let lastState: AppStateStatus = AppState.currentState;
+  const appSub = AppState.addEventListener('change', (next) => {
+    if (next === 'background') void queue.flushNow();
+    if (lastState === 'background' && next === 'active') track('app_open', { cold: false });
+    lastState = next;
+  });
+
+  let wasOffline = false;
+  const netUnsub = NetInfo.addEventListener((s) => {
+    const online = s.isConnected !== false && s.isInternetReachable !== false;
+    if (online && wasOffline) void queue.flushNow();
+    wasOffline = !online;
+  });
+
+  return () => {
+    linkSub.remove();
+    appSub.remove();
+    netUnsub();
+    started = false;
+  };
 };

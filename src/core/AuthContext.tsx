@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { Alert, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
+import { identifyUser } from '../lib/analytics';
 import Constants from 'expo-constants';
 import { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -203,6 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(nextSession ?? null);
           setUser(nextSession?.user ?? null);
           setAuthLoading(false);
+          // G19-S3: anon_id ↔ user_id bağlantısı (yeni hesapsa signup, değilse login).
+          if (event === 'SIGNED_IN' && nextSession?.user) void identifyUser(nextSession.user);
 
           // 24.09.2026: adres göstergesi çıkışta temizleniyordu ama girişte
           // DOLDURULMUYORDU. Kayıtlı ve varsayılan adresi olan kullanıcı,

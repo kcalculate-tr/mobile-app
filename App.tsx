@@ -36,7 +36,7 @@ import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
-import { initFBSDK, track } from './src/lib/analytics';
+import { initFBSDK, startMetrics } from './src/lib/analytics';
 
 // G14-S1 — Ekran vitrini (kcal://dev/screen/<Pano>). YALNIZ __DEV__: üretimde
 // `__DEV__` false sabitine katlanır, require dalı ve src/dev paketten DÜŞER
@@ -93,9 +93,9 @@ function AppContent() {
     });
   }, []);
 
-  useEffect(() => {
-    track('app_open');
-  }, []);
+  // G19-S3: ölçüm istemcisi — ilk açılış kaynağı (first_touch), app_open,
+  // arka plana geçişte / ağ geri gelince kuyruk boşaltma.
+  useEffect(() => startMetrics(), []);
 
   useEffect(() => {
     if (!session) return;
