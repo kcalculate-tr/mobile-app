@@ -30,7 +30,7 @@ module.exports = {
     version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
-    userInterfaceStyle: 'light',
+    userInterfaceStyle: 'automatic',
     scheme: 'kcal',
     jsEngine: 'hermes',
     // İzin metinleri varsayılan (TR) infoPlist/plugin seçeneklerinde; EN cihazlar
@@ -51,7 +51,7 @@ module.exports = {
       supportsTablet: false,
       bundleIdentifier: 'com.kcalmobile.app',
       buildNumber: '1',
-      userInterfaceStyle: 'light',
+      userInterfaceStyle: 'automatic',
       // DERİN BAĞLANTI (G5-S4, G20-S2) — Universal Links. l.eatkcal.com'daki
       // .well-known/apple-app-site-association bu bundle'a
       // (A63MT69ASR.com.kcalmobile.app) /p/* (gönderi), /u/* (profil),
@@ -253,7 +253,7 @@ module.exports = {
     android: {
       package: 'com.kcalmobile.app',
       versionCode: 10,
-      userInterfaceStyle: 'light',
+      userInterfaceStyle: 'automatic',
       adaptiveIcon: {
         backgroundColor: '#000000',
         foregroundImage: './assets/adaptive-icon-foreground.png',

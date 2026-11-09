@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Text, TextInput } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { PortalProvider } from '@gorhom/portal';
 import ErrorBoundary from 'react-native-error-boundary';
 import * as SplashScreen from 'expo-splash-screen';
@@ -19,6 +18,7 @@ SplashScreen.preventAutoHideAsync();
 import { AuthProvider, useAuth } from './src/core/AuthContext';
 import { bricolageFonts } from './src/core/design/fonts';
 import { FlagsProvider } from './src/core/flags';
+import { AppSchemeGate } from './src/core/design/SchemeGate';
 import { I18nProvider } from './src/core/i18n';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
 import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
@@ -189,6 +189,8 @@ function App() {
                 içinde. BU OTURUMDA hiçbir ekran useFeature kullanmaz; provider
                 yalnız arka planda değer çözer, canlı davranış değişmez. */}
             <FlagsProvider>
+              {/* G21-S1 md.3: yeni kabuk telefon temasını izler; eski kabuk açık (parite). */}
+              <AppSchemeGate>
               {VitrinGate ? (
                 <VitrinGate>
                   <NavigationContainer ref={navigationRef} theme={navDarkTheme} linking={linking}>
@@ -200,18 +202,16 @@ function App() {
                   <AppContent />
                 </NavigationContainer>
               )}
+              </AppSchemeGate>
             </FlagsProvider>
           </AuthProvider>
           {/* Global "Kapat" barı — her iki platformda. Klavye yüksekliğini takip
               eden absolute JS overlay (native InputAccessoryView Fabric'te render
               olmadığı için kanıtlanmış çalışan yola dönüldü). Tüm ekranları kapsar. */}
           <KeyboardToolbar />
-          {/* Uygulamanin zemini acik (#f6f6f6 / beyaz). "light" = BEYAZ ikon
-              demek; saat, pil ve wifi acik zeminde kayboluyordu. Varsayilan
-              artik "dark". Koyu zeminli ekranlar (BackgroundLayer kullanan
-              auth/onboarding ekranlari ve MacroScreen) kendi StatusBar'larini
-              "light" olarak tanimliyor. */}
-          <StatusBar style="dark" />
+          {/* Kök durum çubuğu G21-S1 md.3'ten beri AppSchemeGate içinde: eski kabukta
+              bugünkü gibi "dark" (açık zeminde koyu ikon), yeni kabukta temaya göre
+              ("auto"). Koyu zeminli ekranlar kendi StatusBar'larını tanımlamaya devam eder. */}
           </I18nProvider>
         </PortalProvider>
       </SafeAreaProvider>
