@@ -1,27 +1,38 @@
-// FinTopBlock — G15-S2: FinHomeR3 / FinHomeEmptyR1 / FinHomeEN / FinHomeXL üst
-// blok (yeni kabuk). Yalnız TrackerDayHeader (bayrak `yeni_kabuk` açık) çizer.
+// FinTopBlock — G18-S2 md.1 (Tur 26): FinHomeR3 varyant (a) "Gün çekirdeği" üst blok
+// (yeni kabuk). Yalnız TrackerDayHeader (bayrak `yeni_kabuk` açık) çizer.
 //
-//  • 3 sütun halka (pano ring()): Enerji 92/10 (açıkta #4A6B00, koyuda lime),
-//    Protein 64/7 (mürekkep), Su 64/7 (ikincil; yalnız `su_takibi` + hedef
-//    varsa). Halka içinde yüzde (TR "%50", EN "50%"), altında etiket, sayı
-//    (Bricolage 700 24/17), birim.
-//  • Gün boşken: Enerji "Bugünkü hedefin · 2.180 · kcal" + lime 56'lık
-//    "İlk öğününü logla" (Bricolage 17).
-//  • Makro çipleri: 3 sütun, 44'lük halka (iç dolgu + kontur 3 + yüzde), ad +
-//    "82 / 140 g"; altında çizgi.
-//  • Su halkasına dokun → +250 ml (hızlı ekleme; TrackerScreen geri al toast'ı).
-import React from 'react';
+//  • Hero (pano `section ringRegion`): 152'lik Gün halkası (r70, kontur 12; iz
+//    #E3E5E9/#2C2C2E, dolgu #4A6B00/lime), merkezde soyut cam form = ALEV (G18-ORTAK
+//    #14; Final'de damla) 64×86; hedef yoksa iz kesikli (4 8), alev 44×59 + "Hedef
+//    belirlenmedi". Sağda: Enerji · sayı (Bricolage 700/28) · birim; Protein ve Su
+//    satırları (13 pt, değer 600, 4 pt çubuk). Aralık 20.
+//  • FinMoFocus (a): girişte alev −8°→0° + ölçek 0.96→1, opaklık ilk %30'da 0→1,
+//    900 ms enter (köken %50 %62). Kayıtta halka eski değerden yeniye 500 ms
+//    standard dolar; çekirdek kıpırdamaz. Boşta döngü YOK. Ekran odaktan çıkınca
+//    giriş son karesine atlar (geri gelince baştan oynamaz). Azaltılmış: 200 ms
+//    opaklık, dönme/ölçek yok; halka geçişsiz atlar. Giriş uygulama oturumu
+//    başına bir kez (sekme dönüşünde tekrar etmez).
+//  • Gün boşken (FinHomeEmptyR1): hero altında S1'in "İlk öğününü ekle" kartı.
+//  • Profil kartı yuvası (S1) → makro çipleri (44'lük halka, "%59", ad + "82 / 140 g").
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
-import Animated from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
+import Animated, {
+  cancelAnimation,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 
-import { AppText, ProgressRing, useTheme, haptic } from '../../core/design';
+import { AppText, useTheme, haptic, CURVE, DURATION, REDUCED, useReducedMotion } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { TrophyIcon } from '../../components/icons';
 import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
 import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
-import { HomeOnboardingSlot, useOrientTarget } from '../../modules/onboarding/first'; // G18-S1 temas: profil kartı yuvası + Orient3 hedefi
+import { HomeFirstMealCard, HomeOnboardingSlot, useOrientTarget } from '../../modules/onboarding/first'; // G18-S1: profil kartı yuvası, ilk öğün kartı, Orient3 hedefi
 
 export { pctLabel };
 
@@ -33,102 +44,163 @@ export function finTokens(isDark: boolean) {
 }
 
 const BRICOLAGE_BOLD = 'BricolageGrotesque_700Bold';
-const BRICOLAGE_SEMI = 'BricolageGrotesque_600SemiBold';
+const FLAME = require('../../../assets/glass/flame.png');
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const SCAN_D =
-  'M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8 M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8 M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16 M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16 M16.92 11.13A5 5 0 1 1 13.71 7.3A2.6 2.6 0 0 0 16.92 11.13Z';
+const RING = 152;
+const R = 70;
+const CIRC = 2 * Math.PI * R;
 
-function StatusRing({
-  big,
-  progress,
-  color,
-  pct,
+// Uygulama oturumu başına bir kez (FinMoFocus: "bir kez oynar ve son karede durur").
+let focusPlayed = false;
+/** Yalnız test: giriş oynatma durumunu sıfırlar. */
+export function __resetFocusPlayed(): void {
+  focusPlayed = false;
+}
+
+function useFocusEntry() {
+  const reduced = useReducedMotion();
+  const op = useSharedValue(focusPlayed ? 1 : 0);
+  const rot = useSharedValue(focusPlayed || reduced ? 0 : -8);
+  const sc = useSharedValue(focusPlayed || reduced ? 1 : 0.96);
+  useEffect(() => {
+    if (focusPlayed) return;
+    focusPlayed = true;
+    if (reduced) {
+      op.value = withTiming(1, { duration: REDUCED.duration });
+      return;
+    }
+    // Opaklık ilk %30'da (270 ms) dolar; dönme + ölçek 900 ms enter.
+    op.value = withTiming(1, { duration: Math.round(DURATION.story * 0.3), easing: CURVE.enter });
+    rot.value = withTiming(0, { duration: DURATION.story, easing: CURVE.enter });
+    sc.value = withTiming(1, { duration: DURATION.story, easing: CURVE.enter });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Ekran dışı: animasyon son karesine atlar.
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        cancelAnimation(op);
+        cancelAnimation(rot);
+        cancelAnimation(sc);
+        op.value = 1;
+        rot.value = 0;
+        sc.value = 1;
+      },
+      [op, rot, sc],
+    ),
+  );
+  return useAnimatedStyle(() => ({
+    opacity: op.value,
+    transform: [{ rotate: `${rot.value}deg` }, { scale: sc.value }],
+  }));
+}
+
+function HeroRing({ progress, hasTarget, color, track }: { progress: number; hasTarget: boolean; color: string; track: string }) {
+  const reduced = useReducedMotion();
+  const p = useSharedValue(progress);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      p.value = progress;
+      return;
+    }
+    p.value = reduced ? progress : withTiming(progress, { duration: DURATION.slow, easing: CURVE.standard });
+  }, [progress, reduced, p]);
+  const arc = useAnimatedProps(() => ({
+    strokeDashoffset: CIRC * (1 - Math.min(Math.max(p.value, 0), 1)),
+    strokeOpacity: p.value > 0 ? 1 : 0,
+  }));
+  return (
+    <Svg width={RING} height={RING} viewBox="0 0 152 152" style={StyleSheet.absoluteFill}>
+      <Circle cx={76} cy={76} r={R} fill="none" stroke={track} strokeWidth={12} strokeDasharray={hasTarget ? undefined : '4 8'} />
+      {hasTarget ? (
+        <AnimatedCircle
+          cx={76}
+          cy={76}
+          r={R}
+          fill="none"
+          stroke={color}
+          strokeWidth={12}
+          strokeLinecap="round"
+          strokeDasharray={`${CIRC} ${CIRC}`}
+          animatedProps={arc}
+          transform="rotate(-90 76 76)"
+        />
+      ) : null}
+    </Svg>
+  );
+}
+
+function StatRow({
+  name,
   label,
-  num,
-  numNode,
-  unit,
+  bar,
   onPress,
   accessibilityLabel,
-  animStyle,
-  targetProps,
 }: {
-  big?: boolean;
-  progress: number;
-  color: string;
-  pct: string;
+  name: string;
   label: string;
-  num?: string;
-  numNode?: React.ReactNode;
-  unit: string;
+  bar: number | null;
   onPress?: () => void;
-  accessibilityLabel: string;
-  animStyle?: object;
-  targetProps?: object; // G18-S1 temas
+  accessibilityLabel?: string;
 }) {
   const t = useTheme();
   const k = finTokens(t.isDark);
-  const size = big ? 92 : 64;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      accessibilityRole={onPress ? 'button' : 'text'}
-      accessibilityLabel={accessibilityLabel}
-      style={styles.ringCol}
-      {...targetProps}
-    >
-      <Animated.View style={animStyle}>
-        <ProgressRing progress={Math.min(progress, 1)} size={size} strokeWidth={big ? 10 : 7} color={color} trackColor={k.track}>
-          <AppText style={[styles.ringPct, { fontSize: big ? 15 : 13 }]} numberOfLines={1}>
-            {pct}
-          </AppText>
-        </ProgressRing>
-      </Animated.View>
-      <View style={styles.ringText}>
-        <AppText style={[styles.ringLabel, { color: k.sec }]} numberOfLines={1}>
+  const body = (
+    <>
+      <View style={styles.statHead}>
+        <AppText style={[styles.statName, { color: k.sec }]} numberOfLines={1}>
+          {name}
+        </AppText>
+        <AppText style={styles.statVal} numberOfLines={1}>
           {label}
         </AppText>
-        {numNode ?? (
-          <AppText style={[styles.ringNum, { fontSize: big ? 24 : 17, lineHeight: big ? 28 : 21 }]} numberOfLines={1}>
-            {num}
-          </AppText>
-        )}
-        <AppText style={[styles.ringUnit, { color: k.sec }]} numberOfLines={1}>
-          {unit}
-        </AppText>
       </View>
+      {bar != null ? (
+        <View style={[styles.statTrack, { backgroundColor: k.track }]}>
+          <View style={[styles.statFill, { width: `${Math.round(Math.min(Math.max(bar, 0), 1) * 100)}%`, backgroundColor: t.color.ink }]} />
+        </View>
+      ) : null}
+    </>
+  );
+  if (!onPress) return <View style={styles.stat}>{body}</View>;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={styles.stat}>
+      {body}
     </Pressable>
   );
 }
 
-function MacroChip({ label, value, target, lang }: { label: string; value: number; target: number; lang: string }) {
+function MacroChip({ label, value, target, hasTarget, lang }: { label: string; value: number; target: number; hasTarget: boolean; lang: string }) {
   const t = useTheme();
   const k = finTokens(t.isDark);
-  const p = target > 0 ? value / target : 0;
-  const r = 20;
+  const p = hasTarget && target > 0 ? value / target : 0;
+  const r = 22;
   const c = 2 * Math.PI * r;
   return (
     <View style={styles.chip}>
       <View style={styles.chipRing}>
-        <Svg width={44} height={44} viewBox="0 0 44 44" style={StyleSheet.absoluteFill}>
-          <Circle cx={22} cy={22} r={r} fill={k.nested} />
-          <Circle cx={22} cy={22} r={r} fill="none" stroke={k.track} strokeWidth={3} />
+        <Svg width={44} height={44} viewBox="0 0 48 48" style={StyleSheet.absoluteFill}>
+          <Circle cx={24} cy={24} r={r} fill={k.nested} />
+          <Circle cx={24} cy={24} r={r} fill="none" stroke={k.track} strokeWidth={3} />
           {p > 0 ? (
             <Circle
-              cx={22}
-              cy={22}
+              cx={24}
+              cy={24}
               r={r}
               fill="none"
               stroke={t.color.ink}
               strokeWidth={3}
               strokeLinecap="round"
               strokeDasharray={`${Math.min(p, 1) * c} ${c}`}
-              transform="rotate(-90 22 22)"
+              transform="rotate(-90 24 24)"
             />
           ) : null}
         </Svg>
         <AppText style={styles.chipPct} numberOfLines={1} maxFontSizeMultiplier={1}>
-          {pctLabel(p, lang)}
+          {hasTarget ? pctLabel(p, lang) : '—'}
         </AppText>
       </View>
       <View style={styles.chipText}>
@@ -136,7 +208,7 @@ function MacroChip({ label, value, target, lang }: { label: string; value: numbe
           {label}
         </AppText>
         <AppText style={styles.chipVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-          {`${Math.round(value)} / ${Math.round(target)} g`}
+          {hasTarget ? `${Math.round(value)} / ${Math.round(target)} g` : `${Math.round(value)} g`}
         </AppText>
       </View>
     </View>
@@ -150,10 +222,15 @@ export interface FinTopBlockProps {
   macroTargets: { protein: number; carbs: number; fat: number };
   water?: { ml: number | null; targetMl: number } | null;
   onWaterAdd?: () => void;
+  /** Gün boşken "İlk öğününü ekle" → Tara. */
   onFirstLog?: () => void;
+  /** Gün boşken "İlk öğününü ekle" → Elle gir (verilmezse onFirstLog). */
+  onFirstManual?: () => void;
   onOpenMacros?: () => void;
   popStyle?: object;
   streak?: number;
+  /** Kullanıcının kayıtlı hedefi var mı (yoksa "Hedef belirlenmedi"). Varsayılan true. */
+  hasTarget?: boolean;
 }
 
 export function FinTopBlock({
@@ -164,108 +241,122 @@ export function FinTopBlock({
   water,
   onWaterAdd,
   onFirstLog,
+  onFirstManual,
   onOpenMacros,
   popStyle,
   streak = 0,
+  hasTarget = true,
 }: FinTopBlockProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
   const k = finTokens(t.isDark);
   const numLang = (lang === 'en' ? 'en' : 'tr') as NumLang;
   const empty = kcal <= 0 && macros.protein <= 0 && macros.carbs <= 0 && macros.fat <= 0;
-  const over = !empty && target > 0 && kcal > target;
-  const p = target > 0 ? kcal / target : 0;
+  const over = hasTarget && !empty && target > 0 && kcal > target;
+  const p = hasTarget && target > 0 ? kcal / target : 0;
   const group = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, numLang === 'tr' ? '.' : ',');
+  const coreStyle = useFocusEntry();
 
   const orientRing = useOrientTarget('ring', { ready: !empty }); // G18-S1 temas: Orient3 (ilk kayıttan sonra)
-  const energyLabel = empty ? tt('gun.target_today') : tt('gun.status_energy');
-  const energyUnit = empty ? 'kcal' : over ? tt('gun.kcal_over') : tt('gun.kcal_left');
-  const energyNum = empty ? group(target) : over ? `+${group(kcal - target)}` : null;
-  const pP = macroTargets.protein > 0 ? macros.protein / macroTargets.protein : 0;
+  const energyUnit = !hasTarget
+    ? tt('home.kcal_today')
+    : empty
+      ? tt('home.kcal_goal_today')
+      : over
+        ? tt('gun.kcal_over')
+        : tt('gun.kcal_left');
+  const energyNum = !hasTarget ? group(Math.max(0, kcal)) : empty ? group(target) : over ? `+${group(kcal - target)}` : null;
+  const left = Math.max(0, Math.round(target - kcal));
   const wMl = water?.ml ?? 0;
-  const pW = water && water.targetMl > 0 ? wMl / water.targetMl : 0;
+  const ringA11y = !hasTarget
+    ? tt('home.ring_a11y_nogoal', { num: energyNum ?? '', unit: energyUnit })
+    : tt('home.ring_a11y', { num: energyNum ?? group(left), unit: energyUnit, pct: Math.round(Math.min(p, 9.99) * 100) });
 
   return (
     <View style={styles.block}>
-      <View style={styles.ringGrid}>
-        <StatusRing
-          big
-          progress={p}
-          color={k.limeLine}
-          pct={pctLabel(p, lang)}
-          label={energyLabel}
-          num={energyNum ?? undefined}
-          numNode={
-            energyNum == null ? (
+      <View style={styles.hero} accessibilityLabel={tt('home.ring_region')}>
+        <Pressable
+          onPress={onOpenMacros}
+          disabled={!onOpenMacros}
+          accessibilityRole={onOpenMacros ? 'button' : 'image'}
+          accessibilityLabel={ringA11y}
+          style={styles.ringBox}
+          testID="home-hero-ring"
+          {...orientRing}
+        >
+          <Animated.View style={[StyleSheet.absoluteFill, popStyle]}>
+            <HeroRing progress={Math.min(p, 1)} hasTarget={hasTarget} color={k.limeLine} track={k.track} />
+            <View style={styles.core} pointerEvents="none">
+              <Animated.Image
+                source={FLAME}
+                resizeMode="contain"
+                style={[hasTarget ? styles.flameBig : styles.flameSmall, styles.flameOrigin, coreStyle]}
+                testID="home-hero-flame"
+              />
+              {!hasTarget ? (
+                <AppText style={[styles.noGoal, { color: k.sec }]} numberOfLines={2}>
+                  {tt('home.no_goal')}
+                </AppText>
+              ) : null}
+            </View>
+          </Animated.View>
+        </Pressable>
+        <View style={styles.side}>
+          <View>
+            <AppText style={[styles.small, { color: k.sec }]}>{tt('gun.status_energy')}</AppText>
+            {energyNum != null ? (
+              <AppText style={styles.num} numberOfLines={1}>
+                {energyNum}
+              </AppText>
+            ) : (
               <RollingNumber
-                value={Math.max(0, Math.round(target - kcal))}
+                value={left}
                 lang={numLang}
-                fontSize={24}
+                fontSize={28}
+                fontFamily={BRICOLAGE_BOLD}
+                slotRatio={0.56}
                 color={t.color.ink}
                 accessibilityLabel={tt('gun.goal_kcal', { kcal, target })}
               />
-            ) : undefined
-          }
-          unit={energyUnit}
-          onPress={onOpenMacros}
-          accessibilityLabel={`${energyLabel}: ${energyNum ?? group(Math.max(0, target - kcal))} ${energyUnit}`}
-          animStyle={popStyle}
-          targetProps={orientRing}
-        />
-        <StatusRing
-          progress={pP}
-          color={t.color.ink}
-          pct={pctLabel(pP, lang)}
-          label={tt('gun.macro_protein')}
-          num={String(Math.round(macros.protein))}
-          unit={`/ ${Math.round(macroTargets.protein)} g`}
-          onPress={onOpenMacros}
-          accessibilityLabel={`${tt('gun.macro_protein')}: ${Math.round(macros.protein)} / ${Math.round(macroTargets.protein)} g`}
-        />
-        {water ? (
-          <StatusRing
-            progress={pW}
-            color={k.sec}
-            pct={pctLabel(pW, lang)}
-            label={tt('gun.macro_water')}
-            num={formatLiters(wMl, numLang)}
-            unit={`/ ${formatLiters(water.targetMl, numLang)} L`}
-            onPress={
-              onWaterAdd
-                ? () => {
-                    haptic('light');
-                    onWaterAdd();
-                  }
-                : undefined
-            }
-            accessibilityLabel={tt('gun.water_a11y', {
-              ml: formatLiters(wMl, numLang),
-              target: formatLiters(water.targetMl, numLang),
-              step: WATER_STEP_ML,
-            })}
+            )}
+            <AppText style={[styles.small, { color: k.sec }]} numberOfLines={1}>
+              {energyUnit}
+            </AppText>
+          </View>
+          <StatRow
+            name={tt('gun.macro_protein')}
+            label={hasTarget ? `${Math.round(macros.protein)} / ${Math.round(macroTargets.protein)} g` : `${Math.round(macros.protein)} g`}
+            bar={hasTarget && macroTargets.protein > 0 ? macros.protein / macroTargets.protein : null}
           />
-        ) : (
-          <View style={styles.ringCol} />
-        )}
+          {water ? (
+            <StatRow
+              name={tt('gun.macro_water')}
+              label={
+                hasTarget
+                  ? `${formatLiters(wMl, numLang)} / ${formatLiters(water.targetMl, numLang)} L`
+                  : `${formatLiters(wMl, numLang)} L`
+              }
+              bar={hasTarget && water.targetMl > 0 ? wMl / water.targetMl : null}
+              onPress={
+                onWaterAdd
+                  ? () => {
+                      haptic('light');
+                      onWaterAdd();
+                    }
+                  : undefined
+              }
+              accessibilityLabel={tt('gun.water_a11y', {
+                ml: formatLiters(wMl, numLang),
+                target: formatLiters(water.targetMl, numLang),
+                step: WATER_STEP_ML,
+              })}
+            />
+          ) : null}
+        </View>
       </View>
 
-      {empty && onFirstLog ? (
-        <Pressable
-          onPress={() => {
-            haptic('light');
-            onFirstLog();
-          }}
-          accessibilityRole="button"
-          style={[styles.firstCta, { backgroundColor: t.color.accent }]}
-        >
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Path d={SCAN_D} stroke={t.color.onAccent} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-          <AppText tone="onAccent" style={styles.firstCtaText} numberOfLines={1}>
-            {tt('gun.first_meal_cta')}
-          </AppText>
-        </Pressable>
-      ) : null}
+      {/* FinHomeEmptyR1: gün boşken hero altında "İlk öğününü ekle" (S1 bileşeni). */}
+      {empty && onFirstLog ? <HomeFirstMealCard onScan={onFirstLog} onManual={onFirstManual ?? onFirstLog} /> : null}
 
       {/* G18-S1 temas — FinHomeProfileCard / FinHomeEmptyR1: kart hero (+ İlk öğün) ile makro satırı arasında. */}
       <HomeOnboardingSlot />
@@ -277,9 +368,9 @@ export function FinTopBlock({
         accessibilityLabel={tt('gun.macros')}
         style={[styles.chipRow, { borderBottomColor: t.color.line }]}
       >
-        <MacroChip label={tt('gun.macro_protein')} value={macros.protein} target={macroTargets.protein} lang={lang} />
-        <MacroChip label={tt('gun.macro_carbs')} value={macros.carbs} target={macroTargets.carbs} lang={lang} />
-        <MacroChip label={tt('gun.macro_fat')} value={macros.fat} target={macroTargets.fat} lang={lang} />
+        <MacroChip label={tt('gun.macro_protein')} value={macros.protein} target={macroTargets.protein} hasTarget={hasTarget} lang={lang} />
+        <MacroChip label={tt('gun.macro_carbs')} value={macros.carbs} target={macroTargets.carbs} hasTarget={hasTarget} lang={lang} />
+        <MacroChip label={tt('gun.macro_fat')} value={macros.fat} target={macroTargets.fat} hasTarget={hasTarget} lang={lang} />
       </Pressable>
 
       {streak > 0 ? (
@@ -295,32 +386,30 @@ export function FinTopBlock({
 }
 
 const styles = StyleSheet.create({
-  block: { paddingTop: 12 },
-  ringGrid: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 4, gap: 8, alignItems: 'flex-start' },
-  ringCol: { flex: 1, minWidth: 0, alignItems: 'center', gap: 8 },
-  ringPct: { fontWeight: '600' },
-  ringText: { alignItems: 'center', minWidth: 0, alignSelf: 'stretch' },
-  ringLabel: { fontSize: 13, lineHeight: 17 },
-  ringNum: { fontFamily: BRICOLAGE_BOLD },
-  ringUnit: { fontSize: 13, lineHeight: 16 },
-  firstCta: {
-    marginTop: 8,
-    marginHorizontal: 16,
-    height: 56,
-    borderRadius: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  firstCtaText: { fontFamily: BRICOLAGE_SEMI, fontSize: 17 },
+  block: {},
+  hero: { paddingTop: 12, paddingHorizontal: 16, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', gap: 20 },
+  ringBox: { width: RING, height: RING },
+  core: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  flameBig: { width: 64, height: 86 },
+  flameSmall: { width: 44, height: 59 },
+  flameOrigin: { transformOrigin: ['50%', '62%', 0] },
+  noGoal: { maxWidth: 100, textAlign: 'center', fontSize: 13, lineHeight: 16, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  side: { flex: 1, minWidth: 0, gap: 12 },
+  small: { fontSize: 13, lineHeight: 17 },
+  num: { fontFamily: BRICOLAGE_BOLD, fontSize: 28, lineHeight: 31 },
+  stat: { gap: 4 },
+  statHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  statName: { fontSize: 13, lineHeight: 17, flexShrink: 1 },
+  statVal: { fontSize: 13, lineHeight: 17, fontFamily: 'PlusJakartaSans_600SemiBold' },
+  statTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  statFill: { height: 4, borderRadius: 2 },
   chipRow: {
     marginTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 16,
     flexDirection: 'row',
     gap: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
   },
   chip: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
   chipRing: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

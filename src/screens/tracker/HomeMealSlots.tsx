@@ -48,6 +48,8 @@ import {
   type SlotKey,
 } from '../../modules/gun/homeData';
 import type { HighlightPhase } from '../../modules/gun/homeHighlight';
+import { MealMenuPopover, useAnchorMeasure } from '../../modules/gun/home/MealMenuPopover';
+import type { Rect } from '../../modules/gun/home/popoverGeometry';
 
 // FinHomeR3 yuva ikonları (pano SVG yolları, 24×24, stroke 1.75).
 const SLOT_ICON: Record<SlotKey, string> = {
@@ -92,9 +94,9 @@ export interface HomeMealSlotsProps {
   images?: Record<string, string>;
   /** Vurgulanan kayıt + evresi (FinMoLogB). */
   highlight?: { id: string; phase: HighlightPhase } | null;
-  /** "…'e logla" (pill'in tamamı). */
-  onLog: (slot: SlotKey) => void;
-  /** ⌄ — öğünü değiştir / elle gir. */
+  /** "…'e logla" (hapın ana yarısı): seçili öğün + yerinde menüdeki porsiyon. */
+  onLog: (slot: SlotKey, portion?: number) => void;
+  /** Uzun basış — elle giriş (⌄ artık yerinde menü, FinMoPopover). */
   onChangeMeal: (slot: SlotKey) => void;
   onRemove: (item: HomeMealItem) => void;
   onPortion?: (item: HomeMealItem, factor: number) => void;
@@ -109,6 +111,12 @@ export interface HomeMealSlotsProps {
   pendingSlot?: SlotKey | null;
   /** Saat (0–23) — boş gün hapının yuvası. Verilmezse yerel saat. */
   nowHour?: number;
+  /** G18-S2 md.5: gün boşken "Bugün" başlığının altı (FinHomeEmptyR1 — S1 HomeEmptyToday). */
+  emptyContent?: React.ReactNode;
+  /** Vitrin (yalnız __DEV__): bu yuvanın yerinde menüsü açık başlar (FinMoPopover). */
+  initialMenuSlot?: SlotKey | null;
+  /** Vitrin (yalnız __DEV__): açılan menü 2 sn sonra kapanır (aç/kapa kare dizisi). */
+  menuCycle?: boolean;
 }
 
 /** FinMoLogA "goo" damlası: r11 baş + r6 kuyruk (pano: #4A6B00, koyuda lime). */
@@ -144,6 +152,9 @@ export function HomeMealSlots({
   initialOpenAuto = false,
   pendingSlot = null,
   nowHour,
+  emptyContent,
+  initialMenuSlot = null,
+  menuCycle = false,
 }: HomeMealSlotsProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -181,7 +192,9 @@ export function HomeMealSlots({
         </AppText>
       </View>
 
-      {allEmpty ? (
+      {allEmpty && emptyContent ? (
+        emptyContent
+      ) : allEmpty ? (
         <View style={[styles.emptyBox, { borderTopColor: t.color.line }]}>
           <View style={styles.emptyGlass}>
             <GlassObject name="drop" size={104} />
@@ -239,7 +252,7 @@ export function HomeMealSlots({
             ))}
             {sl.empty ? (
               <View style={styles.slotEmpty}>
-                <SlotLogPill slot={sl.key} onLog={onLog} onChangeMeal={onChangeMeal} />
+                <SlotLogPill slot={sl.key} onLog={onLog} onChangeMeal={onChangeMeal} autoOpen={__DEV__ && initialMenuSlot === sl.key} autoCycle={menuCycle} />
               </View>
             ) : null}
           </View>
@@ -253,24 +266,43 @@ function SlotLogPill({
   slot,
   onLog,
   onChangeMeal,
+  autoOpen = false,
+  autoCycle = false,
 }: {
   slot: SlotKey;
-  onLog: (slot: SlotKey) => void;
+  onLog: (slot: SlotKey, portion?: number) => void;
   onChangeMeal: (slot: SlotKey) => void;
+  autoOpen?: boolean;
+  autoCycle?: boolean;
 }) {
   const t = useTheme();
   const { t: tt } = useT();
-  const label = tt(`gun.log_to_${slot}`);
+  // G18-S2 md.2 (FinMoPopover): ⌄ yerinde menü açar (öğün + porsiyon); seçilen öğün
+  // etiketi günceller, ana yarı o öğüne + porsiyonla loglar. Uzun basış = elle giriş (korundu).
+  const [meal, setMeal] = useState<SlotKey>(slot);
+  const [portion, setPortion] = useState(1);
+  const [anchor, setAnchor] = useState<Rect | null>(null);
+  const { ref, measure } = useAnchorMeasure();
+  useEffect(() => setMeal(slot), [slot]);
+  useEffect(() => {
+    if (!autoOpen) return;
+    const id = setTimeout(() => {
+      measure().then((r) => r && setAnchor(r));
+    }, 3500);
+    return () => clearTimeout(id);
+  }, [autoOpen, measure]);
+  const label = tt(`gun.log_to_${meal}`);
+  const open = anchor != null;
   return (
-    <View style={[styles.pill, { backgroundColor: t.color.accent }]}>
+    <View ref={ref} collapsable={false} style={[styles.pill, { backgroundColor: t.color.accent }]}>
       <Pressable
         onPress={() => {
           haptic('light');
-          onLog(slot);
+          onLog(meal, portion);
         }}
         onLongPress={() => {
           haptic('selection');
-          onChangeMeal(slot);
+          onChangeMeal(meal);
         }}
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -283,16 +315,29 @@ function SlotLogPill({
       </Pressable>
       <View style={styles.pillDivider} />
       <Pressable
-        onPress={() => {
+        onPress={async () => {
           haptic('selection');
-          onChangeMeal(slot);
+          if (open) return;
+          const r = await measure();
+          if (r) setAnchor(r);
         }}
         accessibilityRole="button"
-        accessibilityLabel={tt('gun.change_meal', { meal: tt(`meal.${slot}`) })}
+        accessibilityLabel={tt('gun.change_meal', { meal: tt(`meal.${meal}`) })}
+        accessibilityState={{ expanded: open }}
         style={styles.pillCaret}
+        testID={`log-pill-caret-${slot}`}
       >
         <CaretDown size={16} color={t.color.onAccent} weight="bold" />
       </Pressable>
+      <MealMenuPopover
+        anchor={anchor}
+        meal={meal}
+        portion={portion}
+        onPickMeal={setMeal}
+        onPickPortion={setPortion}
+        onClosed={() => setAnchor(null)}
+        autoCloseMs={autoOpen && __DEV__ && autoCycle ? 2000 : undefined}
+      />
     </View>
   );
 }

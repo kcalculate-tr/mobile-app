@@ -84,6 +84,11 @@ const ENTRIES: Record<string, string[]> = {
   'onboarding (Final)': ['modules/onboarding/OnboardingNavigator.tsx', 'modules/onboarding/takibe/TakibeNavigator.tsx'].map((p) => path.join(SRC, p)),
   'profil Fin*': list('modules/profil/ui/screens', /\/Fin[A-Z]/),
   'kesfet Final': list('modules/kesfet/ui', /\/(Fin[A-Z]|FeedCard|Composer|Comments|Notifications)/),
+  // G18-S2 — Ana sayfa Tur 26 (banner, bölge, yerinde öğün menüsü, etkinlikler) + Final üst blok/yuvalar.
+  'ana sayfa Tur 26': [
+    ...list('modules/gun/home'),
+    ...['screens/tracker/FinTopBlock.tsx', 'screens/tracker/HomeMealSlots.tsx', 'screens/tracker/HomeStrips.tsx'].map((p) => path.join(SRC, p)),
+  ],
   celebrate: list('modules/celebrate'),
   shell: list('modules/shell'),
 };

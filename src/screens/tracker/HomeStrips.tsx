@@ -1,6 +1,6 @@
 // HomeStrips — FinHomeR3 alt bölümleri (yeni kabuk, G15-S2 m.2):
 //  • eatkcal yatay şeridi: başlık "eatkcal" + teslim süresi (seçili adresin
-//    bölgesinden, varsa) + "Tümü"; 248×160 foto kartlar, ad, "kcal · ₺fiyat".
+//    bölgesinden, varsa) + "Tümü"; 248×160 foto kartlar, ad, "kcal, <fiyat> TL".
 //  • Keşfet video şeridi: başlık "Keşfet" + "Tümü"; 3 sütun 9:16 kare, oynat
 //    rozeti, başlık (gönderi metninin ilk satırı).
 //
@@ -20,6 +20,7 @@ import { getEffectivePrice } from '../../utils/price';
 import { getKesfetClient, type FeedPost } from '../../modules/kesfet';
 import { useDeliveryChip } from '../../modules/eatkcal/v2/ui/home/useDeliveryChip';
 import type { Product } from '../../types';
+import { formatPrice } from '../../utils/formatPrice';
 
 export interface HomeDish {
   id: string;
@@ -128,7 +129,7 @@ export function HomeEatkcalStrip({ onAll, onOpen }: { onAll: () => void; onOpen:
       <SectionHead title="eatkcal" sub={sub} onAll={onAll} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishRow}>
         {dishes.map((d) => {
-          const meta = [d.kcal != null ? tt('gun.item_kcal', { kcal: nf(d.kcal) }) : null, d.price != null ? `₺${nf(Math.round(d.price))}` : null]
+          const meta = [d.kcal != null ? tt('gun.item_kcal', { kcal: nf(d.kcal) }) : null, d.price != null ? formatPrice(d.price, { lang: lang === 'en' ? 'en' : 'tr' }) : null]
             .filter(Boolean)
             .join(', ');
           return (
@@ -211,9 +212,10 @@ const styles = StyleSheet.create({
   dishPhoto: { height: 160, borderRadius: 20, overflow: 'hidden' },
   dishText: { paddingHorizontal: 4 },
   dishName: { fontSize: 15, fontWeight: '600' },
-  grid: { flexDirection: 'row', gap: 2 },
+  // G18-S2 (FinHomeR3 Tur 26d): 3 sütun, aralık 8, kenar 16, köşe 14; başlık 13/600, 2 satır (36).
+  grid: { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
   cell: { flex: 1, minWidth: 0, gap: 6 },
-  video: { aspectRatio: 9 / 16, overflow: 'hidden' },
+  video: { aspectRatio: 9 / 16, overflow: 'hidden', borderRadius: 14 },
   play: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  videoTitle: { paddingHorizontal: 8, fontSize: 13, lineHeight: 17, fontWeight: '500' },
+  videoTitle: { height: 36, fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_600SemiBold' },
 });

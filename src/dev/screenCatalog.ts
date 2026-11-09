@@ -225,6 +225,11 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinHomeLogBefore', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinPending: 'dinner' })), { scene: 'meals' }],
   ['FinHomeLogFlow', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinPending: 'dinner' })), { scene: 'meals' }],
   ['FinHomeLogMerged', 'ana', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
+  // G18-S2 — Tur 26c/26d: bölge hâlleri (pano kaydırma 1580), boş hâl EN, XL EN.
+  ['FinHomeIzmir', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1580 })), { scene: 'izmir' }],
+  ['FinHomeOutside', 'ana', route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1580 })), { scene: 'outside' }],
+  ['FinHomeEmptyR1EN', 'ana', route(tab('Tracker', { vitrinHour: 9, vitrinProfileCard: true })), { data: 'empty', lang: 'en' }],
+  ['FinHomeXLEN', 'ana', route(tab('Tracker', HOME_VITRIN)), { textSize: 'accessibility-extra-large', lang: 'en', scene: 'meals' }],
 
   // ── Keşfet ─────────────────────────────────────────────────────────────────
   // G15-S3: Keşfet sahneleri Final örnek içeriğiyle (vitrinKesfet.ts). `vitrin*` rota
@@ -418,6 +423,15 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinMoLogA', 'hareket', route(tab('Tracker')), { scene: 'meals' }],
   ['FinMoLogB', 'hareket', route(tab('Tracker')), { scene: 'meals' }],
   ['FinMoRing', 'hareket', route(tab('Tracker')), { scene: 'meals' }],
+  // G18-S2 — Ana sayfa odak (a), yerinde öğün menüsü, öne çıkanlar banner'ı.
+  ['FinMoFocus', 'hareket', route(tab('Tracker', HOME_VITRIN)), { scene: 'meals' }],
+  // Pano: Akşam boş yuvasının hapı görünür alanda, menü yukarı açık (kaydırma 980).
+  ['FinMoPopover', 'hareket', route(tab('Tracker', { ...HOME_VITRIN, vitrinMealMenu: 'dinner', vitrinScroll: 980 })), { scene: 'meals' }],
+  // Kare dizisi: aç (3,5 sn) → 2 sn açık → kapan (200 ms). `FinMoPopover~2` adıyla çağrılır.
+  ['FinMoPopoverCycle', 'hareket', route(tab('Tracker', { ...HOME_VITRIN, vitrinMealMenu: 'dinner', vitrinScroll: 980, vitrinMenuCycle: true })), { scene: 'meals' }],
+  // Pano: kullanıcı kaydırmış, 2. kart (Keşfet'te öne çıkan) etkin.
+  ['FinMoBanner', 'hareket', route(tab('Tracker', { ...HOME_VITRIN, vitrinBanner: 1 })), { scene: 'meals' }],
+  ['FinMoBannerEN', 'hareket', route(tab('Tracker', { ...HOME_VITRIN, vitrinBanner: 1 })), { scene: 'meals', lang: 'en' }],
   ['FinMoStreak', 'hareket', comp('celebrate', { kind: 'streak3' })],
   // G17-S2: canlı Tara → otomatik deklanşör → FinMoScan analiz katmanı → sonuç sheet'i.
   ['FinMoScan', 'hareket', route([...tab('Tracker'), { name: 'AiScan' }]), { scene: 'autoShutter' }],

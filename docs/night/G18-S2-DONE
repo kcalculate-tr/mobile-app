@@ -1,0 +1,6 @@
+G18-S2 tamam — night18/home
+LOG: docs/night/G18-S2-LOG.md (ölçülmüş karşılaştırma tablosu: 20 bölge σ1,5-SSIM 0,83–0,97, negatif kontrol 0,44–0,71; kare dizileri)
+Ana sayfa odak (a) + FinMoFocus · FinMoPopover yerinde öğün menüsü · Öne çıkanlar banner · bölge hâlleri (İzmir / dışı) · Bugünkü etkinlikler
+Eski tasarım: 0 · tsc 0 · unit 667/668 (1 skip önceden) · jest 172/172, snapshot 2/2 · export iOS 9,6 MB + Android 9,6 MB ✓ · bayrak kapalı = 1.0.7
+SORULAR: 5 (LOG sonunda)
+Son kod: 4a6183d

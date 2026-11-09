@@ -78,7 +78,7 @@ function summary(empty: boolean): any[] {
 }
 
 // G18-S1: profileCard (FinHomeProfileCard) + orient3 (ilk kayıttan sonra Gün halkası) öğünlü Ana sayfa.
-const HOME_SCENES = new Set(['meals', 'delivered', 'activity', 'streak', 'scanOffline', 'intro', 'introOrder', 'longNames', 'profileCard', 'orient3']);
+const HOME_SCENES = new Set(['meals', 'izmir', 'outside', 'delivered', 'activity', 'streak', 'scanOffline', 'intro', 'introOrder', 'longNames', 'profileCard', 'orient3']);
 
 /** Oturumlu her sahne: kimlik satırı + hedef özeti (Profil başlığı, Hedefim). */
 function identityRoutes(entry: ResolvedEntry): MockRoute[] {

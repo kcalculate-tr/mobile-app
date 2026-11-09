@@ -209,6 +209,81 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
             { id: 'post-3', title: 'Etiket Dedektifi: light', thumb: null },
           ],
   });
+  // G18-S2 — Ana sayfa Tur 26: öne çıkanlar banner'ı, bölge (İzmir / dışı), Keşfet kapakları.
+  // Örnek içerik = Final panosunun örneği (yalnız vitrin; üretimde gerçek kaynaklar).
+  {
+    const { Image: RNImage } = require('react-native');
+    const ph = (m: number) => RNImage.resolveAssetSource(m)?.uri ?? null;
+    const P = {
+      mercimek: ph(require('./assets/ph-mercimek.jpg')),
+      kinoa: ph(require('./assets/ph-tavuk-kinoa.jpg')),
+      coban: ph(require('./assets/ph-coban.jpg')),
+      yogurt: ph(require('./assets/ph-yogurt.jpg')),
+      menemen: ph(require('./assets/ph-menemen.jpg')),
+      somon: ph(require('./assets/ph-somon.jpg')),
+    };
+    const { setHomeBannerProvider } = require('../modules/gun/home/HomeBanner');
+    const { setHomeRegionProvider } = require('../modules/gun/home/HomeRegion');
+    const { setHomeRegionOverride } = require('../modules/gun/home/useHomeRegion');
+    const en = entry.lang === 'en';
+    const vp = (id: string, extra: Record<string, unknown>) => ({
+      id,
+      author: { id: 'u-ed', display_name: en ? 'Editor’s pick' : 'Editör seçimi', handle: 'kcal', avatar_url: null, role: 'kurum', verified: true },
+      published_at: new Date().toISOString(),
+      lang: en ? 'en' : 'tr',
+      body: '',
+      media: [],
+      meal_card: null,
+      quote: null,
+      thread: null,
+      stats: { likes: 0, saves: 0, adds: 0, comments: 0, did_it: 0 },
+      me: {},
+      post_type: 'serbest',
+      status: 'published',
+      activity_card: null,
+      ...extra,
+    });
+    setHomeBannerProvider({
+      posts: async () => [
+        vp('post-recipe', {
+          post_type: 'ogun',
+          stats: { likes: 9, saves: 0, adds: 0, comments: 0, did_it: 0 },
+          media: [{ url: P.mercimek, width: 1, height: 1, kind: 'image' }],
+          meal_card: { name: en ? 'Red lentil soup' : 'Mercimek çorbası', kcal: 220, protein_g: 12, carbs_g: 30, fat_g: 5, portion_label: '1' },
+        }),
+        vp('post-featured', {
+          body: en ? 'Chicken quinoa bowl' : 'Tavuk kinoa bowl',
+          stats: { likes: 8, saves: 0, adds: 0, comments: 0, did_it: 0 },
+          media: [{ url: P.kinoa, width: 1, height: 1, kind: 'image' }],
+        }),
+      ],
+      campaign: async () => ({ id: 'v-camp', title: en ? '[Campaign title]' : '[Kampanya başlığı]', subtitle: null, image: P.coban, link: null }),
+    });
+    setHomeRegionProvider({
+      eta: '30–55 dk',
+      products: async () => [
+        { id: 9001, name: en ? 'Grilled Salmon Bowl' : 'Izgara Somon Bowl', price: 285, img: P.somon, calories: 520, protein: 42, order: 1, is_available: true },
+      ],
+    });
+    setHomeRegionOverride(scene === 'outside' ? 'other' : 'izmir');
+    setHomeStripsProvider({
+      eta: '30–55 dk',
+      city: 'İzmir',
+      dishes: async () => [],
+      videos: async (lang: string) =>
+        lang === 'en'
+          ? [
+              { id: 'post-1', title: 'Menemen, X-rayed', thumb: P.menemen },
+              { id: 'post-2', title: 'Calorie Court: Shepherd’s salad', thumb: P.coban },
+              { id: 'post-3', title: 'Label Detective: strained yogurt', thumb: P.yogurt },
+            ]
+          : [
+              { id: 'post-1', title: 'Menemenin röntgeni', thumb: P.menemen },
+              { id: 'post-2', title: 'Kalori Mahkemesi: Çoban salata', thumb: P.coban },
+              { id: 'post-3', title: 'Etiket Dedektifi: süzme yoğurt', thumb: P.yogurt },
+            ],
+    });
+  }
   // G15-S3 — rota parametrelerindeki `__vitrinPhoto:<ad>` işaretlerini dev görsel URI'sine çevir.
   const base = routes ?? (entry.target.kind === 'route' ? entry.target.routes : null);
   if (base && JSON.stringify(base).includes('__vitrinPhoto:')) routes = resolveVitrinPhotos(base);
