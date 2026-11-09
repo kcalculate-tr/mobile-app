@@ -1,6 +1,6 @@
 // G18-S1 md.1 — FinOpen + FinMoOpen: ilk açılış imzası (yalnız ilk kullanım).
 //
-// Tabak → cam kase → Enerji halkası dolar → lime nokta "kcal." logosuna oturur →
+// Tabak → cam kase → Enerji halkası dolar, kase halka merkezinde ALEVE döner (Tur 26f) → lime nokta "kcal." logosuna oturur →
 // katman Karşılama'ya erir. Toplam 2300 ms = enter 900 → standard 500 → exit 900.
 // Eğriler kanonik FinMoTokens (SON_HAL İstisna 2: FinOpen'daki yerel eğriler
 // CURVE.enter/standard/exit'e çevrildi). Haptik/ses yok. Boşta döngü yok.
@@ -75,6 +75,8 @@ export function OpenSignature({
   const trackO = useSharedValue(0);
   const bowlO = useSharedValue(0);
   const bowlS = useSharedValue(0.9);
+  const flameO = useSharedValue(0);
+  const flameS = useSharedValue(0.85);
   const arc = useSharedValue(0);
   const arcO = useSharedValue(0);
   const spin = useSharedValue(0);
@@ -85,7 +87,7 @@ export function OpenSignature({
   const wordO = useSharedValue(0);
   const wordY = useSharedValue(6);
   const all: SharedValue<number>[] = [
-    cover, layer, plateO, plateS, trackO, bowlO, bowlS, arc, arcO, spin, dotO, groupO, groupS, travel, wordO, wordY,
+    cover, layer, plateO, plateS, trackO, bowlO, bowlS, flameO, flameS, arc, arcO, spin, dotO, groupO, groupS, travel, wordO, wordY,
   ];
 
   const finish = () => {
@@ -150,8 +152,17 @@ export function OpenSignature({
       withTiming(1.04, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter }),
     );
     trackO.value = withTiming(1, { duration: T.plateIn, easing: CURVE.enter });
-    bowlO.value = withDelay(T.plateIn, withTiming(1, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter }));
-    bowlS.value = withDelay(T.plateIn, withTiming(1, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter }));
+    bowlO.value = withSequence(
+      withDelay(T.plateIn, withTiming(1, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter })),
+      withTiming(0, { duration: T.flameIn - T.enterEnd, easing: CURVE.standard }),
+    );
+    bowlS.value = withSequence(
+      withDelay(T.plateIn, withTiming(1, { duration: T.enterEnd - T.plateIn, easing: CURVE.enter })),
+      withTiming(0.8, { duration: T.flameIn - T.enterEnd, easing: CURVE.standard }),
+    );
+    // Tur 26f: kase → halka merkezinde alev (1150–1400 enter).
+    flameO.value = withDelay(T.flameIn, withTiming(1, { duration: T.ringEnd - T.flameIn, easing: CURVE.enter }));
+    flameS.value = withDelay(T.flameIn, withTiming(1, { duration: T.ringEnd - T.flameIn, easing: CURVE.enter }));
     // 2 · 900–1400 standard: Enerji halkası dolar, nokta halkanın ucunda döner.
     arcO.value = withDelay(T.enterEnd, withTiming(1, { duration: T.dotIn, easing: CURVE.standard }));
     arc.value = withDelay(T.enterEnd, withTiming(1, { duration: T.ringEnd - T.enterEnd, easing: CURVE.standard }));
@@ -192,8 +203,12 @@ export function OpenSignature({
     plateO.value = ms < T.plateIn ? en(a) : 1 - en(b);
     plateS.value = ms < T.plateIn ? 0.92 + 0.08 * en(a) : 1 + 0.04 * en(b);
     trackO.value = en(a);
-    bowlO.value = en(b);
-    bowlS.value = 0.9 + 0.1 * en(b);
+    const bf = k(T.enterEnd, T.flameIn);
+    const fi = k(T.flameIn, T.ringEnd);
+    bowlO.value = ms < T.enterEnd ? en(b) : 1 - st(bf);
+    bowlS.value = ms < T.enterEnd ? 0.9 + 0.1 * en(b) : 1 - 0.2 * st(bf);
+    flameO.value = en(fi);
+    flameS.value = 0.85 + 0.15 * en(fi);
     arcO.value = ms >= T.enterEnd ? 1 : 0;
     arc.value = st(k(T.enterEnd, T.ringEnd));
     spin.value = st(k(T.enterEnd, T.ringEnd));
@@ -228,6 +243,7 @@ export function OpenSignature({
   const plateStyle = useAnimatedStyle(() => ({ opacity: plateO.value, transform: [{ scale: plateS.value }] }));
   const trackStyle = useAnimatedStyle(() => ({ opacity: trackO.value }));
   const bowlStyle = useAnimatedStyle(() => ({ opacity: bowlO.value, transform: [{ scale: bowlS.value }] }));
+  const flameStyle = useAnimatedStyle(() => ({ opacity: flameO.value, transform: [{ scale: flameS.value }] }));
   const arcProps = useAnimatedProps(() => ({
     strokeDashoffset: CIRC * (1 - arc.value),
     strokeOpacity: arcO.value,
@@ -317,6 +333,13 @@ export function OpenSignature({
             style={[styles.abs, { left: cx - 100 * s, top: cy - 74 * s, width: 200 * s, height: 149 * s }, bowlStyle]}
           >
             <Image source={require('../../../../assets/glass/bowl.png')} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+          </Animated.View>
+          {/* Tur 26f: halka merkezinde cam alev (kaseden devralır). */}
+          <Animated.View
+            testID="fin-open-flame"
+            style={[styles.abs, { left: cx - 48 * s, top: cy - 59 * s, width: 96 * s, height: 118 * s }, flameStyle]}
+          >
+            <Image source={require('../../../../assets/glass/flame.png')} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
           </Animated.View>
         </Animated.View>
       ) : null}

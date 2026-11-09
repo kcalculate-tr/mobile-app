@@ -168,6 +168,11 @@ export const OPEN_T = {
   enterEnd: 900,
   /** 900–1400 Enerji halkası 0→%100, nokta halka ucunda (standard). */
   ringEnd: 1400,
+  /**
+   * G21-S1 md.1 (Tur 26f): halka dolarken kase halka merkezindeki ALEVE döner —
+   * 900–1150 kase söner (standard), 1150–1400 alev belirir (enter).
+   */
+  flameIn: 1150,
   /** 900–1000 nokta belirir. */
   dotIn: 100,
   /** 1400–1900 kase+halka 0.6'ya küçülüp söner, nokta logoya gider (exit 500). */

@@ -208,7 +208,8 @@ export function HomeMealSlots({
       ) : allEmpty ? (
         <View style={[styles.emptyBox, { borderTopColor: t.color.line }]}>
           <View style={styles.emptyGlass}>
-            <GlassObject name="drop" size={104} />
+            {/* G21-S1 md.1 (Tur 26f): FinHomeXL boş gün damla → kase. */}
+            <GlassObject name="bowl" size={104} />
           </View>
           <AppText style={styles.emptyTitle}>{tt('gun.empty_today_title')}</AppText>
           <AppText variant="caption" tone="secondary">

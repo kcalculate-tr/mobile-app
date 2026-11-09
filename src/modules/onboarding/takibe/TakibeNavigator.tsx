@@ -64,12 +64,14 @@ function nowYear(): number {
 }
 
 // Final cam nesne konumları (393 tasarım koordinatı).
-const GLASS: Record<'trophy' | 'flame' | 'drop' | 'foot' | 'bowl', OnbGlass> = {
+const GLASS: Record<'trophy' | 'flame' | 'drop' | 'foot' | 'bowl' | 'flameAbout', OnbGlass> = {
   trophy: { source: require('../../../../assets/glass/trophy.png'), x: 127, y: 112, w: 139, h: 120 },
   flame: { source: require('../../../../assets/glass/flame.png'), x: 236, y: 104, w: 106, h: 130 },
   drop: { source: require('../../../../assets/glass/drop.png'), x: 286, y: 104, w: 68, h: 92 },
   foot: { source: require('../../../../assets/glass/foot.png'), x: 248, y: 102, w: 77, h: 128 },
   bowl: { source: require('../../../../assets/glass/bowl.png'), x: 126, y: 128, w: 140, h: 104 },
+  // G21-S1 md.1 (Tur 26f): FinTbAbout damla → alev (damla yuvasının merkezinde, alev oranı).
+  flameAbout: { source: require('../../../../assets/glass/flame.png'), x: 282, y: 101, w: 76, h: 93 },
 };
 
 const TB_STEPS = 6;
@@ -221,7 +223,7 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
       step={2}
       cardTop={168}
       cardPad={[30, 18, 18]}
-      glass={GLASS.drop}
+      glass={GLASS.flameAbout}
       onBack={() => navigation.goBack()}
       onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
       scroll

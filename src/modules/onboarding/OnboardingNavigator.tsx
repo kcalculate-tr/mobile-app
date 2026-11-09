@@ -70,6 +70,10 @@ const GLASS = {
   foot: { source: require('../../../assets/glass/foot.png'), x: 230, y: 118, w: 72, h: 120 },
   drop: { source: require('../../../assets/glass/drop.png'), x: 148, y: 120, w: 96, h: 130 },
   flame: { source: require('../../../assets/glass/flame.png'), x: 127, y: 140, w: 138, h: 170 },
+  // G21-S1 md.1 (Tur 26f): FinOnbAccount damla → kase (damla yuvasında, kase oranı);
+  // FinOnbNotify alev → kupa (alev yuvasının merkezinde, kupa oranı).
+  bowlAccount: { source: require('../../../assets/glass/bowl.png'), x: 126, y: 133, w: 140, h: 104 },
+  trophyNotify: { source: require('../../../assets/glass/trophy.png'), x: 121, y: 160, w: 151, h: 130 },
 };
 
 // ── Karşılama ─────────────────────────────────────────────────────────────────
@@ -229,7 +233,7 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const link = { color: P.ink, textDecorationLine: 'underline' as const };
   return (
     <OnbScaffold
-      glass={GLASS.drop}
+      glass={GLASS.bowlAccount}
       cardTop={262}
       onBack={() => navigation.goBack()}
       dots={{ count: 2, index: 1 }}
@@ -313,7 +317,7 @@ function NotifyScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbN
 
   return (
     <OnbScaffold
-      glass={GLASS.flame}
+      glass={GLASS.trophyNotify}
       cardTop={400}
       onBack={() => navigation.goBack()}
       dots={{ count: 3, index: 2 }}
