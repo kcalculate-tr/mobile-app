@@ -32,7 +32,8 @@ import { BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
-import type { ScanEstimate, ScanIngredient } from '../types';
+import type { ScanEstimate } from '../types';
+import { computeAdjusted, manualRow, productRow, rowKcal, rowsFromEstimate, type AdjustRow } from '../adjust';
 import { getKesfetClient, type ProductSearchItem } from '../../../kesfet';
 import { useOrientTarget } from '../../../onboarding/first/orient/useOrientTarget'; // G18-S1 temas: Orient2
 import { MealMenuPopover } from '../../../gun/home/MealMenuPopover'; // G18-S5 temas (md.8): S2 FinMoPopover
@@ -44,16 +45,7 @@ const SCAN_D =
   'M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8 M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8 M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16 M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16 M16.92 11.13A5 5 0 1 1 13.71 7.3A2.6 2.6 0 0 0 16.92 11.13Z';
 const BARS_D = 'M4 6h16 M4 12h10 M4 18h6';
 
-type Row = {
-  name: string;
-  baseGrams: number;
-  baseKcal: number | null;
-  grams: number;
-  portion: number;
-  removed: boolean;
-  /** Eksik besin (ürün araması): 100 g başına makro → kesin makro katkısı. */
-  per100?: { kcal: number; p: number; c: number; f: number };
-};
+type Row = AdjustRow;
 
 function tokens(isDark: boolean) {
   return isDark
@@ -78,12 +70,6 @@ function useSheetEnter() {
           transform: [{ translateY: interpolate(v.value, [0, 1], [SHEET_ENTER_SHIFT, 0]) }],
         },
   );
-}
-
-function rowKcal(r: Row): number {
-  if (r.per100) return (r.per100.kcal * r.grams) / 100;
-  if (r.baseKcal == null || r.baseGrams <= 0) return 0;
-  return (r.baseKcal * r.grams) / r.baseGrams;
 }
 
 import { ScanNoteRow } from './ScanNote';
@@ -156,47 +142,11 @@ export default function FinPhotoResult({
   // G17-S2 md.2: sonuç sheet'i AI 260/24 yayıyla yerleşir; azaltılmışta 200 ms opaklık.
   const sheetIn = useSheetEnter();
 
-  const [rows, setRows] = useState<Row[]>(() =>
-    estimate.ingredients.map((ing: ScanIngredient) => ({
-      name: ing.name,
-      baseGrams: ing.grams,
-      baseKcal: ing.kcal ?? null,
-      grams: ing.grams,
-      portion: 1,
-      removed: false,
-    })),
-  );
+  const [rows, setRows] = useState<Row[]>(() => rowsFromEstimate(estimate));
 
-  const baseKcalSum = useMemo(
-    () => estimate.ingredients.reduce((s, i) => s + (i.kcal ?? 0), 0),
-    [estimate.ingredients],
-  );
-
-  const adjusted = useMemo(() => {
-    const scanned = rows.filter((r) => !r.removed && !r.per100);
-    const extra = rows.filter((r) => !r.removed && r.per100);
-    const scannedKcal = scanned.reduce((s, r) => s + rowKcal(r), 0);
-    const scale = baseKcalSum > 0 ? scannedKcal / baseKcalSum : 1;
-    const ex = extra.reduce(
-      (a, r) => ({
-        kcal: a.kcal + rowKcal(r),
-        p: a.p + ((r.per100?.p ?? 0) * r.grams) / 100,
-        c: a.c + ((r.per100?.c ?? 0) * r.grams) / 100,
-        f: a.f + ((r.per100?.f ?? 0) * r.grams) / 100,
-      }),
-      { kcal: 0, p: 0, c: 0, f: 0 },
-    );
-    return {
-      ...estimate,
-      kcal: Math.max(0, Math.round(estimate.kcal * scale + ex.kcal)),
-      protein_g: Math.max(0, Math.round(estimate.protein_g * scale + ex.p)),
-      carbs_g: Math.max(0, Math.round(estimate.carbs_g * scale + ex.c)),
-      fat_g: Math.max(0, Math.round(estimate.fat_g * scale + ex.f)),
-      ingredients: rows
-        .filter((r) => !r.removed)
-        .map((r) => ({ name: r.name, grams: Math.round(r.grams), kcal: Math.round(rowKcal(r)) })),
-    };
-  }, [rows, baseKcalSum, estimate]);
+  // G19-S1 md.3: tek hesap (adjust.ts) — öğe başına makro, gram, porsiyon, silme,
+  // eksik besin (arama/elle). Hiç öğe yoksa menüdeki porsiyon bütün tabağa uygulanır.
+  const adjusted = useMemo(() => computeAdjusted(estimate, rows, platePortion), [rows, estimate, platePortion]);
 
   const slot = mealType === 'breakfast' || mealType === 'lunch' || mealType === 'dinner' ? mealType : 'snack';
   const cycleMeal = () => {
@@ -561,20 +511,9 @@ export default function FinPhotoResult({
       <MissingFoodSheet
         visible={adding}
         onClose={() => setAdding(false)}
-        onPick={(p) => {
+        onPick={(row) => {
           setAdding(false);
-          setRows((prev) => [
-            ...prev,
-            {
-              name: p.name,
-              baseGrams: 100,
-              baseKcal: p.kcal,
-              grams: 100,
-              portion: 1,
-              removed: false,
-              per100: { kcal: p.kcal, p: p.protein_g, c: p.carbs_g, f: p.fat_g },
-            },
-          ]);
+          setRows((prev) => [...prev, row]);
         }}
       />
     </View>
@@ -609,7 +548,10 @@ function ActionBtn({
   );
 }
 
-/** "Eksik besin ekle" — mevcut ürün araması (search_products, salt okuma). */
+/**
+ * "Eksik besin ekle" — mevcut ürün araması (search_products, salt okuma) +
+ * G19-S1 md.3: ELLE ekleme (ad = arama metni, kcal zorunlu, gram isteğe bağlı).
+ */
 function MissingFoodSheet({
   visible,
   onClose,
@@ -617,7 +559,7 @@ function MissingFoodSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  onPick: (p: ProductSearchItem) => void;
+  onPick: (row: AdjustRow) => void;
 }) {
   const t = useTheme();
   const k = tokens(t.isDark);
@@ -626,23 +568,56 @@ function MissingFoodSheet({
   const [q, setQ] = useState('');
   const [items, setItems] = useState<ProductSearchItem[]>([]);
   const [busy, setBusy] = useState(false);
+  const [manual, setManual] = useState(false);
+  const [kcalText, setKcalText] = useState('');
+  const [gramsText, setGramsText] = useState('');
+  const [invalid, setInvalid] = useState(false);
+  // Yarış: yavaş eski arama yanıtı yeni sorgunun sonuçlarını ezmesin.
+  const seq = useRef(0);
+
+  useEffect(() => {
+    if (visible) return;
+    seq.current += 1;
+    setQ('');
+    setItems([]);
+    setBusy(false);
+    setManual(false);
+    setKcalText('');
+    setGramsText('');
+    setInvalid(false);
+  }, [visible]);
 
   const search = async (text: string) => {
     setQ(text);
+    const my = ++seq.current;
     if (text.trim().length < 2) {
       setItems([]);
+      setBusy(false);
       return;
     }
     setBusy(true);
     try {
       const res = await getKesfetClient().searchProducts({ q: text.trim(), limit: 12 });
-      setItems(res.items ?? []);
+      if (my === seq.current) setItems(res.items ?? []);
     } catch {
-      setItems([]);
+      if (my === seq.current) setItems([]);
     } finally {
-      setBusy(false);
+      if (my === seq.current) setBusy(false);
     }
   };
+
+  const submitManual = () => {
+    const row = manualRow(q, kcalText, gramsText);
+    if (!row) {
+      setInvalid(true);
+      haptic('warning');
+      return;
+    }
+    haptic('light');
+    onPick(row);
+  };
+
+  const name = q.replace(/\s+/g, ' ').trim();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -660,25 +635,90 @@ function MissingFoodSheet({
           </View>
           <TextInput
             value={q}
-            onChangeText={search}
+            onChangeText={(v) => {
+              setInvalid(false);
+              if (manual) setQ(v);
+              else void search(v);
+            }}
             autoFocus
+            maxLength={60}
             placeholder={tr('ai_scan.search_food')}
             placeholderTextColor={t.color.secondary}
+            accessibilityLabel={manual ? tr('ai_scan.manual_name') : tr('ai_scan.search_food')}
             style={[styles.mfInput, { borderColor: k.line2, color: t.color.ink }]}
           />
-          <ScrollView style={styles.mfList} keyboardShouldPersistTaps="handled">
-            {busy ? <ActivityIndicator style={{ marginTop: 12 }} color={t.color.ink} /> : null}
-            {items.map((p) => (
-              <Pressable key={p.id} onPress={() => onPick(p)} accessibilityRole="button" style={[styles.mfRow, { borderTopColor: k.line }]}>
-                <AppText style={styles.itemName} numberOfLines={1}>
-                  {p.name}
+          {manual ? (
+            <View style={styles.mfManual} testID="scan-missing-manual">
+              <View style={styles.mfManualRow}>
+                <TextInput
+                  value={kcalText}
+                  onChangeText={(v) => {
+                    setInvalid(false);
+                    setKcalText(v.replace(/[^0-9]/g, ''));
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  placeholder={tr('ai_scan.manual_kcal')}
+                  placeholderTextColor={t.color.secondary}
+                  accessibilityLabel={tr('ai_scan.manual_kcal')}
+                  style={[styles.mfInput, styles.mfHalf, { borderColor: invalid ? t.color.danger : k.line2, color: t.color.ink }]}
+                />
+                <TextInput
+                  value={gramsText}
+                  onChangeText={(v) => {
+                    setInvalid(false);
+                    setGramsText(v.replace(/[^0-9]/g, ''));
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  placeholder={tr('ai_scan.manual_grams')}
+                  placeholderTextColor={t.color.secondary}
+                  accessibilityLabel={tr('ai_scan.manual_grams')}
+                  style={[styles.mfInput, styles.mfHalf, { borderColor: k.line2, color: t.color.ink }]}
+                />
+              </View>
+              {invalid ? (
+                <AppText style={[styles.cap, { color: t.color.danger }]} accessibilityLiveRegion="polite">
+                  {tr('ai_scan.manual_invalid')}
                 </AppText>
-                <AppText tone="secondary" style={styles.cap}>
-                  {tr('ai_scan.per_100g', { kcal: Math.round(p.kcal) })}
-                </AppText>
+              ) : null}
+              <Pressable
+                onPress={submitManual}
+                accessibilityRole="button"
+                style={[styles.mfAdd, { backgroundColor: t.color.ink }]}
+                testID="scan-missing-manual-add"
+              >
+                <AppText style={[styles.btnText, { color: t.color.bg }]}>{tr('ai_scan.manual_add')}</AppText>
               </Pressable>
-            ))}
-          </ScrollView>
+            </View>
+          ) : (
+            <ScrollView style={styles.mfList} keyboardShouldPersistTaps="handled">
+              {busy ? <ActivityIndicator style={{ marginTop: 12 }} color={t.color.ink} /> : null}
+              {items.map((p) => (
+                <Pressable key={p.id} onPress={() => onPick(productRow(p))} accessibilityRole="button" style={[styles.mfRow, { borderTopColor: k.line }]}>
+                  <AppText style={styles.itemName} numberOfLines={1}>
+                    {p.name}
+                  </AppText>
+                  <AppText tone="secondary" style={styles.cap}>
+                    {tr('ai_scan.per_100g', { kcal: Math.round(p.kcal) })}
+                  </AppText>
+                </Pressable>
+              ))}
+              {name.length >= 2 && !busy ? (
+                <Pressable
+                  onPress={() => setManual(true)}
+                  accessibilityRole="button"
+                  style={[styles.mfRow, styles.mfManualLink, { borderTopColor: k.line }]}
+                  testID="scan-missing-manual-open"
+                >
+                  <Plus size={16} color={t.color.ink} />
+                  <AppText style={styles.itemName} numberOfLines={1}>
+                    {tr('ai_scan.add_manual', { name })}
+                  </AppText>
+                </Pressable>
+              ) : null}
+            </ScrollView>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -754,4 +794,9 @@ const styles = StyleSheet.create({
   mfInput: { marginTop: 8, height: 48, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, fontSize: 15 },
   mfList: { marginTop: 8 },
   mfRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 12, minHeight: 44 },
+  mfManualLink: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mfManual: { marginTop: 4, gap: 8 },
+  mfManualRow: { flexDirection: 'row', gap: 8 },
+  mfHalf: { flex: 1 },
+  mfAdd: { height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
 });
