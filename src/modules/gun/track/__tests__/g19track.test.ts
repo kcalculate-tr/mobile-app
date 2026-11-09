@@ -20,6 +20,10 @@ import { applyPending, classifyError, enqueue, flush, MAX_OPS, uuidFromBytes, ty
 import { inQuietHours, planMealReminders, reminderId } from '../mealReminderPlan';
 import { logSourceOf, sanitize, setTrackSink, trackEvent, TRACK_EVENT_NAMES, TRACK_PROP_WHITELIST } from '../events';
 import { buildSlots } from '../../homeData';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { FLAG_DEFAULTS } from '../../../../core/flags/registry';
+import { ACTIVITY_MAX_KM, ACTIVITY_MAX_MINUTES } from '../limits';
 
 // ─── md.1 Gün sınırı ─────────────────────────────────────────────────────────
 test('gün sınırı: İstanbul gece yarısı — UTC 20:59 dün, 21:00 bugün', () => {
@@ -261,4 +265,20 @@ test('olaylar: 7 ad, beyaz liste dışı özellik (ad/not) gönderilmez', () => 
   assert.equal(logSourceOf('post'), 'kesfet');
   assert.equal(logSourceOf(null), 'manual');
   assert.deepEqual(sanitize({ name: 'streak_day', props: { streak: 3 } }), { streak: 3 });
+});
+
+// ─── Sunucu dosyaları ↔ istemci sözleşmesi ───────────────────────────────────
+test('migration: ogun_hatirlatma kapalı satır + etkinlik sınırları + 7 olay adı; rollback eşleşir', () => {
+  const root = join(__dirname, '../../../../..');
+  const up = readFileSync(join(root, 'supabase/migrations/20261109200100_g19_s2_track.sql'), 'utf8');
+  const down = readFileSync(join(root, 'supabase/rollbacks/20261109200100_g19_s2_track_rollback.sql'), 'utf8');
+  assert.equal(FLAG_DEFAULTS.ogun_hatirlatma, false);
+  assert.match(up, /'ogun_hatirlatma', false, 0, '1\.1\.0'/);
+  assert.match(up, new RegExp(`minutes <= ${ACTIVITY_MAX_MINUTES}\\b`));
+  assert.match(up, new RegExp(`distance_km <= ${ACTIVITY_MAX_KM}\\b`));
+  for (const n of TRACK_EVENT_NAMES) {
+    assert.match(up, new RegExp(`\\('${n}',`), `migration'da olay yok: ${n}`);
+    assert.match(down, new RegExp(`'${n}'`), `rollback'te olay yok: ${n}`);
+  }
+  assert.match(down, /delete from public\.feature_flags where key = 'ogun_hatirlatma'/);
 });
