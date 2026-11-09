@@ -8,6 +8,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import type { AiScanClient, ScanEstimate } from '../types';
 import { setAiScanClient, resetAiScanClient } from '../client';
 import { setScanEventSink } from '../scanEvents';
+import { setTrackSink } from '../../../gun/track/events';
 import { clearOrphanResult } from '../orphanResult';
 import { useScanQuotaStore } from '../quotaStore';
 
@@ -101,6 +102,8 @@ beforeEach(() => {
   mockShot = 0;
   events.length = 0;
   setScanEventSink((n, p) => events.push([n, p]));
+  // G19-S4 md.2: takip olayları (log_add) da aynı listeye — tek olay denetimi.
+  setTrackSink((n, p) => events.push([n, p]));
   mockNetFetch = () => Promise.resolve({ isConnected: true });
   mockSave.mockReset();
   mockSave.mockResolvedValue({ id: 'row-1' });
@@ -112,6 +115,7 @@ beforeEach(() => {
 afterEach(() => {
   resetAiScanClient();
   setScanEventSink(null);
+  setTrackSink(null);
 });
 
 async function shutter(tree: ReturnType<typeof render>) {
@@ -133,8 +137,8 @@ test('çift dokunma: analiz başlamadan ikinci deklanşör İKİNCİ rezervasyon
   await act(async () => net.resolve({ isConnected: true }));
   await waitFor(() => expect(tree.getByText('Pilav')).toBeTruthy());
   expect(c.reserveScan).toHaveBeenCalledTimes(1);
-  expect(events.map((e) => e[0])).toEqual(['scan_open', 'scan_start', 'scan_success']);
-  expect(events[2][1]).toEqual({ n_items: 2, kcal: 280 });
+  expect(events.map((e) => e[0])).toEqual(['scan_open', 'scan_capture', 'scan_success']);
+  expect(events[2][1]).toEqual({ n_items: 2, kcal: 280, via: 'camera' });
 });
 
 test('analiz başarısız → "Tekrar dene" AYNI fotoğrafı AYNI anahtarla yeniden analiz eder', async () => {
@@ -153,9 +157,10 @@ test('analiz başarısız → "Tekrar dene" AYNI fotoğrafı AYNI anahtarla yeni
   expect(mockTakePicture).toHaveBeenCalledTimes(1); // yeniden çekim YOK
   const keys = c.reserveScan.mock.calls.map((a) => (a[0] as { idempotencyKey: string }).idempotencyKey);
   expect(keys).toEqual(['u1-file:///cache/shot1.jpg', 'u1-file:///cache/shot1.jpg']);
-  const starts = events.filter((e) => e[0] === 'scan_start').map((e) => e[1].retry);
+  const starts = events.filter((e) => e[0] === 'scan_capture').map((e) => e[1].retry);
   expect(starts).toEqual([false, true]);
-  expect(events.some((e) => e[0] === 'scan_failed' && e[1].reason === 'unknown')).toBe(true);
+  expect(events.filter((e) => e[0] === 'scan_fail').map((e) => e[1].code)).toEqual(['unknown']);
+  expect(events.filter((e) => e[0] === 'scan_success')).toHaveLength(1);
 });
 
 test('analiz sürerken kapatılırsa sonuç kaybolmaz: Tara yeniden açılınca sonuç ekranı', async () => {
@@ -172,7 +177,7 @@ test('analiz sürerken kapatılırsa sonuç kaybolmaz: Tara yeniden açılınca 
   expect(c.reserveScan).toHaveBeenCalledTimes(1);
 });
 
-test('logla: kayıt hatası artık görünür (toast) ve yeniden denenince tek kayıt + log_meal olayı', async () => {
+test('logla: kayıt hatası artık görünür (toast) ve yeniden denenince tek kayıt + tek scan_log + tek log_add', async () => {
   setAiScanClient(client(jest.fn(async () => EST)));
   mockSave.mockRejectedValueOnce(new Error('net')).mockResolvedValueOnce({ id: 'row-9' });
   const tree = render(<ScanScreen />);
@@ -191,8 +196,13 @@ test('logla: kayıt hatası artık görünür (toast) ve yeniden denenince tek k
   // İki deneme de AYNI source_ref (DB UNIQUE → çift kayıt imkânsız).
   const refs = mockSave.mock.calls.map((a) => (a[1] as { sourceRef: string }).sourceRef);
   expect(refs[0]).toBe(refs[1]);
-  const log = events.find((e) => e[0] === 'log_meal');
-  expect(log?.[1]).toMatchObject({ source: 'scan', n_items: 2, kcal: 280, edited: false });
+  // G19-S4 md.2: başarısız deneme olay ÜRETMEZ; başarılı kayıt tam 1 scan_log + 1 log_add.
+  const logs = events.filter((e) => e[0] === 'scan_log');
+  expect(logs).toHaveLength(1);
+  expect(logs[0][1]).toMatchObject({ n_items: 2, kcal: 280, edited: false });
+  const adds = events.filter((e) => e[0] === 'log_add');
+  expect(adds).toHaveLength(1);
+  expect(adds[0][1]).toMatchObject({ source: 'scan', kcal: 280, offline: false });
 });
 
 test('öğe silinip loglanınca kayda düzeltilmiş toplam ve ad gider', async () => {
@@ -212,7 +222,7 @@ test('öğe silinip loglanınca kayda düzeltilmiş toplam ve ad gider', async (
   const saved = (mockSave.mock.calls[0][1] as { estimate: typeof EST }).estimate;
   expect(saved.kcal).toBe(210);
   expect(saved.name).toBe('Pilav');
-  expect(events.find((e) => e[0] === 'log_meal')?.[1]).toMatchObject({ edited: true, n_items: 1, kcal: 210 });
+  expect(events.find((e) => e[0] === 'scan_log')?.[1]).toMatchObject({ edited: true, n_items: 1, kcal: 210 });
 });
 
 test('çevrimdışı: rezervasyon YOK, kuyruğa alınır (dil ile), FinErrOffline', async () => {
@@ -228,7 +238,8 @@ test('çevrimdışı: rezervasyon YOK, kuyruğa alınır (dil ile), FinErrOfflin
   const q = await getPendingScanQueue();
   expect(q).toHaveLength(1);
   expect(q[0].lang).toBe('tr');
-  expect(events.find((e) => e[0] === 'scan_start')?.[1]).toMatchObject({ offline: true });
+  expect(events.find((e) => e[0] === 'scan_capture')?.[1]).toMatchObject({ offline: true });
+  expect(events.filter((e) => e[0] === 'scan_offline').map((e) => e[1])).toEqual([{ pending: 1 }]);
   await clearPendingScanPhoto();
 });
 
@@ -243,20 +254,27 @@ test('NetInfo isConnected=null (bilinmiyor) çevrimdışı SAYILMAZ → analiz y
   expect(c.reserveScan).toHaveBeenCalledTimes(1);
 });
 
-test('acil kapatma → "Tara şu an kullanılamıyor" (hakkını kullandın DEĞİL), analiz yok', async () => {
-  const c = client(jest.fn(async () => EST));
-  c.reserveScan.mockResolvedValue({ ok: false, reason: 'disabled', remaining: 2, reset_at: new Date(Date.now() + 864e5).toISOString() });
-  setAiScanClient(c);
-  const tree = render(<ScanScreen />);
-  await waitFor(() => expect(tree.getByTestId('fin-scan-camera')).toBeTruthy());
-  await shutter(tree);
-  await waitFor(() => expect(tree.getByText('Tara şu an kullanılamıyor')).toBeTruthy());
-  expect(tree.getByText('Kısa süre içinde geri gelecek. Bu arada elle girebilirsin.')).toBeTruthy();
-  expect(tree.queryByText('Bugünkü 3 taramanı kullandın')).toBeNull();
-  expect(c.analyzeImage).not.toHaveBeenCalled();
-  expect(events.find((e) => e[0] === 'scan_failed')?.[1]).toEqual({ reason: 'disabled', stage: 'reserve' });
-  expect(events.some((e) => e[0] === 'scan_limit')).toBe(false);
-});
+// G19-S4 md.3: acil kapatma metni tek cümle; iki neden (disabled | global_cap) aynı metin.
+test.each(['disabled', 'global_cap'] as const)(
+  'acil kapatma (%s) → "Tara şu an kullanılamıyor, kısa süre içinde geri gelecek." (hakkını kullandın DEĞİL), analiz yok',
+  async (reason) => {
+    const c = client(jest.fn(async () => EST));
+    c.reserveScan.mockResolvedValue({ ok: false, reason, remaining: 2, reset_at: new Date(Date.now() + 864e5).toISOString() });
+    setAiScanClient(c);
+    const tree = render(<ScanScreen />);
+    await waitFor(() => expect(tree.getByTestId('fin-scan-camera')).toBeTruthy());
+    await shutter(tree);
+    await waitFor(() => expect(tree.getByText('Tara şu an kullanılamıyor, kısa süre içinde geri gelecek.')).toBeTruthy());
+    expect(tree.getByText('Bu arada elle girebilirsin.')).toBeTruthy();
+    expect(tree.queryByText('Bugünkü 3 taramanı kullandın')).toBeNull();
+    expect(c.analyzeImage).not.toHaveBeenCalled();
+    // G19-S4 md.2: tam 1 sonuç olayı (kanonik scan_fail), scan_limit yok.
+    const fails = events.filter((e) => e[0] === 'scan_fail');
+    expect(fails).toHaveLength(1);
+    expect(fails[0][1]).toEqual({ code: reason, stage: 'reserve', via: 'camera' });
+    expect(events.some((e) => e[0] === 'scan_limit')).toBe(false);
+  },
+);
 
 test('kota bitti → FinErrLimit + scan_limit olayı, analiz yok', async () => {
   const c = client(jest.fn(async () => EST));
