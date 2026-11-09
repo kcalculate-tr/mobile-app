@@ -56,11 +56,11 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
-          'Profil fotoğrafınızı çekmek, video kaydetmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.',
+          'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
         NSMicrophoneUsageDescription:
           'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         NSPhotoLibraryUsageDescription:
-          'Profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
+          'Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
         NSPhotoLibraryAddUsageDescription:
           'Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir.',
         NSLocationWhenInUseUsageDescription:
@@ -326,9 +326,9 @@ module.exports = {
         'expo-image-picker',
         {
           photosPermission:
-            'Profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
+            'Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
           cameraPermission:
-            'Profil fotoğrafınızı çekmek ve video kaydetmek için kameraya erişim gereklidir.',
+            'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
           microphonePermission:
             'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         },
@@ -341,7 +341,7 @@ module.exports = {
         'expo-camera',
         {
           cameraPermission:
-            'Profil fotoğrafınızı çekmek, video kaydetmek ve ürün görsellerini yüklemek için kameraya erişim gereklidir.',
+            'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
           microphonePermission:
             'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
           recordAudioAndroid: false,
