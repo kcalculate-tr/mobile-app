@@ -417,3 +417,60 @@ test('G19-S2 md.6: Profiler — ilk yükleme, kaldır ve logFlight commit bütç
   expect(remove).toBeLessThanOrEqual(6);
   expect(flight).toBeLessThanOrEqual(8);
 });
+
+// ─── G19-S4 md.2 — çift olay temizliği: Ana sayfa eylemleri tam 1 olay ───────
+describe('G19-S4 md.2: her kullanıcı eylemi tam 1 olay', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { setTrackSink } = require('../../modules/gun/track/events') as typeof import('../../modules/gun/track/events');
+  const sent: [string, Record<string, unknown>][] = [];
+  const of = (n: string) => sent.filter((e) => e[0] === n);
+  beforeEach(() => {
+    sent.length = 0;
+    setTrackSink((n, p) => sent.push([n, p]));
+  });
+  afterEach(() => setTrackSink(null));
+
+  test('su ekle → tam 1 water_add', async () => {
+    const tree = render(<TrackerScreen />);
+    await flush();
+    fireEvent.press(tree.getByLabelText(/^Su: .*Dokun: 250 ml ekle$/));
+    await flush();
+    expect(of('water_add')).toEqual([['water_add', { ml: 250, total_ml: 250, undo: false }]]);
+  });
+
+  test('Kaldır → tam 1 log_delete; Geri al → tam 1 log_delete{undone:true}', async () => {
+    const tree = render(<TrackerScreen />);
+    await flush();
+    fireEvent(tree.getByLabelText(/Sütlü kahve, Elle/), 'longPress');
+    fireEvent.press(tree.getByLabelText('Kaldır'));
+    await flush();
+    expect(of('log_delete')).toEqual([['log_delete', { source: 'manual', slot: 'snack', undone: false }]]);
+    fireEvent.press(tree.getByText('Geri al'));
+    await flush();
+    expect(of('log_delete').map((e) => e[1].undone)).toEqual([false, true]);
+    expect(of('log_add')).toEqual([]);
+  });
+
+  test('teslim edilen sipariş otomatik log → tam 1 log_add{source:order}; yeniden mount → 0', async () => {
+    mockDb.today = [];
+    usePantryStore.setState({
+      items: [
+        {
+          id: 'p9', productId: 'pr9', orderItemId: 'oi9', name: 'Izgara Somon Bowl',
+          calories: 520, protein: 40, carbs: 45, fat: 16, quantity: 1, addedAt: NOW.toISOString(),
+        },
+      ],
+    });
+    mockDb.orders = [{ id: 'o9', delivered_at: '2026-11-06T15:30:00.000Z', order_items: [{ id: 'oi9' }] }];
+    const tree = render(<TrackerScreen />);
+    await flush();
+    await flush();
+    expect(of('log_add')).toEqual([['log_add', { source: 'order', slot: 'dinner', kcal: 520, offline: false }]]);
+    tree.unmount();
+    sent.length = 0;
+    render(<TrackerScreen />);
+    await flush();
+    await flush();
+    expect(of('log_add')).toEqual([]);
+  });
+});

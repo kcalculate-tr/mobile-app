@@ -28,6 +28,7 @@ import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
 import { emitLogFlight, emitLogUndo } from '../events';
+import { trackEvent } from '../../gun/track/events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { useNutritionSummary } from '../../../hooks/useNutritionSummary';
 import type { LogOriginFrame } from './MealCard';
@@ -459,6 +460,10 @@ export function KesfetScreen() {
       const key = `kesfet-${post.id}-${mealType}-${portion}-${addSeq.current}`;
       const consumptionId = await useKesfetStore.getState().addToDay(post.id, mealType, portion, key);
       if (!consumptionId) return;
+      // G19-S4 md.2: Keşfet logu tam 1 log_add — uçuş yalnız çerçeve varken yayınlandığı için
+      // köprüye bırakılmaz (çerçevesiz sheet yolu sayılmıyordu; kaynak/kcal da gitmiyordu).
+      const kcal = Math.round((post.meal_card?.kcal ?? 0) * portion);
+      trackEvent({ name: 'log_add', props: { source: 'kesfet', slot: mealType, kcal, offline: false } });
       const mealLabel = tr(`meal.${mealType}`);
       // Kabuğun tab barına uçuş (S1 dinler): yemek görseli "Ana sayfa"ya uçar + "+N".
       if (frame && (frame.w > 0 || frame.h > 0)) {
@@ -469,6 +474,8 @@ export function KesfetScreen() {
           h: frame.h,
           imageUri: post.meal_card?.photo_url ?? null,
           mealLabel,
+          source: 'kesfet',
+          kcal,
         });
       }
       // "Logla izi" — ekran içi kısa yankı (yemek noktaya iner, yay çizip uçar).
@@ -481,6 +488,7 @@ export function KesfetScreen() {
         onUndo: () => {
           void useKesfetStore.getState().undoAddToDay(post.id, consumptionId, key);
           emitLogUndo({ id: consumptionId });
+          trackEvent({ name: 'log_delete', props: { source: 'kesfet', slot: mealType, undone: false } });
         },
         actionLabel: tr('kesfet.ui.view_day'),
         onAction: onViewDay,

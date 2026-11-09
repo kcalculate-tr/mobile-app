@@ -11,6 +11,7 @@
 //    aynı tablonun kullanıcıya özel okumaları oradan döner (yeni hesap = boş başlar).
 //    RPC → null. Herkese açık okumalar (menü, ürün, banner) gerçek ağdan, anon anahtarla.
 //  - Modül istemcileri (Keşfet, Gün, Profil, Tara) mock: gerçek sipariş/ödeme YOK.
+//  - Ölçüm (G19-S4): analytics_events yazımı bellek tablosuna; Meta reklam rızası 'denied'.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -29,6 +30,7 @@ import { vitrinKesfetClient } from './vitrinKesfet';
 import { createMockGunClient, setGunClient } from '../modules/gun';
 import { createMockProfilClient, setProfilClient } from '../modules/profil';
 import { createMockAiScanClient, setAiScanClient } from '../modules/ai/scan';
+import { setAdConsent, setFirstPartyConsent } from '../lib/analytics';
 
 const E2E_USER = {
   id: '00000000-0000-4000-8000-0000000e2e01',
@@ -145,6 +147,10 @@ export function E2ERoot({ lang }: { lang?: 'tr' | 'en' }) {
       // Yeni kurulum eşdeğeri: bütün yerel durum silinir (ilk açılış imzası, ilk 60 sn
       // bayrakları, il kapısı, kutlama/izin "bir kez" anahtarları).
       await AsyncStorage.clear().catch(() => {});
+      // G19-S4: simülatörde ATT 'granted' → Meta reklam olayları (product_view, add_to_cart,
+      // begin_checkout) yerel SDK'dan Meta'ya giderdi. E2E'de reklam rızası 'denied': Meta'ya
+      // hiçbir şey gitmez; birinci taraf olaylar bellek içi tabloya yazılır (canlıya değil).
+      await setAdConsent('denied').catch(() => {});
       tables.clear();
       // Keşfet akışı herkese açık içerik: vitrin örnek gönderileri (yerel fotoğraflar).
       setKesfetClient(vitrinKesfetClient('', false));
@@ -152,6 +158,9 @@ export function E2ERoot({ lang }: { lang?: 'tr' | 'en' }) {
       setProfilClient(createMockProfilClient());
       setAiScanClient(createMockAiScanClient());
       global.fetch = e2eFetch as typeof fetch;
+      // Birinci taraf ölçüm açık (olay denetimi için) — fetch kesildikten SONRA: yazımlar
+      // bellek tablosuna gider, canlıya değil.
+      await setFirstPartyConsent(true).catch(() => {});
       setReady(true);
     })();
     return () => {
