@@ -13,12 +13,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { PaynkolayText } from '../ui/PaynkolayLogo';
+import { PaynkolayLogo } from '../ui/PaynkolayLogo';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { Check, Clock, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
-import { haptic, useReducedMotion } from '../../../../core/design';
+import { fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mesafeKm } from '../../../../lib/nearestLocation';
 import { formatDeliveryDaysFull, isDeliveryDay } from '../../../../utils/deliveryDays';
 import { useEkNav, type EkV2ParamList } from '../nav';
@@ -190,12 +190,18 @@ export default function EkCheckoutScreen() {
   const hasDraft = !!ctrl.draftOrder;
   // G17-S1 md.6: taslak (ödeme bekleyen) sipariş yokken yöntem+zaman seçilmeden "Öde" pasif.
   const needsMethodTime = !hasDraft && !methodTimeReady;
-  const ctaLabel = needsMethodTime
+  // Tur 26 md.14 (FinEkCheckout): düğme her zaman "Öde [N] TL"; eksik adım düğmenin
+  // ALTINDA yardım satırı ("Yöntem ve zaman seç" / "Sözleşmeleri onayla").
+  const ctaAmount = money(hasDraft ? ctrl.draftOrder?.totalAmount || ctrl.totals.totalAmount : ctrl.totals.totalAmount);
+  const ctaLabel = `${t('eatkcal.v2.checkout.pay')} ${ctaAmount}`;
+  const ctaHelp = needsMethodTime
     ? t('eatkcal.v2.checkout.pick_method_time')
-    : hasDraft
-      ? t('eatkcal.v2.checkout.complete', { amount: money(ctrl.draftOrder?.totalAmount || ctrl.totals.totalAmount) })
-      : t('eatkcal.v2.checkout.place', { amount: money(ctrl.totals.totalAmount) });
+    : !ctrl.contractsAccepted
+      ? t('eatkcal.v2.checkout.accept_contracts')
+      : '';
   const ctaDisabled = ctrl.isCheckoutDisabled || !ctrl.contractsAccepted || needsMethodTime;
+  const disBg = theme.isDark ? '#2C2C2E' : '#DCDEE2';
+  const disFg = theme.isDark ? '#A1A1A6' : '#45454A';
 
   // ── Alt bar ─────────────────────────────────────────────────────────────
   const footer = (
@@ -328,15 +334,25 @@ export default function EkCheckoutScreen() {
             disabled={ctrl.placing || ctrl.isCheckoutDisabled || needsMethodTime}
             accessibilityRole="button"
             accessibilityState={{ disabled: ctaDisabled }}
-            style={[styles.cta, { backgroundColor: ctaDisabled ? c.line : c.ink }]}
+            accessibilityLabel={ctaLabel}
+            accessibilityHint={ctaHelp || undefined}
+            style={[styles.cta, styles.ctaRow, { backgroundColor: ctaDisabled ? disBg : c.ink }]}
             testID="ek-checkout-place"
           >
             {ctrl.placing ? (
               <ActivityIndicator color={c.surface} />
             ) : (
-              <Text style={[ekType.b17, ekType.num, { color: ctaDisabled ? c.secondary : c.surface }]}>{ctaLabel}</Text>
+              <>
+                <Text style={[styles.ctaText, { color: ctaDisabled ? disFg : c.surface }]}>{t('eatkcal.v2.checkout.pay')}</Text>
+                <Text style={[styles.ctaText, ekType.num, { color: ctaDisabled ? disFg : c.surface }]}>{ctaAmount}</Text>
+              </>
             )}
           </Pressable>
+          {ctaHelp ? (
+            <Text style={[styles.help, { color: c.secondary }]} testID="ek-checkout-help">
+              {ctaHelp}
+            </Text>
+          ) : null}
         </View>
       )}
     </EkStickyBar>
@@ -656,9 +672,17 @@ export default function EkCheckoutScreen() {
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Lock size={14} color={c.secondary} />
-            <PaynkolayText text={t('eatkcal.v2.checkout.secure')} style={[ekType.c13, { color: c.secondary }]} isDark={theme.isDark} />
+            <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.checkout.secure')}</Text>
           </View>
         </Section>
+
+        {/* FinEkCheckout: "Ödeme altyapısı" + resmî Paynkolay logosu (1.0.7 varlığı; İSTİSNA 3). */}
+        <View style={styles.provider} testID="ek-checkout-provider">
+          <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.checkout.provider')}</Text>
+          <View accessible accessibilityRole="image" accessibilityLabel={t('eatkcal.v2.checkout.provider_logo')}>
+            <PaynkolayLogo height={20} isDark={theme.isDark} />
+          </View>
+        </View>
 
         {/* Sepet özeti */}
         <Section k="bk" label={t('eatkcal.v2.checkout.basket')} summary={bkSum} open={open} onToggle={toggle}>
@@ -862,6 +886,10 @@ const styles = StyleSheet.create({
   check44: { width: 44, height: 44, marginLeft: -11, alignItems: 'center', justifyContent: 'center' },
   box: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  ctaRow: { flexDirection: 'row', gap: 10 },
+  ctaText: { fontFamily: fontFamily.bodySemibold, fontSize: 16, lineHeight: 21 },
+  help: { minHeight: 20, textAlign: 'center', fontFamily: fontFamily.bodyMedium, fontSize: 13, lineHeight: 18 },
+  provider: { minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   textBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   textBtnLeft: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   totals: { gap: 8, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
