@@ -473,6 +473,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinMoStreak', 'hareket', comp('celebrate', { kind: 'streak3' })],
   // G17-S2: canlı Tara → otomatik deklanşör → FinMoScan analiz katmanı → sonuç sheet'i.
   ['FinMoScan', 'hareket', route([...tab('Tracker'), { name: 'AiScan' }]), { scene: 'autoShutter' }],
+  // G19-S1 md.8: TR/EN kare dizisi — aynı akış EN (yiyecek adları `lang` ile EN).
+  ['FinMoScanEN', 'hareket', route([...tab('Tracker'), { name: 'AiScan' }]), { scene: 'autoShutter', lang: 'en' }],
   ['FinMoLike', 'hareket', comp('postCard', { variant: 'liked' })],
   ['FinMoLoad', 'hareket', route(tab('Home')), { data: 'loading' }],
   ['FinMoSheet', 'hareket', comp('addToDaySheet')],
