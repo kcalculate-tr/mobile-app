@@ -1031,6 +1031,8 @@ export function KesfetScreen() {
           entering={FadeIn.duration(reducedMotion ? REDUCED.duration : DURATION.fast)}
           exiting={FadeOut.duration(reducedMotion ? REDUCED.duration : DURATION.fast)}
           style={StyleSheet.absoluteFill}
+          // VoiceOver: alttaki akış okunmasın (sekme çubuğu bu görünümün kardeşi değil → erişilebilir kalır).
+          accessibilityViewIsModal
           testID="kesfet-search-layer"
         >
           <SearchScreen navigation={navigation} onClose={closeSearch} bottomInset={listBottomPad} />
