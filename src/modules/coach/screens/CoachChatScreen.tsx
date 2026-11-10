@@ -141,6 +141,8 @@ export default function CoachChatScreen() {
         if (!alive.current) return;
         setMessages((m) => [...m.filter((x) => x.id !== local.id), r.userMessage ?? local, r.reply]);
         if (!skipStream.current) setStreamId(r.reply.id);
+        // HIG (VoiceOver): yeni yanıt odak değiştirmeden okunur.
+        AccessibilityInfo.announceForAccessibility(tr('coach.coach_a11y', { text: r.reply.body }));
         if (r.status) setStatus(r.status);
         else if (r.safety) setStatus(before); // güvenli yanıt hak düşmez
         const next = r.status ?? before;
@@ -340,12 +342,8 @@ export default function CoachChatScreen() {
             <CoachAvatar size={36} />
           </ProgressRing>
           <View style={styles.flex1}>
-            <AppText style={[styles.headTitle, { color: c.text }]} numberOfLines={1}>
-              {tr('coach.name')}
-            </AppText>
-            <AppText style={[styles.headSub, { color: c.sec }]} numberOfLines={2}>
-              {head.text}
-            </AppText>
+            <AppText style={[styles.headTitle, { color: c.text }]}>{tr('coach.name')}</AppText>
+            <AppText style={[styles.headSub, { color: c.sec }]}>{head.text}</AppText>
           </View>
         </View>
         <Pressable onPress={() => setMenu(true)} accessibilityRole="button" accessibilityLabel={tr('coach.options')} style={styles.icon44} testID="coach-options">

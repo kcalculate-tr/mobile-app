@@ -29,7 +29,7 @@ export function UpsellSheet({
   const c = useCoachTones();
   const list = [tr('coach.up1', { n: daily }), aiPerDay != null ? tr('coach.up2', { n: aiPerDay }) : null, tr('coach.up3')].filter(Boolean) as string[];
   return (
-    <Sheet visible={visible} onClose={onClose} title={tr('coach.up_title')} testID="coach-upsell">
+    <Sheet visible={visible} onClose={onClose} testID="coach-upsell">
       <View style={styles.upWrap}>
         <CoachGlass size={110} />
         <AppText style={[styles.upTitle, { color: c.text }]} accessibilityRole="header">

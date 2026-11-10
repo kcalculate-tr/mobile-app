@@ -14,6 +14,7 @@ import { Disclaimer, LIME, LIME_INK, useCoachTones } from './parts';
 export function Chips({ items, onPick, vertical }: { items: string[]; onPick: (q: string) => void; vertical?: boolean }) {
   const { t: tr } = useT();
   const c = useCoachTones();
+  const reduced = useReducedMotion();
   const chip = (q: string) => (
     <Pressable
       key={q}
@@ -22,7 +23,7 @@ export function Chips({ items, onPick, vertical }: { items: string[]; onPick: (q
         onPick(q);
       }}
       accessibilityRole="button"
-      style={({ pressed }) => [vertical ? styles.chipV : styles.chip, { backgroundColor: c.card, borderColor: c.line, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+      style={({ pressed }) => [vertical ? styles.chipV : styles.chip, { backgroundColor: c.card, borderColor: c.line, transform: [{ scale: pressed && !reduced ? 0.96 : 1 }] }]}
       testID={`coach-chip-${q}`}
     >
       {vertical ? <Sparkle size={18} color={c.text} /> : null}
