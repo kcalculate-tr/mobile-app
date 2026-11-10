@@ -8,11 +8,15 @@
 // ücretsiz, 4'ün 4'ü"). Buton etiketi Aylık/Yıllık fast 200 crossfade; zorunlu yenileme metni;
 // geri yükle; Koşullar/Gizlilik. Fiyatlar YALNIZ RevenueCat yerel fiyatı; gelmezse FinSubError.
 // Satın alma sonucu aynı ekranda FinSubResult.
+// G25-S1 md.5 (A8): fiyat yüklenirken kart iskeleti + "Planlar yükleniyor" (canlı bölge), CTA meşgul;
+// fiyat gelmezse AYNI ekranda hata kartı + Tekrar dene (geri yükle ve hukuk bağlantıları yerinde, boş
+// alan kalmaz); Geri yükle sürerken düğme meşgul ("Geri yükleniyor…", çift dokunma yok).
+// G25-S1 md.2 (A2): alt bağlantılar "Kullanım Koşulları (EULA)" + "Gizlilik Politikası" (SubLegalLinks).
 // G24-S1 — koçlu varyant (FinSubPaywallCoach): `coach: true` YALNIZ koçtan açılınca ("Koç Balance'ta"
 // sheet'i). Balance şeridine 5. sayfa (bowl, "kcalAI Koç") ve Balance kartlarına "kcalAI Koç dahil"
 // satırı eklenir; varsayılan Balance Yıllık. Diğer yerlerden açılan paywall koçsuz (4 sayfa).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityActionEvent, AppState, Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AccessibilityActionEvent, ActivityIndicator, AppState, Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -27,7 +31,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { AppText, DURATION, haptic, useReducedMotion, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Pause, Play, Sparkle, X } from '../../../components/icons';
-import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 import {
   CARD_STEP,
   initialCard,
@@ -38,6 +41,7 @@ import {
 import { purchasePlan, restorePurchases, useSubscriptionStore, useTier, type PurchaseResult } from '../../../lib/subscription/purchases';
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubResult, { type SubResultState } from '../ui/SubResult';
+import SubLegalLinks from '../ui/SubLegalLinks';
 import { trackSub } from '../subTrack';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -76,6 +80,7 @@ export default function PaywallScreen() {
   const [result, setResult] = useState<SubResultState | null>(null);
   const [buying, setBuying] = useState(false);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     trackSub('paywall_view', { from: ['limit_ai', 'limit_barcode', 'limit_voice', 'profile', 'pill', 'coach'].includes(params.from ?? '') ? params.from : 'other' });
@@ -179,7 +184,15 @@ export default function PaywallScreen() {
     setResult(r);
   };
   const restore = async () => {
-    const r = await restorePurchases();
+    if (restoring) return;
+    setRestoring(true);
+    setRestoreMsg(null);
+    let r: Awaited<ReturnType<typeof restorePurchases>>;
+    try {
+      r = await restorePurchases();
+    } finally {
+      setRestoring(false);
+    }
     trackSub('sub_restore', { result: r });
     if (r === 'restored') {
       setRestoreMsg(tr('sub.paywall.restore_ok'));
@@ -213,10 +226,9 @@ export default function PaywallScreen() {
       />
     );
   }
-  if (!loading && (failed || !cards)) {
-    // Fiyat gelmedi → FinSubError (yedek fiyat metni YOK).
-    return <SubResult state="error" onClose={close} onPrimary={() => void reload()} onRestore={() => void restore()} />;
-  }
+  // G25-S1 md.5: fiyat gelmedi → aynı ekranda hata kartı (yedek fiyat metni YOK); yüklenirken iskelet.
+  const loadFailed = !loading && (failed || !cards);
+  const pricesLoading = loading && !cards;
 
   const yearlySel = !!cur?.yearly;
   const trialDays = cur?.trialDays ?? null;
@@ -298,7 +310,10 @@ export default function PaywallScreen() {
           </View>
         </View>
 
+        {pricesLoading ? <PlanSkeleton side={side} /> : null}
+        {loadFailed ? <LoadError onRetry={() => void reload()} /> : null}
         {/* Plan kartları — VoiceOver: tek ayarlanabilir öğe */}
+        {cards ? (
         <View
           accessible
           accessibilityRole="adjustable"
@@ -328,52 +343,101 @@ export default function PaywallScreen() {
             ))}
           </Animated.ScrollView>
         </View>
-        <View style={styles.dotsCenter}>
-          <Dots n={4} active={sel} dark={t.isDark} line2={line2} />
-        </View>
+        ) : null}
+        {cards ? (
+          <View style={styles.dotsCenter}>
+            <Dots n={4} active={sel} dark={t.isDark} line2={line2} />
+          </View>
+        ) : null}
 
         {/* CTA */}
         <View style={styles.pad}>
-          <Pressable
-            onPress={() => void buy()}
-            disabled={!cur || buying}
-            accessibilityRole="button"
-            accessibilityState={{ busy: buying, disabled: !cur || buying }}
-            style={[styles.cta, { opacity: buying || !cur ? 0.6 : 1 }]}
-            testID="sub-cta"
-          >
-            <Animated.View key={ctaLabel} entering={FadeIn.duration(DURATION.fast)}>
-              <AppText style={styles.ctaText}>{buying ? tr('sub.paywall.buying') : ctaLabel}</AppText>
-            </Animated.View>
-          </Pressable>
-          <AppText style={styles.summary} testID="sub-summary">
-            {summary}
-          </AppText>
+          {!loadFailed ? (
+            <Pressable
+              onPress={() => void buy()}
+              disabled={!cur || buying}
+              accessibilityRole="button"
+              accessibilityState={{ busy: buying || pricesLoading, disabled: !cur || buying }}
+              style={[styles.cta, { opacity: buying || !cur ? 0.6 : 1 }]}
+              testID="sub-cta"
+            >
+              <Animated.View key={ctaLabel} entering={FadeIn.duration(DURATION.fast)}>
+                <AppText style={styles.ctaText}>{buying ? tr('sub.paywall.buying') : pricesLoading ? tr('sub.paywall.loading') : ctaLabel}</AppText>
+              </Animated.View>
+            </Pressable>
+          ) : null}
+          {summary ? (
+            <AppText style={styles.summary} testID="sub-summary">
+              {summary}
+            </AppText>
+          ) : null}
           <AppText tone="secondary" style={styles.legal}>
             {tr('sub.paywall.legal')}
           </AppText>
-          <Pressable onPress={() => void restore()} accessibilityRole="button" style={styles.link} testID="sub-restore">
-            <AppText style={styles.linkText}>{tr('sub.paywall.restore')}</AppText>
+          <Pressable
+            onPress={() => void restore()}
+            disabled={restoring}
+            accessibilityRole="button"
+            accessibilityState={{ busy: restoring, disabled: restoring }}
+            style={[styles.link, styles.restoreRow]}
+            testID="sub-restore"
+          >
+            {restoring ? <ActivityIndicator size="small" color={ink} testID="sub-restore-busy" /> : null}
+            <AppText style={[styles.linkText, restoring ? styles.dim : null]}>{restoring ? tr('sub.paywall.restoring') : tr('sub.paywall.restore')}</AppText>
           </Pressable>
           {restoreMsg ? (
             <AppText tone="secondary" style={styles.restoreMsg} accessibilityLiveRegion="polite">
               {restoreMsg}
             </AppText>
           ) : null}
-          <View style={styles.legalLinks}>
-            <Pressable onPress={() => (navigation as unknown as { navigate: (n: string, p: object) => void }).navigate('ProfileContracts', { slug: LEGAL_SLUG.terms })} accessibilityRole="link" style={styles.link}>
-              <AppText tone="secondary" style={styles.smallLink}>
-                {tr('sub.paywall.terms')}
-              </AppText>
-            </Pressable>
-            <Pressable onPress={() => (navigation as unknown as { navigate: (n: string, p: object) => void }).navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy })} accessibilityRole="link" style={styles.link}>
-              <AppText tone="secondary" style={styles.smallLink}>
-                {tr('sub.paywall.privacy')}
-              </AppText>
-            </Pressable>
-          </View>
+          <SubLegalLinks navigation={navigation} />
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+/** G25-S1 md.5 — fiyat yüklenirken: 2 kart iskeleti (kart ölçüsünde, hareketsiz) + canlı bölge metni. */
+function PlanSkeleton({ side }: { side: number }) {
+  const t = useTheme();
+  const { t: tr } = useT();
+  const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
+  const bar = t.isDark ? '#2C2C2E' : '#ECEEF1';
+  return (
+    <View testID="sub-cards-loading" accessible accessibilityRole="progressbar" accessibilityLabel={tr('sub.paywall.loading')} accessibilityState={{ busy: true }}>
+      <View style={[styles.skelRow, { paddingLeft: side, gap: CARD_GAP }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        {[0, 1].map((i) => (
+          <View key={i} style={[styles.card, styles.skelCard, { backgroundColor: card, opacity: i ? 0.55 : 1 }]}>
+            <View style={[styles.skelBar, { backgroundColor: bar, width: 96, height: 22 }]} />
+            <View style={[styles.skelBar, { backgroundColor: bar, width: 56, height: 14, marginTop: 8 }]} />
+            <View style={[styles.skelBar, { backgroundColor: bar, width: 150, height: 34, marginTop: 18 }]} />
+            <View style={[styles.skelBar, { backgroundColor: bar, width: 110, height: 14, marginTop: 10 }]} />
+          </View>
+        ))}
+      </View>
+      <AppText tone="secondary" style={styles.skelText} accessibilityLiveRegion="polite">
+        {tr('sub.paywall.loading')}
+      </AppText>
+    </View>
+  );
+}
+
+/** G25-S1 md.5 — fiyat gelmedi: kart yerinde hata kartı + Tekrar dene (≥ 44 pt). */
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  const t = useTheme();
+  const { t: tr } = useT();
+  const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
+  return (
+    <View style={[styles.errCard, { backgroundColor: card }]} testID="sub-load-error" accessibilityLiveRegion="polite">
+      <AppText style={[styles.errTitle, { color: t.color.ink }]} accessibilityRole="header">
+        {tr('sub.paywall.load_error_title')}
+      </AppText>
+      <AppText tone="secondary" style={styles.errBody}>
+        {tr('sub.paywall.load_error_body')}
+      </AppText>
+      <Pressable onPress={onRetry} accessibilityRole="button" style={[styles.errBtn, { backgroundColor: t.color.ink }]} testID="sub-load-retry">
+        <AppText style={[styles.errBtnText, { color: t.color.bg }]}>{tr('sub.paywall.retry')}</AppText>
+      </Pressable>
     </View>
   );
 }
@@ -507,6 +571,15 @@ const styles = StyleSheet.create({
   link: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   linkText: { fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
   restoreMsg: { fontSize: 13, textAlign: 'center' },
-  legalLinks: { flexDirection: 'row', justifyContent: 'center', gap: 24 },
-  smallLink: { fontSize: 13, textDecorationLine: 'underline' },
+  restoreRow: { flexDirection: 'row', gap: 8 },
+  dim: { opacity: 0.6 },
+  skelRow: { flexDirection: 'row', paddingVertical: 16, overflow: 'hidden' },
+  skelCard: { height: 168, padding: 16, paddingTop: 20 },
+  skelBar: { borderRadius: 8 },
+  skelText: { textAlign: 'center', fontSize: 15 },
+  errCard: { marginHorizontal: 16, marginTop: 16, borderRadius: 20, padding: 20, alignItems: 'center', gap: 8 },
+  errTitle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 20, lineHeight: 26, textAlign: 'center' },
+  errBody: { fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  errBtn: { marginTop: 8, minHeight: 48, borderRadius: 24, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' },
+  errBtnText: { fontSize: 16, fontWeight: '700' },
 });

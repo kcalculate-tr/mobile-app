@@ -2,8 +2,9 @@
 // Mevcut plan kartı (ad, fiyat, hak hapı, deneme günü), deneme/yenileme satırları, "Planında neler
 // var" (AI/gün · Barkod/gün · Elle giriş — değerler app_settings/my_entitlement'tan), eylemler:
 // Planları gör / Planı değiştir (paywall), Aboneliği yönet (mağaza), Satın alımları geri yükle.
+// G25-S1 md.2 (A2): altta "Kullanım Koşulları (EULA)" + "Gizlilik Politikası"; md.5: geri yükleme meşgul hâli.
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AppText, useTheme } from '../../../core/design';
@@ -14,6 +15,7 @@ import { planFromProductId, planYearly, type PlanCard } from '../../../lib/subsc
 import { manageSubscription, refreshEntitlement, restorePurchases, useSubscriptionStore, useTier } from '../../../lib/subscription/purchases';
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubPill from '../ui/SubPill';
+import SubLegalLinks from '../ui/SubLegalLinks';
 import { formatSubDate } from '../ui/SubResult';
 import { trackSub } from '../subTrack';
 
@@ -38,6 +40,7 @@ export default function SubProfileScreen() {
   const available = useSubscriptionStore((s) => s.available);
   const { cards } = usePlanCards(available);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     void refreshEntitlement();
@@ -184,15 +187,25 @@ export default function SubProfileScreen() {
           {available ? (
             <Pressable
               onPress={async () => {
-                const r = await restorePurchases();
-                trackSub('sub_restore', { result: r });
-                setRestoreMsg(tr(r === 'restored' ? 'sub.paywall.restore_ok' : 'sub.paywall.restore_none'));
+                if (restoring) return;
+                setRestoring(true);
+                setRestoreMsg(null);
+                try {
+                  const r = await restorePurchases();
+                  trackSub('sub_restore', { result: r });
+                  setRestoreMsg(tr(r === 'restored' ? 'sub.paywall.restore_ok' : 'sub.paywall.restore_none'));
+                } finally {
+                  setRestoring(false);
+                }
               }}
+              disabled={restoring}
               accessibilityRole="button"
+              accessibilityState={{ busy: restoring, disabled: restoring }}
               style={[styles.action, { borderTopColor: line, borderTopWidth: 1 }]}
               testID="sub-profile-restore"
             >
-              <AppText style={styles.actionText}>{tr('sub.profile.restore')}</AppText>
+              <AppText style={[styles.actionText, restoring ? styles.dim : null]}>{restoring ? tr('sub.paywall.restoring') : tr('sub.profile.restore')}</AppText>
+              {restoring ? <ActivityIndicator size="small" color={ink} /> : null}
             </Pressable>
           ) : null}
         </View>
@@ -204,6 +217,7 @@ export default function SubProfileScreen() {
         <AppText tone="secondary" style={styles.foot}>
           {foot}
         </AppText>
+        <SubLegalLinks navigation={navigation} />
       </ScrollView>
     </View>
   );
@@ -230,4 +244,5 @@ const styles = StyleSheet.create({
   action: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   actionText: { fontSize: 16, fontWeight: '600', flex: 1 },
   foot: { fontSize: 13, lineHeight: 18, marginHorizontal: 4 },
+  dim: { opacity: 0.6 },
 });

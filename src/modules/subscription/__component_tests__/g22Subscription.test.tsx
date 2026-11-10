@@ -4,6 +4,7 @@
 // Profil › Abonelik (Ücretsiz/Deneme).
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Linking, Platform, StyleSheet } from 'react-native';
 
 import { buildPlanCards, type StoreProductLike } from '../../../lib/subscription/plans';
 import { limitsFromSettings } from '../../../lib/subscription/limits';
@@ -33,9 +34,10 @@ const CARDS = buildPlanCards([
   P('kcalai_balance_yearly', 2999, trial),
 ]);
 let mockCards: typeof CARDS = CARDS;
+let mockLoading = false;
 const mockReload = jest.fn();
 jest.mock('../../../lib/subscription/usePlanCards', () => ({
-  usePlanCards: () => ({ cards: mockCards, loading: false, failed: !mockCards, reload: mockReload }),
+  usePlanCards: () => ({ cards: mockCards, loading: mockLoading, failed: !mockLoading && !mockCards, reload: mockReload }),
   monthlyPriceOf: (cards: { tier: string; yearly: boolean; priceText: string }[] | null, tier: string) =>
     cards?.find((c) => c.tier === tier && !c.yearly)?.priceText ?? null,
   setPlanCardsMemo: () => {},
@@ -75,6 +77,7 @@ const LIMITS = limitsFromSettings([
 beforeEach(() => {
   jest.clearAllMocks();
   mockCards = CARDS;
+  mockLoading = false;
   mockParams = undefined;
   useSubscriptionStore.setState({ available: true, rc: null, server: null, limits: LIMITS, ai: null, barcode: null });
 });
@@ -88,7 +91,7 @@ test('Paywall: 4 kart yerel fiyatla (₺ yok), varsayılan Balance Yıllık, den
   expect(tree.getByTestId('sub-summary').props.children).toBe('7 gün ücretsiz, sonra 2999 TL/yıl. Ücret deneme bitince alınır.');
   expect(tree.getByText(/otomatik yenilenir/)).toBeTruthy();
   expect(tree.getByText('Satın alımları geri yükle')).toBeTruthy();
-  expect(tree.getByText('Kullanım Koşulları')).toBeTruthy();
+  expect(tree.getByText('Kullanım Koşulları (EULA)')).toBeTruthy();
   expect(tree.getByText('Gizlilik Politikası')).toBeTruthy();
   expect(tree.getByText('En çok seçilen', H)).toBeTruthy();
   expect(tree.getByText('-%50', H)).toBeTruthy();
@@ -141,14 +144,85 @@ test('G24-S1 Paywall koçsuz (diğer girişler): 4 sayfa, koç satırı YOK', ()
   expect(tree.queryByText(/kcalAI Koç dahil/, H)).toBeNull();
 });
 
-test('Paywall: fiyat gelmezse FinSubError (yedek fiyat YOK) + Tekrar dene', () => {
+test('G25 md.5: fiyat gelmezse aynı ekranda hata kartı + Tekrar dene (yedek fiyat YOK, geri yükle ve bağlantılar yerinde)', () => {
   mockCards = null;
   const tree = render(<PaywallScreen />);
-  expect(tree.getByTestId('sub-result-error')).toBeTruthy();
-  expect(tree.getByText('Satın alma tamamlanamadı')).toBeTruthy();
+  expect(tree.getByTestId('sub-load-error')).toBeTruthy();
+  expect(tree.getByText('Planlar yüklenemedi')).toBeTruthy();
+  expect(tree.queryByText('Satın alma tamamlanamadı')).toBeNull();
   expect(tree.queryByText(/TL/)).toBeNull();
-  fireEvent.press(tree.getByTestId('sub-result-primary'));
+  expect(tree.queryByTestId('sub-cta')).toBeNull();
+  expect(tree.getByTestId('sub-restore')).toBeTruthy();
+  expect(tree.getByTestId('sub-eula')).toBeTruthy();
+  expect(StyleSheet.flatten(tree.getByTestId('sub-load-retry').props.style).minHeight).toBeGreaterThanOrEqual(44);
+  fireEvent.press(tree.getByTestId('sub-load-retry'));
   expect(mockReload).toHaveBeenCalled();
+});
+
+test('G25 md.5: fiyat yüklenirken kart iskeleti + "Planlar yükleniyor", CTA meşgul, boş alan yok', () => {
+  mockCards = null;
+  mockLoading = true;
+  const tree = render(<PaywallScreen />);
+  const sk = tree.getByTestId('sub-cards-loading');
+  expect(sk.props.accessibilityLabel).toBe('Planlar yükleniyor');
+  expect(sk.props.accessibilityState).toEqual({ busy: true });
+  expect(tree.queryByTestId('sub-load-error')).toBeNull();
+  expect(tree.queryByTestId('sub-cards')).toBeNull();
+  const cta = tree.getByTestId('sub-cta');
+  expect(cta.props.accessibilityState).toMatchObject({ busy: true, disabled: true });
+  expect(tree.getAllByText('Planlar yükleniyor').length).toBeGreaterThanOrEqual(2);
+});
+
+test('G25 md.5: Geri yükle sürerken meşgul (çift dokunma yok), bitince sonuç metni', async () => {
+  let done: (v: string) => void = () => {};
+  mockRestore.mockImplementationOnce(() => new Promise((r) => (done = r)));
+  const tree = render(<PaywallScreen />);
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('sub-restore'));
+  });
+  expect(tree.getByText('Geri yükleniyor…')).toBeTruthy();
+  expect(tree.getByTestId('sub-restore').props.accessibilityState).toMatchObject({ busy: true, disabled: true });
+  fireEvent.press(tree.getByTestId('sub-restore'));
+  expect(mockRestore).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    done('none');
+  });
+  expect(tree.getByText('Geri yüklenecek satın alım bulunamadı.')).toBeTruthy();
+  expect(tree.getByText('Satın alımları geri yükle')).toBeTruthy();
+});
+
+test('G25 md.2: Paywall + Profil › Abonelik — "Kullanım Koşulları (EULA)" (iOS Apple EULA) yanında Gizlilik', async () => {
+  const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+  for (const el of [<PaywallScreen key="p" />, <SubProfileScreen key="s" />]) {
+    const tree = render(el);
+    expect(tree.getByText('Kullanım Koşulları (EULA)')).toBeTruthy();
+    expect(tree.getByText('Gizlilik Politikası')).toBeTruthy();
+    expect(tree.getByTestId('sub-eula').props.accessibilityRole).toBe('link');
+    await act(async () => {
+      fireEvent.press(tree.getByTestId('sub-eula'));
+    });
+    fireEvent.press(tree.getByTestId('sub-privacy'));
+    tree.unmount();
+  }
+  expect(open).toHaveBeenCalledWith('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+  expect(open).toHaveBeenCalledTimes(2);
+  expect(mockNav.navigate).toHaveBeenCalledWith('ProfileContracts', { slug: 'gizlilik-politikasi' });
+  open.mockRestore();
+});
+
+test('G25 md.2: Android — EULA bağlantısı uygulama içi Kullanım Koşulları sayfasına gider', () => {
+  const prev = Platform.OS;
+  Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+  try {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const tree = render(<PaywallScreen />);
+    fireEvent.press(tree.getByTestId('sub-eula'));
+    expect(open).not.toHaveBeenCalled();
+    expect(mockNav.navigate).toHaveBeenCalledWith('ProfileContracts', { slug: 'kullanim-kosullari' });
+    open.mockRestore();
+  } finally {
+    Object.defineProperty(Platform, 'OS', { get: () => prev, configurable: true });
+  }
 });
 
 test('Paywall: satın alma sonuçları — iptal / bekliyor / başarı', async () => {

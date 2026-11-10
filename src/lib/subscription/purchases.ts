@@ -17,6 +17,7 @@ import {
   type Tier,
 } from './plans';
 import { rcSnapshot, purchaseErrorResult, type CustomerInfoLike, type PurchaseResult, type RcSnapshot } from './rc';
+import { manageSubUrl } from './storeLinks';
 import { LIMIT_SETTING_KEYS, freeAiCap, limitsFromSettings, type QuotaSnapshot, type TierLimits } from './limits';
 
 type PurchasesModule = typeof import('react-native-purchases');
@@ -255,11 +256,7 @@ export async function manageSubscription(): Promise<void> {
       // aşağıya düş
     }
   }
-  const fallback =
-    url ??
-    (Platform.OS === 'ios'
-      ? 'https://apps.apple.com/account/subscriptions'
-      : 'https://play.google.com/store/account/subscriptions?package=com.kcalmobile.app');
+  const fallback = url ?? manageSubUrl(Platform.OS);
   await Linking.openURL(fallback).catch(() => {});
 }
 
