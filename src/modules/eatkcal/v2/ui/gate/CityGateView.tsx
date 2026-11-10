@@ -16,6 +16,8 @@
 // "yazdığınla devam et"). Listede şehirlerin yanında "Çok yakında" YOK. Seçilen şehir →
 // FinEatBerlin: "Çok yakında [şehir]'deki restoranlar burada listelenecek." + Restoranını
 // ekle / Restoran öner (aynı form sheet'leri, ülke kodu ISO2).
+// G23-S1: Türkiye il listesinde de "Çok yakında" yazmaz; yabancı şehir satırında eyalet/
+// bölge (admin1) alt satırda.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -30,6 +32,7 @@ import { ekType, useEk } from '../kit';
 import { IZMIR, filterProvinces, orderedProvinces } from '../../model/provinces';
 import {
   TURKEY,
+  cityLabel,
   countryName,
   filterCountries,
   findCountry,
@@ -499,18 +502,18 @@ export function CityGateView({
                     }}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: sel }}
-                    accessibilityLabel={`${name}, ${open ? t('eatkcal.v2.gate.open') : t('eatkcal.v2.gate.soon')}`}
+                    accessibilityLabel={open ? `${name}, ${t('eatkcal.v2.gate.open')}` : name}
                     style={[styles.row, { borderBottomColor: c.line }]}
                     testID={`ek-gate-il-${name}`}
                   >
                     <Text style={[styles.rowText, { color: c.ink, fontFamily: open ? ekType.b15s.fontFamily : ekType.b15m.fontFamily }]}>{name}</Text>
+                    {/* G23-S1 (İlter): listede "Çok yakında" yazılmaz; seçimden sonra bekleme
+                        sayfası mesajı + Restoranını ekle / Restoran öner. */}
                     {open ? (
                       <View style={[styles.openChip, { backgroundColor: c.accent }]}>
                         <Text style={[ekType.c13s, { color: c.onAccent }]}>{t('eatkcal.v2.gate.open')}</Text>
                       </View>
-                    ) : (
-                      <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.soon')}</Text>
-                    )}
+                    ) : null}
                     <Radio on={sel} ring={p.line2} />
                   </Pressable>
                 );
@@ -568,11 +571,18 @@ export function CityGateView({
                         onPress={() => pickCity(x)}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: sel }}
-                        accessibilityLabel={x.name}
+                        accessibilityLabel={cityLabel(x)}
                         style={[styles.row, { borderBottomColor: c.line }]}
                         testID={`ek-gate-city-${x.geonameid}`}
                       >
-                        <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15m.fontFamily }]}>{x.name}</Text>
+                        <View style={styles.fill}>
+                          <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15m.fontFamily }]}>{x.name}</Text>
+                          {x.admin1 ? (
+                            <Text style={[ekType.c13, { color: c.secondary }]} testID={`ek-gate-city-admin1-${x.geonameid}`}>
+                              {x.admin1}
+                            </Text>
+                          ) : null}
+                        </View>
                         <Radio on={sel} ring={p.line2} />
                       </Pressable>
                     );

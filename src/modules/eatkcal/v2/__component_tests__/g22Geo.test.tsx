@@ -51,7 +51,10 @@ test('Türkiye varsayılan: il listesi bugünkü gibi; İzmir → onAllowed', ()
   const r = render(<CityGateView onAllowed={onAllowed} showTabSpace={false} />);
   expect(r.getByText('Türkiye')).toBeTruthy();
   expect(r.getByTestId('ek-gate-il-İzmir')).toBeTruthy();
-  expect(r.getAllByText('Çok yakında').length).toBeGreaterThan(0); // TR il satırları AYNEN
+  // G23-S1 (İlter): il listesinde de "Çok yakında" yazmaz; İzmir "Açık" çipi kalır.
+  expect(r.queryByText('Çok yakında')).toBeNull();
+  expect(r.getByText('Açık')).toBeTruthy();
+  expect(r.getByTestId('ek-gate-il-Ankara').props.accessibilityLabel).toBe('Ankara');
   fireEvent.press(r.getByTestId('ek-gate-il-İzmir'));
   fireEvent.press(r.getByTestId('ek-gate-continue'));
   expect(onAllowed).toHaveBeenCalledTimes(1);

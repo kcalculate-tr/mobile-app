@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   CITY_QUERY_MAX,
   CITY_RESULTS_MAX,
+  cityLabel,
   filterCountries,
   findCountry,
   foldText,
@@ -170,6 +171,41 @@ test('CityGateView: şehir arama listesinde "Çok yakında" yazılmaz (yalnız T
   const end = src.indexOf('</ScrollView>', start);
   assert.ok(start > 0 && end > start);
   assert.ok(!src.slice(start, end).includes("gate.soon'"));
+  // G23-S1: TR il listesinde de yok.
+  const ilStart = src.indexOf('testID="ek-gate-list"');
+  const ilEnd = src.indexOf('</ScrollView>', ilStart);
+  assert.ok(ilStart > 0 && ilEnd > ilStart);
+  assert.ok(!src.slice(ilStart, ilEnd).includes("gate.soon'"));
+});
+
+test('G23-S1 admin1: parseCityRows taşır (boş / şehirle aynıysa atar), cityLabel "Ad, Eyalet"', () => {
+  const rows = parseCityRows([
+    { geonameid: 4250542, name: 'Springfield', country_iso2: 'US', population: 116565, admin1: 'Illinois' },
+    { geonameid: 4409896, name: 'Springfield', country_iso2: 'US', population: 169176, admin1: ' Missouri ' },
+    { geonameid: 2950159, name: 'Berlin', country_iso2: 'DE', population: 1, admin1: 'Berlin' },
+    { geonameid: 3, name: 'X', country_iso2: 'FR', population: 1, admin1: '' },
+  ]);
+  assert.deepEqual(rows.map((r) => r.admin1), ['Illinois', 'Missouri', undefined, undefined]);
+  assert.equal(cityLabel(rows[0]), 'Springfield, Illinois');
+  assert.equal(cityLabel(rows[2]), 'Berlin');
+});
+
+test('G23-S1: Rusya ve Belarus ülke listesinde ve tohumlarda YOK; admin1 migration + rollback + seed', () => {
+  assert.equal(findCountry('RU'), undefined);
+  assert.equal(findCountry('BY'), undefined);
+  const countries = fs.readFileSync(path.join(ROOT, 'supabase/seed/geo_countries.sql'), 'utf8');
+  assert.ok(!/\('RU',|\('BY',/.test(countries));
+  const cities = fs.readFileSync(path.join(ROOT, 'supabase/seed/geo_cities.sql'), 'utf8');
+  assert.ok(!/, 'RU', \d|, 'BY', \d/.test(cities));
+  const mig = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261110190100_g23_geo_admin1.sql'), 'utf8');
+  assert.match(mig, /add column if not exists admin1 text/);
+  assert.match(mig, /c\.admin1\s*\n\s*from public\.geo_cities/);
+  assert.match(mig, /grant execute on function public\.search_cities\(text, text\) to anon, authenticated/);
+  const rb = fs.readFileSync(path.join(ROOT, 'supabase/rollbacks/20261110190100_g23_geo_admin1_rollback.sql'), 'utf8');
+  assert.match(rb, /drop column if exists admin1/);
+  const seed = fs.readFileSync(path.join(ROOT, 'supabase/seed/geo_cities_admin1.sql'), 'utf8');
+  assert.match(seed, /update public\.geo_cities c set admin1 = v\.admin1/);
+  assert.match(seed, /\(4250542, 'Illinois'\)/);
 });
 
 test('migration + rollback + seed dosyaları: RLS, salt okuma politikası, RPC izinleri, ON CONFLICT', () => {

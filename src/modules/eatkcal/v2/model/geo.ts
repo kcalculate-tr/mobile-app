@@ -26,6 +26,8 @@ export interface GeoCity {
   name: string;
   country: string;
   population: number;
+  /** G23-S1: eyalet / bölge adı (GeoNames admin1) — aynı adlı şehirleri ayırt eder. */
+  admin1?: string;
 }
 
 /** Arayüz dili kodu ('tr' dışındaki her dil İngilizce ülke adını görür). */
@@ -108,7 +110,14 @@ export function parseCityRows(data: unknown): GeoCity[] {
     const country = typeof row.country_iso2 === 'string' ? row.country_iso2 : '';
     if (!Number.isInteger(id) || id <= 0 || !name || !/^[A-Z]{2}$/.test(country)) continue;
     const pop = Number(row.population);
-    out.push({ geonameid: id, name, country, population: Number.isFinite(pop) && pop > 0 ? pop : 0 });
+    const admin1 = typeof row.admin1 === 'string' ? row.admin1.trim().slice(0, 200) : '';
+    out.push({
+      geonameid: id,
+      name,
+      country,
+      population: Number.isFinite(pop) && pop > 0 ? pop : 0,
+      ...(admin1 && admin1 !== name ? { admin1 } : {}),
+    });
     if (out.length >= CITY_RESULTS_MAX) break;
   }
   return out;
@@ -133,6 +142,11 @@ export async function searchCities(rpc: Rpc, rawQuery: string, country: string |
 }
 
 /** Ağ/sonuç yokken yazılan adla devam: kimliksiz (geonameid 0) şehir. */
+/** Satır etiketi: "Springfield, Illinois" (admin1 yoksa yalnız ad). */
+export function cityLabel(c: Pick<GeoCity, 'name' | 'admin1'>): string {
+  return c.admin1 ? `${c.name}, ${c.admin1}` : c.name;
+}
+
 export function typedCity(raw: string, country: string): GeoCity | null {
   const name = raw.replace(/\s+/g, ' ').trim().slice(0, 80);
   return name.length >= CITY_QUERY_MIN ? { geonameid: 0, name, country, population: 0 } : null;

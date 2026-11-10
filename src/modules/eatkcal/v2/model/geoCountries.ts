@@ -1,6 +1,7 @@
 // G22-S2 md.3 — eatkcal ülke listesi (ÜRETİLDİ: GeoNames countryInfo, CC BY 4.0 +
 // Intl.DisplayNames tr/en). Kıta EU / NA / SA'da en az bir 15k+ şehri olan ülkeler +
 // Türkiye (GeoNames'te AS; mevcut il/ilçe akışı). supabase/seed/geo_countries.sql ile AYNI küme.
+// G23-S1 (İlter 10 Kas): Rusya ve Belarus listede YOK.
 // Elle düzenleme — yeniden üretmek için G22-S2 LOG'daki betik.
 
 export type GeoContinent = 'EU' | 'NA' | 'SA' | 'AS';
@@ -31,7 +32,6 @@ export const GEO_COUNTRIES: readonly GeoCountry[] = [
   { iso2: "BQ", tr: "Karayip Hollandası", en: "Caribbean Netherlands", continent: "NA" },
   { iso2: "BR", tr: "Brezilya", en: "Brazil", continent: "SA" },
   { iso2: "BS", tr: "Bahamalar", en: "Bahamas", continent: "NA" },
-  { iso2: "BY", tr: "Belarus", en: "Belarus", continent: "EU" },
   { iso2: "BZ", tr: "Belize", en: "Belize", continent: "NA" },
   { iso2: "CA", tr: "Kanada", en: "Canada", continent: "NA" },
   { iso2: "CH", tr: "İsviçre", en: "Switzerland", continent: "EU" },
@@ -101,7 +101,6 @@ export const GEO_COUNTRIES: readonly GeoCountry[] = [
   { iso2: "PY", tr: "Paraguay", en: "Paraguay", continent: "SA" },
   { iso2: "RO", tr: "Romanya", en: "Romania", continent: "EU" },
   { iso2: "RS", tr: "Sırbistan", en: "Serbia", continent: "EU" },
-  { iso2: "RU", tr: "Rusya", en: "Russia", continent: "EU" },
   { iso2: "SE", tr: "İsveç", en: "Sweden", continent: "EU" },
   { iso2: "SI", tr: "Slovenya", en: "Slovenia", continent: "EU" },
   { iso2: "SJ", tr: "Svalbard ve Jan Mayen", en: "Svalbard & Jan Mayen", continent: "EU" },
