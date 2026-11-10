@@ -3,6 +3,7 @@
 > **TASLAK — hukuki inceleme için (İlter Öziseven). Yayımlanmadı.**
 > Sürüm: `v0.1-taslak` · Taslak tarihi: 2026-11-09 · Yürürlük: `[YÜRÜRLÜK TARİHİ]`
 > Kapsam: Kcalculate AI mobil uygulaması (eatkcal sipariş modülü dâhil), kcalculate.ai, eatkcal.com, l.eatkcal.com — hep birlikte **"Hizmet"**.
+> <!-- L-S3 --> L-S3 eki (2026-11-11): §2 (kcalAI tanımları), §5.4, **§12A kcalAI abonelikleri**, §13.3, §15.4 eklendi.
 
 ## 1. Taraflar ve kabul
 
@@ -26,6 +27,10 @@ SEKULART LTD · MERSİS: 0759-1148-7410-0001 · VKN: 7591148741 · Adres: Basın
 - **Kullanıcı İçeriği:** Hizmet'e yüklediğin veya paylaştığın her türlü metin, fotoğraf, video, yorum, değerlendirme ve öğün/etkinlik kartı.
 - **Macro Coin / Makro paketi:** eatkcal'da kullanılan ön ödemeli bakiye/paket.
 - **AI Tahmini:** fotoğraf veya metinden yapay zekâ ile üretilen besin/kalori/makro tahmini.
+- <!-- L-S3 --> **kcalAI:** Kcalculate AI'nin yapay zekâ özelliklerinin (AI tarama, sesli giriş, kcalAI Koç) ve bunlara ilişkin ücretli planların ortak adı.
+- <!-- L-S3 --> **kcalAI Koç ("Koç"):** yazdığın mesajlara ve günlük takip özetine göre yapay zekâ ile beslenme önerisi üreten sohbet özelliği.
+- <!-- L-S3 --> **Abonelik:** kcalAI'nin Fresh veya Balance planına, App Store ya da Google Play üzerinden yapılan, otomatik yenilenen aylık veya yıllık ücretli üyelik.
+- <!-- L-S3 --> **Günlük hak:** bir kademede bir günde kullanılabilen AI tarama, barkod veya Koç mesajı sayısı.
 
 ## 3. Kimler kullanabilir? (18+)
 
@@ -53,7 +58,8 @@ SEKULART LTD · MERSİS: 0759-1148-7410-0001 · VKN: 7591148741 · Adres: Basın
 
 5.3. **eatkcal:** İzmir'de belirlenen teslimat bölgelerinde, SEKULART mutfaklarından yemek siparişi ve Macro Coin/Makro paketleri. Teslimat bölgeleri, saatleri ve fiyatlar uygulamada sipariş öncesi gösterilir.
 
-5.4. **Ücretli özellikler:** `[ABONELİK — varsa plan adı, fiyat, yenileme, iptal; uygulama mağazası üzerinden satılıyorsa Apple/Google kuralları]`.
+<!-- L-S3 -->
+5.4. **Ücretli özellikler:** kcalAI'nin bazı hakları (daha fazla günlük AI tarama, sınırsız barkod, kcalAI Koç) App Store veya Google Play üzerinden satılan, otomatik yenilenen **Fresh** ve **Balance** abonelikleriyle sunulur. Planlar, deneme, ücretlendirme, yenileme, iptal ve iade kuralları **§12A**'dadır. eatkcal siparişleri ve Macro Coin/Makro paketleri abonelik değildir; onlar için §12 ve satış belgeleri geçerlidir.
 
 5.5. Hizmet'in bazı bölümleri ülke, dil veya cihaza göre farklı olabilir. eatkcal yalnızca Türkiye'de (İzmir) sunulur.
 
@@ -132,11 +138,73 @@ Hizmet; Apple ile Giriş, Google ile Giriş, ödeme kuruluşu **PaynKolay** (N K
 
 > **[İnceleme notu]** Mevcut metinler "kullanılmamış Makro paketi iade edilmez" diyor (mobil `src/data/contractsData.ts` distance-sales md.8.2/11.3; web `mesafeli.ts:158-166`). Tüketicinin bedel ödediği bakiyenin süre sonunda tamamen yanması TKHK md.5 (haksız şart) riski taşır; ayrıca mobil metinde md.11.2 "Macro Paketleri" tablosu boş. Önerim: ödenmiş bakiye için iade/orantılı iade kuralı, yalnız promosyon bakiyesi için yanma.
 
+<!-- L-S3 -->
+## 12A. kcalAI abonelikleri
+
+12A.1. **Planlar.** kcalAI iki ücretli planla sunulur: **Fresh** ve **Balance**. Her plan **aylık** veya **yıllık** dönemle satın alınabilir. Planın içerdiği haklar, fiyatı (vergiler dâhil, mağazanın gösterdiği para biriminde) ve dönemi, satın alma ekranında **satın almadan önce** gösterilir. Abonelik almadan Uygulama'yı **Ücretsiz** kademede sınırlı haklarla kullanmaya devam edebilirsin.
+
+12A.2. **Günlük haklar (bu sürümün yayın tarihindeki değerler).**
+
+| Hak | Ücretsiz | Fresh | Balance |
+|---|---|---|---|
+| AI tarama — tabak fotoğrafı ve sesli giriş (ortak sayaç) | Günde 2 | Günde 10 | Günde 50 |
+| Barkod okutma | Günde 5 | Sınırsız | Sınırsız |
+| Elle giriş | Sınırsız | Sınırsız | Sınırsız |
+| kcalAI Koç (kullanıma açıldığında) | Tek seferlik 3 mesajlık deneme | Tek seferlik 3 mesajlık deneme | Günde 30 mesaj |
+
+Güncel değerler Uygulama'da (Profil › Abonelik ve satın alma ekranı) gösterilir. **Hiçbir kademede AI tarama sınırsız değildir.** Ödeme yaptığın dönem içinde planının haklarını aleyhine değiştirmeyiz; değişiklik gerekirse §19'daki bildirim kuralları uygulanır ve değişiklik bir sonraki dönemden itibaren geçerli olur.
+
+12A.3. **Ücretin alınması.** Satın almayı onayladığında ücret, **Apple Kimliğine** bağlı ödeme yönteminden (App Store) veya **Google Play hesabından** alınır. Satış ve tahsilatı ilgili mağaza yapar; kart veya ödeme bilgilerin bize ulaşmaz.
+
+12A.4. **Otomatik yenileme.** Abonelik, içinde bulunduğun dönemin (veya denemenin) bitiminden **en az 24 saat önce** iptal edilmedikçe **aynı süre için ve o anda geçerli fiyatla otomatik olarak yenilenir**. Yenileme ücreti, dönem bitiminden önceki 24 saat içinde mağaza hesabından alınır.
+
+12A.5. **Ücretsiz deneme.** Yıllık planlarda **7 günlük ücretsiz deneme** sunulabilir. Denemeye uygunluğu mağaza belirler (genellikle aynı plan grubunda bir mağaza hesabı için bir kez). Deneme bitiminden **en az 24 saat önce** iptal etmezsen, deneme bittiğinde yıllık ücret alınır ve abonelik başlar. Deneme sürerken ücretli bir abonelik satın alırsan **denemenin kullanılmayan kısmı sona erer**.
+
+12A.6. **İptal ve yönetim.** Aboneliğini yalnız satın aldığın mağazanın hesap ayarlarından yönetebilir ve iptal edebilirsin:
+- **iPhone/iPad:** Ayarlar › [adın] › Abonelikler (veya App Store › hesabın › Abonelikler);
+- **Android:** Google Play › Profil › Ödemeler ve abonelikler › Abonelikler.
+
+Uygulama'da **Profil › Abonelik › "Aboneliği yönet"** seni bu sayfaya götürür. İptal, içinde bulunduğun dönemin sonunda geçerli olur; o tarihe kadar planının haklarını kullanmaya devam edersin, sonra Ücretsiz kademeye dönersin. Kayıtların bu nedenle silinmez. **Uygulamayı kaldırmak veya Kcalculate AI hesabını silmek aboneliği iptal etmez** (bkz. §15).
+
+12A.7. **İade.** Abonelik satışını mağaza yaptığı için iade talepleri **mağazanın iade politikasına göre mağazaya** yapılır (Apple: reportaproblem.apple.com; Google Play: Google Play iade politikası ve Play'deki sipariş geçmişi). Mağaza ödemelerini doğrudan iade etme imkânımız yoktur. Mağaza politikası veya zorunlu mevzuat aksini öngörmedikçe kısmen kullanılmış dönemler için kısmi iade yapılmaz. **Tüketici olarak sahip olduğun ve sözleşmeyle kaldırılamayan haklar saklıdır.**
+
+12A.8. **Fiyat değişikliği.** Plan fiyatlarını değiştirebiliriz. Yeni fiyat, **bir sonraki yenileme döneminden itibaren** uygulanır; devam eden dönemin fiyatı değişmez. Fiyat artışını yürürlüğünden önce mağaza bildirimiyle ve/veya Uygulama içinde duyururuz. Mağaza kuralları gerektiriyorsa yeni fiyatla devam etmek için **onayın istenir**; onay vermezsen abonelik mevcut dönem sonunda sona erer. Yeni fiyatı kabul etmiyorsan yenilemeden en az 24 saat önce iptal edebilirsin.
+
+12A.9. **Günlük hakların yenilenmesi ve kullanımı.**
+- Günlük haklar her gün **saat 00.00'da (Türkiye saati, UTC+3)** yenilenir. Kullanılmayan haklar ertesi güne devretmez ve biriktirilemez.
+- Bir AI tarama hakkı, analiz **başarıyla** tamamlandığında düşer. Teknik bir hata nedeniyle sonuç verilemezse hak iade edilir.
+- Koç'a gönderdiğin bir mesaj, güvenlik nedeniyle yanıtlanmazsa (bkz. 12A.11) veya teknik hata olursa hak düşmez.
+- Kötüye kullanımı önlemek için dakika başına deneme sınırı uygulanabilir.
+- Yoğunluk, güvenlik veya hizmet sağlayıcı kesintisi nedeniyle AI özellikleri **geçici olarak** durdurulabilir. Uzun süreli veya kalıcı kesintide §14 uygulanır.
+
+12A.10. **Hakların kişiselliği.** Abonelik ve günlük haklar **kişiseldir**: başka bir kullanıcıya veya hesaba **devredilemez**, satılamaz, kiralanamaz, paylaşılamaz ve nakde çevrilemez. Abonelik, satın aldığın mağaza hesabına (Apple Kimliği / Google hesabı) bağlıdır; aynı mağaza hesabıyla **"Satın alımları geri yükle"** seçeneğiyle Kcalculate AI hesabına yeniden bağlanabilir. Hakları çoğaltmak amacıyla birden fazla hesap kullanmak §9 kapsamında yasaktır.
+
+12A.11. **Koç tıbbi tavsiye değildir.**
+- Koç, yapay zekâ ile **otomatik** yanıt üretir. Diyetisyen, hekim veya başka bir sağlık profesyoneli **değildir**; **tıbbi tavsiye, teşhis veya tedavi sunmaz**. Yanıtları hatalı, eksik veya sana uygun olmayabilir. §6'daki sağlık uyarısı Koç için de aynen geçerlidir.
+- Tıbbi bir durum, ilaç veya yeme bozukluğu işareti içeren mesajlara Koç öneri vermez ve seni bir sağlık profesyoneline yönlendirir. Acil durumlarda **112**'yi ara.
+- Koç, güvenli kabul edilen günlük kalori alt sınırının altında öneri vermeyecek şekilde ayarlanmıştır; yine de her öneriyi kendi sağlık durumuna göre değerlendirmek sana aittir.
+- Koç'un önerileri arasında **SEKULART'ın kendi eatkcal ürünleri** ve Keşfet tarifleri yer alabilir. Bu öneriler bir ticari ilişkiyi yansıtır; satın alma yükümlülüğü doğurmaz.
+
+12A.12. **Lisans (iOS).** Uygulama'yı App Store'dan edindiysen, Uygulama'nın lisansına **Apple'ın Standart Lisanslı Uygulama Son Kullanıcı Lisans Sözleşmesi** (Standard EULA — https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) uygulanır. Bu Koşullar, Standard EULA'ya **ek olarak** geçerlidir; Standard EULA ile çelişen bir hüküm olursa lisans konusunda Standard EULA esas alınır. Android'de lisans §10'a tabidir.
+
+12A.13. **Satış belgeleriyle ilişki.** Abonelikler mağaza üzerinden satıldığı için eatkcal Ön Bilgilendirme Formu ve Mesafeli Satış Sözleşmesi aboneliklere uygulanmaz; satın alma sırasında mağazanın koşulları da geçerlidir.
+
+> **[İnceleme notu — L-S3]**
+> 1. **Kaynak:** plan adları, deneme ve yenileme dili `src/lib/subscription/i18n.ts` (release/1.1.0) ile; günlük haklar `supabase/migrations/20261110100100_g22_s1_subscriptions.sql:16-17,85-127` (ai 2/10/50, barkod 5/sınırsız) ve `20261111100100_g24_coach.sql:124-127` (Koç 30/gün, deneme 3) ile; 00.00 İstanbul yenilemesi aynı dosyalarda `Europe/Istanbul` ile; hak iadesi `reserve/release_ai_scan` ve `release_coach_message` ile eşleşir. Değerler `app_settings`'ten sunucuda değiştirilebilir → tablo "yayın tarihindeki değerler" diye yazıldı.
+> 2. **Fiyat** bilerek yazılmadı (mağaza ülkeye göre gösterir). Paywall'daki örnek "Balance Yıllık 2999 TL" kodda yorum satırında; metne konursa her fiyat değişikliğinde Koşullar da güncellenmeli.
+> 3. **Cayma hakkı:** Türkiye için Mesafeli Sözleşmeler Yönetmeliği md.15/1-ğ (elektronik ortamda anında ifa edilen hizmet) istisnası; AB için 2011/83/AB md.16(m) — dijital içerikte istisna için **açık onay + hakkın kaybedildiğinin kabulü** gerekir. App Store/Play'de satıcı sıfatı (Apple/Google aracı mı, satıcı mı) ülkeye göre değişir; cayma bildirimini kimin vereceği karara bağlanmalı. Taslakta yalnız "zorunlu haklar saklıdır" dendi.
+> 4. **Apple EULA:** §13.1 Apple'ın "özel EULA asgari şartları"nı zaten içeriyor. İki yol var: (a) ASC'de **Standard EULA** + ASC açıklamasına ve paywall'a EULA bağlantısı (G25-S1 md.2'de kodlanıyor; 12A.12 bu yola göre yazıldı) veya (b) bu Koşullar'ı **özel EULA** olarak ASC'ye yüklemek. Karar BOSLUKLAR'da.
+> 5. **Aile Paylaşımı** ASC'de açık mı bilinmiyor; açılırsa 12A.10 "paylaşılamaz" cümlesi "Aile Paylaşımı hariç" diye değiştirilmeli.
+> 6. "Ödeme yaptığın dönem içinde aleyhine değiştirmeyiz" taahhüdü, `app_settings` değerlerinin dönem içinde düşürülmemesi şeklinde işletme kuralı gerektirir.
+
 ## 13. Uygulama mağazası koşulları
 
 13.1. **Apple:** Uygulamayı Apple App Store'dan indirdiysen: (a) bu Koşullar Apple ile değil, SEKULART ile senin aranda yapılmıştır; Uygulama ve içeriğinden Apple değil SEKULART sorumludur. (b) Kullanım iznin, App Store Kullanım Şartları'ndaki "Kullanım Kuralları"na uygun olarak sahibi olduğun veya kontrol ettiğin Apple cihazlarıyla sınırlıdır. (c) Apple'ın Uygulama için bakım ve destek yükümlülüğü yoktur. (d) Uygulama herhangi bir garantiye uymazsa Apple'a bildirebilirsin; Apple, varsa satın alma bedelini iade eder; bunun dışında, yasaların izin verdiği ölçüde Apple'ın başka garanti yükümlülüğü yoktur. (e) Uygulamaya ilişkin ürün sorumluluğu, mevzuata uygunluk ve tüketici koruma taleplerini Apple değil SEKULART karşılar. (f) Uygulamanın üçüncü kişinin fikri mülkiyet hakkını ihlal ettiği iddialarını Apple değil SEKULART inceler ve savunur. (g) ABD ambargosuna tabi bir ülkede bulunmadığını ve ABD'nin yasaklı taraf listelerinde yer almadığını beyan edersin. (h) Apple ve bağlı şirketleri bu Koşullar'ın üçüncü taraf lehtarıdır ve kabulünle birlikte bu Koşullar'ı sana karşı uygulama hakkına sahiptir. Sorular ve şikâyetler için §20'deki iletişim bilgilerini kullan.
 
 13.2. **Google:** Uygulamayı Google Play'den indirdiysen, Google Play Hizmet Şartları da geçerlidir; Uygulama'dan Google değil SEKULART sorumludur.
+
+<!-- L-S3 -->
+13.3. **Standard EULA ve abonelikler:** iOS'ta Uygulama lisansı için Apple Standard EULA'nın geçerli olduğu ve uygulama içi aboneliklerin App Store / Google Play kurallarına tabi olduğu §12A.12 ve §12A'da düzenlenmiştir. §13.1'deki hükümler Standard EULA'yla birlikte uygulanır.
 
 ## 14. Hizmetin sürekliliği ve değişiklikler
 
@@ -149,6 +217,9 @@ Hizmet'i iyileştirmek için özellik ekleyebilir, değiştirebilir veya kaldır
 15.2. Silmeyle birlikte profilin, beslenme ve ölçüm kayıtların, Keşfet içeriğin, kayıtlı kartların ve bildirim jetonların silinir. **Sipariş ve ödeme kayıtları**, vergi ve ticaret mevzuatı gereği (TTK md.82, VUK md.253) **10 yıla kadar, kimliğinden arındırılmış** olarak saklanır. Ayrıntı: Gizlilik Politikası ve Saklama ve İmha Politikası.
 
 15.3. Kullanılmamış Macro Coin/Makro paketi bakiyen için §12.3 ve satış belgeleri geçerlidir.
+
+<!-- L-S3 -->
+15.4. **Aktif kcalAI aboneliği:** Hesabını silmek, App Store veya Google Play'deki aboneliğini **iptal etmez**; mağaza seni ücretlendirmeye devam edebilir. Hesabını silmeden önce aboneliğini §12A.6'daki adımlarla iptal et. Silme ekranı bu konuda seni uyarır ve "Aboneliği yönet" bağlantısını gösterir. Hesap silindiğinde abonelik kaydın ve Koç sohbet geçmişin de silinir.
 
 ## 16. Hesabın tarafımızca kapatılması
 
