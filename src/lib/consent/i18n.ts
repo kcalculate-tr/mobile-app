@@ -17,7 +17,7 @@ export const tr = {
     kvkk: 'KVKK Aydınlatma Metni',
     kvkk_post: ' kapsamında işlenir.',
     ads_label: 'Reklam ölçümü (Meta)',
-    ads_desc: 'Kampanyalarımızın etkisini ölçmek için. İstediğin zaman kapatabilirsin.',
+    ads_desc: 'Kampanyalarımızın etkisini ölçmek için. Varsayılan kapalı; açarsan istediğin zaman kapatabilirsin.',
     required: 'Devam etmek için koşulları kabul etmelisin.',
   },
   account: {
@@ -88,7 +88,7 @@ export const en: typeof tr = {
     kvkk: 'KVKK Privacy Notice',
     kvkk_post: '.',
     ads_label: 'Ad measurement (Meta)',
-    ads_desc: 'To measure how our campaigns perform. You can turn it off any time.',
+    ads_desc: 'To measure how our campaigns perform. Off by default; if you turn it on, you can turn it off any time.',
     required: 'Please accept the terms to continue.',
   },
   account: {

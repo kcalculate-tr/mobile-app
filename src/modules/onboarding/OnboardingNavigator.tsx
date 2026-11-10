@@ -191,9 +191,10 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const vSheet = __DEV__ ? route.params?.vitrinSheet : undefined;
   const [emailOpen, setEmailOpen] = useState(vSheet != null);
   const homeAfterClose = useRef(false);
-  // G20-S1 md.1: reklam ölçümü (Meta) AÇIK gelir, kapatılabilir; Apple/Google'da
-  // "Ayrıntılar" sheet'i, e-postada sheet içindeki blok aynı durumu değiştirir.
-  const [adOn, setAdOn] = useState(true);
+  // G27-S1 (İlter 11 Kas): reklam ölçümü (Meta) KAPALI gelir — yalnız kullanıcı açıkça
+  // açarsa (KVKK açık rıza). Apple/Google'da "Ayrıntılar" sheet'i, e-postada sheet
+  // içindeki blok aynı durumu değiştirir.
+  const [adOn, setAdOn] = useState(false);
   // G20-S3 md.2b (İlter kararı): Apple/Google/e-posta — ZORUNLU onay kutusu
   // (Koşullar + Gizlilik + 18+ beyanı); işaretlenmeden düğmeler pasif. E-posta
   // sheet'i ve ayrıntı sheet'i AYNI durumu gösterir/değiştirir.

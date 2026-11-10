@@ -41,7 +41,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
   const uid = session?.user?.id ?? null;
   const [sheet, setSheet] = useState<'notice' | 'reconsent' | null>(null);
   const [open, setOpen] = useState(false);
-  const [adOn, setAdOn] = useState(true);
+  const [adOn, setAdOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   // Kabulde yazılacak sürüm = kapının gördüğü sunucu sürümü (ayrı okuma başarısız
@@ -80,7 +80,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
         setOpen(false);
         void startMeta();
       } else if (d === 'notice' || d === 'reconsent') {
-        setAdOn(server?.ad_measurement ?? getConsent().adConsent !== 'denied');
+        setAdOn(server?.ad_measurement ?? getConsent().adConsent === 'granted');
         setSheet(d);
         setOpen(true);
       } else {

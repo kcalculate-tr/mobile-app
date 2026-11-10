@@ -121,13 +121,13 @@ describe('ConsentGate — sıra: politika → ATT', () => {
     expect(ui.getByTestId('consent-sheet-notice')).toBeTruthy();
     expect(ui.getByText('Gizlilik ve izinler')).toBeTruthy();
     expect(mockInit).not.toHaveBeenCalled(); // Meta politikadan ÖNCE yok
-    // Meta varsayılan AÇIK
-    expect(ui.getByTestId('consent-sheet-notice-block-ads').props.value).toBe(true);
+    // G27-S1: Meta varsayılan KAPALI (KVKK açık rıza; önceden işaretli değil)
+    expect(ui.getByTestId('consent-sheet-notice-block-ads').props.value).toBe(false);
 
     await act(async () => fireEvent.press(ui.getByText('Devam et')));
     await flush();
     expect(JSON.parse((await AsyncStorage.getItem(POLICY_KEY)) as string).v).toEqual({ terms: 1, privacy: 1 });
-    expect(mockConsent.adConsent).toBe('granted');
+    expect(mockConsent.adConsent).toBe('denied');
     const rows = mockInserts.flat() as { kind: string; doc_slug: string | null; source: string; user_id: string }[];
     expect(rows.map((r) => [r.kind, r.doc_slug, r.source, r.user_id])).toEqual([
       ['policy', 'kullanim-kosullari', 'notice', 'u1'],
@@ -139,11 +139,22 @@ describe('ConsentGate — sıra: politika → ATT', () => {
     expect(mockInit.mock.calls[0][0]).toBeUndefined(); // G26: ATT geri çağrısı yok
   });
 
-  test('bilgilendirmede reklam ölçümü kapatılırsa → adConsent denied, satır granted=false', async () => {
+  test('bilgilendirmede reklam ölçümü kullanıcı açarsa → adConsent granted, satır granted=true (G27: yalnız açık rıza)', async () => {
     signIn();
     const ui = render(<ConsentGate />);
     await flush();
-    fireEvent(ui.getByTestId('consent-sheet-notice-block-ads'), 'valueChange', false);
+    fireEvent(ui.getByTestId('consent-sheet-notice-block-ads'), 'valueChange', true);
+    await act(async () => fireEvent.press(ui.getByText('Devam et')));
+    await flush();
+    expect(mockConsent.adConsent).toBe('granted');
+    const ad = (mockInserts.flat() as { kind: string; granted: boolean }[]).find((r) => r.kind === 'ad_measurement');
+    expect(ad?.granted).toBe(true);
+  });
+
+  test('bilgilendirmede dokunulmazsa → adConsent denied, satır granted=false', async () => {
+    signIn();
+    const ui = render(<ConsentGate />);
+    await flush();
     await act(async () => fireEvent.press(ui.getByText('Devam et')));
     await flush();
     expect(mockConsent.adConsent).toBe('denied');

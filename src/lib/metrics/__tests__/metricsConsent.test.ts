@@ -6,8 +6,8 @@ import { fbSettingsFor, metaAllowed, parseAdConsent, parseFirstParty } from '../
 import { scanOutcomeEvent } from '../../../modules/ai/scan/scanMetrics';
 import { logSourceOf } from '../logSource';
 
-test('G26: Meta yalnız uygulama içi rızaya bağlı (iOS + Android; ATT yok)', () => {
-  assert.equal(metaAllowed({ adConsent: 'unset' }), true);
+test('G27: Meta varsayılan KAPALI — yalnız açık rıza (granted) ile (iOS + Android; ATT yok)', () => {
+  assert.equal(metaAllowed({ adConsent: 'unset' }), false);
   assert.equal(metaAllowed({ adConsent: 'granted' }), true);
   assert.equal(metaAllowed({ adConsent: 'denied' }), false);
 });
@@ -16,7 +16,8 @@ test('G26: iOS izleme + IDFA HER ZAMAN kapalı; Android reklam kimliği rızaya 
   for (const adConsent of ['unset', 'granted', 'denied'] as const) {
     assert.deepEqual(fbSettingsFor({ platform: 'ios', adConsent }), { advertiserTracking: false, advertiserIdCollection: false }, adConsent);
   }
-  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'unset' }), { advertiserTracking: true, advertiserIdCollection: true });
+  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'unset' }), { advertiserTracking: false, advertiserIdCollection: false });
+  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'granted' }), { advertiserTracking: true, advertiserIdCollection: true });
   assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'denied' }), { advertiserTracking: false, advertiserIdCollection: false });
 });
 

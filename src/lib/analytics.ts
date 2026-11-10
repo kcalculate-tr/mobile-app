@@ -57,18 +57,17 @@ export const getConsent = () => ({ platform: Platform.OS, adConsent, firstParty 
 
 const applyFbSettings = (): void => {
   const s = fbSettingsFor({ platform: Platform.OS, adConsent });
+  // G27-S1: otomatik uygulama olayları (yükleme / etkinleştirme) da yalnız açık rızada.
+  // app.config autoLogAppEventsEnabled=false → varsayılan kapalı; burada rızaya göre açılır.
+  const allowed = metaAllowed({ adConsent });
   if (Platform.OS === 'ios') {
     // G26-S1: ATT yok → izleme ve IDFA kapalı SABİT; olaylar rızaya göre (metaAllowed).
     void Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
     Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
-  } else if (adConsent === 'denied') {
-    // Android: bugün hiçbir ayar çağrılmıyordu (rıza 'unset' iken aynen kalır).
-    Settings.setAdvertiserIDCollectionEnabled(false);
-    Settings.setAutoLogAppEventsEnabled(false);
-  } else if (adConsent === 'granted') {
-    Settings.setAdvertiserIDCollectionEnabled(true);
-    Settings.setAutoLogAppEventsEnabled(true);
+  } else {
+    Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
   }
+  Settings.setAutoLogAppEventsEnabled(allowed);
 };
 
 /** Uygulama içi reklam rızası (G20-S1: hesap oluşturma bloğu + Veri ve reklam izinleri sayfası). */
@@ -106,8 +105,8 @@ let initialized = false;
  * sorusu hiç gösterilmez. iOS'ta `setAdvertiserTrackingEnabled(false)` ve IDFA
  * toplama kapalı SABİT, SONRA initializeSDK (app.config: isAutoInitEnabled=false,
  * advertiserIDCollectionEnabled=false → SDK açılışta IDFA okumaz). Meta ölçümü
- * ATT'siz (AEM / SKAdNetwork) sürer; olaylar yalnız uygulama içi reklam rızası
- * reddedilmediyse gider (metaAllowed).
+ * ATT'siz (AEM / SKAdNetwork) sürer; G27-S1: olaylar (otomatik olanlar dahil) YALNIZ
+ * uygulama içi reklam tercihi açıkça 'açık' ise gider (metaAllowed; varsayılan kapalı).
  */
 export const initFBSDK = async (): Promise<void> => {
   if (initialized) return;
@@ -117,6 +116,7 @@ export const initFBSDK = async (): Promise<void> => {
     if (Platform.OS === 'ios') {
       await Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
       Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
+      Settings.setAutoLogAppEventsEnabled(metaAllowed({ adConsent }));
     } else {
       applyFbSettings();
     }

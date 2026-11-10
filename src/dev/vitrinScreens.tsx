@@ -191,7 +191,7 @@ const MACRO_MOCK = {
 };
 
 function ConsentSheetScene({ mode }: { mode: ConsentSheetMode }) {
-  const [adOn, setAdOn] = React.useState(true);
+  const [adOn, setAdOn] = React.useState(false);
   return (
     <Backdrop>
       <ConsentSheet visible mode={mode} adOn={adOn} onAdChange={setAdOn} onConfirm={noop} onClose={noop} />

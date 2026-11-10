@@ -79,12 +79,28 @@ beforeEach(async () => {
 });
 
 describe('initFBSDK — G26-S1: ATT yok', () => {
-  it('iOS: Apple izleme sorusu YOK; tracking=false → IDFA=false → initializeSDK; reklam olayı ATT’siz (AEM) gider', async () => {
+  it('iOS rıza unset (G27 varsayılan KAPALI): Apple izleme sorusu YOK; tracking/IDFA/otomatik olay false → initializeSDK; Meta olayı GİTMEZ', async () => {
     const a = load('ios');
     await a.initFBSDK();
     expect(mockCalls).toEqual([
       'setAdvertiserTrackingEnabled:false',
       'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:false',
+      'initializeSDK',
+    ]);
+    mockCalls.length = 0;
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    a.track('payment_success', { order_id: 1042, price: 300 });
+    expect(mockCalls).toEqual([]);
+  });
+
+  it('iOS rıza granted: izleme/IDFA kapalı SABİT, olaylar ATT’siz (AEM) gider', async () => {
+    const a = load('ios', { '@kcal_consent_ads': 'granted' });
+    await a.initFBSDK();
+    expect(mockCalls).toEqual([
+      'setAdvertiserTrackingEnabled:false',
+      'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:true',
       'initializeSDK',
     ]);
     mockCalls.length = 0;
@@ -92,14 +108,20 @@ describe('initFBSDK — G26-S1: ATT yok', () => {
     expect(mockCalls).toEqual(['logEvent:AddedToCart']);
   });
 
-  it('iOS rıza granted olsa da izleme/IDFA kapalı SABİT', async () => {
-    const a = load('ios', { '@kcal_consent_ads': 'granted' });
+  it('rıza sonradan açılırsa (setAdConsent granted) olaylar o andan itibaren gider; kapatılırsa durur', async () => {
+    const a = load('android');
     await a.initFBSDK();
-    expect(mockCalls).toEqual([
-      'setAdvertiserTrackingEnabled:false',
-      'setAdvertiserIDCollectionEnabled:false',
-      'initializeSDK',
-    ]);
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls.filter((c) => c.startsWith('logEvent'))).toEqual([]);
+    mockCalls.length = 0;
+    await a.setAdConsent('granted');
+    expect(mockCalls).toEqual(['setAdvertiserIDCollectionEnabled:true', 'setAutoLogAppEventsEnabled:true']);
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls).toContain('logEvent:AddedToCart');
+    mockCalls.length = 0;
+    await a.setAdConsent('denied');
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls).toEqual(['setAdvertiserIDCollectionEnabled:false', 'setAutoLogAppEventsEnabled:false']);
   });
 
   it('iOS uygulama içi reklam rızası denied: IDFA kapalı, Meta olayı yok', async () => {
@@ -108,6 +130,7 @@ describe('initFBSDK — G26-S1: ATT yok', () => {
     expect(mockCalls).toEqual([
       'setAdvertiserTrackingEnabled:false',
       'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:false',
       'initializeSDK',
     ]);
     mockCalls.length = 0;
@@ -115,10 +138,17 @@ describe('initFBSDK — G26-S1: ATT yok', () => {
     expect(mockCalls).toEqual([]);
   });
 
-  it('Android rıza unset: bugünkü gibi yalnız initializeSDK; rıza denied → IDFA + otomatik olay kapalı', async () => {
+  it('Android rıza unset (G27 varsayılan KAPALI) ve denied → reklam kimliği + otomatik olay kapalı, Meta olayı yok', async () => {
     const a = load('android');
     await a.initFBSDK();
-    expect(mockCalls).toEqual(['initializeSDK']);
+    expect(mockCalls).toEqual([
+      'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:false',
+      'initializeSDK',
+    ]);
+    mockCalls.length = 0;
+    a.track('product_view', { product_id: '7', product_name: 'Bowl', price: 285 });
+    expect(mockCalls).toEqual([]);
 
     mockCalls.length = 0;
     const b = load('android', { '@kcal_consent_ads': 'denied' });
@@ -137,8 +167,8 @@ describe('initFBSDK — G26-S1: ATT yok', () => {
 });
 
 describe('track() — Meta yalnız reklam olayları, parametreler eskisiyle aynı', () => {
-  it('iOS (ATT yok): product_view → ViewedContent; scan/log olayları Meta’ya gitmez', async () => {
-    const a = load('ios');
+  it('iOS (ATT yok, rıza açık): product_view → ViewedContent; scan/log olayları Meta’ya gitmez', async () => {
+    const a = load('ios', { '@kcal_consent_ads': 'granted' });
     await a.initFBSDK();
     mockCalls.length = 0;
     a.track('product_view', { product_id: '7', product_name: 'Bowl', price: 285 });
@@ -195,8 +225,9 @@ describe('track() — Meta yalnız reklam olayları, parametreler eskisiyle ayn�
     expect(mockInserts.length).toBe(0);
   });
 
-  it('identifyUser: yeni hesap → signup (Meta CompletedRegistration), eski hesap → login', async () => {
-    const a = load('android');
+  it('identifyUser: yeni hesap → signup (rıza açıkken Meta CompletedRegistration), eski hesap → login', async () => {
+    const a = load('android', { '@kcal_consent_ads': 'granted' });
+    await a.initFBSDK(); // rıza diskten yüklensin (açılışta ConsentGate → initFBSDK)
     await a.identifyUser({ id: 'u-new', created_at: new Date().toISOString(), app_metadata: { provider: 'apple' } });
     await a.identifyUser({ id: 'u-new', created_at: new Date().toISOString(), app_metadata: { provider: 'apple' } }); // ikinci kez yok
     await a.identifyUser({ id: 'u-old', created_at: '2025-01-01T00:00:00Z', app_metadata: { provider: 'google' } });

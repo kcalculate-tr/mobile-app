@@ -210,7 +210,7 @@ export function ConsentSheet({
                   }}
                   showRequired={showRequired}
                   withAge={mode === 'details'}
-                  adOn={adOn ?? true}
+                  adOn={adOn ?? false}
                   onAdChange={(v) => onAdChange?.(v)}
                   testID={`consent-sheet-${mode}-block`}
                 />

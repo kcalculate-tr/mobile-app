@@ -479,7 +479,9 @@ module.exports = {
           // SABİT çağırır, SONRA initializeSDK(). iosUserTrackingPermission VERİLMEZ
           // (verilirse eklenti NSUserTrackingUsageDescription yazar).
           advertiserIDCollectionEnabled: false,
-          autoLogAppEventsEnabled: true,
+          // G27-S1: otomatik olaylar varsayılan KAPALI (KVKK açık rıza); analytics.ts yalnız
+          // reklam tercihi açıkça 'açık' ise setAutoLogAppEventsEnabled(true) çağırır.
+          autoLogAppEventsEnabled: false,
           isAutoInitEnabled: false,
         },
       ],
