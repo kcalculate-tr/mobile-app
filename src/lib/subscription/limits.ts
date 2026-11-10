@@ -26,6 +26,15 @@ export function limitsFromSettings(rows: readonly { key: string; value: unknown 
   };
 }
 
+/** G25-S1 md.1 (A1): sunucu yanıtı yokken gösterilen ücretsiz günlük AI tarama sayısı (ai_daily_free = 2). */
+export const FREE_AI_FALLBACK = 2;
+
+/** Ücretsiz günlük AI tarama tavanı: app_settings `ai_daily_free`, okunamadıysa FREE_AI_FALLBACK. */
+export function freeAiCap(limits: TierLimits | null | undefined): number {
+  const n = limits?.ai.free;
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : FREE_AI_FALLBACK;
+}
+
 export const LIMIT_SETTING_KEYS = ['ai_daily_free', 'ai_daily_fresh', 'ai_daily_balance', 'barcode_daily_free', 'coach_daily_balance', 'coach_trial_free'] as const;
 
 /** reserve_ai_scan / reserve_barcode_scan / my_entitlement ortak alt kümesi. */

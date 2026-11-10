@@ -17,7 +17,7 @@ import {
   type Tier,
 } from './plans';
 import { rcSnapshot, purchaseErrorResult, type CustomerInfoLike, type PurchaseResult, type RcSnapshot } from './rc';
-import { LIMIT_SETTING_KEYS, limitsFromSettings, type QuotaSnapshot, type TierLimits } from './limits';
+import { LIMIT_SETTING_KEYS, freeAiCap, limitsFromSettings, type QuotaSnapshot, type TierLimits } from './limits';
 
 type PurchasesModule = typeof import('react-native-purchases');
 type PurchasesDefault = PurchasesModule['default'];
@@ -71,6 +71,15 @@ export function useTier(): { tier: Tier; status: ReturnType<typeof resolveTier>[
   const rc = useSubscriptionStore((s) => s.rc?.tier ?? null);
   const server = useSubscriptionStore((s) => s.server?.tier ?? null);
   return resolveTier(rc, server);
+}
+
+/**
+ * Ücretsiz kademenin günlük AI tarama tavanı — app_settings `ai_daily_free` (refreshEntitlement
+ * yükler); okunamadıysa FREE_AI_FALLBACK. Tanıtım ve TbFirst "günde N ücretsiz" metni bunu kullanır.
+ */
+export function useFreeAiCap(): number {
+  const limits = useSubscriptionStore((s) => s.limits);
+  return freeAiCap(limits);
 }
 
 // ── Yapılandırma ─────────────────────────────────────────────────────────────

@@ -41,6 +41,7 @@ import { HowSheet } from './HowSheet';
 import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
 import { track } from '../../../lib/analytics';
+import { useFreeAiCap } from '../../../lib/subscription/purchases';
 
 export type TbParamList = {
   TbGoal: undefined;
@@ -493,6 +494,7 @@ function FirstScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbFirs
   const root = useRootNav(navigation);
   const { user } = useAuth();
   const draft = useTbDraft();
+  const freeCap = useFreeAiCap(); // G25-S1 md.1: "günde N ücretsiz" sunucu tavanından (yedek 2)
 
   const saveThen = async (go: () => void) => {
     if (user) await saveTakibeProfile(user.id, draft, nowYear());
@@ -517,7 +519,7 @@ function FirstScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbFirs
       <View style={styles.rows}>
         <IconRow
           title={i18n.t('tb.first.scan')}
-          desc={i18n.t('tb.first.scan_desc')}
+          desc={i18n.t('tb.first.scan_desc', { count: freeCap })}
           icon={(c) => <Scan size={22} color={c} />}
           onPress={() => saveThen(() => root?.navigate('AiScan'))}
         />

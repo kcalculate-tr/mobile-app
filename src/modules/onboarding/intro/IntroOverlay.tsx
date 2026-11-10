@@ -21,6 +21,7 @@ import { useAuth } from '../../../core/AuthContext';
 import { fetchPastOrders } from '../../../lib/reorder';
 import { navigationRef } from '../../../navigation/navigationRef';
 import { readIntroSeen, writeIntroSeen } from './storage';
+import { useFreeAiCap } from '../../../lib/subscription/purchases';
 
 /** Final ikincil eylem: çerçevesiz, mürekkep renkli düz metin. */
 function InkTextButton({ label, onPress }: { label: string; onPress: () => void }) {
@@ -40,6 +41,7 @@ export function IntroOverlay() {
   const t = useTheme();
   const i18n = useT();
   const { session, user } = useAuth();
+  const freeCap = useFreeAiCap(); // G25-S1 md.1: "günde N ücretsiz" sunucu tavanından (yedek 2)
   const [state, setState] = useState<IntroState>('checking');
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export function IntroOverlay() {
   const FEATURES: { title: string; desc: string }[] = [
     { title: i18n.t('intro.kesfet'), desc: i18n.t('intro.kesfet_desc') },
     { title: i18n.t('intro.gun'), desc: i18n.t('intro.gun_desc') },
-    { title: i18n.t('intro.tara'), desc: i18n.t('intro.tara_desc') },
+    { title: i18n.t('intro.tara'), desc: i18n.t('intro.tara_desc', { count: freeCap }) },
   ];
 
   return (
