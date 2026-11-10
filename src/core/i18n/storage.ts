@@ -1,26 +1,25 @@
 // Kullanıcı dil tercihi — AsyncStorage (NATIVE). Testlerde import EDİLMEZ.
+// G22-S2 md.6: tercih artık 'system' ("Telefon dili") da olabilir; kayıt yoksa = 'system'.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { SUPPORTED_LANGS, type Lang } from './dictionaries';
+import { isLangPref, type LangPref } from './languages';
 
 const KEY = 'i18n-lang-pref';
 
-/** Kaydedilmiş dil tercihi; yoksa/okunmazsa null. */
-export async function readLangPref(): Promise<Lang | null> {
+/** Kaydedilmiş dil tercihi; yoksa/okunmazsa null (= Telefon dili). */
+export async function readLangPref(): Promise<LangPref | null> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    if (raw && (SUPPORTED_LANGS as readonly string[]).includes(raw)) {
-      return raw as Lang;
-    }
+    if (isLangPref(raw)) return raw;
   } catch {
     // yut
   }
   return null;
 }
 
-export async function writeLangPref(lang: Lang): Promise<void> {
+export async function writeLangPref(pref: LangPref): Promise<void> {
   try {
-    await AsyncStorage.setItem(KEY, lang);
+    await AsyncStorage.setItem(KEY, pref);
   } catch {
     // yut
   }

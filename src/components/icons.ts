@@ -84,6 +84,7 @@ export { NavigationArrow } from 'phosphor-react-native/lib/commonjs/icons/Naviga
 export { Package } from 'phosphor-react-native/lib/commonjs/icons/Package';
 export { PencilSimple } from 'phosphor-react-native/lib/commonjs/icons/PencilSimple';
 export { Percent } from 'phosphor-react-native/lib/commonjs/icons/Percent';
+export { DeviceMobile } from 'phosphor-react-native/lib/commonjs/icons/DeviceMobile';
 export { Phone } from 'phosphor-react-native/lib/commonjs/icons/Phone';
 export { PhoneCall } from 'phosphor-react-native/lib/commonjs/icons/PhoneCall';
 export { Plus } from 'phosphor-react-native/lib/commonjs/icons/Plus';

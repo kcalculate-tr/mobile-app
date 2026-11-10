@@ -2,9 +2,9 @@
 // giydirilmesi; veri AYNI: `body_measurements`, son 90 kayıt). Profil › İlerleme ›
 // "Ölçüm ekle" bu ekranı açar (yeni kabuk açıkken).
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -73,9 +73,7 @@ export default function FinPrMeasurementsScreen({ onBack }: { onBack: () => void
       <FinHeader title={tr('profil.measure_history')} onBack={onBack} />
       <View style={{ paddingHorizontal: 16, gap: 14 }}>
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.ink} />
-          </View>
+          <FinListSkeleton rows={4} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : data.length === 0 ? (
           <FinCard style={{ alignItems: 'center', padding: 24, gap: 10 }}>
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: t.color.line, alignItems: 'center', justifyContent: 'center' }}>

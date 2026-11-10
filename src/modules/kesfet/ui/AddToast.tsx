@@ -4,9 +4,11 @@
 // Şikayet/engelle/kopyala için eylemsiz mesaj. Birkaç saniyede kendiliğinden
 // kapanır; ekranın altında, tab barın üstünde durur (bottom ≈ güvenli alan + 96).
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, fontFamily, useTheme } from '../../../core/design';
+import { TRANSITION } from '../../../core/design/motion';
+import { Icon } from './icons';
 
 export interface ToastState {
   message: string;
@@ -16,32 +18,47 @@ export interface ToastState {
   /** "Geri al" gibi ikincil eylem — düz metin düğme (loglamayı geri alır). */
   undoLabel?: string;
   onUndo?: () => void;
+  /** G22-S2 md.5 (FinShareDaySuccess): solda lime ✓ dairesi. */
+  success?: boolean;
 }
 
 export function AddToast({
   toast,
   onDismiss,
   sticky = false,
+  holdMs = TRANSITION.toast.hold,
 }: {
   toast: ToastState | null;
   onDismiss: () => void;
   /** Kendiliğinden kapanmasın (yalnız __DEV__ vitrini). */
   sticky?: boolean;
+  /** Ekranda kalma süresi (okuma süresi; varsayılan TRANSITION.toast.hold). */
+  holdMs?: number;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!toast || sticky) return;
-    const id = setTimeout(onDismiss, 4000);
+    const id = setTimeout(onDismiss, holdMs);
     return () => clearTimeout(id);
-  }, [toast, onDismiss, sticky]);
+  }, [toast, onDismiss, sticky, holdMs]);
+
+  // VoiceOver: mesaj görünür görünmez duyurulur.
+  useEffect(() => {
+    if (toast?.message) AccessibilityInfo.announceForAccessibility?.(toast.message);
+  }, [toast?.message]);
 
   if (!toast) return null;
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 100 }]}>
       <View style={[styles.toast, { backgroundColor: t.color.ink }]}>
+        {toast.success ? (
+          <View style={[styles.okDot, { backgroundColor: t.color.accent }]} accessible={false}>
+            <Icon name="check" size={14} color={t.color.onAccent} />
+          </View>
+        ) : null}
         <AppText variant="body" style={[styles.msg, { color: t.color.bg }]} numberOfLines={2}>
           {toast.message}
         </AppText>
@@ -95,6 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  okDot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: -4, marginRight: 6 },
   msg: { flex: 1, fontFamily: fontFamily.bodySemibold, fontSize: 15, lineHeight: 20 },
   // "Geri al": en az 44 dokunma, düz metin.
   undoBtn: { minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },

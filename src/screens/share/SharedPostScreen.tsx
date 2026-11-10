@@ -5,12 +5,12 @@
 // denetlenir; erişilemeyen/bulunamayan gönderide hafif karşılama (DeepLinkLanding)
 // gösterilir — ham kimlik/sağlık verisi yok, yalnız opak post_id.
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Share, StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ForkKnife } from '../../components/icons';
 import DeepLinkLanding from '../../components/share/DeepLinkLanding';
-import { AppText, useTheme } from '../../core/design';
+import { AppText, useTheme, FinListSkeleton, FinSkeletonBlock } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getKesfetClient } from '../../modules/kesfet';
 import type { FeedPost } from '../../modules/kesfet/types';
@@ -64,7 +64,11 @@ function LegacySharedPostScreen() {
   if (state === 'loading') {
     return (
       <View style={[styles.center, { backgroundColor: theme.color.bg }]}>
-        <ActivityIndicator color={theme.color.secondary} />
+        {/* G22-S2 md.7: FinMoLoad iskeleti. */}
+        <View style={{ alignSelf: 'stretch', paddingHorizontal: 16, gap: 14 }}>
+          <FinListSkeleton rows={1} style={{ paddingHorizontal: 0 }} testID="post-skeleton" />
+          <FinSkeletonBlock height={280} radius={16} />
+        </View>
       </View>
     );
   }

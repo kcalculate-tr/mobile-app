@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WAIT } from '../core/design/motion';
 
 const ANAHTAR = 'kcal.teslimatBolgeleriGosterildi.v1';
 
@@ -29,7 +30,7 @@ export function useIlkAcilistaTeslimatBolgeleri(bekleyenBaskaModalVar: boolean) 
         if (!gecerli || deger) return;
         // Anasayfa yerleşene kadar kısa bir nefes — açılışın ilk karesinde
         // modal fırlatmak sıçrama gibi görünüyor.
-        setTimeout(() => { if (gecerli) setGorunur(true); }, 900);
+        setTimeout(() => { if (gecerli) setGorunur(true); }, WAIT.firstPaint);
       } catch {
         // sessiz
       }

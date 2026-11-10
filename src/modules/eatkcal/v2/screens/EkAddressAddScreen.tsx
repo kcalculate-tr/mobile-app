@@ -13,7 +13,6 @@
 //  - seçili adres `useAddressStore.setSelectedAddress` (AddressesScreen:227-231)
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Linking,
@@ -27,7 +26,7 @@ import {
 import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { haptic } from '../../../../core/design';
+import { haptic, FinSkeletonBlock } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { ArrowLeft, NavigationArrow, WarningCircle } from '../../../../components/icons';
@@ -436,9 +435,7 @@ export default function EkAddressAddScreen() {
           {/* Harita (FinEkAddress) / yüklenemedi kartı (FinEkAddressNoMap) */}
           {mapMode === 'map' ? (
             loading ? (
-              <View style={[styles.center, { height: mapH, backgroundColor: c.line }]}>
-                <ActivityIndicator color={c.ink} />
-              </View>
+              <FinSkeletonBlock height={mapH} radius={0} />
             ) : (
               <AddressMap
                 key={mapKey}

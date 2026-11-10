@@ -11,7 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Animated from 'react-native-reanimated';
 
-import { AppText, useTheme, usePop } from '../../../core/design';
+import { AppText, useTheme, usePop, haptic } from '../../../core/design';
+import { WAIT } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { CachedImage } from '../../../components/CachedImage';
@@ -27,6 +28,11 @@ import PublicPreviewScreen from './screens/PublicPreviewScreen';
 import { useFeature } from '../../../core/flags';
 import { TakibeBaslaCTA } from './TakibeBaslaCTA';
 import { track } from '../../../lib/analytics';
+import { AddToast, type ToastState } from '../../kesfet/ui/AddToast';
+import { runOptimisticFollow } from '../followOptimistic';
+
+// G22-S2 md.5 (FinFollowError): "Takip edilemedi." uyarısı ~6 sn kalır (okuma süresi).
+const FOLLOW_ERROR_HOLD = WAIT.actionToastHold;
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Rp = RouteProp<RootStackParamList, 'PublicProfile'>;
@@ -45,6 +51,7 @@ export default function PublicProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [followBusy, setFollowBusy] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [followToast, setFollowToast] = useState<ToastState | null>(null);
   const { style: followPopStyle, pop: followPop } = usePop();
 
   const load = useCallback(() => {
@@ -95,20 +102,35 @@ export default function PublicProfileScreen() {
   const isMe = Boolean(user?.id && user.id === profile.id);
   const canView = canViewProfileContent(profile, profile.me_following, isMe);
 
+  // G22-S2 md.5 (FinFollowError): İYİMSER takip — düğme anında hedef duruma geçer;
+  // sunucu hatasında önceki durum geri gelir (iyimser "Takip ediliyor" geride
+  // kalmaz) + kısa uyarı "Takip edilemedi." · "Tekrar dene" (tab barın üstünde).
   const handleFollowPress = async () => {
     if (followBusy || isMe) return;
     setFollowBusy(true);
-    try {
-      const turningOn = profile.me_following === 'none';
-      const res = await getProfilClient().follow({ user: profile.id, on: turningOn });
-      setProfile((p) => (p ? { ...p, me_following: res.state } : p));
-      track('follow', { on: turningOn, state: res.state, surface: 'profile' });
+    setFollowToast(null);
+    const res = await runOptimisticFollow(
+      { me_following: profile.me_following, followers: profile.followers, is_private: profile.is_private },
+      (on) => getProfilClient().follow({ user: profile.id, on }),
+      (next) => setProfile((p) => (p ? { ...p, me_following: next.me_following, followers: next.followers } : p)),
+    );
+    setFollowBusy(false);
+    if (res.ok) {
+      track('follow', { on: res.turningOn, state: res.state, surface: 'profile' });
       // Takip düğmesi pop'u — yalnız takip/istek AÇILIRKEN (olumlu an); bırakırken sessiz.
-      if (turningOn && (res.state === 'following' || res.state === 'requested')) followPop();
-    } finally {
-      setFollowBusy(false);
+      if (res.turningOn && (res.state === 'following' || res.state === 'requested')) followPop();
+      return;
     }
+    haptic('warning');
+    setFollowToast({
+      message: tt('follow_error.failed'),
+      actionLabel: tt('follow_error.retry'),
+      onAction: () => void handleFollowPress(),
+    });
   };
+  const followToastView = (
+    <AddToast toast={followToast} onDismiss={() => setFollowToast(null)} holdMs={FOLLOW_ERROR_HOLD} />
+  );
 
   const followLabel =
     profile.me_following === 'following'
@@ -130,7 +152,7 @@ export default function PublicProfileScreen() {
         />
       ) : null}
       <PublicPreviewScreen
-        key={`${profile.id}:${profile.me_following}`}
+        key={profile.id}
         onBack={() => navigation.goBack()}
         handle={profile.handle}
         vitrinProfile={profile}
@@ -142,11 +164,13 @@ export default function PublicProfileScreen() {
             : { label: followLabel, onPress: handleFollowPress, busy: followBusy, outlined: profile.me_following === 'following' }
         }
       />
+      {followToastView}
       </>
     );
   }
 
   return (
+    <>
     <ScrollView style={{ backgroundColor: t.color.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40 }}>
       <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button">
@@ -259,6 +283,8 @@ export default function PublicProfileScreen() {
         />
       ) : null}
     </ScrollView>
+    {followToastView}
+    </>
   );
 }
 

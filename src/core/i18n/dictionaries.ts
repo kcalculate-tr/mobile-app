@@ -14,6 +14,9 @@ import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
 import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
 import { tr as subTr, en as subEn } from '../../lib/subscription/i18n';
 import { tr as voiceTr, en as voiceEn } from '../../modules/ai/scan/voice/i18n';
+import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
+import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
+import { tr as g26jTr, en as g26jEn } from './g26j';
 
 export type Lang = 'tr' | 'en';
 
@@ -29,11 +32,16 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     consent: consentTr,
     sub: subTr,
     voice: voiceTr,
+    // G22-S2 md.4 — Keşfet arama (profil + içerik).
+    kesfetSearch: kesfetSearchTr,
+    // G22-S2 md.5 — G21 tasarım boşlukları (26j): share_day · auth_error · notif_error · follow_error.
+    ...g26jTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
       save: 'Kaydet',
       retry: 'Tekrar dene',
+      loading: 'Yükleniyor',
       close: 'Kapat',
       estimate: 'tahmin',
       delete: 'Sil',
@@ -959,6 +967,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delivery_where: 'Nerelere teslimat yapıyoruz?',
       lang_tr: 'Türkçe',
       lang_en: 'English',
+      // G22-S2 md.6 — dil seçici
+      lang_section: 'Uygulama dili',
+      lang_system: 'Telefon dili',
+      lang_note: 'Seçtiğin dil hemen uygulanır. Telefon dili seçiliyken uygulama telefonunun dilini izler.',
       // İlerleme
       range_today: 'Bugün',
       range_7: '7 gün',
@@ -1301,6 +1313,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       },
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
+        // G22-S2 md.3 — ülke + şehir araması (Avrupa + Amerika).
+        geo: ekGeoTr,
         // G15-S5 — FinPrCards (kayıtlı kartlar v2)
         cards: {
           title: 'Kayıtlı kartlarım',
@@ -1892,11 +1906,14 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     consent: consentEn,
     sub: subEn,
     voice: voiceEn,
+    kesfetSearch: kesfetSearchEn,
+    ...g26jEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',
       save: 'Save',
       retry: 'Retry',
+      loading: 'Loading',
       close: 'Close',
       estimate: 'estimate',
       delete: 'Delete',
@@ -2814,6 +2831,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delivery_where: 'Where do we deliver?',
       lang_tr: 'Türkçe',
       lang_en: 'English',
+      // G22-S2 md.6 — language picker
+      lang_section: 'App language',
+      lang_system: 'Phone language',
+      lang_note: 'Your choice applies right away. With Phone language selected, the app follows your phone’s language.',
       range_today: 'Today',
       range_7: '7 days',
       range_14: '14 days',
@@ -3146,6 +3167,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       },
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
+        // G22-S2 md.3 — country + city search (Europe + Americas).
+        geo: ekGeoEn,
         // G15-S5 — FinPrCards (saved cards v2)
         cards: {
           title: 'Saved cards',

@@ -48,6 +48,7 @@ import { useT } from '../../core/i18n';
 import {
   CURVE,
   DURATION,
+  PREMIUM,
   REDUCED,
   SPRING,
   TIMING,
@@ -59,7 +60,7 @@ import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
-import { SELECTED_PILL, SELECTED_PILL_MS } from './selectedPill';
+import { SELECTED_PILL } from './selectedPill';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
@@ -271,7 +272,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
       // G17-S2 md.5: seçili hap geçişi 200 standard (yay/jöle yok); azaltılmış
       // harekette de aynı süre (yalnız konum, uzama yok).
       posX.value = withTiming(target, {
-        duration: reduced ? REDUCED.duration : SELECTED_PILL_MS,
+        duration: reduced ? REDUCED.duration : PREMIUM.tab.duration,
         easing: CURVE.standard,
       });
       stretch.value = 1;
@@ -507,19 +508,9 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                         </Animated.View>
                       ) : null}
                     </View>
-                    {/* G15-S2 (FinHomeXL/FinStressXL): sabit yükseklikli cam çubukta
-                        etiket en büyük yazıda kırpılıyordu ("An…") → ölçek sabit;
-                        erişilebilirlik etiketi + Large Content Viewer metni taşır. */}
-                    <Text
-                      numberOfLines={1}
-                      maxFontSizeMultiplier={1}
-                      style={[
-                        styles.label,
-                        { color: isActive ? g.activeInk : g.sec, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
-                      ]}
-                    >
-                      {label}
-                    </Text>
+                    {/* G22-S2 md.2 (İlter 10 Kas): sekme YAZILARI kalktı, yalnız ikon.
+                        Ad VoiceOver'da `accessibilityLabel` ile TR/EN okunur; dokunma
+                        alanı sekme hücresinin tamamı (≈ 70 × 62 pt ≥ 44). Tara yazısı kalır. */}
                   </Pressable>
                 );
               })}
@@ -730,12 +721,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
     height: '100%',
-  },
-  label: {
-    fontSize: TAB_BAR_R3.LABEL_SIZE,
-    lineHeight: 16,
+    minWidth: TAB_BAR_R3.MIN_TOUCH,
+    minHeight: TAB_BAR_R3.MIN_TOUCH,
   },
   // FinTabBar: rozet sekme üstünden 6, ortanın 8 sağında (ikona göre −4 / 20).
   badge: {

@@ -13,12 +13,12 @@
 // MacroScreen.tsx'teki "Yakında" kartı). "Teslimat günleri / Duraklat / Yönet"
 // satırları uydurulmadı; sade boş-durum gösterilir.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { Sheet, useTheme } from '../../../../core/design';
+import { Sheet, useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { CalendarCheck, ClockCounterClockwise, Coins, Info, Receipt, Ticket } from '../../../../components/icons';
@@ -165,9 +165,7 @@ export default function FinPrMacroScreen({
 
       <SectionSlide index={tabIndex}>
       {loading ? (
-        <View style={{ paddingVertical: 60, alignItems: 'center' }}>
-          <ActivityIndicator color={t.color.ink} />
-        </View>
+        <FinListSkeleton rows={4} />
       ) : tabIndex === 0 ? (
         <MacroTab
           progress={progress}

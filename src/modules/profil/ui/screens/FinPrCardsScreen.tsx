@@ -9,7 +9,7 @@ import { ActivityIndicator, Alert, Pressable, RefreshControl, View } from 'react
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { PaynkolayText } from '../../../eatkcal/v2/ui/PaynkolayLogo';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { CreditCard, Plus, Shield, Trash } from '../../../../components/icons';
 import { deleteSavedCard, getCardsFeatureStatus, setDefaultCard, SavedCard, syncSavedCards } from '../../../../lib/cards';
@@ -129,9 +129,7 @@ export default function FinPrCardsScreen({
       <FinHeader title={tr('profil.cards_title')} onBack={onBack} />
       <View style={{ paddingHorizontal: 16, gap: 14 }}>
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.ink} />
-          </View>
+          <FinListSkeleton rows={3} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : cards.length === 0 ? (
           <FinCard style={{ alignItems: 'center', padding: 24, gap: 10 }}>
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: t.color.line, alignItems: 'center', justifyContent: 'center' }}>

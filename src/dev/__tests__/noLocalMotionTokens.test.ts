@@ -132,15 +132,16 @@ test('noLocalMotionTokens: PREMIUM geçiş seti FinMoTokens ile birebir', async 
     ['hata fast 200', /error:\s*\{\s*duration:\s*DURATION\.fast/],
   ];
   for (const [name, re] of expect) assert.match(block, re, name);
-  // Süre bantları: 100/200/300/500/900 dışında değer yok.
+  // Süre bantları (G22-S2 md.1: FinMoTokens ×1,1): 110/220/330/550/990 dışında değer yok.
+  const BAND = [110, 220, 330, 550, 990];
   const durBlock = src.slice(src.indexOf('export const DURATION'), src.indexOf('export const TIMING'));
   for (const m of durBlock.matchAll(/:\s*(\d+),/g)) {
-    assert.ok([100, 200, 300, 500, 900].includes(Number(m[1])), `DURATION bandı dışı: ${m[1]}`);
+    assert.ok(BAND.includes(Number(m[1])), `DURATION bandı dışı: ${m[1]}`);
   }
   const timBlock = src.slice(src.indexOf('export const TIMING'), src.indexOf('export const CURVE'));
   for (const m of timBlock.matchAll(/:\s*(\d+),/g)) {
-    assert.ok([100, 200, 300, 500, 900].includes(Number(m[1])), `TIMING bandı dışı: ${m[1]}`);
+    assert.ok(BAND.includes(Number(m[1])), `TIMING bandı dışı: ${m[1]}`);
   }
-  // Toplam liste girişi ≤ 500: (4−1)·100 + 200 = 500.
-  assert.ok((4 - 1) * 100 + 200 <= 500);
+  // Toplam liste girişi ≤ slow: (4−1)·110 + 220 = 550.
+  assert.ok((4 - 1) * 110 + 220 <= 550);
 });

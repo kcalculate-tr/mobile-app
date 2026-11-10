@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
-import { haptic } from '../../../core/design';
+import { WAIT, haptic } from '../../../core/design';
 import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
@@ -55,6 +55,25 @@ import { CommentsSheet } from './CommentsSheet';
 import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 import { FeedTip, feedTipSeen } from './FeedTip';
 import { AddToast, type ToastState } from './AddToast';
+import { ShareDaySheet } from './ShareDaySheet';
+import { buildShareDayCard, shareDayToastKey, type ShareDayCard } from '../../gun/shareDay';
+
+// YALNIZ __DEV__ vitrini (FinShareDay karesi): sabit örnek gün — canlı akışta HİÇ
+// kullanılmaz (load yalnız vitrin === 'shareDay' | 'shareDayError' iken verilir).
+const vitrinShareDayCard = async (): Promise<ShareDayCard> =>
+  buildShareDayCard({
+    meals: [
+      { id: 'v1', meal_type: 'breakfast', kcal: 380, consumed_at: '2026-11-10T08:00:00Z' },
+      { id: 'v2', meal_type: 'lunch', kcal: 620, consumed_at: '2026-11-10T12:30:00Z' },
+      { id: 'v3', meal_type: 'dinner', kcal: 540, consumed_at: '2026-11-10T19:00:00Z' },
+    ],
+    summary: { targetKcal: 2100, consumedKcal: 1540, consumedProtein: 92, consumedCarb: 168, consumedFat: 51 },
+    activity: {
+      items: [{ id: 'a1', type: 'kosu', minutes: 45, distance_km: null, kcal_est: 420, source: 'manual', logged_at: '' }],
+      total_kcal_est: 420,
+      total_minutes: 45,
+    },
+  });
 import { DidItSheet } from './DidItSheet';
 import { FeedSkeleton, FeedError, FeedOffline, useIsOnline, type SuggestedAccount } from './states';
 import { FeedStartEmpty } from './FeedStartEmpty';
@@ -271,6 +290,8 @@ export function KesfetScreen() {
   // G15 — FinActivityCard: "Ben de yaptım" süre sayfası + bu oturumda eklenenler ("✓ Yaptın").
   const [didItPost, setDidItPost] = useState<FeedPost | null>(null);
   const [didItDone, setDidItDone] = useState<ReadonlySet<string>>(() => new Set());
+  // G22-S2 md.5 (FinShareDay): "Günüme paylaş" → paylaşım sheet'i (vitrin: tasarım karesi).
+  const [shareDayOpen, setShareDayOpen] = useState(() => vitrin === 'shareDay' || vitrin === 'shareDayError');
 
   // Hangi gönderi ekranda görünür — FeedVideo otomatik oynat/durdur (G8-S3).
   const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
@@ -357,10 +378,16 @@ export function KesfetScreen() {
     });
   }, [vitrin, posts.length, tr]);
 
+  // Vitrin (FinShareDaySuccess): paylaşım sonrası bildirim.
+  useEffect(() => {
+    if (vitrin !== 'shareDaySuccess') return;
+    setToast({ message: tr(shareDayToastKey('followers')), success: true });
+  }, [vitrin, tr]);
+
   // "Logla izi" oynadıktan sonra örtüyü kaldır (iz ~logTrail + tampon sürede biter).
   useEffect(() => {
     if (!trail) return;
-    const id = setTimeout(() => setTrail(null), 1200);
+    const id = setTimeout(() => setTrail(null), WAIT.trailClear);
     return () => clearTimeout(id);
   }, [trail]);
 
@@ -587,16 +614,31 @@ export function KesfetScreen() {
   const onFollow = useCallback(
     async (userId: string) => {
       haptic('selection');
+      const index = suggestions.findIndex((s) => s.id === userId);
+      const item = index >= 0 ? suggestions[index] : null;
       setSuggestions((prev) => prev.filter((s) => s.id !== userId));
       try {
         const res = await getProfilClient().follow({ user: userId, on: true });
         track('follow', { on: true, state: res?.state, surface: 'kesfet_suggest' });
         if (useKesfetStore.getState().tab === 'following') void useKesfetStore.getState().refresh();
       } catch {
-        // yut — öneri zaten listeden düştü
+        // G22-S2 md.5 (FinFollowError): iyimser kaldırmayı GERİ AL (öneri yerine
+        // döner) + kısa uyarı "Takip edilemedi." · "Tekrar dene".
+        if (item) {
+          setSuggestions((prev) =>
+            prev.some((s) => s.id === item.id) ? prev : [...prev.slice(0, index), item, ...prev.slice(index)],
+          );
+        }
+        haptic('warning');
+        setToast({
+          message: tr('follow_error.failed'),
+          actionLabel: tr('follow_error.retry'),
+          onAction: () => void onFollow(userId),
+        });
       }
     },
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [suggestions, tr],
   );
 
   const onDidIt = useCallback(
@@ -612,7 +654,7 @@ export function KesfetScreen() {
         setToast({
           message: tr('kesfet.activity.logged'),
           actionLabel: tr('kesfet.activity.share_day'),
-          onAction: () => {},
+          onAction: () => setShareDayOpen(true),
         });
       }
       // Başarısızlık sessiz: kcal null ise toast yok (olumsuz an sessiz — motion §2).
@@ -629,7 +671,7 @@ export function KesfetScreen() {
     if (vitrin === 'didIt') setDidItPost(first);
     else {
       setDidItDone(new Set([first.id]));
-      setToast({ message: tr('kesfet.activity.logged'), actionLabel: tr('kesfet.activity.share_day'), onAction: () => {} });
+      setToast({ message: tr('kesfet.activity.logged'), actionLabel: tr('kesfet.activity.share_day'), onAction: () => setShareDayOpen(true) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vitrin, posts.length]);
@@ -845,7 +887,7 @@ export function KesfetScreen() {
           if (h > 0 && (headerH.value === 0 || (collapsed?.value ?? 0) === 0)) headerH.value = h;
         }}>
       <Header
-        onSearch={() => {}}
+        onSearch={() => navigation.navigate('KesfetSearch')}
         onNotifications={() => navigation.navigate('KesfetNotifications')}
         onCompose={() => navigation.navigate('Composer')}
         showCompose={kesfetPaylasim}
@@ -926,6 +968,23 @@ export function KesfetScreen() {
       />
       <RulesSheet visible={rulesOpen} onAccept={() => setRulesOpen(false)} onClose={() => setRulesOpen(false)} />
       <AddToast toast={toast} onDismiss={() => (vitrin ? undefined : setToast(null))} />
+      <ShareDaySheet
+        visible={shareDayOpen}
+        onClose={() => setShareDayOpen(false)}
+        summary={summary}
+        options={vitrin === 'shareDay' ? true : undefined}
+        load={vitrin === 'shareDay' || vitrin === 'shareDayError' ? vitrinShareDayCard : undefined}
+        initialError={vitrin === 'shareDayError'}
+        onShared={(audience) => {
+          setShareDayOpen(false);
+          setToast({ message: tr(shareDayToastKey(audience)), success: true });
+          // Günüm halkası yeni paylaşımla tazelensin (has_new).
+          void getGunClient()
+            .getDayRings()
+            .then(setRings)
+            .catch(() => {});
+        }}
+      />
 
       {trail ? (
         <View pointerEvents="none" style={styles.trailOverlay}>

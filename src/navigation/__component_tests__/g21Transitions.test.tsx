@@ -35,7 +35,7 @@ test('push: sağdan kayma · PREMIUM.push.enter · kenar jesti açık', () => {
     animationDuration: PREMIUM.push.enter,
     gestureEnabled: true,
   });
-  expect(PREMIUM.push.enter).toBe(300);
+  expect(PREMIUM.push.enter).toBe(330); // G22-S2 md.1: push 300→330
 });
 
 test('push (azaltılmış hareket): opaklık 200 ms, jest yine açık', () => {

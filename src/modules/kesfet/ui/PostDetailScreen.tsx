@@ -11,7 +11,6 @@
 // yorum satırında yalnız gerçek sayaç (yanıt sayısı) var.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -27,7 +26,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path } from 'react-native-svg';
-import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
+import { AppText, fontFamily, useTheme, haptic, FinListSkeleton, FinSkeletonBlock } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { ArrowLeft } from '../../../components/icons';
@@ -395,7 +394,11 @@ export function PostDetailScreen({
         {header}
         <View style={styles.center}>
           {state === 'loading' ? (
-            <ActivityIndicator color={t.color.secondary} />
+            // G22-S2 md.7: FinMoLoad iskeleti (yazar satırı + görsel).
+            <View style={{ alignSelf: 'stretch', paddingHorizontal: 16, gap: 14 }}>
+            <FinListSkeleton rows={1} style={{ paddingHorizontal: 0 }} testID="post-skeleton" />
+            <FinSkeletonBlock height={280} radius={16} />
+          </View>
           ) : (
             <AppText variant="body" tone="secondary">
               {tr('kesfet.share.post_unavailable')}

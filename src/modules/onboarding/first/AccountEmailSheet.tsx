@@ -20,7 +20,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 
 import Svg, { Path } from 'react-native-svg';
 
 import { AppText } from '../../../core/design/components/AppText';
-import { CURVE, DURATION, REDUCED, useReducedMotion } from '../../../core/design/motion';
+import { CURVE, DURATION, REDUCED, WAIT, useReducedMotion } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
 import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
 import { useAuth } from '../../../core/AuthContext';
@@ -120,7 +120,7 @@ export function AccountEmailSheet({
   }, [visible]);
 
   useEffect(() => {
-    if (visible && __DEV__ && vitrinFocus) setTimeout(() => inputRef.current?.focus(), 350);
+    if (visible && __DEV__ && vitrinFocus) setTimeout(() => inputRef.current?.focus(), WAIT.focusAfterMotion);
   }, [visible, vitrinFocus]);
 
   const scrimStyle = useAnimatedStyle(() => ({ opacity: o.value }));

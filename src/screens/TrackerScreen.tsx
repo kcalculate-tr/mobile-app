@@ -43,7 +43,7 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
-import { EmptyErrorCard, TextScaleCapContext, useTheme } from '../core/design';
+import { EmptyErrorCard, FinListSkeleton, TextScaleCapContext, useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
@@ -2542,8 +2542,14 @@ const html = `
     fat: nutritionSummary?.targetFat || nutritionProfile?.target_fat || 65,
   };
 
-  if (loading) return <View style={yeniKabuk ? { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: designTheme.color.bg } : { flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-    <ActivityIndicator color={yeniKabuk ? designTheme.color.secondary : COLORS.brand.green} size="large" />
+  // G22-S2 md.7: yeni kabukta ilk açılışta dönen yuvarlak gösterge YOK — FinMoLoad
+  // iskeleti (nötr, nabız story; azaltılmışta sabit). Bayrak kapalı yol AYNEN.
+  if (loading) return yeniKabuk ? (
+    <ScreenContainer edges={['top']} style={{ flex: 1, backgroundColor: designTheme.color.bg }}>
+      <FinListSkeleton header rows={5} testID="home-skeleton" />
+    </ScreenContainer>
+  ) : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <ActivityIndicator color={COLORS.brand.green} size="large" />
   </View>;
   if (!isAuthenticated) return null;
 
@@ -2726,9 +2732,8 @@ const html = `
 
         {/* G15-S2: yeni kabukta yükleniyor/hata durumları Final dilinde. */}
         {yeniKabuk && dataLoading ? (
-          <View style={s.centered}>
-            <ActivityIndicator color={designTheme.color.secondary} size="large" />
-          </View>
+          // G22-S2 md.7: tam ekran gösterge yerine FinMoLoad iskeleti.
+          <FinListSkeleton rows={4} testID="history-skeleton" />
         ) : yeniKabuk && errorMessage ? (
           <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
             <EmptyErrorCard

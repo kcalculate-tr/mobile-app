@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
+import { DURATION } from '../core/design/motion';
 
 /**
  * Bir bölümün içeriği değiştiğinde kısa bir çapraz geçiş uygular.
@@ -24,7 +25,7 @@ export function useSectionTransition(
   deps: readonly unknown[],
   options: { from?: number; duration?: number } = {},
 ): Animated.Value {
-  const { from = 0.25, duration = 220 } = options;
+  const { from = 0.25, duration = DURATION.fast } = options; // G22-S2 md.1: token (220)
   const opacity = useRef(new Animated.Value(1)).current;
   const isFirstRun = useRef(true);
 

@@ -3,7 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SELECTED_PILL, SELECTED_PILL_MS } from '../selectedPill';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { SELECTED_PILL } from '../selectedPill';
 
 function alpha(rgba: string): number {
   const m = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(rgba);
@@ -30,6 +33,7 @@ test('hap yarı saydam (opak siyah/beyaz değil), beyaz ikon yok (açık tema)',
   assert.notEqual(SELECTED_PILL.dark.activeInk.toUpperCase(), '#1C1C1E');
 });
 
-test('geçiş 200 ms', () => {
-  assert.equal(SELECTED_PILL_MS, 200);
+test('geçiş token\'dan (G22-S2 md.1: yerel ms yok, PREMIUM.tab.duration)', () => {
+  const src = fs.readFileSync(path.resolve(__dirname, '../TabBarR3.tsx'), 'utf8');
+  assert.match(src, /duration:\s*reduced \? REDUCED\.duration : PREMIUM\.tab\.duration/);
 });

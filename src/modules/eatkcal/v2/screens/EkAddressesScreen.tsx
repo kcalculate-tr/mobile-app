@@ -8,10 +8,10 @@
 //  - seçim: `useAddressStore.setSelectedAddress` (:227-231)
 // `selectMode` → seçilen adresle Sipariş özetine döner (EkCheckout).
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
-import { EmptyErrorCard, Sheet, Toast, haptic } from '../../../../core/design';
+import { EmptyErrorCard, Sheet, Toast, haptic, FinListSkeleton } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { MapPin, PencilSimple, Plus, Trash } from '../../../../components/icons';
@@ -155,9 +155,8 @@ export default function EkAddressesScreen() {
     >
       <View style={styles.list}>
         {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={c.ink} />
-          </View>
+          // G22-S2 md.7: FinMoLoad iskeleti (tam ekran gösterge yok).
+          <FinListSkeleton rows={3} style={{ paddingHorizontal: 0 }} />
         ) : addresses.length === 0 && !errorMessage ? (
           <EmptyErrorCard
             icon={<MapPin size={24} color={c.ink} />}
