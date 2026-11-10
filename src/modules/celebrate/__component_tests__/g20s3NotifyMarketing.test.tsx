@@ -9,7 +9,9 @@ jest.mock('react-native-safe-area-context', () => {
   return { useSafeAreaInsets: () => insets, SafeAreaView: ({ children }: any) => children };
 });
 let mockStatus: 'granted' | 'denied' = 'granted';
-jest.mock('../../../core/notifications', () => ({ requestPushPermissionOnly: () => Promise.resolve(mockStatus) }));
+const mockReq = jest.fn((_s: string) => Promise.resolve(mockStatus));
+// G26-S1: tek fonksiyon (core/push/pushPermission) — kaynak 'first_meal'.
+jest.mock('../../../core/push/pushPermission', () => ({ requestPushPermission: (s: string) => mockReq(s) }));
 const mockOptIn = jest.fn((_on: boolean) => Promise.resolve(true));
 jest.mock('../../../lib/notify/marketing', () => ({ setMarketingOptIn: (on: boolean) => mockOptIn(on) }));
 jest.mock('../../onboarding/first/overlayGate', () => ({ useOverlayGate: () => {} }));
@@ -22,6 +24,7 @@ const flush = async () => {
 
 beforeEach(() => {
   mockOptIn.mockClear();
+  mockReq.mockClear();
   mockStatus = 'granted';
 });
 
@@ -52,4 +55,12 @@ test('kutu işaretli ama izin reddedildi → pazarlama yazılmaz', async () => {
   await act(async () => fireEvent.press(ui.getByLabelText('İzin ver')));
   await flush();
   expect(mockOptIn).not.toHaveBeenCalled();
+});
+
+test('G26-S1: "İzin ver" tek fonksiyonu first_meal kaynağıyla çağırır', async () => {
+  const ui = render(<NotifyPermissionSheet visible onClose={() => {}} />);
+  await act(async () => fireEvent.press(ui.getByLabelText('İzin ver')));
+  await flush();
+  expect(mockReq).toHaveBeenCalledTimes(1);
+  expect(mockReq).toHaveBeenCalledWith('first_meal');
 });

@@ -53,7 +53,6 @@ import { AddToDaySheet } from './AddToDaySheet';
 import { PostMenu } from './PostMenu';
 import { EditPostSheet } from './EditPostSheet';
 import { CommentsSheet } from './CommentsSheet';
-import { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 import { FeedTip, feedTipSeen } from './FeedTip';
 import { AddToast, type ToastState } from './AddToast';
 import { ShareDaySheet } from './ShareDaySheet';
@@ -282,7 +281,6 @@ export function KesfetScreen() {
   // G15 — FinVideo kare 2: tam ekran oynatıcı (videoya dokun).
   const [videoPostId, setVideoPostId] = useState<string | null>(null);
   const videoPost = videoPostId ? posts.find((p) => p.id === videoPostId) ?? null : null;
-  const [pushPromptOpen, setPushPromptOpen] = useState(false);
   // G12-S2 — FinFeedTip: akışa ilk kez girişte bir kez ipucu şeridi.
   const [showFeedTip, setShowFeedTip] = useState(false);
   // G11 — gönderi düzenleme. editAvailable: update_my_post RPC canlıda yoksa
@@ -414,13 +412,9 @@ export function KesfetScreen() {
     if (sosyalBildirim) void useNotificationsStore.getState().refreshUnread();
   }, [sosyalBildirim]);
 
-  // İlk sosyal etkileşimden sonra bir kez push izni ön sayfası (bayrak açıksa).
-  const touchSocial = useCallback(() => {
-    if (!sosyalBildirim) return;
-    void socialPushPromptSeen().then((seen) => {
-      if (!seen) setPushPromptOpen(true);
-    });
-  }, [sosyalBildirim]);
+  // G26-S1 (İlter 11 Kas): sosyal modül bildirim izni İSTEMEZ (eski SocialPushPrompt
+  // ön sayfası kalktı). İzin tek fonksiyondan (core/push/pushPermission) — ilk öğün
+  // sonrası açıklama ekranı ya da Ayarlar › Bildirimler; izin yoksa sosyal bildirim sessizce gelmez.
 
   // Önerilen hesaplar — for_you akışındaki can_post (rozetli) yazarlardan türet
   // (gerçek veri; uydurma yok). Takip boşken gösterilir. G15: Takip sekmesiyle
@@ -544,11 +538,10 @@ export function KesfetScreen() {
   // Hızlı logla — öğün kartında dokununca saate göre öğüne, porsiyon 1 ile logla.
   const onQuickLog = useCallback(
     (post: FeedPost, frame: LogOriginFrame, meal?: MealType, portion?: number) => {
-      touchSocial();
       const mealType = meal ?? inferMealTypeFromHour(new Date().getHours());
       void logMeal(post, mealType, portion ?? 1, frame);
     },
-    [logMeal, touchSocial],
+    [logMeal],
   );
 
   // Saate göre hızlı loglanacak öğünün etiketi — kartlardaki düğme bunu gösterir.
@@ -651,7 +644,6 @@ export function KesfetScreen() {
 
   const onDidIt = useCallback(
     async (post: FeedPost, chosenMinutes?: number) => {
-      touchSocial();
       didItSeq.current += 1;
       const key = `didit-${post.id}-${didItSeq.current}`;
       const minutes = chosenMinutes ?? post.activity_card?.minutes ?? null;
@@ -667,7 +659,7 @@ export function KesfetScreen() {
       }
       // Başarısızlık sessiz: kcal null ise toast yok (olumsuz an sessiz — motion §2).
     },
-    [touchSocial, tr],
+    [tr],
   );
 
   // G15 — YALNIZ __DEV__ vitrini: FinActivityCard kare 2 (süre sayfası) / kare 3
@@ -719,7 +711,6 @@ export function KesfetScreen() {
             }
             onOpenVideo={() => setVideoPostId(item.id)}
             onLike={() => {
-              touchSocial();
               void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
             }}
             onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
@@ -729,7 +720,6 @@ export function KesfetScreen() {
             onOpenSheet={() => setSheetPost(item)}
             onOpenMenu={() => setMenuPost(item)}
             onComment={() => {
-              touchSocial();
               setCommentsPost(item);
             }}
             onDidIt={() => setDidItPost(item)}
@@ -738,7 +728,7 @@ export function KesfetScreen() {
         </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, touchSocial, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
+    [nowMs, lang, onShare, kesfetYorum, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa
@@ -1012,11 +1002,6 @@ export function KesfetScreen() {
         />
       ) : null}
 
-      {sosyalBildirim ? (
-        <>
-          <SocialPushPrompt visible={pushPromptOpen} onClose={() => setPushPromptOpen(false)} />
-        </>
-      ) : null}
 
       {viewerUserId != null && (
         <GunViewer

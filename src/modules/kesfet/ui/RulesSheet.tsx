@@ -1,6 +1,6 @@
 // Topluluk kuralları — FinRules (G14-S1: Final'e göre TAM SAYFA). İlk paylaşımdan
 // önce bir kez gösterilir (ComposerScreen "Gönder" düğmesini kapsar); AsyncStorage
-// bayrağıyla kilitlenir (SocialPushPrompt ile aynı desen). "Anladım, paylaş" →
+// bayrağıyla kilitlenir (eski SocialPushPrompt ile aynı desen). "Anladım, paylaş" →
 // bayrağı işaretler ve paylaşımı devam ettirir; X ("Vazgeç") bayrağı işaretlemez,
 // bir dahaki denemede yine sorar.
 import React from 'react';

@@ -1,5 +1,6 @@
 // G26-S1 — izin envanteri bekçisi: kaynakta istenmeyen sistem izni çağrısı kalmasın.
-//  md.2 ATT yok · md.3 konum yalnız dokununca · md.4 galeri izni hiç istenmez.
+//  md.2 ATT yok · md.3 konum yalnız dokununca · md.4 galeri izni hiç istenmez ·
+//  md.6 bildirim sistem penceresi yalnız tek fonksiyonda.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -32,4 +33,17 @@ test('galeri (okuma) izni hiç istenmez — sistem seçicisi', () => {
 
 test('konum sistem penceresi yalnız tek yardımcıda (askOnce üzerinden)', () => {
   assert.deepEqual(hits(/requestForegroundPermissionsAsync\(/), ['src/modules/eatkcal/v2/model/addressGeocode.ts']);
+});
+
+test('bildirim sistem penceresi yalnız tek fonksiyonda (core/push/pushPermission)', () => {
+  assert.deepEqual(hits(/Notifications\.requestPermissionsAsync\(/), ['src/core/push/pushPermission.ts']);
+  // Eski doğrudan istek yolları kalktı.
+  assert.deepEqual(hits(/requestPushPermissionOnly|PushPermissionPrompt'|SocialPushPrompt'/), []);
+  const app = files.find((f) => f.rel === 'App.tsx')!.src;
+  assert.doesNotMatch(app, /<PushPermissionPrompt/);
+});
+
+test('konum/kamera/ses: açılışta (App.tsx) sistem izni yok', () => {
+  const app = files.find((f) => f.rel === 'App.tsx')!.src;
+  assert.doesNotMatch(app, /request[A-Za-z]*Permission/);
 });

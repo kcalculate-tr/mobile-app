@@ -9,9 +9,10 @@
  * mevcut `behavioral_enabled` kolonuna eşlenir.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, Switch, View } from 'react-native';
+import { Alert, Switch, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import * as Notifications from 'expo-notifications';
+import { enablePushFromSettings } from '../../../../core/push/pushPermission';
 import { Flame, Package, ChatCircleDots, Tag } from '../../../../components/icons';
 import { setStreakReminderEnabled, syncStreakReminder, cancelStreakReminders } from '../../streakReminder';
 import { useTheme, FinCardSkeleton } from '../../../../core/design';
@@ -94,11 +95,12 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
     loadPrefs();
   }, [loadPrefs]);
 
-  useEffect(() => {
+  const refreshSystemStatus = useCallback(() => {
     Notifications.getPermissionsAsync()
       .then((res) => setSystemStatus(res.status as 'granted' | 'denied' | 'undetermined'))
       .catch(() => setSystemStatus(null));
   }, []);
+  useEffect(refreshSystemStatus, [refreshSystemStatus]);
 
   const handleToggle = async (key: PrefKey, next: boolean) => {
     if (!user?.id) return;
@@ -130,10 +132,11 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
     }
   };
 
+  // G26-S1: tek fonksiyon — 30 günde en fazla bir sistem penceresi, aksi hâlde Ayarlar.
   const openSystemSettings = () => {
-    Linking.openSettings().catch(() => {
-      Alert.alert(tr('profil.notify_title'));
-    });
+    void enablePushFromSettings()
+      .catch(() => Alert.alert(tr('profil.notify_title')))
+      .finally(refreshSystemStatus);
   };
 
   const rows: {
@@ -171,7 +174,8 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
     },
   ];
 
-  const showSystemOff = systemStatus === 'denied';
+  // G26-S1: izin yoksa (reddedildi ya da hiç sorulmadı) bildirimleri açma kartı.
+  const showSystemOff = systemStatus === 'denied' || systemStatus === 'undetermined';
 
   return (
     <FinScreen scroll contentStyle={{ paddingTop: 0 }}>
@@ -180,10 +184,10 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
         {showSystemOff ? (
           <FinCard style={{ gap: 12 }}>
             <Text style={{ fontFamily: bodyMedium, fontSize: 14, color: t.color.ink }}>
-              {tr('profil.notify_system_off')}
+              {tr(systemStatus === 'denied' ? 'profil.notify_system_off' : 'profil.notify_off_ask')}
             </Text>
             <FinSecondaryButton
-              label={tr('profil.notify_open_settings')}
+              label={tr(systemStatus === 'denied' ? 'profil.notify_open_settings' : 'profil.notify_enable')}
               onPress={openSystemSettings}
             />
           </FinCard>

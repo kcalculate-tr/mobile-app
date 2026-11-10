@@ -28,7 +28,6 @@ import { useAuth } from '../../core/AuthContext';
 import { useFeature } from '../../core/flags';
 import { postAuthShellTab } from '../shell/tabs';
 import { resolvePostSocialAuth } from '../../lib/postSocialAuth';
-import { registerForPushNotifications } from '../../core/notifications';
 import type { RootStackParamList } from '../../navigation/types';
 import { CameraIcon, Plus, ShoppingBag } from '../../components/icons';
 import { OnbScaffold } from './components/OnbScaffold';
@@ -336,21 +335,12 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
 function NotifyScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbNotify'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
-  const [busy, setBusy] = useState(false);
   // Final: Bildirim → Takibe başla (yeni kullanıcı hesabı az önce oluştu).
   const next = () => root?.navigate('TakibeBasla');
 
-  const allow = async () => {
-    setBusy(true);
-    try {
-      await registerForPushNotifications();
-    } catch {
-      // izin reddi/akış hatası: sessizce ilerle (ön ekran bloklamaz).
-    } finally {
-      setBusy(false);
-      next();
-    }
-  };
+  // G26-S1 (İlter 11 Kas): onboarding'de SİSTEM PENCERESİ YOK — bu ön ekran (akışta
+  // erişilmiyor) izin istemez; bildirim izni ilk öğün sonrası tek açıklama ekranında.
+  const allow = () => next();
 
   return (
     <OnbScaffold
@@ -361,7 +351,7 @@ function NotifyScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbN
       footer={
         <View style={styles.row}>
           <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.later')} onPress={next} />
-          <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.allow')} onPress={busy ? () => {} : allow} />
+          <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.allow')} onPress={allow} />
         </View>
       }
     >

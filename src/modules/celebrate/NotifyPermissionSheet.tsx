@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AppText, Sheet, haptic, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
-import { requestPushPermissionOnly } from '../../core/notifications';
+import { requestPushPermission } from '../../core/push/pushPermission';
 import { Bell } from '../../components/icons';
 import { useOverlayGate } from '../onboarding/first/overlayGate';
 import { setMarketingOptIn } from '../../lib/notify/marketing';
@@ -13,7 +13,8 @@ const CHECK_D =
 
 /**
  * FinSheetNotify — ILK ogun kutlamasindan sonra teklif edilen bildirim izni
- * alttan sayfasi. Yeni izin mantigi KURMAZ; yalniz requestPushPermissionOnly
+ * alttan sayfasi (G26-S1: tek aciklama ekrani). Yeni izin mantigi KURMAZ; yalniz
+ * tek fonksiyonu (core/push/pushPermission requestPushPermission('first_meal'))
  * cagirir ve sonucu disari verir.
  * G20-S3 md.6 (B-11): pazarlama bildirimi AYRI onay kutusu (isaretsiz gelir);
  * yalniz izin verilip kutu isaretlenirse marketing_enabled acilir.
@@ -38,7 +39,7 @@ export function NotifyPermissionSheet({
     setBusy(true);
     haptic('selection');
     try {
-      const status = await requestPushPermissionOnly();
+      const status = await requestPushPermission('first_meal');
       if (status === 'granted' && marketing) await setMarketingOptIn(true);
       onResult?.(status);
     } finally {

@@ -32,7 +32,6 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { linking } from './src/navigation/linking';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
-import PushPermissionPrompt from './src/components/modals/PushPermissionPrompt';
 import { checkForceUpdate } from './src/lib/forceUpdate';
 import KeyboardToolbar from './src/components/KeyboardToolbar';
 import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
@@ -108,6 +107,7 @@ function AppContent() {
     };
   }, []);
 
+  // G26-S1: oturum açılınca yalnız jeton kaydı — izin yoksa SORMAZ (sistem penceresi yok).
   useEffect(() => {
     if (!session) return;
     registerForPushNotifications().catch((error) => {
@@ -134,7 +134,6 @@ function AppContent() {
       <ForceUpdateModal visible={forceUpdate} message={forceUpdateMessage} />
       {/* Zorunlu guncelleme kilidi varken bildirim hatirlatmasini hic mount etme
           — iki modal ust uste binmesin. */}
-      {!forceUpdate && <PushPermissionPrompt />}
       {/* G20-S1: rıza kapısı (zorunlu güncelleme kilidi varken sheet açılmaz). */}
       <ConsentGate suppressed={forceUpdate} />
     </>

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretLeft, Bell } from '../../components/icons';
+import { enablePushFromSettings } from '../../core/push/pushPermission';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../../core/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
@@ -149,10 +149,12 @@ export default function NotificationPreferencesScreen() {
     Alert.alert(row.title, row.locked ?? 'Bu bildirim kategorisi kapatılamaz.');
   };
 
+  // G26-S1: tek fonksiyon — 30 günde en fazla bir sistem penceresi, aksi hâlde Ayarlar.
   const openSystemSettings = () => {
-    Linking.openSettings().catch(() => {
-      Alert.alert('Hata', 'Ayarlar açılamadı.');
-    });
+    void enablePushFromSettings()
+      .then(() => Notifications.getPermissionsAsync())
+      .then((res) => setSystemStatus(res.status as 'granted' | 'denied' | 'undetermined'))
+      .catch(() => Alert.alert('Hata', 'Ayarlar açılamadı.'));
   };
 
   if (authLoading) return null;

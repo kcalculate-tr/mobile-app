@@ -51,7 +51,6 @@ const LEGACY: Record<string, { max: number; why: string }> = {
   'components/BottomSheet.tsx': { max: 2, why: 'eski BottomSheet (noLegacyWhenFlagsOn: LEGACY_FILES)' },
   'components/FormField.tsx': { max: 2, why: 'eski form alanı (noLegacyWhenFlagsOn: LEGACY_FILES)' },
   'components/AnnouncementStrip.tsx': { max: 1, why: 'eski duyuru şeridi (eski HomeScreen)' },
-  'components/modals/PushPermissionPrompt.tsx': { max: 2, why: 'eski bildirim izni penceresi (yeni kabukta FinOnbNotify/NotifyPermissionSheet)' },
   'modules/eatkcal/screens/OrderSuccessScreen.tsx': { max: 6, why: 'yeni_siparis açıkken EkOrderSuccess (v2ScreenFor)' },
   'modules/eatkcal/screens/CartScreen.tsx': { max: 2, why: 'eski sepet (yeni_siparis açıkken EkCart)' },
   'modules/eatkcal/screens/EatHomeScreen.tsx': { max: 0, why: 'eski T20Eat (yeni_siparis açıkken FinEkHome)' },

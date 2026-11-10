@@ -1,5 +1,5 @@
 // Keşfet akışı ipucu şeridi — FinFeedTip (FeedR3, tip=true). Akışa ilk kez
-// girişte bir kez gösterilir; AsyncStorage bayrağıyla kilitlenir (SocialPushPrompt
+// girişte bir kez gösterilir; AsyncStorage bayrağıyla kilitlenir (eski SocialPushPrompt
 // ile aynı desen). Kapat (x) → bayrağı işaretler, bir daha çizilmez.
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';

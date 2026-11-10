@@ -9,18 +9,17 @@
 //    bugün dahil kesintisiz kayıtlı gün sayısı (G19-S2: track/streak, sunucu kuralı).
 // Her kutlama kullanıcı başına bir kez (`@kcal_celebrate_shown:<uid>`), ekrana
 // geldiği an işaretlenir; 7'lik gösterilince 3'lük de gösterilmiş sayılır.
-// Kutlama kapanınca, izin henüz verilmemişse ve daha önce teklif edilmediyse
-// bildirim izni sheet'i (FinSheetNotify) açılır — mevcut izin akışı:
-// requestPushPermissionOnly → granted ise registerForPushNotifications.
+// G26-S1: İLK ÖĞÜN kutlaması kapanınca, bildirim izni hiç sorulmadıysa TEK açıklama
+// ekranı (FinSheetNotify) açılır → tek fonksiyon core/push/pushPermission
+// (requestPushPermission('first_meal'); izin verilirse jeton orada kaydedilir).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 
 import { DURATION, TIMING } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getSupabaseClient } from '../../core/supabase';
-import { registerForPushNotifications } from '../../core/notifications';
+import { canOfferPush } from '../../core/push/pushPermission';
 import {
   CelebrateOverlay,
   NotifyPermissionSheet,
@@ -197,8 +196,7 @@ export function HomeCelebrations({
   const offerNotify = useCallback(async () => {
     try {
       if ((await AsyncStorage.getItem(NOTIFY_OFFERED_KEY)) === '1') return;
-      const perm = await Notifications.getPermissionsAsync();
-      if (perm.status === 'granted' || perm.canAskAgain === false) return;
+      if (!(await canOfferPush('first_meal'))) return;
       await AsyncStorage.setItem(NOTIFY_OFFERED_KEY, '1');
       setNotifyOpen(true);
     } catch {
@@ -210,7 +208,8 @@ export function HomeCelebrations({
     const m = shown;
     setShown(null);
     if (!m) return;
-    void dismiss(m).then(offerNotify);
+    // G26-S1: teklif yalnız ilk öğün kutlamasından sonra.
+    void dismiss(m).then(() => (m === 'first' ? offerNotify() : undefined));
   }, [shown, dismiss, offerNotify]);
 
   const first = today.length > 0 ? today[today.length - 1] : null; // en eski = ilk öğün
@@ -252,7 +251,6 @@ export function HomeCelebrations({
         onClose={() => setNotifyOpen(false)}
         onResult={(status) => {
           if (status === 'granted') {
-            void registerForPushNotifications();
             void syncStreakReminder({ loggedToday: todayCount > 0, title: tt('profil.streak_reminder_title'), body: tt('profil.streak_reminder_body') });
           }
         }}

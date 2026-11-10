@@ -59,8 +59,13 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: () => Promise.resolve({ status: 'granted' }),
 }));
 jest.mock('../../core/notifications', () => ({
-  requestPushPermissionOnly: jest.fn(() => Promise.resolve('granted')),
   registerForPushNotifications: jest.fn(() => Promise.resolve({ success: true })),
+}));
+// G26-S1: bildirim izni tek fonksiyon (core/push/pushPermission).
+jest.mock('../../core/push/pushPermission', () => ({
+  canOfferPush: jest.fn(() => Promise.resolve(true)),
+  requestPushPermission: jest.fn(() => Promise.resolve('granted')),
+  pushGranted: jest.fn(() => Promise.resolve(false)),
 }));
 
 // ── Supabase: test başına ayarlanan küçük bellek içi "db" + çağrı kaydı. ─────
