@@ -7,6 +7,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Linking, Platform, StyleSheet } from 'react-native';
 
 import { buildPlanCards, type StoreProductLike } from '../../../lib/subscription/plans';
+import { DEMO_PRICES_TRY as D } from '../../../lib/subscription/demoPrices';
 import { limitsFromSettings } from '../../../lib/subscription/limits';
 import { useSubscriptionStore } from '../../../lib/subscription/purchases';
 
@@ -28,10 +29,11 @@ const P = (identifier: string, price: number, intro?: StoreProductLike['introPri
   introPrice: intro ?? null,
 });
 const CARDS = buildPlanCards([
-  P('kcalai_fresh_monthly', 149),
-  P('kcalai_fresh_yearly', 999, trial),
-  P('kcalai_balance_monthly', 499),
-  P('kcalai_balance_yearly', 2999, trial),
+  // G27-S1: mağaza fiyatları tek kaynaktan (Fresh aylık 199).
+  P('kcalai_fresh_monthly', D.fresh_monthly),
+  P('kcalai_fresh_yearly', D.fresh_yearly, trial),
+  P('kcalai_balance_monthly', D.balance_monthly),
+  P('kcalai_balance_yearly', D.balance_yearly, trial),
 ]);
 let mockCards: typeof CARDS = CARDS;
 let mockLoading = false;
@@ -95,6 +97,9 @@ test('Paywall: 4 kart yerel fiyatla (₺ yok), varsayılan Balance Yıllık, den
   expect(tree.getByText('Gizlilik Politikası')).toBeTruthy();
   expect(tree.getByText('En çok seçilen', H)).toBeTruthy();
   expect(tree.getByText('-%50', H)).toBeTruthy();
+  // G27-S1: Fresh yıllık rozeti mağaza fiyatından (199×12 = 2388 → 999 ⇒ %58); sabit "%44" yok.
+  expect(tree.getByText('-%58', H)).toBeTruthy();
+  expect(tree.queryByText('-%44', H)).toBeNull();
   // Balance şeridi (yalnız çalışan özellikler; AI koç / fitness YOK). G23-S1: günde 50, "Sınırsız AI" YOK.
   expect(tree.getByText('Günde 50 AI tarama')).toBeTruthy();
   expect(tree.queryByText(/Sınırsız AI/i)).toBeNull();
@@ -269,7 +274,7 @@ test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planlar
   const onPlans = jest.fn();
   const onManual = jest.fn();
   const tree = render(
-    <SubLimitSheet visible kind="ai" limits={LIMITS} tier="free" cap={2} prices={{ fresh: '149 TL', balance: '499 TL' }} plansEnabled onPlans={onPlans} onManual={onManual} onClose={() => {}} />,
+    <SubLimitSheet visible kind="ai" limits={LIMITS} tier="free" cap={2} prices={{ fresh: '199 TL', balance: '499 TL' }} plansEnabled onPlans={onPlans} onManual={onManual} onClose={() => {}} />,
   );
   expect(tree.getByText('Bugünkü 2 AI taramanı kullandın')).toBeTruthy();
   expect(tree.getByText(/Fresh ile günde 10, Balance ile günde 50 AI tarama/)).toBeTruthy();
@@ -279,7 +284,7 @@ test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planlar
   expect(tree.queryByText('Sınırsız')).toBeNull();
   expect(tree.getByText('499 TL/ay')).toBeTruthy();
   expect(tree.getByText('Şu anki plan')).toBeTruthy();
-  expect(tree.getByText('149 TL/ay')).toBeTruthy();
+  expect(tree.getByText('199 TL/ay')).toBeTruthy();
   expect(tree.getByText('Barkod ve elle giriş açık')).toBeTruthy();
   fireEvent.press(tree.getByTestId('sub-limit-plans'));
   fireEvent.press(tree.getByTestId('sub-limit-manual'));
@@ -289,7 +294,7 @@ test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planlar
 
 test('Hak sheet Barkod: 5 · Sınırsız · Sınırsız; abonelik kapalıyken plan/karo YOK', () => {
   let tree = render(
-    <SubLimitSheet visible kind="barcode" limits={LIMITS} tier="free" cap={5} prices={{ fresh: '149 TL', balance: '499 TL' }} plansEnabled onPlans={() => {}} onManual={() => {}} onClose={() => {}} />,
+    <SubLimitSheet visible kind="barcode" limits={LIMITS} tier="free" cap={5} prices={{ fresh: '199 TL', balance: '499 TL' }} plansEnabled onPlans={() => {}} onManual={() => {}} onClose={() => {}} />,
   );
   expect(tree.getByText('Bugünkü 5 barkod taramanı kullandın')).toBeTruthy();
   expect(tree.getByText('Günde 5')).toBeTruthy();

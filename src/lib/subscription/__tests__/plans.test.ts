@@ -65,16 +65,16 @@ test('snap: seçili kart yuvarlanır ve sınırlanır; açılış kartı + şeri
 
 test('fiyat (G23-S1): sayı + para birimi → ortak formatMoney; TRY "2999 TL" (₺ / binlik yok), diğerleri yerel biçim', () => {
   const sp = (x: string) => x.replace(/\u00a0|\u202f/g, ' ');
-  assert.equal(formatStorePrice(149, 'TRY'), '149 TL');
+  assert.equal(formatStorePrice(199, 'TRY'), '199 TL');
   assert.equal(formatStorePrice(2999, 'TRY', 'tr-TR'), '2999 TL');
   assert.equal(formatStorePrice(1799, 'try', 'en-US'), '1799 TL');
-  assert.equal(formatStorePrice(34.38, 'TRY'), '34,38 TL');
+  assert.equal(formatStorePrice(45.92, 'TRY'), '45,92 TL');
   assert.equal(formatStorePrice(59.99, 'USD', 'en-US'), '$59.99');
   assert.equal(sp(formatStorePrice(59.99, 'EUR', 'de-DE')), '59,99 €');
   assert.equal(formatStorePrice(4.99, 'XXZ', 'en-US').endsWith('4.99'), true, 'bilinmeyen kod çökmez');
   assert.equal(yearlyDiscountPct(499, 2999), 50);
   assert.equal(yearlyDiscountPct(249, 1799), 40);
-  assert.equal(yearlyDiscountPct(149, 999), 44);
+  assert.equal(yearlyDiscountPct(199, 999), 58, 'G27-S1: Fresh 199×12 = 2388 → 999');
   assert.equal(yearlyDiscountPct(null, 999), null);
   assert.equal(trialDays(TRY('x', 1, { price: 0, periodNumberOfUnits: 7, periodUnit: 'DAY' })), 7);
   assert.equal(trialDays(TRY('x', 1, { price: 0, periodNumberOfUnits: 1, periodUnit: 'WEEK' })), 7);
@@ -85,7 +85,7 @@ test('buildPlanCards: 4 kart sırayla; eksik ürün → null (yedek fiyat YOK)',
   const trial = { price: 0, periodNumberOfUnits: 7, periodUnit: 'DAY' };
   const prods = [
     TRY('kcalai_balance_yearly', 2999, trial),
-    TRY('kcalai_fresh_monthly', 149),
+    TRY('kcalai_fresh_monthly', 199),
     TRY('kcalai_fresh:yearly', 999, trial),
     TRY('kcalai_balance_monthly', 499),
   ];
@@ -98,7 +98,8 @@ test('buildPlanCards: 4 kart sırayla; eksik ürün → null (yedek fiyat YOK)',
   assert.equal(by.discountPct, 50);
   assert.equal(by.trialDays, 7);
   assert.equal(by.popular, true);
-  assert.equal(cards![0].weeklyText, '34,38 TL', 'aylık 149 → haftalık 149·12/52');
+  assert.equal(cards![0].weeklyText, '45,92 TL', 'aylık 199 → haftalık 199·12/52');
+  assert.equal(cards![1].discountPct, 58, 'Fresh yıllık rozeti mağaza fiyatından');
   assert.equal(cards![0].trialDays, null);
   assert.equal(buildPlanCards(prods.slice(1)), null);
   assert.equal(planFromProductId('KCALAI_FRESH_MONTHLY'), 'fresh_monthly');
