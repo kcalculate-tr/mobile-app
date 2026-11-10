@@ -90,7 +90,7 @@ export function Toast({
       <View style={styles.dot}>
         <View style={[styles.dotInner, { backgroundColor: tone === 'error' ? t.color.secondary : t.color.accent }]} />
       </View>
-      <AppText variant="body" style={styles.msg} numberOfLines={2}>
+      <AppText variant="body" style={styles.msg} numberOfLines={tone === 'error' ? undefined : 2}>
         {message}
       </AppText>
       {onUndo ? (
