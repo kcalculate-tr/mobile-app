@@ -239,6 +239,8 @@ export function PostDetailScreen({
   const insets = useSafeAreaInsets();
   const { t: tr, fmt, lang } = useT();
   const yorum = useFeature('kesfet_yorum');
+  // G25-S1 md.7 (A10): l.eatkcal.com hazır olana kadar "Paylaş / Bağlantıyı kopyala" gizli.
+  const paylasimBaglanti = useFeature('paylasim_baglanti');
 
   const [post, setPost] = useState<FeedPost | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'notfound'>('loading');
@@ -543,12 +545,14 @@ export function PostDetailScreen({
                 onPress={() => react('save')}
                 color={iconColor}
               />
-              <IconCount
-                icon={<Icon name="share" size={18} color={iconColor} />}
-                label={tr('kesfet.ui.a11y.share')}
-                onPress={onShare}
-                color={iconColor}
-              />
+              {paylasimBaglanti ? (
+                <IconCount
+                  icon={<Icon name="share" size={18} color={iconColor} />}
+                  label={tr('kesfet.ui.a11y.share')}
+                  onPress={onShare}
+                  color={iconColor}
+                />
+              ) : null}
             </View>
           </View>
 
@@ -604,9 +608,13 @@ export function PostDetailScreen({
         onClose={() => setMenuOpen(false)}
         authorName={post.author.display_name}
         isMine={post.me.is_author}
-        onCopyLink={() => {
-          void Clipboard.setStringAsync(postLink(post.id)).then(() => setToast({ message: tr('kesfet.ui.link_copied') }));
-        }}
+        onCopyLink={
+          paylasimBaglanti
+            ? () => {
+                void Clipboard.setStringAsync(postLink(post.id)).then(() => setToast({ message: tr('kesfet.ui.link_copied') }));
+              }
+            : undefined
+        }
         onReport={(reason: ReportReason) => useKesfetStore.getState().report('post', post.id, reason)}
         onBlock={() => {
           void useKesfetStore

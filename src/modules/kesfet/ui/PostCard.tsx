@@ -123,7 +123,8 @@ export function PostCard({
   quickMealLabel?: string;
   onLike: () => void;
   onSave: () => void;
-  onShare: () => void;
+  /** Paylaş. G25-S1 md.7 (A10): verilmezse (bayrak `paylasim_baglanti` kapalı) düğme çizilmez. */
+  onShare?: () => void;
   /** Öğün kartında dokun = saate göre doğrudan logla (görsel karesiyle). */
   onQuickLog?: (frame: LogOriginFrame, meal?: MealType, portion?: number) => void;
   /** G18-S5 md.8 — yerinde öğün menüsü (FinMoPopover) için saate göre öğün; yoksa ⌄ seçici sayfası. */
@@ -335,12 +336,14 @@ export function PostCard({
               dotColor={t.color.accentLine}
               onPress={save}
             />
-            <Action
-              icon="share"
-              color={t.color.secondary}
-              label={tr('kesfet.ui.a11y.share')}
-              onPress={onShare}
-            />
+            {onShare ? (
+              <Action
+                icon="share"
+                color={t.color.secondary}
+                label={tr('kesfet.ui.a11y.share')}
+                onPress={onShare}
+              />
+            ) : null}
           </View>
           {tip && model.meal ? <View style={[styles.tip, { top: mealBottom - 4 }]}>{tip}</View> : null}
         </View>

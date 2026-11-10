@@ -30,6 +30,8 @@ function LegacySharedPostScreen() {
   const postId = (route.params?.postId ?? '').toString().trim();
   const theme = useTheme();
   const { t: tr, lang } = useT();
+  // G25-S1 md.7 (A10): l.eatkcal.com hazır olana kadar Paylaş gizli.
+  const paylasimBaglanti = useFeature('paylasim_baglanti');
 
   const [post, setPost] = useState<FeedPost | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'notfound'>('loading');
@@ -114,11 +116,15 @@ function LegacySharedPostScreen() {
             .then(refresh)
             .catch(() => {});
         }}
-        onShare={() => {
-          void Share.share({ message: postLink(post.id), url: postLink(post.id) })
-            .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'shared_post' }); })
-            .catch(() => {});
-        }}
+        onShare={
+          paylasimBaglanti
+            ? () => {
+                void Share.share({ message: postLink(post.id), url: postLink(post.id) })
+                  .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'shared_post' }); })
+                  .catch(() => {});
+              }
+            : undefined
+        }
         onQuickLog={goHome}
         onOpenSheet={goHome}
         onOpenMenu={goHome}

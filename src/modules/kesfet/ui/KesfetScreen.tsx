@@ -241,6 +241,8 @@ export function KesfetScreen() {
   // G8 bayrakları — her biri kapalıyken ilgili davranış HİÇ render olmaz.
   const kesfetPaylasim = useFeature('kesfet_paylasim');
   const kesfetYorum = useFeature('kesfet_yorum');
+  // G25-S1 md.7 (A10): l.eatkcal.com hazır olana kadar "Paylaş / Bağlantıyı kopyala" gizli.
+  const paylasimBaglanti = useFeature('paylasim_baglanti');
   // G18-S5 md.8: yerinde öğün menüsü (FinMoPopover) yalnız yeni kabukta; kapalıyken ⌄ = seçici sayfası (aynen).
   const yeniKabukMenu = useFeature('yeni_kabuk');
   const sosyalBildirim = useFeature('sosyal_bildirim');
@@ -721,7 +723,7 @@ export function KesfetScreen() {
               void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
             }}
             onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
-            onShare={() => onShare(item)}
+            onShare={paylasimBaglanti ? () => onShare(item) : undefined}
             quickMeal={yeniKabukMenu ? quickMealType : undefined}
             onQuickLog={(frame, meal, portion) => onQuickLog(item, frame, meal, portion)}
             onOpenSheet={() => setSheetPost(item)}
@@ -927,7 +929,7 @@ export function KesfetScreen() {
         authorName={menuPost?.author.display_name ?? ''}
         isMine={menuPost?.me.is_author ?? false}
         canEdit={(menuPost?.me.is_author ?? false) && editAvailable}
-        onCopyLink={() => menuPost && void onCopyLink(menuPost)}
+        onCopyLink={paylasimBaglanti ? () => menuPost && void onCopyLink(menuPost) : undefined}
         onReport={(reason, note) => (menuPost ? onReport(menuPost, reason, note) : false)}
         onBlock={() => menuPost && void onBlock(menuPost)}
         onMute={() => menuPost && onMute(menuPost)}
@@ -961,7 +963,7 @@ export function KesfetScreen() {
         onClose={() => setVideoPostId(null)}
         onLike={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'like', !videoPost.me.liked)}
         onSave={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'save', !videoPost.me.saved)}
-        onShare={() => videoPost && void onShare(videoPost)}
+        onShare={paylasimBaglanti ? () => videoPost && void onShare(videoPost) : undefined}
         onComment={
           kesfetYorum
             ? () => {

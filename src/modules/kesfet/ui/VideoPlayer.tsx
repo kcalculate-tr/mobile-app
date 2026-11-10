@@ -55,7 +55,8 @@ export function VideoPlayer({
   onLike: () => void;
   onComment?: () => void;
   onSave: () => void;
-  onShare: () => void;
+  /** G25-S1 md.7 (A10): verilmezse (bayrak `paylasim_baglanti` kapalı) düğme çizilmez. */
+  onShare?: () => void;
 }) {
   const { t: tr, fmt } = useT();
   const insets = useSafeAreaInsets();
@@ -121,7 +122,7 @@ export function VideoPlayer({
             <SideAction icon="chatCircle" count={fmt(post.stats.comments)} label={tr('kesfet.ui.a11y.comment')} onPress={onComment} />
           ) : null}
           <SideAction icon={post.me.saved ? 'bookmarkFill' : 'bookmark'} count={fmt(post.stats.saves)} label={tr('kesfet.ui.a11y.save')} onPress={onSave} />
-          <SideAction icon="share" label={tr('kesfet.ui.a11y.share')} onPress={onShare} />
+          {onShare ? <SideAction icon="share" label={tr('kesfet.ui.a11y.share')} onPress={onShare} /> : null}
         </View>
 
         <View style={styles.info}>
