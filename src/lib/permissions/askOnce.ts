@@ -30,3 +30,8 @@ export async function askOnce(d: AskOnceDeps): Promise<boolean> {
   await d.markDenied().catch(() => {});
   return false;
 }
+
+/** G26-S1: cihazda kalıcı "bir kez reddedildi" anahtarları (izin türü başına). */
+export const DENIED_KEYS = {
+  camera: '@kcal_camera_denied',
+} as const;

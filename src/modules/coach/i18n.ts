@@ -99,6 +99,9 @@ export const tr = {
   listening: 'Dinliyorum',
   voice_hint: 'Bitince Gönder’e dokun.',
   voice_empty: 'Seni duyamadım. Tekrar dene.',
+  // G26-S1: mikrofon / konuşma tanıma reddedildi → bir daha sorulmaz, Ayarlar.
+  voice_denied: 'Mikrofon izni kapalı. Sesle sormak için Ayarlar’da mikrofon ve konuşma tanıma iznini aç; bu arada yazarak sorabilirsin.',
+  voice_settings: 'Ayarlar’ı aç',
   cancel: 'İptal',
   // Menü / silme
   close: 'Kapat',
@@ -252,6 +255,8 @@ export const en: typeof tr = {
   listening: 'Listening',
   voice_hint: 'Tap Send when you’re done.',
   voice_empty: 'I couldn’t hear you. Try again.',
+  voice_denied: 'Microphone access is off. To ask by voice, turn on microphone and speech recognition in Settings. You can still type.',
+  voice_settings: 'Open Settings',
   cancel: 'Cancel',
   close: 'Close',
   history: 'History',

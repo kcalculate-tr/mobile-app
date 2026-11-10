@@ -16,6 +16,17 @@
 //    Google'ın konuşma hizmetine gidebilir.
 import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { askOnce } from '../../../../lib/permissions/askOnce';
+
+/**
+ * G26-S1 (İlter 11 Kas): mikrofon + konuşma tanıma TEK akışta, YALNIZ ses moduna dokununca
+ * (Tara "Ses" / Koç mikrofonu) istenir — `requestPermissionsAsync` iOS'ta ikisini arka arkaya
+ * sorar. Reddedilirse bir daha sistem penceresi açılmaz (Android ikinci kez sorabilse de):
+ * ses düğmesi açıklamalı pasif + "Ayarlar'ı aç".
+ */
+export const SPEECH_DENIED_KEY = '@kcal_speech_denied';
+const wasSpeechDenied = async () => (await AsyncStorage.getItem(SPEECH_DENIED_KEY).catch(() => null)) === '1';
 
 type SpeechModuleType = typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule'];
 
@@ -107,7 +118,9 @@ export async function speechPermission(): Promise<{ granted: boolean; canAskAgai
   if (!S) return null;
   try {
     const r = await S.getPermissionsAsync();
-    return { granted: !!r.granted, canAskAgain: r.canAskAgain !== false };
+    if (r.granted) return { granted: true, canAskAgain: true };
+    // G26-S1: bir kez reddedildiyse "tekrar sorulamaz" say → hâl 'denied' (Ayarlar).
+    return { granted: false, canAskAgain: r.canAskAgain !== false && !(await wasSpeechDenied()) };
   } catch {
     return null;
   }
@@ -117,8 +130,16 @@ export async function requestSpeechPermission(): Promise<{ granted: boolean; can
   const S = loadSpeech();
   if (!S) return null;
   try {
-    const r = await S.requestPermissionsAsync();
-    return { granted: !!r.granted, canAskAgain: r.canAskAgain !== false };
+    const granted = await askOnce({
+      read: async () => {
+        const r = await S.getPermissionsAsync();
+        return { status: r.granted ? 'granted' : r.canAskAgain === false ? 'denied' : 'undetermined', canAskAgain: r.canAskAgain !== false };
+      },
+      request: async () => ((await S.requestPermissionsAsync()).granted ? 'granted' : 'denied'),
+      wasDenied: wasSpeechDenied,
+      markDenied: () => AsyncStorage.setItem(SPEECH_DENIED_KEY, '1'),
+    });
+    return { granted, canAskAgain: granted };
   } catch {
     return null;
   }

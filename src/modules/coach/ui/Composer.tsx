@@ -3,7 +3,7 @@
 // "Koç tıbbi tavsiye vermez." satırı. Ses paneli (FinCoachVoice): dokun → dinler, canlı döküm,
 // İptal / Gönder (HIG: basılı tutma zorunlu değil — VoiceOver'da da kullanılabilir).
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { AppText, CURVE, DURATION, REDUCED, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
@@ -166,6 +166,8 @@ function VoicePanel({ lang, onCancel, onSend }: { lang: 'tr' | 'en'; onCancel: (
   const [text, setText] = useState('');
   const [level, setLevel] = useState(0);
   const [err, setErr] = useState(false);
+  // G26-S1: izin reddi ayrı hâl — açıklama + "Ayarlar'ı aç", Gönder pasif (bir daha sorulmaz).
+  const [denied, setDenied] = useState(false);
   const textRef = useRef('');
   useEffect(() => {
     let off: (() => void) | null = null;
@@ -174,7 +176,7 @@ function VoicePanel({ lang, onCancel, onSend }: { lang: 'tr' | 'en'; onCancel: (
       const perm = await requestSpeechPermission();
       if (!alive) return;
       if (perm && !perm.granted) {
-        setErr(true);
+        setDenied(true);
         return;
       }
       off = startListening(lang === 'en' ? 'en-US' : 'tr-TR', {
@@ -210,25 +212,50 @@ function VoicePanel({ lang, onCancel, onSend }: { lang: 'tr' | 'en'; onCancel: (
       style={[styles.voice, { backgroundColor: c.card, borderColor: c.line }]}
       testID="coach-voice"
     >
-      <AppText style={[styles.listening, { color: c.text }]} accessibilityLiveRegion="polite">
-        {err ? tr('coach.voice_empty') : tr('coach.listening')}
-      </AppText>
-      <View style={styles.wave} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        {bars.map((h, i) => (
-          <View key={i} style={[styles.waveBar, { height: h, backgroundColor: LIME }]} />
-        ))}
-      </View>
+      {denied ? (
+        <>
+          <AppText style={[styles.transcript, { color: c.text }]} accessibilityRole="alert" testID="coach-voice-denied">
+            {tr('coach.voice_denied')}
+          </AppText>
+          <Pressable
+            onPress={() => void Linking.openSettings().catch(() => {})}
+            accessibilityRole="button"
+            style={[styles.voiceBtn, { alignSelf: 'stretch', borderWidth: 1, borderColor: c.line2 }]}
+            testID="coach-voice-settings"
+          >
+            <AppText style={[styles.voiceBtnText, { color: c.text }]}>{tr('coach.voice_settings')}</AppText>
+          </Pressable>
+        </>
+      ) : (
+        <AppText style={[styles.listening, { color: c.text }]} accessibilityLiveRegion="polite">
+          {err ? tr('coach.voice_empty') : tr('coach.listening')}
+        </AppText>
+      )}
+      {denied ? null : (
+        <View style={styles.wave} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {bars.map((h, i) => (
+            <View key={i} style={[styles.waveBar, { height: h, backgroundColor: LIME }]} />
+          ))}
+        </View>
+      )}
       {text ? (
         <AppText style={[styles.transcript, { color: c.text }]} accessibilityLiveRegion="polite" testID="coach-voice-text">
           {text}
         </AppText>
       ) : null}
-      <AppText style={[styles.hint, { color: c.sec }]}>{tr('coach.voice_hint')}</AppText>
+      {denied ? null : <AppText style={[styles.hint, { color: c.sec }]}>{tr('coach.voice_hint')}</AppText>}
       <View style={styles.voiceRow}>
         <Pressable onPress={onCancel} accessibilityRole="button" style={[styles.voiceBtn, { borderWidth: 1, borderColor: c.line2 }]} testID="coach-voice-cancel">
           <AppText style={[styles.voiceBtnText, { color: c.text }]}>{tr('coach.cancel')}</AppText>
         </Pressable>
-        <Pressable onPress={send} accessibilityRole="button" style={[styles.voiceBtn, { backgroundColor: LIME }]} testID="coach-voice-send">
+        <Pressable
+          onPress={send}
+          disabled={denied}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: denied }}
+          style={[styles.voiceBtn, { backgroundColor: LIME, opacity: denied ? 0.4 : 1 }]}
+          testID="coach-voice-send"
+        >
           <AppText style={[styles.voiceBtnText, { color: LIME_INK }]}>{tr('coach.send')}</AppText>
         </Pressable>
       </View>

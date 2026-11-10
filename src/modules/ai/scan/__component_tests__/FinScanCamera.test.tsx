@@ -83,6 +83,24 @@ test('izin reddedildi (tekrar sorulamaz) → onPermissionDenied, kamera görünt
   expect(tree.queryByTestId('fin-scan-camera')).toBeNull();
 });
 
+test('G26-S1: bir kez reddedilen kamera izni (Android tekrar sorabilse de) bir daha İSTENMEZ', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const asMod = require('@react-native-async-storage/async-storage');
+  const AsyncStorage = asMod.default ?? asMod;
+  await AsyncStorage.clear();
+  const f = fakeCam({ get: UNDETERMINED, request: { ...UNDETERMINED, status: 'denied' } });
+  const p = base();
+  const t1 = render(<FinScanCamera cam={f.cam} {...p} />);
+  await waitFor(() => expect(p.onPermissionDenied).toHaveBeenCalledTimes(1));
+  expect(f.Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
+  t1.unmount();
+  const p2 = base();
+  render(<FinScanCamera cam={f.cam} {...p2} />);
+  await waitFor(() => expect(p2.onPermissionDenied).toHaveBeenCalledTimes(1));
+  expect(f.Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
+  await AsyncStorage.clear();
+});
+
 test('deklanşör: takePictureAsync kalite 0.5 → onCaptured(uri)', async () => {
   const f = fakeCam({ get: GRANTED });
   const p = base();

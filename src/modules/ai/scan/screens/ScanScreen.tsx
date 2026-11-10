@@ -11,6 +11,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DENIED_KEYS, askOnce } from '../../../../lib/permissions/askOnce';
 import NetInfo from '@react-native-community/netinfo';
 import { useNavigation } from '@react-navigation/native';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
@@ -242,8 +244,17 @@ export default function ScanScreen() {
   }, []);
 
   const captureOnce = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
+    // G26-S1: deklanşöre dokununca bir kez; reddedildiyse bir daha sistem penceresi yok.
+    const granted = await askOnce({
+      read: async () => {
+        const r = await ImagePicker.getCameraPermissionsAsync();
+        return { status: r.granted ? 'granted' : r.canAskAgain ? 'undetermined' : 'denied', canAskAgain: r.canAskAgain };
+      },
+      request: async () => ((await ImagePicker.requestCameraPermissionsAsync()).granted ? 'granted' : 'denied'),
+      wasDenied: async () => (await AsyncStorage.getItem(DENIED_KEYS.camera)) === '1',
+      markDenied: () => AsyncStorage.setItem(DENIED_KEYS.camera, '1'),
+    });
+    if (!granted) {
       // G15-S2: yeni kabukta "Kameraya erişim kapalı" ayrı durum (FinScanError);
       // bayrak kapalıyken bugünkü uyarı aynen.
       if (yeniKabuk) setErrorKind('camera');

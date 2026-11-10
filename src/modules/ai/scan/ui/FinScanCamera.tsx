@@ -9,13 +9,16 @@
 //
 // Deklanşör: takePictureAsync (kalite 0.5, `pictureSize` ile uzun kenar ≤ 1600) →
 // `onCaptured(uri)`; analiz sürerken (`analyzing`) aynı ekranda FinMoScan katmanı.
-// İzin: ilk açılışta istenir; reddedilirse `onPermissionDenied` (FinScanError
+// İzin: Tara'da kamera ilk açıldığında istenir; reddedilirse `onPermissionDenied` (FinScanError
 // "Kameraya erişim kapalı" + Ayarlar). Ayarlar'dan dönünce yeniden denetlenir.
+// G26-S1: bir kez reddedilen kamera izni bir daha sistem penceresiyle istenmez (askOnce).
 // Barkod: EAN-13/8, UPC-A/E okunur → `onBarcode(kod)` (G21-S1 md.2: ScanScreen Open Food
 // Facts'e sorar; "Barkod yakında" hâli KALKTI). Sorgu sürerken "Ürün aranıyor…" hapı.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, DeviceEventEmitter, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DENIED_KEYS, askOnce } from '../../../../lib/permissions/askOnce';
 import Svg, { Path } from 'react-native-svg';
 import { requireOptionalNativeModule } from 'expo';
 import { StatusBar } from 'expo-status-bar';
@@ -140,11 +143,19 @@ export default function FinScanCamera({
   const checkPermission = useCallback(
     async (askIfPossible: boolean) => {
       try {
-        let res = await Camera.getCameraPermissionsAsync();
-        if (!res.granted && askIfPossible && res.canAskAgain) {
-          res = await Camera.requestCameraPermissionsAsync();
-        }
-        if (res.granted) {
+        const read = async () => {
+          const r = await Camera.getCameraPermissionsAsync();
+          return { status: r.granted ? ('granted' as const) : r.canAskAgain ? ('undetermined' as const) : ('denied' as const), canAskAgain: r.canAskAgain };
+        };
+        const granted = askIfPossible
+          ? await askOnce({
+              read,
+              request: async () => ((await Camera.requestCameraPermissionsAsync()).granted ? 'granted' : 'denied'),
+              wasDenied: async () => (await AsyncStorage.getItem(DENIED_KEYS.camera)) === '1',
+              markDenied: () => AsyncStorage.setItem(DENIED_KEYS.camera, '1'),
+            })
+          : (await read()).status === 'granted';
+        if (granted) {
           setPerm('granted');
           if (deniedReported.current) {
             deniedReported.current = false;
