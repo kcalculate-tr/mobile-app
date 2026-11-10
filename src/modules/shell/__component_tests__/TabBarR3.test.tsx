@@ -58,13 +58,24 @@ afterEach(() => {
 });
 
 describe('TabBarR3 (yeni kabuk)', () => {
-  test('kesfet açık → 4 sekme etiketi (TR)', () => {
+  test('kesfet açık → 4 sekme, YAZI YOK (yalnız ikon); VoiceOver etiketi TR', () => {
     const { props } = makeProps(R3_ROUTES, 0);
-    const { getByText } = render(<TabBarR3 {...props} />);
-    getByText('Ana sayfa');
-    getByText('Keşfet');
-    getByText('eatkcal');
-    getByText('Profil');
+    const { getByLabelText, queryByText } = render(<TabBarR3 {...props} />);
+    // G22-S2 md.2: sekme yazıları kalktı — ad yalnız erişilebilirlik etiketinde.
+    for (const name of ['Ana sayfa', 'Keşfet', 'eatkcal', 'Profil']) {
+      expect(queryByText(name)).toBeNull();
+      expect(getByLabelText(name).props.accessibilityRole).toBe('tab');
+    }
+  });
+
+  test('sekme hücresi dokunma alanı ≥ 44 pt (Apple HIG)', () => {
+    const { props } = makeProps(R3_ROUTES, 0);
+    const { getByLabelText } = render(<TabBarR3 {...props} />);
+    const flat = (st: unknown): Record<string, unknown> =>
+      Array.isArray(st) ? Object.assign({}, ...st.map(flat)) : ((st as Record<string, unknown>) ?? {});
+    const style = flat(getByLabelText('Profil').props.style);
+    expect(style.minWidth).toBeGreaterThanOrEqual(44);
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
   });
 
   test('ai_tarama açıkken Tara görünür, kapalıyken görünmez', () => {
@@ -82,11 +93,11 @@ describe('TabBarR3 (yeni kabuk)', () => {
 
   test('kesfet kapalı (KesfetTab kayıtlı değil) → Keşfet sekmesi yok', () => {
     const { props } = makeProps(R3_ROUTES_NO_KESFET, 0);
-    const { queryByText, getByText } = render(<TabBarR3 {...props} />);
-    expect(queryByText('Keşfet')).toBeNull();
-    getByText('Ana sayfa');
-    getByText('eatkcal');
-    getByText('Profil');
+    const { queryByLabelText, getByLabelText } = render(<TabBarR3 {...props} />);
+    expect(queryByLabelText('Keşfet')).toBeNull();
+    getByLabelText('Ana sayfa');
+    getByLabelText('eatkcal');
+    getByLabelText('Profil');
   });
 
   test('gizli Cart/Subscriptions sekme olarak çizilmez (düğmesiz)', () => {
