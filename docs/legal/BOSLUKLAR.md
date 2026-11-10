@@ -36,6 +36,18 @@
 | B-18 | P2 | Herkese açık kova tasarımı (avatar adı = kullanıcı UUID'si; gizli profilin medyası herkese açık URL'de) | Kod |
 | B-19 | P2 | DSA / 5651: bildirim-kaldırma, gerekçe bildirimi, itiraz kaydı | Kod + süreç |
 | B-20 | P2 | Diğer: Sentry kırıntıları, Resend kişisel Gmail yedeği, ölü Tosla kart formu, ölçüm metnindeki "anonim" ifadesi, e-ticaret künyesi | Kod + web |
+| <!-- L-S3 --> B-21 | P0 | Apple EULA yolu: Standard EULA mı, Koşullar özel EULA olarak mı? ASC açıklaması + paywall bağlantısı | Hukuk + konsol |
+| <!-- L-S3 --> B-22 | P0 | Ses tanıma: SEÇENEK A (yalnız cihazda) / B (desteklenmezse Apple/Google hizmeti) — gizlilik metni ve mağaza etiketi buna bağlı | Kod + hukuk |
+| <!-- L-S3 --> B-23 | P0 | AI ve abonelik aktarımları: Anthropic + RevenueCat standart sözleşmesi ve 5 iş günü bildirimi; uygulama içi AI izninin hukuki niteliği | Hukuk + sözleşme |
+| <!-- L-S3 --> B-24 | P0 (Koç açılmadan) | Koç sohbeti "30 gün" yalnız kullanıcı yeniden yazınca siliniyor; zamanlanmış silme yok | Kod + cron |
+| <!-- L-S3 --> B-25 | P1 | Hesap silmede RevenueCat müşteri kaydı silinmiyor; aktif abonelik uyarısı (G25-S1 md.6) | Kod |
+| <!-- L-S3 --> B-26 | P1 | Aboneliklerde cayma hakkı ve satıcı sıfatı (Apple/Google aracı mı, satıcı mı); ön bilgilendirme | Hukuk |
+| <!-- L-S3 --> B-27 | P2 | Open Food Facts ODbL atfı uygulamada eksik; barkod sorgusu cihazdan doğrudan Fransa'ya | Kod + hukuk |
+| <!-- L-S3 --> B-28 | P1 | AB Yapay Zekâ Tüzüğü md.50: Koç bir sohbet botu → "yapay zekâ ile konuşuyorsun" bildirimi | Kod + hukuk |
+| <!-- L-S3 --> B-29 | P1 | Mağaza etiketinde "izleme": kcalAI verileri izlenmiyor, ama Meta ticaret olayları yüzünden Apple etiketi "İzleme: Evet" kalıyor | Karar + konsol |
+| <!-- L-S3 --> B-30 | P0 | Uygulama içi izin metinleri: `ai_coach_*` "İlter onayı bekliyor"; `ai_photo` izin penceresinde Gizlilik bağlantısı yok (A-S1 A3) | Hukuk + kod |
+| <!-- L-S3 --> B-31 | P2 | Abonelik işletme kuralları: dönem içinde hak düşürmeme, Aile Paylaşımı, fiyatın metinde yazılıp yazılmayacağı | Karar |
+| <!-- L-S3 --> B-32 | P2 | Koç'un SEKULART ürünlerini önermesi: ticari uygulama / reklam şeffaflığı | Hukuk |
 
 ---
 
@@ -119,6 +131,8 @@ Kcalculate AI aynı tüzel kişi altında sunulduğu sürece "ana faaliyet konus
 6. ABD kullanıcıları için Meta "Limited Data Use" bayrağı (CCPA/eyalet yasaları) değerlendirilir.
 
 ### B-07 · App Store gizlilik etiketi ve Google Play Veri Güvenliği formu
+
+<!-- L-S3 --> **Güncel tablo:** kcalAI eklemeleriyle (sesli giriş, Koç, abonelik) birlikte `MAGAZA_GIZLILIK_ESLEME.md` (11 Kas). Aşağıdaki 9 Kasım tabloları tarihçe olarak kalır.
 
 `docs/night/G3-S1-STORE_FORMS.md` (3 Kasım) bugünkü kodla karşılaştırıldı. **Yeni veya düzeltilecek** satırlar ★ ile işaretli.
 
@@ -331,6 +345,99 @@ Play tanımında, sizin adınıza işleyen hizmet sağlayıcıya (Supabase, Anth
 
 ---
 
+<!-- L-S3 -->
+## kcalAI — abonelik, AI tarama, sesli giriş, Koç (L-S3, 11 Kas 2026)
+
+Kaynak: A-S1 boşluk raporu A2 (EULA + abonelik maddesi) ve A3 (AI/ses/RevenueCat gizlilik). Metinler: `tr/05-kullanim-kosullari.md` §12A, `tr/01-gizlilik-politikasi.md` §5A, §5B, §11A, §12A, §13A; mağaza: `MAGAZA_GIZLILIK_ESLEME.md`. Kod kanıtları `release/1.1.0` dalına göredir.
+
+<!-- L-S3 -->
+### B-21 · Apple EULA yolu (P0 — 1.1.0 incelemesi, Kılavuz 3.1.2)
+
+- **Durum:** Otomatik yenilenen abonelik için ASC'de Lisans Sözleşmesi + uygulama açıklamasında Kullanım Koşulları (EULA) ve Gizlilik Politikası bağlantısı gerekir. Kodda bağlantı G25-S1 md.2 ile ekleniyor (iOS → Apple Standard EULA, Android → Koşullar).
+- **Seçenekler:** (a) **Standard EULA** + Koşullar'ı ek metin olarak yayımla (taslak §12A.12 bu yola göre yazıldı); (b) Koşullar'ı ASC'ye **özel EULA** olarak yükle — bu durumda §13.1 zaten Apple'ın asgari şartlarını içeriyor, §12A.12 "Standard EULA" cümlesi çıkarılır.
+- **Öneri:** (a) — inceleme riski en düşük, metin değişikliği ASC güncellemesi gerektirmez.
+- **İlter karar verecek:** (a) mı (b) mi; ASC açıklamasına eklenecek iki bağlantının metni.
+
+<!-- L-S3 -->
+### B-22 · Konuşma tanıma: cihazda mı, platform hizmeti mi? (P0)
+
+- **Kod (release/1.1.0):** `src/modules/ai/scan/voice/speech.ts:46-58` → `requiresOnDeviceRecognition: supportsOnDeviceRecognition()`. Cihaz destekliyorsa cihazda; desteklemiyorsa işletim sisteminin sunucu tanımasına (Apple/Google) düşüyor. `recordingOptions` yok → ses dosyası oluşmuyor.
+- **G25-S1 md.11** bunu denetliyor; LOG bu taslak yazılırken yoktu. Gizlilik metni §5A'da **SEÇENEK A** (yalnız cihazda; desteklenmezse sesli giriş kapalı) ve **SEÇENEK B** (desteklenmezse Apple/Google) köşeli parantezle bırakıldı.
+- **Öneri:** Gizlilik açısından A daha temiz (ses hiç cihazdan çıkmaz, mağaza etiketi sade). B'de Apple/Google bağımsız veri sorumlusu olarak metne ve §12 tablosuna girer (taslakta hazır).
+- **İlter karar verecek:** A mı B mi (G25-S1 LOG'u ile birlikte). Seçilmeyen paragraf ve §12 tablosundaki "[yalnız SEÇENEK B'de]" satırı silinir.
+
+<!-- L-S3 -->
+### B-23 · AI ve abonelik için yurt dışı aktarım (P0 — B-01'in kcalAI parçası)
+
+- Yeni alıcılar: **Anthropic PBC** (sesli giriş metni, Koç mesajları + günlük takip özeti) ve **RevenueCat, Inc.** (abonelik kayıtları, kullanıcı kimliği). İkisi de ABD.
+- Taslak §13A aktarımı **standart sözleşmeye**, sağlık verisinin işlenmesini **açık rızaya** (md.6/3-a) dayandırıyor; uygulama içi AI izni md.9 rızası olarak sunulmuyor (2024 rejiminde düzenli aktarım rızaya dayanamaz).
+- **Yapılacak:** iki sağlayıcıyla Kurul standart sözleşmesi (sağlayıcı imzalamıyorsa alternatif: bağlayıcı şirket kuralları yok → aktarım yapılamaz riski), imzadan sonra 5 iş günü içinde Kurum'a bildirim; Anthropic DPA'sında saklama süresi ve "eğitimde kullanılmaz" taahhüdünün teyidi; RevenueCat DPA + alt işleyen listesi.
+- **İlter karar verecek:** (1) AI izni metninin "açık rıza" mı "bilgilendirme + onay" mı olarak konumlandırılacağı; (2) standart sözleşme imzalanana kadar AI özelliklerinin (bayrak `ai_tarama`, `koc`) TR kullanıcılara açılıp açılmayacağı.
+
+<!-- L-S3 -->
+### B-24 · Koç sohbeti 30 gün silme (P0 — `koc` bayrağı açılmadan önce)
+
+- `supabase/functions/coach-chat/index.ts:289-296`: 30 günden eski mesajlar **yalnız aynı kullanıcı yeni mesaj gönderdiğinde** siliniyor. Koç'u bırakan kullanıcının geçmişi süresiz kalır → §5B "30 gün saklanır" cümlesi gerçeğe aykırı olur.
+- **Öneri:** günlük `pg_cron` işi: `delete from coach_messages where created_at < now() - (coach_retention_days || ' days')::interval` (migration dosyası + rollback). Saklama ve İmha Politikası'na (09) satır.
+- **İlter karar verecek:** 30 gün süresi uygun mu (Koç "geçmiş" ekranı kullanıcıya değer sağlıyor; daha uzun süre açık rıza metninde belirtilmeli).
+
+<!-- L-S3 -->
+### B-25 · Hesap silme ve abonelik (P1)
+
+- RevenueCat müşteri kaydı hesap silmede silinmiyor (silme akışında RevenueCat REST `DELETE /subscribers/{app_user_id}` çağrısı yok). Kendi tablomuz (`user_entitlements`) `on delete cascade` ile siliniyor.
+- Aktif abonelik silmeyle iptal olmaz: silme onayına uyarı + "Aboneliği yönet" (G25-S1 md.6). Koşullar §15.4 bu davranışa göre yazıldı.
+- **Öneri:** `delete-account` fonksiyonuna RevenueCat silme çağrısı (mağaza kayıtları Apple/Google'da kalır, bu bizim kontrolümüzde değil — metin bunu söylüyor).
+
+<!-- L-S3 -->
+### B-26 · Aboneliklerde cayma hakkı ve satıcı sıfatı (P1)
+
+- **Türkiye:** Mesafeli Sözleşmeler Yönetmeliği md.15/1-ğ — elektronik ortamda anında ifa edilen hizmetler cayma hakkının istisnası. App Store/Play satışında satıcı kim? (Apple ve Google çoğu ülkede "satıcı/komisyoncu" sıfatıyla tüketiciyle sözleşme yapar; Türkiye için durum teyit edilmeli.)
+- **AB:** 2011/83/AB md.16(m) — dijital içerikte istisna için açık onay + hakkın kaybedildiğinin kabulü; Apple/Google bunu kendi akışında yönetiyor mu?
+- Taslak §12A.7 yalnız "zorunlu haklar saklıdır" diyor; §12A.13 aboneliklere eatkcal satış belgelerinin uygulanmadığını söylüyor.
+- **İlter karar verecek:** aboneliklere ayrı bir ön bilgilendirme gerekip gerekmediği; TKHK md.48 vd. abonelik sözleşmesi hükümlerinin (Abonelik Sözleşmeleri Yönetmeliği) uygulama içi satışta bizim yükümlülüğümüz olup olmadığı.
+
+<!-- L-S3 -->
+### B-27 · Open Food Facts ve GeoNames atıfları (P2)
+
+- Barkod sonucunda "Veri: Open Food Facts" var (`src/core/i18n/dictionaries.ts:1244`), lisans adı ve bağlantı yok. ODbL md.4.3 atıf ister.
+- GeoNames atfı Profil › Sözleşmeler'de var (`SettingsAgreementsScreen.tsx:97`).
+- Barkod sorgusu cihazdan doğrudan `world.openfoodfacts.org`'a (Fransa) gidiyor (`src/modules/ai/scan/barcode/off.ts:12`): yalnız barkod + IP. Taslak §12 tablosunda Open Food Facts bağımsız veri sorumlusu olarak yazıldı.
+- **Öneri:** Profil › Sözleşmeler'e "Barkod verisi: Open Food Facts (ODbL)" + bağlantı.
+
+<!-- L-S3 -->
+### B-28 · AB Yapay Zekâ Tüzüğü md.50 — Koç (P1, AB'de yayın varsa)
+
+- B-20'deki "ileride AI sohbet eklenirse md.50" koşulu gerçekleşti: Koç bir sohbet botu. md.50(1): kişiye bir yapay zekâ sistemiyle etkileşimde olduğu bildirilmeli (bağlamdan açık değilse). Koç adı + Intro ekranı muhtemelen yeterli; açık cümle önerilir ("Koç bir yapay zekâdır, insan değildir").
+- Koşullar §12A.11 bunu söylüyor; uygulama içi Koç Intro metninde de olmalı.
+
+<!-- L-S3 -->
+### B-29 · Mağaza etiketinde "izleme" (P1)
+
+- Görev tanımı "izleme yok" diyor. kcalAI verileri (AI, Koç, abonelik) **izlenmiyor** — `src/lib/metrics/events.ts:178-205` abonelik/Koç olaylarında `meta:` yok.
+- Ama Meta SDK + ATT ile eatkcal ticaret olayları ve IDFA/GAID rızayla Meta'ya gidiyor (`app.config.js:81-87` `NSPrivacyTracking: true`) → Apple etiketinde Purchase History, Product Interaction, Device ID "İzleme: Evet" kalır.
+- **İlter karar verecek:** etiket bugünkü gibi "İzleme: Evet" (Meta satırları) mı kalsın, yoksa Meta reklam ölçümü kaldırılıp uygulama tamamen "izleme yok" mu olsun? Kaldırılırsa ATT penceresi, Meta rıza metni (03 §4) ve Gizlilik §7 de çıkar.
+
+<!-- L-S3 -->
+### B-30 · Uygulama içi izin metinleri (P0)
+
+- `src/lib/consent/i18n.ts` `ai_coach_*`: kodda "METİN İLTER ONAYI BEKLİYOR". Önerilen metin Gizlilik §5B ile tutarlı: "Koça yazdıkların ve günlük takip özetin (hedeflerin, son 7 günün, son öğünlerin) yanıt üretmek için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Sohbet geçmişin 30 gün saklanır; istediğin zaman silebilirsin."
+- `ai_photo` izin penceresinde Gizlilik Politikası bağlantısı yok (A-S1 A3; anahtar `privacy_link` mevcut).
+- İzin metni sürümü (`AI_PHOTO_TEXT_VERSION` = 2): gizlilik metni yayımlanınca sürüm artırılmalı mı? (İçerik değişmiyorsa hayır.)
+
+<!-- L-S3 -->
+### B-31 · Abonelik işletme kuralları (P2)
+
+- Koşullar §12A.2 "ödeme yaptığın dönem içinde haklarını aleyhine değiştirmeyiz" diyor → `app_settings` (`ai_daily_fresh`, `ai_daily_balance`, `coach_daily_balance`) dönem içinde düşürülmemeli; düşürülecekse 30 gün önce bildirim (§19).
+- Aile Paylaşımı ASC'de açık mı? Açıksa §12A.10 değişir.
+- Fiyat metinde yazılmadı (mağaza gösteriyor).
+
+<!-- L-S3 -->
+### B-32 · Koç'un SEKULART ürünlerini önermesi (P2)
+
+- Koç kartları eatkcal ürünlerini "Sepete ekle" ile önerebiliyor (`coach-chat` kart beyaz listesi). Ticari Reklam ve Haksız Ticari Uygulamalar Yönetmeliği (örtülü reklam yasağı) ve AB 2005/29/AT açısından öneri "SEKULART ürünü" olarak ayırt edilebilir olmalı. Koşullar §12A.11 son madde bunu açıklıyor; arayüzde ürün kartında marka/“eatkcal” etiketi önerilir.
+
+---
+
 ## Karar bekleyen sorular (avukat)
 
 1. Beslenme/kilo verisi özel nitelikli mi? (Taslaklar "evet" varsayımıyla yazıldı — B-03)
@@ -339,3 +446,11 @@ Play tanımında, sizin adınıza işleyen hizmet sağlayıcıya (Supabase, Anth
 4. Push pazarlama bildirimleri ETK onayına tabi tutulacak mı? (Öneri: evet — B-11)
 5. Makro paketlerinde "kullanılmasa da iade yok" kuralı korunacak mı? (TKHK md.5 haksız şart riski — `MESAFELI_KARSILASTIRMA.md`)
 6. Uyuşmazlıklarda ABD kullanıcıları için tahkim/sınıf davası feragati istenecek mi? (Taslakta yok)
+7. <!-- L-S3 --> iOS lisansı: Apple Standard EULA mı, Koşullar özel EULA olarak mı? (Öneri: Standard EULA — B-21)
+8. <!-- L-S3 --> Konuşma tanıma: SEÇENEK A (yalnız cihazda) mı, B (desteklenmezse Apple/Google) mı? (B-22; G25-S1 LOG'u ile)
+9. <!-- L-S3 --> Anthropic ve RevenueCat standart sözleşmeleri imzalanana kadar AI özellikleri ve abonelik TR'de açılsın mı? Uygulama içi AI izni hukuken "açık rıza" olarak mı konumlanacak? (B-23)
+10. <!-- L-S3 --> Koç sohbet saklama süresi 30 gün uygun mu; zamanlanmış silme işi Koç açılmadan şart koşulsun mu? (Öneri: evet — B-24)
+11. <!-- L-S3 --> Aboneliklerde cayma hakkı: ayrı ön bilgilendirme gerekiyor mu; satıcı Apple/Google mı biz miyiz? (B-26)
+12. <!-- L-S3 --> Mağaza etiketi "İzleme: Evet" (Meta) kalsın mı, Meta reklam ölçümü kaldırılıp "izleme yok" mu olunsun? (B-29)
+13. <!-- L-S3 --> `ai_coach` izin metni (B-30'daki öneri) onaylanıyor mu?
+14. <!-- L-S3 --> Koşullar §12A.2'deki "dönem içinde hak düşürmeme" taahhüdü ve günlük hak tablosunun metinde sayıyla yer alması uygun mu? (B-31)
