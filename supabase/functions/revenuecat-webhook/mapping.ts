@@ -5,7 +5,8 @@
 //    ($RCAnonymousID:…) kimlikler yok sayılır; app_user_id / original_app_user_id /
 //    aliases içinden ilk UUID alınır.
 //  • Kademe: yetki (entitlement_ids) 'balance' > 'fresh'; yoksa ürün kimliği önekinden
-//    (kcalai_balance_* / kcalai_fresh_*).
+//    (kcalai_balance* / kcalai_fresh*; G23-S1: App Store `kcalai_fresh_monthly` ve Google Play
+//    abonelik+temel plan `kcalai_fresh:monthly` ikisi de önekle eşlenir).
 //  • INITIAL_PURCHASE / RENEWAL / UNCANCELLATION → kademe aktif, expires_at, trial.
 //  • CANCELLATION → kademe KORUNUR (dönem sonuna kadar geçerli), will_renew=false.
 //  • EXPIRATION → free.

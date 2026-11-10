@@ -16,8 +16,6 @@ import type { Tier } from '../../../lib/subscription/plans';
 export interface SubLimitSheetProps {
   visible: boolean;
   kind: 'ai' | 'barcode';
-  /** Balance adil kullanım tavanı (planlar gösterilmez). */
-  fairUse?: boolean;
   limits: TierLimits | null;
   tier: Tier;
   /** Bugünkü tavan (başlıktaki sayı; sunucudan). */
@@ -59,23 +57,22 @@ export default function SubLimitSheet(p: SubLimitSheetProps) {
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
   const line2 = t.isDark ? '#48484A' : '#C3C7CC';
   const isAi = p.kind === 'ai';
-  const showPlans = p.plansEnabled && !p.fairUse;
+  const showPlans = p.plansEnabled;
   const cap = p.cap ?? (isAi ? p.limits?.ai.free : p.limits?.barcode.free) ?? null;
 
-  const title = p.fairUse
-    ? tr('sub.limit.fair_title')
+  const title = isAi
+    ? cap != null
+      ? tr('sub.limit.ai_title', { n: cap })
+      : tr('ai_scan.limit_title')
+    : tr('sub.limit.barcode_title', { n: cap ?? '' });
+  // G23-S1: Balance'ta da hak biterse (günde 50) planlar Balance'tan yükseği olmadığı için
+  // gösterilmez → "yarın yenilenir" gövdesi.
+  const top = p.tier === 'balance';
+  const body = !showPlans || top
+    ? tr(isAi ? 'sub.limit.ai_body_free' : 'sub.limit.barcode_body_free')
     : isAi
-      ? cap != null
-        ? tr('sub.limit.ai_title', { n: cap })
-        : tr('ai_scan.limit_title')
-      : tr('sub.limit.barcode_title', { n: cap ?? '' });
-  const body = p.fairUse
-    ? tr('sub.limit.fair_body')
-    : !showPlans
-      ? tr(isAi ? 'sub.limit.ai_body_free' : 'sub.limit.barcode_body_free')
-      : isAi
-        ? tr('sub.limit.ai_body', { fresh: p.limits?.ai.fresh ?? '' })
-        : tr('sub.limit.barcode_body');
+      ? tr('sub.limit.ai_body', { fresh: p.limits?.ai.fresh ?? '', balance: p.limits?.ai.balance ?? '' })
+      : tr('sub.limit.barcode_body');
   const tiles = p.limits ? limitTiles(p.kind, p.limits, p.tier) : [];
 
   if (!mounted) return null;

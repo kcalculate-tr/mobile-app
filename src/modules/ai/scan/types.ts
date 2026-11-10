@@ -11,7 +11,7 @@ export interface ReserveResult {
   cached?: boolean;
   /** G19-S1 (İlter 9 Kas): ok:false nedeni — 'disabled' (acil kapatma) | 'global_cap'
    *  (günlük genel tavan). Yoksa kullanıcının kendi hakkı bitti. */
-  reason?: 'disabled' | 'global_cap' | 'fair_use';
+  reason?: 'disabled' | 'global_cap';
   /** G22-S1: kademeli hak (migration 20261110100100). G19 sunucusunda yok → undefined. */
   tier?: 'free' | 'fresh' | 'balance';
   limit?: number | null;
@@ -58,8 +58,7 @@ export interface ScanEstimate {
 // failed       → analiz patladı, hak İADE edildi; tekrar denemeye izin ver
 export type AiScanOutcome =
   | { status: 'ok'; estimate: ScanEstimate; remaining: number; reset_at: string; quota?: OutcomeQuota }
-  // G22-S1: fair_use → Balance adil kullanım tavanı (planları göstermeden "yarın yenilenir").
-  | { status: 'quota_exhausted'; remaining: number; reset_at: string; quota?: OutcomeQuota; reason?: 'fair_use' }
+  | { status: 'quota_exhausted'; remaining: number; reset_at: string; quota?: OutcomeQuota }
   // unavailable → Tara geçici kapalı (acil anahtar / genel tavan): "hakkını kullandın" DEĞİL
   | { status: 'unavailable'; reason: 'disabled' | 'global_cap'; remaining: number; reset_at: string; quota?: OutcomeQuota }
   | {

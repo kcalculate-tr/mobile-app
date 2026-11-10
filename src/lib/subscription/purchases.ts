@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { getSupabaseClient } from '../../core/supabase';
 import {
   OFFERING_ID,
-  PRODUCT_IDS,
+  planFromProductId,
   resolveTier,
   type PlanKey,
   type StoreProductLike,
@@ -206,8 +206,8 @@ export async function loadOfferingProducts(): Promise<StoreProductLike[] | null>
 
 export async function purchasePlan(plan: PlanKey): Promise<PurchaseResult> {
   if (!configured || !mod) return 'error';
-  const want = PRODUCT_IDS[plan];
-  const pkg = (packagesCache ?? []).find((p) => p.product.identifier.toLowerCase().split(':')[0] === want);
+  // G23-S1: iOS `kcalai_fresh_monthly` ve Play `kcalai_fresh:monthly` aynı plana eşlenir (önek + dönem).
+  const pkg = (packagesCache ?? []).find((p) => planFromProductId(p.product.identifier) === plan);
   if (!pkg) return 'error';
   try {
     const res = await mod.purchasePackage(pkg as never);

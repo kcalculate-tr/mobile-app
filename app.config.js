@@ -256,6 +256,8 @@ module.exports = {
     android: {
       package: 'com.kcalmobile.app',
       versionCode: 10,
+      // G23-S1: Android'de koyu tema yalnız expo-system-ui kuruluyken uygulanır (prebuild-config
+      // otomatik eklentisi; İlter 10 Kas onayı). Yeni native derleme gerekir.
       userInterfaceStyle: 'automatic',
       adaptiveIcon: {
         backgroundColor: '#000000',

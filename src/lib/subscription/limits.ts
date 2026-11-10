@@ -51,7 +51,8 @@ export function quotaFromReserve(kind: 'ai' | 'barcode', r: unknown): QuotaSnaps
 }
 
 /**
- * FinSubPill metni: "Bugün N/2" · "Bugün N/15" · "Sınırsız". Limit bilinmiyorsa
+ * FinSubPill metni: "Bugün N/2" · "Bugün N/10" · "Bugün N/50" (G23-S1: AI hiçbir kademede
+ * sınırsız değil; "Sınırsız" yalnız ücretli barkod hakkında, limit null). Limit bilinmiyorsa
  * (G19 yanıtı) eski G19 tavanına düşülmez → yalnız N bilinirse `cap` ile, değilse null (hap gizli).
  */
 export function pillLabel(
@@ -60,8 +61,8 @@ export function pillLabel(
   fallbackCap?: number | null,
 ): string | null {
   if (!q) return null;
-  if (q.unlimited) return t('sub.pill.unlimited');
   const cap = q.limit ?? fallbackCap ?? null;
+  if (q.unlimited && cap == null) return t('sub.pill.unlimited');
   if (q.remaining == null || cap == null) return null;
   return t('sub.pill.today', { n: Math.max(0, Math.min(q.remaining, cap)), cap });
 }
@@ -73,8 +74,8 @@ export function pillA11y(
   fallbackCap?: number | null,
 ): string | null {
   if (!q) return null;
-  if (q.unlimited) return t(q.kind === 'ai' ? 'sub.pill.unlimited_a11y_ai' : 'sub.pill.unlimited_a11y_barcode');
   const cap = q.limit ?? fallbackCap ?? null;
+  if (q.unlimited && cap == null && q.kind === 'barcode') return t('sub.pill.unlimited_a11y_barcode');
   if (q.remaining == null || cap == null) return null;
   return t(q.kind === 'ai' ? 'sub.pill.a11y_ai' : 'sub.pill.a11y_barcode', { n: Math.max(0, q.remaining), cap });
 }
@@ -93,8 +94,8 @@ export function limitTiles(kind: 'ai' | 'barcode', limits: TierLimits, current: 
   const rows = kind === 'ai' ? limits.ai : limits.barcode;
   return (['free', 'fresh', 'balance'] as const).map((tier) => {
     const v = rows[tier];
-    // Balance AI "Sınırsız" (adil kullanım tavanı gösterilmez); ücretli barkod null = sınırsız.
-    const unlimited = (kind === 'ai' && tier === 'balance') || (v == null && tier !== 'free');
+    // G23-S1: AI her kademede sayılı (2 · 10 · 50); yalnız ücretli barkod null = sınırsız.
+    const unlimited = kind === 'barcode' && v == null && tier !== 'free';
     return { tier, value: unlimited ? null : v, unlimited, current: tier === current };
   });
 }

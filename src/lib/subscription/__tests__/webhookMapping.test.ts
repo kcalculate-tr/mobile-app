@@ -37,6 +37,10 @@ test('tierFromProduct / tierFromEvent: balance > fresh; Play taban planı soneki
   assert.equal(tierFromProduct('kcalai_fresh_yearly'), 'fresh');
   assert.equal(tierFromProduct('kcalai_balance_monthly:monthly-base'), 'balance');
   assert.equal(tierFromProduct('baska_urun'), null);
+  // G23-S1: Google Play abonelik + temel plan (RevenueCat 'kcalai_fresh:monthly').
+  assert.equal(tierFromProduct('kcalai_fresh:monthly'), 'fresh');
+  assert.equal(tierFromProduct('kcalai_balance:yearly'), 'balance');
+  assert.equal(tierFromEvent({ entitlement_ids: null, product_id: 'kcalai_balance:monthly' }), 'balance');
   assert.equal(tierFromEvent({ entitlement_ids: ['fresh', 'balance'], product_id: 'kcalai_fresh_monthly' }), 'balance');
   assert.equal(tierFromEvent({ entitlement_ids: null, product_id: 'kcalai_fresh_monthly' }), 'fresh');
 });

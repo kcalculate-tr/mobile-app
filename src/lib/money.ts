@@ -43,6 +43,23 @@ export const formatPrice = (value: number): string => {
   return `${n < 0 ? '-' : ''}${body} ${PARA_BIRIMI}`;
 };
 
+/**
+ * G23-S1 (İlter 10 Kas) — mağaza fiyatı (sayı + ISO para birimi) için TEK biçimlendirici.
+ * TRY → `formatPrice` ("1799 TL"; ₺ ve binlik ayraç YOK). Diğer para birimleri → cihazın
+ * yerel biçimi (Intl; ör. "$59.99", "59,99 €"). Mağazanın hazır `priceString`'i
+ * GÖSTERİLMEZ (TRY'de ₺ simgesi içerir). Intl yoksa "59.99 USD".
+ */
+export const formatMoney = (value: number, currency: string, locale?: string): string => {
+  const cur = (currency || '').trim().toUpperCase();
+  const n = Number(value) || 0;
+  if (cur === 'TRY' || cur === 'TL' || !cur) return formatPrice(n);
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: cur }).format(n);
+  } catch {
+    return `${n.toFixed(2)} ${cur}`;
+  }
+};
+
 /** `+150 TL` / `-20 TL` / `+12,50 TL` — seçenek farkı, indirim satırı. */
 export const formatPriceDelta = (value: number): string => {
   const n = Number(value) || 0;

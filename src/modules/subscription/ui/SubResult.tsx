@@ -70,7 +70,7 @@ export default function SubResult({
   if (state === 'success') {
     const trial = !!card?.trialDays;
     const rows: [string, string][] = [
-      [tr('sub.result.row_ai'), card?.tier === 'balance' ? tr('sub.result.v_fair') : aiPerDay != null ? tr('sub.result.v_per_day', { n: aiPerDay }) : '—'],
+      [tr('sub.result.row_ai'), aiPerDay != null ? tr('sub.result.v_per_day', { n: aiPerDay }) : '—'],
       [tr('sub.result.row_barcode_manual'), tr('sub.result.v_unlimited')],
     ];
     if (date) rows.push([trial ? tr('sub.result.row_trial_end') : tr('sub.result.row_renews'), date]);

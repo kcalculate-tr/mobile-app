@@ -1,5 +1,5 @@
 // G22-S1 md.3 — RevenueCat yanıtlarının SAF eşlemesi (native bağımlılık yok, Node testi).
-import { tierFromEntitlements, type Tier } from './plans';
+import { TIER_RANK, tierFromEntitlements, tierFromProductId, type Tier } from './plans';
 
 export interface RcSnapshot {
   tier: Tier;
@@ -22,8 +22,18 @@ export type CustomerInfoLike = {
 export function rcSnapshot(info: CustomerInfoLike | null | undefined): RcSnapshot {
   const active = info?.entitlements?.active ?? {};
   const ids = Object.keys(active);
-  const tier = tierFromEntitlements(ids);
-  const e = tier === 'free' ? null : active[tier] ?? null;
+  let tier = tierFromEntitlements(ids);
+  let e = tier === 'free' ? null : active[tier] ?? null;
+  // G23-S1: yetki kimliği beklenenden farklıysa ürün kimliği önekinden (kcalai_fresh* / kcalai_balance*).
+  if (tier === 'free') {
+    for (const v of Object.values(active)) {
+      const t = tierFromProductId(v?.productIdentifier);
+      if (t && TIER_RANK[t] > TIER_RANK[tier]) {
+        tier = t;
+        e = v;
+      }
+    }
+  }
   return {
     tier,
     productId: e?.productIdentifier ?? null,

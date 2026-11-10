@@ -742,11 +742,11 @@ export default function ScanScreen() {
   const aiQ = useSubscriptionStore((s) => s.ai);
   const barcodeQ = useSubscriptionStore((s) => s.barcode);
   const { cards: planCards } = usePlanCards(subEnabled);
-  const [subLimit, setSubLimit] = useState<null | { kind: 'ai' | 'barcode'; fairUse?: boolean }>(null);
+  const [subLimit, setSubLimit] = useState<null | { kind: 'ai' | 'barcode' }>(null);
   const fresh = (q: QuotaSnapshot | null) => (q && (!q.resetAt || Date.parse(q.resetAt) > Date.now()) ? q : null);
   const aiSnap = fresh(aiQ);
   const bcSnap = fresh(barcodeQ);
-  // Hak hapı: sunucu kademeli yanıt verdiyse N/limit · Sınırsız; G19 sunucusunda eski tavanla.
+  // Hak hapı: sunucu kademeli yanıt verdiyse N/limit (2 · 10 · 50); G19 sunucusunda eski tavanla.
   const aiBase = aiSnap ?? (remaining != null ? { kind: 'ai' as const, remaining, limit: null, unlimited: false } : null);
   const aiPillText = pillLabel(aiBase, t, SCAN_QUOTA_CAP);
   const aiPill = aiPillText ? { text: aiPillText, a11y: pillA11y(aiBase, t, SCAN_QUOTA_CAP) } : null;
@@ -766,9 +766,8 @@ export default function ScanScreen() {
   }
   function showAiLimit(o: AiScanOutcome) {
     // Abonelik açık → FinSubLimitAI; kapalı → mevcut FinErrLimit (parite).
-    if (subEnabled || (o.status === 'quota_exhausted' && o.reason === 'fair_use')) {
-      setSubLimit({ kind: 'ai', fairUse: o.status === 'quota_exhausted' && o.reason === 'fair_use' });
-    } else setErrorKind('limit');
+    if (subEnabled) setSubLimit({ kind: 'ai' });
+    else setErrorKind('limit');
   }
   const openPaywall = (from: string) => {
     setSubLimit(null);
@@ -828,7 +827,6 @@ export default function ScanScreen() {
     <SubLimitSheet
       visible={subLimit !== null}
       kind={subLimit?.kind ?? 'ai'}
-      fairUse={subLimit?.fairUse}
       limits={subLimits}
       tier={tier}
       cap={subLimit?.kind === 'barcode' ? bcSnap?.limit ?? null : aiCap}

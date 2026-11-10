@@ -100,17 +100,17 @@ test('metin taraması: hak fotoğrafla ORTAK (aynı reserve), başarısızlıkta
   assert.equal(lim.status, 'quota_exhausted');
 });
 
-test('metin taraması: kademeli yanıt (tier/limit/unlimited, fair_use) sonuca taşınır', async () => {
+test('metin taraması: kademeli yanıt (tier/limit/unlimited) sonuca taşınır; G23: fair_use nedeni yok', async () => {
   const base = createMockAiScanClient({ cap: 5 });
   const c = {
     ...base,
-    reserveScan: async () => ({ ok: false, remaining: 0, reset_at: 'x', tier: 'balance' as const, limit: 100, unlimited: true, reason: 'fair_use' as const }),
+    reserveScan: async () => ({ ok: false, remaining: 0, reset_at: 'x', tier: 'balance' as const, limit: 50, unlimited: false }),
   };
   const r = await runAiTextScan(c, { idempotencyKey: 'v9', text: 'x' });
   assert.equal(r.status, 'quota_exhausted');
   if (r.status === 'quota_exhausted') {
-    assert.equal(r.reason, 'fair_use');
-    assert.deepEqual(r.quota, { tier: 'balance', limit: 100, unlimited: true });
+    assert.equal('reason' in r, false);
+    assert.deepEqual(r.quota, { tier: 'balance', limit: 50, unlimited: false });
   }
 });
 

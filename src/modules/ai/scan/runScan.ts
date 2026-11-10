@@ -64,7 +64,6 @@ async function runReserved(
       remaining: reservation.remaining,
       reset_at: reservation.reset_at,
       ...(quota ? { quota } : {}),
-      ...(reservation.reason === 'fair_use' ? { reason: 'fair_use' as const } : {}),
     };
   }
 

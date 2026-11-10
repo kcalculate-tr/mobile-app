@@ -68,11 +68,12 @@ export default function SubProfileScreen() {
         ? tr('sub.profile.price_after_trial', { price: priceText })
         : tr(yearly ? 'sub.profile.price_year' : 'sub.profile.price_month', { price: priceText })
       : null;
-  const fallbackCap = tier === 'free' ? limits?.ai.free : tier === 'fresh' ? limits?.ai.fresh : null;
-  const pill = pillLabel(tier === 'balance' ? { remaining: null, limit: null, unlimited: true } : ai, tr, fallbackCap);
-  const pillLbl = pillA11y(tier === 'balance' ? { kind: 'ai', remaining: null, limit: null, unlimited: true } : ai, tr, fallbackCap);
+  // G23-S1: Balance da sayılı (günde 50) → hap her kademede "Bugün N/cap".
+  const tierCap = limits?.ai[tier] ?? null;
+  const pill = pillLabel(ai, tr, tierCap);
+  const pillLbl = pillA11y(ai, tr, tierCap);
 
-  const aiVal = tier === 'balance' ? tr('sub.profile.fair') : String((tier === 'fresh' ? limits?.ai.fresh : limits?.ai.free) ?? '—');
+  const aiVal = String(tierCap ?? '—');
   const bcVal = tier === 'free' ? String(limits?.barcode.free ?? '—') : tr('sub.profile.unlimited');
   const feats: [string, string][] = [
     [tr('sub.profile.ai'), aiVal],

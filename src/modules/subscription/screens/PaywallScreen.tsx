@@ -4,7 +4,7 @@
 // azaltılmış harekette KAPALI), dokununca 6 sn bekler, 44 pt duraklat düğmesi; Fresh ↔ Balance
 // kart grubuna göre şerit fast 200 crossfade, sayfa 1. Plan kartları: yatay dizi, ölçek
 // 1 − 0.14·d, opaklık 1 − 0.45·d, çerçeve 1 − d (d = |kart − merkez| / 261), snap ortaya,
-// oturunca hafif haptik; VoiceOver'da TEK ayarlanabilir öğe ("Balance Yıllık, 1799 TL, 7 gün
+// oturunca hafif haptik; VoiceOver'da TEK ayarlanabilir öğe ("Balance Yıllık, 2999 TL, 7 gün
 // ücretsiz, 4'ün 4'ü"). Buton etiketi Aylık/Yıllık fast 200 crossfade; zorunlu yenileme metni;
 // geri yükle; Koşullar/Gizlilik. Fiyatlar YALNIZ RevenueCat yerel fiyatı; gelmezse FinSubError.
 // Satın alma sonucu aynı ekranda FinSubResult.
@@ -144,7 +144,7 @@ export default function PaywallScreen() {
   const features = useMemo(() => {
     const fresh = group === 'fresh';
     return [
-      { img: FEATURE_IMG.ai, title: fresh ? tr('sub.feature.fresh_ai_title', { n: limits?.ai.fresh ?? '' }) : tr('sub.feature.balance_ai_title'), desc: tr(fresh ? 'sub.feature.fresh_ai_desc' : 'sub.feature.balance_ai_desc') },
+      { img: FEATURE_IMG.ai, title: fresh ? tr('sub.feature.fresh_ai_title', { n: limits?.ai.fresh ?? '' }) : tr('sub.feature.balance_ai_title', { n: limits?.ai.balance ?? '' }), desc: tr(fresh ? 'sub.feature.fresh_ai_desc' : 'sub.feature.balance_ai_desc') },
       { img: FEATURE_IMG.voice, title: tr(fresh ? 'sub.feature.fresh_voice_title' : 'sub.feature.balance_voice_title'), desc: tr(fresh ? 'sub.feature.fresh_voice_desc' : 'sub.feature.balance_voice_desc') },
       { img: FEATURE_IMG.barcode, title: tr('sub.feature.barcode_title'), desc: tr('sub.feature.barcode_desc') },
       { img: FEATURE_IMG.manual, title: tr('sub.feature.manual_title'), desc: tr('sub.feature.manual_desc') },
@@ -180,7 +180,7 @@ export default function PaywallScreen() {
         state={result}
         card={cur}
         expiresAt={useSubscriptionStore.getState().rc?.expiresAt ?? null}
-        aiPerDay={limits?.ai.fresh ?? null}
+        aiPerDay={cur ? (cur.tier === 'balance' ? limits?.ai.balance : limits?.ai.fresh) ?? null : null}
         pendingVerify={result === 'success' && status === 'pending'}
         onClose={close}
         onPrimary={() => {

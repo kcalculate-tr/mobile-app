@@ -1,10 +1,11 @@
 // G22-S1 md.3/md.4 — kcalAI planları: SAF mantık (native bağımlılık yok, Node testi).
 //
-// Ürünler (İlter 10 Kas): kcalai_fresh_monthly · kcalai_fresh_yearly · kcalai_balance_monthly ·
-// kcalai_balance_yearly. RevenueCat yetkileri `fresh`, `balance`; teklif `default`.
+// Ürünler (İlter 10 Kas): App Store kcalai_fresh_monthly · kcalai_fresh_yearly · kcalai_balance_monthly ·
+// kcalai_balance_yearly; Google Play abonelik kcalai_fresh / kcalai_balance + temel plan monthly /
+// yearly (RevenueCat kimliği `kcalai_fresh:monthly`) — eşleme önekle (tierFromProductId). RevenueCat yetkileri `fresh`, `balance`; teklif `default`.
 // Yıllıklarda 7 gün deneme mağazada tanımlı — istemci RevenueCat'in introPrice'ından okur.
 // Fiyatlar YALNIZ RevenueCat'ten gelen yerel fiyat; yedek/sabit metin YOK (fiyat yoksa hata ekranı).
-import { formatPrice } from '../money';
+import { formatMoney } from '../money';
 
 export type Tier = 'free' | 'fresh' | 'balance';
 export type PlanKey = 'fresh_monthly' | 'fresh_yearly' | 'balance_monthly' | 'balance_yearly';
@@ -31,12 +32,32 @@ export function planYearly(p: PlanKey): boolean {
   return p.endsWith('yearly');
 }
 
-/** Mağaza ürün kimliği → plan (Play "kcalai_fresh_monthly:base" soneki tolere edilir). */
-export function planFromProductId(id: string | null | undefined): PlanKey | null {
-  if (!id) return null;
-  const base = id.toLowerCase().split(':')[0];
-  for (const k of PLAN_ORDER) if (PRODUCT_IDS[k] === base) return k;
+/**
+ * Mağaza ürün kimliği → kademe (G23-S1: ÖNEK eşlemesi). App Store `kcalai_fresh_monthly`,
+ * Google Play abonelik + temel plan `kcalai_fresh:monthly` (RevenueCat biçimi) → ikisi de
+ * `kcalai_fresh*` → fresh, `kcalai_balance*` → balance. revenuecat-webhook/mapping.ts ile AYNI kural.
+ */
+export function tierFromProductId(id: string | null | undefined): Exclude<Tier, 'free'> | null {
+  const s = (id ?? '').trim().toLowerCase();
+  if (s.startsWith('kcalai_balance')) return 'balance';
+  if (s.startsWith('kcalai_fresh')) return 'fresh';
   return null;
+}
+
+/** Ürün kimliğinden dönem: "yearly"/"annual" geçerse yıllık, "monthly" geçerse aylık. */
+export function periodFromProductId(id: string | null | undefined): 'monthly' | 'yearly' | null {
+  const s = (id ?? '').trim().toLowerCase();
+  if (/yearly|annual|p1y/.test(s)) return 'yearly';
+  if (/monthly|p1m/.test(s)) return 'monthly';
+  return null;
+}
+
+/** Mağaza ürün kimliği → plan (iOS `kcalai_fresh_monthly`, Play `kcalai_fresh:monthly`). */
+export function planFromProductId(id: string | null | undefined): PlanKey | null {
+  const tier = tierFromProductId(id);
+  const period = periodFromProductId(id);
+  if (!tier || !period) return null;
+  return `${tier}_${period}` as PlanKey;
 }
 
 /** Etkin yetki kimlikleri → kademe (balance > fresh). */
@@ -76,12 +97,12 @@ export interface StoreProductLike {
 }
 
 /**
- * Yerel fiyat. TRY → ortak biçimlendirici ("149 TL", "34,38 TL"; ₺ ve binlik nokta YOK —
- * fiyat kuralı). Diğer para birimleri → mağazanın yerel dizesi (ör. "$4.99").
+ * Yerel fiyat (G23-S1): sayısal fiyat + para birimi → ortak `formatMoney`. TRY → "1799 TL"
+ * (₺ ve binlik ayraç YOK); diğer para birimleri cihazın yerel biçimi ("$59.99", "59,99 €").
+ * RevenueCat `priceString` DOĞRUDAN GÖSTERİLMEZ (TRY'de ₺ içerir).
  */
-export function formatStorePrice(value: number, currencyCode: string, storeString?: string | null): string {
-  if ((currencyCode || '').toUpperCase() === 'TRY') return formatPrice(value);
-  return storeString ?? `${value.toFixed(2)} ${currencyCode}`;
+export function formatStorePrice(value: number, currencyCode: string, locale?: string): string {
+  return formatMoney(value, currencyCode, locale);
 }
 
 /** Haftalık eşdeğer (yıllık/52, aylık·12/52). RevenueCat pricePerWeek verirse o. */
@@ -128,7 +149,7 @@ export interface PlanCard {
 /**
  * Teklifteki paketlerden 4 kart. Herhangi bir ürün eksikse null → FinSubError (yedek fiyat YOK).
  */
-export function buildPlanCards(products: readonly StoreProductLike[]): PlanCard[] | null {
+export function buildPlanCards(products: readonly StoreProductLike[], locale?: string): PlanCard[] | null {
   const byPlan = new Map<PlanKey, StoreProductLike>();
   for (const p of products) {
     const k = planFromProductId(p.identifier);
@@ -146,8 +167,8 @@ export function buildPlanCards(products: readonly StoreProductLike[]): PlanCard[
       productId: p.identifier,
       price: p.price,
       currency: p.currencyCode,
-      priceText: formatStorePrice(p.price, p.currencyCode, p.priceString),
-      weeklyText: formatStorePrice(Math.round(weeklyPrice(p, yearly) * 100) / 100, p.currencyCode, p.pricePerWeekString ?? null),
+      priceText: formatStorePrice(p.price, p.currencyCode, locale),
+      weeklyText: formatStorePrice(Math.round(weeklyPrice(p, yearly) * 100) / 100, p.currencyCode, locale),
       discountPct: yearly ? yearlyDiscountPct(monthlyTwin?.price, p.price) : null,
       trialDays: yearly ? trialDays(p) : null,
       popular: key === POPULAR_PLAN,
