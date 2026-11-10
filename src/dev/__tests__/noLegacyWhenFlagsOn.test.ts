@@ -164,6 +164,9 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   SharedProfile: { kind: 'finalRoute' },
   AiScan: { kind: 'internal', why: 'ScanScreen yeni_kabuk ile dallanır (G17-S2: FinScanCamera canlı + FinScanAnalyzing/FinPhotoResult/FinScanErrorSheet; eski derlemede FinScanViewfinder yedeği)' },
   AiScanOffline: { kind: 'final', file: 'modules/ai/scan/screens/ScanOfflineScreen.tsx' },
+  // G22-S1 md.4 — kcalAI (yalnız Final; abonelik bayrağı + RevenueCat).
+  SubPaywall: { kind: 'final', file: 'modules/subscription/screens/PaywallScreen.tsx' },
+  SubProfile: { kind: 'final', file: 'modules/subscription/screens/SubProfileScreen.tsx' },
   EatCatalog: { kind: 'finalRoute' },
 };
 

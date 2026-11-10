@@ -36,6 +36,11 @@ const MODAL_FILES = [
   // G18-S5 birleştirme: S3 (eatkcal) yeni yüzeyleri — sağ üst X, geri oku yok.
   'modules/eatkcal/v2/screens/EkOrderSuccessScreen.tsx',
   'modules/eatkcal/v2/ui/gate/WaitlistFormSheet.tsx',
+  // G22-S1: Ses modu (Tara modalı) + kcalAI paywall/sonuç/hak sheet'i (alttan modal, X sağda).
+  'modules/ai/scan/voice/FinScanVoice.tsx',
+  'modules/subscription/screens/PaywallScreen.tsx',
+  'modules/subscription/ui/SubResult.tsx',
+  'modules/subscription/ui/SubLimitSheet.tsx',
 ];
 
 /** İtilen sayfa / sayfa başlığı (bayrak açık yol) — kapat X YOK, yalnız sol geri. */
@@ -55,6 +60,8 @@ const PUSH_FILES = [
   'modules/eatkcal/v2/screens/EkAddressAddScreen.tsx',
   'modules/eatkcal/v2/screens/EkAddCardScreen.tsx',
   'modules/eatkcal/v2/screens/EkPaymentScreen.tsx',
+  // G22-S1: Profil › Abonelik (sağdan itilen sayfa, sol geri).
+  'modules/subscription/screens/SubProfileScreen.tsx',
 ];
 
 /** Gezinme DEĞİL, yerinde denetim (alan temizleme / ek kaldırma / arama kapatma). */

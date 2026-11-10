@@ -32,8 +32,9 @@ jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { addEventListener: () => () => {}, fetch: () => Promise.resolve({ isConnected: mockOnline }) },
 }));
+let mockConsent: 'ok' | 'ask' = 'ok';
 jest.mock('../../../../lib/consent/aiPhoto', () => ({
-  resolveAiPhotoConsent: () => Promise.resolve('ok'),
+  resolveAiPhotoConsent: () => Promise.resolve(mockConsent),
   setAiPhotoConsent: () => Promise.resolve(),
   hasLocalAiPhotoConsent: () => Promise.resolve(true),
 }));
@@ -51,6 +52,9 @@ jest.mock('../barcode/off', () => {
   const actual = jest.requireActual('../barcode/off');
   return { __esModule: true, ...actual, lookupBarcode: (...a: [string, { offline?: boolean }?]) => mockLookup(...a) };
 });
+// G22-S1 md.5: günlük barkod hakkı (varsayılan izinli).
+const mockQuota = jest.fn(async (_code: string) => ({ allowed: true, snapshot: null as null | Record<string, unknown> }));
+jest.mock('../barcode/quota', () => ({ reserveBarcode: (code: string) => mockQuota(code) }));
 const mockCam: { props: Record<string, unknown> } = { props: {} };
 jest.mock('../ui/FinScanCamera', () => {
   const actual = jest.requireActual('../ui/FinScanCamera');
@@ -96,6 +100,8 @@ beforeEach(() => {
   setScanEventSink((n, p) => events.push([n, p]));
   setTrackSink((n, p) => events.push([n, p]));
   mockOnline = true;
+  mockConsent = 'ok';
+  mockQuota.mockClear();
   mockSave.mockReset();
   mockSave.mockResolvedValue({ id: 'row-b1' });
   mockLookup.mockReset();
@@ -237,4 +243,31 @@ test('EN: barkod sonucu metinleri ve "Data: Open Food Facts" atfı', () => {
   expect(tree.getByText('Per 100 g')).toBeTruthy();
   expect(tree.getByText('Data: Open Food Facts')).toBeTruthy();
   expect(tree.getByTestId('fin-barcode-grams').props.value).toBe('100'); // serving yok → 100 g
+});
+
+test('G22 md.5: AI izni yokken barkod izin sheet’i OLMADAN çalışır; bulunan ürün günlük hakkı ayırır', async () => {
+  mockConsent = 'ask';
+  mockLookup.mockResolvedValue(FOUND);
+  const tree = render(<ScanScreen />);
+  await scanBarcode(tree);
+  await waitFor(() => expect(tree.getByTestId('fin-barcode-result')).toBeTruthy());
+  expect(tree.queryByTestId('consent-sheet-ai_photo')).toBeNull();
+  expect(mockQuota).toHaveBeenCalledWith(CODE);
+  expect(reserve).not.toHaveBeenCalled();
+});
+
+test('G22 md.5: günlük barkod hakkı bitti → FinSubLimitBarcode (sonuç açılmaz), Elle ekle', async () => {
+  mockLookup.mockResolvedValue(FOUND);
+  mockQuota.mockResolvedValueOnce({ allowed: false, snapshot: { kind: 'barcode', tier: 'free', remaining: 0, limit: 5, unlimited: false, resetAt: null } });
+  const tree = render(<ScanScreen />);
+  await scanBarcode(tree);
+  await waitFor(() => expect(tree.getByTestId('sub-limit-barcode')).toBeTruthy());
+  expect(tree.getByText('Bugünkü 5 barkod taramanı kullandın')).toBeTruthy();
+  expect(tree.queryByTestId('fin-barcode-result')).toBeNull();
+  // Abonelik kapalı (bayrak yok) → plan düğmesi yok, yalnız Elle ekle.
+  expect(tree.queryByTestId('sub-limit-plans')).toBeNull();
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('sub-limit-manual'));
+  });
+  expect(mockNav.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Tracker', params: { finOpenManual: true } });
 });

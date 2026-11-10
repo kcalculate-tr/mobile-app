@@ -1748,6 +1748,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           delivery: 'Teslimat',
           calorie_fit: 'Kalori uyumu',
           reply: 'KCAL yanıtı',
+          // G22-S1 md.6 — son 3 ay puanı; <10 değerlendirme → "Yeni" (koleksiyon rozet dili).
+          last3m: 'son 3 ay, %{n} değerlendirme',
+          is_new: 'Yeni',
+          rating_a11y: '5 üzerinden %{avg}, son 3 ay, %{n} değerlendirme',
+          new_a11y: 'Yeni restoran, henüz yeterli değerlendirme yok',
         },
         city: {
           nearby_title: 'Çevrendeki sağlıklı restoranlar',
@@ -3588,6 +3593,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           delivery: 'Delivery',
           calorie_fit: 'Calorie match',
           reply: 'KCAL reply',
+          last3m: 'last 3 months, %{n} reviews',
+          is_new: 'New',
+          rating_a11y: '%{avg} out of 5, last 3 months, %{n} reviews',
+          new_a11y: 'New restaurant, not enough reviews yet',
         },
         city: {
           nearby_title: 'Healthy restaurants near you',

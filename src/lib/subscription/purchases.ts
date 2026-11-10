@@ -256,3 +256,8 @@ export async function manageSubscription(): Promise<void> {
 
 export { rcSnapshot, purchaseErrorResult };
 export type { RcSnapshot, PurchaseResult };
+
+/** Sunucudan gelen anlık hakkı (AI ya da barkod) depoya yazar. */
+export function noteQuota(q: QuotaSnapshot): void {
+  useSubscriptionStore.getState().recordQuota(q);
+}

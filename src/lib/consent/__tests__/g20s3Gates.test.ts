@@ -58,7 +58,12 @@ test('md.2b Hesap ekranı: Apple/Google/e-posta düğmeleri onay kutusu işaretl
 
 test('md.2 Tara bekçileri: çekim / galeri / tekrar dene / kuyruk izin olmadan göndermez', () => {
   const scan = read('src/modules/ai/scan/screens/ScanScreen.tsx');
-  assert.ok((scan.match(/if \(await aiBlocked\(\)\) return;/g) ?? []).length >= 4);
+  // G22-S1 md.5: bekçi onaydan sonra sürecek eylemi alır — aiBlocked(() => …).
+  assert.ok((scan.match(/if \(await aiBlocked\((?:\(\) => void [A-Za-z]+\([^)]*\))?\)\) return;/g) ?? []).length >= 4);
+  // Ses: metin analizinden önce aynı bekçi (useVoiceScan → aiBlocked).
+  assert.match(scan, /aiBlocked: \(\) => aiBlocked\(/);
+  // Açılışta sheet açılmaz (yalnız AI analizinden önce).
+  assert.doesNotMatch(scan, /aiConsentRef\.current === 'ask'\) setAiSheet\(true\)/);
   assert.match(scan, /mode="ai_photo"/);
   assert.match(scan, /setAiPhotoConsent\(false, 'scan'\)[\s\S]*?handleManualEntry\(\);/);
   const drain = read('src/modules/ai/scan/drainPending.ts');

@@ -9,14 +9,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, {
-  Easing,
   FadeIn,
   FadeOut,
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -107,10 +105,8 @@ export default function FinScanVoice(p: FinScanVoiceProps) {
   const halo = useSharedValue(0);
   useEffect(() => {
     if (recording && !reduced) {
-      halo.value = withRepeat(
-        withSequence(withTiming(1, { duration: DURATION.story / 2, easing: CURVE.standard }), withTiming(0, { duration: DURATION.story / 2, easing: CURVE.standard })),
-        -1,
-      );
+      // story 900 nabız (ileri-geri), yalnız kayıt sürerken.
+      halo.value = withRepeat(withTiming(1, { duration: DURATION.story, easing: CURVE.standard }), -1, true);
     } else {
       cancelAnimation(halo);
       halo.value = withTiming(0, { duration: DURATION.fast });
@@ -270,7 +266,7 @@ export default function FinScanVoice(p: FinScanVoiceProps) {
                   if (!reduced) press.value = withTiming(0.98, { duration: DURATION.instant });
                 }}
                 onPressOut={() => {
-                  press.value = withTiming(1, { duration: DURATION.fast, easing: Easing.out(Easing.quad) });
+                  press.value = withTiming(1, { duration: DURATION.fast, easing: CURVE.standard });
                 }}
                 onPress={() => {
                   haptic(recording ? 'selection' : 'medium');

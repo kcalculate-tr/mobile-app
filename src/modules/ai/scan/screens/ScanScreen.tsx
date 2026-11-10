@@ -70,7 +70,7 @@ import { SCAN_QUOTA_CAP } from '../ui/ScanQuotaChip';
 import SubLimitSheet from '../../../subscription/ui/SubLimitSheet';
 import { trackSub } from '../../../subscription/subTrack';
 import { pillA11y, pillLabel, type QuotaSnapshot } from '../../../../lib/subscription/limits';
-import { useSubscriptionStore, useTier } from '../../../../lib/subscription/purchases';
+import { noteQuota, useSubscriptionStore, useTier } from '../../../../lib/subscription/purchases';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { monthlyPriceOf, usePlanCards } from '../../../../lib/subscription/usePlanCards';
 import type { AiScanOutcome } from '../types';
@@ -638,7 +638,7 @@ export default function ScanScreen() {
         // G22-S1 md.5: günlük barkod hakkı (bulunan ürün sayılır; aynı gün aynı kod bir kez).
         const q = await reserveBarcode(res.product.code || code);
         if (!mountedRef.current) return;
-        if (q.snapshot) useSubscriptionStore.getState().recordQuota(q.snapshot);
+        if (q.snapshot) noteQuota(q.snapshot);
         if (!q.allowed) {
           trackSub('barcode_limit');
           setSubLimit({ kind: 'barcode' });

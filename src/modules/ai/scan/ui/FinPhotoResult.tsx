@@ -27,7 +27,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { KeyboardLiftView } from '../../../../core/design/components/KeyboardLiftView';
-import { ArrowLeft, BookmarkSimple, CalendarPlus, CaretDown, Check, Microphone, Plus, Trash, X } from '../../../../components/icons';
+import { BookmarkSimple, CalendarPlus, CaretDown, Check, Microphone, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
@@ -260,15 +260,17 @@ export default function FinPhotoResult({
   return (
     <View style={[styles.fill, { backgroundColor: voice ? t.color.bg : k.photo }]}>
       {voice ? (
-        // G22-S1 md.1 — FinScanVoiceResult: geri (sol) + "🎤 Sesle eklendi" + söylenen metin.
+        // G22-S1 md.1 — FinScanVoiceResult: "🎤 Sesle eklendi" + söylenen metin. Tara modal olduğu için
+        // gezinme kuralı (G17 md.7): kapat X SAĞDA (tasarımdaki sol geri oku yerine; foto sonucu ile aynı).
         <View style={[styles.voiceHead, { paddingTop: insets.top + 6 }]} testID="fin-photo-voice-head">
           <Pressable
             onPress={onRetry}
             accessibilityRole="button"
-            accessibilityLabel={tr('voice.result_back')}
+            accessibilityLabel={tr('common.close')}
+            accessibilityHint={tr('voice.result_back')}
             style={[styles.voiceBack, { backgroundColor: k.sheet }]}
           >
-            <ArrowLeft size={20} color={t.color.ink} />
+            <X size={20} color={t.color.ink} />
           </Pressable>
           <View style={[styles.voiceChip, { backgroundColor: k.sheet }]}>
             <Microphone size={14} color={t.color.ink} weight="bold" />
@@ -761,7 +763,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   photo: { height: 360 },
   voiceHead: { paddingHorizontal: 16, paddingBottom: 28, gap: 12 },
-  voiceBack: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  voiceBack: { alignSelf: 'flex-end', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   voiceChip: { alignSelf: 'flex-start', minHeight: 32, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
   voiceQuote: { fontSize: 15, lineHeight: 21 },
   // G17-S1 md.7: Tara modalı → kapat X SAĞDA (sol geri oku yok).
