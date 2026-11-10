@@ -955,6 +955,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delivery_where: 'Nerelere teslimat yapıyoruz?',
       lang_tr: 'Türkçe',
       lang_en: 'English',
+      // G22-S2 md.6 — dil seçici
+      lang_section: 'Uygulama dili',
+      lang_system: 'Telefon dili',
+      lang_note: 'Seçtiğin dil hemen uygulanır. Telefon dili seçiliyken uygulama telefonunun dilini izler.',
       // İlerleme
       range_today: 'Bugün',
       range_7: '7 gün',
@@ -2803,6 +2807,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delivery_where: 'Where do we deliver?',
       lang_tr: 'Türkçe',
       lang_en: 'English',
+      // G22-S2 md.6 — language picker
+      lang_section: 'App language',
+      lang_system: 'Phone language',
+      lang_note: 'Your choice applies right away. With Phone language selected, the app follows your phone’s language.',
       range_today: 'Today',
       range_7: '7 days',
       range_14: '14 days',

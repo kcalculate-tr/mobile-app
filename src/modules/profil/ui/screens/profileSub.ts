@@ -5,6 +5,7 @@ export const PROFILE_SUBS = [
   'personal',
   'notify',
   'security',
+  'language',
   'privacy',
   'dataConsent',
   'agreements',

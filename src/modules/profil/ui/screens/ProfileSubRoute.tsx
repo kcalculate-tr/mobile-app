@@ -13,6 +13,7 @@ import { useNutritionSummary } from '../../../../hooks/useNutritionSummary';
 import SettingsPersonalScreen from './SettingsPersonalScreen';
 import SettingsNotifyScreen from './SettingsNotifyScreen';
 import SettingsSecurityScreen from './SettingsSecurityScreen';
+import SettingsLanguageScreen from './SettingsLanguageScreen';
 import SettingsPrivacyScreen from './SettingsPrivacyScreen';
 import SettingsAgreementsScreen from './SettingsAgreementsScreen';
 import SettingsDataConsentScreen from './SettingsDataConsentScreen';
@@ -67,6 +68,8 @@ export default function ProfileSubRoute() {
       return <SettingsNotifyScreen onBack={back} />;
     case 'security':
       return <SettingsSecurityScreen onBack={back} />;
+    case 'language':
+      return <SettingsLanguageScreen onBack={back} />;
     case 'privacy':
       return (
         <SettingsPrivacyScreen

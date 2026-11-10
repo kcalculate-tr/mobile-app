@@ -85,7 +85,7 @@ export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
   const t = useTheme();
-  const { t: tr, lang, setLang } = useT();
+  const { t: tr, lang, pref: langPref } = useT();
   const { user, signOut } = useAuth();
   const [infoOpen, setInfoOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -353,8 +353,8 @@ export default function FinPrProfileScreen() {
             <FinRow
               icon={<Translate size={18} color={t.color.ink} />}
               label={tr('profil.language')}
-              value={tr(lang === 'en' ? 'profil.lang_en' : 'profil.lang_tr')}
-              onPress={() => setLang(lang === 'en' ? 'tr' : 'en')}
+              value={langPref === 'system' ? tr('profil.lang_system') : tr(lang === 'en' ? 'profil.lang_en' : 'profil.lang_tr')}
+              onPress={() => openSub('language')}
             />
             <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('profil.agreements')} onPress={() => openSub('agreements')} />
           </FinRowGroup>
