@@ -53,8 +53,8 @@ test('eğriler FinMoTokens ile aynen', () => {
   assert.match(curve, /exit:\s*Easing\.bezier\(0\.3, 0, 0\.8, 0\.15\)/);
 });
 
-test('azaltılmış hareket 200 ms opaklık (Reduce Motion — ölçeklenmez)', () => {
-  assert.match(block('export const REDUCED', 'FinMoMap — UYGULAMA'), /duration:\s*200,/);
+test('azaltılmış hareket 220 ms opaklık (Tur 26k FinMoTokens)', () => {
+  assert.match(block('export const REDUCED', 'FinMoMap — UYGULAMA'), /duration:\s*220,/);
 });
 
 test('bekleme (WAIT) token’ları hareket süresine bağlı', () => {

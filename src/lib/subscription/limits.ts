@@ -6,6 +6,8 @@ import type { Tier } from './plans';
 export interface TierLimits {
   ai: Record<Tier, number | null>;
   barcode: Record<Tier, number | null>;
+  /** G24-S1 kcalAI Koç: Balance günlük mesaj (coach_daily_balance) + Free/Fresh ömür boyu deneme (coach_trial_free). */
+  coach?: { daily: number | null; trial: number | null };
 }
 
 /** app_settings satırları → limitler. Eksik anahtar → null (bilinmiyor: arayüz sayıyı gizler). */
@@ -20,10 +22,11 @@ export function limitsFromSettings(rows: readonly { key: string; value: unknown 
     ai: { free: g('ai_daily_free'), fresh: g('ai_daily_fresh'), balance: g('ai_daily_balance') },
     // Fresh/Balance barkod sınırsız (kural) — null.
     barcode: { free: g('barcode_daily_free'), fresh: null, balance: null },
+    coach: { daily: g('coach_daily_balance'), trial: g('coach_trial_free') },
   };
 }
 
-export const LIMIT_SETTING_KEYS = ['ai_daily_free', 'ai_daily_fresh', 'ai_daily_balance', 'barcode_daily_free'] as const;
+export const LIMIT_SETTING_KEYS = ['ai_daily_free', 'ai_daily_fresh', 'ai_daily_balance', 'barcode_daily_free', 'coach_daily_balance', 'coach_trial_free'] as const;
 
 /** reserve_ai_scan / reserve_barcode_scan / my_entitlement ortak alt kümesi. */
 export interface QuotaSnapshot {

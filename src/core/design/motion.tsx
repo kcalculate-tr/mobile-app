@@ -35,7 +35,7 @@ import * as Haptics from 'expo-haptics';
  * ayarlanabilir olmalı.
  *
  * Azaltılmış hareket (useReducedMotion): tüm giriş/döngü animasyonlarının
- * karşılığı = yalnız opaklık + en fazla 8 px kayma, en fazla 200 ms. Haptik
+ * karşılığı = yalnız opaklık + en fazla 8 px kayma, en fazla 220 ms. Haptik
  * AYNI kalır (dokunsal geri bildirim hareketten bağımsız erişilebilirlik).
  *
  * Kesilebilirlik: yay (`useSpringTo`) interrupt'ta mevcut hızı taşır
@@ -221,9 +221,12 @@ export const WAIT = {
   actionToastHold: 6000,
 } as const;
 
-/** Azaltılmış hareket sınırları. Son durum 200 ms opaklık; yer değiştirme/ölçek yok. */
+/**
+ * Azaltılmış hareket sınırları. Son durum 220 ms opaklık; yer değiştirme/ölçek yok.
+ * G24-S1 (Tur 26k FinMoTokens): "Reduce Motion 220 ms, yalnız opaklık" — bantlarla aynı ×1,1.
+ */
 export const REDUCED = {
-  duration: 200,
+  duration: 220,
   maxShift: 8,
 } as const;
 
@@ -283,7 +286,7 @@ export const RN_CURVE = {
   exit: RNEasing.bezier(0.3, 0, 0.8, 0.15),
   /** eatkcal yayı 200/28'in zamanlı (CSS) karşılığı — FinMoTokens eatkcal satırı. Yalnız eatkcal. */
   eat: RNEasing.bezier(0.25, 0.9, 0.3, 1),
-  /** Azaltılmış hareket: 200 ms düz opaklık (FinMoTokens "Azaltılmış hareket"). */
+  /** Azaltılmış hareket: 220 ms düz opaklık (FinMoTokens "Azaltılmış hareket"). */
   linear: RNEasing.linear,
 } as const;
 
@@ -369,18 +372,18 @@ export interface MotionMapRow {
 }
 
 export const MOTION_MAP: readonly MotionMapRow[] = [
-  { id: 'tab', label: 'Sekme değişimi', token: 'içerik crossfade fast 200 · standard · kaydırma konumu korunur', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
-  { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '200 ms opaklık' },
-  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 enter · x %100→0, eski −%30 · parmakla sürülür', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'pop', label: 'Pop / geri', token: 'base 300 exit · 0→%100 · kesilebilir', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış base 300 enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış eatkcal 200/28 · scrim base 300 · kapanış fast 200', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'modal', label: 'Tam ekran modal', token: 'açılış base 300 (y %100→0) enter · kapanış fast 200 exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 200 ms opaklık' },
-  { id: 'listAdd', label: 'Liste ekleme', token: 'satır base 300 (y 8→0 + opaklık) · komşular base 300 · enter', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'toast', label: 'Toast', token: 'giriş base 300 · çıkış fast 200 · 4 s · enter/exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'tab', label: 'Sekme değişimi', token: 'içerik crossfade fast 200 · standard · kaydırma konumu korunur', haptic: 'selection', lime: false, reduced: '220 ms opaklık · içerik geçişsiz' },
+  { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '220 ms opaklık' },
+  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 enter · x %100→0, eski −%30 · parmakla sürülür', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'pop', label: 'Pop / geri', token: 'base 300 exit · 0→%100 · kesilebilir', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış base 300 enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4', haptic: 'light', lime: false, reduced: '220 ms opaklık' },
+  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış eatkcal 200/28 · scrim base 300 · kapanış fast 200', haptic: 'light', lime: false, reduced: '220 ms opaklık' },
+  { id: 'modal', label: 'Tam ekran modal', token: 'açılış base 300 (y %100→0) enter · kapanış fast 200 exit', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 220 ms opaklık' },
+  { id: 'listAdd', label: 'Liste ekleme', token: 'satır base 300 (y 8→0 + opaklık) · komşular base 300 · enter', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'toast', label: 'Toast', token: 'giriş base 300 · çıkış fast 200 · 4 s · enter/exit', haptic: null, lime: false, reduced: '220 ms opaklık' },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -494,7 +497,7 @@ export interface EnterControls {
 
 /**
  * Giriş: scale 0.85→1, rotate −6°→0, opacity 0→1, 500 ms, enter eğrisi.
- * Azaltılmışta: yalnız opacity 0→1 (girişte kayma şart değil), 200 ms.
+ * Azaltılmışta: yalnız opacity 0→1 (girişte kayma şart değil), 220 ms.
  * Mount'ta otomatik oynar. `play()` baştan yeniden tetikler.
  */
 export function useEnter(opts?: { autoplay?: boolean; delay?: number }): EnterControls {
@@ -665,7 +668,7 @@ export interface SpringToControls {
 
 /**
  * Bir öğeyi yay ile bir konuma taşır (ör. "logla izi"nin düz karşılığı).
- * Azaltılmışta: en fazla 8 px kayma + 200 ms, yay yok.
+ * Azaltılmışta: en fazla 8 px kayma + 220 ms, yay yok.
  */
 export function useSpringTo(): SpringToControls {
   const reduced = useReducedMotion();

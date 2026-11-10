@@ -117,7 +117,28 @@ test('Paywall: VoiceOver kart dizisi TEK ayarlanabilir öğe; artır/azalt plan�
   expect(tree.getByText('Devam et')).toBeTruthy();
   expect(tree.getByTestId('sub-summary').props.children).toBe('499 TL/ay, her ay otomatik yenilenir.');
   expect(tree.getByText('Sesle ekle')).toBeTruthy();
-  expect(tree.getByText('Barkod ve elle giriş sınırsız')).toBeTruthy();
+  // G24-S1 (Tur 26k): şerit 3 "Barkod sınırsız" · 4 "Elle giriş sınırsız".
+  expect(tree.getByText('Barkod sınırsız')).toBeTruthy();
+  expect(tree.getByText('Elle giriş sınırsız')).toBeTruthy();
+  expect(tree.queryByText('Barkodla ekle')).toBeNull();
+  expect(tree.queryByText('Barkod ve elle giriş sınırsız')).toBeNull();
+});
+
+test('G24-S1 Paywall koçlu varyant: Balance Yıllık seçili, şeritte 5. sayfa "kcalAI Koç", Balance kartlarında "kcalAI Koç dahil"', () => {
+  mockParams = { coach: true, from: 'coach', plan: 'fresh', yearly: false };
+  const tree = render(<PaywallScreen />);
+  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Yıllık, 2999 TL, 7 gün ücretsiz, kcalAI Koç dahil, 4/4');
+  expect(tree.getByText('kcalAI Koç')).toBeTruthy();
+  expect(tree.getByText(/günde 30 mesaj\. Tıbbi tavsiye vermez\./)).toBeTruthy();
+  expect(tree.getByTestId('sub-card-coach-balance_yearly', H)).toBeTruthy();
+  expect(tree.getByTestId('sub-card-coach-balance_monthly', H)).toBeTruthy();
+  expect(tree.queryByTestId('sub-card-coach-fresh_yearly', H)).toBeNull();
+});
+
+test('G24-S1 Paywall koçsuz (diğer girişler): 4 sayfa, koç satırı YOK', () => {
+  const tree = render(<PaywallScreen />);
+  expect(tree.queryByText('kcalAI Koç')).toBeNull();
+  expect(tree.queryByText(/kcalAI Koç dahil/, H)).toBeNull();
 });
 
 test('Paywall: fiyat gelmezse FinSubError (yedek fiyat YOK) + Tekrar dene', () => {

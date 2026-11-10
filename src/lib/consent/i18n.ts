@@ -44,6 +44,14 @@ export const tr = {
     ai_photo_hint: 'Vazgeçersen öğününü elle girebilirsin. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
     ai_photo_ok: 'Kabul et',
     ai_photo_cancel: 'Vazgeç',
+    // G24-S1 — kcalAI Koç ayrı AI izni. METİN İLTER ONAYI BEKLİYOR — tek kaynak burası.
+    ai_coach_title: 'kcalAI Koç ve yapay zekâ',
+    ai_coach_lead:
+      'Koça yazdıkların ve günlük takip özetin, yanıt üretmek için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir.',
+    ai_coach_hint: 'Vazgeçersen koça mesaj gönderilmez. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
+    ai_coach_ok: 'Kabul et',
+    ai_coach_cancel: 'Vazgeç',
+    privacy_link: 'Gizlilik Politikası',
     close: 'Kapat',
   },
   settings: {
@@ -106,6 +114,13 @@ export const en: typeof tr = {
     ai_photo_hint: 'If you cancel, you can enter your meal manually. You can withdraw this in Profile › Privacy › Data and ad permissions.',
     ai_photo_ok: 'Accept',
     ai_photo_cancel: 'Cancel',
+    ai_coach_title: 'kcalAI Coach and AI',
+    ai_coach_lead:
+      'What you write to the coach and a summary of your daily tracking are sent to our AI service provider (USA) to generate replies.',
+    ai_coach_hint: 'If you cancel, nothing is sent to the coach. You can withdraw this in Profile › Privacy › Data and ad permissions.',
+    ai_coach_ok: 'Accept',
+    ai_coach_cancel: 'Cancel',
+    privacy_link: 'Privacy Policy',
     close: 'Close',
   },
   settings: {

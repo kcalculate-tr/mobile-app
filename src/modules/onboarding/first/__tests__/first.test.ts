@@ -84,8 +84,8 @@ test('FinMoOpen: toplam 2300 = enter 900 → standard 500 → exit 900; azaltıl
   assert.equal(OPEN_T.ringEnd - OPEN_T.enterEnd, 550);
   assert.equal(OPEN_T.total - OPEN_T.ringEnd, 990);
   assert.equal(OPEN_T.total, 2530);
-  assert.equal(OPEN_T.reducedHold + OPEN_T.reducedFade, 1190);
-  assert.equal(OPEN_T.skipFade, 200);
+  assert.equal(OPEN_T.reducedHold + OPEN_T.reducedFade, 1210);
+  assert.equal(OPEN_T.skipFade, 220);
   assert.equal(OPEN_T.total - OPEN_T.outStart, 330);
 });
 

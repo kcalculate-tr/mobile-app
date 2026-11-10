@@ -8,6 +8,9 @@
 // ücretsiz, 4'ün 4'ü"). Buton etiketi Aylık/Yıllık fast 200 crossfade; zorunlu yenileme metni;
 // geri yükle; Koşullar/Gizlilik. Fiyatlar YALNIZ RevenueCat yerel fiyatı; gelmezse FinSubError.
 // Satın alma sonucu aynı ekranda FinSubResult.
+// G24-S1 — koçlu varyant (FinSubPaywallCoach): `coach: true` YALNIZ koçtan açılınca ("Koç Balance'ta"
+// sheet'i). Balance şeridine 5. sayfa (bowl, "kcalAI Koç") ve Balance kartlarına "kcalAI Koç dahil"
+// satırı eklenir; varsayılan Balance Yıllık. Diğer yerlerden açılan paywall koçsuz (4 sayfa).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityActionEvent, AppState, Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -44,13 +47,17 @@ const FEATURE_IMG = {
   voice: require('../../../../assets/glass/mic.png'),
   barcode: require('../../../../assets/glass/barcode.png'),
   manual: require('../../../../assets/glass/infinity.png'),
+  coach: require('../../../../assets/glass/bowl.png'),
 };
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 const CARD_W = 248;
 const CARD_GAP = CARD_STEP - CARD_W; // 13
 
-export type PaywallParams = { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean } | undefined;
+export type PaywallParams = { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean } | undefined;
+
+/** Koç günlük mesaj hakkı sunucudan gelmezse (app_settings okunamadı) şeritte gösterilen sayı (README: günde 30). */
+const COACH_DAILY_FALLBACK = 30;
 
 export default function PaywallScreen() {
   const t = useTheme();
@@ -64,13 +71,14 @@ export default function PaywallScreen() {
   const limits = useSubscriptionStore((s) => s.limits);
   const { status } = useTier();
 
-  const [sel, setSel] = useState(() => initialCard(params.plan, params.yearly ?? true));
+  const coach = params.coach === true;
+  const [sel, setSel] = useState(() => initialCard(coach ? 'balance' : params.plan, coach ? true : params.yearly ?? true));
   const [result, setResult] = useState<SubResultState | null>(null);
   const [buying, setBuying] = useState(false);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    trackSub('paywall_view', { from: ['limit_ai', 'limit_barcode', 'limit_voice', 'profile', 'pill'].includes(params.from ?? '') ? params.from : 'other' });
+    trackSub('paywall_view', { from: ['limit_ai', 'limit_barcode', 'limit_voice', 'profile', 'pill', 'coach'].includes(params.from ?? '') ? params.from : 'other' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -133,7 +141,7 @@ export default function PaywallScreen() {
     const id = setInterval(() => {
       if (!appActive.current || Date.now() < holdUntil.current) return;
       setPage((p) => {
-        const next = (p + 1) % 4;
+        const next = (p + 1) % pageCount.current;
         stripRef.current?.scrollTo({ x: next * winW, animated: true });
         return next;
       });
@@ -141,15 +149,21 @@ export default function PaywallScreen() {
     return () => clearInterval(id);
   }, [autoOn, winW]);
 
+  const coachDaily = limits?.coach?.daily ?? COACH_DAILY_FALLBACK;
   const features = useMemo(() => {
     const fresh = group === 'fresh';
-    return [
-      { img: FEATURE_IMG.ai, title: fresh ? tr('sub.feature.fresh_ai_title', { n: limits?.ai.fresh ?? '' }) : tr('sub.feature.balance_ai_title', { n: limits?.ai.balance ?? '' }), desc: tr(fresh ? 'sub.feature.fresh_ai_desc' : 'sub.feature.balance_ai_desc') },
-      { img: FEATURE_IMG.voice, title: tr(fresh ? 'sub.feature.fresh_voice_title' : 'sub.feature.balance_voice_title'), desc: tr(fresh ? 'sub.feature.fresh_voice_desc' : 'sub.feature.balance_voice_desc') },
+    const aiN = (fresh ? limits?.ai.fresh : limits?.ai.balance) ?? '';
+    const list = [
+      { img: FEATURE_IMG.ai, title: tr(fresh ? 'sub.feature.fresh_ai_title' : 'sub.feature.balance_ai_title', { n: aiN }), desc: tr(fresh ? 'sub.feature.fresh_ai_desc' : 'sub.feature.balance_ai_desc') },
+      { img: FEATURE_IMG.voice, title: tr(fresh ? 'sub.feature.fresh_voice_title' : 'sub.feature.balance_voice_title'), desc: tr(fresh ? 'sub.feature.fresh_voice_desc' : 'sub.feature.balance_voice_desc', { n: aiN }) },
       { img: FEATURE_IMG.barcode, title: tr('sub.feature.barcode_title'), desc: tr('sub.feature.barcode_desc') },
       { img: FEATURE_IMG.manual, title: tr('sub.feature.manual_title'), desc: tr('sub.feature.manual_desc') },
     ];
-  }, [group, limits?.ai.fresh, tr]);
+    if (coach && !fresh) list.push({ img: FEATURE_IMG.coach, title: tr('sub.feature.coach_title'), desc: tr('sub.feature.coach_desc', { n: coachDaily }) });
+    return list;
+  }, [group, limits?.ai.fresh, limits?.ai.balance, tr, coach, coachDaily]);
+  const pageCount = useRef(features.length);
+  pageCount.current = features.length;
 
   const cur: PlanCard | null = cards?.[sel] ?? null;
   const ink = t.color.ink;
@@ -217,7 +231,7 @@ export default function PaywallScreen() {
   const valueText = cur
     ? `${tr('sub.paywall.card_a11y', { name: tr(cur.tier === 'balance' ? 'sub.paywall.balance' : 'sub.paywall.fresh'), period: tr(cur.yearly ? 'sub.paywall.yearly' : 'sub.paywall.monthly'), price: cur.priceText })}${
         cur.trialDays ? tr('sub.paywall.card_trial_a11y', { days: cur.trialDays }) : ''
-      }, ${tr('sub.paywall.of', { n: sel + 1, total: 4 })}`
+      }${coach && cur.tier === 'balance' ? `, ${tr('sub.feature.coach_card')}` : ''}, ${tr('sub.paywall.of', { n: sel + 1, total: 4 })}`
     : '';
 
   const onA11y = (e: AccessibilityActionEvent) => {
@@ -253,7 +267,7 @@ export default function PaywallScreen() {
             testID="sub-strip"
           >
             {features.map((f, i) => (
-              <View key={i} style={[styles.page, { width: winW }]} accessible accessibilityLabel={`${i + 1} / 4: ${f.title}. ${f.desc}`}>
+              <View key={i} style={[styles.page, { width: winW }]} accessible accessibilityLabel={`${i + 1} / ${features.length}: ${f.title}. ${f.desc}`}>
                 <View style={styles.glassWrap}>
                   <View style={styles.glow} />
                   <Image source={f.img} style={styles.glass} resizeMode="contain" />
@@ -268,7 +282,7 @@ export default function PaywallScreen() {
         </Animated.View>
         <View style={styles.dotsRow}>
           <View style={styles.dotsSpacer} />
-          <Dots n={4} active={page} dark={t.isDark} line2={line2} />
+          <Dots n={features.length} active={page} dark={t.isDark} line2={line2} />
           <View style={styles.dotsSpacer}>
             {!reduced ? (
               <Pressable
@@ -310,7 +324,7 @@ export default function PaywallScreen() {
             importantForAccessibility="no-hide-descendants"
           >
             {(cards ?? []).map((c, i) => (
-              <PlanCardView key={c.key} c={c} i={i} scrollX={scrollX} reduced={reduced} onPress={() => goTo(i)} />
+              <PlanCardView key={c.key} c={c} i={i} scrollX={scrollX} reduced={reduced} coach={coach && c.tier === 'balance'} onPress={() => goTo(i)} />
             ))}
           </Animated.ScrollView>
         </View>
@@ -374,7 +388,7 @@ function Dots({ n, active, dark, line2 }: { n: number; active: number; dark: boo
   );
 }
 
-function PlanCardView({ c, i, scrollX, reduced, onPress }: { c: PlanCard; i: number; scrollX: SharedValue<number>; reduced: boolean; onPress: () => void }) {
+function PlanCardView({ c, i, scrollX, reduced, coach, onPress }: { c: PlanCard; i: number; scrollX: SharedValue<number>; reduced: boolean; coach?: boolean; onPress: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
@@ -431,6 +445,12 @@ function PlanCardView({ c, i, scrollX, reduced, onPress }: { c: PlanCard; i: num
           <AppText tone="secondary" style={styles.weekly}>
             {tr('sub.paywall.weekly', { price: c.weeklyText })}
           </AppText>
+          {coach ? (
+            <View style={[styles.coachRow, { borderTopColor: t.color.line }]} testID={`sub-card-coach-${c.key}`}>
+              <Image source={FEATURE_IMG.coach} style={styles.coachImg} resizeMode="contain" accessibilityIgnoresInvertColors />
+              <AppText style={styles.coachText}>{tr('sub.feature.coach_card')}</AppText>
+            </View>
+          ) : null}
         </View>
       </Pressable>
       {/* Seçili çerçeve: 1 − d */}
@@ -476,6 +496,9 @@ const styles = StyleSheet.create({
   price: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 34, lineHeight: 40, flexShrink: 1 },
   per: { fontSize: 15, marginBottom: 6 },
   weekly: { fontSize: 13 },
+  coachRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  coachImg: { width: 24, height: 24 },
+  coachText: { flexShrink: 1, fontSize: 13, fontWeight: '600', lineHeight: 17 },
   pad: { paddingHorizontal: 16, marginTop: 18 },
   cta: { minHeight: 56, borderRadius: 28, backgroundColor: '#C6F04F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   ctaText: { fontSize: 17, fontWeight: '700', color: '#0A0A0A' },

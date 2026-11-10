@@ -10,7 +10,11 @@
 //               + Kabul et / Vazgeç. Karartma / X / geri = Vazgeç.
 // G20-S3 md.2b: details kipinde `accepted` verilirse Hesap ekranındaki AYNI zorunlu
 // kutu (Koşullar + Gizlilik + 18+) burada da gösterilir.
-// Hareket: sheet base 300 enter / fast 200 exit, karartma 0→0.32; azaltılmış 200 ms opaklık.
+//   ai_coach  — G24-S1: kcalAI Koç'a ilk mesajdan önce BİR KEZ (ayrı onay). Metin TEK YERDE:
+//               lib/consent/i18n.ts `consent.sheet.ai_coach_lead`.
+// G24-S1 (FinScanAIConsent eşitleme): AI kiplerinde tutamak, kıvılcım ikon dairesi, gövde mürekkep
+// renginde, "Gizlilik Politikası" bağlantısı (onPrivacy verilirse), açık temada beyaz yüzey.
+// Hareket: sheet base 300 enter / fast 200 exit, karartma 0→0.32; azaltılmış 220 ms opaklık.
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -18,6 +22,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { AppText } from '../../../core/design/components/AppText';
 import { CURVE, DURATION, REDUCED, useReducedMotion } from '../../../core/design/motion';
+import { Sparkle } from '../../../components/icons';
 import { useT } from '../../../core/i18n';
 import { OnbButton } from '../components/pieces';
 import { useOnb } from '../components/onbTheme';
@@ -26,7 +31,7 @@ import { ConsentBlock } from './ConsentBlock';
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
 
-export type ConsentSheetMode = 'details' | 'notice' | 'reconsent' | 'ai_photo';
+export type ConsentSheetMode = 'details' | 'notice' | 'reconsent' | 'ai_photo' | 'ai_coach';
 
 export function ConsentSheet({
   visible,
@@ -38,6 +43,7 @@ export function ConsentSheet({
   busy,
   accepted: acceptedProp,
   onAcceptedChange,
+  onPrivacy,
 }: {
   visible: boolean;
   mode: ConsentSheetMode;
@@ -52,6 +58,8 @@ export function ConsentSheet({
   /** details: Hesap ekranıyla ortak zorunlu kutu (verilmezse kutu yok). */
   accepted?: boolean;
   onAcceptedChange?: (v: boolean) => void;
+  /** AI kipleri: "Gizlilik Politikası" bağlantısı (FinScanAIConsent). Verilmezse bağlantı çizilmez. */
+  onPrivacy?: () => void;
 }) {
   const P = useOnb();
   const i18n = useT();
@@ -61,8 +69,8 @@ export function ConsentSheet({
   const [showRequired, setShowRequired] = useState(false);
   const y = useSharedValue(1);
   const o = useSharedValue(0);
-  const dismissable = mode === 'details' || mode === 'ai_photo';
-  const isAi = mode === 'ai_photo';
+  const isAi = mode === 'ai_photo' || mode === 'ai_coach';
+  const dismissable = mode === 'details' || isAi;
 
   useEffect(() => {
     if (visible) {
@@ -98,7 +106,8 @@ export function ConsentSheet({
 
   if (!mounted) return null;
 
-  const sheetBg = P.isDark ? '#1C1C1E' : '#F2F2F2';
+  const sheetBg = P.isDark ? '#1C1C1E' : isAi ? '#FFFFFF' : '#F2F2F2';
+  const nested = P.isDark ? '#2C2C2E' : '#F3F4F6';
   const sheetEdge = P.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)';
   const xBg = P.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(10,10,10,0.06)';
   const title = i18n.t(`consent.sheet.${mode}_title`);
@@ -134,6 +143,7 @@ export function ConsentSheet({
           testID={`consent-sheet-${mode}`}
         >
           <View style={[StyleSheet.absoluteFill, { backgroundColor: sheetBg }]} />
+          {isAi ? <View style={[styles.grabber, { backgroundColor: P.isDark ? '#48484A' : '#C3C7CC' }]} /> : null}
           <View style={styles.head}>
             <AppText style={[styles.title, { color: P.ink }]} accessibilityRole="header">
               {title}
@@ -156,18 +166,30 @@ export function ConsentSheet({
             )}
           </View>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-            <AppText style={[styles.lead, { color: P.sec }]}>{lead}</AppText>
+            {isAi ? (
+              <View style={[styles.aiIcon, { backgroundColor: nested }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+                <Sparkle size={26} color={P.ink} />
+              </View>
+            ) : null}
+            <AppText style={[styles.lead, { color: isAi ? P.ink : P.sec }, isAi ? styles.leadAi : null]} testID={isAi ? `consent-sheet-${mode}-lead` : undefined}>
+              {lead}
+            </AppText>
             {isAi ? (
               <>
                 <AppText textRole="helper" style={{ color: P.sec }}>
-                  {i18n.t('consent.sheet.ai_photo_hint')}
+                  {i18n.t(`consent.sheet.${mode}_hint`)}
                 </AppText>
-                <OnbButton kind="lime" label={ok} onPress={confirm} disabled={busy} testID="consent-sheet-ai_photo-accept" />
+                {onPrivacy ? (
+                  <Pressable onPress={onPrivacy} accessibilityRole="link" style={styles.link} testID={`consent-sheet-${mode}-privacy`}>
+                    <AppText style={[styles.linkText, { color: P.ink }]}>{i18n.t('consent.sheet.privacy_link')}</AppText>
+                  </Pressable>
+                ) : null}
+                <OnbButton kind="lime" label={ok} onPress={confirm} disabled={busy} testID={`consent-sheet-${mode}-accept`} />
                 <OnbButton
                   kind="chip"
-                  label={i18n.t('consent.sheet.ai_photo_cancel')}
+                  label={i18n.t(`consent.sheet.${mode}_cancel`)}
                   onPress={close}
-                  testID="consent-sheet-ai_photo-cancel"
+                  testID={`consent-sheet-${mode}-cancel`}
                 />
               </>
             ) : (
@@ -216,4 +238,9 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   body: { paddingTop: 4, paddingHorizontal: 20, paddingBottom: 34, gap: 14 },
   lead: { fontSize: 15, lineHeight: 21 },
+  leadAi: { fontSize: 17, lineHeight: 24 },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, marginTop: 8 },
+  aiIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  linkText: { fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
 });
