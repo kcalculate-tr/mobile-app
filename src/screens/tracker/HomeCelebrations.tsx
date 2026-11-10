@@ -20,7 +20,7 @@ import { DURATION, TIMING } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getSupabaseClient } from '../../core/supabase';
 import { canOfferPush } from '../../core/push/pushPermission';
-import { consentSheetShownThisSession } from '../../lib/consent/sheetSession';
+import { consentSheetShownThisSession } from '../../lib/permissions/sheetSession';
 import {
   CelebrateOverlay,
   NotifyPermissionSheet,

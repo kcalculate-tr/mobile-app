@@ -333,7 +333,7 @@ test('Profil › Abonelik: Ücretsiz (2 · 5 · Sınırsız, Planları gör) ve 
   tree = render(<SubProfileScreen />);
   // G26-S1: büyük ad yalnız plan adı; "kcalAI" üst satırda küçük etiket.
   expect(tree.getByTestId('sub-profile-name').props.children).toBe('Fresh');
-  expect(tree.getByTestId('sub-profile-cap').props.children).toBe('kcalAI · Mevcut plan');
+  expect(tree.getByTestId('sub-profile-cap').props.children).toBe('Mevcut kcalAI planın');
   expect(tree.getByText('Deneme sonrası 999 TL/yıl')).toBeTruthy();
   expect(tree.getByText('3 gün deneme kaldı')).toBeTruthy();
   expect(tree.getByText('Bugün 9/10')).toBeTruthy();
@@ -368,6 +368,6 @@ test('G26-S1: plan adı büyük başlıklarda yalnız Fresh / Balance (TR + EN);
     expect(sub.paywall.fresh).toBe('Fresh');
     expect(sub.paywall.balance).toBe('Balance');
     expect(sub.brand).toBe('kcalAI');
-    expect(sub.profile.current_paid).toMatch(/^kcalAI · /);
+    expect(sub.profile.current_paid).toMatch(/kcalAI/);
   }
 });

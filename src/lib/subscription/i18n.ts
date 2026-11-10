@@ -129,7 +129,7 @@ export const tr = {
     back: 'Geri',
     current: 'Mevcut plan',
     // G26-S1: ücretli planda üst satır küçük etiket — büyük ad yalnız Fresh / Balance.
-    current_paid: 'kcalAI · Mevcut plan',
+    current_paid: 'Mevcut kcalAI planın',
     includes: 'Planında neler var',
     free_name: 'Ücretsiz',
     free_price: 'Abonelik yok',
@@ -295,7 +295,7 @@ export const en: typeof tr = {
     title: 'Subscription',
     back: 'Back',
     current: 'Current plan',
-    current_paid: 'kcalAI · Current plan',
+    current_paid: 'Your current kcalAI plan',
     includes: 'Included in your plan',
     free_name: 'Free',
     free_price: 'No subscription',

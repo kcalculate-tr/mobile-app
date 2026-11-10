@@ -151,3 +151,12 @@ test('G26-S1: ATT yok — eklenti, paket, Info.plist anahtarı ve izleme beyanı
   const src = readFileSync(join(ROOT, 'src/lib/analytics.ts'), 'utf8');
   assert.doesNotMatch(src, /tracking-transparency|requestTrackingPermissions/);
 });
+
+test('G26-S1: Android izinleri yalnız kullanılanlar; depolama + SYSTEM_ALERT_WINDOW engelli', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const cfg = require('../../../app.config.js') as { expo: { android: { permissions: string[]; blockedPermissions: string[] } } };
+  assert.deepEqual([...cfg.expo.android.permissions].sort(), ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'CAMERA', 'RECORD_AUDIO']);
+  for (const p of ['READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'SYSTEM_ALERT_WINDOW']) {
+    assert.ok(cfg.expo.android.blockedPermissions.includes(`android.permission.${p}`), p);
+  }
+});

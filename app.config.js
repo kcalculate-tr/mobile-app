@@ -296,6 +296,14 @@ module.exports = {
         // G22-S1 md.1: sesle ekleme (expo-speech-recognition). Ses kaydı saklanmaz.
         'RECORD_AUDIO',
       ],
+      // G26-S1 md.9: introspect'te prebuild şablonundan gelen kullanılmayan izinler
+      // (depolama — Foto Seçici izinsiz; SYSTEM_ALERT_WINDOW — yalnız geliştirme katmanı)
+      // birleştirilmiş manifestten de silinir (tools:node="remove").
+      blockedPermissions: [
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+        'android.permission.SYSTEM_ALERT_WINDOW',
+      ],
       // FAZ L — react-native-maps (Android zorunlu). Ayrı, kısıtlı bir Android
       // key (sadece "Maps SDK for Android") kullanılır; tanımlı değilse genel
       // EXPO_PUBLIC_GOOGLE_MAPS_KEY'e düşer. iOS PROVIDER_DEFAULT (Apple Maps)
