@@ -66,7 +66,12 @@ export default function PublicPreviewScreen({
   const posts: PublicPost[] = vitrinPosts ?? [];
 
   useEffect(() => {
-    if (vitrinProfile) return;
+    // G22-S2 md.5: hazır profil güncellenince (iyimser takip / geri alma) yeniden
+    // kurulmadan yansısın — eskiden üst bileşen `key` ile yeniden bağlıyordu.
+    if (vitrinProfile) {
+      setProfile(vitrinProfile);
+      return;
+    }
     let alive = true;
     const h = (handle ?? '').trim().replace(/^@/, '');
     if (!h) return;

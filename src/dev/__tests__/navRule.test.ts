@@ -27,6 +27,7 @@ const MODAL_FILES = [
   'modules/kesfet/ui/VideoPlayer.tsx',
   'modules/kesfet/ui/ComposerScreen.tsx',
   'modules/kesfet/ui/CommentsSheet.tsx',
+  'modules/kesfet/ui/ShareDaySheet.tsx', // G22-S2 md.5: FinShareDay sheet'i (X sağda)
   'modules/gun/ui/GunViewer.tsx',
   'screens/tracker/HomeManualMealSheet.tsx',
   'components/OrderFeedbackModal.tsx',

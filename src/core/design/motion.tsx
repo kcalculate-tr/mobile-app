@@ -217,6 +217,8 @@ export const WAIT = {
   focusAfterMotion: DURATION.base,
   /** Açılışın ilk karesinde modal fırlatma; ana sayfa yerleşsin — story. */
   firstPaint: DURATION.story,
+  /** Eylem düğmeli hata toast'ı ("Takip edilemedi · Tekrar dene") — okuma + dokunma süresi 6 sn (hareket değil, ölçeklenmez). */
+  actionToastHold: 6000,
 } as const;
 
 /** Azaltılmış hareket sınırları. Son durum 200 ms opaklık; yer değiştirme/ölçek yok. */

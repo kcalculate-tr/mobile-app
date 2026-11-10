@@ -14,6 +14,7 @@ import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
 import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
 import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
+import { tr as g26jTr, en as g26jEn } from './g26j';
 
 export type Lang = 'tr' | 'en';
 
@@ -29,6 +30,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     consent: consentTr,
     // G22-S2 md.4 — Keşfet arama (profil + içerik).
     kesfetSearch: kesfetSearchTr,
+    // G22-S2 md.5 — G21 tasarım boşlukları (26j): share_day · auth_error · notif_error · follow_error.
+    ...g26jTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1893,6 +1896,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     metrics: metricsEn,
     consent: consentEn,
     kesfetSearch: kesfetSearchEn,
+    ...g26jEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

@@ -1,0 +1,116 @@
+// G22-S2 md.5 — G21 tasarım boşlukları (Tur 26j) metinleri. Sözlüğün KÖKÜNE
+// yayılır (dictionaries.ts → `...g26jTr`): share_day · auth_error · notif_error ·
+// follow_error. Kaynak: dalga2 FinShareDay(+Success) · FinOnbAccountError ·
+// FinNotificationsError · FinFollowError panolarındaki `S` sözlükleri (birebir).
+
+export const tr = {
+  // FinShareDay + FinShareDaySuccess — "Günümü Keşfet’te paylaş" sheet'i.
+  share_day: {
+    title: 'Günümü Keşfet’te paylaş',
+    sub: 'Bugünün özeti, Keşfet’in üstündeki Günüm halkanda görünür.',
+    close: 'Kapat',
+    preview: 'Paylaşım önizlemesi',
+    you: 'Sen',
+    today: 'Bugün',
+    kcal_of: '%{kcal} / %{target} kcal',
+    kcal_only: '%{kcal} kcal',
+    hidden: 'Kalori ve makrolar gizli',
+    macro_p: 'P %{g} g',
+    macro_c: 'K %{g} g',
+    macro_f: 'Y %{g} g',
+    meals: 'Öğünler',
+    ring_a11y: 'Günlük hedefin yüzde %{pct}’i',
+    show_macros: 'Kalori ve makroları göster',
+    who: 'Kimler görebilir',
+    pub: 'Herkese açık',
+    pub_sub: 'Keşfet’teki herkes görebilir',
+    fol: 'Takipçiler',
+    fol_sub: 'Yalnızca seni takip edenler',
+    note_label: 'Not (isteğe bağlı)',
+    note_ph: 'Bugün nasıl geçti?',
+    share: 'Paylaş',
+    toast_fol: 'Günün takipçilerinle paylaşıldı',
+    toast_pub: 'Günün Keşfet’te paylaşıldı',
+    empty: 'Bugün henüz öğün loglamadın. İlk öğününden sonra gününü paylaşabilirsin.',
+    error: 'Günün paylaşılamadı. Bağlantını kontrol edip tekrar dene.',
+    load_error: 'Günün özeti yüklenemedi.',
+    retry: 'Tekrar dene',
+    loading: 'Yükleniyor',
+  },
+  // FinOnbAccountError — Apple/Google girişinde ağ / hesap hatası (iptal sessiz).
+  auth_error: {
+    net_title: 'Bağlanamadık',
+    net_body: 'İnternet bağlantını kontrol edip tekrar dene.',
+    acc_apple_title: 'Apple ile giriş tamamlanamadı',
+    acc_google_title: 'Google ile giriş tamamlanamadı',
+    acc_body: 'Hesabın doğrulanamadı. Tekrar dene ya da e-posta ile devam et.',
+    retry: 'Tekrar dene',
+    connecting: 'Bağlanıyor…',
+  },
+  // FinNotificationsError — bildirimler yüklenemedi.
+  notif_error: {
+    title: 'Bildirimler yüklenemedi',
+    body: 'Bağlantını kontrol edip tekrar dene.',
+    retry: 'Tekrar dene',
+    loading: 'Yükleniyor',
+  },
+  // FinFollowError — takip başarısız: düğme geri döner + kısa uyarı.
+  follow_error: {
+    failed: 'Takip edilemedi.',
+    retry: 'Tekrar dene',
+  },
+};
+
+export const en: typeof tr = {
+  share_day: {
+    title: 'Share my day on Explore',
+    sub: 'Today’s summary appears in your My day ring at the top of Explore.',
+    close: 'Close',
+    preview: 'Share preview',
+    you: 'You',
+    today: 'Today',
+    kcal_of: '%{kcal} / %{target} kcal',
+    kcal_only: '%{kcal} kcal',
+    hidden: 'Calories and macros hidden',
+    macro_p: 'P %{g} g',
+    macro_c: 'C %{g} g',
+    macro_f: 'F %{g} g',
+    meals: 'Meals',
+    ring_a11y: '%{pct} percent of your daily goal',
+    show_macros: 'Show calories and macros',
+    who: 'Who can see this',
+    pub: 'Public',
+    pub_sub: 'Anyone on Explore can see it',
+    fol: 'Followers',
+    fol_sub: 'Only people who follow you',
+    note_label: 'Note (optional)',
+    note_ph: 'How did today go?',
+    share: 'Share',
+    toast_fol: 'Your day was shared with followers',
+    toast_pub: 'Your day was shared on Explore',
+    empty: 'You haven’t logged a meal today yet. You can share your day after your first meal.',
+    error: 'Couldn’t share your day. Check your connection and try again.',
+    load_error: 'Couldn’t load today’s summary.',
+    retry: 'Try again',
+    loading: 'Loading',
+  },
+  auth_error: {
+    net_title: 'Couldn’t connect',
+    net_body: 'Check your internet connection and try again.',
+    acc_apple_title: 'Couldn’t finish signing in with Apple',
+    acc_google_title: 'Couldn’t finish signing in with Google',
+    acc_body: 'Your account couldn’t be verified. Try again or continue with email.',
+    retry: 'Try again',
+    connecting: 'Connecting…',
+  },
+  notif_error: {
+    title: 'Couldn’t load notifications',
+    body: 'Check your connection and try again.',
+    retry: 'Try again',
+    loading: 'Loading',
+  },
+  follow_error: {
+    failed: 'Couldn’t follow.',
+    retry: 'Try again',
+  },
+};

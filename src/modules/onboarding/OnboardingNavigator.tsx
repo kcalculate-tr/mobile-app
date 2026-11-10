@@ -43,6 +43,9 @@ import { acceptPolicies, holdGate } from '../../lib/consent/store';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
 import { track } from '../../lib/analytics';
+import NetInfo from '@react-native-community/netinfo';
+import { AuthAlert } from './components/AuthAlert';
+import { classifySocialAuthError, shouldShowAuthAlert } from './socialAuthError';
 
 export type OnbIntent = 'track' | 'order' | 'both';
 
@@ -52,7 +55,12 @@ export type OnbParamList = {
   OnbIntent: undefined;
   OnbNotify: { intent: Exclude<OnbIntent, 'order'> };
   /** `vitrinSheet`: YALNIZ vitrin — e-posta sheet'i açık (FinOnbAccountEmail/Keyboard). */
-  OnbAccount: { intent: Exclude<OnbIntent, 'order'>; vitrinSheet?: 'email' | 'keyboard' };
+  OnbAccount: {
+    intent: Exclude<OnbIntent, 'order'>;
+    vitrinSheet?: 'email' | 'keyboard';
+    /** YALNIZ vitrin — FinOnbAccountError satır içi uyarısı açık (G22-S2 md.5). */
+    vitrinAuthError?: { kind: 'network' | 'account'; provider: 'apple' | 'google' };
+  };
   OnbUnderage: undefined;
 };
 
@@ -192,6 +200,11 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   // sheet'i ve ayrıntı sheet'i AYNI durumu gösterir/değiştirir.
   const [accepted, setAccepted] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // G22-S2 md.5 (FinOnbAccountError): ağ / hesap hatası → Apple–Google altında satır
+  // içi uyarı + "Tekrar dene" (aynı sağlayıcı). İptal SESSİZ → uyarı yok.
+  const [authFail, setAuthFail] = useState<{ kind: 'network' | 'account'; provider: 'apple' | 'google' } | null>(
+    __DEV__ ? route.params?.vitrinAuthError ?? null : null,
+  );
   const goHome = () => root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
 
   const afterAuth = async (result: {
@@ -200,17 +213,30 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     email?: string;
     givenName?: string;
     familyName?: string;
-  }) => {
-    if (result.cancelled || result.error) return;
+  }): Promise<string | null> => {
+    if (result.cancelled || result.error) return null;
     const post = await resolvePostSocialAuth({
       email: result.email,
       givenName: result.givenName,
       familyName: result.familyName,
     });
-    if (post.outcome === 'error') return;
+    // G22-S2 md.5: oturum sonrası profil çözümü başarısız → çağıran uyarı gösterir.
+    if (post.outcome === 'error') return post.error ?? 'post_social_auth_failed';
     // G18-S1 md.4: yeni ya da dönen HER hesap → Ana sayfa (Niyet/Bildirim adımı yok;
     // hedef kurulumu Ana sayfa profil kartından, bildirim izni ilk kayıttan sonra).
     goHome();
+    return null;
+  };
+
+  // Hata sonucunu sınıfla → uyarı (ağ/hesap) ya da sessiz (iptal). NetInfo yalnız
+  // hata dalında okunur: çevrimdışıysa her hata "Bağlanamadık" sayılır.
+  const showFailure = async (
+    provider: 'apple' | 'google',
+    outcome: { cancelled?: boolean; error?: string | null; errorCode?: string },
+  ) => {
+    const net = await NetInfo.fetch().catch(() => null);
+    const kind = classifySocialAuthError({ ...outcome, online: net ? net.isConnected !== false : null });
+    if (shouldShowAuthAlert(kind)) setAuthFail({ kind, provider });
   };
 
   const run = async (provider: 'apple' | 'google') => {
@@ -219,11 +245,19 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     // Oturum, kabul kaydı yazılmadan açılabilir → kapı bu sırada "mevcut kullanıcı"
     // sheet'i / ATT göstermesin.
     const release = holdGate();
+    setAuthFail(null);
     try {
       const result = await (provider === 'apple' ? signInWithApple() : signInWithGoogle());
+      if (result.cancelled || result.error) {
+        await showFailure(provider, result);
+        return;
+      }
       // Onay kutusu (Koşullar + Gizlilik + 18+) + reklam ölçümü tercihi.
-      if (!result.cancelled && !result.error) await acceptPolicies({ source: 'signup_social', adOn, ageOk: true });
-      await afterAuth(result);
+      await acceptPolicies({ source: 'signup_social', adOn, ageOk: true });
+      const postError = await afterAuth(result);
+      if (postError) await showFailure(provider, { error: postError });
+    } catch (e) {
+      await showFailure(provider, { error: e instanceof Error ? e.message : 'social_auth_failed' });
     } finally {
       release();
       setBusy(false);
@@ -242,6 +276,9 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
           <View style={{ gap: 10 }}>
             <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={busy || !accepted} onPress={() => run('apple')} />
             <AuthButton kind="google" label={i18n.t('onboarding.account.google')} disabled={busy || !accepted} onPress={() => run('google')} />
+            {authFail ? (
+              <AuthAlert kind={authFail.kind} provider={authFail.provider} busy={busy} onRetry={() => void run(authFail.provider)} />
+            ) : null}
             <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy || !accepted} onPress={() => setEmailOpen(true)} />
           </View>
           {/* G20-S3 md.2b: "Devam ederek … kabul edersin" satırı yerine zorunlu kutu (aynı yer, aynı helper dili). */}
