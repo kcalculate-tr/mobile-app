@@ -177,7 +177,7 @@ export const EVENTS = {
   // G22-S1 md.4 — kcalAI abonelikleri.
   paywall_view: {
     category: 'commerce', tr: 'Abonelik ekranı görüntülendi', en: 'Paywall viewed',
-    props: { from: ['limit_ai', 'limit_barcode', 'limit_voice', 'profile', 'pill', 'other'] },
+    props: { from: ['limit_ai', 'limit_barcode', 'limit_voice', 'profile', 'pill', 'coach', 'other'] },
   },
   sub_purchase: {
     category: 'commerce', tr: 'Abonelik satın alma sonucu', en: 'Subscription purchase result',

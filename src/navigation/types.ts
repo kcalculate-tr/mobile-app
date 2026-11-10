@@ -83,7 +83,7 @@ export type RootStackParamList = {
   AiScan: undefined;
   AiScanOffline: undefined;
   // G22-S1 md.4 — kcalAI abonelikleri (`abonelik` bayrağı + RevenueCat anahtarı).
-  SubPaywall: { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean } | undefined;
+  SubPaywall: { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean } | undefined;
   SubProfile: undefined;
   // eatkcal ilk sipariş şehir kapısı sonrası mevcut sipariş akışı (G6-S4) —
   // bugünkü HomeScreen'i AYNEN yeniden kullanır, yeni bir katalog YAZILMADI.
