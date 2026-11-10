@@ -41,3 +41,4 @@ export { StreakMoment } from './components/StreakMoment';
 export { NumberRoll } from './components/NumberRoll';
 export { GlassTabBar } from './components/GlassTabBar';
 export { FinLoadSwap, FinListEnter, FinPressScale, FinErrorReveal } from './components/FinTransitions';
+export { FinSkeletonBlock, FinListSkeleton, FinCardSkeleton } from './components/FinSkeleton';

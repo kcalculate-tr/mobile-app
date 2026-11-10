@@ -20,7 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinCardSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -157,9 +157,7 @@ export default function SettingsPrivacyScreen({
       <FinHeader title={tr('profil.privacy_settings_title')} onBack={onBack} align="left" />
       <View style={{ paddingHorizontal: 16, gap: 16 }}>
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.accent} size="large" />
-          </View>
+          <FinCardSkeleton style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : (
           <>
             <FinSectionLabel>{tr('profil.privacy_who_can_see')}</FinSectionLabel>

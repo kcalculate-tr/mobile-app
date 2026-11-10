@@ -7,6 +7,7 @@
 // uygulanmalı (LOG › SORULAR).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, StyleSheet, View } from 'react-native';
+import { FinCardSkeleton } from '../../../../core/design';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { PaynkolayText } from '../ui/PaynkolayLogo';
 import { useNavigation } from '@react-navigation/native';
@@ -304,7 +305,7 @@ export default function EkAddCardScreen() {
     return () => sub.remove();
   }, [stage, handleWebViewClose]);
 
-  if (authLoading) return <ActivityIndicator />;
+  if (authLoading) return <FinCardSkeleton />; // G22-S2 md.7
   if (!isAuthenticated) return null;
 
   const retryFresh = () => { verificationIdRef.current = null; setFormHtml(null); setStage('info'); };

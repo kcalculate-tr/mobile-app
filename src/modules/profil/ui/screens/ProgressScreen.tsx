@@ -21,7 +21,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import Svg, { Line } from 'react-native-svg';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -263,9 +263,7 @@ export default function FinPrProgressScreen({
         </View>
 
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.accent} size="large" />
-          </View>
+          <FinListSkeleton rows={4} style={{ paddingHorizontal: 0 }} />
         ) : activeDays.length === 0 ? (
           <FinCard>
             <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, textAlign: 'center' }}>

@@ -4,11 +4,11 @@
 // Detay: core/design Sheet + kod kopyala. Yalnız `yeni_kabuk` açıkken Profil'den
 // açılır; eski ekran bayrak kapalı yolda kalır.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sheet, useTheme } from '../../../../core/design';
+import { Sheet, useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { CachedImage } from '../../../../components/CachedImage';
@@ -85,9 +85,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
         <FinSegmented options={[tr('profil.coupons_tab_offers'), tr('profil.coupons_tab_mine')]} index={tab} onChange={setTab} />
 
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.ink} />
-          </View>
+          <FinListSkeleton rows={4} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : error ? (
           <FinCard style={{ alignItems: 'center', gap: 12, padding: 20 }}>
             <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, textAlign: 'center' }}>{error}</Text>

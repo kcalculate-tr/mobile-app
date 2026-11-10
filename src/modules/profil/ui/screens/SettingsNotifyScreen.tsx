@@ -9,12 +9,12 @@
  * mevcut `behavioral_enabled` kolonuna eşlenir.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Switch, View } from 'react-native';
+import { Alert, Linking, Switch, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import * as Notifications from 'expo-notifications';
 import { Flame, Package, ChatCircleDots, Tag } from '../../../../components/icons';
 import { setStreakReminderEnabled, syncStreakReminder, cancelStreakReminders } from '../../streakReminder';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinCardSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { supabase } from '../../../../core/supabase';
@@ -190,9 +190,7 @@ export default function SettingsNotifyScreen({ onBack }: { onBack: () => void })
         ) : null}
 
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.accent} size="large" />
-          </View>
+          <FinCardSkeleton style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : (
           <FinRowGroup>
             {rows.map((row, idx) => {

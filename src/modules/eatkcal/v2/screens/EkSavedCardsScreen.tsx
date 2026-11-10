@@ -17,7 +17,7 @@ import { ActivityIndicator, Alert, Pressable, RefreshControl, StyleSheet, View }
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { PaynkolayText } from '../ui/PaynkolayLogo';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { EmptyErrorCard, haptic } from '../../../../core/design';
+import { EmptyErrorCard, haptic, FinListSkeleton } from '../../../../core/design';
 import { CreditCard, Plus, Shield, Trash } from '../../../../components/icons';
 import {
   deleteSavedCard,
@@ -150,7 +150,7 @@ export default function EkSavedCardsScreen() {
       contentStyle={styles.content}
     >
       {loading ? (
-        <ActivityIndicator style={styles.loader} color={c.ink} />
+        <FinListSkeleton rows={3} style={{ paddingHorizontal: 0 }} />
       ) : cards.length === 0 ? (
         <EmptyErrorCard
           icon={<CreditCard size={24} color={c.ink} />}
