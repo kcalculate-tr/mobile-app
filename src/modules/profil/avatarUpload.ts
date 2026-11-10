@@ -8,8 +8,7 @@ import { decode } from 'base64-arraybuffer';
 import { getSupabaseClient } from '../../core/supabase';
 
 export async function pickAndUploadAvatar(userId: string): Promise<string | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) return null;
+  // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,

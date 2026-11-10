@@ -95,11 +95,7 @@ export default function SupportScreen() {
       Alert.alert('Uyarı', 'En fazla 3 görsel ekleyebilirsiniz.');
       return;
     }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('İzin Gerekli', 'Galeriye erişim izni gerekiyor.');
-      return;
-    }
+    // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: false,

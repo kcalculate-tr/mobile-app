@@ -1132,7 +1132,6 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       support_message_ph: 'Ne oldu? Kısaca anlat.',
       support_add_image: 'Görsel ekle',
       support_image_max: 'En fazla 3 görsel ekleyebilirsin.',
-      support_image_permission: 'Galeriye erişim izni gerekiyor.',
       support_image_size: 'Görsel boyutu 5 MB’ı aşamaz.',
       // Öneri ve görüş
       feedback_title: 'Öneri ve görüş',
@@ -3008,7 +3007,6 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       support_message_ph: 'What happened? Tell us briefly.',
       support_add_image: 'Add image',
       support_image_max: 'You can add up to 3 images.',
-      support_image_permission: 'Photo library access is required.',
       support_image_size: 'Image size can’t exceed 5 MB.',
       feedback_title: 'Feedback',
       feedback_prompt: 'Let’s improve the app and orders together.',

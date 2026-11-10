@@ -1,0 +1,35 @@
+// G26-S1 — izin envanteri bekçisi: kaynakta istenmeyen sistem izni çağrısı kalmasın.
+//  md.2 ATT yok · md.3 konum yalnız dokununca · md.4 galeri izni hiç istenmez.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+const ROOT = join(__dirname, '../../../..');
+const SRC = join(ROOT, 'src');
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const n of readdirSync(dir)) {
+    const p = join(dir, n);
+    if (statSync(p).isDirectory()) {
+      if (n === '__tests__' || n === '__component_tests__' || n === 'node_modules') continue;
+      walk(p, out);
+    } else if (/\.(ts|tsx)$/.test(n) && !/\.test\.tsx?$/.test(n)) out.push(p);
+  }
+  return out;
+}
+
+const files = [...walk(SRC), join(ROOT, 'App.tsx')].map((p) => ({ rel: relative(ROOT, p), src: readFileSync(p, 'utf8') }));
+const hits = (re: RegExp) => files.filter((f) => re.test(f.src)).map((f) => f.rel).sort();
+
+test('ATT çağrısı yok', () => {
+  assert.deepEqual(hits(/requestTrackingPermissions|getTrackingPermissions|expo-tracking-transparency/), []);
+});
+
+test('galeri (okuma) izni hiç istenmez — sistem seçicisi', () => {
+  assert.deepEqual(hits(/requestMediaLibraryPermissionsAsync/), []);
+});
+
+test('konum sistem penceresi yalnız tek yardımcıda (askOnce üzerinden)', () => {
+  assert.deepEqual(hits(/requestForegroundPermissionsAsync\(/), ['src/modules/eatkcal/v2/model/addressGeocode.ts']);
+});

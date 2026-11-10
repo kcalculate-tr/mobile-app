@@ -1,7 +1,6 @@
 import { dayKeyFromIso, lastDayKeys } from '../lib/dayKey';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Image,
   Pressable,
@@ -167,11 +166,7 @@ export default function ProfileScreen() {
 
   const pickAvatar = async () => {
     if (!user?.id) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('İzin Gerekli', 'Galeriye erişim izni gerekiyor.');
-      return;
-    }
+    // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,

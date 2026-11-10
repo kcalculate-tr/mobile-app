@@ -144,11 +144,7 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
       Alert.alert(tr('profil.support_title'), tr('profil.support_image_max'));
       return;
     }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(tr('profil.support_title'), tr('profil.support_image_permission'));
-      return;
-    }
+    // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: false,

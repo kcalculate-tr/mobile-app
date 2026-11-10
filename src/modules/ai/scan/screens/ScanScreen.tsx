@@ -292,11 +292,7 @@ export default function ScanScreen() {
   };
 
   const pickFromGallery = async (): Promise<string | null> => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t('ai_scan.permission_denied'));
-      return null;
-    }
+    // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.5, // G17-S1: edge sınırı 5 MB — yükleme boyutu
@@ -446,17 +442,9 @@ export default function ScanScreen() {
     try {
       picked = await open();
     } catch {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => null);
-      if (!permission?.granted) {
-        setGalleryDenied(true);
-        return null;
-      }
-      try {
-        picked = await open();
-      } catch {
-        setGalleryDenied(true);
-        return null;
-      }
+      // G26-S1: seçici açılamazsa izin İSTENMEZ (sistem seçicisi izinsiz çalışır) → bilgi hâli.
+      setGalleryDenied(true);
+      return null;
     }
     if (picked.canceled || !picked.assets?.[0]?.uri) return null;
     return picked.assets[0];
