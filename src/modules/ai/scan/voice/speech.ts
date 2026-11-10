@@ -4,7 +4,18 @@
 // mod çubuğunda gizlenir; çökme yok. Tanıma mümkünse CİHAZDA yapılır
 // (requiresOnDeviceRecognition, cihaz destekliyorsa); desteklemiyorsa işletim sisteminin
 // konuşma hizmeti (Apple/Google) kullanılır — her iki durumda da ses BİZİM sunucumuza gitmez.
+//
+// G25-S1 md.11 (ses gizliliği) — kütüphane kaynağıyla doğrulandı (expo-speech-recognition):
+//  • iOS: `requiresOnDeviceRecognition: true` HER ZAMAN verilir. Kütüphane bunu yalnız
+//    `SFSpeechRecognizer.supportsOnDeviceRecognition` true ise isteğe uygular; cihaz/dil
+//    desteklemiyorsa bayrak YOK SAYILIR ve tanıma Apple sunucusunda yapılır (hata yok).
+//  • Android: `androidIntentOptions.EXTRA_PREFER_OFFLINE: true` HER ZAMAN (çevrimdışı motoru tercih
+//    et; uygulamaya göre etkisiz olabilir). `requiresOnDeviceRecognition` yalnız cihazda tanıma
+//    varsa (isOnDeviceRecognitionAvailable) true — Android 13+'ta bu, cihaz içi tanıyıcıyı ZORLAR
+//    ve model yoksa başlatma hata verirdi; yoksa varsayılan tanıyıcı (Google) kullanılır ve ses
+//    Google'ın konuşma hizmetine gidebilir.
 import { requireOptionalNativeModule } from 'expo';
+import { Platform } from 'react-native';
 
 type SpeechModuleType = typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule'];
 
@@ -33,6 +44,22 @@ export interface SpeechHandlers {
   onVolume?: (value: number) => void;
 }
 
+/**
+ * `start()` seçenekleri (SAF; test edilir). `onDevice` = cihaz cihaz-içi tanımayı destekliyor mu.
+ * Ses kaydı saklanmaz (recordingOptions verilmez).
+ */
+export function speechStartOptions(os: string, lang: string, onDevice: boolean) {
+  return {
+    lang,
+    interimResults: true,
+    continuous: true,
+    requiresOnDeviceRecognition: os === 'ios' ? true : onDevice,
+    addsPunctuation: true,
+    volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
+    ...(os === 'android' ? { androidIntentOptions: { EXTRA_PREFER_OFFLINE: true } } : {}),
+  };
+}
+
 /** Dinlemeyi başlatır; kaldırma fonksiyonu döner (dinleyiciler + abort). */
 export function startListening(lang: string, h: SpeechHandlers): (() => void) | null {
   const S = loadSpeech();
@@ -50,15 +77,7 @@ export function startListening(lang: string, h: SpeechHandlers): (() => void) | 
     onDevice = false;
   }
   try {
-    S.start({
-      lang,
-      interimResults: true,
-      continuous: true,
-      requiresOnDeviceRecognition: onDevice,
-      addsPunctuation: true,
-      volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
-      // Ses kaydı saklanmaz (recordingOptions verilmez).
-    });
+    S.start(speechStartOptions(Platform.OS, lang, onDevice));
   } catch {
     subs.forEach((s) => s.remove());
     h.onError('service-not-allowed');
