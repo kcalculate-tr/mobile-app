@@ -12,8 +12,15 @@ Kaynak: `app.config.js` (varsayılan TR — `ios.infoPlist` + eklenti seçenekle
 | Konum `NSLocationWhenInUseUsageDescription` | Adres doğrulama, en yakın şube (`expo-location`, yalnız ön plan) | Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz. | **(G20-S2, önce yoktu)** We use your location to verify your delivery address on the map and find your nearest branch. | iOS · Android `ACCESS_FINE/COARSE_LOCATION` |
 | Konum (her zaman) | — kullanılmıyor | **(G20-S2) Info.plist'ten silindi** (önce eklenti İngilizce varsayılan "Allow $(PRODUCT_NAME)…" yazıyordu) | — | — |
 | Mikrofon `NSMicrophoneUsageDescription` | Uygulama içi kayıt yok (video yalnız galeriden); `expo-camera`/`expo-image-picker` eklentileri ekler | Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir. | Microphone access is required to record audio when sharing a video. | iOS · Android `RECORD_AUDIO` (image-picker eklentisi) |
-| Takip (ATT) `NSUserTrackingUsageDescription` | Rıza bloğu → reklam ölçümü açıksa (`ConsentGate`, G20-S1) | Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin. | We ask for this to measure how our ad campaigns perform. You can use the whole app without allowing it. | iOS (G20-S1 metni — üzerine yazılmadı) |
+| ~~Takip (ATT) `NSUserTrackingUsageDescription`~~ | **G26-S1: KALDIRILDI** — eklenti, paket, anahtar ve çağrılar yok; Meta ATT'siz (AEM) | — | — | — |
 | Bildirim | iOS'ta sistem metni yok; Android 13+ `POST_NOTIFICATIONS` (expo-notifications kütüphane manifesti). Uygulama içi ön soru: onboarding (FinOnbNotify) ve ilk öğün kutlaması | Serini korumak için akşam 19:30’da hatırlatayım mı? · Günde en fazla bir kez. Saati sonra değiştirebilirsin. · İzin ver / Şimdi değil | Remind you at 7:30 PM to keep your streak? · At most once a day. You can change the time later. · Allow / Not now | iOS · Android (`src/core/i18n/dictionaries.ts` `onb.notify`, `celebrate.notify_*`) |
+
+## G26-S1 (11 Kas) — ne zaman istenir
+Tam envanter: `docs/night/G26-IZINLER.md`. Özet: kayıt/onboarding/açılışta sistem penceresi yok; her izin yalnız kullanıldığı anda,
+bir kez (reddedilirse bir daha sorulmaz → "Ayarlar'ı aç"). Galeri seçimi izinsiz (sistem seçicisi). Bildirim: ilk öğün kutlaması
+sonrası tek açıklama ekranı ya da Ayarlar › Bildirimler (30 günde en fazla bir). Android `READ/WRITE_EXTERNAL_STORAGE` ve
+`SYSTEM_ALERT_WINDOW` `blockedPermissions` ile kaldırıldı (kod artık `requestMediaLibraryPermissionsAsync` çağırmıyor —
+aşağıdaki eski not geçersiz).
 
 ## Notlar
 - Kamera metni G20-S1'de denetlendi ve testle kilitli (bu oturumda değişmedi). Kodda profil

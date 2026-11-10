@@ -6,6 +6,18 @@ G3-S1 (`docs/night/G3-S1-STORE_FORMS.md`, 3 Kas). **⚠ = L-S1/G3-S1 ile çeliş
 Bu tablolar 1.1.0 ile **aynı anda** konsola girilir; iOS gizlilik manifesti (`app.config.js` `privacyManifests`)
 bu oturumda aynı cevaplara hizalandı (18 veri türü).
 
+## ⚠ G26-S1 değişikliği (11 Kas — İlter kararı: ATT kaldırıldı)
+- iOS'ta **App Tracking Transparency sorusu YOK**; `NSUserTrackingUsageDescription` Info.plist'te yok, IDFA **toplanmaz**
+  (`setAdvertiserTrackingEnabled(false)` + `setAdvertiserIDCollectionEnabled(false)` sabit — `src/lib/analytics.ts` `initFBSDK`).
+- Meta reklam olayları ATT'siz (AEM / SKAdNetwork, toplu ölçüm) yalnız uygulama içi "Reklam ölçümü" tercihi reddedilmediyse gider
+  (`src/lib/metrics/consent.ts` `metaAllowed`).
+- Gizlilik manifesti: `NSPrivacyTracking: false`, `NSPrivacyTrackingDomains` yok; hiçbir veri türünde `Tracking: true` yok.
+  Device ID yalnız birinci taraf `anon_id` → amaç yalnız **Analytics**.
+- **App Store Connect › App Privacy güncellenmeli** (1.1.0 gönderiminden önce): "Data Used to Track You" → **boş** (Purchase History,
+  Product Interaction, Device ID için "Used for tracking" = Hayır). Purchase History / Product Interaction "Third-Party Advertising"
+  amacı kalır (Meta'ya toplu ölçüm). Aşağıdaki tablolardaki "İzleme = Evet" hücreleri G20-S2 hâlidir; G26 sonrası hepsi **Hayır**.
+- Play "Data safety" değişmez (Android'de ATT yok; reklam kimliği rızaya bağlı, `AD_ID` beyanı aynı).
+
 ## Tanımlar (karar kuralları)
 - **Toplanıyor**: veri cihazdan çıkıp bizim ya da işleyenimizin sunucusuna gidiyor (Supabase, Anthropic, Sentry, Meta, Google Maps…).
   Yalnız cihazda kalan (AsyncStorage) veri toplanmış sayılmaz.
