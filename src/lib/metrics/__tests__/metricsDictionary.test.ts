@@ -118,6 +118,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     'supabase/migrations/20261110000100_g21_s1_barcode.sql',
     // G22-S1: sesle ekleme + abonelik olayları.
     'supabase/migrations/20261110100100_g22_s1_subscriptions.sql',
+    // G24-S1: kcalAI Koç olayları.
+    'supabase/migrations/20261111100100_g24_coach.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');
