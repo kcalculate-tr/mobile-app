@@ -32,6 +32,7 @@ import { AddToast, type ToastState } from '../../kesfet/ui/AddToast';
 import { runOptimisticFollow } from '../followOptimistic';
 import { FinSkeletonBlock } from '../../../core/design/components/FinSkeleton';
 import { useBreath } from '../../../core/design/motion';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // G22-S2 md.5 (FinFollowError): "Takip edilemedi." uyarısı ~6 sn kalır (okuma süresi).
 const FOLLOW_ERROR_HOLD = WAIT.actionToastHold;
@@ -182,7 +183,7 @@ export default function PublicProfileScreen() {
 
   return (
     <>
-    <ScrollView style={{ backgroundColor: t.color.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40 }}>
+    <ScrollView {...SCROLL_KEYBOARD} style={{ backgroundColor: t.color.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40 }}>
       <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button">
           <CaretLeft size={22} color={t.color.ink} weight="bold" />

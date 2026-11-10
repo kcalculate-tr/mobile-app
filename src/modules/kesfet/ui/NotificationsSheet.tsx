@@ -13,6 +13,7 @@ import type { SocialNotification } from '../types';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './icons';
 import { relativeTime, type UiLang } from './format';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 function iconForKind(kind: SocialNotification['kind']): IconName {
   switch (kind) {
@@ -106,7 +107,7 @@ export function NotificationsSheet({
           ) : items.length === 0 ? (
             <View style={styles.center}><AppText variant="body" tone="secondary">{tr('kesfet.notif.empty')}</AppText></View>
           ) : (
-            <FlatList
+            <FlatList {...SCROLL_KEYBOARD}
               data={items}
               keyExtractor={(n) => n.id}
               renderItem={renderItem}

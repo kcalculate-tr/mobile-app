@@ -24,6 +24,7 @@ import {
 import { getSupabaseClient } from '../core/supabase';
 import { useFlagsContext, FLAG_KEYS, type FlagKey } from '../core/flags';
 import { COLORS } from '../constants/theme';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type DiagnosticsData = {
   sessionInfo: string;
@@ -159,7 +160,7 @@ export default function DevDiagnosticsScreen() {
         <Text style={styles.subtitle}>Sadece geliştirme ortamı</Text>
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.content}>
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={COLORS.brand.green} />

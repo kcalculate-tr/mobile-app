@@ -10,6 +10,7 @@ import { useT } from '../../../core/i18n';
 import { Avatar } from './Avatar';
 import { Icon } from './icons';
 import type { DayRing } from '../../gun/types';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const SIZE = 64;
 const R = 29.5;
@@ -89,7 +90,7 @@ export function GunRingStripPlaceholder({
   const t = useTheme();
   if (rings.length === 0) return null;
   return (
-    <ScrollView
+    <ScrollView {...SCROLL_KEYBOARD}
       horizontal
       showsHorizontalScrollIndicator={false}
       accessibilityLabel="Gün halkası"

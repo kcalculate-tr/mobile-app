@@ -34,6 +34,7 @@ import {
   X,
 } from '../../../../components/icons';
 import { WAVE_BARS, isSheetPhase, splitSpokenItems, splitTail, waveHeights, type VoicePhase } from './voiceCore';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export type ScanInputMode = 'photo' | 'voice' | 'barcode' | 'manual';
 
@@ -151,7 +152,7 @@ export default function FinScanVoice(p: FinScanVoiceProps) {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.fill} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" scrollEnabled={!sheet}>
+      <ScrollView {...SCROLL_KEYBOARD} style={styles.fill} contentContainerStyle={styles.body} scrollEnabled={!sheet}>
         <AppText style={[styles.title, { color: t.color.ink }]} accessibilityRole="header">
           {tr('voice.title')}
         </AppText>

@@ -47,6 +47,7 @@ import { useAuth } from '../core/AuthContext';
 import { fetchBusinessHours, BusinessHours } from '../lib/businessHours';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { track } from '../lib/analytics';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const HERO_SIDE_PADDING = 16;
@@ -477,8 +478,7 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
@@ -562,8 +562,7 @@ export default function HomeScreen() {
         {/* Hero Banner Slider */}
         {heroCells.length > 0 && (
           <View style={styles.heroWrapper}>
-            <FlatList
-              keyboardShouldPersistTaps="handled"
+            <FlatList {...SCROLL_KEYBOARD}
               ref={heroFlatListRef}
               data={heroCells}
               keyExtractor={heroKeyExtractor}
@@ -611,8 +610,7 @@ export default function HomeScreen() {
         )}
 
         {/* Categories */}
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
+        <ScrollView {...SCROLL_KEYBOARD}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryRow}

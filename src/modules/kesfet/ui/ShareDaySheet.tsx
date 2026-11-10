@@ -42,6 +42,7 @@ import { getKesfetClient } from '../client';
 import { Avatar } from './Avatar';
 import { BottomSheet } from './BottomSheet';
 import { Icon } from './icons';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // Phosphor WarningCircle (regular) — satır içi hata ikonu.
 const WARNING =
@@ -166,10 +167,9 @@ export function ShareDaySheet({
         </Pressable>
       </View>
 
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         style={{ maxHeight: screenH * 0.62 }}
         contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {state.kind === 'loading' ? (

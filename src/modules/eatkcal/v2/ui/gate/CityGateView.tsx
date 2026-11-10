@@ -50,6 +50,7 @@ import { WaitlistFormSheet } from './WaitlistFormSheet';
 import { flushWaitlistQueue } from './waitlistSend';
 import { useCitySearch } from './useCitySearch';
 import type { WaitlistKind } from '../../model/waitlist';
+import { SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 
 export type GateStep = 'city' | 'waitlist' | 'other';
 
@@ -318,7 +319,7 @@ export function CityGateView({
             <CaretDown size={12} color={c.ink} weight="fill" />
           </Pressable>
         </View>
-        <ScrollView style={styles.fill} contentContainerStyle={{ paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} style={styles.fill} contentContainerStyle={{ paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>
           <View style={[styles.notice, { borderBottomColor: c.line }]}>
             <Storefront size={22} color={c.ink} />
             <View style={styles.fill}>
@@ -439,9 +440,8 @@ export function CityGateView({
                 testID="ek-gate-country-search"
               />
             </View>
-            <ScrollView
+            <ScrollView {...SCROLL_KEYBOARD}
               style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
-              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               accessibilityRole="radiogroup"
               accessibilityLabel={t('eatkcal.v2.gate.country')}
@@ -486,9 +486,8 @@ export function CityGateView({
                 testID="ek-gate-search"
               />
             </View>
-            <ScrollView
+            <ScrollView {...SCROLL_KEYBOARD}
               style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
-              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               accessibilityRole="radiogroup"
               accessibilityLabel={t('eatkcal.v2.gate.city_label')}
@@ -543,9 +542,8 @@ export function CityGateView({
                 testID="ek-gate-city-search"
               />
             </View>
-            <ScrollView
+            <ScrollView {...SCROLL_KEYBOARD}
               style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
-              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               accessibilityRole="radiogroup"
               accessibilityLabel={t('eatkcal.v2.geo.city_label')}

@@ -44,6 +44,7 @@ import { CardList, type CardHandlers } from '../ui/cards';
 import { Chips, Composer } from '../ui/Composer';
 import { CoachAvatar, CoachGlass, FeedbackRow, QuotaPill, StreamText, TypingDots, useCoachTones } from '../ui/parts';
 import { DeleteConfirm, MenuSheet, UpsellSheet } from '../ui/sheets';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Nav = { navigate: (n: string, p?: object) => void; goBack: () => void; canGoBack?: () => boolean };
 
@@ -372,14 +373,13 @@ export default function CoachChatScreen() {
           ) : null}
         </View>
       ) : (
-        <FlatList
+        <FlatList {...SCROLL_KEYBOARD}
           ref={listRef}
           data={rows}
           keyExtractor={(r, i) => (r.kind === 'msg' ? r.m.id : `${r.kind}-${i}`)}
           renderItem={renderRow}
           contentContainerStyle={styles.listPad}
           accessibilityLabel={tr('coach.log_label')}
-          keyboardShouldPersistTaps="handled"
           onScrollToIndexFailed={(e) => listRef.current?.scrollToOffset({ offset: e.averageItemLength * e.index, animated: false })}
           testID="coach-list"
         />

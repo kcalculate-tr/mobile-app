@@ -13,6 +13,7 @@ import { deleteCoachHistory, fetchCoachMessages } from '../client';
 import { COACH_RETENTION_DAYS, groupHistory, type HistoryGroup } from '../model';
 import { CoachGlass, LIME, LIME_INK, useCoachTones } from '../ui/parts';
 import { DeleteConfirm } from '../ui/sheets';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Nav = { goBack: () => void; navigate: (n: string, p?: object) => void };
 
@@ -57,7 +58,7 @@ export default function CoachHistoryScreen() {
           <ArrowLeft size={24} color={c.text} />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
         <AppText style={[styles.title, { color: c.text }]} accessibilityRole="header">
           {tr('coach.hist_title')}
         </AppText>

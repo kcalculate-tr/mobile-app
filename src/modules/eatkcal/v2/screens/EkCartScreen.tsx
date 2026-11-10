@@ -36,6 +36,7 @@ import { priceError, stockError, type EkErrorModel } from '../model/errors';
 import { activeZoneRowOf, computeCartTotal, computeCheckoutTotals } from '../model/checkoutModel';
 import { freeShippingProgress, groupCartLines, linePrice, lineSummary } from '../model/cartModel';
 import { fetchSettingsMinCart, fetchZoneRuleFor } from '../checkout/data';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 function useCartHydrated(): boolean {
   const [ok, setOk] = useState(() => useCartStore.persist?.hasHydrated?.() ?? true);
@@ -420,7 +421,7 @@ export default function EkCartScreen() {
             <Text style={[ekType.h20, { color: c.ink, marginTop: 12 }]} accessibilityRole="header">
               {t('eatkcal.v2.cart.suggestions')}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
               {suggestions.map(({ product, reason }) => (
                 <Pressable
                   key={product.id}

@@ -80,6 +80,7 @@ import { useFeature } from '../../../../core/flags';
 import { resetToSignedOut } from '../../../../navigation/signOutReset';
 import ProfileSubSection from '../../../subscription/ui/ProfileSubSection';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -214,7 +215,7 @@ export default function FinPrProfileScreen() {
 
   return (
     <FinScreen>
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: tabBarContentInset(insets.bottom) + 14, gap: 18 }}
       >

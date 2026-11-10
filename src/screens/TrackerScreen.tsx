@@ -97,6 +97,7 @@ import { RootStackParamList } from '../navigation/types';
 import { usePantryStore, PantryItem } from '../store/pantryStore';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { track } from '../lib/analytics';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type TrackerNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type FilterType = 'today' | 'yesterday' | 'week' | 'last14' | 'last30';
@@ -2650,12 +2651,11 @@ const html = `
       {/* G15-S2 (FinHomeXL): yeni kabukta en büyük yazıda başlık/etiketler kırpılmasın —
           Final XL ≈ 1.3× tavan. Bayrak kapalıyken değer sınırsız (AppText zaten yok). */}
       <TextScaleCapContext.Provider value={yeniKabuk ? 1.3 : Number.POSITIVE_INFINITY}>
-      <Reanimated.ScrollView
+      <Reanimated.ScrollView {...SCROLL_KEYBOARD}
         // Yalnız vitrin (__DEV__ + vitrinScroll); bayrak kapalı ağaçta prop YOK (snapshot paritesi).
         ref={__DEV__ && vitrinScroll ? homeScrollRef : undefined}
         // Yalnız vitrin: sayfa yüksekliği ölçümü (G18-S2 md.6; Final Home 2420 / boş 2160).
         onContentSizeChange={__DEV__ && homeHour != null ? (_w: number, h: number) => console.log('[vitrin] home içerik yüksekliği', Math.round(h)) : undefined}
-        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[s.scroll, asTab ? { paddingBottom: tabBarContentInset(insets.bottom) } : null]}
         showsVerticalScrollIndicator={false}
         onScroll={asTab ? scrollHandler : undefined}
@@ -2714,7 +2714,7 @@ const html = `
         />
 
         {/* ── Filter pills (her iki modda: Özet + Grafik) ── */}
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
+        <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
           {FILTER_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.key}
@@ -2921,7 +2921,7 @@ const html = `
                 </View>
               ) : (
                 <FlatList
-                  keyboardShouldPersistTaps="handled"
+                  {...SCROLL_KEYBOARD}
                   data={expandedItems.filter(i => !consumedInstances.has(i.instanceId))}
                   horizontal
                   showsHorizontalScrollIndicator={false}

@@ -12,6 +12,7 @@ import { useT } from '../../../../core/i18n';
 import { CONTRACTS } from '../../../../data/contractsData';
 import { normalizeLegalSlug } from '../../../../lib/legal/slugs';
 import { FinScreen, FinHeader, FinCard, FinChip, body, heading } from '../finUi';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function AgreementsScreen({
   onBack,
@@ -52,12 +53,11 @@ export default function AgreementsScreen({
   return (
     <FinScreen contentStyle={{ paddingTop: 0 }}>
       <FinHeader title={tr('profil.agreements_title')} onBack={onBack} />
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         horizontal
         style={{ flexGrow: 0 }}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}
-        keyboardShouldPersistTaps="handled"
       >
         {CONTRACTS.map((c, i) => (
           <FinChip
@@ -68,7 +68,7 @@ export default function AgreementsScreen({
           />
         ))}
       </ScrollView>
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}

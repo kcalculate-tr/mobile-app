@@ -22,7 +22,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -416,7 +416,7 @@ export function ComposerScreen({
         </View>
       ) : null}
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
         {/* Tür seçimi — bölmeli seçici */}
         <View style={[styles.segment, { backgroundColor: t.color.line }]} accessibilityRole="radiogroup">
           {POST_TYPES.map((pt) => {

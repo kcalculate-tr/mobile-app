@@ -11,6 +11,7 @@ import { useT } from '../../../core/i18n';
 import { Plus, User } from '../../../components/icons';
 import { getTodayConsumptions, type TodayConsumption } from '../todayConsumptions';
 import { shareMealToDay } from '../index';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const MEAL_I18N: Record<string, string> = {
   breakfast: 'meal.breakfast',
@@ -129,7 +130,7 @@ function TodayPickerSheet({
           {tt('gun.picker_empty')}
         </AppText>
       ) : (
-        <FlatList
+        <FlatList {...SCROLL_KEYBOARD}
           data={items}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}

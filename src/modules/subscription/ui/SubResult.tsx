@@ -11,6 +11,7 @@ import { AppText, DURATION, SPRING, haptic, useReducedMotion, useTheme } from '.
 import { useT } from '../../../core/i18n';
 import { Hourglass, Sparkle, Warning, X, XCircle } from '../../../components/icons';
 import type { PlanCard } from '../../../lib/subscription/plans';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 export type SubResultState = 'success' | 'cancelled' | 'pending' | 'error';
 
@@ -76,7 +77,7 @@ export default function SubResult({
     if (date) rows.push([trial ? tr('sub.result.row_trial_end') : tr('sub.result.row_renews'), date]);
     return (
       <Animated.View entering={fade} style={[styles.fill, { backgroundColor: t.color.bg }]} testID="sub-result-success">
-        <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12 }]}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12 }]}>
           <View style={styles.closeRow}>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('sub.close')} style={styles.close}>
               <X size={22} color={ink} />

@@ -21,6 +21,7 @@ import {
   DEFAULT_MACRO_SETTINGS, MacroProfile, MacroSettings,
   fetchMacroProfile, fetchMacroSettings, macroProgress,
 } from '../lib/macros'
+import { SCROLL_KEYBOARD } from '../core/design/keyboard'
 
 const MACRO_COIN = require('../../assets/macro-coin.png')
 
@@ -145,7 +146,7 @@ export default function MacroScreen() {
         style={{ marginTop: SPACING.sm, marginBottom: SPACING.xs }}
       />
 
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 120 }]}
         refreshControl={

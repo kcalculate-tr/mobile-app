@@ -43,6 +43,7 @@ import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubResult, { type SubResultState } from '../ui/SubResult';
 import SubLegalLinks from '../ui/SubLegalLinks';
 import { trackSub } from '../subTrack';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası.
@@ -253,7 +254,7 @@ export default function PaywallScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: t.color.bg }]} testID="sub-paywall">
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: Math.max(24, insets.bottom + 16) }} showsVerticalScrollIndicator={false}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: Math.max(24, insets.bottom + 16) }} showsVerticalScrollIndicator={false}>
         {/* Üst */}
         <View style={styles.top}>
           <View style={styles.brand} accessibilityRole="header" accessibilityLabel={tr('sub.paywall.title')}>
@@ -267,7 +268,7 @@ export default function PaywallScreen() {
 
         {/* Özellik şeridi */}
         <Animated.View key={group} entering={FadeIn.duration(DURATION.fast)} exiting={FadeOut.duration(DURATION.fast)}>
-          <ScrollView
+          <ScrollView {...SCROLL_KEYBOARD}
             ref={stripRef}
             horizontal
             pagingEnabled
@@ -323,7 +324,7 @@ export default function PaywallScreen() {
           onAccessibilityAction={onA11y}
           testID="sub-cards"
         >
-          <Animated.ScrollView
+          <Animated.ScrollView {...SCROLL_KEYBOARD}
             ref={cardsRef}
             horizontal
             showsHorizontalScrollIndicator={false}

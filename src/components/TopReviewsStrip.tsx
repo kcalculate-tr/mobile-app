@@ -9,6 +9,7 @@ import {
   yorumTarihi,
   type VitrinYorumu,
 } from '../lib/socialProof';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 /**
  * "Müşteri Yorumları" — anasayfada, Sana Özel Teklifler'in hemen üstünde,
@@ -91,7 +92,7 @@ function TopReviewsStrip() {
   return (
     <View style={s.bolum}>
       <Text style={s.baslik}>Müşteri Yorumları</Text>
-      <FlatList
+      <FlatList {...SCROLL_KEYBOARD}
         horizontal
         data={yorumlar}
         keyExtractor={(y) => String(y.id)}

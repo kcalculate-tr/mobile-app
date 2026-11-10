@@ -19,6 +19,7 @@ import { resolveNavigation } from '../../../../lib/navigation';
 import { formatDate, gunKaldi, indirimEtiketi } from '../../../../lib/campaignVisual';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { FinHeader, FinScreen, FinCard, FinSegmented, FinSecondaryButton, body, bodyBold, bodyMedium, bodySemibold, heading } from '../finUi';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
@@ -94,7 +95,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
         ) : (
           <>
             {tab === 0 && banners.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }} style={{ marginHorizontal: -16, flexGrow: 0, height: 140 }}>
+              <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }} style={{ marginHorizontal: -16, flexGrow: 0, height: 140 }}>
                 <View style={{ width: 4 }} />
                 {banners.map((b) => (
                   <Pressable key={b.id} onPress={() => resolveNavigation(navigation, b.navigate_to, 'Offers')}>

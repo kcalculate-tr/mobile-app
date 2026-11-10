@@ -18,6 +18,7 @@ import SubPill from '../ui/SubPill';
 import SubLegalLinks from '../ui/SubLegalLinks';
 import { formatSubDate } from '../ui/SubResult';
 import { trackSub } from '../subTrack';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 /** Kalan deneme günü (yukarı yuvarlanır; geçmişse 0). SAF. */
 export function trialDaysLeft(expiresAt: string | null | undefined, now: number = Date.now()): number | null {
@@ -119,7 +120,7 @@ export default function SubProfileScreen() {
         </AppText>
         <View style={styles.back} />
       </View>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <View style={[styles.card, { backgroundColor: card }]}>
           <View style={styles.planHead}>
             <View style={styles.flex1}>

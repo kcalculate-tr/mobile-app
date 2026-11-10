@@ -37,6 +37,7 @@ import { ANIMATION, COLORS } from '../constants/theme';
 import { Toast } from '../core/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { haptic } from '../utils/haptics';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type AddressesRouteProp = RouteProp<RootStackParamList, 'Addresses'>;
 type AddressesNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -915,14 +916,13 @@ export default function AddressesScreen() {
           </TouchableOpacity>
         )}
 
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={[
             s.scroll,
             { paddingBottom: Math.max(100, insets.bottom + 80) },
           ]}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Animated.View style={pageStyle}>

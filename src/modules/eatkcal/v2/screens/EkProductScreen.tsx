@@ -56,6 +56,7 @@ import {
 import { OptionGroupSection, type OptionGroupModel } from '../ui/product/OptionGroupSection';
 import { MacroRings } from '../ui/product/MacroRings';
 import { ProductBottomBar, STD_EASE } from '../ui/product/ProductBottomBar';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 const HERO_H = 330;
 /** Final gövde alt boşluğu (tek alt katman açıkken 124 + 20 + pay). */
@@ -478,7 +479,7 @@ export default function EkProductScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product">
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         ref={scrollRef}
         style={styles.fill}
         showsVerticalScrollIndicator={false}

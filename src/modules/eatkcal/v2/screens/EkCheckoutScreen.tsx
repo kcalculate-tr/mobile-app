@@ -30,6 +30,7 @@ import { groupCartLines, linePrice, lineSummary } from '../model/cartModel';
 import { useEkCheckout } from '../checkout/useEkCheckout';
 import { methodTimeState } from '../model/methodTime';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 type SectionKey = 'md' | 'ad' | 'ct' | 'nt' | 'py' | 'bk';
 const TR_DAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
@@ -420,7 +421,7 @@ export default function EkCheckoutScreen() {
           ) : null}
           {ctrl.deliveryMethod === 'home_delivery' && ctrl.deliveryTimeType === 'scheduled' ? (
             <View style={{ gap: 10 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {ctrl.scheduledDates.map((d) => {
                   const sel = !!ctrl.scheduledDate && d.toDateString() === ctrl.scheduledDate.toDateString();
                   const ok = isDeliveryDay(d, ctrl.deliveryDays);
@@ -632,6 +633,8 @@ export default function EkCheckoutScreen() {
             onChangeText={ctrl.setOrderNote}
             multiline
             numberOfLines={3}
+            returnKeyType="done"
+            submitBehavior="blurAndSubmit"
             accessibilityLabel={t('eatkcal.v2.checkout.note')}
             style={[styles.textarea, ekType.b15, { backgroundColor: c.line, color: c.ink }]}
           />

@@ -30,6 +30,7 @@ import type { ScanEstimate } from '../types';
 import { barcodeEstimate, type OffPer100 } from '../barcode/off';
 import { MealMenuPopover } from '../../../gun/home/MealMenuPopover';
 import type { Rect } from '../../../gun/home/popoverGeometry';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 const PORTIONS = [0.5, 1, 1.5];
 const MEAL_CYCLE: ClientMealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -160,9 +161,7 @@ export default function FinBarcodeResult({
         pointerEvents="box-none"
       >
         <View style={[styles.sheet, { backgroundColor: t.color.bg }]}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
+          <ScrollView {...SCROLL_KEYBOARD}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.sheetPad}
           >

@@ -60,6 +60,7 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { unregisterPushToken } from '../core/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getCardsFeatureStatus } from '../lib/cards';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -334,8 +335,7 @@ export default function ProfileScreen() {
 
   return (
     <ScreenContainer edges={['top']}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={[
           styles.contentContainer,
           { paddingTop: insets.top > 0 ? 0 : 8, paddingBottom: insets.bottom + TAB_BAR_TOTAL + 24 },

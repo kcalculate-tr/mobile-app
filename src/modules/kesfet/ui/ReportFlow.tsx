@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppText, fontFamily, haptic, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { REPORT_REASONS, type ReportReason } from './format';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const NOTE_MAX = 300;
 
@@ -147,7 +148,7 @@ export function ReportModal({
                 <LineIcon name="x" color={t.color.ink} />
               </Pressable>
             </View>
-            <ScrollView contentContainerStyle={{ paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+            <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 120 }}>
               <AppText variant="body" tone="secondary" style={styles.lead}>
                 {tr('kesfet.report.lead')}
               </AppText>
@@ -225,7 +226,7 @@ export function ReportModal({
           </>
         ) : (
           <>
-            <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+            <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 120 }}>
               <View style={styles.doneHead}>
                 <View style={[styles.doneCircle, { backgroundColor: t.color.ink }]}>
                   <LineIcon name="check" size={32} color={onInk} strokeWidth={2.5} />

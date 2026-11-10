@@ -14,7 +14,7 @@ import {
   TextInputProps,
   View,
 } from 'react-native';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path } from 'react-native-svg';
@@ -111,7 +111,7 @@ export function FormScreen({
       <Body
         style={styles.body}
         {...(scroll
-          ? { contentContainerStyle: { paddingHorizontal: 20, paddingBottom: 16 }, keyboardShouldPersistTaps: 'handled' as const, showsVerticalScrollIndicator: false }
+          ? { contentContainerStyle: { paddingHorizontal: 20, paddingBottom: 16 }, ...SCROLL_KEYBOARD, showsVerticalScrollIndicator: false }
           : {})}
       >
         <View style={scroll ? undefined : { flex: 1, paddingHorizontal: 20 }}>

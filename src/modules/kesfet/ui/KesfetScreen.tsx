@@ -82,6 +82,7 @@ import { postCardModel, postLink, roleBadgeKey, type ReportReason } from './form
 import { reportReasonText } from './ReportFlow';
 import { track } from '../../../lib/analytics';
 import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 function Header({
   onSearch,
@@ -828,14 +829,14 @@ export function KesfetScreen() {
       />
     );
     body = (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: listBottomPad }}>
+      <ScrollView {...SCROLL_KEYBOARD} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: listBottomPad }}>
         {feedHeader}
         {startEmpty}
       </ScrollView>
     );
   } else {
     body = (
-      <Animated.FlatList
+      <Animated.FlatList {...SCROLL_KEYBOARD}
         ref={listRef}
         data={posts}
         keyExtractor={(p) => p.id}

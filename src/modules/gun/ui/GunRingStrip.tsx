@@ -10,6 +10,7 @@ import { useT } from '../../../core/i18n';
 import { CachedImage } from '../../../components/CachedImage';
 import { Plus, User } from '../../../components/icons';
 import type { DayRing } from '../types';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const RING_SIZE = 60;
 const STROKE = 3;
@@ -26,7 +27,7 @@ export function GunRingStrip({ rings, onOpen }: GunRingStripProps) {
   if (rings.length === 0) return null;
 
   return (
-    <ScrollView
+    <ScrollView {...SCROLL_KEYBOARD}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}

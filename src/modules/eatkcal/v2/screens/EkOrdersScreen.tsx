@@ -27,6 +27,7 @@ import {
   type OrdersFilter,
 } from '../model/orders';
 import { fetchOrdersForList } from '../model/ordersData';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 const FILTER_KEY: Record<OrdersFilter, string> = {
   all: 'eatkcal.v2.orders.filter_all',
@@ -112,7 +113,7 @@ export default function EkOrdersScreen() {
     >
       {/* Filtre çipleri — veri varken (boş durumda panoda çip yok). */}
       {!loading && !failed && view !== 'empty' ? (
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chips}

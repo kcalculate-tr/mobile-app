@@ -13,6 +13,7 @@ import { formatPrice } from '../../../lib/money';
 import { chartBars, weekdayIndex } from '../model';
 import type { CoachCard } from '../types';
 import { BOWL, LIME, LIME_INK, useCoachTones } from './parts';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type MealCard = Extract<CoachCard, { type: 'meal_suggestion' }>;
 type RecipeCard = Extract<CoachCard, { type: 'recipe' }>;
@@ -72,7 +73,7 @@ function Meals({ cards, animate, onAdd }: { cards: MealCard[]; animate: boolean;
   const { t: tr } = useT();
   const entering = useEnter(0);
   const inner = (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mealsRow} accessibilityLabel={tr('coach.meals_a11y')} testID="coach-meals">
+    <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mealsRow} accessibilityLabel={tr('coach.meals_a11y')} testID="coach-meals">
       {cards.map((c, i) => (
         <Meal key={`${c.name}-${i}`} card={c} index={i} onAdd={onAdd} />
       ))}

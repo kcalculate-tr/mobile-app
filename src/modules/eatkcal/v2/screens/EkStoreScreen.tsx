@@ -33,6 +33,7 @@ import { vitrinYorumlariniGetir, type VitrinYorumu } from '../../../../lib/socia
 import { getSupabaseClient } from '../../../../core/supabase';
 import { useCartStore } from '../../../../store/cartStore';
 import { filterByCategory, storeCategories } from '../model/homeData';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 type R = RouteProp<EkV2ParamList, 'EkStore'>;
 /** YALNIZ __DEV__ vitrini (FinEkReviews): sheet açık başlar; özet/alt puan örnek veriyle. */
@@ -150,7 +151,7 @@ export default function EkStoreScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-store">
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         style={styles.fill}
         stickyHeaderIndices={chips.length > 0 ? [2] : undefined}
         showsVerticalScrollIndicator={false}
@@ -202,7 +203,7 @@ export default function EkStoreScreen() {
         {/* 2 — Yapışkan kategori çipleri */}
         {chips.length > 0 ? (
           <View style={[styles.sticky, { backgroundColor: c.bg, borderBottomColor: c.line }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
               <CategoryPill label={t('eatkcal.v2.store.all')} selected={category == null} onPress={() => setCategory(null)} />
               {chips.map((n) => (
                 <CategoryPill key={n} label={n} selected={category === n} onPress={() => setCategory(n)} />

@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps } from 'react-native';
 import { Eye, EyeSlash } from '../icons';
 import { sportive } from '../../theme/sportive';
-import KeyboardAccessory from '../KeyboardAccessory';
 
 interface Props extends TextInputProps {
   label: string;
@@ -12,8 +11,6 @@ interface Props extends TextInputProps {
 
 export const GlassInput: React.FC<Props> = ({ label, secure, error, ...rest }) => {
   const [hidden, setHidden] = useState(secure);
-  // Bu instance'a özel benzersiz aksesuar ID'si (duplicate nativeID çakışması yok).
-  const uniqueAccessoryId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
 
   // QuickType predictive bar'ı ("Ben/Tamam/Sen") tüm alanlarda kapat; ama email,
   // şifre (Keychain) ve telefon autofill'ini KORU. Caller bir prop verdiyse (??)
@@ -47,7 +44,6 @@ export const GlassInput: React.FC<Props> = ({ label, secure, error, ...rest }) =
           spellCheck={resolvedSpellCheck}
           autoComplete={resolvedAutoComplete}
           textContentType={resolvedTextContentType}
-          inputAccessoryViewID={Platform.OS === 'ios' ? uniqueAccessoryId : undefined}
           style={styles.input}
           placeholderTextColor={sportive.colors.textMuted}
           selectionColor={sportive.colors.accent}
@@ -60,7 +56,6 @@ export const GlassInput: React.FC<Props> = ({ label, secure, error, ...rest }) =
       </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {/* iOS native "Kapat" aksesuarı, input ile aynı hiyerarşide (benzersiz ID). */}
-      <KeyboardAccessory nativeID={uniqueAccessoryId} />
     </View>
   );
 };

@@ -56,6 +56,7 @@ import { loadRecentSearches, saveRecentSearches } from '../search/recentStorage'
 import type { SearchFollowState, SearchPost, SearchProfile, SearchResults, SearchScope } from '../search/types';
 import { Avatar } from './Avatar';
 import { roleBadgeKey } from './format';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // FinSearch renkleri — tema token'ı olmayan üç ara ton (tasarım t.track/t.seg/t.line2/t.ph).
 function palette(isDark: boolean) {
@@ -344,11 +345,9 @@ export function SearchScreen({
         })}
       </View>
 
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         style={styles.body}
         contentContainerStyle={{ paddingBottom: bottomInset ?? insets.bottom + 24 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {view === 'recent' ? (

@@ -21,7 +21,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { useTheme, useReducedMotion, fontFamily, haptic, Button, DURATION, RN_CURVE } from '../../../../core/design';
@@ -102,11 +102,10 @@ export function EkScreen({
     >
       {header}
       {scroll ? (
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           ref={scrollRef}
           style={styles.fill}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={16}

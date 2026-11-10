@@ -35,6 +35,7 @@ import {
   mockAiScanClient,
   type AiScanOutcome,
 } from '../modules/ai';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 /**
  * Keşfet ve profil (veri) — YALNIZ __DEV__ deneme ekranı.
@@ -66,7 +67,7 @@ export default function FeedDataLabScreen() {
 
   return (
     <I18nProvider forceLang={lang}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.content}>
         <Text style={styles.h1}>Keşfet ve profil (veri)</Text>
         <Text style={styles.sub}>Yalnız geliştirme · veri katmanı denemesi</Text>
 

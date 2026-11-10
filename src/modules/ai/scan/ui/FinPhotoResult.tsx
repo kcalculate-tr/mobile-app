@@ -73,6 +73,7 @@ function useSheetEnter() {
 }
 
 import { ScanNoteRow } from './ScanNote';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function FinPhotoResult({
   estimate,
@@ -304,7 +305,7 @@ export default function FinPhotoResult({
 
       <Animated.View style={[styles.sheet, { backgroundColor: k.sheet }, sheetIn]}>
         <View style={[styles.handle, { backgroundColor: k.line2 }]} />
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
           <View style={styles.pad}>
             <AppText tone="secondary" style={styles.cap}>
               {tr('ai_scan.estimate_total')}
@@ -729,7 +730,7 @@ function MissingFoodSheet({
               </Pressable>
             </View>
           ) : (
-            <ScrollView style={styles.mfList} keyboardShouldPersistTaps="handled">
+            <ScrollView {...SCROLL_KEYBOARD} style={styles.mfList}>
               {busy ? <ActivityIndicator style={{ marginTop: 12 }} color={t.color.ink} /> : null}
               {items.map((p) => (
                 <Pressable key={p.id} onPress={() => onPick(productRow(p))} accessibilityRole="button" style={[styles.mfRow, { borderTopColor: k.line }]}>

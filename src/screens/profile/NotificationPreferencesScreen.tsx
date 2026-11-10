@@ -21,6 +21,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { supabase } from '../../core/supabase';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -177,8 +178,7 @@ export default function NotificationPreferencesScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
       >

@@ -30,6 +30,7 @@ import { Icon, type IconName } from './icons';
 import { BottomSheet } from './BottomSheet';
 import { BlockConfirm, ReportModal, reportReasonText } from './ReportFlow';
 import { relativeTime, type UiLang } from './format';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const MAX_LEN = 500;
 
@@ -286,7 +287,7 @@ export function CommentsSheet({
                 </AppText>
               </View>
             ) : (
-              <FlatList
+              <FlatList {...SCROLL_KEYBOARD}
                 data={ordered}
                 keyExtractor={(it) => it.c.id}
                 renderItem={({ item }) => (
@@ -307,7 +308,6 @@ export function CommentsSheet({
                 onEndReached={() => {
                   if (hasMore && !loadingMore) void useCommentsStore.getState().loadMore();
                 }}
-                keyboardShouldPersistTaps="handled"
                 style={styles.list}
               />
             )}

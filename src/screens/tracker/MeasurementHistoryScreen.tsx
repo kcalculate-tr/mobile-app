@@ -16,6 +16,7 @@ import { useAuth } from '../../core/AuthContext';
 import { getSupabaseClient } from '../../core/supabase';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -121,8 +122,7 @@ export default function MeasurementHistoryScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={[s.content, { paddingBottom: Math.max(32, insets.bottom + 24) }]}
         showsVerticalScrollIndicator={false}
       >

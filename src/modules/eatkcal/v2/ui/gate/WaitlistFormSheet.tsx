@@ -20,7 +20,7 @@ import {
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { Check, X } from '../../../../../components/icons';
-import { useSheetKeyboard } from '../../../../../core/design/keyboard';
+import { useSheetKeyboard, SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 import { ekType, useEk } from '../kit';
 import { isDraftComplete, type WaitlistDraft, type WaitlistKind } from '../../model/waitlist';
 import { submitWaitlist } from './waitlistSend';
@@ -186,7 +186,7 @@ export function WaitlistFormSheet({
             </Animated.View>
           ) : (
             <>
-              <ScrollView style={styles.fill} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView {...SCROLL_KEYBOARD} style={styles.fill} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
                 {fields.map((f) => (
                   <View key={f.key} style={styles.fieldWrap}>
                     <Text style={[ekType.c13s, { color: c.secondary }]}>
@@ -204,6 +204,8 @@ export function WaitlistFormSheet({
                       autoCapitalize={f.caps ?? 'sentences'}
                       autoCorrect={false}
                       multiline={f.multiline}
+                      returnKeyType="done"
+                      submitBehavior={f.multiline ? 'blurAndSubmit' : undefined}
                       accessibilityLabel={f.label}
                       accessibilityHint={f.req ? undefined : t('eatkcal.v2.gate.form_opt').trim()}
                       style={[

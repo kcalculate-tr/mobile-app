@@ -10,6 +10,8 @@ import { useT } from '../../../core/i18n';
 import { ArrowUp, Microphone, Sparkle, Stop } from '../../../components/icons';
 import { abortListening, requestSpeechPermission, speechAvailable, startListening, stopListening } from '../../ai/scan/voice/speech';
 import { Disclaimer, LIME, LIME_INK, useCoachTones } from './parts';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { keepKeyboardOnTouch } from '../../../core/design/keyboardDismiss';
 
 export function Chips({ items, onPick, vertical }: { items: string[]; onPick: (q: string) => void; vertical?: boolean }) {
   const { t: tr } = useT();
@@ -38,7 +40,7 @@ export function Chips({ items, onPick, vertical }: { items: string[]; onPick: (q
     );
   }
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow} accessibilityLabel={tr('coach.chips_a11y')} testID="coach-chips">
+    <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow} accessibilityLabel={tr('coach.chips_a11y')} testID="coach-chips">
       {items.map(chip)}
     </ScrollView>
   );
@@ -144,6 +146,8 @@ export function Composer({
                 onSend(draft.trim(), 'text');
               }}
               accessibilityRole="button"
+              // Sohbet sürer: Gönder klavyeyi kapatmaz (dışarı dokunma kuralının istisnası).
+              onTouchStart={keepKeyboardOnTouch}
               accessibilityLabel={tr('coach.send')}
               accessibilityState={{ disabled: !canSend }}
               style={[styles.round, { backgroundColor: canSend ? LIME : c.chip }]}

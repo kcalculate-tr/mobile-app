@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CONTRACTS } from '../../data/contractsData';
 import { normalizeLegalSlug } from '../../lib/legal/slugs';
 import { RootStackParamList } from '../../navigation/types';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type ContractsRoute = RouteProp<RootStackParamList, 'ProfileContracts'>;
 
@@ -50,11 +51,10 @@ export default function ContractsScreen() {
       </View>
 
       <View style={s.tabBar}>
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.tabScrollContent}
-          keyboardShouldPersistTaps="handled"
         >
           {CONTRACTS.map((c, i) => {
             const active = i === activeIndex;
@@ -73,8 +73,7 @@ export default function ContractsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         style={{ flex: 1 }}
         contentContainerStyle={[s.scroll, { paddingBottom: Math.max(40, insets.bottom + 20) }]}
         showsVerticalScrollIndicator={false}

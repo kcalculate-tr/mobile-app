@@ -66,6 +66,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginV2 from '../modules/onboarding/v2/LoginV2';
 import SignupAIFlowV2 from '../modules/onboarding/v2/SignupAIFlowV2';
 import SignupEatFlowV2 from '../modules/onboarding/v2/SignupEatFlowV2';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const VitrinStack = createNativeStackNavigator();
 /** v2 ekranları useRoute/useNavigation kullanır → tek ekranlı mini yığın içinde aç (YALNIZ vitrin). */
@@ -123,7 +124,7 @@ function PostCardScene({ variant }: { variant?: string }) {
   );
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingTop: insets.top + 12 }}>
         <PostCard {...({ model, index: 0, isVisible: true, showComment: true } as any)} />
       </ScrollView>
     </Backdrop>
@@ -324,7 +325,7 @@ function EkErrorsScene() {
   ].filter(Boolean) as any[];
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 8, gap: 12 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 8, gap: 12 }}>
         {/* G15-S5: FinEkErrors bir katalog panosu — Final'deki sayfa başlığı + açıklama (yalnız vitrin). */}
         <EkErrorsHead />
         {errors.map((e, i) => (

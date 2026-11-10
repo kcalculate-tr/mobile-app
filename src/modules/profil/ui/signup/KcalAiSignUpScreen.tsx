@@ -489,6 +489,8 @@ function SignUpFlow({
             placeholder={tt('profil.bio_placeholder')}
             placeholderTextColor={t.color.secondary}
             multiline
+            returnKeyType="done"
+            submitBehavior="blurAndSubmit"
             style={[styles.textField, styles.bioField, { borderColor: t.color.line, color: t.color.ink }]}
           />
           <AppText variant="caption" tone="secondary">

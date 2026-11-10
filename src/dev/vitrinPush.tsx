@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../core/design';
 import { useT } from '../core/i18n';
 import { FIN_PUSH_ACTIONS, charCount, renderFinPush, type FinPushInput } from '../core/push/finPush';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 // Örnek değerler en uzun yer tutucu boyunda (pano "Sayım kuralı"); kişi uydurulmaz.
 const SAMPLES: { head: string; input: FinPushInput }[] = [
@@ -22,7 +23,7 @@ export function PushPreviewScene() {
   const insets = useSafeAreaInsets();
   const card = { backgroundColor: t.color.surface, borderColor: t.color.line };
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.color.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, padding: 16, gap: 18 }}>
+    <ScrollView {...SCROLL_KEYBOARD} style={{ flex: 1, backgroundColor: t.color.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, padding: 16, gap: 18 }}>
       {SAMPLES.map(({ head, input }) => {
         const m = renderFinPush(input, lang === 'en' ? 'en' : 'tr');
         const actions = FIN_PUSH_ACTIONS[input.kind];

@@ -20,7 +20,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { CoachRecipeButton } from '../../coach/ui/entries';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -421,7 +421,7 @@ export function PostDetailScreen({
     <View style={[styles.screen, { backgroundColor: t.color.bg }]}>
       {header}
       <KeyboardAvoidingView style={styles.fill} behavior={SCREEN_KEYBOARD_BEHAVIOR}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.scroll}>
           <View style={styles.pad}>
             {/* Yazar */}
             <Pressable

@@ -40,6 +40,7 @@ import {
   type MotionMapRow,
   type ColorScheme,
 } from '../core/design';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 /**
  * Tasarım vitrini — YALNIZ __DEV__.
@@ -98,7 +99,7 @@ function ShowcaseBody({
 
   return (
     <View style={{ flex: 1, backgroundColor: t.color.bg }}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.content}>
         <AppText variant="display">Tasarım vitrini</AppText>
         <AppText variant="caption" tone="secondary" style={styles.sub}>
           Yalnız geliştirme · Reanimated hareket motoru

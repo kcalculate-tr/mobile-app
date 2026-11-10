@@ -28,6 +28,7 @@ import { OnbButton } from '../components/pieces';
 import { useOnb } from '../components/onbTheme';
 import { ConsentBlock } from './ConsentBlock';
 import { noteConsentSheet } from '../../../lib/permissions/sheetSession';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
@@ -171,7 +172,7 @@ export function ConsentSheet({
               <View style={styles.xHit} />
             )}
           </View>
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          <ScrollView {...SCROLL_KEYBOARD} style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
             {isAi ? (
               <View style={[styles.aiIcon, { backgroundColor: nested }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
                 <Sparkle size={26} color={P.ink} />

@@ -30,6 +30,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { COLORS, TYPOGRAPHY } from '../../constants/theme';
 import { useAuth } from '../../core/AuthContext';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../utils/deliveryDays';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type OrderDetailRouteProp = RouteProp<RootStackParamList, 'OrderDetail'>;
 type OrderDetailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -513,8 +514,7 @@ export default function OrderDetailScreen() {
         </View>
       ) : order == null ? null : (
         <>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
+          <ScrollView {...SCROLL_KEYBOARD}
             contentContainerStyle={[s.scroll, { paddingBottom: Math.max(100, insets.bottom + 80) }]}
             showsVerticalScrollIndicator={false}
           >

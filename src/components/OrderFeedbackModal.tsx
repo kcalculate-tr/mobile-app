@@ -19,6 +19,7 @@ import { animateListChange } from '../utils/layoutAnimation';
 import { fetchReviewBannerUrl } from '../lib/orderFeedback';
 import type { FeedbackItem, ItemFeedbackMap } from '../lib/orderFeedback';
 import { fetchBrand } from '../lib/brands';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const RATING_LABELS = ['', 'Çok kötü', 'Kötü', 'İdare eder', 'İyi', 'Harika'];
 
@@ -143,9 +144,8 @@ export default function OrderFeedbackModal({
             {items.length > 0 ? (
               <View style={styles.itemsBlock}>
                 <Text style={styles.itemsTitle}>Ürünler nasıldı?</Text>
-                <ScrollView
+                <ScrollView {...SCROLL_KEYBOARD}
                   style={styles.itemsScroll}
-                  keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
                   {items.map((it) => {

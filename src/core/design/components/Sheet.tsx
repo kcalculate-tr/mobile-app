@@ -17,7 +17,7 @@ import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
 import { X as XIcon } from '../../../components/icons';
 import { haptic, REDUCED, RN_CURVE, SHEET, useReducedMotion } from '../motion';
-import { sheetMaxHeight, useSheetKeyboard } from '../keyboard';
+import { sheetMaxHeight, useSheetKeyboard, SCROLL_KEYBOARD } from '../keyboard';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -205,11 +205,9 @@ export function Sheet({
           </View>
 
           {scroll ? (
-            <ScrollView
+            <ScrollView {...SCROLL_KEYBOARD}
               style={styles.scroll}
               contentContainerStyle={[styles.body, contentStyle]}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               testID={testID ? `${testID}-scroll` : 'sheet-scroll'}
             >

@@ -25,6 +25,7 @@ import {
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { getPendingModificationsForUser, type OrderModificationType } from '../../lib/orders';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 const MOD_SHORT_LABELS: Record<OrderModificationType, string> = {
   cancel: 'İptal Talebi',
@@ -195,8 +196,7 @@ export default function OrdersScreen() {
       </View>
 
       {/* Tabs */}
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand.green} />}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -250,8 +250,7 @@ export default function OrdersScreen() {
           ) : null}
         </View>
       ) : (
-        <ScrollView
-        keyboardShouldPersistTaps="handled"
+        <ScrollView {...SCROLL_KEYBOARD}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand.green} />}
           contentContainerStyle={[s.list, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
           showsVerticalScrollIndicator={false}

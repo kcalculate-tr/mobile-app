@@ -17,6 +17,7 @@ import { GunRingStrip, GunViewer, GunEmpty } from '../modules/gun/ui';
 import { setProfilClient, resetProfilClient, createMockProfilClient } from '../modules/profil';
 import { PrivacySheet } from '../modules/profil/ui';
 import { RootStackParamList } from '../navigation/types';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -53,7 +54,7 @@ export default function GunProfilUiLabScreen() {
   return (
     <ThemeProvider>
       <I18nProvider>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.content}>
           <Text style={styles.h1}>Gün halkası / profil (UI)</Text>
 
           <Section title="GunRingStrip">

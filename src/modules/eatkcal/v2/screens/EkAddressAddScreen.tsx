@@ -23,7 +23,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { haptic, FinSkeletonBlock } from '../../../../core/design';
@@ -414,9 +414,8 @@ export default function EkAddressAddScreen() {
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-address-add">
       <KeyboardAvoidingView style={styles.fill} behavior={SCREEN_KEYBOARD_BEHAVIOR}>
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           style={styles.fill}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         >

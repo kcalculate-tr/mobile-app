@@ -21,6 +21,7 @@ import { COLORS } from '../../constants/theme';
 import { deleteSavedCard, getCardsFeatureStatus, setDefaultCard, SavedCard, syncSavedCards } from '../../lib/cards';
 import { consumeCardsStale } from '../../lib/cardVerification';
 import { haptic } from '../../utils/haptics';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type SavedCardsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -155,8 +156,7 @@ export default function SavedCardsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.content, { paddingBottom: Math.max(32, insets.bottom + 24) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}

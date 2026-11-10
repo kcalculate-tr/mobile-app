@@ -33,7 +33,7 @@ import { linking } from './src/navigation/linking';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
 import { checkForceUpdate } from './src/lib/forceUpdate';
-import KeyboardToolbar from './src/components/KeyboardToolbar';
+import KeyboardDismissRoot from './src/core/design/KeyboardDismissRoot';
 import { initSentry, sentryHazir, Sentry } from './src/lib/sentry';
 import { setupGlobalErrorHandler, setupAppStateListener } from './src/lib/reliability';
 import { startMetrics, track, type ClientEventName } from './src/lib/analytics';
@@ -173,13 +173,13 @@ function App() {
   (Text as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
   (TextInput as any).defaultProps = (TextInput as any).defaultProps ?? {};
   (TextInput as any).defaultProps.style = { fontFamily: 'PlusJakartaSans_400Regular' };
-  // NOT: inputAccessoryViewID artık global defaultProps ile DEĞİL, her input'un
-  // kendi benzersiz nativeID'siyle lokalde veriliyor (React 19/Fabric'te defaultProps
-  // enjeksiyonu güvenilmez + duplicate ID çakışması). Bkz. FormField/GlassInput + ekranlar.
+  // G27-S1: klavye aksesuar barı ("Kapat") yok; kapanış KeyboardDismissRoot + SCROLL_KEYBOARD.
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <SafeAreaProvider style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
+        {/* G27-S1: "Kapat" barı yok — klavye dışına dokununca kapanır (Modal/sheet/portal dahil). */}
+        <KeyboardDismissRoot>
         <PortalProvider>
           {/* i18n: cihaz dilini algılar + kullanıcı tercihini AsyncStorage'dan
               yükler. Mevcut ekranların metni DEĞİŞMEZ (onlar sabit TR metin
@@ -207,15 +207,12 @@ function App() {
               </AppSchemeGate>
             </FlagsProvider>
           </AuthProvider>
-          {/* Global "Kapat" barı — her iki platformda. Klavye yüksekliğini takip
-              eden absolute JS overlay (native InputAccessoryView Fabric'te render
-              olmadığı için kanıtlanmış çalışan yola dönüldü). Tüm ekranları kapsar. */}
-          <KeyboardToolbar />
           {/* Kök durum çubuğu G21-S1 md.3'ten beri AppSchemeGate içinde: eski kabukta
               bugünkü gibi "dark" (açık zeminde koyu ikon), yeni kabukta temaya göre
               ("auto"). Koyu zeminli ekranlar kendi StatusBar'larını tanımlamaya devam eder. */}
           </I18nProvider>
         </PortalProvider>
+        </KeyboardDismissRoot>
       </SafeAreaProvider>
     </ErrorBoundary>
   );

@@ -10,6 +10,7 @@ import { yorumTarihi, type VitrinYorumu } from '../../../../../lib/socialProofRu
 import { fontFamily, haptic } from '../../../../../core/design';
 import { EkRatingLine, EkStars, ekType, money, useEk } from '../kit';
 import { cardKcal, cardPrice } from '../../model/homeData';
+import { SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 
 /** Kart üstü kcal rozeti / fotoğraf zemini — açık temada beyaz %90, koyuda koyu yüzey. */
 function useOverlayBg() {
@@ -20,7 +21,7 @@ function useOverlayBg() {
 /** Yatay kayan satır (.hs) — 16 kenar boşluğu, 10 aralık. */
 export function HRow({ children, label }: { children: React.ReactNode; label?: string }) {
   return (
-    <ScrollView
+    <ScrollView {...SCROLL_KEYBOARD}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.hrow}

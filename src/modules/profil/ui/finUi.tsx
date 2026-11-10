@@ -30,7 +30,7 @@ import { FinErrorReveal } from '../../../core/design/components/FinTransitions';
 import { SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 import type { Theme } from '../../../core/design';
 import { fontFamily } from '../../../core/design/typography';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { ArrowLeft, CaretRight } from '../../../components/icons';
 
 /** Final panolarında geçen ama anlamsal temada olmayan yardımcı tonlar. */
@@ -92,13 +92,11 @@ export function FinScreen({
   if (scroll) {
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: t.color.bg }} behavior={FIN_SCREEN_KEYBOARD}>
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           style={{ flex: 1, backgroundColor: t.color.bg }}
           contentContainerStyle={[{ paddingBottom: insets.bottom + 40 }, contentStyle]}
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControl}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
           automaticallyAdjustKeyboardInsets
           testID="fin-screen-scroll"
         >
@@ -122,8 +120,7 @@ export function FinScreen({
  */
 export const FIN_SCREEN_KEYBOARD = Platform.OS === 'android' ? SCREEN_KEYBOARD_BEHAVIOR : undefined;
 export const FIN_SCROLL_KEYBOARD = {
-  keyboardShouldPersistTaps: 'handled',
-  keyboardDismissMode: 'interactive',
+  ...SCROLL_KEYBOARD,
   automaticallyAdjustKeyboardInsets: true,
 } as const;
 

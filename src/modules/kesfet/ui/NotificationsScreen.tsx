@@ -21,6 +21,7 @@ import type { SocialNotification } from '../types';
 import { Avatar } from './Avatar';
 import { relativeTime, type UiLang } from './format';
 import { NotificationsError } from './NotificationsError';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // Final FinNotifications rozet ikonları (Phosphor fill, 256 viewBox).
 const BADGE_PATH = {
@@ -381,7 +382,7 @@ export default function NotificationsScreen() {
           </AppText>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
           {report.length > 0 ? (
             <>
               <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>

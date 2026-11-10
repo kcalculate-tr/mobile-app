@@ -56,6 +56,7 @@ import {
   heading,
 } from '../finUi';
 import { SectionSlide } from '../../../../core/design/sectionSlide';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -402,7 +403,7 @@ function MacroTab({
             </Text>
           </FinCard>
         ) : (
-          <ScrollView
+          <ScrollView {...SCROLL_KEYBOARD}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}

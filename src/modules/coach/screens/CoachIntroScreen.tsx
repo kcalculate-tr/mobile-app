@@ -15,6 +15,7 @@ import { markIntroSeen } from '../access';
 import { COACH_DAILY_FALLBACK, COACH_TRIAL_FALLBACK } from '../model';
 import type { CoachChatParams } from '../types';
 import { CoachGlass, Disclaimer, LIME, LIME_INK, useCoachTones } from '../ui/parts';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Nav = { goBack: () => void; replace?: (n: string, p?: object) => void; navigate: (n: string, p?: object) => void };
 
@@ -38,7 +39,7 @@ export default function CoachIntroScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.card }]} testID="coach-intro">
-      <ScrollView contentContainerStyle={[styles.body, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.top}>
           <Pressable onPress={() => nav.goBack()} accessibilityRole="button" accessibilityLabel={tr('coach.close')} style={[styles.close, { backgroundColor: c.chip }]} testID="coach-intro-close">
             <X size={20} color={c.text} />

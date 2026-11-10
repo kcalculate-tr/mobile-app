@@ -27,6 +27,7 @@ import {
 } from '../../../lib/macros';
 import { useAuth } from '../../../core/AuthContext';
 import { COLORS } from '../../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type OrderSuccessRoute = RouteProp<RootStackParamList, 'OrderSuccess'>;
 type OrderSuccessNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -154,8 +155,7 @@ export default function OrderSuccessScreen() {
 
   return (
     <ScreenContainer style={styles.container}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 20 },

@@ -11,6 +11,7 @@ import { BottomSheet } from './BottomSheet';
 import { Avatar } from './Avatar';
 import { MEAL_OPTIONS, PORTION_OPTIONS, PORTION_LABELS, scaleMacros } from './format';
 import type { MealCard, MealType } from '../types';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 function Chip({
   label,
@@ -94,7 +95,7 @@ export function AddToDaySheet({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={tr('kesfet.add_to_day')}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView {...SCROLL_KEYBOARD} showsVerticalScrollIndicator={false}>
         {/* Başlık */}
         <View style={styles.header}>
           <View style={[styles.headThumb, { backgroundColor: t.color.surface }]}>

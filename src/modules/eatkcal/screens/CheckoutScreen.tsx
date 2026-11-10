@@ -28,7 +28,6 @@ import { ArrowLeft, Clock, CreditCard, Lock, House, Storefront, Lightning, Calen
 import ScreenContainer from '../../../components/ScreenContainer';
 import Selectable from '../../../core/ui/Selectable';
 import { useSectionTransition } from '../../../hooks/useSectionTransition';
-import KeyboardAccessory from '../../../components/KeyboardAccessory';
 import AnimatedNumberText from '../../../components/AnimatedNumberText';
 import AddressVerificationSheet from '../../../components/checkout/AddressVerificationSheet';
 import BranchPicker from '../../../components/checkout/BranchPicker';
@@ -98,6 +97,7 @@ import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../../../
 import DeliveryZonesSheet from '../../../components/DeliveryZonesSheet';
 import { formatDeliveryDaysFull, isDeliveryDay, DAY_NAMES_FULL } from '../../../utils/deliveryDays';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -369,9 +369,6 @@ function TrustBadges({ divider = true }: { divider?: boolean }) {
 }
 
 export default function CheckoutScreen() {
-  // Ekran-seviyesi benzersiz aksesuar ID'si (tek InputAccessoryView, çakışma yok).
-  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
-  const iosAccId = Platform.OS === 'ios' ? accId : undefined;
   const navigation = useNavigation<CheckoutNavigationProp>();
   const route = useRoute<CheckoutRouteProp>();
   const insets = useSafeAreaInsets();
@@ -2020,7 +2017,7 @@ export default function CheckoutScreen() {
           <View style={{ width: 42 }} />
         </View>
 
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={{
@@ -2030,7 +2027,6 @@ export default function CheckoutScreen() {
             gap: SPACING.md,
             backgroundColor: '#f6f6f6',
           }}
-          keyboardShouldPersistTaps="handled"
         >
           {step === 'summary' ? (<>
           {/* ── 1. Teslimat Yöntemi + Zamanı ──
@@ -2175,8 +2171,7 @@ export default function CheckoutScreen() {
                           <Text style={InfoPill.strong}>{formatDeliveryDaysFull(deliveryDays)}</Text>
                         </InfoPill>
                       ) : null}
-                      <FlatList
-                        keyboardShouldPersistTaps="handled"
+                      <FlatList {...SCROLL_KEYBOARD}
                         data={scheduledDates}
                         keyExtractor={(item) => item.toISOString()}
                         horizontal
@@ -2465,7 +2460,6 @@ export default function CheckoutScreen() {
               autoCorrect={false}
               textContentType="name"
               autoComplete="name"
-              inputAccessoryViewID={iosAccId}
             />
             {alanHatalari.ad ? <Text style={styles.alanHataText}>{alanHatalari.ad}</Text> : null}
 
@@ -2482,7 +2476,6 @@ export default function CheckoutScreen() {
               keyboardType="phone-pad"
               textContentType="telephoneNumber"
               autoComplete="tel"
-              inputAccessoryViewID={iosAccId}
             />
             {alanHatalari.tel ? <Text style={styles.alanHataText}>{alanHatalari.tel}</Text> : null}
 
@@ -2504,7 +2497,6 @@ export default function CheckoutScreen() {
               autoCorrect={false}
               textContentType="emailAddress"
               autoComplete="email"
-              inputAccessoryViewID={iosAccId}
             />
             {alanHatalari.eposta ? <Text style={styles.alanHataText}>{alanHatalari.eposta}</Text> : null}
           </View>
@@ -2522,10 +2514,11 @@ export default function CheckoutScreen() {
               spellCheck={false}
               autoComplete="off"
               textContentType="none"
-              inputAccessoryViewID={iosAccId}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
+              returnKeyType="done"
+              submitBehavior="blurAndSubmit"
             />
             <Text style={styles.noteCounter}>{orderNote.length}/300</Text>
           </View>
@@ -2799,20 +2792,20 @@ export default function CheckoutScreen() {
               <Text style={styles.cardTitle}>Kart Bilgileri</Text>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Numarası</Text>
-                <TextInput style={styles.cardInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_NUMBER', payload: formatCardNumber(v) })} keyboardType="number-pad" maxLength={19} returnKeyType="next" textContentType="creditCardNumber" autoComplete="cc-number" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_NUMBER', payload: formatCardNumber(v) })} keyboardType="number-pad" maxLength={19} returnKeyType="next" textContentType="creditCardNumber" autoComplete="cc-number" placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
-                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} autoComplete="off" textContentType="oneTimeCode" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
+                <TextInput style={styles.cardInput} placeholder="AD SOYAD" value={cardHolder} onChangeText={(v) => dispatchPay({ type: 'SET_CARD_HOLDER', payload: v.toUpperCase() })} autoCapitalize="characters" autoCorrect={false} spellCheck={false} autoComplete="off" textContentType="oneTimeCode" placeholderTextColor={COLORS.text.tertiary} />
               </View>
               <View style={{ flexDirection: 'row', gap: SPACING.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Son Kullanım</Text>
-                  <TextInput style={styles.cardInput} placeholder="AA/YY" value={expiry} onChangeText={(v) => dispatchPay({ type: 'SET_EXPIRY', payload: formatExpiry(v) })} keyboardType="number-pad" maxLength={5} returnKeyType="next" autoComplete="cc-exp" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
+                  <TextInput style={styles.cardInput} placeholder="AA/YY" value={expiry} onChangeText={(v) => dispatchPay({ type: 'SET_EXPIRY', payload: formatExpiry(v) })} keyboardType="number-pad" maxLength={5} returnKeyType="next" autoComplete="cc-exp" placeholderTextColor={COLORS.text.tertiary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>CVV</Text>
-                  <TextInput style={styles.cardInput} placeholder="•••" value={cvv} onChangeText={(v) => dispatchPay({ type: 'SET_CVV', payload: v.replace(/\D/g, '').slice(0, 3) })} keyboardType="number-pad" maxLength={3} secureTextEntry returnKeyType="done" textContentType="creditCardSecurityCode" autoComplete="cc-csc" inputAccessoryViewID={iosAccId} placeholderTextColor={COLORS.text.tertiary} />
+                  <TextInput style={styles.cardInput} placeholder="•••" value={cvv} onChangeText={(v) => dispatchPay({ type: 'SET_CVV', payload: v.replace(/\D/g, '').slice(0, 3) })} keyboardType="number-pad" maxLength={3} secureTextEntry returnKeyType="done" textContentType="creditCardSecurityCode" autoComplete="cc-csc" placeholderTextColor={COLORS.text.tertiary} />
                 </View>
               </View>
             </View>
@@ -2910,7 +2903,6 @@ export default function CheckoutScreen() {
       </KeyboardAvoidingView>
 
       {/* iOS native "Kapat" aksesuarı — ekran-seviyesi benzersiz ID. */}
-      <KeyboardAccessory nativeID={accId} />
 
       {/* ── 3D Secure Modal ── */}
       <Modal visible={!!webViewHtml} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => dispatchPay({ type: 'SET_WEB_VIEW_HTML', payload: null })}>

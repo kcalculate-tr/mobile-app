@@ -14,6 +14,7 @@ import { BottomSheet } from './BottomSheet';
 import { Icon } from './icons';
 import { activityLimitError } from '../../gun/track/limits';
 import { trackEvent } from '../../gun/track/events';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const emptyDraft = (): ActivityDraft => ({ type: 'kosu', minutes: '', distanceKm: '', note: '' });
 
@@ -111,7 +112,7 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
       ) : null}
 
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} accessibilityLabel={tr('kesfet.activity.add')}>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" testID="activity-entry-scroll">
+        <ScrollView {...SCROLL_KEYBOARD} showsVerticalScrollIndicator={false} testID="activity-entry-scroll">
           <AppText variant="heading" style={styles.sheetTitle}>{tr('kesfet.activity.add')}</AppText>
           <View style={styles.chipWrap} accessibilityRole="radiogroup">
             {ACTIVITY_TYPES.map((at: ActivityType) => {

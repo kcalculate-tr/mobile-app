@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import KeyboardAccessory from '../../components/KeyboardAccessory';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +22,7 @@ import { getSupabaseClient } from '../../core/supabase';
 import { ticketMessage, ticketView, uploadSupportImages } from '../../lib/support/attachments';
 import { useAuth } from '../../core/AuthContext';
 import { COLORS } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 const TOPIC_OPTIONS = [
   'Sipariş Sorunu',
@@ -70,7 +70,6 @@ type Ticket = {
 };
 
 export default function SupportScreen() {
-  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -196,8 +195,8 @@ export default function SupportScreen() {
         </View>
       </View>
 
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchTickets(); setRefreshing(false); }} tintColor={COLORS.brand.green} />} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchTickets(); setRefreshing(false); }} tintColor={COLORS.brand.green} />} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           {/* Badge + Phone */}
           <View style={styles.headerRow}>
@@ -268,7 +267,6 @@ export default function SupportScreen() {
                   placeholder="Örn: KCAL-AB12CD"
                   placeholderTextColor={COLORS.text.tertiary}
                   autoCapitalize="characters"
-                  inputAccessoryViewID={accId}
                 />
               </View>
 
@@ -284,7 +282,6 @@ export default function SupportScreen() {
                   multiline
                   numberOfLines={5}
                   textAlignVertical="top"
-                  inputAccessoryViewID={accId}
                 />
               </View>
 
@@ -400,7 +397,6 @@ export default function SupportScreen() {
           )}
         </View>
       </ScrollView>
-      <KeyboardAccessory nativeID={accId} />
     </View>
   );
 }

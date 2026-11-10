@@ -14,6 +14,7 @@ import { Icon } from './icons';
 import { roleBadgeKey } from './format';
 import type { StarterItem } from '../starters';
 import type { SuggestedAccount } from './states';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 export function FeedStartEmpty({
   variant,
@@ -55,7 +56,7 @@ export function FeedStartEmpty({
             <AppText style={[styles.h3, { color: t.color.ink }]}>{tr('kesfet.ui.start_section')}</AppText>
             <AppText style={[styles.meta, { color: t.color.secondary }]}>{tr('kesfet.ui.start_section_meta')}</AppText>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+          <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {starters.map((s, i) => (
               <FinListEnter key={s.postId} index={i}>
                 <Pressable

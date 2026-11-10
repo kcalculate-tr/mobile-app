@@ -18,6 +18,7 @@ import { Sheet, haptic } from '../../../../../core/design';
 import { CaretDown, Check, House, MapPin, Storefront } from '../../../../../components/icons';
 import { ekType, useEk } from '../kit';
 import type { Option, TitleChip } from '../../model/addressModel';
+import { SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 
 /** Etiket (13) + dolgulu giriş (44, 12 köşe) — pano `label > input`. */
 export function AddressInput({
@@ -174,7 +175,7 @@ export function OptionPickerSheet({
   const { c } = useEk();
   return (
     <Sheet visible={visible} onClose={onClose} title={title} product="eat" maxHeightRatio={0.75}>
-      <ScrollView style={{ maxHeight: 480 }} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD} style={{ maxHeight: 480 }}>
         {options.map((o) => {
           const on = o.value === selected;
           return (

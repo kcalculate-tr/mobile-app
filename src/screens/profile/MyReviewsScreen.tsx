@@ -25,6 +25,7 @@ import { CaretLeft, ChatCircleDots, Star } from '../../components/icons';
 import { getSupabaseClient } from '../../core/supabase';
 import { useAuth } from '../../core/AuthContext';
 import { COLORS } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type ReviewRow = {
   id: number;
@@ -142,7 +143,7 @@ export default function MyReviewsScreen() {
           <ActivityIndicator color={COLORS.brand.green} />
         </View>
       ) : (
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
           refreshControl={

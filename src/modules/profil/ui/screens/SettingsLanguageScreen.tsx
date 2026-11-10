@@ -26,6 +26,7 @@ import {
 import { detectDeviceLang } from '../../../../core/i18n/detect';
 import { Check, DeviceMobile } from '../../../../components/icons';
 import { FinScreen, FinHeader, FinRowGroup, FinSectionLabel, bodyMedium, body } from '../finUi';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 function LangRow({
   first,
@@ -91,7 +92,7 @@ export default function SettingsLanguageScreen({ onBack }: { onBack: () => void 
   return (
     <FinScreen contentStyle={{ paddingTop: 0 }}>
       <FinHeader title={tr('profil.language')} onBack={onBack} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40, gap: 6 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40, gap: 6 }}>
         <FinSectionLabel>{tr('profil.lang_section')}</FinSectionLabel>
         <FinRowGroup>
           <LangRow

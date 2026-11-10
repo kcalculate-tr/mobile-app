@@ -39,6 +39,7 @@ import {
   macrosToKcal,
   validateCustomTargets,
 } from '../../lib/nutrition';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type NutritionProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -359,9 +360,8 @@ export default function NutritionProfileScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           contentContainerStyle={[s.content, { paddingBottom: Math.max(32, insets.bottom + 24) }]}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Hero — asil sayi HEDEF; BMR/TDEE onu besleyen ikincil metrikler */}

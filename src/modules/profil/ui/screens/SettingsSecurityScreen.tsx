@@ -47,6 +47,7 @@ import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { unregisterPushToken } from '../../../../core/notifications';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 function SecureField({
   label,
@@ -306,10 +307,9 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
             padding: 24,
           }}
         >
-          <ScrollView
+          <ScrollView {...SCROLL_KEYBOARD}
             style={{ width: '100%', maxHeight: '100%' }}
             contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-            keyboardShouldPersistTaps="handled"
             bounces={false}
           >
           <View

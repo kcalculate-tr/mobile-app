@@ -17,6 +17,7 @@ import { ArrowLeft, Check, Minus, Plus, Trash, PencilSimple, MapPin, Ticket, Pac
 import { ProductCard } from '../modules/eatkcal/v2/ui/home/cards';
 import { EkButton, EkCard, EkKV, money } from '../modules/eatkcal/v2/ui/kit';
 import { HomeInkToast } from '../screens/tracker/HomeInkToast';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const LONG = 'Izgara Tavuk Bonfile, Basmati Pilav ve Maş Fasulyeli Kase · Ekstra Sos';
 const PRICE = 12345.5;
@@ -320,7 +321,7 @@ export function StressScene({ kind }: { kind?: 'long' | 'xl' | 'en' | 'dark' }) 
   const t = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.color.bg }} contentContainerStyle={[styles.wrap, { paddingTop: insets.top }]}>
+    <ScrollView {...SCROLL_KEYBOARD} style={{ flex: 1, backgroundColor: t.color.bg }} contentContainerStyle={[styles.wrap, { paddingTop: insets.top }]}>
       {kind === 'xl' ? <XL /> : kind === 'en' ? <EN /> : kind === 'dark' ? <Dark /> : <Long />}
     </ScrollView>
   );

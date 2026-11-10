@@ -16,6 +16,7 @@ import { ArrowLeft, Clock, WifiSlash } from '../../../../components/icons';
 import { getPendingScanQueue, clearPendingScanPhoto, type PendingScanPhoto } from '../offlineQueue';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { normalizeMealType, sourceInfo } from '../../../gun/homeData';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 interface Row {
   id: string;
@@ -102,7 +103,7 @@ export default function ScanOfflineScreen() {
           {t('ai_scan.offline_screen_title')}
         </AppText>
       </View>
-      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
         {!online ? (
           <View style={[styles.banner, { backgroundColor: th.color.surface }]} accessibilityRole="alert">
             <WifiSlash size={20} color={th.color.ink} />

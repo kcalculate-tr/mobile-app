@@ -15,6 +15,20 @@ import { DURATION, RN_CURVE, useReducedMotion } from './motion';
  */
 export const SCREEN_KEYBOARD_BEHAVIOR = 'padding' as const;
 
+/**
+ * G27-S1 md.1 — Her ScrollView / FlatList / SectionList bunu yayar (`{...SCROLL_KEYBOARD}`).
+ * - `handled`: listedeki öğeye dokunma öğeyi açar (ilk dokunma klavyeyi kapatmakla
+ *   harcanmaz); klavyeyi kök `KeyboardDismissRoot` kapatır.
+ * - Kaydırınca kapanır: iOS `interactive` (klavye parmağı izler, sistem hareketi),
+ *   Android `on-drag`.
+ * Kaynak bekçi testi: g27KeyboardDismiss (yeni kaydırma kabı bunu taşımazsa düşer).
+ */
+export const KEYBOARD_DISMISS_MODE: 'interactive' | 'on-drag' = Platform.OS === 'ios' ? 'interactive' : 'on-drag';
+export const SCROLL_KEYBOARD = {
+  keyboardShouldPersistTaps: 'handled',
+  keyboardDismissMode: KEYBOARD_DISMISS_MODE,
+} as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // G21-S1 md.10 — ALTTAN AÇILAN KATMANLAR (sheet) için klavye kaçınma. TEK KAYNAK.
 //

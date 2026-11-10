@@ -19,6 +19,7 @@ import { fetchActiveAppBanner } from '../../../lib/appBanners';
 import { fetchBannerRows } from '../../../lib/banners';
 import { useHomeTokens, BRICOLAGE_SEMI } from '../../onboarding/first/homeTokens';
 import { bannerIndexFromOffset, buildHomeBanners, type CampaignSource, type HomeBannerItem } from './banner';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Provider = {
   posts: (lang: string) => Promise<FeedPost[]>;
@@ -134,7 +135,7 @@ export function HomeBanner({
       accessibilityHint={tt('home.banner_role')}
       testID="home-banner"
     >
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         horizontal
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
