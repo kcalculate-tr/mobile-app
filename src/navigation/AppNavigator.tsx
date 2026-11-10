@@ -101,6 +101,10 @@ const ScanScreen = lazy(() => import('../modules/ai/scan/screens/ScanScreen'));
 const ScanOfflineScreen = lazy(() => import('../modules/ai/scan/screens/ScanOfflineScreen'));
 const PaywallScreen = lazy(() => import('../modules/subscription/screens/PaywallScreen'));
 const SubProfileScreen = lazy(() => import('../modules/subscription/screens/SubProfileScreen'));
+// G24-S1 — kcalAI Koç (yalnız `koc` bayrağı açıkken kayıtlı).
+const CoachChatScreen = lazy(() => import('../modules/coach/screens/CoachChatScreen'));
+const CoachIntroScreen = lazy(() => import('../modules/coach/screens/CoachIntroScreen'));
+const CoachHistoryScreen = lazy(() => import('../modules/coach/screens/CoachHistoryScreen'));
 // eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
 // Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
 const EatHomeScreen = lazy(() => import('../modules/eatkcal/screens/EatHomeScreen'));
@@ -168,6 +172,9 @@ const ScanLazy = withSuspense(ScanScreen);
 const ScanOfflineLazy = withSuspense(ScanOfflineScreen);
 const PaywallLazy = withSuspense(PaywallScreen);
 const SubProfileLazy = withSuspense(SubProfileScreen);
+const CoachChatLazy = withSuspense(CoachChatScreen);
+const CoachIntroLazy = withSuspense(CoachIntroScreen);
+const CoachHistoryLazy = withSuspense(CoachHistoryScreen);
 const EatHomeLazy = withSuspense(EatHomeScreen);
 const ProfileSubLazy = withSuspense(ProfileSubScreen);
 
@@ -421,6 +428,8 @@ export default function AppNavigator() {
   // FeedDataLab'tan açar). Canlı "Keşfet sekmesi" yerleşimi TabBarR3 kabuğuyla
   // birlikte (G6-S3) gelir; bu oturum ekranı ve bayrak kapısını teslim eder.
   const kesfetEnabled = useFeature('kesfet');
+  // G24-S1: kcalAI Koç ekranları yalnız `koc` açıkken kayıtlı (girişler de aynı bayrağa bağlı).
+  const kocEnabled = useFeature('koc');
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
@@ -573,6 +582,10 @@ export default function AppNavigator() {
       {/* G22-S1 md.4 — kcalAI: paywall alttan (FinMoSub sheet base 300 enter), Profil › Abonelik sağdan. */}
       <Stack.Screen name="SubPaywall" component={PaywallLazy} options={AI_MODAL} />
       <Stack.Screen name="SubProfile" component={SubProfileLazy} options={push} />
+      {/* G24-S1 — kcalAI Koç: tanıtım alttan (sheet base 330), sohbet ve geçmiş sağdan (push 330). */}
+      {kocEnabled ? <Stack.Screen name="CoachIntro" component={CoachIntroLazy} options={AI_MODAL} /> : null}
+      {kocEnabled ? <Stack.Screen name="CoachChat" component={CoachChatLazy} options={push} /> : null}
+      {kocEnabled ? <Stack.Screen name="CoachHistory" component={CoachHistoryLazy} options={push} /> : null}
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={finalScreenFor('EatCatalog', finalFlag.yeni_siparis, HomeScreen)} />

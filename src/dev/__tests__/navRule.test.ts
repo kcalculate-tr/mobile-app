@@ -40,6 +40,7 @@ const MODAL_FILES = [
   // G22-S1: Ses modu (Tara modalı) + kcalAI paywall/sonuç/hak sheet'i (alttan modal, X sağda).
   'modules/ai/scan/voice/FinScanVoice.tsx',
   'modules/subscription/screens/PaywallScreen.tsx',
+  'modules/coach/screens/CoachIntroScreen.tsx', // G24-S1 FinCoachIntro (sheet, kapat X)
   'modules/subscription/ui/SubResult.tsx',
   'modules/subscription/ui/SubLimitSheet.tsx',
 ];
@@ -63,6 +64,8 @@ const PUSH_FILES = [
   'modules/eatkcal/v2/screens/EkPaymentScreen.tsx',
   // G22-S1: Profil › Abonelik (sağdan itilen sayfa, sol geri).
   'modules/subscription/screens/SubProfileScreen.tsx',
+  'modules/coach/screens/CoachChatScreen.tsx', // G24-S1 FinCoachChat (sol geri)
+  'modules/coach/screens/CoachHistoryScreen.tsx', // G24-S1 FinCoachHistory (sol geri)
 ];
 
 /** Gezinme DEĞİL, yerinde denetim (alan temizleme / ek kaldırma / arama kapatma). */

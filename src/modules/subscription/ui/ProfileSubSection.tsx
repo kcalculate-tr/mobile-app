@@ -9,6 +9,7 @@ import { useT } from '../../../core/i18n';
 import { Barbell, ShoppingBag, Sparkle } from '../../../components/icons';
 import { FinRow, FinRowGroup, FinSectionLabel } from '../../profil/ui/finUi';
 import { useTier } from '../../../lib/subscription/purchases';
+import { CoachProfileRow } from '../../coach/ui/entries';
 
 export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
   const t = useTheme();
@@ -26,6 +27,8 @@ export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
       <FinSectionLabel>{tr('sub.profile.section')}</FinSectionLabel>
       <FinRowGroup>
         <FinRow first icon={<Sparkle size={18} color={t.color.ink} weight="fill" />} label={tr('sub.profile.row')} value={value} onPress={onOpen} />
+        {/* G24-S1 (FinPrProfile Tur 26k): "AI Koç" satırı + Balance rozeti (`koc` kapalıysa çizilmez). */}
+        <CoachProfileRow />
       </FinRowGroup>
       <FinSectionLabel>{tr('sub.profile.soon_h')}</FinSectionLabel>
       <FinRowGroup>

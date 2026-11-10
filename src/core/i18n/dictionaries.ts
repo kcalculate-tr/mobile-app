@@ -17,6 +17,7 @@ import { tr as voiceTr, en as voiceEn } from '../../modules/ai/scan/voice/i18n';
 import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 import { tr as g26jTr, en as g26jEn } from './g26j';
+import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -36,6 +37,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     kesfetSearch: kesfetSearchTr,
     // G22-S2 md.5 — G21 tasarım boşlukları (26j): share_day · auth_error · notif_error · follow_error.
     ...g26jTr,
+    // G24-S1 — kcalAI Koç.
+    coach: coachTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1912,6 +1915,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     voice: voiceEn,
     kesfetSearch: kesfetSearchEn,
     ...g26jEn,
+    coach: coachEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
+import { CoachRecipeButton } from '../../coach/ui/entries';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
@@ -469,6 +470,12 @@ export function PostDetailScreen({
             ) : null}
 
             {isMeal ? <DetailMealCard post={post} onLog={() => void logMeToo()} /> : null}
+            {/* G24-S1 (FinRecipe Tur 26k): "Bu tarif bana uyar mı?" — Koç bu tarif + günün verisiyle açılır. */}
+            {isMeal && post.meal_card ? (
+              <View style={{ paddingHorizontal: 16 }}>
+                <CoachRecipeButton postId={post.id} name={post.meal_card.name} />
+              </View>
+            ) : null}
             {post.post_type === 'etkinlik' && post.activity_card ? (
               <ActivityCard
                 activity={post.activity_card}

@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
+import { CoachScanButton } from '../../../coach/ui/entries';
 import { KeyboardLiftView } from '../../../../core/design/components/KeyboardLiftView';
 import { BookmarkSimple, CalendarPlus, CaretDown, Check, Microphone, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
@@ -473,6 +474,9 @@ export default function FinPhotoResult({
                 ) : null}
               </View>
             ) : null}
+            {/* G24-S1 (FinPhotoR1 Tur 26k): ikincil Koç girişi — sessiz çerçeve, asla lime değil; sohbet
+                bu öğün ekli açılır. `koc` kapalı / coach-chat yok → çizilmez. */}
+            <CoachScanButton meal={{ name: adjusted.name, kcal: adjusted.kcal, protein: adjusted.protein_g, carbs: adjusted.carbs_g, fat: adjusted.fat_g }} />
           </View>
         </ScrollView>
       </Animated.View>
