@@ -40,7 +40,7 @@ test('push: sağdan kayma · PREMIUM.push.enter · kenar jesti açık', () => {
 
 test('push (azaltılmış hareket): opaklık 200 ms, jest yine açık', () => {
   expect(pushTransition(true)).toEqual({ animation: 'fade', animationDuration: REDUCED.duration, gestureEnabled: true });
-  expect(REDUCED.duration).toBe(200);
+  expect(REDUCED.duration).toBe(220);
 });
 
 function Seg({ reduced }: { reduced: boolean }) {

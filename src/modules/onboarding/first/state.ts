@@ -184,9 +184,9 @@ export const OPEN_T = {
   /** 2200–2530 katman Karşılama'ya erir (exit 330, yalnız opaklık). */
   outStart: 2200,
   total: 2530,
-  /** Azaltılmış: durağan logo 990 ms + 200 ms opaklık (REDUCED). */
+  /** Azaltılmış: durağan logo 990 ms + 220 ms opaklık (REDUCED). */
   reducedHold: 990,
-  reducedFade: 200,
-  /** Atla: o karede kesilir, 200 ms opaklık (REDUCED). */
-  skipFade: 200,
+  reducedFade: 220,
+  /** Atla: o karede kesilir, 220 ms opaklık (REDUCED). */
+  skipFade: 220,
 } as const;

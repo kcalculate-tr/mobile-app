@@ -23,6 +23,7 @@ import { getConsent, requestAttForAds } from '../../../../lib/analytics';
 import { metaAllowed } from '../../../../lib/metrics/consent';
 import { onConsentChange, setAdMeasurement, setUsageMeasurement } from '../../../../lib/consent/store';
 import { hasLocalAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/consent/aiPhoto';
+import { setCoachConsent, useCoachConsent, useCoachEnabled } from '../../../coach/access';
 import { LegalDocModal, type LegalSlug } from '../../../onboarding/consent/LegalDocModal';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
 import { FileText } from '../../../../components/icons';
@@ -104,6 +105,13 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
   const [error, setError] = useState(false);
   const [doc, setDoc] = useState<LegalSlug | null>(null);
   const [aiOn, setAiOn] = useState(false);
+  // G24-S1: kcalAI Koç ayrı AI izni (yalnız koç açıkken satır görünür; kapatınca koç mesaj göndermeden önce yeniden sorar).
+  const coachOn = useCoachEnabled();
+  const [coachConsent, refreshCoach] = useCoachConsent();
+  const toggleCoach = async (on: boolean) => {
+    await setCoachConsent(on, 'settings');
+    refreshCoach();
+  };
   const refreshAi = () => {
     void hasLocalAiPhotoConsent()
       .then(setAiOn)
@@ -216,6 +224,15 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
             disabled={saving === 'ai'}
             testID="consent-ai-photo-switch"
           />
+          {coachOn ? (
+            <ToggleRow
+              title={tr('consent.settings.ai_coach_label')}
+              desc={tr('consent.sheet.ai_coach_lead')}
+              value={coachConsent}
+              onChange={(v) => void toggleCoach(v)}
+              testID="consent-ai-coach-switch"
+            />
+          ) : null}
         </View>
         {error ? (
           <Text style={{ fontFamily: bodyMedium, fontSize: 13, color: '#E5484D', paddingHorizontal: 4 }} accessibilityLiveRegion="polite">

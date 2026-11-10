@@ -19,6 +19,10 @@ export type { Icon, IconProps } from 'phosphor-react-native';
 export { AppleLogo } from 'phosphor-react-native/lib/commonjs/icons/AppleLogo';
 export { ArrowCounterClockwise } from 'phosphor-react-native/lib/commonjs/icons/ArrowCounterClockwise';
 export { ArrowLeft } from 'phosphor-react-native/lib/commonjs/icons/ArrowLeft';
+// G24-S1 — kcalAI Koç (gönder, seçenekler, uzmana danış).
+export { ArrowUp } from 'phosphor-react-native/lib/commonjs/icons/ArrowUp';
+export { DotsThree } from 'phosphor-react-native/lib/commonjs/icons/DotsThree';
+export { Heartbeat } from 'phosphor-react-native/lib/commonjs/icons/Heartbeat';
 export { ArrowRight } from 'phosphor-react-native/lib/commonjs/icons/ArrowRight';
 export { Bell } from 'phosphor-react-native/lib/commonjs/icons/Bell';
 export { BellRinging } from 'phosphor-react-native/lib/commonjs/icons/BellRinging';

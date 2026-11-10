@@ -17,6 +17,7 @@ import { tr as voiceTr, en as voiceEn } from '../../modules/ai/scan/voice/i18n';
 import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 import { tr as g26jTr, en as g26jEn } from './g26j';
+import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -36,6 +37,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     kesfetSearch: kesfetSearchTr,
     // G22-S2 md.5 — G21 tasarım boşlukları (26j): share_day · auth_error · notif_error · follow_error.
     ...g26jTr,
+    // G24-S1 — kcalAI Koç.
+    coach: coachTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1374,6 +1377,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           region: 'bölgen',
           photo_a11y: '%{city} fotoğrafı',
           wait_body: 'eatkcal şu an %{city} için sipariş almıyor. Şehrine gelmemizi birlikte hızlandıralım.',
+          // G24-S1 (Tur 26k CityR1 / WaitlistR1)
+          wait_title: 'Şimdilik İzmir’deyiz',
+          else_title: 'eatkcal şu an yalnız İzmir’de.',
+          else_body: '%{city} için sevdiğin bir restoranı önerebilir ya da kendi restoranını ekleyebilirsin.',
           add_sub: 'Restoran sahibiysen başvur',
           suggest: 'Restoran öner',
           suggest_sub: 'Sevdiğin bir yeri bize söyle',
@@ -1908,6 +1915,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     voice: voiceEn,
     kesfetSearch: kesfetSearchEn,
     ...g26jEn,
+    coach: coachEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',
@@ -3228,6 +3236,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           region: 'your area',
           photo_a11y: 'Photo of %{city}',
           wait_body: 'eatkcal isn’t taking orders in %{city} yet. Help us get to your city sooner.',
+          wait_title: 'For now, we’re in İzmir',
+          else_title: 'eatkcal is only in İzmir for now.',
+          else_body: 'For %{city}, you can suggest a restaurant you love or add your own.',
           add_sub: 'Apply if you own a restaurant',
           suggest: 'Suggest a restaurant',
           suggest_sub: 'Tell us about a place you love',

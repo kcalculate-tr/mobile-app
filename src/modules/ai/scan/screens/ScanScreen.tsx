@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import NetInfo from '@react-native-community/netinfo';
 import { useNavigation } from '@react-navigation/native';
+import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { X, ArrowCounterClockwise, Image as ImageIcon } from '../../../../components/icons';
@@ -865,6 +866,13 @@ export default function ScanScreen() {
         aiPendingRef.current = null;
         void setAiPhotoConsent(false, 'scan').catch(() => {});
         handleManualEntry();
+      }}
+      onPrivacy={() => {
+        // G24-S1 (FinScanAIConsent): "Gizlilik Politikası" — izin kaydı YAZILMAZ, sheet kapanır
+        // (bir sonraki taramada yeniden sorulur).
+        setAiSheet(false);
+        aiPendingRef.current = null;
+        (navigation as unknown as { navigate: (n: string, p: object) => void }).navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy });
       }}
     />
   );

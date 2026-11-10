@@ -53,6 +53,9 @@ export const FLAG_DEFAULTS = {
   // Yalnız yeni kabukta etkili. Sunucu satırı: 20261109200100_g19_s2_track.sql (kapalı).
   ogun_hatirlatma: false, // Öğün hatırlatmaları (yerel bildirim)
   abonelik: false, // G22-S1: kcalAI abonelikleri (paywall, hak sheet'leri, Profil › Abonelik); RevenueCat anahtarı da gerekir
+  // G24-S1 — kcalAI Koç (sohbet + girişler). Sunucu satırı 20261111100100_g24_coach.sql (kapalı,
+  // min_app_version 1.1.0). Native modül istemez → OTA. `coach-chat` 404 ise girişler yine gizli.
+  koc: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

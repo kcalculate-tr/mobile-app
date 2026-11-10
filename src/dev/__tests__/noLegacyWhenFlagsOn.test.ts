@@ -168,6 +168,10 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   // G22-S1 md.4 — kcalAI (yalnız Final; abonelik bayrağı + RevenueCat).
   SubPaywall: { kind: 'final', file: 'modules/subscription/screens/PaywallScreen.tsx' },
   SubProfile: { kind: 'final', file: 'modules/subscription/screens/SubProfileScreen.tsx' },
+  // G24-S1 — kcalAI Koç (`koc` bayrağı).
+  CoachIntro: { kind: 'final', file: 'modules/coach/screens/CoachIntroScreen.tsx' },
+  CoachChat: { kind: 'final', file: 'modules/coach/screens/CoachChatScreen.tsx' },
+  CoachHistory: { kind: 'final', file: 'modules/coach/screens/CoachHistoryScreen.tsx' },
   EatCatalog: { kind: 'finalRoute' },
 };
 

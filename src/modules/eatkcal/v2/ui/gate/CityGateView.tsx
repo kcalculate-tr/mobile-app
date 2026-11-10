@@ -18,6 +18,9 @@
 // ekle / Restoran öner (aynı form sheet'leri, ülke kodu ISO2).
 // G23-S1: Türkiye il listesinde de "Çok yakında" yazmaz; yabancı şehir satırında eyalet/
 // bölge (admin1) alt satırda.
+// G24-S1 (Tur 26k CityR1): Türkiye'de İzmir dışı il SEÇİLİNCE "Devam et" yerine sakin bilgi
+// kartı: "eatkcal şu an yalnız İzmir'de." + Restoran öner / Restoranını ekle (form sheet'leri);
+// sipariş akışı başlamaz. WaitlistR1 başlığı "Şimdilik İzmir'deyiz".
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -242,8 +245,8 @@ export function CityGateView({
           <CaretLeft size={22} color={c.ink} />
         </Pressable>
         <View style={styles.waitText}>
-          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.soon')}>
-            <Mark size={34}>{t('eatkcal.v2.gate.soon')}</Mark>
+          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.wait_title')}>
+            <Mark size={34}>{t('eatkcal.v2.gate.wait_title')}</Mark>
           </View>
           <Text style={[styles.body16, { color: c.ink }]}>{t('eatkcal.v2.gate.wait_body', { city: waitCity })}</Text>
         </View>
@@ -369,6 +372,7 @@ export function CityGateView({
   const countryLabel = countryEntry ? countryName(countryEntry, lang) : t('eatkcal.v2.gate.country_tr');
   const pickHelp = isTr ? t('eatkcal.v2.gate.pick_city') : t('eatkcal.v2.geo.pick_city');
   const typed = isTr ? null : typedCity(cq, country);
+  const elseSel = isTr && !!il && il !== IZMIR;
   const typedSel = !!typed && geoCity?.geonameid === 0 && geoCity.name === typed.name;
   const pickCountry = (iso2: string) => {
     haptic('selection');
@@ -387,7 +391,7 @@ export function CityGateView({
   };
   return (
     <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top + 8 }]} testID="ek-gate-city">
-      <View style={[styles.cityWrap, { paddingBottom: bottomSpace + 52 + 26 + 12 }]}>
+      <View style={[styles.cityWrap, { paddingBottom: bottomSpace + (elseSel ? 230 : 52 + 26 + 12) }]}>
         {onExit ? (
           <Pressable onPress={onExit} accessibilityRole="button" accessibilityLabel={t('eatkcal.v2.common.back')} style={styles.exitBtn}>
             <CaretLeft size={22} color={c.ink} />
@@ -629,6 +633,41 @@ export function CityGateView({
         )}
       </View>
 
+      {elseSel ? (
+        <View
+          style={[styles.cityCta, styles.elseCard, { bottom: bottomSpace, backgroundColor: p.card, borderColor: c.line }]}
+          accessibilityLiveRegion="polite"
+          testID="ek-gate-else"
+        >
+          <View style={styles.elseHead} accessible accessibilityLabel={`${t('eatkcal.v2.gate.else_title')} ${t('eatkcal.v2.gate.else_body', { city: il })}`}>
+            <View style={[styles.elseIcon, { backgroundColor: p.nested }]}>
+              <MapPin size={20} color={c.ink} weight="fill" />
+            </View>
+            <View style={styles.fill}>
+              <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.gate.else_title')}</Text>
+              <Text style={[ekType.b15, { color: c.secondary }]}>{t('eatkcal.v2.gate.else_body', { city: il })}</Text>
+            </View>
+          </View>
+          <View style={lang === 'en' ? styles.elseCol : styles.elseRow}>
+            <Pressable
+              onPress={() => openSheet('restaurant_suggest')}
+              accessibilityRole="button"
+              style={[styles.elseBtn, { backgroundColor: c.ink }]}
+              testID="ek-gate-else-suggest"
+            >
+              <Text style={[styles.ctaText, styles.center, { color: c.surface }]}>{t('eatkcal.v2.gate.suggest')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => openSheet('restaurant_add')}
+              accessibilityRole="button"
+              style={[styles.elseBtn, { borderWidth: 1, borderColor: p.line2 }]}
+              testID="ek-gate-else-add"
+            >
+              <Text style={[styles.ctaText, styles.center, { color: c.ink }]}>{t('eatkcal.v2.gate.add_restaurant')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
       <View style={[styles.cityCta, { bottom: bottomSpace }]}>
         {!target ? (
           <Text style={[styles.help, { color: c.secondary }]} testID="ek-gate-help">
@@ -653,6 +692,8 @@ export function CityGateView({
           <Text style={[ekType.c13, { color: c.danger, textAlign: 'center' }]}>{t(reg.messageKey)}</Text>
         ) : null}
       </View>
+      )}
+      {sheetEl}
     </View>
   );
 }
@@ -695,6 +736,13 @@ const styles = StyleSheet.create({
   errorBox: { paddingVertical: 16, paddingHorizontal: 14, gap: 12, alignItems: 'flex-start' },
   retryBtn: { minHeight: 44, paddingHorizontal: 18, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   cityCta: { position: 'absolute', left: 16, right: 16, gap: 6 },
+  elseCard: { padding: 16, borderRadius: 20, borderWidth: 1, gap: 12 },
+  elseHead: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  elseIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  elseRow: { flexDirection: 'row', gap: 8 },
+  elseCol: { gap: 8 },
+  elseBtn: { flex: 1, minHeight: 52, borderRadius: 26, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', justifyContent: 'center' },
+  center: { textAlign: 'center' },
   help: { textAlign: 'center', fontFamily: ekType.c13.fontFamily, fontSize: 13, lineHeight: 18 },
   cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   ctaText: { fontFamily: ekType.b15s.fontFamily, fontSize: 16, lineHeight: 21 },

@@ -76,6 +76,7 @@ import { HomeExploreStrip } from './tracker/HomeStrips';
 import { HomeBanner, useHomeBanners } from '../modules/gun/home/HomeBanner';
 import { HomeRegionSection } from '../modules/gun/home/HomeRegion';
 import { HomeActivitySection } from '../modules/gun/home/HomeActivitySection';
+import { CoachHomeCard } from '../modules/coach/ui/entries';
 import { useHomeRegion } from '../modules/gun/home/useHomeRegion';
 import type { HomeBannerItem } from '../modules/gun/home/banner';
 import { HomeEmptyToday } from '../modules/onboarding/first';
@@ -2845,6 +2846,13 @@ const html = `
                     }}
                   />
                 ) : null}
+                {/* G24-S1 (FinHomeR3 Tur 26k): kcalAI Koç kartı — gün alanından sonra, topluluk akışından önce.
+                    `koc` kapalı ya da coach-chat yoksa (404) hiç çizilmez. */}
+                <CoachHomeCard
+                  consumedKcal={homeTotals.kcal}
+                  targetKcal={targets.kcal || null}
+                  proteinLeft={targets.protein ? Math.max(0, targets.protein - homeTotals.protein) : null}
+                />
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
                 {/* G21-S1 md.8: kare = o gönderinin detayı (banner'la aynı hedef); "Tümü" = Keşfet sekmesi. */}
                 <HomeExploreStrip onAll={openKesfet} onOpen={openPost} />
