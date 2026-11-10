@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { aiPhotoDecision, parseAiPhoto } from '../policy';
+import { AI_PHOTO_TEXT_VERSION, aiPhotoDecision, parseAiPhoto } from '../policy';
 import { EMPTY_SYNCED, confirmAge, mergeSynced, parseSynced } from '../../../modules/onboarding/first/state';
 
 const ROOT = join(__dirname, '..', '..', '..', '..');
@@ -13,17 +13,25 @@ test('md.2 aiPhotoDecision: cihaz kaydı kazanır; yoksa sunucu; okunamadı → 
   assert.equal(aiPhotoDecision(null, null), 'ask');
   assert.equal(aiPhotoDecision(null, undefined), 'ask');
   assert.equal(aiPhotoDecision(null, false), 'ask');
-  assert.equal(aiPhotoDecision(null, true), 'ok');
-  assert.equal(aiPhotoDecision({ granted: true, at: '' }, false), 'ok');
+  // G23-S1: sunucu metin sürümü bildirmezse eski metin sayılır → sor; v2 → ok.
+  assert.equal(aiPhotoDecision(null, true), 'ask');
+  assert.equal(aiPhotoDecision(null, true, 2), 'ok');
+  assert.equal(aiPhotoDecision(null, true, 1), 'ask');
+  assert.equal(aiPhotoDecision({ granted: true, at: '', v: 2 }, false), 'ok');
+  // G23-S1: eski metin (v1) cihaz izni → bir kez yeniden sor.
+  assert.equal(aiPhotoDecision({ granted: true, at: '', v: 1 }, true, 2), 'ask');
+  assert.equal(AI_PHOTO_TEXT_VERSION, 2);
   // ayardan geri alındı → sunucuda eski "true" olsa da sor
-  assert.equal(aiPhotoDecision({ granted: false, at: '' }, true), 'ask');
+  assert.equal(aiPhotoDecision({ granted: false, at: '', v: 2 }, true, 2), 'ask');
 });
 
 test('md.2 parseAiPhoto: bozuk veri güvenli', () => {
   assert.equal(parseAiPhoto(null), null);
   assert.equal(parseAiPhoto('{bozuk'), null);
   assert.equal(parseAiPhoto(JSON.stringify({ granted: 'evet' })), null);
-  assert.deepEqual(parseAiPhoto(JSON.stringify({ granted: true, at: 'x' })), { granted: true, at: 'x' });
+  assert.deepEqual(parseAiPhoto(JSON.stringify({ granted: true, at: 'x' })), { granted: true, at: 'x', v: 1 });
+  assert.deepEqual(parseAiPhoto(JSON.stringify({ granted: true, at: 'x', v: 2 })), { granted: true, at: 'x', v: 2 });
+  assert.equal(parseAiPhoto(JSON.stringify({ granted: true, v: 'iki' }))?.v, 1);
 });
 
 test('md.6 18+ (onboarding_state.age_ok): ayrıştırma, birleştirme (VEYA, en erken zaman), eski biçim aynen', () => {

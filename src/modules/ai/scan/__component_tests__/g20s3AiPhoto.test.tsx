@@ -70,7 +70,7 @@ const client = (): AiScanClient & { reserveScan: jest.Mock; analyzeImage: jest.M
   releaseScan: jest.fn(async () => undefined),
   analyzeImage: jest.fn(async () => EST),
 });
-const LEAD = 'Tabak fotoğrafın kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Eklediğin not da fotoğrafla birlikte gönderilir.';
+const LEAD = 'Tabak fotoğrafın ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -99,7 +99,7 @@ test('izin yok → açılışta sheet YOK; deklanşöre basınca sheet, fotoğra
   });
   await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
   expect(tree.getByText(LEAD)).toBeTruthy();
-  expect(tree.getByText('Fotoğraf analizi')).toBeTruthy();
+  expect(tree.getByText('Fotoğraf ve ses analizi')).toBeTruthy();
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Galeriden seç'));
   });

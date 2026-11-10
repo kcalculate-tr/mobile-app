@@ -1,7 +1,7 @@
 // G20-S3 md.2 — Yapay zekâ fotoğraf analizi izni (cihaz + user_consents).
 // Karar mantığı saf: policy.ts `aiPhotoDecision`.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AI_PHOTO_KEY, aiPhotoDecision, parseAiPhoto, toggleRow, type AiPhotoRecord } from './policy';
+import { AI_PHOTO_KEY, AI_PHOTO_TEXT_VERSION, aiPhotoDecision, parseAiPhoto, toggleRow, type AiPhotoRecord } from './policy';
 import {
   consentAppVersion,
   consentPlatform,
@@ -18,14 +18,14 @@ export async function readAiPhotoLocal(): Promise<AiPhotoRecord | null> {
   }
 }
 
-/** Yalnız cihaz kaydına bakar (ağ yok) — çevrimdışı kuyruk boşaltma bekçisi. */
+/** Yalnız cihaz kaydına bakar (ağ yok) — çevrimdışı kuyruk boşaltma bekçisi. G23-S1: güncel metin sürümü. */
 export async function hasLocalAiPhotoConsent(): Promise<boolean> {
-  return (await readAiPhotoLocal())?.granted === true;
+  return aiPhotoDecision(await readAiPhotoLocal(), null) === 'ok';
 }
 
 async function writeLocal(granted: boolean): Promise<void> {
   try {
-    await AsyncStorage.setItem(AI_PHOTO_KEY, JSON.stringify({ granted, at: new Date().toISOString() }));
+    await AsyncStorage.setItem(AI_PHOTO_KEY, JSON.stringify({ granted, at: new Date().toISOString(), v: AI_PHOTO_TEXT_VERSION }));
   } catch {
     /* cihaz kaydı yazılamadı: bir sonraki taramada yeniden sorulur */
   }
@@ -34,9 +34,10 @@ async function writeLocal(granted: boolean): Promise<void> {
 /** Tara açılışı: izin var mı? Cihazda yoksa sunucuya (başka cihaz) bakar. */
 export async function resolveAiPhotoConsent(): Promise<'ok' | 'ask'> {
   const local = await readAiPhotoLocal();
+  // G23-S1: eski metin sürümündeki cihaz kaydı → sor (sunucuya bakılmaz; sunucu da eski izni taşır).
   if (local) return aiPhotoDecision(local, null);
   const server = await fetchServerStatus();
-  const d = aiPhotoDecision(null, server?.ai_photo ?? null);
+  const d = aiPhotoDecision(null, server?.ai_photo ?? null, server?.ai_photo_version ?? null);
   if (d === 'ok') await writeLocal(true); // başka cihazda verilmiş → bir daha sorulmaz
   return d;
 }

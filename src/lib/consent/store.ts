@@ -126,6 +126,7 @@ export async function fetchServerStatus(): Promise<ServerStatus | null> {
       ad_measurement: typeof d.ad_measurement === 'boolean' ? d.ad_measurement : null,
       first_party: typeof d.first_party === 'boolean' ? d.first_party : null,
       ai_photo: typeof d.ai_photo === 'boolean' ? d.ai_photo : null,
+      ai_photo_version: typeof d.ai_photo_version === 'number' && d.ai_photo_version >= 1 ? Math.floor(d.ai_photo_version) : null,
     };
   } catch {
     return null;

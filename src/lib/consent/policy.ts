@@ -63,6 +63,11 @@ export interface ServerStatus {
   first_party: boolean | null;
   /** G20-S3 md.2: yapay zekâ fotoğraf analizi izninin son değeri. */
   ai_photo: boolean | null;
+  /**
+   * G23-S1: son ai_photo izninin metin sürümü. Canlı my_consent_status bugün DÖNMEZ
+   * (null → sürüm bilinmiyor = eski metin sayılır); ileride sunucu eklerse kullanılır.
+   */
+  ai_photo_version?: number | null;
 }
 
 const posInt = (v: unknown): number | null => {
@@ -219,17 +224,28 @@ export function toggleRow(i: {
 // çevrimdışı kuyruk boşaltma) GÖNDERİLMEZ.
 export const AI_PHOTO_KEY = '@kcal_ai_photo_consent';
 
+/**
+ * G23-S1 (İlter 10 Kas): izin metninin sürümü. v1 = yalnız fotoğraf (G20-S3); v2 = fotoğraf
+ * ya da sesli girişin yazıya dökülmüş metni, "Ses kaydedilmez". Eski sürümde verilmiş izin
+ * GEÇERSİZ sayılır → bir kez yeniden sorulur (kabul edilince cihaza v2 yazılır).
+ * Canlı user_consents CHECK'i ai_photo satırında doc_version'a izin vermediği için sürüm
+ * cihaz kaydında tutulur; sunucu satırı aynı biçimde (doc_version null) yazılır.
+ */
+export const AI_PHOTO_TEXT_VERSION = 2;
+
 export interface AiPhotoRecord {
   granted: boolean;
   at: string;
+  /** İzin metni sürümü (eski kayıtlarda yok → 1). */
+  v: number;
 }
 
 export function parseAiPhoto(raw: string | null | undefined): AiPhotoRecord | null {
   if (!raw) return null;
   try {
-    const o = JSON.parse(raw) as { granted?: unknown; at?: unknown };
+    const o = JSON.parse(raw) as { granted?: unknown; at?: unknown; v?: unknown };
     if (!o || typeof o.granted !== 'boolean') return null;
-    return { granted: o.granted, at: typeof o.at === 'string' ? o.at : '' };
+    return { granted: o.granted, at: typeof o.at === 'string' ? o.at : '', v: posInt(o.v) ?? 1 };
   } catch {
     return null;
   }
@@ -239,10 +255,16 @@ export function parseAiPhoto(raw: string | null | undefined): AiPhotoRecord | nu
  * Tara açılışında karar: cihaz kaydı varsa o geçerli (ayardan geri alma dahil);
  * yoksa sunucu (başka cihazda verilmiş izin). Sunucu okunamadı → sor (izin
  * olmadan gönderilmez — burada fail-open YOK).
+ * G23-S1: izin yalnız GÜNCEL metin sürümünde verildiyse geçerli. Sunucu sürüm bildirmezse
+ * (bugünkü canlı) sunucudaki izin eski metin sayılır → bir kez sorulur.
  */
-export function aiPhotoDecision(local: AiPhotoRecord | null, server: boolean | null | undefined): 'ok' | 'ask' {
-  if (local) return local.granted ? 'ok' : 'ask';
-  return server === true ? 'ok' : 'ask';
+export function aiPhotoDecision(
+  local: AiPhotoRecord | null,
+  server: boolean | null | undefined,
+  serverVersion?: number | null,
+): 'ok' | 'ask' {
+  if (local) return local.granted && local.v >= AI_PHOTO_TEXT_VERSION ? 'ok' : 'ask';
+  return server === true && (serverVersion ?? 1) >= AI_PHOTO_TEXT_VERSION ? 'ok' : 'ask';
 }
 
 export const PENDING_MAX = 50;

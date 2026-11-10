@@ -177,8 +177,8 @@ describe('md.2 — yapay zekâ fotoğraf izni', () => {
         <PolicyAcceptRow accepted={false} withAge />
       </I18nProvider>,
     );
-    expect(ui.getByText('Photo analysis')).toBeTruthy();
-    expect(ui.getByText(/sent to our AI service provider \(USA\)/)).toBeTruthy();
+    expect(ui.getByText('Photo and voice analysis')).toBeTruthy();
+    expect(ui.getByText(/transcribed text of your voice entry, is sent to our AI service provider \(USA\) to estimate calories\. Audio is not recorded\./)).toBeTruthy();
     expect(ui.getByText('Accept')).toBeTruthy();
     expect(ui.getByText('Cancel')).toBeTruthy();
     expect(ui.getByText('I am 18 or older and I have read and accept the Terms of Use and the Privacy Policy.')).toBeTruthy();
@@ -203,8 +203,21 @@ describe('md.2 — yapay zekâ fotoğraf izni', () => {
     expect(await resolveAiPhotoConsent()).toBe('ask');
   });
 
-  test('modül: başka cihazda verilmiş izin (my_consent_status.ai_photo) → sorulmaz, cihaza yazılır', async () => {
+  test('modül: başka cihazda verilmiş izin — G23-S1: sunucu metin sürümü bildirmezse bir kez sorulur, v2 bildirirse sorulmaz', async () => {
     mockRpc = { data: { docs: [], ad_measurement: null, first_party: null, ai_photo: true }, error: null };
+    expect(await resolveAiPhotoConsent()).toBe('ask');
+    expect(await hasLocalAiPhotoConsent()).toBe(false);
+    mockRpc = { data: { docs: [], ad_measurement: null, first_party: null, ai_photo: true, ai_photo_version: 2 }, error: null };
+    expect(await resolveAiPhotoConsent()).toBe('ok');
+    expect(await hasLocalAiPhotoConsent()).toBe(true);
+  });
+
+  test('modül: G23-S1 eski metin (v1) cihaz izni → bir kez yeniden sorulur; kabul → v2 yazılır, bir daha sorulmaz', async () => {
+    await AsyncStorage.setItem(AI_PHOTO_KEY, JSON.stringify({ granted: true, at: '2026-11-09T10:00:00Z' }));
+    expect(await hasLocalAiPhotoConsent()).toBe(false);
+    expect(await resolveAiPhotoConsent()).toBe('ask');
+    await setAiPhotoConsent(true, 'scan');
+    expect(JSON.parse((await AsyncStorage.getItem(AI_PHOTO_KEY)) as string).v).toBe(2);
     expect(await resolveAiPhotoConsent()).toBe('ok');
     expect(await hasLocalAiPhotoConsent()).toBe(true);
   });
