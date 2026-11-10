@@ -1,0 +1,4 @@
+G23-S1 tamamlandi (10 Kas). LOG: docs/night/G23-S1-LOG.md
+Dal: release/1.1.0
+Kontroller: tsc 0, hygiene OK, unit 1025/1026 (1 atlandi), jest 67/382, deno check OK, expo export iOS+Android OK.
+Yapilamayan: md.7 duman testi (bos disk 18 GB < 20 GB) - LOG SORULAR 1.
