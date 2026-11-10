@@ -56,6 +56,9 @@ export const FLAG_DEFAULTS = {
   // G24-S1 — kcalAI Koç (sohbet + girişler). Sunucu satırı 20261111100100_g24_coach.sql (kapalı,
   // min_app_version 1.1.0). Native modül istemez → OTA. `coach-chat` 404 ise girişler yine gizli.
   koc: false,
+  // G25-S1 — 1.1.0 inceleme öncesi. Sunucu satırları 20261111200100_g25_flags.sql (ikisi KAPALI).
+  yakinda_satirlari: false, // Profil "Yakında" satırları + FinPrMacro "Öğün aboneliği" sekmesi (A4)
+  paylasim_baglanti: false, // Keşfet gönderi/profil "Bağlantıyı kopyala / Paylaş" (A10; l.eatkcal.com hazır olunca)
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

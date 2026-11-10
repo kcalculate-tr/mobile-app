@@ -93,6 +93,9 @@ export default function FinPrProfileScreen() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
   const yeniOnboardingFlag = useFeature('yeni_onboarding');
+  // G25-S1 md.3 (A4): "Macro aboneliğim" yalnız "Öğün Aboneliği" (yakında) sekmesini açıyor →
+  // `yakinda_satirlari` kapalıyken satır gizli (Macro bakiyesi "Macro" satırından açılır).
+  const yakindaSatirlari = useFeature('yakinda_satirlari');
   // G22-S1 md.4: kcalAI › Abonelik + Yakında (FinSubProfileSoon) — bayrak + RevenueCat.
   const aboneligiGoster = useSubscriptionEnabled();
 
@@ -333,13 +336,16 @@ export default function FinPrProfileScreen() {
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_account')}</FinSectionLabel>
           <FinRowGroup>
+            {yakindaSatirlari ? (
+              <FinRow
+                first
+                icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
+                label={tr('profil.macro_subscription')}
+                onPress={() => openSub('macroSub')}
+              />
+            ) : null}
             <FinRow
-              first
-              icon={<CrownSimpleIcon size={18} color={t.color.ink} />}
-              label={tr('profil.macro_subscription')}
-              onPress={() => openSub('macroSub')}
-            />
-            <FinRow
+              first={!yakindaSatirlari}
               icon={<LockSimple size={18} color={t.color.ink} />}
               label={tr('profil.privacy_title')}
               value={isPrivate ? tr('profil.private_account') : tr('profil.privacy_public')}

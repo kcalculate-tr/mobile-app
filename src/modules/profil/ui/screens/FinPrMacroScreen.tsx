@@ -12,6 +12,10 @@
 // Öğün Aboneliği sekmesi: bugün gerçek bir abonelik backend'i YOK (bkz.
 // MacroScreen.tsx'teki "Yakında" kartı). "Teslimat günleri / Duraklat / Yönet"
 // satırları uydurulmadı; sade boş-durum gösterilir.
+// G25-S1 md.4 (A5): ödül kartı "Kullan" → kuponu sepete taşır (EkCart couponCode; sepet boşsa kod
+// bekler). Hedef yoksa (kod yok ya da yeni sipariş arayüzü kapalı) düğme GİZLİ; düğme ≥ 44 pt.
+// G25-S1 md.3 (A4): "Öğün Aboneliği" sekmesi (ve sekme seçici) yalnız uzak bayrak
+// `yakinda_satirlari` AÇIKKEN; kapalıyken (varsayılan) ekran yalnız Macro sekmesi.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
@@ -21,6 +25,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Sheet, useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
+import { useFeature } from '../../../../core/flags';
 import { CalendarCheck, ClockCounterClockwise, Coins, Info, Receipt, Ticket } from '../../../../components/icons';
 import type { RootStackParamList } from '../../../../navigation/types';
 import {
@@ -78,7 +83,10 @@ export default function FinPrMacroScreen({
   const { user } = useAuth();
   const navigation = useNavigation<Nav>();
 
-  const [tabIndex, setTabIndex] = useState(initialTab);
+  const showSoon = useFeature('yakinda_satirlari');
+  const orderingV2 = useFeature('yeni_siparis');
+  const [tabIndexRaw, setTabIndex] = useState(initialTab);
+  const tabIndex = showSoon ? tabIndexRaw : 0;
   const [loading, setLoading] = useState(!vitrinData);
   const [profile, setProfile] = useState<MacroProfile | null>(null);
   const [settings, setSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
@@ -157,11 +165,13 @@ export default function FinPrMacroScreen({
     <FinScreen scroll contentStyle={{ paddingHorizontal: 16, gap: 20 }}>
       <FinHeader title={tr('profil.macro_and_sub')} onBack={onBack} />
 
-      <FinSegmented
-        options={[tr('profil.tab_macro'), tr('profil.tab_subscription')]}
-        index={tabIndex}
-        onChange={setTabIndex}
-      />
+      {showSoon ? (
+        <FinSegmented
+          options={[tr('profil.tab_macro'), tr('profil.tab_subscription')]}
+          index={tabIndex}
+          onChange={setTabIndex}
+        />
+      ) : null}
 
       <SectionSlide index={tabIndex}>
       {loading ? (
@@ -173,6 +183,11 @@ export default function FinPrMacroScreen({
           onOpenWhat={() => setWhatOpen(true)}
           onOpenHistory={() => setHistoryOpen(true)}
           onOpenOrders={() => navigation.navigate('ProfileOrders')}
+          onUseReward={
+            orderingV2
+              ? (code: string) => (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate('EkCart', { couponCode: code })
+              : undefined
+          }
         />
       ) : (
         <SubscriptionTab onSubscribe={goOrder} />
@@ -317,12 +332,15 @@ function MacroTab({
   onOpenWhat,
   onOpenHistory,
   onOpenOrders,
+  onUseReward,
 }: {
   progress: ReturnType<typeof macroProgress>;
   coupons: MealRewardCoupon[];
   onOpenWhat: () => void;
   onOpenHistory: () => void;
   onOpenOrders: () => void;
+  /** Kuponun kullanılacağı yer (sepet). Yoksa "Kullan" çizilmez. */
+  onUseReward?: (code: string) => void;
 }) {
   const t = useTheme();
   const { t: tr, lang } = useT();
@@ -404,10 +422,14 @@ function MacroTab({
                   <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }} numberOfLines={1}>
                     {tr('profil.macro_cost_until', { n: progress.mealCost, date: until ?? '—' })}
                   </Text>
-                  <FinPrimaryButton
-                    label={tr('profil.use_reward')}
-                    style={{ height: 32, paddingHorizontal: 16, alignSelf: 'flex-start', marginTop: 6 }}
-                  />
+                  {onUseReward && c.code ? (
+                    <FinPrimaryButton
+                      label={tr('profil.use_reward')}
+                      onPress={() => onUseReward(c.code)}
+                      testID={`macro-reward-use-${c.id}`}
+                      style={{ height: 44, minHeight: 44, paddingHorizontal: 20, alignSelf: 'flex-start', marginTop: 6 }}
+                    />
+                  ) : null}
                 </FinCard>
               );
             })}

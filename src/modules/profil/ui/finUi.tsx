@@ -280,6 +280,7 @@ export function FinPrimaryButton({
   tone = 'ink',
   disabled,
   style,
+  testID,
 }: {
   label: string;
   onPress?: () => void;
@@ -287,6 +288,7 @@ export function FinPrimaryButton({
   tone?: 'ink' | 'lime';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }) {
   const t = useTheme();
   const bg = tone === 'lime' ? t.color.accent : t.color.ink;
@@ -295,6 +297,7 @@ export function FinPrimaryButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      testID={testID}
       accessibilityRole="button"
       style={({ pressed }) => [
         {

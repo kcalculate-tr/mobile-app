@@ -2,6 +2,8 @@
 // (Egzersiz ve fitness rehberi · Öğün aboneliği; G24-S1: "AI koç" satırı kalktı — koç artık
 // Profil'deki "AI Koç" satırından açılır). Yakında olanlar satın alınamaz,
 // hiçbir plana dahil değil (yalnız Profil'de; paywall'da YOK). `abonelik` bayrağı açıkken çizilir.
+// G25-S1 md.3 (A4): "Yakında" bloğu (başlık + satırlar + dipnot) yalnız uzak bayrak
+// `yakinda_satirlari` AÇIKKEN çizilir (varsayılan KAPALI → 1.1.0 incelemesinde görünmez).
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, useTheme } from '../../../core/design';
@@ -10,11 +12,13 @@ import { Barbell, ShoppingBag, Sparkle } from '../../../components/icons';
 import { FinRow, FinRowGroup, FinSectionLabel } from '../../profil/ui/finUi';
 import { useTier } from '../../../lib/subscription/purchases';
 import { CoachProfileRow } from '../../coach/ui/entries';
+import { useFeature } from '../../../core/flags';
 
 export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
   const { tier } = useTier();
+  const showSoon = useFeature('yakinda_satirlari');
   const value = tier === 'free' ? tr('sub.profile.free_name') : tier === 'fresh' ? 'Fresh' : 'Balance';
   const nested = t.isDark ? '#2C2C2E' : '#F3F4F6';
   const line2 = t.isDark ? '#48484A' : '#C3C7CC';
@@ -30,6 +34,8 @@ export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
         {/* G24-S1 (FinPrProfile Tur 26k): "AI Koç" satırı + Balance rozeti (`koc` kapalıysa çizilmez). */}
         <CoachProfileRow />
       </FinRowGroup>
+      {showSoon ? (
+      <>
       <FinSectionLabel>{tr('sub.profile.soon_h')}</FinSectionLabel>
       <FinRowGroup>
         {soon.map((r, i) => (
@@ -55,6 +61,8 @@ export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
       <AppText tone="secondary" style={styles.foot}>
         {tr('sub.profile.soon_foot')}
       </AppText>
+      </>
+      ) : null}
     </View>
   );
 }
