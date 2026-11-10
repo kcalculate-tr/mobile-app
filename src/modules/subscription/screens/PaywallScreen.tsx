@@ -394,7 +394,7 @@ function PlanCardView({ c, i, scrollX, reduced, onPress }: { c: PlanCard; i: num
       <Pressable onPress={onPress} style={styles.cardIn} testID={`sub-card-${c.key}`}>
         {band ? (
           <View style={[styles.band, { backgroundColor: c.popular ? ink : '#C6F04F' }]}>
-            <AppText style={[styles.bandText, { color: c.popular ? t.color.bg : '#0A0A0A' }]} numberOfLines={1}>
+            <AppText style={[styles.bandText, { color: c.popular ? t.color.bg : '#0A0A0A' }]} numberOfLines={2}>
               {band}
             </AppText>
             {c.popular && c.trialDays ? (
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
   card: { width: CARD_W, borderRadius: 20, overflow: 'hidden', shadowColor: '#0A0A0A', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   cardIn: { flex: 1 },
   frame: { borderRadius: 20, borderWidth: 2 },
-  band: { height: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
+  band: { minHeight: 30, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
   bandEmpty: { height: 8 },
   bandText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
   bandChip: { backgroundColor: '#C6F04F', borderRadius: 10, paddingHorizontal: 8, height: 20, justifyContent: 'center' },
