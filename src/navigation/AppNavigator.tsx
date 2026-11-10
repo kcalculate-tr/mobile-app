@@ -66,6 +66,8 @@ const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
 const ComposerScreen = lazy(() => import('../modules/kesfet/ui/ComposerScreen'));
 // G15-S3 — Bildirimler tam sayfa (FinNotifications); `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
 const KesfetNotificationsScreen = lazy(() => import('../modules/kesfet/ui/NotificationsScreen'));
+// G22-S2 md.4 — Keşfet arama (FinSearch); `kesfet` açıkken (ya da __DEV__) kayıtlı.
+const KesfetSearchScreen = lazy(() => import('../modules/kesfet/ui/SearchScreen'));
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
 const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
 const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
@@ -135,6 +137,7 @@ const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const KesfetLazy = withSuspense(KesfetScreen);
 const ComposerLazy = withSuspense(ComposerScreen);
 const KesfetNotificationsLazy = withSuspense(KesfetNotificationsScreen);
+const KesfetSearchLazy = withSuspense(KesfetSearchScreen);
 const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
 const PublicProfileLazy = withSuspense(PublicProfileScreen);
 const KcalAiSignUpLazy = withSuspense(KcalAiSignUpRouteScreen);
@@ -521,6 +524,9 @@ export default function AppNavigator() {
       )}
       {(kesfetPaylasimEnabled || __DEV__) && (
         <Stack.Screen name="Composer" component={ComposerLazy} options={AI_MODAL} />
+      )}
+      {(kesfetEnabled || __DEV__) && (
+        <Stack.Screen name="KesfetSearch" component={KesfetSearchLazy} options={aiPush} />
       )}
       {(sosyalBildirimEnabled || __DEV__) && (
         <Stack.Screen name="KesfetNotifications" component={KesfetNotificationsLazy} options={aiPush} />

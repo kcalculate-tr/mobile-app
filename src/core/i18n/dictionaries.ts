@@ -13,6 +13,7 @@ import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v
 import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
 import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
 import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
+import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -26,6 +27,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     metrics: metricsTr,
     // G20-S1 — rıza ve politika akışı.
     consent: consentTr,
+    // G22-S2 md.4 — Keşfet arama (profil + içerik).
+    kesfetSearch: kesfetSearchTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1889,6 +1892,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
   en: {
     metrics: metricsEn,
     consent: consentEn,
+    kesfetSearch: kesfetSearchEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

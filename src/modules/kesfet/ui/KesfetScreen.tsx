@@ -845,7 +845,7 @@ export function KesfetScreen() {
           if (h > 0 && (headerH.value === 0 || (collapsed?.value ?? 0) === 0)) headerH.value = h;
         }}>
       <Header
-        onSearch={() => {}}
+        onSearch={() => navigation.navigate('KesfetSearch')}
         onNotifications={() => navigation.navigate('KesfetNotifications')}
         onCompose={() => navigation.navigate('Composer')}
         showCompose={kesfetPaylasim}

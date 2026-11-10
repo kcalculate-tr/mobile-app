@@ -50,6 +50,8 @@ export type RootStackParamList = {
   Composer: undefined;
   // G15-S3 — Bildirimler tam sayfa; yalnız `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
   KesfetNotifications: undefined;
+  // G22-S2 md.4 — Keşfet arama (kişi · gönderi · tarif); `kesfet` bayrağıyla kayıtlı.
+  KesfetSearch: undefined;
   // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini (koşullu kayıt).
   GunProfilUiLab: undefined;
   // `/u/:handle` — açık profil (bkz. modules/profil/ui/PublicProfileScreen).
