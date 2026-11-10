@@ -429,7 +429,10 @@ export default function AppNavigator() {
   // birlikte (G6-S3) gelir; bu oturum ekranı ve bayrak kapısını teslim eder.
   const kesfetEnabled = useFeature('kesfet');
   // G24-S1: kcalAI Koç ekranları yalnız `koc` açıkken kayıtlı (girişler de aynı bayrağa bağlı).
-  const kocEnabled = useFeature('koc');
+  // G25-S1 md.12: `abonelik` de açık olmalı (koç ve abonelik birlikte açılır).
+  const kocFlag = useFeature('koc');
+  const aboneFlag = useFeature('abonelik');
+  const kocEnabled = kocFlag && aboneFlag;
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');

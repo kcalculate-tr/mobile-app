@@ -69,6 +69,8 @@ import CoachHistoryScreen from '../screens/CoachHistoryScreen';
 import CoachIntroScreen from '../screens/CoachIntroScreen';
 // eslint-disable-next-line import/first
 import { COACH_CONSENT_KEY, INTRO_KEY, useCoachAccessStore } from '../access';
+// eslint-disable-next-line import/first
+import { useSubscriptionStore } from '../../../lib/subscription/purchases';
 
 const STATUS_BAL = { used: 0, limit: 30, kind: 'daily', tier: 'balance', remaining: 30, resets_at: '2026-11-11T21:00:00Z' };
 const STATUS_TRIAL = { used: 0, limit: 3, kind: 'trial', tier: 'free', remaining: 3, resets_at: null };
@@ -80,7 +82,8 @@ function httpError(status: number, body: unknown) {
 let mockStatus: unknown = STATUS_BAL;
 beforeEach(async () => {
   jest.clearAllMocks();
-  mockFlags = { koc: true };
+  mockFlags = { koc: true, abonelik: true };
+  useSubscriptionStore.setState({ available: true });
   mockParams = undefined;
   mockRows = [];
   mockStatus = STATUS_BAL;
@@ -113,6 +116,22 @@ const ENTRIES = () => (
 
 test('bayrak `koc` KAPALI → bütün girişler gizli, yoklama yapılmaz', async () => {
   mockFlags = { koc: false };
+  const r = render(<ENTRIES />);
+  await flush();
+  for (const id of ['coach-home-card', 'coach-scan-open', 'coach-profile-row', 'coach-recipe-fit']) expect(r.queryByTestId(id)).toBeNull();
+  expect(mockInvoke).not.toHaveBeenCalled();
+});
+
+test('G25 md.12: `koc` AÇIK ama `abonelik` KAPALI → bütün girişler gizli, yoklama yapılmaz', async () => {
+  mockFlags = { koc: true, abonelik: false };
+  const r = render(<ENTRIES />);
+  await flush();
+  for (const id of ['coach-home-card', 'coach-scan-open', 'coach-profile-row', 'coach-recipe-fit']) expect(r.queryByTestId(id)).toBeNull();
+  expect(mockInvoke).not.toHaveBeenCalled();
+});
+
+test('G25 md.12: iki bayrak açık ama RevenueCat yapılandırılmadı → girişler gizli', async () => {
+  useSubscriptionStore.setState({ available: false });
   const r = render(<ENTRIES />);
   await flush();
   for (const id of ['coach-home-card', 'coach-scan-open', 'coach-profile-row', 'coach-recipe-fit']) expect(r.queryByTestId(id)).toBeNull();

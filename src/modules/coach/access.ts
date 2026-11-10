@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { useFeature } from '../../core/flags';
+import { useSubscriptionEnabled } from '../../lib/subscription/useSubscriptionBootstrap';
 import { probeCoachFunction } from './client';
 
 type Avail = 'unknown' | 'checking' | 'ok' | 'missing';
@@ -33,10 +34,14 @@ async function probeOnce(): Promise<void> {
 
 /**
  * Koç girişleri görünsün mü? Bayrak `koc` kapalı → HAYIR (yoklama da yapılmaz).
+ * G25-S1 md.12: `koc` açık olsa bile abonelik kapalıysa (bayrak `abonelik` + RevenueCat) HAYIR —
+ * koç Balance'a bağlı, paywall'sız açılmaz (İlter kararı: ikisi birlikte açılır).
  * Açık → fonksiyon yoklanır (oturumda bir kez); 404 → HAYIR. Yoklama sürerken gizli.
  */
 export function useCoachEnabled(): boolean {
-  const flag = useFeature('koc');
+  const kocFlag = useFeature('koc');
+  const subs = useSubscriptionEnabled();
+  const flag = kocFlag && subs;
   const avail = useCoachAccessStore((s) => s.avail);
   useEffect(() => {
     if (flag) void probeOnce().catch(() => useCoachAccessStore.getState().setAvail('ok'));
