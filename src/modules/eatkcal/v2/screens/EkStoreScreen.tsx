@@ -14,12 +14,13 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
-import { EkSkeleton, ekType, useEk } from '../ui/kit';
+import { EkRatingLine, EkSkeleton, ekType, useEk } from '../ui/kit';
 import { EkCartBar, CART_BAR_GAP, CART_BAR_H, cartBarBottom, useCartSummary } from '../ui/home/CartBar';
 import { useEkNav, type EkV2ParamList } from '../nav';
 import { CategoryPill, ProductCard } from '../ui/home/cards';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { ReviewsSheet, type ReviewAggregate, type ReviewSubScores } from '../ui/ReviewsSheet';
+import { fetchRestaurantRating, type RestaurantRating } from '../../../../lib/restaurantRating';
 import { EmptyErrorCard, haptic } from '../../../../core/design';
 import { CachedImage } from '../../../../components/CachedImage';
 import { CaretLeft, Lightning } from '../../../../components/icons';
@@ -55,6 +56,8 @@ export default function EkStoreScreen() {
   const [products, setProducts] = useState<CategoryProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [reviews, setReviews] = useState<VitrinYorumu[]>([]);
+  // G22-S1 md.6: son 3 ay puanı (restaurant_rating; mağaza marka bazlı → tüm şubeler).
+  const [rating, setRating] = useState<RestaurantRating | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<string | null>(null);
@@ -81,6 +84,7 @@ export default function EkStoreScreen() {
       setLoading(false);
     }
     vitrinYorumlariniGetir(20).then(setReviews).catch(() => setReviews([]));
+    fetchRestaurantRating(null).then(setRating).catch(() => setRating(null));
   }, [brandKey]);
 
   useEffect(() => {
@@ -169,6 +173,7 @@ export default function EkStoreScreen() {
             {name}
           </Text>
           {brand?.tagline ? <Text style={[ekType.b15, { color: c.secondary }]}>{brand.tagline}</Text> : null}
+          {rating ? <EkRatingLine average={rating.average} count={rating.count} isNew={rating.isNew} testID="ek-store-rating" /> : null}
           {reviews.length > 0 ? (
             <Pressable
               onPress={() => {
@@ -276,8 +281,8 @@ export default function EkStoreScreen() {
         visible={reviewsOpen}
         onClose={() => setReviewsOpen(false)}
         reviews={reviews}
-        aggregate={vitrin.aggregate}
-        subScores={vitrin.subScores}
+        aggregate={vitrin.aggregate ?? (rating && !rating.isNew && rating.average != null ? { average: rating.average, count: rating.count } : null)}
+        subScores={vitrin.subScores ?? (rating ? { taste: rating.taste, delivery: rating.delivery, calorieFit: rating.calorieFit } : null)}
       />
       {/* Tur 26 md.12 (FinEkStore, FinMoCart): eklemenin geri bildirimi yüzen lime sepet çubuğu
           (görünür/güncellenir; "Sepete git" → sepet). "Sepete eklendi" toast'ının yerini aldı. */}

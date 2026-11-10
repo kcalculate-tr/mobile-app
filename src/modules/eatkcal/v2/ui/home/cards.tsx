@@ -8,7 +8,7 @@ import { Plus } from '../../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { yorumTarihi, type VitrinYorumu } from '../../../../../lib/socialProofRules';
 import { fontFamily, haptic } from '../../../../../core/design';
-import { EkStars, ekType, money, useEk } from '../kit';
+import { EkRatingLine, EkStars, ekType, money, useEk } from '../kit';
 import { cardKcal, cardPrice } from '../../model/homeData';
 
 /** Kart üstü kcal rozeti / fotoğraf zemini — açık temada beyaz %90, koyuda koyu yüzey. */
@@ -123,11 +123,14 @@ export function StoreCard({
   name,
   imageUri,
   subtitle,
+  rating,
   onPress,
 }: {
   name: string;
   imageUri?: string | null;
   subtitle?: string | null;
+  /** G22-S1 md.6: son 3 ay puanı (kompakt); <10 → "Yeni". */
+  rating?: { average: number | null; count: number; isNew: boolean } | null;
   onPress: () => void;
 }) {
   const { c } = useEk();
@@ -147,6 +150,7 @@ export function StoreCard({
         <Text style={[styles.storeName, { color: c.ink }]} numberOfLines={1}>
           {name}
         </Text>
+        {rating ? <EkRatingLine average={rating.average} count={rating.count} isNew={rating.isNew} compact testID="ek-store-card-rating" /> : null}
         {subtitle ? (
           <Text style={[ekType.c13, { color: c.secondary }]} numberOfLines={1}>
             {subtitle}

@@ -51,6 +51,7 @@ import {
   filterProductsByQuery,
   macroStrip,
 } from '../model/homeData';
+import { fetchRestaurantRating, type RestaurantRating } from '../../../../lib/restaurantRating';
 
 // EatHomeScreen.tsx ile AYNI yerel anahtar ("haber ver" sunucuya gitmez).
 const NEARBY_INTEREST_KEY = 'eatkcal-nearby-interest-notified';
@@ -74,6 +75,17 @@ function EkHomeContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  // G22-S1 md.6: restoran puanı (son 3 ay) — mağaza kartlarında kompakt.
+  const [rating, setRating] = useState<RestaurantRating | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchRestaurantRating(null)
+      .then((r) => alive && setRating(r))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
   const [campaigns, setCampaigns] = useState<BannerCell[]>([]);
@@ -450,10 +462,10 @@ function EkHomeContent() {
                     key={s.key}
                     name={s.brand.name}
                     imageUri={s.cover}
-                    // Mağaza puanı/değerlendirme sayısı verisi YOK (yalnız onaylı vitrin
-                    // yorumları var, marka bazında değil) → alt satırda gerçek veri:
-                    // bölge tahmini süresi, yoksa markanın kendi sloganı.
+                    // G22-S1 md.6: puan = restaurant_rating (son 3 ay, tüm şubeler; <10 → "Yeni").
+                    // Alt satır: bölge tahmini süresi, yoksa markanın kendi sloganı.
                     subtitle={chip ? `${t(chip.immediate ? 'eatkcal.v2.home.immediate' : 'eatkcal.v2.home.scheduled')}, ${chip.estimate}` : s.brand.tagline}
+                    rating={rating}
                     onPress={() => openStore(s.key)}
                   />
                 ))}

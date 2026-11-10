@@ -60,10 +60,11 @@ export function ReviewsSheet({
       {aggregate && aggregate.count > 0 ? (
         <View style={styles.agg}>
           <View style={{ alignItems: 'center', gap: 4 }}>
-            <Text style={[styles.avg, ekType.num, { color: c.ink }]}>{aggregate.average.toFixed(1)}</Text>
-            <EkStars value={aggregate.average} />
+            <Text style={[styles.avg, ekType.num, { color: c.ink }]}>{(Math.round(aggregate.average * 2) / 2).toFixed(1)}</Text>
+            <EkStars value={aggregate.average} half />
             <Text style={[ekType.c13, { color: c.secondary }]}>
-              {t('eatkcal.v2.reviews.count', { n: aggregate.count })}
+              {/* G22-S1 md.6: puan son 3 ayın (restaurant_rating). */}
+              {t('eatkcal.v2.reviews.last3m', { n: aggregate.count })}
             </Text>
           </View>
           {aggregate.distribution ? (

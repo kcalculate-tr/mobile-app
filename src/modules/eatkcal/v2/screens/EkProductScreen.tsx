@@ -34,7 +34,8 @@ import { track } from '../../../../lib/analytics';
 import { getEffectivePrice } from '../../../../utils/price';
 import { useCartStore } from '../../../../store/cartStore';
 import type { OptionGroup, Product, ProductOptionLink } from '../../../../types';
-import { EkButton, EkSkeleton, ekType, money, useEk } from '../ui/kit';
+import { EkButton, EkRatingLine, EkSkeleton, ekType, money, useEk } from '../ui/kit';
+import { fetchRestaurantRating, type RestaurantRating } from '../../../../lib/restaurantRating';
 import { useEkNav, type EkNavList } from '../nav';
 import {
   addTotal,
@@ -86,6 +87,17 @@ export default function EkProductScreen() {
   const [templateSelections, setTemplateSelections] = useState<TemplateSelections>({});
   const [gramajIndex, setGramajIndex] = useState(-1);
   const [images, setImages] = useState<Record<string, string>>({});
+  // G22-S1 md.6: restoranın son 3 ay puanı (<10 → "Yeni").
+  const [rating, setRating] = useState<RestaurantRating | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchRestaurantRating(null)
+      .then((r) => alive && setRating(r))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [quantity, setQuantity] = useState(1);
   const [tried, setTried] = useState(false);
   const [added, setAdded] = useState(false);
@@ -505,6 +517,7 @@ export default function EkProductScreen() {
             <Text style={[ekType.h24, { color: c.ink }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
               {product.name}
             </Text>
+            {rating ? <EkRatingLine average={rating.average} count={rating.count} isNew={rating.isNew} testID="ek-product-rating" /> : null}
             {product.desc ? <Text style={[styles.desc, { color: c.secondary }]}>{product.desc}</Text> : null}
             <View style={styles.priceRow} testID="ek-product-price">
               <Text style={[ekType.b17, ekType.num, styles.bold, { color: c.ink }]}>{money(unitPrice)}</Text>

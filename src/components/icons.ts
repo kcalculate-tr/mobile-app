@@ -140,3 +140,4 @@ export { ArrowSquareOut } from 'phosphor-react-native/lib/commonjs/icons/ArrowSq
 export { Pause } from 'phosphor-react-native/lib/commonjs/icons/Pause';
 export { Play } from 'phosphor-react-native/lib/commonjs/icons/Play';
 export { Barcode } from 'phosphor-react-native/lib/commonjs/icons/Barcode';
+export { StarHalf } from 'phosphor-react-native/lib/commonjs/icons/StarHalf';
