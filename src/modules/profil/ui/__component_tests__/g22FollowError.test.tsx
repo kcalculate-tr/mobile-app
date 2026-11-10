@@ -59,10 +59,10 @@ test('takip hatası → "Takip et"e geri döner + "Takip edilemedi." uyarısı',
   });
   expect(r.getByText('Takip edilemedi.')).toBeTruthy();
   expect(r.getByText('Takip et')).toBeTruthy();
-  expect(r.queryByText('Takiptesin')).toBeNull();
+  expect(r.queryByText('Takip ediliyor')).toBeNull();
 });
 
-test('uyarıdaki Tekrar dene → yeniden takip; başarıda "Takiptesin"', async () => {
+test('uyarıdaki Tekrar dene → yeniden takip; başarıda "Takip ediliyor"', async () => {
   const follow = jest.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValue({ state: 'following' });
   withClient(follow);
   const r = render(<PublicProfileScreen />);
@@ -76,5 +76,5 @@ test('uyarıdaki Tekrar dene → yeniden takip; başarıda "Takiptesin"', async 
   });
   expect(follow).toHaveBeenCalledTimes(2);
   expect(r.queryByText('Takip edilemedi.')).toBeNull();
-  expect(r.getByText('Takiptesin')).toBeTruthy();
+  expect(r.getByText('Takip ediliyor')).toBeTruthy();
 });

@@ -1,7 +1,7 @@
 // `/u/:handle` hedefi — G5-S4'ün yer tutucu `SharedProfileScreen`'inin yerini
 // alacak gerçek açık profil (bu dalda night5/share-links henüz birleşmediği
 // için o dosya burada yok; bkz. G6-S3-LOG.md "Rota notu"). Başlık: avatar, ad,
-// @handle, bio, sayaçlar, Takip et/İstek gönderildi/Takiptesin. Gizli hesap +
+// @handle, bio, sayaçlar, Takip et/İstek gönderildi/Takip ediliyor. Gizli hesap +
 // takip etmiyorsam içerik yerine "Bu hesap gizli".
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -30,6 +30,8 @@ import { TakibeBaslaCTA } from './TakibeBaslaCTA';
 import { track } from '../../../lib/analytics';
 import { AddToast, type ToastState } from '../../kesfet/ui/AddToast';
 import { runOptimisticFollow } from '../followOptimistic';
+import { FinSkeletonBlock } from '../../../core/design/components/FinSkeleton';
+import { useBreath } from '../../../core/design/motion';
 
 // G22-S2 md.5 (FinFollowError): "Takip edilemedi." uyarısı ~6 sn kalır (okuma süresi).
 const FOLLOW_ERROR_HOLD = WAIT.actionToastHold;
@@ -80,6 +82,15 @@ export default function PublicProfileScreen() {
   );
 
   if (loading) {
+    // G23-S1: yeni kabukta FinMoLoad iskeleti (profil düzeni); eski kabuk AYNEN.
+    if (yeniKabuk) {
+      return (
+        <View style={[styles.fill, { backgroundColor: t.color.bg, paddingTop: insets.top + 64 }]}>
+          {backBar}
+          <PublicProfileSkeleton />
+        </View>
+      );
+    }
     return (
       <View style={[styles.center, { backgroundColor: t.color.bg }]}>
         {backBar}
@@ -299,7 +310,45 @@ function Counter({ label, value, lang, color }: { label: string; value: number; 
   );
 }
 
+/** FinMoLoad iskeleti — FinProfilePublic yerleşimi: avatar, ad, @handle, üç sayaç, düğme, ızgara. */
+function PublicProfileSkeleton() {
+  const { t: tt } = useT();
+  const { style: pulse } = useBreath({ min: 0.45, max: 0.9 });
+  return (
+    <View
+      testID="public-profile-skeleton"
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={tt('common.loading')}
+      style={styles.skel}
+    >
+      <FinSkeletonBlock width={88} height={88} radius={44} pulse={pulse} />
+      <FinSkeletonBlock width="50%" height={22} radius={8} pulse={pulse} />
+      <FinSkeletonBlock width="30%" height={14} radius={7} pulse={pulse} />
+      <View style={styles.skelStats}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={styles.skelStat}>
+            <FinSkeletonBlock width={36} height={20} radius={6} pulse={pulse} />
+            <FinSkeletonBlock width={56} height={12} radius={6} pulse={pulse} />
+          </View>
+        ))}
+      </View>
+      <FinSkeletonBlock height={44} radius={22} pulse={pulse} />
+      <View style={styles.skelGrid}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <FinSkeletonBlock key={i} width="31%" height={110} radius={12} pulse={pulse} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  skel: { alignItems: 'center', gap: 12, paddingHorizontal: 20 },
+  skelStats: { flexDirection: 'row', justifyContent: 'space-around', alignSelf: 'stretch', marginVertical: 8 },
+  skelStat: { alignItems: 'center', gap: 6 },
+  skelGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8, alignSelf: 'stretch', marginTop: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: { height: 44, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center' },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

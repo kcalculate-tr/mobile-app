@@ -39,7 +39,7 @@ export default function PublicPreviewScreen({
   blocked,
 }: {
   onBack: () => void;
-  /** Gerçek profil ekranı (`/u/:handle`): Takip et / İstek gönderildi / Takiptesin. Verilmezse önizleme düğmesi. */
+  /** Gerçek profil ekranı (`/u/:handle`): Takip et / İstek gönderildi / Takip ediliyor. Verilmezse önizleme düğmesi. */
   action?: { label: string; onPress: () => void; busy?: boolean; outlined?: boolean };
   /** Gizli hesap + takip etmiyorum: ızgara yerine kilit notu. */
   locked?: boolean;

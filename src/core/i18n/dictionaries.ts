@@ -875,7 +875,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       bio: 'Kısa bio',
       private_account: 'Gizli hesap',
       follow: 'Takip et',
-      following: 'Takiptesin',
+      following: 'Takip ediliyor',
       requested: 'İstek gönderildi',
       start_tracking: 'Takibe başla',
       start_tracking_hint: 'Günlük kalori/makro hedefini kur — isteğe bağlı.',
