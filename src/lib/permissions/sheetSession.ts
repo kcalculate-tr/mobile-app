@@ -8,6 +8,13 @@
 
 let shownKind: string | null = null;
 
+/** G27-S1: uygulama süreci (oturum) kimliği — kaçan bildirim teklifinin "sonraki oturum" ayrımı. */
+const newSessionId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+let sessionId = newSessionId();
+export function currentSessionId(): string {
+  return sessionId;
+}
+
 /** Bir onay sheet'i ekrana geldi (ConsentSheet görünür olunca çağrılır; 'details' sayılmaz). */
 export function noteConsentSheet(kind: string): void {
   if (!shownKind) shownKind = kind;
@@ -18,7 +25,8 @@ export function consentSheetShownThisSession(): boolean {
   return shownKind != null;
 }
 
-/** Yalnız testler. */
-export function resetConsentSheetSession(): void {
+/** Yalnız testler. `newSession` true → yeni oturum kimliği (uygulama yeniden açıldı). */
+export function resetConsentSheetSession(newSession = false): void {
   shownKind = null;
+  if (newSession) sessionId = newSessionId();
 }

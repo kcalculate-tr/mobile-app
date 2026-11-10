@@ -42,3 +42,46 @@ export function decidePush(i: {
   if (i.askedAt == null || i.now - i.askedAt >= PUSH_REASK_DAYS * DAY) return 'ask';
   return 'open_settings';
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G27-S1 md.3 (G26 SORULAR 4, İlter 11 Kas) — kaçan teklifin İKİNCİ şansı.
+// İlk öğün oturumunda başka bir onay sheet'i açıldığı için teklif atlandıysa (KAÇTI),
+// SONRAKİ bir oturumda bir öğün kaydından sonra (ikinci öğün kaydı) BİR kez daha
+// teklif edilir. Sonrası otomatik teklif yok (yalnız Ayarlar › Bildirimler).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type NotifyTrigger = 'first_meal' | 'meal_log';
+export type NotifyOfferDecision =
+  /** Açıklama ekranını şimdi göster (ve "teklif edildi" işaretle). */
+  | 'offer'
+  /** Bu oturumda gösterme; kaçtı olarak bu oturumu kaydet (ikinci şans hakkı). */
+  | 'defer'
+  /** İkinci şans hakkını düşür (artık gerekmiyor: izin verildi / sorulamaz). */
+  | 'drop'
+  /** Hiçbir şey yapma. */
+  | 'skip';
+
+export function decideNotifyOffer(i: {
+  trigger: NotifyTrigger;
+  /** Açıklama ekranı daha önce gösterildi (ilk ya da ikinci şans). */
+  offered: boolean;
+  /** Teklifin kaçtığı oturumun kimliği (yoksa null). */
+  missedSession: string | null;
+  currentSession: string;
+  /** Bu oturumda başka bir onay sheet'i açıldı (G26 md.7: oturum başına tek sheet). */
+  consentShownThisSession: boolean;
+  /** canOfferPush('first_meal') — hiç sorulmamış + işletim sistemi sorabiliyor. */
+  canOffer: boolean;
+}): NotifyOfferDecision {
+  if (i.offered) return 'skip';
+  if (i.trigger === 'first_meal') {
+    if (!i.canOffer) return 'skip';
+    return i.consentShownThisSession ? 'defer' : 'offer';
+  }
+  // meal_log: yalnız kaçmış bir teklif varsa ve AYNI oturum değilse.
+  if (i.missedSession == null || i.missedSession === i.currentSession) return 'skip';
+  if (!i.canOffer) return 'drop';
+  // Bu oturumda da başka bir onay sheet'i açıldıysa hak korunur (bir sonraki kayıtta).
+  if (i.consentShownThisSession) return 'skip';
+  return 'offer';
+}

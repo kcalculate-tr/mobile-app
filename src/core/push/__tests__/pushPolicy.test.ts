@@ -30,3 +30,24 @@ test('Ayarlar: 30 günde en fazla bir sistem penceresi; aksi hâlde işletim sis
   // iOS ret sonrası işletim sistemi soramaz → Ayarlar
   assert.equal(decidePush({ status: 'denied', canAskAgain: false, askedAt: NOW - 400 * DAY, now: NOW, source: 'settings' }), 'open_settings');
 });
+
+// ── G27-S1 md.3 (G26 SORULAR 4): kaçan teklifin ikinci şansı ─────────────────
+import { decideNotifyOffer } from '../pushPolicy';
+
+const base = { offered: false, missedSession: null, currentSession: 'B', consentShownThisSession: false, canOffer: true };
+
+test('G27: ilk öğün — oturumda onay sheet\'i yoksa teklif; varsa ertele (kaçtı)', () => {
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'first_meal' }), 'offer');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'first_meal', consentShownThisSession: true }), 'defer');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'first_meal', canOffer: false }), 'skip');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'first_meal', offered: true }), 'skip');
+});
+
+test('G27: kaçan teklif SONRAKİ oturumda öğün kaydında BİR kez daha; aynı oturumda değil', () => {
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A' }), 'offer');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'B' }), 'skip', 'aynı oturum');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log' }), 'skip', 'kaçan teklif yok');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A', offered: true }), 'skip', 'ikinci şans kullanıldı');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A', consentShownThisSession: true }), 'skip', 'hak korunur');
+  assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A', canOffer: false }), 'drop', 'izin verildi / sorulamaz');
+});
