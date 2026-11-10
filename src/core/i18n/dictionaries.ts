@@ -12,6 +12,8 @@ import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/
 import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
 import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
 import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
+import { tr as subTr, en as subEn } from '../../lib/subscription/i18n';
+import { tr as voiceTr, en as voiceEn } from '../../modules/ai/scan/voice/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -25,6 +27,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     metrics: metricsTr,
     // G20-S1 — rıza ve politika akışı.
     consent: consentTr,
+    sub: subTr,
+    voice: voiceTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1881,6 +1885,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
   en: {
     metrics: metricsEn,
     consent: consentEn,
+    sub: subEn,
+    voice: voiceEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

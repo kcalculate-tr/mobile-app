@@ -52,6 +52,7 @@ export const FLAG_DEFAULTS = {
   // G19-S2 md.5 — öğün saatinde kayıt yoksa yerel hatırlatma (fin_reminder_*).
   // Yalnız yeni kabukta etkili. Sunucu satırı: 20261109200100_g19_s2_track.sql (kapalı).
   ogun_hatirlatma: false, // Öğün hatırlatmaları (yerel bildirim)
+  abonelik: false, // G22-S1: kcalAI abonelikleri (paywall, hak sheet'leri, Profil › Abonelik); RevenueCat anahtarı da gerekir
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

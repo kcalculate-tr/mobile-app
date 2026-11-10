@@ -21,6 +21,7 @@ import { FlagsProvider } from './src/core/flags';
 import { AppSchemeGate } from './src/core/design/SchemeGate';
 import { I18nProvider } from './src/core/i18n';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
+import { useSubscriptionBootstrap } from './src/lib/subscription/useSubscriptionBootstrap';
 import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
 import AppNavigator from './src/navigation/AppNavigator';
 import {
@@ -67,6 +68,8 @@ function AppContent() {
   useNearestLocationBootstrap();
   // Şubede tükenen ürünü sepetten düşürür ve kullanıcıya söyler.
   useBranchStockWatch();
+  // G22-S1: RevenueCat yapılandırma + Purchases.logIn/logOut (anahtar/modül yoksa sessiz).
+  useSubscriptionBootstrap();
 
   // Zorunlu güncelleme kontrolü — açılışta settings.min_supported_version'a göre.
   // Fail-open: kontrol başarısızsa kullanıcı kilitlenmez (checkForceUpdate içinde).
