@@ -11,6 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppText } from '../../../core/design/components/AppText';
 import { useT } from '../../../core/i18n';
+import { WAIT } from '../../../core/design/motion';
 import { useAuth } from '../../../core/AuthContext';
 import { useFeature } from '../../../core/flags';
 import { getSupabaseClient } from '../../../core/supabase';
@@ -64,7 +65,7 @@ function CodeBoxes({
   const P = useOnb();
   const ref = useRef<TextInput>(null);
   useEffect(() => {
-    const id = setTimeout(() => ref.current?.focus(), 250);
+    const id = setTimeout(() => ref.current?.focus(), WAIT.focusAfterMotion);
     return () => clearTimeout(id);
   }, []);
   return (

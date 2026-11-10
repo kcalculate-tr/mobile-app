@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
-import { haptic } from '../../../core/design';
+import { WAIT, haptic } from '../../../core/design';
 import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
@@ -360,7 +360,7 @@ export function KesfetScreen() {
   // "Logla izi" oynadıktan sonra örtüyü kaldır (iz ~logTrail + tampon sürede biter).
   useEffect(() => {
     if (!trail) return;
-    const id = setTimeout(() => setTrail(null), 1200);
+    const id = setTimeout(() => setTrail(null), WAIT.trailClear);
     return () => clearTimeout(id);
   }, [trail]);
 

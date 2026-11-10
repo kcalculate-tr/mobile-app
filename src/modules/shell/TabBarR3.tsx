@@ -48,6 +48,7 @@ import { useT } from '../../core/i18n';
 import {
   CURVE,
   DURATION,
+  PREMIUM,
   REDUCED,
   SPRING,
   TIMING,
@@ -59,7 +60,7 @@ import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
-import { SELECTED_PILL, SELECTED_PILL_MS } from './selectedPill';
+import { SELECTED_PILL } from './selectedPill';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
@@ -271,7 +272,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
       // G17-S2 md.5: seçili hap geçişi 200 standard (yay/jöle yok); azaltılmış
       // harekette de aynı süre (yalnız konum, uzama yok).
       posX.value = withTiming(target, {
-        duration: reduced ? REDUCED.duration : SELECTED_PILL_MS,
+        duration: reduced ? REDUCED.duration : PREMIUM.tab.duration,
         easing: CURVE.standard,
       });
       stretch.value = 1;

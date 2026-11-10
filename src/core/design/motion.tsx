@@ -50,31 +50,36 @@ import * as Haptics from 'expo-haptics';
 /**
  * Süre bantları (ms) — FinMoTokens v2 TEK KAYNAK (`design/final/FinMoTokens.dc.html`):
  * `instant 100 · fast 200 · base 300 · slow 500 · story 900+`. Arası doldurulmaz.
+ *
+ * G22-S2 md.1 (İlter 10 Kas): hareket +%10 — bütün bantlar ×1,1 →
+ * `instant 110 · fast 220 · base 330 · slow 550 · story 990`. Eğriler FinMoTokens'taki
+ * gibi AYNEN; yaylar `MOTION_SOFTEN` ile ~%10 yumuşak. Yorumlardaki "base 300" gibi
+ * adlar FinMoTokens bant ADIDIR (değer bu dosyadaki sayıdır). DAHA FAZLA ARTIRILMAZ.
  * Eski adlar (micro/standard/emphasis/heroMin/heroMax) v2 bandına EŞLENMİŞ TAKMA
  * ADLARDIR; imzalar değişmez, bu yüzden mevcut tüketiciler kırılmaz.
  */
 export const DURATION = {
   /** 100 — deklanşör, kademe, dokunma geri bildirimi (v2). */
-  instant: 100,
+  instant: 110,
   /** 200 — crossfade, kaydet, sheet kapanış, durum değişimi (v2). */
-  fast: 200,
+  fast: 220,
   /** 300 — standart giriş/geçiş, liste öğesi, tab küçül/büyü (v2). */
-  base: 300,
+  base: 330,
   /** 500 — ekran ölçeğinde hareket, sheet/modal açılış, odometre (v2). */
-  slow: 500,
+  slow: 550,
   /** 900 — "story": halka dolumu, iskelet nabzı, analiz, süzülme döngüsü (v2). */
-  story: 900,
+  story: 990,
   // --- Eski adlar (takma ad → v2 bandı) ---
   /** @deprecated → instant (100). */
-  micro: 100,
+  micro: 110,
   /** @deprecated → base (300). */
-  standard: 300,
+  standard: 330,
   /** @deprecated → slow (500). */
-  emphasis: 500,
+  emphasis: 550,
   /** @deprecated → story (900). */
-  heroMin: 900,
+  heroMin: 990,
   /** @deprecated → story (900). FinMoTokens: 1100–1600 ms → story 900. */
-  heroMax: 900,
+  heroMax: 990,
 } as const;
 
 /**
@@ -83,18 +88,18 @@ export const DURATION = {
  * 3200 / eğim 4800 / parıltı 2400 — "story döngü"). Değerler token bandından seçilir.
  */
 export const TIMING = {
-  enter: 500, // slow
-  pop: 300, // base (kutlama sıçraması bouncy yay ile)
+  enter: 550, // slow
+  pop: 330, // base (kutlama sıçraması bouncy yay ile)
   // G18-S4: FinMoTokens eşlemesi — 3200 · 4800 ms süzülme/eğim döngüsü → story 900
   // TEK SAHNE (sürekli döngü yok); 2400 parıltı → story 900 yarım nefes; 1100–1600 → story 900.
-  float: 900, // story (tek sahne)
-  tilt: 900, // story (tek sahne)
-  glow: 900, // story (nefesin yarısı; yalnız yüklenirken döner)
-  sweep: 900, // story (analiz/ışık bandı)
-  logTrail: 500, // slow (tabak uçuşu)
-  streak: 900, // story (seri anı)
-  dailyRing: 900, // story (halka dolumu)
-  loading: 900, // story (iskelet nabzı)
+  float: 990, // story (tek sahne)
+  tilt: 990, // story (tek sahne)
+  glow: 990, // story (nefesin yarısı; yalnız yüklenirken döner)
+  sweep: 990, // story (analiz/ışık bandı)
+  logTrail: 550, // slow (tabak uçuşu)
+  streak: 990, // story (seri anı)
+  dailyRing: 990, // story (halka dolumu)
+  loading: 990, // story (iskelet nabzı)
 } as const;
 
 /**
@@ -119,19 +124,35 @@ export const CURVE = {
 } as const;
 
 /**
+ * G22-S2 md.1 — yay yumuşatma: stiffness ×0,9 (~%10 daha yavaş oturur). Sönüm
+ * oranı ζ = damping / (2·√(stiffness·mass)) AYNI kalsın diye damping ×√0,9 —
+ * böylece taşma (overshoot) artmaz, yalnız hareket uzar.
+ */
+export const MOTION_SOFTEN = { stiffness: 0.9 } as const;
+
+function softSpring(stiffness: number, damping: number) {
+  const k = MOTION_SOFTEN.stiffness;
+  return {
+    stiffness: Math.round(stiffness * k * 100) / 100,
+    damping: Math.round(damping * Math.sqrt(k) * 100) / 100,
+    mass: 1,
+  };
+}
+
+/**
  * Yay aileleri. İki ürün + sheet. `useNativeDriver` için RN spring `stiffness`
  * yerine bu değerleri kullanır; RN Animated.spring stiffness/damping/mass'i
  * doğrudan kabul eder.
  */
 export const SPRING = {
-  /** Kcalculate AI (260/24) — sheet, push/pop, modal, yer değiştirme (v2). */
-  ai: { stiffness: 260, damping: 24, mass: 1 },
-  /** eatkcal (200/28) — sepet, ödeme, teslim (v2). */
-  eat: { stiffness: 200, damping: 28, mass: 1 },
-  /** bouncy (220/14) — YALNIZ küçük ödüller: ✓, rozet, kaydet, beğen sayacı (v2). */
-  bouncy: { stiffness: 220, damping: 14, mass: 1 },
+  /** Kcalculate AI (260/24 → G22 234/22,77) — sheet, push/pop, modal, yer değiştirme (v2). */
+  ai: softSpring(260, 24),
+  /** eatkcal (200/28 → G22 180/26,56) — sepet, ödeme, teslim (v2). */
+  eat: softSpring(200, 28),
+  /** bouncy (220/14 → G22 198/13,28) — YALNIZ küçük ödüller: ✓, rozet, kaydet, beğen sayacı (v2). */
+  bouncy: softSpring(220, 14),
   /** @deprecated → ai. Sheet, FinMoMap'te AI yayını kullanır. */
-  sheet: { stiffness: 260, damping: 24, mass: 1 },
+  sheet: softSpring(260, 24),
 } as const;
 
 /**
@@ -140,14 +161,14 @@ export const SPRING = {
  */
 export const STAGGER = {
   /** Liste öğeleri — yalnız ilk 4 öğe sıralanır, gerisi 4. ile birlikte gelir. */
-  list: 100,
+  list: DURATION.instant,
   listMaxItems: 4,
   /** Etiket/rozet grubu. */
-  label: 100,
+  label: DURATION.instant,
   /** Günlük halkanın dallara ayrılması. */
-  ringSplit: 100,
+  ringSplit: DURATION.instant,
   /** Tarama köşelerinin belirmesi. */
-  scanCorners: 100,
+  scanCorners: DURATION.instant,
 } as const;
 
 /** Haptik sözlüğü — FinMoTokens v2 (hangi olayda hangi dokunsal). */
@@ -180,6 +201,22 @@ export const TRANSITION = {
   tab: { duration: DURATION.fast, curve: CURVE.standard },
   /** Liste öğesi girişi: fast 200 enter · kademe instant 100. */
   listItem: { duration: DURATION.fast, curve: CURVE.enter, stagger: STAGGER.list },
+} as const;
+
+/**
+ * G22-S2 md.1 — hareketin bitmesini bekleyen gecikmeler (setTimeout). Ekranlar
+ * bekleme süresini de buradan okur (sabit ms yok). Hareket sürelerine bağlı
+ * olanlar ×1,1 ölçeklendi; okuma/tutma süreleri (toast 4 sn vb.) hareket değildir.
+ */
+export const WAIT = {
+  /** Logla izi örtüsünü kaldır: iz (TIMING.logTrail) + tampon — 1200 ×1,1. */
+  trailClear: 1320,
+  /** Başarı mesajı görününce ekranı kapat — 1200 ×1,1. */
+  doneMessage: 1320,
+  /** Kaydırma / sheet hareketi bittikten sonra klavye odağı — base. */
+  focusAfterMotion: DURATION.base,
+  /** Açılışın ilk karesinde modal fırlatma; ana sayfa yerleşsin — story. */
+  firstPaint: DURATION.story,
 } as const;
 
 /** Azaltılmış hareket sınırları. Son durum 200 ms opaklık; yer değiştirme/ölçek yok. */
