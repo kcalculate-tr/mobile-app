@@ -40,7 +40,7 @@ export const tr = {
     // G23-S1 (İlter 10 Kas): metin sürümü 2 (fotoğraf + sesli giriş) — policy AI_PHOTO_TEXT_VERSION.
     ai_photo_title: 'Fotoğraf ve ses analizi',
     ai_photo_lead:
-      'Tabak fotoğrafın ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.',
+      'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.',
     ai_photo_hint: 'Vazgeçersen öğününü elle girebilirsin. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
     ai_photo_ok: 'Kabul et',
     ai_photo_cancel: 'Vazgeç',
@@ -53,7 +53,7 @@ export const tr = {
     measure_section: 'Ölçüm',
     ai_section: 'Yapay zekâ',
     ai_photo_label: 'Fotoğraf ve ses analizi',
-    ai_photo_desc: 'Tabak fotoğrafın ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.',
+    ai_photo_desc: 'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.',
     docs_section: 'Metinler',
     att_denied: 'iPhone’da izleme izni verilmediği için reklam ölçümü kapalı. Açmak için iPhone Ayarları’na git.',
     att_open: 'iPhone Ayarları’nı aç',
@@ -102,7 +102,7 @@ export const en: typeof tr = {
     reconsent_ok: 'Accept and continue',
     ai_photo_title: 'Photo and voice analysis',
     ai_photo_lead:
-      'Your plate photo, or the transcribed text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Audio is not recorded.',
+      'Your plate photo (and any note you add), or the transcribed text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Audio is not recorded.',
     ai_photo_hint: 'If you cancel, you can enter your meal manually. You can withdraw this in Profile › Privacy › Data and ad permissions.',
     ai_photo_ok: 'Accept',
     ai_photo_cancel: 'Cancel',
@@ -115,7 +115,7 @@ export const en: typeof tr = {
     measure_section: 'Measurement',
     ai_section: 'AI',
     ai_photo_label: 'Photo and voice analysis',
-    ai_photo_desc: 'Your plate photo, or the transcribed text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Audio is not recorded.',
+    ai_photo_desc: 'Your plate photo (and any note you add), or the transcribed text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Audio is not recorded.',
     docs_section: 'Documents',
     att_denied: 'Ad measurement is off because tracking isn’t allowed on this iPhone. Go to iPhone Settings to turn it on.',
     att_open: 'Open iPhone Settings',
