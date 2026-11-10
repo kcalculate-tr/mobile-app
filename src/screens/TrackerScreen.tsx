@@ -2130,8 +2130,8 @@ export default function TrackerScreen() {
           return;
         }
         dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
-        const savedLabelNew =
-          ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null;
+        // G25-S1 md.10 (A13): öğün etiketi i18n (EN'de "Logged to Dinner", eskiden "Logged to Akşam").
+        const savedLabelNew = mealType ? tt(`meal.${normalizeMealType(mealType)}`) : null;
         startHighlight(id, savedLabelNew);
         dispatchMealForm({ type: 'RESET_FORM' });
         const offline = await isOffline();
@@ -2172,8 +2172,8 @@ export default function TrackerScreen() {
       }
       // Yeni kabuk: Logla izi + zaman hapı (TrackerDayHeader okur). Eski kabukta
       // bu state'in görünür etkisi yok.
-      const savedLabel =
-        ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null;
+      // G25-S1 md.10 (A13): öğün etiketi i18n (EN'de "Logged to Dinner", eskiden "Logged to Akşam").
+      const savedLabel = mealType ? tt(`meal.${normalizeMealType(mealType)}`) : null;
       if (yeniKabuk && row) {
         // G13-S1: Logla izi B — nokta → satır → halka (logToken halka evresinde).
         startHighlight(String((row as { id?: unknown }).id ?? ''), savedLabel);

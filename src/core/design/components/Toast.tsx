@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
 import { haptic, REDUCED, TRANSITION, useReducedMotion } from '../motion';
+import { useT } from '../../i18n';
 
 /**
  * Toast — "Öğle'ye loglandı · Geri al · Gör".
@@ -15,6 +16,10 @@ import { haptic, REDUCED, TRANSITION, useReducedMotion } from '../motion';
  *
  * Azaltılmış hareket: yalnız opaklık + en fazla 8 px kayma, en fazla 200 ms.
  *
+ * G25-S1 md.10 (A13): düğme metinleri ve VoiceOver etiketleri i18n (`common.undo` / `common.view`;
+ * EN'de "Undo" / "View"). md.9 (A12): isteğe bağlı `onRetry` → "Tekrar dene" (`common.retry`),
+ * hata toast'ı için `tone="error"` (nokta ikincil renk, kendiliğinden kapanmaz).
+ *
  * NOT: Bu yeni tasarımın Toast'u; mevcut `src/core/ui/Toast.tsx`'e dokunmadan
  * ayrı dosyadır. Hiçbir ekrana bağlı değildir.
  */
@@ -23,17 +28,25 @@ export function Toast({
   message,
   onUndo,
   onView,
+  onRetry,
   onDismiss,
-  autoHideMs = 4000,
+  tone = 'default',
+  autoHideMs = tone === 'error' ? 0 : 4000,
+  testID,
 }: {
   visible: boolean;
   message: string;
   onUndo?: () => void;
   onView?: () => void;
+  /** G25-S1 md.9: "Tekrar dene" (hata toast'ı). */
+  onRetry?: () => void;
   onDismiss?: () => void;
+  tone?: 'default' | 'error';
   autoHideMs?: number;
+  testID?: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useT();
   const reduced = useReducedMotion();
   const p = useRef(new Animated.Value(0)).current; // 0 gizli, 1 görünür
   const offset = reduced ? REDUCED.maxShift : TRANSITION.toast.offset;
@@ -71,10 +84,11 @@ export function Toast({
           ...t.elevation.md,
         },
       ]}
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={tone === 'error' ? 'assertive' : 'polite'}
+      testID={testID}
     >
       <View style={styles.dot}>
-        <View style={[styles.dotInner, { backgroundColor: t.color.accent }]} />
+        <View style={[styles.dotInner, { backgroundColor: tone === 'error' ? t.color.secondary : t.color.accent }]} />
       </View>
       <AppText variant="body" style={styles.msg} numberOfLines={2}>
         {message}
@@ -87,10 +101,10 @@ export function Toast({
           }}
           style={styles.action}
           accessibilityRole="button"
-          accessibilityLabel="Geri al"
+          accessibilityLabel={tr('common.undo')}
         >
           <AppText variant="caption" style={{ color: t.color.accentLine }}>
-            Geri al
+            {tr('common.undo')}
           </AppText>
         </Pressable>
       ) : null}
@@ -102,10 +116,26 @@ export function Toast({
           }}
           style={styles.action}
           accessibilityRole="button"
-          accessibilityLabel="Gör"
+          accessibilityLabel={tr('common.view')}
         >
           <AppText variant="caption" style={{ color: t.color.ink }}>
-            Gör
+            {tr('common.view')}
+          </AppText>
+        </Pressable>
+      ) : null}
+      {onRetry ? (
+        <Pressable
+          onPress={() => {
+            haptic('selection');
+            onRetry();
+          }}
+          style={styles.action}
+          accessibilityRole="button"
+          accessibilityLabel={tr('common.retry')}
+          testID={testID ? `${testID}-retry` : undefined}
+        >
+          <AppText variant="caption" style={{ color: t.color.ink }}>
+            {tr('common.retry')}
           </AppText>
         </Pressable>
       ) : null}

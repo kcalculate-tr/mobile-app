@@ -50,6 +50,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete: 'Sil',
       you: 'Sen',
       back: 'Geri',
+      // G25-S1 md.10 (A13): kabuk toast'ı "Gör" düğmesi.
+      view: 'Gör',
     },
     // G18-S4 md.3 — FinPush şablonları (core/push/finPush.ts FIN_PUSH_TEXT ile birebir).
     push: {
@@ -216,6 +218,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       header: 'Takibe başla',
       skip: 'Atla',
       continue: 'Devam et',
+      // G25-S1 md.9 (A12): profil kaydı başarısız → hata toast'ı + Tekrar dene.
+      save_failed: 'Profilin kaydedilemedi. Bağlantını kontrol edip tekrar dene.',
       goal: {
         title: 'Hedefin ne?',
         sub: 'Birini seç; yol boyunca değiştirebilirsin.',
@@ -1158,6 +1162,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       badge_role_pt: 'PT',
       badge_role_athlete: 'Sporcu',
       badge_role_official: 'Kcalculate',
+      // G25-S1 md.8 (A11): örnek kişi satırları yerine rol açıklamaları.
+      badge_roles_h: 'Keşfet’te görebileceğin rozetler',
+      badge_role_dietitian_desc: 'Diploması doğrulanmış diyetisyen.',
+      badge_role_pt_desc: 'Sertifikası doğrulanmış kişisel antrenör.',
+      badge_role_athlete_desc: 'Kimliği doğrulanmış sporcu.',
+      badge_role_official_desc: 'Kcalculate’in resmi hesabı.',
       no_badges: 'Henüz rozetin yok. Logla, paylaş, kazan.',
       privacy_settings_title: 'Gizlilik',
       privacy_who_can_see: 'Hesap gizliliği',
@@ -1933,6 +1943,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete: 'Delete',
       you: 'You',
       back: 'Back',
+      view: 'View',
     },
     // G18-S4 md.3 — FinPush templates (identical to core/push/finPush.ts FIN_PUSH_TEXT).
     push: {
@@ -2095,6 +2106,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       header: 'Start tracking',
       skip: 'Skip',
       continue: 'Continue',
+      save_failed: 'Couldn’t save your profile. Check your connection and try again.',
       goal: {
         title: 'What’s your goal?',
         sub: 'Pick one; you can change it along the way.',
@@ -3024,6 +3036,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       badge_role_pt: 'PT',
       badge_role_athlete: 'Athlete',
       badge_role_official: 'Kcalculate',
+      badge_roles_h: 'Badges you may see in Discover',
+      badge_role_dietitian_desc: 'A dietitian with a verified diploma.',
+      badge_role_pt_desc: 'A personal trainer with a verified certificate.',
+      badge_role_athlete_desc: 'An athlete with a verified identity.',
+      badge_role_official_desc: 'Kcalculate’s official account.',
       no_badges: 'No badges yet. Log, share, earn.',
       privacy_settings_title: 'Privacy',
       privacy_who_can_see: 'Account privacy',

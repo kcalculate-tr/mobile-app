@@ -42,6 +42,7 @@ import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
 import { track } from '../../../lib/analytics';
 import { useFreeAiCap } from '../../../lib/subscription/purchases';
+import { Toast } from '../../../core/design/components/Toast';
 
 export type TbParamList = {
   TbGoal: undefined;
@@ -166,11 +167,20 @@ function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'
 }
 
 // ── Tempo ───────────────────────────────────────────────────────────────────
+/**
+ * G25-S1 md.8 (A11): "Hedefe tahmini varış" metni. Akışta hedef kilo sorulmuyor → veri yok → null
+ * (satır gizli). Hedef kilo eklenince burada tarih üretilir.
+ */
+export function paceProjection(): string | null {
+  return null;
+}
+
 function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
   const { pace, setPace } = useTbDraft();
   const fmt = (p: Pace) => (i18n.lang === 'tr' ? String(p).replace('.', ',') : String(p));
+  const projection = paceProjection();
 
   return (
     <TbFrame
@@ -192,8 +202,9 @@ function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'
         minLabel={i18n.t('tb.pace.min')}
         maxLabel={i18n.t('tb.pace.max')}
       />
-      {/* Hedef kilo bu akışta sorulmadığından tarih hesaplanamaz → "—" (SORULAR #1). */}
-      <PaceDateRow label={i18n.t('tb.pace.projection')} value="—" />
+      {/* G25-S1 md.8 (A11): hedef kilo bu akışta sorulmadığından tarih hesaplanamaz → satır GİZLİ
+          (eskiden "—" yer tutucu). Tahmin üretilirse (paceProjection) satır kendiliğinden görünür. */}
+      {projection ? <PaceDateRow label={i18n.t('tb.pace.projection')} value={projection} /> : null}
     </TbFrame>
   );
 }
@@ -370,16 +381,28 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
   // `vitrinHow` yalnız geliştirmede (vitrin) — üretimde __DEV__ false.
   const [howOpen, setHowOpen] = useState(__DEV__ && route.params?.vitrinHow === true);
   const [saving, setSaving] = useState(false);
+  // G25-S1 md.9 (A12): kayıt `ok:false` → hata toast'ı + Tekrar dene; kutlama/geçiş YALNIZ başarıda
+  // (eskiden hata yutuluyor, "Profil hazır" yine çıkıyordu). Taslak korunur.
+  const [saveFailed, setSaveFailed] = useState(false);
   const result = useMemo(() => computeResult(draft, nowYear()), [draft]);
+
+  const save = async (): Promise<boolean> => {
+    if (!user) return true;
+    setSaving(true);
+    setSaveFailed(false);
+    const r = await saveTakibeProfile(user.id, draft, nowYear());
+    setSaving(false);
+    if (!r.ok) {
+      setSaveFailed(true);
+      return false;
+    }
+    return true;
+  };
 
   const onContinue = async () => {
     if (draft.editGoal) {
       // Profil › Hedefim düzenleme: kaydet + geri dön (S4 giriş noktasını bağlar).
-      if (user) {
-        setSaving(true);
-        await saveTakibeProfile(user.id, draft, nowYear());
-        setSaving(false);
-      }
+      if (!(await save())) return;
       draft.reset();
       root?.goBack();
       return;
@@ -388,9 +411,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
     // profil kaydı → Ana sayfa'da "Profil hazır" (FinCelebrateProfile) → oryantasyon.
     // TbFirst ("İlk öğününü logla") kayıtlı kalır; görevi Ana sayfa "İlk öğününü
     // ekle" kartı + Orient1 (Tara) üstlenir (LOG › SORULAR 1).
-    setSaving(true);
-    if (user) await saveTakibeProfile(user.id, draft, nowYear());
-    setSaving(false);
+    if (!(await save())) return;
     const kcal = result?.macros?.calories ?? null;
     draft.reset();
     useOnbFirst.getState().setCard('done');
@@ -408,10 +429,24 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
       onBack={() => navigation.goBack()}
       onSkip={() => tbSkipOut(root)}
       footer={
-        <OnbButton
-          label={draft.editGoal ? i18n.t('common.save') : i18n.t('tb.continue')}
-          onPress={saving ? () => {} : onContinue}
-        />
+        <>
+          {saveFailed ? (
+            <View style={styles.toastWrap}>
+              <Toast
+                visible
+                tone="error"
+                testID="tb-save-error"
+                message={i18n.t('tb.save_failed')}
+                onRetry={saving ? undefined : () => void onContinue()}
+                onDismiss={() => setSaveFailed(false)}
+              />
+            </View>
+          ) : null}
+          <OnbButton
+            label={draft.editGoal ? i18n.t('common.save') : i18n.t('tb.continue')}
+            onPress={saving ? () => {} : onContinue}
+          />
+        </>
       }
     >
       <View style={styles.resultWrap}>
@@ -495,9 +530,22 @@ function FirstScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbFirs
   const { user } = useAuth();
   const draft = useTbDraft();
   const freeCap = useFreeAiCap(); // G25-S1 md.1: "günde N ücretsiz" sunucu tavanından (yedek 2)
+  // G25-S1 md.9 (A12): kayıt başarısızsa geçiş yok; hata toast'ı + Tekrar dene (aynı hedefe).
+  const [failedGo, setFailedGo] = useState<(() => void) | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const saveThen = async (go: () => void) => {
-    if (user) await saveTakibeProfile(user.id, draft, nowYear());
+    if (busy) return;
+    if (user) {
+      setBusy(true);
+      setFailedGo(null);
+      const r = await saveTakibeProfile(user.id, draft, nowYear());
+      setBusy(false);
+      if (!r.ok) {
+        setFailedGo(() => go);
+        return;
+      }
+    }
     draft.reset();
     go();
   };
@@ -510,9 +558,23 @@ function FirstScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbFirs
       onBack={() => navigation.goBack()}
       onSkip={() => saveThen(() => root?.navigate('Tabs', { screen: 'Tracker' }))}
       footer={
-        <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }}>
-          {i18n.t('tb.first.footer')}
-        </AppText>
+        <>
+          {failedGo ? (
+            <View style={styles.toastWrap}>
+              <Toast
+                visible
+                tone="error"
+                testID="tb-save-error"
+                message={i18n.t('tb.save_failed')}
+                onRetry={busy ? undefined : () => void saveThen(failedGo)}
+                onDismiss={() => setFailedGo(null)}
+              />
+            </View>
+          ) : null}
+          <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }}>
+            {i18n.t('tb.first.footer')}
+          </AppText>
+        </>
       }
     >
       <OnbTitle style={{ marginBottom: 16 }}>{i18n.t('tb.first.title')}</OnbTitle>
@@ -554,7 +616,10 @@ function UnderageScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbU
   );
 }
 
-const TB_ROUTE_ORDER: string[] = ['TbGoal', 'TbPace', 'TbAbout', 'TbActivity', 'TbResult', 'TbFirst', 'TbUnderage'];
+/** Yalnız bileşen testleri (G25-S1 md.8/md.9): ekranları navigatörsüz çizmek için. */
+export const __tbScreensForTest = { PaceScreen, ResultScreen, FirstScreen };
+
+const TB_ROUTE_ORDER: string[] =['TbGoal', 'TbPace', 'TbAbout', 'TbActivity', 'TbResult', 'TbFirst', 'TbUnderage'];
 
 export default function TakibeBaslaNavigator({
   route,
@@ -593,6 +658,7 @@ export default function TakibeBaslaNavigator({
 }
 
 const styles = StyleSheet.create({
+  toastWrap: { marginBottom: 10 },
   rows: { gap: 10 },
   genderRow: { flexDirection: 'row', gap: 8 },
   gender: { minHeight: 52, borderRadius: 20, borderWidth: 1, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' },

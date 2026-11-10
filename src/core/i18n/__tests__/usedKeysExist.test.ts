@@ -53,3 +53,26 @@ test('usedKeysExist: koddaki sabit çeviri anahtarları TR ve EN sözlükte var'
   }
   assert.deepEqual([...new Set(missing)], []);
 });
+
+// G25-S1 md.10 (A13): şablonla / değişkenle çağrılan ve tarama dışında kalan anahtarlar —
+// kabuk toast'ı (Geri al · Gör · Tekrar dene) ve Ana sayfa öğün etiketi (`meal.${slot}`).
+const DYNAMIC_KEYS = [
+  'common.undo',
+  'common.view',
+  'common.retry',
+  'meal.breakfast',
+  'meal.lunch',
+  'meal.dinner',
+  'meal.snack',
+  'gun.logged_to',
+  'tb.save_failed',
+];
+
+test('usedKeysExist: dinamik anahtarlar (toast düğmeleri, öğün etiketi) TR ve EN sözlükte var, EN Türkçe değil', () => {
+  const missing = DYNAMIC_KEYS.filter((k) => !resolves(translations.tr, k) || !resolves(translations.en, k));
+  assert.deepEqual(missing, []);
+  const enOf = (k: string) => k.split('.').reduce<unknown>((c, p) => (c as Record<string, unknown>)[p], translations.en) as string;
+  assert.equal(enOf('common.undo'), 'Undo');
+  assert.equal(enOf('common.view'), 'View');
+  assert.equal(enOf('meal.dinner'), 'Dinner');
+});
