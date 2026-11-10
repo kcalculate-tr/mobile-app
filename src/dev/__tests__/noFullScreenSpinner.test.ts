@@ -17,7 +17,9 @@ const FINAL = /^(modules\/(kesfet|ai|shell|gun|celebrate|collection|onboarding|p
 
 const PROCESS_EXCEPTIONS: Record<string, number> = {
   'modules/eatkcal/v2/screens/EkPaymentScreen.tsx': 2,
-  'modules/eatkcal/v2/screens/EkAddCardScreen.tsx': 1,
+  // 1 doğrulama adımı + 1 `authLoading` dönüşü: mantık bloğu eski AddCardScreen ile BAYT
+  // BAYT aynı olmak zorunda (legacySwap testi) → oturum çözülürken kısa gösterge kalır.
+  'modules/eatkcal/v2/screens/EkAddCardScreen.tsx': 2,
 };
 
 function walk(dir: string, out: string[] = []): string[] {
