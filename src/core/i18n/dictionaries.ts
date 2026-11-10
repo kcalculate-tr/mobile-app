@@ -12,6 +12,7 @@ import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/
 import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
 import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
 import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
+import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
 
 export type Lang = 'tr' | 'en';
 
@@ -1302,6 +1303,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       },
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
+        // G22-S2 md.3 — ülke + şehir araması (Avrupa + Amerika).
+        geo: ekGeoTr,
         // G15-S5 — FinPrCards (kayıtlı kartlar v2)
         cards: {
           title: 'Kayıtlı kartlarım',
@@ -3145,6 +3148,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       },
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
+        // G22-S2 md.3 — country + city search (Europe + Americas).
+        geo: ekGeoEn,
         // G15-S5 — FinPrCards (saved cards v2)
         cards: {
           title: 'Saved cards',

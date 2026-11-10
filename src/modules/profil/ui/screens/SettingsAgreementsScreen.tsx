@@ -94,6 +94,13 @@ export default function AgreementsScreen({
             </Text>
           ))}
         </FinCard>
+        {/* G22-S2 md.3 — veri lisansı atfı (GeoNames CC BY 4.0: eatkcal şehir araması). */}
+        <Text
+          style={{ fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary, marginTop: 16, paddingHorizontal: 4 }}
+          testID="agreements-data-attribution"
+        >
+          {tr('eatkcal.v2.geo.attribution')}
+        </Text>
       </ScrollView>
     </FinScreen>
   );

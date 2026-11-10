@@ -55,7 +55,8 @@ export function WaitlistFormSheet({
   visible: boolean;
   /** Seçilen il (alan önceden dolu, düzenlenebilir). */
   city: string;
-  country: 'TR' | 'OTHER';
+  /** 'TR', ISO-3166 alfa-2 ülke kodu (G22-S2: Avrupa/Amerika) ya da 'OTHER' (şehirsiz eski yol). */
+  country: string;
   onClose: () => void;
   onPrivacy: () => void;
   onSent?: () => void;
