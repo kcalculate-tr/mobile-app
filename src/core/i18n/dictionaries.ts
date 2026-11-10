@@ -1102,6 +1102,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_confirm_body: 'Bu işlem geri alınamaz. Devam etmek için aşağıya SİL yaz.',
       delete_confirm_word: 'SİL',
       delete_confirm_cta: 'Hesabı kalıcı olarak sil',
+      // G25-S1 md.6 (A9): silme onayında abonelik uyarısı (platforma göre mağaza adı).
+      delete_sub_note_ios:
+        'Aktif bir kcalAI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik App Store’da sürer ve yenilenir. Önce aboneliğini iptal et.',
+      delete_sub_note_android:
+        'Aktif bir kcalAI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik Google Play’de sürer ve yenilenir. Önce aboneliğini iptal et.',
+      delete_sub_manage: 'Aboneliği yönet',
       // Sözleşmeler
       agreements_title: 'Sözleşmeler',
       agreements_updated: 'Son güncelleme',
@@ -2967,6 +2973,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_confirm_body: 'This cannot be undone. Type DELETE below to continue.',
       delete_confirm_word: 'DELETE',
       delete_confirm_cta: 'Permanently delete account',
+      delete_sub_note_ios:
+        'If you have an active kcalAI subscription, deleting your account doesn’t cancel it; it continues and renews in the App Store. Cancel your subscription first.',
+      delete_sub_note_android:
+        'If you have an active kcalAI subscription, deleting your account doesn’t cancel it; it continues and renews on Google Play. Cancel your subscription first.',
+      delete_sub_manage: 'Manage subscription',
       agreements_title: 'Agreements',
       agreements_updated: 'Last updated',
       support_title: 'Help & support',
