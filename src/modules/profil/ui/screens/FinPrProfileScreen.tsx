@@ -78,6 +78,8 @@ import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
 import { tabBarContentInset } from '../../../shell';
 import { useFeature } from '../../../../core/flags';
 import { resetToSignedOut } from '../../../../navigation/signOutReset';
+import ProfileSubSection from '../../../subscription/ui/ProfileSubSection';
+import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -91,6 +93,8 @@ export default function FinPrProfileScreen() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
   const yeniOnboardingFlag = useFeature('yeni_onboarding');
+  // G22-S1 md.4: kcalAI › Abonelik + Yakında (FinSubProfileSoon) — bayrak + RevenueCat.
+  const aboneligiGoster = useSubscriptionEnabled();
 
   // G21-S1 md.9: alt sayfalar kök yığında `ProfileSub` rotası (sağdan kayar, iOS
   // kenar jesti, Android geri tuşu yığından). Önceki sekme içi `setSub` + tab bar
@@ -277,6 +281,12 @@ export default function FinPrProfileScreen() {
             )}
           </FinRowGroup>
         </View>
+
+        {aboneligiGoster ? (
+          <View style={{ paddingHorizontal: 16 }}>
+            <ProfileSubSection onOpen={() => (navigation as any).navigate('SubProfile')} />
+          </View>
+        ) : null}
 
         <View style={{ paddingHorizontal: 16, gap: 10 }}>
           <FinSectionLabel>{tr('profil.section_eatkcal')}</FinSectionLabel>

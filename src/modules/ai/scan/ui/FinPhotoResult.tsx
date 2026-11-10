@@ -27,7 +27,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { KeyboardLiftView } from '../../../../core/design/components/KeyboardLiftView';
-import { BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
+import { ArrowLeft, BookmarkSimple, CalendarPlus, CaretDown, Check, Microphone, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
@@ -90,7 +90,12 @@ export default function FinPhotoResult({
   onSaveMeal,
   match = null,
   note,
+  source = 'photo',
+  transcript,
 }: {
+  /** G22-S1 md.1: FinPhotoR1 `source=voice` — üstte foto yerine "Sesle eklendi" + söylenen metin. */
+  source?: 'photo' | 'voice';
+  transcript?: string;
   /** G18-S4 md.5: çekimdeki isteğe bağlı not — sheet'te küçük satır. */
   note?: string;
   /** "Planıma ekle" — yerel plan hatırlatması; izin yoksa false. */
@@ -188,7 +193,8 @@ export default function FinPhotoResult({
   // G15-S2 (FinCollectCut): tek tabak tanındıysa (≤1 öğe) kompakt sonuç —
   // tam ekran foto + tabak adı hapı + "Fotoğraf sonucu" sheet'i + lime logla.
   // Eşleşme yüzdesi verisi yok → hapta yalnız ad (uydurma yok).
-  if (estimate.ingredients.length <= 1) {
+  const voice = source === 'voice';
+  if (estimate.ingredients.length <= 1 && !voice) {
     return (
       <View style={[styles.fill, { backgroundColor: '#2A2622' }]}>
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
@@ -252,7 +258,29 @@ export default function FinPhotoResult({
   }
 
   return (
-    <View style={[styles.fill, { backgroundColor: k.photo }]}>
+    <View style={[styles.fill, { backgroundColor: voice ? t.color.bg : k.photo }]}>
+      {voice ? (
+        // G22-S1 md.1 — FinScanVoiceResult: geri (sol) + "🎤 Sesle eklendi" + söylenen metin.
+        <View style={[styles.voiceHead, { paddingTop: insets.top + 6 }]} testID="fin-photo-voice-head">
+          <Pressable
+            onPress={onRetry}
+            accessibilityRole="button"
+            accessibilityLabel={tr('voice.result_back')}
+            style={[styles.voiceBack, { backgroundColor: k.sheet }]}
+          >
+            <ArrowLeft size={20} color={t.color.ink} />
+          </Pressable>
+          <View style={[styles.voiceChip, { backgroundColor: k.sheet }]}>
+            <Microphone size={14} color={t.color.ink} weight="bold" />
+            <AppText style={styles.foundText}>{tr('voice.result_chip')}</AppText>
+          </View>
+          {transcript ? (
+            <AppText tone="secondary" style={styles.voiceQuote} numberOfLines={3}>
+              {`“${transcript}”`}
+            </AppText>
+          ) : null}
+        </View>
+      ) : (
       <View style={styles.photo}>
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
         <Pressable
@@ -269,6 +297,7 @@ export default function FinPhotoResult({
           <AppText style={styles.foundText}>{tr('ai_scan.items_found', { count })}</AppText>
         </View>
       </View>
+      )}
 
       <Animated.View style={[styles.sheet, { backgroundColor: k.sheet }, sheetIn]}>
         <View style={[styles.handle, { backgroundColor: k.line2 }]} />
@@ -731,6 +760,10 @@ function MissingFoodSheet({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   photo: { height: 360 },
+  voiceHead: { paddingHorizontal: 16, paddingBottom: 28, gap: 12 },
+  voiceBack: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  voiceChip: { alignSelf: 'flex-start', minHeight: 32, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  voiceQuote: { fontSize: 15, lineHeight: 21 },
   // G17-S1 md.7: Tara modalı → kapat X SAĞDA (sol geri oku yok).
   back: { position: 'absolute', right: 16, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   found: { position: 'absolute', left: 16, bottom: 16, height: 32, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -412,9 +412,9 @@ begin
     ('voice_start',     'tracking', 'client', 'Sesle ekleme: dinleme başladı', 'Voice add: listening started', 'lang', null, false),
     ('voice_done',      'tracking', 'client', 'Sesle ekleme: metin analize gönderildi', 'Voice add: transcript sent to analysis', 'chars', null, false),
     ('voice_empty',     'tracking', 'client', 'Sesle ekleme: konuşma duyulmadı', 'Voice add: no speech heard', null, null, false),
-    ('paywall_view',    'tracking', 'client', 'Abonelik ekranı görüntülendi', 'Paywall viewed', 'from: limit_ai|limit_barcode|profile|pill', null, false),
-    ('sub_purchase',    'tracking', 'client', 'Abonelik satın alma sonucu', 'Subscription purchase result', 'product, result: success|cancelled|pending|error', null, false),
-    ('sub_restore',     'tracking', 'client', 'Satın alımları geri yükleme', 'Restore purchases', 'result', null, false),
+    ('paywall_view',    'commerce', 'client', 'Abonelik ekranı görüntülendi', 'Paywall viewed', 'from: limit_ai|limit_barcode|limit_voice|profile|pill|other', null, false),
+    ('sub_purchase',    'commerce', 'client', 'Abonelik satın alma sonucu', 'Subscription purchase result', 'product, result: success|cancelled|pending|error', null, false),
+    ('sub_restore',     'commerce', 'client', 'Satın alımları geri yükleme', 'Restore purchases', 'result', null, false),
     ('barcode_limit',   'tracking', 'client', 'Günlük ücretsiz barkod hakkı bitti', 'Daily free barcode scans used up', null, null, false)
   on conflict (name) do nothing;
 end $$;

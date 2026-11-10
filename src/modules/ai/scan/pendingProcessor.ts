@@ -2,7 +2,7 @@
 // Saf orkestrasyon (istemci/kayıt enjekte edilir). Günlük ücretsiz hak
 // yalnız analiz başarılı olunca düşer: `runAiScan` başarısızlıkta rezervasyonu
 // iade eder; başarısız/kota biten girdi kuyrukta kalır ve döngü durur.
-import { runAiScan } from './runScan';
+import { runAiScan, runAiTextScan } from './runScan';
 import { bumpPendingAttempt, getPendingScanQueue, removePendingScanPhoto, type PendingScanPhoto } from './offlineQueue';
 import { classifyScanFailure } from './scanError';
 
@@ -42,12 +42,19 @@ export async function processPendingQueue(opts: {
     if (opts.isCancelled?.()) return { processed, dropped, stoppedBy: 'cancelled' };
     let outcome: AiScanOutcome;
     try {
-      outcome = await runAiScan(opts.client, {
-        idempotencyKey: entry.id,
-        imageRef: entry.imageUri,
-        ...(entry.hint ? { hint: entry.hint } : {}),
-        ...((entry.lang ?? opts.lang) ? { lang: entry.lang ?? opts.lang } : {}),
-      });
+      // G22-S1 md.1: sesle eklenen girdi METİN analizine gider (aynı hak).
+      outcome = entry.text
+        ? await runAiTextScan(opts.client, {
+            idempotencyKey: entry.id,
+            text: entry.text,
+            ...((entry.lang ?? opts.lang) ? { lang: entry.lang ?? opts.lang } : {}),
+          })
+        : await runAiScan(opts.client, {
+            idempotencyKey: entry.id,
+            imageRef: entry.imageUri,
+            ...(entry.hint ? { hint: entry.hint } : {}),
+            ...((entry.lang ?? opts.lang) ? { lang: entry.lang ?? opts.lang } : {}),
+          });
     } catch {
       // rezervasyon (RPC) hatası — ağ/sunucu; girdi kalır, sonra yeniden denenir
       return { processed, dropped, stoppedBy: 'failed' };

@@ -124,7 +124,7 @@ export default function ScanOfflineScreen() {
         {queue.map((e) => (
           <View key={e.id} style={[styles.card, { backgroundColor: surface }]}>
             <View style={[styles.thumb, { backgroundColor: th.color.surface }]}>
-              <Image source={{ uri: e.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              {e.imageUri ? <Image source={{ uri: e.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
               <View style={[styles.badge, { backgroundColor: surface }]}>
                 <Clock size={12} color={th.color.ink} />
               </View>

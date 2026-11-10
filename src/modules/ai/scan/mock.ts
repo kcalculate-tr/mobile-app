@@ -61,6 +61,32 @@ export function createMockAiScanClient(options: MockAiScanOptions = {}): AiScanC
         }
       : {}),
 
+    async analyzeText({ text, lang }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
+      calls.push(`analyzeText:${text}`);
+      if (options.failAnalysis) throw new Error('mock: analiz başarısız');
+      // G22-S1: virgülle ayrılan her parça bir öğe (vitrin/test için öngörülebilir).
+      const parts = text.split(/,| ve | and /).map((x) => x.trim()).filter(Boolean);
+      const items = (parts.length ? parts : [lang === 'en' ? 'Food' : 'Yemek']).map((name, i) => ({
+        name,
+        grams: 100,
+        kcal: [143, 75, 112, 90][i % 4],
+        protein_g: [13, 4, 1, 3][i % 4],
+        carbs_g: [1, 13, 6, 10][i % 4],
+        fat_g: [10, 1, 10, 4][i % 4],
+      }));
+      const sum = (k: 'kcal' | 'protein_g' | 'carbs_g' | 'fat_g') => items.reduce((a, x) => a + x[k], 0);
+      return {
+        name: items.map((x) => x.name).join(', '),
+        kcal: sum('kcal'),
+        protein_g: sum('protein_g'),
+        carbs_g: sum('carbs_g'),
+        fat_g: sum('fat_g'),
+        portion: 1,
+        ingredients: items,
+        photo_url: null,
+      };
+    },
+
     async analyzeImage({ imageRef, lang }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
       calls.push(`analyze:${imageRef}`);
       if (options.failAnalysis) throw new Error('mock: analiz başarısız');

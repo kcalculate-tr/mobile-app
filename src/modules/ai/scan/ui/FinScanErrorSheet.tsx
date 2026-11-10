@@ -94,7 +94,10 @@ export default function FinScanErrorSheet({
   onPhotoScan,
   barcode,
   reason,
+  limitCap,
 }: {
+  /** G22-S1: kademeli günlük AI tavanı (sunucudan). Yoksa eski G19 metni/tavanı. */
+  limitCap?: number | null;
   /** G21-S1 md.2: barkod durumlarında "Fotoğrafla tara" (foto moduna döner). */
   onPhotoScan?: () => void;
   /** G21-S1 md.2: okunan barkod — durum hapında gösterilir. */
@@ -156,7 +159,9 @@ export default function FinScanErrorSheet({
           ? tr('ai_scan.camera_denied_title')
           : kind === 'unavailable'
             ? tr('ai_scan.unavailable_title')
-            : tr('ai_scan.limit_title');
+            : limitCap != null
+              ? tr('sub.limit.ai_title', { n: limitCap })
+              : tr('ai_scan.limit_title');
   const body =
     kind === 'barcode_missing'
       ? tr('ai_scan.barcode_missing_body')
@@ -199,7 +204,7 @@ export default function FinScanErrorSheet({
       : kind === 'offline'
         ? tr('ai_scan.offline_chip')
         : kind === 'limit'
-          ? tr('ai_scan.quota_left_of', { count: remaining, cap: SCAN_QUOTA_CAP })
+          ? tr('ai_scan.quota_left_of', { count: remaining, cap: limitCap ?? SCAN_QUOTA_CAP })
           : kind === 'unavailable'
             ? tr('ai_scan.unavailable_chip')
             : null;

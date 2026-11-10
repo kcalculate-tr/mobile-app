@@ -97,6 +97,8 @@ const SharedProfileScreen = lazy(() => import('../screens/share/SharedProfileScr
 // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken TrackerScreen'den erişilir.
 const ScanScreen = lazy(() => import('../modules/ai/scan/screens/ScanScreen'));
 const ScanOfflineScreen = lazy(() => import('../modules/ai/scan/screens/ScanOfflineScreen'));
+const PaywallScreen = lazy(() => import('../modules/subscription/screens/PaywallScreen'));
+const SubProfileScreen = lazy(() => import('../modules/subscription/screens/SubProfileScreen'));
 // eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
 // Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
 const EatHomeScreen = lazy(() => import('../modules/eatkcal/screens/EatHomeScreen'));
@@ -161,6 +163,8 @@ const SharedPostLazy = withSuspense(SharedPostScreen);
 const SharedProfileLazy = withSuspense(SharedProfileScreen);
 const ScanLazy = withSuspense(ScanScreen);
 const ScanOfflineLazy = withSuspense(ScanOfflineScreen);
+const PaywallLazy = withSuspense(PaywallScreen);
+const SubProfileLazy = withSuspense(SubProfileScreen);
 const EatHomeLazy = withSuspense(EatHomeScreen);
 const ProfileSubLazy = withSuspense(ProfileSubScreen);
 
@@ -560,6 +564,9 @@ export default function AppNavigator() {
       />
       {/* G16-S1 — FinScanOffline: çevrimdışı çekim sonrası sade durum ekranı (yalnız yeni_kabuk+ai_tarama akışından açılır). */}
       <Stack.Screen name="AiScanOffline" component={ScanOfflineLazy} />
+      {/* G22-S1 md.4 — kcalAI: paywall alttan (FinMoSub sheet base 300 enter), Profil › Abonelik sağdan. */}
+      <Stack.Screen name="SubPaywall" component={PaywallLazy} options={AI_MODAL} />
+      <Stack.Screen name="SubProfile" component={SubProfileLazy} options={push} />
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={finalScreenFor('EatCatalog', finalFlag.yeni_siparis, HomeScreen)} />

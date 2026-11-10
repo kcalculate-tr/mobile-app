@@ -30,6 +30,8 @@ export interface PendingScanPhoto {
   attempts?: number;
   /** G19-S1 md.3: çekim anındaki uygulama dili → analizde yiyecek adları. */
   lang?: 'tr' | 'en';
+  /** G22-S1 md.1: sesle ekleme — telefonda yazıya dökülen metin (imageUri boş). Ses saklanmaz. */
+  text?: string;
 }
 
 function isFresh(e: PendingScanPhoto, now: number): boolean {

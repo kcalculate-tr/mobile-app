@@ -22,7 +22,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { AppText, haptic, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { X } from '../../../../components/icons';
+import { Barcode, Sparkle, X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 import ScanFrame from './ScanFrame';
 import FinScanAnalyzing from './FinScanAnalyzing';
@@ -80,7 +80,13 @@ export default function FinScanCamera({
   barcodeBusy = false,
   initialMode = 'photo',
   modeKey,
+  onVoice,
+  quotaPills,
 }: {
+  /** G22-S1 md.1: mod çubuğu Fotoğraf · Ses · Barkod · Elle — Ses yalnız cihazda tanıma varsa. */
+  onVoice?: () => void;
+  /** G22-S1 md.4: FinSubPill — kademeli hak hapı (foto/ses ortak AI · barkod). Yoksa G19 hapı. */
+  quotaPills?: { photo?: { text: string; a11y?: string | null } | null; barcode?: { text: string; a11y?: string | null } | null };
   /** G21-S1 md.2: geçerli GTIN okundu → ScanScreen Open Food Facts'e sorar. */
   onBarcode?: (code: string) => void;
   /** Sorgu sürüyor → tarayıcı durur, "Ürün aranıyor…" hapı. */
@@ -324,7 +330,19 @@ export default function FinScanCamera({
           >
             <X size={20} color={k.ink} />
           </Pressable>
-          {remaining != null ? (
+          {quotaPills ? (
+            (() => {
+              const q = mode === 'barcode' ? quotaPills.barcode : quotaPills.photo;
+              return q ? (
+                <View style={[styles.quota, styles.quotaRow, { backgroundColor: k.glass }]} accessible accessibilityLabel={q.a11y ?? q.text} testID="fin-scan-pill">
+                  {mode === 'barcode' ? <Barcode size={14} color={k.ink} /> : <Sparkle size={14} color={k.ink} weight="fill" />}
+                  <AppText style={[styles.quotaText, { color: k.ink }]} numberOfLines={1}>
+                    {q.text}
+                  </AppText>
+                </View>
+              ) : null;
+            })()
+          ) : remaining != null ? (
             <View style={[styles.quota, { backgroundColor: k.glass }]}>
               <AppText style={[styles.quotaText, { color: k.ink }]} numberOfLines={1}>
                 {tt('ai_scan.quota_left_of', { count: remaining, cap: SCAN_QUOTA_CAP })}
@@ -336,19 +354,28 @@ export default function FinScanCamera({
 
       <View style={[styles.panel, { backgroundColor: k.panel, paddingBottom: Math.max(20, insets.bottom + 4) }]}>
         <View style={styles.modes} accessibilityRole="tablist">
-          {(['photo', 'barcode'] as const).map((m) => {
+          {(onVoice ? (['photo', 'voice', 'barcode'] as const) : (['photo', 'barcode'] as const)).map((m) => {
             const sel = mode === m;
             return (
               <Pressable
                 key={m}
-                onPress={() => switchMode(m)}
+                onPress={() => {
+                  if (m === 'voice') {
+                    if (locked) return;
+                    haptic('selection');
+                    onVoice?.();
+                    return;
+                  }
+                  switchMode(m);
+                }}
                 disabled={locked}
                 style={[styles.mode, sel ? { backgroundColor: k.ink } : null]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: sel, disabled: locked }}
+                testID={`fin-scan-mode-${m}`}
               >
                 <AppText style={[styles.modeText, { color: sel ? t.color.bg : k.ink }]}>
-                  {tt(m === 'photo' ? 'ai_scan.mode_photo' : 'ai_scan.mode_barcode')}
+                  {tt(m === 'photo' ? 'ai_scan.mode_photo' : m === 'voice' ? 'voice.mode' : 'ai_scan.mode_barcode')}
                 </AppText>
               </Pressable>
             );
@@ -428,6 +455,7 @@ const styles = StyleSheet.create({
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   quota: { height: 44, borderRadius: 22, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginRight: 12 },
   quotaText: { fontSize: 13, fontWeight: '600' },
+  quotaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   panel: { paddingTop: 14 },
   modes: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
   mode: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: 'center' },

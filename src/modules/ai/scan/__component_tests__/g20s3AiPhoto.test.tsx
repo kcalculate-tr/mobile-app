@@ -1,6 +1,7 @@
 // G20-S3 md.2 — Tara: ilk taramadan önce yapay zekâ fotoğraf izni (Apple 5.1.2(i)).
-// İzin yokken: sheet açılır, deklanşör/galeri fotoğraf GÖNDERMEZ (rezervasyon yok).
-// Kabul → izin kaydı (ai_photo, scan) + tarama çalışır. Vazgeç → Elle gir (geri).
+// G22-S1 md.5 (G21 SORULAR 2): sheet AÇILIŞTA DEĞİL, yalnız Fotoğraf/Ses AI analizinden önce
+// (deklanşör/galeri) açılır; Barkod ve Elle izin istemez. İzin yokken fotoğraf GÖNDERİLMEZ.
+// Kabul → izin kaydı (ai_photo, scan) + bekleyen çekim kendiliğinden sürer. Vazgeç → Elle gir.
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
@@ -84,17 +85,21 @@ afterEach(() => {
   setScanEventSink(null);
 });
 
-test('izin yok → açılışta sheet; deklanşör ve galeri fotoğraf GÖNDERMEZ', async () => {
+test('izin yok → açılışta sheet YOK; deklanşöre basınca sheet, fotoğraf GÖNDERİLMEZ', async () => {
   mockDecision = 'ask';
   const c = client();
   setAiScanClient(c);
   const tree = render(<ScanScreen />);
-  await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
-  expect(tree.getByText(LEAD)).toBeTruthy();
-  expect(tree.getByText('Fotoğraf analizi')).toBeTruthy();
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(tree.queryByTestId('consent-sheet-ai_photo')).toBeNull();
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
+  expect(tree.getByText(LEAD)).toBeTruthy();
+  expect(tree.getByText('Fotoğraf analizi')).toBeTruthy();
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Galeriden seç'));
   });
@@ -104,20 +109,22 @@ test('izin yok → açılışta sheet; deklanşör ve galeri fotoğraf GÖNDERME
   expect(c.analyzeImage).not.toHaveBeenCalled();
 });
 
-test('Kabul et → izin kaydı (ai_photo, scan), sheet kapanır, tarama çalışır', async () => {
+test('Kabul et → izin kaydı (ai_photo, scan), sheet kapanır, bekleyen çekim sürer', async () => {
   mockDecision = 'ask';
   const c = client();
   setAiScanClient(c);
   const tree = render(<ScanScreen />);
+  await act(async () => {
+    fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
+  });
   await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
   await act(async () => {
     fireEvent.press(tree.getByTestId('consent-sheet-ai_photo-accept'));
   });
   expect(mockSetAi).toHaveBeenCalledWith(true, 'scan');
-  await act(async () => {
-    fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
-  });
+  // Deklanşöre yeniden basmaya gerek yok — onaydan sonra çekim kendiliğinden sürer.
   await waitFor(() => expect(c.reserveScan).toHaveBeenCalledTimes(1));
+  expect(mockPicker.launchCameraAsync).toHaveBeenCalledTimes(1);
   expect(mockNav.goBack).not.toHaveBeenCalled();
 });
 
@@ -126,6 +133,9 @@ test('Vazgeç → ret kaydı + Elle gir yolu (Tara kapanır), fotoğraf gönderi
   const c = client();
   setAiScanClient(c);
   const tree = render(<ScanScreen />);
+  await act(async () => {
+    fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
+  });
   await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
   await act(async () => {
     fireEvent.press(tree.getByTestId('consent-sheet-ai_photo-cancel'));

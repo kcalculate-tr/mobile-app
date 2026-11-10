@@ -56,7 +56,7 @@ export function quotaFromReserve(kind: 'ai' | 'barcode', r: unknown): QuotaSnaps
  */
 export function pillLabel(
   q: Pick<QuotaSnapshot, 'remaining' | 'limit' | 'unlimited'> | null,
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: (key: string, opts?: Record<string, string | number>) => string,
   fallbackCap?: number | null,
 ): string | null {
   if (!q) return null;
@@ -69,7 +69,7 @@ export function pillLabel(
 /** VoiceOver etiketi ("Bugün 2 AI taramadan 1 hakkın kaldı"). */
 export function pillA11y(
   q: Pick<QuotaSnapshot, 'kind' | 'remaining' | 'limit' | 'unlimited'> | null,
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: (key: string, opts?: Record<string, string | number>) => string,
   fallbackCap?: number | null,
 ): string | null {
   if (!q) return null;

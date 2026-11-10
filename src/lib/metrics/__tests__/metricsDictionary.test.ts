@@ -116,6 +116,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   const sql = [
     'supabase/migrations/20261109110000_g19_s3_event_names.sql',
     'supabase/migrations/20261110000100_g21_s1_barcode.sql',
+    // G22-S1: sesle ekleme + abonelik olayları.
+    'supabase/migrations/20261110100100_g22_s1_subscriptions.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');
@@ -136,6 +138,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   assert.match(rb, /delete from public\.analytics_event_names/);
   const rb21 = readFileSync(join(ROOT, 'supabase/rollbacks/20261110000100_g21_s1_barcode_rollback.sql'), 'utf8');
   assert.match(rb21, /delete from public\.analytics_event_names/);
+  const rb22 = readFileSync(join(ROOT, 'supabase/rollbacks/20261110100100_g22_s1_subscriptions_rollback.sql'), 'utf8');
+  assert.match(rb22, /delete from public\.analytics_event_names/);
 });
 
 test('D-S1 sözlüğündeki 38 ad istemci sözlüğünde de var (sözleşme)', () => {

@@ -66,7 +66,7 @@ export function HomePendingScans({ onManual, forceOffline = false }: { onManual:
       {queue.map((e) => (
         <View key={e.id} style={[styles.row, { backgroundColor: surface }]}>
           <View style={[styles.thumb, { backgroundColor: t.color.surface }]}>
-            <Image source={{ uri: e.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            {e.imageUri ? <Image source={{ uri: e.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
             <View style={[styles.badge, { backgroundColor: surface }]}>
               <Clock size={12} color={t.color.ink} />
             </View>
