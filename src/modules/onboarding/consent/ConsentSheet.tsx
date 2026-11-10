@@ -27,6 +27,7 @@ import { useT } from '../../../core/i18n';
 import { OnbButton } from '../components/pieces';
 import { useOnb } from '../components/onbTheme';
 import { ConsentBlock } from './ConsentBlock';
+import { noteConsentSheet } from '../../../lib/consent/sheetSession';
 
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
@@ -71,6 +72,11 @@ export function ConsentSheet({
   const o = useSharedValue(0);
   const isAi = mode === 'ai_photo' || mode === 'ai_coach';
   const dismissable = mode === 'details' || isAi;
+
+  // G26-S1 md.7: oturumun onay sheet'i hakkı (kullanıcının açtığı 'details' sayılmaz).
+  useEffect(() => {
+    if (visible && mode !== 'details') noteConsentSheet(mode);
+  }, [visible, mode]);
 
   useEffect(() => {
     if (visible) {

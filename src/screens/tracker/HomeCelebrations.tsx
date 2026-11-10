@@ -20,6 +20,7 @@ import { DURATION, TIMING } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getSupabaseClient } from '../../core/supabase';
 import { canOfferPush } from '../../core/push/pushPermission';
+import { consentSheetShownThisSession } from '../../lib/consent/sheetSession';
 import {
   CelebrateOverlay,
   NotifyPermissionSheet,
@@ -196,6 +197,8 @@ export function HomeCelebrations({
   const offerNotify = useCallback(async () => {
     try {
       if ((await AsyncStorage.getItem(NOTIFY_OFFERED_KEY)) === '1') return;
+      // G26-S1 md.7: bu oturumda başka bir onay sheet'i açıldıysa teklif sonraki oturuma kalır.
+      if (consentSheetShownThisSession()) return;
       if (!(await canOfferPush('first_meal'))) return;
       await AsyncStorage.setItem(NOTIFY_OFFERED_KEY, '1');
       setNotifyOpen(true);
