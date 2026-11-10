@@ -1,7 +1,9 @@
 -- G22-S1 md.3 — kcalAI abonelikleri + sunucuda kademeli günlük haklar (İlter 10 Kas).
 -- version: 20261110100100  name: g22_s1_subscriptions
 --
--- DURUM: YALNIZ DOSYA (gece kuralı) — canlıya UYGULANMADI.
+-- DURUM: CANLIDA (Claude, 10 Kas 19:00). G23-S1: dosya canlıdaki hâlle eşitlendi —
+--   ai_daily_fresh=10, ai_daily_balance=50 (Balance sınırsız DEĞİL), yanıtta `unlimited`
+--   AI için her zaman false, `fair_use` nedeni yok, bayrak min_app_version 1.1.0.
 -- Geri alma: supabase/rollbacks/20261110100100_g22_s1_subscriptions_rollback.sql
 -- İdempotent: tekrar çalıştırmak güvenli.
 -- Önkoşul: 20261109190100_g19_ai_scan_hardening (reserve_ai_scan G19 gövdesi, result/
@@ -11,13 +13,13 @@
 --    Tek yazan: revenuecat-webhook edge fonksiyonu (service role). İstemci yalnız
 --    kendi satırını OKUR (RLS); yazma politikası YOK (service role RLS'i aşar).
 -- 2) app_settings — günlük haklar (kodda sabit yok):
---      ai_daily_free=2 · ai_daily_fresh=15 · ai_daily_balance=100 (adil kullanım tavanı)
+--      ai_daily_free=2 · ai_daily_fresh=10 · ai_daily_balance=50 (İlter 10 Kas 17:59)
 --      barcode_daily_free=5 (Fresh/Balance barkod sınırsız — kural, sayı değil)
 --    Fotoğraf + ses AI hakkı ORTAK (aynı reserve_ai_scan). Elle giriş sınırsız.
 -- 3) reserve_ai_scan — kademeli limit. G19 davranışı AYNEN korunur (idempotency,
 --    önbellek/cached, gece yarısı taşıma, acil kapatma, genel tavan). Yanıta `tier`,
---    `limit`, `unlimited` eklenir (istemci hak hapı: N/2 · N/15 · Sınırsız).
---    Balance adil kullanım tavanı dolarsa {ok:false, reason:'fair_use'}.
+--    `limit`, `unlimited` eklenir (istemci hak hapı: N/2 · N/10 · N/50). AI için
+--    `unlimited` her zaman false (geriye uyum için alan kalır).
 -- 4) reserve_barcode_scan(p_code) — günlük barkod sayacı (yalnız free sınırlı). Aynı
 --    gün aynı barkod İKİNCİ KEZ sayılmaz (yeniden okutma hak yemez).
 -- 5) my_entitlement() — kademe + bugünkü AI/barkod kullanımı (istemci doğrulaması).
@@ -95,7 +97,7 @@ declare
 begin
   if p_kind = 'ai' then
     v_key := 'ai_daily_' || p_tier;
-    v_def := case p_tier when 'balance' then 100 when 'fresh' then 15 else 2 end;
+    v_def := case p_tier when 'balance' then 50 when 'fresh' then 10 else 2 end;
   elsif p_kind = 'barcode' then
     if p_tier in ('fresh', 'balance') then
       return null; -- barkod sınırsız (ücretli kademeler)
@@ -120,14 +122,14 @@ revoke all on function public._daily_limit(text, text) from public, anon, authen
 -- ════════════════════════════════════════════════════════════════════════════
 insert into public.app_settings (key, value, description) values
   ('ai_daily_free',      '2'::jsonb,   'G22-S1: Ücretsiz kademe günlük AI hakkı (fotoğraf + ses ORTAK).'),
-  ('ai_daily_fresh',     '15'::jsonb,  'G22-S1: kcalAI Fresh günlük AI hakkı (fotoğraf + ses ORTAK).'),
-  ('ai_daily_balance',   '100'::jsonb, 'G22-S1: kcalAI Balance adil kullanım tavanı (istemcide "Sınırsız").'),
+  ('ai_daily_fresh',     '10'::jsonb,  'G22-S1: kcalAI Fresh günlük AI hakkı (fotoğraf + ses ORTAK).'),
+  ('ai_daily_balance',   '50'::jsonb,  'G22-S1: kcalAI Balance günlük AI hakkı (fotoğraf + ses ORTAK).'),
   ('barcode_daily_free', '5'::jsonb,   'G22-S1: Ücretsiz kademe günlük barkod hakkı (Fresh/Balance sınırsız).')
 on conflict (key) do nothing;
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 3 — reserve_ai_scan (kademeli). Gövde G19 ile birebir; yalnız v_user_limit kaynağı
---     ve yanıt alanları (tier/limit/unlimited, fair_use) değişti.
+--     ve yanıt alanları (tier/limit/unlimited) değişti.
 -- ════════════════════════════════════════════════════════════════════════════
 create or replace function public.reserve_ai_scan(p_idempotency_key text)
 returns jsonb
@@ -160,7 +162,7 @@ begin
 
   v_tier       := public._entitlement_tier(v_uid);
   v_user_limit := public._daily_limit('ai', v_tier);
-  v_unlimited  := (v_tier = 'balance');
+  v_unlimited  := false; -- G23: hiçbir kademede AI sınırsız değil (Balance = günde 50)
 
   select coalesce((value::text)::int, 1000)
     into v_global_cap from public.app_settings where key = 'ai_scan_daily_cap';
@@ -213,11 +215,6 @@ begin
     from public.ai_scan_usage where user_id = v_uid and day = v_today for update;
 
   if v_used >= v_user_limit then
-    -- Balance: adil kullanım tavanı ("Sınırsız" yazdığımız için ayrı neden).
-    if v_unlimited then
-      return jsonb_build_object('ok', false, 'reason', 'fair_use', 'remaining', 0,
-        'reset_at', v_reset, 'tier', v_tier, 'limit', v_user_limit, 'unlimited', true);
-    end if;
     return jsonb_build_object('ok', false, 'remaining', 0, 'reset_at', v_reset,
       'tier', v_tier, 'limit', v_user_limit, 'unlimited', false);
   end if;
@@ -378,7 +375,7 @@ begin
     'will_renew', case when v_tier = 'free' then false else coalesce(v_row.will_renew, true) end,
     'reset_at', v_reset,
     'ai', jsonb_build_object('limit', v_ai_lim, 'used', v_ai_used,
-      'remaining', greatest(0, v_ai_lim - v_ai_used), 'unlimited', v_tier = 'balance'),
+      'remaining', greatest(0, v_ai_lim - v_ai_used), 'unlimited', false),
     'barcode', jsonb_build_object('limit', v_bc_lim, 'used', v_bc_used,
       'remaining', case when v_bc_lim is null then null else greatest(0, v_bc_lim - v_bc_used) end,
       'unlimited', v_bc_lim is null)
@@ -390,12 +387,13 @@ grant execute on function public.my_entitlement() to authenticated;
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 6 — feature_flags 'abonelik' (KAPALI; İlter açar). Yeni native derleme gerekir
---     (react-native-purchases) → min_app_version 1.2.0.
+--     (react-native-purchases); derleme sürümü 1.1.0 → min_app_version 1.1.0. Eski 1.1.0
+--     derlemesinde native modül yoksa istemci girişleri gizler (çökme yok).
 -- ════════════════════════════════════════════════════════════════════════════
 insert into public.feature_flags (key, enabled, rollout_percent, min_app_version, description)
 values (
-  'abonelik', false, 0, '1.2.0',
-  'G22-S1: kcalAI abonelikleri (FinSubPaywall, hak sheet''leri, Profil › Abonelik). RevenueCat anahtarları + webhook gerekir; 1.2.0+ (react-native-purchases).'
+  'abonelik', false, 0, '1.1.0',
+  'G22-S1: kcalAI abonelikleri (FinSubPaywall, hak sheet''leri, Profil › Abonelik). RevenueCat anahtarları + webhook gerekir; 1.1.0+ yeni derleme (react-native-purchases).'
 )
 on conflict (key) do nothing;
 
