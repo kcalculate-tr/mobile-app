@@ -91,7 +91,6 @@ test('izin metinleri: TR ve EN aynı anahtarlar, boş yok, EN gerçekten İngili
     'NSPhotoLibraryUsageDescription',
     'NSPhotoLibraryAddUsageDescription',
     'NSLocationWhenInUseUsageDescription',
-    'NSUserTrackingUsageDescription',
   ]) {
     assert.ok(tr.ios[k]?.length > 20, `TR ${k}`);
     assert.ok(en.ios[k]?.length > 20, `EN ${k}`);
@@ -125,16 +124,30 @@ test('gizlilik manifesti GIZLILIK_BEYANLARI.md ile hizalı (G20-S2 md.3)', () =>
   // Sentry setUser → bağlı
   assert.equal(by.get('CrashData')!.NSPrivacyCollectedDataTypeLinked, true);
   assert.equal(by.get('PerformanceData')!.NSPrivacyCollectedDataTypeLinked, true);
-  // izleme yalnız Meta'ya giden üç tür
-  const tracked = rows
-    .filter((r) => r.NSPrivacyCollectedDataTypeTracking)
-    .map((r) => String(r.NSPrivacyCollectedDataType))
-    .sort();
-  assert.deepEqual(tracked, [
-    'NSPrivacyCollectedDataTypeDeviceID',
-    'NSPrivacyCollectedDataTypeProductInteraction',
-    'NSPrivacyCollectedDataTypePurchaseHistory',
-  ]);
+  // G26-S1: ATT kaldırıldı → hiçbir veri türü izleme için toplanmaz.
+  const tracked = rows.filter((r) => r.NSPrivacyCollectedDataTypeTracking).map((r) => String(r.NSPrivacyCollectedDataType));
+  assert.deepEqual(tracked, []);
   const doc = readFileSync(join(ROOT, 'docs/store/GIZLILIK_BEYANLARI.md'), 'utf8');
   for (const t of by.keys()) assert.ok(doc.includes(t), `belge ${t} türünü anmalı`);
+});
+
+test('G26-S1: ATT yok — eklenti, paket, Info.plist anahtarı ve izleme beyanı kaldırıldı', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pkg = require('../../../package.json') as { dependencies: Record<string, string> };
+  assert.equal(pkg.dependencies['expo-tracking-transparency'], undefined);
+  const names = appConfig.expo.plugins.map((p) => (Array.isArray(p) ? p[0] : p));
+  assert.equal(names.includes('expo-tracking-transparency'), false);
+  const fb = appConfig.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'react-native-fbsdk-next') as [string, Record<string, unknown>];
+  assert.equal('iosUserTrackingPermission' in fb[1], false, 'fbsdk eklentisi NSUserTrackingUsageDescription yazmamalı');
+  assert.equal(fb[1].advertiserIDCollectionEnabled, false);
+  assert.equal(fb[1].isAutoInitEnabled, false);
+  assert.equal('NSUserTrackingUsageDescription' in appConfig.expo.ios.infoPlist, false);
+  assert.equal('NSUserTrackingUsageDescription' in tr.ios, false);
+  assert.equal('NSUserTrackingUsageDescription' in en.ios, false);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const cfg = require('../../../app.config.js') as { expo: { ios: { privacyManifests: Record<string, unknown> } } };
+  assert.equal(cfg.expo.ios.privacyManifests.NSPrivacyTracking, false);
+  assert.equal('NSPrivacyTrackingDomains' in cfg.expo.ios.privacyManifests, false);
+  const src = readFileSync(join(ROOT, 'src/lib/analytics.ts'), 'utf8');
+  assert.doesNotMatch(src, /tracking-transparency|requestTrackingPermissions/);
 });

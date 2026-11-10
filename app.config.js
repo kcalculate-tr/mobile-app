@@ -78,14 +78,15 @@ module.exports = {
       // GİZLİLİK MANİFESTİ (2026-11-03, G3-S1) — prebuild bundan
       // ios/Kcalculate/PrivacyInfo.xcprivacy'yi üretir. Her veri tipi kodda
       // GERÇEKTEN toplanan veridir; satır referansları docs/night/G3-S1-LOG.md.
-      //   · NSPrivacyTracking: true — Meta SDK + ATT + SKAdNetwork aktif.
-      //   · NSPrivacyTrackingDomains: FBSDK'nın kendi manifestiyle aynı
-      //     (ep1.facebook.com); app seviyesinde true + boş domain = Apple reddi.
+      //   · G26-S1: NSPrivacyTracking: false — ATT kaldırıldı, uygulama izleme
+      //     YAPMAZ (IDFA yok, setAdvertiserTrackingEnabled(false)). Meta olayları
+      //     ATT'siz AEM / SKAdNetwork ile toplu ölçüm. NSPrivacyTrackingDomains
+      //     yok (FBSDK'nın kendi manifesti ep1.facebook.com'u ayrıca bildirir;
+      //     ATT izni olmadığı için iOS o alana bağlantıyı zaten engeller).
       //   · Required-reason API'ler (FileTimestamp/UserDefaults/BootTime/
       //     DiskSpace) mevcut native dosyadan BİREBİR taşındı — kaybolmasın.
       privacyManifests: {
-        NSPrivacyTracking: true,
-        NSPrivacyTrackingDomains: ['ep1.facebook.com'],
+        NSPrivacyTracking: false,
         NSPrivacyCollectedDataTypes: [
           {
             // auth (OTP/Apple/Google) — src/core/AuthContext.tsx
@@ -175,10 +176,10 @@ module.exports = {
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts
+            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts (G26: izleme yok)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: [
               'NSPrivacyCollectedDataTypePurposeAppFunctionality',
               'NSPrivacyCollectedDataTypePurposeAnalytics',
@@ -186,10 +187,10 @@ module.exports = {
             ],
           },
           {
-            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts
+            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts (G26: izleme yok)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: [
               'NSPrivacyCollectedDataTypePurposeAppFunctionality',
               'NSPrivacyCollectedDataTypePurposeAnalytics',
@@ -197,15 +198,12 @@ module.exports = {
             ],
           },
           {
-            // IDFA — react-native-fbsdk-next (ATT sonrası, analytics.ts);
-            // G20-S2: + anon_id (cihazda kalıcı kurulum kimliği, analytics_events) → Analytics
+            // G26-S1: IDFA TOPLANMAZ (ATT yok). Yalnız anon_id (cihazda kalıcı kurulum
+            // kimliği, analytics_events, G20-S2) → birinci taraf Analytics.
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: true,
-            NSPrivacyCollectedDataTypePurposes: [
-              'NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising',
-              'NSPrivacyCollectedDataTypePurposeAnalytics',
-            ],
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
           },
           {
             // Supabase kullanıcı kimliği — analytics_events.user_id
@@ -454,15 +452,9 @@ module.exports = {
             'com.googleusercontent.apps.173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss',
         },
       ],
-      [
-        'expo-tracking-transparency',
-        {
-          // G20-S1: ATT amacı rıza bloğuyla aynı (reklam ölçümü — kişiselleştirilmiş reklam DEĞİL).
-          // EN: locales/en.json ios.NSUserTrackingUsageDescription.
-          userTrackingPermission:
-            'Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin.',
-        },
-      ],
+      // G26-S1 (İlter 11 Kas): expo-tracking-transparency (ATT) KALDIRILDI — Apple izleme
+      // sorusu yok, NSUserTrackingUsageDescription Info.plist'e yazılmaz. Meta ölçümü ATT'siz
+      // (AEM / SKAdNetwork); iOS'ta setAdvertiserTrackingEnabled(false) sabit (analytics.ts).
       [
         'react-native-fbsdk-next',
         {
@@ -473,18 +465,14 @@ module.exports = {
           clientToken: '99ec21a60f8699f2534e3aaa52951f73',
           displayName: 'KCAL',
           scheme: 'fb4403872953189106',
-          // ATT UYUMU (2026-11-03, G3-S1): SDK açılışta OTOMATİK başlatılmaz ve
-          // IDFA'yı varsayılan olarak TOPLAMAZ. src/lib/analytics.ts önce ATT
-          // iznini ister, izin verilirse setAdvertiserTrackingEnabled(true) +
-          // setAdvertiserIDCollectionEnabled(true) çağırır, SONRA
-          // initializeSDK() der. Böylece ATT onayından önce IDFA okunmaz
-          // (Apple 5.1.2). Önceki true/true/true değerleri auto-init ile bu
-          // sırayı atlayıp izin öncesi IDFA okuyabiliyordu.
+          // SDK açılışta OTOMATİK başlatılmaz ve IDFA'yı TOPLAMAZ (G3-S1).
+          // G26-S1: ATT yok → src/lib/analytics.ts iOS'ta
+          // setAdvertiserTrackingEnabled(false) + setAdvertiserIDCollectionEnabled(false)
+          // SABİT çağırır, SONRA initializeSDK(). iosUserTrackingPermission VERİLMEZ
+          // (verilirse eklenti NSUserTrackingUsageDescription yazar).
           advertiserIDCollectionEnabled: false,
           autoLogAppEventsEnabled: true,
           isAutoInitEnabled: false,
-          iosUserTrackingPermission:
-            'Reklam kampanyalarımızın etkisini ölçmek için bu izni istiyoruz. İzin vermesen de uygulamanın tamamını kullanabilirsin.',
         },
       ],
     ],

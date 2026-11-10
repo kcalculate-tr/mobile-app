@@ -4,7 +4,6 @@
     "NSMicrophoneUsageDescription": "Microphone access is used to turn what you say into text when adding food by voice, and to record audio when sharing a video.",
     "NSPhotoLibraryUsageDescription": "Photo library access is used to scan a plate photo and to pick profile photos, images, and videos.",
     "NSPhotoLibraryAddUsageDescription": "Permission is required to save share cards and images to your photo library.",
-    "NSUserTrackingUsageDescription": "We ask for this to measure how our ad campaigns perform. You can use the whole app without allowing it.",
     "NSLocationWhenInUseUsageDescription": "We use your location to verify your delivery address on the map and find your nearest branch.",
     "NSSpeechRecognitionUsageDescription": "We use speech recognition on your phone to turn the food you say into text. Your voice recording isn’t stored; only the transcribed text is sent to estimate calories."
   }

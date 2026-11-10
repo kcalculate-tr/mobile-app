@@ -147,7 +147,7 @@ export function E2ERoot({ lang }: { lang?: 'tr' | 'en' }) {
       // Yeni kurulum eşdeğeri: bütün yerel durum silinir (ilk açılış imzası, ilk 60 sn
       // bayrakları, il kapısı, kutlama/izin "bir kez" anahtarları).
       await AsyncStorage.clear().catch(() => {});
-      // G19-S4: simülatörde ATT 'granted' → Meta reklam olayları (product_view, add_to_cart,
+      // G19-S4: simülatörde Meta reklam olayları (product_view, add_to_cart,
       // begin_checkout) yerel SDK'dan Meta'ya giderdi. E2E'de reklam rızası 'denied': Meta'ya
       // hiçbir şey gitmez; birinci taraf olaylar bellek içi tabloya yazılır (canlıya değil).
       await setAdConsent('denied').catch(() => {});

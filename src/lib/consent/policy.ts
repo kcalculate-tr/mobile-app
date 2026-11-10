@@ -2,7 +2,7 @@
 //
 // Akış (yalnız yeni arayüz bayrağı açıkken; kapalıyken bugünkü davranış AYNEN):
 //   hesap oluşturma bloğu (Koşullar + Gizlilik kabulü · KVKK bilgilendirme ·
-//   Meta reklam ölçümü AÇIK, kapatılabilir) → giriş → ATT (iOS) → Meta.
+//   Meta reklam ölçümü AÇIK, kapatılabilir) → giriş → Meta (G26-S1: iOS ATT yok).
 //   Mevcut kullanıcı: bir sonraki açılışta bir kez bilgilendirme sheet'i.
 //   Yeni belge sürümü (legal_documents.version artınca): tekrar kabul sheet'i.
 
@@ -136,11 +136,11 @@ export function covers(accepted: DocVersions | null | undefined, current: DocVer
 }
 
 export type GateDecision =
-  /** Bayrak kapalı: bugünkü davranış (ATT açılışta). */
+  /** Bayrak kapalı: bugünkü davranış (Meta açılışta). */
   | 'legacy'
-  /** Henüz hesap yok / bekleniyor: ATT sorulmaz. */
+  /** Henüz hesap yok / bekleniyor: Meta başlatılmaz. */
   | 'wait'
-  /** Kabul tamam: ATT → Meta başlat. */
+  /** Kabul tamam: Meta başlat. */
   | 'ready'
   /** Mevcut kullanıcı, hiç kayıt yok: bir kez bilgilendirme sheet'i. */
   | 'notice'

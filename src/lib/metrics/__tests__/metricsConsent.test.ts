@@ -1,41 +1,27 @@
-// G19-S3 md.4/md.5 — ATT dalları + uygulama içi rıza.
+// G19-S3 md.4/md.5 + G26-S1 — uygulama içi rıza (iOS ATT kaldırıldı).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fbSettingsFor, metaAllowed, parseAdConsent, parseFirstParty, toAttStatus } from '../consent';
+import * as consent from '../consent';
+import { fbSettingsFor, metaAllowed, parseAdConsent, parseFirstParty } from '../consent';
 import { scanOutcomeEvent } from '../../../modules/ai/scan/scanMetrics';
 import { logSourceOf } from '../logSource';
 
-test('iOS: Meta yalnız ATT granted iken açık (rıza unset = bugünkü davranış)', () => {
-  assert.equal(metaAllowed({ platform: 'ios', att: 'granted', adConsent: 'unset' }), true);
-  for (const att of ['denied', 'undetermined', 'restricted'] as const) {
-    assert.equal(metaAllowed({ platform: 'ios', att, adConsent: 'unset' }), false, att);
-    assert.equal(metaAllowed({ platform: 'ios', att, adConsent: 'granted' }), false, `${att}+granted`);
+test('G26: Meta yalnız uygulama içi rızaya bağlı (iOS + Android; ATT yok)', () => {
+  assert.equal(metaAllowed({ adConsent: 'unset' }), true);
+  assert.equal(metaAllowed({ adConsent: 'granted' }), true);
+  assert.equal(metaAllowed({ adConsent: 'denied' }), false);
+});
+
+test('G26: iOS izleme + IDFA HER ZAMAN kapalı; Android reklam kimliği rızaya bağlı', () => {
+  for (const adConsent of ['unset', 'granted', 'denied'] as const) {
+    assert.deepEqual(fbSettingsFor({ platform: 'ios', adConsent }), { advertiserTracking: false, advertiserIdCollection: false }, adConsent);
   }
+  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'unset' }), { advertiserTracking: true, advertiserIdCollection: true });
+  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'denied' }), { advertiserTracking: false, advertiserIdCollection: false });
 });
 
-test('uygulama içi rıza denied: ATT granted olsa da Meta kapalı (iOS + Android)', () => {
-  assert.equal(metaAllowed({ platform: 'ios', att: 'granted', adConsent: 'denied' }), false);
-  assert.equal(metaAllowed({ platform: 'android', att: 'unavailable', adConsent: 'denied' }), false);
-});
-
-test('Android: ATT yok; rıza unset/granted → açık (bugünkü davranış korunur)', () => {
-  assert.equal(metaAllowed({ platform: 'android', att: 'unavailable', adConsent: 'unset' }), true);
-  assert.equal(metaAllowed({ platform: 'android', att: 'unavailable', adConsent: 'granted' }), true);
-});
-
-test('initFBSDK ayarları: IDFA toplama ve advertiser tracking aynı karara bağlı', () => {
-  assert.deepEqual(fbSettingsFor({ platform: 'ios', att: 'granted', adConsent: 'unset' }), { advertiserTracking: true, advertiserIdCollection: true });
-  assert.deepEqual(fbSettingsFor({ platform: 'ios', att: 'denied', adConsent: 'unset' }), { advertiserTracking: false, advertiserIdCollection: false });
-  assert.deepEqual(fbSettingsFor({ platform: 'ios', att: 'granted', adConsent: 'denied' }), { advertiserTracking: false, advertiserIdCollection: false });
-});
-
-test('ATT durum dizesi eşlemesi', () => {
-  assert.equal(toAttStatus('ios', 'granted'), 'granted');
-  assert.equal(toAttStatus('ios', 'denied'), 'denied');
-  assert.equal(toAttStatus('ios', 'restricted'), 'restricted');
-  assert.equal(toAttStatus('ios', 'undetermined'), 'undetermined');
-  assert.equal(toAttStatus('ios', undefined), 'undetermined');
-  assert.equal(toAttStatus('android', 'granted'), 'unavailable');
+test('G26: ATT eşlemesi kaldırıldı', () => {
+  assert.equal((consent as Record<string, unknown>).toAttStatus, undefined);
 });
 
 test('kalıcı rıza değerleri: bilinmeyen → unset; birinci taraf yalnız "0" ile kapanır', () => {

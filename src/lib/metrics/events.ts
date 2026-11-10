@@ -10,8 +10,8 @@
 //  • `props`: beyaz liste. Listede olmayan anahtar SESSİZCE düşer
 //    (sanitize.ts). Kişisel veri (ad, e-posta, telefon, adres, konum, kart,
 //    serbest metin not, başka kullanıcının kimliği/handle'ı) için anahtar YOK.
-//  • `meta`: yalnız reklam olayları Meta SDK'ya gider (ATT + uygulama içi rıza
-//    açıksa; bkz. consent.ts). Diğer olaylar yalnız Supabase'e yazılır.
+//  • `meta`: yalnız reklam olayları Meta SDK’ya gider (uygulama içi rıza; G26: ATT yok —
+//    bkz. consent.ts). Diğer olaylar yalnız Supabase’e yazılır.
 //  • `attribution: true`: olaya ilk/son dokunma (kaynak, kampanya) eklenir
 //    (sipariş hunisi).
 //  • `aliasOf`: aynı anlamın ikinci adı (D-S1'deki alias_of ile aynı yön).

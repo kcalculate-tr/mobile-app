@@ -20,10 +20,9 @@ jest.mock('../../../../core/flags', () => ({
 const mockAuth: { session: null | { user: { id: string } }; loading: boolean } = { session: null, loading: false };
 jest.mock('../../../../core/AuthContext', () => ({ useAuth: () => mockAuth }));
 
-// analytics: initFBSDK / rıza durumu taklit (ATT sırası analyticsAtt testinde).
-const mockConsent = { platform: 'ios', att: 'undetermined', adConsent: 'unset', firstParty: true };
+// analytics: initFBSDK / rıza durumu taklit (G26: ATT yok; sıra analyticsAtt testinde).
+const mockConsent = { platform: 'ios', adConsent: 'unset', firstParty: true };
 const mockInit = jest.fn((_o?: unknown) => Promise.resolve());
-const mockReqAtt = jest.fn(() => Promise.resolve('granted'));
 jest.mock('../../../../lib/analytics', () => ({
   initFBSDK: (o?: unknown) => mockInit(o),
   getConsent: () => ({ ...mockConsent }),
@@ -35,7 +34,6 @@ jest.mock('../../../../lib/analytics', () => ({
     mockConsent.firstParty = v;
     return Promise.resolve();
   },
-  requestAttForAds: () => mockReqAtt(),
 }));
 
 // supabase: legal_documents sürümü, my_consent_status, user_consents yazımı.
@@ -88,7 +86,7 @@ beforeEach(async () => {
   mockUid = null;
   mockRpc = { data: null, error: { message: 'yok' } };
   mockInserts.length = 0;
-  Object.assign(mockConsent, { platform: 'ios', att: 'undetermined', adConsent: 'unset', firstParty: true });
+  Object.assign(mockConsent, { platform: 'ios', adConsent: 'unset', firstParty: true });
   await AsyncStorage.clear();
 });
 
@@ -122,7 +120,7 @@ describe('ConsentGate — sıra: politika → ATT', () => {
     await flush();
     expect(ui.getByTestId('consent-sheet-notice')).toBeTruthy();
     expect(ui.getByText('Gizlilik ve izinler')).toBeTruthy();
-    expect(mockInit).not.toHaveBeenCalled(); // ATT politikadan ÖNCE yok
+    expect(mockInit).not.toHaveBeenCalled(); // Meta politikadan ÖNCE yok
     // Meta varsayılan AÇIK
     expect(ui.getByTestId('consent-sheet-notice-block-ads').props.value).toBe(true);
 
@@ -138,7 +136,7 @@ describe('ConsentGate — sıra: politika → ATT', () => {
     ]);
     expect(await AsyncStorage.getItem(PENDING_KEY)).toBeNull();
     expect(mockInit).toHaveBeenCalledTimes(1);
-    expect(typeof (mockInit.mock.calls[0][0] as { onAtt?: unknown }).onAtt).toBe('function');
+    expect(mockInit.mock.calls[0][0]).toBeUndefined(); // G26: ATT geri çağrısı yok
   });
 
   test('bilgilendirmede reklam ölçümü kapatılırsa → adConsent denied, satır granted=false', async () => {
@@ -247,7 +245,6 @@ describe('Veri ve reklam izinleri (Profil › Gizlilik)', () => {
   test('iki anahtar: kullanım ölçümü + reklam ölçümü; kapatınca kayıt yazılır', async () => {
     signIn();
     mockConsent.adConsent = 'granted';
-    mockConsent.att = 'granted';
     const ui = render(<SettingsDataConsentScreen onBack={() => {}} />);
     expect(ui.getByText('Veri ve reklam izinleri')).toBeTruthy();
     expect(ui.getByTestId('consent-usage-switch').props.value).toBe(true);
@@ -269,22 +266,17 @@ describe('Veri ve reklam izinleri (Profil › Gizlilik)', () => {
     expect(ui.getByText('KVKK Aydınlatma Metni')).toBeTruthy();
   });
 
-  test('iOS: açınca ATT sorulur; ATT reddi = Meta kapalı + iPhone Ayarları bağlantısı', async () => {
+  test('G26 iOS: açınca Apple izleme sorusu YOK; yalnız uygulama içi tercih kaydedilir', async () => {
     signIn();
     mockConsent.adConsent = 'denied';
-    mockReqAtt.mockImplementationOnce(() => {
-      mockConsent.att = 'denied';
-      return Promise.resolve('denied');
-    });
     const ui = render(<SettingsDataConsentScreen onBack={() => {}} />);
     await act(async () => fireEvent(ui.getByTestId('consent-ads-switch'), 'valueChange', true));
     await flush();
-    expect(mockReqAtt).toHaveBeenCalledTimes(1);
-    expect(mockConsent.adConsent).toBe('denied');
-    expect(ui.getByTestId('consent-ads-switch').props.value).toBe(false);
-    expect(ui.getByTestId('consent-att-blocked')).toBeTruthy();
-    const ad = (mockInserts.flat() as { kind: string; source: string }[]).find((r) => r.kind === 'ad_measurement');
-    expect(ad?.source).toBe('att');
+    expect(mockConsent.adConsent).toBe('granted');
+    expect(ui.getByTestId('consent-ads-switch').props.value).toBe(true);
+    expect(ui.queryByTestId('consent-att-blocked')).toBeNull();
+    const ad = (mockInserts.flat() as { kind: string; granted: boolean; source: string }[]).find((r) => r.kind === 'ad_measurement');
+    expect([ad?.granted, ad?.source]).toEqual([true, 'settings']);
   });
 
   test('EN: sayfa başlığı ve satırlar İngilizce', async () => {

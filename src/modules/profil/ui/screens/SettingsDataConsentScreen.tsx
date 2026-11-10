@@ -7,19 +7,18 @@
  * `metrics.consent.*` + G20-S1 `consent.settings.*`.
  *
  *  • Uygulama içi kullanım ölçümü aç/kapa → setFirstPartyConsent (+ user_consents)
- *  • Reklam ölçümü (Meta) aç/kapa → setAdConsent (+ user_consents). iOS'ta açınca
- *    ATT henüz sorulmadıysa Apple sorusu gelir; ATT reddi = Meta kapalı (anahtar
- *    kapalı kalır, "iPhone Ayarları'nı aç" bağlantısı).
+ *  • Reklam ölçümü (Meta) aç/kapa → setAdConsent (+ user_consents). Yalnız uygulama
+ *    içi tercih — G26-S1: iOS ATT kaldırıldı, Apple izleme sorusu gelmez.
  *  • G20-S3 md.2: Fotoğraf analizi (yapay zekâ) aç/kapa → ai_photo (+ user_consents).
  *    Kapalıyken Tara ilk çekimde izin sheet'ini yeniden gösterir; kuyruk gönderilmez.
  *  • Metinler: Kullanım Koşulları · Gizlilik Politikası · KVKK Aydınlatma Metni.
  */
 import React, { useEffect, useState } from 'react';
-import { Linking, Platform, Pressable, Switch, View } from 'react-native';
+import { Switch, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { getConsent, requestAttForAds } from '../../../../lib/analytics';
+import { getConsent } from '../../../../lib/analytics';
 import { metaAllowed } from '../../../../lib/metrics/consent';
 import { onConsentChange, setAdMeasurement, setUsageMeasurement } from '../../../../lib/consent/store';
 import { hasLocalAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/consent/aiPhoto';
@@ -27,7 +26,7 @@ import { setCoachConsent, useCoachConsent, useCoachEnabled } from '../../../coac
 import { LegalDocModal, type LegalSlug } from '../../../onboarding/consent/LegalDocModal';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
 import { FileText } from '../../../../components/icons';
-import { FinScreen, FinHeader, FinSectionLabel, FinRow, body, bodyMedium, bodySemibold } from '../finUi';
+import { FinScreen, FinHeader, FinSectionLabel, FinRow, bodyMedium, bodySemibold } from '../finUi';
 
 const flatGroup = (t: ReturnType<typeof useTheme>) => ({
   borderTopWidth: 1,
@@ -90,10 +89,8 @@ const readState = () => {
   const c = getConsent();
   return {
     usage: c.firstParty,
-    // Etkin durum: uygulama içi rıza + (iOS) ATT. ATT reddi = Meta kapalı.
-    ads: c.adConsent !== 'denied' && (c.platform !== 'ios' || c.att !== 'denied' && c.att !== 'restricted'),
-    attBlocked: c.platform === 'ios' && (c.att === 'denied' || c.att === 'restricted'),
-    effective: metaAllowed(c),
+    // G26-S1: yalnız uygulama içi rıza (ATT yok).
+    ads: metaAllowed(c),
   };
 };
 
@@ -160,14 +157,6 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
     setError(false);
     setState((s) => ({ ...s, ads: on }));
     try {
-      if (on && Platform.OS === 'ios') {
-        const att = await requestAttForAds();
-        if (att === 'denied' || att === 'restricted') {
-          // ATT reddi = Meta kapalı: uygulama içi rıza da kapalı kaydedilir.
-          await setAdMeasurement(false, 'att');
-          return;
-        }
-      }
       await setAdMeasurement(on);
     } catch {
       setError(true);
@@ -201,18 +190,6 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
             testID="consent-ads-switch"
           />
         </View>
-        {state.attBlocked ? (
-          <View style={{ gap: 6, paddingHorizontal: 4 }} testID="consent-att-blocked">
-            <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
-              {tr('consent.settings.att_denied')}
-            </Text>
-            <Pressable onPress={() => void Linking.openSettings()} accessibilityRole="link" hitSlop={8}>
-              <Text style={{ fontFamily: bodySemibold, fontSize: 13, color: t.color.ink, textDecorationLine: 'underline' }}>
-                {tr('consent.settings.att_open')}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
         <FinSectionLabel>{tr('consent.settings.ai_section')}</FinSectionLabel>
         <View style={flatGroup(t)}>
           <ToggleRow

@@ -1,11 +1,11 @@
 // G20-S1 md.1–3 — Açılış rıza kapısı (App.tsx › AppContent).
 //
+// G26-S1: iOS ATT KALDIRILDI — Apple izleme sorusu hiç gösterilmez (analytics.ts).
 // Bayrak kapalı (yeni_onboarding ve yeni_kabuk ikisi de kapalı): bugünkü davranış
-// AYNEN — Meta SDK + ATT açılışta (`initFBSDK()`).
-// Bayrak açık: ATT ve Meta YALNIZ politika bloğundan SONRA (sıra: politika → ATT;
-// ATT reddi = Meta kapalı, user_consents'e yazılır):
-//   • hesap yok, kayıt yok          → bekle (ATT sorulmaz)
-//   • kabul tamam                   → initFBSDK (iOS ATT burada)
+// AYNEN — Meta SDK açılışta (`initFBSDK()`).
+// Bayrak açık: Meta YALNIZ politika bloğundan SONRA:
+//   • hesap yok, kayıt yok          → bekle
+//   • kabul tamam                   → initFBSDK
 //   • mevcut kullanıcı, kayıt yok   → bir kez bilgilendirme sheet'i (notice)
 //   • yeni belge sürümü             → tekrar kabul sheet'i (reconsent)
 // Sunucu (my_consent_status) okunamazsa yalnız cihaz kaydına bakılır (fail-open).
@@ -22,21 +22,13 @@ import {
   gateHeld,
   onConsentChange,
   readPolicyRecord,
-  recordAtt,
   rememberAccepted,
 } from '../../../lib/consent/store';
 import { ConsentSheet } from './ConsentSheet';
 
-const startMeta = (withConsent: boolean) =>
-  initFBSDK(
-    withConsent
-      ? {
-          onAtt: ({ status, asked }) => {
-            if (asked) void recordAtt(status === 'granted');
-          },
-        }
-      : undefined,
-  ).catch((err) => {
+// G26-S1: ATT yok → başlatma rızadan bağımsız tek yol.
+const startMeta = () =>
+  initFBSDK().catch((err) => {
     console.warn('[App] FB SDK init failed:', err);
   });
 
@@ -61,7 +53,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
   useEffect(() => {
     if (!ready || loading) return;
     if (!flagsOn) {
-      void startMeta(false);
+      void startMeta();
       return;
     }
     let cancelled = false;
@@ -86,7 +78,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
           void rememberAccepted(best);
         }
         setOpen(false);
-        void startMeta(true);
+        void startMeta();
       } else if (d === 'notice' || d === 'reconsent') {
         setAdOn(server?.ad_measurement ?? getConsent().adConsent !== 'denied');
         setSheet(d);

@@ -32,12 +32,14 @@ test('eski kabuk onay metinleri yerinde (login/signup sözlükleri)', () => {
   assert.match(login, /I am over 18 and accept the terms of use\./);
 });
 
-test('App.tsx: Meta/ATT yalnız ConsentGate üzerinden (doğrudan initFBSDK çağrısı yok)', () => {
+test('App.tsx: Meta yalnız ConsentGate üzerinden (doğrudan initFBSDK çağrısı yok)', () => {
   const app = read('App.tsx');
   assert.doesNotMatch(app, /initFBSDK\(/);
   assert.match(app, /<ConsentGate suppressed=\{forceUpdate\} \/>/);
   const gate = read('src/modules/onboarding/consent/ConsentGate.tsx');
-  assert.match(gate, /if \(!flagsOn\) \{\s*void startMeta\(false\);/);
+  assert.match(gate, /if \(!flagsOn\) \{\s*void startMeta\(\);/);
+  // G26-S1: ATT yok
+  assert.doesNotMatch(gate, /recordAtt|onAtt/);
 });
 
 test('rıza bloğu yeni kabuk Hesap ekranında ve e-posta sheet’inde', () => {

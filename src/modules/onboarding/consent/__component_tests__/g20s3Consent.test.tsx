@@ -19,7 +19,7 @@ const mockAuth = {
 };
 jest.mock('../../../../core/AuthContext', () => ({ useAuth: () => mockAuth }));
 
-const mockConsent = { platform: 'ios', att: 'undetermined', adConsent: 'unset', firstParty: true };
+const mockConsent = { platform: 'ios', adConsent: 'unset', firstParty: true };
 jest.mock('../../../../lib/analytics', () => ({
   initFBSDK: () => Promise.resolve(),
   getConsent: () => ({ ...mockConsent }),
@@ -28,7 +28,6 @@ jest.mock('../../../../lib/analytics', () => ({
     return Promise.resolve();
   },
   setFirstPartyConsent: () => Promise.resolve(),
-  requestAttForAds: () => Promise.resolve('granted'),
 }));
 
 // supabase taklidi: user_consents eklemeleri, profiles okuma/güncelleme, my_consent_status.

@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { getSupabaseClient } from '../../core/supabase';
-import { getConsent, setAdConsent, setFirstPartyConsent } from '../analytics';
+import { setAdConsent, setFirstPartyConsent } from '../analytics';
 import { saveAgeOk } from '../../modules/onboarding/first/store';
 import {
   DEFAULT_VERSIONS,
@@ -54,7 +54,7 @@ const emit = () => {
 // ── Kapı tutma ────────────────────────────────────────────────────────────────
 // Hesap oluşturma sürerken (Apple/Google sheet'i, e-posta kodu) oturum kabul
 // kaydından ÖNCE açılabilir; bu sırada kapı "mevcut kullanıcı" sheet'i göstermesin
-// ve ATT sorusu giriş sheet'inin üstüne binmesin diye akış kapıyı tutar.
+// diye akış kapıyı tutar.
 let holds = 0;
 export function holdGate(): () => void {
   holds += 1;
@@ -241,17 +241,3 @@ export async function setUsageMeasurement(on: boolean): Promise<void> {
   ]);
 }
 
-/** iOS ATT sonucu (politika bloğundan SONRA sorulur). Red → Meta kapalı. */
-export async function recordAtt(granted: boolean): Promise<void> {
-  const rows: ConsentRow[] = [
-    toggleRow({ kind: 'att', granted, source: 'att', platform: platform(), appVersion: appVersion(), at: new Date().toISOString() }),
-  ];
-  if (!granted && getConsent().adConsent !== 'denied') {
-    await setAdConsent('denied');
-    rows.push(
-      toggleRow({ kind: 'ad_measurement', granted: false, source: 'att', platform: platform(), appVersion: appVersion(), at: new Date().toISOString() }),
-    );
-  }
-  emit();
-  await record(rows);
-}
