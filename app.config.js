@@ -64,7 +64,10 @@ module.exports = {
         NSCameraUsageDescription:
           'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
         NSMicrophoneUsageDescription:
-          'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+          'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+        // G22-S1 md.1: sesle ekleme — telefonun konuşma tanıması (EN: locales/en.json).
+        NSSpeechRecognitionUsageDescription:
+          'Söylediğin yemekleri telefonunda yazıya çevirmek için konuşma tanımayı kullanıyoruz. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
         NSPhotoLibraryUsageDescription:
           'Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
         NSPhotoLibraryAddUsageDescription:
@@ -290,6 +293,8 @@ module.exports = {
         'CAMERA',
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
+        // G22-S1 md.1: sesle ekleme (expo-speech-recognition). Ses kaydı saklanmaz.
+        'RECORD_AUDIO',
       ],
       // FAZ L — react-native-maps (Android zorunlu). Ayrı, kısıtlı bir Android
       // key (sadece "Maps SDK for Android") kullanılır; tanımlı değilse genel
@@ -378,7 +383,7 @@ module.exports = {
           cameraPermission:
             'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
           microphonePermission:
-            'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+            'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         },
       ],
       // G17-S2 md.1/3 (İlter onayı 7 Kas 15:35): canlı Tara vizörü. İzin metni
@@ -391,11 +396,24 @@ module.exports = {
           cameraPermission:
             'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
           microphonePermission:
-            'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+            'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
           recordAudioAndroid: false,
         },
       ],
       'expo-video',
+      // G22-S1 md.1 (İlter paket izni 10 Kas): sesle ekleme — telefonun konuşma tanıması.
+      // iOS NSSpeechRecognitionUsageDescription + NSMicrophoneUsageDescription (aynı metinler),
+      // Android RECORD_AUDIO + Google konuşma hizmeti görünürlüğü. YENİ NATIVE DERLEME gerekir.
+      [
+        'expo-speech-recognition',
+        {
+          microphonePermission:
+            'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+          speechRecognitionPermission:
+            'Söylediğin yemekleri telefonunda yazıya çevirmek için konuşma tanımayı kullanıyoruz. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
+          androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as'],
+        },
+      ],
       // expo-image-manipulator (~14.0.8, G19-S1 Tara uzun kenar ≤ 1600): bu
       // paketin config plugin'i YOK (app.plugin.js yok) → plugins dizisine
       // eklenemez (eklenirse `expo config` "does not contain a valid config
