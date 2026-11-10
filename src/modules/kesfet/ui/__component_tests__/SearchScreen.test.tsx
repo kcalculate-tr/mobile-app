@@ -49,6 +49,21 @@ beforeEach(async () => {
 });
 afterEach(() => resetSearchClient());
 
+// G23-S1 — Keşfet sekmesinin içinde katman: Vazgeç `onClose` çağırır, yığından geri YOK.
+test('sekme içi katman: Vazgeç → onClose (goBack çağrılmaz)', async () => {
+  const navigation = { goBack: jest.fn(), navigate: jest.fn() };
+  const onClose = jest.fn();
+  const utils = render(
+    <SafeAreaProvider initialMetrics={metrics}>
+      <SearchScreen navigation={navigation} onClose={onClose} bottomInset={120} />
+    </SafeAreaProvider>,
+  );
+  await flush();
+  fireEvent.press(utils.getByTestId('kesfet-search-cancel'));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(navigation.goBack).not.toHaveBeenCalled();
+});
+
 test('son aramalar: depodan yüklenir, tek tek silinir, Temizle → boş durum', async () => {
   await AsyncStorage.setItem(
     RECENT_SEARCH_KEY,

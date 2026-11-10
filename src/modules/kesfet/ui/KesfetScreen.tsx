@@ -15,13 +15,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
 import { AppText, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
-import { WAIT, haptic } from '../../../core/design';
+import { DURATION, REDUCED, WAIT, haptic, useReducedMotion } from '../../../core/design';
+import { SearchScreen } from './SearchScreen';
 import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
@@ -214,6 +215,11 @@ export function KesfetScreen() {
   const listRef = useRef<any>(null);
   const { summary } = useNutritionSummary();
   const listBottomPad = asTab ? tabBarContentInset(insets.bottom) : insets.bottom + 120;
+  // G23-S1: sekmede arama Keşfet'in İÇİNDE açılır (sekme çubuğu görünür); yığında (derin
+  // bağlantı / bildirim) bugünkü KesfetSearch ekranı.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
   // Kaydırınca tab barı küçült (yalnız sekme bağlamında; stack'te provider yok
   // → useTabBarCollapse no-op). scrollY → useTabBarCollapse (G11-CONTRACT m.39).
   const scrollY = useSharedValue(0);
@@ -887,7 +893,7 @@ export function KesfetScreen() {
           if (h > 0 && (headerH.value === 0 || (collapsed?.value ?? 0) === 0)) headerH.value = h;
         }}>
       <Header
-        onSearch={() => navigation.navigate('KesfetSearch')}
+        onSearch={() => (asTab ? setSearchOpen(true) : navigation.navigate('KesfetSearch'))}
         onNotifications={() => navigation.navigate('KesfetNotifications')}
         onCompose={() => navigation.navigate('Composer')}
         showCompose={kesfetPaylasim}
@@ -1019,6 +1025,17 @@ export function KesfetScreen() {
           onAddToDay={onAddCardToDay}
         />
       )}
+
+      {searchOpen ? (
+        <Animated.View
+          entering={FadeIn.duration(reducedMotion ? REDUCED.duration : DURATION.fast)}
+          exiting={FadeOut.duration(reducedMotion ? REDUCED.duration : DURATION.fast)}
+          style={StyleSheet.absoluteFill}
+          testID="kesfet-search-layer"
+        >
+          <SearchScreen navigation={navigation} onClose={closeSearch} bottomInset={listBottomPad} />
+        </Animated.View>
+      ) : null}
     </View>
   );
 }

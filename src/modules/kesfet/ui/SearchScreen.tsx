@@ -6,8 +6,11 @@
 // · Tarif listesi) / sonuç yok ("Şurada da ara") / hata (Tekrar dene).
 // Kişiye dokun → açık profil (PublicProfile); gönderi/tarife dokun → gönderi
 // (SharedPost). Vazgeç → geri. Hareket yalnız motion.tsx token'larıyla.
+//
+// G23-S1: Keşfet SEKMESİNİN İÇİNDE katman olarak da açılır (sekme çubuğu görünür, tasarımdaki
+// gibi): `onClose` verilirse Vazgeç / Android geri onu çağırır, alt boşluk `bottomInset`.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
@@ -112,7 +115,17 @@ type Nav = { goBack: () => void; navigate: (name: string, params?: object) => vo
 const NO_NAV: Nav = { goBack: () => {}, navigate: () => {} };
 
 /** Yığın ekranı `navigation` prop'unu verir; testler sade bir taklit geçer. */
-export function SearchScreen({ navigation = NO_NAV }: { navigation?: Nav }) {
+export function SearchScreen({
+  navigation = NO_NAV,
+  onClose,
+  bottomInset,
+}: {
+  navigation?: Nav;
+  /** G23-S1: sekme içi katman — Vazgeç / Android geri bunu çağırır (yığından geri yerine). */
+  onClose?: () => void;
+  /** G23-S1: sekme içinde alt boşluk (sekme çubuğu kadar). */
+  bottomInset?: number;
+}) {
   const t = useTheme();
   const c = palette(t.isDark);
   const insets = useSafeAreaInsets();
@@ -128,6 +141,15 @@ export function SearchScreen({ navigation = NO_NAV }: { navigation?: Nav }) {
   const [attempt, setAttempt] = useState(0);
   const [follow, setFollow] = useState<Record<string, SearchFollowState>>({});
   const [focused, setFocused] = useState(true);
+  // G23-S1: sekme içi katmanda Android geri tuşu aramayı kapatır.
+  useEffect(() => {
+    if (!onClose) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onClose]);
   const inputRef = useRef<TextInput>(null);
   const reqId = useRef(0);
 
@@ -268,9 +290,10 @@ export function SearchScreen({ navigation = NO_NAV }: { navigation?: Nav }) {
           ) : null}
         </View>
         <Pressable
-          onPress={() => navigation.goBack()}
+          onPress={() => (onClose ? onClose() : navigation.goBack())}
           accessibilityRole="button"
           accessibilityLabel={tr('kesfetSearch.cancel')}
+          testID="kesfet-search-cancel"
           style={styles.cancelBtn}
         >
           <Text style={[styles.cancelText, { color: t.color.ink }]}>{tr('kesfetSearch.cancel')}</Text>
@@ -323,7 +346,7 @@ export function SearchScreen({ navigation = NO_NAV }: { navigation?: Nav }) {
 
       <ScrollView
         style={styles.body}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={{ paddingBottom: bottomInset ?? insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
