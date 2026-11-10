@@ -41,8 +41,9 @@ export interface PolicyRecord {
 }
 
 // G20-S3: canlıda kind'a ai_photo, source'a scan eklendi (Claude 9 Kas).
-export type ConsentSource = 'signup_email' | 'signup_social' | 'notice' | 'reconsent' | 'settings' | 'att' | 'scan';
-export type ConsentKind = 'policy' | 'ad_measurement' | 'first_party' | 'att' | 'ai_photo';
+// G27-S1: sağlık verisi açık rızası — kind 'health_data', source 'takibe' (migration 20261111230100).
+export type ConsentSource = 'signup_email' | 'signup_social' | 'notice' | 'reconsent' | 'settings' | 'att' | 'scan' | 'takibe';
+export type ConsentKind = 'policy' | 'ad_measurement' | 'first_party' | 'att' | 'ai_photo' | 'health_data';
 
 /** user_consents satırı (user_id yazım anında eklenir). */
 export interface ConsentRow {
@@ -68,6 +69,8 @@ export interface ServerStatus {
    * (null → sürüm bilinmiyor = eski metin sayılır); ileride sunucu eklerse kullanılır.
    */
   ai_photo_version?: number | null;
+  /** G27-S1: sağlık verisi açık rızasının son değeri (migration uygulanana dek dönmez → undefined). */
+  health_data?: boolean | null;
 }
 
 const posInt = (v: unknown): number | null => {

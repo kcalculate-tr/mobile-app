@@ -139,20 +139,41 @@ export function flushPending(userId: string): Promise<void> {
   if (flushing) return flushing;
   flushing = (async () => {
     try {
-      const rows = parsePending(await AsyncStorage.getItem(PENDING_KEY));
-      if (!rows.length) return;
-      const { error } = await getSupabaseClient()
-        .from('user_consents')
-        .insert(rows.map((r) => ({ ...r, user_id: userId })));
-      if (!error) await AsyncStorage.removeItem(PENDING_KEY);
-      else if (__DEV__) console.warn('[consent] user_consents yazılamadı (bekliyor):', error.message);
-    } catch {
-      /* sonraki açılışta yeniden */
+      await flushQueue(PENDING_KEY, userId);
+      // G27-S1: yan kuyruk AYRI yazılır — yeni kind'lar (health_data) migration uygulanmadıysa
+      // CHECK ile reddedilir; ortak kuyruktaki politika satırlarını tıkamasın.
+      await flushQueue(SIDE_PENDING_KEY, userId);
     } finally {
       flushing = null;
     }
   })();
   return flushing;
+}
+
+async function flushQueue(key: string, userId: string): Promise<void> {
+  try {
+    const rows = parsePending(await AsyncStorage.getItem(key));
+    if (!rows.length) return;
+    const { error } = await getSupabaseClient()
+      .from('user_consents')
+      .insert(rows.map((r) => ({ ...r, user_id: userId })));
+    if (!error) await AsyncStorage.removeItem(key);
+    else if (__DEV__) console.warn(`[consent] user_consents yazılamadı (bekliyor, ${key}):`, error.message);
+  } catch {
+    /* sonraki açılışta yeniden */
+  }
+}
+
+/** G27-S1: yeni kind'lı satırların yan kuyruğu (ortak kuyruktan bağımsız yazılır). */
+export const SIDE_PENDING_KEY = '@kcal_consent_pending_side';
+
+async function queueSideRows(rows: ConsentRow[]): Promise<void> {
+  try {
+    const prev = parsePending(await AsyncStorage.getItem(SIDE_PENDING_KEY));
+    await AsyncStorage.setItem(SIDE_PENDING_KEY, JSON.stringify(appendPending(prev, rows)));
+  } catch {
+    /* cihaz kuyruğu yazılamadı */
+  }
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -241,3 +262,35 @@ export async function setUsageMeasurement(on: boolean): Promise<void> {
   ]);
 }
 
+// ── G27-S1: sağlık verisi açık rızası (Takibe başla › Seni tanıyalım) ───────────
+export const HEALTH_CONSENT_KEY = '@kcal_health_consent';
+/** Metin sürümü (tb.about.consent): metin değişirse artır → bir sonraki onayda yeni satır yazılır. */
+export const HEALTH_CONSENT_VERSION = 1;
+
+/**
+ * Sağlık verisi (boy, kilo, yaş, cinsiyet) açık rızası → user_consents AYRI satır
+ * (kind 'health_data'). Aynı sürümde aynı değer cihazda zaten kayıtlıysa tekrar yazılmaz
+ * (akış geri-ileri gezilirse satır çoğalmasın). Oturum yoksa satır yan kuyrukta bekler.
+ */
+export async function recordHealthConsent(granted: boolean, source: Extract<ConsentSource, 'takibe' | 'settings'> = 'takibe'): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(HEALTH_CONSENT_KEY);
+    const prev = raw ? (JSON.parse(raw) as { granted?: unknown; v?: unknown }) : null;
+    if (prev && prev.granted === granted && Number(prev.v) >= HEALTH_CONSENT_VERSION) return false;
+  } catch {
+    /* okunamadı → yaz */
+  }
+  const at = new Date().toISOString();
+  try {
+    await AsyncStorage.setItem(HEALTH_CONSENT_KEY, JSON.stringify({ granted, v: HEALTH_CONSENT_VERSION, at }));
+  } catch {
+    /* cihaz kaydı yazılamadı */
+  }
+  await queueSideRows([
+    { kind: 'health_data', doc_slug: null, doc_version: null, granted, source, platform: platform(), app_version: appVersion(), created_at: at },
+  ]);
+  const uid = await currentUserId();
+  if (uid) await flushPending(uid);
+  emit();
+  return true;
+}

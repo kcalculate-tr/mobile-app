@@ -37,6 +37,7 @@ import {
   type TbGoal,
 } from './calc';
 import { saveTakibeProfile } from './save';
+import { recordHealthConsent } from '../../../lib/consent/store';
 import { HowSheet } from './HowSheet';
 import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
@@ -236,6 +237,8 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
       navigation.navigate('TbUnderage');
       return;
     }
+    // G27-S1: açık rıza user_consents'e AYRI satır (kind health_data); en iyi çaba, akışı bekletmez.
+    if (d.consent) void recordHealthConsent(true, 'takibe').catch(() => {});
     navigation.navigate('TbActivity');
   };
 
