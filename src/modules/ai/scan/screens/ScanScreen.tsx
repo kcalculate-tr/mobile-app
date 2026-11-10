@@ -1043,7 +1043,7 @@ export default function ScanScreen() {
             else setErrorKind(null);
           }}
           onManualEntry={handleManualEntry}
-          limitCap={aiCap}
+          limitCap={aiCap ?? (remaining != null ? SCAN_QUOTA_CAP : null)}
           barcode={barcodeCode}
           onPhotoScan={barcodePhotoScan}
           onRetry={() => {
@@ -1222,6 +1222,7 @@ export default function ScanScreen() {
 
       <ScanLimitSheet
         visible={limitVisible}
+        cap={aiCap ?? SCAN_QUOTA_CAP}
         onClose={() => setLimitVisible(false)}
         onManualEntry={handleManualEntry}
       />

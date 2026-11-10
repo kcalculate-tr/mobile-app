@@ -66,7 +66,7 @@ test('ilk açılış: izin istenir; verilince canlı görüntü + çerçeve ipuc
   await ready(tree, f);
   expect(f.Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
   expect(tree.getByText('Tabağı tam çerçevele')).toBeTruthy();
-  expect(tree.getByText('Bugün 2/3 tarama hakkın kaldı')).toBeTruthy();
+  expect(tree.getByText('Bugün 2/2 tarama hakkın kaldı')).toBeTruthy(); // G23-S1: yedek tavan 2
   expect(tree.queryByText('Kamerayı aç')).toBeNull();
   expect(tree.queryByTestId('fin-scan-open-camera')).toBeNull();
   expect(p.onPermissionDenied).not.toHaveBeenCalled();

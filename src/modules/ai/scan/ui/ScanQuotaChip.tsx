@@ -7,7 +7,11 @@ import { FinText as Text } from '../../../../core/design/components/FinText';
 import { Sparkle } from '../../../../components/icons';
 import { useT } from '../../../../core/i18n';
 
-export const SCAN_QUOTA_CAP = 3;
+/**
+ * Ücretsiz günlük AI tavanının YEDEĞİ (G22-S1 `ai_daily_free` = 2, canlıda). Yalnız sunucu yanıtı
+ * `limit` taşımıyorsa kullanılır; normalde tavan sunucudan gelir (G23-S1: sabit 3 kalktı).
+ */
+export const SCAN_QUOTA_CAP = 2;
 
 type Props = {
   remaining: number | null;
