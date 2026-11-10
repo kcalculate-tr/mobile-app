@@ -3,6 +3,7 @@
 > **TASLAK — hukuki inceleme için (İlter Öziseven). Yayımlanmadı.**
 > Sürüm: `v0.1-taslak` · Taslak tarihi: 2026-11-09 · Yürürlük: `[YÜRÜRLÜK TARİHİ]`
 > Kaynak: `docs/legal/VERI_ENVANTERI.md` (kodla kanıtlı envanter). Bu metindeki her kategori, amaç, dayanak ve alıcı envanterle birebir eşleşir.
+> <!-- L-S3 --> L-S3 eki (2026-11-11): §3 tablosuna sesli giriş, kcalAI Koç, abonelik ve barkod satırları; **§5A Sesli giriş**, **§5B kcalAI Koç**, **§11A Abonelikler (RevenueCat)**, **§12A Üçüncü taraf veri kaynakları ve atıflar**, **§13A AI özellikleri için yurt dışı aktarım ve açık rıza**; §12 ve §14 tablolarına yeni satırlar eklendi. Kaynak: `release/1.1.0` kodu (her bölümdeki inceleme notunda dosya atfı).
 
 ---
 
@@ -67,8 +68,13 @@ Kısaltmalar: **KVKK** = 6698 sayılı Kişisel Verilerin Korunması Kanunu · *
 | Bildirim | Push jetonu, cihaz adı/modeli, bildirim içeriği ve açılma kaydı, bildirim tercihleri | İşlem bildirimleri, hatırlatıcılar; pazarlama bildirimi yalnız onayla | md.5/2-c; pazarlama için md.5/1 + 6563 sayılı Kanun md.6 onayı | Art.6(1)(b); pazarlama için Art.6(1)(a) |
 | Web formları | Ad, e-posta, telefon, şirket, mesaj, form türü, tarayıcı bilgisi, sayfa | Formun amacı (iş birliği, destek, bekleme listesi vb.) | md.5/2-c, md.5/2-f; pazarlama için md.5/1 + ETK onayı | Art.6(1)(b), (f); pazarlama için (a) |
 | Pazaryeri siparişleri | Pazaryerinin ilettiği ad, soyad, telefon, adres, not | Pazaryeri siparişini hazırlama ve teslim | md.5/2-c, md.5/2-f | Art.6(1)(b), (f) |
+| <!-- L-S3 --> **AI sesli giriş** | Sesli girişinin telefonda yazıya dökülmüş metni (en çok 500 karakter), tahmin sonucu. **Ses kaydı tutulmaz** | AI besin tahmini | **md.6/3-a (açık rıza)**; yurt dışı aktarım için §13A | **Art.9(2)(a)** |
+| <!-- L-S3 --> **kcalAI Koç** | Koça yazdığın mesajlar ve Koç yanıtları; yanıt için kullanılan günlük takip özeti (§5B) | Koç yanıtı üretme, sohbet geçmişini gösterme | **md.6/3-a (açık rıza)**; yurt dışı aktarım için §13A | **Art.9(2)(a)** |
+| <!-- L-S3 --> **Abonelik** | Kademe (Ücretsiz/Fresh/Balance), ürün kimliği, mağaza (App Store/Google Play), deneme durumu, bitiş tarihi, yenileme durumu, mağaza/RevenueCat olay kimlikleri; günlük AI, barkod ve Koç hak sayaçları | Aboneliği sağlama, günlük hakları uygulama, satın alımı geri yükleme, kötüye kullanımı önleme | md.5/2-c, md.5/2-f | Art.6(1)(b), (f) |
+| <!-- L-S3 --> **Barkod** | Okuttuğun barkod numarası, günlük barkod sayacı | Ürünün besin değerini bulma, günlük hakkı uygulama | md.5/2-c | Art.6(1)(b) |
 
 **İşlemediklerimiz:** tam kart numarası, TCKN/VKN, doğum tarihi (yalnız yaş), arka plan konumu, Apple Sağlık/Health Connect verisi, adım sayısı, özel mesajlaşma.
+<!-- L-S3 --> Ayrıca: **ses kaydı** (sesli giriş yalnız yazıya dökülmüş metin olarak işlenir) ve mağaza **ödeme bilgisi** (abonelik ücretini Apple/Google tahsil eder).
 
 ## 4. Sağlık verisi
 
@@ -91,6 +97,60 @@ Kısaltmalar: **KVKK** = 6698 sayılı Kişisel Verilerin Korunması Kanunu · *
 > **[İnceleme notu]** (1) Anthropic'in API girdi/çıktı saklama süresi ve DPA/standart sözleşme durumu sözleşmeden teyit edilmeli. (2) Bugün tarama fotoğrafları süresiz kalıyor; 30 günlük silme işi kurulmadan bu cümle yayımlanmamalı (BOSLUKLAR). (3) `analyze-ai-scan` ve `moderate-content` fonksiyonları henüz "yalnız dosya" durumunda; canlıya alınmadan önce bu bölüm yürürlüğe girmeli.
 
 **AI içerik ön denetimi.** Keşfet gönderi ve yorumları yayından önce aynı sağlayıcıya otomatik olarak denetletilir. Gönderilenler: gönderinin metni ve en çok 6 görsel veya video karesi. **Yazar kimliği gönderilmez.**
+
+<!-- L-S3 -->
+## 5A. AI tarama: fotoğraf, not ve sesli giriş
+
+AI tarama, öğününü kaydetmen için üç yol sunar. Üçünde de amaç yalnız **kalori ve makro tahmini** üretmektir; sonuç bir tahmindir ve kaydetmeden önce düzeltebilirsin.
+
+| Yol | Telefonundan çıkan | Yapay zekâ sağlayıcısına (Anthropic PBC, ABD) gönderilen | Gönderilmeyen |
+|---|---|---|---|
+| **Tabak fotoğrafı** | Fotoğraf, özel depolama alanımıza yüklenir | Fotoğraf, sabit bir talimat ve eklediğin isteğe bağlı not (en çok 160 karakter) | Adın, e-postan, kullanıcı kimliğin |
+| **Sesli giriş** | Yalnız yazıya dökülmüş **metin** (en çok 500 karakter) sunucumuza gelir | Bu metin ve sabit bir talimat | **Ses kaydı**, adın, e-postan, kullanıcı kimliğin |
+| **Barkod** | Barkod numarası | — (yapay zekâ kullanılmaz; bkz. §12A) | — |
+
+**Ses kaydı tutulmaz.** Uygulama mikrofonu yalnız sen sesli giriş düğmesine bastığında ve dinleme sürerken kullanır; sesi bir dosyaya kaydetmez, sunucumuza veya yapay zekâ sağlayıcısına göndermez.
+
+**Konuşmanın yazıya dökülmesi:**
+[SEÇENEK A — yalnız cihazda: Konuşman **telefonunda, cihaz üzerinde** yazıya dökülür; ses telefonundan çıkmaz. Cihazın cihaz üzerinde konuşma tanımayı desteklemiyorsa sesli giriş kullanılamaz; fotoğraf, barkod veya elle girişle devam edebilirsin.]
+[SEÇENEK B — cihazda, desteklenmezse platform hizmeti: Konuşman, cihazın destekliyorsa **telefonunda, cihaz üzerinde** yazıya dökülür ve ses telefonundan çıkmaz. Cihazın bunu desteklemiyorsa ses, yazıya dökülmek üzere telefonunun işletim sistemine ait konuşma tanıma hizmetine (**iPhone'da Apple, Android'de Google**) iletilir. Bu durumda Apple veya Google sesi kendi gizlilik koşullarına göre işler; ses bize ulaşmaz ve biz saklamayız.]
+
+**İzin:** İlk taramadan önce "Fotoğraf ve ses analizi" izni istenir; izni Profil › Gizlilik › Veri ve reklam izinleri'nden geri alabilirsin (§13A). Mikrofon ve konuşma tanıma için ayrıca telefonun izin penceresi açılır.
+
+> **[İnceleme notu — L-S3]**
+> 1. **Ses tanıma sonucu (G25-S1 md.11):** G25-S1 LOG'u bu taslak yazılırken yoktu; görev gereği iki seçenek köşeli parantezle bırakıldı. `release/1.1.0` kodunda `src/modules/ai/scan/voice/speech.ts:46-58` → `requiresOnDeviceRecognition: supportsOnDeviceRecognition()`; yani cihaz destekliyorsa cihazda, desteklemiyorsa platform hizmeti (**SEÇENEK B**) ve `recordingOptions` verilmediği için ses dosyası yok. G25-S1 "desteklemiyorsa sesli girişi kapat" kararı verirse **SEÇENEK A** seçilmeli.
+> 2. Metin kipi: `supabase/functions/analyze-ai-scan/index.ts:32-35` (yalnız metin, ≤ 500 karakter). Not: aynı dosya `hint` ≤ 160 karakter.
+> 3. İzin metni uygulamada `src/lib/consent/i18n.ts` `ai_photo_*` (sürüm 2) ile aynı içerikte; bu bölümle çelişmemeli. A-S1 A3: izin penceresine Gizlilik Politikası bağlantısı eklenmeli.
+
+<!-- L-S3 -->
+## 5B. kcalAI Koç
+
+kcalAI Koç (kullanıma açıldığında), yazdıklarına ve günlük takibine göre yapay zekâ ile beslenme önerisi üreten bir sohbet özelliğidir. Koç'u kullanmak **isteğe bağlıdır** ve ayrı bir izinle açılır.
+
+**Yanıt üretmek için yapay zekâ sağlayıcısına (Anthropic PBC, ABD) gönderilenler:**
+- Koça yazdığın mesaj ve aynı sohbetteki **son 20 mesaj** (seninkiler ve Koç'unkiler);
+- **günlük takip özetin:** cinsiyet, günlük kalori ve makro hedeflerin, bugünkü kalori/protein/karbonhidrat/yağ toplamın, son 7 günün günlük kalori ve protein toplamları, son 8 öğününün adı ve besin değerleri;
+- eatkcal teslimat bölgesinde olup olmadığın (kayıtlı adresinin şehrinden çıkarılan evet/hayır bilgisi; adresin kendisi gönderilmez);
+- bir tarif, tarama sonucu veya ürünle ilgili soru soruyorsan o içeriğin adı ve besin değerleri;
+- sabit bir talimat ve önerilebilecek tarif/ürün listesi.
+
+**Gönderilmeyenler:** adın, e-postan, telefonun, adresin, kullanıcı kimliğin, fotoğrafların.
+
+**Güvenlik ön filtresi:** Tıbbi bir durum, ilaç veya yeme bozukluğu işareti içeren mesajlar yapay zekâya **gönderilmez**; Koç seni bir sağlık profesyoneline yönlendiren sabit bir yanıt verir.
+
+**Saklama ve silme:**
+- Sohbet geçmişin (mesajların ve Koç yanıtları) **30 gün** saklanır; daha eski mesajlar silinir.
+- Geçmişini istediğin zaman Koç › Geçmiş ekranından **tamamen silebilirsin**; silme geri alınamaz. Günlük hak sayaçların silmeden etkilenmez.
+- Hesabını sildiğinde sohbet geçmişin de silinir.
+
+**İzin:** Koça ilk mesajından önce "kcalAI Koç ve yapay zekâ" izni istenir. İzin vermezsen Koç'a mesaj gönderilmez. İzni Profil › Gizlilik › Veri ve reklam izinleri'nden geri alabilirsin (§13A).
+
+Koç'un yanıtları tıbbi tavsiye değildir (Kullanım Koşulları §12A.11).
+
+> **[İnceleme notu — L-S3]**
+> 1. Kaynak: `supabase/functions/coach-chat/index.ts:88-135, 205-225` (bağlam alanları), `:36` (HISTORY = 20), `:289-296` (saklama), güvenlik filtresi `safety.ts`; `supabase/migrations/20261111100100_g24_coach.sql:127` (`coach_retention_days` = 30), `:319-340` (`delete_coach_history`).
+> 2. **30 günlük silme bugün yalnız kullanıcı Koç'a yeniden yazdığında çalışıyor** (`coach-chat/index.ts:289-296`); Koç'u bir daha kullanmayan kullanıcının mesajları süresiz kalır. Zamanlanmış silme işi (cron) kurulmadan "30 gün saklanır" cümlesi gerçeği tam yansıtmaz (BOSLUKLAR B-24).
+> 3. Sağlık ve beslenme özeti Koç'a gittiği için dayanak §4'teki sağlık verisi rızasıyla aynı (md.6/3-a); Koç izni (`ai_coach`) bunun özel bir katmanı. İzin metni `src/lib/consent/i18n.ts` `ai_coach_*` — "METİN İLTER ONAYI BEKLİYOR".
 
 ## 6. Kullanıcı içeriği ve moderasyon
 
@@ -140,6 +200,21 @@ Kısaltmalar: **KVKK** = 6698 sayılı Kişisel Verilerin Korunması Kanunu · *
 - Kart bilgileriniz uygulamaya veya sunucularımıza girilmez. Ödeme, 6493 sayılı Kanun kapsamında lisanslı **N Kolay Ödeme ve Elektronik Para Kuruluşu A.Ş. (PaynKolay)** sayfasında yapılır.
 - Kartınızı kaydederseniz yalnız son 4 hane, marka, banka ve takma ad ile ödeme kuruluşunun verdiği jeton saklanır. Kartı istediğiniz zaman silebilirsiniz.
 
+<!-- L-S3 -->
+## 11A. Abonelikler (kcalAI Fresh ve Balance) ve RevenueCat
+
+- kcalAI abonelikleri **App Store veya Google Play** üzerinden satılır. Ücreti Apple veya Google tahsil eder; **kart ve ödeme bilgilerin bize gelmez.** Satın alma sırasında Apple/Google kendi gizlilik politikalarına göre bağımsız veri sorumlusu olarak hareket eder.
+- Satın alımları doğrulamak ve aboneliğini hesabına bağlamak için **RevenueCat, Inc. (ABD)** hizmetini veri işleyen olarak kullanırız. RevenueCat'te kullanıcı kimliği olarak Kcalculate AI kullanıcı kimliğin kullanılır; **adın, e-postan veya telefonun RevenueCat'e gönderilmez.**
+- RevenueCat'in işlediği veriler: satın alma kayıtları (ürün, plan, dönem, deneme, fiyat ve para birimi, satın alma/yenileme/iptal/bitiş tarihleri), mağazanın verdiği **işlem kimlikleri** ve abonelik durumu, uygulama sürümü ve cihaz/işletim sistemi bilgisi, mağaza ülkesi.
+- RevenueCat bize abonelik olaylarını iletir; biz yalnız şunları saklarız: kademe, ürün kimliği, mağaza, deneme durumu, bitiş tarihi, yenileme durumu ve son olayın kimliği/zamanı.
+- Bu verileri aboneliği sağlamak, günlük hakları uygulamak, "Satın alımları geri yükle" işlemini yapmak ve kötüye kullanımı önlemek için işleriz (KVKK md.5/2-c, md.5/2-f; GDPR Art.6(1)(b), (f)).
+- Abonelik kayıtları **reklam için kullanılmaz** ve Meta'ya gönderilmez.
+
+> **[İnceleme notu — L-S3]**
+> 1. Kaynak: `supabase/migrations/20261110100100_g22_s1_subscriptions.sql:36-55` (`user_entitlements` sütunları), `src/lib/subscription/useSubscriptionBootstrap.ts:2` (`Purchases.logIn(userId)` — app_user_id = Supabase kullanıcı kimliği); kodda `setEmail/setAttributes` çağrısı yok.
+> 2. RevenueCat'in cihaz tanımlayıcısı toplayıp toplamadığı (`collectDeviceIdentifiers`, IDFV) ve kendi saklama süresi RevenueCat DPA'sından teyit edilmeli.
+> 3. **Hesap silmede RevenueCat müşteri kaydı silinmiyor** (silme akışında RevenueCat API çağrısı yok) — BOSLUKLAR B-25.
+
 ## 12. Verileri kimlerle paylaşıyoruz?
 
 Verilerinizi satmayız. Aşağıdaki alıcılarla yalnız belirtilen amaçla paylaşırız:
@@ -148,6 +223,11 @@ Verilerinizi satmayız. Aşağıdaki alıcılarla yalnız belirtilen amaçla pay
 |---|---|---|---|
 | Supabase Inc. | Veri işleyen | Veritabanı, kimlik doğrulama, dosya depolama, sunucu fonksiyonları | AB'de barındırma; şirket ABD |
 | Anthropic PBC | Veri işleyen | AI tabak tarama, içerik ön denetimi | ABD |
+| <!-- L-S3 --> Anthropic PBC | Veri işleyen | Sesli giriş metninden besin tahmini (§5A), kcalAI Koç yanıtları (§5B) | ABD |
+| <!-- L-S3 --> RevenueCat, Inc. | Veri işleyen | Abonelik satın alımlarını doğrulama, abonelik durumu (§11A) | ABD |
+| <!-- L-S3 --> Apple Inc. / Google LLC (mağaza) | Bağımsız veri sorumlusu | Abonelik satışı, tahsilat, iptal ve iade | ABD / İrlanda |
+| <!-- L-S3 --> Apple Inc. / Google LLC (konuşma tanıma) | Bağımsız veri sorumlusu — [yalnız SEÇENEK B'de, cihaz üzerinde tanıma desteklenmiyorsa] | Sesli girişin yazıya dökülmesi (§5A) | ABD / İrlanda |
+| <!-- L-S3 --> Open Food Facts (Open Food Facts derneği) | Bağımsız veri sorumlusu | Barkoddan ürün bilgisi sorgusu: telefonun barkod numarasını doğrudan Open Food Facts'e gönderir (§12A) | Fransa |
 | Functional Software Inc. (Sentry) | Veri işleyen | Çökme ve performans teşhisi | ABD |
 | 650 Industries Inc. (Expo) | Veri işleyen | Push bildirim iletimi, uygulama güncellemeleri | ABD |
 | Apple Inc. / Google LLC | Bağımsız veri sorumlusu (giriş, bildirim altyapısı); Google Maps için sağlayıcı | Apple/Google ile giriş, APNs/FCM, harita ve adres çözümleme | ABD / İrlanda |
@@ -166,6 +246,15 @@ Verilerinizi satmayız. Aşağıdaki alıcılarla yalnız belirtilen amaçla pay
 
 > **[İnceleme notu]** Supabase barındırma bölgesi koddan doğrulanamadı; "AB" görev tanımına dayanıyor. Dashboard'dan teyit edilmeli.
 
+<!-- L-S3 -->
+## 12A. Üçüncü taraf veri kaynakları ve atıflar
+
+- **Barkod verisi — Open Food Facts.** Barkod okuttuğunda telefonun, ürünün adını ve besin değerlerini bulmak için barkod numarasını doğrudan **Open Food Facts** veritabanına sorar. Bu sorguda Open Food Facts'e yalnız barkod numarası ve telefonunun internet bağlantısı gereği IP adresi ulaşır; hesabına ait bir bilgi gönderilmez. Ürün verileri **Open Database License (ODbL) v1.0** kapsamındadır; veritabanı içeriği **Database Contents License** kapsamındadır; ürün görselleri **Creative Commons Attribution-ShareAlike (CC BY-SA)** lisanslıdır. Kaynak: © Open Food Facts katkıcıları, https://world.openfoodfacts.org.
+- **Şehir verisi — GeoNames.** eatkcal'da şehir ve konum seçiminde kullanılan şehir verisi **GeoNames** (https://www.geonames.org) kaynaklıdır ve **Creative Commons Attribution 4.0 (CC BY 4.0)** lisansıyla kullanılır. Bu veri kendi sunucumuzda tutulur; şehir araman ve konumun GeoNames'e gönderilmez. Atıf, uygulamada Profil › Sözleşmeler altında da gösterilir.
+- Bu kaynaklardan gelen bilgiler topluluk katkısıyla oluşur; doğruluğu garanti edilmez. Hatalı bir ürün bilgisini kaydetmeden önce düzeltebilirsin.
+
+> **[İnceleme notu — L-S3]** Kaynak: `src/modules/ai/scan/barcode/off.ts:4,12` (istek doğrudan cihazdan `world.openfoodfacts.org`'a); `src/modules/eatkcal/v2/i18n/geo.ts:17` ("Şehir verisi: GeoNames (CC BY 4.0)"), atıf `src/modules/profil/ui/screens/SettingsAgreementsScreen.tsx:97`; veri `supabase/migrations/20261110100100_g22_s2_geo.sql` (cities15000 tohumu kendi DB'mizde). Barkod sonucunda "Veri: Open Food Facts" satırı var (`src/core/i18n/dictionaries.ts:1244`) ama lisans adı (ODbL) ve bağlantı yok; Profil › Sözleşmeler'deki GeoNames satırının yanına "Barkod verisi: Open Food Facts (ODbL)" eklenmeli (BOSLUKLAR B-27).
+
 ## 13. Yurt dışına aktarım
 
 Yukarıdaki sağlayıcıların bir kısmı Türkiye dışında (AB, ABD) bulunduğundan kişisel verileriniz yurt dışına aktarılır.
@@ -181,6 +270,29 @@ Yukarıdaki sağlayıcıların bir kısmı Türkiye dışında (AB, ABD) bulundu
 
 > **[İnceleme notu]** (1) Her sağlayıcı için standart sözleşmenin imzalanıp Kurum'a bildirildiği teyit edilene kadar bu cümle "ederiz" değil hedef niteliğinde; bugün hiçbiri yapılmamış görünüyor (BOSLUKLAR B-01). (2) Türkiye merkezli veri sorumlusu için GDPR Bölüm V'in nasıl uygulanacağı (AB veri sahibinden Türkiye'ye toplama doğrudan toplama mı, aktarım mı — EDPB 05/2021) değerlendirilmeli. (3) DPF sertifikası sağlayıcı bazında kontrol edilmeli.
 
+<!-- L-S3 -->
+## 13A. AI özellikleri için yurt dışına aktarım ve açık rıza
+
+AI tarama (fotoğraf, not, sesli giriş metni) ve kcalAI Koç kullandığında §5A ve §5B'de sayılan veriler **ABD'deki** yapay zekâ sağlayıcımız Anthropic PBC'ye; abonelik verileri ABD'deki RevenueCat, Inc.'e aktarılır. ABD hakkında Kişisel Verileri Koruma Kurulu'nun yeterlilik kararı yoktur.
+
+**KVKK md.9 kapsamında:**
+- Bu aktarımlar **düzenli** nitelikte olduğundan, her sağlayıcıyla Kurul'un ilan ettiği **standart sözleşmeyi** değiştirmeden imzalar ve imzadan itibaren **5 iş günü** içinde Kurum'a bildiririz.
+- Sağlayıcıya gönderilen veriler, sağlık verisi sayılabilecek bilgiler içerdiğinden (öğün fotoğrafı, beslenme özeti) bu verilerin işlenmesi için ayrıca **açık rızana** dayanırız (md.6/3-a).
+
+**Uygulama içi AI izinleri (açık rıza mekanizması):**
+- **"Fotoğraf ve ses analizi"** izni: ilk AI taramadan önce bir kez sorulur. Pencerede hangi verinin, hangi amaçla, hangi ülkedeki sağlayıcıya gönderildiği ve ses kaydı tutulmadığı yazar.
+- **"kcalAI Koç ve yapay zekâ"** izni: Koça ilk mesajdan önce, ayrı olarak sorulur.
+- İki izin de **isteğe bağlıdır**, ayrı ayrı verilir ve **"Vazgeç"** seçeneği vardır. Vermezsen öğününü elle veya barkodla girebilirsin; uygulamanın geri kalanı çalışır.
+- Verdiğin izin, metin sürümü ve tarihiyle hesabına kaydedilir. İzin metni esaslı olarak değişirse yeniden sorulur.
+- İzinleri istediğin zaman **Profil › Gizlilik › Veri ve reklam izinleri › Yapay zekâ** bölümünden geri alabilirsin. Geri alma ileriye etkilidir: o andan sonra sağlayıcıya veri gönderilmez; geri almadan önceki işlemler hukuka uygun kalır.
+
+**GDPR kapsamında:** AEA dışına bu aktarımlarda Avrupa Komisyonu'nun Standart Sözleşme Maddeleri'ne veya alıcının AB–ABD Veri Gizliliği Çerçevesi sertifikasına dayanırız (§13); sağlık verisi için dayanak Art.9(2)(a) açık rızadır.
+
+> **[İnceleme notu — L-S3]**
+> 1. **2024 rejiminde açık rıza düzenli aktarım için dayanak olamaz** (md.9/6 yalnız arızi aktarımlar). Bu yüzden metin aktarımı standart sözleşmeye, sağlık verisinin işlenmesini açık rızaya dayandırıyor; uygulama içi AI izni md.9 rızası olarak sunulmamalı. Anthropic ve RevenueCat için standart sözleşme imzalanıp bildirilmeden bu bölüm "ederiz" değil hedef niteliğinde (BOSLUKLAR B-01, B-23).
+> 2. İzin kaydı: `src/lib/consent/aiPhoto.ts:40-56` (sunucu `ai_photo` + `ai_photo_version`, metin sürümü 2); Koç için `ai_coach`. Ayarlar ekranı: `src/lib/consent/i18n.ts` `settings.ai_section`.
+> 3. Kurul'un "açık rıza başka işleme şartına bağlanamaz / hizmet şartı yapılamaz" ilkesi: AI izni yalnız AI özelliğini açıyor, uygulamanın geri kalanını kilitlemiyor — uyumlu.
+
 ## 14. Saklama süreleri
 
 Verileri amaç için gereken ve mevzuatın zorunlu kıldığı süre kadar saklar, süre sonunda siler, yok eder veya anonim hâle getiririz. Özet tablo aşağıda; ayrıntı: `09-saklama-ve-imha-politikasi.md`.
@@ -190,6 +302,10 @@ Verileri amaç için gereken ve mevzuatın zorunlu kıldığı süre kadar sakla
 | Hesap ve profil | Hesap süresince; silmeden sonra yedeklerden en geç 30 gün |
 | Sağlık verisi | Hesap süresince veya rıza geri alınana kadar; sonra 30 gün içinde imha |
 | AI tarama fotoğrafı | Analizden sonra 30 gün |
+| <!-- L-S3 --> Sesli giriş | Ses kaydı tutulmaz. Yazıya dökülmüş metin yalnız tahmin için kullanılır; kaydettiğin öğün, öğün kaydı olarak saklanır |
+| <!-- L-S3 --> kcalAI Koç sohbet geçmişi | 30 gün; istediğin zaman silebilirsin; hesap silinince silinir |
+| <!-- L-S3 --> Koç ve AI günlük hak sayaçları | Hesap süresince; hesap silinince silinir |
+| <!-- L-S3 --> Abonelik kaydı (bizde) | Hesap süresince; hesap silinince silinir. Mağaza ve RevenueCat kayıtları kendi politikalarına göre |
 | Sipariş ve mali kayıtlar | 10 yıl (TTK md.82; VUK md.253). Hesap silinince kimliksizleştirilir |
 | Destek kayıtları | 3 yıl |
 | Kullanım ölçümü | 24 ay ham veri; sonra toplu/anonim |
