@@ -11,6 +11,7 @@
 4. `MESAFELI_KARSILASTIRMA.md` — mesafeli satış taslağı ile mevcut web/mobil metinlerin karşılaştırması.
 5. `KURUMSAL_KIMLIK.md` — yasal ad kuralı, footer standardı, iletişim adresleri, marka mimarisi.
 6. `ENTEGRASYON.md` — hangi metin nerede, sürümleme, gereken kod/migration işleri (yapılmadı, yalnız liste).
+7. <!-- L-S3 --> `MAGAZA_GIZLILIK_ESLEME.md` — Apple App Privacy + Google Play Data safety eşleme tablosu (kcalAI: AI tarama, sesli giriş, Koç, abonelik); B-07 tablolarını günceller.
 
 ## Taslak metinler
 
@@ -44,3 +45,4 @@ Bazı taslak cümleler **hedef davranışı** anlatır; kod düzelmeden yayımla
 - 18+ kontrolü (B-10).
 - Rıza ve kabul kayıtları (B-02).
 - Gizli profil medyasının korunması (B-18).
+- <!-- L-S3 --> Koç sohbetinin 30 günde silinmesi için zamanlanmış iş (B-24); ses tanıma seçeneği A/B'nin kesinleşmesi (B-22); Anthropic + RevenueCat standart sözleşmeleri (B-23).
