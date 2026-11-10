@@ -1,0 +1,6 @@
+G26-S1 tamam — 11 Kas 2026
+Dal: release/1.1.0
+LOG: docs/night/G26-S1-LOG.md
+Envanter: docs/night/G26-IZINLER.md
+Kontroller: tsc 0 · hygiene OK · unit 1070/0 · jest 436/436 · introspect OK · expo export iOS + Android OK
+Yeni native derleme gerekir (ATT eklentisi kalkti).
