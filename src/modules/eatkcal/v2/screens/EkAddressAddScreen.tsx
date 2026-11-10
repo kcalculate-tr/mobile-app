@@ -73,7 +73,8 @@ import { AddressInput, AddressSelectField, OptionPickerSheet, TitleChips } from 
 
 type Route = RouteProp<EkV2ParamList, 'EkAddressAdd'>;
 type Coords = { latitude: number; longitude: number };
-type Perm = 'checking' | 'granted' | 'denied';
+// G26-S1: 'idle' = henüz sorulmadı (ekran açılınca sistem penceresi YOK).
+type Perm = 'checking' | 'idle' | 'granted' | 'denied';
 /** YALNIZ __DEV__ vitrini (FinEkAddress / NoPerm / NoMap): başlangıç durumu. */
 type VitrinAddr = { vitrinPerm?: 'denied'; vitrinMap?: 'nomap'; vitrinForm?: Partial<AddressFormV2> };
 
@@ -197,7 +198,7 @@ export default function EkAddressAddScreen() {
         setPerm('denied');
         return;
       }
-      const { status, canAskAgain } = await readLocationPermission();
+      const { status } = await readLocationPermission();
       if (!mounted) return;
       if (status === 'granted') {
         setPerm('granted');
@@ -207,22 +208,9 @@ export default function EkAddressAddScreen() {
         }
         return;
       }
-      if (status === 'denied' && !canAskAgain) {
-        setPerm('denied');
-        return;
-      }
-      // Yeni adreste izin ekranın amacıyla aynı: doğrudan sor (AVS "İzin ver").
-      if (!editId) {
-        const ok = await requestLocationPermission();
-        if (!mounted) return;
-        setPerm(ok ? 'granted' : 'denied');
-        if (ok) {
-          const here = await currentCoords();
-          if (mounted && here) setDeviceCenter(here);
-        }
-      } else {
-        setPerm(status === 'denied' ? 'denied' : 'granted');
-      }
+      // G26-S1 (İlter 11 Kas): ekran açılınca SORMA. İzin yalnız "Konumumu kullan"a
+      // dokununca (handleUseMyLocation); reddedilirse il/ilçe elle + harita pini.
+      setPerm(status === 'denied' ? 'denied' : 'idle');
     })();
     return () => {
       mounted = false;

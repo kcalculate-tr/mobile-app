@@ -64,17 +64,13 @@ export const konumIzniVarMi = async (): Promise<boolean> => {
 };
 
 /**
- * Cihaz konumunu alıp ilçe/mahalleye çevirir.
- * `istemGoster` false ise izin daha önce verilmemişse hiçbir şey sormaz.
+ * Cihaz konumunu alıp ilçe/mahalleye çevirir. G26-S1: izin İSTEMEZ — yalnız daha
+ * önce verilmişse çalışır (açılışta sistem penceresi yok).
  */
-export const cihazKonumunuCoz = async (istemGoster: boolean): Promise<KonumSonucu | null> => {
+export const cihazKonumunuCoz = async (): Promise<KonumSonucu | null> => {
   try {
-    let { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      if (!istemGoster) return null;
-      ({ status } = await Location.requestForegroundPermissionsAsync());
-      if (status !== 'granted') return null;
-    }
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
 
     const konum = await Promise.race([
       Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),

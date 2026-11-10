@@ -17,9 +17,10 @@ import type { Address } from '../types';
  * Öncelik sırası — en ucuzdan en pahalıya:
  *  1. Seçili teslimat adresi varsa onu kullan. Konum izni İSTENMEZ.
  *  2. Kullanıcı girişliyse ve kayıtlı adresi varsa, cihaza en yakın olanı seç.
- *  3. Hiçbiri yoksa konum izni iste, GPS'i ilçe/mahalleye çevir.
+ *  3. Hiçbiri yoksa: konum izni ZATEN verilmişse GPS'i ilçe/mahalleye çevir.
  *
- * İzin bir kez reddedilirse bir daha açılışta sorulmaz (locationDenied).
+ * G26-S1 (İlter 11 Kas): açılışta konum SİSTEM PENCERESİ YOK. İzin yalnız eatkcal'da
+ * kullanıcı "Konumumu kullan"a dokununca istenir (adres ekleme / en yakın şube).
  * Hiçbir adımda GPS'ten türetilen konum TESLİMAT ADRESİ yerine geçmez —
  * sipariş her zaman gerçek, kayıtlı adrese gider.
  */
@@ -62,7 +63,7 @@ export function useNearestLocationBootstrap() {
 
           const adresler = (data ?? []) as Address[];
           if (adresler.length > 0) {
-            const konum = await cihazKonumunuCoz(false); // izin varsa kullan, yoksa sorma
+            const konum = await cihazKonumunuCoz(); // izin varsa kullan, yoksa sorma
             const sec = enYakinAdres(adresler, konum);
             if (mounted && sec) {
               useAddressStore.getState().setSelectedAddress(sec);
@@ -79,16 +80,9 @@ export function useNearestLocationBootstrap() {
           }
         }
 
-        // 3) Adres yok — konumu sor (bir kez reddedildiyse sorma).
-        if (baglam.locationDenied) return;
-
-        const konum = await cihazKonumunuCoz(true);
-        if (!mounted) return;
-
-        if (!konum) {
-          useDeliveryContextStore.getState().setLocationDenied(true);
-          return;
-        }
+        // 3) Adres yok — izin önceden verilmişse cihaz konumu; yoksa SORMA (G26-S1).
+        const konum = await cihazKonumunuCoz();
+        if (!mounted || !konum) return;
 
         useDeliveryContextStore.getState().setContext({
           district: konum.district,

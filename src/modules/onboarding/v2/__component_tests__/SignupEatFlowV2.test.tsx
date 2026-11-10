@@ -59,10 +59,12 @@ jest.mock('../../../eatkcal/v2/model/addressSave', () => ({
   insertAddress: (s: unknown, p: Record<string, unknown>, f: boolean) => mockInsert(s, p, f),
   backfillProfileContact: (...a: unknown[]) => mockBackfill(...a),
 }));
+let mockReadPerm = { status: 'denied', canAskAgain: false };
+const mockReqLoc = jest.fn(() => Promise.resolve(false));
 jest.mock('../../../eatkcal/v2/model/addressGeocode', () => ({
   IZMIR_CENTER: { latitude: 38.4237, longitude: 27.1428 },
-  readLocationPermission: () => Promise.resolve({ status: 'denied', canAskAgain: false }),
-  requestLocationPermission: () => Promise.resolve(false),
+  readLocationPermission: () => Promise.resolve(mockReadPerm),
+  requestLocationPermission: () => mockReqLoc(),
   currentCoords: () => Promise.resolve(null),
   reverseGeocodeAt: () =>
     Promise.resolve({ district: 'Konak', neighbourhood: 'Alsancak', street: 'Kıbrıs Şehitleri Cd.', streetNumber: '12' }),
@@ -213,6 +215,21 @@ describe('Panel 2 · adres (harita doğrulaması)', () => {
     fireEvent.changeText(u.getByTestId('signup-eat-building'), '');
     fireEvent.press(u.getByLabelText('Devam'));
     expect(u.getByTestId('signup-eat-step-error')).toHaveTextContent('Sokak ve bina numarasını yaz.');
+  });
+
+  it('G26-S1: adres paneli açılınca konum SİSTEM PENCERESİ YOK (izin sorulmamışken); yalnız "Konumumu kullan" dokununca', async () => {
+    mockReadPerm = { status: 'undetermined', canAskAgain: true };
+    const u = setup();
+    await passCity(u);
+    await flush();
+    expect(u.getByTestId('signup-eat-street')).toBeTruthy();
+    expect(mockReqLoc).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(u.getByTestId('signup-eat-use-location'));
+    });
+    await flush();
+    expect(mockReqLoc).toHaveBeenCalledTimes(1);
+    mockReadPerm = { status: 'denied', canAskAgain: false };
   });
 
   it('geri → şehir paneli', async () => {

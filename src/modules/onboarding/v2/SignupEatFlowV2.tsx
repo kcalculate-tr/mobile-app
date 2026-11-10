@@ -69,7 +69,8 @@ import {
 } from './signupEatLogic';
 
 type Coords = { latitude: number; longitude: number };
-type Perm = 'checking' | 'granted' | 'denied';
+// G26-S1: 'idle' = henüz sorulmadı (kayıt akışında sistem penceresi YOK).
+type Perm = 'checking' | 'idle' | 'granted' | 'denied';
 
 const GEOCODE_DEBOUNCE_MS = 350;
 const K = 'onboarding.v2.signupEat.';
@@ -361,12 +362,14 @@ function AddressPhoneFlow({
     };
   }, [user]);
 
-  // Konum izni (EkAddressAddScreen:184-217, yeni adres kolu).
+  // Konum izni — G26-S1 (İlter 11 Kas): kayıt akışında SİSTEM PENCERESİ YOK. İzin
+  // önceden verilmişse cihaz konumu kullanılır; değilse il/ilçe elle + harita pini.
+  // İzin yalnız "Konumumu kullan"a dokununca istenir (handleUseMyLocation).
   useEffect(() => {
     if (step !== 'address' || vitrin) return;
     let mounted = true;
     (async () => {
-      const { status, canAskAgain } = await readLocationPermission();
+      const { status } = await readLocationPermission();
       if (!mounted) return;
       if (status === 'granted') {
         setPerm('granted');
@@ -374,17 +377,7 @@ function AddressPhoneFlow({
         if (mounted && here) setDeviceCenter(here);
         return;
       }
-      if (status === 'denied' && !canAskAgain) {
-        setPerm('denied');
-        return;
-      }
-      const ok = await requestLocationPermission();
-      if (!mounted) return;
-      setPerm(ok ? 'granted' : 'denied');
-      if (ok) {
-        const here = await currentCoords();
-        if (mounted && here) setDeviceCenter(here);
-      }
+      setPerm(status === 'denied' ? 'denied' : 'idle');
     })();
     return () => {
       mounted = false;
