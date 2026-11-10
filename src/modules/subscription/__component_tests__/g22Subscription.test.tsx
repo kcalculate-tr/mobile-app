@@ -254,6 +254,12 @@ test('Paywall: satın alma sonuçları — iptal / bekliyor / başarı', async (
   });
   await waitFor(() => expect(tree.getByTestId('sub-result-success')).toBeTruthy());
   expect(tree.getByText('etkin')).toBeTruthy();
+  // G26-S1: başlık "Balance etkin" (kcalAI büyük başlıkta YOK), kcalAI küçük hapta.
+  const title = tree.getByTestId('sub-result-title');
+  const flat = (n: unknown): string =>
+    typeof n === 'string' ? n : Array.isArray(n) ? n.map(flat).join('') : n && typeof n === 'object' && 'props' in (n as object) ? flat((n as { props: { children: unknown } }).props.children) : '';
+  expect(flat(title.props.children)).toBe('Balance etkin');
+  expect(flat(tree.getByTestId('sub-result-brand').props.children)).toContain('kcalAI');
   expect(tree.getByText('Günde 50')).toBeTruthy();
   expect(tree.queryByText(/adil kullanım/)).toBeNull();
   expect(tree.getByText(/7 günlük ücretsiz denemen başladı/)).toBeTruthy();
@@ -325,7 +331,9 @@ test('Profil › Abonelik: Ücretsiz (2 · 5 · Sınırsız, Planları gör) ve 
     ai: { kind: 'ai', tier: 'fresh', remaining: 9, limit: 10, unlimited: false, resetAt: null },
   });
   tree = render(<SubProfileScreen />);
-  expect(tree.getByTestId('sub-profile-name').props.children).toBe('kcalAI Fresh');
+  // G26-S1: büyük ad yalnız plan adı; "kcalAI" üst satırda küçük etiket.
+  expect(tree.getByTestId('sub-profile-name').props.children).toBe('Fresh');
+  expect(tree.getByTestId('sub-profile-cap').props.children).toBe('kcalAI · Mevcut plan');
   expect(tree.getByText('Deneme sonrası 999 TL/yıl')).toBeTruthy();
   expect(tree.getByText('3 gün deneme kaldı')).toBeTruthy();
   expect(tree.getByText('Bugün 9/10')).toBeTruthy();
@@ -343,9 +351,23 @@ test('Profil › Abonelik: Ücretsiz (2 · 5 · Sınırsız, Planları gör) ve 
     ai: { kind: 'ai', tier: 'balance', remaining: 48, limit: 50, unlimited: false, resetAt: null },
   });
   tree = render(<SubProfileScreen />);
-  expect(tree.getByTestId('sub-profile-name').props.children).toBe('kcalAI Balance');
+  expect(tree.getByTestId('sub-profile-name').props.children).toBe('Balance');
   expect(tree.getByText('Bugün 48/50')).toBeTruthy();
   expect(tree.getByText('50')).toBeTruthy();
   expect(tree.getByText('499 TL/ay')).toBeTruthy();
   expect(tree.queryByText(/adil kullanım/)).toBeNull();
+});
+
+test('G26-S1: plan adı büyük başlıklarda yalnız Fresh / Balance (TR + EN); kcalAI yalnız küçük etiket', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { tr: subTr, en: subEn } = require('../../../lib/subscription/i18n');
+  for (const d of [subTr, subEn]) {
+    const sub = d as unknown as Record<string, Record<string, string>> & { brand: string };
+    expect(sub.result.ok_title).not.toMatch(/kcalAI/);
+    expect(sub.profile.paid_name).toBe('%{plan}');
+    expect(sub.paywall.fresh).toBe('Fresh');
+    expect(sub.paywall.balance).toBe('Balance');
+    expect(sub.brand).toBe('kcalAI');
+    expect(sub.profile.current_paid).toMatch(/^kcalAI · /);
+  }
 });

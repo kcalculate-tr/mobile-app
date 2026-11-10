@@ -63,7 +63,10 @@ export default function SubProfileScreen() {
   const daysLeft = trial ? trialDaysLeft(expiresAt) : null;
   const priceText = planCard?.priceText ?? null;
 
-  const name = paid ? tr('sub.profile.paid_name', { plan: tier === 'balance' ? 'Balance' : 'Fresh' }) : tr('sub.profile.free_name');
+  // G26-S1: büyük ad YALNIZ "Fresh" / "Balance"; "kcalAI" üst satırda küçük etiket.
+  const name = paid
+    ? tr('sub.profile.paid_name', { plan: tr(tier === 'balance' ? 'sub.paywall.balance' : 'sub.paywall.fresh') })
+    : tr('sub.profile.free_name');
   const priceLine = !paid
     ? tr('sub.profile.free_price')
     : priceText
@@ -120,8 +123,8 @@ export default function SubProfileScreen() {
         <View style={[styles.card, { backgroundColor: card }]}>
           <View style={styles.planHead}>
             <View style={styles.flex1}>
-              <AppText tone="secondary" style={styles.cap}>
-                {tr('sub.profile.current')}
+              <AppText tone="secondary" style={styles.cap} testID="sub-profile-cap">
+                {tr(paid ? 'sub.profile.current_paid' : 'sub.profile.current')}
               </AppText>
               <AppText style={styles.planName} testID="sub-profile-name">
                 {name}

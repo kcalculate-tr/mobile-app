@@ -9,7 +9,7 @@ import { Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, DURATION, SPRING, haptic, useReducedMotion, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { Hourglass, Warning, X, XCircle } from '../../../components/icons';
+import { Hourglass, Sparkle, Warning, X, XCircle } from '../../../components/icons';
 import type { PlanCard } from '../../../lib/subscription/plans';
 
 export type SubResultState = 'success' | 'cancelled' | 'pending' | 'error';
@@ -86,7 +86,12 @@ export default function SubResult({
             <TrophyPop />
           </View>
           <Animated.View entering={FadeIn.duration(reduced ? DURATION.fast : DURATION.base)} style={styles.center}>
-            <AppText style={[styles.okTitle, { color: ink }]} accessibilityRole="header">
+            {/* G26-S1: "kcalAI" yalnız küçük hap; büyük başlıkta yalnız plan adı (Fresh / Balance). */}
+            <View style={styles.brand} testID="sub-result-brand">
+              <Sparkle size={14} color="#0A0A0A" weight="fill" />
+              <AppText style={styles.brandText}>{tr('sub.brand')}</AppText>
+            </View>
+            <AppText style={[styles.okTitle, { color: ink }]} accessibilityRole="header" testID="sub-result-title">
               {tr('sub.result.ok_title', { plan: planName })}{' '}
               <AppText style={[styles.okTitle, styles.mark]}>{tr('sub.result.ok_mark')}</AppText>
             </AppText>
@@ -217,6 +222,8 @@ const styles = StyleSheet.create({
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   trophy: { alignItems: 'center', marginTop: 4 },
   center: { alignItems: 'center', marginTop: 8 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#C6F04F', borderRadius: 16, paddingHorizontal: 12, minHeight: 32, marginBottom: 10 },
+  brandText: { fontSize: 14, fontWeight: '700', color: '#0A0A0A' },
   okTitle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 38, textAlign: 'center' },
   mark: { backgroundColor: '#C6F04F', color: '#0A0A0A' },
   okBody: { marginTop: 8, fontSize: 16, lineHeight: 22, textAlign: 'center' },
