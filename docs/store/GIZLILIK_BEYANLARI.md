@@ -1,4 +1,4 @@
-# Gizlilik beyanları — App Store "App Privacy" + Google Play "Data safety" · 1.1.0 (M-S1 md.3)
+# Gizlilik beyanları — App Store "App Privacy" + Google Play "Data safety" · 1.1.0 (M-S1 md.3 · M-S2 md.3: Koç açık)
 
 Kaynaklar: kod `release/1.1.0` @ bd96421 (`app.config.js` `ios.privacyManifests`), **G26 izin envanteri** (`docs/night/G26-IZINLER.md`),
 **L-S3 eşleme tablosu** (`legal/global` › `docs/legal/MAGAZA_GIZLILIK_ESLEME.md`), önceki beyan G20-S2 (bu dosyanın 1.0.x/G20 hâli, git geçmişinde).
@@ -16,8 +16,11 @@ konuşma hizmeti — ses bize gelmez). Konum yalnız eatkcal adresi için.
 - **İzleme (Apple)**: bizim verimizi başka şirketlerin verisiyle hedefli reklam/ölçüm için birleştirmek ya da veri komisyoncusuna vermek. ATT yok,
   IDFA yok, Meta'ya giden olaylar toplu ölçüm → **izleme yok**.
 - **Paylaşım (Play)**: hizmet sağlayıcıya (işleyen) aktarım paylaşım değildir. **Meta'ya reklam ölçümü aktarımı paylaşımdır** (rızaya bağlı, kapatılabilir).
-- **Koç** (`koc` bayrağı 1.1.0'da kapalı) kodda var ve uzaktan açılabilir → verileri beyanda **şimdiden** kapsanır (yeni tür gerektirmiyor:
-  Health + Other User Content; Play'de "Other in-app messages"). Beyan derlemenin yeteneğini kapsar (L-S3 Play not 2).
+- **kcalAI Koç 1.1.0'da AÇIK** (M-S2, İlter 11 Kas 16:00: bayrak `koc` + `abonelik`, `coach-chat` yayında). Yeni tür gerektirmiyor; ayrıntı §1b.
+  - **Koç mesajları** → Apple **User Content › Other User Content** (Customer Support DEĞİL: destek ekibine değil, AI yanıtı üretmeye gider) ·
+    amaç **yalnız App Functionality** · **bağlı** (`coach_messages.user_id`) · **izleme yok** · Play **Mesajlar › Diğer uygulama içi mesajlar**.
+  - **Günlük takip özeti** (kalori, makro, su, hedef, öğünler) → Apple **Health & Fitness › Health / Fitness** (zaten beyanlı) · Play Sağlık ve fitness.
+  - AI sağlayıcısı (Anthropic, **ABD**) **işleyendir** (paylaşım değil); veri yalnız kullanıcı **ayrı** Koç AI iznini (`ai_coach`) verdikten sonra gider.
 
 ## 1. App Store Connect › App Privacy
 
@@ -32,12 +35,12 @@ ASC formunda her tür için üç soru: (1) amaçlar, (2) kimliğe bağlı mı, (
 | 3 | Contact Info › Phone Number | App Functionality | Evet | Hayır | eatkcal teslimat iletişimi | `orders.phone`, `addresses.contact_phone` |
 | 4 | Contact Info › Physical Address | App Functionality | Evet | Hayır | eatkcal teslimat adresi | `addresses` |
 | 5 | Location › Precise Location | App Functionality | Evet | Hayır | **Yalnız eatkcal**: kullanıcı "Konumumu kullan"a dokununca adres doğrulama / en yakın şube (G26: açılışta sorulmaz) | `addressGeocode.ts` `requestLocationPermission` |
-| 6 | Health & Fitness › Health | App Functionality | Evet | Hayır | Boy, kilo, yaş, cinsiyet, hedef, vücut ölçüleri; AI tarama sonucu; (Koç açılınca) Koç'a giden günlük özet | `takibe/save.ts`, `coach-chat/index.ts` |
+| 6 | Health & Fitness › Health | App Functionality | Evet | Hayır | Boy, kilo, yaş, cinsiyet, hedef, vücut ölçüleri; AI tarama sonucu; Koç'a giden günlük takip özeti (ayrı `ai_coach` izniyle, Anthropic ABD = işleyen) | `takibe/save.ts`, `coach-chat/index.ts` |
 | 7 | Health & Fitness › Fitness | App Functionality | Evet | Hayır | Öğün, kalori, makro, su, etkinlik (fotoğraf, ses, barkod, elle) | `meal_consumptions`, `water_daily`, `activity_logs` |
 | 8 | User Content › Photos or Videos | App Functionality | Evet | Hayır | AI tarama fotoğrafı (Anthropic'e tahmin için, ilk analizden önce izin `ai_photo`), Keşfet foto/video, avatar, destek eki | `analyze-ai-scan`, `kesfet/media.ts` |
 | 9 | User Content › Audio Data | App Functionality | Evet | Hayır | **Yalnız Keşfet video gönderisinin ses izi.** Sesli giriş ses toplamaz (`recordingOptions` yok; ses dosyası sunucuya gitmez) | `pickVideo.ts`, `speech.ts:60` |
-| 10 | User Content › Customer Support | App Functionality | Evet | Hayır | Destek talepleri | `SupportScreen.tsx`, `support_tickets` |
-| 11 | User Content › Other User Content | App Functionality | Evet | Hayır | Gönderi, yorum, değerlendirme; **AI tarama notu**; **sesli girişin yazıya dökülmüş metni** (Anthropic'e öğelere ayırma için); (Koç açılınca) Koç mesajları, 30 gün | `analyze-ai-scan`, `g24_coach.sql` |
+| 10 | User Content › Customer Support | App Functionality | Evet | Hayır | Destek talepleri (**Koç mesajları burada DEĞİL** → #11) | `SupportScreen.tsx`, `support_tickets` |
+| 11 | User Content › Other User Content | App Functionality | Evet | Hayır | Gönderi, yorum, değerlendirme; **AI tarama notu**; **sesli girişin yazıya dökülmüş metni** (Anthropic'e öğelere ayırma için); **kcalAI Koç mesajları** (kullanıcının yazdıkları + Koç yanıtları; Anthropic'e yanıt için, ayrı `ai_coach` izniyle; 30 gün saklanır `coach_retention_days`, kullanıcı geçmişi silebilir) | `analyze-ai-scan`, `g24_coach.sql` |
 | 12 | Financial Info › Payment Info | App Functionality | Evet | Hayır | eatkcal'da kayıtlı kart: son 4 hane, marka, banka, Paynkolay kart jetonu (kart numarası uygulamaya girilmez). **Abonelik ödemesini Apple alır, bize kart bilgisi gelmez** | `src/lib/cards.ts`, `user_card_secrets` — ⚠ §3 Ç2 |
 | 13 | Purchases › Purchase History | App Functionality, Analytics, Third-Party Advertising | Evet | **Hayır** | eatkcal siparişleri (rızayla Meta'ya toplu ölçüm); **kcalAI abonelik geçmişi** (RevenueCat: ürün, dönem, deneme, bitiş — yalnız App Functionality + Analytics, Meta'ya gitmez) | `orders`, `g22_s1_subscriptions.sql`, `events.ts` |
 | 14 | Usage Data › Product Interaction | App Functionality, Analytics, Third-Party Advertising | Evet | **Hayır** | Birinci taraf olaylar (kapatılabilir); eatkcal ticaret olayları rızayla Meta'ya (toplu); `paywall_view`, `sub_*`, `coach_*` yalnız birinci taraf | `analytics.ts`, `metrics/queue.ts`, `events.ts` |
@@ -47,9 +50,19 @@ ASC formunda her tür için üç soru: (1) amaçlar, (2) kimliğe bağlı mı, (
 | 18 | Diagnostics › Performance Data | App Functionality | Evet | Hayır | Sentry performans örneklemesi | `sentry.ts` |
 | — | Contacts · Browsing History · Search History · Sensitive Info · Emails or Text Messages · Gameplay · Coarse Location · Credit Info · Other Financial Info · Advertising Data · Other Usage Data · Other Diagnostic Data · Other Data | **Toplanmıyor** | — | — | Keşfet araması sunucuya kaydedilmez; konum yalnız "precise" izinle | — |
 
-Ek ASC alanları: **Gizlilik Politikası URL'si** TR `https://eatkcal.com/gizlilik-politikasi`, EN `https://eatkcal.com/en/legal/privacy` ·
-**User Privacy Choices URL** (isteğe bağlı) `https://eatkcal.com/account-deletion` · Hesap silme uygulama içinde (Profil › Güvenlik › Hesabımı sil) ·
+Ek ASC alanları: **Gizlilik Politikası URL'si** TR `https://legal.eatkcal.com/gizlilik-politikasi`, EN `https://legal.eatkcal.com/en/legal/privacy` ·
+**User Privacy Choices URL** (isteğe bağlı) `https://legal.eatkcal.com/account-deletion` · Hesap silme uygulama içinde (Profil › Güvenlik › Hesabımı sil) ·
 Apple ile Giriş jeton iptali var (`supabase/functions/_shared/apple-auth.ts`).
+
+### 1b. kcalAI Koç — ASC formunda neye dokunulur (M-S2)
+| ASC adımı | Değer |
+|---|---|
+| Veri türü | **User Content › Other User Content** (zaten seçili, #11) — ek tür açılmaz. Customer Support, Emails or Text Messages, Sensitive Info **seçilmez** |
+| Amaç | **App Functionality** (yalnız). Analytics / Product Personalization / Advertising / Developer's Marketing **işaretlenmez** — mesaj içeriği ölçüme ya da reklama gitmez (`coach_*` olayları yalnız sayaç; #14) |
+| Kimliğe bağlı mı | **Evet** (`coach_messages.user_id`, hesap silinince `on delete cascade`) |
+| İzleme için mi | **Hayır** |
+| Günlük takip özeti | Health (#6) + Fitness (#7) zaten App Functionality, bağlı, izleme yok — değişiklik yok |
+| Gizlilik politikası | AI sağlayıcısına (ABD) aktarım + ayrı onay politika metninde olmalı (legal.eatkcal.com — L-S3 / web; bu oturum dokunmadı) |
 
 ### 1a. Manifest ↔ etiket (iOS `PrivacyInfo.xcprivacy`, `app.config.js`)
 | Konu | Manifest (bugün) | ASC etiketi (bu dosya) | Durum |
@@ -69,8 +82,8 @@ Apple ile Giriş jeton iptali var (`supabase/functions/_shared/apple-auth.ts`).
 | Uygulamanızın topladığı tüm kullanıcı verileri aktarım sırasında şifreleniyor mu? | **Evet** | TLS (Supabase, Sentry, RevenueCat, Meta, Anthropic) |
 | Kullanıcıların verilerinin silinmesini isteyebilecekleri bir yol sağlıyor musunuz? | **Evet** | Uygulama içi Profil › Güvenlik › Hesabımı sil + web |
 | Uygulamanız kullanıcıların hesap oluşturmasına izin veriyor mu? | **Evet** — e-posta kodu, Google ile, Apple ile (OAuth) | |
-| Hesap silme URL'si | `https://eatkcal.com/account-deletion` | ⚠ sayfa canlı (200); EN `/en/account-deletion` henüz 404 (web deploy) |
-| Hesabı silmeden bazı verilerin silinmesini istemenin yolu var mı? | **Evet** | Gönderi/yorum silme, öğün kaydı silme, (Koç açılınca) Koç geçmişini silme |
+| Hesap silme URL'si | `https://legal.eatkcal.com/account-deletion` | TR/EN aynı sayfa (G29 md.2 kararı) |
+| Hesabı silmeden bazı verilerin silinmesini istemenin yolu var mı? | **Evet** | Gönderi/yorum silme, öğün kaydı silme, Koç › ⋯ › Geçmişi sil (`delete_coach_history`) |
 | Bağımsız güvenlik incelemesi (MASA) | Hayır | |
 | Aileler politikası kapsamında mı / çocuklara yönelik mi? | Hayır (18+) | |
 
@@ -86,9 +99,9 @@ Apple ile Giriş jeton iptali var (`supabase/functions/_shared/apple-auth.ts`).
 | Kişisel bilgiler › Telefon numarası | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | eatkcal teslimat |
 | Finansal bilgiler › Kullanıcı ödeme bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | eatkcal kayıtlı kart (son 4, marka, jeton). **Abonelik ödemesini Google Play alır** — ⚠ Ç2 |
 | Finansal bilgiler › Satın alma geçmişi | Evet | **Evet (Meta — yalnız eatkcal siparişleri, rızayla)** | Hayır | İsteğe bağlı | Uygulama işlevi, Analiz, Reklam veya pazarlama | eatkcal siparişleri; kcalAI abonelik geçmişi (Meta'ya gitmez) |
-| Sağlık ve fitness › Sağlık bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Boy, kilo, hedef, ölçüler; AI sonucu; (Koç) günlük özet → Anthropic = işleyen |
+| Sağlık ve fitness › Sağlık bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Boy, kilo, hedef, ölçüler; AI sonucu; Koç'a giden günlük takip özeti → Anthropic (ABD) = işleyen, ayrı `ai_coach` izni |
 | Sağlık ve fitness › Fitness bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Öğün, su, etkinlik (foto, ses, barkod, elle) |
-| Mesajlar › Diğer uygulama içi mesajlar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Destek talebi mesajları; (Koç açılınca) Koç sohbeti, 30 gün |
+| Mesajlar › Diğer uygulama içi mesajlar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | **kcalAI Koç sohbeti** (Apple #11 Other User Content karşılığı; Anthropic ABD = işleyen → paylaşım değil; 30 gün, kullanıcı silebilir); destek talebi mesajları |
 | Fotoğraflar ve videolar › Fotoğraflar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | AI tarama (Anthropic = işleyen), Keşfet, avatar, destek eki |
 | Fotoğraflar ve videolar › Videolar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Keşfet video |
 | Ses dosyaları › Ses veya ses kayıtları | **Hayır** | — | — | — | — | Sesli giriş kayıt tutmaz; tanıma cihazda ya da işletim sisteminin hizmetinde (bize gelmez) — L-S3 Play not 1 |
@@ -114,5 +127,5 @@ gösterilmez ("Reklam içerir: Hayır"). Android'de ATT karşılığı yok; Meta
 | Ç5 | Ses | Apple Audio Data yalnız video; Play "Ses kayıtları: Hayır" | G26/G25 `speech.ts`: iOS cihazda (destek yoksa Apple), Android cihazda (yoksa Google), `recordingOptions` yok | ✔ — İzin metni (`NSSpeechRecognitionUsageDescription`) "telefonunda yazıya çevirmek" diyor; Apple sunucusu yedeği için metin ihtiyatlı mı? (SORULAR 5) |
 | Ç6 | Konum | Yalnız eatkcal, kullanıcı dokununca | G26 ✔ | ✔ |
 | Ç7 | AI'ya fotoğraf (5.1.2(i)) | İlk analizden önce `ai_photo` izni | G26 §2 #3 ✔ | ✔ (G20'deki P0 risk kapandı) |
-| Ç8 | Koç verileri | Şimdiden beyanda | Bayrak kapalı | Koç açılırken beyan değişmez; yalnız açıklama metni (YAYIN_KONTROL D) |
-| Ç9 | Destek mesajı kategorisi (Play) | Diğer uygulama içi mesajlar | L-S3: Other UGC | İkisi de kabul; Koç mesajlarıyla aynı yere konuldu |
+| Ç8 | Koç verileri | Apple Other User Content (App Functionality, bağlı, izleme yok) + Health/Fitness özeti; Play Diğer uygulama içi mesajlar + Sağlık | **Koç 1.1.0'da açık** (M-S2); manifestte `OtherUserContent` var | ✔ Form değişikliği yok, yalnız açıklama sütunu. Gizlilik politikasında ABD aktarımı + ayrı onay olmalı |
+| Ç9 | Koç / destek mesajı kategorisi (Play) | Diğer uygulama içi mesajlar | L-S3: Other UGC | Koç sohbeti "chat content" tanımına uyar → Mesajlar; Apple'da ise Customer Support değil Other User Content |
