@@ -51,6 +51,10 @@ import type { HighlightPhase } from '../../modules/gun/homeHighlight';
 import { MealMenuPopover, useAnchorMeasure } from '../../modules/gun/home/MealMenuPopover';
 import { useMealPhoto } from '../../modules/gun/useMealPhoto';
 import { useMealSticker } from '../../modules/gun/useMealSticker';
+import { StickerImage, STICKER_OUTLINE_SMALL } from '../../lib/sticker/StickerImage';
+
+/** Satır çıkartması konturu (44 pt küçük görsel → 2 pt). */
+const THUMB_STICKER_OUTLINE = STICKER_OUTLINE_SMALL;
 
 // G28-S1 md.2: görsel yoksa kase cam nesnesi (kase = öğün; durağan png — listede yüzme yok).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -78,11 +82,14 @@ function MealThumb({
   const bg = t.isDark ? '#3A3A3C' : '#DCDEE2';
   if (sticker.status === 'ready') {
     return (
-      <View style={styles.thumb} testID={testID} accessible={false}>
-        <Image
-          source={{ uri: sticker.uri }}
-          style={styles.thumbImg}
+      // G30-S1 md.2: çıkartma beyaz konturlu (44 pt → 2 pt) + çok hafif gölge. Kontur kırpılmasın
+      // diye kap overflow:hidden DEĞİL ve çıkartma kontur kadar içeriden çizilir.
+      <View style={styles.thumbSticker} testID={testID} accessible={false}>
+        <StickerImage
+          uri={sticker.uri}
+          style={styles.thumbStickerImg}
           resizeMode="contain"
+          outline={THUMB_STICKER_OUTLINE}
           testID={testID ? `${testID}-sticker` : undefined}
         />
       </View>
@@ -683,6 +690,8 @@ const styles = StyleSheet.create({
   item: { paddingVertical: 8, paddingHorizontal: 16, gap: 6 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   thumb: { width: 44, height: 44, borderRadius: 12, overflow: 'hidden' },
+  thumbSticker: { width: 44, height: 44 },
+  thumbStickerImg: { position: 'absolute', left: 2, top: 2, right: 2, bottom: 2 },
   thumbImg: { width: 44, height: 44 },
   thumbBowl: { width: 36, height: 36, margin: 4 },
   itemMain: { flex: 1, minWidth: 0, gap: 2 },

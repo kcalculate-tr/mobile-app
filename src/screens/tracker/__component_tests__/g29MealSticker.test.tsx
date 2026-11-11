@@ -49,9 +49,16 @@ test('sticker_path varsa satırda çıkartma (contain, gri zemin yok)', async ()
   mockSelect.mockResolvedValue({ data: [{ id: 'a', sticker_path: 'u1/stickers/a.webp' }], error: null });
   const ui = mount([row('a', 'u1/scans/a.jpg')]);
   await act(async () => {});
-  const img = ui.getByTestId('home-thumb-a-sticker');
+  const img = ui.getByTestId('home-thumb-a-sticker-img', { includeHiddenElements: true });
   expect(img.props.source).toEqual({ uri: 'https://signed/u1/stickers/a.webp' });
   expect(img.props.resizeMode).toBe('contain');
+  // G30-S1 md.2: 44 pt satırda 2 pt beyaz kontur (8 yön, beyaz tint) + çok hafif gölge.
+  const outline = ui.getAllByTestId('home-thumb-a-sticker-outline', { includeHiddenElements: true });
+  expect(outline).toHaveLength(8);
+  expect(StyleSheet.flatten(outline[0].props.style).tintColor).toBe('#FFFFFF');
+  expect(ui.getByTestId('home-thumb-a-sticker-shadow', { includeHiddenElements: true })).toBeTruthy();
+  // kontur kırpılmasın: kap overflow hidden değil
+  expect(StyleSheet.flatten(ui.getByTestId('home-thumb-a').props.style).overflow).toBeUndefined();
   const box = StyleSheet.flatten(ui.getByTestId('home-thumb-a').props.style);
   expect(box.backgroundColor).toBeUndefined();
   expect(mockSelect).toHaveBeenCalledWith('id', ['a']);
@@ -61,7 +68,9 @@ test('çıkartma yoksa fotoğraf (G28 davranışı)', async () => {
   mockSelect.mockResolvedValue({ data: [{ id: 'b', sticker_path: null }], error: null });
   const ui = mount([row('b', 'u1/scans/b.jpg')]);
   await act(async () => {});
-  expect(ui.queryByTestId('home-thumb-b-sticker')).toBeNull();
+  expect(ui.queryByTestId('home-thumb-b-sticker', { includeHiddenElements: true })).toBeNull();
+  // G30-S1 md.2: normal fotoğrafa kontur UYGULANMAZ.
+  expect(ui.queryByTestId('home-thumb-b-sticker-outline', { includeHiddenElements: true })).toBeNull();
   expect(ui.getByTestId('home-thumb-b-img').props.source).toEqual({ uri: 'https://signed/u1/scans/b.jpg' });
 });
 
@@ -87,7 +96,7 @@ test('fotoğrafsız kayıtta çıkartma sorulmaz → kase cam nesnesi', async ()
 test('az önce loglanan kayıt: yerel çıkartma ağ beklemeden', () => {
   rememberLocalSticker('f', 'file:///tmp/kcal-sticker-f.webp');
   const ui = mount([row('f', 'u1/scans/f.jpg')]);
-  expect(ui.getByTestId('home-thumb-f-sticker').props.source).toEqual({ uri: 'file:///tmp/kcal-sticker-f.webp' });
+  expect(ui.getByTestId('home-thumb-f-sticker-img', { includeHiddenElements: true }).props.source).toEqual({ uri: 'file:///tmp/kcal-sticker-f.webp' });
   expect(mockSelect).not.toHaveBeenCalled();
 });
 
