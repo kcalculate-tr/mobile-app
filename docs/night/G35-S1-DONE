@@ -1,0 +1,8 @@
+G35-S1 DONE — 2026-11-12
+Dal: night35/secenek-gorsel -> release/1.1.0 (merge 0f317c1, --no-ff, cakisma yok)
+md.1 migration DOSYASI 20261112120100 + rollback (canliya UYGULANMADI)
+md.2 eatkcal secenek karti: image_url -> bagli urun -> ada gore -> bos hal (contain, Light/Dark)
+md.3 panel: kcal-web panel/secenek-gorsel (081fd4b)
+md.4 kontroller: hygiene+tsc OK, unit 1236/1236, jest 97/567, expo export iOS 3300 + Android 3307 modul
+md.5 release/1.1.0 uzerinde kontroller yeniden kosuldu: hepsi gecti
+LOG: docs/night/G35-S1-LOG.md
