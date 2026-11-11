@@ -57,7 +57,8 @@ jest.mock('../client', () => {
 let mockIzmir = false;
 const mockLog = jest.fn((_it: PlanItem, _at?: Date) => Promise.resolve('c-1'));
 const mockUnlog = jest.fn((_id: string) => Promise.resolve(true));
-const mockCart = jest.fn((_items: PlanItem[]) => Promise.resolve({ added: 2, skipped: 0 }));
+type MockBasket = { added: number; choice: { id: string; name: string }[]; missing: number };
+const mockCart = jest.fn((_items: PlanItem[]): Promise<MockBasket> => Promise.resolve({ added: 2, choice: [], missing: 0 }));
 jest.mock('../actions', () => ({
   logPlanItem: (it: PlanItem, at?: Date) => mockLog(it, at),
   unlogPlanItem: (id: string) => mockUnlog(id),
@@ -387,6 +388,52 @@ describe('Alışveriş listesi', () => {
     expect(r.getByTestId('shop-in-cart')).toBeTruthy();
     fireEvent.press(r.getByTestId('plan-toast-action'));
     expect(mockNav.navigate).toHaveBeenCalledWith('EkCart');
+  });
+
+  const openBasketAndAdd = async () => {
+    const r = render(<ShoppingListScreen />);
+    await flush();
+    fireEvent.press(r.getByTestId('shop-add-cart'));
+    await flush();
+    await act(async () => {
+      fireEvent.press(r.getByTestId('shop-basket-add'));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+    await flush();
+    return r;
+  };
+
+  test('G36 md.5: seçim isteyen öğün atlanmaz → ürün sayfası açılır; diğerleri eklenir; özet + "Sıradaki"', async () => {
+    setTier('fresh');
+    mockWeekItems = week();
+    mockCart.mockResolvedValueOnce({
+      added: 1,
+      choice: [
+        { id: 'p7', name: 'Izgara Köfte' },
+        { id: 'p8', name: 'Somon Bowl' },
+      ],
+      missing: 1,
+    });
+    const r = await openBasketAndAdd();
+    expect(mockNav.navigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p7' });
+    expect(r.getByText('1 öğün sepete eklendi · 2 öğün için seçim gerekli · 1 öğün satışta değil')).toBeTruthy();
+    expect(r.getByText('Sıradaki')).toBeTruthy();
+    fireEvent.press(r.getByTestId('plan-toast-action'));
+    expect(mockNav.navigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p8' });
+    expect(mockNav.navigate).not.toHaveBeenCalledWith('EkCart');
+  });
+
+  test('G36 md.5: tek seçimli öğün → ürün sayfası; bildirim eylemi "Sepete git"', async () => {
+    setTier('fresh');
+    mockWeekItems = week();
+    mockCart.mockResolvedValueOnce({ added: 0, choice: [{ id: 'p7', name: 'Izgara Köfte' }], missing: 0 });
+    const r = await openBasketAndAdd();
+    expect(mockNav.navigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p7' });
+    expect(r.getByText('1 öğün için seçim gerekli')).toBeTruthy();
+    expect(r.getByText('Sepete git')).toBeTruthy();
+    expect(r.queryByTestId('shop-in-cart')).toBeNull();
   });
 });
 

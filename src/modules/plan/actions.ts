@@ -98,24 +98,80 @@ export async function loadEatkcalOptions(): Promise<EatkcalOption[]> {
   return (await loadEatkcalProducts()).map(productToOption).filter((x): x is EatkcalOption => !!x);
 }
 
-/** Plan eatkcal satırlarını sepete ekler; seçim isteyen (gramaj/zorunlu opsiyon) ürünler atlanır. */
-export async function addPlanMealsToCart(items: readonly PlanItem[]): Promise<{ added: number; skipped: number }> {
+export interface BasketChoice {
+  id: string;
+  name: string;
+}
+export interface BasketResult {
+  /** Doğrudan sepete eklenen öğün sayısı. */
+  added: number;
+  /** Gramaj / zorunlu seçenek isteyen ürünler (tekil, plan sırasıyla) → ürün sayfası açılır. */
+  choice: BasketChoice[];
+  /** Katalogda olmayan / satışta olmayan öğün sayısı. */
+  missing: number;
+}
+
+/**
+ * G36-S1 md.5 (İlter 12 Kas) — saf ayırıcı: her plan satırı ya doğrudan eklenir, ya seçim ister
+ * (ürün sayfası), ya da katalogda yoktur. Aynı ürün iki kez seçim isterse tek sayfa açılır.
+ */
+export function splitPlanBasket(
+  items: readonly PlanItem[],
+  byId: ReadonlyMap<string, Product>,
+  needsChoice: (p: Product) => boolean,
+): { direct: Product[]; choice: BasketChoice[]; missing: number } {
+  const direct: Product[] = [];
+  const choice: BasketChoice[] = [];
+  let missing = 0;
+  for (const it of items) {
+    const p = it.refId ? byId.get(it.refId) : undefined;
+    if (!p || p.in_stock === false || p.is_available === false) {
+      missing++;
+      continue;
+    }
+    if (needsChoice(p)) {
+      if (!choice.some((c) => c.id === String(p.id))) choice.push({ id: String(p.id), name: p.name });
+      continue;
+    }
+    direct.push(p);
+  }
+  return { direct, choice, missing };
+}
+
+/**
+ * Plan eatkcal satırlarını sepete ekler. Seçim isteyen (gramaj ya da zorunlu seçenek grubu) ürün
+ * ATLANMAZ: `choice` listesinde döner, ekran o ürünün sayfasını açar (seçim sonrası sepete orada).
+ * Seçenek grupları öğrenilemezse güvenli taraf: ürün sayfası (eksik seçimle sepete girmez).
+ */
+export async function addPlanMealsToCart(items: readonly PlanItem[]): Promise<BasketResult> {
   const products = await loadEatkcalProducts();
   const byId = new Map(products.map((p) => [String(p.id), p]));
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { useCartStore } = require('../../store/cartStore') as typeof import('../../store/cartStore');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { hasGramajChoice } = require('../../lib/quickAdd') as typeof import('../../lib/quickAdd');
-  let added = 0;
-  let skipped = 0;
+  const { hasGramajChoice, hasRequiredOptionGroup } = require('../../lib/quickAdd') as typeof import('../../lib/quickAdd');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { fetchProductOptionGroups } = require('../../lib/products') as typeof import('../../lib/products');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getSupabaseClient } = require('../../core/supabase') as typeof import('../../core/supabase');
+
+  // Zorunlu seçenek grubu ürün başına bir kez sorulur.
+  const required = new Map<string, boolean>();
+  const candidates = new Set<string>();
   for (const it of items) {
     const p = it.refId ? byId.get(it.refId) : undefined;
-    if (!p || hasGramajChoice(p.gramaj_options)) {
-      skipped++;
-      continue;
-    }
-    useCartStore.getState().addItem(p, {}, 1);
-    added++;
+    if (p && !hasGramajChoice(p.gramaj_options)) candidates.add(String(p.id));
   }
-  return { added, skipped };
+  await Promise.all(
+    [...candidates].map(async (id) => {
+      try {
+        required.set(id, hasRequiredOptionGroup(await fetchProductOptionGroups(getSupabaseClient(), id)));
+      } catch {
+        required.set(id, true);
+      }
+    }),
+  );
+  const { direct, choice, missing } = splitPlanBasket(items, byId, (p) => hasGramajChoice(p.gramaj_options) || required.get(String(p.id)) !== false);
+  for (const p of direct) useCartStore.getState().addItem(p, {}, 1);
+  return { added: direct.length, choice, missing };
 }

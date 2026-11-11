@@ -4,6 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { DEFAULT_SLOT_TIME, planConsumedAt, slotTime } from '../logTime';
+import { splitPlanBasket } from '../actions';
+import type { PlanItem } from '../types';
+import type { Product } from '../../../types';
 
 const NOW = new Date('2026-11-11T09:42:00.000Z');
 
@@ -37,4 +40,25 @@ test('İstanbul günü korunur: 00:30 kahvaltı aynı güne düşer', () => {
   assert.equal(at.toISOString(), '2026-10-31T21:30:00.000Z');
   // İstanbul gün anahtarı (UTC+3) hâlâ 1 Kasım.
   assert.equal(new Date(at.getTime() + 3 * 3_600_000).toISOString().slice(0, 10), '2026-11-01');
+});
+
+// ── md.5 — eatkcal sepeti ayırıcı ──
+test('sepet: seçim isteyen ürün atlanmaz (choice, tekil), diğerleri doğrudan, katalogda yok → missing', () => {
+  const prod = (id: number, extra: Record<string, unknown> = {}) => ({ id, name: `P${id}`, price: 100, ...extra }) as unknown as Product;
+  const byId = new Map<string, Product>([
+    ['1', prod(1)],
+    ['2', prod(2, { gramaj_options: [{ name: '150 g' }] })],
+    ['3', prod(3, { in_stock: false })],
+  ]);
+  const it = (refId: string | null, id: string) =>
+    ({ id, refId, date: '2026-11-11', slot: 'lunch', source: 'eatkcal', name: 'x', portion: 1, kcal: 1, protein: 0, carbs: 0, fat: 0, loggedId: null, price: null }) as PlanItem;
+  const r = splitPlanBasket([it('1', 'a'), it('2', 'b'), it('2', 'c'), it('3', 'd'), it('9', 'e'), it(null, 'f')], byId, (p) =>
+    Array.isArray((p as unknown as { gramaj_options?: unknown }).gramaj_options),
+  );
+  assert.deepEqual(
+    r.direct.map((p) => p.id),
+    [1],
+  );
+  assert.deepEqual(r.choice, [{ id: '2', name: 'P2' }]);
+  assert.equal(r.missing, 3);
 });
