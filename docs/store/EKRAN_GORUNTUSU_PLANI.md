@@ -1,68 +1,66 @@
-# Ekran görüntüsü planı — App Store 6.9" + 6.5", Google Play telefon, TR + EN (G20-S2 md.4)
+# Ekran görüntüsü planı · 1.1.0 (M-S1 md.4)
 
-`claude/MAGAZA_GORSEL_BASLIKLARI_v1.md` proje dokümanı repoda ve makinede **bulunamadı** → başlıklar bu dosyada
-**yeni öneri** (İlter/Design onayına). Kaynak: **gerçek uygulama ekranları**, G14 vitrini (`src/dev/screenCatalog.ts`,
-yalnız `__DEV__`) üzerinden Final panosuyla eşleşen durumda ve mock veriyle. Tek kaynak: `scripts/store/captions.json`.
+Mesaj sırası rakip raporu §5'ten (`~/dev/kcal-research/rakip/RAKIP_ANALIZI_v1.md`), Koç karesi çıkarıldı (1.1.0'da kapalı) ve yerine
+Topluluk/Keşfet kondu. EN setinde 4. kare "Track your progress" (mutfak yalnız TR'de).
 
-**Bu gece çekim YAPILMADI:** boş disk 12 GB < 20 GB kuralı (GECE19-ORTAK). Betik hazır ve kuru denendi (aşağıda).
+> **Kaynak görsel = Final tasarım panosu, gerçek ekran görüntüsü DEĞİL.** Panolar (`.claude/night/design/final/*.dc.html`,
+> `tur26k/dalga2/FinSubPaywall*.dc.html`) Playwright ile 3× çizildi; panolardaki `[N]`, `[Ad]` yer tutucuları ve gri fotoğraf
+> kutuları **tutarlı örnek verilerle** dolduruldu (aşağıda). TestFlight derlemesinden alınan gerçek karelerle değiştirilebilir:
+> aynı kompozisyon betiği `_kaynak/compose.js` herhangi bir 1179×2556 kareyi kabul eder (bkz. "Gerçek kareyle değiştirme").
 
-## Kareler (sıra = mağazadaki sıra)
-Konumlandırma sırası: **takip et** (1–3) → **üret** (4) → **paylaş** (5–6) → motivasyon (7) → eatkcal, ikincil (8).
-İlk 3 kare arama sonuçlarında görünür → çekirdek değer (fotoğrafla tara) ilk karede.
+## Kareler
+| # | TR başlık · alt satır | EN başlık · alt satır | Kaynak pano (TR / EN) | Zemin |
+|---|---|---|---|---|
+| 01 | **Fotoğraf çek, kaloriyi öğren** · Yapay zekâ tabaktaki her yiyeceği ayırır, gramı sen düzeltirsin. | **Snap a photo, get calories** · AI spots each food on your plate. You fine-tune the grams. | `FinPhotoR1` / `FinPhotoEN` (+ `t19/ph-mercimek.jpg`) | lime |
+| 02 | **Yaz, söyle ya da barkod okut** · Fotoğraf istemeyen öğünler de saniyeler içinde günlüğünde. | **Type, talk or scan a barcode** · No photo? Log a meal in seconds anyway. | `ScanR2` `mode=voice` (EN: uygulamanın EN metinleri — `voice/i18n.ts`) | mürekkep |
+| 03 | **Günün tek bakışta** · Kalori, makro ve su halkaları ana sayfanda. | **Your day at a glance** · Calorie, macro and water rings on your home screen. | `FinHomeR3` / `FinHomeEN` (üst 852 pt) | lime |
+| 04 | **İzmir'de makrosu hesaplı öğün kapında** · eatkcal mutfağından. Teslim edilen öğün günlüğüne kendiliğinden işlenir. | **Track your progress** · Eaten, burned and what's left, every day. | `FinEkProduct` / `FinTrackerEN` | mürekkep |
+| 05 | **Topluluktan tarif ve öğün keşfet** · Beğendiğin tabağı tek dokunuşla gününe ekle. | **Discover meals from the community** · Like a plate? Add it to your day in one tap. | `FinFeed` / `FinFeedEN` | lime |
+| 06 | **Fiyat baştan belli / 7 gün ücretsiz** · Yıllık planlarda 7 gün deneme. Ücretsiz planda günde 2 AI tarama. | **Clear prices / 7 days free** · 7-day free trial on yearly plans. Free plan: 2 AI scans a day. | `FinSubPaywall` / `FinSubPaywallEN` (Balance yıllık, 2999 TL / $59.99) | mürekkep |
+| Play öne çıkan | **Hesabı biz yapıyoruz, sen de görüyorsun.** · AI kalori hesaplama · Fit yemek | **The calorie tracker with a real kitchen behind it.** · AI calorie counter · Photo food tracker | `FinHomeR3` / `FinHomeEN` | lime |
 
-| # | Kimlik | Vitrin panosu TR / EN | Final panosu (tasarım dayanağı) | Başlık TR | Alt satır TR | Başlık EN | Alt satır EN |
-|---|---|---|---|---|---|---|---|
-| 1 | `01-tara` | FinPhotoR1 / FinPhotoEN | FinPhotoR1 (Tara sonucu: kalem, gram, kcal, P/K/Y) | Tabağını çek, kalorisini gör | Yapay zekâ kalori ve makroları tahmin eder | Snap your plate, see calories | AI estimates calories and macros |
-| 2 | `02-ana` | FinHomeR3 / FinHomeEN | FinHomeR3 (halkalar + sekme çubuğu) | Günün tek bakışta | Kalori, makro, su ve etkinlik | Your day at a glance | Calories, macros, water and activity |
-| 3 | `03-gun` | FinTracker / FinTrackerEN | FinTracker (gün kaydı, öğün yuvaları) | Her öğün, saniyeler içinde | Fotoğrafla, elle ya da hızlı ekle | Every meal, in seconds | By photo, by hand or quick add |
-| 4 | `04-uret` | FinCompose / FinComposeEN | FinCompose (öğün kartlı paylaşım) | Öğününü paylaşıma dönüştür | Kalori ve makrolarıyla birlikte | Turn your meal into a post | With calories and macros attached |
-| 5 | `05-kesfet` | FinFeed / FinFeedEN | FinFeed (Keşfet akışı) | Topluluktan ilham al | Tarifler, öğünler, yorumlar | Get inspired by the community | Recipes, meals and comments |
-| 6 | `06-tarif` | FinRecipe / FinRecipeEN | FinRecipe (tarif ayrıntısı + logla) | Gördüğünü gününe ekle | Tek dokunuşla logla | Add what you see to your day | Log it in one tap |
-| 7 | `07-seri` | FinStreak / FinStreakEN | FinStreak (seri) | Serini büyüt | Her gün bir öğün yeter | Grow your streak | One meal a day keeps it going |
-| 8 | `08-eatkcal` | FinEkHome / FinEkHomeEN | FinEkHome (eatkcal ana sayfa) | İzmir'deysen: eatkcal | Kalorisi belli sağlıklı öğünler kapında | In İzmir? Order with eatkcal | Healthy meals with known macros, delivered |
+Görsel dil: başlık üstte, büyük (Bricolage Grotesque 700), marka renkleri **lime `#C8F05A`** ve **mürekkep `#0A0A0A`** sırayla; üstte küçük
+`kcal.` işareti; cihaz çerçevesi yok — yalnız ince koyu kenarlı yuvarlak köşeli ekran, alt kenardan taşar. Yasak dil yok (kilo vaadi,
+önce/sonra, tıbbi iddia, "sınırsız AI"); Koç hiçbir karede görünmüyor.
 
-Kurallar: başlık ≤ 30 karakter, alt satır ≤ 45; "₺" yok (fiyat görünen karede "285 TL" biçimi — vitrin mock'u ortak biçimlendiriciyi kullanır);
-cam nesne sözlüğü uygulamadaki gibi (alev = kalori · damla = su · kupa = seri · ayak izi = etkinlik · kase = öğün/sipariş).
-Sağlık iddiası yok ("tahmin eder"); eatkcal karesinde yalnız İzmir.
+## Örnek veriler (pano yer tutucularının yerine)
+- Kullanıcı adı "İlter" → **Elif** (03, EN 04).
+- 01: panodaki değerler (460 kcal; Ezogelin çorbası 180, pilav 210, ayran 70); fotoğraf `t19/ph-mercimek.jpg`.
+- 04 TR: Tavuk Kinoa Bowl, **285 TL**, 540 kcal · P 42 g · K 48 g · Y 18 g (Keşfet panosundaki "Tavuk kinoa bowl" değerleri); eski fiyat ve indirim rozeti gizlendi.
+  ⚠ Fiyat örnek — gerçek menü fiyatıyla teyit (SORULAR).
+- 04 EN: 1,480 kcal kaldı · yenen 700 · etkinlik ~420 (koşu ~300, yoga ~120) · yoğurt kasesi 160 · tavuk kinoa 540.
+- 05: hikâye rozetleri 420/380/510/290; isimler Ece, Selin, Mert, Ayşe; tabak tablosu kinoa 120 g 180 kcal 6/34/3 · tavuk 140 g 250 kcal 33/0/9 ·
+  sebze 160 g 110 kcal 3/14/6 → toplam 420 g, 540 kcal, 42/48/18.
+- 06: paywall panosunun kendi değerleri (G27 fiyatları); karusel ilk sayfa "Günde 50 AI tarama".
 
-Alternatif başlıklar (karşılama varyantlarıyla aynı dil): 1 → "Takip et. Üret. Paylaş." / "Track. Create. Share." ·
-5 → "Tabağından topluluğuna" / "From plate to community" · 4 → "Öğünlerin hikâyene dönüşsün" / "Turn meals into stories".
+## Ölçüler ve dosyalar
+| Mağaza | Ölçü | Dosya |
+|---|---|---|
+| App Store iPhone 6,9" | 1320×2868 | `docs/store/shots/ios/{tr,en}/01–06.png` |
+| App Store iPhone 6,5" | 1284×2778 | `docs/store/shots/ios/{tr,en}/65/01–06.png` |
+| Google Play telefon | 1080×1920 | `docs/store/shots/play/{tr,en}/01–06.png` |
+| Google Play öne çıkan görsel | 1024×500 | `docs/store/shots/play/{tr,en}/feature.png` |
 
-## Boyutlar
-| Hedef | Ölçü (px) | Simülatör / kaynak | Zorunlu mu |
-|---|---|---|---|
-| App Store 6.9" | 1320 × 2868 | "Store 6.9 iPhone" = iPhone 17 Pro Max (iOS 26.x) | Evet (yoksa 6.5") — küçük boyutlar bundan ölçeklenir |
-| App Store 6.5" | 1242 × 2688 | "Store 6.5 iPhone" = iPhone 11 Pro Max (iOS 26.x) | İsteğe bağlı (6.9" verilirse); eski cihaz listelerinde net görünüm için çekilir |
-| Google Play telefon (ham) | 1080 × 2160 | 6.9" karesinden: üst 162 px durum çubuğu + alt 66 px ev çizgisi kırpılır → 2:1 → küçültülür | — |
-| Google Play telefon (başlıklı) | 1080 × 1920 | `compose-frames.mjs` | 2–8 adet; 9:16; uzun kenar ≤ 2 × kısa kenar |
-| Play öne çıkan grafik | 1024 × 500 | elle (öneri: siyah zemin, "Takip et. Üret. Paylaş.", 2 numaralı kare) | Evet |
-| iPad | — | `supportsTablet: false` → gerekmez | Hayır |
+ASC'de 6,9" yüklenince küçük iPhone boyutları ondan ölçeklenir; 6,5" ayrıca verildi (eski cihaz önizlemesi net olsun). iPad desteklenmiyorsa
+(`supportsTablet` kapalı) iPad karesi gerekmez — YAYIN_KONTROL A'da teyit. Play'de 7"/10" tablet kareleri isteğe bağlı (verilmedi).
 
-Not (Android): kareler iOS vitrininden türetilir (durum çubuğu kırpılır, uygulama içeriği iki platformda aynı kabuk).
-Gerçek Android cihaz/emülatör görüntüsü istenirse aynı panolar Android dev client'ta `kcal://dev/screen/<Pano>` ile açılır
-(bu makinede Android SDK/emülatör yok).
-
-## Çekim betiği
-```sh
-# Ön koşul: boş disk ≥ 20 GB, dev client derli (CLAUDE.md komut 1), Metro açık:
-export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
-npx expo start --dev-client --port 8081 &
-scripts/store/store-shots.sh                       # 2 boyut × 2 dil × 8 kare + Android türetme
-STORE_COMPOSE=1 scripts/store/store-shots.sh       # + başlıklı kareler (Chrome başsız)
-node scripts/store/compose-frames.mjs .claude/night/out/store   # yalnız başlık katmanı (ham kareler hazırsa)
+## Yeniden üretme
+Betikler `docs/store/shots/_kaynak/` (repoya paket eklenmedi; `~/dev/kcal-research` içindeki Playwright kullanılır):
 ```
-- Çıktı: `.claude/night/out/store/raw/<ios-69|ios-65|android>/<tr|en>/NN-ad.png`, başlıklı: `…/final/…`.
-- `scripts/dev/g14-shots.sh` (G14 vitrini) `G14_MODE=storage` ile çağrılır → iOS 26 "… ile Açılsın mı?" onayı yok,
-  Erişilebilirlik izni gerekmez (G20-S1 SORULAR 5'teki engel). İlk kurulumda dev client'ta Metro sunucusu bir kez seçilir (betik bekler).
-- Durum çubuğu 9:41, pil dolu (g14-shots `status_bar override`). Görünüm açık (uygulama `userInterfaceStyle: light`).
-- Betik İlter'in simülatörüne dokunmaz; yalnız "Store …" adlı iki cihaz oluşturur.
+# 1) Panoların karalama kopyası (kaynağa yazılmaz) + ses kipli Tara kopyası
+mkdir -p /tmp/boards && cp ~/dev/kcal-mobile/.claude/night/design/final/*.html ~/dev/kcal-mobile/.claude/night/design/final/support.js /tmp/boards/
+cp -R ~/dev/kcal-mobile/.claude/night/design/final/{glass,t19} /tmp/boards/
+cp ~/dev/kcal-mobile/.claude/night/design/tur26k/dalga2/FinSubPaywall*.dc.html /tmp/boards/
+cp -n ~/dev/kcal-mobile/.claude/night/design/tur26k/dalga2/glass/*.png /tmp/boards/glass/
+sed "s/props.mode === 'voice' ? 'voice' : 'photo'/'voice'/" /tmp/boards/ScanR2.dc.html > /tmp/boards/ScanR2Voice.dc.html
+(cd /tmp/boards && python3 -m http.server 8765 --bind 127.0.0.1) &
+# 2) Telefon kareleri (1179×2556) → 3) mağaza kompozisyonu
+node docs/store/shots/_kaynak/phone.js render /tmp/phones
+node docs/store/shots/_kaynak/compose.js /tmp/phones docs/store/shots
+```
+- Başlıklar `compose.js` › `COPY`; örnek veriler `shots.js`.
 
-**Kuru deneme (bu gece):** `bash -n` ✓; `compose-frames.mjs` sahte görsellerle 3 boyutta koşuldu → 1320×2868, 1242×2688,
-1080×1920 ✓ (Bricolage yazı tipi yüklendi). Simülatör çekimi disk kuralı nedeniyle yapılmadı.
-
-## Çekimden sonra kontrol
-- [ ] Mock veride gerçek kişi adı/fotoğrafı yok (vitrin mock'ları; Keşfet kareleri özellikle).
-- [ ] EN karelerde Türkçe metin kalmadı (FinXxxEN panoları; tarih/sayı biçimi EN).
-- [ ] Fiyat görünen karede "TL" biçimi, nokta ayracı yok.
-- [ ] Final panosuyla bölge karşılaştırması (G18 `scripts/dev/g18-ssim.ts`, SSIM ≥ 0,80) — mağaza karesi Final'den sapmasın.
-- [ ] App Store 2.3.3: kareler uygulamanın gerçek kullanımı; başlık katmanı açıklayıcı, iddia içermez.
+## Gerçek kareyle değiştirme (TestFlight sonrası)
+1. Simülatörde iPhone 17 Pro Max (ya da cihaz) ile kareyi al, 1179×2556'ya kırp/ölçekle (`sips -z 2556 1179`).
+2. `/tmp/phones/{tr,en}-NN.png` olarak kaydet, yalnız 3. adımı (`compose.js`) çalıştır.
+3. LOG'a "NN gerçek kare" diye not düş.
