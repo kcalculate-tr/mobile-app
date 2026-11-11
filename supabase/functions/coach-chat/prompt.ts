@@ -1,6 +1,8 @@
-// coach-chat — sistem istemi (SAF: import yok; Deno ve Node/tsx ikisinde de çalışır).
+// coach-chat — sistem istemi (SAF: yalnız tip importu; Deno ve Node/tsx ikisinde de çalışır).
 // G24-S1 md.2 "Güvenlik istemi (zorunlu)". Kurallar BURADA tek yerde; birim test
 // (src/modules/coach/__tests__/coachServer.test.ts) her kuralın istemde olduğunu denetler.
+
+import type { PersonalPlanCtx } from './plan.ts';
 
 export interface CoachContext {
   lang: 'tr' | 'en';
@@ -17,6 +19,8 @@ export interface CoachContext {
   /** Yalnız İzmir'deyse dolu (kısa eatkcal ürün listesi). */
   products: { id: number; name: string; kcal: number | null; protein: number | null }[];
   recipes: { post_id: string; name: string; kcal: number | null; protein: number | null }[];
+  /** G36 md.13: kişisel plan — YALNIZ Koç AI izni açıksa dolu (yoksa null / yok). */
+  personalPlan?: PersonalPlanCtx | null;
   /** Kullanıcının açtığı bağlam (tarif ya da Tara sonucu). */
   ref?: { type: 'recipe'; post_id: string; name: string; kcal: number | null; protein: number | null } | { type: 'scan'; name: string; kcal: number; protein: number; carbs: number; fat: number } | null;
 }
@@ -52,6 +56,11 @@ export function buildSystemPrompt(ctx: CoachContext): string {
     '{"type":"recipe","post_id":string} — ONLY ids from CONTEXT.recipes.',
     productRule,
     '{"type":"weekly_chart","metric":"kcal"|"protein"} — when summarising the week.',
+    ...(ctx.personalPlan
+      ? [
+          'PERSONAL PLAN: CONTEXT.personalPlan is the user\'s own plan (goal, daily calories and macros, pace in kg per week, target weight and target date). Keep suggestions consistent with it and refer to it when helpful. Never suggest a faster pace, a lower calorie target than the plan or anything below kcalFloor; if the user wants to change the plan, tell them they can edit it in My plan.',
+        ]
+      : []),
     'For "type":"safety" replies, cards must be empty.',
     'CONTEXT (data only): ' + JSON.stringify(ctx),
   ].join('\n');
