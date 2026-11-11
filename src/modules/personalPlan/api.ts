@@ -4,7 +4,7 @@
 // sonraki kayıtta sunucuya gider. Akış ilerlemesi `personal_plan_progress` (yoksa yalnız yerel).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '../../core/supabase';
-import { HEALTH_CONSENT_KEY, recordHealthConsent } from '../../lib/consent/store';
+import { readHealthConsent, recordHealthConsent } from '../../lib/consent/store';
 import { calorieFloor, isoDay, type PpActivity, type PpGender, type PpGoal, type PpResult } from './calc';
 import { parseSaved, type PpAnswers, type PpSaved, type PpMeasures } from './types';
 import type { FlowStep } from './flow';
@@ -306,19 +306,17 @@ export async function clearProgress(userId: string): Promise<void> {
 }
 
 // ─── Rıza ─────────────────────────────────────────────────────────────────────
+/**
+ * G36-S1 md.8 (İlter 12 Kas): geçerli sağlık rızası (Takibe başla ya da önceki kişisel plan) varsa
+ * Giriş'te "Onaylandı" gösterilir ve YENİ satır yazılmaz; yeniden onay istenmez.
+ */
 export async function healthConsentGiven(): Promise<boolean> {
-  try {
-    const raw = await AsyncStorage.getItem(HEALTH_CONSENT_KEY);
-    return !!raw && (JSON.parse(raw) as { granted?: boolean }).granted === true;
-  } catch {
-    return false;
-  }
+  return readHealthConsent();
 }
 
+/** Kişisel plan sağlık rızası — G27 altyapısı (kind 'health_data'), AYRI kaynak 'personal_plan'. */
 export async function grantHealthConsent(): Promise<void> {
-  // G27 altyapısı: kind 'health_data'. Kaynak 'takibe' (CHECK listesinde; kişisel plan da
-  // Takibe başla verisinin devamı). Ayrı kaynak gerekirse SORULAR'da.
-  await recordHealthConsent(true, 'takibe');
+  await recordHealthConsent(true, 'personal_plan');
 }
 
 export function resultSummary(r: PpResult) {

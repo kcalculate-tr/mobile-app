@@ -157,8 +157,24 @@ async function flushQueue(key: string, userId: string): Promise<void> {
     const { error } = await getSupabaseClient()
       .from('user_consents')
       .insert(rows.map((r) => ({ ...r, user_id: userId })));
-    if (!error) await AsyncStorage.removeItem(key);
-    else if (__DEV__) console.warn(`[consent] user_consents yazılamadı (bekliyor, ${key}):`, error.message);
+    if (!error) {
+      await AsyncStorage.removeItem(key);
+      return;
+    }
+    if (__DEV__) console.warn(`[consent] user_consents yazılamadı (bekliyor, ${key}):`, error.message);
+    // G36-S1 md.8: yan kuyrukta yeni kaynaklı bir satır (ör. 'personal_plan', migration henüz
+    // canlıda değil) CHECK ile reddedilirse diğer satırları TIKAMASIN — tek tek yaz, kalanı beklesin.
+    if (key === SIDE_PENDING_KEY && rows.length > 1) {
+      const left: ConsentRow[] = [];
+      for (const r of rows) {
+        const one = await getSupabaseClient()
+          .from('user_consents')
+          .insert([{ ...r, user_id: userId }]);
+        if (one.error) left.push(r);
+      }
+      if (left.length) await AsyncStorage.setItem(key, JSON.stringify(left));
+      else await AsyncStorage.removeItem(key);
+    }
   } catch {
     /* sonraki açılışta yeniden */
   }
@@ -272,7 +288,18 @@ export const HEALTH_CONSENT_VERSION = 1;
  * (kind 'health_data'). Aynı sürümde aynı değer cihazda zaten kayıtlıysa tekrar yazılmaz
  * (akış geri-ileri gezilirse satır çoğalmasın). Oturum yoksa satır yan kuyrukta bekler.
  */
-export async function recordHealthConsent(granted: boolean, source: Extract<ConsentSource, 'takibe' | 'settings'> = 'takibe'): Promise<boolean> {
+/** Cihazdaki sağlık rızası GEÇERLİ mi (onaylı + güncel metin sürümü; kaynak fark etmez). */
+export async function readHealthConsent(): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(HEALTH_CONSENT_KEY);
+    const v = raw ? (JSON.parse(raw) as { granted?: unknown; v?: unknown }) : null;
+    return !!v && v.granted === true && Number(v.v) >= HEALTH_CONSENT_VERSION;
+  } catch {
+    return false;
+  }
+}
+
+export async function recordHealthConsent(granted: boolean, source: Extract<ConsentSource, 'takibe' | 'settings' | 'personal_plan'> = 'takibe'): Promise<boolean> {
   try {
     const raw = await AsyncStorage.getItem(HEALTH_CONSENT_KEY);
     const prev = raw ? (JSON.parse(raw) as { granted?: unknown; v?: unknown }) : null;
