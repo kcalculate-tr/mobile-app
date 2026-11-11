@@ -1135,6 +1135,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       support_attachment_error: 'Ek açılamadı. Tekrar dene.',
       support_call_cta: 'Ara',
       support_line: 'Destek hattı',
+      // G29-S1 md.2 (G28 SORULAR 3): Destek ve SSS web sayfası (legal.eatkcal.com).
+      support_web: 'Destek ve SSS',
+      support_web_sub: 'Sık sorulan sorular, web sitesinde',
+      support_web_a11y: 'Destek ve SSS sayfasını legal.eatkcal.com sitesinde aç',
       support_message_ph: 'Ne oldu? Kısaca anlat.',
       support_add_image: 'Görsel ekle',
       support_image_max: 'En fazla 3 görsel ekleyebilirsin.',
@@ -3016,6 +3020,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       support_attachment_error: 'Couldn’t open the attachment. Try again.',
       support_call_cta: 'Call',
       support_line: 'Support line',
+      // G29-S1 md.2 (G28 SORULAR 3): Support & FAQ web page (legal.eatkcal.com).
+      support_web: 'Support & FAQ',
+      support_web_sub: 'Frequently asked questions, on the website',
+      support_web_a11y: 'Open the Support & FAQ page on legal.eatkcal.com',
       support_message_ph: 'What happened? Tell us briefly.',
       support_add_image: 'Add image',
       support_image_max: 'You can add up to 3 images.',

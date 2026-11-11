@@ -54,3 +54,14 @@ test('paywall, Sözleşmeler, onay sheet\'leri ve hesap silme web bağlantısın
   assert.match(read('src/modules/profil/ui/screens/SettingsDataConsentScreen.tsx'), /openLegalWeb\('terms'/);
   assert.match(read('src/modules/profil/ui/screens/SettingsSecurityScreen.tsx'), /openLegalWeb\('accountDeletion'/);
 });
+
+// G29-S1 md.2 (G28 SORULAR 3 kararı): Profil › Destek'te web Destek ve SSS bağlantısı;
+// EN hesap silme TR ile AYNI sayfa (/account-deletion).
+test('G29: Destek ekranı web Destek ve SSS sayfasını açar; EN hesap silme aynı sayfa', () => {
+  const src = read('src/modules/profil/ui/screens/SettingsSupportScreen.tsx');
+  assert.match(src, /openLegalWeb\('support', lang\)/);
+  assert.match(src, /accessibilityRole="link"/);
+  assert.equal(legalWebUrl('support', 'en'), 'https://legal.eatkcal.com/en/support');
+  assert.equal(legalWebUrl('accountDeletion', 'en'), legalWebUrl('accountDeletion', 'tr'));
+  assert.equal(legalWebUrl('accountDeletion', 'en'), 'https://legal.eatkcal.com/account-deletion');
+});

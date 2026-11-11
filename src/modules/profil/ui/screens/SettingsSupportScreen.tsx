@@ -17,7 +17,8 @@ import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { signedAttachmentUrl, ticketMessage, ticketView, uploadSupportImages } from '../../../../lib/support/attachments';
-import { Phone, ImageSquare, X as XIcon } from '../../../../components/icons';
+import { Phone, ImageSquare, X as XIcon, ArrowSquareOut, Question } from '../../../../components/icons';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
 import {
   FinScreen,
   FinHeader,
@@ -104,7 +105,7 @@ function TicketBody({ ticket }: { ticket: { message: string; attachments?: unkno
 
 export default function SettingsSupportScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
   const { user } = useAuth();
   const supabase = getSupabaseClient();
 
@@ -246,6 +247,33 @@ export default function SettingsSupportScreen({ onBack }: { onBack: () => void }
             </Text>
           </Pressable>
         </FinCard>
+
+        {/* G29-S1 md.2 (G28 SORULAR 3): Destek ve SSS web sayfası — legal.eatkcal.com/destek
+            (EN /en/support), tek sabit dosyadan (lib/legal/urls.ts). */}
+        <Pressable
+          testID="support-web-link"
+          onPress={() => void openLegalWeb('support', lang)}
+          accessibilityRole="link"
+          accessibilityLabel={tr('profil.support_web_a11y')}
+          style={({ pressed }) => ({
+            minHeight: 56,
+            borderRadius: 20,
+            backgroundColor: t.color.surface,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Question size={20} color={t.color.ink} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>{tr('profil.support_web')}</Text>
+            <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{tr('profil.support_web_sub')}</Text>
+          </View>
+          <ArrowSquareOut size={18} color={t.color.secondary} />
+        </Pressable>
 
         <FinSegmented
           options={[tr('profil.support_new'), tr('profil.support_history')]}
