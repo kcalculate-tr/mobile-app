@@ -55,6 +55,29 @@ function mount(reduced = false) {
   );
 }
 
+/**
+ * G30-S1: logTrace artık uçan kopya ekrana gelince (görsel yüklendi / en geç
+ * FLY_IMAGE_READY_TIMEOUT_MS, ardından bir kare) çözülür. Testte zamanlayıcılar sahte
+ * (jest fakeTimers) → söz çözülene kadar saati küçük adımlarla ilerlet.
+ */
+async function trace(opts: Parameters<typeof logTrace>[0]) {
+  let done = false;
+  await act(async () => {
+    void logTrace(opts).then(() => {
+      done = true;
+    });
+    await Promise.resolve();
+  });
+  for (let i = 0; i < 40 && !done; i++) {
+    await act(async () => {
+      jest.advanceTimersByTime(25);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+  expect(done).toBe(true);
+}
+
 /** Uçuşun varışını tamamla (withTiming fin=true). */
 function finishFlights() {
   act(() => {
@@ -78,9 +101,7 @@ test('TabBarR3 Ana sayfa sekmesi hedefini bildirir (uçuş hedefi)', () => {
 test('logTrace: tabak ölçülür → uçuş başlar; varışta +1 rozet + toast (Geri al · Gör)', async () => {
   const ui = mount();
   const undo = jest.fn();
-  await act(async () => {
-    await logTrace({ from: plate, imageUri: 'file:///p.jpg', mealLabel: 'Öğle’ye', source: 'scan', id: 'r1', undo });
-  });
+  await trace({ from: plate, imageUri: 'file:///p.jpg', mealLabel: 'Öğle’ye', source: 'scan', id: 'r1', undo });
   expect(ui.getByTestId('log-flight-r1')).toBeTruthy();
   expect(ui.queryByText('+1')).toBeNull(); // rozet varışta
   finishFlights();
@@ -97,9 +118,7 @@ test('logTrace: tabak ölçülür → uçuş başlar; varışta +1 rozet + toast
 
 test('uçuş sürerken Geri al → uçuş kesilir (solar), rozet ARTMAZ, toast yok', async () => {
   const ui = mount();
-  await act(async () => {
-    await logTrace({ from: plate, mealLabel: 'Öğle’ye', source: 'kesfet', id: 'r2', undo: jest.fn() });
-  });
+  await trace({ from: plate, mealLabel: 'Öğle’ye', source: 'kesfet', id: 'r2', undo: jest.fn() });
   expect(ui.getByTestId('log-flight-r2')).toBeTruthy();
   act(() => {
     DeviceEventEmitter.emit('kcal:logUndo', { id: 'r2' });
@@ -112,10 +131,8 @@ test('uçuş sürerken Geri al → uçuş kesilir (solar), rozet ARTMAZ, toast y
 
 test('art arda: her log ayrı uçuş ve +1', async () => {
   const ui = mount();
-  await act(async () => {
-    await logTrace({ from: plate, mealLabel: 'Öğle’ye', id: 'a' });
-    await logTrace({ from: plate, mealLabel: 'Öğle’ye', id: 'b' });
-  });
+  await trace({ from: plate, mealLabel: 'Öğle’ye', id: 'a' });
+  await trace({ from: plate, mealLabel: 'Öğle’ye', id: 'b' });
   expect(ui.getByTestId('log-flight-a')).toBeTruthy();
   expect(ui.getByTestId('log-flight-b')).toBeTruthy();
   finishFlights();
@@ -124,9 +141,7 @@ test('art arda: her log ayrı uçuş ve +1', async () => {
 
 test('azaltılmış hareket: uçuş YOK — rozet + toast doğrudan', async () => {
   const ui = mount(true);
-  await act(async () => {
-    await logTrace({ from: plate, mealLabel: 'Öğle’ye', id: 'c' });
-  });
+  await trace({ from: plate, mealLabel: 'Öğle’ye', id: 'c' });
   expect(ui.queryByTestId('log-flight-c')).toBeNull();
   expect(ui.getByText('+1')).toBeTruthy();
   expect(ui.getByText(/loglandı/)).toBeTruthy();
@@ -134,9 +149,7 @@ test('azaltılmış hareket: uçuş YOK — rozet + toast doğrudan', async () =
 
 test('ölçülemeyen kaynak → uçuşsuz rozet + toast', async () => {
   const ui = mount();
-  await act(async () => {
-    await logTrace({ from: null, mealLabel: 'Öğle’ye', id: 'd' });
-  });
+  await trace({ from: null, mealLabel: 'Öğle’ye', id: 'd' });
   expect(ui.queryByTestId('log-flight-d')).toBeNull();
   expect(ui.getByText('+1')).toBeTruthy();
 });
@@ -153,18 +166,16 @@ test('rozet en fazla 9+; measureRect boyutsuz görünümde null', async () => {
 test('G29: çıkartma uçuşu (cutout) kırpılmaz; normal fotoğraf yuvarlatılmış cover kalır', async () => {
   const { StyleSheet } = require('react-native');
   const ui = mount();
-  await act(async () => {
-    await logTrace({ from: plate, imageUri: 'file:///sticker.webp', cutout: true, mealLabel: 'Öğle’ye', source: 'scan', id: 's1' });
-  });
-  const img = ui.getByTestId('log-flight-s1-sticker');
+  await trace({ from: plate, imageUri: 'file:///sticker.webp', cutout: true, mealLabel: 'Öğle’ye', source: 'scan', id: 's1' });
+  const img = ui.getByTestId('log-flight-s1-sticker-img', { includeHiddenElements: true });
   expect(img.props.resizeMode).toBe('contain');
+  // G30-S1 md.2: uçan çıkartma da beyaz konturlu.
+  expect(ui.getAllByTestId('log-flight-s1-sticker-outline', { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(8);
   const box = StyleSheet.flatten(ui.getByTestId('log-flight-s1').props.style);
   expect(box.overflow).toBe('visible');
   expect(box.borderRadius).toBe(0);
   finishFlights();
-  await act(async () => {
-    await logTrace({ from: plate, imageUri: 'file:///p.jpg', mealLabel: 'Öğle’ye', source: 'scan', id: 'p1' });
-  });
+  await trace({ from: plate, imageUri: 'file:///p.jpg', mealLabel: 'Öğle’ye', source: 'scan', id: 'p1' });
   expect(ui.queryByTestId('log-flight-p1-sticker')).toBeNull();
   const box2 = StyleSheet.flatten(ui.getByTestId('log-flight-p1').props.style);
   expect(box2.overflow).toBe('hidden');

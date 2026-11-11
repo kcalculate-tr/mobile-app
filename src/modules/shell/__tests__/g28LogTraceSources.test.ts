@@ -11,8 +11,11 @@ const read = (p: string) => readFileSync(join(SRC, p), 'utf8');
 test('dört kaynak logTrace çağırır (emitLogFlight doğrudan değil)', () => {
   const scan = read('modules/ai/scan/screens/ScanScreen.tsx');
   // G29-S1: çıkartma varsa uçuş çıkartmadan, yoksa tabaktan (plateRef) başlar.
-  assert.match(scan, /await logTrace\(\{\s*from: liftedSticker && stickerRef\.current \? stickerRef\.current : plateRef\.current/);
-  assert.match(scan, /closeAfterLog\(\);/);
+  // G30-S1 md.1: görünen kutu önceden ölçülür (rect + imageRect); Tara, logTrace ÇÖZÜLÜNCE
+  // (uçan kopya ekranda) kapanır.
+  assert.match(scan, /const plateBox = stickerBox \? null : await measureRect\(plateRef\.current\);/);
+  assert.match(scan, /await logTrace\(\{\s*rect: startRect,\s*imageRect: photoBox,/);
+  assert.match(scan, /\}\);\s*closeAfterLog\(\);/);
   const kesfet = read('modules/kesfet/ui/KesfetScreen.tsx');
   assert.match(kesfet, /void logTrace\(\{/);
   assert.ok(!/emitLogFlight\(/.test(kesfet));

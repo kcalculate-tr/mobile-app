@@ -54,26 +54,88 @@ export type LogTraceOptions = Omit<LogFlightPayload, 'x' | 'y' | 'w' | 'h'> & {
   rect?: Rect | null;
 };
 
-/** Kayıt yazıldı → logla izi. Her log ayrı uçuş ve +1 (art arda dahil). */
+/** Uçan kopya bu sürede ekrana gelmezse kaynak ekran yine kapanır (görsel çözülemedi vb.). */
+export const FLIGHT_START_TIMEOUT_MS = 400;
+
+/**
+ * Kayıt yazıldı → logla izi. Her log ayrı uçuş ve +1 (art arda dahil).
+ * G30-S1 md.1: söz, uçan kopya ekranda GÖRÜNÜNCE (ya da uçuş yoksa hemen; en geç
+ * FLIGHT_START_TIMEOUT_MS) çözülür — kaynak ekran ancak o zaman kapanmalı. Önceden kayıt
+ * yayınlanır yayınlanmaz ekran kapanıyor, kopya 1–3 kare sonra (görsel çözülünce) beliriyordu:
+ * görsel bir an kaybolup başka yerde yeniden çıkıyordu.
+ */
 export async function logTrace(opts: LogTraceOptions): Promise<void> {
   const { from, rect: given, ...payload } = opts;
   const rect = given ?? (from ? await measureRect(from) : null);
-  emitLogFlight({
-    ...payload,
-    x: rect?.x ?? 0,
-    y: rect?.y ?? 0,
-    w: rect?.w ?? 0,
-    h: rect?.h ?? 0,
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(finish, FLIGHT_START_TIMEOUT_MS);
+    const userStart = payload.onStart;
+    emitLogFlight({
+      ...payload,
+      x: rect?.x ?? 0,
+      y: rect?.y ?? 0,
+      w: rect?.w ?? 0,
+      h: rect?.h ?? 0,
+      onStart: () => {
+        try {
+          userStart?.();
+        } finally {
+          finish();
+        }
+      },
+    });
   });
 }
 
+/**
+ * G30-S1 md.1: lifted (kalkmış) çıkartmanın GÖRÜNEN kutusu. StickerLift dönüşümü
+ * (translateY LIFT_SHIFT, ölçek LIFT_SCALE, merkez etrafında) Reanimated'da UI thread'de
+ * uygulanır ve ölçüme yansımaz → ölçülen dönüşümsüz kutuya burada eklenir.
+ */
+export function liftedRect(r: Rect, shiftY: number, scale: number): Rect {
+  const w = r.w * scale;
+  const h = r.h * scale;
+  return { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2 + shiftY, w, h };
+}
+
 // ── Ana sayfa sekmesi hedefi (ekran koordinatı, ikon merkezi) ─────────────────
+// G30-S1 md.1: TabBarR3 hem hesaplanan noktayı hem ikon GÖRÜNÜMÜNÜ bildirir; uçuş başlarken
+// ikon ölçülür (gerçek konum — bar küçülmüş/yükselirken de doğru), ölçülemezse hesaplanan.
 let homeTarget: { x: number; y: number } | null = null;
+let homeNode: Measurable | null = null;
 export function setHomeTabTarget(p: { x: number; y: number } | null): void {
   homeTarget = p;
 }
 export function getHomeTabTarget(): { x: number; y: number } | null {
   return homeTarget;
+}
+export function setHomeTabNode(node: Measurable | null): void {
+  homeNode = node;
+}
+/** Ana sayfa sekme ikonunun ölçülmüş merkezi; olmazsa hesaplanan nokta; o da yoksa null. */
+export async function measureHomeTabTarget(): Promise<{ x: number; y: number } | null> {
+  const r = homeNode ? await measureRect(homeNode, 80) : null;
+  if (r) return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+  return homeTarget;
+}
+
+// ── Ana sayfa görünür mü? (kök rota Tabs ve etkin sekme Tracker) ─────────────
+type NavStateLike = { index?: number; routes?: { name?: string; state?: NavStateLike }[] } | undefined | null;
+/** Kök gezinme durumundan: Ana sayfa (Tracker) sekmesi şu an ekranda mı. */
+export function isHomeVisible(root: NavStateLike): boolean {
+  const top = root?.routes?.[root.index ?? 0];
+  if (!top || top.name !== 'Tabs') return false;
+  const tabs = top.state;
+  // Sekme durumu henüz yoksa bilinmiyor → görünmüyor say (rozet yolu, FinMoLogA varsayılanı).
+  if (!tabs?.routes?.length) return false;
+  return tabs.routes[tabs.index ?? 0]?.name === 'Tracker';
 }
 
 // ── Rozet olayı (LogTraceHost → TabBarR3) ────────────────────────────────────

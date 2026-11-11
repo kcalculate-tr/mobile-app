@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
-import { haptic, REDUCED, TRANSITION, useReducedMotion } from '../motion';
+import { haptic, REDUCED, RN_CURVE, TRANSITION, useReducedMotion } from '../motion';
 import { useT } from '../../i18n';
 
 /**
@@ -23,6 +23,11 @@ import { useT } from '../../i18n';
  * NOT: Bu yeni tasarımın Toast'u; mevcut `src/core/ui/Toast.tsx`'e dokunmadan
  * ayrı dosyadır. Hiçbir ekrana bağlı değildir.
  */
+/** FinMoLogA toast: alttan 16 pt. */
+export const TOAST_BOTTOM_OFFSET = 16;
+const TOAST_ENTER = RN_CURVE.enter;
+const TOAST_EXIT = RN_CURVE.exit;
+
 export function Toast({
   visible,
   message,
@@ -33,6 +38,7 @@ export function Toast({
   tone = 'default',
   autoHideMs = tone === 'error' ? 0 : 4000,
   testID,
+  from = 'top',
 }: {
   visible: boolean;
   message: string;
@@ -44,12 +50,21 @@ export function Toast({
   tone?: 'default' | 'error';
   autoHideMs?: number;
   testID?: string;
+  /**
+   * G30-S1 md.1: giriş yönü. 'bottom' = FinMoLogA logla toast'ı (sekme çubuğunun üstünde):
+   * 16 → 0 alttan, giriş base 300 enter, çıkış fast 200 exit (alta kayarak solar).
+   */
+  from?: 'top' | 'bottom';
 }) {
   const t = useTheme();
   const { t: tr } = useT();
   const reduced = useReducedMotion();
   const p = useRef(new Animated.Value(0)).current; // 0 gizli, 1 görünür
-  const offset = reduced ? REDUCED.maxShift : TRANSITION.toast.offset;
+  const offset = reduced
+    ? REDUCED.maxShift
+    : from === 'bottom'
+      ? TOAST_BOTTOM_OFFSET
+      : TRANSITION.toast.offset;
 
   useEffect(() => {
     Animated.timing(p, {
@@ -59,6 +74,8 @@ export function Toast({
         : visible
           ? TRANSITION.toast.inDuration
           : TRANSITION.toast.outDuration,
+      // 'bottom': pano eğrileri (giriş enter · çıkış exit); 'top' eskisi gibi (varsayılan eğri).
+      ...(from === 'bottom' && !reduced ? { easing: visible ? TOAST_ENTER : TOAST_EXIT } : null),
       useNativeDriver: true,
     }).start();
 
@@ -66,9 +83,9 @@ export function Toast({
       const timer = setTimeout(() => onDismiss?.(), autoHideMs);
       return () => clearTimeout(timer);
     }
-  }, [visible, reduced, autoHideMs, onDismiss, p]);
+  }, [visible, reduced, autoHideMs, onDismiss, p, from]);
 
-  const translateY = p.interpolate({ inputRange: [0, 1], outputRange: [-offset, 0] });
+  const translateY = p.interpolate({ inputRange: [0, 1], outputRange: [from === 'bottom' ? offset : -offset, 0] });
 
   return (
     <Animated.View

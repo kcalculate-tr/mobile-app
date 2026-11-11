@@ -91,6 +91,7 @@ export default function FinPhotoResult({
   onView,
   reducedVariant: _reduced,
   plateRef,
+  photoRef,
   sticker = null,
   stickerRef,
   onAddToPlan,
@@ -128,6 +129,8 @@ export default function FinPhotoResult({
   reducedVariant?: boolean;
   /** G28-S1 md.1: tabak görünümü — Logla izi uçuşu buradan başlar (ölçülür). */
   plateRef?: React.RefObject<View | null>;
+  /** G30-S1 md.1: tam ekran fotoğraf kabı (kompakt sonuç) — uçan kopya bu kutudan kırpılır. */
+  photoRef?: React.RefObject<View | null>;
   /** G29-S1 md.1: cihazda üretilen çıkartma (yoksa normal fotoğraf). */
   sticker?: Sticker | null;
   /** G29-S1 md.1: çıkartma görünümü — varsa Logla izi buradan başlar. */
@@ -227,6 +230,8 @@ export default function FinPhotoResult({
   if (estimate.ingredients.length <= 1 && !voice) {
     return (
       <View
+        ref={photoRef}
+        collapsable={false}
         style={[styles.fill, { backgroundColor: '#2A2622' }]}
         onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;

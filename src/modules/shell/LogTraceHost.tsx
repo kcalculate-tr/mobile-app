@@ -10,17 +10,31 @@
 //   · Geri al: kaydı siler (kaynağın `undo`'su), rozet −1; uçuş sürerken gelirse uçuş kesilir,
 //     tabak 200 ms (fast, standard) solar, rozet artmaz.
 //   · Azaltılmış hareket: uçuş YOK — rozet + toast 200 ms opaklık.
+//
+// G30-S1 md.1 — kare kare FinMoLogA (4400 ms döngü) karşılaştırması sonrası:
+//   · Uçan kopya kaynağın GÖRÜNEN kutusundan, kaynakla aynı pikselle başlar (tam ekran fotoğrafta
+//     `imageRect` kırpması; çıkartmada kalkış dönüşümü dahil) ve görsel yüklenmeden görünmez —
+//     ekranda olunca `onStart` → kaynak ekran ANCAK o zaman kapanır.
+//   · Konum VE ölçek aynı ilerlemeyle (AI yayı 260/24) — pano tek `transform`, tek eğri
+//     cubic-bezier(.3,1.15,.4,1). Önceden ölçek ayrı enter eğrisindeydi.
+//   · Opaklık uçuş boyunca 1, varışta (slow 500) ANINDA 0 — önceden %85'ten sonra solarak ikona
+//     varmadan kayboluyordu.
+//   · Hedef: Ana sayfa sekme ikonunun ÖLÇÜLMÜŞ merkezi (TabBarR3 görünümü), ölçek 0,08.
+//   · Ana sayfa zaten görünürken rozet YOK (FinMoLogB: satır vurgusu + halka dolumu Tracker'da);
+//     rozet Ana sayfa açılınca silinir (TabBarR3).
+//   · Toast alttan girer (16 → 0, base 300 enter), çıkışta alta kayarak solar (fast 200 exit);
+//     önceden kapanınca animasyonsuz kesiliyordu.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, DeviceEventEmitter, Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   cancelAnimation,
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { StickerImage } from '../../lib/sticker/StickerImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CURVE, DURATION, SPRING, TIMING, haptic, useReducedMotion } from '../../core/design/motion';
@@ -29,7 +43,7 @@ import { useTheme } from '../../core/design/ThemeProvider';
 import { useT } from '../../core/i18n';
 import { navigationRef } from '../../navigation/navigationRef';
 import { LOG_FLIGHT_EVENT, LOG_UNDO_EVENT, type LogFlightPayload, type LogUndoPayload } from './logEvents';
-import { emitLogBadge, getHomeTabTarget } from './logTrace';
+import { emitLogBadge, isHomeVisible, measureHomeTabTarget } from './logTrace';
 import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
 
 interface Flight {
@@ -45,6 +59,42 @@ interface ToastState {
   id: string;
   message: string;
   undo: (() => void | Promise<void>) | null;
+  /** false → çıkış animasyonu oynuyor, sonra kaldırılır. */
+  visible: boolean;
+}
+
+/** FinMoLogA: uçuş sonu ölçeği (358 pt görsel → ~29 pt, sekme ikonu üstünde). */
+export const FLY_END_SCALE = 0.08;
+/** Görsel bu sürede yüklenmezse uçuş yine başlar (boş kutu riski < takılma). */
+export const FLY_IMAGE_READY_TIMEOUT_MS = 200;
+/** Uçuş başlangıç köşe yarıçapı (pano: kaynak görsel 16). */
+export const FLY_RADIUS = 16;
+
+/**
+ * Uçuş dönüşümü — ilerleme `m` (AI yayı, 0 → 1) konum VE ölçeği birlikte sürer (pano tek
+ * transform). m = 1'de kopya merkezi hedefte, ölçek FLY_END_SCALE. Yay hafif taşar (≈ %3) →
+ * ölçek 0,08'in biraz altına iner; sıfır/negatif olmasın.
+ */
+export function flightTransform(
+  m: number,
+  r: { x: number; y: number; w: number; h: number },
+  target: { x: number; y: number },
+): { tx: number; ty: number; scale: number } {
+  'worklet';
+  return {
+    tx: (target.x - (r.x + r.w / 2)) * m,
+    ty: (target.y - (r.y + r.h / 2)) * m,
+    scale: Math.max(0.02, 1 + (FLY_END_SCALE - 1) * m),
+  };
+}
+
+function homeVisibleNow(): boolean {
+  try {
+    if (!navigationRef.isReady()) return false;
+    return isHomeVisible(navigationRef.getRootState() as never);
+  } catch {
+    return false;
+  }
 }
 
 /** Sekme çubuğu görünür mü (kök rota Tabs)? Değilse toast ekran altına iner. */
@@ -70,6 +120,8 @@ export function LogTraceHost() {
   const seq = useRef(0);
   /** Rozeti artırılmış (varmış) kayıtlar — Geri al yalnız bunlarda rozeti düşürür. */
   const arrived = useRef(new Set<string>());
+  /** Geri alınmış kayıtlar (ölçüm sürerken gelen Geri al için). */
+  const undone = useRef(new Set<string>());
 
   const env = useRef({ reduced, winW, winH, insets });
   env.current = { reduced, winW, winH, insets };
@@ -88,9 +140,15 @@ export function LogTraceHost() {
 
   const arrive = useCallback(
     (payload: LogFlightPayload, id: string) => {
-      haptic('success');
-      arrived.current.add(id);
-      emitLogBadge(1);
+      // G30-S1 md.1: Ana sayfa zaten ekrandaysa "+1" rozeti yok — geri bildirim satır vurgusu +
+      // halka dolumu (FinMoLogB / FinMoRing, Tracker useHomeHighlight). Rozet "başka sekmeden".
+      // HIG playing-haptics › "Use haptics consistently": o durumda success'i satır oturunca
+      // useHomeHighlight çalar → burada çalınmaz (çift success yok).
+      if (!homeVisibleNow()) {
+        haptic('success');
+        arrived.current.add(id);
+        emitLogBadge(1);
+      }
       const message = payload.mealLabel ? i18n.t('shell.logged', { meal: payload.mealLabel }) : i18n.t('shell.logged_generic');
       // HIG motion › "Make motion optional": sonuç VoiceOver'a da söylenir (iOS'ta
       // accessibilityLiveRegion yok; Android canlı bölge Toast'ta).
@@ -104,7 +162,7 @@ export function LogTraceHost() {
       setToastBottom(
         tabsOnTop() ? tabBarBottomOffset(ins.bottom) + TAB_BAR_R3.PILL_HEIGHT + 8 : Math.max(16, ins.bottom + 8),
       );
-      setToast({ id, message, undo: payload.undo ?? null });
+      setToast({ id, message, undo: payload.undo ?? null, visible: true });
     },
     [i18n],
   );
@@ -112,23 +170,36 @@ export function LogTraceHost() {
   useEffect(() => {
     const onFlight = (raw: LogFlightPayload) => {
       seq.current += 1;
-      const id = raw.id ?? `log-${seq.current}`;
+      const key = seq.current;
+      const id = raw.id ?? `log-${key}`;
       const noOrigin = !(raw.w > 0 && raw.h > 0);
       if (env.current.reduced || noOrigin) {
+        raw.onStart?.();
         arrive(raw, id);
         return;
       }
-      const target = getHomeTabTarget() ?? fallbackTarget();
-      setFlights((list) => [...list, { key: seq.current, payload: raw, id, target, cancelled: false }]);
+      // Hedef: sekme ikonunun gerçek konumu (ölçüm ~1 kare); olmazsa hesaplanan nokta.
+      void measureHomeTabTarget()
+        .catch(() => null)
+        .then((measured) => {
+          // Ölçüm sürerken Geri al geldiyse uçuş hiç başlamaz (rozet de artmaz).
+          if (undone.current.has(id)) {
+            raw.onStart?.();
+            return;
+          }
+          const target = measured ?? fallbackTarget();
+          setFlights((list) => [...list, { key, payload: raw, id, target, cancelled: false }]);
+        });
     };
     const onUndo = ({ id }: LogUndoPayload) => {
+      undone.current.add(id);
       // Uçuş sürüyorsa kesilir (tabak solar, rozet artmaz).
       setFlights((list) => list.map((f) => (f.id === id && !f.cancelled ? { ...f, cancelled: true } : f)));
       if (arrived.current.has(id)) {
         arrived.current.delete(id);
         emitLogBadge(-1);
       }
-      setToast((t) => (t && t.id === id ? null : t));
+      setToast((t) => (t && t.id === id ? { ...t, visible: false } : t));
     };
     const a = DeviceEventEmitter.addListener(LOG_FLIGHT_EVENT, onFlight);
     const b = DeviceEventEmitter.addListener(LOG_UNDO_EVENT, onUndo);
@@ -137,6 +208,33 @@ export function LogTraceHost() {
       b.remove();
     };
   }, [arrive, fallbackTarget]);
+
+  /** Toast çıkışı animasyonlu (fast 200 exit), sonra kaldırılır. */
+  const hideToast = useCallback(() => setToast((t) => (t ? { ...t, visible: false } : t)), []);
+  useEffect(() => {
+    if (!toast || toast.visible) return;
+    const h = setTimeout(() => setToast((t) => (t && !t.visible ? null : t)), DURATION.base); // çıkış (fast 200) bittikten sonra
+    return () => clearTimeout(h);
+  }, [toast]);
+
+  // FinMoLogA 3700 ms "Ana sayfa · rozet silinir": Ana sayfa sekmesi ekrana gelince (kök Tabs +
+  // etkin sekme Tracker) rozet silinir (TabBarR3: fast 200 exit). Önceden yalnız "Gör" siliyordu.
+  useEffect(() => {
+    const check = () => {
+      if (arrived.current.size === 0 || !homeVisibleNow()) return;
+      arrived.current.clear();
+      emitLogBadge('clear');
+    };
+    let unsub: (() => void) | undefined;
+    try {
+      unsub = navigationRef.addListener?.('state', check) as (() => void) | undefined;
+    } catch {
+      /* gezinme hazır değil */
+    }
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   const onToastUndo = useCallback(() => {
     const t = toast;
@@ -147,11 +245,11 @@ export function LogTraceHost() {
       /* kaynak hatası kabuğu düşürmez */
     }
     DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: t.id } as LogUndoPayload);
-    setToast(null);
-  }, [toast]);
+    hideToast();
+  }, [toast, hideToast]);
 
   const onToastView = useCallback(() => {
-    setToast(null);
+    hideToast();
     emitLogBadge('clear');
     arrived.current.clear();
     try {
@@ -159,7 +257,7 @@ export function LogTraceHost() {
     } catch {
       /* gezinme hazır değil */
     }
-  }, []);
+  }, [hideToast]);
 
   const accent = theme.isDark ? '#C6FF3A' : '#8AD400';
 
@@ -177,11 +275,12 @@ export function LogTraceHost() {
       {toast ? (
         <View style={[styles.toastRow, { bottom: toastBottom }]} pointerEvents="box-none">
           <Toast
-            visible
+            visible={toast.visible}
+            from="bottom"
             message={toast.message}
             onUndo={toast.undo ? onToastUndo : undefined}
             onView={onToastView}
-            onDismiss={() => setToast(null)}
+            onDismiss={hideToast}
             testID="log-trace-toast"
           />
         </View>
@@ -201,60 +300,105 @@ function FlightView({
   onArrive: () => void;
   onDone: () => void;
 }) {
-  const { x, y, w, h } = flight.payload;
-  const move = useSharedValue(0); // konum (AI yayı)
-  const p = useSharedValue(0); // ölçek + opaklık (slow 500, enter)
+  const { x, y, w, h, imageUri, cutout, imageRect } = flight.payload;
+  const radius = flight.payload.radius ?? FLY_RADIUS;
+  const move = useSharedValue(0); // konum + ölçek (AI yayı, pano tek transform)
+  const clock = useSharedValue(0); // varış saati: slow 500 (TIMING.logTrail)
+  const shown = useSharedValue(0); // 0: görsel hazır değil / varıldı → görünmez
   const fade = useSharedValue(1); // Geri al: 200 ms solma
+  const started = useRef(false);
 
-  useEffect(() => {
+  const start = useCallback(() => {
+    if (started.current || flight.cancelled) return;
+    started.current = true;
+    // Bundan sonrası tamamen UI thread'de (Reanimated); JS yalnız varışta rozet/toast için.
+    shown.value = 1;
     move.value = withSpring(1, SPRING.ai);
-    p.value = withTiming(1, { duration: TIMING.logTrail, easing: CURVE.enter }, (fin) => {
-      if (fin) {
-        runOnJS(onArrive)();
-        runOnJS(onDone)();
+    // Saat görsel değil (yalnız varış anı) → eğrisi önemsiz; token eğrisi.
+    clock.value = withTiming(1, { duration: TIMING.logTrail, easing: CURVE.standard }, (fin) => {
+      if (!fin) return;
+      shown.value = 0; // pano: varışta anında kaybolur (rozet aynı karede)
+      runOnJS(onArrive)();
+      runOnJS(onDone)();
+    });
+    // Kopya bu karede çiziliyor → kaynak ekran kapanabilir.
+    requestAnimationFrame(() => {
+      try {
+        flight.payload.onStart?.();
+      } catch {
+        /* kaynak hatası kabuğu düşürmez */
       }
     });
-    // yalnız mount'ta
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Görsel yoksa (lime nokta) hemen; varsa yüklenince — en geç FLY_IMAGE_READY_TIMEOUT_MS.
+    if (!imageUri) {
+      start();
+      return;
+    }
+    const t = setTimeout(start, FLY_IMAGE_READY_TIMEOUT_MS);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!flight.cancelled) return;
     // Varış geri çağrısı iptal (fin=false → rozet artmaz); konum olduğu yerde kalır.
-    cancelAnimation(p);
+    cancelAnimation(clock);
     cancelAnimation(move);
+    if (!started.current) {
+      started.current = true;
+      flight.payload.onStart?.();
+      onDone();
+      return;
+    }
     fade.value = withTiming(0, { duration: DURATION.fast, easing: CURVE.standard }, (fin) => {
       if (fin) runOnJS(onDone)();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flight.cancelled]);
 
+  const rect = { x, y, w, h };
+  const target = flight.target;
   const style = useAnimatedStyle(() => {
-    const dx = flight.target.x - (x + w / 2);
-    const dy = flight.target.y - (y + h / 2);
+    const t = flightTransform(move.value, rect, target);
     return {
-      opacity: interpolate(p.value, [0, 0.85, 1], [1, 1, 0]) * fade.value,
-      transform: [
-        { translateX: dx * move.value },
-        { translateY: dy * move.value },
-        { scale: interpolate(p.value, [0, 1], [1, 0.08]) },
-      ],
+      opacity: shown.value * fade.value,
+      transform: [{ translateX: t.tx }, { translateY: t.ty }, { scale: t.scale }],
     };
   });
+
+  const onImg = () => start();
+  const cropStyle = imageRect
+    ? { position: 'absolute' as const, left: imageRect.x - x, top: imageRect.y - y, width: imageRect.w, height: imageRect.h }
+    : styles.flightImg;
 
   return (
     <Animated.View
       pointerEvents="none"
       testID={`log-flight-${flight.id}`}
-      style={[styles.flight, flight.payload.cutout ? styles.flightCutout : null, { left: x, top: y, width: w, height: h }, style]}
+      style={[
+        styles.flight,
+        cutout ? styles.flightCutout : { borderRadius: radius },
+        { left: x, top: y, width: w, height: h },
+        style,
+      ]}
     >
-      {flight.payload.imageUri ? (
-        <Image
-          source={{ uri: flight.payload.imageUri }}
+      {imageUri && cutout ? (
+        // G30-S1 md.2: çıkartma uçarken de beyaz konturlu (kırpılmaz, oran korunur).
+        <StickerImage
+          uri={imageUri}
           style={styles.flightImg}
-          resizeMode={flight.payload.cutout ? 'contain' : 'cover'}
-          testID={flight.payload.cutout ? `log-flight-${flight.id}-sticker` : undefined}
+          resizeMode="contain"
+          size={Math.min(w, h)}
+          onLoad={onImg}
+          onError={onImg}
+          testID={`log-flight-${flight.id}-sticker`}
         />
+      ) : imageUri ? (
+        <Image source={{ uri: imageUri }} style={cropStyle} resizeMode="cover" onLoad={onImg} onError={onImg} />
       ) : (
         <View style={[styles.flightDot, { backgroundColor: accent }]} />
       )}
@@ -263,7 +407,7 @@ function FlightView({
 }
 
 const styles = StyleSheet.create({
-  flight: { position: 'absolute', borderRadius: 16, overflow: 'hidden', zIndex: 50 },
+  flight: { position: 'absolute', overflow: 'hidden', zIndex: 50 },
   flightImg: { width: '100%', height: '100%' },
   // G29-S1: çıkartma uçarken kırpılmaz / yuvarlanmaz (şeffaf kenarlar).
   flightCutout: { borderRadius: 0, overflow: 'visible' },

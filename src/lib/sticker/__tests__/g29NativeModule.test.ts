@@ -79,5 +79,7 @@ test('ScanScreen: çıkartma analizle paralel başlar, Logla beklemez (arka plan
   assert.match(src, /void liftSticker\(uri\)/);
   assert.match(src, /void saveStickerInBackground\(/);
   assert.doesNotMatch(src, /await saveStickerInBackground|await liftSticker/);
-  assert.match(src, /cutout: !!liftedSticker/);
+  // G30-S1 md.1: uçuş çıkartmanın ÖLÇÜLEN (kalkış dönüşümü eklenmiş) kutusundan.
+  assert.match(src, /const stickerBox = liftedSticker && stickerRef\.current \? await measureRect\(stickerRef\.current\) : null;/);
+  assert.match(src, /cutout: !!stickerBox/);
 });

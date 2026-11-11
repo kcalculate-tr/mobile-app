@@ -31,6 +31,7 @@ import {
 import { FinText as Text } from '../../core/design/components/FinText';
 import Animated, {
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -60,7 +61,7 @@ import { SELECTED_PILL } from './selectedPill';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
-import { badgeText, onLogBadge, setHomeTabTarget } from './logTrace';
+import { badgeText, emitLogBadge, onLogBadge, setHomeTabNode, setHomeTabTarget } from './logTrace';
 import { useOrientTarget } from '../onboarding/first/orient/useOrientTarget'; // G18-S1 temas
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
@@ -151,20 +152,35 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   // "+N" rozetini çizer (varışta +1, Geri al −1, en fazla 9+) ve Ana sayfa sekmesinin
   // ekrandaki hedef noktasını bildirir.
   const [badge, setBadge] = useState(0);
-  const badgePop = useSharedValue(0); // 0 gizli, 1 açık (bouncy; azaltılmışta 200 ms opaklık)
+  // G30-S1 md.1 (FinMoLogA lal-bdg2): giriş ölçek 0 → 1 bouncy base 300, opaklık ANINDA 1;
+  // silinirken ölçek sabit, opaklık 1 → 0 fast 200 exit. Azaltılmış: yalnız 200 ms opaklık.
+  const badgeScale = useSharedValue(0);
+  const badgeOpacity = useSharedValue(0);
   const reducedRef = useRef(reduced);
   reducedRef.current = reduced;
 
   const popBadge = useCallback(() => {
-    badgePop.value = 0;
-    badgePop.value = reducedRef.current ? withTiming(1, { duration: REDUCED.duration }) : withSpring(1, SPRING.bouncy);
-  }, [badgePop]);
+    if (reducedRef.current) {
+      badgeScale.value = 1;
+      badgeOpacity.value = 0;
+      badgeOpacity.value = withTiming(1, { duration: REDUCED.duration });
+      return;
+    }
+    badgeOpacity.value = 1;
+    badgeScale.value = 0;
+    badgeScale.value = withSpring(1, SPRING.bouncy);
+  }, [badgeScale, badgeOpacity]);
 
   useEffect(() => {
     const sub = onLogBadge(({ delta }) => {
       if (delta === 'clear') {
-        setBadge(0);
-        badgePop.value = withTiming(0, { duration: REDUCED.duration });
+        badgeOpacity.value = withTiming(
+          0,
+          reducedRef.current ? { duration: REDUCED.duration } : { duration: DURATION.fast, easing: CURVE.exit },
+          (fin) => {
+            if (fin) runOnJS(setBadge)(0);
+          },
+        );
         return;
       }
       setBadge((n) => {
@@ -174,7 +190,15 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
       });
     });
     return () => sub.remove();
-  }, [popBadge, badgePop]);
+  }, [popBadge, badgeOpacity]);
+
+  // G30-S1 md.1: uçuş hedefi = Ana sayfa ikonunun ÖLÇÜLEN konumu (LogTraceHost ölçer).
+  const homeIconRef = useRef<View | null>(null);
+  useEffect(() => () => setHomeTabNode(null), []);
+  const setHomeIcon = useCallback((node: View | null) => {
+    homeIconRef.current = node;
+    setHomeTabNode(node);
+  }, []);
 
   // Ana sayfa sekmesi ikon merkezi (ekran koordinatı) → LogTraceHost uçuş hedefi.
   useEffect(() => {
@@ -189,8 +213,8 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   }, [anaIndex, tabW, winH, rootHeight]);
 
   const badgeStyle = useAnimatedStyle(() => ({
-    opacity: badgePop.value,
-    transform: [{ scale: interpolate(badgePop.value, [0, 1], [0.4, 1]) }],
+    opacity: badgeOpacity.value,
+    transform: [{ scale: badgeScale.value }],
   }));
 
   // ── Hareket: açılışta yükselme ──────────────────────────────────────────────
@@ -283,10 +307,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   const scanPop = usePop();
 
   // ── Davranış ────────────────────────────────────────────────────────────────
-  const clearBadge = useCallback(() => {
-    setBadge(0);
-    badgePop.value = withTiming(0, { duration: REDUCED.duration });
-  }, [badgePop]);
+  const clearBadge = useCallback(() => emitLogBadge('clear'), []);
 
   const handleTabPress = (routeName: string, routeKey: string) => {
     const event = navigation.emit({
@@ -399,7 +420,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                         : label
                     }
                   >
-                    <View>
+                    <View ref={i === anaIndex ? setHomeIcon : undefined} collapsable={false}>
                       <Icon
                         size={TAB_BAR_R3.ICON_SIZE}
                         color={isActive ? g.activeInk : g.sec}

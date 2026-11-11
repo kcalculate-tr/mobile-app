@@ -58,7 +58,8 @@ import { scanImagePath } from '../scanPath';
 import { rememberLocalMealPhoto } from '../../../gun/mealPhoto';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight, emitLogUndo } from '../logFlight';
-import { logTrace } from '../../../shell/logTrace';
+import { liftedRect, logTrace, measureRect, type Rect } from '../../../shell/logTrace';
+import { LIFT_SCALE, LIFT_SHIFT } from '../ui/StickerLift';
 // G29-S1 md.1 — çıkartma (cihazda; yoksa normal fotoğraf, akış beklemez).
 import { liftSticker, type Sticker } from '../../../../lib/sticker/subjectLift';
 import { forgetSticker } from '../../../../lib/sticker/stickerStore';
@@ -560,6 +561,8 @@ export default function ScanScreen() {
 
   // G28-S1 md.1: tabak görünümü (FinPhotoResult) — uçuş başlangıcı.
   const plateRef = useRef<View | null>(null);
+  // G30-S1 md.1: tam ekran fotoğraf kabı (kompakt sonuç) — uçan kopya tabak bölgesini bu kutudan kırpar.
+  const photoRef = useRef<View | null>(null);
   /** Logladıktan sonra Tara kapanır: animasyonsuz (uçuş görünsün); azaltılmış harekette solarak. */
   const closeAfterLog = () => {
     if (!mountedRef.current) return;
@@ -611,9 +614,21 @@ export default function ScanScreen() {
       // (kök LogTraceHost), varışta +1 rozet + success + "Öğle'ye loglandı · Geri al · Gör".
       // Tara ekranı animasyonsuz kapanır ki uçuş sekme çubuğunun üstünde görünsün.
       // G29-S1 md.1: logla izinde uçan görsel çıkartma (kırpılmaz); yoksa tabak fotoğrafı (G28).
+      // G30-S1 md.1: başlangıç = kaynağın GÖRÜNEN kutusu. Çıkartma: kalkış dönüşümü (−8, ×1,04;
+      // azaltılmış harekette yok) ölçüme eklenir. Fotoğraf: tabak bölgesi + tam fotoğraf kutusu
+      // (kopya alttaki pikselleri birebir kırpar). Sonra Tara, kopya ekrana gelince kapanır.
+      const stickerBox = liftedSticker && stickerRef.current ? await measureRect(stickerRef.current) : null;
+      const plateBox = stickerBox ? null : await measureRect(plateRef.current);
+      const photoBox: Rect | null = plateBox && photoRef.current ? await measureRect(photoRef.current) : null;
+      const startRect = stickerBox
+        ? reducedMotion
+          ? stickerBox
+          : liftedRect(stickerBox, LIFT_SHIFT, LIFT_SCALE)
+        : plateBox;
       await logTrace({
-        from: liftedSticker && stickerRef.current ? stickerRef.current : plateRef.current,
-        imageUri: liftedSticker?.uri ?? photoUri, cutout: !!liftedSticker,
+        rect: startRect,
+        imageRect: photoBox,
+        imageUri: stickerBox ? liftedSticker?.uri : photoUri, cutout: !!stickerBox,
         mealLabel: label, source: 'scan', kcal: adjusted.kcal, name: adjusted.name,
         id: rowId,
         undo: scanFlightUndo(getSupabaseClient, user.id, rowId, (ok) => {
@@ -1013,6 +1028,7 @@ export default function ScanScreen() {
           estimate={result}
           photoUri={photoUri}
           plateRef={plateRef}
+          photoRef={photoRef}
           sticker={resultSource === 'photo' ? sticker : null}
           stickerRef={stickerRef}
           mealType={mealType}

@@ -18,6 +18,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { CURVE, DURATION, REDUCED, SPRING, haptic } from '../../../../core/design';
 import { coverRect, type Sticker } from '../../../../lib/sticker/subjectLift';
+import { StickerImage } from '../../../../lib/sticker/StickerImage';
 
 /** Pano: fotoğraf 0–400 ms, kesim 400'de başlar. */
 export const LIFT_DELAY_MS = 400;
@@ -91,9 +92,14 @@ export default function StickerLift({
       <Animated.View style={[styles.abs, box, shadowStyle]} testID={`${testID}-shadow`}>
         <Image source={{ uri: sticker.uri }} style={[styles.img, styles.tint]} resizeMode="stretch" blurRadius={10} />
       </Animated.View>
-      <Animated.View ref={stickerRef} collapsable={false} style={[styles.abs, box, stickerStyle]} testID={`${testID}-sticker`}>
-        <Image source={{ uri: sticker.uri }} style={styles.img} resizeMode="stretch" />
-      </Animated.View>
+      {/* G30-S1 md.1: ölçülen kutu DÖNÜŞÜMSÜZ sarmalayıcı — kalkış dönüşümü (UI thread) ölçüme
+          yansımaz; Logla izi bu kutuya liftedRect(LIFT_SHIFT, LIFT_SCALE) uygular. */}
+      <View ref={stickerRef} collapsable={false} pointerEvents="none" style={[styles.abs, box]} testID={`${testID}-sticker`}>
+        <Animated.View style={[StyleSheet.absoluteFill, stickerStyle]} testID={`${testID}-sticker-lift`}>
+          {/* G30-S1 md.2: beyaz kontur (~3 pt) + çok hafif gölge — çıkartma olduğu belli olsun. */}
+          <StickerImage uri={sticker.uri} style={styles.img} resizeMode="stretch" size={Math.min(rect.width, rect.height)} testID={`${testID}-outline`} />
+        </Animated.View>
+      </View>
     </View>
   );
 }

@@ -36,6 +36,20 @@ export interface LogFlightPayload {
    * köşe yuvarlama yok, oran korunur (contain). Yoksa normal fotoğraf (yuvarlatılmış, cover).
    */
   cutout?: boolean;
+  /**
+   * G30-S1 md.1: kaynak görsel uçuş kutusundan BÜYÜK çiziliyorsa (ör. tam ekran fotoğrafın
+   * tabak bölgesi) görselin tamamının ekran kutusu. Uçan kopya bu kutudaki pikselleri
+   * kendi kutusuna kırparak başlar → ilk karede alttaki görselle birebir (sıçrama yok).
+   */
+  imageRect?: { x: number; y: number; w: number; h: number } | null;
+  /** G30-S1 md.1: uçuş başlangıç köşe yarıçapı (kaynakla aynı; varsayılan 16). */
+  radius?: number;
+  /**
+   * G30-S1 md.1: uçan kopya ekranda GÖRÜNDÜĞÜNDE (görsel yüklendi, ilk kare çizildi) kabuk
+   * çağırır; uçuş yoksa (azaltılmış hareket / konum yok) hemen. Kaynak ekran ancak bundan
+   * sonra kapanır → görsel bir an kaybolup yeniden belirmez.
+   */
+  onStart?: (() => void) | null;
   /** Rozet/toast metni için öğün etiketi, ör. "Öğle". */
   mealLabel?: string | null;
   /** Kaynak: 'kesfet' | 'scan' | 'eatkcal' — vurgu etiketi için. */
