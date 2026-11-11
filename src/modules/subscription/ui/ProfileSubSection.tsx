@@ -1,5 +1,5 @@
 // G22-S1 md.4 — FinSubProfileSoon: Profil'de "kcalAI › Abonelik" satırı + "Yakında" satırları
-// (Egzersiz ve fitness rehberi · Öğün aboneliği; G24-S1: "AI koç" satırı kalktı — koç artık
+// (Öğün aboneliği; G31-S1 md.1: egzersiz/fitness "Yakında" satırı kalktı; G24-S1: "AI koç" satırı kalktı — koç artık
 // Profil'deki "AI Koç" satırından açılır). Yakında olanlar satın alınamaz,
 // hiçbir plana dahil değil (yalnız Profil'de; paywall'da YOK). `abonelik` bayrağı açıkken çizilir.
 // G25-S1 md.3 (A4): "Yakında" bloğu (başlık + satırlar + dipnot) yalnız uzak bayrak
@@ -8,7 +8,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { Barbell, ShoppingBag, Sparkle } from '../../../components/icons';
+import { ShoppingBag, Sparkle } from '../../../components/icons';
 import { FinRow, FinRowGroup, FinSectionLabel } from '../../profil/ui/finUi';
 import { useTier } from '../../../lib/subscription/purchases';
 import { CoachProfileRow } from '../../coach/ui/entries';
@@ -23,7 +23,6 @@ export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
   const nested = t.isDark ? '#2C2C2E' : '#F3F4F6';
   const line2 = t.isDark ? '#48484A' : '#C3C7CC';
   const soon: { icon: React.ReactNode; title: string; sub: string; chip: string }[] = [
-    { icon: <Barbell size={18} color={t.color.ink} />, title: tr('sub.profile.soon_fitness'), sub: tr('sub.profile.soon_sub'), chip: tr('sub.profile.soon_chip') },
     { icon: <ShoppingBag size={18} color={t.color.ink} />, title: tr('sub.profile.soon_meal'), sub: tr('sub.profile.soon_meal_sub'), chip: tr('sub.profile.soon_chip_very') },
   ];
   return (

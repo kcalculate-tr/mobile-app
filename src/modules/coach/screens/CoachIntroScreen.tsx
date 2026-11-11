@@ -71,22 +71,15 @@ export default function CoachIntroScreen() {
           <AppText style={[styles.groupH, { color: c.sec }]} accessibilityRole="header">
             {tr('coach.intro_dont')}
           </AppText>
-          {(['coach.intro_dont1', 'coach.intro_dont2', 'coach.intro_dont3'] as const).map((k) => {
-            const soon = k === 'coach.intro_dont2';
-            return (
-              <View key={k} style={styles.item} accessible accessibilityLabel={soon ? `${tr(k)}, ${tr('coach.intro_soon')}` : tr(k)}>
-                <View style={[styles.mark, { borderWidth: 1.5, borderColor: c.line2 }]}>
-                  <X size={14} color={c.text} />
-                </View>
-                <AppText style={[styles.itemText, { color: c.text }]}>{tr(k)}</AppText>
-                {soon ? (
-                  <View style={[styles.soon, { backgroundColor: c.chip }]}>
-                    <AppText style={[styles.soonText, { color: c.text }]}>{tr('coach.intro_soon')}</AppText>
-                  </View>
-                ) : null}
+          {/* G31-S1 md.1: "Egzersiz programı yazmaz · Yakında" satırı kalktı. */}
+          {(['coach.intro_dont1', 'coach.intro_dont3'] as const).map((k) => (
+            <View key={k} style={styles.item} accessible accessibilityLabel={tr(k)}>
+              <View style={[styles.mark, { borderWidth: 1.5, borderColor: c.line2 }]}>
+                <X size={14} color={c.text} />
               </View>
-            );
-          })}
+              <AppText style={[styles.itemText, { color: c.text }]}>{tr(k)}</AppText>
+            </View>
+          ))}
         </View>
 
         <AppText style={[styles.access, { color: c.sec }]}>{tr('coach.intro_access', { daily, trial })}</AppText>
@@ -113,8 +106,6 @@ const styles = StyleSheet.create({
   item: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 },
   mark: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   itemText: { flex: 1, fontSize: 17, lineHeight: 23, fontWeight: '500' },
-  soon: { borderRadius: 14, paddingHorizontal: 10, minHeight: 26, justifyContent: 'center' },
-  soonText: { fontSize: 13, fontWeight: '600' },
   access: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
   cta: { minHeight: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   ctaText: { fontSize: 17, fontWeight: '700', color: LIME_INK },

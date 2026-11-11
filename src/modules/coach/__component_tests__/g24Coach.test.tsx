@@ -337,12 +337,13 @@ test('Geçmiş boş hâli', async () => {
   expect(r.getByText('Henüz sohbet yok')).toBeTruthy();
 });
 
-test('Tanıtım: ne yapar / ne yapmaz (egzersiz "Yakında"), Başla → sohbet, bir kez', async () => {
+test('Tanıtım: ne yapar / ne yapmaz (egzersiz "Yakında" satırı YOK — G31), Başla → sohbet, bir kez', async () => {
   mockParams = { from: 'profile', prefill: 'x' };
   const r = render(<CoachIntroScreen />);
   expect(r.getByText('Günün durumunu yorumlar')).toBeTruthy();
   expect(r.getByText('Tıbbi tavsiye ya da teşhis vermez')).toBeTruthy();
-  expect(r.getByText('Yakında')).toBeTruthy();
+  expect(r.queryByText('Yakında')).toBeNull();
+  expect(r.queryByText('Egzersiz programı yazmaz')).toBeNull();
   expect(r.getByText('Balance’ta her gün 30 mesaj. Ücretsiz ve Fresh’te 3 deneme mesajı.')).toBeTruthy();
   await act(async () => {
     fireEvent.press(r.getByTestId('coach-intro-start'));

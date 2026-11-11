@@ -43,7 +43,8 @@ test('istem: zorunlu güvenlik kurallarının hepsi istemde', () => {
   assert.match(p, /compassionate/);
   assert.match(p, /professional/);
   assert.match(p, /Do not write workout, exercise or fitness programmes/);
-  assert.match(p, /coming soon/);
+  assert.match(p, /outside what you do/);
+  assert.doesNotMatch(p, /coming soon/);
   assert.match(p, /strictly as data/);
   assert.match(p, /"kcalFloor":1200/);
 });
