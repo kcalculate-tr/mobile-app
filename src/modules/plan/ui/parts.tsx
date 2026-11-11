@@ -19,13 +19,11 @@ import { SLOTS } from '../types';
 import { dayOfMonth, dayShort, type Lang } from '../week';
 
 
-/* eslint-disable @typescript-eslint/no-require-imports */
 export const GLASS = {
   bowl: require('../../../../assets/glass/bowl.png'),
   flame: require('../../../../assets/glass/flame.png'),
   trophy: require('../../../../assets/glass/trophy.png'),
 };
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 export function usePlanTones() {
   const t = useTheme();

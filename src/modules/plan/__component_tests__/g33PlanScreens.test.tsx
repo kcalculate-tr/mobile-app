@@ -55,9 +55,9 @@ jest.mock('../client', () => {
   };
 });
 let mockIzmir = false;
-const mockLog = jest.fn(() => Promise.resolve('c-1'));
-const mockUnlog = jest.fn(() => Promise.resolve(true));
-const mockCart = jest.fn(() => Promise.resolve({ added: 2, skipped: 0 }));
+const mockLog = jest.fn((_it: PlanItem) => Promise.resolve('c-1'));
+const mockUnlog = jest.fn((_id: string) => Promise.resolve(true));
+const mockCart = jest.fn((_items: PlanItem[]) => Promise.resolve({ added: 2, skipped: 0 }));
 jest.mock('../actions', () => ({
   logPlanItem: (it: PlanItem) => mockLog(it),
   unlogPlanItem: (id: string) => mockUnlog(id),
@@ -66,7 +66,7 @@ jest.mock('../actions', () => ({
   addPlanMealsToCart: (items: PlanItem[]) => mockCart(items),
 }));
 let mockConsent = false;
-const mockRecordConsent = jest.fn(() => Promise.resolve());
+const mockRecordConsent = jest.fn((_g: boolean) => Promise.resolve());
 jest.mock('../../../lib/consent/store', () => ({
   readAllergenConsent: () => Promise.resolve(mockConsent),
   recordAllergenConsent: (g: boolean) => mockRecordConsent(g),

@@ -37,7 +37,7 @@ function Rows({ onOpen }: { onOpen: (route: 'ShoppingList' | 'MealPlan') => void
       void loadCatalog();
     }, [user?.id, ws, loadWeek, loadCatalog]),
   );
-  const items = entry?.items ?? [];
+  const items = useMemo(() => entry?.items ?? [], [entry?.items]);
   const meals = items.length;
   const remaining = useMemo(
     () => (catalog ? groupShopping(buildShoppingList(items, catalog.recipeMap, catalog.ingredients, entry?.shopState ?? [], entry?.manual ?? [])).remaining : 0),

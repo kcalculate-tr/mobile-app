@@ -2,7 +2,7 @@
 // eatkcal yalnız İzmir: İzmir dışında "eatkcal şimdilik yalnız İzmir'de" + Tariflere geç.
 // Hareket: sheet 330 enter / 220 exit (Sheet bileşeni, AI yayı), segment değişince liste 220 crossfade.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { AppText, PLAN_MOTION, REDUCED, Sheet, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
@@ -11,7 +11,6 @@ import { formatPrice } from '../../../lib/money';
 import type { EatkcalOption, PlanItem, RecipeInfo, Slot } from '../types';
 import { eatkcalItem, localId, recipeItem } from '../generate';
 import { GLASS, MiniChip, Thumb, usePlanTones } from './parts';
-import { Image } from 'react-native';
 
 type Tab = 'recipe' | 'eatkcal' | 'custom';
 
