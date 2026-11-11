@@ -9,15 +9,16 @@
 // cartStore.addItem); seçim gerekiyorsa ürün detayına (EkProduct) gider.
 // Mağaza puanı / değerlendirme sayısı verisi yok → "★ [N] · [N] değerlendirme"
 // gizli; "Yorumları gör" yalnız onaylı yorum varsa.
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
 import { EkRatingLine, EkSkeleton, ekType, useEk } from '../ui/kit';
 import { EkCartBar, CART_BAR_GAP, CART_BAR_H, cartBarBottom, useCartSummary } from '../ui/home/CartBar';
 import { useEkNav, type EkV2ParamList } from '../nav';
-import { CategoryPill, ProductCard } from '../ui/home/cards';
+import { ProductCard } from '../ui/home/cards';
+import { STORE_BAR_ROW, StoreChips, StorePinnedHeader, storePinAt } from '../ui/store/StoreHeader';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { ReviewsSheet, type ReviewAggregate, type ReviewSubScores } from '../ui/ReviewsSheet';
 import { fetchRestaurantRating, type RestaurantRating } from '../../../../lib/restaurantRating';
@@ -149,12 +150,38 @@ export default function EkStoreScreen() {
   const overlay = theme.isDark ? 'rgba(28,28,30,0.85)' : 'rgba(255,255,255,0.85)';
   const name = brand?.name ?? brandKey;
 
+  // G32-S1 md.2: yapışkan çubuk ScrollView stickyHeader yerine ayrı opak başlık —
+  // güvenli alanın ALTINDAN başlar (durum çubuğu ile çakışmaz), geri + mağaza adı +
+  // çipler tek blok. Akış içi çipler başlıktaki çip satırının hizasına geldiğinde
+  // (storePinAt) başlık görünür; geçiş dikişsizdir.
+  const scrollRef = useRef<ScrollView>(null);
+  const [chipsY, setChipsY] = useState<number | null>(null);
+  const [pinned, setPinned] = useState(false);
+  const pinAt = chipsY == null ? null : storePinAt(chipsY, insets.top);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (pinAt == null) return;
+    const next = e.nativeEvent.contentOffset.y >= pinAt;
+    if (next !== pinned) setPinned(next);
+  };
+  const selectCategory = (n: string | null) => {
+    setCategory(n);
+    // Başlık yapışıkken kategori değişince ızgara başlığın hemen altından başlasın.
+    if (pinned && pinAt != null) scrollRef.current?.scrollTo({ y: pinAt, animated: false });
+  };
+  const back = () => {
+    haptic('selection');
+    navigation.goBack();
+  };
+
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-store">
       <ScrollView {...SCROLL_KEYBOARD}
+        ref={scrollRef}
         style={styles.fill}
-        stickyHeaderIndices={chips.length > 0 ? [2] : undefined}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        testID="ek-store-scroll"
         contentContainerStyle={{
           paddingBottom: cartSummary.count > 0 ? cartBarBottom(insets.bottom, false) + CART_BAR_H + CART_BAR_GAP : insets.bottom + 40,
         }}
@@ -200,19 +227,16 @@ export default function EkStoreScreen() {
           ) : null}
         </View>
 
-        {/* 2 — Yapışkan kategori çipleri */}
+        {/* 2 — Kategori çipleri (akış içi; kaydırınca StorePinnedHeader devralır) */}
         {chips.length > 0 ? (
-          <View style={[styles.sticky, { backgroundColor: c.bg, borderBottomColor: c.line }]}>
-            <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              <CategoryPill label={t('eatkcal.v2.store.all')} selected={category == null} onPress={() => setCategory(null)} />
-              {chips.map((n) => (
-                <CategoryPill key={n} label={n} selected={category === n} onPress={() => setCategory(n)} />
-              ))}
-            </ScrollView>
+          <View
+            style={[styles.chipsInline, { opacity: pinned ? 0 : 1 }]}
+            onLayout={(e) => setChipsY(e.nativeEvent.layout.y)}
+            testID="ek-store-chips-inline"
+          >
+            <StoreChips chips={chips} selected={category} onSelect={selectCategory} />
           </View>
-        ) : (
-          <View />
-        )}
+        ) : null}
 
         {/* 3 — Ürün ızgarası (2 sütun, 172 fotoğraf) */}
         {loading ? (
@@ -262,21 +286,23 @@ export default function EkStoreScreen() {
         )}
       </ScrollView>
 
-      {/* Kapak üstü geri (44, beyaz %85) */}
-      <View style={[styles.topBar, { top: insets.top + 6 }]} pointerEvents="box-none">
-        <Pressable
-          onPress={() => {
-            haptic('selection');
-            navigation.goBack();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={t('eatkcal.v2.common.back')}
-          style={[styles.round, { backgroundColor: overlay }]}
-        >
-          <CaretLeft size={22} color={c.ink} />
-        </Pressable>
-        {/* Tur 26 (FinEkStore): sağ üst sepet düğmesi yok — sepete geçiş yüzen lime çubukta. */}
-      </View>
+      {pinned && chips.length > 0 ? (
+        <StorePinnedHeader name={name} onBack={back} chips={chips} selected={category} onSelect={selectCategory} />
+      ) : (
+        /* Kapak üstü geri (44, beyaz %85) — güvenli alanın altında. Yapışan başlık açıkken başlığa dahil. */
+        <View style={[styles.topBar, { top: insets.top + (STORE_BAR_ROW - 44) / 2 }]} pointerEvents="box-none">
+          <Pressable
+            onPress={back}
+            accessibilityRole="button"
+            accessibilityLabel={t('eatkcal.v2.common.back')}
+            style={[styles.round, { backgroundColor: overlay }]}
+            testID="ek-store-back-floating"
+          >
+            <CaretLeft size={22} color={c.ink} />
+          </Pressable>
+          {/* Tur 26 (FinEkStore): sağ üst sepet düğmesi yok — sepete geçiş yüzen lime çubukta. */}
+        </View>
+      )}
 
       <ReviewsSheet
         visible={reviewsOpen}
@@ -298,22 +324,10 @@ const styles = StyleSheet.create({
   head: { paddingHorizontal: 16, paddingTop: 14, gap: 6 },
   link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   eta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sticky: { marginTop: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  chipRow: { paddingHorizontal: 16, gap: 10 },
+  chipsInline: { marginTop: 12 },
   gutter: { paddingHorizontal: 16, paddingTop: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, paddingTop: 12, rowGap: 16 },
   cell: { width: '50%', paddingHorizontal: 6 },
   topBar: { position: 'absolute', left: 4, right: 4, flexDirection: 'row', justifyContent: 'space-between' },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
