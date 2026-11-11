@@ -1000,14 +1000,27 @@ export default function TrackerScreen() {
   // G19-S2: fetchData bağımlılıkları değişmesin diye bayrak ref'te.
   const yeniKabukRef = useRef(yeniKabuk);
   yeniKabukRef.current = yeniKabuk;
+  // G30-S1 md.3: oturum nesnesi her token yenilemesinde yenilenir (AuthContext setUser) →
+  // bağımlılık kullanıcı KİMLİĞİ; aynı kullanıcı için yeniden çekim/iskelet yok.
+  const userId = user?.id ?? null;
+  const loadedOnceRef = useRef(false);
+  const loadedForRef = useRef<string | null>(userId);
+  if (loadedForRef.current !== userId) {
+    // Hesap değişti → yeni kullanıcının verisi gelene kadar iskelet doğru.
+    loadedForRef.current = userId;
+    loadedOnceRef.current = false;
+  }
   const fetchData = useCallback(
     async (filter: FilterType) => {
-      if (!user) {
+      if (!userId) {
         dispatchUI({ type: 'SET_DATA_LOADING', payload: false });
         return;
       }
 
-      dispatchUI({ type: 'SET_DATA_LOADING', payload: true });
+      // G30-S1 md.3 (stale-while-revalidate): iskelet YALNIZ ilk yüklemede. Sonraki tazelemeler
+      // (token yenilemesi, filtre, odak) mevcut içeriği yerinde günceller — önceden her seferinde
+      // liste FinListSkeleton'a dönüp geri geliyordu ("sayfa kendiliğinden belirip kayboluyor").
+      if (!loadedOnceRef.current) dispatchUI({ type: 'SET_DATA_LOADING', payload: true });
       dispatchUI({ type: 'SET_ERROR_MESSAGE', payload: '' });
 
       try {
@@ -1026,12 +1039,12 @@ export default function TrackerScreen() {
           supabase
             .from('user_nutrition_profiles')
             .select('target_calories,target_protein,target_carbs,target_fat,target_water')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .maybeSingle(),
           supabase
             .from('orders')
             .select('id,order_code,created_at,order_items(quantity,products(name,calories,protein,carbs,fats))')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('status', 'delivered')
             .gte('created_at', start.toISOString())
             .lte('created_at', end.toISOString())
@@ -1039,20 +1052,20 @@ export default function TrackerScreen() {
           supabase
             .from('body_measurements')
             .select('date,weight_kg,waist_cm,hip_cm,chest_cm')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .order('date', { ascending: false })
             .limit(30),
           supabase
             .from('meal_consumptions')
             .select(CONSUMED_SELECT)
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .gte('consumed_at', todayStartISO)
             .lt('consumed_at', tomorrowStartISO)
             .order('consumed_at', { ascending: false }),
           supabase
             .from('meal_consumptions')
             .select('source,source_ref,calories,protein,carbs,fat,consumed_at')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .gte('consumed_at', thirtyDaysAgoISO)
             .lt('consumed_at', tomorrowStartISO),
         ]);
@@ -1151,10 +1164,11 @@ export default function TrackerScreen() {
         }
         dispatchUI({ type: 'SET_ERROR_MESSAGE', payload: mapSupabaseErrorToUserMessage(error, 'Veriler yüklenemedi. Lütfen tekrar deneyin.') });
       } finally {
+        loadedOnceRef.current = true;
         dispatchUI({ type: 'SET_DATA_LOADING', payload: false });
       }
     },
-    [user],
+    [userId],
   );
 
   // Test item temizliği — bir kez çalışır

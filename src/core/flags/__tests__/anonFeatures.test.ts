@@ -26,7 +26,12 @@ test('migration: get_anon_features anon çağrılabilir, kural get_my_features i
 
 test('AppNavigator: oturumsuz açılışta bayraklar çözülene dek splash açık (sınırlı süre)', () => {
   const nav = read('src/navigation/AppNavigator.tsx');
-  assert.match(nav, /const waitFlags = !session && !!flagsCtx && !flagsCtx\.ready;/);
+  // G30-S1 md.3: kural coldStartFeature.shouldWaitFlags'te — oturumsuz: sunucuya kadar; oturumlu:
+  // önbellek/sunucu ya da en çok SESSION_FLAGS_WAIT_MS (açılışta eski→yeni kabuk remount'u yok).
+  assert.match(nav, /const waitFlags = shouldWaitFlags\(\{\s*hasSession: !!session,/);
+  const cold = read('src/navigation/coldStartFeature.ts');
+  assert.match(cold, /if \(a\.ready\) return false;\s*if \(!a\.hasSession\) return true;/);
+  assert.match(cold, /SESSION_FLAGS_WAIT_MS = 1500/);
   assert.match(nav, /if \(authLoading \|\| waitFlags\) return null;/);
   assert.match(nav, /if \(authLoading \|\| waitFlags\) return;\s*SplashScreen\.hideAsync/);
   const prov = read('src/core/flags/FlagsProvider.tsx');

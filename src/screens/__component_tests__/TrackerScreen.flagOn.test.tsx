@@ -27,10 +27,11 @@ jest.mock('@react-navigation/native', () => {
     useFocusEffect: (cb: () => void | (() => void)) => R.useEffect(cb, [cb]),
   };
 });
-jest.mock('../../core/AuthContext', () => {
-  const auth = { user: { id: 'u1', email: 'test@example.com', user_metadata: {} } };
-  return { useAuth: () => auth };
-});
+// G30-S1 md.3: değiştirilebilir — token yenilemesi AYNI kimlikle YENİ user nesnesi verir.
+const mockAuthState: { user: { id: string; email: string; user_metadata: Record<string, unknown> } } = {
+  user: { id: 'u1', email: 'test@example.com', user_metadata: {} },
+};
+jest.mock('../../core/AuthContext', () => ({ useAuth: () => mockAuthState }));
 jest.mock('../../hooks/useRequireAuth', () => ({
   useRequireAuth: () => ({ session: {}, loading: false, isAuthenticated: true }),
 }));
@@ -161,6 +162,7 @@ beforeEach(async () => {
   mockDb.calls = [];
   usePantryStore.setState({ items: [] });
   mockSummary.value = DEFAULT_SUMMARY;
+  mockAuthState.user = { id: 'u1', email: 'test@example.com', user_metadata: {} };
   await AsyncStorage.clear();
 });
 
@@ -478,4 +480,35 @@ describe('G19-S4 md.2: her kullanıcı eylemi tam 1 olay', () => {
     await flush();
     expect(of('log_add')).toEqual([]);
   });
+});
+
+// G30-S1 md.3 — yanıp sönme: veri varken iskelet YOK (stale-while-revalidate). Önceden her
+// token yenilemesinde (yeni user nesnesi) fetchData yeniden kuruluyor, liste FinListSkeleton'a
+// dönüp geri geliyordu.
+test('G30: token yenilemesi (aynı kimlik, yeni user nesnesi) → yeniden çekim ve iskelet YOK', async () => {
+  const tree = render(<TrackerScreen />);
+  expect(tree.queryByTestId('history-skeleton')).toBeTruthy(); // ilk yükleme: iskelet doğru
+  await flush();
+  expect(tree.queryByTestId('history-skeleton')).toBeNull();
+  const reads = () => mockDb.calls.length;
+  const before = reads();
+  mockAuthState.user = { ...mockAuthState.user };
+  tree.rerender(<TrackerScreen />);
+  expect(tree.queryByTestId('history-skeleton')).toBeNull();
+  await flush();
+  expect(tree.queryByTestId('history-skeleton')).toBeNull();
+  expect(tree.getByText('Tavuklu Bowl')).toBeTruthy();
+  expect(reads()).toBe(before);
+});
+
+test('G30: tazeleme sırasında (logFlight) mevcut liste yerinde kalır — iskelet yok', async () => {
+  const tree = render(<TrackerScreen />);
+  await flush();
+  act(() => {
+    emitLogFlight({ id: 'c1', x: 0, y: 0, w: 0, h: 0, mealLabel: 'Öğle' });
+  });
+  expect(tree.queryByTestId('history-skeleton')).toBeNull();
+  await flush();
+  expect(tree.queryByTestId('history-skeleton')).toBeNull();
+  expect(tree.getByText('Tavuklu Bowl')).toBeTruthy();
 });

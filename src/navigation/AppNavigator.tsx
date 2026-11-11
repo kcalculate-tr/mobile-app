@@ -1,4 +1,4 @@
-import React, { Suspense, createContext, lazy, useContext, useEffect, useRef } from 'react';
+import React, { Suspense, createContext, lazy, useContext, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -6,7 +6,8 @@ import { useTheme as useDesignTheme, useReducedMotion } from '../core/design';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../core/AuthContext';
-import { useFeature, useFlagsContext, type FlagKey } from '../core/flags';
+import { useFeature, useFlagsContext } from '../core/flags';
+import { SESSION_FLAGS_WAIT_MS, shouldWaitFlags, useColdStartFeature } from './coldStartFeature';
 
 import { haptic } from '../utils/haptics';
 // G18-S4: geçiş token'ları TEK modülden (FinMoTokens premium geçiş seti). Değerler
@@ -296,16 +297,6 @@ function TabNavigator() {
 // değişiklik navigasyonu BOZMAZ, bir sonraki soğuk açılışta uygulanır. Bayrak
 // henüz çözülmediyse (ready=false) eski kabuk gösterilir (güvenli varsayılan);
 // ilk çözümde değer dondurulur ve bir daha değişmez.
-function useColdStartFeature(key: FlagKey): boolean {
-  const live = useFeature(key);
-  const ctx = useFlagsContext();
-  const ready = ctx ? ctx.ready : true;
-  const frozen = useRef<boolean | undefined>(undefined);
-  if (frozen.current === undefined && ready) {
-    frozen.current = live;
-  }
-  return frozen.current ?? false;
-}
 
 // R3 tab navigatörü — sekme ADLARI bugünküyle aynı (Tracker/Home/Profile), böylece
 // mevcut navigate(...) çağrıları iki kabukta da çalışır. Keşfet sekmesi `kesfet`
@@ -464,7 +455,21 @@ export default function AppNavigator() {
   // ANON_TIMEOUT_MS) çözülene kadar splash açık kalır → yeni kurulumda karşılama /
   // onboarding bayrak kapalıymış gibi ESKİ yoldan açılmaz. Oturum varsa bugünkü gibi.
   const flagsCtx = useFlagsContext();
-  const waitFlags = !session && !!flagsCtx && !flagsCtx.ready;
+  // G30-S1 md.3: oturum varken de kabuk "yeterince bilinene" kadar splash açık: önbellek
+  // okunana kadar (yerel, ms'ler) ve önbellek yoksa en çok SESSION_FLAGS_WAIT_MS sunucu
+  // çözümü beklenir — çevrimdışında açılış takılmaz, süre dolunca güvenli varsayılan.
+  const [sessionWaitOver, setSessionWaitOver] = useState(false);
+  useEffect(() => {
+    if (!session || sessionWaitOver) return;
+    const t = setTimeout(() => setSessionWaitOver(true), SESSION_FLAGS_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [session, sessionWaitOver]);
+  const waitFlags = shouldWaitFlags({
+    hasSession: !!session,
+    ready: flagsCtx ? flagsCtx.ready : true,
+    settled: flagsCtx ? (flagsCtx.settled ?? flagsCtx.ready) : true,
+    sessionWaitOver,
+  });
 
   useEffect(() => {
     if (authLoading || waitFlags) return;
