@@ -1,0 +1,5 @@
+G29-S1 tamam — 2026-11-11
+Commitler: b6604e0 (md.2) 765d6ec (md.1) 3ccdc57 (LOG)
+Kontroller: tsc 0 · hygiene OK · unit 1144/0 · jest 486/486 · expo export iOS + Android OK · prebuild Android manifest OK · PGlite 13/13 · HIG
+Canliya uygulanacak: supabase/migrations/20261111233100_g29_sticker_path.sql (yalniz dosya). Yeni native derleme gerekir.
+LOG: docs/night/G29-S1-LOG.md
