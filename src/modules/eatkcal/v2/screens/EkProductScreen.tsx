@@ -435,7 +435,7 @@ export default function EkProductScreen() {
   // ── Durumlar ────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product-skeleton">
+      <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top }]} testID="ek-product-skeleton">
         <EkSkeleton height={HERO_H} radius={0} />
         <View style={{ padding: 16, gap: 12 }}>
           <EkSkeleton height={14} width="30%" />
@@ -479,6 +479,10 @@ export default function EkProductScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product">
+      {/* G32-S1 md.3: güvenli alan kadar DÜZ, BOŞ, opak üst bant (tema zemini) — görsel
+          çentik / Dynamic Island / durum çubuğunun altına taşmaz; ScrollView bandın
+          altından başladığı için kaydırınca da bant aynı kalır (iOS + Android edge-to-edge). */}
+      <View style={{ height: insets.top, backgroundColor: c.bg }} testID="ek-product-safe-top" />
       <ScrollView {...SCROLL_KEYBOARD}
         ref={scrollRef}
         style={styles.fill}
@@ -493,7 +497,7 @@ export default function EkProductScreen() {
           ) : (
             <View style={[styles.hero, { backgroundColor: c.line }]} />
           )}
-          <View style={[styles.heroBar, { top: insets.top + 6 }]}>
+          <View style={styles.heroBar} testID="ek-product-herobar">
             <Pressable
               onPress={() => navigation.goBack()}
               accessibilityRole="button"
@@ -611,7 +615,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   hero: { width: '100%', height: HERO_H },
-  heroBar: { position: 'absolute', left: 4, right: 4, flexDirection: 'row', justifyContent: 'space-between' },
+  // Geri düğmesi görselin üst-solunda; görsel zaten safe area altından başladığı için çakışmaz.
+  heroBar: { position: 'absolute', top: 8, left: 4, right: 4, flexDirection: 'row', justifyContent: 'space-between' },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   desc: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 20 },
   bold: { fontFamily: fontFamily.bodyBold },
