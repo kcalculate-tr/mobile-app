@@ -194,4 +194,4 @@ Privacy Policy: https://legal.eatkcal.com/en/legal/privacy
 |---|---|---|
 | Uygulama simgesi | 512×512 PNG | `assets/icon.png` kaynağından dışa aktar |
 | Öne çıkan görsel | 1024×500 | `docs/store/shots/play/tr/feature.png`, `…/en/feature.png` |
-| Telefon ekran görüntüleri | 6 adet, 1080×1920 | `docs/store/shots/play/{tr,en}/01–06.png` (EKRAN_GORUNTUSU_PLANI.md) |
+| Telefon ekran görüntüleri | 7 adet, 1080×1920 (03 = kcalAI Koç) | `docs/store/shots/play/{tr,en}/01–07.png` (EKRAN_GORUNTUSU_PLANI.md) |

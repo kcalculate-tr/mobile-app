@@ -81,6 +81,8 @@ async function prep(page, s) {
       st.textContent = s.css;
       document.head.appendChild(st);
     }
+    // 5) layout hook for tall boards (e.g. coach chat: crop to one phone screen)
+    if (s.js) new Function(s.js)();
   }, s);
   await page.waitForTimeout(500);
 }

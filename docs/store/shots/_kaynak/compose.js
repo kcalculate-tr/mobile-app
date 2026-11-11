@@ -1,6 +1,6 @@
 // Store screenshot compositor: headline on top + phone frame (HTML template -> PNG).
 // Usage: node compose.js <phonesDir> <outRoot>
-//   phonesDir: 1179x2556 frames from phone.js ({tr,en}-NN.png)
+//   phonesDir: 1179x2556 frames from phone.js ({tr,en}-NN.png, 7 per language; feature graphic uses 04 = home)
 //   outRoot:   docs/store/shots  -> {ios,play}/{tr,en}/NN.png (6.9" = ios/{lang}/NN.png, 6.5" = ios/{lang}/65/NN.png, play feature.png)
 const { chromium } = require('/Users/ilterozisseven/dev/kcal-research/node_modules/playwright');
 const fs = require('fs');
@@ -13,6 +13,7 @@ const COPY = {
   tr: [
     ['Fotoğraf çek, kaloriyi öğren', 'Yapay zekâ tabaktaki her yiyeceği ayırır, gramı sen düzeltirsin.'],
     ['Yaz, söyle ya da barkod okut', 'Fotoğraf istemeyen öğünler de saniyeler içinde günlüğünde.'],
+    ['Koçuna sor: kalan kalorine göre ne yesem?', 'kcalAI Koç gününe bakıp öğün önerir. Balance’ta günde 30 mesaj.'],
     ['Günün tek bakışta', 'Kalori, makro ve su halkaları ana sayfanda.'],
     ['İzmir’de makrosu hesaplı öğün kapında', 'eatkcal mutfağından. Teslim edilen öğün günlüğüne kendiliğinden işlenir.'],
     ['Topluluktan tarif ve öğün keşfet', 'Beğendiğin tabağı tek dokunuşla gününe ekle.'],
@@ -21,6 +22,7 @@ const COPY = {
   en: [
     ['Snap a photo, get calories', 'AI spots each food on your plate. You fine-tune the grams.'],
     ['Type, talk or scan a barcode', 'No photo? Log a meal in seconds anyway.'],
+    ['Ask your coach what to eat', 'kcalAI Coach looks at your day and suggests meals. 30 messages a day on Balance.'],
     ['Your day at a glance', 'Calorie, macro and water rings on your home screen.'],
     ['Track your progress', 'Eaten, burned and what’s left, every day.'],
     ['Discover meals from the community', 'Like a plate? Add it to your day in one tap.'],
@@ -104,7 +106,7 @@ function feature({ lang, img }) {
     await pg.close();
   };
   for (const lang of ['tr', 'en']) {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < COPY[lang].length; i++) {
       const nn = String(i + 1).padStart(2, '0');
       const img = path.join(phones, `${lang}-${nn}.png`);
       const [title, sub] = COPY[lang][i];
@@ -113,7 +115,7 @@ function feature({ lang, img }) {
         await render(page({ w: s.w, h: s.h, title, sub, img: 'file://' + img, dark: i % 2 === 1, play: s.dir === 'play' }), s.w, s.h, out);
       }
     }
-    await render(feature({ lang, img: 'file://' + path.join(phones, `${lang}-03.png`) }), 1024, 500, path.join(outRoot, 'play', lang, 'feature.png'));
+    await render(feature({ lang, img: 'file://' + path.join(phones, `${lang}-04.png`) }), 1024, 500, path.join(outRoot, 'play', lang, 'feature.png'));
   }
   await b.close();
 })();
