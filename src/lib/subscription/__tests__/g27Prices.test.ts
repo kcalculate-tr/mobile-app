@@ -50,6 +50,8 @@ test('haftalık karşılıklar mağaza fiyatından ve kartlarda TL biçiminde', 
     ],
   );
   assert.equal(Math.round(weeklyPrice(P('x', 199), false) * 100) / 100, 45.92);
+  // G33-S1 md.2: yıllık kartta "ayda N TL" (TL tam sayı) — 999,99/12 → 83, 2999,99/12 → 250.
+  assert.deepEqual(cards!.map((c) => c.monthlyText), [null, '83 TL', null, '250 TL']);
 });
 
 function trackedSources(): string[] {

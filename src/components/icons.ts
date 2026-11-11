@@ -19,6 +19,8 @@ export type { Icon, IconProps } from 'phosphor-react-native';
 export { AppleLogo } from 'phosphor-react-native/lib/commonjs/icons/AppleLogo';
 export { ArrowCounterClockwise } from 'phosphor-react-native/lib/commonjs/icons/ArrowCounterClockwise';
 export { ArrowLeft } from 'phosphor-react-native/lib/commonjs/icons/ArrowLeft';
+// G33-S1 — Alışveriş listesi düzenle (sil).
+export { MinusCircle } from 'phosphor-react-native/lib/commonjs/icons/MinusCircle';
 // G24-S1 — kcalAI Koç (gönder, seçenekler, uzmana danış).
 export { ArrowUp } from 'phosphor-react-native/lib/commonjs/icons/ArrowUp';
 export { DotsThree } from 'phosphor-react-native/lib/commonjs/icons/DotsThree';

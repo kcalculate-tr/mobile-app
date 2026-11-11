@@ -28,7 +28,9 @@ import { UnderageView } from '../components/UnderageView';
 import { useOnb } from '../components/onbTheme';
 import { useTbDraft } from './draft';
 import {
-  PACE_OPTIONS,
+  allowedPaces,
+  canChooseLose,
+  clampPace,
   computeResult,
   goalNeedsPace,
   isUnderage,
@@ -137,10 +139,12 @@ function TbFrame({
 function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
-  const { goal, setGoal } = useTbDraft();
+  const { goal, setGoal, heightCm, weightKg } = useTbDraft();
   const GOALS: TbGoal[] = ['lose', 'maintain', 'gain', 'regular'];
+  // G33-S1: BMI < 18,5 biliniyorsa (hedef düzenleme) "Kilo ver" kapalı.
+  const loseOk = canChooseLose(heightCm, weightKg);
   // Final: "Kilo ver" önceden seçili.
-  const [sel, setSel] = useState<TbGoal>(goal ?? 'lose');
+  const [sel, setSel] = useState<TbGoal>(goal && (goal !== 'lose' || loseOk) ? goal : loseOk ? 'lose' : 'maintain');
 
   const next = () => {
     setGoal(sel);
@@ -160,7 +164,14 @@ function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'
       <OnbLead style={{ marginBottom: 16 }}>{i18n.t('tb.goal.sub')}</OnbLead>
       <View style={styles.rows}>
         {GOALS.map((g) => (
-          <OptionRow key={g} title={i18n.t(`tb.goal.${g}`)} selected={sel === g} onPress={() => setSel(g)} />
+          <OptionRow
+            key={g}
+            title={i18n.t(`tb.goal.${g}`)}
+            desc={g === 'lose' && !loseOk ? i18n.t('tb.goal.lose_off') : undefined}
+            disabled={g === 'lose' && !loseOk}
+            selected={sel === g}
+            onPress={() => setSel(g)}
+          />
         ))}
       </View>
     </TbFrame>
@@ -179,8 +190,11 @@ export function paceProjection(): string | null {
 function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
-  const { pace, setPace } = useTbDraft();
+  const { pace, setPace, weightKg } = useTbDraft();
   const fmt = (p: Pace) => (i18n.lang === 'tr' ? String(p).replace('.', ',') : String(p));
+  // G33-S1: üst sınır 0,75 kg/hafta; kilo biliniyorsa kilonun %1'ini aşan tempo seçilemez.
+  const options = allowedPaces(weightKg);
+  const value = clampPace(pace, weightKg);
   const projection = paceProjection();
 
   return (
@@ -190,18 +204,26 @@ function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'
       glass={GLASS.flame}
       onBack={() => navigation.goBack()}
       onSkip={() => tbSkipOut(root)}
-      footer={<OnbButton label={i18n.t('tb.continue')} onPress={() => navigation.navigate('TbAbout')} />}
+      footer={
+        <OnbButton
+          label={i18n.t('tb.continue')}
+          onPress={() => {
+            if (value !== pace) setPace(value);
+            navigation.navigate('TbAbout');
+          }}
+        />
+      }
     >
       <OnbTitle>{i18n.t('tb.pace.title')}</OnbTitle>
       <OnbLead style={{ marginBottom: 16 }}>{i18n.t('tb.pace.sub')}</OnbLead>
       <PaceSlider
-        options={PACE_OPTIONS}
-        value={pace}
+        options={options}
+        value={value}
         onChange={setPace}
         format={fmt}
         unit={i18n.t('tb.pace.unit')}
         minLabel={i18n.t('tb.pace.min')}
-        maxLabel={i18n.t('tb.pace.max')}
+        maxLabel={fmt(options[options.length - 1]) + ' kg'}
       />
       {/* G25-S1 md.8 (A11): hedef kilo bu akışta sorulmadığından tarih hesaplanamaz → satır GİZLİ
           (eskiden "—" yer tutucu). Tahmin üretilirse (paceProjection) satır kendiliğinden görünür. */}
@@ -233,6 +255,11 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
     d.setBirthYear(birth);
     d.setHeightCm(height);
     d.setWeightKg(weight);
+    // G33-S1: tempo kilodan önce soruluyor → kilo gelince %1 sınırına indir; BMI < 18,5'te
+    // "Kilo ver" kapalı → hedef "Kilo koru"ya döner.
+    const capped = clampPace(d.pace, weight);
+    if (capped !== d.pace) d.setPace(capped);
+    if (d.goal === 'lose' && !canChooseLose(height, weight)) d.setGoal('maintain');
     if (isUnderage(birth, nowYear())) {
       navigation.navigate('TbUnderage');
       return;

@@ -230,6 +230,106 @@ export const REDUCED = {
   maxShift: 8,
 } as const;
 
+/**
+ * G33-S1 md.9 — Öğün planı hareketi (docs/tur26mn/01-ogun-plani-hareket.png tablosu BİREBİR,
+ * FinMoTokens ×1,1: instant 110 · fast 220 · base 330 · slow 550 · story 990). Ekranlar süre
+ * yazmaz; buradan okur. Azaltılmış harekette: yalnız opaklık, REDUCED.duration (220).
+ */
+/**
+ * G33-S1 md.2 — Paywall (Tur 26n, İlter kararı): onboarding'deki gibi hareketli bulanık yeşil zemin +
+ * üst ikon hafif süzülür. İkisi de SÜREKLİ döngü (karar gereği istisna); azaltılmış harekette durur.
+ * Süzülme FinMoTokens "süzülme 3200" döngüsü; zemin ışıkları yavaş kayma (9000, ±24 pt).
+ */
+export const PAYWALL_MOTION = {
+  floatPeriod: 3200,
+  floatAmp: 6,
+  driftPeriod: 9000,
+  driftShift: 24,
+} as const;
+
+/** Sürekli hafif süzülme (paywall üst ikonu). Azaltılmışta sabit (0). */
+export function useLoopFloat(amp: number = PAYWALL_MOTION.floatAmp): { style: MotionStyle } {
+  const reduced = useReducedMotion();
+  const f = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) {
+      cancelAnimation(f);
+      f.value = withTiming(0, { duration: REDUCED.duration });
+      return;
+    }
+    f.value = 0;
+    f.value = withRepeat(withTiming(1, { duration: PAYWALL_MOTION.floatPeriod / 2, easing: CURVE.standard }), -1, true);
+    return () => cancelAnimation(f);
+  }, [reduced, f]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(f.value, [0, 1], [-amp, amp]) }] }));
+  return { style };
+}
+
+/** Zemin ışığı yavaş kayma (x/y ters fazlı). Azaltılmışta sabit. */
+export function useDrift(phase: 0 | 1 = 0): { style: MotionStyle } {
+  const reduced = useReducedMotion();
+  const d = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) {
+      cancelAnimation(d);
+      d.value = 0;
+      return;
+    }
+    d.value = 0;
+    d.value = withRepeat(withTiming(1, { duration: PAYWALL_MOTION.driftPeriod / 2, easing: CURVE.standard }), -1, true);
+    return () => cancelAnimation(d);
+  }, [reduced, d]);
+  const k = phase ? -1 : 1;
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(d.value, [0, 1], [-PAYWALL_MOTION.driftShift * k, PAYWALL_MOTION.driftShift * k]) },
+      { translateY: interpolate(d.value, [0, 1], [PAYWALL_MOTION.driftShift * k * 0.6, -PAYWALL_MOTION.driftShift * k * 0.6]) },
+    ],
+  }));
+  return { style };
+}
+
+export const PLAN_MOTION = {
+  /** Gün değişimi: çip basma 110, eski/yeni gün aynı yerde crossfade 220 (standard), kaydırma yok. Haptik: seçim. */
+  chipPress: DURATION.instant,
+  dayCrossfade: DURATION.fast,
+  /** Slot ekle: scrim %40 220, sheet alttan 330 enter, kapanış 220 exit, segment değişimi liste crossfade 220. */
+  scrim: DURATION.fast,
+  scrimOpacity: 0.4,
+  sheetIn: DURATION.base,
+  sheetOut: DURATION.fast,
+  segment: DURATION.fast,
+  /** Logla izi: buton 220 → "Loglandı"; 14 pt lime nokta 550 enter, yay çizerek gün toplamına, ölçek 1 → 0,45;
+   *  varışta değer 1 → 1,14 → 1 (AI yayı 260/24), dizi 990'da yerleşir. Haptik: başarı. */
+  logButton: DURATION.fast,
+  logDot: DURATION.slow,
+  logSettle: DURATION.story,
+  logDotSize: 14,
+  logDotScaleTo: 0.45,
+  logValuePeak: 1.14,
+  /** Bildirim + Geri al: cam bildirim alttan y 16 → 0 + opaklık; giriş 220 (110 gecikme) enter, çıkış 220 exit; 4400 ms kalır. */
+  toastIn: DURATION.fast,
+  toastDelay: DURATION.instant,
+  toastOut: DURATION.fast,
+  toastHold: 4400,
+  toastShift: 16,
+  /** Plan oluşturma (Balance): satır aralığı 550, satır 330 (y 8 → 0), kase 550 AI yayı 0,9 → 1, halka 990 döngü. */
+  genRowGapBalance: DURATION.slow,
+  /** Plan oluşturma (Fresh): satır aralığı 330, satır 330. */
+  genRowGapFresh: DURATION.base,
+  genRow: DURATION.base,
+  genRowShift: 8,
+  genBowl: DURATION.slow,
+  genBowlFrom: 0.9,
+  genRing: DURATION.story,
+  /** Planı uygula: sheet kapanış 220 exit; haftanın doluluk noktaları soldan sağa 220, 55 kademe. */
+  applyClose: DURATION.fast,
+  applyDot: DURATION.fast,
+  applyStagger: 55,
+  /** Yeniden oluştur: gün kartları solar 220 exit, akış baştan. */
+  regen: DURATION.fast,
+} as const;
+
 // ---------------------------------------------------------------------------
 // FinMoMap — UYGULAMA GENELİ GEÇİŞ YAPILANDIRMALARI (v2)
 // Ekran/sheet/modal gibi gezinme düzeyi hareketler. Navigatör ve BottomSheet

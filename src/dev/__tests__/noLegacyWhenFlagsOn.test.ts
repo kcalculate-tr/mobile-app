@@ -172,6 +172,10 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   CoachIntro: { kind: 'final', file: 'modules/coach/screens/CoachIntroScreen.tsx' },
   CoachChat: { kind: 'final', file: 'modules/coach/screens/CoachChatScreen.tsx' },
   CoachHistory: { kind: 'final', file: 'modules/coach/screens/CoachHistoryScreen.tsx' },
+  // G33-S1 — Öğün planı + alışveriş listesi (`ogun_plani` bayrağı).
+  MealPlan: { kind: 'final', file: 'modules/plan/screens/MealPlanScreen.tsx' },
+  MealPlanGenerate: { kind: 'final', file: 'modules/plan/screens/PlanGenerateScreen.tsx' },
+  ShoppingList: { kind: 'final', file: 'modules/plan/screens/ShoppingListScreen.tsx' },
   EatCatalog: { kind: 'finalRoute' },
 };
 

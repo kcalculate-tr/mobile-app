@@ -2,6 +2,9 @@
 // satırı (Balance günde N · Free/Fresh N deneme), "Başla" → sohbet (push; açılan parametreler
 // — önceden doldurulmuş soru, bağlam — sohbete aynen geçer). Kapat → geri.
 // Hareket: sayfa alttan (navigatör AI_MODAL); kase + alev 110 gecikmeyle 0.9 → 1 (azaltılmışta 220 opaklık).
+// G33-S1 md.3 (Tur 26n "Koç tanıtımı"): sayfa tutamacı + küçük kapat; başlık 26, alt satır 15; "Ne yapar /
+// Ne yapmaz" kartları küçük başlık (13) + 15 pt satırlar; erişim satırı ortada; "Başla" en altta (boşluk
+// esner), altında "Koç tıbbi tavsiye vermez." Egzersiz satırı ve "Yakında" çipi YOK (G31).
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
@@ -40,13 +43,16 @@ export default function CoachIntroScreen() {
   return (
     <View style={[styles.fill, { backgroundColor: c.card }]} testID="coach-intro">
       <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.grabber, { backgroundColor: c.line2 }]} accessibilityElementsHidden importantForAccessibility="no" />
         <View style={styles.top}>
-          <Pressable onPress={() => nav.goBack()} accessibilityRole="button" accessibilityLabel={tr('coach.close')} style={[styles.close, { backgroundColor: c.chip }]} testID="coach-intro-close">
-            <X size={20} color={c.text} />
+          <Pressable onPress={() => nav.goBack()} accessibilityRole="button" accessibilityLabel={tr('coach.close')} style={styles.close} testID="coach-intro-close">
+            <View style={[styles.closeDot, { backgroundColor: c.chip }]}>
+              <X size={14} color={c.text} />
+            </View>
           </Pressable>
         </View>
         <Animated.View entering={reduced ? FadeIn.duration(REDUCED.duration) : ZoomIn.delay(DURATION.instant).duration(DURATION.slow).springify().stiffness(260).damping(24)} style={styles.center}>
-          <CoachGlass size={130} />
+          <CoachGlass size={104} />
         </Animated.View>
         <AppText style={[styles.title, { color: c.text }]} accessibilityRole="header">
           {tr('coach.name')}
@@ -60,7 +66,7 @@ export default function CoachIntroScreen() {
           {['coach.intro_do1', 'coach.intro_do2', 'coach.intro_do3'].map((k) => (
             <View key={k} style={styles.item} accessible accessibilityLabel={tr(k)}>
               <View style={[styles.mark, { backgroundColor: LIME }]}>
-                <Check size={16} color={LIME_INK} weight="bold" />
+                <Check size={12} color={LIME_INK} weight="bold" />
               </View>
               <AppText style={[styles.itemText, { color: c.text }]}>{tr(k)}</AppText>
             </View>
@@ -75,7 +81,7 @@ export default function CoachIntroScreen() {
           {(['coach.intro_dont1', 'coach.intro_dont3'] as const).map((k) => (
             <View key={k} style={styles.item} accessible accessibilityLabel={tr(k)}>
               <View style={[styles.mark, { borderWidth: 1.5, borderColor: c.line2 }]}>
-                <X size={14} color={c.text} />
+                <X size={10} color={c.text} />
               </View>
               <AppText style={[styles.itemText, { color: c.text }]}>{tr(k)}</AppText>
             </View>
@@ -83,6 +89,7 @@ export default function CoachIntroScreen() {
         </View>
 
         <AppText style={[styles.access, { color: c.sec }]}>{tr('coach.intro_access', { daily, trial })}</AppText>
+        <View style={styles.grow} />
 
         <Pressable onPress={start} accessibilityRole="button" style={[styles.cta, { backgroundColor: LIME }]} testID="coach-intro-start">
           <AppText style={styles.ctaText}>{tr('coach.intro_start')}</AppText>
@@ -95,18 +102,21 @@ export default function CoachIntroScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  body: { paddingHorizontal: 20, gap: 14 },
-  top: { flexDirection: 'row', justifyContent: 'flex-end' },
-  close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  body: { flexGrow: 1, paddingHorizontal: 20, gap: 12 },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, marginTop: -2 },
+  top: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: -14, marginBottom: -18 },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  closeDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center' },
-  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 36, textAlign: 'center' },
-  line: { fontSize: 17, lineHeight: 23, textAlign: 'center' },
-  group: { borderRadius: 24, padding: 16, gap: 12 },
-  groupH: { fontSize: 15, fontWeight: '600' },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 },
-  mark: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  itemText: { flex: 1, fontSize: 17, lineHeight: 23, fontWeight: '500' },
-  access: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  cta: { minHeight: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 26, lineHeight: 32, textAlign: 'center', marginTop: -4 },
+  line: { fontSize: 15, lineHeight: 21, textAlign: 'center', marginTop: -6, paddingHorizontal: 12 },
+  group: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
+  groupH: { fontSize: 13, lineHeight: 17, fontWeight: '500' },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 28 },
+  mark: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  itemText: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '400' },
+  access: { fontSize: 13, lineHeight: 18, textAlign: 'center', paddingHorizontal: 18 },
+  grow: { flexGrow: 1, minHeight: 16 },
+  cta: { minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   ctaText: { fontSize: 17, fontWeight: '700', color: LIME_INK },
 });

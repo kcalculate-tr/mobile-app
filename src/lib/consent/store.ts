@@ -294,3 +294,36 @@ export async function recordHealthConsent(granted: boolean, source: Extract<Cons
   emit();
   return true;
 }
+
+// ── G33-S1: alerjen açık rızası (Öğün planı › Planı benim için oluştur) ──────────
+// Alerjen bilgisi sağlık verisidir → G27 altyapısı (kind 'health_data', yan kuyruk) ile AYRI satır,
+// source 'meal_plan' (migration 20261112100100_g33_meal_plan CHECK'e ekler). Cihaz anahtarı ayrı:
+// Takibe başla sağlık rızası alerjen seçimini KAPSAMAZ (ayrı açık rıza kartı).
+export const ALLERGEN_CONSENT_KEY = '@kcal_allergen_consent';
+export const ALLERGEN_CONSENT_VERSION = 1;
+
+export async function readAllergenConsent(): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(ALLERGEN_CONSENT_KEY);
+    const v = raw ? (JSON.parse(raw) as { granted?: unknown; v?: unknown }) : null;
+    return !!v && v.granted === true && Number(v.v) >= ALLERGEN_CONSENT_VERSION;
+  } catch {
+    return false;
+  }
+}
+
+export async function recordAllergenConsent(granted: boolean): Promise<void> {
+  const at = new Date().toISOString();
+  try {
+    await AsyncStorage.setItem(ALLERGEN_CONSENT_KEY, JSON.stringify({ granted, v: ALLERGEN_CONSENT_VERSION, at }));
+  } catch {
+    /* cihaz kaydı yazılamadı */
+  }
+  await queueSideRows([
+    { kind: 'health_data', doc_slug: null, doc_version: null, granted, source: 'meal_plan', platform: platform(), app_version: appVersion(), created_at: at },
+  ]);
+  const uid = await currentUserId();
+  if (uid) await flushPending(uid);
+  emit();
+}
+

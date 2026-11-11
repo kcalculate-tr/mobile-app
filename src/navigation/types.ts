@@ -89,6 +89,10 @@ export type RootStackParamList = {
   CoachIntro: import('../modules/coach/types').CoachChatParams | undefined;
   CoachChat: import('../modules/coach/types').CoachChatParams | undefined;
   CoachHistory: undefined;
+  // G33-S1 — Öğün planı (`ogun_plani` bayrağı).
+  MealPlan: import('../modules/plan/screens/MealPlanScreen').MealPlanParams;
+  MealPlanGenerate: import('../modules/plan/screens/PlanGenerateScreen').PlanGenerateParams;
+  ShoppingList: import('../modules/plan/screens/ShoppingListScreen').ShoppingListParams;
   // eatkcal ilk sipariş şehir kapısı sonrası mevcut sipariş akışı (G6-S4) —
   // bugünkü HomeScreen'i AYNEN yeniden kullanır, yeni bir katalog YAZILMADI.
   EatCatalog: undefined;

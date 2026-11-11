@@ -13,6 +13,18 @@ import { FinRow, FinRowGroup, FinSectionLabel } from '../../profil/ui/finUi';
 import { useTier } from '../../../lib/subscription/purchases';
 import { CoachProfileRow } from '../../coach/ui/entries';
 import { useFeature } from '../../../core/flags';
+import { GlassSparkle } from './GlassSparkle';
+
+/**
+ * G33-S1 md.1 (Tur 26n FinPrProfile): Abonelik satırı Profil'in "Kcalculate AI" grubunun İÇİNDE —
+ * özel yeşil cam ikon + "kcalAI planları" + mevcut plan. Ayrı "kcalAI" bölümü yok.
+ */
+export function ProfileSubRow({ onOpen }: { onOpen: () => void }) {
+  const { t: tr } = useT();
+  const { tier } = useTier();
+  const value = tier === 'free' ? tr('sub.profile.free_name') : tier === 'fresh' ? 'Fresh' : 'Balance';
+  return <FinRow icon={<GlassSparkle size={20} />} label={tr('sub.profile.row')} sub={tr('sub.profile.row_sub')} value={value} onPress={onOpen} testID="profile-sub-row" />;
+}
 
 export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
   const t = useTheme();

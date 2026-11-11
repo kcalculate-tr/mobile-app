@@ -18,6 +18,7 @@ import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo'
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
+import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -39,6 +40,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g26jTr,
     // G24-S1 — kcalAI Koç.
     coach: coachTr,
+    // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
+    plan: planTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -227,6 +230,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         maintain: 'Kilo koru',
         gain: 'Kas yap',
         regular: 'Daha düzenli beslen',
+        lose_off: 'Vücut kitle indeksin 18,5’in altında; kilo verme hedefi kapalı.',
       },
       pace: {
         title: 'Tempo',
@@ -234,7 +238,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         unit: 'kg / hafta',
         projection: 'Bu tempoyla hedefine',
         min: '0,25 kg',
-        max: '1 kg',
+        max: '0,75 kg',
       },
       about: {
         title: 'Seni tanıyalım',
@@ -1946,6 +1950,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     kesfetSearch: kesfetSearchEn,
     ...g26jEn,
     coach: coachEn,
+    plan: planEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',
@@ -2128,6 +2133,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         maintain: 'Maintain weight',
         gain: 'Build muscle',
         regular: 'Eat more regularly',
+        lose_off: 'Your BMI is below 18.5, so the weight loss goal is off.',
       },
       pace: {
         title: 'Pace',
@@ -2135,7 +2141,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         unit: 'kg / week',
         projection: 'At this pace, your goal by',
         min: '0.25 kg',
-        max: '1 kg',
+        max: '0.75 kg',
       },
       about: {
         title: 'Let’s get to know you',

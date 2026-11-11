@@ -78,7 +78,9 @@ import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
 import { tabBarContentInset } from '../../../shell';
 import { useFeature } from '../../../../core/flags';
 import { resetToSignedOut } from '../../../../navigation/signOutReset';
-import ProfileSubSection from '../../../subscription/ui/ProfileSubSection';
+import { ProfileSubRow } from '../../../subscription/ui/ProfileSubSection';
+import { CoachProfileRow } from '../../../coach/ui/entries';
+import { ProfilePlanRows } from '../../../plan/ui/ProfilePlanRows';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
@@ -139,6 +141,8 @@ export default function FinPrProfileScreen() {
   const [handle, setHandle] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
   const [savedCardsEnabled, setSavedCardsEnabled] = useState(false);
+  // G33-S1 md.1: Hedefim kartında hedef özeti ("Kilo ver") — user_nutrition_profiles.goal.
+  const [goalType, setGoalType] = useState<string | null>(null);
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   const [macroSettings, setMacroSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
   const { summary } = useNutritionSummary();
@@ -155,6 +159,12 @@ export default function FinPrProfileScreen() {
       .select('avatar_url, handle, is_private')
       .eq('id', user.id)
       .maybeSingle();
+    void supabase
+      .from('user_nutrition_profiles')
+      .select('goal')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data: np }) => setGoalType(((np as { goal?: string | null } | null)?.goal as string | null) ?? null), () => {});
     if (data) {
       setAvatarUrl((data as { avatar_url?: string | null }).avatar_url ?? null);
       setHandle((data as { handle?: string | null }).handle ?? null);
@@ -229,8 +239,9 @@ export default function FinPrProfileScreen() {
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
           <FinSectionLabel>{tr('profil.section_ai')}</FinSectionLabel>
           <FinRowGroup>
-            {/* G14-S1 — Hedefim kartı (FinPrProfile): halka + hedef + "Hedefi düzenle". */}
-            <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {/* G33-S1 md.1 (Tur 26n FinPrProfile) — TEK kart: halka + "Hedefim" + hedef özeti + "Hedefi düzenle".
+                Kişisel plan (26o) gelince aynı karta bağlanır. */}
+            <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }} testID="profile-goal-card">
               <Svg width={44} height={44}>
                 <Circle cx={22} cy={22} r={17} fill="none" stroke={t.color.line} strokeWidth={5} />
                 {goalRatio > 0 ? (
@@ -254,15 +265,23 @@ export default function FinPrProfileScreen() {
                 <AppText variant="heading" style={{ fontSize: 18, lineHeight: 23 }}>
                   {summary?.targetKcal ? tr('profil.goal_per_day', { n: summary.targetKcal }) : '—'}
                 </AppText>
+                {goalType ? (
+                  <AppText tone="secondary" style={{ fontSize: 13, lineHeight: 17 }} testID="profile-goal-type">
+                    {tr(goalType === 'lose_weight' ? 'tb.goal.lose' : goalType === 'gain_weight' ? 'tb.goal.gain' : 'tb.goal.maintain')}
+                  </AppText>
+                ) : null}
               </View>
               <TouchableOpacity
                 onPress={() => navigation.navigate('TakibeBasla', { editGoal: true })}
                 accessibilityRole="button"
-                style={{ height: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: t.color.line, justifyContent: 'center' }}
+                style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: t.color.line, justifyContent: 'center' }}
               >
                 <AppText style={{ fontSize: 14, fontWeight: '600' }}>{tr('profil.edit_goal')}</AppText>
               </TouchableOpacity>
             </View>
+            {/* Abonelik (özel yeşil cam ikon + mevcut plan) ve AI Koç (Balance hapı) — ayrı kcalAI bölümü YOK. */}
+            {aboneligiGoster ? <ProfileSubRow onOpen={() => (navigation as any).navigate('SubProfile')} /> : null}
+            <CoachProfileRow />
             <FinRow
               icon={<ChartLine size={18} color={t.color.ink} />}
               label={tr('profil.progress')}
@@ -283,14 +302,11 @@ export default function FinPrProfileScreen() {
                 onPress={() => openSub('collection')}
               />
             )}
+            {/* G33-S1: Alışveriş listesi + Öğün planı (`ogun_plani` bayrağı; değerler bu haftanın planından). */}
+            <ProfilePlanRows onOpen={(route) => (navigation as any).navigate(route)} />
           </FinRowGroup>
+          {/* G31 kararı: "Yakında · Egzersiz ve fitness rehberi" satırı YOK. */}
         </View>
-
-        {aboneligiGoster ? (
-          <View style={{ paddingHorizontal: 16 }}>
-            <ProfileSubSection onOpen={() => (navigation as any).navigate('SubProfile')} />
-          </View>
-        ) : null}
 
         <View style={{ paddingHorizontal: 16, gap: 10 }}>
           <FinSectionLabel>{tr('profil.section_eatkcal')}</FinSectionLabel>

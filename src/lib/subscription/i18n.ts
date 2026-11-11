@@ -28,6 +28,14 @@ export const tr = {
     per_year: '/yıl',
     weekly: 'Haftalık %{price}',
     off: '-%%{pct}',
+    // G33-S1 md.2 (Tur 26n Paywall): yıllık kart etiketi + aylık karşılık + kademe geçişi.
+    save: '%%{pct} tasarruf',
+    per_month_equiv: 'ayda %{price}',
+    upgrade: 'Balance’a yükselt',
+    upgrade_sub: 'Günde %{n} AI tarama ve kcalAI Koç',
+    upgrade_sub_plain: 'Daha çok AI tarama ve kcalAI Koç',
+    back_fresh: 'Fresh’e dön',
+    plan_a11y: '%{period}, %{price}',
     cta_trial: '%{days} gün ücretsiz başla',
     cta: 'Devam et',
     sum_trial: '%{days} gün ücretsiz, sonra %{price}/yıl. Ücret deneme bitince alınır.',
@@ -126,6 +134,8 @@ export const tr = {
   },
   profile: {
     title: 'Abonelik',
+    // G33-S1 md.1: Profil › Kcalculate AI › Abonelik alt satırı.
+    row_sub: 'kcalAI planları',
     back: 'Geri',
     current: 'Mevcut plan',
     // G26-S1: ücretli planda üst satır küçük etiket — büyük ad yalnız Fresh / Balance.
@@ -199,6 +209,13 @@ export const en: typeof tr = {
     per_year: '/yr',
     weekly: '%{price} per week',
     off: '-%{pct}%',
+    save: 'Save %{pct}%',
+    per_month_equiv: '%{price} a month',
+    upgrade: 'Upgrade to Balance',
+    upgrade_sub: '%{n} AI scans a day and kcalAI Coach',
+    upgrade_sub_plain: 'More AI scans and kcalAI Coach',
+    back_fresh: 'Back to Fresh',
+    plan_a11y: '%{period}, %{price}',
     cta_trial: 'Start %{days}-day free trial',
     cta: 'Continue',
     sum_trial: '%{days} days free, then %{price}/yr. Charged when the trial ends.',
@@ -292,6 +309,7 @@ export const en: typeof tr = {
   },
   profile: {
     title: 'Subscription',
+    row_sub: 'kcalAI plans',
     back: 'Back',
     current: 'Current plan',
     current_paid: 'Your current kcalAI plan',

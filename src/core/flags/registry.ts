@@ -59,6 +59,9 @@ export const FLAG_DEFAULTS = {
   // G25-S1 — 1.1.0 inceleme öncesi. Sunucu satırları 20261111200100_g25_flags.sql (ikisi KAPALI).
   yakinda_satirlari: false, // Profil "Yakında" satırları + FinPrMacro "Öğün aboneliği" sekmesi (A4)
   paylasim_baglanti: false, // Keşfet gönderi/profil "Bağlantıyı kopyala / Paylaş" (A10; l.eatkcal.com hazır olunca)
+  // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m). Sunucu satırı 20261112100100_g33_meal_plan.sql
+  // (KAPALI, min_app_version 1.1.0). Native modül yok → OTA. Kapalıyken Profil satırları ve rotalar yok.
+  ogun_plani: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
