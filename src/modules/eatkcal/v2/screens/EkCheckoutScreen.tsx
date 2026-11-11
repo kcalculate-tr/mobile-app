@@ -456,9 +456,13 @@ export default function EkCheckoutScreen() {
                 })}
               </ScrollView>
               {ctrl.scheduledDate ? (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                // G32-S1 md.5: üç aralık TEK SATIR, eşit genişlik, yatay kaydırma yok;
+                // iki satır ("09:30" / "13:30"), dolu aralık soluk + küçük "Dolu".
+                <View style={styles.slotRow} testID="ek-slot-row">
                   {EK_TIME_SLOTS.map((slot) => {
                     const sel = ctrl.timeSlot?.id === slot.id;
+                    const full = t('eatkcal.v2.checkout.slot_full');
+                    const fg = sel ? c.onAccent : c.ink;
                     return (
                       <Pressable
                         key={slot.id}
@@ -469,14 +473,17 @@ export default function EkCheckoutScreen() {
                         }}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: sel, disabled: slot.disabled }}
+                        accessibilityLabel={slot.disabled ? `${slot.label}, ${full}` : slot.label}
+                        testID={`ek-slot-${slot.id}`}
                         style={[
                           styles.slot,
                           sel ? { backgroundColor: c.accent } : { backgroundColor: c.surface, borderColor: c.line, borderWidth: 1 },
                           slot.disabled && { opacity: 0.45 },
                         ]}
                       >
-                        <Text style={[ekType.b15s, ekType.num, { color: sel ? c.onAccent : c.ink }]}>
-                          {slot.disabled ? `${slot.label} (${t('eatkcal.v2.checkout.slot_full')})` : slot.label}
+                        <Text style={[ekType.b15s, ekType.num, { color: fg }]}>{slot.start}</Text>
+                        <Text style={[ekType.c13, ekType.num, { color: sel ? c.onAccent : c.secondary }]}>
+                          {slot.disabled ? `${slot.end} · ${full}` : slot.end}
                         </Text>
                       </Pressable>
                     );
@@ -879,7 +886,8 @@ const styles = StyleSheet.create({
   seg: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 26 },
   segItem: { flex: 1, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   day: { width: 64, height: 72, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  slot: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  slotRow: { flexDirection: 'row', gap: 8 },
+  slot: { flex: 1, minWidth: 0, minHeight: 56, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   option: { minHeight: 56, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
   outlineBtn: { minHeight: 44, paddingHorizontal: 16, borderRadius: 22, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   input: { height: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1 },

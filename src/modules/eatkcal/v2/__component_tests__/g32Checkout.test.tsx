@@ -1,7 +1,7 @@
 // G32-S1 md.4–5 — Sipariş özeti: Gel-Al şube kartları + randevulu saat çipleri.
 // useEkCheckout sahte (durumlu) denetleyiciyle değiştirildi; yalnız görünüm katmanı sınanır.
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render as rtlRender, within } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -174,5 +174,49 @@ describe('md.4 Gel-Al → şube seçimi', () => {
     });
     expect(r.queryByTestId('ek-branch-cards')).toBeNull();
     expect(r.getAllByText('Adres').length).toBeGreaterThan(0);
+  });
+});
+
+describe('md.5 Randevulu saat seçimi', () => {
+  test('üç aralık tek satır, eşit genişlik, yatay kaydırma yok; iki satır; dolu soluk + "Dolu"', () => {
+    const r = render(<EkCheckoutScreen />);
+    act(() => {
+      fireEvent.press(r.getByText('Eve teslim'));
+    });
+    act(() => {
+      fireEvent.press(r.getByText('Randevulu'));
+    });
+    act(() => {
+      fireEvent.press(r.getByLabelText(/13$/)); // yarın (13 Kas) gün çipi
+    });
+    const row = r.getByTestId('ek-slot-row');
+    const rowSt = StyleSheet.flatten(row.props.style) as Record<string, unknown>;
+    expect(rowSt.flexDirection).toBe('row');
+    expect(rowSt.flexWrap).toBeUndefined(); // tek satır
+    // Üst zincirde yatay ScrollView yok (gün çipleri gibi kaydırma YOK).
+    let p = row.parent;
+    while (p) {
+      expect(p.props.horizontal).not.toBe(true);
+      p = p.parent;
+    }
+    const ids = ['1', '2', '3'];
+    for (const id of ids) {
+      const st = StyleSheet.flatten(r.getByTestId(`ek-slot-${id}`).props.style) as Record<string, unknown>;
+      expect(st.flex).toBe(1);
+    }
+    // İki satır: başlangıç / bitiş (punto ≥ 13).
+    const s1 = within(r.getByTestId('ek-slot-1'));
+    expect(s1.getByText('09:30')).toBeTruthy();
+    expect(s1.getByText('13:30')).toBeTruthy();
+    // Dolu aralık (17:30–21:30): soluk + küçük "Dolu".
+    const s3 = r.getByTestId('ek-slot-3');
+    expect((StyleSheet.flatten(s3.props.style) as Record<string, number>).opacity).toBeLessThan(1);
+    expect(within(s3).getByText('21:30 · Dolu')).toBeTruthy();
+    expect(s3.props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }));
+    for (const id of ids) {
+      for (const txt of within(r.getByTestId(`ek-slot-${id}`)).UNSAFE_getAllByType(Text)) {
+        expect((StyleSheet.flatten(txt.props.style) as Record<string, number>).fontSize).toBeGreaterThanOrEqual(13);
+      }
+    }
   });
 });
