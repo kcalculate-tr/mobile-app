@@ -59,6 +59,7 @@ const PUSH_FILES = [
   'modules/eatkcal/v2/ui/gate/CityGateView.tsx',
   'modules/eatkcal/v2/screens/EkProductScreen.tsx',
   'modules/eatkcal/v2/screens/EkStoreScreen.tsx',
+  'modules/eatkcal/v2/ui/store/StoreHeader.tsx', // G32-S1 md.2 mağaza yapışkan başlığı (sol geri)
   'modules/eatkcal/v2/screens/EkAddressAddScreen.tsx',
   'modules/eatkcal/v2/screens/EkAddCardScreen.tsx',
   'modules/eatkcal/v2/screens/EkPaymentScreen.tsx',
