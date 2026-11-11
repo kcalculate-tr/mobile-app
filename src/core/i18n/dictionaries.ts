@@ -227,6 +227,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         maintain: 'Kilo koru',
         gain: 'Kas yap',
         regular: 'Daha düzenli beslen',
+        lose_off: 'Vücut kitle indeksin 18,5’in altında; kilo verme hedefi kapalı.',
       },
       pace: {
         title: 'Tempo',
@@ -234,7 +235,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         unit: 'kg / hafta',
         projection: 'Bu tempoyla hedefine',
         min: '0,25 kg',
-        max: '1 kg',
+        max: '0,75 kg',
       },
       about: {
         title: 'Seni tanıyalım',
@@ -2128,6 +2129,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         maintain: 'Maintain weight',
         gain: 'Build muscle',
         regular: 'Eat more regularly',
+        lose_off: 'Your BMI is below 18.5, so the weight loss goal is off.',
       },
       pace: {
         title: 'Pace',
@@ -2135,7 +2137,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         unit: 'kg / week',
         projection: 'At this pace, your goal by',
         min: '0.25 kg',
-        max: '1 kg',
+        max: '0.75 kg',
       },
       about: {
         title: 'Let’s get to know you',
