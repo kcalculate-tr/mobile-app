@@ -4,7 +4,7 @@
 // meal-plan-generate sıralar + kısa açıklama, 1 koç mesajı). Makro/kalori DAİMA algoritmadan.
 // Alerjen seçimi sağlık verisi: ilk kullanımda açık rıza kartı; rıza yoksa alerjen çipleri kapalı.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { AccessibilityInfo, Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming, cancelAnimation } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -544,6 +544,19 @@ function Result({ result, coach, note, notice, days, openDays, lang, onUnlock, o
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
   const enter = reduced ? FadeIn.duration(REDUCED.duration) : FadeIn.duration(PLAN_MOTION.genRow);
+  // HIG (Reduce Transparency): bulanık katman yerine opak yüzey.
+  const [solid, setSolid] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void AccessibilityInfo.isReduceTransparencyEnabled?.()
+      .then((v) => alive && setSolid(!!v))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceTransparencyChanged', (v: boolean) => setSolid(!!v));
+    return () => {
+      alive = false;
+      sub?.remove?.();
+    };
+  }, []);
   return (
     <Animated.ScrollView {...SCROLL_KEYBOARD} entering={enter} exiting={FadeOut.duration(reduced ? REDUCED.duration : PLAN_MOTION.regen)} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 140 }]} testID="plan-result">
       <AppText style={[styles.resultH, { color: c.ink }]} accessibilityRole="header">
@@ -587,7 +600,13 @@ function Result({ result, coach, note, notice, days, openDays, lang, onUnlock, o
                 {its.map((x) => x.name).join(', ')}
               </AppText>
             </View>
-            {locked ? <BlurView intensity={18} tint={c.dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
+            {locked ? (
+              solid ? (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: c.card }]} testID="plan-blur" />
+              ) : (
+                <BlurView intensity={18} tint={c.dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+              )
+            ) : null}
           </View>
         );
       })}

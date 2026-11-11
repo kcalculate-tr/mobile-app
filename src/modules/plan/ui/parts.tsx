@@ -273,7 +273,14 @@ export function SlotRow({
         {item ? <AppText style={[styles.small, { color: c.sec }]}>{item.kcal} kcal</AppText> : null}
       </View>
       {item ? (
-        <Pressable onLongPress={onLongPress ? () => onLongPress(item) : undefined} style={styles.itemRow} accessibilityHint={onLongPress ? tr('plan.remove') : undefined}>
+        <Pressable
+          onLongPress={onLongPress ? () => onLongPress(item) : undefined}
+          style={styles.itemRow}
+          accessibilityHint={onLongPress ? tr('plan.remove') : undefined}
+          // HIG: uzun basma tek yol olmasın — VoiceOver'da "Kaldır" eylemi.
+          accessibilityActions={onLongPress ? [{ name: 'delete', label: tr('plan.remove') }] : undefined}
+          onAccessibilityAction={onLongPress ? (e) => e.nativeEvent.actionName === 'delete' && onLongPress(item) : undefined}
+        >
           <Thumb uri={null} />
           <View style={styles.flex1}>
             <AppText style={[styles.itemName, { color: c.ink }]} numberOfLines={2}>
@@ -436,7 +443,7 @@ const styles = StyleSheet.create({
   chip: { flex: 1, minHeight: 72, borderRadius: 16, alignItems: 'center', paddingVertical: 6, gap: 2 },
   chipDay: { fontSize: 11, fontWeight: '500' },
   chipNum: { fontSize: 17, fontWeight: '700', lineHeight: 21 },
-  chipKcal: { fontSize: 10, fontWeight: '500' },
+  chipKcal: { fontSize: 11, fontWeight: '500' },
   dots: { flexDirection: 'row', gap: 2, height: 5, alignItems: 'center' },
   dot: { width: 4, height: 4, borderRadius: 2 },
   dayCard: { borderRadius: 20, padding: 16, gap: 12 },
