@@ -18,6 +18,7 @@ import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo'
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
+import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -39,6 +40,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g26jTr,
     // G24-S1 — kcalAI Koç.
     coach: coachTr,
+    // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
+    plan: planTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1947,6 +1950,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     kesfetSearch: kesfetSearchEn,
     ...g26jEn,
     coach: coachEn,
+    plan: planEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

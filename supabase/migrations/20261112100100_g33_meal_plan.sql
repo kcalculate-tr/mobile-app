@@ -189,8 +189,15 @@ create table if not exists public.shopping_list_items (
 );
 comment on table public.shopping_list_items is
   'G33-S1: alışveriş listesi. source plan → plandan türetilen malzemenin durumu (alındı/silindi, ingredient_key); manual → elle eklenen.';
-create unique index if not exists shopping_list_plan_key_uq
-  on public.shopping_list_items (user_id, week_start, ingredient_key) where source = 'plan';
+-- Plan satırı başına tek durum satırı (manual satırlarda ingredient_key NULL → NULL'lar ayrık, çakışmaz).
+-- Kısmi indeks DEĞİL: PostgREST upsert (on_conflict) tam kısıt ister.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'shopping_list_items_plan_key_uq') then
+    alter table public.shopping_list_items
+      add constraint shopping_list_items_plan_key_uq unique (user_id, week_start, source, ingredient_key);
+  end if;
+end $$;
 create index if not exists shopping_list_user_week_idx on public.shopping_list_items (user_id, week_start);
 
 alter table public.shopping_list_items enable row level security;

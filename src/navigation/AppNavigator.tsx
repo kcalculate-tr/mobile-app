@@ -105,6 +105,10 @@ const SubProfileScreen = lazy(() => import('../modules/subscription/screens/SubP
 // G24-S1 — kcalAI Koç (yalnız `koc` bayrağı açıkken kayıtlı).
 const CoachChatScreen = lazy(() => import('../modules/coach/screens/CoachChatScreen'));
 const CoachIntroScreen = lazy(() => import('../modules/coach/screens/CoachIntroScreen'));
+// G33-S1 — Öğün planı + alışveriş listesi (`ogun_plani`).
+const MealPlanScreen = lazy(() => import('../modules/plan/screens/MealPlanScreen'));
+const PlanGenerateScreen = lazy(() => import('../modules/plan/screens/PlanGenerateScreen'));
+const ShoppingListScreen = lazy(() => import('../modules/plan/screens/ShoppingListScreen'));
 const CoachHistoryScreen = lazy(() => import('../modules/coach/screens/CoachHistoryScreen'));
 // eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
 // Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
@@ -175,6 +179,9 @@ const PaywallLazy = withSuspense(PaywallScreen);
 const SubProfileLazy = withSuspense(SubProfileScreen);
 const CoachChatLazy = withSuspense(CoachChatScreen);
 const CoachIntroLazy = withSuspense(CoachIntroScreen);
+const MealPlanLazy = withSuspense(MealPlanScreen);
+const PlanGenerateLazy = withSuspense(PlanGenerateScreen);
+const ShoppingListLazy = withSuspense(ShoppingListScreen);
 const CoachHistoryLazy = withSuspense(CoachHistoryScreen);
 const EatHomeLazy = withSuspense(EatHomeScreen);
 const ProfileSubLazy = withSuspense(ProfileSubScreen);
@@ -424,6 +431,8 @@ export default function AppNavigator() {
   const kocFlag = useFeature('koc');
   const aboneFlag = useFeature('abonelik');
   const kocEnabled = kocFlag && aboneFlag;
+  // G33-S1: öğün planı ekranları yalnız `ogun_plani` açıkken kayıtlı (Profil satırları aynı bayrağa bağlı).
+  const ogunPlani = useFeature('ogun_plani');
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
@@ -594,6 +603,10 @@ export default function AppNavigator() {
       {kocEnabled ? <Stack.Screen name="CoachIntro" component={CoachIntroLazy} options={AI_MODAL} /> : null}
       {kocEnabled ? <Stack.Screen name="CoachChat" component={CoachChatLazy} options={push} /> : null}
       {kocEnabled ? <Stack.Screen name="CoachHistory" component={CoachHistoryLazy} options={push} /> : null}
+      {/* G33-S1 — Öğün planı: hafta + alışveriş sağdan (push 330), oluşturma alttan (sheet 330). */}
+      {ogunPlani ? <Stack.Screen name="MealPlan" component={MealPlanLazy} options={push} /> : null}
+      {ogunPlani ? <Stack.Screen name="MealPlanGenerate" component={PlanGenerateLazy} options={AI_MODAL} /> : null}
+      {ogunPlani ? <Stack.Screen name="ShoppingList" component={ShoppingListLazy} options={push} /> : null}
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={finalScreenFor('EatCatalog', finalFlag.yeni_siparis, HomeScreen)} />
