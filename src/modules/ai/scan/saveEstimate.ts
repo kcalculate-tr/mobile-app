@@ -78,6 +78,71 @@ async function fetchExisting(
   }
 }
 
+/** G28-S1 md.4: Logla'nın yazdığı alanlar — TEK hesap (insert ve eşitleme aynı değeri yazar). */
+export interface LoggedValues {
+  name: string;
+  meal_type: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export function loggedValues(estimate: Omit<ScanEstimate, 'isEstimate'>, mealType: string): LoggedValues {
+  return {
+    name: estimate.name,
+    meal_type: toServerMealType(mealType),
+    calories: Math.max(0, Math.round(estimate.kcal)),
+    protein: Math.max(0, Math.round(estimate.protein_g)),
+    carbs: Math.max(0, Math.round(estimate.carbs_g)),
+    fat: Math.max(0, Math.round(estimate.fat_g)),
+  };
+}
+
+/** Mevcut satır ekranda onaylanan değerlerle birebir aynı mı (ad, öğün, kcal, makro)? */
+export function sameLoggedValues(row: MealConsumptionRow, v: LoggedValues): boolean {
+  return (
+    row.name === v.name &&
+    row.meal_type === v.meal_type &&
+    Number(row.calories) === v.calories &&
+    Number(row.protein) === v.protein &&
+    Number(row.carbs) === v.carbs &&
+    Number(row.fat) === v.fat
+  );
+}
+
+type UpdatableSupabase = {
+  from(table: string): {
+    update(patch: Record<string, unknown>): {
+      eq(c: string, v: string): {
+        eq(c: string, v: string): {
+          select(columns: string): { single(): PromiseLike<{ data: MealConsumptionRow | null; error: DbError | null }> };
+        };
+      };
+    };
+  };
+};
+
+async function syncExisting(
+  supabase: InsertableSupabase,
+  userId: string,
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<MealConsumptionRow | null> {
+  try {
+    const db = supabase as unknown as UpdatableSupabase;
+    const { data, error } = await db
+      .from('meal_consumptions')
+      .update(patch)
+      .eq('user_id', userId)
+      .eq('id', id)
+      .select(COLUMNS)
+      .single();
+    return error ? null : (data ?? null);
+  } catch {
+    return null;
+  }
+}
 
 export async function saveAiScanEstimate(
   supabase: InsertableSupabase,
@@ -88,22 +153,26 @@ export async function saveAiScanEstimate(
     estimate: Omit<ScanEstimate, 'isEstimate'>;
     /** Varsayılan 'ai_scan'; Tara › Barkod 'barcode'. */
     source?: ScanSaveSource;
+    /**
+     * G28-S1 md.2: fotoğrafın user-media yolu (`<uid>/scans/<anahtar>.jpg`, analiz için
+     * zaten yüklenen dosya). Ana sayfa satırı bu yoldan imzalı küçük görsel çizer.
+     * Ses/barkod kaydında yok.
+     */
+    photoPath?: string | null;
   },
 ): Promise<MealConsumptionRow> {
   const { userId, mealType, sourceRef, estimate } = params;
   const src: ScanSaveSource = params.source ?? 'ai_scan';
+  const values = loggedValues(estimate, mealType);
+  const photo = params.photoPath ? { photo_path: params.photoPath } : {};
   const { data, error } = await supabase
     .from('meal_consumptions')
     .insert({
       user_id: userId,
       source: src,
       source_ref: sourceRef,
-      name: estimate.name,
-      meal_type: toServerMealType(mealType),
-      calories: Math.max(0, Math.round(estimate.kcal)),
-      protein: Math.max(0, Math.round(estimate.protein_g)),
-      carbs: Math.max(0, Math.round(estimate.carbs_g)),
-      fat: Math.max(0, Math.round(estimate.fat_g)),
+      ...values,
+      ...photo,
       note: null,
       consumed_at: new Date().toISOString(),
     })
@@ -113,9 +182,18 @@ export async function saveAiScanEstimate(
     // G19-S1 md.2: (user_id, source, source_ref) UNIQUE — aynı tarama zaten loglandıysa
     // (çift dokunma, yanıtı kaybolan yeniden deneme, kuyruk + elle aynı anda) hata
     // DEĞİL: mevcut satır döner, ikinci kayıt oluşmaz.
+    // G28-S1 md.4: mevcut satır EKRANDAKİNDEN farklıysa (çevrimdışı kuyruk aynı fotoğrafı
+    // ikinci kez analiz edip başka ad/kcal yazdı ya da kullanıcı porsiyonu düzeltti)
+    // sessizce o satır DÖNMEZ — kullanıcının onayladığı değerlerle güncellenir.
+    // Güncellenemezse hata (yanlış kayıt "loglandı" diye gösterilmez; Logla yeniden denenir).
     if (isUniqueViolation(error)) {
       const existing = await fetchExisting(supabase, userId, sourceRef, src);
-      if (existing) return existing;
+      if (existing) {
+        if (sameLoggedValues(existing, values)) return existing;
+        const synced = await syncExisting(supabase, userId, existing.id, { ...values, ...photo });
+        if (synced) return synced;
+        throw new Error('meal_consumptions.insert: mevcut kayıt ekrandaki değerlerle eşitlenemedi');
+      }
     }
     throw new Error(`meal_consumptions.insert: ${error.message}`);
   }

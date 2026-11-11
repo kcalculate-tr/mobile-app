@@ -44,11 +44,20 @@ import FinScanCamera, { loadExpoCamera } from '../ui/FinScanCamera';
 import { normalizeScanNote } from '../ui/ScanNote';
 import { bestMatchPercent, saveMealToCollection, schedulePlanReminder } from '../mealActions';
 import { fetchProducts } from '../../../../lib/products';
-import { setPendingScanPhoto, clearPendingScanPhoto, getPendingScanCount } from '../offlineQueue';
+import {
+  setPendingScanPhoto,
+  clearPendingScanPhoto,
+  getPendingScanCount,
+  getPendingScanQueue,
+  removePendingScanPhoto,
+  claimPendingKey,
+  releasePendingKey,
+} from '../offlineQueue';
+import { scanImagePath } from '../scanPath';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight, emitLogUndo } from '../logFlight';
 import { deleteScanConsumption, scanFlightUndo } from '../scanUndo';
-import { checkLocalImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
+import { checkLocalImage, deleteQueuedImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
 import { trackScan } from '../scanEvents';
 import { shrinkForScan, type ImageSize } from '../imageResize';
 import { keepOrphanResult, takeOrphanResult } from '../orphanResult';
@@ -77,6 +86,22 @@ import { noteQuota, useSubscriptionStore, useTier } from '../../../../lib/subscr
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { monthlyPriceOf, usePlanCards } from '../../../../lib/subscription/usePlanCards';
 import type { AiScanOutcome } from '../types';
+
+/**
+ * G28-S1 md.4: ön planda başarıyla analiz edilen anahtar kuyruktaysa (önce çevrimdışı
+ * kuyruğa alınmıştı) girdi ön plana geçer — kuyruktan çıkar, kopya dosya silinir.
+ * Böylece kuyruk sonradan aynı fotoğrafı kaydetmez (kayıt yalnız kullanıcının Logla'sı).
+ */
+async function adoptPendingEntry(key: string, shownUri: string): Promise<void> {
+  try {
+    const entry = (await getPendingScanQueue()).find((e) => e.id === key);
+    if (!entry) return;
+    await removePendingScanPhoto(key);
+    if (entry.imageUri && entry.imageUri !== shownUri) void deleteQueuedImage(entry.imageUri);
+  } catch {
+    // kuyruk okunamazsa kilit yine ikinci analizi önler; kayıt eşitlemesi (saveEstimate) son güvence
+  }
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -371,6 +396,9 @@ export default function ScanScreen() {
       }
 
       setStage('scanning');
+      // G28-S1 md.4: bu anahtar (çevrimdışıyken kuyruğa alınmış olabilir) artık ön planda —
+      // bağlantı dönüşü kuyruk aynı fotoğrafı İKİNCİ kez analiz edip başka sonuç yazmaz.
+      claimPendingKey(idempotencyKey);
       try {
         const outcome = await runAiScan(getAiScanClient(), {
           idempotencyKey,
@@ -378,6 +406,7 @@ export default function ScanScreen() {
           lang: scanLang,
           ...(hint ? { hint } : {}),
         });
+        if (outcome.status === 'ok') await adoptPendingEntry(idempotencyKey, uri);
         // G19-S4: sonuç → tam 1 olay (scan_success | scan_limit | scan_fail).
         trackScanOutcome(outcome, source);
         recordQuota(outcome.remaining, outcome.reset_at);
@@ -426,6 +455,8 @@ export default function ScanScreen() {
         if (!mountedRef.current) return;
         setStage('viewfinder');
         setErrorKind('failed');
+      } finally {
+        releasePendingKey(idempotencyKey);
       }
     } finally {
       busyRef.current = false;
@@ -505,11 +536,14 @@ export default function ScanScreen() {
     setSaving(true);
     setSaveFailed(false);
     try {
+      const ref = scanRef ?? `${user.id}-${photoUri ?? ''}`;
       const row = await saveAiScanEstimate(getSupabaseClient(), {
         userId: user.id,
         mealType,
-        sourceRef: scanRef ?? `${user.id}-${photoUri ?? ''}`,
+        sourceRef: ref,
         estimate: adjusted,
+        // G28-S1 md.2: analiz için yüklenen fotoğraf → Ana sayfa satırının küçük görseli.
+        photoPath: scanRef ? scanImagePath(user.id, ref) : null,
       });
       savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
       trackScanLog(

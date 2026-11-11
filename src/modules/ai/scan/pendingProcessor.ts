@@ -3,7 +3,13 @@
 // yalnız analiz başarılı olunca düşer: `runAiScan` başarısızlıkta rezervasyonu
 // iade eder; başarısız/kota biten girdi kuyrukta kalır ve döngü durur.
 import { runAiScan, runAiTextScan } from './runScan';
-import { bumpPendingAttempt, getPendingScanQueue, removePendingScanPhoto, type PendingScanPhoto } from './offlineQueue';
+import {
+  bumpPendingAttempt,
+  getPendingScanQueue,
+  isPendingKeyClaimed,
+  removePendingScanPhoto,
+  type PendingScanPhoto,
+} from './offlineQueue';
 import { classifyScanFailure } from './scanError';
 
 /** G19-S1 md.4: sayılan hata bu kadar tekrarlanırsa girdi düşer (kuyruk kilitlenmez). */
@@ -40,6 +46,8 @@ export async function processPendingQueue(opts: {
   const dropped: PendingScanPhoto[] = [];
   for (const entry of queue) {
     if (opts.isCancelled?.()) return { processed, dropped, stoppedBy: 'cancelled' };
+    // G28-S1 md.4: ön planda (Tara "Tekrar dene") analiz edilen foto ikinci kez analiz edilmez.
+    if (isPendingKeyClaimed(entry.id)) continue;
     let outcome: AiScanOutcome;
     try {
       // G22-S1 md.1: sesle eklenen girdi METİN analizine gider (aynı hak).

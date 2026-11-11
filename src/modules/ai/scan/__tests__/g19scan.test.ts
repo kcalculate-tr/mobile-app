@@ -13,7 +13,7 @@ import { SCAN_EVENT_NAMES, scanEventProps, setScanEventSink, trackScan } from '.
 import { isClientEvent } from '../../../../lib/metrics/events';
 import { ORPHAN_TTL_MS, clearOrphanResult, keepOrphanResult, takeOrphanResult } from '../orphanResult';
 import { QUEUE_DIR_NAME, isQueuedImageUri, judgeLocalImage } from '../localImage';
-import { saveAiScanEstimate, isUniqueViolation, type InsertableSupabase } from '../saveEstimate';
+import { saveAiScanEstimate, isUniqueViolation, loggedValues, type InsertableSupabase } from '../saveEstimate';
 import type { AiScanClient } from '../types';
 
 // ── md.3: edge yanıtı → öğe başına kcal/makro korunur ───────────────────────
@@ -319,7 +319,8 @@ function dupSupabase(existing: Record<string, unknown> | null, code = '23505'): 
 }
 
 test('saveAiScanEstimate: aynı tarama ikinci kez loglanırsa hata değil, mevcut satır döner', async () => {
-  const row = { id: 'r1', name: 'Pilav', meal_type: 'ogle', calories: 210, protein: 4, carbs: 45, fat: 3, consumed_at: 'x' };
+  // G28-S1 md.4: "aynı tarama" = aynı değerler; farklı değerli mevcut satır eşitlenir (g28 testi).
+  const row = { id: 'r1', ...loggedValues(est, 'lunch'), consumed_at: 'x' };
   const got = await saveAiScanEstimate(dupSupabase(row), { userId: 'u', mealType: 'lunch', sourceRef: 'k', estimate: est });
   assert.equal(got.id, 'r1');
   await assert.rejects(

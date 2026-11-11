@@ -212,7 +212,7 @@ export default function FinPhotoResult({
         <View style={styles.cutChipWrap} pointerEvents="none">
           <View style={[styles.cutChip, { backgroundColor: k.glass }]}>
             <AppText style={styles.foundText} numberOfLines={1}>
-              {match != null ? tr('ai_scan.match_chip', { name: estimate.name, pct: match }) : estimate.name}
+              {match != null ? tr('ai_scan.match_chip', { name: adjusted.name, pct: match }) : adjusted.name}
             </AppText>
           </View>
         </View>
@@ -220,8 +220,9 @@ export default function FinPhotoResult({
           <AppText tone="secondary" style={styles.cap}>
             {tr('ai_scan.photo_result')}
           </AppText>
+          {/* G28-S1 md.4: ekrandaki ad = Logla'nın yazdığı ad (adjusted.name, tek kaynak). */}
           <AppText textRole="screenTitle" numberOfLines={2}>
-            {estimate.name}
+            {adjusted.name}
           </AppText>
           <AppText tone="secondary" style={styles.cap}>
             {`${adjusted.kcal} kcal, P ${adjusted.protein_g} g, K ${adjusted.carbs_g} g, Y ${adjusted.fat_g} g`}

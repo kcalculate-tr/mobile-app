@@ -3,6 +3,7 @@
 // analiz edilip kaydedilmez.
 import { getAiScanClient } from './client';
 import { saveAiScanEstimate } from './saveEstimate';
+import { scanImagePath } from './scanPath';
 import { processPendingQueue, type ProcessResult } from './pendingProcessor';
 import { getSupabaseClient } from '../../../core/supabase';
 import { deleteQueuedImage } from './localImage';
@@ -54,6 +55,8 @@ function drainNow(
         mealType: entry.mealType,
         sourceRef: entry.id,
         estimate,
+        // G28-S1 md.2: fotoğraflı girdi kaydına analizde yüklenen yol (ses girdisinde yok).
+        photoPath: entry.text || !entry.imageUri ? null : scanImagePath(userId, entry.id),
       }),
   })
     .catch(() => null)

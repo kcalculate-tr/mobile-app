@@ -181,8 +181,16 @@ export function computeAdjusted(estimate: Estimate, rows: AdjustRow[], platePort
   };
 }
 
-/** Logla'ya giden ad: silinen öğeler addan da düşer; hepsi silindiyse modelin adı. */
+/**
+ * Logla'ya giden ad: silinen öğeler addan da düşer; hepsi silindiyse modelin adı.
+ * G28-S1 md.4: öğe silinmedi / eklenmedi → ekranda gösterilen ad (`estimate.name`)
+ * AYNEN gider (yeniden adlandırma yok — sonuç ekranı ile günlük birebir).
+ */
 export function adjustedName(estimate: Estimate, rows: AdjustRow[]): string {
+  const untouched =
+    rows.length === estimate.ingredients.length &&
+    rows.every((r, i) => !r.removed && !r.per100 && r.name === estimate.ingredients[i]?.name);
+  if (untouched) return estimate.name;
   const names = rows.filter((r) => !r.removed).map((r) => r.name);
   return names.length ? names.join(', ') : estimate.name;
 }
