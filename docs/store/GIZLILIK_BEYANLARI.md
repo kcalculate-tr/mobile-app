@@ -1,109 +1,118 @@
-# Gizlilik beyanları — App Store "App Privacy" + Google Play "Data safety" (G20-S2 md.3)
+# Gizlilik beyanları — App Store "App Privacy" + Google Play "Data safety" · 1.1.0 (M-S1 md.3)
 
-Kaynak: **kod** (`night20/store`, taban `night20/consent` = G20-S1 rıza akışı dahil). Her satırın kanıtı `dosya:satır`.
-Karşılaştırma: L-S1 veri envanteri (`legal/global` › `docs/legal/VERI_ENVANTERI.md`, `BOSLUKLAR.md` B-07) ve
-G3-S1 (`docs/night/G3-S1-STORE_FORMS.md`, 3 Kas). **⚠ = L-S1/G3-S1 ile çelişki veya fark** — "Çelişkiler" bölümünde.
-Bu tablolar 1.1.0 ile **aynı anda** konsola girilir; iOS gizlilik manifesti (`app.config.js` `privacyManifests`)
-bu oturumda aynı cevaplara hizalandı (18 veri türü).
+Kaynaklar: kod `release/1.1.0` @ bd96421 (`app.config.js` `ios.privacyManifests`), **G26 izin envanteri** (`docs/night/G26-IZINLER.md`),
+**L-S3 eşleme tablosu** (`legal/global` › `docs/legal/MAGAZA_GIZLILIK_ESLEME.md`), önceki beyan G20-S2 (bu dosyanın 1.0.x/G20 hâli, git geçmişinde).
+İlter kararları (11 Kas): **ATT yok, izleme yok. Ses kaydedilmez; konuşma tanıma cihazda** (desteklemeyen cihazda işletim sisteminin
+konuşma hizmeti — ses bize gelmez). Konum yalnız eatkcal adresi için.
 
-## ⚠ G26-S1 değişikliği (11 Kas — İlter kararı: ATT kaldırıldı)
-- iOS'ta **App Tracking Transparency sorusu YOK**; `NSUserTrackingUsageDescription` Info.plist'te yok, IDFA **toplanmaz**
-  (`setAdvertiserTrackingEnabled(false)` + `setAdvertiserIDCollectionEnabled(false)` sabit — `src/lib/analytics.ts` `initFBSDK`).
-- Meta reklam olayları ATT'siz (AEM / SKAdNetwork, toplu ölçüm) yalnız uygulama içi "Reklam ölçümü" tercihi reddedilmediyse gider
-  (`src/lib/metrics/consent.ts` `metaAllowed`).
-- Gizlilik manifesti: `NSPrivacyTracking: false`, `NSPrivacyTrackingDomains` yok; hiçbir veri türünde `Tracking: true` yok.
-  Device ID yalnız birinci taraf `anon_id` → amaç yalnız **Analytics**.
-- **App Store Connect › App Privacy güncellenmeli** (1.1.0 gönderiminden önce): "Data Used to Track You" → **boş** (Purchase History,
-  Product Interaction, Device ID için "Used for tracking" = Hayır). Purchase History / Product Interaction "Third-Party Advertising"
-  amacı kalır (Meta'ya toplu ölçüm). Aşağıdaki tablolardaki "İzleme = Evet" hücreleri G20-S2 hâlidir; G26 sonrası hepsi **Hayır**.
-- Play "Data safety" değişmez (Android'de ATT yok; reklam kimliği rızaya bağlı, `AD_ID` beyanı aynı).
+> **⚠ L-S3'ten fark:** L-S3 (yazıldığı an `0401d64`) "eatkcal ticaret olayları + IDFA ATT ile Meta'ya → İzleme: Evet" diyor. G26-S1 (11 Kas) ATT'yi
+> kaldırdı: `NSPrivacyTracking: false`, IDFA toplanmaz (`setAdvertiserIDCollectionEnabled(false)`), Meta yalnız ATT'siz toplu ölçüm (AEM/SKAdNetwork).
+> Bu nedenle **Apple'da hiçbir türde "Used to Track You" yok**. Diğer bütün satırlar L-S3 ile aynı yönde; farklar §3'te.
 
-## Tanımlar (karar kuralları)
-- **Toplanıyor**: veri cihazdan çıkıp bizim ya da işleyenimizin sunucusuna gidiyor (Supabase, Anthropic, Sentry, Meta, Google Maps…).
-  Yalnız cihazda kalan (AsyncStorage) veri toplanmış sayılmaz.
-- **Kimliğe bağlı (Linked)**: hesap (`user_id`) ya da kalıcı cihaz kimliğiyle ilişkilendirilebiliyor.
-- **İzleme (Tracking, Apple)**: bizim verimizin başka şirketlerin verisiyle reklam/ölçüm için birleştirilmesi → **Meta**'ya giden olaylar + IDFA.
-  ATT izni yoksa (veya uygulama içi reklam ölçümü kapalıysa) gönderilmez (`src/lib/metrics/consent.ts:26-30`).
-- **Paylaşım (Play)**: işleyen (hizmet sağlayıcı: Supabase, Anthropic, Sentry, Expo, Google Maps, Paynkolay, Resend) aktarımı paylaşım **değil**;
-  Meta'ya reklam ölçümü aktarımı **paylaşım**.
+## 0. Karar kuralları
+- **Toplanan**: cihazdan çıkıp bize ya da işleyenimize (Supabase, Anthropic, RevenueCat, Sentry, Expo, Google Maps, Paynkolay, Meta) giden veri.
+  Yalnız cihazda kalan (AsyncStorage) ya da işletim sisteminin kendi hizmetine giden (Apple/Google konuşma tanıma) veri toplanmış sayılmaz.
+- **Bağlı (Linked)**: hesap (`user_id`) ya da kalıcı kurulum kimliği (`anon_id`) ile ilişkilendirilebilen.
+- **İzleme (Apple)**: bizim verimizi başka şirketlerin verisiyle hedefli reklam/ölçüm için birleştirmek ya da veri komisyoncusuna vermek. ATT yok,
+  IDFA yok, Meta'ya giden olaylar toplu ölçüm → **izleme yok**.
+- **Paylaşım (Play)**: hizmet sağlayıcıya (işleyen) aktarım paylaşım değildir. **Meta'ya reklam ölçümü aktarımı paylaşımdır** (rızaya bağlı, kapatılabilir).
+- **Koç** (`koc` bayrağı 1.1.0'da kapalı) kodda var ve uzaktan açılabilir → verileri beyanda **şimdiden** kapsanır (yeni tür gerektirmiyor:
+  Health + Other User Content; Play'de "Other in-app messages"). Beyan derlemenin yeteneğini kapsar (L-S3 Play not 2).
 
 ## 1. App Store Connect › App Privacy
 
-**Data Used to Track You** (izleme): Purchase History · Product Interaction · Device ID.
-**Data Linked to You**: aşağıdaki tablodaki "Bağlı = Evet" satırlarının tamamı. **Data Not Linked to You**: yok (⚠ Crash/Performance artık bağlı).
+**Data Used to Track You:** — (boş) · **Data Not Linked to You:** — (boş; hepsi bağlı) · **Data Linked to You:** aşağıdaki tablonun tamamı.
 
-| Apple veri türü | Toplanıyor | Bağlı | İzleme | Amaçlar | Kanıt (kod) | L-S1 / G3-S1 |
+ASC formunda her tür için üç soru: (1) amaçlar, (2) kimliğe bağlı mı, (3) izleme için mi. Tablo bu sırayla.
+
+| # | Apple veri türü | Amaçlar | Bağlı | İzleme | Hangi veri / ne zaman | Kanıt |
 |---|---|---|---|---|---|---|
-| Contact Info › Name | Evet | Evet | Hayır | App Functionality | `src/screens/PersonalInfoScreen.tsx` (profiles.full_name), Apple FULL_NAME `src/lib/postSocialAuth.ts` | aynı |
-| Contact Info › Email Address | Evet | Evet | Hayır | App Functionality | `src/core/AuthContext.tsx:283-300` (OTP), destek `support_tickets.user_email` | aynı |
-| Contact Info › Phone Number | Evet | Evet | Hayır | App Functionality | `src/lib/postSocialAuth.ts`, `orders.phone`, `addresses.contact_phone` (CANLI_SEMA) | aynı |
-| Contact Info › Physical Address | Evet | Evet | Hayır | App Functionality | `src/screens/AddressesScreen.tsx`, `addresses` (CANLI_SEMA) | aynı |
-| Health & Fitness › Health | Evet | Evet | Hayır | App Functionality | boy/kilo/yaş/cinsiyet/hedef `src/modules/onboarding/takibe/save.ts:32,51`; vücut ölçüleri `body_measurements` | aynı (L-S1 ★ AI fotoğrafını da bu bağlamda sayar) |
-| Health & Fitness › Fitness | Evet | Evet | Hayır | App Functionality | `meal_consumptions`, `water_daily`, `activity_logs` (CANLI_SEMA) | aynı |
-| Financial Info › Payment Info | **Evet** | Evet | Hayır | App Functionality | kayıtlı kart son 4/marka/banka `src/lib/cards.ts:9-10`; jeton `user_card_secrets.card_token` (CANLI_SEMA) | ⚠ L-S1 "Hayır, değerlendirilsin", G3-S1 Hayır |
-| Location › Precise Location | Evet | Evet | Hayır | App Functionality | `src/components/checkout/AddressVerificationSheet.tsx:148,174`, `src/lib/nearestLocation.ts:80`; `addresses.latitude/longitude` | aynı |
-| User Content › Photos or Videos | Evet | Evet | Hayır | App Functionality | AI tarama yükleme `src/modules/ai/scan/client.ts:44` → Anthropic `supabase/functions/analyze-ai-scan/index.ts:233`; Keşfet `src/modules/kesfet/media.ts`; avatar; destek eki | aynı (L-S1 ★ kapsam) |
-| User Content › Audio Data | **Evet** | Evet | Hayır | App Functionality | galeriden seçilen video gönderisinin ses izi `src/modules/media/video/pickVideo.ts:14-15` | aynı (L-S1 ★) · G3-S1'de yoktu |
-| User Content › Customer Support | **Evet** | Evet | Hayır | App Functionality | `src/screens/profile/SupportScreen.tsx:186` | aynı (L-S1 ★) |
-| User Content › Other User Content | **Evet** | Evet | Hayır | App Functionality | gönderi `src/modules/kesfet/client.ts:165` (`create_post`), yorum `post_comments`, değerlendirme `reviews` | aynı (L-S1 ★) |
-| Identifiers › User ID | Evet | Evet | Hayır | App Functionality, Analytics | `analytics_events.user_id` `src/lib/analytics.ts:300-320`; Sentry `setUser` | aynı |
-| Identifiers › Device ID | Evet | Evet | **Evet** | Third-Party Advertising, **Analytics** | IDFA yalnız ATT sonrası `src/lib/analytics.ts:157-170`; `anon_id` kalıcı kurulum kimliği `src/lib/analytics.ts:244,315` | aynı (L-S1 ★ Analytics) |
-| Purchases › Purchase History | Evet | Evet | **Evet** | App Functionality, Analytics, Third-Party Advertising | `orders`; Meta `logPurchase` `src/lib/analytics.ts:230` | aynı |
-| Usage Data › Product Interaction | Evet | Evet | **Evet** | App Functionality, Analytics, Third-Party Advertising | Meta `logEvent` `src/lib/analytics.ts:181`; birinci taraf `analytics_events` (`src/lib/metrics/queue.ts`); kaynak takibi (kutu/saha kodu, UTM) `src/lib/metrics/attribution.ts` | aynı |
-| Diagnostics › Crash Data | Evet | **Evet** | Hayır | App Functionality | `src/lib/sentry.ts:68` `Sentry.setUser({ id })` | ⚠ G3-S1 "Not Linked"; L-S1 ★ Evet ile aynı |
-| Diagnostics › Performance Data | Evet | **Evet** | Hayır | App Functionality | `src/lib/sentry.ts:48` `tracesSampleRate: 0.1` | ⚠ G3-S1 "Not Linked"; L-S1 ★ ile aynı |
-| Sensitive Info · Contacts · Browsing History · Search History · Emails/Text Messages · Gameplay · Other Diagnostic · Other Financial · Credit Info · Advertising Data · Other Usage Data · Coarse Location | Hayır | — | — | — | kodda bulunamadı (Keşfet araması sunucuya kaydedilmiyor; konum yalnız "precise" izinle alınır) | aynı |
+| 1 | Contact Info › Name | App Functionality | Evet | Hayır | Ad soyad (hesap, teslimat); Apple ile Girişte ad | `postSocialAuth.ts`, `profiles.full_name` |
+| 2 | Contact Info › Email Address | App Functionality | Evet | Hayır | Giriş (e-posta kodu), destek | `AuthContext.tsx` |
+| 3 | Contact Info › Phone Number | App Functionality | Evet | Hayır | eatkcal teslimat iletişimi | `orders.phone`, `addresses.contact_phone` |
+| 4 | Contact Info › Physical Address | App Functionality | Evet | Hayır | eatkcal teslimat adresi | `addresses` |
+| 5 | Location › Precise Location | App Functionality | Evet | Hayır | **Yalnız eatkcal**: kullanıcı "Konumumu kullan"a dokununca adres doğrulama / en yakın şube (G26: açılışta sorulmaz) | `addressGeocode.ts` `requestLocationPermission` |
+| 6 | Health & Fitness › Health | App Functionality | Evet | Hayır | Boy, kilo, yaş, cinsiyet, hedef, vücut ölçüleri; AI tarama sonucu; (Koç açılınca) Koç'a giden günlük özet | `takibe/save.ts`, `coach-chat/index.ts` |
+| 7 | Health & Fitness › Fitness | App Functionality | Evet | Hayır | Öğün, kalori, makro, su, etkinlik (fotoğraf, ses, barkod, elle) | `meal_consumptions`, `water_daily`, `activity_logs` |
+| 8 | User Content › Photos or Videos | App Functionality | Evet | Hayır | AI tarama fotoğrafı (Anthropic'e tahmin için, ilk analizden önce izin `ai_photo`), Keşfet foto/video, avatar, destek eki | `analyze-ai-scan`, `kesfet/media.ts` |
+| 9 | User Content › Audio Data | App Functionality | Evet | Hayır | **Yalnız Keşfet video gönderisinin ses izi.** Sesli giriş ses toplamaz (`recordingOptions` yok; ses dosyası sunucuya gitmez) | `pickVideo.ts`, `speech.ts:60` |
+| 10 | User Content › Customer Support | App Functionality | Evet | Hayır | Destek talepleri | `SupportScreen.tsx`, `support_tickets` |
+| 11 | User Content › Other User Content | App Functionality | Evet | Hayır | Gönderi, yorum, değerlendirme; **AI tarama notu**; **sesli girişin yazıya dökülmüş metni** (Anthropic'e öğelere ayırma için); (Koç açılınca) Koç mesajları, 30 gün | `analyze-ai-scan`, `g24_coach.sql` |
+| 12 | Financial Info › Payment Info | App Functionality | Evet | Hayır | eatkcal'da kayıtlı kart: son 4 hane, marka, banka, Paynkolay kart jetonu (kart numarası uygulamaya girilmez). **Abonelik ödemesini Apple alır, bize kart bilgisi gelmez** | `src/lib/cards.ts`, `user_card_secrets` — ⚠ §3 Ç2 |
+| 13 | Purchases › Purchase History | App Functionality, Analytics, Third-Party Advertising | Evet | **Hayır** | eatkcal siparişleri (rızayla Meta'ya toplu ölçüm); **kcalAI abonelik geçmişi** (RevenueCat: ürün, dönem, deneme, bitiş — yalnız App Functionality + Analytics, Meta'ya gitmez) | `orders`, `g22_s1_subscriptions.sql`, `events.ts` |
+| 14 | Usage Data › Product Interaction | App Functionality, Analytics, Third-Party Advertising | Evet | **Hayır** | Birinci taraf olaylar (kapatılabilir); eatkcal ticaret olayları rızayla Meta'ya (toplu); `paywall_view`, `sub_*`, `coach_*` yalnız birinci taraf | `analytics.ts`, `metrics/queue.ts`, `events.ts` |
+| 15 | Identifiers › User ID | App Functionality, Analytics | Evet | Hayır | Supabase kullanıcı kimliği; RevenueCat `app_user_id` = aynı kimlik; Sentry `setUser` | `useSubscriptionBootstrap.ts`, `sentry.ts` |
+| 16 | Identifiers › Device ID | Analytics, App Functionality | Evet | **Hayır** | Birinci taraf `anon_id` (kurulum kimliği); RevenueCat SDK'nın IDFV'si (abonelik eşleme). **IDFA YOK** | `analytics.ts` — ⚠ §3 Ç4 |
+| 17 | Diagnostics › Crash Data | App Functionality | Evet | Hayır | Sentry (kullanıcı UUID'li) | `sentry.ts` |
+| 18 | Diagnostics › Performance Data | App Functionality | Evet | Hayır | Sentry performans örneklemesi | `sentry.ts` |
+| — | Contacts · Browsing History · Search History · Sensitive Info · Emails or Text Messages · Gameplay · Coarse Location · Credit Info · Other Financial Info · Advertising Data · Other Usage Data · Other Diagnostic Data · Other Data | **Toplanmıyor** | — | — | Keşfet araması sunucuya kaydedilmez; konum yalnız "precise" izinle | — |
 
-Ek sorular: **Hesap silme** uygulama içinde (Profil › Güvenlik › Hesabımı sil) · **Apple ile Giriş jeton iptali** var
-(`supabase/functions/_shared/apple-auth.ts`) · **Gizlilik politikası URL'si**: `APP_STORE_METINLERI.md`.
+Ek ASC alanları: **Gizlilik Politikası URL'si** TR `https://eatkcal.com/gizlilik-politikasi`, EN `https://eatkcal.com/en/legal/privacy` ·
+**User Privacy Choices URL** (isteğe bağlı) `https://eatkcal.com/account-deletion` · Hesap silme uygulama içinde (Profil › Güvenlik › Hesabımı sil) ·
+Apple ile Giriş jeton iptali var (`supabase/functions/_shared/apple-auth.ts`).
 
-## 2. Google Play Console › Data safety
+### 1a. Manifest ↔ etiket (iOS `PrivacyInfo.xcprivacy`, `app.config.js`)
+| Konu | Manifest (bugün) | ASC etiketi (bu dosya) | Durum |
+|---|---|---|---|
+| `NSPrivacyTracking` | `false` | izleme yok | ✔ |
+| Tür listesi | 18 tür (1–18 ile aynı) | 18 tür | ✔ |
+| Purchase History / Product Interaction amaçları | AppFunctionality + Analytics + ThirdPartyAdvertising | aynı | ✔ (alternatif amaç §3 Ç3) |
+| Device ID amacı | yalnız Analytics | Analytics + App Functionality | ⚠ Ç4 — RevenueCat kendi SDK manifestinde beyan eder; ASC toplamı yansıtır. İstenirse manifeste de eklenir (kod işi, bu oturumda yapılmadı) |
+| Payment Info | var | var | ✔ (L-S3 "Hayır" önerisiyle fark — Ç2) |
 
-**Genel:** Veri toplanıyor/paylaşılıyor = Evet · Aktarımda şifreleme = **Evet** (Supabase/Sentry/Meta HTTPS) ·
-Kullanıcı silme isteyebilir = **Evet** (uygulama içi + `https://eatkcal.com/account-deletion`) · Bağımsız güvenlik incelemesi = Hayır ·
-Aileler politikası = Hayır (18+).
+## 2. Google Play Console › Uygulama içeriği › Veri güvenliği — soru soru
 
-| Play kategori › tür | Toplanıyor | Paylaşılıyor | Geçici (ephemeral) | Zorunlu / İsteğe bağlı | Amaçlar | Not / kanıt | L-S1 |
-|---|---|---|---|---|---|---|---|
-| Location › Precise location | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | yalnız ön plan; adres doğrulama, en yakın şube | aynı |
-| Location › Approximate location | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | `ACCESS_COARSE_LOCATION` manifestte → Play ayrıca sorar | aynı |
-| Personal info › Name | Evet | Hayır | Hayır | Zorunlu (sipariş) / isteğe bağlı (takip) | App functionality, Account management | | aynı |
-| Personal info › Email address | Evet | Hayır | Hayır | Zorunlu | App functionality, Account management | giriş | aynı |
-| Personal info › User IDs | Evet | Hayır | Hayır | Zorunlu | App functionality, Analytics | `user_id` | aynı |
-| Personal info › Address | Evet | Hayır | Hayır | İsteğe bağlı (yalnız sipariş) | App functionality | | aynı |
-| Personal info › Phone number | Evet | Hayır | Hayır | İsteğe bağlı (yalnız sipariş) | App functionality | | aynı |
-| Financial info › User payment info | **Evet** | Hayır | Hayır | İsteğe bağlı (kart kaydı) | App functionality | son 4 hane/marka/jeton; kart numarası Paynkolay sayfasında | ⚠ L-S1'de satır yok |
-| Financial info › Purchase history | Evet | **Evet (Meta)** | Hayır | İsteğe bağlı (rıza) | App functionality, Analytics, Advertising or marketing | Meta yalnız reklam ölçümü açıkken (G20-S1: varsayılan AÇIK, kapatılabilir) | aynı (L-S1 "zorunlu" yazmış: ⚠ paylaşım kısmı rızaya bağlı → isteğe bağlı) |
-| Health and fitness › Health info | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | AI analiz için Anthropic'e gider = işleyen, paylaşım değil | aynı |
-| Health and fitness › Fitness info | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | öğün, su, etkinlik | aynı |
-| Photos and videos › Photos | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | AI tarama, avatar, gönderi, destek eki | aynı |
-| Photos and videos › Videos | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | Keşfet video | aynı |
-| Audio › Other audio files | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | video ses izi | aynı |
-| Messages › Other in-app messages | **Evet** | Hayır | Hayır | İsteğe bağlı | App functionality | destek talebi mesajları (`support_tickets.message`) | ⚠ L-S1 bunu "Other UGC"ye koymuş — Play tanımında destek mesajı "in-app messages"a daha uygun; ikisinden biri seçilmeli |
-| App activity › App interactions | Evet | **Evet (Meta)** | Hayır | İsteğe bağlı | Analytics, Advertising or marketing | birinci taraf ölçüm (kapatılabilir) + Meta | aynı |
-| App activity › Other user-generated content | Evet | Hayır | Hayır | İsteğe bağlı | App functionality | gönderi, yorum, değerlendirme | aynı |
-| App activity › Other actions | Evet | Hayır | Hayır | İsteğe bağlı | Analytics | kaynak takibi (bağlantı türü, kutu/saha kodu, UTM — kişisel yol parçası saklanmaz) | yeni satır (L-S1'de yok) |
-| App info and performance › Crash logs | Evet | Hayır | Hayır | Zorunlu | Analytics | Sentry (kullanıcı UUID'li) | aynı |
-| App info and performance › Diagnostics | Evet | Hayır | Hayır | Zorunlu | Analytics | Sentry performans %10 | aynı |
-| Device or other IDs | Evet | **Evet (Meta)** | Hayır | İsteğe bağlı (GAID); `anon_id` zorunlu | Analytics, Advertising or marketing | GAID (`AD_ID` izni) + `anon_id` + Expo push jetonu | aynı |
+### 2.1 Veri toplama ve güvenlik
+| Soru | Cevap | Not |
+|---|---|---|
+| Uygulamanız gerekli kullanıcı veri türlerinden herhangi birini topluyor ya da paylaşıyor mu? | **Evet** | |
+| Uygulamanızın topladığı tüm kullanıcı verileri aktarım sırasında şifreleniyor mu? | **Evet** | TLS (Supabase, Sentry, RevenueCat, Meta, Anthropic) |
+| Kullanıcıların verilerinin silinmesini isteyebilecekleri bir yol sağlıyor musunuz? | **Evet** | Uygulama içi Profil › Güvenlik › Hesabımı sil + web |
+| Uygulamanız kullanıcıların hesap oluşturmasına izin veriyor mu? | **Evet** — e-posta kodu, Google ile, Apple ile (OAuth) | |
+| Hesap silme URL'si | `https://eatkcal.com/account-deletion` | ⚠ sayfa canlı (200); EN `/en/account-deletion` henüz 404 (web deploy) |
+| Hesabı silmeden bazı verilerin silinmesini istemenin yolu var mı? | **Evet** | Gönderi/yorum silme, öğün kaydı silme, (Koç açılınca) Koç geçmişini silme |
+| Bağımsız güvenlik incelemesi (MASA) | Hayır | |
+| Aileler politikası kapsamında mı / çocuklara yönelik mi? | Hayır (18+) | |
 
-**Reklam kimliği beyanı** (Uygulama içeriği): Evet — Meta SDK, amaç: Analytics + Advertising (ölçüm). Uygulamada reklam GÖSTERİLMEZ ("Reklam içerir: Hayır").
+### 2.2 Veri türleri (her biri için: toplanıyor mu · paylaşılıyor mu · anlık mı · zorunlu mu · amaçlar)
+| Play kategori › tür | Toplanıyor | Paylaşılıyor | Anlık (ephemeral) | Zorunlu / İsteğe bağlı | Amaçlar | Hangi veri |
+|---|---|---|---|---|---|---|
+| Konum › Yaklaşık konum | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | `ACCESS_COARSE_LOCATION` manifestte; yalnız eatkcal adresi |
+| Konum › Kesin konum | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Yalnız kullanıcı "Konumumu kullan"a dokununca |
+| Kişisel bilgiler › Ad | Evet | Hayır | Hayır | İsteğe bağlı (takip) / sipariş için gerekli | Uygulama işlevi, Hesap yönetimi | |
+| Kişisel bilgiler › E-posta adresi | Evet | Hayır | Hayır | Zorunlu | Uygulama işlevi, Hesap yönetimi | Giriş |
+| Kişisel bilgiler › Kullanıcı kimlikleri | Evet | Hayır | Hayır | Zorunlu | Uygulama işlevi, Analiz, Hesap yönetimi | `user_id`, RevenueCat `app_user_id` (işleyen) |
+| Kişisel bilgiler › Adres | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | eatkcal teslimat |
+| Kişisel bilgiler › Telefon numarası | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | eatkcal teslimat |
+| Finansal bilgiler › Kullanıcı ödeme bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | eatkcal kayıtlı kart (son 4, marka, jeton). **Abonelik ödemesini Google Play alır** — ⚠ Ç2 |
+| Finansal bilgiler › Satın alma geçmişi | Evet | **Evet (Meta — yalnız eatkcal siparişleri, rızayla)** | Hayır | İsteğe bağlı | Uygulama işlevi, Analiz, Reklam veya pazarlama | eatkcal siparişleri; kcalAI abonelik geçmişi (Meta'ya gitmez) |
+| Sağlık ve fitness › Sağlık bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Boy, kilo, hedef, ölçüler; AI sonucu; (Koç) günlük özet → Anthropic = işleyen |
+| Sağlık ve fitness › Fitness bilgileri | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Öğün, su, etkinlik (foto, ses, barkod, elle) |
+| Mesajlar › Diğer uygulama içi mesajlar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Destek talebi mesajları; (Koç açılınca) Koç sohbeti, 30 gün |
+| Fotoğraflar ve videolar › Fotoğraflar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | AI tarama (Anthropic = işleyen), Keşfet, avatar, destek eki |
+| Fotoğraflar ve videolar › Videolar | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Keşfet video |
+| Ses dosyaları › Ses veya ses kayıtları | **Hayır** | — | — | — | — | Sesli giriş kayıt tutmaz; tanıma cihazda ya da işletim sisteminin hizmetinde (bize gelmez) — L-S3 Play not 1 |
+| Ses dosyaları › Diğer ses dosyaları | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Keşfet video ses izi |
+| Uygulama etkinliği › Uygulama etkileşimleri | Evet | **Evet (Meta — rızayla)** | Hayır | İsteğe bağlı | Analiz, Reklam veya pazarlama | Birinci taraf ölçüm (kapatılabilir) + eatkcal ticaret olayları |
+| Uygulama etkinliği › Kullanıcı tarafından oluşturulan diğer içerikler | Evet | Hayır | Hayır | İsteğe bağlı | Uygulama işlevi | Gönderi, yorum, değerlendirme, AI tarama notu, sesli girişin döküm metni |
+| Uygulama etkinliği › Diğer işlemler | Evet | Hayır | Hayır | Zorunlu | Uygulama işlevi, Analiz, Sahtekârlığı önleme, güvenlik ve uyumluluk | Günlük AI/barkod hak sayaçları; kaynak takibi (kutu/saha kodu, UTM) |
+| Uygulama bilgileri ve performans › Kilitlenme günlükleri | Evet | Hayır | Hayır | Zorunlu | Analiz | Sentry |
+| Uygulama bilgileri ve performans › Teşhis | Evet | Hayır | Hayır | Zorunlu | Analiz | Sentry performans |
+| Cihaz veya diğer kimlikler | Evet | **Evet (Meta — GAID, rızayla)** | Hayır | İsteğe bağlı (GAID) | Analiz, Reklam veya pazarlama | GAID (`AD_ID`), `anon_id`, Expo push jetonu, RevenueCat tanımlayıcıları (işleyen) |
+| Web'de gezinme · Kişiler · Takvim · SMS · E-postalar · Uygulama listesi · Etnik köken vb. hassas | Hayır | — | — | — | — | |
 
-## 3. Çelişkiler ve açık noktalar (işaretli)
-| # | Konu | Kod | L-S1 / G3-S1 | Öneri |
+**Reklam kimliği beyanı** (Uygulama içeriği › Reklam kimliği): **Evet** — Meta SDK, amaç Analiz + Reklam (ölçüm). Uygulamada reklam
+gösterilmez ("Reklam içerir: Hayır"). Android'de ATT karşılığı yok; Meta yalnız uygulama içi "Reklam ölçümü" açıkken.
+
+## 3. Tutarlılık ve açık noktalar
+| # | Konu | Bu dosya | G26 / L-S3 / kod | Öneri |
 |---|---|---|---|---|
-| Ç1 | **Meta varsayılanı** | G20-S1: hesap oluştururken anahtar **AÇIK** gelir (İlter kararı 9 Kas) | L-S1 B-06: varsayılan **kapalı**, açık rıza (KVKK md.5/1, ePrivacy md.5(3)) | Hukuki karar İlter'de; mağaza beyanı her iki durumda aynı ("izleme Evet", Play "isteğe bağlı"). Apple açısından ATT zaten izin istiyor → mağaza reddi riski yok; KVKK riski L-S1'de |
-| Ç2 | Crash/Performance bağlı mı | `sentry.ts:68` setUser → **bağlı** | G3-S1 "Not Linked" (eski form) | Etiket "Linked" (bu oturumda manifest de düzeltildi). Alternatif: `setUser` kaldırılırsa "Not Linked" — kod işi |
-| Ç3 | Payment Info | kart jetonu + son 4 hane saklanıyor | L-S1/G3-S1 "Hayır" | **Evet** beyan et (ihtiyatlı; Apple: geliştirici ödeme bilgisine erişebiliyorsa beyan) |
-| Ç4 | Destek mesajı Play kategorisi | `support_tickets` | L-S1: Other UGC | Messages › Other in-app messages (öneri) |
-| Ç5 | **Üçüncü taraf AI'ya fotoğraf** (Apple 5.1.2(i), Kasım 2025 güncellemesi: "third-party AI" ile paylaşımı açıkça bildir ve **açık izin al**) | Tabak fotoğrafı ve not Anthropic'e (ABD) gidiyor (`analyze-ai-scan/index.ts:233`); uygulamada ilk taramadan önce bunu söyleyen ve izin isteyen ekran YOK (sağlık rızası metni yalnız "hedefimi hesaplamak" diyor, `src/core/i18n/dictionaries.ts:230`) | L-S1 B-01/B-03 hukuken işaretlemiş (yurt dışı aktarım, sağlık rızası AI'yı kapsamalı) | **P0 mağaza riski.** İlk Tara'dan önce bir kez sheet: "Fotoğrafın ve notun kalori tahmini için yapay zekâ sağlayıcımız Anthropic'e (ABD) gönderilir; eğitim için kullanılmaz [teyit]. Kabul et / Vazgeç" + Gizlilik bağlantısı; kabul `user_consents`'e (`ai_processing`). Kod işi — bu oturum yalnız dosya/yapılandırma (SORULAR 1) |
-| Ç6 | Kaynak takibi (Play "Other actions") | `attribution.ts` | L-S1'de yok | Satır eklendi; Apple'da Product Interaction kapsıyor |
-| Ç7 | Konum yaklaşık | `ACCESS_COARSE_LOCATION` manifestte | L-S1 "Approximate / Precise" tek satır | Play'de iki tür ayrı işaretlenir |
-
-## 4. Manifest ↔ etiket eşlemesi (iOS `PrivacyInfo.xcprivacy`)
-`app.config.js` `ios.privacyManifests.NSPrivacyCollectedDataTypes` (bu oturumdan sonra): EmailAddress · Name · PhoneNumber ·
-PhysicalAddress · PreciseLocation · Health · Fitness · PhotosorVideos · **AudioData** · **OtherUserContent** · **CustomerSupport** ·
-**PaymentInfo** · PurchaseHistory (izleme) · ProductInteraction (izleme) · DeviceID (izleme, **+Analytics**) · UserID ·
-CrashData (**bağlı**) · PerformanceData (**bağlı**). Kalın = G20-S2 değişikliği. `NSPrivacyTracking: true`,
-`NSPrivacyTrackingDomains: ['ep1.facebook.com']` değişmedi. Doğrulama: yeni derlemede Xcode › Product › Archive ›
-"Generate Privacy Report" (YAYIN_KONTROL B4).
+| Ç1 | İzleme | Apple: hiçbir türde izleme yok | G26 ✔; L-S3 "Evet" (G26 öncesi) | L-S3 tablosu güncellenmeli (legal/global) — bu oturum dokunmadı |
+| Ç2 | Payment Info | **Evet** (Apple + Play), yalnız eatkcal kayıtlı kartı | Manifest `PaymentInfo` var; L-S3 "Hayır, Other Financial Info değerlendirilsin" | İhtiyatlı **Evet** (manifest ile aynı, kod değişikliği yok). İlter/hukuk "Hayır" derse manifest + iki form birlikte değişir (SORULAR 3) |
+| Ç3 | Purchase History / Product Interaction amacı | Third-Party Advertising (manifest ile aynı) | Apple tanımında Meta'nın **bizim** reklamımızı göstermesi "Developer's Advertising or Marketing"e daha yakın | Değiştirilirse manifest de değişir (yeni derleme gerekir) → 1.1.0'da manifestle aynı kalsın; 1.1.x'te düzelt (SORULAR 4) |
+| Ç4 | Device ID amacı | Analytics + App Functionality | Manifest yalnız Analytics; L-S3 not 3 (RevenueCat IDFV) | ASC'de ikisi; manifest farkı RevenueCat SDK manifestiyle kapanır |
+| Ç5 | Ses | Apple Audio Data yalnız video; Play "Ses kayıtları: Hayır" | G26/G25 `speech.ts`: iOS cihazda (destek yoksa Apple), Android cihazda (yoksa Google), `recordingOptions` yok | ✔ — İzin metni (`NSSpeechRecognitionUsageDescription`) "telefonunda yazıya çevirmek" diyor; Apple sunucusu yedeği için metin ihtiyatlı mı? (SORULAR 5) |
+| Ç6 | Konum | Yalnız eatkcal, kullanıcı dokununca | G26 ✔ | ✔ |
+| Ç7 | AI'ya fotoğraf (5.1.2(i)) | İlk analizden önce `ai_photo` izni | G26 §2 #3 ✔ | ✔ (G20'deki P0 risk kapandı) |
+| Ç8 | Koç verileri | Şimdiden beyanda | Bayrak kapalı | Koç açılırken beyan değişmez; yalnız açıklama metni (YAYIN_KONTROL D) |
+| Ç9 | Destek mesajı kategorisi (Play) | Diğer uygulama içi mesajlar | L-S3: Other UGC | İkisi de kabul; Koç mesajlarıyla aynı yere konuldu |
