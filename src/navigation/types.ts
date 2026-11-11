@@ -93,6 +93,12 @@ export type RootStackParamList = {
   MealPlan: import('../modules/plan/screens/MealPlanScreen').MealPlanParams;
   MealPlanGenerate: import('../modules/plan/screens/PlanGenerateScreen').PlanGenerateParams;
   ShoppingList: import('../modules/plan/screens/ShoppingListScreen').ShoppingListParams;
+  // G34-S1 — Kişisel plan (`kisisel_plan` bayrağı).
+  PersonalPlan: { origin?: import('../modules/personalPlan/store').PpOrigin; restart?: boolean } | undefined;
+  PersonalPlanMine: { fresh?: boolean } | undefined;
+  PersonalPlanEdit: undefined;
+  PersonalPlanCheckin: undefined;
+  PlanPaywall: { from?: string; plan?: 'fresh' | 'balance' } | undefined;
   // eatkcal ilk sipariş şehir kapısı sonrası mevcut sipariş akışı (G6-S4) —
   // bugünkü HomeScreen'i AYNEN yeniden kullanır, yeni bir katalog YAZILMADI.
   EatCatalog: undefined;

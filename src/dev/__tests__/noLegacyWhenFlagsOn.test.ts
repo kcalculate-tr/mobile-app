@@ -176,6 +176,12 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   MealPlan: { kind: 'final', file: 'modules/plan/screens/MealPlanScreen.tsx' },
   MealPlanGenerate: { kind: 'final', file: 'modules/plan/screens/PlanGenerateScreen.tsx' },
   ShoppingList: { kind: 'final', file: 'modules/plan/screens/ShoppingListScreen.tsx' },
+  // G34-S1 — Kişisel plan (`kisisel_plan` bayrağı).
+  PersonalPlan: { kind: 'final', file: 'modules/personalPlan/screens/PersonalPlanFlowScreen.tsx' },
+  PersonalPlanMine: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanScreen.tsx' },
+  PersonalPlanEdit: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanEditScreen.tsx' },
+  PersonalPlanCheckin: { kind: 'final', file: 'modules/personalPlan/screens/CheckinScreen.tsx' },
+  PlanPaywall: { kind: 'final', file: 'modules/personalPlan/screens/PlanPaywallScreen.tsx' },
   EatCatalog: { kind: 'finalRoute' },
 };
 
