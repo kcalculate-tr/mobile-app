@@ -435,3 +435,64 @@ test('EN: Meal plan, Calories, Log, "This week’s plan is empty", Build my plan
   expect(r2.getByText('Log')).toBeTruthy();
   expect(r2.getByText('Build my plan for me')).toBeTruthy();
 });
+
+// ── G34-S1 md.5 — "Planı benim için oluştur" kişisel plandan okur (Tur 26o 04 "Oluştur (plandan)") ──
+// eslint-disable-next-line import/first
+import { useMyPlanStore } from '../../personalPlan/useMyPlan';
+// eslint-disable-next-line import/first
+import { computePlan } from '../../personalPlan/calc';
+// eslint-disable-next-line import/first
+import { emptyAnswers } from '../../personalPlan/types';
+
+describe('G34-S1 md.5 — kişisel plandan oku', () => {
+  afterEach(() => {
+    mockFlags = {};
+    useMyPlanStore.getState().clear();
+  });
+
+  test('kisisel_plan açık + plan yok → form yerine akışa yönlendiren kart; "Oluştur" pasif', async () => {
+    mockFlags = { kisisel_plan: true };
+    useMyPlanStore.setState({ uid: 'u-1', saved: null, weighIns: [], loaded: true, loading: false });
+    const r = render(<PlanGenerateScreen />);
+    await flush();
+    expect(r.getByTestId('pp-form-needed')).toBeTruthy();
+    expect(r.queryByTestId('plan-diet-all')).toBeNull();
+    expect(r.getByTestId('plan-generate-cta').props.accessibilityState).toEqual({ disabled: true });
+    fireEvent.press(r.getByTestId('pp-form-create'));
+    expect(mockNav.navigate).toHaveBeenCalledWith('PersonalPlan', { origin: 'plan_form' });
+  });
+
+  test('plan var → "Kişisel planından" özeti (1440 kcal, 130 g, Fıstık); hedef/diyet/alerjen yeniden sorulmaz; Düzenle → Planı düzenle', async () => {
+    mockFlags = { kisisel_plan: true };
+    const result = computePlan({ goal: 'lose', gender: 'female', birthYear: 1994, heightCm: 168, weightKg: 72, activity: 'light', targetWeightKg: 65, pace: 0.5 }, 2026, '2026-11-12')!;
+    const { consentHealth: _c, consentAllergy: _a, ...answers } = { ...emptyAnswers(), goal: 'lose' as const, weightKg: 72, allergens: ['peanut' as const] };
+    void _c;
+    void _a;
+    useMyPlanStore.setState({
+      uid: 'u-1',
+      saved: { v: 1, answers, result, custom: null, startedAt: '2026-11-12', startWeightKg: 72, targetDate: result.targetDate, updatedAt: 'x' },
+      weighIns: [],
+      loaded: true,
+      loading: false,
+    });
+    const r = render(<PlanGenerateScreen />);
+    await flush();
+    expect(r.getByTestId('pp-form-summary')).toBeTruthy();
+    expect(r.getByText('1440 kcal')).toBeTruthy();
+    expect(r.getByText('130 g')).toBeTruthy();
+    expect(r.getByText('Fıstık')).toBeTruthy();
+    expect(r.queryByTestId('plan-diet-all')).toBeNull();
+    expect(r.queryByTestId('pp-form-needed')).toBeNull();
+    fireEvent.press(r.getByTestId('pp-form-edit'));
+    expect(mockNav.navigate).toHaveBeenCalledWith('PersonalPlanEdit');
+  });
+
+  test('kisisel_plan kapalı → G33 formu AYNEN (profil hedefi, diyet çipleri)', async () => {
+    mockFlags = {};
+    const r = render(<PlanGenerateScreen />);
+    await flush();
+    expect(r.queryByTestId('pp-form-summary')).toBeNull();
+    expect(r.queryByTestId('pp-form-needed')).toBeNull();
+    expect(r.getByTestId('plan-diet-all')).toBeTruthy();
+  });
+});

@@ -81,6 +81,7 @@ import { resetToSignedOut } from '../../../../navigation/signOutReset';
 import { ProfileSubRow } from '../../../subscription/ui/ProfileSubSection';
 import { CoachProfileRow } from '../../../coach/ui/entries';
 import { ProfilePlanRows } from '../../../plan/ui/ProfilePlanRows';
+import { ProfilePlanRow, usePersonalPlanEntry } from '../../../personalPlan/ui/entries';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
@@ -99,6 +100,9 @@ export default function FinPrProfileScreen() {
   // G25-S1 md.3 (A4): "Macro aboneliğim" yalnız "Öğün Aboneliği" (yakında) sekmesini açıyor →
   // `yakinda_satirlari` kapalıyken satır gizli (Macro bakiyesi "Macro" satırından açılır).
   const yakindaSatirlari = useFeature('yakinda_satirlari');
+  // G34-S1 md.5: Hedefim + Kişisel planım TEK kart (`kisisel_plan`). Plan yoksa kart "Kişisel planımı oluştur"
+  // satırına döner; varsa halka + hedef özeti kalır, düğme Kişisel planım'ı açar. Kapalıyken G33 kartı AYNEN.
+  const personalPlan = usePersonalPlanEntry();
   // G22-S1 md.4: kcalAI › Abonelik + Yakında (FinSubProfileSoon) — bayrak + RevenueCat.
   const aboneligiGoster = useSubscriptionEnabled();
 
@@ -241,6 +245,11 @@ export default function FinPrProfileScreen() {
           <FinRowGroup>
             {/* G33-S1 md.1 (Tur 26n FinPrProfile) — TEK kart: halka + "Hedefim" + hedef özeti + "Hedefi düzenle".
                 Kişisel plan (26o) gelince aynı karta bağlanır. */}
+            {personalPlan.enabled && personalPlan.loaded && !personalPlan.hasPlan ? (
+              <View style={{ paddingHorizontal: 14, paddingVertical: 4 }} testID="profile-goal-card">
+                <ProfilePlanRow />
+              </View>
+            ) : (
             <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }} testID="profile-goal-card">
               <Svg width={44} height={44}>
                 <Circle cx={22} cy={22} r={17} fill="none" stroke={t.color.line} strokeWidth={5} />
@@ -272,13 +281,14 @@ export default function FinPrProfileScreen() {
                 ) : null}
               </View>
               <TouchableOpacity
-                onPress={() => navigation.navigate('TakibeBasla', { editGoal: true })}
+                onPress={() => (personalPlan.enabled ? (navigation as any).navigate('PersonalPlanMine') : navigation.navigate('TakibeBasla', { editGoal: true }))}
                 accessibilityRole="button"
                 style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: t.color.line, justifyContent: 'center' }}
               >
-                <AppText style={{ fontSize: 14, fontWeight: '600' }}>{tr('profil.edit_goal')}</AppText>
+                <AppText style={{ fontSize: 14, fontWeight: '600' }}>{personalPlan.enabled ? tr('pp.entry_my_plan') : tr('profil.edit_goal')}</AppText>
               </TouchableOpacity>
             </View>
+            )}
             {/* Abonelik (özel yeşil cam ikon + mevcut plan) ve AI Koç (Balance hapı) — ayrı kcalAI bölümü YOK. */}
             {aboneligiGoster ? <ProfileSubRow onOpen={() => (navigation as any).navigate('SubProfile')} /> : null}
             <CoachProfileRow />

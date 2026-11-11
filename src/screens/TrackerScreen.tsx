@@ -82,6 +82,7 @@ import type { HomeBannerItem } from '../modules/gun/home/banner';
 import { HomeEmptyToday } from '../modules/onboarding/first';
 import { HomeInkToast } from './tracker/HomeInkToast';
 import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
+import { HomePlanCard } from '../modules/personalPlan/ui/entries';
 import { homeBellTarget } from './tracker/homeBellTarget';
 import { useT } from '../core/i18n';
 import { pickAutoLogInstances } from '../modules/gun/delivery';
@@ -2818,6 +2819,9 @@ const html = `
                 hasTarget={homeGoal.has}
               />
             ) : null}
+            {/* G34-S1 md.5 (Tur 26o 04 "Ana sayfa kartı"): halkanın altında TEK SEFERLİK kişisel plan kartı
+                (`kisisel_plan`; plan varsa ya da × ile kapatıldıysa çizilmez). */}
+            {yeniKabuk ? <HomePlanCard /> : null}
             {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
             {yeniKabuk ? (
               <HomeBanner items={homeBanners} onOpen={openBanner} initialIndex={__DEV__ ? vitrinParams.vitrinBanner ?? 0 : 0} />

@@ -48,6 +48,7 @@ import { Chips, Composer } from '../ui/Composer';
 import { CoachAvatar, CoachGlass, FeedbackRow, QuotaPill, StreamText, TypingDots, useCoachTones } from '../ui/parts';
 import { DeleteConfirm, MenuSheet, UpsellSheet } from '../ui/sheets';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { CoachPlanChip } from '../../personalPlan/ui/entries';
 
 type Nav = { navigate: (n: string, p?: object) => void; goBack: () => void; canGoBack?: () => boolean };
 
@@ -384,6 +385,8 @@ export default function CoachChatScreen() {
             {tr('coach.hello')}
           </AppText>
           <AppText style={[styles.helloBody, { color: c.sec }]}>{tr('coach.hello_body')}</AppText>
+          {/* G34-S1 md.5 (Tur 26o 04 "Koç ilk açılış"): kişisel plan önerisi çiplerin başında (plan yoksa, `kisisel_plan`). */}
+          <CoachPlanChip />
           {gate === 'open' ? <Chips items={chips} onPick={(q) => void doSend(q, 'chip')} vertical /> : null}
           {gate === 'trial_out' ? (
             <Pressable onPress={() => setUpsell(true)} accessibilityRole="button" style={styles.link}>
