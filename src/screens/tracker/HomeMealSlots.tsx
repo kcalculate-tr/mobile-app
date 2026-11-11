@@ -50,25 +50,52 @@ import {
 import type { HighlightPhase } from '../../modules/gun/homeHighlight';
 import { MealMenuPopover, useAnchorMeasure } from '../../modules/gun/home/MealMenuPopover';
 import { useMealPhoto } from '../../modules/gun/useMealPhoto';
+import { useMealSticker } from '../../modules/gun/useMealSticker';
 
 // G28-S1 md.2: görsel yoksa kase cam nesnesi (kase = öğün; durağan png — listede yüzme yok).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const BOWL = require('../../../assets/glass/bowl.png');
 
 /**
- * Satır küçük görseli (44 pt, 12 yarıçap): Tara fotoğrafı (imzalı URL, önbellekli) →
- * yüklenirken iskelet → yoksa ürün görseli → o da yoksa kase cam nesnesi.
+ * Satır küçük görseli (44 pt, 12 yarıçap):
+ * G29-S1: çıkartma (şeffaf zemin, kırpılmış; yalnız fotoğraflı Tara kaydında sorulur) →
+ * Tara fotoğrafı (imzalı URL, önbellekli) → yüklenirken iskelet → ürün görseli → kase cam nesnesi.
  */
-function MealThumb({ photoPath, image, testID }: { photoPath?: string | null; image?: string; testID?: string }) {
+function MealThumb({
+  itemId,
+  photoPath,
+  image,
+  testID,
+}: {
+  itemId?: string | null;
+  photoPath?: string | null;
+  image?: string;
+  testID?: string;
+}) {
   const t = useTheme();
+  const sticker = useMealSticker(photoPath ? itemId : null);
   const photo = useMealPhoto(photoPath);
   const bg = t.isDark ? '#3A3A3C' : '#DCDEE2';
+  if (sticker.status === 'ready') {
+    return (
+      <View style={styles.thumb} testID={testID} accessible={false}>
+        <Image
+          source={{ uri: sticker.uri }}
+          style={styles.thumbImg}
+          resizeMode="contain"
+          testID={testID ? `${testID}-sticker` : undefined}
+        />
+      </View>
+    );
+  }
+  // Çıkartma sorulurken hazır fotoğraf (yerel / önbellek) beklemeden çizilir; çıkartma gelince değişir.
   const uri = photo.status === 'ready' ? photo.uri : image;
+  const waiting = sticker.status === 'loading' || photo.status === 'loading';
   return (
     <View style={[styles.thumb, { backgroundColor: bg }]} testID={testID} accessible={false}>
       {uri ? (
         <Image source={{ uri }} style={styles.thumbImg} testID={testID ? `${testID}-img` : undefined} />
-      ) : photo.status === 'loading' ? (
+      ) : waiting ? (
         <View style={styles.thumbImg} testID={testID ? `${testID}-skeleton` : undefined} />
       ) : (
         <Image source={BOWL} style={styles.thumbBowl} resizeMode="contain" testID={testID ? `${testID}-bowl` : undefined} />
@@ -465,7 +492,7 @@ function SlotItem({
         onAccessibilityAction={() => onToggleMenu(item.id)}
         style={styles.itemRow}
       >
-        <MealThumb photoPath={item.photoPath} image={image} testID={`home-thumb-${item.id}`} />
+        <MealThumb itemId={item.id} photoPath={item.photoPath} image={image} testID={`home-thumb-${item.id}`} />
         <View style={styles.itemMain}>
           <AppText numberOfLines={1} style={styles.itemName}>
             {item.name}

@@ -246,10 +246,15 @@ function FlightView({
     <Animated.View
       pointerEvents="none"
       testID={`log-flight-${flight.id}`}
-      style={[styles.flight, { left: x, top: y, width: w, height: h }, style]}
+      style={[styles.flight, flight.payload.cutout ? styles.flightCutout : null, { left: x, top: y, width: w, height: h }, style]}
     >
       {flight.payload.imageUri ? (
-        <Image source={{ uri: flight.payload.imageUri }} style={styles.flightImg} />
+        <Image
+          source={{ uri: flight.payload.imageUri }}
+          style={styles.flightImg}
+          resizeMode={flight.payload.cutout ? 'contain' : 'cover'}
+          testID={flight.payload.cutout ? `log-flight-${flight.id}-sticker` : undefined}
+        />
       ) : (
         <View style={[styles.flightDot, { backgroundColor: accent }]} />
       )}
@@ -260,6 +265,8 @@ function FlightView({
 const styles = StyleSheet.create({
   flight: { position: 'absolute', borderRadius: 16, overflow: 'hidden', zIndex: 50 },
   flightImg: { width: '100%', height: '100%' },
+  // G29-S1: çıkartma uçarken kırpılmaz / yuvarlanmaz (şeffaf kenarlar).
+  flightCutout: { borderRadius: 0, overflow: 'visible' },
   flightDot: { flex: 1, borderRadius: 999 },
   toastRow: { position: 'absolute', left: 16, right: 16, zIndex: 60 },
 });

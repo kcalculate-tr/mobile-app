@@ -1,0 +1,8 @@
+{
+  "name": "subject-lift",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KCAL yerel Expo modulu: tabak fotografindan cikartma (iOS 17+ Vision, Android ML Kit Subject Segmentation). Tamamen cihazda.",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

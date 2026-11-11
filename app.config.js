@@ -451,6 +451,11 @@ module.exports = {
         },
       ],
       'expo-apple-authentication',
+      // G29-S1 md.1 (İlter 11 Kas): çıkartma — yerel modül modules/subject-lift (npm paketi yok,
+      // autolinking ./modules). Android: ML Kit modeli Play hizmetleriyle iner (manifest
+      // meta-data, expo-camera'nın barcode_ui değeriyle birleştirilir). iOS 17 altı: kapalı.
+      // YENİ NATIVE DERLEME gerekir (OTA değil); eski derlemede modül yok → normal fotoğraf.
+      './modules/subject-lift/app.plugin.js',
       [
         '@react-native-google-signin/google-signin',
         {

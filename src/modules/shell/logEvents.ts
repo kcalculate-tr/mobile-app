@@ -31,6 +31,11 @@ export interface LogFlightPayload {
   h: number;
   /** Uçan küçük görsel (varsa); yoksa lime nokta uçar. */
   imageUri?: string | null;
+  /**
+   * G29-S1 md.1: görsel bir ÇIKARTMA (şeffaf zemin, nesneye kırpılmış) — uçuşta kırpma /
+   * köşe yuvarlama yok, oran korunur (contain). Yoksa normal fotoğraf (yuvarlatılmış, cover).
+   */
+  cutout?: boolean;
   /** Rozet/toast metni için öğün etiketi, ör. "Öğle". */
   mealLabel?: string | null;
   /** Kaynak: 'kesfet' | 'scan' | 'eatkcal' — vurgu etiketi için. */

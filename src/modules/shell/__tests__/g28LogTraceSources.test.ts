@@ -10,7 +10,8 @@ const read = (p: string) => readFileSync(join(SRC, p), 'utf8');
 
 test('dört kaynak logTrace çağırır (emitLogFlight doğrudan değil)', () => {
   const scan = read('modules/ai/scan/screens/ScanScreen.tsx');
-  assert.match(scan, /await logTrace\(\{\s*from: plateRef\.current/);
+  // G29-S1: çıkartma varsa uçuş çıkartmadan, yoksa tabaktan (plateRef) başlar.
+  assert.match(scan, /await logTrace\(\{\s*from: liftedSticker && stickerRef\.current \? stickerRef\.current : plateRef\.current/);
   assert.match(scan, /closeAfterLog\(\);/);
   const kesfet = read('modules/kesfet/ui/KesfetScreen.tsx');
   assert.match(kesfet, /void logTrace\(\{/);

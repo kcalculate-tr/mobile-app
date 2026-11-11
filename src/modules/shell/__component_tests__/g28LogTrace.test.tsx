@@ -148,3 +148,26 @@ test('rozet en fazla 9+; measureRect boyutsuz görünümde null', async () => {
   expect(await measureRect({ measureInWindow: (cb) => cb(0, 0, 0, 0) })).toBeNull();
   expect(await measureRect(null)).toBeNull();
 });
+
+// G29-S1 md.1: logla izinde uçan görsel ÇIKARTMA — kırpılmaz/yuvarlanmaz, oran korunur (contain).
+test('G29: çıkartma uçuşu (cutout) kırpılmaz; normal fotoğraf yuvarlatılmış cover kalır', async () => {
+  const { StyleSheet } = require('react-native');
+  const ui = mount();
+  await act(async () => {
+    await logTrace({ from: plate, imageUri: 'file:///sticker.webp', cutout: true, mealLabel: 'Öğle’ye', source: 'scan', id: 's1' });
+  });
+  const img = ui.getByTestId('log-flight-s1-sticker');
+  expect(img.props.resizeMode).toBe('contain');
+  const box = StyleSheet.flatten(ui.getByTestId('log-flight-s1').props.style);
+  expect(box.overflow).toBe('visible');
+  expect(box.borderRadius).toBe(0);
+  finishFlights();
+  await act(async () => {
+    await logTrace({ from: plate, imageUri: 'file:///p.jpg', mealLabel: 'Öğle’ye', source: 'scan', id: 'p1' });
+  });
+  expect(ui.queryByTestId('log-flight-p1-sticker')).toBeNull();
+  const box2 = StyleSheet.flatten(ui.getByTestId('log-flight-p1').props.style);
+  expect(box2.overflow).toBe('hidden');
+  expect(box2.borderRadius).toBe(16);
+  finishFlights();
+});

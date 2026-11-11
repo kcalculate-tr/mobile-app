@@ -59,6 +59,11 @@ import { rememberLocalMealPhoto } from '../../../gun/mealPhoto';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight, emitLogUndo } from '../logFlight';
 import { logTrace } from '../../../shell/logTrace';
+// G29-S1 md.1 — çıkartma (cihazda; yoksa normal fotoğraf, akış beklemez).
+import { liftSticker, type Sticker } from '../../../../lib/sticker/subjectLift';
+import { forgetSticker } from '../../../../lib/sticker/stickerStore';
+import { saveStickerInBackground } from '../../../../lib/sticker/saveSticker';
+import { trackSticker } from '../stickerTrack';
 import { deleteScanConsumption, scanFlightUndo } from '../scanUndo';
 import { checkLocalImage, deleteQueuedImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
 import { trackScan } from '../scanEvents';
@@ -132,6 +137,10 @@ export default function ScanScreen() {
   const [limitVisible, setLimitVisible] = useState(false);
   const [result, setResult] = useState<Omit<ScanEstimate, 'isEstimate'> | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  // G29-S1 md.1: bu fotoğrafın çıkartması (çekimle birlikte cihazda başlar, ≤ 1,5 sn; yoksa null).
+  const [sticker, setSticker] = useState<Sticker | null>(null);
+  const liftUriRef = useRef<string | null>(null);
+  const stickerRef = useRef<View | null>(null);
   // Bu taramanın benzersiz anahtarı (reservation/idempotency) — kayıtta
   // source_ref olur; aynı gün ikinci tarama çakışmasın diye tarama başına benzersiz.
   const [scanRef, setScanRef] = useState<string | null>(null);
@@ -346,6 +355,20 @@ export default function ScanScreen() {
   // gösterilir — Alert.alert YOK. Kamera ve galeri aynı akışı paylaşır.
   // G19-S1: `retry` = FinErrFailed "Tekrar dene" → AYNI foto, AYNI anahtar (idempotent:
   // iade edilmiş hak yeniden ayrılır, sunucuda tamamlanmışsa önbellekten, hak düşmeden).
+  /**
+   * G29-S1 md.1: çıkartma analizle PARALEL başlar (sonucu beklemez). Desteklenmeyen cihaz /
+   * hata / 1,5 sn aşımı → çıkartma yok (normal fotoğraf). Başka fotoğrafa geçildiyse geç gelen
+   * sonuç yok sayılır.
+   */
+  const startStickerLift = (uri: string) => {
+    liftUriRef.current = uri;
+    setSticker(null);
+    void liftSticker(uri).then((o) => {
+      trackSticker(o);
+      if (o.ok && mountedRef.current && liftUriRef.current === uri) setSticker(o.sticker);
+    });
+  };
+
   const runFinCapture = async (
     rawUri: string,
     source: 'camera' | 'gallery',
@@ -362,6 +385,7 @@ export default function ScanScreen() {
       const uri = await shrinkForScan(rawUri, size);
       setPhotoUri(uri);
       setFailReason(null);
+      startStickerLift(uri);
       const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
       setScanRef(idempotencyKey);
       const hint = normalizeScanNote(scanNote);
@@ -566,6 +590,10 @@ export default function ScanScreen() {
       // Sonuç → liste geçişinde AYNI kare (ağ beklemeden yerel foto).
       rememberLocalMealPhoto(photoPath, photoUri);
       savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
+      // G29-S1 md.1: çıkartma varsa satır hemen onu gösterir; yükleme + sticker_path ARKA PLANDA
+      // (beklenmez — Logla izi ve ekran kapanışı gecikmez). Ses sonucunda çıkartma yok.
+      const liftedSticker = resultSource === 'photo' && photoUri && liftUriRef.current === photoUri ? sticker : null;
+      void saveStickerInBackground({ userId: user.id, rowId: savedRowIdRef.current, sticker: liftedSticker });
       trackScanLog(
         adjusted,
         !!result &&
@@ -582,11 +610,14 @@ export default function ScanScreen() {
       // G28-S1 md.1 — Logla izi A (FinMoLogA): tabak ölçülür → küçülüp Ana sayfa sekmesine uçar
       // (kök LogTraceHost), varışta +1 rozet + success + "Öğle'ye loglandı · Geri al · Gör".
       // Tara ekranı animasyonsuz kapanır ki uçuş sekme çubuğunun üstünde görünsün.
+      // G29-S1 md.1: logla izinde uçan görsel çıkartma (kırpılmaz); yoksa tabak fotoğrafı (G28).
       await logTrace({
-        from: plateRef.current,
-        imageUri: photoUri, mealLabel: label, source: 'scan', kcal: adjusted.kcal, name: adjusted.name,
+        from: liftedSticker && stickerRef.current ? stickerRef.current : plateRef.current,
+        imageUri: liftedSticker?.uri ?? photoUri, cutout: !!liftedSticker,
+        mealLabel: label, source: 'scan', kcal: adjusted.kcal, name: adjusted.name,
         id: rowId,
         undo: scanFlightUndo(getSupabaseClient, user.id, rowId, (ok) => {
+          if (ok) forgetSticker(rowId);
           if (!ok || !mountedRef.current || savedRowIdRef.current !== rowId) return;
           savedRowIdRef.current = null;
           setSaved(false);
@@ -627,6 +658,7 @@ export default function ScanScreen() {
     if (!id || !user?.id) return;
     const ok = await deleteScanConsumption(getSupabaseClient(), user.id, id);
     if (ok) {
+      forgetSticker(id);
       savedRowIdRef.current = null;
       setSaved(false);
       // G21-S1 md.4: kabuk rozeti/toast'ı ve Ana sayfa vurgusu da geri alınsın.
@@ -647,6 +679,8 @@ export default function ScanScreen() {
     setSaveFailed(false);
     setResult(null);
     setPhotoUri(null);
+    liftUriRef.current = null;
+    setSticker(null);
     setScanNote(''); // yeni çekim = yeni not (yeniden analiz hakkı yok)
     setErrorKind(null);
     setStage('viewfinder');
@@ -979,6 +1013,8 @@ export default function ScanScreen() {
           estimate={result}
           photoUri={photoUri}
           plateRef={plateRef}
+          sticker={resultSource === 'photo' ? sticker : null}
+          stickerRef={stickerRef}
           mealType={mealType}
           saving={saving}
           saved={saved}

@@ -11,7 +11,7 @@
  * kaydetme mantığı YOK; yalnız gram/porsiyon/eksik besin düzeltmesi hesaplanır.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import {
   ActivityIndicator,
   Image,
@@ -24,7 +24,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
+import { AppText, CURVE, DURATION, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { CoachScanButton } from '../../../coach/ui/entries';
 import { KeyboardLiftView } from '../../../../core/design/components/KeyboardLiftView';
@@ -73,6 +73,8 @@ function useSheetEnter() {
 }
 
 import { ScanNoteRow } from './ScanNote';
+import StickerLift, { LIFT_CHIP_DELAY_MS } from './StickerLift';
+import type { Sticker } from '../../../../lib/sticker/subjectLift';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function FinPhotoResult({
@@ -89,6 +91,8 @@ export default function FinPhotoResult({
   onView,
   reducedVariant: _reduced,
   plateRef,
+  sticker = null,
+  stickerRef,
   onAddToPlan,
   onSaveMeal,
   match = null,
@@ -124,6 +128,10 @@ export default function FinPhotoResult({
   reducedVariant?: boolean;
   /** G28-S1 md.1: tabak görünümü — Logla izi uçuşu buradan başlar (ölçülür). */
   plateRef?: React.RefObject<View | null>;
+  /** G29-S1 md.1: cihazda üretilen çıkartma (yoksa normal fotoğraf). */
+  sticker?: Sticker | null;
+  /** G29-S1 md.1: çıkartma görünümü — varsa Logla izi buradan başlar. */
+  stickerRef?: React.RefObject<View | null>;
 }) {
   const t = useTheme();
   const orientLog = useOrientTarget('log'); // G18-S1 temas: Orient2 (Tara sonucu · logla)
@@ -150,6 +158,23 @@ export default function FinPhotoResult({
   const [savedMeal, setSavedMeal] = useState(false);
   // G17-S2 md.2: sonuç sheet'i AI 260/24 yayıyla yerleşir; azaltılmışta 200 ms opaklık.
   const sheetIn = useSheetEnter();
+  // G29-S1 md.1 (FinMoSticker): çıkartma varsa eşleşme hapı kalkıştan sonra girer (800 ms, base 300,
+  // enter, aşağıdan 6); azaltılmışta yalnız opaklık 200. Çıkartma yoksa hap hemen görünür (bugünkü gibi).
+  const reducedMotion = useReducedMotion();
+  const [fill, setFill] = useState<{ width: number; height: number } | null>(null);
+  const chip = useSharedValue(sticker ? 0 : 1);
+  const chipAnimated = useRef(false);
+  useEffect(() => {
+    if (!sticker || chipAnimated.current) return;
+    chipAnimated.current = true;
+    chip.value = reducedMotion
+      ? withDelay(LIFT_CHIP_DELAY_MS, withTiming(1, { duration: REDUCED.duration }))
+      : withDelay(LIFT_CHIP_DELAY_MS, withTiming(1, { duration: DURATION.base, easing: CURVE.enter }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sticker]);
+  const chipStyle = useAnimatedStyle(() =>
+    reducedMotion ? { opacity: chip.value } : { opacity: chip.value, transform: [{ translateY: 6 * (1 - chip.value) }] },
+  );
 
   const [rows, setRows] = useState<Row[]>(() => rowsFromEstimate(estimate));
 
@@ -201,8 +226,16 @@ export default function FinPhotoResult({
   const voice = source === 'voice';
   if (estimate.ingredients.length <= 1 && !voice) {
     return (
-      <View style={[styles.fill, { backgroundColor: '#2A2622' }]}>
+      <View
+        style={[styles.fill, { backgroundColor: '#2A2622' }]}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          if (width > 0 && height > 0 && (!fill || fill.width !== width || fill.height !== height)) setFill({ width, height });
+        }}
+      >
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        {/* G29-S1 md.1: çıkartma fotoğrafın üstünde kalkar (yoksa hiç çizilmez → normal fotoğraf). */}
+        {photoUri && sticker ? <StickerLift sticker={sticker} container={fill} reduced={reducedMotion} stickerRef={stickerRef} /> : null}
         {/* G28-S1 md.1: tabak bölgesi (görünmez) — Logla izi uçuşunun başlangıcı. */}
         <View ref={plateRef} collapsable={false} pointerEvents="none" style={[styles.plateArea, { top: insets.top + 72 }]} />
         <Pressable
@@ -214,13 +247,13 @@ export default function FinPhotoResult({
         >
           <X size={20} color={t.color.ink} />
         </Pressable>
-        <View style={styles.cutChipWrap} pointerEvents="none">
+        <Animated.View style={[styles.cutChipWrap, chipStyle]} pointerEvents="none">
           <View style={[styles.cutChip, { backgroundColor: k.glass }]}>
             <AppText style={styles.foundText} numberOfLines={1}>
               {match != null ? tr('ai_scan.match_chip', { name: adjusted.name, pct: match }) : adjusted.name}
             </AppText>
           </View>
-        </View>
+        </Animated.View>
         <Animated.View style={[styles.cutSheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(16, insets.bottom + 8) }, sheetIn]}>
           <AppText tone="secondary" style={styles.cap}>
             {tr('ai_scan.photo_result')}
