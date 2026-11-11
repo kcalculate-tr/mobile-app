@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   cta: { minHeight: 56, borderRadius: 28, backgroundColor: '#C6F04F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   ctaText: { fontSize: 17, fontWeight: '700', color: '#0A0A0A' },
   summary: { marginTop: 12, fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  legal: { marginTop: 12, fontSize: 11, lineHeight: 16 },
+  legal: { marginTop: 12, fontSize: 12, lineHeight: 17 },
   link: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   linkText: { fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
   restoreMsg: { fontSize: 13, textAlign: 'center' },
