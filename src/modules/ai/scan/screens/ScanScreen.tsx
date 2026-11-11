@@ -58,13 +58,14 @@ import { scanImagePath } from '../scanPath';
 import { rememberLocalMealPhoto } from '../../../gun/mealPhoto';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight, emitLogUndo } from '../logFlight';
+import { logTrace } from '../../../shell/logTrace';
 import { deleteScanConsumption, scanFlightUndo } from '../scanUndo';
 import { checkLocalImage, deleteQueuedImage, persistQueuedImage, type LocalImageCheck } from '../localImage';
 import { trackScan } from '../scanEvents';
 import { shrinkForScan, type ImageSize } from '../imageResize';
 import { keepOrphanResult, takeOrphanResult } from '../orphanResult';
 import { useFeature } from '../../../../core/flags';
-import { haptic } from '../../../../core/design';
+import { haptic, useReducedMotion } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
@@ -114,6 +115,7 @@ export default function ScanScreen() {
   const { t, lang } = useT();
   const { user } = useAuth();
   const paylasimKarti = useFeature('paylasim_karti');
+  const reducedMotion = useReducedMotion();
 
   // G19-S1 md.2: İstanbul gece yarısı geçince dünkü sayı gösterilmez (bilinmiyor → gizli).
   const remaining = useScanRemaining();
@@ -532,6 +534,19 @@ export default function ScanScreen() {
     }
   };
 
+  // G28-S1 md.1: tabak görünümü (FinPhotoResult) — uçuş başlangıcı.
+  const plateRef = useRef<View | null>(null);
+  /** Logladıktan sonra Tara kapanır: animasyonsuz (uçuş görünsün); azaltılmış harekette solarak. */
+  const closeAfterLog = () => {
+    if (!mountedRef.current) return;
+    try {
+      navigation.setOptions({ animation: reducedMotion ? 'fade' : 'none' });
+      if (navigation.canGoBack()) navigation.goBack();
+    } catch {
+      // test/vitrin gezgini setOptions/canGoBack vermeyebilir — kayıt yine geçerli
+    }
+  };
+
   const handleSaveFin = async (adjusted: Omit<ScanEstimate, 'isEstimate'>) => {
     if (!user?.id || savingRef.current || saving || saved) return;
     savingRef.current = true;
@@ -564,8 +579,12 @@ export default function ScanScreen() {
       // G21-S1 md.4: kabuk toast'ının "Geri al"ı bu Tara kaydını GERÇEKTEN siler; ekran
       // hâlâ açıksa "kaydedildi" durumu geri döner (yeniden loglanabilir).
       const rowId = savedRowIdRef.current;
-      emitLogFlight({
-        x: 0, y: 0, w: 0, h: 0, imageUri: photoUri, mealLabel: label, source: 'scan', kcal: adjusted.kcal,
+      // G28-S1 md.1 — Logla izi A (FinMoLogA): tabak ölçülür → küçülüp Ana sayfa sekmesine uçar
+      // (kök LogTraceHost), varışta +1 rozet + success + "Öğle'ye loglandı · Geri al · Gör".
+      // Tara ekranı animasyonsuz kapanır ki uçuş sekme çubuğunun üstünde görünsün.
+      await logTrace({
+        from: plateRef.current,
+        imageUri: photoUri, mealLabel: label, source: 'scan', kcal: adjusted.kcal, name: adjusted.name,
         id: rowId,
         undo: scanFlightUndo(getSupabaseClient, user.id, rowId, (ok) => {
           if (!ok || !mountedRef.current || savedRowIdRef.current !== rowId) return;
@@ -573,6 +592,7 @@ export default function ScanScreen() {
           setSaved(false);
         }),
       });
+      closeAfterLog();
     } catch {
       // G19-S1 md.1: önceden errorKind='failed' yazılıyordu ama sonuç ekranında hata
       // sayfası çizilmiyordu → kayıt hatası SESSİZDİ. Artık toast; logla yeniden denenebilir
@@ -732,8 +752,9 @@ export default function ScanScreen() {
       trackBarcodeLog(estimate, mealType);
       if (!mountedRef.current) return;
       setSaved(true);
-      emitLogFlight({
-        x: 0, y: 0, w: 0, h: 0, imageUri: barcodeProduct.imageUrl, mealLabel: t(`meal.${mealType}`), source: 'scan',
+      // G28-S1 md.1: ortak Logla izi (barkod sonucunda tabak görseli yok → uçuşsuz rozet + toast).
+      await logTrace({
+        imageUri: barcodeProduct.imageUrl, mealLabel: t(`meal.${mealType}`), source: 'scan',
         kcal: estimate.kcal, name: estimate.name,
         id: rowId,
         undo: scanFlightUndo(getSupabaseClient, user.id, rowId, (ok) => {
@@ -742,6 +763,7 @@ export default function ScanScreen() {
           setSaved(false);
         }),
       });
+      closeAfterLog();
     } catch {
       if (mountedRef.current) setSaveFailed(true);
     } finally {
@@ -956,6 +978,7 @@ export default function ScanScreen() {
         <FinPhotoResult
           estimate={result}
           photoUri={photoUri}
+          plateRef={plateRef}
           mealType={mealType}
           saving={saving}
           saved={saved}

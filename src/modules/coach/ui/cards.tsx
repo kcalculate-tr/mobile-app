@@ -3,7 +3,7 @@
 // gönderir), haftalık grafik (Kalori/Protein sekmesi), uzmana danış (güvenlik).
 // VoiceOver: her kart TEK öğe + eylem düğmesi ayrı; dokunma ≥ 44 pt. Kart açılışı ölçek 0.96 → 1 +
 // opaklık 330 enter (azaltılmışta 220 opaklık), çok kart 55 ms kademeli (FinMoCoach).
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { AppText, CURVE, DURATION, REDUCED, haptic, useReducedMotion } from '../../../core/design';
@@ -21,7 +21,8 @@ type ProductCard = Extract<CoachCard, { type: 'eatkcal_product' }>;
 type ChartCard = Extract<CoachCard, { type: 'weekly_chart' }>;
 
 export interface CardHandlers {
-  onAddMeal: (card: MealCard, index: number) => Promise<boolean>;
+  /** G28-S1 md.1: `from` = kart görünümü (Logla izi uçuşu buradan başlar). */
+  onAddMeal: (card: MealCard, index: number, from?: View | null) => Promise<boolean>;
   onOpenRecipe: (postId: string) => void;
   onAddProduct: (productId: number) => Promise<'added' | 'opened' | 'failed'>;
 }
@@ -87,11 +88,12 @@ function Meal({ card, index, onAdd }: { card: MealCard; index: number; onAdd: Ca
   const c = useCoachTones();
   const [added, setAdded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const cardRef = useRef<View | null>(null);
   const label = added ? tr('coach.added') : tr('coach.add');
   const press = async () => {
     if (added || busy) return;
     setBusy(true);
-    const ok = await onAdd(card, index);
+    const ok = await onAdd(card, index, cardRef.current);
     setBusy(false);
     if (ok) {
       haptic('success');
@@ -100,7 +102,7 @@ function Meal({ card, index, onAdd }: { card: MealCard; index: number; onAdd: Ca
   };
   const macro = (k: string, v: number) => `${k} ${v} g`;
   return (
-    <View style={[styles.card, styles.mealCard, { backgroundColor: c.card, borderColor: c.line }]} testID={`coach-meal-${index}`}>
+    <View ref={cardRef} collapsable={false} style={[styles.card, styles.mealCard, { backgroundColor: c.card, borderColor: c.line }]} testID={`coach-meal-${index}`}>
       <View
         accessible
         accessibilityLabel={`${tr('coach.idea', { n: index + 1 })}. ${card.name}, ${card.kcal} kcal, ${macro(tr('coach.macro_p'), card.p)}, ${macro(tr('coach.macro_c'), card.c)}, ${macro(tr('coach.macro_f'), card.f)}`}

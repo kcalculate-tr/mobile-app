@@ -26,7 +26,9 @@ import { ConsentSheet } from '../../onboarding/consent/ConsentSheet';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { hasCoachConsent, markCoachMissing, setCoachConsent } from '../access';
-import { addProductToCart, addSuggestionToDay, openRecipe } from '../actions';
+import { addProductToCart, addSuggestionToDayWithId, openRecipe, removeSuggestionFromDay } from '../actions';
+import { logTrace } from '../../shell/logTrace';
+import { slotFromHour } from '../../gun/homeData';
 import { CoachError, deleteCoachHistory, fetchCoachMessages, fetchCoachStatus, sendCoachMessage, setCoachFeedback } from '../client';
 import {
   COACH_DAILY_FALLBACK,
@@ -206,10 +208,26 @@ export default function CoachChatScreen() {
   };
 
   const handlers = (messageId: string): CardHandlers => ({
-    onAddMeal: async (card, index) => {
-      const ok = await addSuggestionToDay(card, messageId, index);
-      setToast(ok ? tr('coach.added_toast') : tr('coach.add_failed'));
-      return ok;
+    onAddMeal: async (card, index, from) => {
+      const id = await addSuggestionToDayWithId(card, messageId, index);
+      if (!id) {
+        setToast(tr('coach.add_failed'));
+        return false;
+      }
+      // G28-S1 md.1: ortak Logla izi — kart Ana sayfa sekmesine uçar, varışta +1 rozet + toast
+      // ("<Öğün>'ye loglandı · Geri al · Gör"). Koç'un ayrı "Gününe eklendi" toast'ı yok (tek toast).
+      void logTrace({
+        from,
+        mealLabel: tr(`meal.${slotFromHour(new Date().getHours())}`),
+        source: 'coach',
+        kcal: Math.round(card.kcal),
+        name: card.name,
+        id,
+        undo: async () => {
+          await removeSuggestionFromDay(id);
+        },
+      });
+      return true;
     },
     onOpenRecipe: (postId) => openRecipe(postId, nav),
     onAddProduct: async (productId) => {

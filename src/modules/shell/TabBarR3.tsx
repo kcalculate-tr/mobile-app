@@ -23,8 +23,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  DeviceEventEmitter,
-  Image,
   Pressable,
   StyleSheet,
   View,
@@ -33,7 +31,6 @@ import {
 import { FinText as Text } from '../../core/design/components/FinText';
 import Animated, {
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -56,7 +53,6 @@ import {
   useReducedMotion,
   usePop,
 } from '../../core/design/motion';
-import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
@@ -64,12 +60,7 @@ import { SELECTED_PILL } from './selectedPill';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
-import {
-  LOG_FLIGHT_EVENT,
-  LOG_UNDO_EVENT,
-  type LogFlightPayload,
-  type LogUndoPayload,
-} from './logEvents';
+import { badgeText, onLogBadge, setHomeTabTarget } from './logTrace';
 import { useOrientTarget } from '../onboarding/first/orient/useOrientTarget'; // G18-S1 temas
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
@@ -110,19 +101,6 @@ function glassTokens(dark: boolean) {
     accent: '#8AD400',
     tint: 'light' as const,
   };
-}
-
-/** Uçan öğenin iç durumu (payload + çözülmüş kaynak/konum). */
-interface FlightState {
-  payload: LogFlightPayload;
-  /** Kabuk-yerel başlangıç (sol, üst) px. */
-  startX: number;
-  startY: number;
-  /** Hedef merkez (Ana sayfa sekmesi ikonu) — kabuk-yerel px. */
-  targetX: number;
-  targetY: number;
-  /** Retrigger anahtarı. */
-  key: number;
 }
 
 export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) {
@@ -168,71 +146,47 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   // Kabuk kök View'ının ekrandaki yüksekliği (uçuş koordinat dönüşümü için).
   const rootHeight = TAB_BAR_R3.PILL_HEIGHT + bottomOffset;
 
-  // ── "Logla izi" durumu ──────────────────────────────────────────────────────
+  // ── "Logla izi" rozeti (G28-S1 md.1) ─────────────────────────────────────────
+  // Uçuş + toast kökteki LogTraceHost'ta (yığın ekranlarının da üstünde). Çubuk yalnız
+  // "+N" rozetini çizer (varışta +1, Geri al −1, en fazla 9+) ve Ana sayfa sekmesinin
+  // ekrandaki hedef noktasını bildirir.
   const [badge, setBadge] = useState(0);
-  const [flight, setFlight] = useState<FlightState | null>(null);
-  const [toast, setToast] = useState<{ id: string; message: string; undo?: (() => void | Promise<void>) | null } | null>(null);
-  const badgePop = useSharedValue(0); // 0 gizli, 1 açık (bouncy)
-  const flightKey = useRef(0);
-  // Olay dinleyicisi mount'ta bir kez kurulur; en güncel geometri/ayar ref'ten.
-  const geomRef = useRef({ reduced, rootHeight, tabW, anaIndex, winH });
-  geomRef.current = { reduced, rootHeight, tabW, anaIndex, winH };
+  const badgePop = useSharedValue(0); // 0 gizli, 1 açık (bouncy; azaltılmışta 200 ms opaklık)
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
 
   const popBadge = useCallback(() => {
     badgePop.value = 0;
-    badgePop.value = withSpring(1, SPRING.bouncy);
+    badgePop.value = reducedRef.current ? withTiming(1, { duration: REDUCED.duration }) : withSpring(1, SPRING.bouncy);
   }, [badgePop]);
 
-  // Rozet + toast + haptik (uçuş varışında VEYA azaltılmışta doğrudan).
-  const arrive = useCallback(
-    (payload: LogFlightPayload) => {
-      haptic('success');
-      setBadge((n) => {
-        if (n === 0) popBadge();
-        return n + 1;
-      });
-      // G20-S1 md.4: kaynak kendi toast'ını gösteriyorsa (Keşfet) ikinci toast yok.
-      if (payload.ownToast) return;
-      const id = payload.id ?? `log-${flightKey.current}`;
-      const message = payload.mealLabel
-        ? i18n.t('shell.logged', { meal: payload.mealLabel })
-        : i18n.t('shell.logged_generic');
-      setToast({ id, message, undo: payload.undo ?? null });
-    },
-    [i18n, popBadge],
-  );
-
   useEffect(() => {
-    const onFlight = (raw: LogFlightPayload) => {
-      const geom = geomRef.current;
-      // G21-S1 md.4: kaynak konumu bilinmiyorsa (w/h 0 — Tara, Keşfet sheet yolu)
-      // sözleşmedeki gibi uçuşsuz rozet + toast (önceden ekranın sol üstünden uçuyordu).
-      const noOrigin = !(raw.w > 0 || raw.h > 0);
-      if (geom.reduced || geom.anaIndex < 0 || noOrigin) {
-        // Uçuş yok — doğrudan rozet + toast (FinMoMap: "Uçuş yok").
-        arrive(raw);
+    const sub = onLogBadge(({ delta }) => {
+      if (delta === 'clear') {
+        setBadge(0);
+        badgePop.value = withTiming(0, { duration: REDUCED.duration });
         return;
       }
-      flightKey.current += 1;
-      const targetX =
-        TAB_BAR_R3.BUBBLE_PAD + geom.tabW * (geom.anaIndex + 0.5);
-      const targetY = TAB_BAR_R3.PILL_HEIGHT / 2;
-      // Ekran (sayfa) koordinatı → kabuk-yerel koordinat.
-      const startX = raw.x - TAB_BAR_R3.SIDE_INSET;
-      const startY = raw.y - (geom.winH - geom.rootHeight);
-      setFlight({ payload: raw, startX, startY, targetX, targetY, key: flightKey.current });
-    };
-    const onUndo = (_raw: LogUndoPayload) => {
-      setBadge((n) => Math.max(0, n - 1));
-      setToast(null);
-    };
-    const subF = DeviceEventEmitter.addListener(LOG_FLIGHT_EVENT, onFlight);
-    const subU = DeviceEventEmitter.addListener(LOG_UNDO_EVENT, onUndo);
-    return () => {
-      subF.remove();
-      subU.remove();
-    };
-  }, [arrive]);
+      setBadge((n) => {
+        const next = Math.max(0, n + delta);
+        if (delta === 1 && n === 0) popBadge();
+        return next;
+      });
+    });
+    return () => sub.remove();
+  }, [popBadge, badgePop]);
+
+  // Ana sayfa sekmesi ikon merkezi (ekran koordinatı) → LogTraceHost uçuş hedefi.
+  useEffect(() => {
+    if (anaIndex < 0) {
+      setHomeTabTarget(null);
+      return;
+    }
+    setHomeTabTarget({
+      x: TAB_BAR_R3.SIDE_INSET + TAB_BAR_R3.BUBBLE_PAD + tabW * (anaIndex + 0.5),
+      y: winH - rootHeight + TAB_BAR_R3.PILL_HEIGHT / 2,
+    });
+  }, [anaIndex, tabW, winH, rootHeight]);
 
   const badgeStyle = useAnimatedStyle(() => ({
     opacity: badgePop.value,
@@ -376,27 +330,6 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
     navigation.navigate('Cart' as never);
   };
 
-  // G20-S1 md.4: "Geri al" kaydı gerçekten siler (kaynağın verdiği `undo`); `undo`
-  // yoksa düğme hiç çizilmez (yalnız rozeti azaltan yanıltıcı geri al YOK).
-  const onToastUndo = useCallback(() => {
-    if (!toast?.undo) return;
-    try {
-      void Promise.resolve(toast.undo()).catch(() => {});
-    } catch {
-      /* kaynak hatası kabuğu düşürmez */
-    }
-    // Rozet azaltma + toast kapatma LOG_UNDO_EVENT dinleyicisinde (yukarıda) — burada
-    // ayrıca azaltmak rozeti İKİ düşürüyordu (G21-S1 md.4).
-    DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: toast.id } as LogUndoPayload);
-    setToast(null);
-  }, [toast]);
-
-  const onToastView = useCallback(() => {
-    setToast(null);
-    clearBadge();
-    navigation.navigate('Tracker' as never);
-  }, [navigation, clearBadge]);
-
   const activeDef = activeIndex >= 0 ? visibleTabs[activeIndex] : undefined;
   const MiniIcon = activeDef ? TAB_ICON_BY_KIND[activeDef.kind] : TAB_ICON_BY_KIND.eat;
 
@@ -414,30 +347,6 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
       style={[styles.root, { paddingBottom: bottomOffset }]}
       pointerEvents="box-none"
     >
-      {/* "Logla izi" uçan öğesi (yalnız azaltılmamış harekette) */}
-      {flight ? (
-        <LogFlight
-          key={flight.key}
-          flight={flight}
-          accent={g.accent}
-          onArrive={() => arrive(flight.payload)}
-          onDone={() => setFlight(null)}
-        />
-      ) : null}
-
-      {/* Logla toast'ı — barın üstünde */}
-      {toast ? (
-        <View style={[styles.toastRow, { bottom: bottomOffset + TAB_BAR_R3.PILL_HEIGHT + 8 }]} pointerEvents="box-none">
-          <Toast
-            visible
-            message={toast.message}
-            onUndo={toast.undo ? onToastUndo : undefined}
-            onView={onToastView}
-            onDismiss={() => setToast(null)}
-          />
-        </View>
-      ) : null}
-
       {/* Sepet hapı — yalnız eatkcal sekmesinde + sepette ürün varken. G18-S3 (temas): yeni_siparis
           açıkken (EkCart kayıtlı) yerini FinEkHome'un lime sepet çubuğu alır → hap çizilmez. */}
       {onEat && cartCount > 0 && !navigation.getParent?.()?.getState?.()?.routeNames?.includes('EkCart') ? (
@@ -503,7 +412,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                           style={[styles.badge, { backgroundColor: g.dotBg }, badgeStyle]}
                         >
                           <Text maxFontSizeMultiplier={1} style={[styles.badgeText, { color: g.dotFg }]} numberOfLines={1}>
-                            +{badge}
+                            {badgeText(badge)}
                           </Text>
                         </Animated.View>
                       ) : null}
@@ -573,67 +482,6 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
  * sekmesine iner (slow 500 · enter — FinMoTokens eşlemesi; yerel eğri yok), varışta `onArrive` (rozet/toast/haptik), sonra solup
  * `onDone` ile kapanır. Kabuk kök View'ı kırpmadığından bar üstünde çizilir.
  */
-function LogFlight({
-  flight,
-  accent,
-  onArrive,
-  onDone,
-}: {
-  flight: FlightState;
-  accent: string;
-  onArrive: () => void;
-  onDone: () => void;
-}) {
-  const p = useSharedValue(0);
-  const w = Math.max(flight.payload.w, 16);
-  const h = Math.max(flight.payload.h, 16);
-
-  useEffect(() => {
-    p.value = withTiming(
-      1,
-      { duration: TIMING.logTrail, easing: CURVE.enter },
-      (fin) => {
-        if (fin) {
-          runOnJS(onArrive)();
-          runOnJS(onDone)();
-        }
-      },
-    );
-    // yalnız mount'ta; key değişince yeni örnek oluşur.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const style = useAnimatedStyle(() => {
-    const dx = flight.targetX - (flight.startX + w / 2);
-    const dy = flight.targetY - (flight.startY + h / 2);
-    return {
-      opacity: interpolate(p.value, [0, 0.85, 1], [1, 1, 0]),
-      transform: [
-        { translateX: interpolate(p.value, [0, 1], [0, dx]) },
-        { translateY: interpolate(p.value, [0, 1], [0, dy]) },
-        { scale: interpolate(p.value, [0, 1], [1, 0.08]) },
-      ],
-    };
-  });
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.flight,
-        { left: flight.startX, top: flight.startY, width: w, height: h },
-        style,
-      ]}
-    >
-      {flight.payload.imageUri ? (
-        <Image source={{ uri: flight.payload.imageUri }} style={styles.flightImg} />
-      ) : (
-        <View style={[styles.flightDot, { backgroundColor: accent }]} />
-      )}
-    </Animated.View>
-  );
-}
-
 function CartPill({
   count,
   glass,

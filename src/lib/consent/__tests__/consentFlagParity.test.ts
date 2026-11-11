@@ -58,7 +58,8 @@ test('Keşfet tek toast: kabuk toast\'ı (id + undo), Keşfet ownToast vermez, G
   assert.doesNotMatch(k, /ownToast: true/);
   assert.match(k, /id: consumptionId,/);
   assert.match(k, /undo: async \(\) => \{/);
-  const bar = read('src/modules/shell/TabBarR3.tsx');
+  // G28-S1 md.1: kabuk toast'ı kökteki LogTraceHost'ta (TabBarR3 yalnız rozet).
+  const bar = read('src/modules/shell/LogTraceHost.tsx');
   assert.match(bar, /if \(payload\.ownToast\) return;/);
   assert.match(bar, /onUndo=\{toast\.undo \? onToastUndo : undefined\}/);
 });

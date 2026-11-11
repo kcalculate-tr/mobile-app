@@ -12,7 +12,28 @@ type MealCard = Extract<CoachCard, { type: 'meal_suggestion' }>;
  * Öneriyi güne ekle (kaynak 'manual' — meal_consumptions CHECK'inde koç kaynağı yok; source_ref
  * `coach:<mesaj>:<sıra>` aynı önerinin iki kez eklenmesini (23505 = zaten yazıldı) önler).
  */
+/** G28-S1 md.1: Logla izi Geri al — Koç önerisinden eklenen satırı siler (aynı kuyruk). */
+export async function removeSuggestionFromDay(id: string): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { submitLogOp } = require('../gun/track/logQueueNative') as typeof import('../gun/track/logQueueNative');
+  try {
+    return await submitLogOp({ kind: 'delete', id, at: Date.now() });
+  } catch {
+    return false;
+  }
+}
+
+/** Satır id'si ile ekler (Logla izi Geri al için); başarısızsa null. */
+export async function addSuggestionToDayWithId(card: MealCard, messageId: string, index: number): Promise<string | null> {
+  const r = await addSuggestionRow(card, messageId, index);
+  return r.ok ? r.id : null;
+}
+
 export async function addSuggestionToDay(card: MealCard, messageId: string, index: number): Promise<boolean> {
+  return (await addSuggestionRow(card, messageId, index)).ok;
+}
+
+async function addSuggestionRow(card: MealCard, messageId: string, index: number): Promise<{ ok: boolean; id: string }> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { submitLogOp, newRowId } = require('../gun/track/logQueueNative') as typeof import('../gun/track/logQueueNative');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -34,9 +55,9 @@ export async function addSuggestionToDay(card: MealCard, messageId: string, inde
     consumed_at: new Date().toISOString(),
   };
   try {
-    return await submitLogOp({ kind: 'insert', id, row, at: Date.now() });
+    return { ok: await submitLogOp({ kind: 'insert', id, row, at: Date.now() }), id };
   } catch {
-    return false;
+    return { ok: false, id };
   }
 }
 

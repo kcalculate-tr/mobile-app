@@ -88,6 +88,7 @@ export default function FinPhotoResult({
   onUndo,
   onView,
   reducedVariant: _reduced,
+  plateRef,
   onAddToPlan,
   onSaveMeal,
   match = null,
@@ -121,6 +122,8 @@ export default function FinPhotoResult({
   /** Kayıttan sonra toast "Gör" (Ana sayfa). */
   onView?: () => void;
   reducedVariant?: boolean;
+  /** G28-S1 md.1: tabak görünümü — Logla izi uçuşu buradan başlar (ölçülür). */
+  plateRef?: React.RefObject<View | null>;
 }) {
   const t = useTheme();
   const orientLog = useOrientTarget('log'); // G18-S1 temas: Orient2 (Tara sonucu · logla)
@@ -200,6 +203,8 @@ export default function FinPhotoResult({
     return (
       <View style={[styles.fill, { backgroundColor: '#2A2622' }]}>
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        {/* G28-S1 md.1: tabak bölgesi (görünmez) — Logla izi uçuşunun başlangıcı. */}
+        <View ref={plateRef} collapsable={false} pointerEvents="none" style={[styles.plateArea, { top: insets.top + 72 }]} />
         <Pressable
           onPress={onRetry}
           accessibilityRole="button"
@@ -286,7 +291,7 @@ export default function FinPhotoResult({
           ) : null}
         </View>
       ) : (
-      <View style={styles.photo}>
+      <View style={styles.photo} ref={plateRef} collapsable={false}>
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
         <Pressable
           onPress={onRetry}
@@ -766,6 +771,8 @@ function MissingFoodSheet({
 }
 
 const styles = StyleSheet.create({
+  // G28-S1 md.1: tam ekran fotoğrafın ortasındaki tabak karesi (uçuş başlangıcı).
+  plateArea: { position: 'absolute', alignSelf: 'center', width: '64%', aspectRatio: 1 },
   fill: { flex: 1 },
   photo: { height: 360 },
   voiceHead: { paddingHorizontal: 16, paddingBottom: 28, gap: 12 },

@@ -26,6 +26,8 @@ jest.mock('../../../core/flags', () => ({
 }));
 
 import { TabBarR3 } from '../TabBarR3';
+// G28-S1 md.1: uçuş + toast kökteki LogTraceHost'ta; rozet TabBarR3'te.
+import { LogTraceHost } from '../LogTraceHost';
 import { CustomTabBar } from '../../../navigation/CustomTabBar';
 import { LEGACY_TABS } from '../tabs';
 import { useCartStore } from '../../../store/cartStore';
@@ -137,7 +139,10 @@ describe('Logla izi A — "+N" rozeti (azaltılmış hareket = uçuşsuz)', () =
     const { props } = makeProps(R3_ROUTES, 2); // eatkcal aktif; başka sekmeden log
     const { queryByText } = render(
       <ReducedMotionProvider value={true}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     expect(queryByText('+1')).toBeNull();
@@ -174,7 +179,10 @@ describe('G20-S1 — tek toast, Geri al gerçekten siler', () => {
     const { props } = makeProps(R3_ROUTES, 1);
     const ui = render(
       <ReducedMotionProvider value={true}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     flight({ id: 'c-1', source: 'kesfet', ownToast: true });
@@ -187,7 +195,10 @@ describe('G20-S1 — tek toast, Geri al gerçekten siler', () => {
     const { props } = makeProps(R3_ROUTES, 2);
     const ui = render(
       <ReducedMotionProvider value={true}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     flight({ source: 'scan' });
@@ -200,7 +211,10 @@ describe('G20-S1 — tek toast, Geri al gerçekten siler', () => {
     const undo = jest.fn(() => Promise.resolve());
     const ui = render(
       <ReducedMotionProvider value={true}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     flight({ id: 'c-2', source: 'eatkcal', undo });
@@ -225,7 +239,10 @@ describe('G21-S1 — kabuk toast\'ı Keşfet/Tara kaydını gerçekten geri alı
     const undo = jest.fn(() => Promise.resolve());
     const ui = render(
       <ReducedMotionProvider value={true}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     flight({ id: 'k-1', source: 'kesfet', undo: jest.fn() });
@@ -243,7 +260,10 @@ describe('G21-S1 — kabuk toast\'ı Keşfet/Tara kaydını gerçekten geri alı
     const undo = jest.fn(() => Promise.resolve());
     const ui = render(
       <ReducedMotionProvider value={false}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     flight({ id: 'scan-row-1', source: 'scan', undo });

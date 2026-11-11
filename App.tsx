@@ -19,6 +19,8 @@ import { AuthProvider, useAuth } from './src/core/AuthContext';
 import { bricolageFonts } from './src/core/design/fonts';
 import { FlagsProvider } from './src/core/flags';
 import { AppSchemeGate } from './src/core/design/SchemeGate';
+import { LogTraceHost } from './src/modules/shell/LogTraceHost';
+import { useFeature } from './src/core/flags';
 import { I18nProvider } from './src/core/i18n';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
 import { useSubscriptionBootstrap } from './src/lib/subscription/useSubscriptionBootstrap';
@@ -140,6 +142,12 @@ function AppContent() {
   );
 }
 
+/** G28-S1 md.1: kök logla izi katmanı yalnız yeni kabukta (eski kabuk kendi LogTrail'ini çizer). */
+function LogTraceGate() {
+  const yeniKabuk = useFeature('yeni_kabuk');
+  return yeniKabuk ? <LogTraceHost /> : null;
+}
+
 function App() {
   const [fontsLoaded] = useFonts({
     PlusJakartaSans_400Regular,
@@ -204,6 +212,8 @@ function App() {
                   <AppContent />
                 </NavigationContainer>
               )}
+              {/* G28-S1 md.1: Logla izi A (uçuş + toast) — gezinme kabının ÜSTÜNDE, yalnız yeni kabuk. */}
+              <LogTraceGate />
               </AppSchemeGate>
             </FlagsProvider>
           </AuthProvider>

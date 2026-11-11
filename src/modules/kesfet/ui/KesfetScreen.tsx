@@ -28,7 +28,7 @@ import { useIconPop } from '../motion';
 import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
-import { emitLogFlight } from '../events';
+import { logTrace } from '../../shell/logTrace';
 import { trackEvent } from '../../gun/track/events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { useNutritionSummary } from '../../../hooks/useNutritionSummary';
@@ -500,16 +500,17 @@ export function KesfetScreen() {
       // Uçuş her yolda yayınlanır (çerçevesiz sheet yolunda w/h 0 → kabuk uçuşsuz rozet +
       // toast); kayıt id'si + kaydı GERÇEKTEN silen `undo` taşınır. Keşfet kendi log
       // toast'ını artık göstermez (önceden iki toast aynı yerde üst üste biniyordu).
-      const hasFrame = !!frame && (frame.w > 0 || frame.h > 0);
-      emitLogFlight({
-        x: hasFrame ? frame!.x : 0,
-        y: hasFrame ? frame!.y : 0,
-        w: hasFrame ? frame!.w : 0,
-        h: hasFrame ? frame!.h : 0,
+      // G28-S1 md.1: ortak Logla izi (kök LogTraceHost) — kart görselinden uçuş; çerçevesiz
+      // sheet yolunda uçuşsuz rozet + toast. Ekran içi eski LogTrail yankısı artık oynatılmaz
+      // (aynı anda iki iz olmasın).
+      const hasFrame = !!frame && frame.w > 0 && frame.h > 0;
+      void logTrace({
+        rect: hasFrame ? { x: frame!.x, y: frame!.y, w: frame!.w, h: frame!.h } : null,
         imageUri: post.meal_card?.photo_url ?? null,
         mealLabel,
         source: 'kesfet',
         kcal,
+        name: post.meal_card?.name ?? null,
         id: consumptionId,
         // Kabuk "Geri al" → meal_consumptions satırı silinir (logUndo'yu kabuk yayınlar).
         undo: async () => {
@@ -518,9 +519,6 @@ export function KesfetScreen() {
           else setToast({ message: tr('kesfet.ui.undo_failed') });
         },
       });
-      // "Logla izi" — ekran içi kısa yankı (yemek noktaya iner, yay çizip uçar).
-      trailSeq.current += 1;
-      setTrail({ token: trailSeq.current, label: post.meal_card?.name ?? '' });
     },
     [tr],
   );
