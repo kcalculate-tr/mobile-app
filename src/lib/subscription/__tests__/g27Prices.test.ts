@@ -1,4 +1,5 @@
-// G27-S1 md.2 — Fresh aylık 199 TL (yıllık 999 aynı; Balance 499 / 2999 aynı; USD aynı).
+// G27-S1 md.2 — mağaza fiyatları. G31-S1 md.3: TL ,99'lu (199,99 / 999,99 / 499,99 / 2999,99);
+// USD Fresh $5.99 / $29.99, Balance $12.99 / $59.99.
 // Rozet ve haftalık karşılık mağaza fiyatından hesaplanır; kodda / i18n'de sabit fiyat
 // ya da sabit indirim yüzdesi kalmadı; demo fiyatlar yalnız test/vitrin kaynağında.
 import test from 'node:test';
@@ -7,13 +8,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { buildPlanCards, weeklyPrice, yearlyDiscountPct, type StoreProductLike } from '../plans';
-import { DEMO_PRICES_TRY, DEMO_PRICES_USD_FRESH } from '../demoPrices';
+import { DEMO_PRICES_TRY, DEMO_PRICES_USD_BALANCE, DEMO_PRICES_USD_FRESH } from '../demoPrices';
 
 const ROOT = path.resolve(__dirname, '../../../..');
 
-test('demo fiyatlar 199 / 999 / 499 / 2999 TL; USD Fresh $4.99 / $29.99', () => {
-  assert.deepEqual({ ...DEMO_PRICES_TRY }, { fresh_monthly: 199, fresh_yearly: 999, balance_monthly: 499, balance_yearly: 2999 });
-  assert.deepEqual({ ...DEMO_PRICES_USD_FRESH }, { monthly: 4.99, yearly: 29.99 });
+test('demo fiyatlar 199,99 / 999,99 / 499,99 / 2999,99 TL; USD Fresh $5.99 / $29.99, Balance $12.99 / $59.99', () => {
+  assert.deepEqual({ ...DEMO_PRICES_TRY }, { fresh_monthly: 199.99, fresh_yearly: 999.99, balance_monthly: 499.99, balance_yearly: 2999.99 });
+  assert.deepEqual({ ...DEMO_PRICES_USD_FRESH }, { monthly: 5.99, yearly: 29.99 });
+  assert.deepEqual({ ...DEMO_PRICES_USD_BALANCE }, { monthly: 12.99, yearly: 59.99 });
 });
 
 test('rozetler mağaza fiyatından: Fresh %58, Balance %50', () => {
@@ -41,10 +43,10 @@ test('haftalık karşılıklar mağaza fiyatından ve kartlarda TL biçiminde', 
   assert.deepEqual(
     cards!.map((c) => [c.priceText, c.weeklyText, c.discountPct]),
     [
-      ['199 TL', '45,92 TL', null],
-      ['999 TL', '19,21 TL', 58],
-      ['499 TL', '115,15 TL', null],
-      ['2999 TL', '57,67 TL', 50],
+      ['199,99 TL', '46,15 TL', null],
+      ['999,99 TL', '19,23 TL', 58],
+      ['499,99 TL', '115,38 TL', null],
+      ['2999,99 TL', '57,69 TL', 50],
     ],
   );
   assert.equal(Math.round(weeklyPrice(P('x', 199), false) * 100) / 100, 45.92);

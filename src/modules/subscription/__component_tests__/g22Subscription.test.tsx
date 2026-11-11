@@ -87,17 +87,17 @@ beforeEach(() => {
 test('Paywall: 4 kart yerel fiyatla (₺ yok), varsayılan Balance Yıllık, deneme CTA + zorunlu yenileme metni', () => {
   const tree = render(<PaywallScreen />);
   for (const k of ['fresh_monthly', 'fresh_yearly', 'balance_monthly', 'balance_yearly']) expect(tree.getByTestId(`sub-card-${k}`, H)).toBeTruthy();
-  expect(tree.getAllByText('2999 TL', H).length).toBeGreaterThan(0);
+  expect(tree.getAllByText('2999,99 TL', H).length).toBeGreaterThan(0);
   expect(tree.queryByText(/₺/, H)).toBeNull();
   expect(tree.getByText('7 gün ücretsiz başla')).toBeTruthy();
-  expect(tree.getByTestId('sub-summary').props.children).toBe('7 gün ücretsiz, sonra 2999 TL/yıl. Ücret deneme bitince alınır.');
+  expect(tree.getByTestId('sub-summary').props.children).toBe('7 gün ücretsiz, sonra 2999,99 TL/yıl. Ücret deneme bitince alınır.');
   expect(tree.getByText(/otomatik yenilenir/)).toBeTruthy();
   expect(tree.getByText('Satın alımları geri yükle')).toBeTruthy();
   expect(tree.getByText('Kullanım Koşulları (EULA)')).toBeTruthy();
   expect(tree.getByText('Gizlilik Politikası')).toBeTruthy();
   expect(tree.getByText('En çok seçilen', H)).toBeTruthy();
   expect(tree.getByText('-%50', H)).toBeTruthy();
-  // G27-S1: Fresh yıllık rozeti mağaza fiyatından (199×12 = 2388 → 999 ⇒ %58); sabit "%44" yok.
+  // G27-S1: Fresh yıllık rozeti mağaza fiyatından (199,99×12 = 2399,88 → 999,99 ⇒ %58); sabit "%44" yok.
   expect(tree.getByText('-%58', H)).toBeTruthy();
   expect(tree.queryByText('-%44', H)).toBeNull();
   // Balance şeridi (yalnız çalışan özellikler; AI koç / fitness YOK). G23-S1: günde 50, "Sınırsız AI" YOK.
@@ -110,7 +110,7 @@ test('Paywall: VoiceOver kart dizisi TEK ayarlanabilir öğe; artır/azalt plan�
   const tree = render(<PaywallScreen />);
   const cards = tree.getByTestId('sub-cards');
   expect(cards.props.accessibilityRole).toBe('adjustable');
-  expect(cards.props.accessibilityValue.text).toBe('Balance Yıllık, 2999 TL, 7 gün ücretsiz, 4/4');
+  expect(cards.props.accessibilityValue.text).toBe('Balance Yıllık, 2999,99 TL, 7 gün ücretsiz, 4/4');
   await act(async () => {
     fireEvent(cards, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
   });
@@ -121,9 +121,9 @@ test('Paywall: VoiceOver kart dizisi TEK ayarlanabilir öğe; artır/azalt plan�
   await act(async () => {
     fireEvent(tree.UNSAFE_getByProps({ snapToInterval: 261 }), 'momentumScrollEnd', { nativeEvent: { contentOffset: { x: 2 * 261 } } });
   });
-  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Aylık, 499 TL, 3/4');
+  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Aylık, 499,99 TL, 3/4');
   expect(tree.getByText('Devam et')).toBeTruthy();
-  expect(tree.getByTestId('sub-summary').props.children).toBe('499 TL/ay, her ay otomatik yenilenir.');
+  expect(tree.getByTestId('sub-summary').props.children).toBe('499,99 TL/ay, her ay otomatik yenilenir.');
   expect(tree.getByText('Sesle ekle')).toBeTruthy();
   // G24-S1 (Tur 26k): şerit 3 "Barkod sınırsız" · 4 "Elle giriş sınırsız".
   expect(tree.getByText('Barkod sınırsız')).toBeTruthy();
@@ -135,7 +135,7 @@ test('Paywall: VoiceOver kart dizisi TEK ayarlanabilir öğe; artır/azalt plan�
 test('G24-S1 Paywall koçlu varyant: Balance Yıllık seçili, şeritte 5. sayfa "kcalAI Koç", Balance kartlarında "kcalAI Koç dahil"', () => {
   mockParams = { coach: true, from: 'coach', plan: 'fresh', yearly: false };
   const tree = render(<PaywallScreen />);
-  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Yıllık, 2999 TL, 7 gün ücretsiz, kcalAI Koç dahil, 4/4');
+  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Yıllık, 2999,99 TL, 7 gün ücretsiz, kcalAI Koç dahil, 4/4');
   expect(tree.getByText('kcalAI Koç')).toBeTruthy();
   expect(tree.getByText(/günde 30 mesaj\. Tıbbi tavsiye vermez\./)).toBeTruthy();
   expect(tree.getByTestId('sub-card-coach-balance_yearly', H)).toBeTruthy();
@@ -302,7 +302,7 @@ test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planlar
   const onPlans = jest.fn();
   const onManual = jest.fn();
   const tree = render(
-    <SubLimitSheet visible kind="ai" limits={LIMITS} tier="free" cap={2} prices={{ fresh: '199 TL', balance: '499 TL' }} plansEnabled onPlans={onPlans} onManual={onManual} onClose={() => {}} />,
+    <SubLimitSheet visible kind="ai" limits={LIMITS} tier="free" cap={2} prices={{ fresh: '199,99 TL', balance: '499,99 TL' }} plansEnabled onPlans={onPlans} onManual={onManual} onClose={() => {}} />,
   );
   expect(tree.getByText('Bugünkü 2 AI taramanı kullandın')).toBeTruthy();
   expect(tree.getByText(/Fresh ile günde 10, Balance ile günde 50 AI tarama/)).toBeTruthy();
@@ -310,9 +310,9 @@ test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planlar
   expect(tree.getByText('Günde 10')).toBeTruthy();
   expect(tree.getByText('Günde 50')).toBeTruthy();
   expect(tree.queryByText('Sınırsız')).toBeNull();
-  expect(tree.getByText('499 TL/ay')).toBeTruthy();
+  expect(tree.getByText('499,99 TL/ay')).toBeTruthy();
   expect(tree.getByText('Şu anki plan')).toBeTruthy();
-  expect(tree.getByText('199 TL/ay')).toBeTruthy();
+  expect(tree.getByText('199,99 TL/ay')).toBeTruthy();
   expect(tree.getByText('Barkod ve elle giriş açık')).toBeTruthy();
   fireEvent.press(tree.getByTestId('sub-limit-plans'));
   fireEvent.press(tree.getByTestId('sub-limit-manual'));
@@ -322,7 +322,7 @@ test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planlar
 
 test('Hak sheet Barkod: 5 · Sınırsız · Sınırsız; abonelik kapalıyken plan/karo YOK', () => {
   let tree = render(
-    <SubLimitSheet visible kind="barcode" limits={LIMITS} tier="free" cap={5} prices={{ fresh: '199 TL', balance: '499 TL' }} plansEnabled onPlans={() => {}} onManual={() => {}} onClose={() => {}} />,
+    <SubLimitSheet visible kind="barcode" limits={LIMITS} tier="free" cap={5} prices={{ fresh: '199,99 TL', balance: '499,99 TL' }} plansEnabled onPlans={() => {}} onManual={() => {}} onClose={() => {}} />,
   );
   expect(tree.getByText('Bugünkü 5 barkod taramanı kullandın')).toBeTruthy();
   expect(tree.getByText('Günde 5')).toBeTruthy();
@@ -367,7 +367,7 @@ test('Profil › Abonelik: Ücretsiz (2 · 5 · Sınırsız, Planları gör) ve 
   // G26-S1: büyük ad yalnız plan adı; "kcalAI" üst satırda küçük etiket.
   expect(tree.getByTestId('sub-profile-name').props.children).toBe('Fresh');
   expect(tree.getByTestId('sub-profile-cap').props.children).toBe('Mevcut kcalAI planın');
-  expect(tree.getByText('Deneme sonrası 999 TL/yıl')).toBeTruthy();
+  expect(tree.getByText('Deneme sonrası 999,99 TL/yıl')).toBeTruthy();
   expect(tree.getByText('3 gün deneme kaldı')).toBeTruthy();
   expect(tree.getByText('Bugün 9/10')).toBeTruthy();
   expect(tree.getByText('Deneme bitişi')).toBeTruthy();
@@ -387,7 +387,7 @@ test('Profil › Abonelik: Ücretsiz (2 · 5 · Sınırsız, Planları gör) ve 
   expect(tree.getByTestId('sub-profile-name').props.children).toBe('Balance');
   expect(tree.getByText('Bugün 48/50')).toBeTruthy();
   expect(tree.getByText('50')).toBeTruthy();
-  expect(tree.getByText('499 TL/ay')).toBeTruthy();
+  expect(tree.getByText('499,99 TL/ay')).toBeTruthy();
   expect(tree.queryByText(/adil kullanım/)).toBeNull();
 });
 
