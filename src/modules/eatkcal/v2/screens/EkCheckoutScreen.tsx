@@ -15,11 +15,13 @@ import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, TextInp
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { PaynkolayLogo } from '../ui/PaynkolayLogo';
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
-import { Check, Clock, CreditCard, Lock, MapPin, Plus, Storefront, WarningCircle } from '../../../../components/icons';
+import { Check, Clock, CreditCard, Lock, MapPin, Plus, WarningCircle } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mesafeKm } from '../../../../lib/nearestLocation';
+import { needsBranchPick } from '../model/branchCard';
+import { BranchCards } from '../ui/checkout/BranchCards';
 import { formatDeliveryDaysFull, isDeliveryDay } from '../../../../utils/deliveryDays';
 import { useEkNav, type EkV2ParamList } from '../nav';
 import { EkHeader, EkScreen, EkStickyBar, ekType, money, refmtTl, useEk, EkKV } from '../ui/kit';
@@ -188,31 +190,31 @@ export default function EkCheckoutScreen() {
       })),
     [ctrl.branches, ctrl.deviceCoords],
   );
-  const [branchAuto, setBranchAuto] = useState(false);
-  useEffect(() => {
-    if (ctrl.deliveryMethod !== 'pickup' || ctrl.selectedBranchId || branchRows.length === 0) return;
-    const withKm = branchRows.filter((r) => r.km != null).sort((a, b) => (a.km! - b.km!));
-    if (withKm.length > 0) {
-      ctrl.setSelectedBranchId(withKm[0].branch.id);
-      setBranchAuto(true);
-    }
-  }, [ctrl.deliveryMethod, ctrl.selectedBranchId, branchRows, ctrl]);
+  // G32-S1 md.4: şube KENDİLİĞİNDEN seçilmez — konum izni varsa en yakına yalnız
+  // "En yakın" etiketi; seçimi kullanıcı yapar, seçilmeden "Öde" pasif.
+  const nearestBranchId = useMemo(() => {
+    const withKm = branchRows.filter((r) => r.km != null).sort((a, b) => a.km! - b.km!);
+    return withKm.length > 1 ? withKm[0].branch.id : null;
+  }, [branchRows]);
 
   const stock = stockError(ctrl.closedItemNames);
   const lines = groupCartLines(ctrl.items);
   const hasDraft = !!ctrl.draftOrder;
   // G17-S1 md.6: taslak (ödeme bekleyen) sipariş yokken yöntem+zaman seçilmeden "Öde" pasif.
   const needsMethodTime = !hasDraft && !methodTimeReady;
+  const needsBranch = needsBranchPick({ deliveryMethod: ctrl.deliveryMethod, selectedBranchId: ctrl.selectedBranchId, hasDraft });
   // Tur 26 md.14 (FinEkCheckout): düğme her zaman "Öde [N] TL"; eksik adım düğmenin
   // ALTINDA yardım satırı ("Yöntem ve zaman seç" / "Sözleşmeleri onayla").
   const ctaAmount = money(hasDraft ? ctrl.draftOrder?.totalAmount || ctrl.totals.totalAmount : ctrl.totals.totalAmount);
   const ctaLabel = `${t('eatkcal.v2.checkout.pay')} ${ctaAmount}`;
   const ctaHelp = needsMethodTime
     ? t('eatkcal.v2.checkout.pick_method_time')
-    : !ctrl.contractsAccepted
+    : needsBranch
+      ? t('eatkcal.v2.checkout.branch_pick')
+      : !ctrl.contractsAccepted
       ? t('eatkcal.v2.checkout.accept_contracts')
       : '';
-  const ctaDisabled = ctrl.isCheckoutDisabled || !ctrl.contractsAccepted || needsMethodTime;
+  const ctaDisabled = ctrl.isCheckoutDisabled || !ctrl.contractsAccepted || needsMethodTime || needsBranch;
   const disBg = theme.isDark ? '#2C2C2E' : '#DCDEE2';
   const disFg = theme.isDark ? '#A1A1A6' : '#45454A';
 
@@ -344,7 +346,7 @@ export default function EkCheckoutScreen() {
           ) : null}
           <Pressable
             onPress={onPlace}
-            disabled={ctrl.placing || ctrl.isCheckoutDisabled || needsMethodTime}
+            disabled={ctrl.placing || ctrl.isCheckoutDisabled || needsMethodTime || needsBranch}
             accessibilityRole="button"
             accessibilityState={{ disabled: ctaDisabled }}
             accessibilityLabel={ctaLabel}
@@ -393,6 +395,8 @@ export default function EkCheckoutScreen() {
               setPickedMethod(m);
               if (m !== ctrl.deliveryMethod) setPickedTime(null);
               ctrl.setDeliveryMethod(m);
+              // G32-S1 md.4: Gel-Al seçilince şube seçimi kendiliğinden açılır.
+              if (m === 'pickup') setOpen('ad');
             }}
           />
           {ctrl.deliveryMethod === 'home_delivery' ? (
@@ -547,32 +551,18 @@ export default function EkCheckoutScreen() {
             </View>
           ) : (
             <View style={{ gap: 8 }}>
-              {branchRows.map(({ branch: b, km }) => {
-                const sel = b.id === ctrl.selectedBranchId;
-                return (
-                  <Pressable
-                    key={b.id}
-                    onPress={() => {
-                      haptic('selection');
-                      ctrl.setSelectedBranchId(b.id);
-                      setBranchAuto(false);
-                    }}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: sel }}
-                    style={[styles.option, sel ? { backgroundColor: c.accent } : { borderColor: c.line, borderWidth: 1 }]}
-                  >
-                    <Storefront size={20} color={sel ? c.onAccent : c.ink} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[ekType.b15s, { color: sel ? c.onAccent : c.ink }]}>{b.name}</Text>
-                      <Text style={[ekType.c13, { color: sel ? c.onAccent : c.secondary }]} numberOfLines={2}>
-                        {km != null ? `${km.toFixed(1)} km, ${b.address}` : b.address}
-                      </Text>
-                    </View>
-                    {sel ? <Check size={18} color={c.onAccent} weight="bold" /> : null}
-                  </Pressable>
-                );
-              })}
-              {branchAuto ? <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.checkout.branch_auto')}</Text> : null}
+              <BranchCards
+                rows={branchRows}
+                selectedId={ctrl.selectedBranchId}
+                open={ctrl.deliveryRulesSettled ? ctrl.shopOpenNow : null}
+                nearestId={nearestBranchId}
+                onSelect={(id) => ctrl.setSelectedBranchId(id)}
+              />
+              {needsBranch ? (
+                <Text style={[ekType.c13, { color: c.secondary }]} testID="ek-branch-pick-hint">
+                  {t('eatkcal.v2.checkout.branch_pick')}
+                </Text>
+              ) : null}
             </View>
           )}
         </Section>
