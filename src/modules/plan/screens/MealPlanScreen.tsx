@@ -100,17 +100,21 @@ export default function MealPlanScreen() {
   const dayItems = items.filter((x) => x.date === sel);
   const empty = entry?.status !== 'loading' && items.length === 0;
 
+  // Konum ölçümü en çok 1 kare beklenir; gelmezse iz atlanır (kayıt yine yazılır, değer nabzı oynar).
   const measure = (v: View | null | undefined) =>
     new Promise<{ x: number; y: number } | null>((res) => {
       if (!v || typeof v.measureInWindow !== 'function') return res(null);
-      v.measureInWindow((x, y, w, h) => res(Number.isFinite(x) ? { x: x + w / 2, y: y + h / 2 } : null));
+      const to = setTimeout(() => res(null), 60);
+      v.measureInWindow((x, y, w, h) => {
+        clearTimeout(to);
+        res(Number.isFinite(x) ? { x: x + w / 2, y: y + h / 2 } : null);
+      });
     });
 
   const onLog = useCallback(
     async (it: PlanItem) => {
       haptic('success');
-      const [from, to] = await Promise.all([measure(logRefs.current[it.slot]), measure(targetRef.current)]);
-      const id = await logPlanItem(it);
+      const [from, to, id] = await Promise.all([measure(logRefs.current[it.slot]), measure(targetRef.current), logPlanItem(it)]);
       if (!id) {
         setToast({ msg: tr('plan.toast_failed'), key: Date.now() });
         return;

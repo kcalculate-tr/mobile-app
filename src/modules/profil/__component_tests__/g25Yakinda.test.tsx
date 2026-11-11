@@ -118,3 +118,23 @@ test('A5: ödül "Kullan" — hedef varken kuponu sepete taşır, ≥ 44 pt', as
   fireEvent.press(btn);
   expect(mockNav.navigate).toHaveBeenCalledWith('EkCart', { couponCode: 'MACRO-1' });
 });
+
+// G33-S1 md.1 (Tur 26n FinPrProfile): Kcalculate AI grubu TEK kart — Hedefim kartı + İlerleme + Koleksiyon;
+// ayrı "kcalAI" bölümü ve "Yakında · Egzersiz" YOK (bayrak açık olsa bile); öğün planı satırları `ogun_plani` arkasında.
+test('G33 md.1: Profil — Hedefim kartı grupta, ayrı kcalAI/Yakında bölümü yok; öğün planı satırları bayrakla', () => {
+  mockFlags = { yakinda_satirlari: true };
+  let r = render(<FinPrProfileScreen />);
+  expect(r.getByTestId('profile-goal-card')).toBeTruthy();
+  expect(r.getByText('Hedefi düzenle')).toBeTruthy();
+  expect(r.queryByTestId('profile-sub-section')).toBeNull();
+  expect(r.queryByText('Egzersiz ve fitness rehberi')).toBeNull();
+  expect(r.queryByText('Yakında')).toBeNull();
+  expect(r.queryByTestId('profile-plan-row')).toBeNull();
+  r.unmount();
+  mockFlags = { ogun_plani: true };
+  r = render(<FinPrProfileScreen />);
+  expect(r.getByTestId('profile-plan-row')).toBeTruthy();
+  expect(r.getByTestId('profile-shopping-row')).toBeTruthy();
+  expect(r.getByText('Öğün planı')).toBeTruthy();
+  expect(r.getByText('Alışveriş listesi')).toBeTruthy();
+});

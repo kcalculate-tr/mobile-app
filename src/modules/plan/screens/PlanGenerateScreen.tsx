@@ -56,9 +56,13 @@ export default function PlanGenerateScreen() {
   const loadCatalog = usePlanStore((s) => s.loadCatalog);
   const entry = usePlanStore((s) => s.weeks[ws]);
   const applyItems = usePlanStore((s) => s.applyItems);
+  const setUser = usePlanStore((s) => s.setUser);
+  const loadWeek = usePlanStore((s) => s.loadWeek);
   useEffect(() => {
+    setUser(user?.id ?? null);
+    if (user?.id) void loadWeek(ws);
     void loadCatalog();
-  }, [loadCatalog]);
+  }, [loadCatalog, loadWeek, setUser, user?.id, ws]);
 
   // ── Form durumu ──
   const [kcal, setKcal] = useState(0);

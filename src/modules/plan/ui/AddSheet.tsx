@@ -100,6 +100,7 @@ export function AddSheet({
                     key={r.key}
                     first={i === 0}
                     name={lang === 'en' ? r.nameEn : r.nameTr}
+                    kcal={r.macros.kcal}
                     chips={[`${r.macros.kcal} kcal`, `P ${Math.round(r.macros.protein)} g`]}
                     onAdd={() => onAdd(recipeItem(r, date, slot, 1, lang))}
                   />
@@ -126,6 +127,7 @@ export function AddSheet({
                       key={o.id}
                       first={i === 0}
                       name={o.name}
+                      kcal={Math.round(o.kcal)}
                       chips={[`${Math.round(o.kcal)} kcal`, `P ${Math.round(o.protein)} g`]}
                       lime
                       price={o.price != null ? formatPrice(o.price) : null}
@@ -178,7 +180,7 @@ function Search({ value, onChange, placeholder }: { value: string; onChange: (s:
   );
 }
 
-function Row({ name, chips, onAdd, first, lime, price }: { name: string; chips: string[]; onAdd: () => void; first?: boolean; lime?: boolean; price?: string | null }) {
+function Row({ name, kcal, chips, onAdd, first, lime, price }: { name: string; kcal: number; chips: string[]; onAdd: () => void; first?: boolean; lime?: boolean; price?: string | null }) {
   const c = usePlanTones();
   const { t: tr } = useT();
   return (
@@ -202,7 +204,7 @@ function Row({ name, chips, onAdd, first, lime, price }: { name: string; chips: 
           onAdd();
         }}
         accessibilityRole="button"
-        accessibilityLabel={tr('plan.add_item_a11y', { name, kcal: chips[0] })}
+        accessibilityLabel={tr('plan.add_item_a11y', { name, kcal })}
         style={[styles.plus, { backgroundColor: c.lime }]}
         hitSlop={4}
       >
