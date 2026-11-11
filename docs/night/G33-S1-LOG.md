@@ -23,8 +23,11 @@ Dal `night33/plan` (taban `release/1.1.0` @ G32-S1-DONE) → `release/1.1.0`'a `
 | 9009ee1 | md.10: plan bileşen testleri + ölçüm zaman aşımı / oturum bağlama düzeltmesi |
 | 349e5fa | lint temizliği |
 | f1f8aa3 | HIG denetimi düzeltmeleri |
-| (merge) | `release/1.1.0` ← `night33/plan` (--no-ff) |
+| e019973 | merge: `release/1.1.0` ← `night33/plan` (--no-ff, çakışma yok) |
 | (son) | docs/night/G33-S1-DONE |
+
+## release/1.1.0 üzerinde yeniden koşulan kontroller (merge e019973 sonrası)
+hygiene ✅ · tsc ✅ · unit 1184/1184 ✅ · jest 95 suite / 538 test ✅ · deno check meal-plan-generate ✅ · expo export iOS ✅ (3273 modül) · Android ✅ (3280 modül).
 
 ## KARAR
 - **demoPrices "yedek"**: "Fiyatlar RevenueCat'ten gelir (demoPrices yalnız yedek)" → üretimde yedek fiyat GÖSTERİLMEZ (App Review: mağaza fiyatı dışı fiyat riski; G25 kuralı ve g27Prices bekçi testi korunur). demoPrices test/vitrin yedeği olarak kalır. Fiyat gelmezse aynı ekranda hata kartı.
