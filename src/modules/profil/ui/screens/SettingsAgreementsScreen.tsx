@@ -115,12 +115,19 @@ export default function AgreementsScreen({
             </Pressable>
           ) : null}
         </FinCard>
-        {/* G22-S2 md.3 — veri lisansı atfı (GeoNames CC BY 4.0: eatkcal şehir araması). */}
+        {/* G22-S2 md.3 — veri lisansı atfı (GeoNames CC BY 4.0: eatkcal şehir araması).
+            G31-S1 md.4 — yanında Open Food Facts (ODbL) atfı (barkod ürün verisi). */}
         <Text
           style={{ fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary, marginTop: 16, paddingHorizontal: 4 }}
           testID="agreements-data-attribution"
         >
           {tr('eatkcal.v2.geo.attribution')}
+        </Text>
+        <Text
+          style={{ fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary, marginTop: 4, paddingHorizontal: 4 }}
+          testID="agreements-off-attribution"
+        >
+          {tr('profil.agreements_off_attribution')}
         </Text>
       </ScrollView>
     </FinScreen>

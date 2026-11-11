@@ -7,7 +7,7 @@
 //  • Önbellek: cihazda kod → ürün, 30 gün (yalnız BULUNAN ürün; bulunamayan kod
 //    yeniden sorulur — OFF'a sonradan eklenebilir).
 //  • Ürün yok / kcal yok → not_found (sahte değer YOK). AI hakkı hiç dokunulmaz.
-//  • Veri lisansı ODbL: sonuç ekranında "Veri: Open Food Facts" atfı (FinPhotoResult).
+//  • Veri lisansı ODbL: sonuç ekranında "Veri: Open Food Facts (ODbL)" atfı (FinBarcodeResult) + Profil › Sözleşmeler.
 
 export const OFF_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product/';
 export const OFF_FIELDS =

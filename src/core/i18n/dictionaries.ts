@@ -1120,6 +1120,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G28-S1 md.7 — legal.eatkcal.com
       agreements_open_web: 'Web sitesinde aç',
       agreements_open_web_a11y: '{{title}} belgesini legal.eatkcal.com sitesinde aç',
+      // G31-S1 md.4 — Open Food Facts (ODbL) atfı (barkod ürün verisi).
+      agreements_off_attribution: 'Ürün verisi: Open Food Facts (ODbL)',
       delete_info_link: 'Hesap silme hakkında',
       // Destek talepleri
       support_title: 'Yardım ve destek',
@@ -1266,7 +1268,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       barcode_per100: '100 g başına',
       barcode_portion: 'Porsiyon',
       barcode_kcal: 'Kalori',
-      barcode_source: 'Veri: Open Food Facts',
+      barcode_source: 'Veri: Open Food Facts (ODbL)',
       barcode_missing_title: 'Ürün bulunamadı',
       barcode_missing_body: 'Bu barkod Open Food Facts’te yok. Fotoğrafla tarayabilir ya da elle ekleyebilirsin.',
       barcode_nokcal_body: 'Bu ürünün kalori bilgisi Open Food Facts’te eksik. Fotoğrafla tarayabilir ya da elle ekleyebilirsin.',
@@ -3006,6 +3008,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G28-S1 md.7 — legal.eatkcal.com
       agreements_open_web: 'Open on the website',
       agreements_open_web_a11y: 'Open {{title}} on legal.eatkcal.com',
+      agreements_off_attribution: 'Product data: Open Food Facts (ODbL)',
       delete_info_link: 'About account deletion',
       support_title: 'Help & support',
       support_new: 'New request',
@@ -3147,7 +3150,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       barcode_per100: 'Per 100 g',
       barcode_portion: 'Portion',
       barcode_kcal: 'Calories',
-      barcode_source: 'Data: Open Food Facts',
+      barcode_source: 'Data: Open Food Facts (ODbL)',
       barcode_missing_title: 'Product not found',
       barcode_missing_body: 'This barcode isn’t on Open Food Facts. You can scan with a photo or add it manually.',
       barcode_nokcal_body: 'Calorie info for this product is missing on Open Food Facts. You can scan with a photo or add it manually.',

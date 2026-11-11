@@ -4,7 +4,7 @@
  * görseli + kapat X (sağ) + ad hapı, altta sheet: "Barkod sonucu", düzenlenebilir ad,
  * marka, 100 g başına değerler (kcal · P · K · Y), porsiyon (gram + ½·1·1½), toplam,
  * lime "{Öğün}'e logla ⌄" (aynı MealMenuPopover) ve küçük kaynak satırı
- * "Veri: Open Food Facts" (ODbL atfı).
+ * "Veri: Open Food Facts (ODbL)" (ODbL atfı; G31-S1 md.4: lisans adı satırda).
  *
  * Kaydetme ScanScreen'de mevcut yol (`saveAiScanEstimate`, source='barcode'); AI hakkı
  * TÜKETMEZ. Burada yalnız düzeltme hesabı (barcodeEstimate) yapılır.

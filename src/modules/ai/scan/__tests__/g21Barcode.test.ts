@@ -224,6 +224,16 @@ test('"Barkod yakında" hâli kalktı (kod ve sözlük)', () => {
   assert.doesNotMatch(cam, /barcode_soon/);
   const dict = readFileSync(join(ROOT, 'src/core/i18n/dictionaries.ts'), 'utf8');
   assert.doesNotMatch(dict, /barcode_soon_/);
-  assert.match(dict, /barcode_source: 'Veri: Open Food Facts'/);
-  assert.match(dict, /barcode_source: 'Data: Open Food Facts'/);
+  assert.match(dict, /barcode_source: 'Veri: Open Food Facts \(ODbL\)'/);
+  assert.match(dict, /barcode_source: 'Data: Open Food Facts \(ODbL\)'/);
+});
+
+test('G31-S1 md.4: Profil › Sözleşmeler altında Open Food Facts (ODbL) atfı, GeoNames atfının yanında', () => {
+  const dict = readFileSync(join(ROOT, 'src/core/i18n/dictionaries.ts'), 'utf8');
+  assert.match(dict, /agreements_off_attribution: 'Ürün verisi: Open Food Facts \(ODbL\)'/);
+  assert.match(dict, /agreements_off_attribution: 'Product data: Open Food Facts \(ODbL\)'/);
+  const scr = readFileSync(join(ROOT, 'src/modules/profil/ui/screens/SettingsAgreementsScreen.tsx'), 'utf8');
+  const geo = scr.indexOf("tr('eatkcal.v2.geo.attribution')");
+  const off = scr.indexOf("tr('profil.agreements_off_attribution')");
+  assert.ok(geo > 0 && off > geo, 'OFF atfı GeoNames atfının hemen ardından');
 });

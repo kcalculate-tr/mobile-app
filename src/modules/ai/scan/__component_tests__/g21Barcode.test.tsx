@@ -135,7 +135,7 @@ test('bulundu → barkod sonucu (ad, marka, 100 g, porsiyon 250 g, kaynak satır
   expect(tree.getByText('Barkod sonucu')).toBeTruthy();
   expect(tree.getByDisplayValue('Ayran')).toBeTruthy();
   expect(tree.getByText('Sütaş')).toBeTruthy();
-  expect(tree.getByText('Veri: Open Food Facts')).toBeTruthy();
+  expect(tree.getByText('Veri: Open Food Facts (ODbL)')).toBeTruthy();
   expect(tree.getByTestId('fin-barcode-grams').props.value).toBe('250');
   expect(tree.getByTestId('fin-barcode-total').props.children).toBe('95 kcal, P 4 g, K 6 g, Y 6 g');
 
@@ -241,7 +241,7 @@ test('EN: barkod sonucu metinleri ve "Data: Open Food Facts" atfı', () => {
   );
   expect(tree.getByText('Barcode result')).toBeTruthy();
   expect(tree.getByText('Per 100 g')).toBeTruthy();
-  expect(tree.getByText('Data: Open Food Facts')).toBeTruthy();
+  expect(tree.getByText('Data: Open Food Facts (ODbL)')).toBeTruthy();
   expect(tree.getByTestId('fin-barcode-grams').props.value).toBe('100'); // serving yok → 100 g
 });
 
