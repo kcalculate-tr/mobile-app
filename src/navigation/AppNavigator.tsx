@@ -109,6 +109,12 @@ const CoachIntroScreen = lazy(() => import('../modules/coach/screens/CoachIntroS
 const MealPlanScreen = lazy(() => import('../modules/plan/screens/MealPlanScreen'));
 const PlanGenerateScreen = lazy(() => import('../modules/plan/screens/PlanGenerateScreen'));
 const ShoppingListScreen = lazy(() => import('../modules/plan/screens/ShoppingListScreen'));
+// G34-S1 — Kişisel plan (`kisisel_plan`).
+const PersonalPlanFlowScreen = lazy(() => import('../modules/personalPlan/screens/PersonalPlanFlowScreen'));
+const PersonalPlanMineScreen = lazy(() => import('../modules/personalPlan/screens/MyPlanScreen'));
+const PersonalPlanEditScreen = lazy(() => import('../modules/personalPlan/screens/MyPlanEditScreen'));
+const PersonalPlanCheckinScreen = lazy(() => import('../modules/personalPlan/screens/CheckinScreen'));
+const PlanPaywallScreen = lazy(() => import('../modules/personalPlan/screens/PlanPaywallScreen'));
 const CoachHistoryScreen = lazy(() => import('../modules/coach/screens/CoachHistoryScreen'));
 // eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
 // Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
@@ -182,6 +188,11 @@ const CoachIntroLazy = withSuspense(CoachIntroScreen);
 const MealPlanLazy = withSuspense(MealPlanScreen);
 const PlanGenerateLazy = withSuspense(PlanGenerateScreen);
 const ShoppingListLazy = withSuspense(ShoppingListScreen);
+const PersonalPlanFlowLazy = withSuspense(PersonalPlanFlowScreen);
+const PersonalPlanMineLazy = withSuspense(PersonalPlanMineScreen);
+const PersonalPlanEditLazy = withSuspense(PersonalPlanEditScreen);
+const PersonalPlanCheckinLazy = withSuspense(PersonalPlanCheckinScreen);
+const PlanPaywallLazy = withSuspense(PlanPaywallScreen);
 const CoachHistoryLazy = withSuspense(CoachHistoryScreen);
 const EatHomeLazy = withSuspense(EatHomeScreen);
 const ProfileSubLazy = withSuspense(ProfileSubScreen);
@@ -433,6 +444,8 @@ export default function AppNavigator() {
   const kocEnabled = kocFlag && aboneFlag;
   // G33-S1: öğün planı ekranları yalnız `ogun_plani` açıkken kayıtlı (Profil satırları aynı bayrağa bağlı).
   const ogunPlani = useFeature('ogun_plani');
+  // G34-S1: kişisel plan ekranları yalnız `kisisel_plan` açıkken kayıtlı (girişler aynı bayrağa bağlı).
+  const kisiselPlan = useFeature('kisisel_plan');
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
@@ -607,6 +620,13 @@ export default function AppNavigator() {
       {ogunPlani ? <Stack.Screen name="MealPlan" component={MealPlanLazy} options={push} /> : null}
       {ogunPlani ? <Stack.Screen name="MealPlanGenerate" component={PlanGenerateLazy} options={AI_MODAL} /> : null}
       {ogunPlani ? <Stack.Screen name="ShoppingList" component={ShoppingListLazy} options={push} /> : null}
+      {/* G34-S1 — Kişisel plan: akış ve paywall alttan (sheet 330; akışın kendi kenar jesti var → yığın jesti kapalı),
+          Kişisel planım / düzenle / check-in sağdan (push 330). */}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlan" component={PersonalPlanFlowLazy} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlanMine" component={PersonalPlanMineLazy} options={push} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlanEdit" component={PersonalPlanEditLazy} options={push} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlanCheckin" component={PersonalPlanCheckinLazy} options={push} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PlanPaywall" component={PlanPaywallLazy} options={AI_MODAL} /> : null}
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={finalScreenFor('EatCatalog', finalFlag.yeni_siparis, HomeScreen)} />

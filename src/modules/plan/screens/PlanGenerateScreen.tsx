@@ -27,6 +27,9 @@ import { usePlanStore } from '../store';
 import { dayShort, dayTitle, spanLabel, weekDays, weekStartOf } from '../week';
 import { loadEatkcalOptions, userInIzmir } from '../actions';
 import { GLASS, MiniChip, Thumb, usePlanTones } from '../ui/parts';
+import { usePersonalPlanEntry } from '../../personalPlan/ui/entries';
+import { PersonalPlanFormSummary, PersonalPlanNeeded } from '../../personalPlan/ui/planForm';
+import { effectiveTargets } from '../../personalPlan/types';
 
 type Nav = { goBack: () => void; navigate: (n: string, p?: object) => void; replace?: (n: string, p?: object) => void };
 export type PlanGenerateParams = { weekStart?: string } | undefined;
@@ -81,6 +84,20 @@ export default function PlanGenerateScreen() {
   useEffect(() => {
     void readAllergenConsent().then(setConsent);
   }, []);
+  // G34-S1 md.5: `kisisel_plan` açıkken form kişisel plandan okur (hedef + tercihler yeniden sorulmaz);
+  // plan yoksa akışa yönlendirir. Kapalıyken G33 formu AYNEN.
+  const pp = usePersonalPlanEntry();
+  const fromPlan = pp.enabled && !!pp.saved;
+  const planNeeded = pp.enabled && pp.loaded && !pp.saved;
+  useEffect(() => {
+    if (!fromPlan || !pp.saved) return;
+    const tg = effectiveTargets(pp.saved);
+    setKcal(tg.calories);
+    setProtein(tg.protein);
+    setDiet(pp.saved.answers.diet);
+    setAvoid(pp.saved.answers.allergens);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromPlan, pp.saved?.updatedAt]);
   const [days, setDays] = useState<string[]>(() => allDays.filter((d) => d >= today));
   const [izmir, setIzmir] = useState(false);
   const [eatkcalOpts, setEatkcalOpts] = useState<EatkcalOption[]>([]);
@@ -112,7 +129,8 @@ export default function PlanGenerateScreen() {
     days,
     target: { kcal: tKcal, protein: tProtein },
     diet,
-    avoid: consent ? avoid : [],
+    // Kişisel plandaki alerjenler akışta ayrı açık rızayla alındı (rıza yoksa plan alerjen taşımaz).
+    avoid: consent || fromPlan ? avoid : [],
     eatkcal: izmir && withEatkcal ? eatkcalOpts : null,
     keep: entry?.items ?? [],
     keepPlanned: keep,
@@ -122,11 +140,11 @@ export default function PlanGenerateScreen() {
 
   const stepList = useMemo(() => {
     const out = [tr('plan.step_target', { kcal: tKcal, protein: tProtein })];
-    if (consent && avoid.length) out.push(tr('plan.step_allergen', { list: avoid.map((a) => tr(`plan.allergen.${a}`)).join(', ') }));
+    if ((consent || fromPlan) && avoid.length) out.push(tr('plan.step_allergen', { list: avoid.map((a) => tr(`plan.allergen.${a}`)).join(', ') }));
     if (izmir && withEatkcal) out.push(tr('plan.step_eatkcal'));
     out.push(tr('plan.step_days', { days: spanLabel(days, lang) }));
     return out;
-  }, [avoid, consent, days, izmir, lang, tKcal, tProtein, tr, withEatkcal]);
+  }, [avoid, consent, days, fromPlan, izmir, lang, tKcal, tProtein, tr, withEatkcal]);
 
   const run = async (v: number) => {
     cancelled.current = false;
@@ -148,7 +166,7 @@ export default function PlanGenerateScreen() {
     let coachNote: string | null = null;
     if (coachMode) {
       const cands = candidatePlans(input(v), 3);
-      const out = await askCoachToRank(cands, { lang, target: { kcal: tKcal, protein: tProtein }, avoid: consent ? avoid : [], diet });
+      const out = await askCoachToRank(cands, { lang, target: { kcal: tKcal, protein: tProtein }, avoid: consent || fromPlan ? avoid : [], diet });
       if (out.ok) {
         chosen = cands[out.index];
         coachNote = out.note;
@@ -241,63 +259,71 @@ export default function PlanGenerateScreen() {
             </View>
           )}
 
-          <Section title={tr('plan.daily_target')} right={tr('plan.from_profile')} />
-          <View style={[styles.group, { backgroundColor: c.card }]}>
-            <Stepper icon={GLASS.flame} label={tr('plan.kcal')} value={`${tKcal} kcal`} onMinus={() => setKcal(Math.max(1200, tKcal - KCAL_STEP))} onPlus={() => setKcal(Math.min(4500, tKcal + KCAL_STEP))} minusLabel={tr('plan.kcal_minus_a11y')} plusLabel={tr('plan.kcal_plus_a11y')} />
-            <Stepper icon={GLASS.trophy} label={tr('plan.protein')} value={`${tProtein} g`} onMinus={() => setProtein(Math.max(30, tProtein - PROTEIN_STEP))} onPlus={() => setProtein(Math.min(300, tProtein + PROTEIN_STEP))} minusLabel={tr('plan.protein_minus_a11y')} plusLabel={tr('plan.protein_plus_a11y')} border />
-          </View>
-
-          <Section title={tr('plan.diet_h')} />
-          <View style={styles.chipsWrap}>
-            {DIETS.map((d) => (
-              <Choice key={d} label={tr(`plan.diet.${d}`)} selected={diet === d} onPress={() => setDiet(d)} testID={`plan-diet-${d}`} />
-            ))}
-          </View>
-
-          <Section title={tr('plan.allergens_h')} />
-          {consent === false && consentOpen ? (
-            <View style={[styles.consent, { backgroundColor: c.card, borderColor: c.line2 }]} testID="plan-allergen-consent">
-              <AppText style={[styles.modeTitle, { color: c.ink }]} accessibilityRole="header">
-                {tr('plan.consent_title')}
-              </AppText>
-              <AppText style={[styles.small, { color: c.sec, lineHeight: 19 }]}>{tr('plan.consent_body')}</AppText>
-              <Pressable
-                onPress={() => {
-                  haptic('light');
-                  setConsent(true);
-                  setConsentOpen(false);
-                  void recordAllergenConsent(true);
-                }}
-                accessibilityRole="button"
-                style={[styles.blackBtn, { backgroundColor: c.chipSel }]}
-                testID="plan-consent-accept"
-              >
-                <AppText style={[styles.blackBtnText, { color: c.chipSelInk }]}>{tr('plan.consent_accept')}</AppText>
-              </Pressable>
-              <Pressable onPress={() => setConsentOpen(false)} accessibilityRole="button" style={styles.textBtn} testID="plan-consent-skip">
-                <AppText style={[styles.textBtnText, { color: c.ink }]}>{tr('plan.consent_skip')}</AppText>
-              </Pressable>
+          {planNeeded ? (
+            <PersonalPlanNeeded onCreate={() => nav.navigate('PersonalPlan', { origin: 'plan_form' })} />
+          ) : fromPlan && pp.saved ? (
+            <PersonalPlanFormSummary saved={pp.saved} onEdit={() => nav.navigate('PersonalPlanEdit')} />
+          ) : (
+            <>
+            <Section title={tr('plan.daily_target')} right={tr('plan.from_profile')} />
+            <View style={[styles.group, { backgroundColor: c.card }]}>
+              <Stepper icon={GLASS.flame} label={tr('plan.kcal')} value={`${tKcal} kcal`} onMinus={() => setKcal(Math.max(1200, tKcal - KCAL_STEP))} onPlus={() => setKcal(Math.min(4500, tKcal + KCAL_STEP))} minusLabel={tr('plan.kcal_minus_a11y')} plusLabel={tr('plan.kcal_plus_a11y')} />
+              <Stepper icon={GLASS.trophy} label={tr('plan.protein')} value={`${tProtein} g`} onMinus={() => setProtein(Math.max(30, tProtein - PROTEIN_STEP))} onPlus={() => setProtein(Math.min(300, tProtein + PROTEIN_STEP))} minusLabel={tr('plan.protein_minus_a11y')} plusLabel={tr('plan.protein_plus_a11y')} border />
             </View>
-          ) : null}
-          <View style={[styles.chipsWrap, consent ? null : { opacity: 0.45 }]}>
-            {ALLERGENS.map((a) => (
-              <Choice
-                key={a}
-                label={tr(`plan.allergen.${a}`)}
-                selected={!!consent && avoid.includes(a)}
-                check
-                disabledLook={!consent}
-                onPress={() => {
-                  if (!consent) {
-                    setConsentOpen(true);
-                    return;
-                  }
-                  setAvoid((cur) => (cur.includes(a) ? cur.filter((x) => x !== a) : [...cur, a]));
-                }}
-                testID={`plan-allergen-${a}`}
-              />
-            ))}
-          </View>
+
+            <Section title={tr('plan.diet_h')} />
+            <View style={styles.chipsWrap}>
+              {DIETS.map((d) => (
+                <Choice key={d} label={tr(`plan.diet.${d}`)} selected={diet === d} onPress={() => setDiet(d)} testID={`plan-diet-${d}`} />
+              ))}
+            </View>
+
+            <Section title={tr('plan.allergens_h')} />
+            {consent === false && consentOpen ? (
+              <View style={[styles.consent, { backgroundColor: c.card, borderColor: c.line2 }]} testID="plan-allergen-consent">
+                <AppText style={[styles.modeTitle, { color: c.ink }]} accessibilityRole="header">
+                  {tr('plan.consent_title')}
+                </AppText>
+                <AppText style={[styles.small, { color: c.sec, lineHeight: 19 }]}>{tr('plan.consent_body')}</AppText>
+                <Pressable
+                  onPress={() => {
+                    haptic('light');
+                    setConsent(true);
+                    setConsentOpen(false);
+                    void recordAllergenConsent(true);
+                  }}
+                  accessibilityRole="button"
+                  style={[styles.blackBtn, { backgroundColor: c.chipSel }]}
+                  testID="plan-consent-accept"
+                >
+                  <AppText style={[styles.blackBtnText, { color: c.chipSelInk }]}>{tr('plan.consent_accept')}</AppText>
+                </Pressable>
+                <Pressable onPress={() => setConsentOpen(false)} accessibilityRole="button" style={styles.textBtn} testID="plan-consent-skip">
+                  <AppText style={[styles.textBtnText, { color: c.ink }]}>{tr('plan.consent_skip')}</AppText>
+                </Pressable>
+              </View>
+            ) : null}
+            <View style={[styles.chipsWrap, consent ? null : { opacity: 0.45 }]}>
+              {ALLERGENS.map((a) => (
+                <Choice
+                  key={a}
+                  label={tr(`plan.allergen.${a}`)}
+                  selected={!!consent && avoid.includes(a)}
+                  check
+                  disabledLook={!consent}
+                  onPress={() => {
+                    if (!consent) {
+                      setConsentOpen(true);
+                      return;
+                    }
+                    setAvoid((cur) => (cur.includes(a) ? cur.filter((x) => x !== a) : [...cur, a]));
+                  }}
+                  testID={`plan-allergen-${a}`}
+                />
+              ))}
+            </View>
+            </>
+          )}
           <AppText style={[styles.foot, { color: c.sec }]}>{consent ? tr('plan.allergens_foot') : tr('plan.allergens_locked')}</AppText>
 
           <Section title={tr('plan.days_h')} right={tr('plan.days_n', { n: days.length })} />
@@ -365,11 +391,11 @@ export default function PlanGenerateScreen() {
         <View style={[styles.bottom, { paddingBottom: insets.bottom + 10, backgroundColor: c.bg }]}>
           {phase === 'form' ? (
             <Pressable
-              disabled={!days.length || noRecipes}
+              disabled={!days.length || noRecipes || planNeeded}
               onPress={() => void run(variant)}
               accessibilityRole="button"
-              accessibilityState={{ disabled: !days.length || noRecipes }}
-              style={[styles.cta, { backgroundColor: c.lime, opacity: !days.length || noRecipes ? 0.5 : 1 }]}
+              accessibilityState={{ disabled: !days.length || noRecipes || planNeeded }}
+              style={[styles.cta, { backgroundColor: c.lime, opacity: !days.length || noRecipes || planNeeded ? 0.5 : 1 }]}
               testID="plan-generate-cta"
             >
               <Sparkle size={18} color={c.onLime} weight="fill" />

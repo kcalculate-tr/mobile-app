@@ -12,6 +12,7 @@ import { useT } from '../../../core/i18n';
 import { Hourglass, Sparkle, Warning, X, XCircle } from '../../../components/icons';
 import type { PlanCard } from '../../../lib/subscription/plans';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { PurchasePlanRow } from '../../personalPlan/ui/entries';
 
 export type SubResultState = 'success' | 'cancelled' | 'pending' | 'error';
 
@@ -119,6 +120,8 @@ export default function SubResult({
               </View>
             ))}
           </View>
+          {/* G34-S1 md.5 (Tur 26o 04 "Satın alma sonrası"): ikincil "Kişisel planımı oluştur" satırı (`kisisel_plan`, plan yoksa). */}
+          <PurchasePlanRow />
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: Math.max(16, insets.bottom + 8) }]}>
           <Pressable onPress={onPrimary} accessibilityRole="button" style={[styles.btn, { backgroundColor: '#C6F04F' }]} testID="sub-result-primary">

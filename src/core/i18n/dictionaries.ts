@@ -19,6 +19,7 @@ import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet
 import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
+import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -42,6 +43,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     coach: coachTr,
     // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
     plan: planTr,
+    // G34-S1 — Kişisel plan (Tur 26o).
+    pp: ppTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1951,6 +1954,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g26jEn,
     coach: coachEn,
     plan: planEn,
+    pp: ppEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',

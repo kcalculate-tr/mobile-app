@@ -62,6 +62,9 @@ export const FLAG_DEFAULTS = {
   // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m). Sunucu satırı 20261112100100_g33_meal_plan.sql
   // (KAPALI, min_app_version 1.1.0). Native modül yok → OTA. Kapalıyken Profil satırları ve rotalar yok.
   ogun_plani: false,
+  // G34-S1 — Kişisel plan akışı (Tur 26o): 4 giriş noktası, Kişisel planım, haftalık check-in.
+  // Sunucu satırı 20261112110100_g34_personal_plan.sql (KAPALI, min_app_version 1.1.0). Native yok → OTA.
+  kisisel_plan: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
