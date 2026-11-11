@@ -40,7 +40,7 @@ export function PpHeader({
           <View style={styles.headBtn} />
         )}
         <View style={styles.headMid} accessible accessibilityRole="header" accessibilityLabel={progress ? `${title ?? i18n.t('pp.header')}, ${i18n.t('pp.progress_a11y', { n: progress.index, total: progress.total })}` : title ?? i18n.t('pp.header')}>
-          <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }} numberOfLines={1}>
+          <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }}>
             {title ?? i18n.t('pp.header')}
           </AppText>
           {progress ? (

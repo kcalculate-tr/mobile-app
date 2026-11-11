@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   opt: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, padding: 14, minHeight: 64 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   badge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
+  badgeText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
   skel: { height: 200, borderRadius: 16, marginTop: 16 },
   err: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginTop: 16 },
 });

@@ -588,13 +588,13 @@ export function MealsStep({ next, izmir }: StepNav) {
                   accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
                   onAccessibilityAction={(e) => setMeals({ times: { ...m.times, [s]: shiftTime(t, e.nativeEvent.actionName === 'increment' ? 15 : -15) } })}
                 >
-                  <Pressable onPress={() => setMeals({ times: { ...m.times, [s]: shiftTime(t, -15) } })} style={styles.timeBtn} accessibilityLabel={i18n.t('pp.time_earlier', { slot: label })}>
+                  <Pressable onPress={() => setMeals({ times: { ...m.times, [s]: shiftTime(t, -15) } })} style={styles.timeBtn} accessibilityRole="button" accessibilityLabel={i18n.t('pp.time_earlier', { slot: label })}>
                     <AppText style={{ color: P.ink, fontSize: 18 }}>−</AppText>
                   </Pressable>
                   <AppText textRole="bodySm" style={{ color: P.ink, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 48, textAlign: 'center' }}>
                     {t}
                   </AppText>
-                  <Pressable onPress={() => setMeals({ times: { ...m.times, [s]: shiftTime(t, 15) } })} style={styles.timeBtn} accessibilityLabel={i18n.t('pp.time_later', { slot: label })}>
+                  <Pressable onPress={() => setMeals({ times: { ...m.times, [s]: shiftTime(t, 15) } })} style={styles.timeBtn} accessibilityRole="button" accessibilityLabel={i18n.t('pp.time_later', { slot: label })}>
                     <AppText style={{ color: P.ink, fontSize: 18 }}>+</AppText>
                   </Pressable>
                 </View>

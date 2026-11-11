@@ -325,13 +325,13 @@ export function Stepper({
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={(e) => set(value + (e.nativeEvent.actionName === 'increment' ? step : -step))}
     >
-      <Pressable onPress={() => set(value - step)} disabled={value <= min} style={[styles.stepBtn, { borderColor: P.line2, opacity: value <= min ? 0.35 : 1 }]} accessibilityLabel={`${i18n.t('pp.dec')} ${label}`} hitSlop={4}>
+      <Pressable onPress={() => set(value - step)} disabled={value <= min} style={[styles.stepBtn, { borderColor: P.line2, opacity: value <= min ? 0.35 : 1 }]} accessibilityRole="button" accessibilityLabel={`${i18n.t('pp.dec')} ${label}`} hitSlop={4}>
         <Minus size={16} color={P.ink} weight="bold" />
       </Pressable>
       <AppText textRole="body" style={[styles.stepVal, { color: P.ink }]}>
         {display ?? String(value)}
       </AppText>
-      <Pressable onPress={() => set(value + step)} disabled={value >= max} style={[styles.stepBtn, { borderColor: P.line2, opacity: value >= max ? 0.35 : 1 }]} accessibilityLabel={`${i18n.t('pp.inc')} ${label}`} hitSlop={4}>
+      <Pressable onPress={() => set(value + step)} disabled={value >= max} style={[styles.stepBtn, { borderColor: P.line2, opacity: value >= max ? 0.35 : 1 }]} accessibilityRole="button" accessibilityLabel={`${i18n.t('pp.inc')} ${label}`} hitSlop={4}>
         <Plus size={16} color={P.ink} weight="bold" />
       </Pressable>
     </View>
@@ -439,7 +439,7 @@ export function Note({ text, tone = 'info', testID }: { text: string; tone?: 'in
       accessibilityLabel={text}
     >
       <View style={[styles.noteDot, { borderColor: tone === 'warn' ? P.warnInk : P.sec }]}>
-        <AppText style={{ color: tone === 'warn' ? P.warnInk : P.sec, fontSize: 10, lineHeight: 12, fontWeight: '700' }}>i</AppText>
+        <AppText style={{ color: tone === 'warn' ? P.warnInk : P.sec, fontSize: 11, lineHeight: 13, fontWeight: '700' }} importantForAccessibility="no">i</AppText>
       </View>
       <AppText textRole="helper" style={{ flex: 1, color: tone === 'warn' ? P.warnInk : P.sec }}>
         {text}
@@ -546,8 +546,6 @@ const styles = StyleSheet.create({
   sHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 6, gap: 2 },
   headBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headMid: { flex: 1, alignItems: 'center' },
-  closeDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  progressWrap: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 10, minHeight: 20 },
   card: { flex: 1, marginHorizontal: 12, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   cardBody: { paddingHorizontal: 20, paddingTop: 22, paddingBottom: 20 },
   center: { flexGrow: 1, justifyContent: 'center' },
