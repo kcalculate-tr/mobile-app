@@ -5,6 +5,6 @@
     "NSPhotoLibraryUsageDescription": "Photo library access is used to scan a plate photo and to pick profile photos, images, and videos.",
     "NSPhotoLibraryAddUsageDescription": "Permission is required to save share cards and images to your photo library.",
     "NSLocationWhenInUseUsageDescription": "We use your location to verify your delivery address on the map and find your nearest branch.",
-    "NSSpeechRecognitionUsageDescription": "We use speech recognition on your phone to turn the food you say into text. Your voice recording isn’t stored; only the transcribed text is sent to estimate calories."
+    "NSSpeechRecognitionUsageDescription": "The food you say is converted to text by your phone’s speech recognition. Your voice recording isn’t stored; only the transcribed text is sent to estimate calories."
   }
 }

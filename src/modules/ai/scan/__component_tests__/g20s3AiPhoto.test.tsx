@@ -70,7 +70,7 @@ const client = (): AiScanClient & { reserveScan: jest.Mock; analyzeImage: jest.M
   releaseScan: jest.fn(async () => undefined),
   analyzeImage: jest.fn(async () => EST),
 });
-const LEAD = 'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.';
+const LEAD = 'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Sesli giriş telefonun konuşma tanımasıyla yazıya çevrilir; ses kaydedilmez.';
 
 beforeEach(() => {
   jest.clearAllMocks();

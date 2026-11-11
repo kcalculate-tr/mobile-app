@@ -40,7 +40,7 @@ export const tr = {
     // G23-S1 (İlter 10 Kas): metin sürümü 2 (fotoğraf + sesli giriş) — policy AI_PHOTO_TEXT_VERSION.
     ai_photo_title: 'Fotoğraf ve ses analizi',
     ai_photo_lead:
-      'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.',
+      'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Sesli giriş telefonun konuşma tanımasıyla yazıya çevrilir; ses kaydedilmez.',
     ai_photo_hint: 'Vazgeçersen öğününü elle girebilirsin. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
     ai_photo_ok: 'Kabul et',
     ai_photo_cancel: 'Vazgeç',
@@ -62,7 +62,7 @@ export const tr = {
     ai_section: 'Yapay zekâ',
     ai_photo_label: 'Fotoğraf ve ses analizi',
     ai_coach_label: 'kcalAI Koç',
-    ai_photo_desc: 'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin yazıya dökülmüş metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Ses kaydedilmez.',
+    ai_photo_desc: 'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Sesli giriş telefonun konuşma tanımasıyla yazıya çevrilir; ses kaydedilmez.',
     docs_section: 'Metinler',
     footer: 'Tercihlerin hesabına kaydedilir; istediğin zaman değiştirebilirsin.',
     error: 'Tercih kaydedilemedi. Tekrar dene.',
@@ -109,7 +109,7 @@ export const en: typeof tr = {
     reconsent_ok: 'Accept and continue',
     ai_photo_title: 'Photo and voice analysis',
     ai_photo_lead:
-      'Your plate photo (and any note you add), or the transcribed text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Audio is not recorded.',
+      'Your plate photo (and any note you add), or the text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Voice entry is converted to text by your phone’s speech recognition; audio is not recorded.',
     ai_photo_hint: 'If you cancel, you can enter your meal manually. You can withdraw this in Profile › Privacy › Data and ad permissions.',
     ai_photo_ok: 'Accept',
     ai_photo_cancel: 'Cancel',
@@ -130,7 +130,7 @@ export const en: typeof tr = {
     ai_section: 'AI',
     ai_photo_label: 'Photo and voice analysis',
     ai_coach_label: 'kcalAI Coach',
-    ai_photo_desc: 'Your plate photo (and any note you add), or the transcribed text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Audio is not recorded.',
+    ai_photo_desc: 'Your plate photo (and any note you add), or the text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Voice entry is converted to text by your phone’s speech recognition; audio is not recorded.',
     docs_section: 'Documents',
     footer: 'Your choices are saved to your account; you can change them any time.',
     error: 'Couldn’t save your choice. Try again.',

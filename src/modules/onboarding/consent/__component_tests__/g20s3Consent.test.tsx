@@ -177,7 +177,7 @@ describe('md.2 — yapay zekâ fotoğraf izni', () => {
       </I18nProvider>,
     );
     expect(ui.getByText('Photo and voice analysis')).toBeTruthy();
-    expect(ui.getByText(/transcribed text of your voice entry, is sent to our AI service provider \(USA\) to estimate calories\. Audio is not recorded\./)).toBeTruthy();
+    expect(ui.getByText(/text of your voice entry, is sent to our AI service provider \(USA\) to estimate calories\. Voice entry is converted to text by your phone’s speech recognition; audio is not recorded\./)).toBeTruthy();
     expect(ui.getByText('Accept')).toBeTruthy();
     expect(ui.getByText('Cancel')).toBeTruthy();
     expect(ui.getByText('I am 18 or older and I have read and accept the Terms of Use and the Privacy Policy.')).toBeTruthy();

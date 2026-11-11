@@ -5,6 +5,6 @@
     "NSPhotoLibraryUsageDescription": "Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.",
     "NSPhotoLibraryAddUsageDescription": "Paylaşım kartlarını ve görselleri fotoğraflarına kaydetmek için izin gereklidir.",
     "NSLocationWhenInUseUsageDescription": "Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.",
-    "NSSpeechRecognitionUsageDescription": "Söylediğin yemekleri telefonunda yazıya çevirmek için konuşma tanımayı kullanıyoruz. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir."
+    "NSSpeechRecognitionUsageDescription": "Söylediğin yemekler telefonun konuşma tanımasıyla yazıya çevrilir. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir."
   }
 }

@@ -67,7 +67,7 @@ module.exports = {
           'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         // G22-S1 md.1: sesle ekleme — telefonun konuşma tanıması (EN: locales/en.json).
         NSSpeechRecognitionUsageDescription:
-          'Söylediğin yemekleri telefonunda yazıya çevirmek için konuşma tanımayı kullanıyoruz. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
+          'Söylediğin yemekler telefonun konuşma tanımasıyla yazıya çevrilir. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
         NSPhotoLibraryUsageDescription:
           'Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
         NSPhotoLibraryAddUsageDescription:
@@ -418,7 +418,7 @@ module.exports = {
           microphonePermission:
             'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
           speechRecognitionPermission:
-            'Söylediğin yemekleri telefonunda yazıya çevirmek için konuşma tanımayı kullanıyoruz. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
+            'Söylediğin yemekler telefonun konuşma tanımasıyla yazıya çevrilir. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
           androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as'],
         },
       ],
