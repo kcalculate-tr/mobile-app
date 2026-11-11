@@ -369,12 +369,15 @@ export function EkRatingLine({
   count,
   isNew,
   compact = false,
+  mini = false,
   testID = 'ek-rating',
 }: {
   average: number | null;
   count: number;
   isNew: boolean;
   compact?: boolean;
+  /** G32-S1 md.1: mağaza kartı alt bandı — tek yıldız + puan (dar satırda süreyle yan yana). */
+  mini?: boolean;
   testID?: string;
 }) {
   const { c, t, lang } = useEk();
@@ -396,9 +399,9 @@ export function EkRatingLine({
       accessibilityLabel={t('eatkcal.v2.reviews.rating_a11y', { avg: shown, n: count })}
       testID={testID}
     >
-      <EkStars value={r} size={compact ? 12 : 14} half />
+      {mini ? <Star size={12} color={c.ink} weight="fill" /> : <EkStars value={r} size={compact ? 12 : 14} half />}
       <Text style={[ekType.c13, { color: c.ink, fontWeight: '700' }]}>{shown}</Text>
-      {compact ? null : <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.reviews.last3m', { n: count })}</Text>}
+      {compact || mini ? null : <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.reviews.last3m', { n: count })}</Text>}
     </View>
   );
 }
