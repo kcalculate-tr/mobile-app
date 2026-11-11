@@ -10,7 +10,9 @@
 //    (iOS ret sonrası) Ayarlar uygulaması açılır.
 
 export type PushStatus = 'granted' | 'denied' | 'undetermined';
-export type PushSource = 'first_meal' | 'settings';
+// G34-S1: 'personal_plan' — Kişisel plan › Hatırlatmalar, kullanıcı "Hatırlatmaları aç"a dokununca
+// BAĞLAM İÇİNDE (yalnız hiç cevaplanmamışsa); reddedilirse akış yine tamamlanır.
+export type PushSource = 'first_meal' | 'settings' | 'personal_plan';
 export type PushDecision =
   /** İzin zaten var. */
   | 'granted'
@@ -33,6 +35,9 @@ export function decidePush(i: {
   source: PushSource;
 }): PushDecision {
   if (i.status === 'granted') return 'granted';
+  if (i.source === 'personal_plan') {
+    return i.canAskAgain && i.status === 'undetermined' ? 'ask' : 'skip';
+  }
   if (i.source === 'first_meal') {
     // Tek teklif: daha önce hiç sorulmadıysa ve işletim sistemi sorabiliyorsa.
     return i.askedAt == null && i.canAskAgain && i.status === 'undetermined' ? 'ask' : 'skip';

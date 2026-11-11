@@ -205,6 +205,15 @@ export const EVENTS = {
   coach_feedback: {
     category: 'tracking', tr: 'Koç yanıtına geri bildirim', en: 'Feedback on a Coach reply', props: { value: ['up', 'down', 'clear'] },
   },
+  // G34-S1 — Kişisel plan (sunucu satırları 20261112110100_g34_personal_plan.sql).
+  pp_open: { category: 'tracking', tr: 'Kişisel plan akışı açıldı', en: 'Personal plan flow opened', props: { origin: ['profile', 'home', 'coach', 'purchase', 'mine', 'plan_form', 'dev'], known: 'boolean' } },
+  pp_step: { category: 'tracking', tr: 'Kişisel plan adımı geçildi', en: 'Personal plan step passed', props: { from: 'text', to: 'text' } },
+  pp_resume: { category: 'tracking', tr: 'Kaldığın yerden', en: 'Resume where you left off', props: { step: 'text', action: ['shown', 'continue', 'restart'] } },
+  pp_exit: { category: 'tracking', tr: 'Kişisel plan akışından çıkıldı', en: 'Left the personal plan flow', props: { step: 'text' } },
+  pp_saved: { category: 'tracking', tr: 'Kişisel plan kaydedildi', en: 'Personal plan saved', props: { goal: ['lose', 'maintain', 'gain', 'balanced'], custom: 'boolean', local_only: 'boolean' } },
+  pp_done: { category: 'tracking', tr: 'Kişisel plan akışı tamamlandı', en: 'Personal plan flow completed', props: { origin: ['profile', 'home', 'coach', 'purchase', 'mine', 'plan_form', 'dev'] } },
+  pp_checkin: { category: 'tracking', tr: 'Haftalık tartı', en: 'Weekly weigh-in', props: { kind: ['none', 'on_track', 'slow', 'fast', 'fluctuation'], action: ['saved', 'apply', 'keep', 'skip'] } },
+  pp_paywall: { category: 'commerce', tr: 'Kişisel plan paywall', en: 'Personal plan paywall', props: { action: ['view', 'purchase', 'restore', 'free'], plan: 'text' } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',
