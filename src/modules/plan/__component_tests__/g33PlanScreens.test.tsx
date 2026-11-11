@@ -55,11 +55,11 @@ jest.mock('../client', () => {
   };
 });
 let mockIzmir = false;
-const mockLog = jest.fn((_it: PlanItem) => Promise.resolve('c-1'));
+const mockLog = jest.fn((_it: PlanItem, _at?: Date) => Promise.resolve('c-1'));
 const mockUnlog = jest.fn((_id: string) => Promise.resolve(true));
 const mockCart = jest.fn((_items: PlanItem[]) => Promise.resolve({ added: 2, skipped: 0 }));
 jest.mock('../actions', () => ({
-  logPlanItem: (it: PlanItem) => mockLog(it),
+  logPlanItem: (it: PlanItem, at?: Date) => mockLog(it, at),
   unlogPlanItem: (id: string) => mockUnlog(id),
   userInIzmir: () => Promise.resolve(mockIzmir),
   loadEatkcalOptions: () => Promise.resolve([{ id: 'p1', name: 'KCAL Tavuklu Bowl', kcal: 560, protein: 45, carbs: 50, fat: 18, price: 285 }]),
@@ -443,6 +443,61 @@ import { useMyPlanStore } from '../../personalPlan/useMyPlan';
 import { computePlan } from '../../personalPlan/calc';
 // eslint-disable-next-line import/first
 import { emptyAnswers } from '../../personalPlan/types';
+
+describe('G36-S1 md.4 — geçmiş gün Logla zamanı', () => {
+  afterEach(() => {
+    mockFlags = { ogun_plani: true };
+    useMyPlanStore.getState().clear();
+  });
+  const logOn = async (date: string, slot: PlanItem['slot']) => {
+    mockWeekItems = [item({ id: '00000000-0000-4000-8000-000000000002', date, slot })];
+    const r = render(<MealPlanScreen />);
+    await flush();
+    if (date !== '2026-11-11') {
+      fireEvent.press(r.getByTestId(`plan-day-${date}`));
+      await flush();
+    }
+    await act(async () => {
+      fireEvent.press(r.getByTestId(`plan-log-${slot}`));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(120);
+    });
+    await flush();
+    expect(mockLog).toHaveBeenCalledTimes(1);
+    return mockLog.mock.calls[0][1] as Date;
+  };
+
+  test('kişisel plan yok: dünkü Akşam → o günün 19:30’u (İstanbul)', async () => {
+    const at = await logOn('2026-11-10', 'dinner');
+    expect(at.toISOString()).toBe('2026-11-10T16:30:00.000Z');
+  });
+
+  test('kişisel plan var: öğün saati plandan (Kahvaltı 07:15)', async () => {
+    mockFlags = { ogun_plani: true, kisisel_plan: true };
+    const result = computePlan({ goal: 'lose', gender: 'female', birthYear: 1994, heightCm: 168, weightKg: 72, activity: 'light', targetWeightKg: 65, pace: 0.5 }, 2026, '2026-11-12')!;
+    const { consentHealth: _c, consentAllergy: _a, ...base } = emptyAnswers();
+    void _c;
+    void _a;
+    const answers = { ...base, goal: 'lose' as const, weightKg: 72, meals: { ...base.meals, times: { ...base.meals.times, breakfast: '07:15' } } };
+    useMyPlanStore.setState({
+      uid: 'u-1',
+      saved: { v: 1, answers, result, custom: null, startedAt: '2026-11-01', startWeightKg: 72, targetDate: result.targetDate, updatedAt: 'x' },
+      weighIns: [],
+      loaded: true,
+      loading: false,
+    });
+    const at = await logOn('2026-11-09', 'breakfast');
+    expect(at.toISOString()).toBe('2026-11-09T04:15:00.000Z');
+  });
+
+  test('bugün → "şimdi" (yuva saati değil)', async () => {
+    const before = Date.now();
+    const at = await logOn('2026-11-11', 'lunch');
+    expect(at.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(at.toISOString()).not.toBe('2026-11-11T10:00:00.000Z');
+  });
+});
 
 describe('G34-S1 md.5 — kişisel plandan oku', () => {
   afterEach(() => {
