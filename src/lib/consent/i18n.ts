@@ -44,7 +44,7 @@ export const tr = {
     ai_photo_hint: 'Vazgeçersen öğününü elle girebilirsin. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
     ai_photo_ok: 'Kabul et',
     ai_photo_cancel: 'Vazgeç',
-    // G24-S1 — kcalAI Koç ayrı AI izni. METİN İLTER ONAYI BEKLİYOR — tek kaynak burası.
+    // G24-S1 — kcalAI Koç ayrı AI izni. Metin İlter onaylı (11 Kas, G31-S1) — tek kaynak burası.
     ai_coach_title: 'kcalAI Koç ve yapay zekâ',
     ai_coach_lead:
       'Koça yazdıkların ve günlük takip özetin, yanıt üretmek için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir.',
