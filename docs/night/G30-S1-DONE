@@ -1,0 +1,5 @@
+G30-S1 tamam — 2026-11-11
+LOG: docs/night/G30-S1-LOG.md
+Commitler: bd42e6a (md.2 cikartma konturu) · b174bdb (md.1 logla izi) · 4114df5 (md.3 yanip sonme) · LOG (md.4 kontroller)
+Kontroller: tsc 0 · hygiene OK · unit 1144/0 · jest 89 dosya/506 test · expo export iOS + Android OK
+OTA (Ilter): worktree .claude/worktrees/g23-s1 icinden  eas update --branch production --message "G30"
