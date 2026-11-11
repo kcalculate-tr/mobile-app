@@ -1,74 +1,100 @@
-# Google Play Console — mağaza metinleri TR / EN (G20-S2 md.2)
+# Google Play Console — mağaza metinleri TR / EN · 1.1.0 (M-S1 md.1)
 
 Paket: `com.kcalmobile.app` · Sürüm adı **1.1.0** (versionCode EAS remote).
-Konumlandırma: **Takip et · Üret · Paylaş**; eatkcal ikincil, yalnız İzmir. Karakter sayıları betikle denetlendi.
+Ana mesaj: TR **"Hesabı biz yapıyoruz, sen de görüyorsun."** · EN **"The calorie tracker with a real kitchen behind it."**
+
+> Kaynak: İlter kararları 11 Kas (`.claude/night/M-S1.md`), rakip raporu §5 ASO / §6 paywall (`~/dev/kcal-research/rakip/RAKIP_ANALIZI_v1.md`).
+> Bu dosya `docs/store/_uret_metinler.py` ile üretilir (karakter sınırı, anahtar kelime tekrarı, yasak dil, zorunlu bağlantılar denetlenir).
+> Elle düzeltme yapma; betikte değiştir ve yeniden üret: `python3 -I docs/store/_uret_metinler.py docs/store`.
+> **Yasak dil:** somut kilo vaadi, önce/sonra, tıbbi iddia, "sınırsız AI". **kcalAI Koç 1.1.0'da kapalı** (bayrak `koc`) → metinde hiç anılmaz; Koç OTA ile açılınca açıklama + paywall satırı güncellenir (YAYIN_KONTROL › D).
 
 ## Ortak alanlar
-| Alan | Öneri | Not |
+| Alan | Değer | Not |
 |---|---|---|
-| Uygulama kategorisi | Sağlık ve Fitness | |
-| Etiketler | Kalori sayacı, Diyet ve beslenme, Tarifler | Play etiket listesinden en fazla 5 |
-| İletişim e-postası | `[support@kcalculate.ai]` (L-S1 KURUMSAL_KIMLIK öneri) | zorunlu, herkese açık |
-| Web sitesi | https://kcalculate.ai | |
-| Gizlilik politikası | https://eatkcal.com/gizlilik-politikasi (EN sayfa: https://eatkcal.com/en/legal/privacy) | Play tek URL alır → TR sayfası; EN bağlantısı sayfada olmalı |
-| Hesap silme URL’si (Veri güvenliği) | https://eatkcal.com/account-deletion | web'den silme talebi; EN: https://eatkcal.com/en/account-deletion |
-| İçerik derecelendirmesi (IARC) | Kullanıcı etkileşimi VAR (kullanıcılar içerik paylaşır, etkileşim kurar), konum paylaşımı YOK (yalnız adres), dijital satın alma YOK | |
-| Hedef kitle | 18 ve üzeri (Aile programı DEĞİL) | Kullanım Koşulları 18+ |
-| Reklam içeriyor mu | Hayır (uygulamada reklam gösterilmez; Meta yalnız ölçüm) | |
-| Sağlık uygulaması beyanı | Evet: beslenme/kilo takibi; tıbbi cihaz DEĞİL | Play "Health apps" beyanı (2025+) |
+| Uygulama / oyun | Uygulama | |
+| Kategori | **Sağlık ve Fitness** | Play tek kategori alır |
+| Etiketler | Kalori sayacı, Diyet ve beslenme, Yemek tarifleri | en fazla 5 |
+| Ücretsiz / ücretli | Ücretsiz; **uygulama içi ürün VAR** (abonelik) | 1.0.x'teki "dijital satın alma YOK" satırı kaldırıldı |
+| İletişim e-postası | `info@eatkcal.com` | L-S1 KURUMSAL_KIMLIK: bugün tek yayındaki adres; ayrı destek adresi açılırsa değiştir |
+| Web sitesi | https://eatkcal.com | |
+| Gizlilik politikası | https://eatkcal.com/gizlilik-politikasi | Play tek URL alır → TR sayfası; EN sürüm sayfada bağlantılı olmalı (https://eatkcal.com/en/legal/privacy) |
+| Hesap silme URL’si | https://eatkcal.com/account-deletion | EN: https://eatkcal.com/en/account-deletion |
+| Reklam içeriyor | **Hayır** | Meta yalnız ölçüm (rızaya bağlı) |
+| Hedef kitle | 18 ve üzeri | |
+
+### Abonelikler (Play Console › Para kazanma › Abonelikler; RevenueCat kimliği `kcalai_fresh:monthly` biçimi)
+| Abonelik kimliği | Temel plan | Fiyat TR | Fiyat ABD | Teklif |
+|---|---|---|---|---|
+| `kcalai_fresh` | `monthly` (otomatik yenilenen, 1 ay) | 199 TL | $5.99 | — |
+| `kcalai_fresh` | `yearly` (otomatik yenilenen, 1 yıl) | 999 TL | $29.99 | `default`: 7 gün ücretsiz deneme, yeni aboneler |
+| `kcalai_balance` | `monthly` | 499 TL | $12.99 | — |
+| `kcalai_balance` | `yearly` | 2999 TL | $59.99 | `default`: 7 gün ücretsiz deneme |
+
+Abonelik avantajları (Play "Avantajlar", her biri ≤ 40 karakter): Fresh `Günde 10 AI tarama` · `Barkod ve elle giriş sınırsız`; Balance `Günde 50 AI tarama` · `Barkod ve elle giriş sınırsız`.
 
 ## Türkçe (tr-TR) — varsayılan dil
 
 | Alan | Sınır | Kullanılan |
 |---|---|---|
-| Uygulama adı | 30 | 28 |
-| Kısa açıklama | 80 | 72 |
-| Tam açıklama | 4000 | 2348 |
-| Sürüm notları (Bu sürümdeki yenilikler) | 500 | 326 |
+| Uygulama adı | 30 | 25 |
+| Kısa açıklama | 80 | 77 |
+| Tam açıklama | 4000 | 3147 |
+| Sürüm notları (Bu sürümdeki yenilikler) | 500 | 377 |
 
-**Uygulama adı:** `Kcalculate AI: Kalori Takibi`
+**Uygulama adı:** `KCAL: AI Kalori Hesaplama`
 
 **Kısa açıklama:**
 ```text
-Tabağını çek, AI kalori ve makroyu tahmin etsin. Takip et, üret, paylaş.
+Fotoğraf çek, yaz ya da söyle; kalori ve makrolar gelsin. İzmir'de fit yemek.
 ```
 
 **Tam açıklama:**
 ```text
-Tabağının fotoğrafını çek; Kcalculate AI kalorisini ve makrolarını tahmin etsin, günlüğüne kendiliğinden işlesin. Sonra ister tarifini üret, ister topluluğunla paylaş.
+KCAL ile tabağının fotoğrafını çek, ne yediğini yaz ya da söyle; kalori ve makrolar saniyeler içinde günlüğünde.
 
-Takip et. Üret. Paylaş.
+Hesabı biz yapıyoruz, sen de görüyorsun. Her yiyeceğin gramını, kalorisini, proteinini, karbonhidratını ve yağını tek tek gösteriyoruz; yanlış bulduğunu sen düzeltiyorsun.
 
-TAKİP ET
-• Fotoğrafla tara: tabağını çek ya da galeriden seç. Yapay zekâ tabaktaki yiyecekleri ayırır, her biri için kalori, protein, karbonhidrat ve yağ tahmini verir.
-• Sen düzelt: gramı ve porsiyonu değiştir, eksik yiyeceği ekle, yanlışı çıkar, "yarım porsiyon bulgur" gibi bir not yaz. Kayıt senin onayınla günlüğe girer.
-• Elle ya da hızlı ekle: fotoğraf istemediğin öğünleri saniyeler içinde gir.
-• Günün tek bakışta: kalori, makro, su ve etkinlik halkaları ana sayfada.
-• Su ve etkinlik: bardak bardak su, yürüyüş, koşu ve diğer etkinlikleri kaydet.
-• Seri ve rozetler: her gün en az bir öğün kaydet, serini büyüt.
-• Hatırlatmalar: istersen öğün ve seri hatırlatmaları al; istediğin zaman kapat.
-• Çevrimdışı da çalışır: bağlantı yokken kaydet, internet gelince eşitlenir.
+KAYDETMENİN DÖRT YOLU
+• Fotoğrafla: tabağını çek ya da galeriden seç. Yapay zekâ tabaktaki yiyecekleri ayırır ve her biri için tahmin verir.
+• Sesle: "bir kase mercimek çorbası ve bir ayran" de; söylediğin yazıya dökülür ve öğelere ayrılır. Ses kaydı tutulmaz.
+• Barkodla: paketli ürünün barkodunu okut, besin değerleri gelsin.
+• Elle: fotoğraf istemediğin öğünleri saniyeler içinde gir.
+Gramı ve porsiyonu değiştir, eksik yiyeceği ekle, yanlışı çıkar. Sen onaylamadan hiçbir şey günlüğe girmez.
 
-ÜRET
-• Öğününü paylaşıma dönüştür: kalori ve makrolarıyla öğün kartını ekle, tarifini anlat.
-• Tabak Röntgeni kartı: öğününün kalori ve makrolarını gösteren paylaşım kartını tek dokunuşla oluştur.
-• Fotoğraf ve video: tarifini görsellerle anlat.
+GÜNÜN TEK BAKIŞTA
+• Kalori, makro ve su halkaları ana sayfada.
+• Etkinliklerini ekle, harcadığını ve kalanı gör.
+• İlerleme: 7, 14 ve 30 günlük kalori ve makro özetin.
+• Seri: her gün en az bir öğün kaydet, serini büyüt.
+• Hatırlatmalar isteğe bağlı; istediğin zaman kapat.
+• Bağlantı yokken de kaydet; internet gelince eşitlenir.
 
-PAYLAŞ
-• Keşfet: topluluğun tariflerini ve öğünlerini keşfet, beğen, yorum yap, kaydet.
-• Takip et: sevdiğin hesapları takip et, profilini herkese açık ya da gizli tut.
-• Gününe ekle: Keşfet'te gördüğün bir öğünü tek dokunuşla kendi günlüğüne logla.
-• Gün halkası: günün öğünlerini takipçilerinle kısa süreliğine paylaş.
+KEŞFET
+• Topluluğun tariflerini ve öğünlerini keşfet, beğen, yorum yap, kaydet.
+• Beğendiğin tabağı tek dokunuşla kendi gününe ekle.
+• Sevdiğin hesapları takip et; profilini herkese açık ya da gizli tut.
+• Her gönderide şikâyet ve engelleme seçeneği var.
 
-İZMİR'DE MİSİN? (eatkcal)
-Kcalculate AI'nin içindeki eatkcal ile kalori ve makroları belli sağlıklı öğünleri sipariş edebilirsin. Sipariş şu an yalnız İzmir'deki teslimat bölgelerinde geçerli. Teslim edilen öğün günlüğüne kendiliğinden işlenir.
+EATKCAL: İZMİR'DE FİT YEMEK
+KCAL'in mutfağı eatkcal'da hazırlanan, kalorisi ve makrosu hesaplı öğünleri uygulamadan sipariş et. Teslim edilen öğün günlüğüne kendiliğinden işlenir. Sipariş şu an yalnız İzmir'deki teslimat bölgelerinde geçerli.
 
-GİZLİLİK SENDE
-• Reklam ölçümü (Meta) ve uygulama içi kullanım ölçümünü Profil › Gizlilik › Veri ve reklam izinleri'nden istediğin zaman kapatabilirsin.
-• Hesabını uygulama içinden silebilirsin.
+ÜCRETSİZ VE KCALAI PLANLARI
+• Ücretsiz: günde 2 AI tarama (fotoğraf ya da ses), günde 5 barkod, elle giriş sınırsız.
+• kcalAI Fresh: günde 10 AI tarama; barkod ve elle giriş sınırsız. Aylık 199 TL ya da yıllık 999 TL.
+• kcalAI Balance: günde 50 AI tarama; barkod ve elle giriş sınırsız. Aylık 499 TL ya da yıllık 2999 TL.
+• Yıllık planlarda 7 gün ücretsiz deneme; ücret deneme bitince alınır.
+Fiyatlar Türkiye içindir; başka ülkelerde Google Play kendi yerel fiyatını gösterir. AI tarama hakları her gece 00.00'da yenilenir.
+
+GİZLİLİK
+• Uygulamada reklam yok.
+• Tabak fotoğrafın ve notun yalnız tahmin için yapay zekâ sağlayıcımıza gönderilir; ilk taramadan önce iznini isteriz.
+• Konumunu yalnız eatkcal adresini doğrularken, sen istediğinde kullanırız.
+• Kullanım ve reklam ölçümünü Profil › Gizlilik'ten istediğin zaman kapat; hesabını uygulama içinden sil.
 
 ÖNEMLİ
-Kcalculate AI'nin kalori ve besin değerleri tahmindir; tıbbi tavsiye, teşhis ya da tedavi yerine geçmez. Özel bir sağlık durumun, hamileliğin ya da beslenme bozukluğun varsa bir sağlık uzmanına danış. Uygulama 18 yaş ve üzeri içindir.
+KCAL'deki kalori ve besin değerleri tahmindir; tıbbi tavsiye, teşhis ya da tedavi yerine geçmez. Özel bir sağlık durumun, hamileliğin ya da beslenme bozukluğun varsa bir sağlık uzmanına danış. Uygulama 18 yaş ve üzeri içindir.
+
+Abonelik bilgisi: Ödeme, satın almayı onayladığında Google Play hesabından alınır. Abonelik, dönem bitmeden iptal edilmezse aynı süre ve fiyatla otomatik yenilenir. Aboneliğini Google Play › Ödemeler ve abonelikler bölümünden yönetebilir ve iptal edebilirsin. Ücretsiz deneme bitmeden iptal edersen ücret alınmaz.
 
 Kullanım Koşulları: https://eatkcal.com/kullanim-kosullari
 Gizlilik Politikası: https://eatkcal.com/gizlilik-politikasi
@@ -76,61 +102,72 @@ Gizlilik Politikası: https://eatkcal.com/gizlilik-politikasi
 
 **Sürüm notları (1.1.0):**
 ```text
-1.1.0: Yeni tasarım. Fotoğrafla tara: kalori ve makro tahmini, gramı düzelt, logla. Ana sayfada kalori, makro, su ve etkinlik halkaları, seri. Keşfet: tarif, yorum, takip, öğünü gününe ekle. Paylaşım kartları ve bağlantıları. eatkcal (İzmir) yeni sipariş akışı. Veri ve reklam izinleri Profil › Gizlilik'te. Hata düzeltmeleri.
+1.1.0: Yeni ad ve tasarım. Sesle ekle (ses kaydı tutulmaz) ve barkod okut. Fotoğrafla tarama yenilendi: gramı ve porsiyonu düzelt. kcalAI Fresh ve Balance planları; yıllıkta 7 gün ücretsiz deneme. Ana sayfada kalori, makro, su halkaları, etkinlik, ilerleme ve seri. Keşfet'te tarif ve öğünler. eatkcal (İzmir) yeni sipariş akışı. İzinler yalnız gerektiğinde. Hata düzeltmeleri.
 ```
 
 ## English (en-US)
 
 | Alan | Sınır | Kullanılan |
 |---|---|---|
-| Uygulama adı | 30 | 30 |
-| Kısa açıklama | 80 | 73 |
-| Tam açıklama | 4000 | 2359 |
-| Sürüm notları (Bu sürümdeki yenilikler) | 500 | 323 |
+| Uygulama adı | 30 | 24 |
+| Kısa açıklama | 80 | 78 |
+| Tam açıklama | 4000 | 3254 |
+| Sürüm notları (Bu sürümdeki yenilikler) | 500 | 364 |
 
-**Uygulama adı:** `Kcalculate AI: Calorie Tracker`
+**Uygulama adı:** `KCAL: AI Calorie Counter`
 
 **Kısa açıklama:**
 ```text
-Snap your plate, let AI estimate calories & macros. Track, create, share.
+Snap, type or say what you ate; see calories & macros. Healthy meals in İzmir.
 ```
 
 **Tam açıklama:**
 ```text
-Snap a photo of your plate; Kcalculate AI estimates its calories and macros and adds them to your log. Then turn it into a recipe or share it with your community.
+Snap a photo of your plate, type or say what you ate, and KCAL puts the calories and macros in your log in seconds.
 
-Track. Create. Share.
+The calorie tracker with a real kitchen behind it. We show the grams, calories, protein, carbs and fat for every food on your plate, and you can fix anything that looks off.
 
-TRACK
-• Scan with a photo: take a picture of your plate or pick one from your gallery. AI separates the foods on the plate and estimates calories, protein, carbs and fat for each.
-• You stay in control: adjust grams and portions, add a missing food, remove a wrong one, or add a note like "half portion of bulgur". Nothing is logged until you confirm.
-• Manual and quick add: log meals without a photo in seconds.
-• Your day at a glance: calorie, macro, water and activity rings on the home screen.
-• Water and activity: log water glass by glass, plus walks, runs and other activities.
-• Streaks and badges: log at least one meal a day and grow your streak.
-• Reminders: optional meal and streak reminders; turn them off anytime.
-• Works offline: log without a connection; it syncs when you're back online.
+FOUR WAYS TO LOG
+• Photo: take a picture of your plate or pick one from your gallery. AI separates the foods and gives an estimate for each.
+• Voice: say "a bowl of lentil soup and a glass of ayran"; your words are turned into text and split into items. No audio is recorded.
+• Barcode: scan a packaged product to get its nutrition facts.
+• Manual: log meals without a photo in seconds.
+Adjust grams and portions, add a missing food, remove a wrong one. Nothing is logged until you confirm.
 
-CREATE
-• Turn a meal into a post: attach its meal card with calories and macros, tell your recipe.
-• Plate X-Ray card: create a share card showing your meal's calories and macros in one tap.
-• Photos and video: tell your recipe's story with images.
+YOUR DAY AT A GLANCE
+• Calorie, macro and water rings on your home screen.
+• Add your activities and see what you burned and what's left.
+• Progress: your calorie and macro summary for 7, 14 and 30 days.
+• Streaks: log at least one meal a day and keep your streak going.
+• Optional reminders; turn them off anytime.
+• Log offline; everything syncs when you're back online.
 
-SHARE
-• Explore: discover recipes and meals from the community; like, comment and save.
-• Follow: follow the accounts you love; keep your profile public or private.
-• Add to your day: log a meal you saw in Explore to your own diary in one tap.
-• Day ring: share today's meals with your followers for a short time.
+EXPLORE
+• Discover recipes and meals from the community; like, comment and save.
+• Add a plate you like to your own day in one tap.
+• Follow accounts you love; keep your profile public or private.
+• Every post can be reported, and any account can be blocked.
 
-IN İZMİR? (eatkcal)
-With eatkcal inside Kcalculate AI you can order healthy meals with known calories and macros. Ordering is currently available only in delivery areas in İzmir, Türkiye. Delivered meals are added to your log automatically.
+EATKCAL: HEALTHY MEALS IN İZMİR
+Order meals made in eatkcal, KCAL's own kitchen, with calories and macros already worked out. Delivered meals are added to your log automatically. Ordering is currently available only in delivery areas in İzmir, Türkiye.
 
-YOUR PRIVACY, YOUR CHOICE
-• Turn ad measurement (Meta) and in-app usage measurement off anytime in Profile › Privacy › Data and ad permissions.
-• Delete your account from inside the app.
+FREE AND KCALAI PLANS
+• Free: 2 AI scans a day (photo or voice), 5 barcode scans a day, unlimited manual entries.
+• kcalAI Fresh: 10 AI scans a day; unlimited barcode and manual entries. $5.99 a month or $29.99 a year.
+• kcalAI Balance: 50 AI scans a day; unlimited barcode and manual entries. $12.99 a month or $59.99 a year.
+• 7-day free trial on yearly plans; you're charged when the trial ends.
+Prices shown are in US dollars; Google Play shows your local price. AI scans reset every night at midnight.
+
+PRIVACY
+• No ads in the app.
+• Your plate photo and note are sent to our AI provider only to make the estimate; we ask for your permission before your first scan.
+• We use your location only to check an eatkcal delivery address, and only when you ask.
+• Turn usage and ad measurement off anytime in Profile › Privacy, and delete your account from inside the app.
 
 IMPORTANT
-Calorie and nutrition values in Kcalculate AI are estimates; they are not medical advice, diagnosis or treatment. If you have a medical condition, are pregnant or have an eating disorder, talk to a healthcare professional. The app is for users 18 and over.
+Calorie and nutrition values in KCAL are estimates; they are not medical advice, diagnosis or treatment. If you have a medical condition, are pregnant or have an eating disorder, talk to a healthcare professional. KCAL is for users 18 and over.
+
+Subscription terms: Payment is charged to your Google Play account when you confirm the purchase. Your subscription renews automatically for the same period and price unless cancelled before the end of the current period. You can manage and cancel it in Google Play › Payments & subscriptions. Cancel before a free trial ends and you won't be charged.
 
 Terms of Use: https://eatkcal.com/en/legal/terms
 Privacy Policy: https://eatkcal.com/en/legal/privacy
@@ -138,12 +175,12 @@ Privacy Policy: https://eatkcal.com/en/legal/privacy
 
 **Sürüm notları (1.1.0):**
 ```text
-1.1.0: New design. Scan with a photo: calorie and macro estimate, adjust grams, log it. Calorie, macro, water and activity rings on Home, streaks. Explore: recipes, comments, follows, add a meal to your day. Share cards and links. Refreshed eatkcal ordering (İzmir). Data and ad permissions in Profile › Privacy. Bug fixes.
+1.1.0: New name and design. Add by voice (no audio recorded) and scan barcodes. Refreshed photo scan: fix grams and portions. kcalAI Fresh and Balance plans; 7-day free trial on yearly. Calorie, macro and water rings, activity, progress and streaks on Home. Recipes and meals in Explore. Refreshed eatkcal ordering (İzmir). Permissions only when needed. Bug fixes.
 ```
 
 ## Grafik öğeler
-| Öğe | Ölçü | Kaynak |
+| Öğe | Ölçü | Dosya |
 |---|---|---|
-| Uygulama simgesi | 512×512 PNG (32-bit, alfa) | `assets/icon.png` büyütülmeden kaynaktan dışa aktar |
-| Öne çıkan grafik | 1024×500 | Öneri: siyah zemin + lime (#B9EF14) "Takip et. Üret. Paylaş." + Ana sayfa ekranı (EKRAN_GORUNTUSU_PLANI.md) |
-| Telefon ekran görüntüleri | 2–8 adet, 9:16, ≥1080 px kısa kenar | EKRAN_GORUNTUSU_PLANI.md |
+| Uygulama simgesi | 512×512 PNG | `assets/icon.png` kaynağından dışa aktar |
+| Öne çıkan görsel | 1024×500 | `docs/store/shots/play/tr/feature.png`, `…/en/feature.png` |
+| Telefon ekran görüntüleri | 6 adet, 1080×1920 | `docs/store/shots/play/{tr,en}/01–06.png` (EKRAN_GORUNTUSU_PLANI.md) |
