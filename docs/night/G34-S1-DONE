@@ -1,0 +1,4 @@
+G34-S1 DONE — 2026-11-12
+release/1.1.0: merge e455f47 (night34/kisisel-plan) + LOG 9eb18b8
+Kontroller: hygiene+tsc OK, unit 1228/1228, jest 96/557, expo export iOS 3299 + Android 3306 modul
+LOG: docs/night/G34-S1-LOG.md
