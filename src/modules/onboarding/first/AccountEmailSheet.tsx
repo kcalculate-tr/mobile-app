@@ -24,6 +24,7 @@ import { CURVE, DURATION, REDUCED, WAIT, useReducedMotion } from '../../../core/
 import { useT } from '../../../core/i18n';
 import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
 import { useAuth } from '../../../core/AuthContext';
+import { useReviewPasswordLogin } from '../../../lib/auth/useReviewPasswordLogin';
 import { isCodeComplete, isValidEmail, sanitizeCode } from '../v2/loginLogic';
 import { OnbButton } from '../components/pieces';
 import { ConsentBlock } from '../consent/ConsentBlock';
@@ -86,6 +87,26 @@ export function AccountEmailSheet({
   };
   useEffect(() => release, []);
   const inputRef = useRef<TextInput>(null);
+  // G28-S1 md.5: inceleme adresi → şifreyle giriş (diğer herkes için kod akışı aynı).
+  const review = useReviewPasswordLogin(email);
+  const [pwFocused, setPwFocused] = useState(false);
+  const reviewLogin = async () => {
+    if (busy || review.busy) return;
+    if (!accepted) {
+      setShowRequired(true);
+      return;
+    }
+    setError('');
+    // Oturum, kabul kaydından önce açılır → kapı beklesin (kod akışıyla aynı).
+    if (!releaseRef.current) releaseRef.current = holdGate();
+    if (!(await review.submit())) {
+      release();
+      return;
+    }
+    await acceptPolicies({ source: 'signup_email', adOn, ageOk: true }).catch(() => {});
+    release();
+    onVerified();
+  };
 
   const y = useSharedValue(1);
   const o = useSharedValue(0);
@@ -273,7 +294,46 @@ export function AccountEmailSheet({
                   onAdChange={(v) => onAdChange?.(v)}
                   testID="fin-onb-email-consent"
                 />
-                <OnbButton kind="lime" label={i18n.t('onboarding.email.send')} onPress={send} disabled={busy} />
+                {review.active ? (
+                  <>
+                    <View style={{ gap: 6 }}>
+                      <AppText style={[styles.label, { color: P.sec }]}>{i18n.t('onboarding.v2.login.password_label')}</AppText>
+                      <View style={[styles.field, { backgroundColor: fieldBg }, ring(pwFocused)]}>
+                        <TextInput
+                          value={review.password}
+                          onChangeText={review.setPassword}
+                          secureTextEntry
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          autoComplete="password"
+                          textContentType="password"
+                          returnKeyType="go"
+                          onSubmitEditing={reviewLogin}
+                          onFocus={() => setPwFocused(true)}
+                          onBlur={() => setPwFocused(false)}
+                          accessibilityLabel={i18n.t('onboarding.v2.login.password_label')}
+                          accessibilityHint={i18n.t('onboarding.v2.login.password_hint')}
+                          style={[styles.input, { color: P.ink }]}
+                          testID="fin-onb-email-review-password"
+                        />
+                      </View>
+                      {review.failed ? (
+                        <AppText textRole="helper" style={styles.err} accessibilityLiveRegion="polite">
+                          {i18n.t('onboarding.v2.login.password_wrong')}
+                        </AppText>
+                      ) : null}
+                    </View>
+                    <OnbButton
+                      kind="lime"
+                      label={i18n.t('onboarding.v2.login.password_submit')}
+                      onPress={reviewLogin}
+                      disabled={busy || review.busy || !review.password}
+                      testID="fin-onb-email-review-submit"
+                    />
+                  </>
+                ) : (
+                  <OnbButton kind="lime" label={i18n.t('onboarding.email.send')} onPress={send} disabled={busy} />
+                )}
               </>
             ) : (
               <>

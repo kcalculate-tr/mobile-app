@@ -12,6 +12,8 @@ import { SocialAuthButtons } from '../../components/onboarding/SocialAuthButtons
 import { Check } from '../../components/icons';
 import { sportive } from '../../theme/sportive';
 import { useAuth } from '../../core/AuthContext';
+import { useT } from '../../core/i18n';
+import { useReviewPasswordLogin } from '../../lib/auth/useReviewPasswordLogin';
 import { saveAgeOk } from '../../modules/onboarding/first/store';
 import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 
@@ -108,6 +110,17 @@ export default function UnifiedLoginScreen() {
   // (profiles.onboarding_state.age_ok). Metin aynen (eski kabuk).
   const needsAgeGate = true;
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // G28-S1 md.5: inceleme adresi → şifreyle giriş (diğer herkes için kod akışı aynı).
+  const { t: tr } = useT();
+  const review = useReviewPasswordLogin(email);
+  const handleReviewLogin = async () => {
+    if (needsAgeGate && !ageConfirmed) {
+      setError('Devam etmek için 18 yaşından büyük olduğunu onayla.');
+      return;
+    }
+    setError('');
+    if (await review.submit()) await finishLogin();
+  };
 
   useEffect(() => {
     if (countdown === 0) return;
@@ -212,9 +225,32 @@ export default function UnifiedLoginScreen() {
                   </Pressable>
                 ) : null}
 
-                <View style={{ marginTop: 8 }}>
-                  <PrimaryCTA label="Kod Gönder" showArrow loading={sending} onPress={handleSendCode} />
-                </View>
+                {review.active ? (
+                  <>
+                    <View style={{ marginTop: 16 }}>
+                      <GlassInput
+                        label={tr('onboarding.v2.login.password_label')}
+                        value={review.password}
+                        onChangeText={review.setPassword}
+                        secure
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="password"
+                        textContentType="password"
+                        onSubmitEditing={handleReviewLogin}
+                        error={review.failed ? tr('onboarding.v2.login.password_wrong') : undefined}
+                        testID="unified-review-password"
+                      />
+                    </View>
+                    <View style={{ marginTop: 8 }}>
+                      <PrimaryCTA label={tr('onboarding.v2.login.password_submit')} showArrow loading={review.busy} onPress={handleReviewLogin} />
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ marginTop: 8 }}>
+                    <PrimaryCTA label="Kod Gönder" showArrow loading={sending} onPress={handleSendCode} />
+                  </View>
+                )}
 
                 <SocialAuthButtons
                   onNewUser={finishLogin}

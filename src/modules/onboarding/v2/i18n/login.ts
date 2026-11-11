@@ -19,6 +19,11 @@ export const tr: Record<string, string> = {
   change_email: 'E-postayı değiştir',
   verify: 'Doğrula',
   back: 'Geri',
+  // G28-S1 md.5 — yalnız inceleme adresinde görünür.
+  password_label: 'Şifre',
+  password_submit: 'Şifreyle giriş',
+  password_hint: 'İnceleme hesabı: şifrenle giriş yap.',
+  password_wrong: 'E-posta ya da şifre yanlış.',
 };
 export const en: Record<string, string> = {
   title: 'Sign in to continue.',
@@ -39,4 +44,9 @@ export const en: Record<string, string> = {
   change_email: 'Change email',
   verify: 'Verify',
   back: 'Back',
+  // G28-S1 md.5 — shown only for the review address.
+  password_label: 'Password',
+  password_submit: 'Sign in with password',
+  password_hint: 'Review account: sign in with your password.',
+  password_wrong: 'Wrong email or password.',
 };

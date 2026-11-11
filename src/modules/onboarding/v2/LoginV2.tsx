@@ -21,6 +21,7 @@ import type { RootStackParamList } from '../../../navigation/types';
 import { AuthButton, OnbButton } from '../components/pieces';
 import { useOnb } from '../components/onbTheme';
 import { FormScreen, OnbField } from './FormScreen';
+import { useReviewPasswordLogin } from '../../../lib/auth/useReviewPasswordLogin';
 import {
   AGE_CONFIRMED_KEY,
   CODE_LENGTH,
@@ -128,6 +129,8 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
   const [socialBusy, setSocialBusy] = useState(false);
   const [needsAgeGate, setNeedsAgeGate] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // G28-S1 md.5: inceleme adresi → "Şifreyle giriş" (diğer herkes için kod akışı aynı).
+  const review = useReviewPasswordLogin(email);
 
   // 18+ onayı yalnız yeni kayıtlarda (cihazda onboarding/yaş onayı yoksa).
   useEffect(() => {
@@ -189,6 +192,16 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
     }
     setStep('code');
     setCountdown(RESEND_SECONDS);
+  };
+
+  const handleReviewLogin = async () => {
+    const check = checkSendCode({ needsAgeGate, ageConfirmed, email });
+    if (check === 'age') {
+      setError(tv('err_age'));
+      return;
+    }
+    setError('');
+    if (await review.submit()) await finishLogin();
   };
 
   const handleResend = async () => {
@@ -359,10 +372,38 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
           </AppText>
         </Pressable>
       ) : null}
-      {/* G17-S1 md.3: "Kod gönder" formun içinde (klavye üst çubuğuna bağlanmaz). */}
-      <View style={styles.sendWrap}>
-        <OnbButton label={tv('send')} onPress={handleSendCode} disabled={sending} />
-      </View>
+      {review.active ? (
+        <>
+          <OnbField
+            label={tv('password_label')}
+            hint={tv('password_hint')}
+            value={review.password}
+            onChangeText={review.setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={handleReviewLogin}
+            error={review.failed ? tv('password_wrong') : undefined}
+            testID="login-review-password"
+          />
+          <View style={styles.sendWrap}>
+            <OnbButton
+              label={tv('password_submit')}
+              onPress={handleReviewLogin}
+              disabled={review.busy || !review.password}
+              testID="login-review-submit"
+            />
+          </View>
+        </>
+      ) : (
+        /* G17-S1 md.3: "Kod gönder" formun içinde (klavye üst çubuğuna bağlanmaz). */
+        <View style={styles.sendWrap}>
+          <OnbButton label={tv('send')} onPress={handleSendCode} disabled={sending} />
+        </View>
+      )}
     </FormScreen>
   );
 }
