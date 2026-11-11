@@ -111,6 +111,13 @@ export function weeklyPrice(p: StoreProductLike, yearly: boolean): number {
   return yearly ? p.price / 52 : (p.price * 12) / 52;
 }
 
+/** Yıllığın aylık karşılığı: TL'de tam sayıya yuvarlanır ("ayda 83 TL"), diğerlerinde 2 ondalık. */
+export function monthlyEquivalent(yearlyPrice: number, currencyCode: string): number {
+  const m = yearlyPrice / 12;
+  const cur = (currencyCode || '').toUpperCase();
+  return cur === 'TRY' || cur === 'TL' || !cur ? Math.round(m) : Math.round(m * 100) / 100;
+}
+
 /** Yıllığın aylığa göre indirimi (%, tam sayı). Aylık fiyat yoksa null. */
 export function yearlyDiscountPct(monthly: number | null | undefined, yearly: number | null | undefined): number | null {
   if (!monthly || !yearly || monthly <= 0 || yearly <= 0) return null;
@@ -140,6 +147,8 @@ export interface PlanCard {
   currency: string;
   priceText: string;
   weeklyText: string;
+  /** G33-S1 md.2: yıllık kartta aylık karşılık ("ayda 83 TL" · "$5.00 a month"); aylıkta null. */
+  monthlyText: string | null;
   /** Yıllık kartta aylığa göre indirim (%). */
   discountPct: number | null;
   trialDays: number | null;
@@ -169,6 +178,7 @@ export function buildPlanCards(products: readonly StoreProductLike[], locale?: s
       currency: p.currencyCode,
       priceText: formatStorePrice(p.price, p.currencyCode, locale),
       weeklyText: formatStorePrice(Math.round(weeklyPrice(p, yearly) * 100) / 100, p.currencyCode, locale),
+      monthlyText: yearly ? formatStorePrice(monthlyEquivalent(p.price, p.currencyCode), p.currencyCode, locale) : null,
       discountPct: yearly ? yearlyDiscountPct(monthlyTwin?.price, p.price) : null,
       trialDays: yearly ? trialDays(p) : null,
       popular: key === POPULAR_PLAN,

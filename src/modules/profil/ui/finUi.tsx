@@ -226,6 +226,9 @@ export function FinRow({
   onPress,
   first,
   chevron = true,
+  sub,
+  right,
+  testID,
 }: {
   icon?: React.ReactNode;
   label: string;
@@ -233,12 +236,19 @@ export function FinRow({
   onPress?: () => void;
   first?: boolean;
   chevron?: boolean;
+  /** G33-S1: başlığın altında ikincil satır (Profil › Kcalculate AI: "kcalAI planları"). */
+  sub?: string;
+  /** G33-S1: değerin yerine özel öğe (ör. "Balance" hapı). */
+  right?: React.ReactNode;
+  testID?: string;
 }) {
   const t = useTheme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={[label, sub, value].filter(Boolean).join(', ')}
+      testID={testID}
       style={({ pressed }) => ({
         minHeight: 52,
         paddingHorizontal: 14,
@@ -252,8 +262,16 @@ export function FinRow({
       })}
     >
       {icon ? <View style={{ width: 22, alignItems: 'center' }}>{icon}</View> : null}
-      <Text style={{ flex: 1, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>{label}</Text>
-      {value ? (
+      {sub ? (
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>{label}</Text>
+          <Text style={{ fontFamily: body, fontSize: 12, color: t.color.secondary }}>{sub}</Text>
+        </View>
+      ) : (
+        <Text style={{ flex: 1, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>{label}</Text>
+      )}
+      {right ?? null}
+      {value && !right ? (
         <Text style={{ fontFamily: bodyMedium, fontSize: 14, color: t.color.secondary }}>{value}</Text>
       ) : null}
       {chevron && onPress ? <CaretRight size={16} color={t.color.secondary} weight="bold" /> : null}

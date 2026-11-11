@@ -235,6 +235,60 @@ export const REDUCED = {
  * FinMoTokens ×1,1: instant 110 · fast 220 · base 330 · slow 550 · story 990). Ekranlar süre
  * yazmaz; buradan okur. Azaltılmış harekette: yalnız opaklık, REDUCED.duration (220).
  */
+/**
+ * G33-S1 md.2 — Paywall (Tur 26n, İlter kararı): onboarding'deki gibi hareketli bulanık yeşil zemin +
+ * üst ikon hafif süzülür. İkisi de SÜREKLİ döngü (karar gereği istisna); azaltılmış harekette durur.
+ * Süzülme FinMoTokens "süzülme 3200" döngüsü; zemin ışıkları yavaş kayma (9000, ±24 pt).
+ */
+export const PAYWALL_MOTION = {
+  floatPeriod: 3200,
+  floatAmp: 6,
+  driftPeriod: 9000,
+  driftShift: 24,
+} as const;
+
+/** Sürekli hafif süzülme (paywall üst ikonu). Azaltılmışta sabit (0). */
+export function useLoopFloat(amp: number = PAYWALL_MOTION.floatAmp): { style: MotionStyle } {
+  const reduced = useReducedMotion();
+  const f = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) {
+      cancelAnimation(f);
+      f.value = withTiming(0, { duration: REDUCED.duration });
+      return;
+    }
+    f.value = 0;
+    f.value = withRepeat(withTiming(1, { duration: PAYWALL_MOTION.floatPeriod / 2, easing: CURVE.standard }), -1, true);
+    return () => cancelAnimation(f);
+  }, [reduced, f]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(f.value, [0, 1], [-amp, amp]) }] }));
+  return { style };
+}
+
+/** Zemin ışığı yavaş kayma (x/y ters fazlı). Azaltılmışta sabit. */
+export function useDrift(phase: 0 | 1 = 0): { style: MotionStyle } {
+  const reduced = useReducedMotion();
+  const d = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) {
+      cancelAnimation(d);
+      d.value = 0;
+      return;
+    }
+    d.value = 0;
+    d.value = withRepeat(withTiming(1, { duration: PAYWALL_MOTION.driftPeriod / 2, easing: CURVE.standard }), -1, true);
+    return () => cancelAnimation(d);
+  }, [reduced, d]);
+  const k = phase ? -1 : 1;
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(d.value, [0, 1], [-PAYWALL_MOTION.driftShift * k, PAYWALL_MOTION.driftShift * k]) },
+      { translateY: interpolate(d.value, [0, 1], [PAYWALL_MOTION.driftShift * k * 0.6, -PAYWALL_MOTION.driftShift * k * 0.6]) },
+    ],
+  }));
+  return { style };
+}
+
 export const PLAN_MOTION = {
   /** Gün değişimi: çip basma 110, eski/yeni gün aynı yerde crossfade 220 (standard), kaydırma yok. Haptik: seçim. */
   chipPress: DURATION.instant,

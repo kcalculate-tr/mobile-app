@@ -84,67 +84,86 @@ beforeEach(() => {
   useSubscriptionStore.setState({ available: true, rc: null, server: null, limits: LIMITS, ai: null, barcode: null });
 });
 
-test('Paywall: 4 kart yerel fiyatla (₺ yok), varsayılan Balance Yıllık, deneme CTA + zorunlu yenileme metni', () => {
+// G33-S1 md.2 (Tur 26n): paywall kademe başına iki dikey kart (Yıllık / Aylık, radyo grubu) + "Balance'a yükselt" /
+// "Fresh'e dön"; büyük başlık yalnız "Fresh"/"Balance", "kcalAI" küçük etiket. Önceki 4'lü yatay dizi testleri
+// bu düzene taşındı (aynı amaçlar: yerel fiyat, deneme CTA, zorunlu yenileme, VoiceOver, koçlu varyant).
+test('Paywall: Fresh varsayılan — büyük başlık "Fresh", kcalAI küçük etiket, Yıllık "%58 tasarruf" + "7 gün ücretsiz" + "ayda 83 TL", deneme CTA', () => {
   const tree = render(<PaywallScreen />);
-  for (const k of ['fresh_monthly', 'fresh_yearly', 'balance_monthly', 'balance_yearly']) expect(tree.getByTestId(`sub-card-${k}`, H)).toBeTruthy();
-  expect(tree.getAllByText('2999,99 TL', H).length).toBeGreaterThan(0);
+  expect(tree.getByTestId('sub-title').props.children).toBe('Fresh');
+  expect(tree.getByTestId('sub-brand').props.children).toBe('kcalAI');
+  expect(tree.getByTestId('sub-card-fresh_yearly')).toBeTruthy();
+  expect(tree.getByTestId('sub-card-fresh_monthly')).toBeTruthy();
+  expect(tree.queryByTestId('sub-card-balance_yearly')).toBeNull();
+  expect(tree.getByText('999,99 TL/yıl')).toBeTruthy();
+  expect(tree.getByText('199,99 TL/ay')).toBeTruthy();
+  expect(tree.getByText('ayda 83 TL')).toBeTruthy();
+  expect(tree.getByText('%58 tasarruf')).toBeTruthy();
+  expect(tree.queryByText('%44 tasarruf')).toBeNull();
+  expect(tree.getAllByText('7 gün ücretsiz').length).toBeGreaterThan(0);
   expect(tree.queryByText(/₺/, H)).toBeNull();
   expect(tree.getByText('7 gün ücretsiz başla')).toBeTruthy();
-  expect(tree.getByTestId('sub-summary').props.children).toBe('7 gün ücretsiz, sonra 2999,99 TL/yıl. Ücret deneme bitince alınır.');
+  expect(tree.getByTestId('sub-summary').props.children).toBe('7 gün ücretsiz, sonra 999,99 TL/yıl. Ücret deneme bitince alınır.');
   expect(tree.getByText(/otomatik yenilenir/)).toBeTruthy();
   expect(tree.getByText('Satın alımları geri yükle')).toBeTruthy();
   expect(tree.getByText('Kullanım Koşulları (EULA)')).toBeTruthy();
   expect(tree.getByText('Gizlilik Politikası')).toBeTruthy();
-  expect(tree.getByText('En çok seçilen', H)).toBeTruthy();
-  expect(tree.getByText('-%50', H)).toBeTruthy();
-  // G27-S1: Fresh yıllık rozeti mağaza fiyatından (199,99×12 = 2399,88 → 999,99 ⇒ %58); sabit "%44" yok.
-  expect(tree.getByText('-%58', H)).toBeTruthy();
-  expect(tree.queryByText('-%44', H)).toBeNull();
-  // Balance şeridi (yalnız çalışan özellikler; AI koç / fitness YOK). G23-S1: günde 50, "Sınırsız AI" YOK.
-  expect(tree.getByText('Günde 50 AI tarama')).toBeTruthy();
+  expect(tree.getByTestId('sub-upgrade-balance')).toBeTruthy();
+  expect(tree.getByText('Balance’a yükselt')).toBeTruthy();
+  expect(tree.getByText('Sesle ekle')).toBeTruthy();
   expect(tree.queryByText(/Sınırsız AI/i)).toBeNull();
-  expect(tree.queryByText(/AI koç|fitness/i)).toBeNull();
+  expect(tree.queryByText(/fitness/i)).toBeNull();
+  expect(tree.getByTestId('sub-glow', H)).toBeTruthy();
 });
 
-test('Paywall: VoiceOver kart dizisi TEK ayarlanabilir öğe; artır/azalt planı değiştirir, CTA Aylık "Devam et"', async () => {
+test('Paywall: Balance’a yükselt → başlık "Balance", %50 tasarruf, ayda 250 TL, "Fresh’e dön"; Aylık seçilince "Devam et"', async () => {
   const tree = render(<PaywallScreen />);
-  const cards = tree.getByTestId('sub-cards');
-  expect(cards.props.accessibilityRole).toBe('adjustable');
-  expect(cards.props.accessibilityValue.text).toBe('Balance Yıllık, 2999,99 TL, 7 gün ücretsiz, 4/4');
   await act(async () => {
-    fireEvent(cards, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+    fireEvent.press(tree.getByTestId('sub-upgrade-balance'));
   });
-  // Azaltılmış hareket yok → kaydırma bitince seçilir; testte doğrudan kart dokunuşu.
-  await act(async () => {
-    fireEvent.press(tree.getByTestId('sub-card-balance_monthly', H));
-  });
-  await act(async () => {
-    fireEvent(tree.UNSAFE_getByProps({ snapToInterval: 261 }), 'momentumScrollEnd', { nativeEvent: { contentOffset: { x: 2 * 261 } } });
-  });
-  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Aylık, 499,99 TL, 3/4');
-  expect(tree.getByText('Devam et')).toBeTruthy();
-  expect(tree.getByTestId('sub-summary').props.children).toBe('499,99 TL/ay, her ay otomatik yenilenir.');
-  expect(tree.getByText('Sesle ekle')).toBeTruthy();
-  // G24-S1 (Tur 26k): şerit 3 "Barkod sınırsız" · 4 "Elle giriş sınırsız".
+  expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
+  expect(tree.getByText('2999,99 TL/yıl')).toBeTruthy();
+  expect(tree.getByText('%50 tasarruf')).toBeTruthy();
+  expect(tree.getByText('ayda 250 TL')).toBeTruthy();
+  expect(tree.getByText('Günde 50 AI tarama')).toBeTruthy();
   expect(tree.getByText('Barkod sınırsız')).toBeTruthy();
   expect(tree.getByText('Elle giriş sınırsız')).toBeTruthy();
-  expect(tree.queryByText('Barkodla ekle')).toBeNull();
-  expect(tree.queryByText('Barkod ve elle giriş sınırsız')).toBeNull();
+  // Radyo grubu: yıllık seçili.
+  expect(tree.getByTestId('sub-cards').props.accessibilityRole).toBe('radiogroup');
+  expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityState).toMatchObject({ checked: true });
+  expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityLabel).toBe('Yıllık, 2999,99 TL/yıl, 7 gün ücretsiz, %50 tasarruf');
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('sub-card-balance_monthly'));
+  });
+  expect(tree.getByTestId('sub-card-balance_monthly').props.accessibilityState).toMatchObject({ checked: true });
+  expect(tree.getByText('Devam et')).toBeTruthy();
+  expect(tree.getByTestId('sub-summary').props.children).toBe('499,99 TL/ay, her ay otomatik yenilenir.');
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('sub-back-fresh'));
+  });
+  expect(tree.getByTestId('sub-title').props.children).toBe('Fresh');
+  mockPurchase.mockResolvedValue('cancelled');
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('sub-cta'));
+  });
+  expect(mockPurchase).toHaveBeenCalledWith('fresh_monthly');
 });
 
-test('G24-S1 Paywall koçlu varyant: Balance Yıllık seçili, şeritte 5. sayfa "kcalAI Koç", Balance kartlarında "kcalAI Koç dahil"', () => {
+test('G24-S1 Paywall koçlu varyant: Balance Yıllık seçili, şeritte "kcalAI Koç", Balance kartlarında "kcalAI Koç dahil"', () => {
   mockParams = { coach: true, from: 'coach', plan: 'fresh', yearly: false };
   const tree = render(<PaywallScreen />);
-  expect(tree.getByTestId('sub-cards').props.accessibilityValue.text).toBe('Balance Yıllık, 2999,99 TL, 7 gün ücretsiz, kcalAI Koç dahil, 4/4');
+  expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
+  expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityState).toMatchObject({ checked: true });
+  expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityLabel).toBe('Yıllık, 2999,99 TL/yıl, 7 gün ücretsiz, %50 tasarruf, kcalAI Koç dahil');
   expect(tree.getByText('kcalAI Koç')).toBeTruthy();
   expect(tree.getByText(/günde 30 mesaj\. Tıbbi tavsiye vermez\./)).toBeTruthy();
-  expect(tree.getByTestId('sub-card-coach-balance_yearly', H)).toBeTruthy();
-  expect(tree.getByTestId('sub-card-coach-balance_monthly', H)).toBeTruthy();
-  expect(tree.queryByTestId('sub-card-coach-fresh_yearly', H)).toBeNull();
+  expect(tree.getByTestId('sub-card-coach-balance_yearly')).toBeTruthy();
+  expect(tree.getByTestId('sub-card-coach-balance_monthly')).toBeTruthy();
 });
 
-test('G24-S1 Paywall koçsuz (diğer girişler): 4 sayfa, koç satırı YOK', () => {
+test('G24-S1 Paywall koçsuz (koc kapalı, diğer girişler): Balance’ta bile koç sayfası/satırı YOK', async () => {
+  mockParams = { plan: 'balance' };
   const tree = render(<PaywallScreen />);
+  expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
   expect(tree.queryByText('kcalAI Koç')).toBeNull();
   expect(tree.queryByText(/kcalAI Koç dahil/, H)).toBeNull();
 });
@@ -260,6 +279,8 @@ test('G25 md.2 + G28 md.7: Android — EULA bağlantısı legal.eatkcal.com Kull
 
 test('Paywall: satın alma sonuçları — iptal / bekliyor / başarı', async () => {
   mockPurchase.mockResolvedValueOnce('cancelled');
+  // G33-S1: varsayılan kademe Fresh (Ücretsiz kullanıcı); Balance'a hak sheet'inden plan: 'balance' ile gelinir.
+  mockParams = { plan: 'balance' };
   let tree = render(<PaywallScreen />);
   await act(async () => {
     fireEvent.press(tree.getByTestId('sub-cta'));

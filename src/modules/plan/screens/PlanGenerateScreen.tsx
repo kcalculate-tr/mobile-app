@@ -486,7 +486,7 @@ function Generating({ coach, steps, shown, days, lang, onCancel }: { coach: bool
   const bowlSt = useAnimatedStyle(() => ({ transform: [{ scale: bowl.value }] }));
   const rowIn = () => (reduced ? FadeIn.duration(REDUCED.duration) : FadeInDown.duration(PLAN_MOTION.genRow));
   return (
-    <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]} testID="plan-generating" accessibilityLiveRegion="polite">
+    <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]} testID="plan-generating" accessibilityLiveRegion="polite">
       <View style={styles.genHead}>
         <View style={styles.genBowlWrap}>
           {coach ? (
@@ -541,7 +541,7 @@ function Result({ result, coach, note, notice, days, openDays, lang, onUnlock, o
   const insets = useSafeAreaInsets();
   const enter = reduced ? FadeIn.duration(REDUCED.duration) : FadeIn.duration(PLAN_MOTION.genRow);
   return (
-    <Animated.ScrollView entering={enter} exiting={FadeOut.duration(reduced ? REDUCED.duration : PLAN_MOTION.regen)} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 140 }]} testID="plan-result">
+    <Animated.ScrollView {...SCROLL_KEYBOARD} entering={enter} exiting={FadeOut.duration(reduced ? REDUCED.duration : PLAN_MOTION.regen)} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 140 }]} testID="plan-result">
       <AppText style={[styles.resultH, { color: c.ink }]} accessibilityRole="header">
         {tr('plan.result_h')}
       </AppText>

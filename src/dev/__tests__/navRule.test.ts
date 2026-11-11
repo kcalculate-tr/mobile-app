@@ -41,6 +41,7 @@ const MODAL_FILES = [
   'modules/ai/scan/voice/FinScanVoice.tsx',
   'modules/subscription/screens/PaywallScreen.tsx',
   'modules/coach/screens/CoachIntroScreen.tsx', // G24-S1 FinCoachIntro (sheet, kapat X)
+  'modules/plan/screens/PlanGenerateScreen.tsx', // G33-S1 FinPlanGenerate (alttan, kapat X sağda)
   'modules/subscription/ui/SubResult.tsx',
   'modules/subscription/ui/SubLimitSheet.tsx',
 ];
@@ -67,6 +68,8 @@ const PUSH_FILES = [
   'modules/subscription/screens/SubProfileScreen.tsx',
   'modules/coach/screens/CoachChatScreen.tsx', // G24-S1 FinCoachChat (sol geri)
   'modules/coach/screens/CoachHistoryScreen.tsx', // G24-S1 FinCoachHistory (sol geri)
+  'modules/plan/screens/MealPlanScreen.tsx', // G33-S1 FinPlanWeek (sağdan, sol geri)
+  'modules/plan/screens/ShoppingListScreen.tsx', // G33-S1 alışveriş listesi (sağdan, sol geri)
 ];
 
 /** Gezinme DEĞİL, yerinde denetim (alan temizleme / ek kaldırma / arama kapatma). */
