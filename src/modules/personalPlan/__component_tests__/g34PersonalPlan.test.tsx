@@ -52,7 +52,7 @@ import { computePlan } from '../calc';
 import { useMyPlanStore } from '../useMyPlan';
 import { GoalStep, TargetStep } from '../screens/flow/questions';
 import { IntroStep } from '../screens/flow/entry';
-import { CalcStep, ResultStep } from '../screens/flow/result';
+import { CalcStep, HowCalc, ResultStep } from '../screens/flow/result';
 import { RemindStep } from '../screens/flow/remind';
 import { HomePlanCard, ProfilePlanRow } from '../ui/entries';
 import CheckinScreen from '../screens/CheckinScreen';
@@ -217,6 +217,27 @@ test('Sonuç: makrolar ve hedef tarihi gerçek hesaptan; Nasıl hesapladık? ara
   await flush();
   expect(r.getByText('1449 kcal')).toBeTruthy();
   expect(r.getByText(/7 kg ÷ 0,5 kg = 14 hafta/)).toBeTruthy();
+});
+
+test('G36 md.11: Nasıl hesapladık? kas kazan 0,5 → fazla 550 → 300 kırpmasını tek satırla söyler (TR + EN)', async () => {
+  const res = computePlan({ goal: 'gain', gender: 'female', birthYear: 1994, heightCm: 168, weightKg: 72, activity: 'light', targetWeightKg: 75, pace: 0.5 }, 2026, '2026-11-12')!;
+  const answers = { ...sampleAnswers(), goal: 'gain' as const, targetWeightKg: 75, pace: 0.5 as const };
+  const r = wrap(<HowCalc result={res} answers={answers} startIso="2026-11-12" defaultOpen />);
+  await flush();
+  expect(r.getByText('0,5 kg × 7700 ÷ 7 = 550 → 300')).toBeTruthy();
+  expect(r.getByTestId('pp-how-gain-cap').props.children).toBe('Kas kazanırken günlük fazla en çok +300 kcal: 550 yerine 300 kcal, haftada 0,27 kg; hedef tarihi buna göre.');
+  expect(r.getByText(/3 kg ÷ 0,27 kg = 12 hafta/)).toBeTruthy();
+  expect(r.getByText('2290 kcal')).toBeTruthy();
+  r.unmount();
+  const en = wrap(<HowCalc result={res} answers={answers} startIso="2026-11-12" defaultOpen />, 'en');
+  await flush();
+  expect(en.getByTestId('pp-how-gain-cap').props.children).toMatch(/capped at \+300 kcal: 300 instead of 550, 0.27 kg per week/);
+  // 0,25: kırpma yok → satır yok.
+  en.unmount();
+  const res25 = computePlan({ goal: 'gain', gender: 'female', birthYear: 1994, heightCm: 168, weightKg: 72, activity: 'light', targetWeightKg: 75, pace: 0.25 }, 2026, '2026-11-12')!;
+  const r25 = wrap(<HowCalc result={res25} answers={{ ...answers, pace: 0.25 }} startIso="2026-11-12" defaultOpen />);
+  await flush();
+  expect(r25.queryByTestId('pp-how-gain-cap')).toBeNull();
 });
 
 test('Düzenle: kalori tabana (1200) inince uyarı; tempo 0,72 ve tarih 21 Ocak 2027; Önerilene dön', async () => {

@@ -110,7 +110,11 @@ export function CalcStep({ onDone, onError }: { onDone: (r: PpResult) => void; o
     { label: i18n.t('pp.calc_tdee'), sub: i18n.t('pp.calc_tdee_sub', { bmr: s.bmr, f: fmtNum(s.factor, lang, 3), act: i18n.t(`pp.act_${answers.activity}`).toLocaleLowerCase(lang) }), value: `${s.tdee} ${i18n.t('pp.kcal')}` },
     {
       label: s.requestedDelta > 0 ? i18n.t('pp.calc_delta') : s.requestedDelta < 0 ? i18n.t('pp.calc_delta_gain') : i18n.t('pp.calc_delta_none'),
-      sub: s.requestedDelta !== 0 ? i18n.t('pp.calc_delta_sub', { pace: fmtPace(result.requestedPace, lang) }) : i18n.t('pp.calc_delta_sub_none'),
+      sub: s.surplusUncapped
+        ? i18n.t('pp.calc_delta_sub_cap', { pace: fmtPace(result.effectivePace, lang) })
+        : s.requestedDelta !== 0
+          ? i18n.t('pp.calc_delta_sub', { pace: fmtPace(result.requestedPace, lang) })
+          : i18n.t('pp.calc_delta_sub_none'),
       value: s.requestedDelta === 0 ? '0' : `${s.requestedDelta > 0 ? '−' : '+'}${deltaAbs} ${i18n.t('pp.kcal')}`,
     },
     {
@@ -240,7 +244,7 @@ export function HowCalc({ result, answers, startIso, defaultOpen = false, testID
   if (s.requestedDelta !== 0) {
     rows.push({
       label: s.requestedDelta > 0 ? i18n.t('pp.how_delta') : i18n.t('pp.how_delta_gain'),
-      formula: `${fmtPace(result.requestedPace, lang)} kg × 7700 ÷ 7`,
+      formula: s.surplusUncapped ? `${fmtPace(result.requestedPace, lang)} kg × 7700 ÷ 7 = ${s.surplusUncapped} → ${Math.abs(s.requestedDelta)}` : `${fmtPace(result.requestedPace, lang)} kg × 7700 ÷ 7`,
       value: `${Math.abs(s.requestedDelta)} ${i18n.t('pp.kcal')}/${lang === 'tr' ? 'gün' : 'day'}`,
     });
   }
@@ -306,6 +310,11 @@ export function HowCalc({ result, answers, startIso, defaultOpen = false, testID
               </View>
             </Rise>
           ))}
+          {s.surplusUncapped ? (
+            <AppText textRole="helper" style={{ color: P.ink, marginTop: 10 }} testID="pp-how-gain-cap">
+              {i18n.t('pp.how_gain_cap', { full: s.surplusUncapped, pace: fmtPace(result.effectivePace, lang) })}
+            </AppText>
+          ) : null}
           {s.formula === 'mifflin' ? (
             <AppText textRole="helper" style={{ color: P.sec, marginTop: 10 }}>
               {i18n.t('pp.how_katch_note')}
