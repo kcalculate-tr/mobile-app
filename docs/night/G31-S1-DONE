@@ -1,0 +1,6 @@
+G31-S1 tamam — 2026-11-11
+LOG: docs/night/G31-S1-LOG.md
+Commitler: acfaf73 (md.1 koc egzersiz yakinda) · 21bed47 (md.2 izin yorumu) · ae3aeb9 (md.3 demoPrices) · d83023e (md.4 OFF ODbL atfi) · 9aa0999 (md.5 koc saklama cron DOSYASI) · fab6445 (md.6 delete-account RevenueCat) · 19f9de1 (md.7 LOG)
+Kontroller: tsc 0 · hygiene OK · unit 1154/0 · jest 89 dosya/506 test · deno check delete-account + coach-chat OK · expo export iOS + Android OK
+Canliya: migration 20261112000100_g31_coach_retention_cron · deploy delete-account + coach-chat · secret REVENUECAT_SECRET_API_KEY
+OTA (Ilter): worktree .claude/worktrees/g23-s1 icinden  eas update --branch production --environment production --message "G31"
