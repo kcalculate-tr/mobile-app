@@ -95,10 +95,9 @@ function Meal({ card, index, onAdd }: { card: MealCard; index: number; onAdd: Ca
     setBusy(true);
     const ok = await onAdd(card, index, cardRef.current);
     setBusy(false);
-    if (ok) {
-      haptic('success');
-      setAdded(true);
-    }
+    // G28-S1 md.1 (HIG playing-haptics › tutarlılık): success haptiği Logla izi varışında
+    // (LogTraceHost) bir kez çalar — burada ikinci kez çalınmaz.
+    if (ok) setAdded(true);
   };
   const macro = (k: string, v: number) => `${k} ${v} g`;
   return (

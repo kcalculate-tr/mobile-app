@@ -11,7 +11,7 @@
 //     tabak 200 ms (fast, standard) solar, rozet artmaz.
 //   · Azaltılmış hareket: uçuş YOK — rozet + toast 200 ms opaklık.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { DeviceEventEmitter, Image, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, DeviceEventEmitter, Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   cancelAnimation,
   interpolate,
@@ -91,16 +91,20 @@ export function LogTraceHost() {
       haptic('success');
       arrived.current.add(id);
       emitLogBadge(1);
+      const message = payload.mealLabel ? i18n.t('shell.logged', { meal: payload.mealLabel }) : i18n.t('shell.logged_generic');
+      // HIG motion › "Make motion optional": sonuç VoiceOver'a da söylenir (iOS'ta
+      // accessibilityLiveRegion yok; Android canlı bölge Toast'ta).
+      try {
+        AccessibilityInfo.announceForAccessibility?.(message);
+      } catch {
+        /* erişilebilirlik köprüsü yoksa sessiz */
+      }
       if (payload.ownToast) return;
       const ins = env.current.insets;
       setToastBottom(
         tabsOnTop() ? tabBarBottomOffset(ins.bottom) + TAB_BAR_R3.PILL_HEIGHT + 8 : Math.max(16, ins.bottom + 8),
       );
-      setToast({
-        id,
-        message: payload.mealLabel ? i18n.t('shell.logged', { meal: payload.mealLabel }) : i18n.t('shell.logged_generic'),
-        undo: payload.undo ?? null,
-      });
+      setToast({ id, message, undo: payload.undo ?? null });
     },
     [i18n],
   );
