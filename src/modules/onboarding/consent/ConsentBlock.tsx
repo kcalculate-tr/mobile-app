@@ -16,6 +16,8 @@ import { useT } from '../../../core/i18n';
 import { useOnb } from '../components/onbTheme';
 import { LegalDocModal, type LegalSlug } from './LegalDocModal';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
+import { webDocForSlug } from '../../../lib/legal/urls';
+import { openLegalWeb } from '../../../lib/legal/openLegal';
 
 const CHECK_D =
   'M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z';
@@ -43,7 +45,12 @@ export function PolicyAcceptRow({
   const i18n = useT();
   const [doc, setDoc] = useState<LegalSlug | null>(null);
   const link = { color: P.ink, textDecorationLine: 'underline' as const, fontFamily: 'PlusJakartaSans_600SemiBold' };
-  const open = (s: LegalSlug) => () => setDoc(s);
+  // G28-S1 md.7: Koşullar / Gizlilik legal.eatkcal.com'da açılır; açılamazsa uygulama içi metin.
+  const open = (s: LegalSlug) => () => {
+    const web = webDocForSlug(s);
+    if (web) void openLegalWeb(web, i18n.lang, () => setDoc(s));
+    else setDoc(s);
+  };
   return (
     <>
       <Pressable

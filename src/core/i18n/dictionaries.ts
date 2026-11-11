@@ -1117,6 +1117,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // Sözleşmeler
       agreements_title: 'Sözleşmeler',
       agreements_updated: 'Son güncelleme',
+      // G28-S1 md.7 — legal.eatkcal.com
+      agreements_open_web: 'Web sitesinde aç',
+      agreements_open_web_a11y: '{{title}} belgesini legal.eatkcal.com sitesinde aç',
+      delete_info_link: 'Hesap silme hakkında',
       // Destek talepleri
       support_title: 'Yardım ve destek',
       support_new: 'Yeni talep',
@@ -2995,6 +2999,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_sub_manage: 'Manage subscription',
       agreements_title: 'Agreements',
       agreements_updated: 'Last updated',
+      // G28-S1 md.7 — legal.eatkcal.com
+      agreements_open_web: 'Open on the website',
+      agreements_open_web_a11y: 'Open {{title}} on legal.eatkcal.com',
+      delete_info_link: 'About account deletion',
       support_title: 'Help & support',
       support_new: 'New request',
       support_history: 'History',

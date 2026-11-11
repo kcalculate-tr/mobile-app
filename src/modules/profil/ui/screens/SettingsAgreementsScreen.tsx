@@ -5,12 +5,15 @@
  * okunur — yeni/ayrı bir sözleşme metni yazılmaz, yalnız Fin kabuğu.
  */
 import React, { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { CONTRACTS } from '../../../../data/contractsData';
 import { normalizeLegalSlug } from '../../../../lib/legal/slugs';
+import { webDocForSlug } from '../../../../lib/legal/urls';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
+import { ArrowSquareOut } from '../../../../components/icons';
 import { FinScreen, FinHeader, FinCard, FinChip, body, heading } from '../finUi';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
@@ -22,7 +25,7 @@ export default function AgreementsScreen({
   initialSlug?: string;
 }) {
   const t = useTheme();
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
 
   const initialIndex = useMemo(() => {
     const want = normalizeLegalSlug(initialSlug);
@@ -93,6 +96,24 @@ export default function AgreementsScreen({
               {p}
             </Text>
           ))}
+          {/* G28-S1 md.7: Koşullar / Gizlilik'in güncel hâli legal.eatkcal.com'da. */}
+          {webDocForSlug(active.slug) ? (
+            <Pressable
+              onPress={() => {
+                const web = webDocForSlug(active.slug);
+                if (web) void openLegalWeb(web, lang);
+              }}
+              accessibilityRole="link"
+              accessibilityLabel={tr('profil.agreements_open_web_a11y', { title: active.title })}
+              testID="agreements-open-web"
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+            >
+              <Text style={{ fontFamily: body, fontSize: 15, color: t.color.ink, textDecorationLine: 'underline' }}>
+                {tr('profil.agreements_open_web')}
+              </Text>
+              <ArrowSquareOut size={16} color={t.color.ink} />
+            </Pressable>
+          ) : null}
         </FinCard>
         {/* G22-S2 md.3 — veri lisansı atfı (GeoNames CC BY 4.0: eatkcal şehir araması). */}
         <Text

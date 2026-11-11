@@ -6,17 +6,21 @@ import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
+import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { eulaTarget } from '../../../lib/subscription/storeLinks';
 
 type Nav = { navigate: (n: string, p?: object) => void };
 
 export default function SubLegalLinks({ navigation }: { navigation: unknown }) {
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
   const nav = navigation as Nav;
+  const inAppTerms = () => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms });
+  // G28-S1 md.7: iOS → Apple standart EULA (G25 kararı); Android → legal.eatkcal.com Koşullar.
+  // Açılamazsa uygulama içi metin.
   const openEula = () => {
     const target = eulaTarget(Platform.OS);
-    if (target.kind === 'url') void Linking.openURL(target.url).catch(() => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms }));
-    else nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms });
+    if (target.kind === 'url') void Linking.openURL(target.url).catch(inAppTerms);
+    else void openLegalWeb('terms', lang, inAppTerms);
   };
   return (
     <View style={styles.row} testID="sub-legal-links">
@@ -26,7 +30,7 @@ export default function SubLegalLinks({ navigation }: { navigation: unknown }) {
         </AppText>
       </Pressable>
       <Pressable
-        onPress={() => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy })}
+        onPress={() => void openLegalWeb('privacy', lang, () => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy }))}
         accessibilityRole="link"
         accessibilityLabel={tr('sub.paywall.privacy')}
         style={styles.link}

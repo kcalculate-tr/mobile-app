@@ -24,6 +24,7 @@ import { useSubscriptionEnabled } from '../../../lib/subscription/useSubscriptio
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import { ConsentSheet } from '../../onboarding/consent/ConsentSheet';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
+import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { hasCoachConsent, markCoachMissing, setCoachConsent } from '../access';
 import { addProductToCart, addSuggestionToDay, openRecipe } from '../actions';
 import { CoachError, deleteCoachHistory, fetchCoachMessages, fetchCoachStatus, sendCoachMessage, setCoachFeedback } from '../client';
@@ -448,7 +449,8 @@ export default function CoachChatScreen() {
           setConsent(false);
           if (pendingSend.current) setDraft(pendingSend.current.text);
           pendingSend.current = null;
-          nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy });
+          // G28-S1 md.7: legal.eatkcal.com gizlilik; açılamazsa uygulama içi metin.
+          void openLegalWeb('privacy', lang, () => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy }));
         }}
       />
       <Toast visible={toast != null} message={toast ?? ''} onDismiss={() => setToast(null)} autoHideMs={2200} />

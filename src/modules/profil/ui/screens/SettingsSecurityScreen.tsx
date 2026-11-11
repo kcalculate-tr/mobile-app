@@ -26,6 +26,7 @@ import { useFeature } from '../../../../core/flags';
 import { resetToSignedOut } from '../../../../navigation/signOutReset';
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { manageSubUrl } from '../../../../lib/subscription/storeLinks';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import {
   FinScreen,
@@ -90,7 +91,7 @@ function SecureField({
 export default function SettingsSecurityScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
   const x = finExtras(t);
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
   const yeniOnboardingFlag = useFeature('yeni_onboarding');
   const { user, signOut } = useAuth();
 
@@ -350,6 +351,19 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
                 <ArrowSquareOut size={16} color={t.color.ink} />
               </Pressable>
             </View>
+            {/* G28-S1 md.7: silme süreci ve saklanan veriler legal.eatkcal.com/account-deletion */}
+            <Pressable
+              onPress={() => void openLegalWeb('accountDeletion', lang)}
+              accessibilityRole="link"
+              accessibilityLabel={tr('profil.delete_info_link')}
+              testID="delete-info-link"
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+            >
+              <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink, textDecorationLine: 'underline' }}>
+                {tr('profil.delete_info_link')}
+              </Text>
+              <ArrowSquareOut size={16} color={t.color.ink} />
+            </Pressable>
             <Text
               style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, lineHeight: 20 }}
             >

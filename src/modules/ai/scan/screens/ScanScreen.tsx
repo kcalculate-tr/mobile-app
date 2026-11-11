@@ -16,6 +16,7 @@ import { DENIED_KEYS, askOnce } from '../../../../lib/permissions/askOnce';
 import NetInfo from '@react-native-community/netinfo';
 import { useNavigation } from '@react-navigation/native';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { X, ArrowCounterClockwise, Image as ImageIcon } from '../../../../components/icons';
@@ -905,7 +906,10 @@ export default function ScanScreen() {
         // (bir sonraki taramada yeniden sorulur).
         setAiSheet(false);
         aiPendingRef.current = null;
-        (navigation as unknown as { navigate: (n: string, p: object) => void }).navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy });
+        // G28-S1 md.7: legal.eatkcal.com gizlilik; açılamazsa uygulama içi metin.
+        void openLegalWeb('privacy', lang, () =>
+          (navigation as unknown as { navigate: (n: string, p: object) => void }).navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy }),
+        );
       }}
     />
   );

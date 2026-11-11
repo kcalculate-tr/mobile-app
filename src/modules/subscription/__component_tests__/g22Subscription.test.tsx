@@ -196,7 +196,10 @@ test('G25 md.5: Geri yükle sürerken meşgul (çift dokunma yok), bitince sonu�
   expect(tree.getByText('Satın alımları geri yükle')).toBeTruthy();
 });
 
-test('G25 md.2: Paywall + Profil › Abonelik — "Kullanım Koşulları (EULA)" (iOS Apple EULA) yanında Gizlilik', async () => {
+test('G25 md.2 + G28 md.7: Paywall + Profil › Abonelik — "Kullanım Koşulları (EULA)" (iOS Apple EULA) yanında Gizlilik (legal.eatkcal.com)', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
+  const web = jest.spyOn(WebBrowser, 'openBrowserAsync').mockResolvedValue({ type: 'opened' } as never);
   const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
   for (const el of [<PaywallScreen key="p" />, <SubProfileScreen key="s" />]) {
     const tree = render(el);
@@ -206,25 +209,50 @@ test('G25 md.2: Paywall + Profil › Abonelik — "Kullanım Koşulları (EULA)"
     await act(async () => {
       fireEvent.press(tree.getByTestId('sub-eula'));
     });
-    fireEvent.press(tree.getByTestId('sub-privacy'));
+    await act(async () => {
+      fireEvent.press(tree.getByTestId('sub-privacy'));
+    });
     tree.unmount();
   }
   expect(open).toHaveBeenCalledWith('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   expect(open).toHaveBeenCalledTimes(2);
-  expect(mockNav.navigate).toHaveBeenCalledWith('ProfileContracts', { slug: 'gizlilik-politikasi' });
+  expect(web).toHaveBeenCalledWith('https://legal.eatkcal.com/gizlilik-politikasi');
+  expect(web).toHaveBeenCalledTimes(2);
+  expect(mockNav.navigate).not.toHaveBeenCalledWith('ProfileContracts', { slug: 'gizlilik-politikasi' });
   open.mockRestore();
+  web.mockRestore();
 });
 
-test('G25 md.2: Android — EULA bağlantısı uygulama içi Kullanım Koşulları sayfasına gider', () => {
+test('G28 md.7: web sayfası açılamazsa uygulama içi Gizlilik metni', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
+  const web = jest.spyOn(WebBrowser, 'openBrowserAsync').mockRejectedValue(new Error('no'));
+  const open = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no'));
+  const tree = render(<PaywallScreen />);
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('sub-privacy'));
+  });
+  expect(mockNav.navigate).toHaveBeenCalledWith('ProfileContracts', { slug: 'gizlilik-politikasi' });
+  open.mockRestore();
+  web.mockRestore();
+});
+
+test('G25 md.2 + G28 md.7: Android — EULA bağlantısı legal.eatkcal.com Kullanım Koşulları', async () => {
   const prev = Platform.OS;
   Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
+    const web = jest.spyOn(WebBrowser, 'openBrowserAsync').mockResolvedValue({ type: 'opened' } as never);
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     const tree = render(<PaywallScreen />);
-    fireEvent.press(tree.getByTestId('sub-eula'));
+    await act(async () => {
+      fireEvent.press(tree.getByTestId('sub-eula'));
+    });
     expect(open).not.toHaveBeenCalled();
-    expect(mockNav.navigate).toHaveBeenCalledWith('ProfileContracts', { slug: 'kullanim-kosullari' });
+    expect(web).toHaveBeenCalledWith('https://legal.eatkcal.com/kullanim-kosullari');
     open.mockRestore();
+    web.mockRestore();
   } finally {
     Object.defineProperty(Platform, 'OS', { get: () => prev, configurable: true });
   }

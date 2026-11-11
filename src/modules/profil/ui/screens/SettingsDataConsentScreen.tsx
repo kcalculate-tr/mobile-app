@@ -25,6 +25,7 @@ import { hasLocalAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/conse
 import { setCoachConsent, useCoachConsent, useCoachEnabled } from '../../../coach/access';
 import { LegalDocModal, type LegalSlug } from '../../../onboarding/consent/LegalDocModal';
 import { LEGAL_SLUG } from '../../../../lib/legal/slugs';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
 import { FileText } from '../../../../components/icons';
 import { FinScreen, FinHeader, FinSectionLabel, FinRow, bodyMedium, bodySemibold } from '../finUi';
 
@@ -96,7 +97,7 @@ const readState = () => {
 
 export default function SettingsDataConsentScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
   const [state, setState] = useState(readState);
   const [saving, setSaving] = useState<'usage' | 'ads' | 'ai' | null>(null);
   const [error, setError] = useState(false);
@@ -219,8 +220,8 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
 
         <FinSectionLabel>{tr('consent.settings.docs_section')}</FinSectionLabel>
         <View style={flatGroup(t)}>
-          <FinRow first icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.terms')} onPress={() => setDoc(LEGAL_SLUG.terms)} />
-          <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.privacy')} onPress={() => setDoc(LEGAL_SLUG.privacy)} />
+          <FinRow first icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.terms')} onPress={() => void openLegalWeb('terms', lang, () => setDoc(LEGAL_SLUG.terms))} />
+          <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.privacy')} onPress={() => void openLegalWeb('privacy', lang, () => setDoc(LEGAL_SLUG.privacy))} />
           <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('consent.block.kvkk')} onPress={() => setDoc(LEGAL_SLUG.kvkk)} />
         </View>
 
