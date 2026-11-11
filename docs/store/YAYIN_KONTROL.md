@@ -1,158 +1,117 @@
-# Yayın kontrol listesi — Kcalculate AI 1.1.0 (G20-S2 md.5)
+# Yayın kontrol listesi — KCAL 1.1.0 gönderimi (M-S1 md.5)
 
-Sıra önemli; her bölüm bir öncekinin işaretlenmesini bekler. **Onaysız YASAK** (CLAUDE.md): `eas update --channel production`,
-production build, mağaza gönderimi, `supabase db reset`, Dashboard auth ayarı, sır yazdırma. Aşağıdaki bu adımlar
-**İlter onayıyla** yapılır; bu oturum hiçbirini yapmadı.
+Sıra önemli; her bölüm bir öncekinin işaretlenmesini bekler. **Onaysız YASAK** (CLAUDE.md): production build, mağaza gönderimi,
+`eas update --channel production`, `supabase db reset`, Dashboard auth ayarı, sır yazdırma → aşağıdaki bu adımlar **İlter onayıyla**.
+Bu oturum (M-S1) yalnız dosya hazırladı; mağaza paneline girmedi, deploy yapmadı.
 
-Kaynaklar: `docs/night/TAKIP_ACILIS.md` (takip bayrakları ayrıntısı), `docs/night/G19-S4-LOG.md` (OTA/derleme ayrımı),
-`docs/night/G20-S1-LOG.md` (rıza), `.claude/night/CANLI_SEMA_2026-11-09.md`, canlı migration + edge listesi (Supabase MCP
-salt-okuma, 9 Kas — SQL okuma reddedildi, bayrak satırlarının değerleri bu yüzden doğrulanamadı).
+Dosyalar: metinler `APP_STORE_METINLERI.md` / `GOOGLE_PLAY_METINLERI.md` · inceleme `INCELEME_NOTU.md` · gizlilik `GIZLILIK_BEYANLARI.md` ·
+görseller `EKRAN_GORUNTUSU_PLANI.md` + `shots/` · izin metinleri `IZIN_METINLERI.md` · önceki ayrıntılı liste (cihaz testleri, rollback) bu dosyanın
+G20-S2 hâlinde (git geçmişi, `night20/store`).
 
-## A. Derleme öncesi
-- [ ] **A1 (P0, karar)** Üçüncü taraf AI izni — Apple 5.1.2(i): tabak fotoğrafı Anthropic'e gidiyor, uygulamada ilk taramadan
-      önce bildirim + izin yok (`GIZLILIK_BEYANLARI.md` Ç5). Önerilen: tek seferlik sheet + `user_consents` kaydı (JS/OTA ile
-      gidebilir ama inceleme bu sürümü görecek → derlemeden ÖNCE). Karar verilmeden gönderim riskli.
-- [ ] **A2** Dal birleştirme: `night19/release` ← `night20/consent` (G20-S1) ← `night20/store` (bu dal; G20-S1 tabanlı → çakışma yok).
-      Paralel G20 dalları varsa önce onlar; `legal/global` yalnız docs (uygulamaya girmez).
-- [ ] **A3** Kontroller (birleşik dalda):
-      ```sh
-      export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
-      npm ci && npx tsc --noEmit && npm run test:unit && npm run test:components && npm run hygiene
-      EXPO_NO_DOTENV=1 npx expo config --type introspect --json | grep -c NSLocationAlways   # 0 olmalı
-      npx expo export -p ios && npx expo export -p android
-      ```
-- [ ] **A4 Migration'lar (canlı DB)** — `supabase db push` İlter onayıyla, dosya sırasıyla:
-      | Dosya | Canlıda mı (9 Kas) | Not |
+## A. Canlı (mağaza gönderiminden ÖNCE)
+- [ ] **A1 Migration'lar** — önce `supabase migration list` ile canlıyla karşılaştır (geçmiş damga kayması var — G20-S2 A4 notu), sonra
+      `supabase db push` (onay). 1.1.0'ın sunucu tarafı:
+      | Dosya | Ne | 1.1.0 için | Rollback |
+      |---|---|---|---|
+      | `20261109210100_g20_s1_user_consents` | rıza kayıtları (`user_consents`) | şart (AI izni, sağlık rızası buraya yazar) | `supabase/rollbacks/…_rollback.sql` |
+      | `20261109220100…220400_g20_s3_*` | anonim bayraklar, destek eki gizli, pazarlama izni, hesap silme | şart | var |
+      | `20261110000100_g21_s1_barcode` | barkod günlük hakkı | şart (Ücretsiz günde 5) | var |
+      | `20261110100100_g22_s1_subscriptions` · `…100200_g22_s1_restaurant_rating` · `…_g22_s2_geo` · `…_g22_s2_search` · `20261110190100_g23_geo_admin1` | abonelik/hak, puan, coğrafya, arama | şart | var |
+      | **`20261111100100_g24_coach`** (G24) | Koç tabloları/RPC + `koc` bayrağı **kapalı** | uygula (bayrak kapalı kalır) | var |
+      | **`20261111200100_g25_flags`** (G25) | `yakinda_satirlari`, `paylasim_baglanti` satırları (ikisi kapalı) | uygula | var |
+      | **`20261111230100_g27_health_consent`** (G27) | sağlık açık rızası sunucu kaydı | uygula (istemci satırı cihazda bekletir) | var |
+- [ ] **A2 Edge** — `revenuecat-webhook` canlıda ve RevenueCat'te webhook URL + yetkilendirme başlığı ayarlı (abonelik hakkı sunucuda bundan
+      doğar). `analyze-ai-scan` son sürüm (ses metni analizi `analyzeText`). **`coach-chat` deploy SONRAYA** — Koç açılırken (D).
+- [ ] **A3 Bayraklar** (`feature_flags`, `admin_set_flag` RPC ya da Boss paneli; Dashboard'dan elle değil):
+      | Durum | Bayraklar |
+      |---|---|
+      | 1.1.0 ile açılacak (dalga sırası G20-S2 E tablosu; hepsinde `min_app_version='1.1.0'`) | `yeni_kabuk`, `ai_tarama`, `barcode_scan`, `abonelik`, `su_takibi`, `etkinlik`, `yeni_onboarding`, `gun_halkasi`, `paylasim_karti`, `kesfet`, `kesfet_takip`, `kesfet_yorum`, `kesfet_paylasim`, `kesfet_video`, `sosyal_bildirim`, `yeni_siparis`, `ogun_hatirlatma` |
+      | **Kapalı kalır** | `koc` · `yakinda_satirlari` · `paylasim_baglanti` (l.eatkcal.com DNS + AASA/assetlinks yayında olunca) · eski anahtarlar (`ai_coach`, `dietitian`, `inbox`, `restoran_yakinda`, …) |
+      ⚠ Mağaza açıklaması ve ekran görüntüleri şu özellikleri anlatıyor: foto/ses/barkod/elle kayıt, halkalar, etkinlik, ilerleme, seri,
+      Keşfet (+ gününe ekle), eatkcal, abonelik. **Yayın günü bu bayraklar %100 değilse** (dalgalı açılış), açıklama yeni kullanıcıya görünmeyen
+      özellik anlatıyor olur (Apple 2.3.1). Öneri: `abonelik` + `ai_tarama` + `barcode_scan` + `yeni_kabuk` yayında %100; diğerleri dalgalıysa
+      açıklama yine de doğru sayılır mı → SORULAR.
+- [ ] **A4 İnceleme hesabı** (`INCELEME_NOTU.md` §0): `apple@inceleme.eatkcal.com`, bayrak kilitleri (Koç HARİÇ), posta kutusu web erişimi.
+- [ ] **A5 Web** (kcal-web deploy = İlter). 11 Kas ölçümü (`curl -L`):
+      | URL | Durum | Kullanıldığı yer |
       |---|---|---|
-      | `20261108000100_g18_onboarding_state` · `…000300_g18_eatkcal_waitlist` · `…000400_g18_finpush_templates` | ✓ (geçmişte farklı sürüm damgasıyla) | |
-      | `20261109100100/100200/100300` D-S1 · `20261109110000` G19-S3 · `20261109190100` G19-S1 · `20261109200100` G19-S2 | ✓ | |
-      | **`20261109210100_g20_s1_user_consents`** (+ rollback) | ✗ (CANLI_SEMA'da `user_consents` yok, `legal_documents.version` yok) | **1.1.0 öncesi uygula**; istemci yokken fail-open çalışır ama kabul kaydı sunucuya yazılmaz (ispat yükü, L-S1 B-02) |
-      ⚠ **Geçmiş kayması:** `20261102…`–`20261106…` dosyalarının (feature_flags, feed, g8_social, g11/g12 bayrakları, g15_water…)
-      tabloları canlıda VAR (CANLI_SEMA) ama `supabase_migrations` geçmişinde bu sürüm damgaları YOK; canlı geçmişteki
-      G18/G19 kayıtları da farklı damgalı (ör. `20261108190904_g18_onboarding_state`). `supabase db push` bu dosyaları yeniden
-      çalıştırmayı deneyebilir. Önce `supabase migration list` ile karşılaştır; gerekiyorsa `supabase migration repair --status applied <sürüm>`
-      (İlter onayı). Dosyalar çoğunlukla `if not exists`/`on conflict do nothing` ama hepsi doğrulanmadı.
-- [ ] **A5 Bayrak satırları** (canlıda okuma reddedildi → İlter SQL editöründe salt-okuma):
-      `select key, enabled, rollout_percent, min_app_version, platforms from feature_flags order by key;`
-      Beklenen: aşağıdaki E tablosundaki her anahtar var, `enabled=false`, `rollout_percent=0`, yeni özelliklerde `min_app_version='1.1.0'`.
-      Eksik satır (ör. `ai_tarama`, `kesfet`, `gun_halkasi` — migration dosyalarında INSERT'leri yok) **migration dosyasıyla** eklenir, Dashboard'dan değil.
-- [ ] **A6 Demo hesap** (`INCELEME_NOTU.md`): Auth Admin API ile oluştur, `user_feature_unlocks` satırları, posta kutusu. Şifre/kod çıktıya yazılmaz.
-- [ ] **A7 Web** (deploy = İlter): `docs/store/well-known/*` → `landing-page/.well-known/`; assetlinks parmak izleri; `/k/:code`, `/s/:code`,
-      `/kesfet` dönüş sayfaları; doğrulama komutları `docs/store/well-known/README.md`. Gizlilik/destek/silme URL'leri 200:
-      `https://eatkcal.com/gizlilik-politikasi`, `/en/legal/privacy`, `/destek`, `/en/support`, `/account-deletion`.
-- [ ] **A8 Hukuk** (L-S1): Meta varsayılanı AÇIK kararı (L-S1 kapalı öneriyor), gizlilik politikasında Anthropic/yurt dışı aktarım
-      ve AI işleme metni yayında — mağaza etiketleriyle aynı gün.
+      | https://eatkcal.com | 200 | Pazarlama URL'si, Play web sitesi |
+      | https://eatkcal.com/kullanim-kosullari | 200 | açıklama (TR) |
+      | https://eatkcal.com/gizlilik-politikasi | 200 | açıklama (TR), ASC/Play gizlilik URL'si |
+      | https://eatkcal.com/account-deletion | 200 | Play hesap silme |
+      | https://eatkcal.com/destek | **404** | ASC Destek URL'si (TR) — route kcal-web'de var, yayında değil |
+      | https://eatkcal.com/en/support | **404** | ASC Destek URL'si (EN) |
+      | https://eatkcal.com/en/legal/terms | **404** | açıklama (EN) |
+      | https://eatkcal.com/en/legal/privacy | **404** | açıklama (EN), ASC EN gizlilik URL'si |
+      | https://eatkcal.com/en/account-deletion | **404** | Play (EN) |
+      → **kcal-web eatkcal deploy'u gönderimden önce şart** (Destek URL'si çalışmayan sürüm reddedilir, 1.5). Gizlilik politikası metni
+      L-S3 (AI tarama, sesli giriş, abonelik/RevenueCat bölümleri §5A/§5B/§11A) ile aynı gün yayında olmalı.
+- [ ] **A6 Hukuk** — L-S3 TASLAK'ları (gizlilik §5A ses, §11A abonelik; Kullanım Koşulları abonelik maddesi) yayında; EULA = Apple Standart.
 
-## B. Derleme ve test dağıtımı (İlter onayı)
-- [ ] **B1** `eas build --profile production --platform all` — sürüm 1.1.0, build numarası EAS remote (`autoIncrement`). Native değişiklikler:
-      expo-image-manipulator, expo-camera, izin metinleri (Always konum silindi, foto-ekleme metni, EN konum), ATT metni (G20-S1),
-      gizlilik manifesti (18 tür), associatedDomains/intentFilters yolları.
-- [ ] **B2** iOS → TestFlight (iç test), Android → Play "Dahili test" kanalı. Preview APK (`eas build --profile preview`) da olur.
-- [ ] **B3** OTA kanalı: production derleme `channel: production`, `runtimeVersion: appVersion` → yalnız **1.1.0** derlemeleri 1.1.0
-      güncellemelerini alır; 1.0.7 cihazlar etkilenmez. İlk OTA yalnız mağaza onayından SONRA ve gerekiyorsa
-      (`eas update --channel production` = onay). `fallbackToCacheTimeout: 0` → güncelleme bir sonraki açılışta uygulanır.
-- [ ] **B4** Xcode Organizer › arşiv › "Generate Privacy Report" → `GIZLILIK_BEYANLARI.md` §4 ile karşılaştır (Meta SDK kendi manifestini ekler).
+## B. Derleme (İlter onayı)
+- [ ] **B1** Yeni **native** derleme şart (OTA yetmez): G26 (ATT kaldırıldı, Info.plist, gizlilik manifesti, Android `blockedPermissions`) +
+      G27 (`FacebookAutoLogAppEventsEnabled=false`). Kontroller `g23-s1` worktree'sinde (İlter oradan derliyor):
+      `npx tsc --noEmit && npm run hygiene && npm run test:unit && npx jest` ·
+      `npx expo config --type introspect --json` → `NSUserTrackingUsageDescription` YOK, `NSPrivacyTracking false`.
+- [ ] **B2** `eas build --profile production --platform all` (sürüm 1.1.0, build no. EAS remote) → TestFlight + Play dahili test.
+- [ ] **B3** Xcode Organizer › arşiv › "Generate Privacy Report" ↔ `GIZLILIK_BEYANLARI.md` §1 (18 tür, izleme yok).
+- [ ] **B4** TestFlight'ta `INCELEME_NOTU.md` §3 kontrol tablosu (giriş, foto, ses, sınır → paywall, sandbox satın alma + geri yükle,
+      eatkcal adres, Koç görünmüyor, hesap silme ekranı). İsteğe bağlı: gerçek karelerle ekran görüntülerini yenile (EKRAN_GORUNTUSU_PLANI).
 
-## C. Cihaz testleri (gerçek iPhone + Android, test kullanıcısı; gerçek sipariş/ödeme YOK)
-Her izin için: **ilk istek → reddet → Ayarlar'dan aç → tekrar dene** döngüsü; TR ve EN cihaz dili.
+## C. App Store Connect (gönderim — İlter onayı)
+- [ ] **C1 Abonelikler** — grup `kcalAI`, 4 ürün (`kcalai_fresh_monthly`, `kcalai_fresh_yearly`, `kcalai_balance_monthly`, `kcalai_balance_yearly`);
+      fiyatlar TR 199 / 999 / 499 / 2999 TL, ABD $5.99 / $29.99 / $12.99 / $59.99; yıllıklarda tanıtım teklifi **7 gün ücretsiz** (yeni aboneler);
+      her ürüne TR + EN görünen ad ve açıklama (`APP_STORE_METINLERI.md` tablo); inceleme ekran görüntüsü (paywall: `shots/ios/tr/06.png`
+      kullanılabilir) ve inceleme notu. Durum **Ready to Submit**.
+- [ ] **C2 Abonelikleri sürüme ekle** — 1.1.0 sürüm sayfası › "In-App Purchases and Subscriptions" › 4 ürünü seç (ilk abonelik sürümle birlikte
+      incelenir; eklenmezse ürünler incelenmez ve satın alma sandbox'ta "ürün yok" verir).
+- [ ] **C3 Uygulama bilgileri** — Ad `KCAL: AI Kalori Hesaplama` / `KCAL: AI Calorie Counter`, alt başlık `Kalori Sayacı & Fit Yemek` /
+      `Photo Food Tracker & Macros` (ad değişikliği yalnız yeni sürümle olur → 1.1.0 gönderiminde). **Kategori: birincil Sağlık ve Fitness,
+      ikincil Yemek ve İçecek** (bugün birincil Yiyecek ve İçecek). İçerik hakları: üçüncü taraf içerik (Keşfet kullanıcı içeriği) = Evet.
+      Yaş derecelendirmesi anketi: kullanıcı içeriği var, tıbbi/sağlık bilgisi seyrek, reklam yok.
+- [ ] **C4 URL'ler** — Destek `https://eatkcal.com/destek` (EN `…/en/support`) · **Pazarlama `https://eatkcal.com`** · Gizlilik (App Information,
+      dil başına) TR `…/gizlilik-politikasi`, EN `…/en/legal/privacy`. A5 200 olmadan girme.
+- [ ] **C5 Lisans sözleşmesi** — App Information › License Agreement = **Apple Standart EULA**; açıklamada EULA + Kullanım Koşulları +
+      Gizlilik bağlantıları var (3.1.2) — `_uret_metinler.py` bunu denetliyor.
+- [ ] **C6 App Privacy** — `GIZLILIK_BEYANLARI.md` §1: 18 tür, hepsi bağlı, **"Data Used to Track You" boş** (G20'de Purchase History /
+      Product Interaction / Device ID izleme işaretliydi → kaldır). Yayınla (App Privacy sürümden bağımsız yayınlanır — derleme onayıyla aynı gün).
+- [ ] **C7 Sürüm metinleri** — TR + EN açıklama, anahtar kelime, promosyon metni, "Bu sürümde yenilikler"; ekran görüntüleri 6,9" (`shots/ios/{tr,en}/`)
+      ve 6,5" (`shots/ios/{tr,en}/65/`). iPad yok (`supportsTablet: false`).
+- [ ] **C8 İnceleme bilgileri** — `INCELEME_NOTU.md` §1 (kullanıcı adı, posta kutusu şifresi `[İLTER]`, Notes).
+- [ ] **C9 Yayın** — "onaydan sonra elle yayınla" + **aşamalı yayın (7 gün)**; sorun → duraklat.
 
-**Kamera / fotoğraf (Tara)**
-- [ ] Temiz kurulum → Tara → sistem kamera sorusu metni TR ("Tabağını tarayıp…"), EN cihazda EN.
-- [ ] Reddet → "kamera kapalı" hâli + Ayarlar'a yönlendirme; galeri ile tarama yine çalışır.
-- [ ] Ayarlar'dan izin → canlı vizör; çekim → sonuç (uzun kenar ≤ 1600: Supabase `user-media`'daki dosya boyutu küçük, 5 MB altı).
-- [ ] Fotoğraf erişimi: iOS "Sınırlı erişim" seçimiyle galeri; Android 13+ Foto Seçici (izin sorusu YOK), Android ≤12 depolama izni.
-- [ ] Paylaşım kartı → paylaşım sayfası → "Görüntüyü Kaydet" → foto-ekleme izni metni (yeni metin) → kayıt.
-- [ ] Uçak modu → Tara → fotoğraf sıraya alınır → ağ gelince işlenir.
+## D. Google Play Console (gönderim — İlter onayı)
+- [ ] **D1 Abonelikler** — `kcalai_fresh`, `kcalai_balance`; temel planlar `monthly` / `yearly` (otomatik yenilenen); yıllıkta teklif `default`
+      = 7 gün ücretsiz deneme (yeni aboneler); fiyatlar TR + ABD (GOOGLE_PLAY_METINLERI tablo); avantaj satırları. RevenueCat'te Play hizmet
+      hesabı bağlı. Etkin (Active).
+- [ ] **D2 Mağaza girişi** — ad, kısa açıklama (≤ 80), tam açıklama, simge 512, öne çıkan görsel `shots/play/{tr,en}/feature.png`, telefon
+      görüntüleri `shots/play/{tr,en}/01–06.png`; kategori Sağlık ve Fitness; iletişim e-postası, web sitesi `https://eatkcal.com`.
+- [ ] **D3 Veri güvenliği** — `GIZLILIK_BEYANLARI.md` §2 soru soru (Meta paylaşımı: satın alma geçmişi, uygulama etkileşimleri, cihaz kimlikleri).
+- [ ] **D4 Hesap silme URL'si** — `https://eatkcal.com/account-deletion` (uygulama içi silme de var).
+- [ ] **D5 Reklam beyanı** — Uygulama reklam içeriyor mu: **Hayır**. Reklam kimliği: **Evet** (Meta SDK, Analiz + Reklam/pazarlama ölçümü).
+- [ ] **D6 İçerik derecelendirmesi (IARC)** — kullanıcı etkileşimi/kullanıcı içeriği VAR (moderasyon, şikâyet, engelleme), dijital satın alma VAR
+      (abonelik), konum paylaşımı YOK (yalnız teslimat adresi), şiddet/kumar vb. yok.
+- [ ] **D7 Hedef kitle ve içerik** — **18 ve üzeri**; çocuklara yönelik değil; Aile programı yok.
+- [ ] **D8 Sağlık uygulamaları beyanı** — beslenme ve kalori takibi; tıbbi cihaz değil; sağlık verisi işler (Health Connect YOK).
+- [ ] **D9 Uygulama erişimi** — `INCELEME_NOTU.md` §2.
+- [ ] **D10 Yayın** — üretim kanalında **kademeli dağıtım** %10 → %50 → %100; sorun → durdur.
 
-**Konum**
-- [ ] eatkcal adres doğrulama → "kullanılırken" sorusu metni; iOS Ayarlar › Konum'da yalnız "Hiçbir zaman / Sonraki sefer / Kullanılırken" (Her zaman YOK).
-- [ ] Reddet → elle adres girişi çalışır (FinEkAddressNoPerm hâli).
+## E. Yayından sonra
+- [ ] **E1 Bayrak dalgaları** — G20-S2 E tablosu sırasıyla (48 saat alarm yoksa bir üst adım). `abonelik` açıkken satın alma → `revenuecat-webhook`
+      → `my_entitlement` zinciri Sentry/RevenueCat panelinde izlenir.
+- [ ] **E2 Koç açılışı (sonra, ayrı karar)** — sıra: `supabase functions deploy coach-chat` (JWT doğrulaması AÇIK) → AI izni metni onayı →
+      `koc` önce iç kullanıcı → yüzdeli. **Aynı gün mağaza metni güncellenir**: açıklamaya Balance satırı "günde 50 AI tarama + kcalAI Koç",
+      paywall Koç varyantı; promosyon metni sürümsüz değişir, açıklama bir sonraki sürümde (ya da OTA ile açılıyorsa 1.1.x metin güncellemesi).
+      Gizlilik beyanı değişmez (Koç verisi şimdiden beyanda).
+- [ ] **E3** `paylasim_baglanti` — l.eatkcal.com DNS + AASA/assetlinks + `/p` `/u` önizleme sayfaları yayında olunca.
+- [ ] **E4** `settings.min_supported_version='1.1.0'` — mağazada %100 + 2 hafta sonra (aşamalı yayın sürerken açma).
+- [ ] **E5** Puan isteme (rapor §5: tek puan en büyük ASO açığı) — olumlu anda (ör. 3 günlük seri sonrası) `StoreReview` (1.1.x işi).
 
-**Bildirim**
-- [ ] Onboarding "Serini korumak için…" → İzin ver → iOS sistem sorusu / Android 13+ `POST_NOTIFICATIONS` sorusu.
-- [ ] "Şimdi değil" → sistem sorusu GELMEZ; ilk öğün kutlamasında tekrar teklif.
-- [ ] Profil › Bildirimler: kapat/aç; reddedilmiş izinde Ayarlar'a yönlendirme. `ogun_hatirlatma` açık test hesabında 14:30 hatırlatması.
-
-**Rıza + ATT (G20-S1, bayrak açık hesapta)**
-- [ ] Yeni hesap (e-posta): onay kutusu işaretsizken "Kod gönder" pasif; Meta anahtarı AÇIK gelir.
-- [ ] Kabul → giriş → **sonra** ATT sorusu (metin "Reklam kampanyalarımızın etkisini ölçmek için…"). Sıra: politika → ATT.
-- [ ] ATT "İzin Verme" → Profil › Gizlilik › Veri ve reklam izinleri'nde Meta KAPALI görünür; Meta olayı gitmez.
-- [ ] Meta anahtarını kapatarak kayıt → ATT sorusu HİÇ gelmez.
-- [ ] Ayarlar'dan Meta aç → ATT sorulur (daha önce reddedildiyse "iPhone Ayarları'nı aç").
-- [ ] Mevcut kullanıcı (1.0.7'den güncelleme) → bir kez bilgilendirme sheet'i, sonra bir daha yok.
-- [ ] `user_consents` satırı yazıldı (A4 uygulandıysa): test kullanıcısı için salt-okuma SQL.
-- [ ] Android: ATT yok; Meta anahtarı kapalıyken olay gitmez (Meta Events Manager test olayları).
-
-**Derin bağlantı (A7 yayında olmalı)**
-- [ ] Notlar/Mesajlar'dan `https://l.eatkcal.com/p/<id>` → uygulama gönderiyi açar; `/u/<handle>` profil; `/kesfet` Keşfet (bayrak açıksa).
-- [ ] `/k/TEST1` ve `/s/TEST1` → uygulama açılır, `first_touch`/kaynak olayında `box_card`/`saha` (analytics_events test satırı).
-- [ ] `https://l.eatkcal.com/privacy` → **tarayıcıda** açılır (uygulama değil).
-- [ ] Android: `adb shell pm get-app-links com.kcalmobile.app` → `l.eatkcal.com: verified`.
-- [ ] Uygulama kurulu değilken `/k/TEST1` → web dönüş sayfası (404 değil).
-
-**Diğer**
-- [ ] Hesap silme: Profil › Güvenlik › Hesabımı sil → oturum kapanır, yeniden girişte yeni hesap.
-- [ ] Bayraklar kapalı (yayın günü durumu) → uygulama 1.0.7 ile aynı akış (parite).
-- [ ] Zorunlu güncelleme modali: test ortamında `settings.min_supported_version` > cihaz sürümü iken modal (yalnız test projesinde/salt-okuma ile doğrula).
-
-## D. Mağaza gönderimi ve yayın (İlter onayı)
-- [ ] Metinler `APP_STORE_METINLERI.md` / `GOOGLE_PLAY_METINLERI.md`; görseller `EKRAN_GORUNTUSU_PLANI.md`; gizlilik `GIZLILIK_BEYANLARI.md`; inceleme `INCELEME_NOTU.md`.
-- [ ] App Store: **Aşamalı yayın (phased release, 7 gün)** açık; "onaydan sonra elle yayınla". Sorun → aşamalı yayını **duraklat** (30 güne kadar).
-- [ ] Google Play: üretim kanalında **kademeli dağıtım** %10 → %50 → %100 (ikili dosya yüzdesi; bayraklardan bağımsız). Sorun → dağıtımı **durdur**.
-- [ ] Yayın günü bütün yeni bayraklar **kapalı** (E Dalga 0). Mağaza sürümü %100'e ulaşmadan bayrak açmak serbest (yalnız 1.1.0 alır).
-
-## E. Bayrak açılış sırası (`feature_flags`; değişiklik = satır güncellemesi, OTA gerekmez)
-Kural: bir bayrak bir üst adıma **48 saat alarm yok** ise çıkar (metrikler `TAKIP_ACILIS.md` §2 + Sentry çökme oranı + `scan_fail` oranı).
-Yüzde kovası kullanıcı başına sabit (`fnv1a32(key:user_id) % 100`) → %10'daki kullanıcı %50'de de içeride. Bayraklar yalnız
-**girişli** kullanıcıda çözülür (aşağıda R1). Hepsinde `min_app_version='1.1.0'`.
-
-| Dalga | Bayrak(lar) | Ne açar | Bağımlı | %10 | %50 | %100 | Geri dönüş etkisi |
-|---|---|---|---|---|---|---|---|
-| 0 | — | Mağaza 1.1.0, bütün bayraklar kapalı | — | — | — | — | — |
-| 1 | `yeni_kabuk` | Yeni kabuk: FinHomeR3, TabBarR3, rıza kapısı (G20-S1), kayıt kuyruğu | — | G+1 | G+3 | G+7 | 1.0.7 kabuğu aynen |
-| 1 | `ai_tarama` | Tara dairesi + AI tarama (günlük kota) | yeni_kabuk | yeni_kabuk ile **aynı** yüzde | ← | ← | Tara dairesi gizlenir; acil kapatma `scan_fail{disabled}` metniyle |
-| 1 | `su_takibi`, `etkinlik` | Su halkası (sunucu), etkinlik kaydı | yeni_kabuk | %10 | %50 | %100 | cihaz içi sayaç / bölüm gizlenir |
-| 2 | `yeni_onboarding` | Final onboarding + Takibe başla + rıza bloğu | yeni_kabuk %50 | %10 | %50 | %100 | eski onboarding/giriş (eski onay metinleri aynen) |
-| 2 | `gun_halkasi`, `paylasim_karti` | Gün halkası, Tabak Röntgeni paylaşım kartı | yeni_kabuk %50 | %10 | %50 | %100 | şerit/kart gizlenir |
-| 3 | `kesfet` (+ `kesfet_takip`, `kesfet_yorum`) | Keşfet sekmesi, takip, yorum | yeni_kabuk %100 · moderasyon (`moderate-content` canlı) | %10 | %50 | %100 | Keşfet sekmesi YOK (`tabs.ts`) |
-| 3 | `kesfet_paylasim`, `kesfet_video` | Herkes paylaşır, video | kesfet %50 | %10 | %50 | %100 | yalnız creator paylaşır / video yok |
-| 3 | `sosyal_bildirim` | Sosyal bildirimler + push | kesfet %50 | %10 | %50 | %100 | zil/liste gizlenir |
-| 4 | `yeni_siparis` | eatkcal yeni arayüz (ana sayfa → ödeme) | yeni_kabuk %50 | %10 | %50 | %100 | eski sipariş akışı; **ödeme hatası alarmı** (failed_payments, Paynkolay) en sıkı |
-| 5 | `ogun_hatirlatma` | Öğün saati yerel hatırlatma — 10:30 · 14:30 · 21:00 (İstanbul) + yalnız son 7 günde kaydı olana (**İlter onayı 10 Kas**) | yeni_kabuk **%100'den sonra** | %10 | %50 | %100 | kurulu hatırlatmalar sonraki açılışta iptal |
-| Deney | `onb_welcome_variant_b`, `_c` | Karşılama başlığı B/C (A varsayılan) | yeni_onboarding %100 | B %33, C %50 (B kazanır → ≈ A/B/C üçte bir) | — | — | A'ya döner |
-| Kapalı kalır | `restoran_yakinda`, `kcalculate_ai_tracking`, `log_meal`, `barcode_scan`, `discover`, `ai_coach`, `dietitian`, `inbox`, `eatkcal_ordering` | eski/kullanılmayan anahtarlar | — | — | — | — | — |
-
-Açma SQL'i (örnek, İlter): `select admin_set_flag('yeni_kabuk', true, 10, '1.1.0', null);` (G11 RPC: anahtar, enabled, yüzde,
-min_app_version, platformlar; admin oturumu ister, audit satırı yazar — Boss paneli bayrak ekranı aynı RPC'yi çağırır).
-Yalnız iOS'ta başlatmak için platformlar `array['ios']`.
-
-**R1 — girişsiz yeni kurulum:** `get_my_features` yalnız oturumlu kullanıcıda çağrılır (`src/core/flags/FlagsProvider.tsx:66-70`);
-yeni kurulumda önbellek de yoktur → giriş öncesi ekranlar (karşılama/onboarding) bayrak kapalı yolunda açılır. `yeni_onboarding`
-yüzdesi bu yüzden ilk kurulum akışına tam yansımayabilir. Dalga 2'den önce kontrol: yeni kurulumda hangi onboarding geliyor? (SORULAR)
-
-## F. min_app_version ve zorunlu güncelleme
-- Bayrak bazında: `feature_flags.min_app_version='1.1.0'` → 1.0.7 istemciler yeni özellikleri hiç almaz (sunucu `_ff_version_gte`).
-- `ai_tarama` için 1.1.0 şart: eski istemci `reason:'disabled'` yanıtını "hakkını kullandın" diye gösterir (G19-S1).
-- Uygulama geneli: `settings.min_supported_version` (+ `force_update_message`) → `src/lib/forceUpdate.ts` modalı (fail-open).
-  1.1.0 mağazada %100 ve 2 hafta sonra, 1.0.7 kullanımı düşükse `min_supported_version='1.1.0'` (İlter; mesaj TR/EN).
-  Erken açma: App Store aşamalı yayını sürerken açılırsa güncelleme alamayan kullanıcı kilitlenir — açma.
-
-## G. Geri dönüş (rollback) planı
-| Sorun | İlk hamle | Sonra |
-|---|---|---|
-| Yeni özellik hatası | İlgili bayrak `enabled=false` (anında, sonraki bayrak okumasında) | düzeltme OTA'sı (onay) |
-| JS hatası tüm 1.1.0'da | `eas update:rollback --channel production` ya da önceki güncelleme grubunu `eas update:republish --group <id>` (onay) | ilk OTA'dan önce sorun → gömülü paket zaten son iyi sürüm |
-| Native çökme (1.1.0 ikili) | App Store aşamalı yayını duraklat · Play kademeli dağıtımı durdur | 1.1.1 derlemesi; 1.0.7 cihazlar etkilenmez (ayrı runtime) |
-| Rıza akışı kilitliyor | `yeni_kabuk` + `yeni_onboarding` kapat → kapı devre dışı (bayrak kapalı parite) | `user_consents` sorunu → rollback dosyası `supabase/rollbacks/20261109210100_g20_s1_user_consents_rollback.sql` (istemci fail-open) |
-| AI tarama maliyeti/hatası | `ai_tarama` kapat ya da sunucu kota/acil kapatma (G19-S1) | Anthropic durum sayfası |
-| Derin bağlantı yanlış sayfa açıyor | AASA/assetlinks'ten yolu kaldır (web deploy) | iOS CDN 24–48 saat; Android yeniden doğrulama |
-| Migration sorunu | ilgili `supabase/rollbacks/*_rollback.sql` (onay) | — |
-
-## H. Canlı DB / edge durumu (9 Kas, salt-okuma)
-- **Edge (canlı, ACTIVE):** analyze-ai-scan v9 · moderate-content v4 · send-notification v53 · delete-account v24 · social-upload ·
-  reels-upload-url · adisyo-* (reconcile v1 dahil) · paynkolay-* · order-alert · apple-link-token · trendyolgo-* · tosla-* · payment-* ·
-  macro-expiry · free-order-complete · env-check. Repoda olup canlıda olmayan: **`notify-order-status`** (kullanımda mı? SORULAR).
-  Bu sürüm için yeni edge deploy GEREKMİYOR.
-- **DB:** son canlı migration `20261109111533_g19_s3_event_names`; G20-S1 `user_consents` canlıda yok (A4). `feature_flags`,
-  `user_feature_unlocks`, `water_daily`, `activity_logs`, `analytics_events`, `ai_scan_*`, `posts`/`follows`/`post_comments` tabloları canlıda.
-- `settings.min_supported_version` sütunu kodda okunuyor (`src/lib/appSettings.ts:14`); CANLI_SEMA'da `settings` satırı kesik — sütun varlığı A5 sorgusuyla teyit.
+## F. Geri dönüş (kısa)
+| Sorun | İlk hamle |
+|---|---|
+| Yeni özellik hatası | ilgili bayrak `enabled=false` (anında) |
+| Abonelik hakkı gelmiyor | `revenuecat-webhook` logları; istemci RevenueCat'ten anında hak verir, sunucu `my_entitlement` sonra doğrular |
+| Native çökme | App Store aşamalı yayını duraklat · Play kademeli dağıtımı durdur → 1.1.1 |
+| JS hatası | `eas update:rollback --channel production` (onay) |
+| Migration sorunu | `supabase/rollbacks/<dosya>_rollback.sql` (onay) |
