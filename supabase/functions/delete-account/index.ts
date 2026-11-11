@@ -7,6 +7,7 @@ import {
   collectPostMediaPaths,
   removeUserStorage,
 } from './cleanup.ts'
+import { deleteRevenueCatSubscriber } from './revenuecat.ts'
 
 // Hesap silme (App Store 5.1.1(v)) — SecurityScreen "Hesabımı Sil" tarafından
 // çağrılır. Kullanıcı SADECE kendi hesabını silebilir (auth.uid() ile alınan
@@ -41,6 +42,10 @@ import {
 //  5) user_apple_tokens satırı temizlenir.
 //  6) auth.admin.deleteUser() — profiles/addresses/user_nutrition_profiles/
 //     branch_users/user_cards/user_consents/... CASCADE ile gider.
+//  7) G31-S1 md.6: RevenueCat müşteri kaydı silinir (REST DELETE /v1/subscribers/{uid},
+//     secret REVENUECAT_SECRET_API_KEY). Yalnız auth silme BAŞARILI olunca (silme
+//     başarısızsa kullanıcı aboneliğini kaybetmesin). Anahtar yoksa atlanır + loglanır;
+//     hata olursa loglanır, yanıt yine ok:true (silmeyi bozmaz).
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -52,6 +57,7 @@ const APPLE_CLIENT_ID = (Deno.env.get('APPLE_CLIENT_ID') ?? 'com.kcalmobile.app'
 const PAYNKOLAY_SX = (Deno.env.get('PAYNKOLAY_SX') ?? '').trim()
 const PAYNKOLAY_SECRET_KEY = (Deno.env.get('PAYNKOLAY_SECRET_KEY') ?? '').trim()
 const PAYNKOLAY_VPOS_URL = (Deno.env.get('PAYNKOLAY_VPOS_URL') ?? '').trim()
+const REVENUECAT_SECRET_API_KEY = (Deno.env.get('REVENUECAT_SECRET_API_KEY') ?? '').trim()
 
 const BLOCKING_ACTIVE_STATUSES = ['pending', 'confirmed', 'preparing', 'on_way']
 const STALE_DRAFT_MS = 60 * 60 * 1000 // 1 saat
@@ -260,6 +266,16 @@ Deno.serve(async (req: Request) => {
     if (delErr) {
       console.error('[delete-account] deleteUser failed:', delErr.message)
       return jsonResponse({ error: 'Hesap silinemedi, lütfen destek ile iletişime geçin.' }, 500)
+    }
+
+    // 7) RevenueCat müşteri kaydı — best-effort (asla atmaz; sonuç yalnız loglanır).
+    const rc = await deleteRevenueCatSubscriber({ appUserId: userId, secretKey: REVENUECAT_SECRET_API_KEY })
+    if (rc.ok) {
+      console.log('[delete-account] revenuecat subscriber silindi:', rc.existed ? 'vardı' : 'yoktu (404)')
+    } else if (rc.skipped) {
+      console.warn('[delete-account] revenuecat atlandı:', rc.reason)
+    } else {
+      console.error('[delete-account] revenuecat silme başarısız:', rc.reason)
     }
 
     return jsonResponse({ ok: true })
