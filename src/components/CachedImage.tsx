@@ -5,7 +5,8 @@ import { StyleProp, ImageStyle } from 'react-native';
 interface Props {
   uri: string;
   style?: StyleProp<ImageStyle>;
-  placeholder?: string;
+  /** null → yer tutucu yok (şeffaf görseller için). */
+  placeholder?: string | null;
   priority?: 'high' | 'normal' | 'low';
   contentFit?: ImageContentFit;
   onError?: () => void;
@@ -20,7 +21,7 @@ export function CachedImage({ uri, style, placeholder, priority = 'normal', cont
       contentFit={contentFit}
       transition={200}
       cachePolicy="memory-disk"
-      placeholder={placeholder ?? '#F1F1F1'}
+      placeholder={placeholder === null ? undefined : placeholder ?? '#F1F1F1'}
       placeholderContentFit={contentFit}
       priority={priority}
       recyclingKey={uri}

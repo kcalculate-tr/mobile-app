@@ -25,6 +25,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
+import { optionImageCandidates } from '../model/optionImage';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
@@ -195,11 +196,12 @@ export default function EkProductScreen() {
 
   const gramajOptions = useMemo(() => normalizeGramajOptions(product), [product]);
 
-  // Seçenek görselleri: seçeneğin adıyla eşleşen ürün fotoğrafı (yoksa çıkartma yer tutucusu).
+  // Seçenek görselleri (yedek): kendi görseli (image_url) ya da bağlı ürün görseli olmayan
+  // seçenekler için adıyla eşleşen ürün fotoğrafı (yoksa çıkartma yer tutucusu).
   useEffect(() => {
     const names = [
-      ...groups.flatMap((g) => g.items.map((i) => i.name)),
-      ...links.flatMap((l) => l.template?.values.map((v) => v.name) ?? []),
+      ...groups.flatMap((g) => g.items.filter((i) => !i.imageUrl && !i.linkedProductImageUrl).map((i) => i.name)),
+      ...links.flatMap((l) => l.template?.values.filter((v) => !v.image_url).map((v) => v.name) ?? []),
     ];
     if (names.length === 0) return;
     let mounted = true;
@@ -273,7 +275,12 @@ export default function EkProductScreen() {
           name: item.name,
           priceDelta: item.priceAdjustment,
           kcal: optionKcal(item),
-          imageUrl: imageFor(item.name),
+          // G35: image_url → bağlı ürün görseli → ada göre ürün görseli → boş hâl
+          images: optionImageCandidates({
+            own: item.imageUrl,
+            linked: item.linkedProductImageUrl,
+            byName: imageFor(item.name),
+          }),
           selected: sel.has(item.id),
           // ProductDetailScreen.tsx:1052-1054
           disabled: !item.isAvailable || (!sel.has(item.id) && max > 1 && sel.size >= max),
@@ -299,7 +306,7 @@ export default function EkProductScreen() {
           priceDelta: Number(v.price_modifier) || 0,
           kcal: null,
           kcalDelta: Number(v.calorie_modifier) || 0,
-          imageUrl: imageFor(v.name),
+          images: optionImageCandidates({ own: v.image_url, byName: imageFor(v.name) }),
           selected: sel.includes(v.id),
           // ProductDetailScreen.tsx:1124-1128
           disabled: multi && !sel.includes(v.id) && link.effective_max != null && sel.length >= link.effective_max,

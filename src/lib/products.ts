@@ -189,6 +189,8 @@ const mapOptionItemRow = (row: Record<string, unknown>): OptionItem => {
     fats: pickMacro(linked?.fats, row.fats),
     linkedProductId:
       row.linked_product_id != null ? toNumber(row.linked_product_id, 0) : null,
+    imageUrl: toSafeString(row.image_url) || null,
+    linkedProductImageUrl: toSafeString(linked?.img) || null,
   };
 };
 
@@ -263,24 +265,29 @@ export const fetchProductOptionGroups = async (
 
   const groupIds = Array.from(new Set(normalizedLinks.map((row) => row.groupId)));
 
-  // Bundle makro kolonları + linked product join. Eski şemada (kolonlar
-  // yoksa) temel select'e düşer — tekli ürün opsiyonları regresyona uğramaz.
+  // Bundle makro kolonları + linked product join. G35: önce seçenek görseli
+  // (option_items.image_url) + bağlı ürün görseli (products.img) ile denenir;
+  // migration henüz uygulanmadıysa (kolon yok) görselsiz sorguya, eski şemada
+  // (makro kolonları yoksa) temel select'e düşer — tekli ürün opsiyonları
+  // regresyona uğramaz.
   const fetchOptionItemRows = async () => {
-    const extended = await supabase
-      .from('option_items')
-      .select(
-        'id,group_id,name,price_adjustment,is_available,sort_order,calories,protein,carbs,fats,linked_product_id,products:linked_product_id(id,name,calories,protein,carbs,fats)',
-      )
-      .in('group_id', groupIds)
-      .order('sort_order', { ascending: true });
-
-    if (!extended.error) return extended;
-
-    return supabase
-      .from('option_items')
-      .select('id,group_id,name,price_adjustment,is_available,sort_order')
-      .in('group_id', groupIds)
-      .order('sort_order', { ascending: true });
+    const BASE = 'id,group_id,name,price_adjustment,is_available,sort_order';
+    const selects = [
+      `${BASE},calories,protein,carbs,fats,linked_product_id,image_url,products:linked_product_id(id,name,img,calories,protein,carbs,fats)`,
+      `${BASE},calories,protein,carbs,fats,linked_product_id,products:linked_product_id(id,name,img,calories,protein,carbs,fats)`,
+      BASE,
+    ];
+    let last: { data: Record<string, unknown>[] | null; error: unknown } = { data: null, error: null };
+    for (const cols of selects) {
+      const res = await supabase
+        .from('option_items')
+        .select(cols)
+        .in('group_id', groupIds)
+        .order('sort_order', { ascending: true });
+      last = { data: (res.data as unknown as Record<string, unknown>[] | null) ?? null, error: res.error };
+      if (!res.error) return last;
+    }
+    return last;
   };
 
   const [{ data: groupRows, error: groupError }, { data: itemRows, error: itemError }] =
