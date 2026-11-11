@@ -1403,6 +1403,7 @@ export default function TrackerScreen() {
               carbs: r.carbs,
               fat: r.fat,
               consumed_at: r.consumed_at,
+              photo_path: r.photo_path ?? null,
             })),
             { highlightId: highlight?.id ?? null },
           )

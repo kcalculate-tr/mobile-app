@@ -55,6 +55,7 @@ import {
   releasePendingKey,
 } from '../offlineQueue';
 import { scanImagePath } from '../scanPath';
+import { rememberLocalMealPhoto } from '../../../gun/mealPhoto';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { emitLogFlight, emitLogUndo } from '../logFlight';
 import { deleteScanConsumption, scanFlightUndo } from '../scanUndo';
@@ -538,14 +539,17 @@ export default function ScanScreen() {
     setSaveFailed(false);
     try {
       const ref = scanRef ?? `${user.id}-${photoUri ?? ''}`;
+      const photoPath = scanRef ? scanImagePath(user.id, ref) : null;
       const row = await saveAiScanEstimate(getSupabaseClient(), {
         userId: user.id,
         mealType,
         sourceRef: ref,
         estimate: adjusted,
         // G28-S1 md.2: analiz için yüklenen fotoğraf → Ana sayfa satırının küçük görseli.
-        photoPath: scanRef ? scanImagePath(user.id, ref) : null,
+        photoPath,
       });
+      // Sonuç → liste geçişinde AYNI kare (ağ beklemeden yerel foto).
+      rememberLocalMealPhoto(photoPath, photoUri);
       savedRowIdRef.current = (row as { id?: string } | null)?.id ?? null;
       trackScanLog(
         adjusted,

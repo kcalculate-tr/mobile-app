@@ -22,6 +22,8 @@ export interface ConsumptionLike {
   carbs: number;
   fat: number;
   consumed_at: string; // ISO
+  /** G28-S1 md.2: user-media yolu (Tara fotoğrafı); yoksa null/undefined. */
+  photo_path?: string | null;
 }
 
 export interface HomeMealItem {
@@ -36,6 +38,8 @@ export interface HomeMealItem {
   time: string;
   /** Son logFlight ile az önce eklendi → vurgu (hl). */
   highlight: boolean;
+  /** G28-S1 md.2: öğün fotoğrafının kova yolu (satır küçük görseli imzalı URL'den). */
+  photoPath?: string | null;
 }
 
 export interface HomeSlot {
@@ -129,6 +133,7 @@ export function buildSlots(
       auto: info.auto,
       time: hhmm(r.consumed_at),
       highlight: !!opts?.highlightId && r.id === opts.highlightId,
+      photoPath: r.photo_path ?? null,
     });
   }
   return SLOT_ORDER.map((key) => {
