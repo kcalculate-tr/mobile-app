@@ -11,6 +11,9 @@
 //    ekrana düşmez; o akışlar aynen çalışmaya devam eder.
 //  • Push bildirim derin bağlantıları Linking URL'i DEĞİL, bildirim datasıyla
 //    (resolveNavigation, src/lib/navigation.ts) işlenir → bu config'le çakışmaz.
+//  • G36-S1 md.14: kişisel plan bildirimleri (planLinks.ts) — kcal://plan/checkin → Haftalık
+//    tartı, kcal://plan/today → Öğün planı (bugün), kcal://plan/mine → Kişisel planım. Rotalar
+//    bayrak (kisisel_plan / ogun_plani) kapalıyken kayıtlı değil → React Navigation yok sayar.
 //  • Eşleşmeyen her URL (ör. kcal://reviews) config'de yok → React Navigation
 //    yok sayar, normal açılışa (initialRouteName) düşer.
 //
@@ -21,6 +24,7 @@
 import * as Linking from 'expo-linking';
 import type { LinkingOptions } from '@react-navigation/native';
 import { RootStackParamList } from './types';
+import { PLAN_LINK } from './planLinks';
 
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [
@@ -42,6 +46,9 @@ export const linking: LinkingOptions<RootStackParamList> = {
       // ama derin bağlantı tam ekran Keşfet'i açar). `Kesfet` rotası yalnız
       // `kesfet` açıkken kayıtlı; kapalıyken RN bu yolu yok sayar (davranış aynı).
       Kesfet: 'kesfet',
+      PersonalPlanCheckin: PLAN_LINK.checkin,
+      MealPlan: PLAN_LINK.today,
+      PersonalPlanMine: PLAN_LINK.mine,
     },
   },
 };

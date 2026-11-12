@@ -1,8 +1,10 @@
 // G34-S1 · Tur 26o — Öğün planı önizleme (02 panosu "Önizleme Balance" / "Önizleme ücretsiz").
 // G33 öğün planı bileşenleri (DayCard + SlotRow) ve G33 deterministik algoritması (generatePlan).
 // Ücretsiz: 1. gün açık, 2.–7. gün kilitli/bulanık + bağlamsal paywall (Fresh). Fresh: şablon.
-// Balance: aynı algoritmanın 3 adayı + meal-plan-generate sıralar/açıklar (1 koç mesajı); Koç
-// ulaşılamazsa şablon etiketine düşer (Koç'a ait olmayan planı "Koç hazırladı" diye göstermeyiz).
+// Balance (G36 md.12, İlter 12 Kas): önizleme koç mesajı HARCAMAZ — şablonla gelir; altında
+// "Koç'la kişiselleştir" düğmesi (basınca 1 koç mesajı: aynı algoritmanın 3 adayı + meal-plan-generate
+// sıralar). Koç ulaşılamazsa / kota bittiyse şablon kalır, etiket "Şablonla hazırlandı" (Koç'a ait
+// olmayan planı "Koç hazırladı" diye göstermeyiz).
 // Makro/kalori DAİMA algoritmadan; plan hedefi kişisel plandan.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
@@ -53,10 +55,12 @@ export function PreviewStep({ next, origin }: { next: () => void; origin: PpOrig
   const today = isoDay(new Date());
   const days = useMemo(() => previewDays(today), [today]);
   const [sel, setSel] = useState(today);
-  const [mode, setMode] = useState<Mode>(tier === 'free' ? 'free' : tier === 'balance' ? 'coach' : 'template');
+  const [mode, setMode] = useState<Mode>(tier === 'free' ? 'free' : 'template');
   const [plan, setPlan] = useState<GenerateResult | null>(null);
   const [busy, setBusy] = useState(true);
   const [unlocked, setUnlocked] = useState(tier !== 'free');
+  const [coachBusy, setCoachBusy] = useState(false);
+  const [coachMsg, setCoachMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void loadCatalog();
@@ -68,43 +72,52 @@ export function PreviewStep({ next, origin }: { next: () => void; origin: PpOrig
     return { kcal: t.calories, protein: t.protein };
   }, [result, custom]);
 
-  useEffect(() => {
-    if (!catalog || !targets) return;
-    let alive = true;
-    (async () => {
-      setBusy(true);
-      const input = {
-        recipes: catalog.recipes,
-        days,
-        target: targets,
-        diet: a.diet,
-        avoid: a.consentAllergy ? a.allergens : [],
-        eatkcal: null,
-        keep: [] as PlanItem[],
-        keepPlanned: false,
-        variant: 0,
-        lang,
-      };
-      let out: GenerateResult = generatePlan(input);
-      let m: Mode = tier === 'free' ? 'free' : 'template';
-      if (tier === 'balance') {
-        const cands = candidatePlans(input, 3);
-        const r = await askCoachToRank(cands, { lang, target: targets, avoid: input.avoid, diet: a.diet });
-        if (r.ok && cands[r.index]) {
-          out = cands[r.index];
-          m = 'coach';
-        }
-      }
-      if (!alive) return;
-      setPlan(out);
-      setMode(m);
-      setBusy(false);
-    })();
-    return () => {
-      alive = false;
-    };
+  const genInput = useMemo(
+    () =>
+      catalog && targets
+        ? {
+            recipes: catalog.recipes,
+            days,
+            target: targets,
+            diet: a.diet,
+            avoid: a.consentAllergy ? a.allergens : [],
+            eatkcal: null,
+            keep: [] as PlanItem[],
+            keepPlanned: false,
+            variant: 0,
+            lang,
+          }
+        : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, targets?.kcal, targets?.protein, tier]);
+    [catalog, targets?.kcal, targets?.protein],
+  );
+
+  // Önizleme her kademede şablonla (deterministik algoritma) — koç mesajı harcanmaz.
+  useEffect(() => {
+    if (!genInput) return;
+    setPlan(generatePlan(genInput));
+    setMode(tier === 'free' ? 'free' : 'template');
+    setCoachMsg(null);
+    setBusy(false);
+  }, [genInput, tier]);
+
+  // Balance: "Koç'la kişiselleştir" → 1 koç mesajı (mevcut meal-plan-generate akışı).
+  const personalize = async () => {
+    if (!genInput || !targets || coachBusy) return;
+    haptic('light');
+    setCoachBusy(true);
+    setCoachMsg(null);
+    const cands: GenerateResult[] = candidatePlans(genInput, 3);
+    const r = await askCoachToRank(cands, { lang, target: targets, avoid: genInput.avoid, diet: a.diet });
+    if (r.ok && cands[r.index]) {
+      setPlan(cands[r.index]);
+      setMode('coach');
+      haptic('success');
+    } else {
+      setCoachMsg(i18n.t(!r.ok && r.reason === 'quota' ? 'plan.coach_quota' : 'plan.coach_fallback'));
+    }
+    setCoachBusy(false);
+  };
 
   // Satın alma sonrası önizlemeye dönüş: kilitli günler açılır (550, success haptik).
   useEffect(() => {
@@ -219,6 +232,26 @@ export function PreviewStep({ next, origin }: { next: () => void; origin: PpOrig
           </View>
         </View>
       )}
+      {tier === 'balance' && mode !== 'coach' && plan && !busy && items.length > 0 ? (
+        <View style={{ marginTop: 12, gap: 4 }}>
+          <PpButton
+            label={i18n.t(coachBusy ? 'pp.preview_coach_busy' : 'pp.preview_coach_cta')}
+            onPress={() => void personalize()}
+            kind="ghost"
+            disabled={coachBusy}
+            a11yHint={i18n.t('pp.preview_coach_cta_sub')}
+            testID="pp-preview-coach"
+          />
+          <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }}>
+            {i18n.t('pp.preview_coach_cta_sub')}
+          </AppText>
+          {coachMsg ? (
+            <AppText textRole="helper" style={{ color: P.ink, textAlign: 'center' }} accessibilityLiveRegion="polite" testID="pp-preview-coach-msg">
+              {coachMsg}
+            </AppText>
+          ) : null}
+        </View>
+      ) : null}
       {freeLocked ? (
         <>
           {/* 2.–7. gün: bulanık önizleme (azaltılmış saydamlıkta düz örtü + kilit rozeti) */}

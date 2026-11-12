@@ -10,11 +10,14 @@
 //   etkin tempo düşer, hedef tarihi kayar ve kullanıcıya söylenir.
 // - Tempo 0,25 / 0,5 / 0,75 kg/hafta; 0,75 yalnız ≤ vücut ağırlığının %1'i ise açık.
 //   Kas kazan yalnız 0,25 / 0,5.
+// - G36 md.11 (İlter 12 Kas): kas kazan fazlası üst sınırı +300 kcal/gün — 0,25 → +275,
+//   0,5 → +300 (kırpılır); etkin tempo ve hedef tarihi kırpılmış fazladan hesaplanır.
 // - VKİ < 18,5 → "Kilo ver" sunulmaz. 18 yaş altı → akış kapalı.
 // - Protein 1,8 g/kg · yağ kalorinin %27'si · karbonhidrat kalan.
 // "Nasıl hesapladık?" ara değerleri BURADAN gelir (gerçek hesap; sahte sayı yok).
 
-export const PLAN_ALGO_VERSION = 1;
+// 2 = G36 md.11 (kas kazan fazlası +300 kcal üst sınırı).
+export const PLAN_ALGO_VERSION = 2;
 
 export type PpGoal = 'lose' | 'maintain' | 'gain' | 'balanced';
 export type PpGender = 'female' | 'male' | 'unspecified';
@@ -38,6 +41,8 @@ export const FAT_RATIO = 0.27;
 export const BMI_UNDERWEIGHT = 18.5;
 export const MIN_AGE = 18;
 export const MAX_WEEKLY_RATIO = 0.01; // haftalık hız ≤ vücut ağırlığının %1'i
+/** G36 md.11: kas kazan günlük fazlası en çok +300 kcal. */
+export const GAIN_SURPLUS_MAX = 300;
 
 /** Kalori tabanı: kadın 1200; erkek ve belirtmeyen 1500. */
 export function calorieFloor(gender: PpGender): number {
@@ -205,6 +210,8 @@ export interface PpCalcSteps {
   floor: number;
   /** Taban devreye girdi mi (Kilo ver). */
   floored: boolean;
+  /** G36 md.11: kas kazan fazlası kırpıldıysa kırpılmadan önceki fazla (kcal, ör. 550); yoksa yok. */
+  surplusUncapped?: number | null;
 }
 
 export interface PpMacros {
@@ -269,6 +276,11 @@ export function paceForDelta(delta: number): number {
   return round2((delta * 7) / KCAL_PER_KG);
 }
 
+/** Kas kazan günlük fazlası: tempo × 7700 / 7, en çok +300 kcal (0,25 → 275, 0,5 → 300). */
+export function gainSurplus(pace: number): number {
+  return Math.min(deltaForPace(pace), GAIN_SURPLUS_MAX);
+}
+
 /** Girdi hesaplanabilir mi? (Geçersiz → null; ekran Hata hâlini gösterir.) */
 export function inputComplete(i: Partial<PpCalcInput>, currentYear: number): i is PpCalcInput {
   if (!i.goal || !i.gender || !i.birthYear || !i.heightCm || !i.weightKg || !i.activity) return false;
@@ -289,11 +301,18 @@ export function computePlan(input: PpCalcInput, currentYear: number, startIso: s
   const hasTarget = goalNeedsTarget(goal) && targetValid(goal, weightKg, input.heightCm, input.targetWeightKg ?? null);
   const requestedPace = hasTarget ? clampPace(goal, (input.pace ?? 0.5) as PpPace, weightKg) : 0;
   let requestedDelta = 0;
+  let surplusUncapped: number | null = null;
   if (goal === 'lose') requestedDelta = deltaForPace(requestedPace);
-  else if (goal === 'gain') requestedDelta = -deltaForPace(requestedPace);
+  else if (goal === 'gain') {
+    const full = deltaForPace(requestedPace);
+    requestedDelta = -gainSurplus(requestedPace);
+    if (full > GAIN_SURPLUS_MAX) surplusUncapped = full;
+  }
 
   const rawCalories = tdee - requestedDelta;
   let calories = round10(rawCalories);
+  // Yuvarlama üst sınırı aşmasın (tdee + 300'ün altındaki en yakın 10'a).
+  if (goal === 'gain') calories = Math.min(calories, Math.floor((tdee + GAIN_SURPLUS_MAX) / 10) * 10);
   let floored = false;
   if (calories < floor) {
     calories = floor;
@@ -303,7 +322,7 @@ export function computePlan(input: PpCalcInput, currentYear: number, startIso: s
   // Etkin tempo: kilo ver'de (tdee − kalori); kas kazan'da (kalori − tdee).
   let effectivePace = 0;
   if (goal === 'lose') effectivePace = floored ? Math.max(0, paceForDelta(tdee - calories)) : requestedPace;
-  else if (goal === 'gain') effectivePace = requestedPace;
+  else if (goal === 'gain') effectivePace = surplusUncapped != null ? paceForDelta(-requestedDelta) : requestedPace;
 
   let weeks: number | null = null;
   let requestedWeeks: number | null = null;
@@ -331,6 +350,7 @@ export function computePlan(input: PpCalcInput, currentYear: number, startIso: s
       rawCalories,
       floor,
       floored,
+      ...(surplusUncapped != null ? { surplusUncapped } : {}),
     },
     calories,
     macros: computeMacros(calories, weightKg),
@@ -492,13 +512,14 @@ export function checkinSuggestion(
   if (plan.goal === 'gain') {
     // avgRate burada kazanım hızı (+ = kazanıyor).
     if (avgRate > Math.max(plan.pace * 1.5, plan.pace + 0.25)) {
-      const newCalories = Math.max(floor, round10(estTdee + deltaForPace(plan.pace)));
+      const newCalories = Math.max(floor, round10(estTdee + gainSurplus(plan.pace)));
       if (newCalories >= plan.calories) return { ...withEst, kind: 'on_track' };
       const newPace = paceForDelta(newCalories - estTdee);
       return { ...withEst, kind: 'fast', newCalories, newPace, newMacros: computeMacros(newCalories, last.weightKg), newTargetDate: dateFor(newPace) };
     }
     if (avgRate < plan.pace * 0.5) {
-      const newCalories = Math.min(round10(estTdee + deltaForPace(plan.pace)), plan.calories + 150);
+      // G36 md.11: öneri de +300 kcal fazla sınırını aşmaz.
+      const newCalories = Math.min(round10(estTdee + gainSurplus(plan.pace)), Math.floor((estTdee + GAIN_SURPLUS_MAX) / 10) * 10, plan.calories + 150);
       if (newCalories <= plan.calories) return { ...withEst, kind: 'on_track' };
       const newPace = Math.max(0, paceForDelta(newCalories - estTdee));
       return { ...withEst, kind: 'slow', newCalories, newPace, newMacros: computeMacros(newCalories, last.weightKg), newTargetDate: dateFor(newPace) };

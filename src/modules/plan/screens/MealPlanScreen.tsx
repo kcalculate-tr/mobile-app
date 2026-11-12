@@ -19,6 +19,8 @@ import { SLOTS } from '../types';
 import { usePlanStore, itemAt } from '../store';
 import { dayTitle, rollingWeeks, weekDays, weekRange, weekStartOf } from '../week';
 import { loadEatkcalOptions, logPlanItem, unlogPlanItem, userInIzmir } from '../actions';
+import { planConsumedAt } from '../logTime';
+import { usePersonalPlanEntry } from '../../personalPlan/ui/entries';
 import { AddSheet } from '../ui/AddSheet';
 import { DayCard, DayChips, GLASS, LogDot, PlanToast, SlotRow, usePlanTones } from '../ui/parts';
 
@@ -40,6 +42,9 @@ export default function MealPlanScreen() {
   const target = summary?.targetKcal ? { kcal: Math.round(summary.targetKcal), protein: Math.round(summary.targetProtein || DEFAULT_TARGET.protein) } : DEFAULT_TARGET;
 
   const today = dayKey();
+  // G36 md.4: geçmiş gün Logla → o günün tarihi + kişisel plandaki öğün saati (yoksa varsayılan).
+  const { saved: personalPlan } = usePersonalPlanEntry();
+  const mealTimes = personalPlan?.answers.meals.times ?? null;
   const weeks = useMemo(() => rollingWeeks(today), [today]);
   const [wi, setWi] = useState(() => Math.max(0, weeks.indexOf(params.weekStart ?? weekStartOf(today))));
   const ws = weeks[wi] ?? weeks[0];
@@ -114,7 +119,7 @@ export default function MealPlanScreen() {
   const onLog = useCallback(
     async (it: PlanItem) => {
       haptic('success');
-      const [from, to, id] = await Promise.all([measure(logRefs.current[it.slot]), measure(targetRef.current), logPlanItem(it)]);
+      const [from, to, id] = await Promise.all([measure(logRefs.current[it.slot]), measure(targetRef.current), logPlanItem(it, planConsumedAt(it.date, it.slot, dayKey(), mealTimes))]);
       if (!id) {
         setToast({ msg: tr('plan.toast_failed'), key: Date.now() });
         return;
@@ -133,7 +138,7 @@ export default function MealPlanScreen() {
         },
       });
     },
-    [reduced, setLogged, tr, ws],
+    [mealTimes, reduced, setLogged, tr, ws],
   );
 
   const onAdd = useCallback(

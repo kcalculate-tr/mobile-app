@@ -192,6 +192,8 @@ export function setupNotificationListeners(
       const deepLink =
         (typeof data.deep_link === 'string' && data.deep_link) ||
         (typeof data.deepLink === 'string' && data.deepLink) ||
+        // G36 md.14: kişisel plan yerel bildirimleri (data.url = kcal://plan/...).
+        (typeof data.url === 'string' && data.url.startsWith('kcal://plan/') && data.url) ||
         null;
       const sendId = typeof data.send_id === 'string' ? data.send_id : null;
       const orderId = data.orderId != null ? Number(data.orderId) : null;

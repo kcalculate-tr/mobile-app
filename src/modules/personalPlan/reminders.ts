@@ -10,6 +10,7 @@ import { translate } from '../../core/i18n/core';
 import type { Lang } from '../../core/i18n/dictionaries';
 import type { PpMeals, PpReminders } from './types';
 import { planReminders } from './reminderPlan';
+import { reminderUrl } from '../../navigation/planLinks';
 
 export { planReminders, toExpoWeekday, type PlannedReminder } from './reminderPlan';
 
@@ -48,7 +49,8 @@ export async function syncPlanReminders(meals: PpMeals, r: PpReminders, lang: La
           : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: p.hour, minute: p.minute, ...(Platform.OS === 'android' ? { channelId: 'default' } : {}) };
       const id = await Notifications.scheduleNotificationAsync({
         identifier: p.id,
-        content: { title, body, data: { pp: p.kind, url: p.kind === 'weigh' ? 'kcal://plan/checkin' : 'kcal://plan/mine' } },
+        // G36 md.14: dokunuş → haftalık tartı / Öğün planı (bugün) — src/navigation/planLinks.ts.
+        content: { title, body, data: { pp: p.kind, url: reminderUrl(p.kind) } },
         trigger: trigger as Notifications.NotificationTriggerInput,
       });
       ids.push(id);

@@ -16,6 +16,8 @@ import {
   computeMacros,
   computePlan,
   editWarning,
+  GAIN_SURPLUS_MAX,
+  gainSurplus,
   goalAllowed,
   goalNeedsTarget,
   inputComplete,
@@ -199,11 +201,39 @@ test('koru / dengeli: açık yok, hedef tarihi yok', () => {
   }
 });
 
-test('kas kazan: fazla = tempo × 7700 / 7', () => {
+test('kas kazan: fazla = tempo × 7700 / 7 (0,25 → +275, kırpılmaz)', () => {
   const r = computePlan({ ...sample, goal: 'gain', targetWeightKg: 75, pace: 0.25 }, YEAR, START)!;
   assert.equal(r.steps.requestedDelta, -275);
   assert.equal(r.calories, round10(1992 + 275));
   assert.equal(r.weeks, 12);
+  assert.equal(r.effectivePace, 0.25);
+  assert.equal(r.steps.surplusUncapped, undefined);
+});
+
+test('G36 md.11: kas kazan 0,5 → fazla +300 (550 kırpılır); tempo ≈ 0,27; hedef tarihi kırpılmış fazladan', () => {
+  assert.equal(GAIN_SURPLUS_MAX, 300);
+  assert.equal(gainSurplus(0.25), 275);
+  assert.equal(gainSurplus(0.5), 300);
+  const r = computePlan({ ...sample, goal: 'gain', targetWeightKg: 75, pace: 0.5 }, YEAR, START)!;
+  assert.equal(r.requestedPace, 0.5);
+  assert.equal(r.steps.requestedDelta, -300);
+  assert.equal(r.steps.surplusUncapped, 550);
+  assert.equal(r.calories, 2290); // 1992 + 300 = 2292 → 2290
+  assert.equal(r.effectivePace, 0.27); // 300 × 7 / 7700
+  assert.equal(r.weeks, 12); // 3 kg ÷ 0,27 = 11,1 → 12 hafta
+  assert.equal(r.targetDate, addDays(START, 12 * 7));
+  assert.equal(r.requestedWeeks, 6); // 0,5 ile olacaktı
+  assert.equal(r.dateShifted, false); // taban kayması değil
+});
+
+test('G36 md.11: yuvarlama +300 sınırını aşmaz (bütün kilolarda kalori − TDEE ≤ 300)', () => {
+  for (let w = 50; w <= 110; w += 0.5) {
+    for (const pace of [0.25, 0.5] as const) {
+      const r = computePlan({ ...sample, weightKg: w, goal: 'gain', targetWeightKg: w + 3, pace }, YEAR, START);
+      if (!r) continue;
+      assert.ok(r.calories - r.steps.tdee <= GAIN_SURPLUS_MAX, `w=${w} pace=${pace}: ${r.calories} − ${r.steps.tdee}`);
+    }
+  }
 });
 
 test('hedef kilo: yön ve sağlıklı alt sınır (VKİ 18,5)', () => {
@@ -353,6 +383,22 @@ test('check-in: kas kazan yavaş → kalori artışı önerisi', () => {
   );
   assert.equal(s.kind, 'slow');
   assert.ok(s.newCalories! > 2270);
+});
+
+test('G36 md.11: check-in kas kazan yavaş önerisi de +300 fazlayı aşmaz', () => {
+  const s = checkinSuggestion(
+    [
+      { date: '2026-11-12', weightKg: 70 },
+      { date: '2026-11-19', weightKg: 70.2 },
+      { date: '2026-11-26', weightKg: 70.4 },
+      { date: '2026-12-03', weightKg: 70.6 },
+    ],
+    { goal: 'gain', calories: 2290, pace: 0.5, targetWeightKg: 75, gender: 'female', heightCm: 168 },
+    '2026-12-03',
+  );
+  assert.equal(s.kind, 'slow');
+  assert.equal(s.estTdee, 2070); // 2290 − 0,2 kg × 7700 / 7
+  assert.equal(s.newCalories, 2370); // en çok 2070 + 300 (eski kural 2440 verirdi)
 });
 
 test('weekIndex', () => {

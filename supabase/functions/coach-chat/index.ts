@@ -1,6 +1,6 @@
 // coach-chat — kcalAI Koç sohbeti. G24-S1 md.2. YALNIZ DOSYA: deploy edilmez, anahtar koda yazılmaz.
 //
-// POST { message: string (≤ 1000), lang?: 'tr'|'en', ref?: {type:'recipe',post_id} | {type:'scan',name,kcal,protein,carbs,fat} }
+// POST { message: string (≤ 1000), lang?: 'tr'|'en', ref?: {type:'recipe',post_id} | {type:'scan',name,kcal,protein,carbs,fat}, ai_consent?: boolean }
 //
 // Akış:
 //  1) JWT zorunlu (Authorization) → kullanıcı. Yoksa 401.
@@ -11,6 +11,8 @@
 //  5) reserve_coach_message() (kullanıcının JWT'siyle) → hak yoksa 402 {error:'quota', status}.
 //  6) Bağlam: bugünün toplamları + hedefler, son 7 gün kalori/protein, son öğünler, İzmir'deyse
 //     kısa eatkcal ürün listesi, herkese açık tarifler (kart beyaz listesi), son 20 mesaj.
+//     G36 md.13: kişisel plan (hedef, kalori/makro, tempo, hedef tarihi) YALNIZ Koç AI izni açıksa
+//     (son user_consents 'ai_coach' satırı; satır yoksa istemcinin ai_consent bildirimi) — plan.ts.
 //  7) Anthropic Messages API (ANTHROPIC_API_KEY, model COACH_MODEL, varsayılan analyze-ai-scan ile
 //     aynı) → JSON {type,text,cards}; JSON değilse yalnız metin. Model taban altı günlük kalori
 //     önerirse yanıt güvenli yanıtla değiştirilir.
@@ -24,6 +26,7 @@ import { createClient } from '@supabase/supabase-js'
 import { classifyMessage, minDailyKcal, replyViolatesFloor, safetyReply, type SafetyKind } from './safety.ts'
 import { buildSystemPrompt, type CoachContext } from './prompt.ts'
 import { parseModelReply, toModelHistory, type CoachCard } from './cards.ts'
+import { coachConsentGranted, personalPlanContext, type PersonalPlanCtx } from './plan.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -85,11 +88,30 @@ interface Ctx {
   products: Map<number, { name: string; kcal: number | null; price: number | null; img: string | null }>
 }
 
-async function buildContext(admin: Admin, uid: string, lang: 'tr' | 'en', refIn: unknown): Promise<Ctx> {
+/** G36 md.13: kişisel plan bağlamı — Koç AI izni yoksa / kolonlar yoksa / plan yoksa null. */
+async function loadPersonalPlan(admin: Admin, uid: string, clientConsent: unknown): Promise<PersonalPlanCtx | null> {
+  try {
+    const { data: consents } = await admin.from('user_consents')
+      .select('granted, created_at').eq('user_id', uid).eq('kind', 'ai_coach')
+      .order('created_at', { ascending: false }).limit(1)
+    const latest = ((consents ?? []) as { granted?: unknown }[])[0] ?? null
+    if (!coachConsentGranted(latest, clientConsent)) return null
+    // Ayrı sorgu: G34 kolonları canlıda yoksa ana profil sorgusu bozulmasın.
+    const { data, error } = await admin.from('user_nutrition_profiles')
+      .select('personal_plan, target_weight_kg, pace_kg_week, plan_target_date, plan_started_at, updated_at')
+      .eq('user_id', uid).order('updated_at', { ascending: false }).limit(1)
+    if (error) return null
+    return personalPlanContext(((data ?? []) as Record<string, unknown>[])[0] ?? null)
+  } catch {
+    return null
+  }
+}
+
+async function buildContext(admin: Admin, uid: string, lang: 'tr' | 'en', refIn: unknown, aiConsent: unknown): Promise<Ctx> {
   const today = istanbulDate(new Date())
   const weekStart = addDays(today, -6)
 
-  const [profRes, mealsRes, addrRes] = await Promise.all([
+  const [profRes, mealsRes, addrRes, personalPlan] = await Promise.all([
     admin.from('user_nutrition_profiles')
       .select('gender, target_calories, target_protein, target_carbs, target_fat, custom_calories, custom_protein, custom_carbs, custom_fat, use_custom_macros, updated_at')
       .eq('user_id', uid).order('updated_at', { ascending: false }).limit(1),
@@ -98,6 +120,7 @@ async function buildContext(admin: Admin, uid: string, lang: 'tr' | 'en', refIn:
       .eq('user_id', uid).gte('consumed_at', dayStartIso(weekStart))
       .order('consumed_at', { ascending: false }).limit(300),
     admin.from('addresses').select('city').eq('user_id', uid).limit(20),
+    loadPersonalPlan(admin, uid, aiConsent),
   ])
 
   const prof = ((profRes?.data ?? []) as Record<string, unknown>[])[0] ?? {}
@@ -221,6 +244,7 @@ async function buildContext(admin: Admin, uid: string, lang: 'tr' | 'en', refIn:
     products: [...products.entries()].map(([id, p]) => ({ id, name: p.name, kcal: p.kcal, protein: null })),
     recipes: [...recipes.entries()].map(([post_id, p]) => ({ post_id, name: p.name, kcal: p.kcal, protein: p.protein })),
     ref,
+    personalPlan,
   }
   return { context, recipes, products }
 }
@@ -274,7 +298,7 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: authErr } = await authed.auth.getUser()
   if (authErr || !user) return json({ error: 'unauthorized' }, 401)
 
-  let body: { message?: unknown; lang?: unknown; ref?: unknown }
+  let body: { message?: unknown; lang?: unknown; ref?: unknown; ai_consent?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -346,7 +370,7 @@ Deno.serve(async (req: Request) => {
   let ctx: Ctx
   let history: { role: 'user' | 'assistant'; content: string }[] = []
   try {
-    ctx = await buildContext(admin, user.id, lang, body.ref)
+    ctx = await buildContext(admin, user.id, lang, body.ref, body.ai_consent)
     const { data: hist } = await admin.from('coach_messages')
       .select('role, body, created_at').eq('user_id', user.id)
       .order('created_at', { ascending: false }).limit(HISTORY)

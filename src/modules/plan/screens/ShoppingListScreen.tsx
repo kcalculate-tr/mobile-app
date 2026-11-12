@@ -2,12 +2,12 @@
 // birleşik (aynı malzeme toplanır) · işaretle → Alındı · Temizle · Düzenle (sil) · Elle ekle · Paylaş ·
 // Plan yok hâli · "Bu hafta N öğün eatkcal'dan" kartı → eatkcal sepeti → sepete ekle → "Sepete git".
 // Fresh ve üstü (Ücretsiz → paywall). `ogun_plani` bayrağı arkasında.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { AppText, PLAN_MOTION, REDUCED, Sheet, haptic, useReducedMotion } from '../../../core/design';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { AppText, PLAN_MOTION, REDUCED, SHEET, Sheet, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { ArrowLeft, CaretRight, Check, Export, MapPin, MinusCircle, Plus, ShoppingCart } from '../../../components/icons';
@@ -20,7 +20,7 @@ import { usePlanStore } from '../store';
 import { buildShoppingList, eatkcalMeals, groupShopping, recipeCountOf, type ShopLine } from '../shopping';
 import { dayName, weekRange, weekStartOf } from '../week';
 import { planAccess } from '../access';
-import { addPlanMealsToCart } from '../actions';
+import { addPlanMealsToCart, type BasketChoice } from '../actions';
 import { localId } from '../generate';
 import { GLASS, PlanToast, Thumb, usePlanTones } from '../ui/parts';
 
@@ -74,7 +74,29 @@ export default function ShoppingListScreen() {
   const [draft, setDraft] = useState('');
   const [basket, setBasket] = useState(false);
   const [inCart, setInCart] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; go?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; action?: 'cart' | 'next' } | null>(null);
+  // G36 md.5: seçim (gramaj / zorunlu seçenek) isteyen öğünler atlanmaz — sırayla ürün sayfası açılır.
+  const pendingChoice = useRef<BasketChoice[]>([]);
+  const openProduct = useCallback(
+    (p: BasketChoice, delay = 0) => {
+      const go = () => nav.navigate('ProductDetail', { productId: p.id });
+      if (delay > 0) setTimeout(go, delay);
+      else go();
+    },
+    [nav],
+  );
+  const openNextChoice = useCallback(() => {
+    const next = pendingChoice.current.shift();
+    setToast(null);
+    if (next) openProduct(next);
+  }, [openProduct]);
+  // Ürün sayfasından dönünce sıradaki seçim bekleyen öğün hatırlatılır.
+  useFocusEffect(
+    useCallback(() => {
+      const next = pendingChoice.current[0];
+      if (next) setToast({ msg: tr('plan.basket_next_msg', { name: next.name }), action: 'next' });
+    }, [tr]),
+  );
 
   const name = (l: ShopLine) => (lang === 'en' ? l.nameEn : l.nameTr);
   const qty = (l: ShopLine) => `${l.quantity} ${tr(`plan.unit.${l.unit}`)}`;
@@ -242,14 +264,24 @@ export default function ShoppingListScreen() {
           setBasket(false);
           haptic('success');
           if (r.added > 0) setInCart(true);
-          setToast({ msg: r.skipped ? tr('plan.basket_failed') : tr('plan.basket_added', { n: r.added }), go: r.added > 0 });
+          const parts = [
+            r.added > 0 ? tr('plan.basket_added', { n: r.added }) : null,
+            r.choice.length > 0 ? tr('plan.basket_choice', { n: r.choice.length }) : null,
+            r.missing > 0 ? tr('plan.basket_missing', { n: r.missing }) : null,
+          ].filter(Boolean);
+          const msg = parts.length ? parts.join(', ') : tr('plan.basket_failed');
+          const [first, ...rest] = r.choice;
+          pendingChoice.current = rest;
+          // Sayfa kapanma hareketi bitince ürün sayfası (seçim sonrası sepete orada eklenir).
+          if (first) openProduct(first, SHEET.eat.closeDuration + 50);
+          setToast({ msg, action: rest.length ? 'next' : r.added > 0 || first ? 'cart' : undefined });
         }}
       />
       <PlanToast
         visible={!!toast}
         message={toast?.msg ?? ''}
-        actionLabel={tr('plan.basket_go')}
-        onAction={toast?.go ? () => nav.navigate('EkCart') : undefined}
+        actionLabel={toast?.action === 'next' ? tr('plan.basket_next') : tr('plan.basket_go')}
+        onAction={toast?.action === 'next' ? openNextChoice : toast?.action === 'cart' ? () => nav.navigate('EkCart') : undefined}
         onHide={() => setToast(null)}
         bottom={insets.bottom + 16}
       />

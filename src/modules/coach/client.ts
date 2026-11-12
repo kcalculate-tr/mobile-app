@@ -60,8 +60,12 @@ export interface SendResult {
 }
 
 export async function sendCoachMessage(message: string, lang: 'tr' | 'en', ref?: CoachRef | null): Promise<SendResult> {
+  // G36 md.13: kişisel plan bağlamı yalnız Koç AI izni açıksa (sunucu son rıza satırını da denetler).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { hasCoachConsent } = require('./access') as typeof import('./access'); // access → client döngüsü yok
+  const aiConsent = await hasCoachConsent().catch(() => false);
   const { data, error } = await sb().functions.invoke('coach-chat', {
-    body: { message, lang, ...(ref ? { ref } : {}) },
+    body: { message, lang, ai_consent: aiConsent, ...(ref ? { ref } : {}) },
   });
   if (error) throw await coachErrorFromInvoke(error);
   const d = (data ?? {}) as Record<string, unknown>;

@@ -215,7 +215,7 @@ test('ilk mesajdan önce AYRI AI izni; kabul → gönderilir, yanıt "Koç:" eti
   await flush();
   await waitFor(() => expect(r.getByTestId('coach-reply')).toBeTruthy());
   expect(JSON.parse((await AsyncStorage.getItem(COACH_CONSENT_KEY)) ?? '{}').granted).toBe(true);
-  expect(mockInvoke).toHaveBeenCalledWith('coach-chat', { body: { message: 'Proteinimi nasıl tamamlarım?', lang: 'tr' } });
+  expect(mockInvoke).toHaveBeenCalledWith('coach-chat', { body: { message: 'Proteinimi nasıl tamamlarım?', lang: 'tr', ai_consent: true } }); // G36 md.13: izin bildirimi
   expect(r.getByTestId('coach-me').props.accessibilityLabel).toBe('Sen: Proteinimi nasıl tamamlarım?');
   expect(r.getByTestId('coach-reply').props.accessibilityLabel).toBe('Koç: Protein hedefine 38 g kaldı.');
   await act(async () => {
