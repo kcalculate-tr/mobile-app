@@ -418,7 +418,7 @@ describe('Alışveriş listesi', () => {
     });
     const r = await openBasketAndAdd();
     expect(mockNav.navigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p7' });
-    expect(r.getByText('1 öğün sepete eklendi · 2 öğün için seçim gerekli · 1 öğün satışta değil')).toBeTruthy();
+    expect(r.getByText('1 öğün sepete eklendi, 2 öğün için seçim gerekli, 1 öğün satışta değil')).toBeTruthy();
     expect(r.getByText('Sıradaki')).toBeTruthy();
     fireEvent.press(r.getByTestId('plan-toast-action'));
     expect(mockNav.navigate).toHaveBeenCalledWith('ProductDetail', { productId: 'p8' });

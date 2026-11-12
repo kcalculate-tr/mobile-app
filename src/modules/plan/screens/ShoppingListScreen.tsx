@@ -269,7 +269,7 @@ export default function ShoppingListScreen() {
             r.choice.length > 0 ? tr('plan.basket_choice', { n: r.choice.length }) : null,
             r.missing > 0 ? tr('plan.basket_missing', { n: r.missing }) : null,
           ].filter(Boolean);
-          const msg = parts.length ? parts.join(' · ') : tr('plan.basket_failed');
+          const msg = parts.length ? parts.join(', ') : tr('plan.basket_failed');
           const [first, ...rest] = r.choice;
           pendingChoice.current = rest;
           // Sayfa kapanma hareketi bitince ürün sayfası (seçim sonrası sepete orada eklenir).
