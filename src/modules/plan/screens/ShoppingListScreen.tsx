@@ -15,6 +15,7 @@ import { formatPrice } from '../../../lib/money';
 import { useTier } from '../../../lib/subscription/purchases';
 import { dayKey } from '../../gun/track/dayClock';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { CountPill } from '../../../core/design/components/CountPill';
 import type { PlanItem, ShopCategory } from '../types';
 import { usePlanStore } from '../store';
 import { buildShoppingList, eatkcalMeals, groupShopping, recipeCountOf, type ShopLine } from '../shopping';
@@ -222,9 +223,16 @@ export default function ShoppingListScreen() {
 
             {groups.map((g) => (
               <Animated.View key={g.category} layout={layout} style={styles.groupWrap}>
-                <AppText style={[styles.groupH, { color: c.ink }]} accessibilityRole="header">
-                  {tr(`plan.shop_cat.${g.category}`)} <AppText style={[styles.small, { color: c.sec }]}>({g.lines.length})</AppText>
-                </AppText>
+                {/* G38 md.4: "Sebze (3)" yerine başlık + sayı hapı. */}
+                <View
+                  style={styles.doneTitle}
+                  accessible
+                  accessibilityRole="header"
+                  accessibilityLabel={`${tr(`plan.shop_cat.${g.category}`)}, ${g.lines.length}`}
+                >
+                  <AppText style={[styles.groupH, { color: c.ink }]}>{tr(`plan.shop_cat.${g.category}`)}</AppText>
+                  <CountPill count={g.lines.length} bg={c.line} fg={c.ink} testID={`shop-cat-count-${g.category}`} />
+                </View>
                 <View style={[styles.group, { backgroundColor: c.card }]}>
                   {g.lines.map((l, i) => (
                     <Line key={l.id} l={l} first={i === 0} edit={edit} name={name(l)} qty={qty(l)} onToggle={() => toggle(l)} onRemove={() => remove(l)} />
@@ -236,9 +244,16 @@ export default function ShoppingListScreen() {
             {done.length ? (
               <Animated.View layout={layout} style={styles.groupWrap}>
                 <View style={styles.doneHead}>
-                  <AppText style={[styles.groupH, { color: c.ink }]} accessibilityRole="header">
-                    {tr('plan.shop_bought', { n: done.length })}
-                  </AppText>
+                  {/* G38 md.4: "Alındı (3)" yerine başlık + sayı hapı. */}
+                  <View
+                    style={styles.doneTitle}
+                    accessible
+                    accessibilityRole="header"
+                    accessibilityLabel={tr('plan.shop_bought_a11y', { n: done.length })}
+                  >
+                    <AppText style={[styles.groupH, { color: c.ink }]}>{tr('plan.shop_bought')}</AppText>
+                    <CountPill count={done.length} bg={c.ink} fg={c.card} testID="shop-bought-count" />
+                  </View>
                   <Pressable onPress={clearDone} accessibilityRole="button" style={styles.textBtn} testID="shop-clear">
                     <AppText style={[styles.clearText, { color: c.ink }]}>{tr('plan.shop_clear')}</AppText>
                   </Pressable>
@@ -395,8 +410,16 @@ function BasketSheet({ visible, meals, lang, onClose, onAdd }: { visible: boolea
         <AppText style={[styles.groupH, { color: c.ink }]}>{formatPrice(total)}</AppText>
       </View>
       <AppText style={[styles.small, { color: c.sec }]}>{tr('plan.basket_note')}</AppText>
-      <Pressable onPress={onAdd} accessibilityRole="button" style={[styles.basketCta, { backgroundColor: c.lime }]} testID="shop-basket-add">
-        <AppText style={[styles.basketCtaText, { color: c.onLime }]}>{tr('plan.basket_cta', { price: formatPrice(total) })}</AppText>
+      <Pressable
+        onPress={onAdd}
+        accessibilityRole="button"
+        accessibilityLabel={tr('plan.basket_cta_a11y', { price: formatPrice(total) })}
+        style={[styles.basketCta, { backgroundColor: c.lime }]}
+        testID="shop-basket-add"
+      >
+        {/* G38 md.4: "Sepete ekle (285 TL)" yerine etiket + ayrı kalın fiyat. */}
+        <AppText style={[styles.basketCtaText, { color: c.onLime }]}>{tr('plan.basket_cta')}</AppText>
+        <AppText style={[styles.basketCtaPrice, { color: c.onLime }]} testID="shop-basket-price">{formatPrice(total)}</AppText>
       </Pressable>
     </Sheet>
   );
@@ -447,6 +470,8 @@ const styles = StyleSheet.create({
   blackBtn: { minHeight: 48, borderRadius: 24, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   blackBtnText: { fontSize: 15, fontWeight: '700' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 },
-  basketCta: { marginTop: 12, minHeight: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  basketCta: { marginTop: 12, minHeight: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
   basketCtaText: { fontSize: 16, fontWeight: '700' },
+  basketCtaPrice: { fontSize: 17, fontWeight: '800' },
+  doneTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

@@ -48,6 +48,8 @@ export interface GramajOptionNorm {
   fats_modifier: number;
   is_default: boolean;
   display_order: number;
+  /** G38: gramaj seçeneğinin kendi görseli (panel jsonb'ye `image_url` yazdıysa). Yoksa alan yok. */
+  image_url?: string;
 }
 
 // ── Başlangıç seçimleri ────────────────────────────────────────────────────
@@ -83,6 +85,7 @@ export function normalizeGramajOptions(product: Product | null | undefined): Gra
   const raw = Array.isArray(product?.gramaj_options) ? (product!.gramaj_options as unknown[]) : [];
   return raw
     .map((g: any, idx: number) => ({
+      ...(typeof g?.image_url === 'string' && g.image_url.trim() ? { image_url: g.image_url.trim() } : {}),
       name: String(g?.name ?? '').trim(),
       price_modifier: Number(g?.price_modifier) || 0,
       calorie_modifier: Number(g?.calorie_modifier) || 0,

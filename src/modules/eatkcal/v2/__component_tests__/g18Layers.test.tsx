@@ -36,11 +36,13 @@ const base = {
   onGoCart: jest.fn(),
 };
 
-test('tek alt katman: "Sepete ekle (285 TL)", makro satırı aynı katmanda, ₺ yok', () => {
+test('tek alt katman: "Sepete ekle" + ayrı fiyat "285 TL", makro satırı aynı katmanda, ₺ yok', () => {
   const { getByTestId, getByText, queryByTestId } = render(<ProductBottomBar {...base} />);
   expect(getByTestId('ek-product-bar')).toBeTruthy();
   expect(getByTestId('ek-product-layer-macros')).toBeTruthy();
   expect(getByText('285 TL')).toBeTruthy();
+  expect(getByText('Sepete ekle')).toBeTruthy();
+  expect(getByTestId('ek-product-add').props.accessibilityLabel).toBe('Sepete ekle, 285 TL');
   expect(getByText('540 kcal')).toBeTruthy();
   expect(getByText('P 42')).toBeTruthy();
   expect(queryByTestId('ek-product-live-strip')).toBeNull(); // ayrı makro şeridi YOK
@@ -63,7 +65,7 @@ test('kuruşlu tutar virgülle: 285,50 TL', () => {
   expect(getByText('285,50 TL')).toBeTruthy();
 });
 
-test('yüzen sepet çubuğu: sepet boşken yok, ürün varken "Sepet (N)" · toplam · "Sepete git"', () => {
+test('yüzen sepet çubuğu: sepet boşken yok, ürün varken "Sepet" + sayı hapı, toplam, "Sepete git"', () => {
   useCartStore.getState().clearCart();
   const onPress = jest.fn();
   const r = render(<EkCartBar bottom={98} onPress={onPress} />);
@@ -73,7 +75,9 @@ test('yüzen sepet çubuğu: sepet boşken yok, ürün varken "Sepet (N)" · top
     useCartStore.getState().addItem(p, {}, 2);
   });
   expect(r.getByTestId('ek-cart-bar')).toBeTruthy();
-  expect(r.getByText('Sepet (2)')).toBeTruthy();
+  expect(r.getByTestId('ek-cart-bar-label')).toHaveTextContent('Sepet');
+  expect(r.getByTestId('ek-cart-bar-count', { includeHiddenElements: true })).toHaveTextContent('2');
+  expect(r.queryByText('Sepet (2)')).toBeNull();
   expect(r.getByText('570 TL')).toBeTruthy();
   expect(r.getByText('Sepete git')).toBeTruthy();
   fireEvent.press(r.getByRole('link'));

@@ -281,15 +281,15 @@ export function ProductBottomBar({
               ]}
               testID="ek-product-add"
             >
-              <Text style={[styles.ctaText, ekType.num, { color: ready ? c.surface : lc.disText }]} numberOfLines={1}>
-                {`${t('eatkcal.v2.product.add_to_cart')} (`}
+              {/* G38 md.4: "Sepete ekle (285 TL)" yerine etiket + araya boşluk + ayrı kalın fiyat (parantez/nokta yok). */}
+              <Text style={[styles.ctaText, { color: ready ? c.surface : lc.disText }]} numberOfLines={1} testID="ek-product-add-label">
+                {t('eatkcal.v2.product.add_to_cart')}
               </Text>
               <Animated.View style={rollStyle}>
-                <Text style={[styles.ctaText, ekType.num, { color: ready ? c.surface : lc.disText }]} numberOfLines={1}>
+                <Text style={[styles.ctaPrice, ekType.num, { color: ready ? c.surface : lc.disText }]} numberOfLines={1} testID="ek-product-add-price">
                   {money(price)}
                 </Text>
               </Animated.View>
-              <Text style={[styles.ctaText, { color: ready ? c.surface : lc.disText }]}>)</Text>
             </Pressable>
           </Animated.View>
         )}
@@ -340,8 +340,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 0,
+    gap: 10,
   },
   ctaText: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 20 },
+  ctaPrice: { fontFamily: fontFamily.bodyExtrabold, fontSize: 16, lineHeight: 20 },
   chk: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
 });

@@ -10,6 +10,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
+import { CountPill } from '../../../../../core/design/components/CountPill';
 import { CaretRight } from '../../../../../components/icons';
 import { DURATION, RN_CURVE, SPRING, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { useCartStore } from '../../../../../store/cartStore';
@@ -98,7 +99,9 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
     opacity: roll,
     transform: reduced ? [] : [{ translateY: roll.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   };
-  const label = t('eatkcal.v2.home.cart_n', { count });
+  // G38 md.4: "Sepet (1)" yerine "Sepet" + sayı hapı; sesli etikette sayı düz metin.
+  const label = t('eatkcal.v2.home.cart');
+  const a11yCount = t('eatkcal.v2.home.cart_count', { count });
 
   return (
     <Animated.View
@@ -121,16 +124,17 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
           onPress();
         }}
         accessibilityRole="link"
-        accessibilityLabel={`${label}, ${money(total)}, ${t('eatkcal.v2.home.go_cart')}`}
+        accessibilityLabel={`${a11yCount}, ${money(total)}, ${t('eatkcal.v2.home.go_cart')}`}
         style={({ pressed }) => [
           styles.bar,
           { shadowColor: theme.isDark ? '#000000' : '#0A0A0A', shadowOpacity: theme.isDark ? 0.5 : 0.16, opacity: pressed ? 0.92 : 1 },
         ]}
       >
-        <Animated.View style={[styles.side, rollStyle]}>
-          <Text style={[styles.b15, ekType.num, { color: c.onAccent }]} numberOfLines={1}>
+        <Animated.View style={[styles.side, styles.labelRow, rollStyle]}>
+          <Text style={[styles.b15, { color: c.onAccent }]} numberOfLines={1} testID="ek-cart-bar-label">
             {label}
           </Text>
+          <CountPill count={count} bg={c.onAccent} fg="#C6F04F" testID="ek-cart-bar-count" />
         </Animated.View>
         <Animated.View style={rollStyle}>
           <Text style={[styles.total, ekType.num, { color: c.onAccent }]} numberOfLines={1} testID="ek-cart-bar-total">
@@ -164,6 +168,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   side: { flex: 1, minWidth: 0 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   end: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
   b15: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 20 },
   total: { fontFamily: fontFamily.headingBold, fontSize: 17, lineHeight: 22, textAlign: 'center' },

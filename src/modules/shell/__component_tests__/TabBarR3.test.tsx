@@ -114,9 +114,13 @@ describe('TabBarR3 (yeni kabuk)', () => {
     useCartStore.setState({ items: [{ quantity: 2 } as any], appliedCoupon: null });
     const homeIndex = R3_ROUTES.indexOf('Home');
     const { props, navigate } = makeProps(R3_ROUTES, homeIndex);
-    const { getByText } = render(<TabBarR3 {...props} />);
-    const pill = getByText('Sepet (2)');
-    expect(pill).not.toBeNull();
+    const { getByText, getByTestId, queryByText } = render(<TabBarR3 {...props} />);
+    // G38 md.4: "Sepet (2)" yerine "Sepet" + sayı hapı; sesli etikette düz sayı.
+    expect(getByText('Sepet')).toBeTruthy();
+    expect(getByTestId('shell-cart-count', { includeHiddenElements: true })).toHaveTextContent('2');
+    expect(queryByText('Sepet (2)')).toBeNull();
+    const pill = getByTestId('shell-cart-pill');
+    expect(pill.props.accessibilityLabel).toBe('Sepet, 2 ürün');
     const { fireEvent } = require('@testing-library/react-native');
     fireEvent.press(pill);
     expect(navigate).toHaveBeenCalledWith('Cart');

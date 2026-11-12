@@ -311,11 +311,16 @@ export default function EkCartScreen() {
           <Pressable
             onPress={handleContinue}
             accessibilityRole="button"
-            style={[styles.cta, { backgroundColor: c.ink }]}
+            accessibilityLabel={t('eatkcal.v2.cart.continue_a11y', { amount: money(total) })}
+            style={[styles.cta, styles.ctaRow, { backgroundColor: c.ink }]}
             testID="ek-cart-continue"
           >
-            <Text style={[ekType.b17, ekType.num, { color: c.surface }]}>
-              {t('eatkcal.v2.cart.continue', { amount: money(total) })}
+            {/* G38 md.4: "Siparişe devam (285 TL)" yerine etiket + ayrı kalın fiyat. */}
+            <Text style={[ekType.b17, { color: c.surface }]} numberOfLines={1} testID="ek-cart-continue-label">
+              {t('eatkcal.v2.cart.continue')}
+            </Text>
+            <Text style={[ekType.b17, ekType.num, styles.ctaPrice, { color: c.surface }]} numberOfLines={1} testID="ek-cart-continue-price">
+              {money(total)}
             </Text>
           </Pressable>
         </EkStickyBar>
@@ -589,4 +594,6 @@ const styles = StyleSheet.create({
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   fill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
   cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  ctaRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
+  ctaPrice: { fontFamily: 'PlusJakartaSans_800ExtraBold' },
 });

@@ -239,7 +239,9 @@ export function GunViewer({
               </AppText>
             ) : card ? (
               <AppText variant="caption" style={styles.headerMeta}>
-                {`${tt(MEAL_I18N[card.meal_type] ?? 'meal.snack')} (${cardIdx + 1}/${cards.length})`}
+                {/* G38 md.4: sayaç parantezsiz, ayrı metin ("Öğle  2/5"). */}
+                {tt(MEAL_I18N[card.meal_type] ?? 'meal.snack')}
+                <AppText variant="caption" style={[styles.headerMeta, styles.headerCount]}>{`  ${cardIdx + 1}/${cards.length}`}</AppText>
               </AppText>
             ) : null}
             <Pressable onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={tt('common.close')}>
@@ -357,6 +359,7 @@ const styles = StyleSheet.create({
   avatarSmallImg: { width: '100%', height: '100%' },
   headerName: { color: '#FFFFFF', fontWeight: '700' },
   headerMeta: { color: 'rgba(255,255,255,0.8)' },
+  headerCount: { opacity: 0.8, fontVariant: ['tabular-nums'] },
   closeBtn: { marginLeft: 'auto', width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bottomCard: { position: 'absolute', left: 12, right: 12, borderRadius: 20, padding: 16 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

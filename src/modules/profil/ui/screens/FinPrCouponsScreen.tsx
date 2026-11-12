@@ -20,6 +20,7 @@ import { formatDate, gunKaldi, indirimEtiketi } from '../../../../lib/campaignVi
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { FinHeader, FinScreen, FinCard, FinSegmented, FinSecondaryButton, body, bodyBold, bodyMedium, bodySemibold, heading } from '../finUi';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
+import { CountPill } from '../../../../core/design/components/CountPill';
 
 export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
@@ -140,9 +141,19 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
               </FinCard>
             ) : null}
 
-            <Text style={{ fontFamily: heading, fontSize: 20, color: t.color.ink }}>
-              {(tab === 0 ? tr('profil.coupons_all_offers') : tr('profil.coupons_tab_mine')) + ` (${list.length})`}
-            </Text>
+            {/* G38 md.4: "Tüm kampanyalar (3)" yerine başlık + sayı hapı. */}
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              accessible
+              accessibilityRole="header"
+              accessibilityLabel={`${tab === 0 ? tr('profil.coupons_all_offers') : tr('profil.coupons_tab_mine')}, ${list.length}`}
+              testID="coupons-list-title"
+            >
+              <Text style={{ fontFamily: heading, fontSize: 20, color: t.color.ink }}>
+                {tab === 0 ? tr('profil.coupons_all_offers') : tr('profil.coupons_tab_mine')}
+              </Text>
+              <CountPill count={list.length} bg={t.color.ink} fg={t.color.bg} testID="coupons-list-count" />
+            </View>
 
             {list.length === 0 ? (
               <FinCard style={{ alignItems: 'center', padding: 24, gap: 8 }}>

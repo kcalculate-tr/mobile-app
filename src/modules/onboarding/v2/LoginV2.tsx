@@ -278,8 +278,8 @@ export default function LoginV2({ vitrinStep }: { /** YALNIZ geliştirme vitrini
           <AppText textRole="bodySm" style={{ color: P.sec, textAlign: 'center' }}>
             {tv('resend')}{' '}
             {countdown > 0 ? (
-              <AppText textRole="bodySm" style={{ color: P.sec }}>
-                ({formatCountdown(countdown)})
+              <AppText textRole="bodySm" style={{ color: P.sec, fontVariant: ['tabular-nums'] }}>
+                {formatCountdown(countdown)}
               </AppText>
             ) : (
               <AppText textRole="bodySm" style={{ color: P.ink, fontFamily: 'PlusJakartaSans_700Bold' }}>

@@ -21,6 +21,7 @@ import Svg, { Path } from 'react-native-svg';
 import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
+import { CountPill } from '../../../core/design/components/CountPill';
 
 import { useSheetRise } from '../motion';
 import { useCommentsStore } from '../commentsStore';
@@ -270,9 +271,17 @@ export function CommentsSheet({
             ]}
           >
             <View style={[styles.handle, { backgroundColor: line2 }]} />
-            <AppText accessibilityRole="header" style={[styles.title, { color: t.color.ink }]}>
-              {`${tr('kesfet.comments.title')} (${fmt(shownCount)})`}
-            </AppText>
+            {/* G38 md.4: "Yorumlar (12)" yerine başlık + sayı hapı. */}
+            <View
+              style={styles.titleRow}
+              accessible
+              accessibilityRole="header"
+              accessibilityLabel={`${tr('kesfet.comments.title')}, ${fmt(shownCount)}`}
+              testID="comments-title"
+            >
+              <AppText style={[styles.title, { color: t.color.ink }]}>{tr('kesfet.comments.title')}</AppText>
+              <CountPill count={shownCount} max={999} bg={line2} fg={t.color.ink} testID="comments-count" />
+            </View>
 
             {loading && items.length === 0 ? (
               <View style={styles.center}>
@@ -432,6 +441,7 @@ const styles = StyleSheet.create({
   sheet: { flexShrink: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16 },
   handle: { width: 36, height: 5, borderRadius: 3, alignSelf: 'center', marginTop: 8, marginBottom: 16 },
   title: { textAlign: 'center', fontSize: 15, lineHeight: 21, fontFamily: fontFamily.bodyBold },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   center: { minHeight: 160, alignItems: 'center', justifyContent: 'center' },
   empty: { paddingTop: 40, paddingBottom: 60, alignItems: 'center', gap: 8 },
   emptyTitle: { fontFamily: fontFamily.headingBold, fontSize: 18, lineHeight: 24 },

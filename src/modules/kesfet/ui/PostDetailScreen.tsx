@@ -102,7 +102,7 @@ function IconCount({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole="button"
-      accessibilityLabel={count != null ? `${label} (${count})` : label}
+      accessibilityLabel={count != null ? `${label}, ${count}` : label}
       hitSlop={8}
       style={styles.iconCount}
     >

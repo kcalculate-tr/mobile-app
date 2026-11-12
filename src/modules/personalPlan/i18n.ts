@@ -49,7 +49,7 @@ export const tr = {
   known_height: 'Boy',
   known_weight: 'Kilo',
   known_activity: 'Hareket',
-  known_birth_v: '%{year} (%{age} yaş)',
+  known_birth_v: '%{year}, %{age} yaş',
   known_left: 'Kalan %{n} soru var: %{list}. Yaklaşık 1 dakika.',
   edit_a11y: '%{label} düzenle',
   // 1 Hedef
@@ -537,7 +537,7 @@ export const en: typeof tr = {
   known_height: 'Height',
   known_weight: 'Weight',
   known_activity: 'Activity',
-  known_birth_v: '%{year} (%{age} y)',
+  known_birth_v: '%{year}, %{age} y',
   known_left: '%{n} questions left: %{list}. About 1 minute.',
   edit_a11y: 'Edit %{label}',
   goal_title: 'What’s your goal?',

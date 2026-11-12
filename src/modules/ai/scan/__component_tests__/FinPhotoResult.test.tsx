@@ -54,6 +54,6 @@ test('FinPhotoR1: toplam, öğeler, Eksik besin ekle, Planıma ekle + Bu öğün
 test('FinCollectCut: tek tabak → kompakt sonuç, hapta "%92 eşleşme"', () => {
   const single = { ...multi, name: 'Tavuk kinoa bowl', kcal: 540, protein_g: 42, carbs_g: 48, fat_g: 18, ingredients: [{ name: 'Tavuk kinoa bowl', grams: 380, kcal: 540 }] };
   const tree = render(<FinPhotoResult {...base} estimate={single} match={92} />);
-  expect(tree.getByText('Tavuk kinoa bowl (%92 eşleşme)')).toBeTruthy();
+  expect(tree.getByText('Tavuk kinoa bowl, %92 eşleşme')).toBeTruthy();
   expect(tree.getByText('Fotoğraf sonucu')).toBeTruthy();
 });

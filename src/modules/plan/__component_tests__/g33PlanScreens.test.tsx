@@ -333,7 +333,7 @@ describe('Alışveriş listesi', () => {
     expect(r.getByText('Plan yaparsan malzemeler buraya gelir')).toBeTruthy();
   });
 
-  test('birleşik satırlar (Yumurta 250 g → 5 adet), işaretle → Alındı (1) → Temizle; Düzenle → sil', async () => {
+  test('birleşik satırlar (Yumurta 250 g → 5 adet), işaretle → Alındı + sayı hapı 1 → Temizle; Düzenle → sil', async () => {
     setTier('fresh');
     mockWeekItems = week();
     const r = render(<ShoppingListScreen />);
@@ -346,12 +346,15 @@ describe('Alışveriş listesi', () => {
       fireEvent.press(r.getByTestId('shop-check-plan:egg'));
     });
     await flush();
-    expect(r.getByText('Alındı (1)')).toBeTruthy();
+    // G38 md.4: "Alındı (1)" yerine başlık + sayı hapı.
+    expect(r.getByText('Alındı')).toBeTruthy();
+    expect(r.getByTestId('shop-bought-count', { includeHiddenElements: true })).toHaveTextContent('1');
+    expect(r.queryByText('Alındı (1)')).toBeNull();
     await act(async () => {
       fireEvent.press(r.getByTestId('shop-clear'));
     });
     await flush();
-    expect(r.queryByText('Alındı (1)')).toBeNull();
+    expect(r.queryByText('Alındı')).toBeNull();
     fireEvent.press(r.getByTestId('shop-edit'));
     await act(async () => {
       fireEvent.press(r.getByTestId('shop-del-plan:tomato'));
@@ -361,7 +364,7 @@ describe('Alışveriş listesi', () => {
     expect(r.getByText('Bitti')).toBeTruthy();
   });
 
-  test('Elle ekle: satır "Elle eklendi"; eatkcal kartı → sepet → "Sepete ekle (285 TL)" → bildirim "Sepete git"', async () => {
+  test('Elle ekle: satır "Elle eklendi"; eatkcal kartı → sepet → "Sepete ekle" + ayrı fiyat "285 TL" → bildirim "Sepete git"', async () => {
     setTier('fresh');
     mockWeekItems = week();
     const r = render(<ShoppingListScreen />);
@@ -379,7 +382,10 @@ describe('Alışveriş listesi', () => {
     expect(r.getByText('Bu hafta 1 öğün eatkcal’dan')).toBeTruthy();
     fireEvent.press(r.getByTestId('shop-add-cart'));
     await flush();
-    expect(r.getByText('Sepete ekle (285 TL)')).toBeTruthy();
+    // G38 md.4: fiyat parantez içinde değil, düğmede ayrı kalın metin.
+    expect(r.getByTestId('shop-basket-price')).toHaveTextContent('285 TL');
+    expect(r.queryByText('Sepete ekle (285 TL)')).toBeNull();
+    expect(r.getByTestId('shop-basket-add').props.accessibilityLabel).toBe('Sepete ekle, 285 TL');
     await act(async () => {
       fireEvent.press(r.getByTestId('shop-basket-add'));
     });

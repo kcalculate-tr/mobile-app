@@ -29,6 +29,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { FinText as Text } from '../../core/design/components/FinText';
+import { CountPill } from '../../core/design/components/CountPill';
 import Animated, {
   interpolate,
   runOnJS,
@@ -530,11 +531,17 @@ function CartPill({
         onPress={onPress}
         style={[styles.cartPill, { backgroundColor: glass.ink }]}
         accessibilityRole="button"
-        accessibilityLabel={`${i18n.t('shell.cart')} (${count})`}
+        accessibilityLabel={i18n.t('shell.cart_count', { count })}
+        hitSlop={4}
+        testID="shell-cart-pill"
       >
-        <Animated.Text style={[styles.cartPillText, { color: glass.cut }, popStyle]}>
-          {`${i18n.t('shell.cart')} (${count})`}
-        </Animated.Text>
+        {/* G38 md.4: "Sepet (1)" yerine "Sepet" + sayı hapı (pop sayaçta). */}
+        <View style={styles.cartPillInner}>
+          <Text style={[styles.cartPillText, { color: glass.cut }]}>{i18n.t('shell.cart')}</Text>
+          <Animated.View style={popStyle}>
+            <CountPill count={count} bg={glass.cut} fg={glass.ink} testID="shell-cart-count" />
+          </Animated.View>
+        </View>
       </Pressable>
     </View>
   );
@@ -678,6 +685,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cartPillInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cartPillText: {
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_700Bold',

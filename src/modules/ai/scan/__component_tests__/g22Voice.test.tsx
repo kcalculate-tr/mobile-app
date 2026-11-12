@@ -171,7 +171,7 @@ test('sheet hâlleri: izin (iki satır), izin kapalı, duyulmadı (hak düşmedi
   tree.unmount();
   tree = render(<FinScanVoice {...props({ phase: 'offline', transcript: '2 yumurta', offlineCount: 1 })} />);
   expect(tree.getByText('Bağlantı yok')).toBeTruthy();
-  expect(tree.getByText('Bağlanınca loglanacak (1 kayıt)')).toBeTruthy();
+  expect(tree.getByText('1 kayıt bağlanınca loglanacak')).toBeTruthy();
   // Sheet modal (accessibilityViewIsModal) → arkadaki döküm alanı erişilebilirlik ağacında gizli.
   expect(tree.getByText('Telefonunda saklandı', { includeHiddenElements: true })).toBeTruthy();
   expect(tree.getByText('Çevrimdışı', { includeHiddenElements: true })).toBeTruthy();

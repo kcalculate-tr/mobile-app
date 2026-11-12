@@ -25,7 +25,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
-import { optionImageCandidates } from '../model/optionImage';
+import { gramajImageCandidates, optionImageCandidates } from '../model/optionImage';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
@@ -253,7 +253,8 @@ export default function EkProductScreen() {
           priceDelta: g.price_modifier,
           kcal: null,
           kcalDelta: g.calorie_modifier,
-          imageUrl: null,
+          // G38: gramaj kartı da görselli — kendi görseli → ürün adından protein çıkartması → ürün fotoğrafı
+          images: gramajImageCandidates({ own: g.image_url, productName: product?.name, productImg: product?.img }),
           selected: gramajIndex === idx,
           disabled: false,
         })),
@@ -315,7 +316,7 @@ export default function EkProductScreen() {
     });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gramajOptions, gramajIndex, groups, selections, links, templateSelections, images, t]);
+  }, [gramajOptions, gramajIndex, groups, selections, links, templateSelections, images, product?.name, product?.img, t]);
 
   const scrollToNext = (currentKey: string) => {
     setTimeout(() => {

@@ -11,6 +11,7 @@ import { CalendarBlank, CaretLeft, Copy, ForkKnife, Tag, Ticket } from '../compo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStaggerAnimation } from '../hooks/useStaggerAnimation';
+import { CountPill } from '../core/design/components/CountPill';
 import { Toast } from '../core/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import BottomSheet from '../components/BottomSheet';
@@ -318,9 +319,21 @@ export default function OffersAndCouponsScreen() {
             </View>
           )}
 
-          <Text style={s.sectionTitle}>
-            {tab === 'offers' ? `Tüm Kampanyalar (${kampanyalar.length})` : `Kuponlarım (${kuponlar.length})`}
-          </Text>
+          {/* G38 md.4: "Tüm Kampanyalar (3)" yerine başlık + sayı hapı. */}
+          <View
+            style={s.sectionTitleRow}
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={tab === 'offers' ? `Tüm Kampanyalar, ${kampanyalar.length}` : `Kuponlarım, ${kuponlar.length}`}
+          >
+            <Text style={s.sectionTitle}>{tab === 'offers' ? 'Tüm Kampanyalar' : 'Kuponlarım'}</Text>
+            <CountPill
+              count={tab === 'offers' ? kampanyalar.length : kuponlar.length}
+              bg={COLORS.text.primary}
+              fg={COLORS.background}
+              style={{ marginTop: SPACING.xs }}
+            />
+          </View>
 
           {liste.length === 0 ? (
             <EmptyState
@@ -375,6 +388,7 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.15)' },
   dotActive: { width: 18, backgroundColor: COLORS.brand.green },
 
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: {
     fontSize: TYPOGRAPHY.size.md, color: COLORS.text.primary, marginTop: SPACING.xs,
     fontFamily: 'PlusJakartaSans_700Bold', },

@@ -4,7 +4,7 @@
 // kırpılmaz) → bağlı ürün fotoğrafı (cover, 12 köşe) → ada göre ürün fotoğrafı →
 // yer tutucu "çıkartma çerçevesi" + ad. Yüklenemeyen aday atlanır (onError).
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Check } from '../../../../../components/icons';
 import { CachedImage } from '../../../../../components/CachedImage';
@@ -13,6 +13,22 @@ import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { formatPriceDelta } from '../../../../../lib/money';
 import { optionImageCandidates, type OptionImageCandidate } from '../../model/optionImage';
+
+/** G38 md.1: ad en fazla 2 satır; kırpma son çare (önce veri tarafında kısa ad, G38 migration). */
+export const OPTION_NAME_LINES = 2;
+export const OPTION_NAME_LINE_HEIGHT = 19;
+/** Dynamic Type üst sınırı (grup başlığıyla aynı) — üstünde kart taşmaz, metin büyümez. */
+export const OPTION_NAME_MAX_SCALE = 1.4;
+
+/**
+ * Ad alanının sabit yüksekliği: her zaman 2 satırlık yer ayrılır → 1 satırlık ad ile 2 satırlık
+ * ad aynı kart yüksekliğini verir (aynı sıradaki kartlar eşit, gruptan gruba zıplamaz). Yazı
+ * boyutu büyütülmüşse (fontScale) alan da aynı oranda büyür; kırpılma olmaz. SAF.
+ */
+export function optionNameBlockHeight(fontScale: number): number {
+  const s = Math.min(Math.max(Number(fontScale) || 1, 1), OPTION_NAME_MAX_SCALE);
+  return Math.ceil(OPTION_NAME_LINES * OPTION_NAME_LINE_HEIGHT * s);
+}
 
 export interface OptionCardModel {
   key: string;
@@ -41,6 +57,8 @@ export function OptionCard({
   onPress: () => void;
 }) {
   const { c, t, theme } = useEk();
+  const { fontScale } = useWindowDimensions();
+  const nameHeight = optionNameBlockHeight(fontScale);
   const reduced = useReducedMotion();
   const pop = useRef(new Animated.Value(model.selected ? 1 : 0)).current;
 
@@ -143,9 +161,17 @@ export function OptionCard({
           </View>
         )}
       </View>
-      <Text style={[ekType.b15s, { color: fg, lineHeight: 19 }]} numberOfLines={3}>
-        {model.name}
-      </Text>
+      <View style={{ height: nameHeight }} testID={`ek-option-name-box-${model.key}`}>
+        <Text
+          style={[ekType.b15s, { color: fg, lineHeight: OPTION_NAME_LINE_HEIGHT }]}
+          numberOfLines={OPTION_NAME_LINES}
+          ellipsizeMode="tail"
+          maxFontSizeMultiplier={OPTION_NAME_MAX_SCALE}
+          testID={`ek-option-name-${model.key}`}
+        >
+          {model.name}
+        </Text>
+      </View>
       <View style={styles.foot}>
         <Text style={[ekType.c13s, ekType.num, { color: fg }]}>{priceText}</Text>
         {kcalText ? (
@@ -171,6 +197,7 @@ const styles = StyleSheet.create({
   card: {
     width: 136,
     minHeight: 166,
+    // Ad alanı sabit (optionNameBlockHeight) → kart yüksekliği adın satır sayısına göre değişmez.
     padding: 8.5,
     borderRadius: 18,
     borderWidth: 1,
