@@ -100,6 +100,8 @@ export interface StoreProductLike {
  * Yerel fiyat (G23-S1): sayısal fiyat + para birimi → ortak `formatMoney`. TRY → "1799 TL"
  * (₺ ve binlik ayraç YOK); diğer para birimleri cihazın yerel biçimi ("$59.99", "59,99 €").
  * RevenueCat `priceString` DOĞRUDAN GÖSTERİLMEZ (TRY'de ₺ içerir).
+ * G37-S1 doğrulama: para birimi HER ZAMAN mağazanın `currencyCode`'u (mağaza ülkesi → TL/USD);
+ * USD'ye sabitleme ya da sabit `en-US` biçimi YOK (locale verilmezse cihaz yerel ayarı).
  */
 export function formatStorePrice(value: number, currencyCode: string, locale?: string): string {
   return formatMoney(value, currencyCode, locale);
@@ -116,6 +118,11 @@ export function monthlyEquivalent(yearlyPrice: number, currencyCode: string): nu
   const m = yearlyPrice / 12;
   const cur = (currencyCode || '').toUpperCase();
   return cur === 'TRY' || cur === 'TL' || !cur ? Math.round(m) : Math.round(m * 100) / 100;
+}
+
+/** İki mağaza ürünü aynı para biriminde mi (büyük/küçük harf duyarsız). */
+function sameCurrency(a: StoreProductLike | undefined, b: StoreProductLike): boolean {
+  return !!a && (a.currencyCode || '').trim().toUpperCase() === (b.currencyCode || '').trim().toUpperCase();
 }
 
 /** Yıllığın aylığa göre indirimi (%, tam sayı). Aylık fiyat yoksa null. */
@@ -179,7 +186,8 @@ export function buildPlanCards(products: readonly StoreProductLike[], locale?: s
       priceText: formatStorePrice(p.price, p.currencyCode, locale),
       weeklyText: formatStorePrice(Math.round(weeklyPrice(p, yearly) * 100) / 100, p.currencyCode, locale),
       monthlyText: yearly ? formatStorePrice(monthlyEquivalent(p.price, p.currencyCode), p.currencyCode, locale) : null,
-      discountPct: yearly ? yearlyDiscountPct(monthlyTwin?.price, p.price) : null,
+      // G37-S1: tasarruf % yalnız AYNI para birimindeki aylık ikizle (TL yıllık ↔ USD aylık karşılaştırılmaz).
+      discountPct: yearly && sameCurrency(monthlyTwin, p) ? yearlyDiscountPct(monthlyTwin?.price, p.price) : null,
       trialDays: yearly ? trialDays(p) : null,
       popular: key === POPULAR_PLAN,
     };
