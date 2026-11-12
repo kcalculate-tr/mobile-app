@@ -1,22 +1,24 @@
 // G33-S1 md.2 — Paywall Fresh / Balance / EN (Tur 26n, 05-profil-paywall-koc). Önceki: G22-S1 FinSubPaywall.
 //
-// Düzen: hareketli bulanık yeşil zemin (onboarding ışıkları, yavaş kayma) · kapat · küçük "kcalAI" etiketi ·
-// BÜYÜK başlık yalnız "Fresh" / "Balance" · özellik karuseli (cam nesne hafif süzülür, ARKASINDA yuvarlak
-// yeşil katman YOK; sayfa noktaları + 44 pt duraklat; 3 sn'de bir otomatik, dokununca 6 sn bekler,
-// azaltılmış harekette otomatik geçiş ve süzülme KAPALI) · Yıllık kart ("%58 tasarruf" + "7 gün ücretsiz" +
+// Düzen: STATİK bulanık yeşil zemin (onboarding ışıkları; tam ekran, safe area dahil taşar, kenar/dikiş YOK —
+// G37-S1) · kapat · küçük "kcalAI" etiketi · BÜYÜK başlık yalnız "Fresh" / "Balance" · TEK üst ikon (karuselin
+// DIŞINDA; hafif süzülme tek sürekli döngü, slayt değişince yalnız görsel fast 220 çapraz geçer — G37-S1;
+// ARKASINDA yuvarlak yeşil katman YOK) · özellik karuseli (başlık + açıklama; sayfa noktaları + 44 pt duraklat;
+// 3 sn'de bir otomatik, dokununca 6 sn bekler, azaltılmış harekette otomatik geçiş ve süzülme KAPALI) · Yıllık kart ("%58 tasarruf" + "7 gün ücretsiz" +
 // "ayda N TL") ve Aylık kart (tek seçimli radyo) · Fresh'te "Balance'a yükselt" kartı, Balance'ta
 // "‹ Fresh'e dön" · CTA "7 gün ücretsiz başla" · alt metin · yasal metin · Satın alımları geri yükle ·
 // Koşullar · Gizlilik. Kademe değişince başlık + şerit + kartlar fast 220 crossfade.
-// Fiyatlar YALNIZ RevenueCat yerel fiyatı (demoPrices yalnız test/vitrin yedeği; üretimde fiyat yoksa
+// Fiyatlar YALNIZ RevenueCat yerel fiyatı — para birimi mağazanın `currencyCode`'u (TL/USD/…), USD'ye sabitleme
+// ya da en-US biçimi YOK; tasarruf % ve "ayda N" aynı ürün çiftinden (demoPrices yalnız test/vitrin yedeği; üretimde fiyat yoksa
 // aynı ekranda hata kartı + Tekrar dene). Satın alma sonucu aynı ekranda SubResult.
 // Koçlu varyant (`coach: true`, koçtan açılınca): Balance, şeritte "kcalAI Koç" sayfası, kartlarda "kcalAI Koç dahil".
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { ActivityIndicator, AppState, Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import Animated, { FadeIn, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { AppText, DURATION, REDUCED, haptic, useDrift, useLoopFloat, useReducedMotion, useTheme } from '../../../core/design';
+import { AppText, DURATION, PAYWALL_MOTION, REDUCED, haptic, useLoopFloat, useReducedMotion, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CaretRight, Check, Pause, Play, X } from '../../../components/icons';
 import { type PlanCard, type PlanKey } from '../../../lib/subscription/plans';
@@ -38,6 +40,9 @@ const FEATURE_IMG = {
   coach: require('../../../../assets/glass/bowl.png'),
 };
 /* eslint-enable @typescript-eslint/no-require-imports */
+type FeatureKey = keyof typeof FEATURE_IMG;
+/** Üst ikon katmanları (hep monte; görünür olan `activeImg` paylaşılan değeriyle seçilir). */
+const FEATURE_KEYS: readonly FeatureKey[] = ['ai', 'voice', 'barcode', 'manual', 'coach'];
 
 export type PaywallParams = { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean } | undefined;
 type Group = 'fresh' | 'balance';
@@ -102,16 +107,41 @@ export default function PaywallScreen() {
     const fresh = group === 'fresh';
     const aiN = (fresh ? limits?.ai.fresh : limits?.ai.balance) ?? '';
     const list = [
-      { img: FEATURE_IMG.voice, title: tr(fresh ? 'sub.feature.fresh_voice_title' : 'sub.feature.balance_voice_title'), desc: tr(fresh ? 'sub.feature.fresh_voice_desc' : 'sub.feature.balance_voice_desc', { n: aiN }) },
-      { img: FEATURE_IMG.ai, title: tr(fresh ? 'sub.feature.fresh_ai_title' : 'sub.feature.balance_ai_title', { n: aiN }), desc: tr(fresh ? 'sub.feature.fresh_ai_desc' : 'sub.feature.balance_ai_desc') },
-      { img: FEATURE_IMG.barcode, title: tr('sub.feature.barcode_title'), desc: tr('sub.feature.barcode_desc') },
-      { img: FEATURE_IMG.manual, title: tr('sub.feature.manual_title'), desc: tr('sub.feature.manual_desc') },
+      { img: 'voice' as FeatureKey, title: tr(fresh ? 'sub.feature.fresh_voice_title' : 'sub.feature.balance_voice_title'), desc: tr(fresh ? 'sub.feature.fresh_voice_desc' : 'sub.feature.balance_voice_desc', { n: aiN }) },
+      { img: 'ai' as FeatureKey, title: tr(fresh ? 'sub.feature.fresh_ai_title' : 'sub.feature.balance_ai_title', { n: aiN }), desc: tr(fresh ? 'sub.feature.fresh_ai_desc' : 'sub.feature.balance_ai_desc') },
+      { img: 'barcode' as FeatureKey, title: tr('sub.feature.barcode_title'), desc: tr('sub.feature.barcode_desc') },
+      { img: 'manual' as FeatureKey, title: tr('sub.feature.manual_title'), desc: tr('sub.feature.manual_desc') },
     ];
-    if (!fresh && coachOn) list.unshift({ img: FEATURE_IMG.coach, title: tr('sub.feature.coach_title'), desc: tr('sub.feature.coach_desc', { n: coachDaily }) });
+    if (!fresh && coachOn) list.unshift({ img: 'coach' as FeatureKey, title: tr('sub.feature.coach_title'), desc: tr('sub.feature.coach_desc', { n: coachDaily }) });
     return list;
   }, [group, limits?.ai.fresh, limits?.ai.balance, tr, coachDaily, coachOn]);
   const pageCount = useRef(features.length);
   pageCount.current = features.length;
+
+  // ── Üst ikon (G37-S1) ── Karuselden bağımsız: süzülme tek döngü, kaydırma/kademe değişiminde yeniden
+  // mount edilmez. Hangi görselin görüneceği UI thread'de kaydırma işleyicisinden (worklet) seçilir;
+  // JS tarafı (otomatik geçiş, kaydırma sonu, kademe değişimi) yalnız aynı değeri doğrular.
+  const imgOrder = useMemo(() => features.map((f) => FEATURE_KEYS.indexOf(f.img)), [features]);
+  const imgOf = useSharedValue<number[]>(imgOrder);
+  const activeImg = useSharedValue<number>(imgOrder[0] ?? 0);
+  const pageW = useSharedValue(winW);
+  useEffect(() => {
+    pageW.value = winW;
+  }, [winW, pageW]);
+  useEffect(() => {
+    imgOf.value = imgOrder;
+    const k = imgOrder[Math.min(page, imgOrder.length - 1)];
+    if (k !== undefined && activeImg.value !== k) activeImg.value = k;
+  }, [imgOrder, page, imgOf, activeImg]);
+  const onStripScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      const m = imgOf.value;
+      if (!m.length || pageW.value <= 0) return;
+      const i = Math.min(m.length - 1, Math.max(0, Math.round(e.contentOffset.x / pageW.value)));
+      const k = m[i];
+      if (k !== undefined && activeImg.value !== k) activeImg.value = k;
+    },
+  });
   useEffect(() => {
     if (!autoOn) return;
     const id = setInterval(() => {
@@ -200,6 +230,7 @@ export default function PaywallScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: t.color.bg }]} testID="sub-paywall">
+      {/* Zemin ScrollView'ın DIŞINDA ve kökü tam kaplar (safe area dahil); kaydırmayla birlikte hareket etmez. */}
       <PaywallGlow dark={t.isDark} />
       <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingTop: insets.top + 4, paddingBottom: Math.max(24, insets.bottom + 16) }} showsVerticalScrollIndicator={false}>
         <View style={styles.top}>
@@ -217,29 +248,33 @@ export default function PaywallScreen() {
           </AppText>
         </Animated.View>
 
+        {/* Kademe anahtarlı görünümlerin DIŞINDA → kademe değişimi de süzülmeyi sıfırlamaz. */}
+        <FeatureIcon active={activeImg} />
+
         <Animated.View key={`strip-${group}`} entering={fade}>
-          <ScrollView
+          <Animated.ScrollView
             {...SCROLL_KEYBOARD}
-            ref={stripRef}
+            ref={stripRef as never}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
+            onScroll={onStripScroll}
+            scrollEventThrottle={16}
             onScrollBeginDrag={() => (holdUntil.current = Date.now() + 6000)}
             onTouchStart={() => (holdUntil.current = Date.now() + 6000)}
-            onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / winW))}
+            onMomentumScrollEnd={(e) => setPage(Math.min(features.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.x / winW))))}
             accessibilityLabel={tr('sub.paywall.strip_a11y')}
             testID="sub-strip"
           >
             {features.map((f, i) => (
               <View key={i} style={[styles.page, { width: winW }]} accessible accessibilityLabel={`${i + 1} / ${features.length}: ${f.title}. ${f.desc}`}>
-                <FloatingGlass source={f.img} active={i === page} />
                 <AppText style={[styles.fTitle, { color: ink }]}>{f.title}</AppText>
                 <AppText tone="secondary" style={styles.fDesc}>
                   {f.desc}
                 </AppText>
               </View>
             ))}
-          </ScrollView>
+          </Animated.ScrollView>
         </Animated.View>
         <View style={styles.dotsRow}>
           <View style={styles.dotsSpacer} />
@@ -345,52 +380,73 @@ export default function PaywallScreen() {
   );
 }
 
-/** Onboarding'deki iki bulanık lime ışık; yavaş kayar (azaltılmışta sabit). Dokunmayı engellemez. */
+/** Zemin dikişsizliği: SVG kökün her kenarından bu kadar taşar (yuvarlama/alt piksel çizgisi kalmaz). */
+export const GLOW_BLEED = 2;
+
+/**
+ * G37-S1 — Onboarding karşılama ekranındaki gibi iki yumuşak radyal lime ışık; STATİK (kayma yok:
+ * eski kayan katmanın kenarı ekranda dikey çizgi / açık yeşil dikdörtgen gibi görünüyordu).
+ * Kök görünümün GERÇEK ölçüsüyle (onLayout; modal/pencere farkı olsa da) tam ekran, safe area dahil
+ * her kenara taşar; ışıklar daire (userSpaceOnUse) ve dışa doğru 0 opaklığa iner. Dokunmayı engellemez.
+ */
 function PaywallGlow({ dark }: { dark: boolean }) {
-  const { width: W, height: H } = useWindowDimensions();
-  const a = useDrift(0);
-  const b = useDrift(1);
+  const win = useWindowDimensions();
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setBox((b) => (b && b.w === width && b.h === height ? b : { w: width, h: height }));
+  }, []);
+  const W = (box?.w ?? win.width) + GLOW_BLEED * 2;
+  const H = (box?.h ?? win.height) + GLOW_BLEED * 2;
   const oA = dark ? 0.38 : 0.3;
   const oB = dark ? 0.3 : 0.24;
   const R = Math.max(W, 360) * 0.85;
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="sub-glow">
-      <Animated.View style={[StyleSheet.absoluteFill, a.style]}>
-        <Svg width={W} height={H}>
-          <Defs>
-            <RadialGradient id="pwA" cx={W * 0.22} cy={H * 0.2} rx={R} ry={R} gradientUnits="userSpaceOnUse">
-              <Stop offset="0" stopColor="#C6F04F" stopOpacity={oA} />
-              <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={oA * 0.55} />
-              <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Rect x={0} y={0} width={W} height={H} fill="url(#pwA)" />
-        </Svg>
-      </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, b.style]}>
-        <Svg width={W} height={H}>
-          <Defs>
-            <RadialGradient id="pwB" cx={W * 0.85} cy={H * 0.62} rx={R * 0.9} ry={R * 0.9} gradientUnits="userSpaceOnUse">
-              <Stop offset="0" stopColor="#C6F04F" stopOpacity={oB} />
-              <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={oB * 0.55} />
-              <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Rect x={0} y={0} width={W} height={H} fill="url(#pwB)" />
-        </Svg>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={onLayout} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="sub-glow">
+      <Svg width={W} height={H} style={styles.glowSvg} testID="sub-glow-svg">
+        <Defs>
+          <RadialGradient id="pwA" cx={W * 0.22} cy={H * 0.2} rx={R} ry={R} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#C6F04F" stopOpacity={oA} />
+            <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={oA * 0.55} />
+            <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="pwB" cx={W * 0.85} cy={H * 0.62} rx={R * 0.9} ry={R * 0.9} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#C6F04F" stopOpacity={oB} />
+            <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={oB * 0.55} />
+            <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect x={0} y={0} width={W} height={H} fill="url(#pwA)" />
+        <Rect x={0} y={0} width={W} height={H} fill="url(#pwB)" />
+      </Svg>
+    </View>
+  );
+}
+
+/**
+ * G37-S1 — Üst cam nesne: TEK bileşen, tek süzülme döngüsü (useLoopFloat; kaydırmada yeniden mount
+ * edilmez, paylaşılan değer sıfırlanmaz). Tüm görseller üst üste monte; `active` değişince yalnız
+ * opaklıklar UI thread'de fast 220 çapraz geçer. Arkasında yuvarlak yeşil katman YOK. Dekoratif
+ * (sayfa metni VoiceOver'da okunur).
+ */
+function FeatureIcon({ active }: { active: SharedValue<number> }) {
+  const f = useLoopFloat();
+  return (
+    <View style={styles.iconRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Animated.View style={[styles.glassWrap, f.style]} testID="sub-feature-icon">
+        {FEATURE_KEYS.map((k, i) => (
+          <IconLayer key={k} k={k} index={i} active={active} />
+        ))}
       </Animated.View>
     </View>
   );
 }
 
-/** Cam nesne — arkasında yuvarlak yeşil katman YOK; görünür sayfada hafif süzülür. */
-function FloatingGlass({ source, active }: { source: number; active: boolean }) {
-  const f = useLoopFloat();
-  return (
-    <Animated.View style={[styles.glassWrap, active ? f.style : null]}>
-      <Image source={source} style={styles.glass} resizeMode="contain" accessibilityIgnoresInvertColors />
-    </Animated.View>
-  );
+function IconLayer({ k, index, active }: { k: FeatureKey; index: number; active: SharedValue<number> }) {
+  const style = useAnimatedStyle(() => ({
+    opacity: withTiming(active.value === index ? 1 : 0, { duration: PAYWALL_MOTION.iconFade }),
+  }));
+  return <Animated.Image source={FEATURE_IMG[k]} style={[styles.glass, styles.iconLayer, style]} resizeMode="contain" accessibilityIgnoresInvertColors testID={`sub-feature-icon-${k}`} />;
 }
 
 function PlanRow({ c, selected, coach, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; onPress: () => void }) {
@@ -510,9 +566,12 @@ const styles = StyleSheet.create({
   head: { alignItems: 'center', marginTop: -4 },
   brand: { fontSize: 13, fontWeight: '600', letterSpacing: 0.2 },
   title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 36, lineHeight: 42, textAlign: 'center' },
-  page: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 8 },
+  glowSvg: { position: 'absolute', left: -GLOW_BLEED, top: -GLOW_BLEED },
+  iconRow: { alignItems: 'center', paddingTop: 8 },
+  page: { alignItems: 'center', paddingHorizontal: 28 },
   glassWrap: { width: 140, height: 112, alignItems: 'center', justifyContent: 'center' },
   glass: { width: 120, height: 104 },
+  iconLayer: { position: 'absolute' },
   fTitle: { marginTop: 8, fontSize: 19, lineHeight: 24, fontWeight: '700', textAlign: 'center' },
   fDesc: { marginTop: 4, fontSize: 14, lineHeight: 20, textAlign: 'center' },
   dotsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginTop: 6 },
