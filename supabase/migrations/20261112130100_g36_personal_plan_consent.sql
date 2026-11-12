@@ -1,6 +1,6 @@
 -- G36-S1 md.8 (İlter 12 Kas, G34 SORULAR 2) — Kişisel plan sağlık rızası AYRI kaynak.
 -- DURUM: YALNIZ DOSYA (canlıya UYGULANMADI). İdempotent: tekrar çalıştırmak güvenli.
--- Rollback: supabase/rollbacks/20261112120100_g36_personal_plan_consent_rollback.sql
+-- Rollback: supabase/rollbacks/20261112130100_g36_personal_plan_consent_rollback.sql
 -- Önkoşul: 20261111230100_g27_health_consent, 20261112100100_g33_meal_plan (CHECK listeleri).
 --
 -- Kişisel plan akışı Giriş adımındaki sağlık verisi açık rızası artık

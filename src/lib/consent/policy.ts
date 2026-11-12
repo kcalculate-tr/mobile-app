@@ -42,7 +42,7 @@ export interface PolicyRecord {
 
 // G20-S3: canlıda kind'a ai_photo, source'a scan eklendi (Claude 9 Kas).
 // G27-S1: sağlık verisi açık rızası — kind 'health_data', source 'takibe' (migration 20261111230100).
-// G36-S1 md.8: 'personal_plan' — Kişisel plan akışı sağlık rızası (migration 20261112120100).
+// G36-S1 md.8: 'personal_plan' — Kişisel plan akışı sağlık rızası (migration 20261112130100).
 export type ConsentSource = 'signup_email' | 'signup_social' | 'notice' | 'reconsent' | 'settings' | 'att' | 'scan' | 'takibe' | 'meal_plan' | 'personal_plan';
 export type ConsentKind = 'policy' | 'ad_measurement' | 'first_party' | 'att' | 'ai_photo' | 'health_data';
 

@@ -1,6 +1,6 @@
 // G36-S1 md.8 (İlter 12 Kas, G34 SORULAR 2) — Kişisel plan sağlık rızası AYRI kaynak 'personal_plan'.
 // Geçerli sağlık rızası (Takibe başla ya da önceki plan) varsa Giriş'te "Onaylandı", YENİ satır yok.
-// Migration (20261112120100) canlıda değilken 'personal_plan' satırı reddedilirse yan kuyruktaki
+// Migration (20261112130100) canlıda değilken 'personal_plan' satırı reddedilirse yan kuyruktaki
 // diğer satırlar (takibe, meal_plan) yine yazılır.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import fs from 'fs';
@@ -80,8 +80,8 @@ test('migration canlıda değil: personal_plan satırı bekler, yan kuyruktaki d
 });
 
 test('migration DOSYASI + rollback: source CHECK personal_plan ekler / G33 listesine döner (NOT VALID)', () => {
-  const up = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261112120100_g36_personal_plan_consent.sql'), 'utf8');
-  const down = fs.readFileSync(path.join(ROOT, 'supabase/rollbacks/20261112120100_g36_personal_plan_consent_rollback.sql'), 'utf8');
+  const up = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261112130100_g36_personal_plan_consent.sql'), 'utf8');
+  const down = fs.readFileSync(path.join(ROOT, 'supabase/rollbacks/20261112130100_g36_personal_plan_consent_rollback.sql'), 'utf8');
   expect(up).toMatch(/'takibe', 'meal_plan', 'personal_plan'\)\)/);
   expect(up).toMatch(/YALNIZ DOSYA/);
   expect(down).toMatch(/'takibe', 'meal_plan'\)\) not valid/);
