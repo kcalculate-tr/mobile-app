@@ -15,7 +15,7 @@ Dal `release/1.1.0` · worktree `.claude/worktrees/g23-s1` · yalnız JS/TS (nat
 |---|---|
 | 51641d5 | md.1 zemin statik tam ekran + md.2 tek sürekli süzülme, karuselden bağımsız ikon; bileşen testi g37Paywall |
 | f014dfb | md.3 fiyat: mağaza para birimi doğrulandı, tasarruf % yalnız aynı para birimi; birim testi g37PaywallPrices |
-| (bu) | docs: G37-S1 LOG |
+| 3085456 | docs: G37-S1 LOG |
 | (son) | docs/night/G37-S1-DONE |
 
 ## Testler (md.4)
