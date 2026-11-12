@@ -1,0 +1,5 @@
+G25-S1 tamamlandı — 11 Kas 2026
+Dal: release/1.1.0 (worktree .claude/worktrees/g23-s1)
+Maddeler 0-13 commit edildi; night24/coach birleşik; A-S1 A listesi kod düzeltmeleri (A1, A2 kod, A4, A5, A8, A9, A10 kod, A11, A12, A13) yapıldı.
+Kontroller: tsc 0 · hygiene OK · unit 1056 geçti / 0 hata · jest 431/431 · deno check (analyze-ai-scan, revenuecat-webhook, coach-chat) OK · expo export iOS + Android OK.
+Ayrıntı ve açık sorular: docs/night/G25-S1-LOG.md (SORULAR).

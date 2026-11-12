@@ -1,0 +1,5 @@
+G22-S2 tamamlandı — 10 Kas 2026
+Dal: night22/ux (taban night21/fix @ 32e9e06)
+Maddeler: 1 hareket +%10 · 2 sekme yazıları · 3 eatkcal Avrupa+Amerika konum · 4 Keşfet arama · 5 hata hâlleri + Günüme paylaş · 6 dil seçici · 7 açılış yüklemesi · 8 anon bayrak (CANLIYA UYGULANACAK) · 9 kontroller
+Kontroller: tsc 0 · hygiene ✓ · unit 986/987 (1 atlandı) · jest 358/358 · expo export iOS ✓ Android ✓
+LOG: docs/night/G22-S2-LOG.md (SORULAR bölümü dahil)

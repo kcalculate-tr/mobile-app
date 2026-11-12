@@ -12,6 +12,7 @@ import { useT } from '../../../core/i18n';
 import { CachedImage } from '../../../components/CachedImage';
 import type { DayRing } from '../../gun/types';
 import { Icon } from './icons';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const SIZE = 64;
 const STROKE = 3;
@@ -75,7 +76,7 @@ export function RingStrip({
 
   return (
     <View style={[styles.wrap, { borderBottomColor: t.color.line }]} accessibilityLabel={tr('kesfet.ui.ring_strip')}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {rings.map((ring, i) => {
           const isMe = i === 0;
           const name = isMe ? tr('gun.my_ring') : ring.user.display_name;

@@ -1,5 +1,5 @@
 // T20ScanLimit — günlük AI tarama kotası dolduğunda gösterilen alt sayfa.
-// "Pro ile sınırsız" dokunulamaz (satın alma yok, G6-S4 md.3).
+// "kcalAI planları (çok yakında)" dokunulamaz (satın alma yok, G6-S4 md.3).
 import React from 'react';
 import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
@@ -12,9 +12,11 @@ type Props = {
   visible: boolean;
   onManualEntry: () => void;
   onClose: () => void;
+  /** G23-S1: günlük tavan sunucudan (ücretsiz 2); bilinmiyorsa sayısız başlık. */
+  cap?: number | null;
 };
 
-export default function ScanLimitSheet({ visible, onManualEntry, onClose }: Props) {
+export default function ScanLimitSheet({ visible, onManualEntry, onClose, cap }: Props) {
   const { t } = useT();
   const insets = useSafeAreaInsets();
   const th = useTheme(); // G14-S1: koyu temada da doğru renkler (FinErrLimit-Dark)
@@ -25,9 +27,9 @@ export default function ScanLimitSheet({ visible, onManualEntry, onClose }: Prop
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         <View style={[styles.sheet, { backgroundColor: th.color.surface, paddingBottom: Math.max(34, insets.bottom + 16) }]}>
           <View style={[styles.iconCircle, { backgroundColor: th.color.line }]}>
-            <ClockCounterClockwise size={26} color="#0A0A0A" />
+            <ClockCounterClockwise size={26} color={th.color.ink} />
           </View>
-          <Text style={[styles.title, { color: th.color.ink }]}>{t('ai_scan.limit_title')}</Text>
+          <Text style={[styles.title, { color: th.color.ink }]}>{cap != null ? t('sub.limit.ai_title', { n: cap }) : t('ai_scan.limit_title')}</Text>
           <Text style={[styles.body, { color: th.color.secondary }]}>{t('ai_scan.limit_body')}</Text>
 
           <TouchableOpacity style={[styles.manualBtn, { backgroundColor: th.color.ink }]} onPress={onManualEntry} activeOpacity={0.85}>
@@ -35,7 +37,7 @@ export default function ScanLimitSheet({ visible, onManualEntry, onClose }: Prop
           </TouchableOpacity>
 
           <View style={[styles.proBtn, { borderColor: th.color.line }]}>
-            <Lock size={18} color="#0A0A0A" />
+            <Lock size={18} color={th.color.ink} />
             <Text style={[styles.proBtnText, { color: th.color.secondary }]}>{t('ai_scan.pro_soon')}</Text>
           </View>
         </View>

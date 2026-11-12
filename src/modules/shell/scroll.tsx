@@ -9,7 +9,7 @@
 // Akış:
 //   TabBarCollapseProvider → bir `collapsed` SharedValue (0 tam, 1 küçük) tutar.
 //   Ekran:  const scrollY = useSharedValue(0); useTabBarCollapse(scrollY);
-//           <Animated.FlatList onScroll={scrollHandler(scrollY)} .../>
+//           <Animated.FlatList {...SCROLL_KEYBOARD} onScroll={scrollHandler(scrollY)} .../>
 //   TabBarR3: useTabBarCollapsedValue() ile aynı SharedValue'yu okur, boyutları
 //             ondan interpolasyonla türetir (tek animatör — çift yay yok).
 
@@ -24,6 +24,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { DURATION } from '../../core/design/motion';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type CollapseContext = {
   /** 0 = tam (hap), 1 = küçük (daire). Animasyonlu. */

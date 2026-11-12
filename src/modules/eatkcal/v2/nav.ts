@@ -14,8 +14,8 @@ export type EkV2ParamList = {
   EkStore: { brandKey: string };
   /** Ürün detayı (FinEkProduct / FinEkProductScroll). */
   EkProduct: { productId: string };
-  /** Sepet (FinEkCart / Empty / Skeleton). */
-  EkCart: undefined;
+  /** Sepet (FinEkCart / Empty / Skeleton). G25-S1 md.4: `couponCode` → Macro ödül kuponu uygulanır. */
+  EkCart: { couponCode?: string } | undefined;
   /** Sipariş özeti — tek sayfa (FinEkCheckout + PayWait/Fail/Unknown). */
   EkCheckout: { selectedAddressId?: string } | undefined;
   /** Adreslerim (FinEkAddresses / Empty). `selectMode` → seçip özete döner. */

@@ -1,8 +1,9 @@
 // eatkcal v2 — FinEkProduct seçenek kutusu (Tur 26d: 136×166, iç 8,5, görsel 54/12, 18 köşe). Seçili: lime
-// dolgu + koyu metin + sağ üstte onay rozeti (chkIn: bouncy). Görsel: seçeneğin
-// ürün fotoğrafı varsa o; yoksa yer tutucu "çıkartma çerçevesi" + ad (gerçek
-// çıkartmalar sonra gelecek).
-import React, { useEffect, useRef } from 'react';
+// dolgu + koyu metin + sağ üstte onay rozeti (chkIn: bouncy). Görsel (G35): öncelik
+// seçeneğin kendi çıkartması (`image_url`, şeffaf → kart zeminine oturur, contain,
+// kırpılmaz) → bağlı ürün fotoğrafı (cover, 12 köşe) → ada göre ürün fotoğrafı →
+// yer tutucu "çıkartma çerçevesi" + ad. Yüklenemeyen aday atlanır (onError).
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { Check } from '../../../../../components/icons';
@@ -11,6 +12,7 @@ import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { formatPriceDelta } from '../../../../../lib/money';
+import { optionImageCandidates, type OptionImageCandidate } from '../../model/optionImage';
 
 export interface OptionCardModel {
   key: string;
@@ -21,7 +23,10 @@ export interface OptionCardModel {
   kcal: number | null;
   /** kcal farkı (template/gramaj modifikatörü) — yoksa null/0. */
   kcalDelta?: number | null;
+  /** Tek fotoğraf adresi (eski yol; `images` verilmişse yok sayılır). */
   imageUrl?: string | null;
+  /** G35: öncelik sırasına göre görsel adayları (optionImageCandidates). */
+  images?: OptionImageCandidate[];
   selected: boolean;
   disabled: boolean;
 }
@@ -57,7 +62,17 @@ export function OptionCard({
   let kcalText: string | null = null;
   if (model.kcal != null) kcalText = t('eatkcal.v2.product.kcal_n', { n: model.kcal });
   else if (model.kcalDelta) kcalText = `${model.kcalDelta > 0 ? '+' : '−'}${t('eatkcal.v2.product.kcal_n', { n: Math.abs(Math.round(model.kcalDelta)) })}`;
-  const uri = model.imageUrl ? transformImageUrl(model.imageUrl, ImagePreset.productCard) ?? model.imageUrl : null;
+  const candidates = model.images ?? optionImageCandidates({ byName: model.imageUrl });
+  const candidateSig = candidates.map((x) => x.uri).join('|');
+  const [failed, setFailed] = useState(0);
+  useEffect(() => setFailed(0), [candidateSig]);
+  const current = candidates[failed] ?? null;
+  // Çıkartma 512 px WebP — olduğu gibi (dönüştürme kırpabilir); fotoğraf kart ön ayarıyla.
+  const uri = current
+    ? current.kind === 'sticker'
+      ? current.uri
+      : transformImageUrl(current.uri, ImagePreset.productCard) ?? current.uri
+    : null;
   const initials = model.name.trim().split(/\s+/)[0] ?? '';
 
   return (
@@ -82,12 +97,38 @@ export function OptionCard({
       testID={`ek-option-${model.key}`}
     >
       <View style={styles.media}>
-        {uri ? (
-          <CachedImage uri={uri} style={styles.photo} contentFit="cover" />
+        {uri && current?.kind === 'sticker' ? (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            testID={`ek-option-img-${model.key}`}
+          >
+            <CachedImage
+              uri={uri}
+              style={styles.stickerImg}
+              contentFit="contain"
+              placeholder={null}
+              onError={() => setFailed((n) => n + 1)}
+            />
+          </View>
+        ) : uri ? (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            testID={`ek-option-img-${model.key}`}
+          >
+            <CachedImage
+              uri={uri}
+              style={styles.photo}
+              contentFit="cover"
+              onError={() => setFailed((n) => n + 1)}
+            />
+          </View>
         ) : (
           <View
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
+            testID={`ek-option-empty-${model.key}`}
             style={[
               styles.sticker,
               {
@@ -137,6 +178,8 @@ const styles = StyleSheet.create({
   },
   media: { marginTop: 2, marginBottom: 6 },
   photo: { width: 54, height: 54, borderRadius: 12 },
+  // Şeffaf çıkartma: arka plan yok, köşe yok — kart zeminine (seçiliyken lime) oturur.
+  stickerImg: { width: 54, height: 54, backgroundColor: 'transparent' },
   sticker: {
     width: 54,
     height: 54,

@@ -8,19 +8,20 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
+import { useManualAppear } from './useManualAppear';
 
 import { AppText, Chip, haptic, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { X } from '../../components/icons';
+import { KeyboardLiftView } from '../../core/design/components/KeyboardLiftView';
 
 export type ManualMealType = 'kahvalti' | 'ogle' | 'aksam' | 'atistirma';
 const MEALS: { key: ManualMealType; slot: 'breakfast' | 'lunch' | 'dinner' | 'snack' }[] = [
@@ -60,14 +61,22 @@ export function HomeManualMealSheet({
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
   const sheetBg = t.isDark ? '#000000' : '#F3F4F6';
   const disabled = !calories || saving;
+  // G22-S1 md.2 (İlter): aşağıdan KAYMA YOK — zemin 0→0,4 + katman opaklık 0→1, ölçek 0,96→1
+  // (base 300 enter); kapanış tersi (fast 200 exit); azaltılmışta yalnız opaklık.
+  const appear = useManualAppear(visible);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={tt('common.close')} />
-        <View
+    <Modal visible={appear.mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      {/* G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView. */}
+      <View style={styles.fill}>
+        <Animated.View style={[styles.scrim, appear.scrimStyle]} testID="manual-meal-scrim">
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tt('common.close')} />
+        </Animated.View>
+        <KeyboardLiftView testID="manual-meal-lift">
+        <Animated.View
           accessibilityViewIsModal
-          style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: Math.max(24, insets.bottom + 12) }]}
+          testID="manual-meal-sheet"
+          style={[styles.sheet, { backgroundColor: sheetBg, paddingBottom: Math.max(24, insets.bottom + 12) }, appear.sheetStyle]}
         >
           <View style={[styles.handle, { backgroundColor: t.isDark ? '#48484A' : '#C3C7CC' }]} />
           <View style={styles.topRow}>
@@ -144,8 +153,9 @@ export function HomeManualMealSheet({
               <AppText style={[styles.saveText, { color: t.color.bg }]}>{tt(`gun.log_to_${slot}`)}</AppText>
             )}
           </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+        </Animated.View>
+        </KeyboardLiftView>
+      </View>
     </Modal>
   );
 }

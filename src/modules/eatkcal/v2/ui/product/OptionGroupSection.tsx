@@ -8,6 +8,7 @@ import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { fontFamily } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { OptionCard, type OptionCardModel } from './OptionCard';
+import { SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 
 export interface OptionGroupModel {
   key: string;
@@ -57,7 +58,7 @@ export function OptionGroupSection({
       {group.description ? (
         <Text style={[ekType.c13, { color: c.secondary }]}>{group.description}</Text>
       ) : null}
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.scroller}

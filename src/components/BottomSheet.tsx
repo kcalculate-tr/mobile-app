@@ -6,6 +6,7 @@ import {
   type DimensionValue, type ViewStyle, type StyleProp,
 } from 'react-native';
 import { X as XIcon } from './icons';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -101,11 +102,10 @@ export default function BottomSheet({
               {title}
             </Text>
           ) : null}
-          <ScrollView
+          <ScrollView {...SCROLL_KEYBOARD}
             style={[styles.scroll, contentStyle]}
             showsVerticalScrollIndicator={false}
             bounces={false}
-            keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>

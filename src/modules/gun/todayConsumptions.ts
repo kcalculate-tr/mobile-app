@@ -11,6 +11,12 @@ export interface TodayConsumption {
   meal_type: MealType | null;
   kcal: number;
   consumed_at: string; // ISO
+  // G22-S2 md.5 (FinShareDay önizlemesi) — İSTEĞE BAĞLI; aynı tablonun sütunları
+  // (get_day_cards da bunları okur). Eski çağıranlar etkilenmez.
+  protein_g?: number | null;
+  carbs_g?: number | null;
+  fat_g?: number | null;
+  photo_url?: string | null;
 }
 
 type SupabaseModule = typeof import('../../core/supabase');
@@ -26,7 +32,7 @@ async function realGetTodayConsumptions(): Promise<TodayConsumption[]> {
 
   const { data, error } = await sb()
     .from('meal_consumptions')
-    .select('id,name,meal_type,calories,consumed_at')
+    .select('id,name,meal_type,calories,consumed_at,protein,carbs,fat,photo_path')
     .gte('consumed_at', todayStart)
     .lt('consumed_at', tomorrowStart)
     .order('consumed_at', { ascending: false });
@@ -37,6 +43,10 @@ async function realGetTodayConsumptions(): Promise<TodayConsumption[]> {
     meal_type: row.meal_type ?? null,
     kcal: row.calories ?? 0,
     consumed_at: row.consumed_at,
+    protein_g: row.protein ?? null,
+    carbs_g: row.carbs ?? null,
+    fat_g: row.fat ?? null,
+    photo_url: row.photo_path ?? null,
   }));
 }
 

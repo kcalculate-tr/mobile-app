@@ -1,0 +1,58 @@
+{
+  "_": "G20-S2 md.4 — mağaza ekran görüntüsü kareleri: sıra, vitrin panosu (TR/EN) ve başlıklar. docs/store/EKRAN_GORUNTUSU_PLANI.md ile aynı.",
+  "frames": [
+    {
+      "id": "01-tara",
+      "pano": { "tr": "FinPhotoR1", "en": "FinPhotoEN" },
+      "title": { "tr": "Tabağını çek, kalorisini gör", "en": "Snap your plate, see calories" },
+      "sub": { "tr": "Yapay zekâ kalori ve makroları tahmin eder", "en": "AI estimates calories and macros" }
+    },
+    {
+      "id": "02-ana",
+      "pano": { "tr": "FinHomeR3", "en": "FinHomeEN" },
+      "title": { "tr": "Günün tek bakışta", "en": "Your day at a glance" },
+      "sub": { "tr": "Kalori, makro, su ve etkinlik", "en": "Calories, macros, water and activity" }
+    },
+    {
+      "id": "03-gun",
+      "pano": { "tr": "FinTracker", "en": "FinTrackerEN" },
+      "title": { "tr": "Her öğün, saniyeler içinde", "en": "Every meal, in seconds" },
+      "sub": { "tr": "Fotoğrafla, elle ya da hızlı ekle", "en": "By photo, by hand or quick add" }
+    },
+    {
+      "id": "04-uret",
+      "pano": { "tr": "FinCompose", "en": "FinComposeEN" },
+      "title": { "tr": "Öğününü paylaşıma dönüştür", "en": "Turn your meal into a post" },
+      "sub": { "tr": "Kalori ve makrolarıyla birlikte", "en": "With calories and macros attached" }
+    },
+    {
+      "id": "05-kesfet",
+      "pano": { "tr": "FinFeed", "en": "FinFeedEN" },
+      "title": { "tr": "Topluluktan ilham al", "en": "Get inspired by the community" },
+      "sub": { "tr": "Tarifler, öğünler, yorumlar", "en": "Recipes, meals and comments" }
+    },
+    {
+      "id": "06-tarif",
+      "pano": { "tr": "FinRecipe", "en": "FinRecipeEN" },
+      "title": { "tr": "Gördüğünü gününe ekle", "en": "Add what you see to your day" },
+      "sub": { "tr": "Tek dokunuşla logla", "en": "Log it in one tap" }
+    },
+    {
+      "id": "07-seri",
+      "pano": { "tr": "FinStreak", "en": "FinStreakEN" },
+      "title": { "tr": "Serini büyüt", "en": "Grow your streak" },
+      "sub": { "tr": "Her gün bir öğün yeter", "en": "One meal a day keeps it going" }
+    },
+    {
+      "id": "08-eatkcal",
+      "pano": { "tr": "FinEkHome", "en": "FinEkHomeEN" },
+      "title": { "tr": "İzmir'deysen: eatkcal", "en": "In İzmir? Order with eatkcal" },
+      "sub": { "tr": "Kalorisi belli sağlıklı öğünler kapında", "en": "Healthy meals with known macros, delivered" }
+    }
+  ],
+  "sizes": {
+    "ios-69": { "w": 1320, "h": 2868, "device": "iPhone-17-Pro-Max", "sim": "Store 6.9 iPhone" },
+    "ios-65": { "w": 1242, "h": 2688, "device": "iPhone-11-Pro-Max", "sim": "Store 6.5 iPhone" },
+    "android": { "w": 1080, "h": 1920, "raw": "1080x2160 (ios-69 karesinden kirpilir)", "from": "ios-69" }
+  }
+}

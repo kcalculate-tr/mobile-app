@@ -1,12 +1,13 @@
-import React, { Suspense, lazy, useEffect, useRef } from 'react';
+import React, { Suspense, createContext, lazy, useContext, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useTheme as useDesignTheme } from '../core/design';
+import { useTheme as useDesignTheme, useReducedMotion } from '../core/design';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../core/AuthContext';
-import { useFeature, useFlagsContext, type FlagKey } from '../core/flags';
+import { useFeature, useFlagsContext } from '../core/flags';
+import { SESSION_FLAGS_WAIT_MS, shouldWaitFlags, useColdStartFeature } from './coldStartFeature';
 
 import { haptic } from '../utils/haptics';
 // G18-S4: geçiş token'ları TEK modülden (FinMoTokens premium geçiş seti). Değerler
@@ -27,6 +28,8 @@ import { RootStackParamList, TabParamList } from './types';
 // G13-S2 — eatkcal yeni arayüzü (yalnız `yeni_siparis` açıkken kaydolur/görünür).
 import { EkHomeTab, ekV2Routes, resolveHomeTab, v2ScreenFor } from '../modules/eatkcal/v2/routes';
 import { FINAL_ROUTES, checkoutScreenFor, finalScreenFor } from './finalRoutes';
+import { pushTransition } from './transitions';
+import { profileSubId } from '../modules/profil/ui/screens/profileSub';
 
 // EAGER (statik) — ana akış ve soğuk-açılış ekranları. Bunlar tembel YÜKLENMEZ:
 //  · WelcomeGate: oturumsuz soğuk açılışın ilk ekranı (initialRouteName).
@@ -64,6 +67,8 @@ const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
 const ComposerScreen = lazy(() => import('../modules/kesfet/ui/ComposerScreen'));
 // G15-S3 — Bildirimler tam sayfa (FinNotifications); `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
 const KesfetNotificationsScreen = lazy(() => import('../modules/kesfet/ui/NotificationsScreen'));
+// G22-S2 md.4 — Keşfet arama (FinSearch); `kesfet` açıkken (ya da __DEV__) kayıtlı.
+const KesfetSearchScreen = lazy(() => import('../modules/kesfet/ui/SearchScreen'));
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
 const GunProfilUiLabScreen = lazy(() => import('../screens/GunProfilUiLabScreen'));
 const PublicProfileScreen = lazy(() => import('../modules/profil/ui/PublicProfileScreen'));
@@ -95,14 +100,40 @@ const SharedProfileScreen = lazy(() => import('../screens/share/SharedProfileScr
 // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken TrackerScreen'den erişilir.
 const ScanScreen = lazy(() => import('../modules/ai/scan/screens/ScanScreen'));
 const ScanOfflineScreen = lazy(() => import('../modules/ai/scan/screens/ScanOfflineScreen'));
+const PaywallScreen = lazy(() => import('../modules/subscription/screens/PaywallScreen'));
+const SubProfileScreen = lazy(() => import('../modules/subscription/screens/SubProfileScreen'));
+// G24-S1 — kcalAI Koç (yalnız `koc` bayrağı açıkken kayıtlı).
+const CoachChatScreen = lazy(() => import('../modules/coach/screens/CoachChatScreen'));
+const CoachIntroScreen = lazy(() => import('../modules/coach/screens/CoachIntroScreen'));
+// G33-S1 — Öğün planı + alışveriş listesi (`ogun_plani`).
+const MealPlanScreen = lazy(() => import('../modules/plan/screens/MealPlanScreen'));
+const PlanGenerateScreen = lazy(() => import('../modules/plan/screens/PlanGenerateScreen'));
+const ShoppingListScreen = lazy(() => import('../modules/plan/screens/ShoppingListScreen'));
+// G34-S1 — Kişisel plan (`kisisel_plan`).
+const PersonalPlanFlowScreen = lazy(() => import('../modules/personalPlan/screens/PersonalPlanFlowScreen'));
+const PersonalPlanMineScreen = lazy(() => import('../modules/personalPlan/screens/MyPlanScreen'));
+const PersonalPlanEditScreen = lazy(() => import('../modules/personalPlan/screens/MyPlanEditScreen'));
+const PersonalPlanCheckinScreen = lazy(() => import('../modules/personalPlan/screens/CheckinScreen'));
+const PlanPaywallScreen = lazy(() => import('../modules/personalPlan/screens/PlanPaywallScreen'));
+const CoachHistoryScreen = lazy(() => import('../modules/coach/screens/CoachHistoryScreen'));
 // eatkcal yeni ana ekran (G6-S4) — yalnız `restoran_yakinda` bayrağı açıkken
 // Home sekmesinde bugünkü HomeScreen'in YERİNE gösterilir (bkz. HomeTabScreen).
 const EatHomeScreen = lazy(() => import('../modules/eatkcal/screens/EatHomeScreen'));
+// G21-S1 md.9 — Profil alt sayfaları (FinPrProfile) yığın ekranı; yalnız yeni kabuktan açılır.
+const ProfileSubScreen = lazy(() => import('../modules/profil/ui/screens/ProfileSubRoute'));
 
 // Lazy ekranı, stack içerik zeminiyle aynı renkte bloklamayan bir Suspense
 // sınırına sarar. Sarmalayıcı MODÜL seviyesinde bir kez üretilir (her render'da
 // yeni component referansı = remount olmasın diye).
-const SUSPENSE_FALLBACK = <View style={{ flex: 1, backgroundColor: '#f6f6f6' }} />;
+// G21-S1 (md.3/md.9): yeni kabukta zemin temadan (koyu telefonda açık kare parlamasın);
+// bayrak kapalıyken bağlam varsayılanı '#f6f6f6' → eski kabuk bayt bayt aynı.
+const LEGACY_STACK_BG = '#f6f6f6';
+const StackBgContext = createContext<string>(LEGACY_STACK_BG);
+function SuspenseFallback() {
+  const bg = useContext(StackBgContext);
+  return <View style={{ flex: 1, backgroundColor: bg }} />;
+}
+const SUSPENSE_FALLBACK = <SuspenseFallback />;
 function withSuspense<P extends object>(Comp: React.ComponentType<P>): React.ComponentType<P> {
   return function LazyScreen(props: P) {
     return (
@@ -123,6 +154,7 @@ const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const KesfetLazy = withSuspense(KesfetScreen);
 const ComposerLazy = withSuspense(ComposerScreen);
 const KesfetNotificationsLazy = withSuspense(KesfetNotificationsScreen);
+const KesfetSearchLazy = withSuspense(KesfetSearchScreen);
 const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
 const PublicProfileLazy = withSuspense(PublicProfileScreen);
 const KcalAiSignUpLazy = withSuspense(KcalAiSignUpRouteScreen);
@@ -149,7 +181,21 @@ const SharedPostLazy = withSuspense(SharedPostScreen);
 const SharedProfileLazy = withSuspense(SharedProfileScreen);
 const ScanLazy = withSuspense(ScanScreen);
 const ScanOfflineLazy = withSuspense(ScanOfflineScreen);
+const PaywallLazy = withSuspense(PaywallScreen);
+const SubProfileLazy = withSuspense(SubProfileScreen);
+const CoachChatLazy = withSuspense(CoachChatScreen);
+const CoachIntroLazy = withSuspense(CoachIntroScreen);
+const MealPlanLazy = withSuspense(MealPlanScreen);
+const PlanGenerateLazy = withSuspense(PlanGenerateScreen);
+const ShoppingListLazy = withSuspense(ShoppingListScreen);
+const PersonalPlanFlowLazy = withSuspense(PersonalPlanFlowScreen);
+const PersonalPlanMineLazy = withSuspense(PersonalPlanMineScreen);
+const PersonalPlanEditLazy = withSuspense(PersonalPlanEditScreen);
+const PersonalPlanCheckinLazy = withSuspense(PersonalPlanCheckinScreen);
+const PlanPaywallLazy = withSuspense(PlanPaywallScreen);
+const CoachHistoryLazy = withSuspense(CoachHistoryScreen);
 const EatHomeLazy = withSuspense(EatHomeScreen);
+const ProfileSubLazy = withSuspense(ProfileSubScreen);
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -269,16 +315,6 @@ function TabNavigator() {
 // değişiklik navigasyonu BOZMAZ, bir sonraki soğuk açılışta uygulanır. Bayrak
 // henüz çözülmediyse (ready=false) eski kabuk gösterilir (güvenli varsayılan);
 // ilk çözümde değer dondurulur ve bir daha değişmez.
-function useColdStartFeature(key: FlagKey): boolean {
-  const live = useFeature(key);
-  const ctx = useFlagsContext();
-  const ready = ctx ? ctx.ready : true;
-  const frozen = useRef<boolean | undefined>(undefined);
-  if (frozen.current === undefined && ready) {
-    frozen.current = live;
-  }
-  return frozen.current ?? false;
-}
 
 // R3 tab navigatörü — sekme ADLARI bugünküyle aynı (Tracker/Home/Profile), böylece
 // mevcut navigate(...) çağrıları iki kabukta da çalışır. Keşfet sekmesi `kesfet`
@@ -401,6 +437,15 @@ export default function AppNavigator() {
   // FeedDataLab'tan açar). Canlı "Keşfet sekmesi" yerleşimi TabBarR3 kabuğuyla
   // birlikte (G6-S3) gelir; bu oturum ekranı ve bayrak kapısını teslim eder.
   const kesfetEnabled = useFeature('kesfet');
+  // G24-S1: kcalAI Koç ekranları yalnız `koc` açıkken kayıtlı (girişler de aynı bayrağa bağlı).
+  // G25-S1 md.12: `abonelik` de açık olmalı (koç ve abonelik birlikte açılır).
+  const kocFlag = useFeature('koc');
+  const aboneFlag = useFeature('abonelik');
+  const kocEnabled = kocFlag && aboneFlag;
+  // G33-S1: öğün planı ekranları yalnız `ogun_plani` açıkken kayıtlı (Profil satırları aynı bayrağa bağlı).
+  const ogunPlani = useFeature('ogun_plani');
+  // G34-S1: kişisel plan ekranları yalnız `kisisel_plan` açıkken kayıtlı (girişler aynı bayrağa bağlı).
+  const kisiselPlan = useFeature('kisisel_plan');
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
@@ -414,16 +459,44 @@ export default function AppNavigator() {
   const yeniKabukRoutes = useColdStartFeature('yeni_kabuk');
   const kesfetRoutes = useColdStartFeature('kesfet');
   const finalFlag = { yeni_kabuk: yeniKabukRoutes, yeni_siparis: yeniSiparis, yeni_onboarding: yeniOnboarding, kesfet: kesfetRoutes };
+  // G21-S1 md.9 — sayfa içi push: sağdan kayma (PREMIUM.push), azaltılmış harekette
+  // 200 ms opaklık. Yalnız yeni kabukta azaltılmış dal devreye girer; bayrak kapalıyken
+  // değerler bugünküyle aynı (slide_from_right · PREMIUM.push.enter · jest açık).
+  const reducedMotion = useReducedMotion();
+  const push = pushTransition(yeniKabukRoutes && reducedMotion);
+  const aiPush = yeniKabukRoutes ? push : AI_PUSH;
+  const designThemeRoot = useDesignTheme();
+  const stackBg = yeniKabukRoutes ? designThemeRoot.color.bg : LEGACY_STACK_BG;
   const initialRouteName = session
     ? 'Tabs'
     : yeniOnboarding
       ? 'Onboarding'
       : 'WelcomeGate';
 
+  // G20-S3 md.3: oturumsuz soğuk açılışta bayraklar (get_anon_features, en çok
+  // ANON_TIMEOUT_MS) çözülene kadar splash açık kalır → yeni kurulumda karşılama /
+  // onboarding bayrak kapalıymış gibi ESKİ yoldan açılmaz. Oturum varsa bugünkü gibi.
+  const flagsCtx = useFlagsContext();
+  // G30-S1 md.3: oturum varken de kabuk "yeterince bilinene" kadar splash açık: önbellek
+  // okunana kadar (yerel, ms'ler) ve önbellek yoksa en çok SESSION_FLAGS_WAIT_MS sunucu
+  // çözümü beklenir — çevrimdışında açılış takılmaz, süre dolunca güvenli varsayılan.
+  const [sessionWaitOver, setSessionWaitOver] = useState(false);
   useEffect(() => {
-    if (authLoading) return;
+    if (!session || sessionWaitOver) return;
+    const t = setTimeout(() => setSessionWaitOver(true), SESSION_FLAGS_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [session, sessionWaitOver]);
+  const waitFlags = shouldWaitFlags({
+    hasSession: !!session,
+    ready: flagsCtx ? flagsCtx.ready : true,
+    settled: flagsCtx ? (flagsCtx.settled ?? flagsCtx.ready) : true,
+    sessionWaitOver,
+  });
+
+  useEffect(() => {
+    if (authLoading || waitFlags) return;
     SplashScreen.hideAsync().catch(() => {});
-  }, [authLoading]);
+  }, [authLoading, waitFlags]);
 
   // Stack geçişi sonrası tek seferlik deep-link (FIX 8 manuel makro).
   useEffect(() => {
@@ -440,22 +513,20 @@ export default function AppNavigator() {
   // logo kayboluyor, araya bir "yükleniyor" karesi giriyor, sonra uygulama
   // açılıyordu. Splash yalnızca oturum hazır olunca gizleniyor, böylece
   // açılışta tek bir görsel var: logo → uygulama.
-  if (authLoading) return null;
+  if (authLoading || waitFlags) return null;
 
   return (
-    <>
+    <StackBgContext.Provider value={stackBg}>
     <Stack.Navigator
       initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
-        gestureEnabled: true,
-        animation: 'slide_from_right',
-        animationDuration: PREMIUM.push.enter,
+        ...push,
         // Bu stack'teki ekranlarin HEPSI acik temali (#f6f6f6). Varsayilan
         // #0A0A0A idi: ekran kendi zeminini boyayana kadar gecis boyunca
         // siyah bir kare goruluyordu ("Hedef Duzenle"ye basinca siyah ekran).
         // Koyu zeminli tek ekran WelcomeGate — o kendi options'inda tanimli.
-        contentStyle: { backgroundColor: '#f6f6f6' },
+        contentStyle: { backgroundColor: stackBg },
       }}
     >
       {/* Tam ekran fotograf zeminli tek ekran — acik zemin burada parlama yapardi. */}
@@ -492,19 +563,22 @@ export default function AppNavigator() {
         <Stack.Screen name="FeedDataLab" component={FeedDataLabLazy} options={{ title: 'Keşfet ve profil (veri)' }} />
       )}
       {(kesfetEnabled || __DEV__) && (
-        <Stack.Screen name="Kesfet" component={KesfetLazy} options={AI_PUSH} />
+        <Stack.Screen name="Kesfet" component={KesfetLazy} options={aiPush} />
       )}
       {(kesfetPaylasimEnabled || __DEV__) && (
         <Stack.Screen name="Composer" component={ComposerLazy} options={AI_MODAL} />
       )}
+      {(kesfetEnabled || __DEV__) && (
+        <Stack.Screen name="KesfetSearch" component={KesfetSearchLazy} options={aiPush} />
+      )}
       {(sosyalBildirimEnabled || __DEV__) && (
-        <Stack.Screen name="KesfetNotifications" component={KesfetNotificationsLazy} options={AI_PUSH} />
+        <Stack.Screen name="KesfetNotifications" component={KesfetNotificationsLazy} options={aiPush} />
       )}
       {__DEV__ && (
         <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />
       )}
-      <Stack.Screen name="PublicProfile" component={PublicProfileLazy} options={AI_PUSH} />
-      <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} options={AI_PUSH} />
+      <Stack.Screen name="PublicProfile" component={PublicProfileLazy} options={aiPush} />
+      <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} options={aiPush} />
       <Stack.Screen name="Login" component={UnifiedLoginLazy} />
       <Stack.Screen name="NutritionProfile" component={finalScreenFor('NutritionProfile', finalFlag.yeni_onboarding, NutritionProfileLazy)} />
       <Stack.Screen name="MeasurementHistory" component={finalScreenFor('MeasurementHistory', finalFlag.yeni_kabuk, MeasurementHistoryLazy)} options={{ headerShown: false }} />
@@ -512,6 +586,9 @@ export default function AppNavigator() {
       <Stack.Screen name="OrderDetail" component={finalScreenFor('OrderDetail', finalFlag.yeni_siparis, OrderDetailLazy)} />
       <Stack.Screen name="ProfileSavedCards" component={v2ScreenFor('ProfileSavedCards', yeniSiparis, SavedCardsLazy)} />
       <Stack.Screen name="ProfileAddCard" component={v2ScreenFor('ProfileAddCard', yeniSiparis, AddCardLazy)} />
+      {/* G21-S1 md.9 — FinPrProfile alt sayfaları: sağdan kayar, kenar jesti/geri soldan kapatır.
+          Kimlik = alt sayfa adı → Gizlilik › Güvenlik üstüne itilir, aynı sayfa ikilenmez. */}
+      <Stack.Screen name="ProfileSub" component={ProfileSubLazy} getId={({ params }) => profileSubId(params)} options={push} />
       <Stack.Screen name="ProfileCoupons" component={finalScreenFor('ProfileCoupons', finalFlag.yeni_kabuk, CouponsLazy)} />
       <Stack.Screen name="ProfileSupport" component={v2ScreenFor('ProfileSupport', yeniSiparis, SupportLazy)} />
       <Stack.Screen name="ProfileReviews" component={finalScreenFor('ProfileReviews', finalFlag.yeni_kabuk, MyReviewsLazy)} />
@@ -522,8 +599,8 @@ export default function AppNavigator() {
       <Stack.Screen name="ProfileContracts" component={v2ScreenFor('ProfileContracts', yeniSiparis, ContractsLazy)} />
       <Stack.Screen name="PaymentScreen" component={v2ScreenFor('PaymentScreen', yeniSiparis, PaymentLazy)} />
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
-      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
-      <Stack.Screen name="SharedProfile" component={finalScreenFor('SharedProfile', finalFlag.kesfet, SharedProfileLazy)} options={{ ...AI_PUSH, contentStyle: { backgroundColor: '#0A0A0A' } }} />
+      <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...aiPush, contentStyle: { backgroundColor: yeniKabukRoutes ? stackBg : '#0A0A0A' } }} />
+      <Stack.Screen name="SharedProfile" component={finalScreenFor('SharedProfile', finalFlag.kesfet, SharedProfileLazy)} options={{ ...aiPush, contentStyle: { backgroundColor: yeniKabukRoutes ? stackBg : '#0A0A0A' } }} />
       {/* AI tarama (G6-S4) — tam ekran kamera görünümü. */}
       <Stack.Screen
         name="AiScan"
@@ -532,6 +609,24 @@ export default function AppNavigator() {
       />
       {/* G16-S1 — FinScanOffline: çevrimdışı çekim sonrası sade durum ekranı (yalnız yeni_kabuk+ai_tarama akışından açılır). */}
       <Stack.Screen name="AiScanOffline" component={ScanOfflineLazy} />
+      {/* G22-S1 md.4 — kcalAI: paywall alttan (FinMoSub sheet base 300 enter), Profil › Abonelik sağdan. */}
+      <Stack.Screen name="SubPaywall" component={PaywallLazy} options={AI_MODAL} />
+      <Stack.Screen name="SubProfile" component={SubProfileLazy} options={push} />
+      {/* G24-S1 — kcalAI Koç: tanıtım alttan (sheet base 330), sohbet ve geçmiş sağdan (push 330). */}
+      {kocEnabled ? <Stack.Screen name="CoachIntro" component={CoachIntroLazy} options={AI_MODAL} /> : null}
+      {kocEnabled ? <Stack.Screen name="CoachChat" component={CoachChatLazy} options={push} /> : null}
+      {kocEnabled ? <Stack.Screen name="CoachHistory" component={CoachHistoryLazy} options={push} /> : null}
+      {/* G33-S1 — Öğün planı: hafta + alışveriş sağdan (push 330), oluşturma alttan (sheet 330). */}
+      {ogunPlani ? <Stack.Screen name="MealPlan" component={MealPlanLazy} options={push} /> : null}
+      {ogunPlani ? <Stack.Screen name="MealPlanGenerate" component={PlanGenerateLazy} options={AI_MODAL} /> : null}
+      {ogunPlani ? <Stack.Screen name="ShoppingList" component={ShoppingListLazy} options={push} /> : null}
+      {/* G34-S1 — Kişisel plan: akış ve paywall alttan (sheet 330; akışın kendi kenar jesti var → yığın jesti kapalı),
+          Kişisel planım / düzenle / check-in sağdan (push 330). */}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlan" component={PersonalPlanFlowLazy} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlanMine" component={PersonalPlanMineLazy} options={push} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlanEdit" component={PersonalPlanEditLazy} options={push} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PersonalPlanCheckin" component={PersonalPlanCheckinLazy} options={push} /> : null}
+      {kisiselPlan ? <Stack.Screen name="PlanPaywall" component={PlanPaywallLazy} options={AI_MODAL} /> : null}
       {/* eatkcal şehir kapısı sonrası mevcut sipariş akışı (G6-S4) — bugünkü
           HomeScreen AYNEN, yalnız T20Eat'ten farklı bir rotayla açılıyor. */}
       <Stack.Screen name="EatCatalog" component={finalScreenFor('EatCatalog', finalFlag.yeni_siparis, HomeScreen)} />
@@ -543,6 +638,6 @@ export default function AppNavigator() {
     </Stack.Navigator>
     {/* G18-S1 temas — FinOrient1–4 ipuçları (yalnız yeni_onboarding; kapalıyken null). */}
     <OrientHost />
-    </>
+    </StackBgContext.Provider>
   );
 }

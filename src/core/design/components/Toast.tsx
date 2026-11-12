@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
-import { haptic, REDUCED, TRANSITION, useReducedMotion } from '../motion';
+import { haptic, REDUCED, RN_CURVE, TRANSITION, useReducedMotion } from '../motion';
+import { useT } from '../../i18n';
 
 /**
  * Toast — "Öğle'ye loglandı · Geri al · Gör".
@@ -15,28 +16,55 @@ import { haptic, REDUCED, TRANSITION, useReducedMotion } from '../motion';
  *
  * Azaltılmış hareket: yalnız opaklık + en fazla 8 px kayma, en fazla 200 ms.
  *
+ * G25-S1 md.10 (A13): düğme metinleri ve VoiceOver etiketleri i18n (`common.undo` / `common.view`;
+ * EN'de "Undo" / "View"). md.9 (A12): isteğe bağlı `onRetry` → "Tekrar dene" (`common.retry`),
+ * hata toast'ı için `tone="error"` (nokta ikincil renk, kendiliğinden kapanmaz).
+ *
  * NOT: Bu yeni tasarımın Toast'u; mevcut `src/core/ui/Toast.tsx`'e dokunmadan
  * ayrı dosyadır. Hiçbir ekrana bağlı değildir.
  */
+/** FinMoLogA toast: alttan 16 pt. */
+export const TOAST_BOTTOM_OFFSET = 16;
+const TOAST_ENTER = RN_CURVE.enter;
+const TOAST_EXIT = RN_CURVE.exit;
+
 export function Toast({
   visible,
   message,
   onUndo,
   onView,
+  onRetry,
   onDismiss,
-  autoHideMs = 4000,
+  tone = 'default',
+  autoHideMs = tone === 'error' ? 0 : 4000,
+  testID,
+  from = 'top',
 }: {
   visible: boolean;
   message: string;
   onUndo?: () => void;
   onView?: () => void;
+  /** G25-S1 md.9: "Tekrar dene" (hata toast'ı). */
+  onRetry?: () => void;
   onDismiss?: () => void;
+  tone?: 'default' | 'error';
   autoHideMs?: number;
+  testID?: string;
+  /**
+   * G30-S1 md.1: giriş yönü. 'bottom' = FinMoLogA logla toast'ı (sekme çubuğunun üstünde):
+   * 16 → 0 alttan, giriş base 300 enter, çıkış fast 200 exit (alta kayarak solar).
+   */
+  from?: 'top' | 'bottom';
 }) {
   const t = useTheme();
+  const { t: tr } = useT();
   const reduced = useReducedMotion();
   const p = useRef(new Animated.Value(0)).current; // 0 gizli, 1 görünür
-  const offset = reduced ? REDUCED.maxShift : TRANSITION.toast.offset;
+  const offset = reduced
+    ? REDUCED.maxShift
+    : from === 'bottom'
+      ? TOAST_BOTTOM_OFFSET
+      : TRANSITION.toast.offset;
 
   useEffect(() => {
     Animated.timing(p, {
@@ -46,6 +74,8 @@ export function Toast({
         : visible
           ? TRANSITION.toast.inDuration
           : TRANSITION.toast.outDuration,
+      // 'bottom': pano eğrileri (giriş enter · çıkış exit); 'top' eskisi gibi (varsayılan eğri).
+      ...(from === 'bottom' && !reduced ? { easing: visible ? TOAST_ENTER : TOAST_EXIT } : null),
       useNativeDriver: true,
     }).start();
 
@@ -53,9 +83,9 @@ export function Toast({
       const timer = setTimeout(() => onDismiss?.(), autoHideMs);
       return () => clearTimeout(timer);
     }
-  }, [visible, reduced, autoHideMs, onDismiss, p]);
+  }, [visible, reduced, autoHideMs, onDismiss, p, from]);
 
-  const translateY = p.interpolate({ inputRange: [0, 1], outputRange: [-offset, 0] });
+  const translateY = p.interpolate({ inputRange: [0, 1], outputRange: [from === 'bottom' ? offset : -offset, 0] });
 
   return (
     <Animated.View
@@ -71,12 +101,13 @@ export function Toast({
           ...t.elevation.md,
         },
       ]}
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={tone === 'error' ? 'assertive' : 'polite'}
+      testID={testID}
     >
       <View style={styles.dot}>
-        <View style={[styles.dotInner, { backgroundColor: t.color.accent }]} />
+        <View style={[styles.dotInner, { backgroundColor: tone === 'error' ? t.color.secondary : t.color.accent }]} />
       </View>
-      <AppText variant="body" style={styles.msg} numberOfLines={2}>
+      <AppText variant="body" style={styles.msg} numberOfLines={tone === 'error' ? undefined : 2}>
         {message}
       </AppText>
       {onUndo ? (
@@ -87,10 +118,10 @@ export function Toast({
           }}
           style={styles.action}
           accessibilityRole="button"
-          accessibilityLabel="Geri al"
+          accessibilityLabel={tr('common.undo')}
         >
           <AppText variant="caption" style={{ color: t.color.accentLine }}>
-            Geri al
+            {tr('common.undo')}
           </AppText>
         </Pressable>
       ) : null}
@@ -102,10 +133,26 @@ export function Toast({
           }}
           style={styles.action}
           accessibilityRole="button"
-          accessibilityLabel="Gör"
+          accessibilityLabel={tr('common.view')}
         >
           <AppText variant="caption" style={{ color: t.color.ink }}>
-            Gör
+            {tr('common.view')}
+          </AppText>
+        </Pressable>
+      ) : null}
+      {onRetry ? (
+        <Pressable
+          onPress={() => {
+            haptic('selection');
+            onRetry();
+          }}
+          style={styles.action}
+          accessibilityRole="button"
+          accessibilityLabel={tr('common.retry')}
+          testID={testID ? `${testID}-retry` : undefined}
+        >
+          <AppText variant="caption" style={{ color: t.color.ink }}>
+            {tr('common.retry')}
           </AppText>
         </Pressable>
       ) : null}

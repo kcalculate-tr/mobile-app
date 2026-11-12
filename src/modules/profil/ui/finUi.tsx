@@ -13,6 +13,8 @@
 import React, { useCallback, useRef } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleProp,
@@ -25,8 +27,10 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PREMIUM, RN_CURVE, useTheme } from '../../../core/design';
 import { FinErrorReveal } from '../../../core/design/components/FinTransitions';
+import { SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 import type { Theme } from '../../../core/design';
 import { fontFamily } from '../../../core/design/typography';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { ArrowLeft, CaretRight } from '../../../components/icons';
 
 /** Final panolarında geçen ama anlamsal temada olmayan yardımcı tonlar. */
@@ -81,20 +85,44 @@ export function FinScreen({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  // G21-S1 md.10 — klavye: iOS'ta ScrollView kendi içeriğini klavye kadar içeri
+  // alır ve odaklı alanı görünür tutar (`automaticallyAdjustKeyboardInsets`);
+  // Android kenar-kenar pencerede `adjustResize` çalışmadığından kap padding'le
+  // küçülür (FIN_SCREEN_KEYBOARD). İkisi aynı anda devrede değil → çift boşluk yok.
   if (scroll) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: t.color.bg }}
-        contentContainerStyle={[{ paddingBottom: insets.bottom + 40 }, contentStyle]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={refreshControl}
-      >
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: t.color.bg }} behavior={FIN_SCREEN_KEYBOARD}>
+        <ScrollView {...SCROLL_KEYBOARD}
+          style={{ flex: 1, backgroundColor: t.color.bg }}
+          contentContainerStyle={[{ paddingBottom: insets.bottom + 40 }, contentStyle]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl}
+          automaticallyAdjustKeyboardInsets
+          testID="fin-screen-scroll"
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
-  return <View style={[{ flex: 1, backgroundColor: t.color.bg }, contentStyle]}>{children}</View>;
+  return (
+    <KeyboardAvoidingView style={[{ flex: 1, backgroundColor: t.color.bg }, contentStyle]} behavior={FIN_SCREEN_KEYBOARD}>
+      {children}
+    </KeyboardAvoidingView>
+  );
 }
+
+/**
+ * FinScreen klavye davranışı: Android'de 'padding' (SCREEN_KEYBOARD_BEHAVIOR),
+ * iOS'ta yok — orada içerideki ScrollView'lar `automaticallyAdjustKeyboardInsets`
+ * ile kayar (FIN_SCROLL_KEYBOARD). Kendi ScrollView'ını çizen Fin ekranları bu
+ * özellikleri `FIN_SCROLL_KEYBOARD` ile alır.
+ */
+export const FIN_SCREEN_KEYBOARD = Platform.OS === 'android' ? SCREEN_KEYBOARD_BEHAVIOR : undefined;
+export const FIN_SCROLL_KEYBOARD = {
+  ...SCROLL_KEYBOARD,
+  automaticallyAdjustKeyboardInsets: true,
+} as const;
 
 /** Üst başlık — 44 geri + ortalı başlık (20). */
 export function FinHeader({
@@ -198,6 +226,9 @@ export function FinRow({
   onPress,
   first,
   chevron = true,
+  sub,
+  right,
+  testID,
 }: {
   icon?: React.ReactNode;
   label: string;
@@ -205,12 +236,19 @@ export function FinRow({
   onPress?: () => void;
   first?: boolean;
   chevron?: boolean;
+  /** G33-S1: başlığın altında ikincil satır (Profil › Kcalculate AI: "kcalAI planları"). */
+  sub?: string;
+  /** G33-S1: değerin yerine özel öğe (ör. "Balance" hapı). */
+  right?: React.ReactNode;
+  testID?: string;
 }) {
   const t = useTheme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={[label, sub, value].filter(Boolean).join(', ')}
+      testID={testID}
       style={({ pressed }) => ({
         minHeight: 52,
         paddingHorizontal: 14,
@@ -224,8 +262,16 @@ export function FinRow({
       })}
     >
       {icon ? <View style={{ width: 22, alignItems: 'center' }}>{icon}</View> : null}
-      <Text style={{ flex: 1, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>{label}</Text>
-      {value ? (
+      {sub ? (
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>{label}</Text>
+          <Text style={{ fontFamily: body, fontSize: 12, color: t.color.secondary }}>{sub}</Text>
+        </View>
+      ) : (
+        <Text style={{ flex: 1, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}>{label}</Text>
+      )}
+      {right ?? null}
+      {value && !right ? (
         <Text style={{ fontFamily: bodyMedium, fontSize: 14, color: t.color.secondary }}>{value}</Text>
       ) : null}
       {chevron && onPress ? <CaretRight size={16} color={t.color.secondary} weight="bold" /> : null}
@@ -249,6 +295,7 @@ export function FinPrimaryButton({
   tone = 'ink',
   disabled,
   style,
+  testID,
 }: {
   label: string;
   onPress?: () => void;
@@ -256,6 +303,7 @@ export function FinPrimaryButton({
   tone?: 'ink' | 'lime';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }) {
   const t = useTheme();
   const bg = tone === 'lime' ? t.color.accent : t.color.ink;
@@ -264,6 +312,7 @@ export function FinPrimaryButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      testID={testID}
       accessibilityRole="button"
       style={({ pressed }) => [
         {
@@ -327,7 +376,11 @@ export function FinSecondaryButton({
   );
 }
 
-/** Segment denetimi (tab) — eşit sütunlar, seçili beyaz/ink. */
+/**
+ * Segment denetimi (tab) — eşit sütunlar, seçili beyaz/ink. G21-S1 md.9: seçili
+ * hap yeni sekmeye KAYAR (FinMoTokens; azaltılmışta 200 ms opaklık). Satır
+ * ölçülene kadar seçili düğme kendi zeminini çizer (ilk karede boşluk yok).
+ */
 export function FinSegmented({
   options,
   index,
@@ -338,8 +391,13 @@ export function FinSegmented({
   onChange: (i: number) => void;
 }) {
   const t = useTheme();
+  const [rowW, onRowLayout] = useRowWidth();
+  const measured = rowW > 0;
   return (
     <View
+      onLayout={onRowLayout}
+      accessibilityRole="tablist"
+      testID="fin-segmented"
       style={{
         flexDirection: 'row',
         padding: 4,
@@ -348,6 +406,15 @@ export function FinSegmented({
         gap: 4,
       }}
     >
+      <SlidingIndicator
+        testID="fin-segmented-indicator"
+        index={index}
+        count={options.length}
+        containerWidth={rowW}
+        inset={4}
+        gap={4}
+        style={{ top: 4, height: 40, borderRadius: 18, backgroundColor: t.color.surface }}
+      />
       {options.map((o, i) => {
         const on = i === index;
         return (
@@ -362,7 +429,7 @@ export function FinSegmented({
               borderRadius: 18,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: on ? t.color.surface : 'transparent',
+              backgroundColor: on && !measured ? t.color.surface : 'transparent',
             }}
           >
             <Text style={{ fontFamily: bodySemibold, fontSize: 14, color: t.color.ink }}>{o}</Text>

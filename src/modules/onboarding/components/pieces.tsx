@@ -38,6 +38,7 @@ export function OnbButton({
   icon,
   disabled = false,
   style,
+  testID,
 }: {
   label: string;
   onPress: () => void;
@@ -45,6 +46,7 @@ export function OnbButton({
   icon?: (color: string) => React.ReactNode;
   disabled?: boolean;
   style?: object;
+  testID?: string;
 }) {
   const P = useOnb();
   const bg = disabled ? P.dis : kind === 'ink' ? P.ink : kind === 'lime' ? P.accent : P.chip;
@@ -59,6 +61,7 @@ export function OnbButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
+      testID={testID}
       style={[
         styles.btn,
         { backgroundColor: bg },
@@ -84,29 +87,34 @@ export function OptionRow({
   selected = false,
   icon,
   onPress,
+  disabled = false,
 }: {
   title: string;
   desc?: string;
   selected?: boolean;
   icon?: (color: string) => React.ReactNode;
   onPress: () => void;
+  /** G33-S1: seçilemez seçenek (ör. BMI < 18,5'te "Kilo ver"); soluk + VoiceOver "devre dışı". */
+  disabled?: boolean;
 }) {
   const P = useOnb();
   const fg = selected ? P.onAccent : P.ink;
   return (
     <Pressable
+      disabled={disabled}
       onPress={() => {
         haptic('selection');
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled }}
       accessibilityLabel={desc ? `${title}. ${desc}` : title}
       style={[
         styles.option,
         selected
           ? { backgroundColor: P.accent, borderColor: 'transparent' }
           : { backgroundColor: P.chip, borderColor: P.chipEdge },
+        disabled ? { opacity: 0.45 } : null,
       ]}
     >
       {icon ? (

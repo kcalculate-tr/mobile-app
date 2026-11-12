@@ -31,6 +31,25 @@ export interface LogFlightPayload {
   h: number;
   /** Uçan küçük görsel (varsa); yoksa lime nokta uçar. */
   imageUri?: string | null;
+  /**
+   * G29-S1 md.1: görsel bir ÇIKARTMA (şeffaf zemin, nesneye kırpılmış) — uçuşta kırpma /
+   * köşe yuvarlama yok, oran korunur (contain). Yoksa normal fotoğraf (yuvarlatılmış, cover).
+   */
+  cutout?: boolean;
+  /**
+   * G30-S1 md.1: kaynak görsel uçuş kutusundan BÜYÜK çiziliyorsa (ör. tam ekran fotoğrafın
+   * tabak bölgesi) görselin tamamının ekran kutusu. Uçan kopya bu kutudaki pikselleri
+   * kendi kutusuna kırparak başlar → ilk karede alttaki görselle birebir (sıçrama yok).
+   */
+  imageRect?: { x: number; y: number; w: number; h: number } | null;
+  /** G30-S1 md.1: uçuş başlangıç köşe yarıçapı (kaynakla aynı; varsayılan 16). */
+  radius?: number;
+  /**
+   * G30-S1 md.1: uçan kopya ekranda GÖRÜNDÜĞÜNDE (görsel yüklendi, ilk kare çizildi) kabuk
+   * çağırır; uçuş yoksa (azaltılmış hareket / konum yok) hemen. Kaynak ekran ancak bundan
+   * sonra kapanır → görsel bir an kaybolup yeniden belirmez.
+   */
+  onStart?: (() => void) | null;
   /** Rozet/toast metni için öğün etiketi, ör. "Öğle". */
   mealLabel?: string | null;
   /** Kaynak: 'kesfet' | 'scan' | 'eatkcal' — vurgu etiketi için. */
@@ -39,6 +58,17 @@ export interface LogFlightPayload {
   name?: string | null;
   /** Kalori (koleksiyon/vurgu için). */
   kcal?: number | null;
+  /**
+   * G20-S1 md.4: kaynak ekran kendi toast'ını gösteriyorsa (Keşfet: "<Öğün>'ye
+   * loglandı · Geri al · Gör") kabuk yalnız uçuş + rozet çizer, İKİNCİ toast YOK.
+   */
+  ownToast?: boolean;
+  /**
+   * G20-S1 md.4: kaydı GERÇEKTEN silen geri alma. Kabuk toast'ı "Geri al"ı yalnız
+   * bu verilirse gösterir (önceden yalnız rozeti azaltıyor, kaydı silmiyordu).
+   * Süreç içi olay (DeviceEventEmitter) → fonksiyon referansı taşınabilir.
+   */
+  undo?: (() => void | Promise<void>) | null;
 }
 
 export interface LogUndoPayload {

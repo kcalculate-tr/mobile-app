@@ -51,7 +51,7 @@ interface KesfetState {
     postId: string,
     consumptionId: string,
     idempotencyKey: string,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   // Şikayet: RPC'ye iletir; başarıda true. Liste değişmez (moderasyon sunucuda).
   report: (targetType: ReportTargetType, target: string, reason: string) => Promise<boolean>;
   // Engelle: iyimser — bu yazarın tüm gönderileri akıştan ANINDA düşer, sonra RPC.
@@ -219,8 +219,10 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
     });
     try {
       await getKesfetClient().removeConsumption({ consumption: consumptionId });
+      return true;
     } catch {
-      // Olumsuz an sessiz — sayaç zaten geri alındı, satır temizliği best-effort.
+      // G20-S1 md.4: kayıt silinemedi → çağıran kullanıcıya söyler (sessiz değil).
+      return false;
     }
   },
 

@@ -141,7 +141,9 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   Kesfet: { kind: 'final', file: 'modules/kesfet/ui/KesfetScreen.tsx' },
   Composer: { kind: 'final', file: 'modules/kesfet/ui/ComposerScreen.tsx' },
   KesfetNotifications: { kind: 'final', file: 'modules/kesfet/ui/NotificationsScreen.tsx' },
+  KesfetSearch: { kind: 'final', file: 'modules/kesfet/ui/SearchScreen.tsx' }, // G22-S2 md.4: Keşfet arama (profil + içerik)
   PublicProfile: { kind: 'internal', why: 'PublicProfileScreen yeni_kabuk ile dallanır (Final dal: profil/ui)' },
+  ProfileSub: { kind: 'final', file: 'modules/profil/ui/screens/ProfileSubRoute.tsx' }, // G21-S1 md.9: FinPrProfile alt sayfaları (yalnız yeni kabuktan açılır)
   KcalAiSignUp: { kind: 'gate', file: 'modules/onboarding/v2/SignupAIFlowV2.tsx' },
   Login: { kind: 'gate', file: 'modules/onboarding/v2/LoginV2.tsx' },
   NutritionProfile: { kind: 'finalRoute' },
@@ -163,6 +165,23 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   SharedProfile: { kind: 'finalRoute' },
   AiScan: { kind: 'internal', why: 'ScanScreen yeni_kabuk ile dallanır (G17-S2: FinScanCamera canlı + FinScanAnalyzing/FinPhotoResult/FinScanErrorSheet; eski derlemede FinScanViewfinder yedeği)' },
   AiScanOffline: { kind: 'final', file: 'modules/ai/scan/screens/ScanOfflineScreen.tsx' },
+  // G22-S1 md.4 — kcalAI (yalnız Final; abonelik bayrağı + RevenueCat).
+  SubPaywall: { kind: 'final', file: 'modules/subscription/screens/PaywallScreen.tsx' },
+  SubProfile: { kind: 'final', file: 'modules/subscription/screens/SubProfileScreen.tsx' },
+  // G24-S1 — kcalAI Koç (`koc` bayrağı).
+  CoachIntro: { kind: 'final', file: 'modules/coach/screens/CoachIntroScreen.tsx' },
+  CoachChat: { kind: 'final', file: 'modules/coach/screens/CoachChatScreen.tsx' },
+  CoachHistory: { kind: 'final', file: 'modules/coach/screens/CoachHistoryScreen.tsx' },
+  // G33-S1 — Öğün planı + alışveriş listesi (`ogun_plani` bayrağı).
+  MealPlan: { kind: 'final', file: 'modules/plan/screens/MealPlanScreen.tsx' },
+  MealPlanGenerate: { kind: 'final', file: 'modules/plan/screens/PlanGenerateScreen.tsx' },
+  ShoppingList: { kind: 'final', file: 'modules/plan/screens/ShoppingListScreen.tsx' },
+  // G34-S1 — Kişisel plan (`kisisel_plan` bayrağı).
+  PersonalPlan: { kind: 'final', file: 'modules/personalPlan/screens/PersonalPlanFlowScreen.tsx' },
+  PersonalPlanMine: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanScreen.tsx' },
+  PersonalPlanEdit: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanEditScreen.tsx' },
+  PersonalPlanCheckin: { kind: 'final', file: 'modules/personalPlan/screens/CheckinScreen.tsx' },
+  PlanPaywall: { kind: 'final', file: 'modules/personalPlan/screens/PlanPaywallScreen.tsx' },
   EatCatalog: { kind: 'finalRoute' },
 };
 

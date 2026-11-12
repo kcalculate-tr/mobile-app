@@ -10,8 +10,8 @@
 //  • `props`: beyaz liste. Listede olmayan anahtar SESSİZCE düşer
 //    (sanitize.ts). Kişisel veri (ad, e-posta, telefon, adres, konum, kart,
 //    serbest metin not, başka kullanıcının kimliği/handle'ı) için anahtar YOK.
-//  • `meta`: yalnız reklam olayları Meta SDK'ya gider (ATT + uygulama içi rıza
-//    açıksa; bkz. consent.ts). Diğer olaylar yalnız Supabase'e yazılır.
+//  • `meta`: yalnız reklam olayları Meta SDK’ya gider (uygulama içi rıza; G26: ATT yok —
+//    bkz. consent.ts). Diğer olaylar yalnız Supabase’e yazılır.
 //  • `attribution: true`: olaya ilk/son dokunma (kaynak, kampanya) eklenir
 //    (sipariş hunisi).
 //  • `aliasOf`: aynı anlamın ikinci adı (D-S1'deki alias_of ile aynı yön).
@@ -50,9 +50,11 @@ export interface EventDef {
 }
 
 const SIGNUP_METHODS = ['apple', 'google', 'email', 'phone', 'unknown'] as const;
-const SCAN_VIA = ['camera', 'gallery', 'queue', 'legacy'] as const;
+const SCAN_VIA = ['camera', 'gallery', 'queue', 'legacy', 'voice'] as const;
 // G19-S4: G19-S2 kaynaklarıyla birleşik tek liste (logSource.ts aynı kümeyi üretir).
-const LOG_SOURCES = ['scan', 'manual', 'order', 'pantry', 'kesfet', 'day_card', 'quick'] as const;
+const LOG_SOURCES = ['scan', 'manual', 'order', 'pantry', 'kesfet', 'day_card', 'quick', 'barcode'] as const;
+// G21-S1 md.2: barkod (Open Food Facts) sonucu bulunamama nedenleri.
+const BARCODE_MISS = ['missing', 'no_kcal', 'timeout', 'network', 'http', 'offline'] as const;
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 const SHARE_TARGETS = ['post', 'day', 'meal', 'product', 'app', 'report', 'streak'] as const;
 const UI = ['ek_v2', 'legacy', 'fin'] as const;
@@ -150,6 +152,68 @@ export const EVENTS = {
     category: 'tracking', tr: 'Tarama sonucu güne kaydedildi', en: 'Scan result logged to the day',
     props: { n_items: 'number', kcal: 'number', edited: 'boolean', meal_type: 'text' },
   },
+  // G21-S1 md.2 — barkod → Open Food Facts (AI hakkı tüketmez).
+  barcode_scan: {
+    category: 'tracking', tr: 'Barkod okundu (Tara)', en: 'Barcode read (Scan)', props: { offline: 'boolean' },
+  },
+  barcode_found: {
+    category: 'tracking', tr: 'Barkodlu ürün Open Food Facts’te bulundu', en: 'Barcode product found on Open Food Facts',
+    props: { cached: 'boolean', has_serving: 'boolean' },
+  },
+  barcode_not_found: {
+    category: 'tracking', tr: 'Barkodlu ürün bulunamadı (yok / kcal yok / bağlantı)', en: 'Barcode product not found (missing / no kcal / connection)',
+    props: { reason: BARCODE_MISS },
+  },
+  // G22-S1 md.1 — sesle ekleme (ses gönderilmez; yalnız uzunluk/dil).
+  voice_start: {
+    category: 'tracking', tr: 'Sesle ekleme: dinleme başladı', en: 'Voice add: listening started', props: { lang: ['tr', 'en'] },
+  },
+  voice_done: {
+    category: 'tracking', tr: 'Sesle ekleme: metin analize gönderildi', en: 'Voice add: transcript sent to analysis', props: { chars: 'number' },
+  },
+  voice_empty: {
+    category: 'tracking', tr: 'Sesle ekleme: konuşma duyulmadı', en: 'Voice add: no speech heard', props: {},
+  },
+  // G22-S1 md.4 — kcalAI abonelikleri.
+  paywall_view: {
+    category: 'commerce', tr: 'Abonelik ekranı görüntülendi', en: 'Paywall viewed',
+    props: { from: ['limit_ai', 'limit_barcode', 'limit_voice', 'profile', 'pill', 'coach', 'other'] },
+  },
+  sub_purchase: {
+    category: 'commerce', tr: 'Abonelik satın alma sonucu', en: 'Subscription purchase result',
+    props: { product: 'id', result: ['success', 'cancelled', 'pending', 'error'] },
+  },
+  sub_restore: {
+    category: 'commerce', tr: 'Satın alımları geri yükleme', en: 'Restore purchases', props: { result: ['restored', 'none', 'error'] },
+  },
+  barcode_limit: {
+    category: 'tracking', tr: 'Günlük ücretsiz barkod hakkı bitti', en: 'Daily free barcode scans used up', props: {},
+  },
+  // G24-S1 — kcalAI Koç (sunucu satırları 20261111100100_g24_coach.sql).
+  coach_open: {
+    category: 'tracking', tr: 'kcalAI Koç açıldı', en: 'kcalAI Coach opened', props: { from: ['home', 'scan', 'profile', 'recipe', 'other'] },
+  },
+  coach_send: {
+    category: 'tracking', tr: 'Koç’a mesaj gönderildi', en: 'Message sent to the Coach', props: { via: ['text', 'chip', 'voice'], kind: ['daily', 'trial'] },
+  },
+  coach_limit: {
+    category: 'tracking', tr: 'Koç mesaj hakkı doldu', en: 'Coach message limit reached', props: { kind: ['daily', 'trial'] },
+  },
+  coach_upsell: {
+    category: 'commerce', tr: '"Koç Balance’ta" sheet’i', en: '"Coach is on Balance" sheet', props: { action: ['view', 'plans', 'dismiss'] },
+  },
+  coach_feedback: {
+    category: 'tracking', tr: 'Koç yanıtına geri bildirim', en: 'Feedback on a Coach reply', props: { value: ['up', 'down', 'clear'] },
+  },
+  // G34-S1 — Kişisel plan (sunucu satırları 20261112110100_g34_personal_plan.sql).
+  pp_open: { category: 'tracking', tr: 'Kişisel plan akışı açıldı', en: 'Personal plan flow opened', props: { origin: ['profile', 'home', 'coach', 'purchase', 'mine', 'plan_form', 'dev'], known: 'boolean' } },
+  pp_step: { category: 'tracking', tr: 'Kişisel plan adımı geçildi', en: 'Personal plan step passed', props: { from: 'text', to: 'text' } },
+  pp_resume: { category: 'tracking', tr: 'Kaldığın yerden', en: 'Resume where you left off', props: { step: 'text', action: ['shown', 'continue', 'restart'] } },
+  pp_exit: { category: 'tracking', tr: 'Kişisel plan akışından çıkıldı', en: 'Left the personal plan flow', props: { step: 'text' } },
+  pp_saved: { category: 'tracking', tr: 'Kişisel plan kaydedildi', en: 'Personal plan saved', props: { goal: ['lose', 'maintain', 'gain', 'balanced'], custom: 'boolean', local_only: 'boolean' } },
+  pp_done: { category: 'tracking', tr: 'Kişisel plan akışı tamamlandı', en: 'Personal plan flow completed', props: { origin: ['profile', 'home', 'coach', 'purchase', 'mine', 'plan_form', 'dev'] } },
+  pp_checkin: { category: 'tracking', tr: 'Haftalık tartı', en: 'Weekly weigh-in', props: { kind: ['none', 'on_track', 'slow', 'fast', 'fluctuation'], action: ['saved', 'apply', 'keep', 'skip'] } },
+  pp_paywall: { category: 'commerce', tr: 'Kişisel plan paywall', en: 'Personal plan paywall', props: { action: ['view', 'purchase', 'restore', 'free'], plan: 'text' } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',

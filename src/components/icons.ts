@@ -19,6 +19,12 @@ export type { Icon, IconProps } from 'phosphor-react-native';
 export { AppleLogo } from 'phosphor-react-native/lib/commonjs/icons/AppleLogo';
 export { ArrowCounterClockwise } from 'phosphor-react-native/lib/commonjs/icons/ArrowCounterClockwise';
 export { ArrowLeft } from 'phosphor-react-native/lib/commonjs/icons/ArrowLeft';
+// G33-S1 — Alışveriş listesi düzenle (sil).
+export { MinusCircle } from 'phosphor-react-native/lib/commonjs/icons/MinusCircle';
+// G24-S1 — kcalAI Koç (gönder, seçenekler, uzmana danış).
+export { ArrowUp } from 'phosphor-react-native/lib/commonjs/icons/ArrowUp';
+export { DotsThree } from 'phosphor-react-native/lib/commonjs/icons/DotsThree';
+export { Heartbeat } from 'phosphor-react-native/lib/commonjs/icons/Heartbeat';
 export { ArrowRight } from 'phosphor-react-native/lib/commonjs/icons/ArrowRight';
 export { Bell } from 'phosphor-react-native/lib/commonjs/icons/Bell';
 export { BellRinging } from 'phosphor-react-native/lib/commonjs/icons/BellRinging';
@@ -84,6 +90,7 @@ export { NavigationArrow } from 'phosphor-react-native/lib/commonjs/icons/Naviga
 export { Package } from 'phosphor-react-native/lib/commonjs/icons/Package';
 export { PencilSimple } from 'phosphor-react-native/lib/commonjs/icons/PencilSimple';
 export { Percent } from 'phosphor-react-native/lib/commonjs/icons/Percent';
+export { DeviceMobile } from 'phosphor-react-native/lib/commonjs/icons/DeviceMobile';
 export { Phone } from 'phosphor-react-native/lib/commonjs/icons/Phone';
 export { PhoneCall } from 'phosphor-react-native/lib/commonjs/icons/PhoneCall';
 export { Plus } from 'phosphor-react-native/lib/commonjs/icons/Plus';
@@ -130,3 +137,14 @@ export { Basket } from 'phosphor-react-native/lib/commonjs/icons/Basket';
 export { Compass } from 'phosphor-react-native/lib/commonjs/icons/Compass';
 export { Scan } from 'phosphor-react-native/lib/commonjs/icons/Scan';
 export { CircleDashed } from 'phosphor-react-native/lib/commonjs/icons/CircleDashed';
+export { Microphone } from 'phosphor-react-native/lib/commonjs/icons/Microphone';
+export { MicrophoneSlash } from 'phosphor-react-native/lib/commonjs/icons/MicrophoneSlash';
+export { Keyboard } from 'phosphor-react-native/lib/commonjs/icons/Keyboard';
+export { Stop } from 'phosphor-react-native/lib/commonjs/icons/Stop';
+export { Waveform } from 'phosphor-react-native/lib/commonjs/icons/Waveform';
+export { Hourglass } from 'phosphor-react-native/lib/commonjs/icons/Hourglass';
+export { ArrowSquareOut } from 'phosphor-react-native/lib/commonjs/icons/ArrowSquareOut';
+export { Pause } from 'phosphor-react-native/lib/commonjs/icons/Pause';
+export { Play } from 'phosphor-react-native/lib/commonjs/icons/Play';
+export { Barcode } from 'phosphor-react-native/lib/commonjs/icons/Barcode';
+export { StarHalf } from 'phosphor-react-native/lib/commonjs/icons/StarHalf';

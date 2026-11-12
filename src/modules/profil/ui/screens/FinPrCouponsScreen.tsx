@@ -4,11 +4,11 @@
 // Detay: core/design Sheet + kod kopyala. Yalnız `yeni_kabuk` açıkken Profil'den
 // açılır; eski ekran bayrak kapalı yolda kalır.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sheet, useTheme } from '../../../../core/design';
+import { Sheet, useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { CachedImage } from '../../../../components/CachedImage';
@@ -19,6 +19,7 @@ import { resolveNavigation } from '../../../../lib/navigation';
 import { formatDate, gunKaldi, indirimEtiketi } from '../../../../lib/campaignVisual';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
 import { FinHeader, FinScreen, FinCard, FinSegmented, FinSecondaryButton, body, bodyBold, bodyMedium, bodySemibold, heading } from '../finUi';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
@@ -72,6 +73,9 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   return (
     // G17-S1 md.5: TEK dikey kaydırma (başlık dahil) — iç içe flex ScrollView
     // yerine FinScreen'in kaydırması; sonda güvenli alan + 16.
+    // G21-S1 md.10: FinScreen scroll klavyeye duyarlı (iOS içerik içeri alınır,
+    // Android kap küçülür) + keyboardShouldPersistTaps="handled" → kod alanı
+    // klavye açıkken görünür ve sayfa kaydırılabilir.
     <FinScreen
       scroll
       contentStyle={{ paddingBottom: insets.bottom + 16 }}
@@ -82,9 +86,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
         <FinSegmented options={[tr('profil.coupons_tab_offers'), tr('profil.coupons_tab_mine')]} index={tab} onChange={setTab} />
 
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.ink} />
-          </View>
+          <FinListSkeleton rows={4} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : error ? (
           <FinCard style={{ alignItems: 'center', gap: 12, padding: 20 }}>
             <Text style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, textAlign: 'center' }}>{error}</Text>
@@ -93,7 +95,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
         ) : (
           <>
             {tab === 0 && banners.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }} style={{ marginHorizontal: -16, flexGrow: 0, height: 140 }}>
+              <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }} style={{ marginHorizontal: -16, flexGrow: 0, height: 140 }}>
                 <View style={{ width: 4 }} />
                 {banners.map((b) => (
                   <Pressable key={b.id} onPress={() => resolveNavigation(navigation, b.navigate_to, 'Offers')}>
@@ -121,6 +123,9 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
                     placeholderTextColor={t.color.secondary}
                     autoCapitalize="characters"
                     autoCorrect={false}
+                    returnKeyType="done"
+                    accessibilityLabel={tr('profil.coupons_code_ph')}
+                    testID="pr-coupon-code"
                     style={{ flex: 1, height: 48, borderRadius: 14, paddingHorizontal: 14, backgroundColor: t.color.line, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}
                   />
                   <Pressable
@@ -187,6 +192,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
           setCopied('');
         }}
         title={selected?.title}
+        scroll
       >
         {selected ? (
           <View style={{ gap: 12 }}>

@@ -8,8 +8,9 @@ import { Plus } from '../../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { yorumTarihi, type VitrinYorumu } from '../../../../../lib/socialProofRules';
 import { fontFamily, haptic } from '../../../../../core/design';
-import { EkStars, ekType, money, useEk } from '../kit';
+import { EkRatingLine, EkStars, ekType, money, useEk } from '../kit';
 import { cardKcal, cardPrice } from '../../model/homeData';
+import { SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 
 /** Kart üstü kcal rozeti / fotoğraf zemini — açık temada beyaz %90, koyuda koyu yüzey. */
 function useOverlayBg() {
@@ -20,7 +21,7 @@ function useOverlayBg() {
 /** Yatay kayan satır (.hs) — 16 kenar boşluğu, 10 aralık. */
 export function HRow({ children, label }: { children: React.ReactNode; label?: string }) {
   return (
-    <ScrollView
+    <ScrollView {...SCROLL_KEYBOARD}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.hrow}
@@ -118,16 +119,25 @@ export function ProductCard({
   );
 }
 
-/** Mağaza kartı (236 geniş, 92 fotoğraf). Alt satır yalnız gerçek veriyle. */
+/**
+ * Mağaza kartı (236 geniş). G32-S1 md.1: görsel ~%75 (150), alt bant ~%25 (~50):
+ * ad tek satır; puan (tek yıldız) + süre aynı satırda — sığmazsa süre alt satıra
+ * iner (iki kısa satır), metin kırpılmaz. Alt satır yalnız gerçek veriyle.
+ */
+export const STORE_CARD = { width: 236, photo: 150 } as const;
+
 export function StoreCard({
   name,
   imageUri,
   subtitle,
+  rating,
   onPress,
 }: {
   name: string;
   imageUri?: string | null;
   subtitle?: string | null;
+  /** G22-S1 md.6: son 3 ay puanı (kompakt); <10 → "Yeni". */
+  rating?: { average: number | null; count: number; isNew: boolean } | null;
   onPress: () => void;
 }) {
   const { c } = useEk();
@@ -139,18 +149,31 @@ export function StoreCard({
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={name}
+      accessibilityLabel={subtitle ? `${name}, ${subtitle}` : name}
       style={({ pressed }) => [styles.store, { backgroundColor: c.surface, borderColor: c.line }, pressed && { opacity: 0.85 }]}
+      testID="ek-store-card"
     >
-      {src ? <CachedImage uri={src} style={styles.storePhoto} /> : <View style={[styles.storePhoto, { backgroundColor: c.line }]} />}
-      <View style={styles.storeBody}>
+      {src ? (
+        <CachedImage uri={src} style={styles.storePhoto} />
+      ) : (
+        <View style={[styles.storePhoto, { backgroundColor: c.line }]} testID="ek-store-card-photo" />
+      )}
+      <View style={styles.storeBody} testID="ek-store-card-body">
         <Text style={[styles.storeName, { color: c.ink }]} numberOfLines={1}>
           {name}
         </Text>
-        {subtitle ? (
-          <Text style={[ekType.c13, { color: c.secondary }]} numberOfLines={1}>
-            {subtitle}
-          </Text>
+        {rating || subtitle ? (
+          <View style={styles.storeMeta}>
+            {rating ? (
+              <EkRatingLine average={rating.average} count={rating.count} isNew={rating.isNew} mini testID="ek-store-card-rating" />
+            ) : null}
+            {rating && subtitle ? <Text style={[ekType.c13, { color: c.secondary }]}>·</Text> : null}
+            {subtitle ? (
+              <Text style={[ekType.c13, { color: c.secondary }]} numberOfLines={2}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
         ) : null}
       </View>
     </Pressable>
@@ -229,10 +252,11 @@ const styles = StyleSheet.create({
   name: { fontFamily: ekType.b15s.fontFamily, fontSize: 14, lineHeight: 18 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   price: { fontFamily: ekType.c13s.fontFamily, fontSize: 14, fontWeight: '700' },
-  store: { width: 236, borderRadius: 20, overflow: 'hidden', borderWidth: 1 },
-  storePhoto: { width: 236, height: 92 },
-  storeBody: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, gap: 2 },
-  storeName: { ...ekType.b17, fontFamily: ekType.h20.fontFamily },
+  store: { width: STORE_CARD.width, borderRadius: 20, overflow: 'hidden', borderWidth: 1 },
+  storePhoto: { width: STORE_CARD.width, height: STORE_CARD.photo },
+  storeBody: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8, gap: 1 },
+  storeName: { fontFamily: ekType.h20.fontFamily, fontSize: 16, lineHeight: 20 },
+  storeMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6 },
   campaign: { width: 300, gap: 8 },
   campaignImg: { width: 300, height: 104, borderRadius: 20, overflow: 'hidden' },
   campaignText: { gap: 2, paddingHorizontal: 2 },

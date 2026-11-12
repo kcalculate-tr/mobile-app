@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
-import { AppText, fontFamily, haptic, useTheme } from '../../../core/design';
+import { AppText, FinListSkeleton, fontFamily, haptic, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { getProfilClient } from '../../profil';
 
@@ -20,6 +20,8 @@ import { useNotificationsStore } from '../notificationsStore';
 import type { SocialNotification } from '../types';
 import { Avatar } from './Avatar';
 import { relativeTime, type UiLang } from './format';
+import { NotificationsError } from './NotificationsError';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // Final FinNotifications rozet ikonları (Phosphor fill, 256 viewBox).
 const BADGE_PATH = {
@@ -279,10 +281,11 @@ export default function NotificationsScreen() {
   const { t: tr } = useT();
   const items = useNotificationsStore((s) => s.items);
   const loading = useNotificationsStore((s) => s.loading);
+  const error = useNotificationsStore((s) => s.error);
   const [handled, setHandled] = useState<Set<string>>(new Set());
   const nowMs = Date.now();
 
-  useEffect(() => {
+  const loadAndMark = useCallback(() => {
     void useNotificationsStore
       .getState()
       .load()
@@ -292,6 +295,10 @@ export default function NotificationsScreen() {
         void useNotificationsStore.getState().markAllRead();
       });
   }, []);
+
+  useEffect(() => {
+    loadAndMark();
+  }, [loadAndMark]);
 
   // İlk görüldüğü andaki okunmamışları sakla → markAllRead sonrası vurgu kaybolmasın.
   const [unreadAtOpen, setUnreadAtOpen] = useState<Set<string> | null>(null);
@@ -340,7 +347,11 @@ export default function NotificationsScreen() {
   }, []);
 
   const sectionTitle = (s: NotifSection) => tr(`kesfet.notif.section.${s}`);
-  const empty = !loading && report.length === 0 && sections.length === 0;
+  // G22-S2 md.5 (FinNotificationsError): ilk yükleme başarısız + gösterilecek satır yok
+  // → "Bildirimler yüklenemedi" + Tekrar dene. Yeniden denerken satır iskeleti.
+  const failed = !loading && error != null && visible.length === 0;
+  const skeleton = loading && visible.length === 0;
+  const empty = !loading && !failed && report.length === 0 && sections.length === 0;
 
   return (
     <View style={[styles.screen, { backgroundColor: t.color.bg, paddingTop: insets.top }]}>
@@ -358,14 +369,20 @@ export default function NotificationsScreen() {
           {tr('kesfet.notif.title')}
         </AppText>
       </View>
-      {empty ? (
+      {failed ? (
+        <NotificationsError onRetry={loadAndMark} />
+      ) : skeleton ? (
+        <View accessibilityLabel={tr('notif_error.loading')} style={styles.skeleton}>
+          <FinListSkeleton rows={6} testID="notif-skeleton" />
+        </View>
+      ) : empty ? (
         <View style={styles.center}>
           <AppText variant="body" tone="secondary">
             {tr('kesfet.notif.empty')}
           </AppText>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
           {report.length > 0 ? (
             <>
               <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>
@@ -411,6 +428,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 20, lineHeight: 26 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  skeleton: { paddingTop: 8 },
   sectionTitle: { paddingTop: 14, paddingHorizontal: 16, paddingBottom: 6, fontSize: 13, fontFamily: fontFamily.bodyBold },
   row: {
     minHeight: 68,

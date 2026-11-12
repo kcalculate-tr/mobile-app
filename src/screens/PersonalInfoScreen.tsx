@@ -13,6 +13,7 @@ import ScreenContainer from '../components/ScreenContainer'
 import { useAuth } from '../core/AuthContext'
 import { getSupabaseClient } from '../core/supabase'
 import { RootStackParamList } from '../navigation/types'
+import { SCROLL_KEYBOARD } from '../core/design/keyboard'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
@@ -233,8 +234,7 @@ export default function PersonalInfoScreen() {
         <View style={s.loader}><ActivityIndicator color={COLORS.brand.green} size="large" /></View>
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
+          <ScrollView {...SCROLL_KEYBOARD}
             contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 40 }]}
             showsVerticalScrollIndicator={false}
           >

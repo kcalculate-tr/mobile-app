@@ -1,20 +1,20 @@
 // G19-S3 — Rıza kararları (saf).
 //
 // İki ayrı ölçüm:
-//  • Meta (üçüncü taraf, reklam): iOS'ta ATT izni ŞART; ayrıca uygulama içi
-//    reklam rızası 'denied' ise her platformda KAPALI.
-//      - adConsent 'unset' → bugünkü davranış korunur (iOS: ATT'ye bağlı,
-//        Android: açık). KVKK açık rıza varsayılanı için bkz. LOG SORULAR.
+//  • Meta (üçüncü taraf, reklam): YALNIZ uygulama içi reklam rızasına bağlı;
+//    'denied' ise her platformda KAPALI. G26-S1 (İlter 11 Kas): iOS ATT KALDIRILDI —
+//    Apple izleme sorusu hiç gösterilmez, iOS'ta `setAdvertiserTrackingEnabled(false)`
+//    ve IDFA toplama kapalı SABİT. Meta ölçümü ATT'siz (AEM / SKAdNetwork) sürer.
+//      - G27-S1 (İlter 11 Kas, KVKK açık rıza): varsayılan KAPALI. Yalnız uygulama içi
+//        tercihte açıkça 'granted' ise olay gider; 'unset' = kapalı (iOS + Android).
 //  • Birinci taraf (Supabase analytics_events): KVKK aydınlatması ile
 //    (metin: core/i18n metrics.kvkk.*); kullanıcı "Kullanım ölçümü"nü
 //    kapatırsa (firstParty=false) hiç yazılmaz.
 
-export type AttStatus = 'granted' | 'denied' | 'undetermined' | 'restricted' | 'unavailable';
 export type AdConsent = 'unset' | 'granted' | 'denied';
 
 export interface ConsentState {
   platform: string; // Platform.OS
-  att: AttStatus;
   adConsent: AdConsent;
   firstParty: boolean;
 }
@@ -22,26 +22,9 @@ export interface ConsentState {
 export const AD_CONSENT_KEY = '@kcal_consent_ads';
 export const FIRST_PARTY_KEY = '@kcal_consent_first_party';
 
-/** Meta SDK'ya olay gidebilir mi / IDFA toplanabilir mi? */
-export function metaAllowed(s: Pick<ConsentState, 'platform' | 'att' | 'adConsent'>): boolean {
-  if (s.adConsent === 'denied') return false;
-  if (s.platform === 'ios') return s.att === 'granted';
-  return true;
-}
-
-/** expo-tracking-transparency durum dizesini AttStatus'a çevirir. */
-export function toAttStatus(platform: string, raw: string | null | undefined): AttStatus {
-  if (platform !== 'ios') return 'unavailable';
-  switch (raw) {
-    case 'granted':
-      return 'granted';
-    case 'denied':
-      return 'denied';
-    case 'restricted':
-      return 'restricted';
-    default:
-      return 'undetermined';
-  }
+/** Meta SDK'ya olay gidebilir mi? YALNIZ açık rıza ('granted'); 'unset' = kapalı (G27-S1). */
+export function metaAllowed(s: Pick<ConsentState, 'adConsent'>): boolean {
+  return s.adConsent === 'granted';
 }
 
 export function parseAdConsent(raw: string | null | undefined): AdConsent {
@@ -54,13 +37,14 @@ export function parseFirstParty(raw: string | null | undefined): boolean {
 
 /**
  * initFBSDK sırasında Settings'e verilecek değerler. Sıra analytics.ts'de
- * sabittir: ATT iste → setAdvertiserTrackingEnabled → setAdvertiserIDCollectionEnabled
- * → initializeSDK.
+ * sabittir: setAdvertiserTrackingEnabled → setAdvertiserIDCollectionEnabled → initializeSDK.
+ * iOS: izleme ve IDFA HER ZAMAN kapalı (ATT yok). Android: reklam kimliği yalnız açık rızada.
  */
-export function fbSettingsFor(s: Pick<ConsentState, 'platform' | 'att' | 'adConsent'>): {
+export function fbSettingsFor(s: Pick<ConsentState, 'platform' | 'adConsent'>): {
   advertiserTracking: boolean;
   advertiserIdCollection: boolean;
 } {
+  if (s.platform === 'ios') return { advertiserTracking: false, advertiserIdCollection: false };
   const allowed = metaAllowed(s);
   return { advertiserTracking: allowed, advertiserIdCollection: allowed };
 }

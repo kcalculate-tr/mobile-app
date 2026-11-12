@@ -6,11 +6,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText, Sheet, useTheme } from '../../../core/design';
+import { AppText, Sheet, useTheme, FinListSkeleton } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Plus, User } from '../../../components/icons';
 import { getTodayConsumptions, type TodayConsumption } from '../todayConsumptions';
 import { shareMealToDay } from '../index';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const MEAL_I18N: Record<string, string> = {
   breakfast: 'meal.breakfast',
@@ -123,13 +124,13 @@ function TodayPickerSheet({
     // G15-S3 — eski 1.0.7 BottomSheet yerine Final Sheet (28 köşe, tutamaç, kapat, tema).
     <Sheet visible={visible} onClose={onClose} title={tt('gun.picker_title')}>
       {loading ? (
-        <ActivityIndicator style={styles.loader} />
+        <FinListSkeleton rows={3} style={{ paddingHorizontal: 0 }} />
       ) : items.length === 0 ? (
         <AppText variant="body" tone="secondary" style={styles.pickerEmpty}>
           {tt('gun.picker_empty')}
         </AppText>
       ) : (
-        <FlatList
+        <FlatList {...SCROLL_KEYBOARD}
           data={items}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}

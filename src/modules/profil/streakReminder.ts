@@ -7,6 +7,7 @@
  * dokunmaz. Bir kerelik tarihli bildirimler `HORIZON_DAYS` gün ileriye kurulur
  * ve uygulama her açıldığında/öğün loglandığında yeniden eşitlenir.
  */
+import { pushGranted } from '../../core/push/pushPermission';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { REMINDER_HOUR, REMINDER_MINUTE, HORIZON_DAYS, planReminderDates } from './streakReminderPlan';
@@ -74,8 +75,8 @@ export async function syncStreakReminder({ loggedToday, title, body, now = new D
     }
     await cancelStreakReminders();
     if (!(await isStreakReminderEnabled())) return 0;
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== 'granted') return 0;
+    // G26-S1: izin İSTEMEZ — tek fonksiyona sorar, yoksa sessizce geçer.
+    if (!(await pushGranted())) return 0;
 
     const ids: string[] = [];
     for (const date of planReminderDates(now, loggedToday)) {

@@ -31,10 +31,12 @@ import { useEkNav } from '../nav';
 import { EkHeader, EkScreen, EkSkeleton, EkStickyBar, EkToastLayer, ekType, money, useEk, EkKV } from '../ui/kit';
 import { EkErrorCard } from '../ui/ErrorCard';
 import { CouponSheet } from '../ui/CouponSheet';
+import { peekPendingCoupon, setPendingCoupon, takePendingCoupon } from '../model/pendingCoupon';
 import { priceError, stockError, type EkErrorModel } from '../model/errors';
 import { activeZoneRowOf, computeCartTotal, computeCheckoutTotals } from '../model/checkoutModel';
 import { freeShippingProgress, groupCartLines, linePrice, lineSummary } from '../model/cartModel';
 import { fetchSettingsMinCart, fetchZoneRuleFor } from '../checkout/data';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 function useCartHydrated(): boolean {
   const [ok, setOk] = useState(() => useCartStore.persist?.hasHydrated?.() ?? true);
@@ -52,7 +54,7 @@ export default function EkCartScreen() {
   const { user } = useAuth();
   const hydrated = useCartHydrated();
   // YALNIZ __DEV__ vitrini (FinEkCartSkeleton): iskelet hâlinde başlar.
-  const routeParams = useRoute().params as { vitrinSkeleton?: boolean } | undefined;
+  const routeParams = useRoute().params as { vitrinSkeleton?: boolean; couponCode?: string } | undefined;
   const vitrinSkeleton = __DEV__ ? routeParams?.vitrinSkeleton === true : false;
 
   const items = useCartStore((s) => s.items);
@@ -165,6 +167,29 @@ export default function EkCartScreen() {
     });
     setToast(t('eatkcal.v2.coupon.applied_toast', { code: result.code }));
   };
+
+  // G25-S1 md.4 (A5): Macro ödülü "Kullan" → `couponCode`. Sepet boşsa kod bekler; ürün varken bir kez
+  // doğrulanıp uygulanır (başarı → mevcut "uygulandı" toast'ı, hata → kupon hata metni).
+  const paramCoupon = routeParams?.couponCode;
+  useEffect(() => {
+    if (paramCoupon) setPendingCoupon(paramCoupon);
+  }, [paramCoupon]);
+  useEffect(() => {
+    if (items.length === 0 || !peekPendingCoupon()) return;
+    const code = takePendingCoupon() as string;
+    if (appliedCoupon?.code === code) return;
+    let active = true;
+    void validateCoupon(code, subtotal, couponItems).then((result) => {
+      if (!active) return;
+      if (result.valid) handleCouponApplied(result);
+      else setToast(getCouponErrorMessage(result));
+    });
+    return () => {
+      active = false;
+    };
+    // Yalnız sepet doluluğu / kod değişince (subtotal her adetle değişir; kod bir kez alınır).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length > 0, paramCoupon]);
 
   // Yüzdelik / ücretsiz öğün kuponu sepet değişince yeniden doğrulanır
   // (CartScreen.tsx:207-247 — aynı 400 ms bekleme, aynı alanlar).
@@ -396,7 +421,7 @@ export default function EkCartScreen() {
             <Text style={[ekType.h20, { color: c.ink, marginTop: 12 }]} accessibilityRole="header">
               {t('eatkcal.v2.cart.suggestions')}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
               {suggestions.map(({ product, reason }) => (
                 <Pressable
                   key={product.id}

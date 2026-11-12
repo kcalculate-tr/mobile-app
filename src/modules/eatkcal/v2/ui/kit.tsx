@@ -21,12 +21,12 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { useTheme, useReducedMotion, fontFamily, haptic, Button, DURATION, RN_CURVE } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ArrowLeft, CaretLeft, Star } from '../../../../components/icons';
+import { ArrowLeft, CaretLeft, Star, StarHalf } from '../../../../components/icons';
 import { formatPrice, reformatLegacyTl } from '../../../../lib/money';
 
 // ── Tipografi rolleri (FinComponents) ──────────────────────────────────────
@@ -102,11 +102,10 @@ export function EkScreen({
     >
       {header}
       {scroll ? (
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           ref={scrollRef}
           style={styles.fill}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
           refreshControl={refreshControl}
           onScroll={onScroll}
           scrollEventThrottle={16}
@@ -338,15 +337,71 @@ export function EkSkeleton({
   );
 }
 
-/** Yıldızlar (puan gösterimi; dokunulmaz). */
-export function EkStars({ value, size = 14 }: { value: number; size?: number }) {
+/** Yıldızlar (puan gösterimi; dokunulmaz). G22-S1 md.6: `half` → 0,5 adımı (yarım yıldız). */
+export function EkStars({ value, size = 14, half = false }: { value: number; size?: number; half?: boolean }) {
   const { c } = useEk();
-  const full = Math.round(Math.max(0, Math.min(5, value)));
+  const v = Math.max(0, Math.min(5, value));
+  const r = half ? Math.round(v * 2) / 2 : Math.round(v);
+  const full = Math.floor(r);
+  const hasHalf = r - full >= 0.5;
   return (
     <View style={{ flexDirection: 'row', gap: 2 }} accessibilityLabel={`${value}/5`}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <Star key={i} size={size} color={i < full ? c.ink : c.line} weight="fill" />
-      ))}
+      {[0, 1, 2, 3, 4].map((i) =>
+        i === full && hasHalf ? (
+          <View key={i} style={{ width: size, height: size }}>
+            <Star size={size} color={c.line} weight="fill" style={{ position: 'absolute' }} />
+            <StarHalf size={size} color={c.ink} weight="fill" style={{ position: 'absolute' }} />
+          </View>
+        ) : (
+          <Star key={i} size={size} color={i < full ? c.ink : c.line} weight="fill" />
+        ),
+      )}
+    </View>
+  );
+}
+
+/**
+ * G22-S1 md.6 — Restoran puanı satırı: "★★★★½ 4,5 · son 3 ay · 23 değerlendirme";
+ * 10'dan az değerlendirme → "Yeni" rozeti (koleksiyon rozet dili: lime zemin, 12/700).
+ */
+export function EkRatingLine({
+  average,
+  count,
+  isNew,
+  compact = false,
+  mini = false,
+  testID = 'ek-rating',
+}: {
+  average: number | null;
+  count: number;
+  isNew: boolean;
+  compact?: boolean;
+  /** G32-S1 md.1: mağaza kartı alt bandı — tek yıldız + puan (dar satırda süreyle yan yana). */
+  mini?: boolean;
+  testID?: string;
+}) {
+  const { c, t, lang } = useEk();
+  if (isNew || average == null) {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center' }} accessible accessibilityLabel={t('eatkcal.v2.reviews.new_a11y')} testID={testID}>
+        <View style={{ backgroundColor: c.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: c.onAccent }}>{t('eatkcal.v2.reviews.is_new')}</Text>
+        </View>
+      </View>
+    );
+  }
+  const r = Math.round(Math.max(0, Math.min(5, average)) * 2) / 2;
+  const shown = (Number.isInteger(r) ? String(r) : r.toFixed(1)).replace('.', lang === 'en' ? '.' : ',');
+  return (
+    <View
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+      accessible
+      accessibilityLabel={t('eatkcal.v2.reviews.rating_a11y', { avg: shown, n: count })}
+      testID={testID}
+    >
+      {mini ? <Star size={12} color={c.ink} weight="fill" /> : <EkStars value={r} size={compact ? 12 : 14} half />}
+      <Text style={[ekType.c13, { color: c.ink, fontWeight: '700' }]}>{shown}</Text>
+      {compact || mini ? null : <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.reviews.last3m', { n: count })}</Text>}
     </View>
   );
 }

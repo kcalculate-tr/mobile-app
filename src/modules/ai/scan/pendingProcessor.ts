@@ -2,17 +2,26 @@
 // Saf orkestrasyon (istemci/kayıt enjekte edilir). Günlük ücretsiz hak
 // yalnız analiz başarılı olunca düşer: `runAiScan` başarısızlıkta rezervasyonu
 // iade eder; başarısız/kota biten girdi kuyrukta kalır ve döngü durur.
-import { runAiScan } from './runScan';
-import { bumpPendingAttempt, getPendingScanQueue, removePendingScanPhoto, type PendingScanPhoto } from './offlineQueue';
+import { runAiScan, runAiTextScan } from './runScan';
+import {
+  bumpPendingAttempt,
+  getPendingScanQueue,
+  isPendingKeyClaimed,
+  removePendingScanPhoto,
+  type PendingScanPhoto,
+} from './offlineQueue';
 import { classifyScanFailure } from './scanError';
 
 /** G19-S1 md.4: sayılan hata bu kadar tekrarlanırsa girdi düşer (kuyruk kilitlenmez). */
 export const PENDING_MAX_ATTEMPTS = 3;
 import type { AiScanClient, AiScanOutcome, ScanEstimate } from './types';
+import { rowIdOf } from './scanUndo';
 
 export interface ProcessedScan {
   entry: PendingScanPhoto;
   estimate: ScanEstimate;
+  /** G21-S1 md.4: yazılan meal_consumptions satır id'si (kabuk Geri al bu kaydı siler). */
+  rowId?: string | null;
 }
 
 export interface ProcessResult {
@@ -37,14 +46,23 @@ export async function processPendingQueue(opts: {
   const dropped: PendingScanPhoto[] = [];
   for (const entry of queue) {
     if (opts.isCancelled?.()) return { processed, dropped, stoppedBy: 'cancelled' };
+    // G28-S1 md.4: ön planda (Tara "Tekrar dene") analiz edilen foto ikinci kez analiz edilmez.
+    if (isPendingKeyClaimed(entry.id)) continue;
     let outcome: AiScanOutcome;
     try {
-      outcome = await runAiScan(opts.client, {
-        idempotencyKey: entry.id,
-        imageRef: entry.imageUri,
-        ...(entry.hint ? { hint: entry.hint } : {}),
-        ...((entry.lang ?? opts.lang) ? { lang: entry.lang ?? opts.lang } : {}),
-      });
+      // G22-S1 md.1: sesle eklenen girdi METİN analizine gider (aynı hak).
+      outcome = entry.text
+        ? await runAiTextScan(opts.client, {
+            idempotencyKey: entry.id,
+            text: entry.text,
+            ...((entry.lang ?? opts.lang) ? { lang: entry.lang ?? opts.lang } : {}),
+          })
+        : await runAiScan(opts.client, {
+            idempotencyKey: entry.id,
+            imageRef: entry.imageUri,
+            ...(entry.hint ? { hint: entry.hint } : {}),
+            ...((entry.lang ?? opts.lang) ? { lang: entry.lang ?? opts.lang } : {}),
+          });
     } catch {
       // rezervasyon (RPC) hatası — ağ/sunucu; girdi kalır, sonra yeniden denenir
       return { processed, dropped, stoppedBy: 'failed' };
@@ -65,13 +83,14 @@ export async function processPendingQueue(opts: {
       }
       return { processed, dropped, stoppedBy: 'failed', lastOutcome: outcome };
     }
+    let savedRow: unknown;
     try {
-      await opts.save(entry, outcome.estimate);
+      savedRow = await opts.save(entry, outcome.estimate);
     } catch {
       return { processed, dropped, stoppedBy: 'failed', lastOutcome: outcome };
     }
     await removePendingScanPhoto(entry.id);
-    processed.push({ entry, estimate: outcome.estimate });
+    processed.push({ entry, estimate: outcome.estimate, rowId: rowIdOf(savedRow) });
   }
   return { processed, dropped, stoppedBy: 'empty' };
 }

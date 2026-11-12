@@ -20,12 +20,12 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinCardSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { getProfilClient } from '../../client';
-import { Prohibit } from '../../../../components/icons';
+import { CaretRight, ChartBar, Prohibit } from '../../../../components/icons';
 import {
   FinScreen,
   FinHeader,
@@ -100,10 +100,13 @@ function PrivacyOption({
 export default function SettingsPrivacyScreen({
   onBack,
   onOpenSecurity,
+  onOpenDataConsent,
 }: {
   onBack: () => void;
   /** "Hesabı sil" — silme akışı Güvenlik ekranında (tek yerde). */
   onOpenSecurity?: () => void;
+  /** G20-S1 md.2: "Veri ve reklam izinleri" alt sayfası. */
+  onOpenDataConsent?: () => void;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
@@ -154,9 +157,7 @@ export default function SettingsPrivacyScreen({
       <FinHeader title={tr('profil.privacy_settings_title')} onBack={onBack} align="left" />
       <View style={{ paddingHorizontal: 16, gap: 16 }}>
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.accent} size="large" />
-          </View>
+          <FinCardSkeleton style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : (
           <>
             <FinSectionLabel>{tr('profil.privacy_who_can_see')}</FinSectionLabel>
@@ -199,6 +200,32 @@ export default function SettingsPrivacyScreen({
                 {blockedCount === null ? '—' : String(blockedCount)}
               </Text>
             </View>
+
+            {onOpenDataConsent ? (
+              <>
+                <FinSectionLabel>{tr('consent.settings.row')}</FinSectionLabel>
+                <Pressable
+                  onPress={onOpenDataConsent}
+                  accessibilityRole="button"
+                  testID="privacy-data-consent-row"
+                  style={({ pressed }) => [
+                    flatGroup(t),
+                    { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: 14, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <ChartBar size={20} color={t.color.ink} />
+                  <View style={{ flex: 1, gap: 1 }}>
+                    <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>
+                      {tr('consent.settings.row')}
+                    </Text>
+                    <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
+                      {tr('consent.settings.row_sub')}
+                    </Text>
+                  </View>
+                  <CaretRight size={16} color={t.color.secondary} weight="bold" />
+                </Pressable>
+              </>
+            ) : null}
 
             <FinSecondaryButton label={tr('profil.delete_account')} onPress={onOpenSecurity ?? onBack} height={52} />
 

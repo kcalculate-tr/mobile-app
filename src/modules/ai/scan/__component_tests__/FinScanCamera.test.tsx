@@ -1,5 +1,5 @@
 // G17-S2 md.1–4 — FinScanR2 canlı kamera: izin akışı, deklanşör (kalite 0.5 +
-// boyut ≤ 1600), FinMoScan analiz katmanı, flaş, barkod "yakında" hâli.
+// boyut ≤ 1600), FinMoScan analiz katmanı, flaş, barkod okuma (G21-S1: Open Food Facts).
 // expo-camera native modülü jest'te yok → sahte modül enjekte edilir (`cam` prop).
 import React from 'react';
 import { View } from 'react-native';
@@ -66,7 +66,7 @@ test('ilk açılış: izin istenir; verilince canlı görüntü + çerçeve ipuc
   await ready(tree, f);
   expect(f.Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
   expect(tree.getByText('Tabağı tam çerçevele')).toBeTruthy();
-  expect(tree.getByText('Bugün 2/3 tarama hakkın kaldı')).toBeTruthy();
+  expect(tree.getByText('Bugün 2/2 tarama hakkın kaldı')).toBeTruthy(); // G23-S1: yedek tavan 2
   expect(tree.queryByText('Kamerayı aç')).toBeNull();
   expect(tree.queryByTestId('fin-scan-open-camera')).toBeNull();
   expect(p.onPermissionDenied).not.toHaveBeenCalled();
@@ -81,6 +81,24 @@ test('izin reddedildi (tekrar sorulamaz) → onPermissionDenied, kamera görünt
   await waitFor(() => expect(p.onPermissionDenied).toHaveBeenCalledTimes(1));
   expect(f.Camera.requestCameraPermissionsAsync).not.toHaveBeenCalled();
   expect(tree.queryByTestId('fin-scan-camera')).toBeNull();
+});
+
+test('G26-S1: bir kez reddedilen kamera izni (Android tekrar sorabilse de) bir daha İSTENMEZ', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const asMod = require('@react-native-async-storage/async-storage');
+  const AsyncStorage = asMod.default ?? asMod;
+  await AsyncStorage.clear();
+  const f = fakeCam({ get: UNDETERMINED, request: { ...UNDETERMINED, status: 'denied' } });
+  const p = base();
+  const t1 = render(<FinScanCamera cam={f.cam} {...p} />);
+  await waitFor(() => expect(p.onPermissionDenied).toHaveBeenCalledTimes(1));
+  expect(f.Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
+  t1.unmount();
+  const p2 = base();
+  render(<FinScanCamera cam={f.cam} {...p2} />);
+  await waitFor(() => expect(p2.onPermissionDenied).toHaveBeenCalledTimes(1));
+  expect(f.Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
+  await AsyncStorage.clear();
 });
 
 test('deklanşör: takePictureAsync kalite 0.5 → onCaptured(uri)', async () => {
@@ -121,27 +139,37 @@ test('flaş: fotoğrafta flash=on, barkodda torch', async () => {
   expect(f.lastProps.current.flash).toBe('off');
 });
 
-test('barkod modu: EAN/UPC tarayıcı açılır, "Barkod yakında"; geçerli kod gösterilir, bozuk kod yok sayılır', async () => {
+test('barkod modu (G21-S1 md.2): EAN/UPC tarayıcı; geçerli kod onBarcode\'a gider, bozuk kod yok sayılır; sorgu sürerken "Ürün aranıyor…"', async () => {
   const f = fakeCam({ get: GRANTED });
   const p = base();
-  const tree = render(<FinScanCamera cam={f.cam} {...p} />);
+  const onBarcode = jest.fn();
+  const tree = render(<FinScanCamera cam={f.cam} {...p} onBarcode={onBarcode} />);
   await ready(tree, f);
   expect(f.lastProps.current.barcodeScannerSettings).toBeUndefined();
   fireEvent.press(tree.getByText('Barkod'));
   expect(f.lastProps.current.barcodeScannerSettings).toEqual({ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] });
-  expect(tree.getByText('Barkod yakında')).toBeTruthy();
+  expect(tree.queryByText('Barkod yakında')).toBeNull();
+  expect(tree.queryByTestId('fin-scan-barcode-soon')).toBeNull();
   expect(tree.getByText('Barkodu çerçeveye hizala')).toBeTruthy();
-  act(() => {
-    (f.lastProps.current.onBarcodeScanned as (r: { type: string; data: string }) => void)({ type: 'ean13', data: '4006381333932' });
-  });
-  expect(tree.queryByText(/Okunan barkod/)).toBeNull();
-  act(() => {
-    (f.lastProps.current.onBarcodeScanned as (r: { type: string; data: string }) => void)({ type: 'ean13', data: '4006381333931' });
-  });
-  expect(tree.getByText('Okunan barkod: 4006381333931')).toBeTruthy();
-  expect(f.lastProps.current.onBarcodeScanned).toBeUndefined(); // tek okuma
-  fireEvent.press(tree.getByText('Elle gir'));
-  expect(p.onManual).toHaveBeenCalled();
+  const scan = (data: string) =>
+    act(() => {
+      (f.lastProps.current.onBarcodeScanned as (r: { type: string; data: string }) => void)({ type: 'ean13', data });
+    });
+  scan('4006381333932'); // bozuk sağlama
+  expect(onBarcode).not.toHaveBeenCalled();
+  scan('4006381333931');
+  expect(onBarcode).toHaveBeenCalledWith('4006381333931');
+  scan('4006381333931'); // aynı kod art arda → tek gönderim
+  expect(onBarcode).toHaveBeenCalledTimes(1);
+  // sorgu sürüyor → tarayıcı kapalı + hap
+  tree.rerender(<FinScanCamera cam={f.cam} {...p} onBarcode={onBarcode} barcodeBusy />);
+  expect(tree.getByTestId('fin-scan-barcode-busy')).toBeTruthy();
+  expect(tree.getByText('Ürün aranıyor…')).toBeTruthy();
+  expect(f.lastProps.current.onBarcodeScanned).toBeUndefined();
+  // "Fotoğrafla tara" → modeKey ile foto moduna döner
+  tree.rerender(<FinScanCamera cam={f.cam} {...p} onBarcode={onBarcode} initialMode="photo" modeKey={1} />);
+  expect(tree.getByText('Tabağı tam çerçevele')).toBeTruthy();
+  expect(f.lastProps.current.barcodeScannerSettings).toBeUndefined();
 });
 
 test('loadExpoCamera: native modül varsa expo-camera; yoksa null (eski derleme OTA ile çökmez)', () => {

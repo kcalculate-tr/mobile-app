@@ -27,6 +27,7 @@ import { useCartStore } from '../store/cartStore';
 import { findPlainCartLine, needsOptionSelection } from '../lib/quickAdd';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_GAP = 12;
@@ -177,8 +178,7 @@ export default function CategoryProductsScreen() {
           onAction={loadProducts}
         />
       ) : (
-        <FlatList
-          keyboardShouldPersistTaps="handled"
+        <FlatList {...SCROLL_KEYBOARD}
           data={products}
           keyExtractor={(item) => String(item.id)}
           numColumns={2}

@@ -19,6 +19,7 @@ import { CachedImage } from '../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type CategoriesNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -126,8 +127,7 @@ export default function CategoriesScreen() {
           onAction={loadCategories}
         />
       ) : (
-        <FlatList
-          keyboardShouldPersistTaps="handled"
+        <FlatList {...SCROLL_KEYBOARD}
           data={filtered}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.id)}

@@ -1,7 +1,6 @@
 import { DURATION } from '../constants/motion';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, SURFACE } from '../constants/theme';
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import KeyboardAccessory from '../components/KeyboardAccessory'
+import React, { useEffect, useRef, useState } from 'react'
 import { Animated,
   ActivityIndicator, Alert, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
@@ -16,6 +15,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth'
 import { getSupabaseClient } from '../core/supabase'
 import { RootStackParamList } from '../navigation/types'
 import { useAnimatedPress } from '../utils/useAnimatedPress'
+import { SCROLL_KEYBOARD } from '../core/design/keyboard'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
@@ -29,7 +29,6 @@ const CATEGORIES = [
 ]
 
 export default function FeedbackScreen() {
-  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, [])
   const navigation = useNavigation<Nav>()
   const insets     = useSafeAreaInsets()
   const { user }   = useAuth()
@@ -113,10 +112,9 @@ export default function FeedbackScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <Animated.ScrollView
+      <Animated.ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
         style={{ opacity: pageOpacity, transform: [{ translateY: pageTranslateY }] }}
       >
         {/* Kategori */}
@@ -190,7 +188,6 @@ export default function FeedbackScreen() {
             numberOfLines={5}
             textAlignVertical="top"
             maxLength={500}
-            inputAccessoryViewID={accId}
           />
           <Text style={s.charCount}>{message.length}/500</Text>
         </View>
@@ -210,7 +207,6 @@ export default function FeedbackScreen() {
           }
         </TouchableOpacity>
       </Animated.ScrollView>
-      <KeyboardAccessory nativeID={accId} />
     </ScreenContainer>
   )
 }

@@ -1,8 +1,10 @@
 {
   "ios": {
     "NSCameraUsageDescription": "Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.",
-    "NSMicrophoneUsageDescription": "Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.",
+    "NSMicrophoneUsageDescription": "Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.",
     "NSPhotoLibraryUsageDescription": "Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.",
-    "NSPhotoLibraryAddUsageDescription": "Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir."
+    "NSPhotoLibraryAddUsageDescription": "Paylaşım kartlarını ve görselleri fotoğraflarına kaydetmek için izin gereklidir.",
+    "NSLocationWhenInUseUsageDescription": "Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.",
+    "NSSpeechRecognitionUsageDescription": "Söylediğin yemekler telefonun konuşma tanımasıyla yazıya çevrilir. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir."
   }
 }

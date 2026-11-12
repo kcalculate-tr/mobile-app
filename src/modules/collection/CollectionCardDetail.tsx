@@ -13,6 +13,7 @@ import { ArrowLeft, CaretDown, Check } from '../../components/icons';
 import { CachedImage } from '../../components/CachedImage';
 import { formatNo } from './StickerCard';
 import type { CollectionCard } from './types';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 const CYCLE: Array<'breakfast' | 'lunch' | 'dinner' | 'snack'> = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -45,7 +46,7 @@ export function CollectionCardDetail({
 
   return (
     <View style={[styles.fill, { backgroundColor: t.color.bg }]}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 120 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 120 }}>
         <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel={tr('collection.back')} style={styles.back}>
           <ArrowLeft size={22} color={t.color.ink} />
         </Pressable>

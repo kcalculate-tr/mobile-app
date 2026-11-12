@@ -29,6 +29,8 @@ import SettingsPersonalScreen from '../modules/profil/ui/screens/SettingsPersona
 import SettingsNotifyScreen from '../modules/profil/ui/screens/SettingsNotifyScreen';
 import SettingsSecurityScreen from '../modules/profil/ui/screens/SettingsSecurityScreen';
 import SettingsPrivacyScreen from '../modules/profil/ui/screens/SettingsPrivacyScreen';
+import SettingsDataConsentScreen from '../modules/profil/ui/screens/SettingsDataConsentScreen';
+import { ConsentSheet, type ConsentSheetMode } from '../modules/onboarding/consent/ConsentSheet';
 import SettingsAgreementsScreen from '../modules/profil/ui/screens/SettingsAgreementsScreen';
 import SettingsSupportScreen from '../modules/profil/ui/screens/SettingsSupportScreen';
 import SettingsFeedbackScreen from '../modules/profil/ui/screens/SettingsFeedbackScreen';
@@ -64,6 +66,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginV2 from '../modules/onboarding/v2/LoginV2';
 import SignupAIFlowV2 from '../modules/onboarding/v2/SignupAIFlowV2';
 import SignupEatFlowV2 from '../modules/onboarding/v2/SignupEatFlowV2';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const VitrinStack = createNativeStackNavigator();
 /** v2 ekranları useRoute/useNavigation kullanır → tek ekranlı mini yığın içinde aç (YALNIZ vitrin). */
@@ -121,7 +124,7 @@ function PostCardScene({ variant }: { variant?: string }) {
   );
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingTop: insets.top + 12 }}>
         <PostCard {...({ model, index: 0, isVisible: true, showComment: true } as any)} />
       </ScrollView>
     </Backdrop>
@@ -187,6 +190,15 @@ const MACRO_MOCK = {
   ],
 };
 
+function ConsentSheetScene({ mode }: { mode: ConsentSheetMode }) {
+  const [adOn, setAdOn] = React.useState(false);
+  return (
+    <Backdrop>
+      <ConsentSheet visible mode={mode} adOn={adOn} onAdChange={setAdOn} onConfirm={noop} onClose={noop} />
+    </Backdrop>
+  );
+}
+
 function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boolean; history?: boolean; mock?: boolean }) {
   switch (sub) {
     case 'personal':
@@ -196,7 +208,9 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
     case 'security':
       return <SettingsSecurityScreen onBack={noop} />;
     case 'privacy':
-      return <SettingsPrivacyScreen onBack={noop} />;
+      return <SettingsPrivacyScreen onBack={noop} onOpenDataConsent={noop} />;
+    case 'dataConsent':
+      return <SettingsDataConsentScreen onBack={noop} />;
     case 'agreements':
       return <SettingsAgreementsScreen onBack={noop} />;
     case 'support':
@@ -311,7 +325,7 @@ function EkErrorsScene() {
   ].filter(Boolean) as any[];
   return (
     <Backdrop>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 8, gap: 12 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 8, gap: 12 }}>
         {/* G15-S5: FinEkErrors bir katalog panosu — Final'deki sayfa başlığı + açıklama (yalnız vitrin). */}
         <EkErrorsHead />
         {errors.map((e, i) => (
@@ -510,6 +524,7 @@ export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
     </Backdrop>
   ),
   profileSub: (p) => <ProfileSubScene {...P(p)} />,
+  consentSheet: ({ mode }: { mode?: string }) => <ConsentSheetScene mode={(mode as ConsentSheetMode) ?? 'details'} />,
   privacySheet: () => (
     <Backdrop>
       <PrivacySheet visible isPrivate={false} onClose={noop} onChanged={noop as any} />

@@ -5,12 +5,17 @@
  * okunur — yeni/ayrı bir sözleşme metni yazılmaz, yalnız Fin kabuğu.
  */
 import React, { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { CONTRACTS } from '../../../../data/contractsData';
+import { normalizeLegalSlug } from '../../../../lib/legal/slugs';
+import { webDocForSlug } from '../../../../lib/legal/urls';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
+import { ArrowSquareOut } from '../../../../components/icons';
 import { FinScreen, FinHeader, FinCard, FinChip, body, heading } from '../finUi';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function AgreementsScreen({
   onBack,
@@ -20,10 +25,11 @@ export default function AgreementsScreen({
   initialSlug?: string;
 }) {
   const t = useTheme();
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
 
   const initialIndex = useMemo(() => {
-    const i = CONTRACTS.findIndex(c => c.slug === initialSlug);
+    const want = normalizeLegalSlug(initialSlug);
+    const i = CONTRACTS.findIndex(c => c.slug === want);
     return i >= 0 ? i : 0;
   }, [initialSlug]);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
@@ -50,12 +56,11 @@ export default function AgreementsScreen({
   return (
     <FinScreen contentStyle={{ paddingTop: 0 }}>
       <FinHeader title={tr('profil.agreements_title')} onBack={onBack} />
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         horizontal
         style={{ flexGrow: 0 }}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}
-        keyboardShouldPersistTaps="handled"
       >
         {CONTRACTS.map((c, i) => (
           <FinChip
@@ -66,7 +71,7 @@ export default function AgreementsScreen({
           />
         ))}
       </ScrollView>
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
@@ -91,7 +96,39 @@ export default function AgreementsScreen({
               {p}
             </Text>
           ))}
+          {/* G28-S1 md.7: Koşullar / Gizlilik'in güncel hâli legal.eatkcal.com'da. */}
+          {webDocForSlug(active.slug) ? (
+            <Pressable
+              onPress={() => {
+                const web = webDocForSlug(active.slug);
+                if (web) void openLegalWeb(web, lang);
+              }}
+              accessibilityRole="link"
+              accessibilityLabel={tr('profil.agreements_open_web_a11y', { title: active.title })}
+              testID="agreements-open-web"
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+            >
+              <Text style={{ fontFamily: body, fontSize: 15, color: t.color.ink, textDecorationLine: 'underline' }}>
+                {tr('profil.agreements_open_web')}
+              </Text>
+              <ArrowSquareOut size={16} color={t.color.ink} />
+            </Pressable>
+          ) : null}
         </FinCard>
+        {/* G22-S2 md.3 — veri lisansı atfı (GeoNames CC BY 4.0: eatkcal şehir araması).
+            G31-S1 md.4 — yanında Open Food Facts (ODbL) atfı (barkod ürün verisi). */}
+        <Text
+          style={{ fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary, marginTop: 16, paddingHorizontal: 4 }}
+          testID="agreements-data-attribution"
+        >
+          {tr('eatkcal.v2.geo.attribution')}
+        </Text>
+        <Text
+          style={{ fontFamily: body, fontSize: 13, lineHeight: 18, color: t.color.secondary, marginTop: 4, paddingHorizontal: 4 }}
+          testID="agreements-off-attribution"
+        >
+          {tr('profil.agreements_off_attribution')}
+        </Text>
       </ScrollView>
     </FinScreen>
   );

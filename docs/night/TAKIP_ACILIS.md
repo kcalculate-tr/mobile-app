@@ -24,6 +24,11 @@ uygulama bir sonraki bayrak okumasında (açılış / ön plan) eski davranışa
 | `etkinlik` | "Bugünkü etkinlikler" + Etkinlik ekle + Geri al | yeni_kabuk | %10 | %50 | %100 | bölüm gizlenir |
 | `ogun_hatirlatma` | Öğün saatinde kayıt yoksa yerel bildirim (10:30 · 14:30 · 21:00 İstanbul) | yeni_kabuk | yeni_kabuk %100'den **sonra** %10 | %50 | %100 | kurulu hatırlatmalar bir sonraki açılışta iptal edilir |
 
+> **Öğün hatırlatma kararı — İlter onayı 10 Kas (G21-S1 md.6):** saatler **10:30 (kahvaltı) · 14:30 (öğle) ·
+> 21:00 (akşam)**, İstanbul saati; o öğün yuvasına bugün kayıt varsa kurulmaz; **yalnız son 7 günde en az bir kaydı
+> olan** kullanıcıya kurulur. Ara öğün hatırlatılmaz; sessiz saat içine düşen hatırlatma atlanır (kaydırılmaz).
+> Kod zaten bu kuralda (`src/modules/gun/track/mealReminderPlan.ts`, birim testli) — değişiklik gerekmedi.
+
 Kural: bir bayrak bir üst adıma ancak **2. bölümdeki alarmlar 48 saat yeşilse** çıkar.
 
 ## 2. İzlenecek metrikler ve alarmlar
@@ -76,4 +81,4 @@ select (consumed_at at time zone 'Europe/Istanbul')::date d, count(*), sum(calor
 ## 6. Açık kalan / sonraki
 - Sunucu tarafı hatırlatma (uygulama hiç açılmayan kullanıcı) bu sürümde YOK — yerel bildirim yalnız son 7 günde
   kaydı olana kurulur. Sunucu tarafı gerekiyorsa `send-notification` + pg_cron (fin_reminder_* şablonları hazır) — ayrı iş.
-- Silinip geri alınan Tara kaydının fotoğrafı (`photo_path`) geri gelmez (istemci listesi bu kolonu okumuyor) — SORULAR.
+- ~~Silinip geri alınan Tara kaydının fotoğrafı (`photo_path`) geri gelmez~~ — G21-S1 md.5: liste `photo_path`'i seçer, geri alma aynı yolu yazar.

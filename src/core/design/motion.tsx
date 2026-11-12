@@ -35,7 +35,7 @@ import * as Haptics from 'expo-haptics';
  * ayarlanabilir olmalı.
  *
  * Azaltılmış hareket (useReducedMotion): tüm giriş/döngü animasyonlarının
- * karşılığı = yalnız opaklık + en fazla 8 px kayma, en fazla 200 ms. Haptik
+ * karşılığı = yalnız opaklık + en fazla 8 px kayma, en fazla 220 ms. Haptik
  * AYNI kalır (dokunsal geri bildirim hareketten bağımsız erişilebilirlik).
  *
  * Kesilebilirlik: yay (`useSpringTo`) interrupt'ta mevcut hızı taşır
@@ -50,31 +50,36 @@ import * as Haptics from 'expo-haptics';
 /**
  * Süre bantları (ms) — FinMoTokens v2 TEK KAYNAK (`design/final/FinMoTokens.dc.html`):
  * `instant 100 · fast 200 · base 300 · slow 500 · story 900+`. Arası doldurulmaz.
+ *
+ * G22-S2 md.1 (İlter 10 Kas): hareket +%10 — bütün bantlar ×1,1 →
+ * `instant 110 · fast 220 · base 330 · slow 550 · story 990`. Eğriler FinMoTokens'taki
+ * gibi AYNEN; yaylar `MOTION_SOFTEN` ile ~%10 yumuşak. Yorumlardaki "base 300" gibi
+ * adlar FinMoTokens bant ADIDIR (değer bu dosyadaki sayıdır). DAHA FAZLA ARTIRILMAZ.
  * Eski adlar (micro/standard/emphasis/heroMin/heroMax) v2 bandına EŞLENMİŞ TAKMA
  * ADLARDIR; imzalar değişmez, bu yüzden mevcut tüketiciler kırılmaz.
  */
 export const DURATION = {
   /** 100 — deklanşör, kademe, dokunma geri bildirimi (v2). */
-  instant: 100,
+  instant: 110,
   /** 200 — crossfade, kaydet, sheet kapanış, durum değişimi (v2). */
-  fast: 200,
+  fast: 220,
   /** 300 — standart giriş/geçiş, liste öğesi, tab küçül/büyü (v2). */
-  base: 300,
+  base: 330,
   /** 500 — ekran ölçeğinde hareket, sheet/modal açılış, odometre (v2). */
-  slow: 500,
+  slow: 550,
   /** 900 — "story": halka dolumu, iskelet nabzı, analiz, süzülme döngüsü (v2). */
-  story: 900,
+  story: 990,
   // --- Eski adlar (takma ad → v2 bandı) ---
   /** @deprecated → instant (100). */
-  micro: 100,
+  micro: 110,
   /** @deprecated → base (300). */
-  standard: 300,
+  standard: 330,
   /** @deprecated → slow (500). */
-  emphasis: 500,
+  emphasis: 550,
   /** @deprecated → story (900). */
-  heroMin: 900,
+  heroMin: 990,
   /** @deprecated → story (900). FinMoTokens: 1100–1600 ms → story 900. */
-  heroMax: 900,
+  heroMax: 990,
 } as const;
 
 /**
@@ -83,18 +88,18 @@ export const DURATION = {
  * 3200 / eğim 4800 / parıltı 2400 — "story döngü"). Değerler token bandından seçilir.
  */
 export const TIMING = {
-  enter: 500, // slow
-  pop: 300, // base (kutlama sıçraması bouncy yay ile)
+  enter: 550, // slow
+  pop: 330, // base (kutlama sıçraması bouncy yay ile)
   // G18-S4: FinMoTokens eşlemesi — 3200 · 4800 ms süzülme/eğim döngüsü → story 900
   // TEK SAHNE (sürekli döngü yok); 2400 parıltı → story 900 yarım nefes; 1100–1600 → story 900.
-  float: 900, // story (tek sahne)
-  tilt: 900, // story (tek sahne)
-  glow: 900, // story (nefesin yarısı; yalnız yüklenirken döner)
-  sweep: 900, // story (analiz/ışık bandı)
-  logTrail: 500, // slow (tabak uçuşu)
-  streak: 900, // story (seri anı)
-  dailyRing: 900, // story (halka dolumu)
-  loading: 900, // story (iskelet nabzı)
+  float: 990, // story (tek sahne)
+  tilt: 990, // story (tek sahne)
+  glow: 990, // story (nefesin yarısı; yalnız yüklenirken döner)
+  sweep: 990, // story (analiz/ışık bandı)
+  logTrail: 550, // slow (tabak uçuşu)
+  streak: 990, // story (seri anı)
+  dailyRing: 990, // story (halka dolumu)
+  loading: 990, // story (iskelet nabzı)
 } as const;
 
 /**
@@ -119,19 +124,35 @@ export const CURVE = {
 } as const;
 
 /**
+ * G22-S2 md.1 — yay yumuşatma: stiffness ×0,9 (~%10 daha yavaş oturur). Sönüm
+ * oranı ζ = damping / (2·√(stiffness·mass)) AYNI kalsın diye damping ×√0,9 —
+ * böylece taşma (overshoot) artmaz, yalnız hareket uzar.
+ */
+export const MOTION_SOFTEN = { stiffness: 0.9 } as const;
+
+function softSpring(stiffness: number, damping: number) {
+  const k = MOTION_SOFTEN.stiffness;
+  return {
+    stiffness: Math.round(stiffness * k * 100) / 100,
+    damping: Math.round(damping * Math.sqrt(k) * 100) / 100,
+    mass: 1,
+  };
+}
+
+/**
  * Yay aileleri. İki ürün + sheet. `useNativeDriver` için RN spring `stiffness`
  * yerine bu değerleri kullanır; RN Animated.spring stiffness/damping/mass'i
  * doğrudan kabul eder.
  */
 export const SPRING = {
-  /** Kcalculate AI (260/24) — sheet, push/pop, modal, yer değiştirme (v2). */
-  ai: { stiffness: 260, damping: 24, mass: 1 },
-  /** eatkcal (200/28) — sepet, ödeme, teslim (v2). */
-  eat: { stiffness: 200, damping: 28, mass: 1 },
-  /** bouncy (220/14) — YALNIZ küçük ödüller: ✓, rozet, kaydet, beğen sayacı (v2). */
-  bouncy: { stiffness: 220, damping: 14, mass: 1 },
+  /** Kcalculate AI (260/24 → G22 234/22,77) — sheet, push/pop, modal, yer değiştirme (v2). */
+  ai: softSpring(260, 24),
+  /** eatkcal (200/28 → G22 180/26,56) — sepet, ödeme, teslim (v2). */
+  eat: softSpring(200, 28),
+  /** bouncy (220/14 → G22 198/13,28) — YALNIZ küçük ödüller: ✓, rozet, kaydet, beğen sayacı (v2). */
+  bouncy: softSpring(220, 14),
   /** @deprecated → ai. Sheet, FinMoMap'te AI yayını kullanır. */
-  sheet: { stiffness: 260, damping: 24, mass: 1 },
+  sheet: softSpring(260, 24),
 } as const;
 
 /**
@@ -140,14 +161,14 @@ export const SPRING = {
  */
 export const STAGGER = {
   /** Liste öğeleri — yalnız ilk 4 öğe sıralanır, gerisi 4. ile birlikte gelir. */
-  list: 100,
+  list: DURATION.instant,
   listMaxItems: 4,
   /** Etiket/rozet grubu. */
-  label: 100,
+  label: DURATION.instant,
   /** Günlük halkanın dallara ayrılması. */
-  ringSplit: 100,
+  ringSplit: DURATION.instant,
   /** Tarama köşelerinin belirmesi. */
-  scanCorners: 100,
+  scanCorners: DURATION.instant,
 } as const;
 
 /** Haptik sözlüğü — FinMoTokens v2 (hangi olayda hangi dokunsal). */
@@ -182,10 +203,111 @@ export const TRANSITION = {
   listItem: { duration: DURATION.fast, curve: CURVE.enter, stagger: STAGGER.list },
 } as const;
 
-/** Azaltılmış hareket sınırları. Son durum 200 ms opaklık; yer değiştirme/ölçek yok. */
+/**
+ * G22-S2 md.1 — hareketin bitmesini bekleyen gecikmeler (setTimeout). Ekranlar
+ * bekleme süresini de buradan okur (sabit ms yok). Hareket sürelerine bağlı
+ * olanlar ×1,1 ölçeklendi; okuma/tutma süreleri (toast 4 sn vb.) hareket değildir.
+ */
+export const WAIT = {
+  /** Logla izi örtüsünü kaldır: iz (TIMING.logTrail) + tampon — 1200 ×1,1. */
+  trailClear: 1320,
+  /** Başarı mesajı görününce ekranı kapat — 1200 ×1,1. */
+  doneMessage: 1320,
+  /** Kaydırma / sheet hareketi bittikten sonra klavye odağı — base. */
+  focusAfterMotion: DURATION.base,
+  /** Açılışın ilk karesinde modal fırlatma; ana sayfa yerleşsin — story. */
+  firstPaint: DURATION.story,
+  /** Eylem düğmeli hata toast'ı ("Takip edilemedi · Tekrar dene") — okuma + dokunma süresi 6 sn (hareket değil, ölçeklenmez). */
+  actionToastHold: 6000,
+} as const;
+
+/**
+ * Azaltılmış hareket sınırları. Son durum 220 ms opaklık; yer değiştirme/ölçek yok.
+ * G24-S1 (Tur 26k FinMoTokens): "Reduce Motion 220 ms, yalnız opaklık" — bantlarla aynı ×1,1.
+ */
 export const REDUCED = {
-  duration: 200,
+  duration: 220,
   maxShift: 8,
+} as const;
+
+/**
+ * G33-S1 md.9 — Öğün planı hareketi (docs/tur26mn/01-ogun-plani-hareket.png tablosu BİREBİR,
+ * FinMoTokens ×1,1: instant 110 · fast 220 · base 330 · slow 550 · story 990). Ekranlar süre
+ * yazmaz; buradan okur. Azaltılmış harekette: yalnız opaklık, REDUCED.duration (220).
+ */
+/**
+ * G33-S1 md.2 — Paywall (Tur 26n): bulanık yeşil zemin + üst ikon hafif süzülür.
+ * G37-S1 (İlter 12 Kas TestFlight): zemin ARTIK STATİK (kayan katmanın kenarı ekranda dikey çizgi
+ * olarak görünüyordu) — yalnız ikon süzülür. Süzülme FinMoTokens "süzülme 3200" döngüsü, karuselden
+ * bağımsız TEK sürekli döngü; slayt değişince yalnız ikon görseli `iconFade` (fast 220) çapraz geçer.
+ * Azaltılmış harekette süzülme yok.
+ */
+export const PAYWALL_MOTION = {
+  floatPeriod: 3200,
+  floatAmp: 6,
+  iconFade: DURATION.fast,
+} as const;
+
+/**
+ * Sürekli hafif süzülme (paywall üst ikonu). Paylaşılan değer bileşen ömrü boyunca BİR kez başlar
+ * (yalnız azaltılmış hareket değişince yeniden kurulur); UI thread'de (worklet) döner. Azaltılmışta sabit (0).
+ */
+export function useLoopFloat(amp: number = PAYWALL_MOTION.floatAmp): { style: MotionStyle } {
+  const reduced = useReducedMotion();
+  const f = useSharedValue(0);
+  useEffect(() => {
+    if (reduced) {
+      cancelAnimation(f);
+      f.value = withTiming(0, { duration: REDUCED.duration });
+      return;
+    }
+    f.value = 0;
+    f.value = withRepeat(withTiming(1, { duration: PAYWALL_MOTION.floatPeriod / 2, easing: CURVE.standard }), -1, true);
+    return () => cancelAnimation(f);
+  }, [reduced, f]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(f.value, [0, 1], [-amp, amp]) }] }));
+  return { style };
+}
+
+export const PLAN_MOTION = {
+  /** Gün değişimi: çip basma 110, eski/yeni gün aynı yerde crossfade 220 (standard), kaydırma yok. Haptik: seçim. */
+  chipPress: DURATION.instant,
+  dayCrossfade: DURATION.fast,
+  /** Slot ekle: scrim %40 220, sheet alttan 330 enter, kapanış 220 exit, segment değişimi liste crossfade 220. */
+  scrim: DURATION.fast,
+  scrimOpacity: 0.4,
+  sheetIn: DURATION.base,
+  sheetOut: DURATION.fast,
+  segment: DURATION.fast,
+  /** Logla izi: buton 220 → "Loglandı"; 14 pt lime nokta 550 enter, yay çizerek gün toplamına, ölçek 1 → 0,45;
+   *  varışta değer 1 → 1,14 → 1 (AI yayı 260/24), dizi 990'da yerleşir. Haptik: başarı. */
+  logButton: DURATION.fast,
+  logDot: DURATION.slow,
+  logSettle: DURATION.story,
+  logDotSize: 14,
+  logDotScaleTo: 0.45,
+  logValuePeak: 1.14,
+  /** Bildirim + Geri al: cam bildirim alttan y 16 → 0 + opaklık; giriş 220 (110 gecikme) enter, çıkış 220 exit; 4400 ms kalır. */
+  toastIn: DURATION.fast,
+  toastDelay: DURATION.instant,
+  toastOut: DURATION.fast,
+  toastHold: 4400,
+  toastShift: 16,
+  /** Plan oluşturma (Balance): satır aralığı 550, satır 330 (y 8 → 0), kase 550 AI yayı 0,9 → 1, halka 990 döngü. */
+  genRowGapBalance: DURATION.slow,
+  /** Plan oluşturma (Fresh): satır aralığı 330, satır 330. */
+  genRowGapFresh: DURATION.base,
+  genRow: DURATION.base,
+  genRowShift: 8,
+  genBowl: DURATION.slow,
+  genBowlFrom: 0.9,
+  genRing: DURATION.story,
+  /** Planı uygula: sheet kapanış 220 exit; haftanın doluluk noktaları soldan sağa 220, 55 kademe. */
+  applyClose: DURATION.fast,
+  applyDot: DURATION.fast,
+  applyStagger: 55,
+  /** Yeniden oluştur: gün kartları solar 220 exit, akış baştan. */
+  regen: DURATION.fast,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -244,7 +366,7 @@ export const RN_CURVE = {
   exit: RNEasing.bezier(0.3, 0, 0.8, 0.15),
   /** eatkcal yayı 200/28'in zamanlı (CSS) karşılığı — FinMoTokens eatkcal satırı. Yalnız eatkcal. */
   eat: RNEasing.bezier(0.25, 0.9, 0.3, 1),
-  /** Azaltılmış hareket: 200 ms düz opaklık (FinMoTokens "Azaltılmış hareket"). */
+  /** Azaltılmış hareket: 220 ms düz opaklık (FinMoTokens "Azaltılmış hareket"). */
   linear: RNEasing.linear,
 } as const;
 
@@ -330,18 +452,18 @@ export interface MotionMapRow {
 }
 
 export const MOTION_MAP: readonly MotionMapRow[] = [
-  { id: 'tab', label: 'Sekme değişimi', token: 'içerik crossfade fast 200 · standard · kaydırma konumu korunur', haptic: 'selection', lime: false, reduced: '200 ms opaklık · içerik geçişsiz' },
-  { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '200 ms opaklık' },
-  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 enter · x %100→0, eski −%30 · parmakla sürülür', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'pop', label: 'Pop / geri', token: 'base 300 exit · 0→%100 · kesilebilir', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış base 300 enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış eatkcal 200/28 · scrim base 300 · kapanış fast 200', haptic: 'light', lime: false, reduced: '200 ms opaklık' },
-  { id: 'modal', label: 'Tam ekran modal', token: 'açılış base 300 (y %100→0) enter · kapanış fast 200 exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 200 ms opaklık' },
-  { id: 'listAdd', label: 'Liste ekleme', token: 'satır base 300 (y 8→0 + opaklık) · komşular base 300 · enter', haptic: null, lime: false, reduced: '200 ms opaklık' },
-  { id: 'toast', label: 'Toast', token: 'giriş base 300 · çıkış fast 200 · 4 s · enter/exit', haptic: null, lime: false, reduced: '200 ms opaklık' },
+  { id: 'tab', label: 'Sekme değişimi', token: 'içerik crossfade fast 200 · standard · kaydırma konumu korunur', haptic: 'selection', lime: false, reduced: '220 ms opaklık · içerik geçişsiz' },
+  { id: 'jelly', label: 'Ana sayfa ↔ eatkcal (jöle nokta)', token: 'kayma base 300 · uzama 1→1.6→1 fast 200 · AI 260/24', haptic: 'selection', lime: false, reduced: '220 ms opaklık' },
+  { id: 'push', label: 'Push (yeni ekran)', token: 'base 300 enter · x %100→0, eski −%30 · parmakla sürülür', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'pop', label: 'Pop / geri', token: 'base 300 exit · 0→%100 · kesilebilir', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'sheetAi', label: 'AI sheet (Kcalculate AI)', token: 'açılış base 300 enter · kapanış fast 200 exit · scrim aynı sürede 0→0.4', haptic: 'light', lime: false, reduced: '220 ms opaklık' },
+  { id: 'sheetEat', label: 'eatkcal sheet', token: 'açılış eatkcal 200/28 · scrim base 300 · kapanış fast 200', haptic: 'light', lime: false, reduced: '220 ms opaklık' },
+  { id: 'modal', label: 'Tam ekran modal', token: 'açılış base 300 (y %100→0) enter · kapanış fast 200 exit', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'tabbar', label: 'Tab bar küçül / büyü', token: 'rest → mid → min base 300 · standard', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'header', label: 'Büyük başlık daralması', token: 'kaydırmaya bağlı · bitişte base 300 · standard', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'skeleton', label: 'İskelet → içerik', token: 'iskelet nabzı story 900 · içerik base 300 · satır arası instant 100 · enter', haptic: null, lime: false, reduced: 'iskelet sabit · içerik 220 ms opaklık' },
+  { id: 'listAdd', label: 'Liste ekleme', token: 'satır base 300 (y 8→0 + opaklık) · komşular base 300 · enter', haptic: null, lime: false, reduced: '220 ms opaklık' },
+  { id: 'toast', label: 'Toast', token: 'giriş base 300 · çıkış fast 200 · 4 s · enter/exit', haptic: null, lime: false, reduced: '220 ms opaklık' },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -455,7 +577,7 @@ export interface EnterControls {
 
 /**
  * Giriş: scale 0.85→1, rotate −6°→0, opacity 0→1, 500 ms, enter eğrisi.
- * Azaltılmışta: yalnız opacity 0→1 (girişte kayma şart değil), 200 ms.
+ * Azaltılmışta: yalnız opacity 0→1 (girişte kayma şart değil), 220 ms.
  * Mount'ta otomatik oynar. `play()` baştan yeniden tetikler.
  */
 export function useEnter(opts?: { autoplay?: boolean; delay?: number }): EnterControls {
@@ -626,7 +748,7 @@ export interface SpringToControls {
 
 /**
  * Bir öğeyi yay ile bir konuma taşır (ör. "logla izi"nin düz karşılığı).
- * Azaltılmışta: en fazla 8 px kayma + 200 ms, yay yok.
+ * Azaltılmışta: en fazla 8 px kayma + 220 ms, yay yok.
  */
 export function useSpringTo(): SpringToControls {
   const reduced = useReducedMotion();

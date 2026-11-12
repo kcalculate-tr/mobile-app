@@ -8,8 +8,7 @@ import { assertVideoDuration, assertVideoSize } from './rules';
 import type { PickedVideo } from './types';
 
 export async function pickVideo(): Promise<PickedVideo | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) return null;
+  // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Videos,

@@ -10,8 +10,8 @@
 // Veri yalnız gerçek alanlardan: görüntülenme sayısı FeedPost'ta yok → gösterilmez;
 // yorum satırında yalnız gerçek sayaç (yanıt sayısı) var.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { logTrace } from '../../shell/logTrace';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,13 +21,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { CoachRecipeButton } from '../../coach/ui/entries';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path } from 'react-native-svg';
-import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
+import { AppText, fontFamily, useTheme, haptic, FinListSkeleton, FinSkeletonBlock } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { ArrowLeft } from '../../../components/icons';
@@ -116,14 +117,16 @@ function IconCount({
 }
 
 /** Öğün kartı — FinDetail sürümü: "N kişi logladı" + lime "⊡ Ben de logla" (kırpılmaz). */
-function DetailMealCard({ post, onLog }: { post: FeedPost; onLog: () => void }) {
+function DetailMealCard({ post, onLog }: { post: FeedPost; onLog: (from: View | null) => void }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
   const meal = post.meal_card!;
+  // G28-S1 md.1: tabak görseli — Logla izi uçuşu buradan başlar.
+  const thumbRef = useRef<View | null>(null);
   return (
     <View style={[styles.mealCard, { backgroundColor: t.color.surface, borderColor: t.color.line }]}>
       <View style={styles.mealRow}>
-        <View style={[styles.mealThumb, { backgroundColor: t.color.line }]}>
+        <View ref={thumbRef} collapsable={false} style={[styles.mealThumb, { backgroundColor: t.color.line }]}>
           {meal.photo_url ? (
             <Image source={{ uri: meal.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : null}
@@ -155,7 +158,7 @@ function DetailMealCard({ post, onLog }: { post: FeedPost; onLog: () => void }) 
           {post.stats.adds > 0 ? tr('kesfet.ui.meal_card.logged_count', { count: post.stats.adds }) : ''}
         </AppText>
         <Pressable
-          onPress={onLog}
+          onPress={() => onLog(thumbRef.current)}
           accessibilityRole="button"
           accessibilityLabel={tr('kesfet.detail.me_too')}
           hitSlop={6}
@@ -225,11 +228,22 @@ function CommentRow({
   );
 }
 
-export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: () => void }) {
+export function PostDetailScreen({
+  postId,
+  onBack,
+  onOpenAuthor,
+}: {
+  postId: string;
+  onBack: () => void;
+  /** G21-S1 md.8 — yazara dokun = açık profil (handle, @ olmadan). */
+  onOpenAuthor?: (handle: string) => void;
+}) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { t: tr, fmt, lang } = useT();
   const yorum = useFeature('kesfet_yorum');
+  // G25-S1 md.7 (A10): l.eatkcal.com hazır olana kadar "Paylaş / Bağlantıyı kopyala" gizli.
+  const paylasimBaglanti = useFeature('paylasim_baglanti');
 
   const [post, setPost] = useState<FeedPost | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'notfound'>('loading');
@@ -299,7 +313,7 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
     [post],
   );
 
-  const logMeToo = useCallback(async () => {
+  const logMeToo = useCallback(async (from: View | null = null) => {
     if (!post) return;
     haptic('light');
     seq.current += 1;
@@ -308,7 +322,21 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
     const id = await useKesfetStore.getState().addToDay(post.id, mealType, 1, key);
     if (!id) return;
     setPost((p) => (p ? { ...p, stats: { ...p.stats, adds: p.stats.adds + 1 } } : p));
-    setToast({ message: tr('kesfet.added_toast', { meal: tr(`meal.${mealType}`) }) });
+    // G28-S1 md.1: ortak Logla izi (tarif / gönderi detayı) — tabak Ana sayfa sekmesine uçar,
+    // varışta +1 rozet + "<Öğün>'ye loglandı · Geri al · Gör" (ekranın ayrı toast'ı yok).
+    void logTrace({
+      from,
+      imageUri: post.meal_card?.photo_url ?? null,
+      mealLabel: tr(`meal.${mealType}`),
+      source: 'kesfet',
+      kcal: Math.round(post.meal_card?.kcal ?? 0),
+      name: post.meal_card?.name ?? null,
+      id,
+      undo: async () => {
+        const ok = await useKesfetStore.getState().undoAddToDay(post.id, id, key);
+        if (ok) setPost((p) => (p ? { ...p, stats: { ...p.stats, adds: Math.max(0, p.stats.adds - 1) } } : p));
+      },
+    });
   }, [post, tr]);
 
   const onShare = useCallback(() => {
@@ -386,7 +414,11 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
         {header}
         <View style={styles.center}>
           {state === 'loading' ? (
-            <ActivityIndicator color={t.color.secondary} />
+            // G22-S2 md.7: FinMoLoad iskeleti (yazar satırı + görsel).
+            <View style={{ alignSelf: 'stretch', paddingHorizontal: 16, gap: 14 }}>
+            <FinListSkeleton rows={1} style={{ paddingHorizontal: 0 }} testID="post-skeleton" />
+            <FinSkeletonBlock height={280} radius={16} />
+          </View>
           ) : (
             <AppText variant="body" tone="secondary">
               {tr('kesfet.share.post_unavailable')}
@@ -406,10 +438,16 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
     <View style={[styles.screen, { backgroundColor: t.color.bg }]}>
       {header}
       <KeyboardAvoidingView style={styles.fill} behavior={SCREEN_KEYBOARD_BEHAVIOR}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.scroll}>
           <View style={styles.pad}>
             {/* Yazar */}
-            <View style={styles.author}>
+            <Pressable
+              style={styles.author}
+              onPress={onOpenAuthor && post.author.handle ? () => onOpenAuthor(post.author.handle) : undefined}
+              disabled={!onOpenAuthor || !post.author.handle}
+              accessibilityRole={onOpenAuthor ? 'link' : undefined}
+              testID="post-detail-author"
+            >
               <Avatar name={post.author.display_name} url={post.author.avatar_url} official={badge === 'official'} />
               <View style={styles.authorText}>
                 <View style={styles.nameRow}>
@@ -436,7 +474,7 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
               >
                 <Icon name="more" size={20} color={t.color.secondary} />
               </Pressable>
-            </View>
+            </Pressable>
 
             {post.body ? (
               <AppText variant="body" style={styles.body}>
@@ -450,7 +488,13 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
               </View>
             ) : null}
 
-            {isMeal ? <DetailMealCard post={post} onLog={() => void logMeToo()} /> : null}
+            {isMeal ? <DetailMealCard post={post} onLog={(from) => void logMeToo(from)} /> : null}
+            {/* G24-S1 (FinRecipe Tur 26k): "Bu tarif bana uyar mı?" — Koç bu tarif + günün verisiyle açılır. */}
+            {isMeal && post.meal_card ? (
+              <View style={{ paddingHorizontal: 16 }}>
+                <CoachRecipeButton postId={post.id} name={post.meal_card.name} />
+              </View>
+            ) : null}
             {post.post_type === 'etkinlik' && post.activity_card ? (
               <ActivityCard
                 activity={post.activity_card}
@@ -518,12 +562,14 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
                 onPress={() => react('save')}
                 color={iconColor}
               />
-              <IconCount
-                icon={<Icon name="share" size={18} color={iconColor} />}
-                label={tr('kesfet.ui.a11y.share')}
-                onPress={onShare}
-                color={iconColor}
-              />
+              {paylasimBaglanti ? (
+                <IconCount
+                  icon={<Icon name="share" size={18} color={iconColor} />}
+                  label={tr('kesfet.ui.a11y.share')}
+                  onPress={onShare}
+                  color={iconColor}
+                />
+              ) : null}
             </View>
           </View>
 
@@ -579,9 +625,13 @@ export function PostDetailScreen({ postId, onBack }: { postId: string; onBack: (
         onClose={() => setMenuOpen(false)}
         authorName={post.author.display_name}
         isMine={post.me.is_author}
-        onCopyLink={() => {
-          void Clipboard.setStringAsync(postLink(post.id)).then(() => setToast({ message: tr('kesfet.ui.link_copied') }));
-        }}
+        onCopyLink={
+          paylasimBaglanti
+            ? () => {
+                void Clipboard.setStringAsync(postLink(post.id)).then(() => setToast({ message: tr('kesfet.ui.link_copied') }));
+              }
+            : undefined
+        }
         onReport={(reason: ReportReason) => useKesfetStore.getState().report('post', post.id, reason)}
         onBlock={() => {
           void useKesfetStore

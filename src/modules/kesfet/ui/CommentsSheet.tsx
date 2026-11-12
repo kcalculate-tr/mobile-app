@@ -9,9 +9,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -22,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
+import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
 
 import { useSheetRise } from '../motion';
 import { useCommentsStore } from '../commentsStore';
@@ -31,6 +30,7 @@ import { Icon, type IconName } from './icons';
 import { BottomSheet } from './BottomSheet';
 import { BlockConfirm, ReportModal, reportReasonText } from './ReportFlow';
 import { relativeTime, type UiLang } from './format';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const MAX_LEN = 500;
 
@@ -258,7 +258,8 @@ export function CommentsSheet({
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('common.close')} />
         </Animated.View>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView. */}
+        <KeyboardLiftView limitHeight testID="comments-lift">
           <Animated.View
             onLayout={onLayout}
             accessibilityViewIsModal
@@ -286,7 +287,7 @@ export function CommentsSheet({
                 </AppText>
               </View>
             ) : (
-              <FlatList
+              <FlatList {...SCROLL_KEYBOARD}
                 data={ordered}
                 keyExtractor={(it) => it.c.id}
                 renderItem={({ item }) => (
@@ -307,7 +308,6 @@ export function CommentsSheet({
                 onEndReached={() => {
                   if (hasMore && !loadingMore) void useCommentsStore.getState().loadMore();
                 }}
-                keyboardShouldPersistTaps="handled"
                 style={styles.list}
               />
             )}
@@ -360,7 +360,7 @@ export function CommentsSheet({
               </AppText>
             ) : null}
           </Animated.View>
-        </KeyboardAvoidingView>
+        </KeyboardLiftView>
 
         {/* Yorum ⋯ — Şikayet et / Engelle (FinComments kare 2) */}
         <BottomSheet visible={menuTarget != null} onClose={closeMenu} accessibilityLabel={tr('kesfet.ui.a11y.more')}>
@@ -429,14 +429,14 @@ export function CommentsSheet({
 const styles = StyleSheet.create({
   fill: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,10,0.4)' },
-  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16 },
+  sheet: { flexShrink: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16 },
   handle: { width: 36, height: 5, borderRadius: 3, alignSelf: 'center', marginTop: 8, marginBottom: 16 },
   title: { textAlign: 'center', fontSize: 15, lineHeight: 21, fontFamily: fontFamily.bodyBold },
   center: { minHeight: 160, alignItems: 'center', justifyContent: 'center' },
   empty: { paddingTop: 40, paddingBottom: 60, alignItems: 'center', gap: 8 },
   emptyTitle: { fontFamily: fontFamily.headingBold, fontSize: 18, lineHeight: 24 },
   emptySub: { fontSize: 13, textAlign: 'center' },
-  list: { flexGrow: 0, maxHeight: 470 },
+  list: { flexGrow: 0, flexShrink: 1, maxHeight: 470 },
   row: { flexDirection: 'row', gap: 10, paddingTop: 10, paddingBottom: 2 },
   rowReply: { paddingLeft: 52 },
   rowBody: { flex: 1, minWidth: 0 },

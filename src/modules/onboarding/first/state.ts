@@ -30,6 +30,12 @@ export interface OrientState {
 export interface SyncedState {
   profileCard: ProfileCardState;
   orient: OrientState;
+  /**
+   * G20-S3 md.6 (B-10): 18+ beyanı hesaba yazılır (yalnız "beyan edildi" + zaman;
+   * doğum tarihi saklanmaz). Yoksa alan hiç yazılmaz (eski kayıtlarla aynı biçim).
+   */
+  age_ok?: true;
+  age_ok_at?: string;
 }
 
 export const EMPTY_ORIENT: OrientState = {
@@ -52,18 +58,40 @@ export function parseSynced(raw: unknown): SyncedState {
   const r = raw as Record<string, unknown>;
   const o = (r.orient && typeof r.orient === 'object' ? r.orient : {}) as Record<string, unknown>;
   const seen = (o.seen && typeof o.seen === 'object' ? o.seen : {}) as Record<string, unknown>;
-  return {
-    profileCard: asCard(r.profileCard),
-    orient: {
-      started: o.started === true,
-      skipped: o.skipped === true,
-      seen: { 1: seen['1'] === true, 2: seen['2'] === true, 3: seen['3'] === true, 4: seen['4'] === true },
+  return withAge(
+    {
+      profileCard: asCard(r.profileCard),
+      orient: {
+        started: o.started === true,
+        skipped: o.skipped === true,
+        seen: { 1: seen['1'] === true, 2: seen['2'] === true, 3: seen['3'] === true, 4: seen['4'] === true },
+      },
     },
-  };
+    r.age_ok === true,
+    typeof r.age_ok_at === 'string' ? r.age_ok_at : undefined,
+  );
+}
+
+function withAge(s: SyncedState, ok: boolean, at: string | undefined): SyncedState {
+  if (!ok) return s;
+  return at ? { ...s, age_ok: true, age_ok_at: at } : { ...s, age_ok: true };
+}
+
+/** 18+ beyanını işle (zaten varsa ilk zaman korunur). */
+export function confirmAge(s: SyncedState, at: string): SyncedState {
+  return withAge(s, true, s.age_ok ? s.age_ok_at ?? at : at);
 }
 
 /** İki kaynağı birleştir: ileri durum kazanır (VEYA). */
 export function mergeSynced(a: SyncedState, b: SyncedState): SyncedState {
+  const ats = [a.age_ok ? a.age_ok_at : undefined, b.age_ok ? b.age_ok_at : undefined].filter(
+    (x): x is string => typeof x === 'string',
+  );
+  // 18+ beyanı bir kez verildiyse kalır (VEYA); en erken zaman.
+  return withAge(mergeCore(a, b), !!(a.age_ok || b.age_ok), ats.sort()[0]);
+}
+
+function mergeCore(a: SyncedState, b: SyncedState): SyncedState {
   return {
     profileCard: CARD_RANK[a.profileCard] >= CARD_RANK[b.profileCard] ? a.profileCard : b.profileCard,
     orient: {
@@ -132,26 +160,33 @@ export function welcomeVariant(flags: { b: boolean; c: boolean }): WelcomeVarian
 }
 
 // ── FinMoOpen zaman çizelgesi (ms) ─────────────────────────────────────────────
-// Toplam 2300 = enter 900 → standard 500 → exit 900 (FinMoTokens story/slow/story).
+// FinMoTokens: enter 900 → standard 500 → exit 900 (story/slow/story) = 2300.
+// G22-S2 md.1 (hareket +%10): bütün çizelge ×1,1 → toplam 2530. Azaltılmış/atla
+// opaklığı REDUCED (200) gibi değişmez. Yorumlardaki aralıklar ×1,1 değerlerdir.
 export const OPEN_T = {
-  /** 0–300 tabak + halka izi belirir (enter). */
-  plateIn: 300,
-  /** 300–900 cam kase tabağın yerine (enter). */
-  enterEnd: 900,
-  /** 900–1400 Enerji halkası 0→%100, nokta halka ucunda (standard). */
-  ringEnd: 1400,
-  /** 900–1000 nokta belirir. */
-  dotIn: 100,
-  /** 1400–1900 kase+halka 0.6'ya küçülüp söner, nokta logoya gider (exit 500). */
-  shrinkEnd: 1900,
-  /** 1600–1900 "kcal" belirir (enter 300). */
-  wordStart: 1600,
-  /** 2000–2300 katman Karşılama'ya erir (exit 300, yalnız opaklık). */
-  outStart: 2000,
-  total: 2300,
-  /** Azaltılmış: durağan logo 900 ms + 200 ms opaklık. */
-  reducedHold: 900,
-  reducedFade: 200,
-  /** Atla: o karede kesilir, 200 ms opaklık. */
-  skipFade: 200,
+  /** 0–330 tabak + halka izi belirir (enter). */
+  plateIn: 330,
+  /** 330–990 cam kase tabağın yerine (enter). */
+  enterEnd: 990,
+  /** 990–1540 Enerji halkası 0→%100, nokta halka ucunda (standard). */
+  ringEnd: 1540,
+  /**
+   * G21-S1 md.1 (Tur 26f): halka dolarken kase halka merkezindeki ALEVE döner —
+   * 990–1265 kase söner (standard), 1265–1540 alev belirir (enter).
+   */
+  flameIn: 1265,
+  /** 990–1100 nokta belirir. */
+  dotIn: 110,
+  /** 1540–2090 kase+halka 0.6'ya küçülüp söner, nokta logoya gider (exit 550). */
+  shrinkEnd: 2090,
+  /** 1760–2090 "kcal" belirir (enter 330). */
+  wordStart: 1760,
+  /** 2200–2530 katman Karşılama'ya erir (exit 330, yalnız opaklık). */
+  outStart: 2200,
+  total: 2530,
+  /** Azaltılmış: durağan logo 990 ms + 220 ms opaklık (REDUCED). */
+  reducedHold: 990,
+  reducedFade: 220,
+  /** Atla: o karede kesilir, 220 ms opaklık (REDUCED). */
+  skipFade: 220,
 } as const;

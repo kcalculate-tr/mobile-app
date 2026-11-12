@@ -16,6 +16,7 @@ import { ArrowLeft, Clock, WifiSlash } from '../../../../components/icons';
 import { getPendingScanQueue, clearPendingScanPhoto, type PendingScanPhoto } from '../offlineQueue';
 import { drainPendingScans, onPendingDrained } from '../drainPending';
 import { normalizeMealType, sourceInfo } from '../../../gun/homeData';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 interface Row {
   id: string;
@@ -102,7 +103,7 @@ export default function ScanOfflineScreen() {
           {t('ai_scan.offline_screen_title')}
         </AppText>
       </View>
-      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
         {!online ? (
           <View style={[styles.banner, { backgroundColor: th.color.surface }]} accessibilityRole="alert">
             <WifiSlash size={20} color={th.color.ink} />
@@ -124,7 +125,7 @@ export default function ScanOfflineScreen() {
         {queue.map((e) => (
           <View key={e.id} style={[styles.card, { backgroundColor: surface }]}>
             <View style={[styles.thumb, { backgroundColor: th.color.surface }]}>
-              <Image source={{ uri: e.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              {e.imageUri ? <Image source={{ uri: e.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
               <View style={[styles.badge, { backgroundColor: surface }]}>
                 <Clock size={12} color={th.color.ink} />
               </View>

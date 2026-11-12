@@ -15,6 +15,8 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { getSupabaseClient } from '../core/supabase';
+// G22-S2 md.5: hata kodu (Expo/Google `code`, Supabase `name`/status 0) — saf, native yok.
+import { errorCodeOf } from '../modules/onboarding/socialAuthError';
 import { setSentryUser } from '../lib/sentry';
 import { useAddressStore } from '../store/addressStore';
 import { hydrateSelectedAddress } from '../lib/addresses';
@@ -41,6 +43,11 @@ const ensureGoogleConfigured = () => {
 export type SocialSignInResult = {
   error: string | null;
   cancelled?: boolean;
+  /**
+   * G22-S2 md.5 (FinOnbAccountError): ham hata kodu — onboarding iptal / ağ / hesap
+   * ayrımı için (`modules/onboarding/socialAuthError`). Yalnız hata dalında dolar.
+   */
+  errorCode?: string;
   email?: string;
   givenName?: string;
   familyName?: string;
@@ -329,7 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: credential.identityToken,
         nonce: rawNonce,
       });
-      if (error) return { error: error.message };
+      if (error) return { error: error.message, errorCode: errorCodeOf(error) };
 
       const givenName = credential.fullName?.givenName ?? undefined;
       const familyName = credential.fullName?.familyName ?? undefined;
@@ -365,7 +372,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null, cancelled: true };
       }
       console.error('[Auth] Apple sign-in error:', err);
-      return { error: err?.message ?? 'Apple ile giriş başarısız oldu' };
+      return { error: err?.message ?? 'Apple ile giriş başarısız oldu', errorCode: errorCodeOf(err) };
     }
   }, []);
 
@@ -388,7 +395,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider: 'google',
         token: idToken,
       });
-      if (error) return { error: error.message };
+      if (error) return { error: error.message, errorCode: errorCodeOf(error) };
       return {
         error: null,
         email: gUser.email,
@@ -400,7 +407,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null, cancelled: true };
       }
       console.error('[Auth] Google sign-in error:', err);
-      return { error: err?.message ?? 'Google ile giriş başarısız oldu' };
+      return { error: err?.message ?? 'Google ile giriş başarısız oldu', errorCode: errorCodeOf(err) };
     }
   }, []);
 

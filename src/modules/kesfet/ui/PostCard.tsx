@@ -112,6 +112,7 @@ export function PostCard({
   onOpen,
   tip,
   onOpenVideo,
+  onOpenAuthor,
 }: {
   model: PostCardModel;
   /** Akışta sıra — girişte ardışık animasyon için (en fazla 6 gecikir). */
@@ -122,7 +123,8 @@ export function PostCard({
   quickMealLabel?: string;
   onLike: () => void;
   onSave: () => void;
-  onShare: () => void;
+  /** Paylaş. G25-S1 md.7 (A10): verilmezse (bayrak `paylasim_baglanti` kapalı) düğme çizilmez. */
+  onShare?: () => void;
   /** Öğün kartında dokun = saate göre doğrudan logla (görsel karesiyle). */
   onQuickLog?: (frame: LogOriginFrame, meal?: MealType, portion?: number) => void;
   /** G18-S5 md.8 — yerinde öğün menüsü (FinMoPopover) için saate göre öğün; yoksa ⌄ seçici sayfası. */
@@ -148,6 +150,8 @@ export function PostCard({
   tip?: React.ReactNode;
   /** G15 — videoya dokun = tam ekran oynatıcı (FinVideo kare 2). */
   onOpenVideo?: () => void;
+  /** G21-S1 md.8 — avatar / ada dokun = yazarın açık profili (FinProfilePublic; takip oradan). */
+  onOpenAuthor?: () => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -200,11 +204,20 @@ export function PostCard({
   return (
     <Animated.View style={[styles.article, { borderBottomColor: t.color.line }, enter.style]}>
       <View style={styles.row}>
-        <Avatar name={model.authorName} url={model.avatarUrl} official={model.isOfficial} />
+        <Pressable
+          onPress={onOpenAuthor}
+          disabled={!onOpenAuthor}
+          accessibilityRole={onOpenAuthor ? 'link' : undefined}
+          accessibilityLabel={onOpenAuthor ? `${model.authorName} @${model.handle}` : undefined}
+          hitSlop={4}
+          testID="post-card-author"
+        >
+          <Avatar name={model.authorName} url={model.avatarUrl} official={model.isOfficial} />
+        </Pressable>
         <View style={[styles.body, tip ? styles.bodyTip : null]}>
           {/* Yazar satırı */}
           <View style={styles.authorRow}>
-            <AppText variant="caption" style={styles.name} numberOfLines={1}>
+            <AppText variant="caption" style={styles.name} numberOfLines={1} onPress={onOpenAuthor}>
               {model.authorName}
             </AppText>
             {model.verified ? <VerifiedBadge size={16} /> : null}
@@ -323,12 +336,14 @@ export function PostCard({
               dotColor={t.color.accentLine}
               onPress={save}
             />
-            <Action
-              icon="share"
-              color={t.color.secondary}
-              label={tr('kesfet.ui.a11y.share')}
-              onPress={onShare}
-            />
+            {onShare ? (
+              <Action
+                icon="share"
+                color={t.color.secondary}
+                label={tr('kesfet.ui.a11y.share')}
+                onPress={onShare}
+              />
+            ) : null}
           </View>
           {tip && model.meal ? <View style={[styles.tip, { top: mealBottom - 4 }]}>{tip}</View> : null}
         </View>

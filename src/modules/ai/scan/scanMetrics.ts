@@ -3,7 +3,7 @@
 // scan_open, scan_capture, scan_success{n_items}, scan_fail{code}, scan_log, scan_limit.
 import type { AiScanOutcome } from './types';
 
-export type ScanVia = 'camera' | 'gallery' | 'queue' | 'legacy';
+export type ScanVia = 'camera' | 'gallery' | 'queue' | 'legacy' | 'voice';
 
 export type ScanOutcomeEvent =
   | { name: 'scan_success'; props: { n_items: number; kcal: number; via: ScanVia } }

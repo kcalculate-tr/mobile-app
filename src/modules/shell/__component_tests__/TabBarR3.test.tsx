@@ -1,7 +1,7 @@
 // TabBarR3 + eski kabuk parite — render testleri (G11-S2 madde 9).
 // Çalıştırma: npm run test:components (jest, jest-expo preset).
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { DeviceEventEmitter } from 'react-native';
 import { ReducedMotionProvider } from '../../../core/design/motion';
 
@@ -26,6 +26,8 @@ jest.mock('../../../core/flags', () => ({
 }));
 
 import { TabBarR3 } from '../TabBarR3';
+// G28-S1 md.1: uçuş + toast kökteki LogTraceHost'ta; rozet TabBarR3'te.
+import { LogTraceHost } from '../LogTraceHost';
 import { CustomTabBar } from '../../../navigation/CustomTabBar';
 import { LEGACY_TABS } from '../tabs';
 import { useCartStore } from '../../../store/cartStore';
@@ -58,13 +60,24 @@ afterEach(() => {
 });
 
 describe('TabBarR3 (yeni kabuk)', () => {
-  test('kesfet açık → 4 sekme etiketi (TR)', () => {
+  test('kesfet açık → 4 sekme, YAZI YOK (yalnız ikon); VoiceOver etiketi TR', () => {
     const { props } = makeProps(R3_ROUTES, 0);
-    const { getByText } = render(<TabBarR3 {...props} />);
-    getByText('Ana sayfa');
-    getByText('Keşfet');
-    getByText('eatkcal');
-    getByText('Profil');
+    const { getByLabelText, queryByText } = render(<TabBarR3 {...props} />);
+    // G22-S2 md.2: sekme yazıları kalktı — ad yalnız erişilebilirlik etiketinde.
+    for (const name of ['Ana sayfa', 'Keşfet', 'eatkcal', 'Profil']) {
+      expect(queryByText(name)).toBeNull();
+      expect(getByLabelText(name).props.accessibilityRole).toBe('tab');
+    }
+  });
+
+  test('sekme hücresi dokunma alanı ≥ 44 pt (Apple HIG)', () => {
+    const { props } = makeProps(R3_ROUTES, 0);
+    const { getByLabelText } = render(<TabBarR3 {...props} />);
+    const flat = (st: unknown): Record<string, unknown> =>
+      Array.isArray(st) ? Object.assign({}, ...st.map(flat)) : ((st as Record<string, unknown>) ?? {});
+    const style = flat(getByLabelText('Profil').props.style);
+    expect(style.minWidth).toBeGreaterThanOrEqual(44);
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
   });
 
   test('ai_tarama açıkken Tara görünür, kapalıyken görünmez', () => {
@@ -82,11 +95,11 @@ describe('TabBarR3 (yeni kabuk)', () => {
 
   test('kesfet kapalı (KesfetTab kayıtlı değil) → Keşfet sekmesi yok', () => {
     const { props } = makeProps(R3_ROUTES_NO_KESFET, 0);
-    const { queryByText, getByText } = render(<TabBarR3 {...props} />);
-    expect(queryByText('Keşfet')).toBeNull();
-    getByText('Ana sayfa');
-    getByText('eatkcal');
-    getByText('Profil');
+    const { queryByLabelText, getByLabelText } = render(<TabBarR3 {...props} />);
+    expect(queryByLabelText('Keşfet')).toBeNull();
+    getByLabelText('Ana sayfa');
+    getByLabelText('eatkcal');
+    getByLabelText('Profil');
   });
 
   test('gizli Cart/Subscriptions sekme olarak çizilmez (düğmesiz)', () => {
@@ -126,7 +139,10 @@ describe('Logla izi A — "+N" rozeti (azaltılmış hareket = uçuşsuz)', () =
     const { props } = makeProps(R3_ROUTES, 2); // eatkcal aktif; başka sekmeden log
     const { queryByText } = render(
       <ReducedMotionProvider value={true}>
-        <TabBarR3 {...props} />
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
       </ReducedMotionProvider>,
     );
     expect(queryByText('+1')).toBeNull();
@@ -147,5 +163,116 @@ describe('Logla izi A — "+N" rozeti (azaltılmış hareket = uçuşsuz)', () =
       DeviceEventEmitter.emit('kcal:logUndo', { id: 'log-1' });
     });
     expect(queryByText('+1')).toBeNull();
+  });
+});
+
+// G20-S1 md.4 — Keşfet'te iki toast üst üste (G19-S4 SORULAR 4): kaynak kendi
+// toast'ını gösteriyorsa kabuk yalnız rozet çizer; kabuk "Geri al"ı yalnız kaydı
+// gerçekten silen `undo` verilirse görünür ve onu çağırır.
+describe('G20-S1 — tek toast, Geri al gerçekten siler', () => {
+  const flight = (extra: Record<string, unknown>) =>
+    act(() => {
+      DeviceEventEmitter.emit('kcal:logFlight', { x: 0, y: 0, w: 0, h: 0, mealLabel: 'Öğle', ...extra });
+    });
+
+  test('ownToast (Keşfet) → rozet var, kabuk toast’ı YOK', () => {
+    const { props } = makeProps(R3_ROUTES, 1);
+    const ui = render(
+      <ReducedMotionProvider value={true}>
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
+      </ReducedMotionProvider>,
+    );
+    flight({ id: 'c-1', source: 'kesfet', ownToast: true });
+    expect(ui.queryByText('+1')).not.toBeNull();
+    expect(ui.queryByText(/loglandı/)).toBeNull();
+    expect(ui.queryByText('Geri al')).toBeNull();
+  });
+
+  test('undo verilmeyen kaynak → toast var ama yanıltıcı "Geri al" YOK', () => {
+    const { props } = makeProps(R3_ROUTES, 2);
+    const ui = render(
+      <ReducedMotionProvider value={true}>
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
+      </ReducedMotionProvider>,
+    );
+    flight({ source: 'scan' });
+    expect(ui.queryByText(/loglandı/)).not.toBeNull();
+    expect(ui.queryByText('Geri al')).toBeNull();
+  });
+
+  test('undo verilen kaynak → "Geri al" undo’yu çağırır, rozet düşer', async () => {
+    const { props } = makeProps(R3_ROUTES, 2);
+    const undo = jest.fn(() => Promise.resolve());
+    const ui = render(
+      <ReducedMotionProvider value={true}>
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
+      </ReducedMotionProvider>,
+    );
+    flight({ id: 'c-2', source: 'eatkcal', undo });
+    await act(async () => {
+      fireEvent.press(ui.getByText('Geri al'));
+    });
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(ui.queryByText('+1')).toBeNull();
+  });
+});
+
+// G21-S1 md.4 — logla sonrası TEK toast = kabuk toast'ı; Keşfet ve Tara uçuşu kayıt
+// id'si + kaydı silen undo taşır; Geri al rozeti TAM 1 düşürür (önceden iki kez).
+describe('G21-S1 — kabuk toast\'ı Keşfet/Tara kaydını gerçekten geri alır', () => {
+  const flight = (extra: Record<string, unknown>) =>
+    act(() => {
+      DeviceEventEmitter.emit('kcal:logFlight', { x: 0, y: 0, w: 0, h: 0, mealLabel: 'Öğle', ...extra });
+    });
+
+  test('iki kayıt + Geri al → rozet +2 → +1 (tek düşüş)', async () => {
+    const { props } = makeProps(R3_ROUTES, 2);
+    const undo = jest.fn(() => Promise.resolve());
+    const ui = render(
+      <ReducedMotionProvider value={true}>
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
+      </ReducedMotionProvider>,
+    );
+    flight({ id: 'k-1', source: 'kesfet', undo: jest.fn() });
+    flight({ id: 'k-2', source: 'kesfet', undo });
+    expect(ui.queryByText('+2')).not.toBeNull();
+    await act(async () => {
+      fireEvent.press(ui.getByText('Geri al'));
+    });
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(ui.queryByText('+1')).not.toBeNull();
+  });
+
+  test('Tara uçuşu (id + undo, konum yok) → hareket AÇIKKEN de uçuşsuz rozet + toast + Geri al', async () => {
+    const { props } = makeProps(R3_ROUTES, 2);
+    const undo = jest.fn(() => Promise.resolve());
+    const ui = render(
+      <ReducedMotionProvider value={false}>
+        <>
+          <TabBarR3 {...props} />
+          <LogTraceHost />
+        </>
+      </ReducedMotionProvider>,
+    );
+    flight({ id: 'scan-row-1', source: 'scan', undo });
+    expect(ui.queryByText('+1')).not.toBeNull();
+    expect(ui.queryByText(/loglandı/)).not.toBeNull();
+    await act(async () => {
+      fireEvent.press(ui.getByText('Geri al'));
+    });
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(ui.queryByText('+1')).toBeNull();
   });
 });

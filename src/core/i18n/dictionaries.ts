@@ -11,6 +11,15 @@ import { tr as loginTr, en as loginEn } from '../../modules/onboarding/v2/i18n/l
 import { tr as signupAiTr, en as signupAiEn } from '../../modules/onboarding/v2/i18n/signupAI';
 import { tr as signupEatTr, en as signupEatEn } from '../../modules/onboarding/v2/i18n/signupEat';
 import { tr as metricsTr, en as metricsEn } from '../../lib/metrics/i18n';
+import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
+import { tr as subTr, en as subEn } from '../../lib/subscription/i18n';
+import { tr as voiceTr, en as voiceEn } from '../../modules/ai/scan/voice/i18n';
+import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
+import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
+import { tr as g26jTr, en as g26jEn } from './g26j';
+import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
+import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
+import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -22,15 +31,33 @@ export const translations: Record<Lang, Record<string, unknown>> = {
   tr: {
     // G19-S3 — ölçüm / KVKK aydınlatması / reklam rızası.
     metrics: metricsTr,
+    // G20-S1 — rıza ve politika akışı.
+    consent: consentTr,
+    sub: subTr,
+    voice: voiceTr,
+    // G22-S2 md.4 — Keşfet arama (profil + içerik).
+    kesfetSearch: kesfetSearchTr,
+    // G22-S2 md.5 — G21 tasarım boşlukları (26j): share_day · auth_error · notif_error · follow_error.
+    ...g26jTr,
+    // G24-S1 — kcalAI Koç.
+    coach: coachTr,
+    // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
+    plan: planTr,
+    // G34-S1 — Kişisel plan (Tur 26o).
+    pp: ppTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
       save: 'Kaydet',
       retry: 'Tekrar dene',
+      loading: 'Yükleniyor',
       close: 'Kapat',
       estimate: 'tahmin',
       delete: 'Sil',
       you: 'Sen',
+      back: 'Geri',
+      // G25-S1 md.10 (A13): kabuk toast'ı "Gör" düğmesi.
+      view: 'Gör',
     },
     // G18-S4 md.3 — FinPush şablonları (core/push/finPush.ts FIN_PUSH_TEXT ile birebir).
     push: {
@@ -197,6 +224,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       header: 'Takibe başla',
       skip: 'Atla',
       continue: 'Devam et',
+      // G25-S1 md.9 (A12): profil kaydı başarısız → hata toast'ı + Tekrar dene.
+      save_failed: 'Profilin kaydedilemedi. Bağlantını kontrol edip tekrar dene.',
       goal: {
         title: 'Hedefin ne?',
         sub: 'Birini seç; yol boyunca değiştirebilirsin.',
@@ -204,6 +233,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         maintain: 'Kilo koru',
         gain: 'Kas yap',
         regular: 'Daha düzenli beslen',
+        lose_off: 'Vücut kitle indeksin 18,5’in altında; kilo verme hedefi kapalı.',
       },
       pace: {
         title: 'Tempo',
@@ -211,7 +241,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         unit: 'kg / hafta',
         projection: 'Bu tempoyla hedefine',
         min: '0,25 kg',
-        max: '1 kg',
+        max: '0,75 kg',
       },
       about: {
         title: 'Seni tanıyalım',
@@ -256,7 +286,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       first: {
         title: 'İlk öğününü logla',
         scan: 'Tara',
-        scan_desc: 'Fotoğrafla; günde 3 ücretsiz tarama.',
+        scan_desc: { one: 'Fotoğrafla; günde %{count} ücretsiz tarama.', other: 'Fotoğrafla; günde %{count} ücretsiz tarama.' },
         manual: 'Elle ekle',
         discover: 'Keşfet’ten seç',
         discover_desc: 'Beğendiğin tabağı tek dokunuşla gününe ekle.',
@@ -271,7 +301,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       gun: 'Gün halkası',
       gun_desc: 'Gününü paylaş, yakınlarının gününü gör.',
       tara: 'Tara',
-      tara_desc: 'Fotoğrafla; günde 3 ücretsiz tarama.',
+      tara_desc: { one: 'Fotoğrafla; günde %{count} ücretsiz tarama.', other: 'Fotoğrafla; günde %{count} ücretsiz tarama.' },
       order: 'Siparişin aynı yerde.',
       browse: 'Göz at',
       later: 'Sonra',
@@ -340,6 +370,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         ring_strip: 'Gün halkası',
         meal_dat: { breakfast: 'Kahvaltı’ya', lunch: 'Öğle’ye', dinner: 'Akşam’a', snack: 'Ara öğüne' },
         logged_to: '%{meal} loglandı',
+        undo_failed: 'Geri alınamadı. Kayıt Ana sayfada duruyor.',
         plate: {
           label: '%{name}, %{kcal} kcal',
           fits_goal: 'Kalori hedefine uyar',
@@ -858,7 +889,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       bio: 'Kısa bio',
       private_account: 'Gizli hesap',
       follow: 'Takip et',
-      following: 'Takiptesin',
+      following: 'Takip ediliyor',
       requested: 'İstek gönderildi',
       start_tracking: 'Takibe başla',
       start_tracking_hint: 'Günlük kalori/makro hedefini kur — isteğe bağlı.',
@@ -950,6 +981,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delivery_where: 'Nerelere teslimat yapıyoruz?',
       lang_tr: 'Türkçe',
       lang_en: 'English',
+      // G22-S2 md.6 — dil seçici
+      lang_section: 'Uygulama dili',
+      lang_system: 'Telefon dili',
+      lang_note: 'Seçtiğin dil hemen uygulanır. Telefon dili seçiliyken uygulama telefonunun dilini izler.',
       // İlerleme
       range_today: 'Bugün',
       range_7: '7 gün',
@@ -1049,6 +1084,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       notify_title: 'Bildirim tercihleri',
       notify_system_off: 'Bildirimler sistemde kapalı. Açmak için Ayarlar’a git.',
       notify_open_settings: 'Ayarlar’ı aç',
+      notify_off_ask: 'Bildirimler kapalı. Hatırlatmaları ve sipariş durumunu kaçırmamak için açabilirsin.',
+      notify_enable: 'Bildirimleri aç',
       notify_transactional: 'Sipariş durumu',
       notify_transactional_hint: 'Hazırlanıyor, yola çıktı, teslim edildi',
       notify_recommended: 'Önerilen',
@@ -1078,9 +1115,21 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_confirm_body: 'Bu işlem geri alınamaz. Devam etmek için aşağıya SİL yaz.',
       delete_confirm_word: 'SİL',
       delete_confirm_cta: 'Hesabı kalıcı olarak sil',
+      // G25-S1 md.6 (A9): silme onayında abonelik uyarısı (platforma göre mağaza adı).
+      delete_sub_note_ios:
+        'Aktif bir kcalAI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik App Store’da sürer ve yenilenir. Önce aboneliğini iptal et.',
+      delete_sub_note_android:
+        'Aktif bir kcalAI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik Google Play’de sürer ve yenilenir. Önce aboneliğini iptal et.',
+      delete_sub_manage: 'Aboneliği yönet',
       // Sözleşmeler
       agreements_title: 'Sözleşmeler',
       agreements_updated: 'Son güncelleme',
+      // G28-S1 md.7 — legal.eatkcal.com
+      agreements_open_web: 'Web sitesinde aç',
+      agreements_open_web_a11y: '{{title}} belgesini legal.eatkcal.com sitesinde aç',
+      // G31-S1 md.4 — Open Food Facts (ODbL) atfı (barkod ürün verisi).
+      agreements_off_attribution: 'Ürün verisi: Open Food Facts (ODbL)',
+      delete_info_link: 'Hesap silme hakkında',
       // Destek talepleri
       support_title: 'Yardım ve destek',
       support_new: 'Yeni talep',
@@ -1091,12 +1140,17 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       support_send: 'Gönder',
       support_sent: 'Talebin alındı',
       support_empty: 'Henüz destek talebin yok.',
+      support_attachment: 'Ek %{n}',
+      support_attachment_error: 'Ek açılamadı. Tekrar dene.',
       support_call_cta: 'Ara',
       support_line: 'Destek hattı',
+      // G29-S1 md.2 (G28 SORULAR 3): Destek ve SSS web sayfası (legal.eatkcal.com).
+      support_web: 'Destek ve SSS',
+      support_web_sub: 'Sık sorulan sorular, web sitesinde',
+      support_web_a11y: 'Destek ve SSS sayfasını legal.eatkcal.com sitesinde aç',
       support_message_ph: 'Ne oldu? Kısaca anlat.',
       support_add_image: 'Görsel ekle',
       support_image_max: 'En fazla 3 görsel ekleyebilirsin.',
-      support_image_permission: 'Galeriye erişim izni gerekiyor.',
       support_image_size: 'Görsel boyutu 5 MB’ı aşamaz.',
       // Öneri ve görüş
       feedback_title: 'Öneri ve görüş',
@@ -1126,6 +1180,12 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       badge_role_pt: 'PT',
       badge_role_athlete: 'Sporcu',
       badge_role_official: 'Kcalculate',
+      // G25-S1 md.8 (A11): örnek kişi satırları yerine rol açıklamaları.
+      badge_roles_h: 'Keşfet’te görebileceğin rozetler',
+      badge_role_dietitian_desc: 'Diploması doğrulanmış diyetisyen.',
+      badge_role_pt_desc: 'Sertifikası doğrulanmış kişisel antrenör.',
+      badge_role_athlete_desc: 'Kimliği doğrulanmış sporcu.',
+      badge_role_official_desc: 'Kcalculate’in resmi hesabı.',
       no_badges: 'Henüz rozetin yok. Logla, paylaş, kazan.',
       privacy_settings_title: 'Gizlilik',
       privacy_who_can_see: 'Hesap gizliliği',
@@ -1145,10 +1205,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       quota_empty: 'Günlük tarama hakkın bitti. Barkod veya elle giriş kullanabilirsin.',
       failed: 'Analiz başarısız oldu, hakkın iade edildi.',
       reset_at: 'Hakların %{time} sıfırlanır.',
-      limit_title: 'Bugünkü 3 taramanı kullandın',
+      limit_title: 'Bugünkü AI tarama hakların bitti',
       limit_body: 'Yarın 00:00’da yenilenir. Bu arada elle girebilirsin.',
       manual_entry: 'Elle gir',
-      pro_soon: 'Pro ile sınırsız (çok yakında)',
+      pro_soon: 'kcalAI planları (çok yakında)',
       result_title: 'Tahmini sonuç',
       retry: 'Tekrar çek',
       save_to_day: 'Güne ekle',
@@ -1175,7 +1235,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       gallery: 'Foto',
       gallery_pick: 'Galeriden seç',
       flash: 'Flaş',
-      quota_chip: 'Bugün %{count}/3 tarama hakkın kaldı',
+      quota_chip: 'Bugün %{count}/%{cap} tarama hakkın kaldı',
       items_found: { one: '%{count} öğe bulundu', other: '%{count} öğe bulundu' },
       estimate_total: 'Tahmini toplam',
       grams_hint: 'Gramları düzenleyerek tahmini iyileştirebilirsin.',
@@ -1207,9 +1267,23 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       flash_off: 'Flaş kapalı',
       analyzing: 'Analiz ediliyor',
       barcode_hint: 'Barkodu çerçeveye hizala',
-      barcode_soon_title: 'Barkod yakında',
-      barcode_soon_body: 'Barkodla ürün ekleme yakında geliyor. Şimdilik tabağını fotoğrafla ya da elle gir.',
       barcode_read: 'Okunan barkod: %{code}',
+      // G21-S1 md.2 — Barkod → Open Food Facts.
+      barcode_searching: 'Ürün aranıyor…',
+      barcode_result: 'Barkod sonucu',
+      barcode_name: 'Ürün adı',
+      barcode_per100: '100 g başına',
+      barcode_portion: 'Porsiyon',
+      barcode_kcal: 'Kalori',
+      barcode_source: 'Veri: Open Food Facts (ODbL)',
+      barcode_missing_title: 'Ürün bulunamadı',
+      barcode_missing_body: 'Bu barkod Open Food Facts’te yok. Fotoğrafla tarayabilir ya da elle ekleyebilirsin.',
+      barcode_nokcal_body: 'Bu ürünün kalori bilgisi Open Food Facts’te eksik. Fotoğrafla tarayabilir ya da elle ekleyebilirsin.',
+      barcode_error_title: 'Ürün bilgisi alınamadı',
+      barcode_error_body: 'Bağlantı yavaş ya da Open Food Facts’e ulaşılamadı. Tekrar dene ya da elle ekle.',
+      barcode_offline_body: 'Barkodla ürün bulmak için bağlantı gerekiyor. Bağlanınca tekrar tara ya da elle ekle.',
+      barcode_photo_scan: 'Fotoğrafla tara',
+      barcode_manual: 'Elle ekle',
       gallery_pick_short: 'Galeriden seç',
       plan_added: 'Yarına planlandı',
       plan_denied: 'Bildirim izni gerekli',
@@ -1235,6 +1309,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // G19-S4 md.3: acil kapatma metni (reason disabled | global_cap) — tek cümle başlıkta.
       unavailable_title: 'Tara şu an kullanılamıyor, kısa süre içinde geri gelecek.',
       unavailable_body: 'Bu arada elle girebilirsin.',
+      unavailable_chip: 'Tara geçici olarak kapalı',
       save_failed: 'Loglanamadı. Bağlantını kontrol edip yeniden dene.',
       gallery_denied: 'Fotoğraflara erişim kapalı. Ayarlar’dan izin verebilirsin.',
       failed_note: 'Ücretsiz hakkından düşülmedi, bugün %{count} hakkın kaldı',
@@ -1275,6 +1350,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       },
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
+        // G22-S2 md.3 — ülke + şehir araması (Avrupa + Amerika).
+        geo: ekGeoTr,
         // G15-S5 — FinPrCards (kayıtlı kartlar v2)
         cards: {
           title: 'Kayıtlı kartlarım',
@@ -1334,6 +1411,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           region: 'bölgen',
           photo_a11y: '%{city} fotoğrafı',
           wait_body: 'eatkcal şu an %{city} için sipariş almıyor. Şehrine gelmemizi birlikte hızlandıralım.',
+          // G24-S1 (Tur 26k CityR1 / WaitlistR1)
+          wait_title: 'Şimdilik İzmir’deyiz',
+          else_title: 'eatkcal şu an yalnız İzmir’de.',
+          else_body: '%{city} için sevdiğin bir restoranı önerebilir ya da kendi restoranını ekleyebilirsin.',
           add_sub: 'Restoran sahibiysen başvur',
           suggest: 'Restoran öner',
           suggest_sub: 'Sevdiğin bir yeri bize söyle',
@@ -1605,6 +1686,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           my_addresses: 'Adreslerim',
           branch: 'Şube',
           branch_auto: 'Konumuna en yakın şube seçildi',
+          branch_pick: 'Şube seç',
+          branch_open: 'Açık',
+          branch_nearest: 'En yakın',
           contact: 'İletişim',
           name: 'Ad Soyad',
           phone: 'Telefon',
@@ -1722,6 +1806,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           delivery: 'Teslimat',
           calorie_fit: 'Kalori uyumu',
           reply: 'KCAL yanıtı',
+          // G22-S1 md.6 — son 3 ay puanı; <10 değerlendirme → "Yeni" (koleksiyon rozet dili).
+          last3m: 'son 3 ay, %{n} değerlendirme',
+          is_new: 'Yeni',
+          rating_a11y: '5 üzerinden %{avg}, son 3 ay, %{n} değerlendirme',
+          new_a11y: 'Yeni restoran, henüz yeterli değerlendirme yok',
         },
         city: {
           nearby_title: 'Çevrendeki sağlıklı restoranlar',
@@ -1858,15 +1947,26 @@ export const translations: Record<Lang, Record<string, unknown>> = {
   },
   en: {
     metrics: metricsEn,
+    consent: consentEn,
+    sub: subEn,
+    voice: voiceEn,
+    kesfetSearch: kesfetSearchEn,
+    ...g26jEn,
+    coach: coachEn,
+    plan: planEn,
+    pp: ppEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',
       save: 'Save',
       retry: 'Retry',
+      loading: 'Loading',
       close: 'Close',
       estimate: 'estimate',
       delete: 'Delete',
       you: 'You',
+      back: 'Back',
+      view: 'View',
     },
     // G18-S4 md.3 — FinPush templates (identical to core/push/finPush.ts FIN_PUSH_TEXT).
     push: {
@@ -2029,6 +2129,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       header: 'Start tracking',
       skip: 'Skip',
       continue: 'Continue',
+      save_failed: 'Couldn’t save your profile. Check your connection and try again.',
       goal: {
         title: 'What’s your goal?',
         sub: 'Pick one; you can change it along the way.',
@@ -2036,6 +2137,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         maintain: 'Maintain weight',
         gain: 'Build muscle',
         regular: 'Eat more regularly',
+        lose_off: 'Your BMI is below 18.5, so the weight loss goal is off.',
       },
       pace: {
         title: 'Pace',
@@ -2043,7 +2145,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         unit: 'kg / week',
         projection: 'At this pace, your goal by',
         min: '0.25 kg',
-        max: '1 kg',
+        max: '0.75 kg',
       },
       about: {
         title: 'Let’s get to know you',
@@ -2088,7 +2190,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       first: {
         title: 'Log your first meal',
         scan: 'Scan',
-        scan_desc: 'By photo; 3 free scans a day.',
+        scan_desc: { one: 'By photo; %{count} free scan a day.', other: 'By photo; %{count} free scans a day.' },
         manual: 'Add manually',
         discover: 'Pick from Discover',
         discover_desc: 'Add a plate you like to your day in one tap.',
@@ -2103,7 +2205,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       gun: 'Day ring',
       gun_desc: 'Share your day, see the days of people around you.',
       tara: 'Scan',
-      tara_desc: 'By photo; 3 free scans a day.',
+      tara_desc: { one: 'By photo; %{count} free scan a day.', other: 'By photo; %{count} free scans a day.' },
       order: 'Ordering lives here too.',
       browse: 'Take a look',
       later: 'Later',
@@ -2168,6 +2270,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         ring_strip: 'Day rings',
         meal_dat: { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' },
         logged_to: 'Logged to %{meal}',
+        undo_failed: 'Couldn’t undo. The entry is still on Home.',
         plate: {
           label: '%{name}, %{kcal} kcal',
           fits_goal: 'Fits your calorie goal',
@@ -2778,6 +2881,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delivery_where: 'Where do we deliver?',
       lang_tr: 'Türkçe',
       lang_en: 'English',
+      // G22-S2 md.6 — language picker
+      lang_section: 'App language',
+      lang_system: 'Phone language',
+      lang_note: 'Your choice applies right away. With Phone language selected, the app follows your phone’s language.',
       range_today: 'Today',
       range_7: '7 days',
       range_14: '14 days',
@@ -2873,6 +2980,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       notify_title: 'Notifications',
       notify_system_off: 'Notifications are off in system settings. Open Settings to enable.',
       notify_open_settings: 'Open Settings',
+      notify_off_ask: 'Notifications are off. Turn them on so you don’t miss reminders and order updates.',
+      notify_enable: 'Turn on notifications',
       notify_transactional: 'Order status',
       notify_transactional_hint: 'Preparing, on the way, delivered',
       notify_recommended: 'Recommended',
@@ -2902,8 +3011,18 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_confirm_body: 'This cannot be undone. Type DELETE below to continue.',
       delete_confirm_word: 'DELETE',
       delete_confirm_cta: 'Permanently delete account',
+      delete_sub_note_ios:
+        'If you have an active kcalAI subscription, deleting your account doesn’t cancel it; it continues and renews in the App Store. Cancel your subscription first.',
+      delete_sub_note_android:
+        'If you have an active kcalAI subscription, deleting your account doesn’t cancel it; it continues and renews on Google Play. Cancel your subscription first.',
+      delete_sub_manage: 'Manage subscription',
       agreements_title: 'Agreements',
       agreements_updated: 'Last updated',
+      // G28-S1 md.7 — legal.eatkcal.com
+      agreements_open_web: 'Open on the website',
+      agreements_open_web_a11y: 'Open {{title}} on legal.eatkcal.com',
+      agreements_off_attribution: 'Product data: Open Food Facts (ODbL)',
+      delete_info_link: 'About account deletion',
       support_title: 'Help & support',
       support_new: 'New request',
       support_history: 'History',
@@ -2913,12 +3032,17 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       support_send: 'Send',
       support_sent: 'Your request was received',
       support_empty: 'You have no support requests yet.',
+      support_attachment: 'Attachment %{n}',
+      support_attachment_error: 'Couldn’t open the attachment. Try again.',
       support_call_cta: 'Call',
       support_line: 'Support line',
+      // G29-S1 md.2 (G28 SORULAR 3): Support & FAQ web page (legal.eatkcal.com).
+      support_web: 'Support & FAQ',
+      support_web_sub: 'Frequently asked questions, on the website',
+      support_web_a11y: 'Open the Support & FAQ page on legal.eatkcal.com',
       support_message_ph: 'What happened? Tell us briefly.',
       support_add_image: 'Add image',
       support_image_max: 'You can add up to 3 images.',
-      support_image_permission: 'Photo library access is required.',
       support_image_size: 'Image size can’t exceed 5 MB.',
       feedback_title: 'Feedback',
       feedback_prompt: 'Let’s improve the app and orders together.',
@@ -2946,6 +3070,11 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       badge_role_pt: 'PT',
       badge_role_athlete: 'Athlete',
       badge_role_official: 'Kcalculate',
+      badge_roles_h: 'Badges you may see in Discover',
+      badge_role_dietitian_desc: 'A dietitian with a verified diploma.',
+      badge_role_pt_desc: 'A personal trainer with a verified certificate.',
+      badge_role_athlete_desc: 'An athlete with a verified identity.',
+      badge_role_official_desc: 'Kcalculate’s official account.',
       no_badges: 'No badges yet. Log, share, earn.',
       privacy_settings_title: 'Privacy',
       privacy_who_can_see: 'Account privacy',
@@ -2964,10 +3093,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       quota_empty: 'No scans left today. Use barcode or manual entry.',
       failed: 'Analysis failed, your scan was refunded.',
       reset_at: 'Resets at %{time}.',
-      limit_title: 'You’ve used today’s 3 scans',
+      limit_title: 'You’ve used today’s AI scans',
       limit_body: 'Resets tomorrow at 00:00. You can enter manually meanwhile.',
       manual_entry: 'Enter manually',
-      pro_soon: 'Unlimited with Pro (coming soon)',
+      pro_soon: 'kcalAI plans (coming soon)',
       result_title: 'Estimated result',
       retry: 'Retake photo',
       save_to_day: 'Add to my day',
@@ -2994,7 +3123,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       gallery: 'Photo',
       gallery_pick: 'Pick from gallery',
       flash: 'Flash',
-      quota_chip: '%{count}/3 scans left today',
+      quota_chip: '%{count}/%{cap} scans left today',
       items_found: { one: '%{count} item found', other: '%{count} items found' },
       estimate_total: 'Estimated total',
       grams_hint: 'Fine-tune the grams to improve the estimate.',
@@ -3026,9 +3155,23 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       flash_off: 'Flash off',
       analyzing: 'Analyzing',
       barcode_hint: 'Line up the barcode in the frame',
-      barcode_soon_title: 'Barcode coming soon',
-      barcode_soon_body: 'Adding products by barcode is coming soon. For now, snap your plate or enter it manually.',
       barcode_read: 'Barcode read: %{code}',
+      // G21-S1 md.2 — Barcode → Open Food Facts.
+      barcode_searching: 'Looking up product…',
+      barcode_result: 'Barcode result',
+      barcode_name: 'Product name',
+      barcode_per100: 'Per 100 g',
+      barcode_portion: 'Portion',
+      barcode_kcal: 'Calories',
+      barcode_source: 'Data: Open Food Facts (ODbL)',
+      barcode_missing_title: 'Product not found',
+      barcode_missing_body: 'This barcode isn’t on Open Food Facts. You can scan with a photo or add it manually.',
+      barcode_nokcal_body: 'Calorie info for this product is missing on Open Food Facts. You can scan with a photo or add it manually.',
+      barcode_error_title: 'Couldn’t get product info',
+      barcode_error_body: 'The connection is slow or Open Food Facts can’t be reached. Try again or add it manually.',
+      barcode_offline_body: 'Finding a product by barcode needs a connection. Scan again once you’re online, or add it manually.',
+      barcode_photo_scan: 'Scan with photo',
+      barcode_manual: 'Add manually',
       gallery_pick_short: 'Pick from gallery',
       plan_added: 'Planned for tomorrow',
       plan_denied: 'Notification permission needed',
@@ -3053,6 +3196,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       retake: 'Retake',
       unavailable_title: 'Scan isn’t available right now, it’ll be back shortly.',
       unavailable_body: 'You can enter it manually meanwhile.',
+      unavailable_chip: 'Scan is temporarily off',
       save_failed: 'Couldn’t log it. Check your connection and try again.',
       gallery_denied: 'Photo access is off. You can allow it in Settings.',
       failed_note: 'Your free scan wasn’t used, %{count} left today',
@@ -3093,6 +3237,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       },
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
+        // G22-S2 md.3 — country + city search (Europe + Americas).
+        geo: ekGeoEn,
         // G15-S5 — FinPrCards (saved cards v2)
         cards: {
           title: 'Saved cards',
@@ -3152,6 +3298,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           region: 'your area',
           photo_a11y: 'Photo of %{city}',
           wait_body: 'eatkcal isn’t taking orders in %{city} yet. Help us get to your city sooner.',
+          wait_title: 'For now, we’re in İzmir',
+          else_title: 'eatkcal is only in İzmir for now.',
+          else_body: 'For %{city}, you can suggest a restaurant you love or add your own.',
           add_sub: 'Apply if you own a restaurant',
           suggest: 'Suggest a restaurant',
           suggest_sub: 'Tell us about a place you love',
@@ -3423,6 +3572,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           my_addresses: 'My addresses',
           branch: 'Branch',
           branch_auto: 'Nearest branch selected',
+          branch_pick: 'Choose a branch',
+          branch_open: 'Open',
+          branch_nearest: 'Nearest',
           contact: 'Contact',
           name: 'Full name',
           phone: 'Phone',
@@ -3540,6 +3692,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           delivery: 'Delivery',
           calorie_fit: 'Calorie match',
           reply: 'KCAL reply',
+          last3m: 'last 3 months, %{n} reviews',
+          is_new: 'New',
+          rating_a11y: '%{avg} out of 5, last 3 months, %{n} reviews',
+          new_a11y: 'New restaurant, not enough reviews yet',
         },
         city: {
           nearby_title: 'Healthy restaurants near you',

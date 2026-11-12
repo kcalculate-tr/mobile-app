@@ -85,7 +85,7 @@ export function CouponSheet({
   const code = manualCode.trim().toUpperCase();
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.coupon.title')} product="eat" maxHeightRatio={0.85}>
+    <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.coupon.title')} product="eat" maxHeightRatio={0.85} scroll testID="ek-coupon-sheet">
       <View style={{ gap: 12, paddingBottom: 16 }}>
         <View style={styles.row}>
           <TextInput

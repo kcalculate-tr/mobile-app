@@ -80,13 +80,13 @@ test('karşılama varyantı: varsayılan A; B > C', () => {
 });
 
 test('FinMoOpen: toplam 2300 = enter 900 → standard 500 → exit 900; azaltılmış 900 + 200; Atla 200', () => {
-  assert.equal(OPEN_T.enterEnd, 900);
-  assert.equal(OPEN_T.ringEnd - OPEN_T.enterEnd, 500);
-  assert.equal(OPEN_T.total - OPEN_T.ringEnd, 900);
-  assert.equal(OPEN_T.total, 2300);
-  assert.equal(OPEN_T.reducedHold + OPEN_T.reducedFade, 1100);
-  assert.equal(OPEN_T.skipFade, 200);
-  assert.equal(OPEN_T.total - OPEN_T.outStart, 300);
+  assert.equal(OPEN_T.enterEnd, 990); // G22-S2 md.1: ×1,1
+  assert.equal(OPEN_T.ringEnd - OPEN_T.enterEnd, 550);
+  assert.equal(OPEN_T.total - OPEN_T.ringEnd, 990);
+  assert.equal(OPEN_T.total, 2530);
+  assert.equal(OPEN_T.reducedHold + OPEN_T.reducedFade, 1210);
+  assert.equal(OPEN_T.skipFade, 220);
+  assert.equal(OPEN_T.total - OPEN_T.outStart, 330);
 });
 
 test('ipucu yerleşimi: FinOrient1 (Tara, sağ alt) — balon sağdan 12, deliğin 12 üstünde, ok daire ortasında', () => {

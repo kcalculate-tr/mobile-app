@@ -12,7 +12,7 @@ import { useAuth } from '../AuthContext';
 import { getSupabaseClient } from '../supabase';
 import { FLAG_DEFAULTS, FlagKey } from './registry';
 import { mergeFlags, type FlagMap } from './resolve';
-import { readCachedFlags, writeCachedFlags } from './storage';
+import { readCachedFlags, readFlagsDeviceId, writeCachedFlags } from './storage';
 import { readDevOverrides, setDevOverride as persistDevOverride } from './devOverrides';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,6 +22,9 @@ import { readDevOverrides, setDevOverride as persistDevOverride } from './devOve
 //  • Açılışı ASLA bekletmez: ilk render YEREL VARSAYILANLARLA (hepsi false) olur.
 //  • Giriş yapıldıktan sonra get_my_features RPC'si çağrılır; dönen { key: bool }
 //    haritası AsyncStorage'a önbelleklenir.
+//  • G20-S3 md.3: giriş YOKKEN get_anon_features (cihaz kovası) en çok
+//    ANON_TIMEOUT_MS beklenir → yeni kurulumda karşılama/onboarding bayrak kapalıymış
+//    gibi açılmaz. Fonksiyon yok / ağ yok / süre doldu → önbellek ya da varsayılan.
 //  • Çevrimdışı/hata → önbellek; önbellek de yoksa varsayılan. Asla çökmez.
 //  • __DEV__'de yerel override en üste uygulanır (prod'da yok).
 //
@@ -29,10 +32,42 @@ import { readDevOverrides, setDevOverride as persistDevOverride } from './devOve
 // orada hesaplanır). İstemci yalnız birleştirir + önbellekler.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Girişsiz açılışta anonim bayrak çözümü için en uzun bekleme (splash açık kalır). */
+export const ANON_TIMEOUT_MS = 2500;
+
+function isFlagMap(v: unknown): v is FlagMap {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    Promise.resolve(p).then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
+
 type FlagsContextValue = {
   flags: Record<FlagKey, boolean>;
   /** Sunucu çözümü en az bir kez denendi mi (false iken varsayılan/önbellekle render sürer). */
   ready: boolean;
+  /**
+   * G30-S1 md.3: kabuk seçimi için "yeterince bilinen" an — sunucu çözümü (ready) YA DA
+   * önbellekteki son bilinen bayraklar uygulandı. AppNavigator `yeni_kabuk`u bunda dondurur;
+   * önceden oturumlu soğuk açılışta önce eski kabuk çiziliyor, RPC dönünce bütün ağaç yeni
+   * kabukla yeniden kuruluyordu (açılışta yanıp sönme).
+   */
+  settled?: boolean;
+  /** Önbellek okuma denemesi bitti mi (bulunsun bulunmasın). */
+  cacheChecked?: boolean;
   refresh: () => Promise<void>;
   /** __DEV__ geçersiz kılma haritası (prod'da daima boş). */
   devOverrides: FlagMap;
@@ -41,11 +76,26 @@ type FlagsContextValue = {
 
 const FlagsContext = createContext<FlagsContextValue | undefined>(undefined);
 
+/** İki bayrak haritası aynı değerleri mi taşıyor (sıra önemsiz). */
+export function sameFlags(a: FlagMap | null, b: FlagMap | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const ka = Object.keys(a);
+  if (ka.length !== Object.keys(b).length) return false;
+  return ka.every((k) => (a as Record<string, unknown>)[k] === (b as Record<string, unknown>)[k]);
+}
+
 export function FlagsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  // G30-S1 md.3: token yenilemesi her seferinde yeni user nesnesi verir → bağımlılık KİMLİK.
+  // Önceden her yenilemede bayraklar yeniden çekiliyor, yeni flags nesnesiyle useFeature kullanan
+  // her ağaç (AppNavigator dahil) yeniden render oluyordu.
+  const userId = user?.id ?? null;
   const [remote, setRemote] = useState<FlagMap | null>(null);
   const [overrides, setOverrides] = useState<FlagMap>({});
   const [ready, setReady] = useState(false);
+  const [cacheApplied, setCacheApplied] = useState(false);
+  const [cacheChecked, setCacheChecked] = useState(false);
 
   // __DEV__ override'larını bir kez yükle.
   useEffect(() => {
@@ -58,14 +108,38 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
     //    render ediliyor; bu yalnızca bilineni erken gösterir.
     try {
       const cached = await readCachedFlags();
-      if (cached) setRemote((prev) => prev ?? cached);
+      if (cached) {
+        setRemote((prev) => prev ?? cached);
+        setCacheApplied(true);
+      }
     } catch {
       // yut
+    } finally {
+      setCacheChecked(true);
     }
 
-    // 2) Giriş yoksa RPC çağırma — bayraklar kullanıcı bazlı çözülür.
-    if (!user) {
-      setReady(true);
+    // 2) Giriş yoksa anonim çözüm (cihaz kovası). Kısa süre sınırı; hata → önbellek/varsayılan.
+    if (!userId) {
+      try {
+        const deviceId = await readFlagsDeviceId();
+        const res = await withTimeout(
+          getSupabaseClient().rpc('get_anon_features', {
+            p_app_version: Constants.expoConfig?.version ?? null,
+            p_platform: Platform.OS,
+            p_device_id: deviceId,
+          }),
+          ANON_TIMEOUT_MS,
+        );
+        if (res && !res.error && isFlagMap(res.data)) {
+          const map = res.data as FlagMap;
+          setRemote((prev) => (sameFlags(prev, map) ? prev : map));
+          void writeCachedFlags(map);
+        }
+      } catch {
+        // yut — önbellek/varsayılan kullanılır
+      } finally {
+        setReady(true);
+      }
       return;
     }
 
@@ -78,7 +152,8 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
       });
       if (!error && data && typeof data === 'object' && !Array.isArray(data)) {
         const map = data as FlagMap;
-        setRemote(map);
+        // Değer değişmediyse aynı nesne kalır → tüketiciler yeniden render olmaz.
+        setRemote((prev) => (sameFlags(prev, map) ? prev : map));
         void writeCachedFlags(map);
       }
     } catch {
@@ -86,7 +161,7 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setReady(true);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     void load();
@@ -104,8 +179,17 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<FlagsContextValue>(
-    () => ({ flags, ready, refresh: load, devOverrides: overrides, setDevOverride }),
-    [flags, ready, load, overrides, setDevOverride],
+    () => ({
+      flags,
+      ready,
+      // Önbellekle "bilinen" yalnız oturumluda: oturumsuz açılış (G20-S3) sunucu/anon çözümünü bekler.
+      settled: ready || (cacheApplied && !!userId),
+      cacheChecked,
+      refresh: load,
+      devOverrides: overrides,
+      setDevOverride,
+    }),
+    [flags, ready, cacheApplied, userId, cacheChecked, load, overrides, setDevOverride],
   );
 
   return <FlagsContext.Provider value={value}>{children}</FlagsContext.Provider>;
@@ -126,6 +210,8 @@ export function FlagsOverrideProvider({
     () => ({
       flags,
       ready: true,
+      settled: true,
+      cacheChecked: true,
       refresh: async () => {},
       devOverrides: {},
       setDevOverride: async () => {},

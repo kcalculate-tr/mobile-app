@@ -1,3 +1,6 @@
+import { dayKey } from './dayKey';
+import { planLinkTarget } from '../navigation/planLinks';
+
 export function resolveNavigation(
   navigation: any,
   dest: string | null | undefined,
@@ -5,6 +8,22 @@ export function resolveNavigation(
 ): void {
   const target = (dest ?? fallback).toString().trim();
   if (!target) return;
+
+  // G36 md.14: kişisel plan bağlantıları (haftalık tartı / öğün planı bugün / kişisel planım).
+  const plan = planLinkTarget(target, dayKey());
+  if (plan) {
+    const names: unknown =
+      (typeof navigation?.getRootState === 'function' ? navigation.getRootState()?.routeNames : null) ??
+      (typeof navigation?.getState === 'function' ? navigation.getState()?.routeNames : null);
+    const known = Array.isArray(names) ? (names as string[]) : null;
+    if (known && !known.includes(plan.name)) {
+      if (plan.fallback && known.includes(plan.fallback)) navigation.navigate(plan.fallback);
+      else navigation.navigate(fallback as any);
+      return;
+    }
+    navigation.navigate(plan.name, plan.params);
+    return;
+  }
 
   // Push bildirimlerinden gelen kcal:// derin baglantilari. Onceden ham sema
   // dogrudan navigate'e veriliyordu; ekran adi olmadigi icin fallback'e

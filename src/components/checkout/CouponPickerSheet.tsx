@@ -13,6 +13,7 @@ import {
   fetchAvailableCampaigns, getCouponErrorMessage, validateCoupon,
 } from '../../lib/offers'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard'
 
 type Props = {
   visible: boolean
@@ -112,7 +113,7 @@ export default function CouponPickerSheet({ visible, onClose, cartTotal, items, 
           </Text>
         </View>
       ) : (
-        <ScrollView style={s.liste} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} style={s.liste} showsVerticalScrollIndicator={false}>
           {list.map((c) => {
             const gorsel = c.image_url
               ? (transformImageUrl(c.image_url, ImagePreset.bannerLarge) ?? c.image_url)

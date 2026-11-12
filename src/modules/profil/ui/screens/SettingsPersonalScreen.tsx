@@ -29,7 +29,7 @@ import {
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import * as ExpoLinking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../../core/design';
+import { useTheme, FinCardSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -47,6 +47,7 @@ import {
   bodySemibold,
   heading,
 } from '../finUi';
+import { FIN_SCROLL_KEYBOARD } from '../finUi';
 
 type FieldProps = {
   label: string;
@@ -279,13 +280,11 @@ export default function SettingsPersonalScreen({ onBack }: { onBack: () => void 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 16 }}
-        keyboardShouldPersistTaps="handled"
+        {...FIN_SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <ActivityIndicator color={t.color.accent} size="large" />
-          </View>
+          <FinCardSkeleton rows={5} style={{ paddingHorizontal: 0, paddingTop: 0 }} />
         ) : (
           <>
             {/* FinPrPersonal: avatar solda + altı çizili "Fotoğrafı değiştir" bağlantısı. */}

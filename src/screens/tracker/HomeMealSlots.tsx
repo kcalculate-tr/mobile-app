@@ -49,6 +49,67 @@ import {
 } from '../../modules/gun/homeData';
 import type { HighlightPhase } from '../../modules/gun/homeHighlight';
 import { MealMenuPopover, useAnchorMeasure } from '../../modules/gun/home/MealMenuPopover';
+import { useMealPhoto } from '../../modules/gun/useMealPhoto';
+import { useMealSticker } from '../../modules/gun/useMealSticker';
+import { StickerImage, STICKER_OUTLINE_SMALL } from '../../lib/sticker/StickerImage';
+
+/** Satır çıkartması konturu (44 pt küçük görsel → 2 pt). */
+const THUMB_STICKER_OUTLINE = STICKER_OUTLINE_SMALL;
+
+// G28-S1 md.2: görsel yoksa kase cam nesnesi (kase = öğün; durağan png — listede yüzme yok).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const BOWL = require('../../../assets/glass/bowl.png');
+
+/**
+ * Satır küçük görseli (44 pt, 12 yarıçap):
+ * G29-S1: çıkartma (şeffaf zemin, kırpılmış; yalnız fotoğraflı Tara kaydında sorulur) →
+ * Tara fotoğrafı (imzalı URL, önbellekli) → yüklenirken iskelet → ürün görseli → kase cam nesnesi.
+ */
+function MealThumb({
+  itemId,
+  photoPath,
+  image,
+  testID,
+}: {
+  itemId?: string | null;
+  photoPath?: string | null;
+  image?: string;
+  testID?: string;
+}) {
+  const t = useTheme();
+  const sticker = useMealSticker(photoPath ? itemId : null);
+  const photo = useMealPhoto(photoPath);
+  const bg = t.isDark ? '#3A3A3C' : '#DCDEE2';
+  if (sticker.status === 'ready') {
+    return (
+      // G30-S1 md.2: çıkartma beyaz konturlu (44 pt → 2 pt) + çok hafif gölge. Kontur kırpılmasın
+      // diye kap overflow:hidden DEĞİL ve çıkartma kontur kadar içeriden çizilir.
+      <View style={styles.thumbSticker} testID={testID} accessible={false}>
+        <StickerImage
+          uri={sticker.uri}
+          style={styles.thumbStickerImg}
+          resizeMode="contain"
+          outline={THUMB_STICKER_OUTLINE}
+          testID={testID ? `${testID}-sticker` : undefined}
+        />
+      </View>
+    );
+  }
+  // Çıkartma sorulurken hazır fotoğraf (yerel / önbellek) beklemeden çizilir; çıkartma gelince değişir.
+  const uri = photo.status === 'ready' ? photo.uri : image;
+  const waiting = sticker.status === 'loading' || photo.status === 'loading';
+  return (
+    <View style={[styles.thumb, { backgroundColor: bg }]} testID={testID} accessible={false}>
+      {uri ? (
+        <Image source={{ uri }} style={styles.thumbImg} testID={testID ? `${testID}-img` : undefined} />
+      ) : waiting ? (
+        <View style={styles.thumbImg} testID={testID ? `${testID}-skeleton` : undefined} />
+      ) : (
+        <Image source={BOWL} style={styles.thumbBowl} resizeMode="contain" testID={testID ? `${testID}-bowl` : undefined} />
+      )}
+    </View>
+  );
+}
 import type { Rect } from '../../modules/gun/home/popoverGeometry';
 
 // FinHomeR3 yuva ikonları (pano SVG yolları, 24×24, stroke 1.75).
@@ -208,7 +269,8 @@ export function HomeMealSlots({
       ) : allEmpty ? (
         <View style={[styles.emptyBox, { borderTopColor: t.color.line }]}>
           <View style={styles.emptyGlass}>
-            <GlassObject name="drop" size={104} />
+            {/* G21-S1 md.1 (Tur 26f): FinHomeXL boş gün damla → kase. */}
+            <GlassObject name="bowl" size={104} />
           </View>
           <AppText style={styles.emptyTitle}>{tt('gun.empty_today_title')}</AppText>
           <AppText variant="caption" tone="secondary">
@@ -437,9 +499,7 @@ function SlotItem({
         onAccessibilityAction={() => onToggleMenu(item.id)}
         style={styles.itemRow}
       >
-        <View style={[styles.thumb, { backgroundColor: t.isDark ? '#3A3A3C' : '#DCDEE2' }]}>
-          {image ? <Image source={{ uri: image }} style={styles.thumbImg} /> : null}
-        </View>
+        <MealThumb itemId={item.id} photoPath={item.photoPath} image={image} testID={`home-thumb-${item.id}`} />
         <View style={styles.itemMain}>
           <AppText numberOfLines={1} style={styles.itemName}>
             {item.name}
@@ -457,7 +517,7 @@ function SlotItem({
                 {sourceLabel}
               </AppText>
             </View>
-            <AppText variant="caption" tone="secondary">
+            <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.itemTime}>
               {time}
             </AppText>
           </View>
@@ -630,10 +690,15 @@ const styles = StyleSheet.create({
   item: { paddingVertical: 8, paddingHorizontal: 16, gap: 6 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   thumb: { width: 44, height: 44, borderRadius: 12, overflow: 'hidden' },
+  thumbSticker: { width: 44, height: 44 },
+  thumbStickerImg: { position: 'absolute', left: 2, top: 2, right: 2, bottom: 2 },
   thumbImg: { width: 44, height: 44 },
+  thumbBowl: { width: 36, height: 36, margin: 4 },
   itemMain: { flex: 1, minWidth: 0, gap: 2 },
-  itemName: { fontWeight: '500' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // G28-S1 md.3 (FinHomeR3/FinHomeLog*): ad 15/500 tek satır kesilir; alt satır 13 kaynak hapı + saat; kcal 15/500.
+  itemName: { fontSize: 15, lineHeight: 21, fontWeight: '500' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  itemTime: { flexShrink: 1 },
   tag: {
     minHeight: 20,
     paddingHorizontal: 8,
@@ -642,7 +707,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tagText: { fontWeight: '600' },
-  itemKcal: { fontWeight: '500' },
+  itemKcal: { fontSize: 15, lineHeight: 21, fontWeight: '500', flexShrink: 0 },
   dot: { position: 'absolute', left: -10, top: 18, width: 8, height: 8, borderRadius: 4 },
   editLink: { alignSelf: 'flex-start', marginLeft: 56, minWidth: 44, minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   editText: { fontWeight: '600', textDecorationLine: 'underline' },

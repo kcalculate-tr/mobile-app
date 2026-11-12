@@ -4,13 +4,14 @@
 //  • Bu öğünü kaydet → Tabak koleksiyonu yerel deposu (collection/store.ts):
 //    yemek adına katalog numarası atanır (yoksa sıradaki numara).
 //  • Planıma ekle → expo-notifications ile yerel plan hatırlatması: yarın aynı
-//    saatte "Planındaki öğün: <ad> · <kcal> kcal". İzin yoksa false döner.
+//    saatte "Planındaki öğün: <ad> · <kcal> kcal". İzin yoksa false döner —
+//    G26-S1: izin İSTEMEZ (tek fonksiyona sorar, yoksa sessizce geçer).
 //  • Eşleşme yüzdesi → taranan ad ile eatkcal menüsündeki ürün adları arasında
 //    kelime örtüşmesi (Dice) — SAF, birim testli; menü yoksa null (gösterilmez).
 import * as Notifications from 'expo-notifications';
 
 import { loadCollection, saveAssignment } from '../../collection';
-import { requestPushPermissionOnly } from '../../../core/notifications';
+import { pushGranted } from '../../../core/push/pushPermission';
 
 /** Ada katalog numarası ata (zaten varsa aynısını döner). */
 export async function saveMealToCollection(name: string): Promise<number> {
@@ -29,8 +30,7 @@ export async function schedulePlanReminder(params: {
   body: string;
   now?: Date;
 }): Promise<boolean> {
-  const status = await requestPushPermissionOnly().catch(() => 'denied' as const);
-  if (status !== 'granted') return false;
+  if (!(await pushGranted().catch(() => false))) return false;
   const at = new Date(params.now ?? new Date());
   at.setDate(at.getDate() + 1);
   await Notifications.scheduleNotificationAsync({

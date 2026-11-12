@@ -1,6 +1,6 @@
 // Topluluk kuralları — FinRules (G14-S1: Final'e göre TAM SAYFA). İlk paylaşımdan
 // önce bir kez gösterilir (ComposerScreen "Gönder" düğmesini kapsar); AsyncStorage
-// bayrağıyla kilitlenir (SocialPushPrompt ile aynı desen). "Anladım, paylaş" →
+// bayrağıyla kilitlenir (eski SocialPushPrompt ile aynı desen). "Anladım, paylaş" →
 // bayrağı işaretler ve paylaşımı devam ettirir; X ("Vazgeç") bayrağı işaretlemez,
 // bir dahaki denemede yine sorar.
 import React from 'react';
@@ -17,6 +17,7 @@ import { ShieldCheck } from 'phosphor-react-native/lib/commonjs/icons/ShieldChec
 import { X } from 'phosphor-react-native/lib/commonjs/icons/X';
 import { AppText, useTheme, haptic, fontFamily } from '../../../core/design';
 import { useT } from '../../../core/i18n';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 export const RULES_SEEN_FLAG = '@kcal_kesfet_rules_seen';
 
@@ -80,7 +81,7 @@ export function RulesSheet({
             <X size={22} color={t.color.ink} />
           </Pressable>
         </View>
-        <ScrollView>
+        <ScrollView {...SCROLL_KEYBOARD}>
           <View style={styles.titleBlock}>
             <AppText variant="title" style={styles.title} accessibilityRole="header">
               {tr('kesfet.rules.title')}

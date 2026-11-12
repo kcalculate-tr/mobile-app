@@ -9,8 +9,20 @@
 // dosyası, CANLIYA UYGULANACAK), tablo/oturum yokken cihaz kuyruğunda bekler.
 // Veri olmayan Final öğeleri GİZLİ (uydurma yok): şehir fotoğrafı (yer tutucu
 // yüzey), Berlin restoran satırları.
+//
+// G22-S2 md.3: "Diğer ülke" yerine Avrupa + Amerika (Kuzey, Orta, Güney) ülke listesi
+// (model/geoCountries, GeoNames). Türkiye → yukarıdaki il akışı AYNEN. Diğer ülke →
+// şehir araması (`search_cities` RPC, duraksamalı; yükleniyor/boş/hata; ağ yokken
+// "yazdığınla devam et"). Listede şehirlerin yanında "Çok yakında" YOK. Seçilen şehir →
+// FinEatBerlin: "Çok yakında [şehir]'deki restoranlar burada listelenecek." + Restoranını
+// ekle / Restoran öner (aynı form sheet'leri, ülke kodu ISO2).
+// G23-S1: Türkiye il listesinde de "Çok yakında" yazmaz; yabancı şehir satırında eyalet/
+// bölge (admin1) alt satırda.
+// G24-S1 (Tur 26k CityR1): Türkiye'de İzmir dışı il SEÇİLİNCE "Devam et" yerine sakin bilgi
+// kartı: "eatkcal şu an yalnız İzmir'de." + Restoran öner / Restoranını ekle (form sheet'leri);
+// sipariş akışı başlamaz. WaitlistR1 başlığı "Şimdilik İzmir'deyiz".
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ImageSourcePropType } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { haptic } from '../../../../../core/design';
 import { CaretDown, CaretLeft, CaretRight, Check, MagnifyingGlass, MapPin, Plus, Storefront } from '../../../../../components/icons';
@@ -20,10 +32,25 @@ import { useInR3Shell } from '../../../../shell';
 import { useEatkcalRegistration } from '../../../../profil/useRegistration';
 import { CITY_CATALOG } from '../../../cityGate';
 import { ekType, useEk } from '../kit';
-import { IZMIR, filterProvinces, gateTarget, orderedProvinces } from '../../model/provinces';
+import { IZMIR, filterProvinces, orderedProvinces } from '../../model/provinces';
+import {
+  TURKEY,
+  cityLabel,
+  countryName,
+  filterCountries,
+  findCountry,
+  geoGateTarget,
+  isTurkey,
+  orderedCountries,
+  trLocativeKi,
+  typedCity,
+  type GeoCity,
+} from '../../model/geo';
 import { WaitlistFormSheet } from './WaitlistFormSheet';
 import { flushWaitlistQueue } from './waitlistSend';
+import { useCitySearch } from './useCitySearch';
 import type { WaitlistKind } from '../../model/waitlist';
+import { SCROLL_KEYBOARD } from '../../../../../core/design/keyboard';
 
 export type GateStep = 'city' | 'waitlist' | 'other';
 
@@ -86,13 +113,32 @@ export function CityGateView({
   /** Sekme içinde: alt sekme çubuğu kadar boşluk. */
   showTabSpace?: boolean;
 }) {
-  const { c, t, insets } = useEk();
+  const { c, t, lang, insets } = useEk();
   const p = usePalette();
   const reg = useEatkcalRegistration();
   const inR3 = useInR3Shell();
   const [step, setStep] = useState<GateStep>(initialStep);
-  const [country, setCountry] = useState<'TR' | 'OTHER'>('TR');
+  /** ISO2 ülke kodu; 'TR' = bugünkü il akışı. */
+  const [country, setCountry] = useState<string>(TURKEY);
   const [countryOpen, setCountryOpen] = useState(false);
+  const [countryQ, setCountryQ] = useState('');
+  const [geoCity, setGeoCity] = useState<GeoCity | null>(null);
+  const [cq, setCq] = useState('');
+  const isTr = isTurkey(country);
+  const countries = useMemo(() => orderedCountries(lang), [lang]);
+  const countryList = useMemo(() => filterCountries(countries, countryQ, lang), [countries, countryQ, lang]);
+  const search = useCitySearch(cq, isTr ? null : country, !isTr && !countryOpen);
+  const searchStatus = search.state.status;
+  // VoiceOver: arama sonucu duyurusu (sonuç sayısı / boş / hata).
+  useEffect(() => {
+    if (search.state.status === 'ok') {
+      AccessibilityInfo.announceForAccessibility(t('eatkcal.v2.geo.results', { count: search.state.cities.length }));
+    } else if (search.state.status === 'empty') {
+      AccessibilityInfo.announceForAccessibility(t('eatkcal.v2.geo.city_no_match'));
+    } else if (search.state.status === 'error') {
+      AccessibilityInfo.announceForAccessibility(t('eatkcal.v2.geo.city_error'));
+    }
+  }, [search.state, t]);
   const [il, setIl] = useState<string | null>(() => {
     if (!initialCityKey) return null;
     const cat = CITY_CATALOG.find((x) => x.key === initialCityKey);
@@ -115,8 +161,11 @@ export function CityGateView({
     flushWaitlistQueue().catch(() => {});
   }, []);
 
-  const target = gateTarget(country, il);
-  const waitCity = country === 'OTHER' ? otherCityName || t('eatkcal.v2.gate.region') : il ?? '';
+  const target = geoGateTarget(country, il, geoCity);
+  // FinWaitlistR1 yalnız Türkiye illeri için (diğer ülkeler FinEatBerlin'e gider).
+  const waitCity = il ?? '';
+  // FinEatBerlin şehri: seçilen yabancı şehir; yoksa (vitrin / eski yol) kayıtlı adres şehri.
+  const otherName = geoCity?.name ?? otherCityName ?? null;
   const checking = reg.status === 'checking';
   const { setCity } = reg;
   // Doğrulama şehri baştan İzmir (SignupEatScreen ile aynı: setCity, onayda checkCity).
@@ -129,6 +178,10 @@ export function CityGateView({
     haptic('selection');
     if (target === 'waitlist') {
       setStep('waitlist');
+      return;
+    }
+    if (target === 'soon') {
+      setStep('other');
       return;
     }
     // G18-S5 (uçtan uca akışta bulundu): kapı denetimi `restoran_yakinda` bayrağına bağlı
@@ -155,8 +208,8 @@ export function CityGateView({
     <WaitlistFormSheet
       kind={sheet ?? 'restaurant_add'}
       visible={sheet != null}
-      city={country === 'OTHER' ? otherCityName ?? '' : il ?? ''}
-      country={country}
+      city={step === 'other' ? otherName ?? '' : il ?? ''}
+      country={geoCity ? geoCity.country : step === 'other' ? 'OTHER' : country}
       onClose={() => setSheet(null)}
       onPrivacy={() => {
         setSheet(null);
@@ -193,8 +246,8 @@ export function CityGateView({
           <CaretLeft size={22} color={c.ink} />
         </Pressable>
         <View style={styles.waitText}>
-          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.soon')}>
-            <Mark size={34}>{t('eatkcal.v2.gate.soon')}</Mark>
+          <View style={styles.titleRow} accessible accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.gate.wait_title')}>
+            <Mark size={34}>{t('eatkcal.v2.gate.wait_title')}</Mark>
           </View>
           <Text style={[styles.body16, { color: c.ink }]}>{t('eatkcal.v2.gate.wait_body', { city: waitCity })}</Text>
         </View>
@@ -239,6 +292,9 @@ export function CityGateView({
   }
   // ── FinEatBerlin (mutfak olmayan şehir) ──────────────────────────────────
   if (step === 'other') {
+    const soonText = otherName
+      ? t('eatkcal.v2.geo.soon_city', { city: otherName, city_ki: trLocativeKi(otherName) })
+      : null;
     return (
       <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top + 8 }]} testID="ek-gate-other">
         <View style={styles.otherHead}>
@@ -246,54 +302,97 @@ export function CityGateView({
             eatkcal
           </Text>
           <Pressable
-            onPress={() => setStep('city')}
+            onPress={() => {
+              haptic('selection');
+              setStep('city');
+            }}
             accessibilityRole="button"
-            accessibilityLabel={t('eatkcal.v2.gate.change_city')}
+            accessibilityLabel={otherName ? `${t('eatkcal.v2.gate.change_city')}: ${otherName}` : t('eatkcal.v2.gate.change_city')}
+            hitSlop={{ top: 4, bottom: 4 }}
             style={[styles.cityPill, { borderColor: p.outline }]}
+            testID="ek-gate-city-pill"
           >
             <MapPin size={16} color={c.ink} />
-            <Text style={[ekType.c13s, { color: c.ink, fontSize: 15 }]} numberOfLines={1}>
-              {otherCityName || t('eatkcal.v2.gate.other_city')}
+            <Text style={[ekType.c13s, styles.pillText, { color: c.ink }]} numberOfLines={1}>
+              {otherName || t('eatkcal.v2.gate.other_city')}
             </Text>
             <CaretDown size={12} color={c.ink} weight="fill" />
           </Pressable>
         </View>
-        <View style={[styles.notice, { borderBottomColor: c.line }]}>
-          <Storefront size={22} color={c.ink} />
-          <View style={styles.fill}>
-            <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.gate.no_kitchen_title')}</Text>
-            <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.no_kitchen_body')}</Text>
+        <ScrollView {...SCROLL_KEYBOARD} style={styles.fill} contentContainerStyle={{ paddingBottom: bottomSpace }} showsVerticalScrollIndicator={false}>
+          <View style={[styles.notice, { borderBottomColor: c.line }]}>
+            <Storefront size={22} color={c.ink} />
+            <View style={styles.fill}>
+              <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.gate.no_kitchen_title')}</Text>
+              <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.no_kitchen_body')}</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.nearHead}>
-          <Text style={[ekType.b17, styles.bric, { color: c.ink }]}>{t('eatkcal.v2.city.nearby_title')}</Text>
-          <Text style={[ekType.c13, { color: c.secondary }]}>{` (${t('eatkcal.v2.gate.soon')})`}</Text>
-        </View>
-        <Pressable
-          onPress={() => {
-            setCountry('OTHER');
-            openSheet('restaurant_add');
-          }}
-          accessibilityRole="button"
-          style={[styles.addRow, { borderTopColor: c.line, borderBottomColor: c.line }]}
-          testID="ek-gate-add-restaurant"
-        >
-          <View style={[styles.addIcon, { borderColor: p.outline }]}>
-            <Plus size={20} color={c.ink} />
+          <View style={styles.nearHead}>
+            <Text style={[ekType.b17, styles.bric, { color: c.ink }]}>{t('eatkcal.v2.city.nearby_title')}</Text>
+            <Text style={[ekType.c13, { color: c.secondary }]}>{` (${t('eatkcal.v2.gate.soon')})`}</Text>
           </View>
-          <Text style={[ekType.b15s, { color: c.ink, flex: 1 }]}>{t('eatkcal.v2.gate.add_restaurant')}</Text>
-          <CaretRight size={18} color={c.ink} />
-        </Pressable>
-        <Text style={[ekType.c13, styles.footnote, { color: c.secondary }]}>{t('eatkcal.v2.gate.only_kitchens')}</Text>
+          {soonText ? (
+            <Text style={[ekType.b15, styles.soonText, { color: c.ink }]} testID="ek-gate-soon-city">
+              {soonText}
+            </Text>
+          ) : null}
+          <Pressable
+            onPress={() => openSheet('restaurant_add')}
+            accessibilityRole="button"
+            accessibilityLabel={t('eatkcal.v2.gate.add_restaurant')}
+            style={({ pressed }) => [styles.addRow, { borderTopColor: c.line, borderBottomColor: c.line }, pressed && { opacity: 0.7 }]}
+            testID="ek-gate-add-restaurant"
+          >
+            <View style={[styles.addIcon, { borderColor: p.outline }]}>
+              <Plus size={20} color={c.ink} />
+            </View>
+            <Text style={[ekType.b15s, { color: c.ink, flex: 1 }]}>{t('eatkcal.v2.gate.add_restaurant')}</Text>
+            <CaretRight size={18} color={c.ink} />
+          </Pressable>
+          <Pressable
+            onPress={() => openSheet('restaurant_suggest')}
+            accessibilityRole="button"
+            accessibilityLabel={t('eatkcal.v2.gate.suggest')}
+            style={({ pressed }) => [styles.addRow, styles.addRowNext, { borderBottomColor: c.line }, pressed && { opacity: 0.7 }]}
+            testID="ek-gate-suggest"
+          >
+            <View style={[styles.addIcon, { borderColor: p.outline }]}>
+              <MapPin size={20} color={c.ink} />
+            </View>
+            <Text style={[ekType.b15s, { color: c.ink, flex: 1 }]}>{t('eatkcal.v2.gate.suggest')}</Text>
+            <CaretRight size={18} color={c.ink} />
+          </Pressable>
+          <Text style={[ekType.c13, styles.footnote, { color: c.secondary }]}>{t('eatkcal.v2.gate.only_kitchens')}</Text>
+        </ScrollView>
         {sheetEl}
       </View>
     );
   }
   // ── FinCityR1 ────────────────────────────────────────────────────────────
-  const countryLabel = country === 'TR' ? t('eatkcal.v2.gate.country_tr') : t('eatkcal.v2.gate.country_other');
+  const countryEntry = findCountry(country);
+  const countryLabel = countryEntry ? countryName(countryEntry, lang) : t('eatkcal.v2.gate.country_tr');
+  const pickHelp = isTr ? t('eatkcal.v2.gate.pick_city') : t('eatkcal.v2.geo.pick_city');
+  const typed = isTr ? null : typedCity(cq, country);
+  const elseSel = isTr && !!il && il !== IZMIR;
+  const typedSel = !!typed && geoCity?.geonameid === 0 && geoCity.name === typed.name;
+  const pickCountry = (iso2: string) => {
+    haptic('selection');
+    if (iso2 !== country) {
+      setCountry(iso2);
+      setIl(null);
+      setGeoCity(null);
+      setCq('');
+    }
+    setCountryQ('');
+    setCountryOpen(false);
+  };
+  const pickCity = (x: GeoCity) => {
+    haptic('selection');
+    setGeoCity(x);
+  };
   return (
     <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top + 8 }]} testID="ek-gate-city">
-      <View style={[styles.cityWrap, { paddingBottom: bottomSpace + 52 + 26 + 12 }]}>
+      <View style={[styles.cityWrap, { paddingBottom: bottomSpace + (elseSel ? 230 : 52 + 26 + 12) }]}>
         {onExit ? (
           <Pressable onPress={onExit} accessibilityRole="button" accessibilityLabel={t('eatkcal.v2.common.back')} style={styles.exitBtn}>
             <CaretLeft size={22} color={c.ink} />
@@ -323,33 +422,54 @@ export function CityGateView({
             <Text style={[styles.selectText, { color: c.ink }]}>{countryLabel}</Text>
             <CaretDown size={18} color={c.secondary} />
           </Pressable>
-          {countryOpen ? (
-            <View style={[styles.listCard, { backgroundColor: p.card }]} accessibilityRole="radiogroup">
-              {(['TR', 'OTHER'] as const).map((k) => (
-                <Pressable
-                  key={k}
-                  onPress={() => {
-                    haptic('selection');
-                    setCountry(k);
-                    setIl(null);
-                    setCountryOpen(false);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: country === k }}
-                  style={[styles.row, { borderBottomColor: c.line }]}
-                  testID={`ek-gate-country-${k}`}
-                >
-                  <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15s.fontFamily }]}>
-                    {k === 'TR' ? t('eatkcal.v2.gate.country_tr') : t('eatkcal.v2.gate.country_other')}
-                  </Text>
-                  <Radio on={country === k} ring={p.line2} />
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
         </View>
 
-        {country === 'TR' ? (
+        {countryOpen ? (
+          <View style={styles.cityCol} testID="ek-gate-country-list">
+            <View style={[styles.search, { backgroundColor: p.nested }]}>
+              <MagnifyingGlass size={18} color={c.secondary} />
+              <TextInput
+                value={countryQ}
+                onChangeText={setCountryQ}
+                placeholder={t('eatkcal.v2.geo.country_search')}
+                placeholderTextColor={c.secondary}
+                autoCorrect={false}
+                returnKeyType="search"
+                accessibilityLabel={t('eatkcal.v2.geo.country_search')}
+                style={[styles.searchInput, { color: c.ink }]}
+                testID="ek-gate-country-search"
+              />
+            </View>
+            <ScrollView {...SCROLL_KEYBOARD}
+              style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
+              showsVerticalScrollIndicator={false}
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t('eatkcal.v2.gate.country')}
+            >
+              {countryList.map((k) => {
+                const label = countryName(k, lang);
+                const sel = country === k.iso2;
+                return (
+                  <Pressable
+                    key={k.iso2}
+                    onPress={() => pickCountry(k.iso2)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: sel }}
+                    accessibilityLabel={label}
+                    style={[styles.row, { borderBottomColor: c.line }]}
+                    testID={`ek-gate-country-${k.iso2}`}
+                  >
+                    <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15s.fontFamily }]}>{label}</Text>
+                    <Radio on={sel} ring={p.line2} />
+                  </Pressable>
+                );
+              })}
+              {countryList.length === 0 ? (
+                <Text style={[ekType.b15, styles.noMatch, { color: c.secondary }]}>{t('eatkcal.v2.geo.country_no_match')}</Text>
+              ) : null}
+            </ScrollView>
+          </View>
+        ) : isTr ? (
           <View style={styles.cityCol}>
             <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.gate.city_label')}</Text>
             <View style={[styles.search, { backgroundColor: p.nested }]}>
@@ -366,9 +486,8 @@ export function CityGateView({
                 testID="ek-gate-search"
               />
             </View>
-            <ScrollView
+            <ScrollView {...SCROLL_KEYBOARD}
               style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
-              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               accessibilityRole="radiogroup"
               accessibilityLabel={t('eatkcal.v2.gate.city_label')}
@@ -386,18 +505,18 @@ export function CityGateView({
                     }}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: sel }}
-                    accessibilityLabel={`${name}, ${open ? t('eatkcal.v2.gate.open') : t('eatkcal.v2.gate.soon')}`}
+                    accessibilityLabel={open ? `${name}, ${t('eatkcal.v2.gate.open')}` : name}
                     style={[styles.row, { borderBottomColor: c.line }]}
                     testID={`ek-gate-il-${name}`}
                   >
                     <Text style={[styles.rowText, { color: c.ink, fontFamily: open ? ekType.b15s.fontFamily : ekType.b15m.fontFamily }]}>{name}</Text>
+                    {/* G23-S1 (İlter): listede "Çok yakında" yazılmaz; seçimden sonra bekleme
+                        sayfası mesajı + Restoranını ekle / Restoran öner. */}
                     {open ? (
                       <View style={[styles.openChip, { backgroundColor: c.accent }]}>
                         <Text style={[ekType.c13s, { color: c.onAccent }]}>{t('eatkcal.v2.gate.open')}</Text>
                       </View>
-                    ) : (
-                      <Text style={[ekType.c13, { color: c.secondary }]}>{t('eatkcal.v2.gate.soon')}</Text>
-                    )}
+                    ) : null}
                     <Radio on={sel} ring={p.line2} />
                   </Pressable>
                 );
@@ -406,29 +525,158 @@ export function CityGateView({
             </ScrollView>
           </View>
         ) : (
-          <View style={[styles.otherCard, { backgroundColor: p.card }]} testID="ek-gate-other-country">
-            <View style={[styles.otherPin, { backgroundColor: p.nested }]}>
-              <MapPin size={20} color={c.ink} weight="fill" />
+          <View style={styles.cityCol}>
+            <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.geo.city_label')}</Text>
+            <View style={[styles.search, { backgroundColor: p.nested }]}>
+              <MagnifyingGlass size={18} color={c.secondary} />
+              <TextInput
+                value={cq}
+                onChangeText={setCq}
+                placeholder={t('eatkcal.v2.geo.city_search')}
+                placeholderTextColor={c.secondary}
+                autoCorrect={false}
+                autoCapitalize="words"
+                returnKeyType="search"
+                accessibilityLabel={t('eatkcal.v2.geo.city_search')}
+                style={[styles.searchInput, { color: c.ink }]}
+                testID="ek-gate-city-search"
+              />
             </View>
-            <View style={[styles.fill, { gap: 2 }]}>
-              <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.gate.other_title')}</Text>
-              <Text style={[ekType.b15, { color: c.secondary }]}>{t('eatkcal.v2.gate.other_body')}</Text>
-            </View>
+            <ScrollView {...SCROLL_KEYBOARD}
+              style={[styles.listCard, styles.fill, { backgroundColor: p.card }]}
+              showsVerticalScrollIndicator={false}
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t('eatkcal.v2.geo.city_label')}
+              testID="ek-gate-city-list"
+            >
+              {searchStatus === 'idle' ? (
+                <Text style={[ekType.b15, styles.noMatch, { color: c.secondary }]}>{t('eatkcal.v2.geo.city_hint')}</Text>
+              ) : null}
+              {searchStatus === 'loading' ? (
+                <View
+                  style={styles.stateRow}
+                  accessible
+                  accessibilityLabel={t('eatkcal.v2.geo.city_loading')}
+                  accessibilityLiveRegion="polite"
+                  testID="ek-gate-city-loading"
+                >
+                  <ActivityIndicator color={c.secondary} />
+                  <Text style={[ekType.b15, styles.fill, { color: c.secondary }]}>{t('eatkcal.v2.geo.city_loading')}</Text>
+                </View>
+              ) : null}
+              {search.state.status === 'ok'
+                ? search.state.cities.map((x) => {
+                    const sel = geoCity?.geonameid === x.geonameid && x.geonameid !== 0;
+                    return (
+                      <Pressable
+                        key={x.geonameid}
+                        onPress={() => pickCity(x)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: sel }}
+                        accessibilityLabel={cityLabel(x)}
+                        style={[styles.row, { borderBottomColor: c.line }]}
+                        testID={`ek-gate-city-${x.geonameid}`}
+                      >
+                        <View style={styles.fill}>
+                          <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15m.fontFamily }]}>{x.name}</Text>
+                          {x.admin1 ? (
+                            <Text style={[ekType.c13, { color: c.secondary }]} testID={`ek-gate-city-admin1-${x.geonameid}`}>
+                              {x.admin1}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Radio on={sel} ring={p.line2} />
+                      </Pressable>
+                    );
+                  })
+                : null}
+              {searchStatus === 'empty' ? (
+                <Text style={[ekType.b15, styles.noMatch, { color: c.secondary }]} testID="ek-gate-city-empty">
+                  {t('eatkcal.v2.geo.city_no_match')}
+                </Text>
+              ) : null}
+              {searchStatus === 'error' ? (
+                <View style={styles.errorBox} testID="ek-gate-city-error">
+                  <Text style={[ekType.b15, { color: c.secondary }]}>{t('eatkcal.v2.geo.city_error')}</Text>
+                  <Pressable
+                    onPress={() => {
+                      haptic('selection');
+                      search.retry();
+                    }}
+                    accessibilityRole="button"
+                    style={[styles.retryBtn, { borderColor: p.outline }]}
+                    testID="ek-gate-city-retry"
+                  >
+                    <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.geo.retry')}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+              {(searchStatus === 'empty' || searchStatus === 'error') && typed ? (
+                <Pressable
+                  onPress={() => pickCity(typed)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: typedSel }}
+                  accessibilityLabel={t('eatkcal.v2.geo.use_typed', { q: typed.name })}
+                  style={[styles.row, styles.rowTop, { borderTopColor: c.line, borderBottomColor: c.line }]}
+                  testID="ek-gate-city-typed"
+                >
+                  <Text style={[styles.rowText, { color: c.ink, fontFamily: ekType.b15m.fontFamily }]}>
+                    {t('eatkcal.v2.geo.use_typed', { q: typed.name })}
+                  </Text>
+                  <Radio on={typedSel} ring={p.line2} />
+                </Pressable>
+              ) : null}
+            </ScrollView>
           </View>
         )}
       </View>
 
+      {elseSel ? (
+        <View
+          style={[styles.cityCta, styles.elseCard, { bottom: bottomSpace, backgroundColor: p.card, borderColor: c.line }]}
+          accessibilityLiveRegion="polite"
+          testID="ek-gate-else"
+        >
+          <View style={styles.elseHead} accessible accessibilityLabel={`${t('eatkcal.v2.gate.else_title')} ${t('eatkcal.v2.gate.else_body', { city: il })}`}>
+            <View style={[styles.elseIcon, { backgroundColor: p.nested }]}>
+              <MapPin size={20} color={c.ink} weight="fill" />
+            </View>
+            <View style={styles.fill}>
+              <Text style={[ekType.b15s, { color: c.ink }]}>{t('eatkcal.v2.gate.else_title')}</Text>
+              <Text style={[ekType.b15, { color: c.secondary }]}>{t('eatkcal.v2.gate.else_body', { city: il })}</Text>
+            </View>
+          </View>
+          <View style={lang === 'en' ? styles.elseCol : styles.elseRow}>
+            <Pressable
+              onPress={() => openSheet('restaurant_suggest')}
+              accessibilityRole="button"
+              style={[styles.elseBtn, { backgroundColor: c.ink }]}
+              testID="ek-gate-else-suggest"
+            >
+              <Text style={[styles.ctaText, styles.center, { color: c.surface }]}>{t('eatkcal.v2.gate.suggest')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => openSheet('restaurant_add')}
+              accessibilityRole="button"
+              style={[styles.elseBtn, { borderWidth: 1, borderColor: p.line2 }]}
+              testID="ek-gate-else-add"
+            >
+              <Text style={[styles.ctaText, styles.center, { color: c.ink }]}>{t('eatkcal.v2.gate.add_restaurant')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
       <View style={[styles.cityCta, { bottom: bottomSpace }]}>
         {!target ? (
           <Text style={[styles.help, { color: c.secondary }]} testID="ek-gate-help">
-            {t('eatkcal.v2.gate.pick_city')}
+            {pickHelp}
           </Text>
         ) : null}
         <Pressable
           onPress={onContinue}
           accessibilityRole="button"
           accessibilityState={{ disabled: !target, busy: checking }}
-          accessibilityHint={!target ? t('eatkcal.v2.gate.pick_city') : undefined}
+          accessibilityHint={!target ? pickHelp : undefined}
           style={[styles.cta, { backgroundColor: target ? c.ink : p.dis }]}
           testID="ek-gate-continue"
         >
@@ -442,6 +690,8 @@ export function CityGateView({
           <Text style={[ekType.c13, { color: c.danger, textAlign: 'center' }]}>{t(reg.messageKey)}</Text>
         ) : null}
       </View>
+      )}
+      {sheetEl}
     </View>
   );
 }
@@ -479,9 +729,18 @@ const styles = StyleSheet.create({
   openChip: { height: 26, paddingHorizontal: 10, borderRadius: 13, justifyContent: 'center' },
   radio: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   noMatch: { paddingVertical: 16, paddingHorizontal: 14 },
-  otherCard: { padding: 16, borderRadius: 20, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  otherPin: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  rowTop: { borderTopWidth: 1 },
+  stateRow: { minHeight: 52, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  errorBox: { paddingVertical: 16, paddingHorizontal: 14, gap: 12, alignItems: 'flex-start' },
+  retryBtn: { minHeight: 44, paddingHorizontal: 18, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   cityCta: { position: 'absolute', left: 16, right: 16, gap: 6 },
+  elseCard: { padding: 16, borderRadius: 20, borderWidth: 1, gap: 12 },
+  elseHead: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  elseIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  elseRow: { flexDirection: 'row', gap: 8 },
+  elseCol: { gap: 8 },
+  elseBtn: { flex: 1, minHeight: 52, borderRadius: 26, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', justifyContent: 'center' },
+  center: { textAlign: 'center' },
   help: { textAlign: 'center', fontFamily: ekType.c13.fontFamily, fontSize: 13, lineHeight: 18 },
   cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   ctaText: { fontFamily: ekType.b15s.fontFamily, fontSize: 16, lineHeight: 21 },
@@ -535,4 +794,7 @@ const styles = StyleSheet.create({
   },
   addIcon: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   footnote: { paddingHorizontal: 16, paddingTop: 20 },
+  soonText: { paddingHorizontal: 16, paddingBottom: 16 },
+  addRowNext: { borderTopWidth: 0 },
+  pillText: { fontSize: 15, flexShrink: 1 },
 });

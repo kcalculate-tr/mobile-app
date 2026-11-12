@@ -12,6 +12,9 @@ import { SocialAuthButtons } from '../../components/onboarding/SocialAuthButtons
 import { Check } from '../../components/icons';
 import { sportive } from '../../theme/sportive';
 import { useAuth } from '../../core/AuthContext';
+import { useT } from '../../core/i18n';
+import { useReviewPasswordLogin } from '../../lib/auth/useReviewPasswordLogin';
+import { saveAgeOk } from '../../modules/onboarding/first/store';
 import { AuthRedirectTarget, RootStackParamList } from '../../navigation/types';
 
 type LoginRouteProp = RouteProp<RootStackParamList, 'Login'>;
@@ -102,23 +105,22 @@ export default function UnifiedLoginScreen() {
   const [countdown, setCountdown] = useState(0);
   const [socialError, setSocialError] = useState('');
 
-  // 18+ YAŞ ONAYI (App Store 1.2 / Play) — YALNIZCA YENİ KAYITLARDA.
-  // Daha önce bu cihazda giriş/kayıt tamamlamış kullanıcılarda (onboarding_done
-  // ya da age_18_confirmed set'liyse) hiç gösterilmez → mevcut akış uzamaz.
-  const [needsAgeGate, setNeedsAgeGate] = useState(false);
+  // 18+ YAŞ ONAYI (App Store 1.2 / Play). G20-S3 md.6 (B-10): cihazda daha önce
+  // işaretlendi diye ATLANMAZ — her girişte sorulur ve beyan hesaba yazılır
+  // (profiles.onboarding_state.age_ok). Metin aynen (eski kabuk).
+  const needsAgeGate = true;
   const [ageConfirmed, setAgeConfirmed] = useState(false);
-
-  useEffect(() => {
-    let gecerli = true;
-    (async () => {
-      const [[, done], [, age]] = await AsyncStorage.multiGet([
-        '@kcal_onboarding_done',
-        AGE_CONFIRMED_KEY,
-      ]);
-      if (gecerli && done !== 'true' && age !== 'true') setNeedsAgeGate(true);
-    })();
-    return () => { gecerli = false; };
-  }, []);
+  // G28-S1 md.5: inceleme adresi → şifreyle giriş (diğer herkes için kod akışı aynı).
+  const { t: tr } = useT();
+  const review = useReviewPasswordLogin(email);
+  const handleReviewLogin = async () => {
+    if (needsAgeGate && !ageConfirmed) {
+      setError('Devam etmek için 18 yaşından büyük olduğunu onayla.');
+      return;
+    }
+    setError('');
+    if (await review.submit()) await finishLogin();
+  };
 
   useEffect(() => {
     if (countdown === 0) return;
@@ -140,6 +142,7 @@ export default function UnifiedLoginScreen() {
       ['@kcal_onboarding_done', 'true'],
       [AGE_CONFIRMED_KEY, 'true'],
     ]);
+    if (ageConfirmed && user?.id) await saveAgeOk(user.id).catch(() => false);
     await navigateByTarget(navigation, redirectTarget, user?.id);
   };
 
@@ -222,9 +225,32 @@ export default function UnifiedLoginScreen() {
                   </Pressable>
                 ) : null}
 
-                <View style={{ marginTop: 8 }}>
-                  <PrimaryCTA label="Kod Gönder" showArrow loading={sending} onPress={handleSendCode} />
-                </View>
+                {review.active ? (
+                  <>
+                    <View style={{ marginTop: 16 }}>
+                      <GlassInput
+                        label={tr('onboarding.v2.login.password_label')}
+                        value={review.password}
+                        onChangeText={review.setPassword}
+                        secure
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="password"
+                        textContentType="password"
+                        onSubmitEditing={handleReviewLogin}
+                        error={review.failed ? tr('onboarding.v2.login.password_wrong') : undefined}
+                        testID="unified-review-password"
+                      />
+                    </View>
+                    <View style={{ marginTop: 8 }}>
+                      <PrimaryCTA label={tr('onboarding.v2.login.password_submit')} showArrow loading={review.busy} onPress={handleReviewLogin} />
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ marginTop: 8 }}>
+                    <PrimaryCTA label="Kod Gönder" showArrow loading={sending} onPress={handleSendCode} />
+                  </View>
+                )}
 
                 <SocialAuthButtons
                   onNewUser={finishLogin}

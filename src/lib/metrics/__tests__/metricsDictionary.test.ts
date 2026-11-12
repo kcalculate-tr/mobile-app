@@ -112,7 +112,18 @@ test('eski logEvent.* (Meta doğrudan) hiçbir yerde kalmadı — tek giriş tra
 });
 
 test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir, alias/kpi aynı', () => {
-  const sql = readFileSync(join(ROOT, 'supabase/migrations/20261109110000_g19_s3_event_names.sql'), 'utf8');
+  // G21-S1 md.2: barkod olayları ayrı migration'da (20261110000100_g21_s1_barcode.sql).
+  const sql = [
+    'supabase/migrations/20261109110000_g19_s3_event_names.sql',
+    'supabase/migrations/20261110000100_g21_s1_barcode.sql',
+    // G22-S1: sesle ekleme + abonelik olayları.
+    'supabase/migrations/20261110100100_g22_s1_subscriptions.sql',
+    // G24-S1: kcalAI Koç olayları.
+    'supabase/migrations/20261111100100_g24_coach.sql',
+    'supabase/migrations/20261112110100_g34_personal_plan.sql',
+  ]
+    .map((f) => readFileSync(join(ROOT, f), 'utf8'))
+    .join('\n');
   const rows = new Map<string, { source: string; alias: string | null; kpi: boolean }>();
   for (const m of sql.matchAll(/\(\s*'([a-z0-9_]+)',\s*'([a-z]+)',\s*'(client|server)',[\s\S]*?,\s*(null|'[a-z0-9_]+'),\s*(true|false)\)/g)) {
     rows.set(m[1], { source: m[3], alias: m[4] === 'null' ? null : m[4].slice(1, -1), kpi: m[5] === 'true' });
@@ -128,6 +139,10 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   }
   const rb = readFileSync(join(ROOT, 'supabase/rollbacks/20261109110000_g19_s3_event_names_rollback.sql'), 'utf8');
   assert.match(rb, /delete from public\.analytics_event_names/);
+  const rb21 = readFileSync(join(ROOT, 'supabase/rollbacks/20261110000100_g21_s1_barcode_rollback.sql'), 'utf8');
+  assert.match(rb21, /delete from public\.analytics_event_names/);
+  const rb22 = readFileSync(join(ROOT, 'supabase/rollbacks/20261110100100_g22_s1_subscriptions_rollback.sql'), 'utf8');
+  assert.match(rb22, /delete from public\.analytics_event_names/);
 });
 
 test('D-S1 sözlüğündeki 38 ad istemci sözlüğünde de var (sözleşme)', () => {

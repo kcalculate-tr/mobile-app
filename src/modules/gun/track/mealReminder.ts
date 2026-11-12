@@ -3,6 +3,7 @@
 // davranışı FinPush kategorileri kayıtlıyken çağrılır (TrackerScreen yeniKabuk).
 // Aksiyonlar ("30 dk ertele" / "Bugün sessize al") mevcut `finPushNative`
 // işleyicisinde: bildirim `data.fin = 'reminder'` + `categoryIdentifier: fin_reminder`.
+import { pushGranted } from '../../../core/push/pushPermission';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -55,8 +56,8 @@ export interface MealReminderSync {
 export async function syncMealReminders(opts: MealReminderSync): Promise<number> {
   try {
     await cancelMealReminders();
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== 'granted') return 0;
+    // G26-S1: izin İSTEMEZ — tek fonksiyona sorar, yoksa sessizce geçer.
+    if (!(await pushGranted())) return 0;
     const [prefs, mutedUntil] = await Promise.all([readPrefs(opts.userId), readReminderMutedUntil()]);
     const plan = planMealReminders({
       now: opts.now ?? new Date(),

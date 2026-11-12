@@ -1,7 +1,6 @@
 import { dayKeyFromIso, lastDayKeys } from '../lib/dayKey';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Image,
   Pressable,
@@ -61,6 +60,7 @@ import { transformImageUrl, ImagePreset } from '../lib/imageUrl';
 import { unregisterPushToken } from '../core/notifications';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { getCardsFeatureStatus } from '../lib/cards';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -167,11 +167,7 @@ export default function ProfileScreen() {
 
   const pickAvatar = async () => {
     if (!user?.id) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('İzin Gerekli', 'Galeriye erişim izni gerekiyor.');
-      return;
-    }
+    // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -339,8 +335,7 @@ export default function ProfileScreen() {
 
   return (
     <ScreenContainer edges={['top']}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={[
           styles.contentContainer,
           { paddingTop: insets.top > 0 ? 0 : 8, paddingBottom: insets.bottom + TAB_BAR_TOTAL + 24 },

@@ -47,6 +47,7 @@ import { track } from '../lib/analytics';
 import { computeBundleUnitMacros, computeProductUnitMacros } from '../lib/itemMacros';
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '../constants/theme';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -913,9 +914,8 @@ export default function ProductDetailScreen() {
         <View style={styles.headerActions} />
       </View>
 
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         ref={scrollViewRef}
-        keyboardShouldPersistTaps="handled"
         style={styles.scrollView}
         contentContainerStyle={{
           paddingBottom: Math.max(180, insets.bottom + 140),

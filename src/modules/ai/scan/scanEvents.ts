@@ -12,6 +12,9 @@
 //   scan_limit     { via }                                       günlük hak bitti
 //   scan_offline   { pending }                                   çevrimdışı kuyruğa alındı
 //   scan_log       { n_items, kcal, edited, meal_type }          sonuç güne kaydedildi
+//   barcode_scan   { offline }                                   G21: barkod okundu (geçerli GTIN)
+//   barcode_found  { cached, has_serving }                       G21: Open Food Facts'te bulundu
+//   barcode_not_found { reason }                                 G21: yok / kcal yok / zaman aşımı / ağ / çevrimdışı
 //
 // `log_add{source:'scan'}` scan_log ile AYNI ANDA buradan (scanTrack.trackScanLog)
 // gider; `kcal:logFlight` köprüsü (gun/track/logEventsBridge) source='scan' uçuşlarını
@@ -28,7 +31,10 @@ export type ScanEventName =
   | 'scan_fail'
   | 'scan_limit'
   | 'scan_offline'
-  | 'scan_log';
+  | 'scan_log'
+  | 'barcode_scan'
+  | 'barcode_found'
+  | 'barcode_not_found';
 
 export const SCAN_EVENT_NAMES: readonly ScanEventName[] = [
   'scan_open',
@@ -38,6 +44,9 @@ export const SCAN_EVENT_NAMES: readonly ScanEventName[] = [
   'scan_limit',
   'scan_offline',
   'scan_log',
+  'barcode_scan',
+  'barcode_found',
+  'barcode_not_found',
 ];
 
 type Props = Record<string, string | number | boolean | null>;
@@ -69,6 +78,9 @@ const ALLOWED: Record<ScanEventName, readonly string[]> = {
   scan_limit: ['via'],
   scan_offline: ['pending'],
   scan_log: ['n_items', 'kcal', 'edited', 'meal_type'],
+  barcode_scan: ['offline'],
+  barcode_found: ['cached', 'has_serving'],
+  barcode_not_found: ['reason'],
 };
 
 export function scanEventProps(name: ScanEventName, props: Record<string, unknown>): Props {

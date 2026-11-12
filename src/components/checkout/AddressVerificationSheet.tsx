@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants/theme';
 import { distanceInMeters, normalizeTurkishText } from '../../lib/geo';
 import { haptic } from '../../utils/haptics';
+import { requestLocationPermission } from '../../modules/eatkcal/v2/model/addressGeocode';
 
 const DISTANCE_WARNING_METERS = 500;
 const IZMIR_CENTER = { latitude: 38.4237, longitude: 27.1428 };
@@ -138,9 +139,11 @@ export default function AddressVerificationSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialCoords, mode]);
 
+  // G26-S1: izni SORMAZ, yalnız okur — sistem penceresi yalnız "İzin ver"e dokununca
+  // (handleAllowLocation → requestLocationPermission, reddedilirse bir daha sorulmaz).
   const requestDeviceLocation = async (recenter = false) => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') {
         if (mode === 'create') onPermissionDenied?.();
         return;
@@ -159,8 +162,7 @@ export default function AddressVerificationSheet({
   };
 
   const handleAllowLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
+    if (await requestLocationPermission()) {
       setPermissionStep('granted');
       requestDeviceLocation(true);
     } else {

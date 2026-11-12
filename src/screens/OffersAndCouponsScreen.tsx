@@ -29,6 +29,7 @@ import SegmentedTabs from '../core/ui/SegmentedTabs';
 import FadeSwap from '../core/ui/FadeSwap';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -253,8 +254,7 @@ export default function OffersAndCouponsScreen() {
       ) : error ? (
         <ErrorState message={error} onAction={() => load()} />
       ) : (
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
+        <ScrollView {...SCROLL_KEYBOARD}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.brand.green} />
@@ -267,13 +267,12 @@ export default function OffersAndCouponsScreen() {
           <FadeSwap swapKey={tab} style={{ gap: SPACING.md }}>
           {tab === 'offers' && banners.length > 0 && (
             <View style={s.bannerSection}>
-              <FlatList
+              <FlatList {...SCROLL_KEYBOARD}
                 ref={bannerRef}
                 data={banners}
                 keyExtractor={(item) => item.id}
                 horizontal
                 pagingEnabled
-                keyboardShouldPersistTaps="handled"
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
                   setBannerIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));

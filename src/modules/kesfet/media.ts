@@ -23,8 +23,7 @@ export interface LocalPhoto {
 /** Galeriden en fazla `remaining` fotoğraf seç (yüklemeden). İzin yoksa []. */
 export async function pickPhotos(remaining: number): Promise<LocalPhoto[]> {
   if (remaining <= 0) return [];
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) return [];
+  // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsMultipleSelection: true,

@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import KeyboardAccessory from '../../components/KeyboardAccessory';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,8 +19,10 @@ import { useNavigation } from '@react-navigation/native';
 import { CaretLeft, Headset, ChatText, WarningCircle, PhoneCall, Plus, X as XIcon } from '../../components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSupabaseClient } from '../../core/supabase';
+import { ticketMessage, ticketView, uploadSupportImages } from '../../lib/support/attachments';
 import { useAuth } from '../../core/AuthContext';
 import { COLORS } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 const TOPIC_OPTIONS = [
   'Sipariş Sorunu',
@@ -69,7 +70,6 @@ type Ticket = {
 };
 
 export default function SupportScreen() {
-  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -94,11 +94,7 @@ export default function SupportScreen() {
       Alert.alert('Uyarı', 'En fazla 3 görsel ekleyebilirsiniz.');
       return;
     }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('İzin Gerekli', 'Galeriye erişim izni gerekiyor.');
-      return;
-    }
+    // G26-S1: sistem seçicisi (iOS PHPicker / Android Photo Picker) izin istemez — galeri izni SORULMAZ.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: false,
@@ -158,37 +154,16 @@ export default function SupportScreen() {
     setSubmitLoading(true);
     try {
       const supabase = getSupabaseClient();
-      const uploadedUrls: string[] = [];
-
-      for (const img of images) {
-        try {
-          const response = await fetch(img.uri);
-          const blob = await response.blob();
-          const path = `tickets/${user.id}/${Date.now()}_${img.fileName}`;
-          const { error: uploadError } = await supabase.storage
-            .from('support-attachments')
-            .upload(path, blob, { contentType: img.type, upsert: false });
-          if (uploadError) {
-            if (__DEV__) console.warn('[support] storage upload error:', uploadError.message);
-            continue;
-          }
-          const { data: pub } = supabase.storage.from('support-attachments').getPublicUrl(path);
-          if (pub?.publicUrl) uploadedUrls.push(pub.publicUrl);
-        } catch (e) {
-          if (__DEV__) console.warn('[support] image upload failed:', e);
-        }
-      }
-
-      const messageWithImages = uploadedUrls.length > 0
-        ? `${trimmedMessage}\n\n--- Ekli Görseller ---\n${uploadedUrls.join('\n')}`
-        : trimmedMessage;
+      // G20-S3 md.4 (B-08): kova ÖZEL — herkese açık URL yok; talepte yalnız yol.
+      const paths = await uploadSupportImages(supabase as never, user.id, images);
 
       const { error } = await supabase.from('support_tickets').insert([{
         user_id: user.id,
         user_email: user.email,
         order_code: orderCode.trim() || null,
         subject,
-        message: messageWithImages,
+        message: ticketMessage(trimmedMessage, paths.length),
+        attachments: paths.length > 0 ? paths : null,
         admin_reply: null,
         status: 'open',
         updated_at: new Date().toISOString(),
@@ -220,8 +195,8 @@ export default function SupportScreen() {
         </View>
       </View>
 
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchTickets(); setRefreshing(false); }} tintColor={COLORS.brand.green} />} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await fetchTickets(); setRefreshing(false); }} tintColor={COLORS.brand.green} />} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           {/* Badge + Phone */}
           <View style={styles.headerRow}>
@@ -292,7 +267,6 @@ export default function SupportScreen() {
                   placeholder="Örn: KCAL-AB12CD"
                   placeholderTextColor={COLORS.text.tertiary}
                   autoCapitalize="characters"
-                  inputAccessoryViewID={accId}
                 />
               </View>
 
@@ -308,7 +282,6 @@ export default function SupportScreen() {
                   multiline
                   numberOfLines={5}
                   textAlignVertical="top"
-                  inputAccessoryViewID={accId}
                 />
               </View>
 
@@ -405,7 +378,7 @@ export default function SupportScreen() {
                         <View style={styles.ticketBody}>
                           <Text style={styles.ticketBodyLabel}>Talebiniz</Text>
                           <View style={styles.ticketBodyBox}>
-                            <Text style={styles.ticketBodyText}>{ticket.message}</Text>
+                            <Text style={styles.ticketBodyText}>{ticketView(ticket).body}</Text>
                           </View>
                           <Text style={[styles.ticketBodyLabel, { marginTop: 10 }]}>Admin Yanıtı</Text>
                           <View style={styles.ticketBodyBox}>
@@ -424,7 +397,6 @@ export default function SupportScreen() {
           )}
         </View>
       </ScrollView>
-      <KeyboardAccessory nativeID={accId} />
     </View>
   );
 }

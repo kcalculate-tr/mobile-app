@@ -28,7 +28,9 @@ import { UnderageView } from '../components/UnderageView';
 import { useOnb } from '../components/onbTheme';
 import { useTbDraft } from './draft';
 import {
-  PACE_OPTIONS,
+  allowedPaces,
+  canChooseLose,
+  clampPace,
   computeResult,
   goalNeedsPace,
   isUnderage,
@@ -37,10 +39,13 @@ import {
   type TbGoal,
 } from './calc';
 import { saveTakibeProfile } from './save';
+import { recordHealthConsent } from '../../../lib/consent/store';
 import { HowSheet } from './HowSheet';
 import { useOnbFirst } from '../first/store';
 import { IconRow, MacroCard, PaceDateRow, PaceSlider, WheelPicker } from './TbParts';
 import { track } from '../../../lib/analytics';
+import { useFreeAiCap } from '../../../lib/subscription/purchases';
+import { Toast } from '../../../core/design/components/Toast';
 
 export type TbParamList = {
   TbGoal: undefined;
@@ -64,13 +69,29 @@ function nowYear(): number {
 }
 
 // Final cam nesne konumları (393 tasarım koordinatı).
-const GLASS: Record<'trophy' | 'flame' | 'drop' | 'foot' | 'bowl', OnbGlass> = {
+const GLASS: Record<'trophy' | 'flame' | 'drop' | 'foot' | 'bowl' | 'flameAbout', OnbGlass> = {
   trophy: { source: require('../../../../assets/glass/trophy.png'), x: 127, y: 112, w: 139, h: 120 },
   flame: { source: require('../../../../assets/glass/flame.png'), x: 236, y: 104, w: 106, h: 130 },
   drop: { source: require('../../../../assets/glass/drop.png'), x: 286, y: 104, w: 68, h: 92 },
   foot: { source: require('../../../../assets/glass/foot.png'), x: 248, y: 102, w: 77, h: 128 },
   bowl: { source: require('../../../../assets/glass/bowl.png'), x: 126, y: 128, w: 140, h: 104 },
+  // G21-S1 md.1 (Tur 26f): FinTbAbout damla → alev (damla yuvasının merkezinde, alev oranı).
+  flameAbout: { source: require('../../../../assets/glass/flame.png'), x: 282, y: 101, w: 76, h: 93 },
 };
+
+/**
+ * G21-S1 md.8 (#D3): "Atla" — Profil › Hedefim (editGoal) düzenlemesinde açıldığı yere
+ * (Profil) geri döner; yeni kullanıcı akışında bugünkü gibi Ana sayfa.
+ */
+export function tbSkipTarget(editGoal: boolean, canGoBack: boolean): 'back' | 'home' {
+  return editGoal && canGoBack ? 'back' : 'home';
+}
+
+function tbSkipOut(root: NativeStackNavigationProp<RootStackParamList> | undefined) {
+  if (!root) return;
+  if (tbSkipTarget(useTbDraft.getState().editGoal === true, root.canGoBack()) === 'back') root.goBack();
+  else root.navigate('Tabs', { screen: 'Tracker' });
+}
 
 const TB_STEPS = 6;
 
@@ -118,10 +139,12 @@ function TbFrame({
 function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
-  const { goal, setGoal } = useTbDraft();
+  const { goal, setGoal, heightCm, weightKg } = useTbDraft();
   const GOALS: TbGoal[] = ['lose', 'maintain', 'gain', 'regular'];
+  // G33-S1: BMI < 18,5 biliniyorsa (hedef düzenleme) "Kilo ver" kapalı.
+  const loseOk = canChooseLose(heightCm, weightKg);
   // Final: "Kilo ver" önceden seçili.
-  const [sel, setSel] = useState<TbGoal>(goal ?? 'lose');
+  const [sel, setSel] = useState<TbGoal>(goal && (goal !== 'lose' || loseOk) ? goal : loseOk ? 'lose' : 'maintain');
 
   const next = () => {
     setGoal(sel);
@@ -134,14 +157,21 @@ function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'
       cardTop={213}
       glass={GLASS.trophy}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : root?.goBack())}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={next} />}
     >
       <OnbTitle>{i18n.t('tb.goal.title')}</OnbTitle>
       <OnbLead style={{ marginBottom: 16 }}>{i18n.t('tb.goal.sub')}</OnbLead>
       <View style={styles.rows}>
         {GOALS.map((g) => (
-          <OptionRow key={g} title={i18n.t(`tb.goal.${g}`)} selected={sel === g} onPress={() => setSel(g)} />
+          <OptionRow
+            key={g}
+            title={i18n.t(`tb.goal.${g}`)}
+            desc={g === 'lose' && !loseOk ? i18n.t('tb.goal.lose_off') : undefined}
+            disabled={g === 'lose' && !loseOk}
+            selected={sel === g}
+            onPress={() => setSel(g)}
+          />
         ))}
       </View>
     </TbFrame>
@@ -149,11 +179,23 @@ function GoalScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbGoal'
 }
 
 // ── Tempo ───────────────────────────────────────────────────────────────────
+/**
+ * G25-S1 md.8 (A11): "Hedefe tahmini varış" metni. Akışta hedef kilo sorulmuyor → veri yok → null
+ * (satır gizli). Hedef kilo eklenince burada tarih üretilir.
+ */
+export function paceProjection(): string | null {
+  return null;
+}
+
 function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
-  const { pace, setPace } = useTbDraft();
+  const { pace, setPace, weightKg } = useTbDraft();
   const fmt = (p: Pace) => (i18n.lang === 'tr' ? String(p).replace('.', ',') : String(p));
+  // G33-S1: üst sınır 0,75 kg/hafta; kilo biliniyorsa kilonun %1'ini aşan tempo seçilemez.
+  const options = allowedPaces(weightKg);
+  const value = clampPace(pace, weightKg);
+  const projection = paceProjection();
 
   return (
     <TbFrame
@@ -161,22 +203,31 @@ function PaceScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbPace'
       cardTop={213}
       glass={GLASS.flame}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
-      footer={<OnbButton label={i18n.t('tb.continue')} onPress={() => navigation.navigate('TbAbout')} />}
+      onSkip={() => tbSkipOut(root)}
+      footer={
+        <OnbButton
+          label={i18n.t('tb.continue')}
+          onPress={() => {
+            if (value !== pace) setPace(value);
+            navigation.navigate('TbAbout');
+          }}
+        />
+      }
     >
       <OnbTitle>{i18n.t('tb.pace.title')}</OnbTitle>
       <OnbLead style={{ marginBottom: 16 }}>{i18n.t('tb.pace.sub')}</OnbLead>
       <PaceSlider
-        options={PACE_OPTIONS}
-        value={pace}
+        options={options}
+        value={value}
         onChange={setPace}
         format={fmt}
         unit={i18n.t('tb.pace.unit')}
         minLabel={i18n.t('tb.pace.min')}
-        maxLabel={i18n.t('tb.pace.max')}
+        maxLabel={fmt(options[options.length - 1]) + ' kg'}
       />
-      {/* Hedef kilo bu akışta sorulmadığından tarih hesaplanamaz → "—" (SORULAR #1). */}
-      <PaceDateRow label={i18n.t('tb.pace.projection')} value="—" />
+      {/* G25-S1 md.8 (A11): hedef kilo bu akışta sorulmadığından tarih hesaplanamaz → satır GİZLİ
+          (eskiden "—" yer tutucu). Tahmin üretilirse (paceProjection) satır kendiliğinden görünür. */}
+      {projection ? <PaceDateRow label={i18n.t('tb.pace.projection')} value={projection} /> : null}
     </TbFrame>
   );
 }
@@ -204,10 +255,17 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
     d.setBirthYear(birth);
     d.setHeightCm(height);
     d.setWeightKg(weight);
+    // G33-S1: tempo kilodan önce soruluyor → kilo gelince %1 sınırına indir; BMI < 18,5'te
+    // "Kilo ver" kapalı → hedef "Kilo koru"ya döner.
+    const capped = clampPace(d.pace, weight);
+    if (capped !== d.pace) d.setPace(capped);
+    if (d.goal === 'lose' && !canChooseLose(height, weight)) d.setGoal('maintain');
     if (isUnderage(birth, nowYear())) {
       navigation.navigate('TbUnderage');
       return;
     }
+    // G27-S1: açık rıza user_consents'e AYRI satır (kind health_data); en iyi çaba, akışı bekletmez.
+    if (d.consent) void recordHealthConsent(true, 'takibe').catch(() => {});
     navigation.navigate('TbActivity');
   };
 
@@ -221,9 +279,9 @@ function AboutScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbAbou
       step={2}
       cardTop={168}
       cardPad={[30, 18, 18]}
-      glass={GLASS.drop}
+      glass={GLASS.flameAbout}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       scroll
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={next} disabled={!complete} />}
     >
@@ -329,7 +387,7 @@ function ActivityScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbA
       cardTop={213}
       glass={GLASS.foot}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={<OnbButton label={i18n.t('tb.continue')} onPress={next} />}
     >
       <OnbTitle>{i18n.t('tb.activity.title')}</OnbTitle>
@@ -353,16 +411,28 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
   // `vitrinHow` yalnız geliştirmede (vitrin) — üretimde __DEV__ false.
   const [howOpen, setHowOpen] = useState(__DEV__ && route.params?.vitrinHow === true);
   const [saving, setSaving] = useState(false);
+  // G25-S1 md.9 (A12): kayıt `ok:false` → hata toast'ı + Tekrar dene; kutlama/geçiş YALNIZ başarıda
+  // (eskiden hata yutuluyor, "Profil hazır" yine çıkıyordu). Taslak korunur.
+  const [saveFailed, setSaveFailed] = useState(false);
   const result = useMemo(() => computeResult(draft, nowYear()), [draft]);
+
+  const save = async (): Promise<boolean> => {
+    if (!user) return true;
+    setSaving(true);
+    setSaveFailed(false);
+    const r = await saveTakibeProfile(user.id, draft, nowYear());
+    setSaving(false);
+    if (!r.ok) {
+      setSaveFailed(true);
+      return false;
+    }
+    return true;
+  };
 
   const onContinue = async () => {
     if (draft.editGoal) {
       // Profil › Hedefim düzenleme: kaydet + geri dön (S4 giriş noktasını bağlar).
-      if (user) {
-        setSaving(true);
-        await saveTakibeProfile(user.id, draft, nowYear());
-        setSaving(false);
-      }
+      if (!(await save())) return;
       draft.reset();
       root?.goBack();
       return;
@@ -371,9 +441,7 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
     // profil kaydı → Ana sayfa'da "Profil hazır" (FinCelebrateProfile) → oryantasyon.
     // TbFirst ("İlk öğününü logla") kayıtlı kalır; görevi Ana sayfa "İlk öğününü
     // ekle" kartı + Orient1 (Tara) üstlenir (LOG › SORULAR 1).
-    setSaving(true);
-    if (user) await saveTakibeProfile(user.id, draft, nowYear());
-    setSaving(false);
+    if (!(await save())) return;
     const kcal = result?.macros?.calories ?? null;
     draft.reset();
     useOnbFirst.getState().setCard('done');
@@ -389,12 +457,26 @@ function ResultScreen({ navigation, route }: NativeStackScreenProps<TbParamList,
       cardTop={112}
       cardPad={[24, 20, 20]}
       onBack={() => navigation.goBack()}
-      onSkip={() => root?.navigate('Tabs', { screen: 'Tracker' })}
+      onSkip={() => tbSkipOut(root)}
       footer={
-        <OnbButton
-          label={draft.editGoal ? i18n.t('common.save') : i18n.t('tb.continue')}
-          onPress={saving ? () => {} : onContinue}
-        />
+        <>
+          {saveFailed ? (
+            <View style={styles.toastWrap}>
+              <Toast
+                visible
+                tone="error"
+                testID="tb-save-error"
+                message={i18n.t('tb.save_failed')}
+                onRetry={saving ? undefined : () => void onContinue()}
+                onDismiss={() => setSaveFailed(false)}
+              />
+            </View>
+          ) : null}
+          <OnbButton
+            label={draft.editGoal ? i18n.t('common.save') : i18n.t('tb.continue')}
+            onPress={saving ? () => {} : onContinue}
+          />
+        </>
       }
     >
       <View style={styles.resultWrap}>
@@ -477,9 +559,23 @@ function FirstScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbFirs
   const root = useRootNav(navigation);
   const { user } = useAuth();
   const draft = useTbDraft();
+  const freeCap = useFreeAiCap(); // G25-S1 md.1: "günde N ücretsiz" sunucu tavanından (yedek 2)
+  // G25-S1 md.9 (A12): kayıt başarısızsa geçiş yok; hata toast'ı + Tekrar dene (aynı hedefe).
+  const [failedGo, setFailedGo] = useState<(() => void) | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const saveThen = async (go: () => void) => {
-    if (user) await saveTakibeProfile(user.id, draft, nowYear());
+    if (busy) return;
+    if (user) {
+      setBusy(true);
+      setFailedGo(null);
+      const r = await saveTakibeProfile(user.id, draft, nowYear());
+      setBusy(false);
+      if (!r.ok) {
+        setFailedGo(() => go);
+        return;
+      }
+    }
     draft.reset();
     go();
   };
@@ -492,16 +588,30 @@ function FirstScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbFirs
       onBack={() => navigation.goBack()}
       onSkip={() => saveThen(() => root?.navigate('Tabs', { screen: 'Tracker' }))}
       footer={
-        <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }}>
-          {i18n.t('tb.first.footer')}
-        </AppText>
+        <>
+          {failedGo ? (
+            <View style={styles.toastWrap}>
+              <Toast
+                visible
+                tone="error"
+                testID="tb-save-error"
+                message={i18n.t('tb.save_failed')}
+                onRetry={busy ? undefined : () => void saveThen(failedGo)}
+                onDismiss={() => setFailedGo(null)}
+              />
+            </View>
+          ) : null}
+          <AppText textRole="helper" style={{ color: P.sec, textAlign: 'center' }}>
+            {i18n.t('tb.first.footer')}
+          </AppText>
+        </>
       }
     >
       <OnbTitle style={{ marginBottom: 16 }}>{i18n.t('tb.first.title')}</OnbTitle>
       <View style={styles.rows}>
         <IconRow
           title={i18n.t('tb.first.scan')}
-          desc={i18n.t('tb.first.scan_desc')}
+          desc={i18n.t('tb.first.scan_desc', { count: freeCap })}
           icon={(c) => <Scan size={22} color={c} />}
           onPress={() => saveThen(() => root?.navigate('AiScan'))}
         />
@@ -536,7 +646,10 @@ function UnderageScreen({ navigation }: NativeStackScreenProps<TbParamList, 'TbU
   );
 }
 
-const TB_ROUTE_ORDER: string[] = ['TbGoal', 'TbPace', 'TbAbout', 'TbActivity', 'TbResult', 'TbFirst', 'TbUnderage'];
+/** Yalnız bileşen testleri (G25-S1 md.8/md.9): ekranları navigatörsüz çizmek için. */
+export const __tbScreensForTest = { PaceScreen, ResultScreen, FirstScreen };
+
+const TB_ROUTE_ORDER: string[] =['TbGoal', 'TbPace', 'TbAbout', 'TbActivity', 'TbResult', 'TbFirst', 'TbUnderage'];
 
 export default function TakibeBaslaNavigator({
   route,
@@ -575,6 +688,7 @@ export default function TakibeBaslaNavigator({
 }
 
 const styles = StyleSheet.create({
+  toastWrap: { marginBottom: 10 },
   rows: { gap: 10 },
   genderRow: { flexDirection: 'row', gap: 8 },
   gender: { minHeight: 52, borderRadius: 20, borderWidth: 1, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' },

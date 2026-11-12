@@ -20,12 +20,14 @@ const MODAL_FILES = [
   'modules/ai/scan/ui/FinScanViewfinder.tsx',
   'modules/ai/scan/ui/FinScanErrorSheet.tsx',
   'modules/ai/scan/ui/FinPhotoResult.tsx',
+  'modules/ai/scan/ui/FinBarcodeResult.tsx', // G21-S1 md.2: barkod sonucu (Tara modalı, X sağda)
   'modules/celebrate/CelebrateOverlay.tsx',
   'modules/kesfet/ui/RulesSheet.tsx',
   'modules/kesfet/ui/ReportFlow.tsx',
   'modules/kesfet/ui/VideoPlayer.tsx',
   'modules/kesfet/ui/ComposerScreen.tsx',
   'modules/kesfet/ui/CommentsSheet.tsx',
+  'modules/kesfet/ui/ShareDaySheet.tsx', // G22-S2 md.5: FinShareDay sheet'i (X sağda)
   'modules/gun/ui/GunViewer.tsx',
   'screens/tracker/HomeManualMealSheet.tsx',
   'components/OrderFeedbackModal.tsx',
@@ -35,6 +37,14 @@ const MODAL_FILES = [
   // G18-S5 birleştirme: S3 (eatkcal) yeni yüzeyleri — sağ üst X, geri oku yok.
   'modules/eatkcal/v2/screens/EkOrderSuccessScreen.tsx',
   'modules/eatkcal/v2/ui/gate/WaitlistFormSheet.tsx',
+  // G22-S1: Ses modu (Tara modalı) + kcalAI paywall/sonuç/hak sheet'i (alttan modal, X sağda).
+  'modules/ai/scan/voice/FinScanVoice.tsx',
+  'modules/subscription/screens/PaywallScreen.tsx',
+  'modules/coach/screens/CoachIntroScreen.tsx', // G24-S1 FinCoachIntro (sheet, kapat X)
+  'modules/plan/screens/PlanGenerateScreen.tsx', // G33-S1 FinPlanGenerate (alttan, kapat X sağda)
+  'modules/personalPlan/screens/PlanPaywallScreen.tsx', // G34-S1 FinPlanPaywall (alttan, kapat X sağda)
+  'modules/subscription/ui/SubResult.tsx',
+  'modules/subscription/ui/SubLimitSheet.tsx',
 ];
 
 /** İtilen sayfa / sayfa başlığı (bayrak açık yol) — kapat X YOK, yalnız sol geri. */
@@ -51,9 +61,17 @@ const PUSH_FILES = [
   'modules/eatkcal/v2/ui/gate/CityGateView.tsx',
   'modules/eatkcal/v2/screens/EkProductScreen.tsx',
   'modules/eatkcal/v2/screens/EkStoreScreen.tsx',
+  'modules/eatkcal/v2/ui/store/StoreHeader.tsx', // G32-S1 md.2 mağaza yapışkan başlığı (sol geri)
   'modules/eatkcal/v2/screens/EkAddressAddScreen.tsx',
   'modules/eatkcal/v2/screens/EkAddCardScreen.tsx',
   'modules/eatkcal/v2/screens/EkPaymentScreen.tsx',
+  // G22-S1: Profil › Abonelik (sağdan itilen sayfa, sol geri).
+  'modules/subscription/screens/SubProfileScreen.tsx',
+  'modules/coach/screens/CoachChatScreen.tsx', // G24-S1 FinCoachChat (sol geri)
+  'modules/coach/screens/CoachHistoryScreen.tsx', // G24-S1 FinCoachHistory (sol geri)
+  'modules/plan/screens/MealPlanScreen.tsx', // G33-S1 FinPlanWeek (sağdan, sol geri)
+  'modules/plan/screens/ShoppingListScreen.tsx', // G33-S1 alışveriş listesi (sağdan, sol geri)
+  'modules/personalPlan/ui/parts.tsx', // G34-S1 ScreenHeader: Kişisel planım / Planı düzenle / Haftalık tartı (sağdan, sol geri)
 ];
 
 /** Gezinme DEĞİL, yerinde denetim (alan temizleme / ek kaldırma / arama kapatma). */
@@ -62,6 +80,8 @@ const IN_PLACE: Record<string, string> = {
   'modules/eatkcal/v2/screens/EkHomeScreen.tsx': 'arama alanını kapat',
   'modules/profil/ui/screens/SettingsSupportScreen.tsx': 'eklenen görseli kaldır',
   'dev/vitrinStress.tsx': 'yalnız __DEV__ vitrin',
+  'modules/personalPlan/ui/flowHeader.tsx': 'kişisel plan akışı: adım geri akış İÇİ (rota değişmez) + Giriş / Kaldığın yerden kapat X (Tur 26o 01)',
+  'modules/personalPlan/ui/entries.tsx': 'Ana sayfa tek seferlik kişisel plan kartını kapat',
 };
 
 /** Yalnız bayrak KAPALI yol (1.0.7) — bayrak açıkken finalRoutes/v2ScreenFor Final karşılığını verir. */

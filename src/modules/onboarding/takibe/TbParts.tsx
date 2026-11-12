@@ -17,6 +17,7 @@ import { AppText } from '../../../core/design/components/AppText';
 import { haptic } from '../../../core/design/motion';
 import { CaretRight } from '../../../components/icons';
 import { useOnb } from '../components/onbTheme';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // ── kg / hafta kaydırıcısı ──────────────────────────────────────────────────
 const THUMB = 28;
@@ -207,7 +208,7 @@ export function WheelPicker({
           pointerEvents="none"
           style={[styles.wheelBand, { backgroundColor: P.isDark ? 'rgba(198,240,79,0.22)' : 'rgba(198,240,79,0.42)' }]}
         />
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           ref={ref}
           style={{ height: ITEM_H * 3 }}
           contentContainerStyle={{ paddingVertical: ITEM_H }}

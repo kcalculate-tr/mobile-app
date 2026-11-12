@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["A63MT69ASR.com.kcalmobile.app"],
+        "components": [
+          { "/": "/p/*", "comment": "Paylasilan gonderi (post) - SharedPost" },
+          { "/": "/u/*", "comment": "Profil (handle) - PublicProfile" },
+          { "/": "/k/*", "comment": "Kutu karti QR kodu - kaynak takibi (source=box_card)" },
+          { "/": "/s/*", "comment": "Saha kodu - kaynak takibi (source=saha)" },
+          { "/": "/kesfet", "comment": "Kesfet akisi" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["A63MT69ASR.com.kcalmobile.app"]
+  }
+}

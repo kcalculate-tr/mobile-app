@@ -12,6 +12,17 @@ export interface ReserveResult {
   /** G19-S1 (İlter 9 Kas): ok:false nedeni — 'disabled' (acil kapatma) | 'global_cap'
    *  (günlük genel tavan). Yoksa kullanıcının kendi hakkı bitti. */
   reason?: 'disabled' | 'global_cap';
+  /** G22-S1: kademeli hak (migration 20261110100100). G19 sunucusunda yok → undefined. */
+  tier?: 'free' | 'fresh' | 'balance';
+  limit?: number | null;
+  unlimited?: boolean;
+}
+
+/** G22-S1: sonuçla birlikte taşınan hak bilgisi (hak hapı N/2 · N/15 · Sınırsız). */
+export interface OutcomeQuota {
+  tier?: 'free' | 'fresh' | 'balance';
+  limit?: number | null;
+  unlimited?: boolean;
 }
 
 export interface ScanIngredient {
@@ -46,12 +57,13 @@ export interface ScanEstimate {
 // quota_exhausted → barkod/elle girişe yönlendir (hak iadesi yok, zaten rezerve edilmedi)
 // failed       → analiz patladı, hak İADE edildi; tekrar denemeye izin ver
 export type AiScanOutcome =
-  | { status: 'ok'; estimate: ScanEstimate; remaining: number; reset_at: string }
-  | { status: 'quota_exhausted'; remaining: number; reset_at: string }
+  | { status: 'ok'; estimate: ScanEstimate; remaining: number; reset_at: string; quota?: OutcomeQuota }
+  | { status: 'quota_exhausted'; remaining: number; reset_at: string; quota?: OutcomeQuota }
   // unavailable → Tara geçici kapalı (acil anahtar / genel tavan): "hakkını kullandın" DEĞİL
-  | { status: 'unavailable'; reason: 'disabled' | 'global_cap'; remaining: number; reset_at: string }
+  | { status: 'unavailable'; reason: 'disabled' | 'global_cap'; remaining: number; reset_at: string; quota?: OutcomeQuota }
   | {
       status: 'failed';
+      quota?: OutcomeQuota;
       error: string;
       remaining: number;
       reset_at: string;
@@ -84,4 +96,7 @@ export interface AiScanClient {
   // G17-S2 md.6: yükleme/analiz hatası teşhisi → LOG + Sentry (gerçek istemci).
   // İsteğe bağlı; mock/vitrin uygulamayabilir. Asla fırlatmamalı.
   reportFailure?(info: ScanFailureInfo): void;
+  // G22-S1 md.1: sesle ekleme — telefonda yazıya dökülen METİN (ses gönderilmez) → edge
+  // `mode:'text'`. Hak fotoğrafla ORTAK (aynı reserveScan). Yoksa (eski mock) ses kipi kapalı.
+  analyzeText?(params: { idempotencyKey: string; text: string; lang?: 'tr' | 'en' }): Promise<Omit<ScanEstimate, 'isEstimate'>>;
 }

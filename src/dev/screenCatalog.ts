@@ -129,10 +129,12 @@ const onb = (screen: string, params?: Record<string, unknown>): RouteSpec[] => [
   { name: 'Onboarding', params: { screen, params } },
 ];
 /**
- * G16-S2 — Profil alt ekranı GERÇEK kabukta (Profil sekmesi içinde, TabBarR3 ile):
- * `<Pano>~2`. Alt ekranda tab bar gizli, altta yalnız güvenli alan olmalı.
+ * G16-S2 — Profil alt ekranı GERÇEK kabukta: `<Pano>~2`. G21-S1 md.9: alt sayfa artık
+ * kök yığında `ProfileSub` (Profil sekmesinin üstüne itilir → tab bar yok, altta
+ * yalnız güvenli alan).
  */
-const inProfileTab = (sub: string) => ({ frames: { 2: { target: route(tab('Profile', { vitrinSub: sub })) } } });
+const profileSubRoute = (sub: string): RouteSpec[] => [...tab('Profile'), { name: 'ProfileSub', params: { sub } }];
+const inProfileTab = (sub: string) => ({ frames: { 2: { target: route(profileSubRoute(sub)) } } });
 /** G15-S3 — FinCompose kareleri: Final'deki örnek metin/medya/kart (yalnız vitrin). */
 const PH_URI = 'https://example.invalid/vitrin-placeholder.jpg';
 const COMPOSE_PREFILL = {
@@ -356,6 +358,8 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinErrFailed', 'tara', comp('scanError', { kind: 'failed' })],
   ['FinErrOffline', 'tara', comp('scanError', { kind: 'offline' })],
   ['FinErrLimit', 'tara', comp('scanError', { kind: 'limit' })],
+  // G20-S1 (Final'de pano yok — ek kayıt): Tara geçici kapalı, FinErrLimit diliyle.
+  ['FinErrUnavailable', 'tara', comp('scanError', { kind: 'unavailable' })],
   ['FinScanOffline', 'tara', route([{ name: 'AiScanOffline', params: { vitrinOffline: true } }]), { scene: 'scanOffline' }],
 
   // ── Profil ─────────────────────────────────────────────────────────────────
@@ -364,6 +368,12 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
   ['FinBadges', 'profil', comp('profileSub', { sub: 'badges' }), inProfileTab('badges')],
   ['FinPrivacy', 'profil', comp('privacySheet')],
   ['FinPrivacySettings', 'profil', comp('profileSub', { sub: 'privacy' }), inProfileTab('privacy')],
+  // G20-S1 (Final'de pano yok — ek kayıt): Profil › Gizlilik › Veri ve reklam izinleri;
+  // rıza sheet'leri (Apple/Google ayrıntı · mevcut kullanıcı bilgilendirme · tekrar kabul).
+  ['FinConsentData', 'profil', comp('profileSub', { sub: 'dataConsent' }), inProfileTab('dataConsent')],
+  ['FinConsentDetails', 'onboarding', comp('consentSheet', { mode: 'details' })],
+  ['FinConsentNotice', 'onboarding', comp('consentSheet', { mode: 'notice' })],
+  ['FinConsentReconsent', 'onboarding', comp('consentSheet', { mode: 'reconsent' })],
   ['FinPrProgress', 'profil', comp('profileSub', { sub: 'progress' }), inProfileTab('progress')],
   ['FinPrMacro', 'profil', comp('profileSub', { sub: 'macro', mock: true })],
   ['FinPrMacroWhat', 'profil', comp('profileSub', { sub: 'macro', what: true, mock: true })],
@@ -602,7 +612,7 @@ function resolveParity(name: string): ResolvedEntry | null {
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {
-      pano: name, area: 'profil', target: route(tab('Profile', { vitrinSub: sub[1] })), data: 'default',
+      pano: name, area: 'profil', target: route(profileSubRoute(sub[1])), data: 'default',
       flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
     };
   }

@@ -112,7 +112,8 @@ export function PostCard({
   quickMealLabel?: string;
   onLike: () => void;
   onSave: () => void;
-  onShare: () => void;
+  /** G25-S1 md.7 (A10): verilmezse (bayrak `paylasim_baglanti` kapalı) düğme çizilmez. */
+  onShare?: () => void;
   /** Öğün kartında dokun = saate göre doğrudan logla (görsel karesiyle). */
   onQuickLog?: (frame: LogOriginFrame) => void;
   /** Öğün kartında ⌄ / uzun bas = porsiyon + öğün seçici. */
@@ -277,12 +278,14 @@ export function PostCard({
                 onPress={onComment}
               />
             ) : null}
-            <Action
-              icon="share"
-              color={t.color.secondary}
-              label={tr('kesfet.ui.a11y.share')}
-              onPress={onShare}
-            />
+            {onShare ? (
+              <Action
+                icon="share"
+                color={t.color.secondary}
+                label={tr('kesfet.ui.a11y.share')}
+                onPress={onShare}
+              />
+            ) : null}
           </View>
         </View>
       </View>

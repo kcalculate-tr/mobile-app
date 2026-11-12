@@ -9,20 +9,23 @@
 //
 // Deklanşör: takePictureAsync (kalite 0.5, `pictureSize` ile uzun kenar ≤ 1600) →
 // `onCaptured(uri)`; analiz sürerken (`analyzing`) aynı ekranda FinMoScan katmanı.
-// İzin: ilk açılışta istenir; reddedilirse `onPermissionDenied` (FinScanError
+// İzin: Tara'da kamera ilk açıldığında istenir; reddedilirse `onPermissionDenied` (FinScanError
 // "Kameraya erişim kapalı" + Ayarlar). Ayarlar'dan dönünce yeniden denetlenir.
-// Barkod: EAN-13/8, UPC-A/E okunur; uygulamada barkod akışı YOK → "Barkod yakında"
-// hâli (okunan kod gösterilir, sahte ürün/sonuç yok).
+// G26-S1: bir kez reddedilen kamera izni bir daha sistem penceresiyle istenmez (askOnce).
+// Barkod: EAN-13/8, UPC-A/E okunur → `onBarcode(kod)` (G21-S1 md.2: ScanScreen Open Food
+// Facts'e sorar; "Barkod yakında" hâli KALKTI). Sorgu sürerken "Ürün aranıyor…" hapı.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, DeviceEventEmitter, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, DeviceEventEmitter, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DENIED_KEYS, askOnce } from '../../../../lib/permissions/askOnce';
 import Svg, { Path } from 'react-native-svg';
 import { requireOptionalNativeModule } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 
-import { AppText, Button, haptic, useTheme } from '../../../../core/design';
+import { AppText, haptic, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { X } from '../../../../components/icons';
+import { Barcode, Sparkle, X } from '../../../../components/icons';
 import { SCAN_QUOTA_CAP } from './ScanQuotaChip';
 import ScanFrame from './ScanFrame';
 import FinScanAnalyzing from './FinScanAnalyzing';
@@ -58,6 +61,8 @@ export function loadExpoCamera(): ExpoCameraModule | null {
 export const DEV_SCAN_SHUTTER_EVENT = 'kcal:dev:scanShutter';
 
 export type ScanCameraMode = 'photo' | 'barcode';
+/** Aynı barkod bu süre içinde yeniden gönderilmez (ms). */
+export const BARCODE_REPEAT_MS = 3000;
 type Perm = 'unknown' | 'granted' | 'denied';
 
 export default function FinScanCamera({
@@ -74,7 +79,25 @@ export default function FinScanCamera({
   onPermissionGranted,
   note = '',
   onNoteChange,
+  onBarcode,
+  barcodeBusy = false,
+  initialMode = 'photo',
+  modeKey,
+  onVoice,
+  quotaPills,
 }: {
+  /** G22-S1 md.1: mod çubuğu Fotoğraf · Ses · Barkod · Elle — Ses yalnız cihazda tanıma varsa. */
+  onVoice?: () => void;
+  /** G22-S1 md.4: FinSubPill — kademeli hak hapı (foto/ses ortak AI · barkod). Yoksa G19 hapı. */
+  quotaPills?: { photo?: { text: string; a11y?: string | null } | null; barcode?: { text: string; a11y?: string | null } | null };
+  /** G21-S1 md.2: geçerli GTIN okundu → ScanScreen Open Food Facts'e sorar. */
+  onBarcode?: (code: string) => void;
+  /** Sorgu sürüyor → tarayıcı durur, "Ürün aranıyor…" hapı. */
+  barcodeBusy?: boolean;
+  /** Açılış modu (vitrin/test). */
+  initialMode?: ScanCameraMode;
+  /** Değişince mod `initialMode`'a döner (ör. "Fotoğrafla tara" → foto). */
+  modeKey?: number;
   /** G18-S4 md.5: "Detay ekle" notu (ScanScreen tutar). onNoteChange yoksa hap çizilmez. */
   note?: string;
   onNoteChange?: (v: string) => void;
@@ -103,10 +126,16 @@ export default function FinScanCamera({
   const ref = useRef<InstanceType<ExpoCameraModule['CameraView']> | null>(null);
   const [perm, setPerm] = useState<Perm>('unknown');
   const [pictureSize, setPictureSize] = useState<string | undefined>(undefined);
-  const [mode, setMode] = useState<ScanCameraMode>('photo');
+  const [mode, setMode] = useState<ScanCameraMode>(initialMode);
+  useEffect(() => {
+    if (modeKey === undefined) return;
+    setMode(initialMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modeKey]);
   const [flashOn, setFlashOn] = useState(false);
   const [capturing, setCapturing] = useState(false);
-  const [barcode, setBarcode] = useState<string | null>(null);
+  // Aynı kod art arda tetiklemesin: son gönderilen kod + zamanı (sheet kapanınca da tazelenir).
+  const lastCode = useRef<{ code: string; at: number } | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const deniedReported = useRef(false);
 
@@ -114,11 +143,19 @@ export default function FinScanCamera({
   const checkPermission = useCallback(
     async (askIfPossible: boolean) => {
       try {
-        let res = await Camera.getCameraPermissionsAsync();
-        if (!res.granted && askIfPossible && res.canAskAgain) {
-          res = await Camera.requestCameraPermissionsAsync();
-        }
-        if (res.granted) {
+        const read = async () => {
+          const r = await Camera.getCameraPermissionsAsync();
+          return { status: r.granted ? ('granted' as const) : r.canAskAgain ? ('undetermined' as const) : ('denied' as const), canAskAgain: r.canAskAgain };
+        };
+        const granted = askIfPossible
+          ? await askOnce({
+              read,
+              request: async () => ((await Camera.requestCameraPermissionsAsync()).granted ? 'granted' : 'denied'),
+              wasDenied: async () => (await AsyncStorage.getItem(DENIED_KEYS.camera)) === '1',
+              markDenied: () => AsyncStorage.setItem(DENIED_KEYS.camera, '1'),
+            })
+          : (await read()).status === 'granted';
+        if (granted) {
           setPerm('granted');
           if (deniedReported.current) {
             deniedReported.current = false;
@@ -197,26 +234,34 @@ export default function FinScanCamera({
     return () => sub.remove();
   }, []);
 
-  const onBarcode = (r: { type: string; data: string }) => {
-    if (barcode) return;
+  const scanningLocked = barcodeBusy || !!paused;
+  useEffect(() => {
+    // Hata sheet'i kapanınca aynı kod hemen yeniden açmasın (kamera hâlâ ona bakıyor).
+    if (!scanningLocked && lastCode.current) lastCode.current = { ...lastCode.current, at: Date.now() };
+  }, [scanningLocked]);
+  const handleBarcode = (r: { type: string; data: string }) => {
+    if (scanningLocked || !onBarcode) return;
     const code = normalizeBarcode(r.type, r.data);
     if (!code) return;
+    const last = lastCode.current;
+    if (last && last.code === code && Date.now() - last.at < BARCODE_REPEAT_MS) return;
+    lastCode.current = { code, at: Date.now() };
     haptic('light');
-    setBarcode(code);
+    onBarcode(code);
   };
 
   const switchMode = (m: ScanCameraMode) => {
-    if (m === mode || analyzing) return;
+    if (m === mode || analyzing || barcodeBusy) return;
     haptic('selection');
     setMode(m);
-    setBarcode(null);
+    lastCode.current = null;
   };
 
   // ── Ölçüler ─────────────────────────────────────────────────────────────────
   const frameW = Math.min(winW - 96, 300);
   const frameH = mode === 'barcode' ? Math.round(frameW * 0.56) : Math.round(frameW * 1.1);
   const live = perm === 'granted';
-  const locked = analyzing || capturing;
+  const locked = analyzing || capturing || barcodeBusy;
 
   return (
     <View style={[styles.fill, { backgroundColor: k.panel }]}>
@@ -236,7 +281,7 @@ export default function FinScanCamera({
             pictureSize={pictureSize}
             onCameraReady={onReady}
             barcodeScannerSettings={mode === 'barcode' ? { barcodeTypes: [...SCAN_BARCODE_TYPES] } : undefined}
-            onBarcodeScanned={mode === 'barcode' && !barcode ? onBarcode : undefined}
+            onBarcodeScanned={mode === 'barcode' && !scanningLocked && onBarcode ? handleBarcode : undefined}
             accessibilityLabel={tt('ai_scan.camera_label')}
             testID="fin-scan-camera"
           />
@@ -259,20 +304,18 @@ export default function FinScanCamera({
           <FinScanAnalyzing photoUri={photoUri} frameWidth={frameW} frameHeight={Math.round(frameW * 1.1)} />
         ) : null}
 
-        {/* Barkod modu — uygulamada barkod akışı yok: dürüst "yakında" kartı. */}
-        {live && mode === 'barcode' && !analyzing ? (
-          <View style={styles.soonWrap} pointerEvents="box-none">
-            <View style={[styles.soon, { backgroundColor: t.color.surface }]} testID="fin-scan-barcode-soon">
-              <AppText style={[styles.soonTitle, { color: t.color.ink }]} accessibilityRole="header">
-                {tt('ai_scan.barcode_soon_title')}
+        {/* G21-S1 md.2 — barkod okundu, Open Food Facts sorgusu sürüyor. */}
+        {live && mode === 'barcode' && barcodeBusy ? (
+          <View style={styles.noteWrap} pointerEvents="none">
+            <View
+              style={[styles.hint, styles.busy, { backgroundColor: k.glass }]}
+              testID="fin-scan-barcode-busy"
+              accessibilityLiveRegion="polite"
+            >
+              <ActivityIndicator size="small" color={k.ink} />
+              <AppText style={[styles.hintText, { color: k.ink }]} numberOfLines={1}>
+                {tt('ai_scan.barcode_searching')}
               </AppText>
-              <AppText style={[styles.soonBody, { color: t.color.secondary }]}>{tt('ai_scan.barcode_soon_body')}</AppText>
-              {barcode ? (
-                <AppText style={[styles.soonCode, { color: t.color.ink }]} accessibilityLiveRegion="polite">
-                  {tt('ai_scan.barcode_read', { code: barcode })}
-                </AppText>
-              ) : null}
-              <Button label={tt('ai_scan.manual_entry')} onPress={onManual} haptic="light" style={styles.soonCta} />
             </View>
           </View>
         ) : null}
@@ -298,7 +341,19 @@ export default function FinScanCamera({
           >
             <X size={20} color={k.ink} />
           </Pressable>
-          {remaining != null ? (
+          {quotaPills ? (
+            (() => {
+              const q = mode === 'barcode' ? quotaPills.barcode : quotaPills.photo;
+              return q ? (
+                <View style={[styles.quota, styles.quotaRow, { backgroundColor: k.glass }]} accessible accessibilityLabel={q.a11y ?? q.text} testID="fin-scan-pill">
+                  {mode === 'barcode' ? <Barcode size={14} color={k.ink} /> : <Sparkle size={14} color={k.ink} weight="fill" />}
+                  <AppText style={[styles.quotaText, { color: k.ink }]} numberOfLines={1}>
+                    {q.text}
+                  </AppText>
+                </View>
+              ) : null;
+            })()
+          ) : remaining != null ? (
             <View style={[styles.quota, { backgroundColor: k.glass }]}>
               <AppText style={[styles.quotaText, { color: k.ink }]} numberOfLines={1}>
                 {tt('ai_scan.quota_left_of', { count: remaining, cap: SCAN_QUOTA_CAP })}
@@ -310,19 +365,28 @@ export default function FinScanCamera({
 
       <View style={[styles.panel, { backgroundColor: k.panel, paddingBottom: Math.max(20, insets.bottom + 4) }]}>
         <View style={styles.modes} accessibilityRole="tablist">
-          {(['photo', 'barcode'] as const).map((m) => {
+          {(onVoice ? (['photo', 'voice', 'barcode'] as const) : (['photo', 'barcode'] as const)).map((m) => {
             const sel = mode === m;
             return (
               <Pressable
                 key={m}
-                onPress={() => switchMode(m)}
+                onPress={() => {
+                  if (m === 'voice') {
+                    if (locked) return;
+                    haptic('selection');
+                    onVoice?.();
+                    return;
+                  }
+                  switchMode(m);
+                }}
                 disabled={locked}
                 style={[styles.mode, sel ? { backgroundColor: k.ink } : null]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: sel, disabled: locked }}
+                testID={`fin-scan-mode-${m}`}
               >
                 <AppText style={[styles.modeText, { color: sel ? t.color.bg : k.ink }]}>
-                  {tt(m === 'photo' ? 'ai_scan.mode_photo' : 'ai_scan.mode_barcode')}
+                  {tt(m === 'photo' ? 'ai_scan.mode_photo' : m === 'voice' ? 'voice.mode' : 'ai_scan.mode_barcode')}
                 </AppText>
               </Pressable>
             );
@@ -396,17 +460,13 @@ const styles = StyleSheet.create({
   hint: { height: 36, borderRadius: 18, paddingHorizontal: 14, justifyContent: 'center' },
   hintText: { fontSize: 14, fontWeight: '500' },
   noteWrap: { position: 'absolute', left: 16, right: 16, bottom: 16, alignItems: 'center' },
-  soonWrap: { position: 'absolute', left: 16, right: 16, bottom: 16 },
-  soon: { borderRadius: 24, padding: 20 },
-  soonTitle: { fontSize: 18, fontWeight: '700' },
-  soonBody: { marginTop: 6, fontSize: 15, lineHeight: 21 },
-  soonCode: { marginTop: 10, fontSize: 14, fontWeight: '600' },
-  soonCta: { marginTop: 16, alignSelf: 'stretch' },
+  busy: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // G17-S1 md.7: modal → kapat X SAĞDA (row-reverse), hak hapı solda.
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   quota: { height: 44, borderRadius: 22, paddingHorizontal: 14, justifyContent: 'center', flexShrink: 1, marginRight: 12 },
   quotaText: { fontSize: 13, fontWeight: '600' },
+  quotaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   panel: { paddingTop: 14 },
   modes: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
   mode: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: 'center' },

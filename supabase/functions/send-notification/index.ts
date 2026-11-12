@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { FIN_TEMPLATES, type FinTemplateKey } from './finPushTemplates.ts'
+import { kategoriAcikMi } from './prefs.ts'
 
 // G18-S4 md.3 — FinPush: `fin_*` şablonlarında Expo mesajına kategori (aksiyon
 // düğmeleri) + Android gizli önizleme kanalı eklenir; diğer bütün bildirimler aynen.
@@ -134,7 +135,6 @@ async function sendToUsers(
   const hedefKullanicilar = [...new Set((userIds ?? []).filter(Boolean))]
   if (hedefKullanicilar.length === 0) return results
 
-  const categoryEnabledKey = `${content.category}_enabled`
   const ortak = {
     template_key: content.templateKey,
     category: content.category,
@@ -182,7 +182,9 @@ async function sendToUsers(
 
   for (const userId of hedefKullanicilar) {
     const prefs = prefMap.get(userId)
-    const kategoriAcik = prefs ? Boolean(prefs[categoryEnabledKey]) : true
+    // G20-S3 md.6 (B-11 / ETK md.6): pazarlama açık onayla gider — tercih satırı
+    // yoksa pazarlama KAPALI, diğer kategoriler açık (bugünkü gibi).
+    const kategoriAcik = kategoriAcikMi(prefs, content.category)
     if (!kategoriAcik) {
       atlananSatirlar.push({
         ...ortak, user_id: userId, status: 'skipped',

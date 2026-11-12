@@ -17,13 +17,17 @@ const normalizeValue = (row: any): OptionTemplateValue => ({
   fats_modifier: toNumber(row?.fats_modifier, 0),
   is_default: Boolean(row?.is_default),
   display_order: toNumber(row?.display_order, 0),
+  image_url: typeof row?.image_url === 'string' && row.image_url.trim() ? row.image_url.trim() : null,
 });
 
 export async function fetchProductOptionLinks(productId: number | string): Promise<ProductOptionLink[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from('product_option_links')
-    .select(`
+  // G35: seçenek görseli (image_url) ile denenir; migration uygulanmadıysa
+  // (kolon yok) görselsiz eski sorguya düşer.
+  const runSelect = (withImage: boolean) =>
+    supabase
+      .from('product_option_links')
+      .select(`
       id, product_id, template_id, is_required_override,
       min_selections_override, max_selections_override, display_order,
       template:product_option_templates (
@@ -32,13 +36,16 @@ export async function fetchProductOptionLinks(productId: number | string): Promi
         values:product_option_template_values (
           id, template_id, name, price_modifier,
           calorie_modifier, protein_modifier, carbs_modifier, fats_modifier,
-          is_default, display_order, is_active
+          is_default, display_order, is_active${withImage ? ', image_url' : ''}
         )
       )
     `)
-    .eq('product_id', productId)
-    .eq('is_active', true)
-    .order('display_order', { ascending: true });
+      .eq('product_id', productId)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+  let { data, error } = await runSelect(true);
+  if (error) ({ data, error } = await runSelect(false));
 
   if (error) {
     console.error('[productOptions] fetch failed', error);

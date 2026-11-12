@@ -54,6 +54,10 @@ export interface OptionItem {
   carbs?: number;
   fats?: number;
   linkedProductId?: number | null;
+  /** G35: seçeneğin kendi görseli (option_items.image_url — şeffaf çıkartma). */
+  imageUrl?: string | null;
+  /** G35: bağlı ürünün görseli (products.img, linked_product_id üzerinden). */
+  linkedProductImageUrl?: string | null;
 }
 
 export interface OptionGroup {
@@ -94,6 +98,8 @@ export interface OptionTemplateValue {
   fats_modifier: number;
   is_default: boolean;
   display_order: number;
+  /** G35: seçeneğin kendi görseli (product_option_template_values.image_url). */
+  image_url?: string | null;
 }
 
 export interface OptionTemplate {

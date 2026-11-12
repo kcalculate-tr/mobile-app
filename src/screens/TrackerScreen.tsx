@@ -43,7 +43,7 @@ import { useFeature } from '../core/flags';
 import type { FlagKey } from '../core/flags';
 import { TrackerActivityEntry } from '../modules/kesfet/ui/TrackerActivityEntry';
 import { HomeGreeting, TrackerDayHeader, TrackerDayStrip } from './tracker/TrackerDayHeader';
-import { EmptyErrorCard, TextScaleCapContext, useTheme } from '../core/design';
+import { EmptyErrorCard, FinListSkeleton, TextScaleCapContext, useTheme } from '../core/design';
 import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
@@ -76,11 +76,14 @@ import { HomeExploreStrip } from './tracker/HomeStrips';
 import { HomeBanner, useHomeBanners } from '../modules/gun/home/HomeBanner';
 import { HomeRegionSection } from '../modules/gun/home/HomeRegion';
 import { HomeActivitySection } from '../modules/gun/home/HomeActivitySection';
+import { CoachHomeCard } from '../modules/coach/ui/entries';
 import { useHomeRegion } from '../modules/gun/home/useHomeRegion';
 import type { HomeBannerItem } from '../modules/gun/home/banner';
 import { HomeEmptyToday } from '../modules/onboarding/first';
 import { HomeInkToast } from './tracker/HomeInkToast';
 import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
+import { HomePlanCard } from '../modules/personalPlan/ui/entries';
+import { homeBellTarget } from './tracker/homeBellTarget';
 import { useT } from '../core/i18n';
 import { pickAutoLogInstances } from '../modules/gun/delivery';
 import { loadAutoLogged, markAutoLogged } from '../modules/gun/autoLogStore';
@@ -95,6 +98,7 @@ import { RootStackParamList } from '../navigation/types';
 import { usePantryStore, PantryItem } from '../store/pantryStore';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 import { track } from '../lib/analytics';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 
 type TrackerNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type FilterType = 'today' | 'yesterday' | 'week' | 'last14' | 'last30';
@@ -150,7 +154,13 @@ type ConsumedRow = {
   fat: number;
   note: string | null;
   consumed_at: string;
+  /** G21-S1 md.5: Tara/paylaşım fotoğrafı (özel kova yolu) — geri alınca foto geri gelsin. */
+  photo_path?: string | null;
 };
+
+// G21-S1 md.5 (G19-S2 SORULAR 2): liste `photo_path`'i de seçer; silinip geri alınan
+// Tara kaydı aynı fotoğrafla yeniden yazılır.
+const CONSUMED_SELECT = 'id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at,photo_path';
 
 type WeeklyDay = { label: string; date: string; kcal: number; protein: number; carbs: number; fat: number; count?: number };
 
@@ -462,6 +472,7 @@ const normalizeConsumedRow = (raw: any): ConsumedRow => {
     fat: toNum(r.fat),
     note: r.note != null ? String(r.note) : null,
     consumed_at: String(r.consumed_at ?? new Date().toISOString()),
+    photo_path: r.photo_path != null ? String(r.photo_path) : null,
   };
 };
 
@@ -990,14 +1001,27 @@ export default function TrackerScreen() {
   // G19-S2: fetchData bağımlılıkları değişmesin diye bayrak ref'te.
   const yeniKabukRef = useRef(yeniKabuk);
   yeniKabukRef.current = yeniKabuk;
+  // G30-S1 md.3: oturum nesnesi her token yenilemesinde yenilenir (AuthContext setUser) →
+  // bağımlılık kullanıcı KİMLİĞİ; aynı kullanıcı için yeniden çekim/iskelet yok.
+  const userId = user?.id ?? null;
+  const loadedOnceRef = useRef(false);
+  const loadedForRef = useRef<string | null>(userId);
+  if (loadedForRef.current !== userId) {
+    // Hesap değişti → yeni kullanıcının verisi gelene kadar iskelet doğru.
+    loadedForRef.current = userId;
+    loadedOnceRef.current = false;
+  }
   const fetchData = useCallback(
     async (filter: FilterType) => {
-      if (!user) {
+      if (!userId) {
         dispatchUI({ type: 'SET_DATA_LOADING', payload: false });
         return;
       }
 
-      dispatchUI({ type: 'SET_DATA_LOADING', payload: true });
+      // G30-S1 md.3 (stale-while-revalidate): iskelet YALNIZ ilk yüklemede. Sonraki tazelemeler
+      // (token yenilemesi, filtre, odak) mevcut içeriği yerinde günceller — önceden her seferinde
+      // liste FinListSkeleton'a dönüp geri geliyordu ("sayfa kendiliğinden belirip kayboluyor").
+      if (!loadedOnceRef.current) dispatchUI({ type: 'SET_DATA_LOADING', payload: true });
       dispatchUI({ type: 'SET_ERROR_MESSAGE', payload: '' });
 
       try {
@@ -1016,12 +1040,12 @@ export default function TrackerScreen() {
           supabase
             .from('user_nutrition_profiles')
             .select('target_calories,target_protein,target_carbs,target_fat,target_water')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .maybeSingle(),
           supabase
             .from('orders')
             .select('id,order_code,created_at,order_items(quantity,products(name,calories,protein,carbs,fats))')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('status', 'delivered')
             .gte('created_at', start.toISOString())
             .lte('created_at', end.toISOString())
@@ -1029,20 +1053,20 @@ export default function TrackerScreen() {
           supabase
             .from('body_measurements')
             .select('date,weight_kg,waist_cm,hip_cm,chest_cm')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .order('date', { ascending: false })
             .limit(30),
           supabase
             .from('meal_consumptions')
-            .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
-            .eq('user_id', user.id)
+            .select(CONSUMED_SELECT)
+            .eq('user_id', userId)
             .gte('consumed_at', todayStartISO)
             .lt('consumed_at', tomorrowStartISO)
             .order('consumed_at', { ascending: false }),
           supabase
             .from('meal_consumptions')
             .select('source,source_ref,calories,protein,carbs,fat,consumed_at')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .gte('consumed_at', thirtyDaysAgoISO)
             .lt('consumed_at', tomorrowStartISO),
         ]);
@@ -1141,10 +1165,11 @@ export default function TrackerScreen() {
         }
         dispatchUI({ type: 'SET_ERROR_MESSAGE', payload: mapSupabaseErrorToUserMessage(error, 'Veriler yüklenemedi. Lütfen tekrar deneyin.') });
       } finally {
+        loadedOnceRef.current = true;
         dispatchUI({ type: 'SET_DATA_LOADING', payload: false });
       }
     },
-    [user],
+    [userId],
   );
 
   // Test item temizliği — bir kez çalışır
@@ -1347,7 +1372,7 @@ export default function TrackerScreen() {
     if (!user) return [];
     const { data: rows, error } = await getSupabaseClient()
       .from('meal_consumptions')
-      .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+      .select(CONSUMED_SELECT)
       .eq('user_id', user.id)
       .gte('consumed_at', startOfTodayISO())
       .lt('consumed_at', startOfTomorrowISO())
@@ -1393,6 +1418,7 @@ export default function TrackerScreen() {
               carbs: r.carbs,
               fat: r.fat,
               consumed_at: r.consumed_at,
+              photo_path: r.photo_path ?? null,
             })),
             { highlightId: highlight?.id ?? null },
           )
@@ -1411,6 +1437,11 @@ export default function TrackerScreen() {
   const suTakibi = useFeature('su_takibi' as FlagKey);
   const yeniOnboarding = useFeature('yeni_onboarding' as FlagKey);
   const yeniSiparis = useFeature('yeni_siparis' as FlagKey);
+  // G21-S1 md.8: Ana sayfa zili → bildirimler (bkz. homeBellTarget).
+  const bellTarget = homeBellTarget({
+    sosyalBildirim: useFeature('sosyal_bildirim' as FlagKey),
+    kesfet: useFeature('kesfet' as FlagKey),
+  });
   const { t: tt } = useT();
   const water = useWaterToday(yeniKabuk && suTakibi, user?.id);
   const serverWaterTarget = waterTargetMl(nutritionProfile?.target_water);
@@ -1542,8 +1573,9 @@ export default function TrackerScreen() {
       : navigation.navigate('ProductDetail', { productId });
   const openKesfet = () => (navigation as any).navigate('Tabs', { screen: 'KesfetTab' });
   // G18-S2 md.3/6b: banner kartı tek dokunuş — gönderi detayı (FinDetail) ya da eatkcal.
+  const openPost = (postId: string) => (navigation as any).navigate('SharedPost', { postId });
   const openBanner = (b: HomeBannerItem) => {
-    if (b.target.type === 'post') (navigation as any).navigate('SharedPost', { postId: b.target.postId });
+    if (b.target.type === 'post') openPost(b.target.postId);
     else openEatkcal();
   };
   // G18-S2 md.4: İzmir dışı satırlar → S3'ün FinWaitlistAdd / FinWaitlistSuggest sheet'leri
@@ -1558,6 +1590,16 @@ export default function TrackerScreen() {
     setPushMenuSlot(finOpenLog === true ? slotFromHour(istanbulHour()) : finOpenLog);
     (navigation as any).setParams?.({ finOpenLog: undefined });
   }, [finOpenLog, yeniKabuk, navigation]);
+  // G21-S1 md.8: Tara'daki "Elle gir / Elle ekle" Ana sayfaya dönünce elle giriş sheet'i
+  // AÇILSIN (önce yalnız geri dönüyordu, kullanıcı ikinci kez dokunmak zorundaydı).
+  // Çağıran: navigate('Tabs', { screen: 'Tracker', params: { finOpenManual: true } }).
+  const finOpenManual = (route.params as { finOpenManual?: true | SlotKey } | undefined)?.finOpenManual;
+  useEffect(() => {
+    if (!yeniKabuk || !finOpenManual) return;
+    (navigation as any).setParams?.({ finOpenManual: undefined });
+    openMealFormFor(finOpenManual === true ? slotFromHour(istanbulHour()) : finOpenManual);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finOpenManual, yeniKabuk, navigation]);
   const openWaitlist = (kind: 'add' | 'suggest') =>
     setWaitlistKind(kind === 'add' ? 'restaurant_add' : 'restaurant_suggest');
   // G18-S2 md.4: bölge (kayıtlı adres → seçilen il → izinli konum); md.3/6b: banner verisi.
@@ -1656,6 +1698,8 @@ export default function TrackerScreen() {
         fat: row.fat,
         note: row.note,
         consumed_at: row.consumed_at,
+        // G21-S1 md.5: fotoğraf yolu da geri yazılır (önceden geri alınan Tara kaydı fotoğrafsız kalıyordu).
+        ...(row.photo_path ? { photo_path: row.photo_path } : {}),
       },
     });
     if (!ok) {
@@ -1837,7 +1881,7 @@ export default function TrackerScreen() {
               },
               { onConflict: 'user_id,source,source_ref' },
             )
-            .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+            .select(CONSUMED_SELECT)
             .maybeSingle();
           if (e2 && (e2 as any)?.code !== '23505') {
             dispatchData({ type: 'REMOVE_CONSUMED_INSTANCE', payload: c.instanceId });
@@ -1939,7 +1983,7 @@ export default function TrackerScreen() {
         const { data: row, error } = await supabase
           .from('meal_consumptions')
           .upsert(payload, { onConflict: 'user_id,source,source_ref' })
-          .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+          .select(CONSUMED_SELECT)
           .maybeSingle();
 
         // 23505 = unique_violation: bu source_ref zaten kayıtlı → tüketim
@@ -2103,8 +2147,8 @@ export default function TrackerScreen() {
           return;
         }
         dispatchData({ type: 'PREPEND_CONSUMED', payload: normalizeConsumedRow(row) });
-        const savedLabelNew =
-          ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null;
+        // G25-S1 md.10 (A13): öğün etiketi i18n (EN'de "Logged to Dinner", eskiden "Logged to Akşam").
+        const savedLabelNew = mealType ? tt(`meal.${normalizeMealType(mealType)}`) : null;
         startHighlight(id, savedLabelNew);
         dispatchMealForm({ type: 'RESET_FORM' });
         const offline = await isOffline();
@@ -2136,7 +2180,7 @@ export default function TrackerScreen() {
           note: trimmedNote || null,
           consumed_at: new Date().toISOString(),
         })
-        .select('id,source,source_ref,name,meal_type,calories,protein,carbs,fat,note,consumed_at')
+        .select(CONSUMED_SELECT)
         .single();
       if (error) throw error;
       track('log_add', { source: 'manual', kcal: calNum });
@@ -2145,8 +2189,8 @@ export default function TrackerScreen() {
       }
       // Yeni kabuk: Logla izi + zaman hapı (TrackerDayHeader okur). Eski kabukta
       // bu state'in görünür etkisi yok.
-      const savedLabel =
-        ({ kahvalti: 'Kahvaltı', ogle: 'Öğle', aksam: 'Akşam', atistirma: 'Ara öğün' } as const)[mealType] ?? null;
+      // G25-S1 md.10 (A13): öğün etiketi i18n (EN'de "Logged to Dinner", eskiden "Logged to Akşam").
+      const savedLabel = mealType ? tt(`meal.${normalizeMealType(mealType)}`) : null;
       if (yeniKabuk && row) {
         // G13-S1: Logla izi B — nokta → satır → halka (logToken halka evresinde).
         startHighlight(String((row as { id?: unknown }).id ?? ''), savedLabel);
@@ -2516,8 +2560,14 @@ const html = `
     fat: nutritionSummary?.targetFat || nutritionProfile?.target_fat || 65,
   };
 
-  if (loading) return <View style={yeniKabuk ? { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: designTheme.color.bg } : { flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-    <ActivityIndicator color={yeniKabuk ? designTheme.color.secondary : COLORS.brand.green} size="large" />
+  // G22-S2 md.7: yeni kabukta ilk açılışta dönen yuvarlak gösterge YOK — FinMoLoad
+  // iskeleti (nötr, nabız story; azaltılmışta sabit). Bayrak kapalı yol AYNEN.
+  if (loading) return yeniKabuk ? (
+    <ScreenContainer edges={['top']} style={{ flex: 1, backgroundColor: designTheme.color.bg }}>
+      <FinListSkeleton header rows={5} testID="home-skeleton" />
+    </ScreenContainer>
+  ) : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <ActivityIndicator color={COLORS.brand.green} size="large" />
   </View>;
   if (!isAuthenticated) return null;
 
@@ -2617,12 +2667,11 @@ const html = `
       {/* G15-S2 (FinHomeXL): yeni kabukta en büyük yazıda başlık/etiketler kırpılmasın —
           Final XL ≈ 1.3× tavan. Bayrak kapalıyken değer sınırsız (AppText zaten yok). */}
       <TextScaleCapContext.Provider value={yeniKabuk ? 1.3 : Number.POSITIVE_INFINITY}>
-      <Reanimated.ScrollView
+      <Reanimated.ScrollView {...SCROLL_KEYBOARD}
         // Yalnız vitrin (__DEV__ + vitrinScroll); bayrak kapalı ağaçta prop YOK (snapshot paritesi).
         ref={__DEV__ && vitrinScroll ? homeScrollRef : undefined}
         // Yalnız vitrin: sayfa yüksekliği ölçümü (G18-S2 md.6; Final Home 2420 / boş 2160).
         onContentSizeChange={__DEV__ && homeHour != null ? (_w: number, h: number) => console.log('[vitrin] home içerik yüksekliği', Math.round(h)) : undefined}
-        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[s.scroll, asTab ? { paddingBottom: tabBarContentInset(insets.bottom) } : null]}
         showsVerticalScrollIndicator={false}
         onScroll={asTab ? scrollHandler : undefined}
@@ -2634,7 +2683,7 @@ const html = `
         {yeniKabuk ? (
           <HomeGreeting
             name={String(user?.user_metadata?.full_name || '')}
-            onBell={() => navigation.navigate('Kesfet' as never)}
+            onBell={bellTarget ? () => (navigation as any).navigate(bellTarget.name, 'params' in bellTarget ? bellTarget.params : undefined) : undefined}
             hour={homeHour}
           />
         ) : (
@@ -2681,7 +2730,7 @@ const html = `
         />
 
         {/* ── Filter pills (her iki modda: Özet + Grafik) ── */}
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
+        <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: SPACING.xs, paddingHorizontal: SPACING.lg }}>
           {FILTER_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.key}
@@ -2700,9 +2749,8 @@ const html = `
 
         {/* G15-S2: yeni kabukta yükleniyor/hata durumları Final dilinde. */}
         {yeniKabuk && dataLoading ? (
-          <View style={s.centered}>
-            <ActivityIndicator color={designTheme.color.secondary} size="large" />
-          </View>
+          // G22-S2 md.7: tam ekran gösterge yerine FinMoLoad iskeleti.
+          <FinListSkeleton rows={4} testID="history-skeleton" />
         ) : yeniKabuk && errorMessage ? (
           <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
             <EmptyErrorCard
@@ -2771,6 +2819,9 @@ const html = `
                 hasTarget={homeGoal.has}
               />
             ) : null}
+            {/* G34-S1 md.5 (Tur 26o 04 "Ana sayfa kartı"): halkanın altında TEK SEFERLİK kişisel plan kartı
+                (`kisisel_plan`; plan varsa ya da × ile kapatıldıysa çizilmez). */}
+            {yeniKabuk ? <HomePlanCard /> : null}
             {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
             {yeniKabuk ? (
               <HomeBanner items={homeBanners} onOpen={openBanner} initialIndex={__DEV__ ? vitrinParams.vitrinBanner ?? 0 : 0} />
@@ -2814,8 +2865,16 @@ const html = `
                     }}
                   />
                 ) : null}
+                {/* G24-S1 (FinHomeR3 Tur 26k): kcalAI Koç kartı — gün alanından sonra, topluluk akışından önce.
+                    `koc` kapalı ya da coach-chat yoksa (404) hiç çizilmez. */}
+                <CoachHomeCard
+                  consumedKcal={homeTotals.kcal}
+                  targetKcal={targets.kcal || null}
+                  proteinLeft={targets.protein ? Math.max(0, targets.protein - homeTotals.protein) : null}
+                />
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
-                <HomeExploreStrip onAll={openKesfet} onOpen={openKesfet} />
+                {/* G21-S1 md.8: kare = o gönderinin detayı (banner'la aynı hedef); "Tümü" = Keşfet sekmesi. */}
+                <HomeExploreStrip onAll={openKesfet} onOpen={openPost} />
                 {/* G18-S2 md.4: bölge — İzmir tek öneri kartı / İzmir dışı bekleme listesi satırları. */}
                 <HomeRegionSection
                   region={homeRegion}
@@ -2881,7 +2940,7 @@ const html = `
                 </View>
               ) : (
                 <FlatList
-                  keyboardShouldPersistTaps="handled"
+                  {...SCROLL_KEYBOARD}
                   data={expandedItems.filter(i => !consumedInstances.has(i.instanceId))}
                   horizontal
                   showsHorizontalScrollIndicator={false}

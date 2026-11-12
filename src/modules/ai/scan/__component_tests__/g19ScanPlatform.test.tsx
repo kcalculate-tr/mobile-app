@@ -26,6 +26,12 @@ jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { addEventListener: () => () => {}, fetch: () => Promise.resolve({ isConnected: true }) },
 }));
+// G20-S3 md.2: yapay zekâ fotoğraf izni bu testlerde VERİLMİŞ (izin akışı g20s3AiPhoto testinde).
+jest.mock('../../../../lib/consent/aiPhoto', () => ({
+  resolveAiPhotoConsent: () => Promise.resolve('ok'),
+  setAiPhotoConsent: () => Promise.resolve(),
+  hasLocalAiPhotoConsent: () => Promise.resolve(true),
+}));
 jest.mock('../drainPending', () => ({ drainPendingScans: () => Promise.resolve(), onPendingDrained: () => () => {} }));
 jest.mock('../../../../lib/products', () => ({ fetchProducts: () => Promise.resolve([]) }));
 // Eski derleme: ExpoCamera native modülü yok.
@@ -115,10 +121,9 @@ test('galeri: izin İSTENMEDEN açılır (sınırlı erişim sorun değil)', asy
   expect(mockPicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled();
 });
 
-test('galeri açılamaz + izin reddi → toast, Alert yok, rezervasyon yok', async () => {
+test('galeri açılamaz → toast, izin İSTENMEZ (G26-S1), Alert yok, rezervasyon yok', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   mockPicker.launchImageLibraryAsync.mockRejectedValue(new Error('E_NO_PERMISSIONS'));
-  mockPicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: false });
   const c = client();
   setAiScanClient(c);
   const tree = render(<ScanScreen />);
@@ -128,6 +133,7 @@ test('galeri açılamaz + izin reddi → toast, Alert yok, rezervasyon yok', asy
   await waitFor(() => expect(tree.getByText('Fotoğraflara erişim kapalı. Ayarlar’dan izin verebilirsin.')).toBeTruthy());
   expect(alert).not.toHaveBeenCalled();
   expect(c.reserveScan).not.toHaveBeenCalled();
+  expect(mockPicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled();
   alert.mockRestore();
 });
 

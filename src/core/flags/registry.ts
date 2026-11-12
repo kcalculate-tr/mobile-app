@@ -52,6 +52,19 @@ export const FLAG_DEFAULTS = {
   // G19-S2 md.5 — öğün saatinde kayıt yoksa yerel hatırlatma (fin_reminder_*).
   // Yalnız yeni kabukta etkili. Sunucu satırı: 20261109200100_g19_s2_track.sql (kapalı).
   ogun_hatirlatma: false, // Öğün hatırlatmaları (yerel bildirim)
+  abonelik: false, // G22-S1: kcalAI abonelikleri (paywall, hak sheet'leri, Profil › Abonelik); RevenueCat anahtarı da gerekir
+  // G24-S1 — kcalAI Koç (sohbet + girişler). Sunucu satırı 20261111100100_g24_coach.sql (kapalı,
+  // min_app_version 1.1.0). Native modül istemez → OTA. `coach-chat` 404 ise girişler yine gizli.
+  koc: false,
+  // G25-S1 — 1.1.0 inceleme öncesi. Sunucu satırları 20261111200100_g25_flags.sql (ikisi KAPALI).
+  yakinda_satirlari: false, // Profil "Yakında" satırları + FinPrMacro "Öğün aboneliği" sekmesi (A4)
+  paylasim_baglanti: false, // Keşfet gönderi/profil "Bağlantıyı kopyala / Paylaş" (A10; l.eatkcal.com hazır olunca)
+  // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m). Sunucu satırı 20261112100100_g33_meal_plan.sql
+  // (KAPALI, min_app_version 1.1.0). Native modül yok → OTA. Kapalıyken Profil satırları ve rotalar yok.
+  ogun_plani: false,
+  // G34-S1 — Kişisel plan akışı (Tur 26o): 4 giriş noktası, Kişisel planım, haftalık check-in.
+  // Sunucu satırı 20261112110100_g34_personal_plan.sql (KAPALI, min_app_version 1.1.0). Native yok → OTA.
+  kisisel_plan: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

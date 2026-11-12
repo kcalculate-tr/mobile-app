@@ -9,18 +9,19 @@
 //    bugün dahil kesintisiz kayıtlı gün sayısı (G19-S2: track/streak, sunucu kuralı).
 // Her kutlama kullanıcı başına bir kez (`@kcal_celebrate_shown:<uid>`), ekrana
 // geldiği an işaretlenir; 7'lik gösterilince 3'lük de gösterilmiş sayılır.
-// Kutlama kapanınca, izin henüz verilmemişse ve daha önce teklif edilmediyse
-// bildirim izni sheet'i (FinSheetNotify) açılır — mevcut izin akışı:
-// requestPushPermissionOnly → granted ise registerForPushNotifications.
+// G26-S1: İLK ÖĞÜN kutlaması kapanınca, bildirim izni hiç sorulmadıysa TEK açıklama
+// ekranı (FinSheetNotify) açılır → tek fonksiyon core/push/pushPermission
+// (requestPushPermission('first_meal'); izin verilirse jeton orada kaydedilir).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 
 import { DURATION, TIMING } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getSupabaseClient } from '../../core/supabase';
-import { registerForPushNotifications } from '../../core/notifications';
+import { canOfferPush } from '../../core/push/pushPermission';
+import { decideNotifyOffer, type NotifyTrigger } from '../../core/push/pushPolicy';
+import { consentSheetShownThisSession, currentSessionId } from '../../lib/permissions/sheetSession';
 import {
   CelebrateOverlay,
   NotifyPermissionSheet,
@@ -37,6 +38,8 @@ import { cancelMealReminders, syncMealReminders } from '../../modules/gun/track/
 import { track } from '../../lib/analytics';
 
 const NOTIFY_OFFERED_KEY = '@kcal_celebrate_notify_offered';
+/** G27-S1: ilk öğün teklifi KAÇTI → kaçtığı oturumun kimliği (ikinci şans hakkı). */
+export const NOTIFY_MISSED_KEY = '@kcal_celebrate_notify_missed';
 /** G19-S2 md.7: streak_day / ring_complete günde bir kez (kullanıcı + gün). */
 const DAY_EVENT_KEY = (uid: string, ev: string) => `@kcal_track_day_event:${ev}:${uid}`;
 
@@ -194,23 +197,67 @@ export function HomeCelebrations({
     return () => clearTimeout(id);
   }, [pending, shown, markSeen]);
 
-  const offerNotify = useCallback(async () => {
+  const offerNotify = useCallback(async (trigger: NotifyTrigger = 'first_meal') => {
     try {
-      if ((await AsyncStorage.getItem(NOTIFY_OFFERED_KEY)) === '1') return;
-      const perm = await Notifications.getPermissionsAsync();
-      if (perm.status === 'granted' || perm.canAskAgain === false) return;
-      await AsyncStorage.setItem(NOTIFY_OFFERED_KEY, '1');
-      setNotifyOpen(true);
+      const [offered, missed] = await Promise.all([
+        AsyncStorage.getItem(NOTIFY_OFFERED_KEY),
+        AsyncStorage.getItem(NOTIFY_MISSED_KEY),
+      ]);
+      if (offered === '1') return;
+      if (trigger === 'meal_log' && !missed) return; // ikinci şans hakkı yoksa izni okumaya gerek yok
+      // G26-S1 md.7: bu oturumda başka bir onay sheet'i açıldıysa teklif sonraki oturuma kalır.
+      // G27-S1: kaçan teklif sonraki oturumda (ikinci öğün kaydında) BİR kez daha.
+      const d = decideNotifyOffer({
+        trigger,
+        offered: false,
+        missedSession: missed,
+        currentSession: currentSessionId(),
+        consentShownThisSession: consentSheetShownThisSession(),
+        canOffer: await canOfferPush('first_meal'),
+      });
+      if (d === 'defer') {
+        await AsyncStorage.setItem(NOTIFY_MISSED_KEY, currentSessionId());
+      } else if (d === 'drop') {
+        await AsyncStorage.removeItem(NOTIFY_MISSED_KEY);
+      } else if (d === 'offer') {
+        await AsyncStorage.setItem(NOTIFY_OFFERED_KEY, '1');
+        await AsyncStorage.removeItem(NOTIFY_MISSED_KEY);
+        setNotifyOpen(true);
+      }
     } catch {
       /* izin okunamadı — teklif etme */
     }
   }, []);
 
+  // G27-S1: bu oturumda yeni öğün kaydı → (kaçmış teklif varsa) ikinci şans. Kutlama
+  // ekrandaysa onun kapanmasını bekler; yoksa Logla izi + halka dolumu bitince.
+  const shownRef = useRef<CelebrateMoment | null>(null);
+  shownRef.current = shown ?? pending;
+  const secondChanceWaiting = useRef(false);
+  const prevCount = useRef<number | null>(null);
+  useEffect(() => {
+    if (!ready || !userId) return;
+    const prev = prevCount.current;
+    prevCount.current = todayCount;
+    if (prev == null || todayCount <= prev) return;
+    const id = setTimeout(() => {
+      if (shownRef.current) {
+        secondChanceWaiting.current = true;
+        return;
+      }
+      void offerNotify('meal_log');
+    }, SHOW_DELAY + DURATION.base);
+    return () => clearTimeout(id);
+  }, [ready, userId, todayCount, offerNotify]);
+
   const onDone = useCallback(() => {
     const m = shown;
     setShown(null);
     if (!m) return;
-    void dismiss(m).then(offerNotify);
+    const waiting = secondChanceWaiting.current;
+    secondChanceWaiting.current = false;
+    // G26-S1: ilk teklif yalnız ilk öğün kutlamasından sonra; G27-S1 ikinci şans kutlama sonrası.
+    void dismiss(m).then(() => (m === 'first' ? offerNotify('first_meal') : waiting ? offerNotify('meal_log') : undefined));
   }, [shown, dismiss, offerNotify]);
 
   const first = today.length > 0 ? today[today.length - 1] : null; // en eski = ilk öğün
@@ -252,7 +299,6 @@ export function HomeCelebrations({
         onClose={() => setNotifyOpen(false)}
         onResult={(status) => {
           if (status === 'granted') {
-            void registerForPushNotifications();
             void syncStreakReminder({ loggedToday: todayCount > 0, title: tt('profil.streak_reminder_title'), body: tt('profil.streak_reminder_body') });
           }
         }}

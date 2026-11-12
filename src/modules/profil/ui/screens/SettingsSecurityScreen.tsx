@@ -16,9 +16,17 @@
  * (grep: "sessions" ilgili bir Supabase çağrısı bulunamadı) — bu yüzden sahte
  * çok-cihaz verisi ÜRETİLMEZ; `supabase.auth.getSession()` ile yalnız "bu
  * cihazda oturum açık mı" dürüstçe gösterilir (1 cihaz = bu cihaz).
+ *
+ * G25-S1 md.6 (A9): silme onayında abonelik uyarısı — "aktif abonelik mağazada sürer, önce iptal et"
+ * + "Aboneliği yönet" (iOS App Store abonelikleri, Android Play abonelikler derin bağlantısı).
+ * Onay kartı büyük metinde kaydırılır (Dynamic Type'ta düğmeler kırpılmaz).
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import { useFeature } from '../../../../core/flags';
+import { resetToSignedOut } from '../../../../navigation/signOutReset';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { manageSubUrl } from '../../../../lib/subscription/storeLinks';
+import { openLegalWeb } from '../../../../lib/legal/openLegal';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import {
   FinScreen,
@@ -35,11 +43,12 @@ import {
 } from '../finUi';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { Trash, Phone } from '../../../../components/icons';
+import { ArrowSquareOut, Trash, Phone } from '../../../../components/icons';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { unregisterPushToken } from '../../../../core/notifications';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 function SecureField({
   label,
@@ -82,7 +91,8 @@ function SecureField({
 export default function SettingsSecurityScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
   const x = finExtras(t);
-  const { t: tr } = useT();
+  const { t: tr, lang } = useT();
+  const yeniOnboardingFlag = useFeature('yeni_onboarding');
   const { user, signOut } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -173,7 +183,9 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
       }
       await unregisterPushToken();
       await signOut();
-      // Imperatif reset YOK — signOut null user ile state-driven Auth akışına geçer.
+      // G21-S1 md.8 (#D4): yığın oturumsuz soğuk açılışla aynı ilk ekrana sıfırlanır
+      // (önce oturumsuz Profil sekmesi + üstüne Login kalıyordu).
+      resetToSignedOut(yeniOnboardingFlag);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : tr('profil.delete_confirm_body');
       Alert.alert(tr('profil.delete_account'), msg);
@@ -296,6 +308,11 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
             padding: 24,
           }}
         >
+          <ScrollView {...SCROLL_KEYBOARD}
+            style={{ width: '100%', maxHeight: '100%' }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            bounces={false}
+          >
           <View
             style={{
               width: '100%',
@@ -304,8 +321,9 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
               padding: 20,
               gap: 14,
             }}
+            testID="delete-confirm"
           >
-            <Text style={{ fontFamily: bodyBold, fontSize: 18, color: t.color.ink }}>
+            <Text style={{ fontFamily: bodyBold, fontSize: 18, color: t.color.ink }} accessibilityRole="header">
               {tr('profil.delete_confirm_title')}
             </Text>
             <Text
@@ -313,6 +331,39 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
             >
               {tr('profil.delete_account_desc')}
             </Text>
+            <View
+              style={{ borderRadius: 14, backgroundColor: t.color.bg, padding: 14, gap: 4 }}
+              testID="delete-sub-note"
+            >
+              <Text style={{ fontFamily: body, fontSize: 14, color: t.color.ink, lineHeight: 20 }}>
+                {tr(Platform.OS === 'android' ? 'profil.delete_sub_note_android' : 'profil.delete_sub_note_ios')}
+              </Text>
+              <Pressable
+                onPress={() => void Linking.openURL(manageSubUrl(Platform.OS)).catch(() => {})}
+                accessibilityRole="link"
+                accessibilityLabel={tr('profil.delete_sub_manage')}
+                testID="delete-sub-manage"
+                style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+              >
+                <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink, textDecorationLine: 'underline' }}>
+                  {tr('profil.delete_sub_manage')}
+                </Text>
+                <ArrowSquareOut size={16} color={t.color.ink} />
+              </Pressable>
+            </View>
+            {/* G28-S1 md.7: silme süreci ve saklanan veriler legal.eatkcal.com/account-deletion */}
+            <Pressable
+              onPress={() => void openLegalWeb('accountDeletion', lang)}
+              accessibilityRole="link"
+              accessibilityLabel={tr('profil.delete_info_link')}
+              testID="delete-info-link"
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+            >
+              <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink, textDecorationLine: 'underline' }}>
+                {tr('profil.delete_info_link')}
+              </Text>
+              <ArrowSquareOut size={16} color={t.color.ink} />
+            </Pressable>
             <Text
               style={{ fontFamily: body, fontSize: 14, color: t.color.secondary, lineHeight: 20 }}
             >
@@ -355,6 +406,7 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
               />
             </View>
           </View>
+          </ScrollView>
         </View>
       ) : null}
     </FinScreen>

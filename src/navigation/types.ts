@@ -1,11 +1,12 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import type { ProfileSubParams } from '../modules/profil/ui/screens/profileSub';
 
 export type TabParamList = {
   Home: undefined;
   Cart: undefined;
   Subscriptions: undefined;
   // G18-S4 md.3: FinPush seri/hatırlatma dokunuşu → logla sheet'i açık (S2 tüketir).
-  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack' } | undefined;
+  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack'; finOpenManual?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack' } | undefined;
   Profile: undefined;
   // G11-S2 yeni kabuk: Keşfet sekmesi (yalnız `kesfet` + `yeni_kabuk` açıkken
   // R3 tab navigatörüne eklenir). `asTab` ekrana tab bağlamında olduğunu söyler
@@ -49,6 +50,8 @@ export type RootStackParamList = {
   Composer: undefined;
   // G15-S3 — Bildirimler tam sayfa; yalnız `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
   KesfetNotifications: undefined;
+  // G22-S2 md.4 — Keşfet arama (kişi · gönderi · tarif); `kesfet` bayrağıyla kayıtlı.
+  KesfetSearch: undefined;
   // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini (koşullu kayıt).
   GunProfilUiLab: undefined;
   // `/u/:handle` — açık profil (bkz. modules/profil/ui/PublicProfileScreen).
@@ -62,6 +65,8 @@ export type RootStackParamList = {
   ProfileSavedCards: undefined;
   ProfileAddCard: undefined;
   ProfileCoupons: undefined;
+  // G21-S1 md.9 — FinPrProfile alt sayfaları (sağdan kayan yığın ekranı).
+  ProfileSub: ProfileSubParams;
   ProfileSupport: undefined;
   ProfileReviews: undefined;
   ProfileSecurity: undefined;
@@ -77,6 +82,23 @@ export type RootStackParamList = {
   // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken erişilir.
   AiScan: undefined;
   AiScanOffline: undefined;
+  // G22-S1 md.4 — kcalAI abonelikleri (`abonelik` bayrağı + RevenueCat anahtarı).
+  SubPaywall: { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean } | undefined;
+  SubProfile: undefined;
+  // G24-S1 — kcalAI Koç (`koc` bayrağı). Parametreler: modules/coach/types CoachChatParams.
+  CoachIntro: import('../modules/coach/types').CoachChatParams | undefined;
+  CoachChat: import('../modules/coach/types').CoachChatParams | undefined;
+  CoachHistory: undefined;
+  // G33-S1 — Öğün planı (`ogun_plani` bayrağı).
+  MealPlan: import('../modules/plan/screens/MealPlanScreen').MealPlanParams;
+  MealPlanGenerate: import('../modules/plan/screens/PlanGenerateScreen').PlanGenerateParams;
+  ShoppingList: import('../modules/plan/screens/ShoppingListScreen').ShoppingListParams;
+  // G34-S1 — Kişisel plan (`kisisel_plan` bayrağı).
+  PersonalPlan: { origin?: import('../modules/personalPlan/store').PpOrigin; restart?: boolean } | undefined;
+  PersonalPlanMine: { fresh?: boolean } | undefined;
+  PersonalPlanEdit: undefined;
+  PersonalPlanCheckin: undefined;
+  PlanPaywall: { from?: string; plan?: 'fresh' | 'balance' } | undefined;
   // eatkcal ilk sipariş şehir kapısı sonrası mevcut sipariş akışı (G6-S4) —
   // bugünkü HomeScreen'i AYNEN yeniden kullanır, yeni bir katalog YAZILMADI.
   EatCatalog: undefined;

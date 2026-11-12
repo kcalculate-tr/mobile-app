@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleProp,
   StyleSheet,
   View,
@@ -16,6 +17,7 @@ import { useTheme } from '../ThemeProvider';
 import { AppText } from './AppText';
 import { X as XIcon } from '../../../components/icons';
 import { haptic, REDUCED, RN_CURVE, SHEET, useReducedMotion } from '../motion';
+import { sheetMaxHeight, useSheetKeyboard, SCROLL_KEYBOARD } from '../keyboard';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -28,6 +30,12 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  * Erişilebilirlik: içerik `accessibilityViewIsModal` (iOS — arka plan okunmaz);
  * açılınca odak başlığa/tutamağa taşınır; `onRequestClose` (Android geri / scrim)
  * kapatır. Azaltılmış hareket: yalnız opaklık, 200 ms (kayma yok).
+ *
+ * G21-S1 md.10 — KLAVYE: katman klavyenin üstüne kalkar (`useSheetKeyboard`,
+ * core/design/keyboard.ts); klavye açıkken yükseklik ekran − klavye − üst boşlukla
+ * sınırlanır. `scroll` verilirse gövde kaydırılabilir (`keyboardShouldPersistTaps
+ * ="handled"`: klavye açıkken "Uygula" gibi düğmeye ilk dokunuş çalışır). Giriş
+ * alanlı her katman `scroll` kullanır; FlatList taşıyan katmanlar kullanmaz.
  */
 export function Sheet({
   visible,
@@ -39,6 +47,7 @@ export function Sheet({
   maxHeightRatio = 0.9,
   contentStyle,
   testID,
+  scroll = false,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -49,6 +58,8 @@ export function Sheet({
   maxHeightRatio?: number;
   contentStyle?: StyleProp<ViewStyle>;
   testID?: string;
+  /** Gövdeyi ScrollView yap (giriş alanlı katmanlar). İçinde FlatList varsa verme. */
+  scroll?: boolean;
 }) {
   const t = useTheme();
   const reduced = useReducedMotion();
@@ -59,6 +70,9 @@ export function Sheet({
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const sheetRef = useRef<View>(null);
+  const kb = useSheetKeyboard(mounted);
+  // Açılış/kapanış kayması + klavye kaldırması tek transform'da (ikisi de native sürücü).
+  const sheetY = useRef(Animated.add(translateY, kb.translateY)).current;
 
   const focusSheet = useCallback(() => {
     const node = findNodeHandle(sheetRef.current);
@@ -129,7 +143,7 @@ export function Sheet({
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.fill}>
+      <View style={styles.fill} onLayout={kb.onLayout} testID={testID ? `${testID}-root` : 'sheet-root'}>
         <Animated.View
           style={[styles.scrim, { backgroundColor: '#000', opacity: scrim }]}
           pointerEvents="auto"
@@ -153,10 +167,11 @@ export function Sheet({
               backgroundColor: t.color.surface,
               borderTopLeftRadius: t.radius.xl, // 28
               borderTopRightRadius: t.radius.xl,
-              maxHeight: SCREEN_HEIGHT * maxHeightRatio,
-              paddingBottom: t.space['2xl'],
+              maxHeight: sheetMaxHeight(kb.containerHeight || SCREEN_HEIGHT, maxHeightRatio, kb.lift),
+              // Klavye açıkken alt boşluk küçülür (klavye zaten ev göstergesini örter).
+              paddingBottom: kb.lift > 0 ? t.space.md : t.space['2xl'],
               opacity,
-              transform: [{ translateY }],
+              transform: [{ translateY: sheetY }],
             },
           ]}
           testID={testID}
@@ -189,7 +204,18 @@ export function Sheet({
             </Pressable>
           </View>
 
-          <View style={[styles.body, contentStyle]}>{children}</View>
+          {scroll ? (
+            <ScrollView {...SCROLL_KEYBOARD}
+              style={styles.scroll}
+              contentContainerStyle={[styles.body, contentStyle]}
+              showsVerticalScrollIndicator={false}
+              testID={testID ? `${testID}-scroll` : 'sheet-scroll'}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={[styles.body, styles.shrink, contentStyle]}>{children}</View>
+          )}
           {footer ? <View style={{ paddingHorizontal: t.space['2xl'] }}>{footer}</View> : null}
         </Animated.View>
       </View>
@@ -215,4 +241,6 @@ const styles = StyleSheet.create({
   title: { flex: 1 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: 24 },
+  shrink: { flexShrink: 1 },
+  scroll: { flexGrow: 0, flexShrink: 1 },
 });

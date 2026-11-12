@@ -11,6 +11,7 @@ import { Campaign, fetchAvailableCampaigns } from '../../lib/offers'
 import { gradyan, gunKaldi, indirimEtiketi } from '../../lib/campaignVisual'
 import { RootStackParamList } from '../../navigation/types'
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme'
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
@@ -57,7 +58,7 @@ export default function CouponRail() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.rail}

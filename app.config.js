@@ -23,10 +23,14 @@ module.exports = {
     // expo-clipboard) — OTA ile gidemez, yeni build sart. runtimeVersion policy
     // 'appVersion' oldugu icin bu satir ayni zamanda 1.0.7 cihazlarin bu paketi
     // ALMASINI engelleyen emniyet kilididir (OTA kanali yeni surume baglanir).
+    // G20-S2 (mağaza hazırlığı): sürüm 1.1.0 olarak kalır. Build numarası EAS
+    // remote'tan gelir (eas.json appVersionSource: 'remote' + production
+    // autoIncrement) → aşağıdaki ios.buildNumber / android.versionCode alanları
+    // EAS derlemesinde KULLANILMAZ; bilerek dokunulmadı.
     version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
-    userInterfaceStyle: 'light',
+    userInterfaceStyle: 'automatic',
     scheme: 'kcal',
     jsEngine: 'hermes',
     // İzin metinleri varsayılan (TR) infoPlist/plugin seçeneklerinde; EN cihazlar
@@ -47,36 +51,42 @@ module.exports = {
       supportsTablet: false,
       bundleIdentifier: 'com.kcalmobile.app',
       buildNumber: '1',
-      userInterfaceStyle: 'light',
-      // DERİN BAĞLANTI (G5-S4) — Universal Links. l.eatkcal.com'daki
-      // .well-known/apple-app-site-association (Vercel landing-page) bu bundle'a
-      // (A63MT69ASR.com.kcalmobile.app) /p/* ve /u/* yollarını eşler. Alan adı
-      // yayına girene ve YENİ BUILD çıkana kadar mevcut 1.0.7 cihazlarda etkisiz.
+      userInterfaceStyle: 'automatic',
+      // DERİN BAĞLANTI (G5-S4, G20-S2) — Universal Links. l.eatkcal.com'daki
+      // .well-known/apple-app-site-association bu bundle'a
+      // (A63MT69ASR.com.kcalmobile.app) /p/* (gönderi), /u/* (profil),
+      // /k/* (kutu kartı QR), /s/* (saha kodu) ve /kesfet yollarını eşler.
+      // İçerik: docs/store/well-known/apple-app-site-association (web'e konacak).
+      // Alan adı tek giriş yeterli; yollar AASA'da. Yeni build şart (OTA değil).
       associatedDomains: ['applinks:l.eatkcal.com'],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
           'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
         NSMicrophoneUsageDescription:
-          'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+          'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+        // G22-S1 md.1: sesle ekleme — telefonun konuşma tanıması (EN: locales/en.json).
+        NSSpeechRecognitionUsageDescription:
+          'Söylediğin yemekler telefonun konuşma tanımasıyla yazıya çevrilir. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
         NSPhotoLibraryUsageDescription:
           'Tabak fotoğrafını taramak, profil fotoğrafı, görsel ve video seçmek için fotoğraf kütüphanesine erişim gereklidir.',
         NSPhotoLibraryAddUsageDescription:
-          'Siparişlerinize ait görselleri fotoğraflarınıza kaydetmek için izin gereklidir.',
+          'Paylaşım kartlarını ve görselleri fotoğraflarına kaydetmek için izin gereklidir.',
         NSLocationWhenInUseUsageDescription:
           'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
       },
       // GİZLİLİK MANİFESTİ (2026-11-03, G3-S1) — prebuild bundan
       // ios/Kcalculate/PrivacyInfo.xcprivacy'yi üretir. Her veri tipi kodda
       // GERÇEKTEN toplanan veridir; satır referansları docs/night/G3-S1-LOG.md.
-      //   · NSPrivacyTracking: true — Meta SDK + ATT + SKAdNetwork aktif.
-      //   · NSPrivacyTrackingDomains: FBSDK'nın kendi manifestiyle aynı
-      //     (ep1.facebook.com); app seviyesinde true + boş domain = Apple reddi.
+      //   · G26-S1: NSPrivacyTracking: false — ATT kaldırıldı, uygulama izleme
+      //     YAPMAZ (IDFA yok, setAdvertiserTrackingEnabled(false)). Meta olayları
+      //     ATT'siz AEM / SKAdNetwork ile toplu ölçüm. NSPrivacyTrackingDomains
+      //     yok (FBSDK'nın kendi manifesti ep1.facebook.com'u ayrıca bildirir;
+      //     ATT izni olmadığı için iOS o alana bağlantıyı zaten engeller).
       //   · Required-reason API'ler (FileTimestamp/UserDefaults/BootTime/
       //     DiskSpace) mevcut native dosyadan BİREBİR taşındı — kaybolmasın.
       privacyManifests: {
-        NSPrivacyTracking: true,
-        NSPrivacyTrackingDomains: ['ep1.facebook.com'],
+        NSPrivacyTracking: false,
         NSPrivacyCollectedDataTypes: [
           {
             // auth (OTP/Apple/Google) — src/core/AuthContext.tsx
@@ -128,17 +138,48 @@ module.exports = {
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // profil/görsel seçimi — expo-image-picker
+            // profil/görsel seçimi — expo-image-picker; G20-S2: + AI tarama
+            // fotoğrafı (user-media, Anthropic'e tahmin için), Keşfet foto/video, destek eki
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
             NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts
+            // G20-S2 — Keşfet video gönderilerinin ses izi (galeriden seçilen video)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeAudioData',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — gönderi metni, yorum, değerlendirme (kesfet/client.ts create_post, orderFeedback)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherUserContent',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — destek talepleri (support_tickets, SupportScreen)
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCustomerSupport',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // G20-S2 — kayıtlı kart: son 4 hane, marka, banka, kart jetonu
+            // (user_cards / user_card_secrets, Paynkolay kart saklama). Kart numarası
+            // uygulamada girilmez ama geliştirici jeton + son 4 haneyi saklıyor.
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePaymentInfo',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts (G26: izleme yok)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: [
               'NSPrivacyCollectedDataTypePurposeAppFunctionality',
               'NSPrivacyCollectedDataTypePurposeAnalytics',
@@ -146,10 +187,10 @@ module.exports = {
             ],
           },
           {
-            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts
+            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts (G26: izleme yok)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: [
               'NSPrivacyCollectedDataTypePurposeAppFunctionality',
               'NSPrivacyCollectedDataTypePurposeAnalytics',
@@ -157,11 +198,12 @@ module.exports = {
             ],
           },
           {
-            // IDFA — react-native-fbsdk-next (ATT sonrası, analytics.ts)
+            // G26-S1: IDFA TOPLANMAZ (ATT yok). Yalnız anon_id (cihazda kalıcı kurulum
+            // kimliği, analytics_events, G20-S2) → birinci taraf Analytics.
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: true,
-            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising'],
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
           },
           {
             // Supabase kullanıcı kimliği — analytics_events.user_id
@@ -174,16 +216,17 @@ module.exports = {
             ],
           },
           {
-            // Sentry — src/lib/sentry.ts
+            // Sentry — src/lib/sentry.ts. G20-S2: Linked true — sentry.ts:68
+            // Sentry.setUser({ id: userId }) kullanıcı UUID'sini olaya bağlıyor.
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCrashData',
-            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // Sentry performans — src/lib/sentry.ts
+            // Sentry performans — src/lib/sentry.ts (setUser → Linked true, G20-S2)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePerformanceData',
-            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeLinked: true,
             NSPrivacyCollectedDataTypeTracking: false,
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
@@ -211,7 +254,9 @@ module.exports = {
     android: {
       package: 'com.kcalmobile.app',
       versionCode: 10,
-      userInterfaceStyle: 'light',
+      // G23-S1: Android'de koyu tema yalnız expo-system-ui kuruluyken uygulanır (prebuild-config
+      // otomatik eklentisi; İlter 10 Kas onayı). Yeni native derleme gerekir.
+      userInterfaceStyle: 'automatic',
       adaptiveIcon: {
         backgroundColor: '#000000',
         foregroundImage: './assets/adaptive-icon-foreground.png',
@@ -219,18 +264,24 @@ module.exports = {
         monochromeImage: './assets/adaptive-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      // DERİN BAĞLANTI (G5-S4) — Android App Links. autoVerify, l.eatkcal.com'daki
+      // DERİN BAĞLANTI (G5-S4, G20-S2) — Android App Links. autoVerify, l.eatkcal.com'daki
       // .well-known/assetlinks.json ile imza parmak izini eşleştirir (parmak izi
-      // İlter tarafından eklenecek — bkz. docs/night/G5-S4-LINKS.md). Yalnız /p
-      // ve /u yolları; diğer yollar tarayıcıda açılır. Alan adı + yeni build şart.
+      // İlter tarafından eklenecek — bkz. docs/store/well-known/README.md).
+      // Yollar AASA ile aynı: /p/ /u/ /k/ /s/ + tam /kesfet. Önek SONUNDA "/"
+      // var: eski '/p' öneki l.eatkcal.com/privacy sayfasını da uygulamaya
+      // çekiyordu (pathPrefix '/p' → '/privacy' eşleşir). Diğer yollar
+      // (privacy, terms, account-deletion) tarayıcıda açılır. Yeni build şart.
       intentFilters: [
         {
           action: 'VIEW',
           autoVerify: true,
           category: ['BROWSABLE', 'DEFAULT'],
           data: [
-            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/p' },
-            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/u' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/p/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/u/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/k/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/s/' },
+            { scheme: 'https', host: 'l.eatkcal.com', path: '/kesfet' },
           ],
         },
       ],
@@ -242,6 +293,16 @@ module.exports = {
         'CAMERA',
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
+        // G22-S1 md.1: sesle ekleme (expo-speech-recognition). Ses kaydı saklanmaz.
+        'RECORD_AUDIO',
+      ],
+      // G26-S1 md.9: introspect'te prebuild şablonundan gelen kullanılmayan izinler
+      // (depolama — Foto Seçici izinsiz; SYSTEM_ALERT_WINDOW — yalnız geliştirme katmanı)
+      // birleştirilmiş manifestten de silinir (tools:node="remove").
+      blockedPermissions: [
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+        'android.permission.SYSTEM_ALERT_WINDOW',
       ],
       // FAZ L — react-native-maps (Android zorunlu). Ayrı, kısıtlı bir Android
       // key (sadece "Maps SDK for Android") kullanılır; tanımlı değilse genel
@@ -330,7 +391,7 @@ module.exports = {
           cameraPermission:
             'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
           microphonePermission:
-            'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+            'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
         },
       ],
       // G17-S2 md.1/3 (İlter onayı 7 Kas 15:35): canlı Tara vizörü. İzin metni
@@ -343,16 +404,41 @@ module.exports = {
           cameraPermission:
             'Tabağını tarayıp kalorisini tahmin etmek, profil fotoğrafı çekmek, video kaydetmek ve ürün görselleri yüklemek için kameraya erişim gereklidir.',
           microphonePermission:
-            'Video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+            'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
           recordAudioAndroid: false,
         },
       ],
       'expo-video',
+      // G22-S1 md.1 (İlter paket izni 10 Kas): sesle ekleme — telefonun konuşma tanıması.
+      // iOS NSSpeechRecognitionUsageDescription + NSMicrophoneUsageDescription (aynı metinler),
+      // Android RECORD_AUDIO + Google konuşma hizmeti görünürlüğü. YENİ NATIVE DERLEME gerekir.
+      [
+        'expo-speech-recognition',
+        {
+          microphonePermission:
+            'Sesle yemek eklerken söylediklerini yazıya çevirmek ve video paylaşırken sesi kaydetmek için mikrofona erişim gereklidir.',
+          speechRecognitionPermission:
+            'Söylediğin yemekler telefonun konuşma tanımasıyla yazıya çevrilir. Ses kaydın saklanmaz; kalori tahmini için yalnız yazıya dökülen metin gönderilir.',
+          androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as'],
+        },
+      ],
+      // expo-image-manipulator (~14.0.8, G19-S1 Tara uzun kenar ≤ 1600): bu
+      // paketin config plugin'i YOK (app.plugin.js yok) → plugins dizisine
+      // eklenemez (eklenirse `expo config` "does not contain a valid config
+      // plugin" hatası verir). Yerel modül autolinking ile derlemeye girer;
+      // izin/Info.plist gerektirmez. YENİ NATIVE DERLEME şart (G20-S2 KARAR).
       [
         'expo-location',
         {
-          locationAlwaysAndWhenInUsePermission:
+          // G20-S2: yalnız "uygulama kullanılırken" konum. Önceden yalnız
+          // AlwaysAndWhenInUse verildiği için eklenti NSLocationAlwaysUsageDescription'ı
+          // İngilizce varsayılanla ("Allow $(PRODUCT_NAME) to access your location")
+          // Info.plist'e yazıyordu; uygulama arka plan konumu KULLANMIYOR.
+          // false = anahtarı Info.plist'ten sil (config-plugins applyPermissions).
+          locationWhenInUsePermission:
             'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
+          locationAlwaysAndWhenInUsePermission: false,
+          locationAlwaysPermission: false,
         },
       ],
       [
@@ -365,6 +451,11 @@ module.exports = {
         },
       ],
       'expo-apple-authentication',
+      // G29-S1 md.1 (İlter 11 Kas): çıkartma — yerel modül modules/subject-lift (npm paketi yok,
+      // autolinking ./modules). Android: ML Kit modeli Play hizmetleriyle iner (manifest
+      // meta-data, expo-camera'nın barcode_ui değeriyle birleştirilir). iOS 17 altı: kapalı.
+      // YENİ NATIVE DERLEME gerekir (OTA değil); eski derlemede modül yok → normal fotoğraf.
+      './modules/subject-lift/app.plugin.js',
       [
         '@react-native-google-signin/google-signin',
         {
@@ -374,13 +465,9 @@ module.exports = {
             'com.googleusercontent.apps.173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss',
         },
       ],
-      [
-        'expo-tracking-transparency',
-        {
-          userTrackingPermission:
-            'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
-        },
-      ],
+      // G26-S1 (İlter 11 Kas): expo-tracking-transparency (ATT) KALDIRILDI — Apple izleme
+      // sorusu yok, NSUserTrackingUsageDescription Info.plist'e yazılmaz. Meta ölçümü ATT'siz
+      // (AEM / SKAdNetwork); iOS'ta setAdvertiserTrackingEnabled(false) sabit (analytics.ts).
       [
         'react-native-fbsdk-next',
         {
@@ -391,18 +478,16 @@ module.exports = {
           clientToken: '99ec21a60f8699f2534e3aaa52951f73',
           displayName: 'KCAL',
           scheme: 'fb4403872953189106',
-          // ATT UYUMU (2026-11-03, G3-S1): SDK açılışta OTOMATİK başlatılmaz ve
-          // IDFA'yı varsayılan olarak TOPLAMAZ. src/lib/analytics.ts önce ATT
-          // iznini ister, izin verilirse setAdvertiserTrackingEnabled(true) +
-          // setAdvertiserIDCollectionEnabled(true) çağırır, SONRA
-          // initializeSDK() der. Böylece ATT onayından önce IDFA okunmaz
-          // (Apple 5.1.2). Önceki true/true/true değerleri auto-init ile bu
-          // sırayı atlayıp izin öncesi IDFA okuyabiliyordu.
+          // SDK açılışta OTOMATİK başlatılmaz ve IDFA'yı TOPLAMAZ (G3-S1).
+          // G26-S1: ATT yok → src/lib/analytics.ts iOS'ta
+          // setAdvertiserTrackingEnabled(false) + setAdvertiserIDCollectionEnabled(false)
+          // SABİT çağırır, SONRA initializeSDK(). iosUserTrackingPermission VERİLMEZ
+          // (verilirse eklenti NSUserTrackingUsageDescription yazar).
           advertiserIDCollectionEnabled: false,
-          autoLogAppEventsEnabled: true,
+          // G27-S1: otomatik olaylar varsayılan KAPALI (KVKK açık rıza); analytics.ts yalnız
+          // reklam tercihi açıkça 'açık' ise setAutoLogAppEventsEnabled(true) çağırır.
+          autoLogAppEventsEnabled: false,
           isAutoInitEnabled: false,
-          iosUserTrackingPermission:
-            'KCAL, size daha alakalı reklamlar gösterebilmek için bu izni istiyor.',
         },
       ],
     ],

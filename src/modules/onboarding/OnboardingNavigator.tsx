@@ -28,7 +28,6 @@ import { useAuth } from '../../core/AuthContext';
 import { useFeature } from '../../core/flags';
 import { postAuthShellTab } from '../shell/tabs';
 import { resolvePostSocialAuth } from '../../lib/postSocialAuth';
-import { registerForPushNotifications } from '../../core/notifications';
 import type { RootStackParamList } from '../../navigation/types';
 import { CameraIcon, Plus, ShoppingBag } from '../../components/icons';
 import { OnbScaffold } from './components/OnbScaffold';
@@ -37,9 +36,15 @@ import { UnderageView } from './components/UnderageView';
 import { useOnb } from './components/onbTheme';
 import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
+import { ConsentSheet } from './consent/ConsentSheet';
+import { PolicyAcceptRow } from './consent/ConsentBlock';
+import { acceptPolicies, holdGate } from '../../lib/consent/store';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
 import { track } from '../../lib/analytics';
+import NetInfo from '@react-native-community/netinfo';
+import { AuthAlert } from './components/AuthAlert';
+import { classifySocialAuthError, shouldShowAuthAlert } from './socialAuthError';
 
 export type OnbIntent = 'track' | 'order' | 'both';
 
@@ -49,7 +54,12 @@ export type OnbParamList = {
   OnbIntent: undefined;
   OnbNotify: { intent: Exclude<OnbIntent, 'order'> };
   /** `vitrinSheet`: YALNIZ vitrin — e-posta sheet'i açık (FinOnbAccountEmail/Keyboard). */
-  OnbAccount: { intent: Exclude<OnbIntent, 'order'>; vitrinSheet?: 'email' | 'keyboard' };
+  OnbAccount: {
+    intent: Exclude<OnbIntent, 'order'>;
+    vitrinSheet?: 'email' | 'keyboard';
+    /** YALNIZ vitrin — FinOnbAccountError satır içi uyarısı açık (G22-S2 md.5). */
+    vitrinAuthError?: { kind: 'network' | 'account'; provider: 'apple' | 'google' };
+  };
   OnbUnderage: undefined;
 };
 
@@ -67,6 +77,10 @@ const GLASS = {
   foot: { source: require('../../../assets/glass/foot.png'), x: 230, y: 118, w: 72, h: 120 },
   drop: { source: require('../../../assets/glass/drop.png'), x: 148, y: 120, w: 96, h: 130 },
   flame: { source: require('../../../assets/glass/flame.png'), x: 127, y: 140, w: 138, h: 170 },
+  // G21-S1 md.1 (Tur 26f): FinOnbAccount damla → kase (damla yuvasında, kase oranı);
+  // FinOnbNotify alev → kupa (alev yuvasının merkezinde, kupa oranı).
+  bowlAccount: { source: require('../../../assets/glass/bowl.png'), x: 126, y: 133, w: 140, h: 104 },
+  trophyNotify: { source: require('../../../assets/glass/trophy.png'), x: 121, y: 160, w: 151, h: 130 },
 };
 
 // ── Karşılama ─────────────────────────────────────────────────────────────────
@@ -177,6 +191,20 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const vSheet = __DEV__ ? route.params?.vitrinSheet : undefined;
   const [emailOpen, setEmailOpen] = useState(vSheet != null);
   const homeAfterClose = useRef(false);
+  // G27-S1 (İlter 11 Kas): reklam ölçümü (Meta) KAPALI gelir — yalnız kullanıcı açıkça
+  // açarsa (KVKK açık rıza). Apple/Google'da "Ayrıntılar" sheet'i, e-postada sheet
+  // içindeki blok aynı durumu değiştirir.
+  const [adOn, setAdOn] = useState(false);
+  // G20-S3 md.2b (İlter kararı): Apple/Google/e-posta — ZORUNLU onay kutusu
+  // (Koşullar + Gizlilik + 18+ beyanı); işaretlenmeden düğmeler pasif. E-posta
+  // sheet'i ve ayrıntı sheet'i AYNI durumu gösterir/değiştirir.
+  const [accepted, setAccepted] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // G22-S2 md.5 (FinOnbAccountError): ağ / hesap hatası → Apple–Google altında satır
+  // içi uyarı + "Tekrar dene" (aynı sağlayıcı). İptal SESSİZ → uyarı yok.
+  const [authFail, setAuthFail] = useState<{ kind: 'network' | 'account'; provider: 'apple' | 'google' } | null>(
+    __DEV__ ? route.params?.vitrinAuthError ?? null : null,
+  );
   const goHome = () => root?.navigate('Tabs', { screen: postAuthShellTab(yeniKabuk) });
 
   const afterAuth = async (result: {
@@ -185,26 +213,53 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     email?: string;
     givenName?: string;
     familyName?: string;
-  }) => {
-    if (result.cancelled || result.error) return;
+  }): Promise<string | null> => {
+    if (result.cancelled || result.error) return null;
     const post = await resolvePostSocialAuth({
       email: result.email,
       givenName: result.givenName,
       familyName: result.familyName,
     });
-    if (post.outcome === 'error') return;
+    // G22-S2 md.5: oturum sonrası profil çözümü başarısız → çağıran uyarı gösterir.
+    if (post.outcome === 'error') return post.error ?? 'post_social_auth_failed';
     // G18-S1 md.4: yeni ya da dönen HER hesap → Ana sayfa (Niyet/Bildirim adımı yok;
     // hedef kurulumu Ana sayfa profil kartından, bildirim izni ilk kayıttan sonra).
     goHome();
+    return null;
+  };
+
+  // Hata sonucunu sınıfla → uyarı (ağ/hesap) ya da sessiz (iptal). NetInfo yalnız
+  // hata dalında okunur: çevrimdışıysa her hata "Bağlanamadık" sayılır.
+  const showFailure = async (
+    provider: 'apple' | 'google',
+    outcome: { cancelled?: boolean; error?: string | null; errorCode?: string },
+  ) => {
+    const net = await NetInfo.fetch().catch(() => null);
+    const kind = classifySocialAuthError({ ...outcome, online: net ? net.isConnected !== false : null });
+    if (shouldShowAuthAlert(kind)) setAuthFail({ kind, provider });
   };
 
   const run = async (provider: 'apple' | 'google') => {
-    if (busy) return;
+    if (busy || !accepted) return;
     setBusy(true);
+    // Oturum, kabul kaydı yazılmadan açılabilir → kapı bu sırada "mevcut kullanıcı"
+    // sheet'i / ATT göstermesin.
+    const release = holdGate();
+    setAuthFail(null);
     try {
       const result = await (provider === 'apple' ? signInWithApple() : signInWithGoogle());
-      await afterAuth(result);
+      if (result.cancelled || result.error) {
+        await showFailure(provider, result);
+        return;
+      }
+      // Onay kutusu (Koşullar + Gizlilik + 18+) + reklam ölçümü tercihi.
+      await acceptPolicies({ source: 'signup_social', adOn, ageOk: true });
+      const postError = await afterAuth(result);
+      if (postError) await showFailure(provider, { error: postError });
+    } catch (e) {
+      await showFailure(provider, { error: e instanceof Error ? e.message : 'social_auth_failed' });
     } finally {
+      release();
       setBusy(false);
     }
   };
@@ -212,30 +267,51 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const link = { color: P.ink, textDecorationLine: 'underline' as const };
   return (
     <OnbScaffold
-      glass={GLASS.drop}
+      glass={GLASS.bowlAccount}
       cardTop={262}
       onBack={() => navigation.goBack()}
       dots={{ count: 2, index: 1 }}
       footer={
         <View>
           <View style={{ gap: 10 }}>
-            <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={busy} onPress={() => run('apple')} />
-            <AuthButton kind="google" label={i18n.t('onboarding.account.google')} disabled={busy} onPress={() => run('google')} />
-            <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy} onPress={() => setEmailOpen(true)} />
+            <AuthButton kind="apple" label={i18n.t('onboarding.account.apple')} disabled={busy || !accepted} onPress={() => run('apple')} />
+            <AuthButton kind="google" label={i18n.t('onboarding.account.google')} disabled={busy || !accepted} onPress={() => run('google')} />
+            {authFail ? (
+              <AuthAlert kind={authFail.kind} provider={authFail.provider} busy={busy} onRetry={() => void run(authFail.provider)} />
+            ) : null}
+            <AuthButton kind="email" label={i18n.t('onboarding.account.email')} disabled={busy || !accepted} onPress={() => setEmailOpen(true)} />
           </View>
-          <AppText textRole="helper" style={[styles.legal, { color: P.sec }]}>
-            {i18n.t('onboarding.account.legal_pre')}
-            <AppText textRole="helper" style={link}>{i18n.t('onboarding.account.terms')}</AppText>
-            {i18n.t('onboarding.account.legal_mid')}
-            <AppText textRole="helper" style={link}>{i18n.t('onboarding.account.privacy')}</AppText>
-            {i18n.t('onboarding.account.legal_post')}
+          {/* G20-S3 md.2b: "Devam ederek … kabul edersin" satırı yerine zorunlu kutu (aynı yer, aynı helper dili). */}
+          <View style={styles.legalBox}>
+            <PolicyAcceptRow accepted={accepted} onAcceptedChange={setAccepted} withAge testID="onb-account-consent" />
+          </View>
+          {/* G20-S1: Apple/Google için kısa satır + ayrıntı sheet'i (aynı blok). */}
+          <AppText textRole="helper" style={[styles.legalAds, { color: P.sec }]} testID="onb-account-ads-line">
+            {i18n.t(adOn ? 'consent.account.ads_on' : 'consent.account.ads_off')}
+            <AppText textRole="helper" style={link} onPress={() => setDetailsOpen(true)} accessibilityRole="link" testID="onb-account-details">
+              {i18n.t('consent.account.details')}
+            </AppText>
           </AppText>
         </View>
       }
     >
       <OnbTitle>{i18n.t('onboarding.account.title')}</OnbTitle>
       <OnbLead>{i18n.t('onboarding.account.sub')}</OnbLead>
+      <ConsentSheet
+        visible={detailsOpen}
+        mode="details"
+        adOn={adOn}
+        onAdChange={setAdOn}
+        accepted={accepted}
+        onAcceptedChange={setAccepted}
+        onConfirm={() => setDetailsOpen(false)}
+        onClose={() => setDetailsOpen(false)}
+      />
       <AccountEmailSheet
+        adOn={adOn}
+        onAdChange={setAdOn}
+        accepted={accepted}
+        onAcceptedChange={setAccepted}
         visible={emailOpen}
         onClose={() => setEmailOpen(false)}
         onVerified={() => {
@@ -260,32 +336,23 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
 function NotifyScreen({ navigation }: NativeStackScreenProps<OnbParamList, 'OnbNotify'>) {
   const i18n = useT();
   const root = useRootNav(navigation);
-  const [busy, setBusy] = useState(false);
   // Final: Bildirim → Takibe başla (yeni kullanıcı hesabı az önce oluştu).
   const next = () => root?.navigate('TakibeBasla');
 
-  const allow = async () => {
-    setBusy(true);
-    try {
-      await registerForPushNotifications();
-    } catch {
-      // izin reddi/akış hatası: sessizce ilerle (ön ekran bloklamaz).
-    } finally {
-      setBusy(false);
-      next();
-    }
-  };
+  // G26-S1 (İlter 11 Kas): onboarding'de SİSTEM PENCERESİ YOK — bu ön ekran (akışta
+  // erişilmiyor) izin istemez; bildirim izni ilk öğün sonrası tek açıklama ekranında.
+  const allow = () => next();
 
   return (
     <OnbScaffold
-      glass={GLASS.flame}
+      glass={GLASS.trophyNotify}
       cardTop={400}
       onBack={() => navigation.goBack()}
       dots={{ count: 3, index: 2 }}
       footer={
         <View style={styles.row}>
           <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.later')} onPress={next} />
-          <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.allow')} onPress={busy ? () => {} : allow} />
+          <OnbButton kind="chip" style={styles.half} label={i18n.t('onboarding.notify.allow')} onPress={allow} />
         </View>
       }
     >
@@ -340,7 +407,8 @@ const styles = StyleSheet.create({
   // FinOnbWelcome: kart içi dikey 14 boşluk; "kcal." 700/18; başlık 700/40, satır 1.08.
   brand: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 18, lineHeight: 23, marginBottom: 14 },
   headline: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 40, lineHeight: 43 },
-  legal: { marginTop: 14, textAlign: 'center' },
+  legalBox: { marginTop: 14 },
+  legalAds: { marginTop: 4, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1, paddingHorizontal: 8 },
 });

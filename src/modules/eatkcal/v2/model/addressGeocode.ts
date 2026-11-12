@@ -7,6 +7,8 @@
 //    (reverseGeocodeWithGoogle, AVS:46-68) aynı URL/anahtar kuralıyla buraya alındı.
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { askOnce } from '../../../../lib/permissions/askOnce';
 import {
   fromNativeGeocode,
   mergeReverseGeo,
@@ -37,14 +39,20 @@ export async function readLocationPermission(): Promise<{ status: LocationPermis
   }
 }
 
-/** İzin iste (AVS:142 / 161). */
+/** G26-S1: bir kez reddedilen konum izni bir daha sistem penceresiyle istenmez. */
+export const LOCATION_DENIED_KEY = '@kcal_location_denied';
+
+/**
+ * İzin iste — YALNIZ kullanıcı "Konumumu kullan"a / "İzin ver"e dokununca çağrılır
+ * (G26-S1). Reddedildiyse bir daha sormaz (askOnce); ekran elle seçime düşer.
+ */
 export async function requestLocationPermission(): Promise<boolean> {
-  try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    return status === 'granted';
-  } catch {
-    return false;
-  }
+  return askOnce({
+    read: readLocationPermission,
+    request: async () => (await Location.requestForegroundPermissionsAsync()).status as LocationPermission,
+    wasDenied: async () => (await AsyncStorage.getItem(LOCATION_DENIED_KEY)) === '1',
+    markDenied: () => AsyncStorage.setItem(LOCATION_DENIED_KEY, '1'),
+  });
 }
 
 /** Cihaz konumu (AVS:148) — alınamazsa null; engel değil. */

@@ -26,6 +26,7 @@ import { useAddressStore } from '../../../store/addressStore';
 import { RootStackParamList } from '../../../navigation/types';
 import { readCityGatePassed, writeCityGatePassed } from '../cityGateStorage';
 import CityGateSheet from '../ui/CityGateSheet';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -80,7 +81,7 @@ export default function EatHomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.color.bg, paddingTop: insets.top }]}>
-      <ScrollView
+      <ScrollView {...SCROLL_KEYBOARD}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + TAB_BAR_TOTAL + 24 }}
       >

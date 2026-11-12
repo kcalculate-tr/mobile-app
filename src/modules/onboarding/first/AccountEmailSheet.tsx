@@ -9,9 +9,7 @@
 // Hareket: sheet base 300 enter / fast 200 exit, scrim 0→0.32; azaltılmış 200 ms opaklık.
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,23 +20,38 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 
 import Svg, { Path } from 'react-native-svg';
 
 import { AppText } from '../../../core/design/components/AppText';
-import { CURVE, DURATION, REDUCED, useReducedMotion } from '../../../core/design/motion';
+import { CURVE, DURATION, REDUCED, WAIT, useReducedMotion } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
+import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
 import { useAuth } from '../../../core/AuthContext';
+import { useReviewPasswordLogin } from '../../../lib/auth/useReviewPasswordLogin';
 import { isCodeComplete, isValidEmail, sanitizeCode } from '../v2/loginLogic';
 import { OnbButton } from '../components/pieces';
+import { ConsentBlock } from '../consent/ConsentBlock';
+import { acceptPolicies, holdGate } from '../../../lib/consent/store';
 import { useOnb } from '../components/onbTheme';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
 
 export function AccountEmailSheet({
+  adOn = false,
+  onAdChange,
+  accepted: acceptedProp,
+  onAcceptedChange,
   visible,
   onClose,
   onVerified,
   onClosed,
   vitrinFocus,
 }: {
+  /** G20-S1: reklam ölçümü (Meta) — Hesap ekranıyla ortak durum. */
+  adOn?: boolean;
+  onAdChange?: (v: boolean) => void;
+  /** G20-S3 md.2b: Hesap ekranıyla ORTAK zorunlu kutu (verilmezse sheet kendi tutar). */
+  accepted?: boolean;
+  onAcceptedChange?: (v: boolean) => void;
   visible: boolean;
   onClose: () => void;
   /** Kod doğrulandı (oturum açıldı) → Ana sayfa. */
@@ -59,7 +72,41 @@ export function AccountEmailSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
+  // G20-S1 md.1: Koşullar + Gizlilik kabulü zorunlu (onay kutusu), "Kod gönder" öncesi.
+  const [acceptedOwn, setAcceptedOwn] = useState(false);
+  const accepted = acceptedProp ?? acceptedOwn;
+  const setAccepted = (v: boolean) => {
+    if (onAcceptedChange) onAcceptedChange(v);
+    else setAcceptedOwn(v);
+  };
+  const [showRequired, setShowRequired] = useState(false);
+  const releaseRef = useRef<(() => void) | null>(null);
+  const release = () => {
+    releaseRef.current?.();
+    releaseRef.current = null;
+  };
+  useEffect(() => release, []);
   const inputRef = useRef<TextInput>(null);
+  // G28-S1 md.5: inceleme adresi → şifreyle giriş (diğer herkes için kod akışı aynı).
+  const review = useReviewPasswordLogin(email);
+  const [pwFocused, setPwFocused] = useState(false);
+  const reviewLogin = async () => {
+    if (busy || review.busy) return;
+    if (!accepted) {
+      setShowRequired(true);
+      return;
+    }
+    setError('');
+    // Oturum, kabul kaydından önce açılır → kapı beklesin (kod akışıyla aynı).
+    if (!releaseRef.current) releaseRef.current = holdGate();
+    if (!(await review.submit())) {
+      release();
+      return;
+    }
+    await acceptPolicies({ source: 'signup_email', adOn, ageOk: true }).catch(() => {});
+    release();
+    onVerified();
+  };
 
   const y = useSharedValue(1);
   const o = useSharedValue(0);
@@ -80,6 +127,8 @@ export function AccountEmailSheet({
         setSent(false);
         setCode('');
         setError('');
+        setShowRequired(false);
+        release();
         onClosed?.();
       };
       if (reduced) {
@@ -93,7 +142,7 @@ export function AccountEmailSheet({
   }, [visible]);
 
   useEffect(() => {
-    if (visible && __DEV__ && vitrinFocus) setTimeout(() => inputRef.current?.focus(), 350);
+    if (visible && __DEV__ && vitrinFocus) setTimeout(() => inputRef.current?.focus(), WAIT.focusAfterMotion);
   }, [visible, vitrinFocus]);
 
   const scrimStyle = useAnimatedStyle(() => ({ opacity: o.value }));
@@ -104,6 +153,10 @@ export function AccountEmailSheet({
 
   const send = async () => {
     if (busy) return;
+    if (!accepted) {
+      setShowRequired(true);
+      return;
+    }
     if (!isValidEmail(email)) {
       setError(i18n.t('onboarding.email.err_email'));
       return;
@@ -116,6 +169,8 @@ export function AccountEmailSheet({
       setError(err);
       return;
     }
+    // Kod doğrulanınca oturum, kabul kaydından önce açılır → kapı beklesin.
+    if (!releaseRef.current) releaseRef.current = holdGate();
     setSent(true);
   };
 
@@ -129,6 +184,8 @@ export function AccountEmailSheet({
       setError(i18n.t('onboarding.email.err_code'));
       return;
     }
+    await acceptPolicies({ source: 'signup_email', adOn, ageOk: true }).catch(() => {});
+    release();
     onVerified();
   };
 
@@ -153,11 +210,9 @@ export function AccountEmailSheet({
           accessibilityLabel={i18n.t('onboarding.email.close')}
         />
       </Animated.View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.kav}
-        pointerEvents="box-none"
-      >
+      {/* G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView. */}
+      <View style={styles.kav} pointerEvents="box-none">
+        <KeyboardLiftView limitHeight testID="email-sheet-lift">
         <Animated.View
           accessibilityViewIsModal
           style={[
@@ -187,10 +242,9 @@ export function AccountEmailSheet({
               </View>
             </Pressable>
           </View>
-          <ScrollView
+          <ScrollView {...SCROLL_KEYBOARD}
             style={styles.scroll}
             contentContainerStyle={styles.body}
-            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {!sent ? (
@@ -228,7 +282,58 @@ export function AccountEmailSheet({
                     {error}
                   </AppText>
                 ) : null}
-                <OnbButton kind="lime" label={i18n.t('onboarding.email.send')} onPress={send} disabled={busy} />
+                <ConsentBlock
+                  withAge
+                  accepted={accepted}
+                  onAcceptedChange={(v) => {
+                    setAccepted(v);
+                    if (v) setShowRequired(false);
+                  }}
+                  showRequired={showRequired}
+                  adOn={adOn}
+                  onAdChange={(v) => onAdChange?.(v)}
+                  testID="fin-onb-email-consent"
+                />
+                {review.active ? (
+                  <>
+                    <View style={{ gap: 6 }}>
+                      <AppText style={[styles.label, { color: P.sec }]}>{i18n.t('onboarding.v2.login.password_label')}</AppText>
+                      <View style={[styles.field, { backgroundColor: fieldBg }, ring(pwFocused)]}>
+                        <TextInput
+                          value={review.password}
+                          onChangeText={review.setPassword}
+                          secureTextEntry
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          autoComplete="password"
+                          textContentType="password"
+                          returnKeyType="go"
+                          onSubmitEditing={reviewLogin}
+                          onFocus={() => setPwFocused(true)}
+                          onBlur={() => setPwFocused(false)}
+                          accessibilityLabel={i18n.t('onboarding.v2.login.password_label')}
+                          accessibilityHint={i18n.t('onboarding.v2.login.password_hint')}
+                          style={[styles.input, { color: P.ink }]}
+                          testID="fin-onb-email-review-password"
+                        />
+                      </View>
+                      {review.failed ? (
+                        <AppText textRole="helper" style={styles.err} accessibilityLiveRegion="polite">
+                          {i18n.t('onboarding.v2.login.password_wrong')}
+                        </AppText>
+                      ) : null}
+                    </View>
+                    <OnbButton
+                      kind="lime"
+                      label={i18n.t('onboarding.v2.login.password_submit')}
+                      onPress={reviewLogin}
+                      disabled={busy || review.busy || !review.password}
+                      testID="fin-onb-email-review-submit"
+                    />
+                  </>
+                ) : (
+                  <OnbButton kind="lime" label={i18n.t('onboarding.email.send')} onPress={send} disabled={busy} />
+                )}
               </>
             ) : (
               <>
@@ -283,7 +388,8 @@ export function AccountEmailSheet({
             )}
           </ScrollView>
         </Animated.View>
-      </KeyboardAvoidingView>
+        </KeyboardLiftView>
+      </View>
     </Modal>
   );
 }
@@ -292,6 +398,7 @@ const styles = StyleSheet.create({
   kav: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     maxHeight: 720,
+    flexShrink: 1,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
@@ -301,7 +408,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 22, lineHeight: 25, flex: 1 },
   xHit: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   xDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flexGrow: 0 },
+  scroll: { flexGrow: 0, flexShrink: 1 },
   body: { paddingTop: 4, paddingHorizontal: 20, paddingBottom: 28, gap: 14 },
   lead: { fontSize: 15, lineHeight: 21 },
   label: { fontSize: 13, lineHeight: 17, fontFamily: 'PlusJakartaSans_600SemiBold' },

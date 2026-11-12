@@ -55,28 +55,8 @@ export async function setupAndroidChannel(): Promise<void> {
 
 export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
 
-// Sadece izin ister + AsyncStorage flag'e yazar (token almaz, DB'ye dokunmaz)
-// Onboarding son step'inde çağrılır — kullanıcı henüz auth olmamış olabilir.
-export async function requestPushPermissionOnly(): Promise<PushPermissionStatus> {
-  try {
-    if (!Device.isDevice) {
-      await AsyncStorage.setItem(PUSH_PERMISSION_FLAG, 'undetermined');
-      return 'undetermined';
-    }
-    await setupAndroidChannel();
-    const existing = await Notifications.getPermissionsAsync();
-    let status = existing.status as PushPermissionStatus;
-    if (status !== 'granted') {
-      const requested = await Notifications.requestPermissionsAsync();
-      status = requested.status as PushPermissionStatus;
-    }
-    await AsyncStorage.setItem(PUSH_PERMISSION_FLAG, status);
-    return status;
-  } catch (e) {
-    console.warn('[push] permission ask error:', e);
-    return 'undetermined';
-  }
-}
+// G26-S1: izin İSTEME burada YOK — tek yer src/core/push/pushPermission.ts
+// (PushPermissionPrompt akışı: ilk öğün sonrası açıklama ekranı / Ayarlar › Bildirimler).
 
 export type RegisterResult = {
   success: boolean;
@@ -84,27 +64,19 @@ export type RegisterResult = {
   error?: string;
 };
 
-// İzin + token al + push_tokens tablosuna upsert.
-// Auth sonrası (login/register) çağrılır. Daha önce reddedildiyse token istemez.
+// Token al + push_tokens tablosuna upsert. Oturum açılınca ve izin verilince çağrılır.
+// G26-S1: izin YOKSA SORMAZ (sistem penceresi yok) — yalnız mevcut izinle jeton kaydı.
 export async function registerForPushNotifications(): Promise<RegisterResult> {
   try {
     if (!Device.isDevice) {
       return { success: false, error: 'Physical device required' };
     }
 
-    await setupAndroidChannel();
-
     const existing = await Notifications.getPermissionsAsync();
-    let finalStatus = existing.status;
     if (existing.status !== 'granted') {
-      const requested = await Notifications.requestPermissionsAsync();
-      finalStatus = requested.status;
+      return { success: false, error: 'Permission not granted' };
     }
-
-    if (finalStatus !== 'granted') {
-      await AsyncStorage.setItem(PUSH_PERMISSION_FLAG, 'denied');
-      return { success: false, error: 'Permission denied' };
-    }
+    await setupAndroidChannel();
     await AsyncStorage.setItem(PUSH_PERMISSION_FLAG, 'granted');
 
     const projectId = getProjectId();
@@ -220,6 +192,8 @@ export function setupNotificationListeners(
       const deepLink =
         (typeof data.deep_link === 'string' && data.deep_link) ||
         (typeof data.deepLink === 'string' && data.deepLink) ||
+        // G36 md.14: kişisel plan yerel bildirimleri (data.url = kcal://plan/...).
+        (typeof data.url === 'string' && data.url.startsWith('kcal://plan/') && data.url) ||
         null;
       const sendId = typeof data.send_id === 'string' ? data.send_id : null;
       const orderId = data.orderId != null ? Number(data.orderId) : null;

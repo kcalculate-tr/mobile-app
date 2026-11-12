@@ -7,7 +7,6 @@ export { MealCard } from './MealCard';
 export { ActivityCard } from './ActivityCard';
 export { CommentsSheet } from './CommentsSheet';
 export { NotificationsSheet } from './NotificationsSheet';
-export { SocialPushPrompt, socialPushPromptSeen } from './SocialPushPrompt';
 export { RulesSheet, rulesSeen } from './RulesSheet';
 export { FeedTip, feedTipSeen } from './FeedTip';
 export { ComposerScreen } from './ComposerScreen';

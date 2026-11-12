@@ -25,6 +25,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
+import { optionImageCandidates } from '../model/optionImage';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
@@ -34,7 +35,8 @@ import { track } from '../../../../lib/analytics';
 import { getEffectivePrice } from '../../../../utils/price';
 import { useCartStore } from '../../../../store/cartStore';
 import type { OptionGroup, Product, ProductOptionLink } from '../../../../types';
-import { EkButton, EkSkeleton, ekType, money, useEk } from '../ui/kit';
+import { EkButton, EkRatingLine, EkSkeleton, ekType, money, useEk } from '../ui/kit';
+import { fetchRestaurantRating, type RestaurantRating } from '../../../../lib/restaurantRating';
 import { useEkNav, type EkNavList } from '../nav';
 import {
   addTotal,
@@ -55,6 +57,7 @@ import {
 import { OptionGroupSection, type OptionGroupModel } from '../ui/product/OptionGroupSection';
 import { MacroRings } from '../ui/product/MacroRings';
 import { ProductBottomBar, STD_EASE } from '../ui/product/ProductBottomBar';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 const HERO_H = 330;
 /** Final gövde alt boşluğu (tek alt katman açıkken 124 + 20 + pay). */
@@ -86,6 +89,17 @@ export default function EkProductScreen() {
   const [templateSelections, setTemplateSelections] = useState<TemplateSelections>({});
   const [gramajIndex, setGramajIndex] = useState(-1);
   const [images, setImages] = useState<Record<string, string>>({});
+  // G22-S1 md.6: restoranın son 3 ay puanı (<10 → "Yeni").
+  const [rating, setRating] = useState<RestaurantRating | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchRestaurantRating(null)
+      .then((r) => alive && setRating(r))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [quantity, setQuantity] = useState(1);
   const [tried, setTried] = useState(false);
   const [added, setAdded] = useState(false);
@@ -182,11 +196,12 @@ export default function EkProductScreen() {
 
   const gramajOptions = useMemo(() => normalizeGramajOptions(product), [product]);
 
-  // Seçenek görselleri: seçeneğin adıyla eşleşen ürün fotoğrafı (yoksa çıkartma yer tutucusu).
+  // Seçenek görselleri (yedek): kendi görseli (image_url) ya da bağlı ürün görseli olmayan
+  // seçenekler için adıyla eşleşen ürün fotoğrafı (yoksa çıkartma yer tutucusu).
   useEffect(() => {
     const names = [
-      ...groups.flatMap((g) => g.items.map((i) => i.name)),
-      ...links.flatMap((l) => l.template?.values.map((v) => v.name) ?? []),
+      ...groups.flatMap((g) => g.items.filter((i) => !i.imageUrl && !i.linkedProductImageUrl).map((i) => i.name)),
+      ...links.flatMap((l) => l.template?.values.filter((v) => !v.image_url).map((v) => v.name) ?? []),
     ];
     if (names.length === 0) return;
     let mounted = true;
@@ -260,7 +275,12 @@ export default function EkProductScreen() {
           name: item.name,
           priceDelta: item.priceAdjustment,
           kcal: optionKcal(item),
-          imageUrl: imageFor(item.name),
+          // G35: image_url → bağlı ürün görseli → ada göre ürün görseli → boş hâl
+          images: optionImageCandidates({
+            own: item.imageUrl,
+            linked: item.linkedProductImageUrl,
+            byName: imageFor(item.name),
+          }),
           selected: sel.has(item.id),
           // ProductDetailScreen.tsx:1052-1054
           disabled: !item.isAvailable || (!sel.has(item.id) && max > 1 && sel.size >= max),
@@ -286,7 +306,7 @@ export default function EkProductScreen() {
           priceDelta: Number(v.price_modifier) || 0,
           kcal: null,
           kcalDelta: Number(v.calorie_modifier) || 0,
-          imageUrl: imageFor(v.name),
+          images: optionImageCandidates({ own: v.image_url, byName: imageFor(v.name) }),
           selected: sel.includes(v.id),
           // ProductDetailScreen.tsx:1124-1128
           disabled: multi && !sel.includes(v.id) && link.effective_max != null && sel.length >= link.effective_max,
@@ -422,7 +442,7 @@ export default function EkProductScreen() {
   // ── Durumlar ────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product-skeleton">
+      <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top }]} testID="ek-product-skeleton">
         <EkSkeleton height={HERO_H} radius={0} />
         <View style={{ padding: 16, gap: 12 }}>
           <EkSkeleton height={14} width="30%" />
@@ -466,7 +486,11 @@ export default function EkProductScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product">
-      <ScrollView
+      {/* G32-S1 md.3: güvenli alan kadar DÜZ, BOŞ, opak üst bant (tema zemini) — görsel
+          çentik / Dynamic Island / durum çubuğunun altına taşmaz; ScrollView bandın
+          altından başladığı için kaydırınca da bant aynı kalır (iOS + Android edge-to-edge). */}
+      <View style={{ height: insets.top, backgroundColor: c.bg }} testID="ek-product-safe-top" />
+      <ScrollView {...SCROLL_KEYBOARD}
         ref={scrollRef}
         style={styles.fill}
         showsVerticalScrollIndicator={false}
@@ -480,7 +504,7 @@ export default function EkProductScreen() {
           ) : (
             <View style={[styles.hero, { backgroundColor: c.line }]} />
           )}
-          <View style={[styles.heroBar, { top: insets.top + 6 }]}>
+          <View style={styles.heroBar} testID="ek-product-herobar">
             <Pressable
               onPress={() => navigation.goBack()}
               accessibilityRole="button"
@@ -505,6 +529,7 @@ export default function EkProductScreen() {
             <Text style={[ekType.h24, { color: c.ink }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
               {product.name}
             </Text>
+            {rating ? <EkRatingLine average={rating.average} count={rating.count} isNew={rating.isNew} testID="ek-product-rating" /> : null}
             {product.desc ? <Text style={[styles.desc, { color: c.secondary }]}>{product.desc}</Text> : null}
             <View style={styles.priceRow} testID="ek-product-price">
               <Text style={[ekType.b17, ekType.num, styles.bold, { color: c.ink }]}>{money(unitPrice)}</Text>
@@ -597,7 +622,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   hero: { width: '100%', height: HERO_H },
-  heroBar: { position: 'absolute', left: 4, right: 4, flexDirection: 'row', justifyContent: 'space-between' },
+  // Geri düğmesi görselin üst-solunda; görsel zaten safe area altından başladığı için çakışmaz.
+  heroBar: { position: 'absolute', top: 8, left: 4, right: 4, flexDirection: 'row', justifyContent: 'space-between' },
   roundBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   desc: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 20 },
   bold: { fontFamily: fontFamily.bodyBold },

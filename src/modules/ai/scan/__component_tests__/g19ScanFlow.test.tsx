@@ -30,6 +30,12 @@ jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { addEventListener: () => () => {}, fetch: () => mockNetFetch() },
 }));
+// G20-S3 md.2: yapay zekâ fotoğraf izni bu testlerde VERİLMİŞ (izin akışı g20s3AiPhoto testinde).
+jest.mock('../../../../lib/consent/aiPhoto', () => ({
+  resolveAiPhotoConsent: () => Promise.resolve('ok'),
+  setAiPhotoConsent: () => Promise.resolve(),
+  hasLocalAiPhotoConsent: () => Promise.resolve(true),
+}));
 jest.mock('../drainPending', () => ({
   drainPendingScans: () => Promise.resolve(),
   onPendingDrained: () => () => {},
@@ -266,7 +272,7 @@ test.each(['disabled', 'global_cap'] as const)(
     await shutter(tree);
     await waitFor(() => expect(tree.getByText('Tara şu an kullanılamıyor, kısa süre içinde geri gelecek.')).toBeTruthy());
     expect(tree.getByText('Bu arada elle girebilirsin.')).toBeTruthy();
-    expect(tree.queryByText('Bugünkü 3 taramanı kullandın')).toBeNull();
+    expect(tree.queryByText(/Bugünkü \d+ AI taramanı kullandın/)).toBeNull();
     expect(c.analyzeImage).not.toHaveBeenCalled();
     // G19-S4 md.2: tam 1 sonuç olayı (kanonik scan_fail), scan_limit yok.
     const fails = events.filter((e) => e[0] === 'scan_fail');
@@ -283,7 +289,8 @@ test('kota bitti → FinErrLimit + scan_limit olayı, analiz yok', async () => {
   const tree = render(<ScanScreen />);
   await waitFor(() => expect(tree.getByTestId('fin-scan-camera')).toBeTruthy());
   await shutter(tree);
-  await waitFor(() => expect(tree.getByText('Bugünkü 3 taramanı kullandın')).toBeTruthy());
+  // G23-S1: tavan sunucudan; G19 yanıtında limit yok → yedek ücretsiz tavan 2.
+  await waitFor(() => expect(tree.getByText('Bugünkü 2 AI taramanı kullandın')).toBeTruthy());
   expect(c.analyzeImage).not.toHaveBeenCalled();
   expect(events.some((e) => e[0] === 'scan_limit')).toBe(true);
 });

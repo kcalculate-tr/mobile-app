@@ -21,6 +21,7 @@ import { getKesfetClient, type FeedPost } from '../../modules/kesfet';
 import { useDeliveryChip } from '../../modules/eatkcal/v2/ui/home/useDeliveryChip';
 import type { Product } from '../../types';
 import { formatPrice } from '../../utils/formatPrice';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 export interface HomeDish {
   id: string;
@@ -127,7 +128,7 @@ export function HomeEatkcalStrip({ onAll, onOpen }: { onAll: () => void; onOpen:
   return (
     <View style={styles.section} accessibilityLabel="eatkcal">
       <SectionHead title="eatkcal" sub={sub} onAll={onAll} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishRow}>
+      <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dishRow}>
         {dishes.map((d) => {
           const meta = [d.kcal != null ? tt('gun.item_kcal', { kcal: nf(d.kcal) }) : null, d.price != null ? formatPrice(d.price, { lang: lang === 'en' ? 'en' : 'tr' }) : null]
             .filter(Boolean)

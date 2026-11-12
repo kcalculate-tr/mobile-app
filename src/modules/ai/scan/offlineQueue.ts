@@ -30,6 +30,8 @@ export interface PendingScanPhoto {
   attempts?: number;
   /** G19-S1 md.3: çekim anındaki uygulama dili → analizde yiyecek adları. */
   lang?: 'tr' | 'en';
+  /** G22-S1 md.1: sesle ekleme — telefonda yazıya dökülen metin (imageUri boş). Ses saklanmaz. */
+  text?: string;
 }
 
 function isFresh(e: PendingScanPhoto, now: number): boolean {
@@ -108,6 +110,26 @@ export async function bumpPendingAttempt(id: string): Promise<number> {
   });
   await write(out);
   return next;
+}
+
+// G28-S1 md.4 — ön planda analiz edilen anahtar kilidi. Çevrimdışı kuyruğa alınan foto
+// "Tekrar dene" ile AYNI anahtarla ön planda analiz edilirken bağlantı dönüşü kuyruğu
+// da boşaltıyordu: aynı foto ikinci kez analiz ediliyor (rezervasyon henüz 'reserved'),
+// kuyruk KENDİ sonucunu (başka ad/kcal) aynı source_ref ile yazıyor, kullanıcının
+// Logla'sı o satırı döndürüyordu. Kilitli anahtarı kuyruk atlar; ön plan sahiplenir.
+const claimed = new Set<string>();
+
+/** Ön plan bu anahtarı analiz ediyor — kuyruk dokunmaz. */
+export function claimPendingKey(id: string): void {
+  claimed.add(id);
+}
+
+export function releasePendingKey(id: string): void {
+  claimed.delete(id);
+}
+
+export function isPendingKeyClaimed(id: string): boolean {
+  return claimed.has(id);
 }
 
 /** Elle giriş yapıldığında tüm kuyruğu boşaltır. */

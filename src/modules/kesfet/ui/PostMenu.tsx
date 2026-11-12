@@ -72,7 +72,8 @@ export function PostMenu({
   isMine?: boolean;
   // G11 — kendi gönderin + update_my_post RPC varsa "Düzenle" (yoksa gizli).
   canEdit?: boolean;
-  onCopyLink: () => void;
+  /** Bağlantıyı kopyala. G25-S1 md.7 (A10): verilmezse (bayrak `paylasim_baglanti` kapalı) düğme çizilmez. */
+  onCopyLink?: () => void;
   /** Şikayet: neden + isteğe bağlı not. false → başarısız (sayfada sakin not). */
   onReport: (reason: ReportReason, note?: string) => void | boolean | Promise<boolean | void>;
   onBlock: () => void;
@@ -133,15 +134,17 @@ export function PostMenu({
       >
         {view === 'menu' ? (
           <View style={styles.group}>
-            <MenuRow
-              icon="link"
-              label={tr('kesfet.ui.menu.copy_link')}
-              onPress={() => {
-                haptic('selection');
-                onCopyLink();
-                close();
-              }}
-            />
+            {onCopyLink ? (
+              <MenuRow
+                icon="link"
+                label={tr('kesfet.ui.menu.copy_link')}
+                onPress={() => {
+                  haptic('selection');
+                  onCopyLink();
+                  close();
+                }}
+              />
+            ) : null}
             {isMine ? (
               <>
                 {canEdit && onEdit ? (

@@ -23,6 +23,7 @@ import { unregisterPushToken } from '../../core/notifications';
 import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type SecurityNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -201,9 +202,8 @@ export default function SecurityScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           contentContainerStyle={[s.content, { paddingBottom: Math.max(32, insets.bottom + 24) }]}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Shield card */}

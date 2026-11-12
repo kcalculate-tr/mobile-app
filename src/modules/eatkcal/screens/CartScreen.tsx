@@ -1,6 +1,5 @@
 import { DURATION } from '../../../constants/motion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import KeyboardAccessory from '../../../components/KeyboardAccessory';
 import { Animated, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -44,12 +43,11 @@ import {
 import { addMacros, computeLineMacros, formatMacroGrams, formatMacroKcal, ItemMacros } from '../../../lib/itemMacros';
 import type { Product } from '../../../types';
 import { track } from '../../../lib/analytics';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type CartNavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function CartScreen() {
-  // Benzersiz aksesuar ID'si — Android'de inputAccessoryViewID yok sayılır, KeyboardAccessory null döner.
-  const accId = useMemo(() => `acc_${Math.random().toString(36).slice(2, 11)}`, []);
   const navigation = useNavigation<CartNavProp>();
   const insets = useSafeAreaInsets();
   const deliveryModal = useModal();
@@ -280,7 +278,7 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           contentContainerStyle={[styles.emptyScroll, { paddingBottom: insets.bottom + 120 }]}
           showsVerticalScrollIndicator={false}
         >
@@ -405,8 +403,7 @@ export default function CartScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -663,7 +660,7 @@ export default function CartScreen() {
           return (
             <View style={styles.crosssellSection}>
               <Text style={styles.crosssellTitle}>Bunlar da ilgini çekebilir</Text>
-              <ScrollView
+              <ScrollView {...SCROLL_KEYBOARD}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.crosssellScroll}
@@ -854,7 +851,6 @@ export default function CartScreen() {
         onApplied={handleCouponApplied}
       />
       <Toast {...toast} onHide={hideToast} />
-      <KeyboardAccessory nativeID={accId} />
     </ScreenContainer>
   );
 }

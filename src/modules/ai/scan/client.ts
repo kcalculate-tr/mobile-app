@@ -83,6 +83,16 @@ export const realAiScanClient: AiScanClient = {
     return mapAnalyzeResponse(data, lang);
   },
 
+  async analyzeText({ idempotencyKey, text, lang }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
+    // G22-S1 md.1: yalnız METİN gider (ses telefonda kalır). Gövde: { reservation_id, mode:'text', text, lang }.
+    const { data, error } = await sb().functions.invoke('analyze-ai-scan', {
+      body: buildTextAnalyzeBody({ idempotencyKey, text, lang }),
+      timeout: ANALYZE_CLIENT_TIMEOUT_MS,
+    });
+    if (error) throw await analyzeErrorFromInvoke(error);
+    return mapAnalyzeResponse(data, lang);
+  },
+
   reportFailure(info) {
     // G17-S2 md.6: LOG (konsol/cihaz günlüğü) + Sentry. Kişisel veri YOK —
     // yalnız aşama, edge kodu, HTTP durumu (yol/uid/foto gönderilmez).
@@ -110,6 +120,22 @@ export function buildAnalyzeBody(p: { idempotencyKey: string; imageRef: string; 
   };
   if (p.hint) body.hint = p.hint;
   return body;
+}
+
+/** G22-S1: metin kipi gövdesi — döküm sadeleşir, ≤ 500 karakter (edge de kırpar). */
+export function buildTextAnalyzeBody(p: { idempotencyKey: string; text: string; lang?: 'tr' | 'en' }) {
+  return {
+    reservation_id: p.idempotencyKey,
+    mode: 'text' as const,
+    text: normalizeTranscript(p.text),
+    lang: p.lang === 'en' ? ('en' as const) : ('tr' as const),
+  };
+}
+
+/** Konuşma dökümü: kontrol karakterleri atılır, boşluk sadeleşir, 500'e kırpılır. */
+export function normalizeTranscript(v: string): string {
+  // eslint-disable-next-line no-control-regex
+  return (v ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500);
 }
 
 function n(v: unknown): number {

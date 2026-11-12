@@ -3,11 +3,13 @@
 // analiz edilip kaydedilmez.
 import { getAiScanClient } from './client';
 import { saveAiScanEstimate } from './saveEstimate';
+import { scanImagePath } from './scanPath';
 import { processPendingQueue, type ProcessResult } from './pendingProcessor';
 import { getSupabaseClient } from '../../../core/supabase';
 import { deleteQueuedImage } from './localImage';
 import { trackScan } from './scanEvents';
 import { trackScanLog, trackScanOutcome } from './scanTrack';
+import { hasLocalAiPhotoConsent } from '../../../lib/consent/aiPhoto';
 
 type Listener = (r: ProcessResult) => void;
 const listeners = new Set<Listener>();
@@ -27,7 +29,23 @@ export function drainPendingScans(
   lang?: 'tr' | 'en',
 ): Promise<ProcessResult | null> {
   if (inflight) return Promise.resolve(null); // başka çağrı zaten işliyor
-  inflight = processPendingQueue({
+  // G20-S3 md.2: yapay zekâ fotoğraf izni yoksa (hiç verilmedi / ayardan geri
+  // alındı) kuyruktaki fotoğraf sağlayıcıya GÖNDERİLMEZ; kuyruk olduğu gibi kalır.
+  inflight = hasLocalAiPhotoConsent()
+    .catch(() => false)
+    .then((ok) => (ok ? drainNow(userId, isCancelled, lang) : null))
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
+}
+
+function drainNow(
+  userId: string,
+  isCancelled?: () => boolean,
+  lang?: 'tr' | 'en',
+): Promise<ProcessResult | null> {
+  return processPendingQueue({
     client: getAiScanClient(),
     isCancelled,
     lang,
@@ -37,6 +55,8 @@ export function drainPendingScans(
         mealType: entry.mealType,
         sourceRef: entry.id,
         estimate,
+        // G28-S1 md.2: fotoğraflı girdi kaydına analizde yüklenen yol (ses girdisinde yok).
+        photoPath: entry.text || !entry.imageUri ? null : scanImagePath(userId, entry.id),
       }),
   })
     .catch(() => null)
@@ -57,9 +77,5 @@ export function drainPendingScans(
       }
       if (r && (r.processed.length > 0 || r.lastOutcome || (r.dropped?.length ?? 0) > 0)) listeners.forEach((l) => l(r));
       return r;
-    })
-    .finally(() => {
-      inflight = null;
     });
-  return inflight;
 }

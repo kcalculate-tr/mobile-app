@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,12 +14,14 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretLeft, Bell } from '../../components/icons';
+import { enablePushFromSettings } from '../../core/push/pushPermission';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../../core/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { supabase } from '../../core/supabase';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,9 +32,10 @@ type Prefs = {
   behavioral_enabled: boolean;
 };
 
+// G20-S3 md.6 (B-11): pazarlama varsayılanı KAPALI (açık onay); kayıtlı tercih aynen.
 const DEFAULT_PREFS: Prefs = {
   transactional_enabled: true,
-  marketing_enabled: true,
+  marketing_enabled: false,
   reminder_enabled: true,
   behavioral_enabled: true,
 };
@@ -99,7 +101,7 @@ export default function NotificationPreferencesScreen() {
       if (data) {
         setPrefs({
           transactional_enabled: data.transactional_enabled ?? true,
-          marketing_enabled: data.marketing_enabled ?? true,
+          marketing_enabled: data.marketing_enabled ?? false,
           reminder_enabled: data.reminder_enabled ?? true,
           behavioral_enabled: data.behavioral_enabled ?? true,
         });
@@ -148,10 +150,12 @@ export default function NotificationPreferencesScreen() {
     Alert.alert(row.title, row.locked ?? 'Bu bildirim kategorisi kapatılamaz.');
   };
 
+  // G26-S1: tek fonksiyon — 30 günde en fazla bir sistem penceresi, aksi hâlde Ayarlar.
   const openSystemSettings = () => {
-    Linking.openSettings().catch(() => {
-      Alert.alert('Hata', 'Ayarlar açılamadı.');
-    });
+    void enablePushFromSettings()
+      .then(() => Notifications.getPermissionsAsync())
+      .then((res) => setSystemStatus(res.status as 'granted' | 'denied' | 'undetermined'))
+      .catch(() => Alert.alert('Hata', 'Ayarlar açılamadı.'));
   };
 
   if (authLoading) return null;
@@ -174,8 +178,7 @@ export default function NotificationPreferencesScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
+      <ScrollView {...SCROLL_KEYBOARD}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
       >

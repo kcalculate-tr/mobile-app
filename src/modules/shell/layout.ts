@@ -38,8 +38,10 @@ export const TAB_BAR_R3 = {
   /** Tara ikonu — tam 22 / küçük 18. */
   SCAN_ICON: 22,
   SCAN_ICON_MINI: 18,
-  /** Sekme ve Tara etiketi (13 pt; seçili 600, diğerleri 500). */
+  /** Tara etiketi (13 pt, 600). G22-S2 md.2: sekmelerde yazı YOK, yalnız ikon. */
   LABEL_SIZE: 13,
+  /** Apple HIG en küçük dokunma alanı (pt) — her sekme hücresi en az bu kadar. */
+  MIN_TOUCH: 44,
   /** Tara dairesi — tam durum. */
   SCAN_SIZE: 62,
   /** Tara dairesi — küçük (kaydırınca) durum. */

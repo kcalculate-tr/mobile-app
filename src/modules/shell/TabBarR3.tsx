@@ -23,8 +23,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  DeviceEventEmitter,
-  Image,
   Pressable,
   StyleSheet,
   View,
@@ -48,6 +46,7 @@ import { useT } from '../../core/i18n';
 import {
   CURVE,
   DURATION,
+  PREMIUM,
   REDUCED,
   SPRING,
   TIMING,
@@ -55,20 +54,14 @@ import {
   useReducedMotion,
   usePop,
 } from '../../core/design/motion';
-import { Toast } from '../../core/design/components/Toast';
 import { useFeature } from '../../core/flags';
 import { useCartStore } from '../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from './layout';
-import { SELECTED_PILL, SELECTED_PILL_MS } from './selectedPill';
+import { SELECTED_PILL } from './selectedPill';
 import { useTabBarCollapsedValue } from './scroll';
 import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
-import {
-  LOG_FLIGHT_EVENT,
-  LOG_UNDO_EVENT,
-  type LogFlightPayload,
-  type LogUndoPayload,
-} from './logEvents';
+import { badgeText, emitLogBadge, onLogBadge, setHomeTabNode, setHomeTabTarget } from './logTrace';
 import { useOrientTarget } from '../onboarding/first/orient/useOrientTarget'; // G18-S1 temas
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
@@ -109,19 +102,6 @@ function glassTokens(dark: boolean) {
     accent: '#8AD400',
     tint: 'light' as const,
   };
-}
-
-/** Uçan öğenin iç durumu (payload + çözülmüş kaynak/konum). */
-interface FlightState {
-  payload: LogFlightPayload;
-  /** Kabuk-yerel başlangıç (sol, üst) px. */
-  startX: number;
-  startY: number;
-  /** Hedef merkez (Ana sayfa sekmesi ikonu) — kabuk-yerel px. */
-  targetX: number;
-  targetY: number;
-  /** Retrigger anahtarı. */
-  key: number;
 }
 
 export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) {
@@ -167,70 +147,74 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   // Kabuk kök View'ının ekrandaki yüksekliği (uçuş koordinat dönüşümü için).
   const rootHeight = TAB_BAR_R3.PILL_HEIGHT + bottomOffset;
 
-  // ── "Logla izi" durumu ──────────────────────────────────────────────────────
+  // ── "Logla izi" rozeti (G28-S1 md.1) ─────────────────────────────────────────
+  // Uçuş + toast kökteki LogTraceHost'ta (yığın ekranlarının da üstünde). Çubuk yalnız
+  // "+N" rozetini çizer (varışta +1, Geri al −1, en fazla 9+) ve Ana sayfa sekmesinin
+  // ekrandaki hedef noktasını bildirir.
   const [badge, setBadge] = useState(0);
-  const [flight, setFlight] = useState<FlightState | null>(null);
-  const [toast, setToast] = useState<{ id: string; message: string } | null>(null);
-  const badgePop = useSharedValue(0); // 0 gizli, 1 açık (bouncy)
-  const flightKey = useRef(0);
-  // Olay dinleyicisi mount'ta bir kez kurulur; en güncel geometri/ayar ref'ten.
-  const geomRef = useRef({ reduced, rootHeight, tabW, anaIndex, winH });
-  geomRef.current = { reduced, rootHeight, tabW, anaIndex, winH };
+  // G30-S1 md.1 (FinMoLogA lal-bdg2): giriş ölçek 0 → 1 bouncy base 300, opaklık ANINDA 1;
+  // silinirken ölçek sabit, opaklık 1 → 0 fast 200 exit. Azaltılmış: yalnız 200 ms opaklık.
+  const badgeScale = useSharedValue(0);
+  const badgeOpacity = useSharedValue(0);
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
 
   const popBadge = useCallback(() => {
-    badgePop.value = 0;
-    badgePop.value = withSpring(1, SPRING.bouncy);
-  }, [badgePop]);
-
-  // Rozet + toast + haptik (uçuş varışında VEYA azaltılmışta doğrudan).
-  const arrive = useCallback(
-    (payload: LogFlightPayload) => {
-      haptic('success');
-      setBadge((n) => {
-        if (n === 0) popBadge();
-        return n + 1;
-      });
-      const id = payload.id ?? `log-${flightKey.current}`;
-      const message = payload.mealLabel
-        ? i18n.t('shell.logged', { meal: payload.mealLabel })
-        : i18n.t('shell.logged_generic');
-      setToast({ id, message });
-    },
-    [i18n, popBadge],
-  );
+    if (reducedRef.current) {
+      badgeScale.value = 1;
+      badgeOpacity.value = 0;
+      badgeOpacity.value = withTiming(1, { duration: REDUCED.duration });
+      return;
+    }
+    badgeOpacity.value = 1;
+    badgeScale.value = 0;
+    badgeScale.value = withSpring(1, SPRING.bouncy);
+  }, [badgeScale, badgeOpacity]);
 
   useEffect(() => {
-    const onFlight = (raw: LogFlightPayload) => {
-      const geom = geomRef.current;
-      if (geom.reduced || geom.anaIndex < 0) {
-        // Uçuş yok — doğrudan rozet + toast (FinMoMap: "Uçuş yok").
-        arrive(raw);
+    const sub = onLogBadge(({ delta }) => {
+      if (delta === 'clear') {
+        badgeOpacity.value = withTiming(
+          0,
+          reducedRef.current ? { duration: REDUCED.duration } : { duration: DURATION.fast, easing: CURVE.exit },
+          (fin) => {
+            if (fin) runOnJS(setBadge)(0);
+          },
+        );
         return;
       }
-      flightKey.current += 1;
-      const targetX =
-        TAB_BAR_R3.BUBBLE_PAD + geom.tabW * (geom.anaIndex + 0.5);
-      const targetY = TAB_BAR_R3.PILL_HEIGHT / 2;
-      // Ekran (sayfa) koordinatı → kabuk-yerel koordinat.
-      const startX = raw.x - TAB_BAR_R3.SIDE_INSET;
-      const startY = raw.y - (geom.winH - geom.rootHeight);
-      setFlight({ payload: raw, startX, startY, targetX, targetY, key: flightKey.current });
-    };
-    const onUndo = (_raw: LogUndoPayload) => {
-      setBadge((n) => Math.max(0, n - 1));
-      setToast(null);
-    };
-    const subF = DeviceEventEmitter.addListener(LOG_FLIGHT_EVENT, onFlight);
-    const subU = DeviceEventEmitter.addListener(LOG_UNDO_EVENT, onUndo);
-    return () => {
-      subF.remove();
-      subU.remove();
-    };
-  }, [arrive]);
+      setBadge((n) => {
+        const next = Math.max(0, n + delta);
+        if (delta === 1 && n === 0) popBadge();
+        return next;
+      });
+    });
+    return () => sub.remove();
+  }, [popBadge, badgeOpacity]);
+
+  // G30-S1 md.1: uçuş hedefi = Ana sayfa ikonunun ÖLÇÜLEN konumu (LogTraceHost ölçer).
+  const homeIconRef = useRef<View | null>(null);
+  useEffect(() => () => setHomeTabNode(null), []);
+  const setHomeIcon = useCallback((node: View | null) => {
+    homeIconRef.current = node;
+    setHomeTabNode(node);
+  }, []);
+
+  // Ana sayfa sekmesi ikon merkezi (ekran koordinatı) → LogTraceHost uçuş hedefi.
+  useEffect(() => {
+    if (anaIndex < 0) {
+      setHomeTabTarget(null);
+      return;
+    }
+    setHomeTabTarget({
+      x: TAB_BAR_R3.SIDE_INSET + TAB_BAR_R3.BUBBLE_PAD + tabW * (anaIndex + 0.5),
+      y: winH - rootHeight + TAB_BAR_R3.PILL_HEIGHT / 2,
+    });
+  }, [anaIndex, tabW, winH, rootHeight]);
 
   const badgeStyle = useAnimatedStyle(() => ({
-    opacity: badgePop.value,
-    transform: [{ scale: interpolate(badgePop.value, [0, 1], [0.4, 1]) }],
+    opacity: badgeOpacity.value,
+    transform: [{ scale: badgeScale.value }],
   }));
 
   // ── Hareket: açılışta yükselme ──────────────────────────────────────────────
@@ -266,7 +250,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
       // G17-S2 md.5: seçili hap geçişi 200 standard (yay/jöle yok); azaltılmış
       // harekette de aynı süre (yalnız konum, uzama yok).
       posX.value = withTiming(target, {
-        duration: reduced ? REDUCED.duration : SELECTED_PILL_MS,
+        duration: reduced ? REDUCED.duration : PREMIUM.tab.duration,
         easing: CURVE.standard,
       });
       stretch.value = 1;
@@ -323,10 +307,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   const scanPop = usePop();
 
   // ── Davranış ────────────────────────────────────────────────────────────────
-  const clearBadge = useCallback(() => {
-    setBadge(0);
-    badgePop.value = withTiming(0, { duration: REDUCED.duration });
-  }, [badgePop]);
+  const clearBadge = useCallback(() => emitLogBadge('clear'), []);
 
   const handleTabPress = (routeName: string, routeKey: string) => {
     const event = navigation.emit({
@@ -370,18 +351,6 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
     navigation.navigate('Cart' as never);
   };
 
-  const onToastUndo = useCallback(() => {
-    if (toast) DeviceEventEmitter.emit(LOG_UNDO_EVENT, { id: toast.id } as LogUndoPayload);
-    setBadge((n) => Math.max(0, n - 1));
-    setToast(null);
-  }, [toast]);
-
-  const onToastView = useCallback(() => {
-    setToast(null);
-    clearBadge();
-    navigation.navigate('Tracker' as never);
-  }, [navigation, clearBadge]);
-
   const activeDef = activeIndex >= 0 ? visibleTabs[activeIndex] : undefined;
   const MiniIcon = activeDef ? TAB_ICON_BY_KIND[activeDef.kind] : TAB_ICON_BY_KIND.eat;
 
@@ -399,30 +368,6 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
       style={[styles.root, { paddingBottom: bottomOffset }]}
       pointerEvents="box-none"
     >
-      {/* "Logla izi" uçan öğesi (yalnız azaltılmamış harekette) */}
-      {flight ? (
-        <LogFlight
-          key={flight.key}
-          flight={flight}
-          accent={g.accent}
-          onArrive={() => arrive(flight.payload)}
-          onDone={() => setFlight(null)}
-        />
-      ) : null}
-
-      {/* Logla toast'ı — barın üstünde */}
-      {toast ? (
-        <View style={[styles.toastRow, { bottom: bottomOffset + TAB_BAR_R3.PILL_HEIGHT + 8 }]} pointerEvents="box-none">
-          <Toast
-            visible
-            message={toast.message}
-            onUndo={onToastUndo}
-            onView={onToastView}
-            onDismiss={() => setToast(null)}
-          />
-        </View>
-      ) : null}
-
       {/* Sepet hapı — yalnız eatkcal sekmesinde + sepette ürün varken. G18-S3 (temas): yeni_siparis
           açıkken (EkCart kayıtlı) yerini FinEkHome'un lime sepet çubuğu alır → hap çizilmez. */}
       {onEat && cartCount > 0 && !navigation.getParent?.()?.getState?.()?.routeNames?.includes('EkCart') ? (
@@ -475,7 +420,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                         : label
                     }
                   >
-                    <View>
+                    <View ref={i === anaIndex ? setHomeIcon : undefined} collapsable={false}>
                       <Icon
                         size={TAB_BAR_R3.ICON_SIZE}
                         color={isActive ? g.activeInk : g.sec}
@@ -488,24 +433,14 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                           style={[styles.badge, { backgroundColor: g.dotBg }, badgeStyle]}
                         >
                           <Text maxFontSizeMultiplier={1} style={[styles.badgeText, { color: g.dotFg }]} numberOfLines={1}>
-                            +{badge}
+                            {badgeText(badge)}
                           </Text>
                         </Animated.View>
                       ) : null}
                     </View>
-                    {/* G15-S2 (FinHomeXL/FinStressXL): sabit yükseklikli cam çubukta
-                        etiket en büyük yazıda kırpılıyordu ("An…") → ölçek sabit;
-                        erişilebilirlik etiketi + Large Content Viewer metni taşır. */}
-                    <Text
-                      numberOfLines={1}
-                      maxFontSizeMultiplier={1}
-                      style={[
-                        styles.label,
-                        { color: isActive ? g.activeInk : g.sec, fontFamily: isActive ? 'PlusJakartaSans_600SemiBold' : 'PlusJakartaSans_500Medium' },
-                      ]}
-                    >
-                      {label}
-                    </Text>
+                    {/* G22-S2 md.2 (İlter 10 Kas): sekme YAZILARI kalktı, yalnız ikon.
+                        Ad VoiceOver'da `accessibilityLabel` ile TR/EN okunur; dokunma
+                        alanı sekme hücresinin tamamı (≈ 70 × 62 pt ≥ 44). Tara yazısı kalır. */}
                   </Pressable>
                 );
               })}
@@ -568,67 +503,6 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
  * sekmesine iner (slow 500 · enter — FinMoTokens eşlemesi; yerel eğri yok), varışta `onArrive` (rozet/toast/haptik), sonra solup
  * `onDone` ile kapanır. Kabuk kök View'ı kırpmadığından bar üstünde çizilir.
  */
-function LogFlight({
-  flight,
-  accent,
-  onArrive,
-  onDone,
-}: {
-  flight: FlightState;
-  accent: string;
-  onArrive: () => void;
-  onDone: () => void;
-}) {
-  const p = useSharedValue(0);
-  const w = Math.max(flight.payload.w, 16);
-  const h = Math.max(flight.payload.h, 16);
-
-  useEffect(() => {
-    p.value = withTiming(
-      1,
-      { duration: TIMING.logTrail, easing: CURVE.enter },
-      (fin) => {
-        if (fin) {
-          runOnJS(onArrive)();
-          runOnJS(onDone)();
-        }
-      },
-    );
-    // yalnız mount'ta; key değişince yeni örnek oluşur.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const style = useAnimatedStyle(() => {
-    const dx = flight.targetX - (flight.startX + w / 2);
-    const dy = flight.targetY - (flight.startY + h / 2);
-    return {
-      opacity: interpolate(p.value, [0, 0.85, 1], [1, 1, 0]),
-      transform: [
-        { translateX: interpolate(p.value, [0, 1], [0, dx]) },
-        { translateY: interpolate(p.value, [0, 1], [0, dy]) },
-        { scale: interpolate(p.value, [0, 1], [1, 0.08]) },
-      ],
-    };
-  });
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.flight,
-        { left: flight.startX, top: flight.startY, width: w, height: h },
-        style,
-      ]}
-    >
-      {flight.payload.imageUri ? (
-        <Image source={{ uri: flight.payload.imageUri }} style={styles.flightImg} />
-      ) : (
-        <View style={[styles.flightDot, { backgroundColor: accent }]} />
-      )}
-    </Animated.View>
-  );
-}
-
 function CartPill({
   count,
   glass,
@@ -716,12 +590,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
     height: '100%',
-  },
-  label: {
-    fontSize: TAB_BAR_R3.LABEL_SIZE,
-    lineHeight: 16,
+    minWidth: TAB_BAR_R3.MIN_TOUCH,
+    minHeight: TAB_BAR_R3.MIN_TOUCH,
   },
   // FinTabBar: rozet sekme üstünden 6, ortanın 8 sağında (ikona göre −4 / 20).
   badge: {

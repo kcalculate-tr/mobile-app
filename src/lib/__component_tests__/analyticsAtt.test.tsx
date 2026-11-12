@@ -1,9 +1,8 @@
-// G19-S3 md.4/md.5 — initFBSDK ATT sırası (aynen korunur) + rıza dalları + track() Meta kapısı
+// G19-S3 md.4/md.5 + G26-S1 — initFBSDK sırası (ATT YOK) + rıza dalları + track() Meta kapısı
 // ve Supabase toplu yazımı. Native modüller taklit; gerçek ağ yok.
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const mockCalls: string[] = [];
-let mockAttStatus = 'granted';
 const mockInserts: unknown[][] = [];
 
 jest.mock('react-native-fbsdk-next', () => ({
@@ -20,13 +19,6 @@ jest.mock('react-native-fbsdk-next', () => ({
     },
     setAdvertiserIDCollectionEnabled: (v: boolean) => mockCalls.push(`setAdvertiserIDCollectionEnabled:${v}`),
     setAutoLogAppEventsEnabled: (v: boolean) => mockCalls.push(`setAutoLogAppEventsEnabled:${v}`),
-  },
-}));
-
-jest.mock('expo-tracking-transparency', () => ({
-  requestTrackingPermissionsAsync: () => {
-    mockCalls.push('requestTracking');
-    return Promise.resolve({ status: mockAttStatus });
   },
 }));
 
@@ -84,43 +76,61 @@ async function settle() {
 beforeEach(async () => {
   mockCalls.length = 0;
   mockInserts.length = 0;
-  mockAttStatus = 'granted';
 });
 
-describe('initFBSDK — ATT sırası', () => {
-  it('iOS ATT granted: ATT iste → tracking → IDFA → initializeSDK (sıra aynen)', async () => {
+describe('initFBSDK — G26-S1: ATT yok', () => {
+  it('iOS rıza unset (G27 varsayılan KAPALI): Apple izleme sorusu YOK; tracking/IDFA/otomatik olay false → initializeSDK; Meta olayı GİTMEZ', async () => {
     const a = load('ios');
     await a.initFBSDK();
     expect(mockCalls).toEqual([
-      'requestTracking',
-      'setAdvertiserTrackingEnabled:true',
-      'setAdvertiserIDCollectionEnabled:true',
-      'initializeSDK',
-    ]);
-  });
-
-  it('iOS ATT denied: IDFA kapalı, SDK yine ATT SONRASI başlar; reklam olayı Meta’ya gitmez', async () => {
-    mockAttStatus = 'denied';
-    const a = load('ios');
-    await a.initFBSDK();
-    expect(mockCalls).toEqual([
-      'requestTracking',
       'setAdvertiserTrackingEnabled:false',
       'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:false',
       'initializeSDK',
     ]);
     mockCalls.length = 0;
     a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    a.track('payment_success', { order_id: 1042, price: 300 });
     expect(mockCalls).toEqual([]);
   });
 
-  it('iOS ATT granted + uygulama içi reklam rızası denied: IDFA kapalı, Meta olayı yok', async () => {
+  it('iOS rıza granted: izleme/IDFA kapalı SABİT, olaylar ATT’siz (AEM) gider', async () => {
+    const a = load('ios', { '@kcal_consent_ads': 'granted' });
+    await a.initFBSDK();
+    expect(mockCalls).toEqual([
+      'setAdvertiserTrackingEnabled:false',
+      'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:true',
+      'initializeSDK',
+    ]);
+    mockCalls.length = 0;
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls).toEqual(['logEvent:AddedToCart']);
+  });
+
+  it('rıza sonradan açılırsa (setAdConsent granted) olaylar o andan itibaren gider; kapatılırsa durur', async () => {
+    const a = load('android');
+    await a.initFBSDK();
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls.filter((c) => c.startsWith('logEvent'))).toEqual([]);
+    mockCalls.length = 0;
+    await a.setAdConsent('granted');
+    expect(mockCalls).toEqual(['setAdvertiserIDCollectionEnabled:true', 'setAutoLogAppEventsEnabled:true']);
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls).toContain('logEvent:AddedToCart');
+    mockCalls.length = 0;
+    await a.setAdConsent('denied');
+    a.track('add_to_cart', { product_id: '7', price: 100, quantity: 2 });
+    expect(mockCalls).toEqual(['setAdvertiserIDCollectionEnabled:false', 'setAutoLogAppEventsEnabled:false']);
+  });
+
+  it('iOS uygulama içi reklam rızası denied: IDFA kapalı, Meta olayı yok', async () => {
     const a = load('ios', { '@kcal_consent_ads': 'denied' });
     await a.initFBSDK();
     expect(mockCalls).toEqual([
-      'requestTracking',
       'setAdvertiserTrackingEnabled:false',
       'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:false',
       'initializeSDK',
     ]);
     mockCalls.length = 0;
@@ -128,10 +138,17 @@ describe('initFBSDK — ATT sırası', () => {
     expect(mockCalls).toEqual([]);
   });
 
-  it('Android rıza unset: bugünkü gibi yalnız initializeSDK; rıza denied → IDFA + otomatik olay kapalı', async () => {
+  it('Android rıza unset (G27 varsayılan KAPALI) ve denied → reklam kimliği + otomatik olay kapalı, Meta olayı yok', async () => {
     const a = load('android');
     await a.initFBSDK();
-    expect(mockCalls).toEqual(['initializeSDK']);
+    expect(mockCalls).toEqual([
+      'setAdvertiserIDCollectionEnabled:false',
+      'setAutoLogAppEventsEnabled:false',
+      'initializeSDK',
+    ]);
+    mockCalls.length = 0;
+    a.track('product_view', { product_id: '7', product_name: 'Bowl', price: 285 });
+    expect(mockCalls).toEqual([]);
 
     mockCalls.length = 0;
     const b = load('android', { '@kcal_consent_ads': 'denied' });
@@ -142,11 +159,16 @@ describe('initFBSDK — ATT sırası', () => {
       'initializeSDK',
     ]);
   });
+
+  it('ATT API’leri dışa aktarılmaz (requestAttForAds yok)', () => {
+    const a = load('ios') as unknown as Record<string, unknown>;
+    expect(a.requestAttForAds).toBeUndefined();
+  });
 });
 
 describe('track() — Meta yalnız reklam olayları, parametreler eskisiyle aynı', () => {
-  it('ATT granted: product_view → ViewedContent; scan/log olayları Meta’ya gitmez', async () => {
-    const a = load('ios');
+  it('iOS (ATT yok, rıza açık): product_view → ViewedContent; scan/log olayları Meta’ya gitmez', async () => {
+    const a = load('ios', { '@kcal_consent_ads': 'granted' });
     await a.initFBSDK();
     mockCalls.length = 0;
     a.track('product_view', { product_id: '7', product_name: 'Bowl', price: 285 });
@@ -203,8 +225,9 @@ describe('track() — Meta yalnız reklam olayları, parametreler eskisiyle ayn�
     expect(mockInserts.length).toBe(0);
   });
 
-  it('identifyUser: yeni hesap → signup (Meta CompletedRegistration), eski hesap → login', async () => {
-    const a = load('android');
+  it('identifyUser: yeni hesap → signup (rıza açıkken Meta CompletedRegistration), eski hesap → login', async () => {
+    const a = load('android', { '@kcal_consent_ads': 'granted' });
+    await a.initFBSDK(); // rıza diskten yüklensin (açılışta ConsentGate → initFBSDK)
     await a.identifyUser({ id: 'u-new', created_at: new Date().toISOString(), app_metadata: { provider: 'apple' } });
     await a.identifyUser({ id: 'u-new', created_at: new Date().toISOString(), app_metadata: { provider: 'apple' } }); // ikinci kez yok
     await a.identifyUser({ id: 'u-old', created_at: '2025-01-01T00:00:00Z', app_metadata: { provider: 'google' } });

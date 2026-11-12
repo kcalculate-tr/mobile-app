@@ -11,13 +11,11 @@
  * kaydetme mantığı YOK; yalnız gram/porsiyon/eksik besin düzeltmesi hesaplanır.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,9 +24,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { AppText, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
+import { AppText, CURVE, DURATION, ProgressRing, REDUCED, SPRING, haptic, useReducedMotion, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { BookmarkSimple, CalendarPlus, CaretDown, Check, Plus, Trash, X } from '../../../../components/icons';
+import { CoachScanButton } from '../../../coach/ui/entries';
+import { KeyboardLiftView } from '../../../../core/design/components/KeyboardLiftView';
+import { BookmarkSimple, CalendarPlus, CaretDown, Check, Microphone, Plus, Trash, X } from '../../../../components/icons';
 import { RollingNumber } from '../../../gun/ui';
 import type { NumLang } from '../../../gun/motion';
 import type { ClientMealType } from '../../../../core/meal/mealType';
@@ -73,6 +73,9 @@ function useSheetEnter() {
 }
 
 import { ScanNoteRow } from './ScanNote';
+import StickerLift, { LIFT_CHIP_DELAY_MS } from './StickerLift';
+import type { Sticker } from '../../../../lib/sticker/subjectLift';
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 export default function FinPhotoResult({
   estimate,
@@ -87,11 +90,20 @@ export default function FinPhotoResult({
   onUndo,
   onView,
   reducedVariant: _reduced,
+  plateRef,
+  photoRef,
+  sticker = null,
+  stickerRef,
   onAddToPlan,
   onSaveMeal,
   match = null,
   note,
+  source = 'photo',
+  transcript,
 }: {
+  /** G22-S1 md.1: FinPhotoR1 `source=voice` — üstte foto yerine "Sesle eklendi" + söylenen metin. */
+  source?: 'photo' | 'voice';
+  transcript?: string;
   /** G18-S4 md.5: çekimdeki isteğe bağlı not — sheet'te küçük satır. */
   note?: string;
   /** "Planıma ekle" — yerel plan hatırlatması; izin yoksa false. */
@@ -115,6 +127,14 @@ export default function FinPhotoResult({
   /** Kayıttan sonra toast "Gör" (Ana sayfa). */
   onView?: () => void;
   reducedVariant?: boolean;
+  /** G28-S1 md.1: tabak görünümü — Logla izi uçuşu buradan başlar (ölçülür). */
+  plateRef?: React.RefObject<View | null>;
+  /** G30-S1 md.1: tam ekran fotoğraf kabı (kompakt sonuç) — uçan kopya bu kutudan kırpılır. */
+  photoRef?: React.RefObject<View | null>;
+  /** G29-S1 md.1: cihazda üretilen çıkartma (yoksa normal fotoğraf). */
+  sticker?: Sticker | null;
+  /** G29-S1 md.1: çıkartma görünümü — varsa Logla izi buradan başlar. */
+  stickerRef?: React.RefObject<View | null>;
 }) {
   const t = useTheme();
   const orientLog = useOrientTarget('log'); // G18-S1 temas: Orient2 (Tara sonucu · logla)
@@ -141,6 +161,23 @@ export default function FinPhotoResult({
   const [savedMeal, setSavedMeal] = useState(false);
   // G17-S2 md.2: sonuç sheet'i AI 260/24 yayıyla yerleşir; azaltılmışta 200 ms opaklık.
   const sheetIn = useSheetEnter();
+  // G29-S1 md.1 (FinMoSticker): çıkartma varsa eşleşme hapı kalkıştan sonra girer (800 ms, base 300,
+  // enter, aşağıdan 6); azaltılmışta yalnız opaklık 200. Çıkartma yoksa hap hemen görünür (bugünkü gibi).
+  const reducedMotion = useReducedMotion();
+  const [fill, setFill] = useState<{ width: number; height: number } | null>(null);
+  const chip = useSharedValue(sticker ? 0 : 1);
+  const chipAnimated = useRef(false);
+  useEffect(() => {
+    if (!sticker || chipAnimated.current) return;
+    chipAnimated.current = true;
+    chip.value = reducedMotion
+      ? withDelay(LIFT_CHIP_DELAY_MS, withTiming(1, { duration: REDUCED.duration }))
+      : withDelay(LIFT_CHIP_DELAY_MS, withTiming(1, { duration: DURATION.base, easing: CURVE.enter }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sticker]);
+  const chipStyle = useAnimatedStyle(() =>
+    reducedMotion ? { opacity: chip.value } : { opacity: chip.value, transform: [{ translateY: 6 * (1 - chip.value) }] },
+  );
 
   const [rows, setRows] = useState<Row[]>(() => rowsFromEstimate(estimate));
 
@@ -189,10 +226,23 @@ export default function FinPhotoResult({
   // G15-S2 (FinCollectCut): tek tabak tanındıysa (≤1 öğe) kompakt sonuç —
   // tam ekran foto + tabak adı hapı + "Fotoğraf sonucu" sheet'i + lime logla.
   // Eşleşme yüzdesi verisi yok → hapta yalnız ad (uydurma yok).
-  if (estimate.ingredients.length <= 1) {
+  const voice = source === 'voice';
+  if (estimate.ingredients.length <= 1 && !voice) {
     return (
-      <View style={[styles.fill, { backgroundColor: '#2A2622' }]}>
+      <View
+        ref={photoRef}
+        collapsable={false}
+        style={[styles.fill, { backgroundColor: '#2A2622' }]}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          if (width > 0 && height > 0 && (!fill || fill.width !== width || fill.height !== height)) setFill({ width, height });
+        }}
+      >
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        {/* G29-S1 md.1: çıkartma fotoğrafın üstünde kalkar (yoksa hiç çizilmez → normal fotoğraf). */}
+        {photoUri && sticker ? <StickerLift sticker={sticker} container={fill} reduced={reducedMotion} stickerRef={stickerRef} /> : null}
+        {/* G28-S1 md.1: tabak bölgesi (görünmez) — Logla izi uçuşunun başlangıcı. */}
+        <View ref={plateRef} collapsable={false} pointerEvents="none" style={[styles.plateArea, { top: insets.top + 72 }]} />
         <Pressable
           onPress={onRetry}
           accessibilityRole="button"
@@ -202,19 +252,20 @@ export default function FinPhotoResult({
         >
           <X size={20} color={t.color.ink} />
         </Pressable>
-        <View style={styles.cutChipWrap} pointerEvents="none">
+        <Animated.View style={[styles.cutChipWrap, chipStyle]} pointerEvents="none">
           <View style={[styles.cutChip, { backgroundColor: k.glass }]}>
             <AppText style={styles.foundText} numberOfLines={1}>
-              {match != null ? tr('ai_scan.match_chip', { name: estimate.name, pct: match }) : estimate.name}
+              {match != null ? tr('ai_scan.match_chip', { name: adjusted.name, pct: match }) : adjusted.name}
             </AppText>
           </View>
-        </View>
+        </Animated.View>
         <Animated.View style={[styles.cutSheet, { backgroundColor: t.color.bg, paddingBottom: Math.max(16, insets.bottom + 8) }, sheetIn]}>
           <AppText tone="secondary" style={styles.cap}>
             {tr('ai_scan.photo_result')}
           </AppText>
+          {/* G28-S1 md.4: ekrandaki ad = Logla'nın yazdığı ad (adjusted.name, tek kaynak). */}
           <AppText textRole="screenTitle" numberOfLines={2}>
-            {estimate.name}
+            {adjusted.name}
           </AppText>
           <AppText tone="secondary" style={styles.cap}>
             {`${adjusted.kcal} kcal, P ${adjusted.protein_g} g, K ${adjusted.carbs_g} g, Y ${adjusted.fat_g} g`}
@@ -253,8 +304,32 @@ export default function FinPhotoResult({
   }
 
   return (
-    <View style={[styles.fill, { backgroundColor: k.photo }]}>
-      <View style={styles.photo}>
+    <View style={[styles.fill, { backgroundColor: voice ? t.color.bg : k.photo }]}>
+      {voice ? (
+        // G22-S1 md.1 — FinScanVoiceResult: "🎤 Sesle eklendi" + söylenen metin. Tara modal olduğu için
+        // gezinme kuralı (G17 md.7): kapat X SAĞDA (tasarımdaki sol geri oku yerine; foto sonucu ile aynı).
+        <View style={[styles.voiceHead, { paddingTop: insets.top + 6 }]} testID="fin-photo-voice-head">
+          <Pressable
+            onPress={onRetry}
+            accessibilityRole="button"
+            accessibilityLabel={tr('common.close')}
+            accessibilityHint={tr('voice.result_back')}
+            style={[styles.voiceBack, { backgroundColor: k.sheet }]}
+          >
+            <X size={20} color={t.color.ink} />
+          </Pressable>
+          <View style={[styles.voiceChip, { backgroundColor: k.sheet }]}>
+            <Microphone size={14} color={t.color.ink} weight="bold" />
+            <AppText style={styles.foundText}>{tr('voice.result_chip')}</AppText>
+          </View>
+          {transcript ? (
+            <AppText tone="secondary" style={styles.voiceQuote} numberOfLines={3}>
+              {`“${transcript}”`}
+            </AppText>
+          ) : null}
+        </View>
+      ) : (
+      <View style={styles.photo} ref={plateRef} collapsable={false}>
         {photoUri ? <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
         <Pressable
           onPress={onRetry}
@@ -270,10 +345,11 @@ export default function FinPhotoResult({
           <AppText style={styles.foundText}>{tr('ai_scan.items_found', { count })}</AppText>
         </View>
       </View>
+      )}
 
       <Animated.View style={[styles.sheet, { backgroundColor: k.sheet }, sheetIn]}>
         <View style={[styles.handle, { backgroundColor: k.line2 }]} />
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
           <View style={styles.pad}>
             <AppText tone="secondary" style={styles.cap}>
               {tr('ai_scan.estimate_total')}
@@ -443,6 +519,9 @@ export default function FinPhotoResult({
                 ) : null}
               </View>
             ) : null}
+            {/* G24-S1 (FinPhotoR1 Tur 26k): ikincil Koç girişi — sessiz çerçeve, asla lime değil; sohbet
+                bu öğün ekli açılır. `koc` kapalı / coach-chat yok → çizilmez. */}
+            <CoachScanButton meal={{ name: adjusted.name, kcal: adjusted.kcal, protein: adjusted.protein_g, carbs: adjusted.carbs_g, fat: adjusted.fat_g }} />
           </View>
         </ScrollView>
       </Animated.View>
@@ -620,9 +699,12 @@ function MissingFoodSheet({
   const name = q.replace(/\s+/g, ' ').trim();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.mfFill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    // G21-S1 md.10: KAV (Android'de davranışsız) yerine ortak KeyboardLiftView;
+    // statusBarTranslucent → Modal koordinatı = ekran koordinatı (kaldırma ölçümü).
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.mfFill}>
         <Pressable style={styles.mfScrim} onPress={onClose} />
+        <KeyboardLiftView limitHeight style={styles.mfLift} testID="scan-missing-lift">
         <View style={[styles.mfSheet, { backgroundColor: k.sheet, paddingBottom: Math.max(16, insets.bottom + 8) }]}>
           <View style={[styles.handle, { backgroundColor: k.line2 }]} />
           <View style={styles.mfHead}>
@@ -692,7 +774,7 @@ function MissingFoodSheet({
               </Pressable>
             </View>
           ) : (
-            <ScrollView style={styles.mfList} keyboardShouldPersistTaps="handled">
+            <ScrollView {...SCROLL_KEYBOARD} style={styles.mfList}>
               {busy ? <ActivityIndicator style={{ marginTop: 12 }} color={t.color.ink} /> : null}
               {items.map((p) => (
                 <Pressable key={p.id} onPress={() => onPick(productRow(p))} accessibilityRole="button" style={[styles.mfRow, { borderTopColor: k.line }]}>
@@ -720,14 +802,21 @@ function MissingFoodSheet({
             </ScrollView>
           )}
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardLiftView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  // G28-S1 md.1: tam ekran fotoğrafın ortasındaki tabak karesi (uçuş başlangıcı).
+  plateArea: { position: 'absolute', alignSelf: 'center', width: '64%', aspectRatio: 1 },
   fill: { flex: 1 },
   photo: { height: 360 },
+  voiceHead: { paddingHorizontal: 16, paddingBottom: 28, gap: 12 },
+  voiceBack: { alignSelf: 'flex-end', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  voiceChip: { alignSelf: 'flex-start', minHeight: 32, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  voiceQuote: { fontSize: 15, lineHeight: 21 },
   // G17-S1 md.7: Tara modalı → kapat X SAĞDA (sol geri oku yok).
   back: { position: 'absolute', right: 16, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   found: { position: 'absolute', left: 16, bottom: 16, height: 32, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -787,12 +876,13 @@ const styles = StyleSheet.create({
   cutLogText: { fontSize: 15, fontWeight: '700' },
   mfFill: { flex: 1, justifyContent: 'flex-end' },
   mfScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  mfSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, paddingHorizontal: 16, maxHeight: '80%' },
+  mfLift: { maxHeight: '80%' },
+  mfSheet: { flexShrink: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, paddingHorizontal: 16 },
   mfHead: { flexDirection: 'row', alignItems: 'center' },
   mfTitle: { flex: 1 },
   mfClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   mfInput: { marginTop: 8, height: 48, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, fontSize: 15 },
-  mfList: { marginTop: 8 },
+  mfList: { marginTop: 8, flexShrink: 1 },
   mfRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 12, minHeight: 44 },
   mfManualLink: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mfManual: { marginTop: 4, gap: 8 },

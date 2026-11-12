@@ -23,7 +23,6 @@ export const tr = {
     ads_desc:
       'Reklamlarımızın etkisini ölçmek için ürün görüntüleme, sepete ekleme ve satın alma olayları Meta ile paylaşılır. ' +
       'Açık rızana dayanır; istediğin zaman kapatabilirsin.',
-    ads_att_off: 'iPhone ayarlarında "Uygulamaların İzlemeyi İstemesine İzin Ver" kapalı olduğu için reklam ölçümü kapalı.',
     saved: 'Tercihin kaydedildi',
   },
 };
@@ -49,7 +48,6 @@ export const en: typeof tr = {
     ads_desc:
       'Product views, add to cart and purchase events are shared with Meta to measure our ads. ' +
       'Based on your explicit consent; you can turn it off any time.',
-    ads_att_off: 'Ad measurement is off because "Allow Apps to Request to Track" is turned off in iPhone settings.',
     saved: 'Preference saved',
   },
 };

@@ -13,7 +13,6 @@
 //  - seçili adres `useAddressStore.setSelectedAddress` (AddressesScreen:227-231)
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Linking,
@@ -24,10 +23,10 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SCREEN_KEYBOARD_BEHAVIOR } from '../../../../core/design/keyboard';
+import { SCREEN_KEYBOARD_BEHAVIOR, SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { haptic } from '../../../../core/design';
+import { haptic, FinSkeletonBlock } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { ArrowLeft, NavigationArrow, WarningCircle } from '../../../../components/icons';
@@ -74,7 +73,8 @@ import { AddressInput, AddressSelectField, OptionPickerSheet, TitleChips } from 
 
 type Route = RouteProp<EkV2ParamList, 'EkAddressAdd'>;
 type Coords = { latitude: number; longitude: number };
-type Perm = 'checking' | 'granted' | 'denied';
+// G26-S1: 'idle' = henüz sorulmadı (ekran açılınca sistem penceresi YOK).
+type Perm = 'checking' | 'idle' | 'granted' | 'denied';
 /** YALNIZ __DEV__ vitrini (FinEkAddress / NoPerm / NoMap): başlangıç durumu. */
 type VitrinAddr = { vitrinPerm?: 'denied'; vitrinMap?: 'nomap'; vitrinForm?: Partial<AddressFormV2> };
 
@@ -198,7 +198,7 @@ export default function EkAddressAddScreen() {
         setPerm('denied');
         return;
       }
-      const { status, canAskAgain } = await readLocationPermission();
+      const { status } = await readLocationPermission();
       if (!mounted) return;
       if (status === 'granted') {
         setPerm('granted');
@@ -208,22 +208,9 @@ export default function EkAddressAddScreen() {
         }
         return;
       }
-      if (status === 'denied' && !canAskAgain) {
-        setPerm('denied');
-        return;
-      }
-      // Yeni adreste izin ekranın amacıyla aynı: doğrudan sor (AVS "İzin ver").
-      if (!editId) {
-        const ok = await requestLocationPermission();
-        if (!mounted) return;
-        setPerm(ok ? 'granted' : 'denied');
-        if (ok) {
-          const here = await currentCoords();
-          if (mounted && here) setDeviceCenter(here);
-        }
-      } else {
-        setPerm(status === 'denied' ? 'denied' : 'granted');
-      }
+      // G26-S1 (İlter 11 Kas): ekran açılınca SORMA. İzin yalnız "Konumumu kullan"a
+      // dokununca (handleUseMyLocation); reddedilirse il/ilçe elle + harita pini.
+      setPerm(status === 'denied' ? 'denied' : 'idle');
     })();
     return () => {
       mounted = false;
@@ -427,18 +414,15 @@ export default function EkAddressAddScreen() {
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-address-add">
       <KeyboardAvoidingView style={styles.fill} behavior={SCREEN_KEYBOARD_BEHAVIOR}>
-        <ScrollView
+        <ScrollView {...SCROLL_KEYBOARD}
           style={styles.fill}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         >
           {/* Harita (FinEkAddress) / yüklenemedi kartı (FinEkAddressNoMap) */}
           {mapMode === 'map' ? (
             loading ? (
-              <View style={[styles.center, { height: mapH, backgroundColor: c.line }]}>
-                <ActivityIndicator color={c.ink} />
-              </View>
+              <FinSkeletonBlock height={mapH} radius={0} />
             ) : (
               <AddressMap
                 key={mapKey}

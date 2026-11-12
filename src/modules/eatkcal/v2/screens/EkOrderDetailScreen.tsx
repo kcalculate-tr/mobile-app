@@ -21,7 +21,7 @@ import { FinText as Text } from '../../../../core/design/components/FinText';
 import Animated from 'react-native-reanimated';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../../../core/AuthContext';
-import { haptic, usePop } from '../../../../core/design';
+import { WAIT, haptic, usePop } from '../../../../core/design';
 import {
   ArrowCounterClockwise,
   CreditCard,
@@ -450,7 +450,7 @@ function ReviewCard({ feedback, onDone }: { feedback: PendingFeedbackOrder; onDo
         item_votes: Object.keys(itemFeedback).length,
       });
       setMessage(t('eatkcal.v2.order_detail.review_sent'));
-      setTimeout(onDone, 1200);
+      setTimeout(onDone, WAIT.doneMessage);
     } else {
       haptic('warning');
       setMessage(t('eatkcal.v2.order_detail.review_error'));

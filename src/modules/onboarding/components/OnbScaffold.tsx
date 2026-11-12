@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { AppText } from '../../../core/design/components/AppText';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useEnter, useFloat } from '../../../core/design/motion';
 import { useOnb } from './onbTheme';
 
@@ -174,7 +175,7 @@ export function OnbScaffold({
         <Body
           style={styles.body}
           {...(scroll
-            ? { contentContainerStyle: [{ paddingBottom: 16 }, contentStyle], keyboardShouldPersistTaps: 'handled' as const, showsVerticalScrollIndicator: false }
+            ? { contentContainerStyle: [{ paddingBottom: 16 }, contentStyle], ...SCROLL_KEYBOARD, showsVerticalScrollIndicator: false }
             : {})}
         >
           {scroll ? children : <View style={[{ flex: 1 }, contentStyle]}>{children}</View>}
