@@ -440,11 +440,19 @@ export default function EkProductScreen() {
     return { rows, summary, gram: gram?.name ?? null };
   }, [groupModels, t]);
 
+  // G38 EK md.7: üst güvenli alan bandı = ürün görseli alanının zemini (tema `surface`:
+  // Light #FFFFFF, Dark #1C1C1E) — gri `bg` değil. İskelet ve hata hâlinde de aynı bant.
+  const heroBg = c.surface;
+  const safeTop = <View style={{ height: insets.top, backgroundColor: heroBg }} testID="ek-product-safe-top" />;
+
   // ── Durumlar ────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={[styles.fill, { backgroundColor: c.bg, paddingTop: insets.top }]} testID="ek-product-skeleton">
-        <EkSkeleton height={HERO_H} radius={0} />
+      <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product-skeleton">
+        {safeTop}
+        <View style={{ backgroundColor: heroBg }} testID="ek-product-hero-area">
+          <EkSkeleton height={HERO_H} radius={0} />
+        </View>
         <View style={{ padding: 16, gap: 12 }}>
           <EkSkeleton height={14} width="30%" />
           <EkSkeleton height={26} width="70%" />
@@ -457,10 +465,13 @@ export default function EkProductScreen() {
 
   if (!product || !derived) {
     return (
-      <View style={[styles.fill, styles.center, { backgroundColor: c.bg, paddingTop: insets.top }]}>
-        <Text style={[ekType.h20, { color: c.ink, textAlign: 'center' }]}>{t('eatkcal.v2.product.load_error_title')}</Text>
-        <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center', marginTop: 8 }]}>{errorMessage}</Text>
-        <EkButton label={t('eatkcal.v2.product.go_back')} variant="secondary" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
+      <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product-error">
+        {safeTop}
+        <View style={[styles.fill, styles.center]}>
+          <Text style={[ekType.h20, { color: c.ink, textAlign: 'center' }]}>{t('eatkcal.v2.product.load_error_title')}</Text>
+          <Text style={[ekType.b15, { color: c.secondary, textAlign: 'center', marginTop: 8 }]}>{errorMessage}</Text>
+          <EkButton label={t('eatkcal.v2.product.go_back')} variant="secondary" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
+        </View>
       </View>
     );
   }
@@ -487,10 +498,10 @@ export default function EkProductScreen() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.bg }]} testID="ek-product">
-      {/* G32-S1 md.3: güvenli alan kadar DÜZ, BOŞ, opak üst bant (tema zemini) — görsel
+      {/* G32-S1 md.3: güvenli alan kadar DÜZ, BOŞ, opak üst bant (G38 EK md.7: görsel alanı zemini) — görsel
           çentik / Dynamic Island / durum çubuğunun altına taşmaz; ScrollView bandın
           altından başladığı için kaydırınca da bant aynı kalır (iOS + Android edge-to-edge). */}
-      <View style={{ height: insets.top, backgroundColor: c.bg }} testID="ek-product-safe-top" />
+      {safeTop}
       <ScrollView {...SCROLL_KEYBOARD}
         ref={scrollRef}
         style={styles.fill}
@@ -499,7 +510,7 @@ export default function EkProductScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: BODY_PAD_BOTTOM + Math.max(0, insets.bottom - 34) }}
       >
-        <View style={{ height: HERO_H }}>
+        <View style={{ height: HERO_H, backgroundColor: heroBg }} testID="ek-product-hero-area">
           {heroUri ? (
             <CachedImage uri={heroUri} style={styles.hero} priority="high" contentFit="cover" onError={() => setHeroError(true)} />
           ) : (

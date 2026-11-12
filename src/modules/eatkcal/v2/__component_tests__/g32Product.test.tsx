@@ -1,5 +1,6 @@
 // G32-S1 md.3 — Ürün sayfası güvenli alan: üstte safe area kadar düz, boş, opak bant;
 // görsel onun altından başlar; geri düğmesi görselin üst-solunda (bandla çakışmaz).
+// G38 EK md.7: bant rengi = görsel alanı zemini (bkz. g38SafeTop.test.tsx).
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render as rtlRender, waitFor } from '@testing-library/react-native';
@@ -31,7 +32,7 @@ jest.mock('../../../../lib/restaurantRating', () => ({ fetchRestaurantRating: je
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const EkProductScreen = require('../screens/EkProductScreen').default;
 
-test('üst bant = safe area yüksekliği, opak tema zemini; ScrollView bandın altından; geri görselin içinde', async () => {
+test('üst bant = safe area yüksekliği, opak görsel alanı zemini; ScrollView bandın altından; geri görselin içinde', async () => {
   const r = render(<EkProductScreen />);
   await waitFor(() => expect(r.getByTestId('ek-product')).toBeTruthy());
   const root = r.getByTestId('ek-product');
@@ -39,7 +40,10 @@ test('üst bant = safe area yüksekliği, opak tema zemini; ScrollView bandın a
   const bandSt = StyleSheet.flatten(band.props.style) as Record<string, unknown>;
   const rootSt = StyleSheet.flatten(root.props.style) as Record<string, unknown>;
   expect(bandSt.height).toBe(59);
-  expect(bandSt.backgroundColor).toBe(rootSt.backgroundColor); // tema zemini, opak
+  // G38 EK md.7: bant artık görsel alanının zemini (tema surface), gri sayfa zemini değil.
+  const heroSt = StyleSheet.flatten(r.getByTestId('ek-product-hero-area').props.style) as Record<string, unknown>;
+  expect(bandSt.backgroundColor).toBe(heroSt.backgroundColor);
+  expect(bandSt.backgroundColor).not.toBe(rootSt.backgroundColor);
   expect(band.props.children).toBeUndefined(); // boş
   // Bant kökün ilk çocuğu, kaydırma alanı ondan sonra → kaydırınca bant yerinde kalır.
   const kids = React.Children.toArray(root.props.children) as React.ReactElement<{ testID?: string }>[];

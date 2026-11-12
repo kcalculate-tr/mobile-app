@@ -124,3 +124,12 @@ Sıra önemli:
 4. Seçenek kartı büyük metin boyutunda (%140 üstü) genişlesin mi? HIG %200 öneriyor; tasarım 136 pt sabit.
 5. CLAUDE.md'ye göre backend commit'leri main'e de cherry-pick edilir. Gece kuralı main'e commit'i yasakladığı için `f6b6434` (supabase/ dosyaları) main'e taşınmadı. İlter onaylarsa: `git cherry-pick f6b6434`.
 6. Görsel doğrulama simülatörde yapılmadı. Bileşen testi, gerçek font ölçümü ve export ile doğrulandı. OTA sonrası seçenek kartı ve sepet rozeti göz ile kontrol edilmeli.
+
+## EK md.7 (12 Kas, TestFlight geri bildirimi) — ürün sayfası üst bant
+- `EkProductScreen` `ek-product-safe-top` bandı artık gri sayfa zemini (`c.bg`, Light #F3F4F6 · Dark #000000) değil, ürün görseli alanının zemini olan tema `surface` rengi: Light #FFFFFF, Dark #1C1C1E.
+- Görsel alanı (`ek-product-hero-area`) aynı zemini alıyor: görsel yüklenirken ya da şeffafken bantla dikiş oluşmuyor.
+- İskelet ve hata hâlleri: eskiden kökte `paddingTop: insets.top` vardı ve bu boşluk gri kalıyordu. Şimdi aynı bant çiziliyor; iskelette görsel alanı da aynı zeminde.
+- Durum çubuğu: kökte `AppNavigator` `<StatusBar style={isDark ? 'light' : 'dark'} />` ile zaten Light'ta koyu içerik. Değişiklik gerekmedi.
+- Test `g38SafeTop.test.tsx` (Light + Dark × yüklü / iskelet / hata, 6 test). `g32Product` beklentisi "bant = görsel alanı zemini" olarak güncellendi.
+- Kontroller: tsc ✓ · unit 1275/1275 ✓ · jest 103 suite / 608 test ✓ · `expo export` iOS ✓ · Android ✓ · eslint 0 hata.
+- EK md.8 ("Et Gramajı" kartları görselsiz) G38 md.5 ile çözüldü. Kaynak `products.gramaj_options` jsonb; görsel ürün adından protein çıkartması. Gramaj metni görselin altında, 2 satırlık kutuda.
