@@ -46,3 +46,4 @@ Bazı taslak cümleler **hedef davranışı** anlatır; kod düzelmeden yayımla
 - Rıza ve kabul kayıtları (B-02).
 - Gizli profil medyasının korunması (B-18).
 - <!-- L-S3 --> Koç sohbetinin 30 günde silinmesi için zamanlanmış iş (B-24); ses tanıma seçeneği A/B'nin kesinleşmesi (B-22); Anthropic + RevenueCat standart sözleşmeleri (B-23).
+- <!-- L-S5 --> Kişisel plan ve öğün planı metinleri (`L-S5-RIZA-METINLERI.md`, `L-S5-POLITIKA-EKLERI.md`, `L-S5-KOD-ESLEME.md`) ön koşullar **K-1…K-6** bitmeden yayımlanmaz: Koç'la oluştur'un Koç iznine bağlanması, sağlık/alerji rızasını uygulama içinden geri alma ve silme, 18 yaş altında cevapların silinmesi, Koç izni sürüm 2, kullanım ölçümünden sağlık sınıflarının çıkarılması, rıza satırına metin sürümü.
