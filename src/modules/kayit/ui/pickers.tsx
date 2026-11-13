@@ -51,7 +51,7 @@ export function OptionRow({
       }}
       disabled={disabled}
       accessibilityRole={role}
-      accessibilityState={{ checked: selected, selected, disabled: !!disabled }}
+      accessibilityState={{ checked: selected, disabled: !!disabled }}
       accessibilityLabel={sub ? `${label}, ${sub}` : label}
       style={({ pressed }) => [
         styles.row,
