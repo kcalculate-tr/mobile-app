@@ -1,0 +1,7 @@
+G43-S1 DONE — 2026-11-14
+Dal: feat/kayit-v2 (worktree .claude/worktrees/g42-s1)
+Commitler: 96c62e5 (sadeleştirme) · bc3d5dc (testler) · a9276a1 (HIG düzeltmeleri) · b6a8a20 (ekran görüntüleri + LOG) · bu dosya
+Kontroller: hygiene ✓ · tsc ✓ · unit 1311/0/1 ✓ · jest 682/682 ✓ · expo export iOS ✓ · Android ✓
+Ekran görüntüleri: docs/night/g43/ (37) + docs/night/g43/karsilastirma/ (37 önce|sonra)
+LOG: docs/night/G43-S1-LOG.md — KARAR 14 madde, SORULAR 10 madde
+Deploy / OTA / canlı DB yazımı: YOK. Yeni paket: YOK.
