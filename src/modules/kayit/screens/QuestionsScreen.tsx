@@ -106,7 +106,7 @@ const COOK_ICON = { daily: CookingPot, sometimes: Timer, ready: Package } as con
 const STRUGGLE_ICON = { evening_snack: Moon, eating_out: Storefront, no_time: Clock, sweet: Cookie } as const;
 const ACT_ICON = { sedentary: Armchair, light: PersonSimpleWalk, moderate: PersonSimpleWalk, active: PersonSimpleRun } as const;
 
-type Params = { path?: KPath; mode?: 'short'; vitrinStep?: KStep } | undefined;
+type Params = { path?: KPath; mode?: 'short'; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number] } | undefined;
 
 export default function QuestionsScreen() {
   const { t, lang } = useT();
@@ -144,6 +144,16 @@ export default function QuestionsScreen() {
     if (__DEV__ && params.vitrinStep) s.setStep(params.vitrinStep);
     else if (short || s.answers.goal == null) s.setStep('goal');
     if (short) void healthConsentGiven().then((v) => setConsentKnown(v));
+    // YALNIZ __DEV__ vitrini (G44 seçim geçişi dizisi): P1 seçimsiz açılır, 6 sn sonra seçim yapılır (vitrin açılış örtüsü kalktıktan sonra).
+    if (__DEV__ && params.vitrinPick) {
+      const pick = params.vitrinPick;
+      s.patch({ goal: null });
+      const id = setTimeout(() => {
+        haptic('selection');
+        useKayit.getState().patch({ goal: pick });
+      }, 6000);
+      return () => clearTimeout(id);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

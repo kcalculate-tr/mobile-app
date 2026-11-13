@@ -26,7 +26,7 @@ import { K_MOTION } from './ui/theme';
 export type KayitParamList = {
   KOnb: { vitrinStep?: number } | undefined;
   KReturn: { draft: KDraft };
-  KQuestions: { path?: 'a' | 'b'; vitrinStep?: string } | undefined;
+  KQuestions: { path?: 'a' | 'b'; vitrinStep?: string; vitrinPick?: string } | undefined;
   KCalc: { vitrinHold?: boolean } | undefined;
   KResult: undefined;
   KSignup: { path?: 'a' | 'b'; vitrin?: string } | undefined;

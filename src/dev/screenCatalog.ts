@@ -677,6 +677,8 @@ function resolveParity(name: string): ResolvedEntry | null {
       Onb4: { target: k('KOnb', { vitrinStep: 4 }) },
       Onb5: { target: k('KOnb', { vitrinStep: 5 }) },
       P1: { target: k('KQuestions', { vitrinStep: 'goal' }) },
+      // G44: seçim geçişi dizisi (seçimsiz açılır, 6 sn sonra "Kilo vermek" seçilir).
+      P1pick: { target: k('KQuestions', { vitrinStep: 'goal', vitrinPick: 'lose' }) },
       P2: { target: k('KQuestions', { vitrinStep: 'gender' }) },
       P3: { target: k('KQuestions', { vitrinStep: 'birth' }) },
       P3b: { target: k('KQuestions', { vitrinStep: 'minor' }) },
