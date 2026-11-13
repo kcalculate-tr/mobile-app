@@ -214,6 +214,16 @@ export const EVENTS = {
   pp_done: { category: 'tracking', tr: 'Kişisel plan akışı tamamlandı', en: 'Personal plan flow completed', props: { origin: ['profile', 'home', 'coach', 'purchase', 'mine', 'plan_form', 'dev'] } },
   pp_checkin: { category: 'tracking', tr: 'Haftalık tartı', en: 'Weekly weigh-in', props: { kind: ['none', 'on_track', 'slow', 'fast', 'fluctuation'], action: ['saved', 'apply', 'keep', 'skip'] } },
   pp_paywall: { category: 'commerce', tr: 'Kişisel plan paywall', en: 'Personal plan paywall', props: { action: ['view', 'purchase', 'restore', 'free'], plan: 'text' } },
+  // G42-S1 — Yeni onboarding + kayıt hunisi (sunucu satırları 20261113120100_g42_yeni_kayit.sql).
+  // Sağlık değeri (kilo, boy, yaş, hedef) prop'u YOK: reg_q_answer yalnız soru kimliğini taşır.
+  onb_step_view: { category: 'lifecycle', tr: 'Yeni onboarding ekranı görüntülendi', en: 'New onboarding screen viewed', props: { step: 'number', lang: ['tr', 'en'] } },
+  onb_path_choice: { category: 'lifecycle', tr: 'Onboarding yol ve başlangıç seçimi', en: 'Onboarding path and start choice', props: { path: ['a', 'b'], start: ['track', 'recipes', 'community'] } },
+  reg_q_answer: { category: 'lifecycle', tr: 'Kayıt sorusu cevaplandı (değer yok)', en: 'Registration question answered (no value)', props: { q: 'text', path: ['a', 'b'] } },
+  plan_ready: { category: 'lifecycle', tr: 'Kişisel plan hazır (L1 bitti)', en: 'Personal plan ready (L1 done)', props: { recalc: 'boolean' } },
+  reg_signup_method: { category: 'lifecycle', tr: 'Kayıt yöntemi seçildi', en: 'Signup method chosen', props: { method: SIGNUP_METHODS, path: ['a', 'b'] } },
+  meta_consent: { category: 'marketing', tr: 'Kayıtta Meta onay kutusu', en: 'Meta consent box at signup', props: { granted: 'boolean', att: ['granted', 'denied', 'undetermined', 'unavailable'] } },
+  paywall_view_reg: { category: 'commerce', tr: 'Kayıt sonrası teklif görüntülendi', en: 'Post-signup offer viewed', props: { period: ['yearly', 'monthly'] } },
+  trial_start_reg: { category: 'commerce', tr: 'Kayıt teklifinden satın alma/deneme', en: 'Purchase/trial from signup offer', props: { plan: 'text', result: ['success', 'cancelled', 'pending', 'error'] } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',

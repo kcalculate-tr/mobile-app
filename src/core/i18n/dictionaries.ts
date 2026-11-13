@@ -20,6 +20,7 @@ import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
+import { tr as kayitTr, en as kayitEn } from '../../modules/kayit/i18n';
 
 export type Lang = 'tr' | 'en';
 
@@ -45,6 +46,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     plan: planTr,
     // G34-S1 — Kişisel plan (Tur 26o).
     pp: ppTr,
+    // G42-S1 — Yeni onboarding + kayıt.
+    kayit: kayitTr,
     common: {
       undo: 'Geri al',
       cancel: 'Vazgeç',
@@ -1964,6 +1967,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     coach: coachEn,
     plan: planEn,
     pp: ppEn,
+    kayit: kayitEn,
     common: {
       undo: 'Undo',
       cancel: 'Cancel',
