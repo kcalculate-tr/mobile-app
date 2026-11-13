@@ -5,7 +5,7 @@
 // Keşfet/G33 kataloğundan uygun 3 tarif, koşullu eatkcal kartı ("İzmir'deysen…"), sağlık verisi açık rızası.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
@@ -38,6 +38,8 @@ export function CalcScreen() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const navigation = useNavigation<any>();
+  // YALNIZ __DEV__ vitrini: L1 ilk satırda bekler (ekran görüntüsü).
+  const hold = __DEV__ && !!((useRoute().params ?? {}) as { vitrinHold?: boolean }).vitrinHold;
   const answers = useKayit((s) => s.answers);
   const calcDone = useKayit((s) => s.calcDone);
   const planSig = useKayit((s) => s.planSig);
@@ -70,6 +72,10 @@ export function CalcScreen() {
       if (!alive) return;
       setPlan(p);
       const step = total / 4;
+      if (hold) {
+        setRow(1);
+        return;
+      }
       [1, 2, 3].forEach((i) => {
         timers.current.push(
           setTimeout(() => {
@@ -201,7 +207,7 @@ export function ResultScreen() {
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={21} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
-        <TopBar onBack={back} progress={{ index: 0, total: 1 }} />
+        <TopBar onBack={back} progress={{ index: 1, total: 1, hideNumber: true }} />
         <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
           <View style={styles.titleRow}>
             <AppText testID="kayit-result-title" accessibilityRole="header" maxFontSizeMultiplier={1.35} style={[styles.h1, { color: P.ink, flex: 1 }]}>
@@ -400,15 +406,15 @@ const styles = StyleSheet.create({
   h3: { fontFamily: FONT.display, fontSize: 18 },
   small: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19 },
   note: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18, paddingHorizontal: 4 },
-  calcNum: { fontFamily: FONT.display, fontSize: 52, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
-  calcUnit: { fontFamily: FONT.semi, fontSize: 18 },
+  calcNum: { fontFamily: FONT.display, fontSize: 52, lineHeight: 64, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+  calcUnit: { fontFamily: FONT.semi, fontSize: 18, lineHeight: 24 },
   calcRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, minHeight: 56 },
   calcRowText: { fontFamily: FONT.semi, fontSize: 16, flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 8 },
   card: { borderRadius: 26, borderWidth: 1, padding: 18 },
   daily: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   kcal: { fontFamily: FONT.display, fontSize: 48, lineHeight: 54, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
-  kcalUnit: { fontFamily: FONT.semi, fontSize: 18, marginBottom: 8, marginLeft: 2 },
+  kcalUnit: { fontFamily: FONT.semi, fontSize: 18, lineHeight: 24, marginBottom: 8, marginLeft: 2 },
   macroNum: { fontFamily: FONT.bold, fontSize: 14 },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10, flexWrap: 'wrap' },
   sectionHeadInner: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },

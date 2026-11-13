@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   agePillText: { fontFamily: FONT.bold, fontSize: 16, color: '#10301D' },
   bigRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 6 },
   big: { fontFamily: FONT.display, fontSize: 88, lineHeight: 96, letterSpacing: -2, fontVariant: ['tabular-nums'] },
-  bigUnit: { fontFamily: FONT.semi, fontSize: 24, marginBottom: 16 },
+  bigUnit: { fontFamily: FONT.semi, fontSize: 24, lineHeight: 30, marginBottom: 16 },
   card: { borderRadius: 28, borderWidth: 1, padding: 22, gap: 8 },
   cardTitle: { fontFamily: FONT.display, fontSize: 20 },
   cardSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21 },

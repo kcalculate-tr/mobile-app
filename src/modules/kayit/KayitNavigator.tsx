@@ -24,7 +24,7 @@ export type KayitParamList = {
   KOnb: { vitrinStep?: number } | undefined;
   KReturn: { draft: KDraft };
   KQuestions: { path?: 'a' | 'b'; vitrinStep?: string } | undefined;
-  KCalc: undefined;
+  KCalc: { vitrinHold?: boolean } | undefined;
   KResult: undefined;
   KSignup: { path?: 'a' | 'b'; vitrin?: string } | undefined;
   KEmail: { path?: 'a' | 'b'; meta?: boolean; marketing?: boolean; age?: boolean; vitrinStep?: 'code'; vitrinState?: string } | undefined;
@@ -113,7 +113,7 @@ export default function KayitNavigator() {
       <Stack.Screen name="KReturn" component={ReturnScreen} initialParams={initial.name === 'KReturn' ? (initial.params as never) : undefined} options={{ ...scene, animation: reduced ? 'fade' : 'slide_from_bottom' }} />
       {/* O5 → P1: seçilen kart büyüyerek açılır (sahne geçişi 550 ms); sorular kendi içinde kayar (kenar jesti ekranın). */}
       <Stack.Screen name="KQuestions" component={QuestionsScreen} initialParams={initial.name === 'KQuestions' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
-      <Stack.Screen name="KCalc" component={CalcScreen} options={{ ...scene, gestureEnabled: false }} />
+      <Stack.Screen name="KCalc" component={CalcScreen} initialParams={initial.name === 'KCalc' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
       <Stack.Screen name="KResult" component={ResultScreen} options={{ ...scene, gestureEnabled: false }} />
       <Stack.Screen name="KSignup" component={SignupScreen} initialParams={initial.name === 'KSignup' ? (initial.params as never) : undefined} options={scene} />
       <Stack.Screen name="KEmail" component={EmailScreen} initialParams={initial.name === 'KEmail' ? (initial.params as never) : undefined} />

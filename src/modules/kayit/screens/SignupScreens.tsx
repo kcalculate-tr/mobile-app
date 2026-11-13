@@ -154,7 +154,7 @@ export function SignupScreen() {
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={22} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
-        <TopBar onBack={back} progress={path === 'a' ? { index: 1, total: 1 } : null} />
+        <TopBar onBack={back} progress={path === 'a' ? { index: 1, total: 1, hideNumber: true } : null} />
         <ScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }} showsVerticalScrollIndicator={false}>
           <View style={{ marginTop: 12 }}>
             <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" typewriter={false} />

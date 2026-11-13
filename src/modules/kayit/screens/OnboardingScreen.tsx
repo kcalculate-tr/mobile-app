@@ -258,7 +258,7 @@ export default function OnboardingScreen({ vitrinStep }: { /** YALNIZ geliştirm
           ]}
         >
           {tx}
-          <AppText style={dark ? { color: '#C4F530' } : { backgroundColor: '#B9EF14' }}>{dark ? em : ` ${em.trim()} `}</AppText>
+          <AppText maxFontSizeMultiplier={1.2} style={[styles.title, { fontSize: fs, lineHeight: fs * 1.06 }, dark ? { color: '#C4F530' } : { color: '#10301D', backgroundColor: '#B9EF14' }]}>{dark ? em : `\u00A0${em.trim()}\u00A0`}</AppText>
           {tb}
         </AppText>
         {sub ? (

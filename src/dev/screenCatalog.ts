@@ -693,7 +693,7 @@ function resolveParity(name: string): ResolvedEntry | null {
       P12: { target: k('KQuestions', { vitrinStep: 'meals' }) },
       P13: { target: k('KQuestions', { vitrinStep: 'cooking' }) },
       P14: { target: k('KQuestions', { vitrinStep: 'struggle' }) },
-      L1: { target: k('KCalc') },
+      L1: { target: k('KCalc', { vitrinHold: true }) },
       L2: { target: k('KResult') },
       K1: { target: k('KSignup', { path: 'a' }) },
       K1d: { target: k('KSignup', { path: 'a', vitrin: 'denied' }) },

@@ -461,7 +461,9 @@ export function ActivityCarousel<T extends string>({ items, value, onChange, lab
   const gapW = 16;
   const itemW = cardW + gapW;
   const ref = useRef<FlatList<CarouselItem<T>>>(null);
-  const initial = Math.max(0, items.findIndex((i) => i.key === value));
+  // Seçim yoksa tasarımdaki gibi ikinci kart (Hafif) ortada açılır.
+  const found = items.findIndex((i) => i.key === value);
+  const initial = found >= 0 ? found : Math.min(1, items.length - 1);
   const [active, setActive] = useState(initial);
   const lastRef = useRef(initial);
   useEffect(() => {

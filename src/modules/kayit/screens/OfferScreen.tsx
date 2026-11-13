@@ -178,7 +178,7 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
 }
 
 function PlanRow({ card, name, sub, recommended, selected, locked, onPress, testID }: { card: PlanCard; name: string; sub: string; recommended?: boolean; selected: boolean; locked: boolean; onPress: () => void; testID?: string }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const P = useK();
   const reduced = useReducedMotion();
   const s = useSharedValue(1);
@@ -202,7 +202,7 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
         }}
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled: locked }}
-        accessibilityLabel={[name, sub, priceLine, card.monthlyText, trial, !card.yearly ? t('kayit.offer.no_trial') : null, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
+        accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, !card.yearly ? t('kayit.offer.no_trial') : null, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
         style={[styles.plan, { backgroundColor: selected ? P.accent : P.card, borderColor: selected ? P.accent : P.cardEdge }]}
       >
         <View style={[styles.radio, { borderColor: selected ? '#10301D' : P.sec, backgroundColor: selected ? 'rgba(255,255,255,0.5)' : 'transparent' }]}>{selected ? <Check size={16} color="#10301D" weight="bold" /> : null}</View>
@@ -231,7 +231,7 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
           </AppText>
           {card.monthlyText ? (
             <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: selected ? 'rgba(16,48,29,0.72)' : P.sec }]}>
-              {card.monthlyText}
+              {t('sub.paywall.per_month_equiv', { price: card.monthlyText })}
             </AppText>
           ) : null}
         </View>
@@ -242,10 +242,10 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
             </AppText>
           </View>
         ) : null}
-        {card.yearly && card.discountPct ? (
-          <View style={[styles.tag, { top: recommended ? undefined : -12, bottom: recommended ? -12 : undefined, backgroundColor: P.accent }]}>
+        {recommended && card.yearly && card.discountPct ? (
+          <View style={[styles.tag, { top: undefined, bottom: -12, backgroundColor: P.accent }]}>
             <AppText maxFontSizeMultiplier={1.2} style={styles.tagText}>
-              {t('kayit.offer.save_pct', { pct: card.discountPct })}
+              {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}
             </AppText>
           </View>
         ) : null}

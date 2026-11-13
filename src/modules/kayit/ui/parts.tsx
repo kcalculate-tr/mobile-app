@@ -154,7 +154,7 @@ export function Mascot({ size = 96, fill = false, react, calm = false, label, st
 }
 
 // ─── İlerleme halkası ─────────────────────────────────────────────────────────
-export function ProgressRing({ index, total, size = 52, glow = false }: { index: number; total: number; size?: number; glow?: boolean }) {
+export function ProgressRing({ index, total, size = 52, glow = false, hideNumber = false }: { index: number; total: number; size?: number; glow?: boolean; hideNumber?: boolean }) {
   const P = useK();
   const { t } = useT();
   const reduced = useReducedMotion();
@@ -208,7 +208,7 @@ export function ProgressRing({ index, total, size = 52, glow = false }: { index:
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      {index > 0 ? (
+      {index > 0 && !hideNumber ? (
         <AppText maxFontSizeMultiplier={1.2} style={[styles.ringNum, { color: P.ink }]}>
           {String(index)}
         </AppText>
@@ -236,7 +236,7 @@ export function CircleButton({ onPress, label, children, testID, disabled }: { o
   );
 }
 
-export function TopBar({ onBack, progress, right, glow }: { onBack?: (() => void) | null; progress?: { index: number; total: number } | null; right?: React.ReactNode; glow?: boolean }) {
+export function TopBar({ onBack, progress, right, glow }: { onBack?: (() => void) | null; progress?: { index: number; total: number; hideNumber?: boolean } | null; right?: React.ReactNode; glow?: boolean }) {
   const P = useK();
   const { t } = useT();
   return (
@@ -248,7 +248,7 @@ export function TopBar({ onBack, progress, right, glow }: { onBack?: (() => void
       ) : (
         <View style={{ width: 52 }} />
       )}
-      {right ?? (progress ? <ProgressRing index={progress.index} total={progress.total} glow={glow} /> : <View style={{ width: 52 }} />)}
+      {right ?? (progress ? <ProgressRing index={progress.index} total={progress.total} glow={glow} hideNumber={progress.hideNumber} /> : <View style={{ width: 52 }} />)}
     </View>
   );
 }
