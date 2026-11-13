@@ -79,6 +79,7 @@ import { kv, useKayit } from '../store';
 import { setShortPending } from '../storage';
 import { dropDraft } from '../store';
 import { kTrack } from '../events';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const LAYOUT: Record<KQuestion, BubbleLayout> = {
   goal: 'title',
@@ -216,7 +217,7 @@ export default function QuestionsScreen() {
           ) : step === 'minor' ? (
             <MinorView />
           ) : (
-            <ScrollView contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
               <View style={{ marginTop: 12 }}>
                 <QuestionHead
                   testID="kayit-q-title"

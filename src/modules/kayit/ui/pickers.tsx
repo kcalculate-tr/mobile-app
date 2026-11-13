@@ -19,6 +19,7 @@ import { useT } from '../../../core/i18n';
 import { Check, MagnifyingGlass, Minus, Plus, Sneaker, X, type Icon } from '../../../components/icons';
 import { FONT } from './parts';
 import { K_MOTION, useK } from './theme';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 // ─── Seçim kartı (2×2 ızgara + geniş) ─────────────────────────────────────────
 export function ChoiceTile({
@@ -194,7 +195,7 @@ export function WheelPicker({ values, value, onChange, format, label, testID }: 
       style={{ height: WHEEL_ROW * WHEEL_VISIBLE, alignSelf: 'stretch' }}
     >
       <View pointerEvents="none" style={[styles.wheelBand, { top: WHEEL_ROW * 2, backgroundColor: P.card, borderColor: P.cardEdge }]} />
-      <FlatList
+      <FlatList {...SCROLL_KEYBOARD}
         ref={ref}
         data={values}
         keyExtractor={(v) => String(v)}
@@ -312,7 +313,7 @@ export function Ruler({
       onAccessibilityAction={(e) => nudge(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
       style={[styles.ruler, { backgroundColor: P.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.45)', borderColor: P.cardEdge }]}
     >
-      <FlatList
+      <FlatList {...SCROLL_KEYBOARD}
         ref={ref}
         horizontal
         data={segments}
@@ -489,7 +490,7 @@ export function ActivityCarousel<T extends string>({ items, value, onChange, lab
   };
   return (
     <View>
-      <FlatList
+      <FlatList {...SCROLL_KEYBOARD}
         ref={ref}
         horizontal
         data={items as CarouselItem<T>[]}

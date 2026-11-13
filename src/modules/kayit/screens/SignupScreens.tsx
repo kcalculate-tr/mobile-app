@@ -32,6 +32,7 @@ import { firstTabFor, type KPath } from '../model';
 import { finishSignup } from '../signup';
 import { flushDraft, useKayit } from '../store';
 import { kTrack } from '../events';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Method = 'apple' | 'google' | 'email';
 type Consents = { meta: boolean; marketing: boolean; age: boolean };
@@ -155,7 +156,7 @@ export function SignupScreen() {
       <KBackdrop shift={22} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
         <TopBar onBack={back} progress={path === 'a' ? { index: 1, total: 1, hideNumber: true } : null} />
-        <ScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }} showsVerticalScrollIndicator={false}>
           <View style={{ marginTop: 12 }}>
             <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" typewriter={false} />
           </View>
@@ -322,7 +323,7 @@ export function EmailScreen() {
         <KBackdrop shift={23} />
         <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
           <TopBar onBack={back} />
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
+          <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
             <View style={{ marginTop: 12 }}>
               <QuestionHead title={t('kayit.signup.email_title')} layout="left" typewriter={false} />
             </View>
@@ -392,7 +393,7 @@ export function EmailScreen() {
       <KBackdrop shift={24} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
         <TopBar onBack={back} />
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
           <View style={{ marginTop: 12 }}>
             <QuestionHead title={t('kayit.signup.code_title')} layout="right" typewriter={false} />
           </View>

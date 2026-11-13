@@ -21,6 +21,7 @@ import { CircleButton, FONT, KBackdrop, KButton, Mascot, NoticeCard, Segment } f
 import { K_MOTION, useK } from '../ui/theme';
 import { useKayit } from '../store';
 import { kTrack } from '../events';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Period = 'yearly' | 'monthly';
 type Phase = 'idle' | 'buying' | 'success' | 'cancelled' | 'error';
@@ -95,7 +96,7 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
     <View style={{ flex: 1 }} testID="kayit-offer">
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={30} />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) + 16, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) + 16, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
         <View style={styles.top}>
           <View style={{ width: 52 }} />
           <Mascot size={110} />

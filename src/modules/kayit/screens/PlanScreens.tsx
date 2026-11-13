@@ -28,6 +28,7 @@ import { fmtDec1, fmtInt, monthRange } from '../format';
 import { flushDraft, useKayit } from '../store';
 import { readMuscleSurplus } from '../settings';
 import { kTrack } from '../events';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -208,7 +209,7 @@ export function ResultScreen() {
       <KBackdrop shift={21} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
         <TopBar onBack={back} progress={{ index: 1, total: 1, hideNumber: true }} />
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
           <View style={styles.titleRow}>
             <AppText testID="kayit-result-title" accessibilityRole="header" maxFontSizeMultiplier={1.35} style={[styles.h1, { color: P.ink, flex: 1 }]}>
               {t('kayit.plan.ready_title')}
@@ -246,7 +247,7 @@ export function ResultScreen() {
                   {split.snack ? t('kayit.plan.meals_summary', { main: split.main, snack: split.snack }) : t('kayit.plan.meals_summary_nosnack', { main: split.main })}
                 </AppText>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+              <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
                 {recipes.map((r) => (
                   <View key={r.key} testID={`kayit-recipe-${r.key}`} accessible accessibilityLabel={`${lang === 'en' ? r.nameEn : r.nameTr}, ${Math.round(r.macros.kcal)} ${t('kayit.plan.kcal')}`} style={[styles.recipe, { backgroundColor: P.card, borderColor: P.cardEdge }]}>
                     <View style={[styles.recipeImg, { backgroundColor: P.accentSoft }]}>
