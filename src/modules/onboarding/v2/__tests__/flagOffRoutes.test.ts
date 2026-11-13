@@ -28,8 +28,11 @@ test('initialRoute: Onboarding yalnız yeni_onboarding açıkken, kapalıyken We
   assert.match(nav, /const yeniOnboarding = useColdStartFeature\('yeni_onboarding'\)/);
   assert.match(
     nav,
-    /const initialRouteName = session\s*\?\s*'Tabs'\s*:\s*yeniOnboarding\s*\?\s*'Onboarding'\s*:\s*'WelcomeGate'/,
+    // G42-S1: `yeni_kayit` (varsayılan KAPALI) önce gelir; kapalıyken zincir bugünküyle aynı.
+    /const initialRouteName = session\s*\?\s*'Tabs'\s*:\s*yeniKayit\s*\?\s*'Kayit'\s*:\s*yeniOnboarding\s*\?\s*'Onboarding'\s*:\s*'WelcomeGate'/,
   );
+  assert.match(nav, /const yeniKayit = useColdStartFeature\('yeni_kayit'\)/);
+  assert.match(nav, /\{yeniKayit \? <Stack\.Screen name="Kayit"/);
 });
 
 test("'TakibeBasla'ya yalnız Onboarding, Final Profil › Hedefim ve Ana sayfa makro ayrıntısından (ikisi de bayrak açık) gidilir", () => {

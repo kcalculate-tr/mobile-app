@@ -176,6 +176,9 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   ShoppingList: { kind: 'final', file: 'modules/plan/screens/ShoppingListScreen.tsx' },
   // G34-S1 — Kişisel plan (`kisisel_plan` bayrağı).
   PersonalPlan: { kind: 'final', file: 'modules/personalPlan/screens/PersonalPlanFlowScreen.tsx' },
+  // G42-S1 — yeni onboarding + kayıt (yalnız yeni_kayit açıkken kayıtlı).
+  Kayit: { kind: 'final', file: 'modules/kayit/KayitNavigator.tsx' },
+  KayitShort: { kind: 'final', file: 'modules/kayit/screens/QuestionsScreen.tsx' },
   PersonalPlanMine: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanScreen.tsx' },
   PersonalPlanEdit: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanEditScreen.tsx' },
   PersonalPlanCheckin: { kind: 'final', file: 'modules/personalPlan/screens/CheckinScreen.tsx' },

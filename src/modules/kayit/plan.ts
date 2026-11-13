@@ -244,3 +244,21 @@ export function pickRecipes<R extends RecipeLike>(recipes: readonly R[], a: Pick
   }
   return out;
 }
+
+// ─── B yolu kısa profil → MEVCUT takip kapısı (Takibe başla kaydı) ────────────
+export interface TakibeDraftLike {
+  goal: 'lose' | 'maintain' | 'gain' | 'regular' | null;
+  pace: 0.25 | 0.5 | 0.75;
+  gender: 'female' | 'male' | 'unspecified' | null;
+  birthYear: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  consent: boolean;
+  activity: 'sedentary' | 'light' | 'moderate' | 'active' | null;
+}
+
+/** Kısa profil (B-P1/P2/P3/P4/P5/P8) → saveTakibeProfile taslağı (yeni formül yok; servis hesaplar). */
+export function toTakibeDraft(a: KAnswers, consent: boolean): TakibeDraftLike {
+  const goal = a.goal === 'muscle' ? 'gain' : a.goal === 'balanced' ? 'regular' : a.goal;
+  return { goal, pace: 0.5, gender: a.gender, birthYear: a.birthYear, heightCm: a.heightCm, weightKg: a.weightKg, consent, activity: a.activity };
+}

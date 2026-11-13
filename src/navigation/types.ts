@@ -21,6 +21,9 @@ export type RootStackParamList = {
   // G12-S1 — yeni onboarding akışı (yalnız `yeni_onboarding` açık + oturumsuz
   // soğuk açılış). Kapalıyken HİÇ kaydolmaz; WelcomeGate bugünküyle aynı.
   Onboarding: undefined;
+  // G42-S1 — yeni onboarding + kayıt (yalnız yeni_kayit açıkken kayıtlı).
+  Kayit: { screen?: string; params?: Record<string, unknown> } | undefined;
+  KayitShort: { mode?: 'short' } | undefined;
   // G12-S1 — "Takibe başla" (hedef/tempo/beden/hareket/sonuç/ilk adım). Mevcut
   // beslenme profili servisini kullanır; `editGoal` Profil › Hedefim'den açılış.
   TakibeBasla: { editGoal?: boolean } | undefined;

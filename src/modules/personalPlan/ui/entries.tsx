@@ -96,13 +96,15 @@ export function HomePlanCard() {
   const P = usePp();
   const { enabled, hasPlan, loaded } = usePersonalPlanEntry();
   const open = useOpenPersonalPlan();
+  // G42-S1 md.9: yeni kayıt akışında bu yer "Planını geliştir" kartına (kayit/PlanImproveSlot) devredilir.
+  const yeniKayit = useFeature('yeni_kayit');
   const [dismissed, setDismissed] = useState<boolean | null>(null);
   useEffect(() => {
     void AsyncStorage.getItem(HOME_CARD_KEY)
       .then((v) => setDismissed(v === '1'))
       .catch(() => setDismissed(false));
   }, []);
-  if (!enabled || !loaded || hasPlan || dismissed !== false) return null;
+  if (yeniKayit || !enabled || !loaded || hasPlan || dismissed !== false) return null;
   const close = () => {
     haptic('light');
     setDismissed(true);
