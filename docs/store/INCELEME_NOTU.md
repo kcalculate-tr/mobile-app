@@ -42,9 +42,10 @@ SIGN-IN (no password in this app — email one-time code)
    (Sign in with Apple and Google also work; the demo account has all 1.1.0 features enabled.)
 
 PRIVACY / ATT
-- Before any tracking, the sign-up screen shows Terms, Privacy Policy, KVKK notice and an "Ad measurement (Meta)" switch the user can turn off.
-- The iOS App Tracking Transparency prompt appears only after sign-up and only if ad measurement is left on. Meta is used only to measure our ad campaigns, not to show ads (the app has no ads). Declining ATT turns Meta off.
-- Profile > Privacy > Data and ad permissions: usage measurement and ad measurement on/off.
+- The sign-up / sign-in screen shows the required Terms + Privacy Policy box and, below it, an OPTIONAL and UNCHECKED box: "I agree to share my data with Meta for campaign and ad measurement." Sign-up completes without it.
+- ATT is asked only if the optional Meta box is checked during sign-up (never at app launch). To see it with the review account: sign out, then while creating a new account check the Meta box — the iOS tracking prompt appears right after. Declining ATT leaves the box unchecked: no device identifier and no events are sent to Meta.
+- Meta is used only to measure our ad campaigns, not to show ads (the app has no ads).
+- Withdraw any time: Profile > Privacy > "Meta ad measurement: On/Off". Usage measurement and AI permissions: Profile > Privacy > Data and ad permissions.
 - Account deletion: Profile > Security > Delete account (in-app, guideline 5.1.1(v)).
 
 WHAT TO TRY
@@ -75,3 +76,8 @@ Camera: plate scan. Photos: pick plate/profile/post images. Location (when in us
 2. Formlara yalnız yer tutucuların gerçek değerlerini gir; bu dosyaya yazma.
 3. İnceleme bitince: posta kutusu parolasını değiştir; demo kullanıcı kalabilir (sonraki sürümler) ama test verisi temizlenir.
 4. eatkcal ödeme adımında **ödeme yapılmamalı** notu kritik (gerçek sipariş mutfağa düşer).
+5. **PRIVACY (G41-S1, 13 Kas):** ATT yalnız kayıtta isteğe bağlı Meta kutusu işaretlenirse sorulur; inceleme hesabıyla
+   görmek için çıkış yapıp yeni hesap açarken kutuyu işaretleyin. ATT reddi → kutu "verilmedi", Meta'ya kimlik/olay gitmez.
+   Geri çekme: Profil › Gizlilik › "Meta reklam ölçümü: Açık/Kapalı".
+6. **App Store Connect › App Privacy** ATT geri geldiği için güncellenmeli: "Data Used to Track You" = Device ID
+   (IDFA), Product Interaction, Purchase History (Meta; yalnız kutu + ATT izni). Ayrıntı `GIZLILIK_BEYANLARI.md`.

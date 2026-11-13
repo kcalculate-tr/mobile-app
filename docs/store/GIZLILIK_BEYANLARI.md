@@ -6,7 +6,21 @@ G3-S1 (`docs/night/G3-S1-STORE_FORMS.md`, 3 Kas). **⚠ = L-S1/G3-S1 ile çeliş
 Bu tablolar 1.1.0 ile **aynı anda** konsola girilir; iOS gizlilik manifesti (`app.config.js` `privacyManifests`)
 bu oturumda aynı cevaplara hizalandı (18 veri türü).
 
-## ⚠ G26-S1 değişikliği (11 Kas — İlter kararı: ATT kaldırıldı)
+## ⚠ G41-S1 değişikliği (13 Kas — İlter: ATT YALNIZ kayıttaki isteğe bağlı Meta kutusuyla) — G26'yı GEÇERSİZ kılar
+- Kayıt/giriş ekranında İŞARETSİZ, isteğe bağlı kutu: "Kampanya ve reklam ölçümü için verilerimin Meta ile paylaşılmasına
+  izin veriyorum." İşaretlenince (iOS) ATT HEMEN, bir kez sorulur (`src/lib/att.ts`, `src/lib/consent/metaConsent.ts`);
+  açılışta asla. Reddedilirse kutu "verilmedi", IDFA ve Meta olayı gitmez (`src/lib/metrics/consent.ts` `metaAllowed` /
+  `fbSettingsFor`: iOS'ta onay + ATT izinli şart).
+- `NSUserTrackingUsageDescription` Info.plist'te (TR/EN): "Kampanya ve reklam ölçümü için, yalnız kayıtta izin verdiysen kullanılır."
+- Gizlilik manifesti: `NSPrivacyTracking: true`, `NSPrivacyTrackingDomains: ['ep1.facebook.com']`;
+  `Tracking: true` → **Device ID** (IDFA; Third-Party Advertising + Analytics), **Product Interaction**, **Purchase History**.
+- **App Store Connect › App Privacy güncellenmeli** (G26'daki "boş" cevabı GERİ ALINIR): "Data Used to Track You" =
+  Device ID, Product Interaction, Purchase History. ATT sorusu gösterip "izleme yok" beyanı = 5.1.2 reddi riski.
+- Geri çekme: Profil › Gizlilik › "Meta reklam ölçümü: Açık/Kapalı" (izinler sayfasındaki anahtar kalktı).
+- Play "Data safety" değişmez (Android'de ATT yok; reklam kimliği yalnız kutu işaretliyse, `AD_ID` beyanı aynı).
+  `expo-tracking-transparency` eklentisi KULLANILMADI → Android manifestine yeni izin eklenmez.
+
+## ~~G26-S1 değişikliği (11 Kas — İlter kararı: ATT kaldırıldı)~~ — G41-S1 ile geçersiz
 - iOS'ta **App Tracking Transparency sorusu YOK**; `NSUserTrackingUsageDescription` Info.plist'te yok, IDFA **toplanmaz**
   (`setAdvertiserTrackingEnabled(false)` + `setAdvertiserIDCollectionEnabled(false)` sabit — `src/lib/analytics.ts` `initFBSDK`).
 - Meta reklam olayları ATT'siz (AEM / SKAdNetwork, toplu ölçüm) yalnız uygulama içi "Reklam ölçümü" tercihi reddedilmediyse gider

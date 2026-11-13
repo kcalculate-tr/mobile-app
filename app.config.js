@@ -3,9 +3,11 @@ const fs = require('fs');
 const path = require('path');
 
 // G41-S1 md.5 — Android R8 (yerel config plugin; expo-build-properties YOK, yeni paket eklenmedi).
-// Expo şablonundaki app/build.gradle bu iki özelliği okur:
-//   minifyEnabled  ← android.enableProguardInReleaseBuilds
+// Expo SDK 54 şablonundaki app/build.gradle (prebuild --clean ile doğrulandı, G41-S1):
+//   minifyEnabled   ← android.enableMinifyInReleaseBuilds   (DİKKAT: SDK 54 adı budur)
 //   shrinkResources ← android.enableShrinkResourcesInReleaseBuilds
+// android.enableProguardInReleaseBuilds eski (RN şablonu) adıdır; SDK 54 şablonu okumaz ama
+// görev tanımı ve geriye uyum için o da true yazılır.
 // Yalnız release derlemesini etkiler (debug / dev client aynı). R8 her release'te
 // app/build/outputs/mapping/release/mapping.txt üretir; AAB'nin BUNDLE-METADATA'sına girer
 // (Play Console otomatik kullanır). Sentry yüklemesi aşağıda Sentry eklentisi açıkken.
@@ -37,6 +39,7 @@ const withAndroidR8 = (config) => {
       c.modResults = c.modResults.filter((p) => !(p.type === 'property' && p.key === key));
       c.modResults.push({ type: 'property', key, value });
     };
+    set('android.enableMinifyInReleaseBuilds', 'true');
     set('android.enableProguardInReleaseBuilds', 'true');
     set('android.enableShrinkResourcesInReleaseBuilds', 'true');
     return c;

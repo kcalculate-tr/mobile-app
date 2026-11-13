@@ -162,3 +162,34 @@ test('G26-S1: Android izinleri yalnız kullanılanlar; depolama + SYSTEM_ALERT_W
     assert.ok(cfg.expo.android.blockedPermissions.includes(`android.permission.${p}`), p);
   }
 });
+
+test('G41-S1 md.5: Android R8 — yerel plugin (expo-build-properties yok), minify + shrink + keep kuralları, Sentry mapping', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pkg = require('../../../package.json') as { dependencies: Record<string, string> };
+  assert.equal(pkg.dependencies['expo-build-properties'], undefined);
+  const src = readFileSync(join(ROOT, 'app.config.js'), 'utf8');
+  // SDK 54 şablonu android.enableMinifyInReleaseBuilds okur (prebuild ile doğrulandı); eski ad da yazılır.
+  for (const k of ['android.enableMinifyInReleaseBuilds', 'android.enableProguardInReleaseBuilds', 'android.enableShrinkResourcesInReleaseBuilds']) {
+    assert.match(src, new RegExp(`set\\('${k.replace(/\./g, '\\.')}', 'true'\\)`), k);
+  }
+  assert.match(src, /withGradleProperties/);
+  assert.match(src, /proguard-rules\.pro/);
+  for (const keep of ['com.revenuecat.purchases', 'io.sentry.react', 'com.facebook.reactnative.androidsdk']) assert.ok(src.includes(`-keep class ${keep}.**`), keep);
+  // Kendi consumer kuralı olan kütüphaneler eklenmez.
+  for (const no of ['com.swmansion.reanimated', 'com.horcrux.svg', 'expo.modules.kotlin']) assert.ok(!src.includes(`-keep class ${no}`), no);
+  assert.match(src, /enableAndroidGradlePlugin: true/);
+  assert.match(src, /autoUploadProguardMapping: true/);
+  const names = appConfig.expo.plugins.map((p) => (typeof p === 'function' ? 'fn' : Array.isArray(p) ? p[0] : p));
+  assert.ok(names.includes('fn'), 'withAndroidR8 eklenti dizisinde');
+});
+
+test('G41-S1 md.6: sürüm 1.1.0 / runtime appVersion; iOS buildNumber 32, Android versionCode 11', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const cfg = require('../../../app.config.js') as {
+    expo: { version: string; runtimeVersion: { policy: string }; ios: { buildNumber: string }; android: { versionCode: number } };
+  };
+  assert.equal(cfg.expo.version, '1.1.0');
+  assert.deepEqual(cfg.expo.runtimeVersion, { policy: 'appVersion' });
+  assert.equal(cfg.expo.ios.buildNumber, '32');
+  assert.equal(cfg.expo.android.versionCode, 11);
+});
