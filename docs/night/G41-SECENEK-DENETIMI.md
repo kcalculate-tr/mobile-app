@@ -36,6 +36,8 @@ Tam canlı tarama için aşağıdaki "Canlı tarama sorguları" bölümündeki s
 
 ## Bulgular
 
+Simülatör doğrulaması: `docs/night/g41/Package*.jpg` — id 33 ve 43'te bütün "Ana Öğün Seçimi" kartları kendi ürün fotoğrafını gösteriyor (köfte çıkartması yok); içecek grubunda detoks/shake şişe fotoğrafları görünüyor.
+
 Sorun türleri: **YG** = yanlış görsel · **BG** = boş görsel · **GA** = yanlış/eksik grup adı · **SR** = sıralama riski.
 
 | Ürün | Grup | Seçenek (canlı ad → G38 sonrası) | Sorun | Önerilen düzeltme |
@@ -51,7 +53,7 @@ Sorun türleri: **YG** = yanlış görsel · **BG** = boş görsel · **GA** = y
 | tera / breaking_fast | Tavuk sote gramaj grubu | Soya Soslu Tavuk Sote 150g/250g/350g → Soya Soslu Sote … | **SR** — aynı | Aynı ✓ |
 | (ekmek grubu) | Ekmek seçimi | Mavi Haşhaşlı Amerikan Bagel → Mavi Haşhaşlı Bagel | **SR** — G38 önce gelirse `ekmek-bagel` eşleşmez | Aynı ✓ |
 | (baz grubu) | Baz seçimi | Basmati & Lolorosso Karışık → Basmati & Lolorosso | **SR** — aynı (`baz-basmati-lolorosso`) | Aynı ✓ |
-| 43 (2 kişilik) | Ana Öğün Seçimi | — | **GA (doğrulanamadı)** — 2 kişilik pakette tek "Ana Öğün Seçimi" mi, yoksa kişi başı iki grup ("1. kişi / 2. kişi") mı olmalı? Grup adı ve `max` canlıdan okunamadı | Sorgu 3 ile kontrol. İki seçim gerekiyorsa `max_selection = 2` ya da iki ayrı grup |
+| 43 (2 kişilik) | 1. / 2. Ana Öğün Seçimi | — | **GA yok** — simülatörde (G41 vitrin, uygulamanın herkese açık menü okuması) iki ayrı grup "1. Ana Öğün Seçimi" ve "2. Ana Öğün Seçimi" görüldü; adlar doğru. Görseller G41 kuralıyla ürün fotoğrafı (`docs/night/g41/Package2.jpg`) | — |
 | Tüm ürünler | Şablon değerleri (`product_option_template_values`) | — | G38 §4: sonda parantezli ad yok. Görsel kolonu G35 ile eklenir. Şablonlarda bağlı ürün alanı yok, protein çıkartması yalnız gramaj şablonunda görünür (kod) | — |
 
 ## Canlı tarama sorguları (yalnız okuma)

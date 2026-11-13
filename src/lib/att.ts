@@ -12,6 +12,7 @@
 // ve modül derlemede yoksa (eski dev build / Android'de iOS çağrısı) içe aktarma anında
 // fırlatır. Yoksa durum 'undetermined' okunur ve soru sorulamaz → Meta iOS'ta kapalı kalır.
 import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo';
 import { toAttStatus, type AttStatus } from './metrics/consent';
 
 type AttModule = {
@@ -23,6 +24,14 @@ let cached: AttModule | null | undefined;
 function attModule(): AttModule | null {
   if (cached !== undefined) return cached;
   try {
+    // Önce yerel modül var mı (fırlatmadan) — yoksa paketi HİÇ yükleme: Metro, modül başlatma
+    // hatasını try/catch'e rağmen LogBox'a "Uncaught Error" olarak düşürür (G41 vitrin çekiminde
+    // görüldü: modülsüz eski dev build). Aynı koruma, bu modülü içermeyen eski 1.1.0 derlemesine
+    // gelebilecek bir OTA'yı da güvenli tutar.
+    if (!requireOptionalNativeModule('ExpoTrackingTransparency')) {
+      cached = null;
+      return cached;
+    }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     cached = require('expo-tracking-transparency') as AttModule;
   } catch {

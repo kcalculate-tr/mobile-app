@@ -645,6 +645,25 @@ function resolveParity(name: string): ResolvedEntry | null {
       hasDark: true, requested: name, scheme: g40[2] ? 'dark' : 'light',
     };
   }
+  // G41-S1 — `G41-<Sahne>(-Dark)`: kayıt ekranı Meta kutusu, Profil › Gizlilik Meta satırı, bildirim ön
+  // kartı (mevcut Final kayıtlarının takma adı) + paket ürün sayfaları (id 33 / 43, seçim katmanı açık).
+  const g41 = /^G41-([A-Za-z0-9]+?)(-Dark)?$/.exec(name);
+  if (g41) {
+    const scheme = g41[2] ? 'dark' : 'light';
+    const ALIAS: Record<string, string> = { Account: 'FinOnbAccount', Privacy: 'FinPrivacySettings', Notify: 'FinSheetNotify' };
+    const alias = ALIAS[g41[1]];
+    if (alias) {
+      const r = resolvePano(alias);
+      return r ? { ...r, pano: name, requested: name, scheme, hasDark: true } : null;
+    }
+    const PKG: Record<string, string> = { Package: '33', Package2: '43' };
+    const pid = PKG[g41[1]];
+    if (!pid) return null;
+    return {
+      pano: name, area: 'eatkcal', target: route(ek('EkProduct', { productId: pid, vitrinState: 'selected' })), scene: 'selected',
+      data: 'default', flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: true, requested: name, scheme,
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {
