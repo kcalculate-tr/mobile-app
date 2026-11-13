@@ -127,7 +127,9 @@ export function HomeEatkcalShowcase({
   useEffect(() => {
     let alive = true;
     setState((prev) => (prev.status === 'ready' ? prev : { status: 'loading' }));
-    Promise.all([provider.campaigns().catch(() => [] as BannerCell[]), provider.stores()])
+    // Senkron atan sağlayıcı da (ör. eksik modül) sessiz hataya düşer: çağrılar Promise zincirinin içinde.
+    const safe = <T,>(fn: () => Promise<T>) => Promise.resolve().then(fn);
+    Promise.all([safe(provider.campaigns).catch(() => [] as BannerCell[]), safe(provider.stores)])
       .then(([campaigns, stores]) => alive && setState({ status: 'ready', campaigns, stores }))
       .catch(() => alive && setState({ status: 'error' }));
     return () => {
