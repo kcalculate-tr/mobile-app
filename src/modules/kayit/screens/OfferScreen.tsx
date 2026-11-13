@@ -4,7 +4,7 @@
 // otomatik yenileme metni; geri yükleme. X ilk kareden görünür → HA (Ana sayfa, plan yüklü). Bildirim bandı
 // "Planın e-posta adresine gönderildi" üstten iner (330 ms), 4 sn sonra / dokununca kalkar.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -54,8 +54,14 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
   // Başarı: 2 sn sonra kendiliğinden ana sayfa.
   useEffect(() => {
     if (phase !== 'success' || (__DEV__ && vitrinPhase)) return;
-    const id = setTimeout(goHome, 2000);
-    return () => clearTimeout(id);
+    // HIG: ekran okuyucu açıkken duyuru kesilmesin → otomatik geçiş yok, "Ana sayfaya git" düğmesi kalır.
+    let id: ReturnType<typeof setTimeout> | undefined;
+    void AccessibilityInfo.isScreenReaderEnabled().then((sr) => {
+      if (!sr) id = setTimeout(goHome, 2000);
+    });
+    return () => {
+      if (id) clearTimeout(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -204,7 +210,7 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled: locked }}
         accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, !card.yearly ? t('kayit.offer.no_trial') : null, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
-        style={[styles.plan, { backgroundColor: selected ? P.accent : P.card, borderColor: selected ? P.accent : P.cardEdge }]}
+        style={[styles.plan, { backgroundColor: selected ? P.accent : P.card, borderColor: selected ? P.accent : P.cardEdge }, recommended && card.yearly && card.discountPct ? { paddingBottom: 30 } : null]}
       >
         <View style={[styles.radio, { borderColor: selected ? '#10301D' : P.sec, backgroundColor: selected ? 'rgba(255,255,255,0.5)' : 'transparent' }]}>{selected ? <Check size={16} color="#10301D" weight="bold" /> : null}</View>
         <View style={{ flex: 1, gap: 2 }}>

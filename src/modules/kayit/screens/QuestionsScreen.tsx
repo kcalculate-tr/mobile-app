@@ -205,7 +205,7 @@ export default function QuestionsScreen() {
   const stepIdx = useMemo(() => ['goal', 'gender', 'birth', 'height', 'weight', 'i1', 'target', 'pace', 'activity', 'sport', 'diet', 'i2', 'dislikes', 'meals', 'cooking', 'struggle', 'minor'].indexOf(step), [step]);
 
   return (
-    <View style={styles.root} {...edge} testID={`kayit-q-${step}`}>
+    <View style={styles.root} {...edge} testID={`kayit-q-${step}`} onAccessibilityEscape={back}>
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={stepIdx} />
       <View style={{ paddingTop: insets.top + 8, flex: 1 }}>

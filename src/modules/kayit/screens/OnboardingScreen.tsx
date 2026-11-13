@@ -10,6 +10,7 @@ import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-n
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AppText, CURVE, DURATION, REDUCED, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
@@ -144,11 +145,16 @@ export default function OnboardingScreen({ vitrinStep }: { /** YALNIZ geliştirm
   const sub = t(`kayit.onb.s${step}.sub`);
   const fs = step === 1 ? 36 : step === 4 ? 30 : 34;
   const titleTop = step === 1 ? undefined : (step === 4 ? 84 : 104) * sy;
-  const btnB = (step === 4 ? 20 : 40) * sy;
+  // HIG: alt öğeler ev göstergesi alanının üstünde kalır; küçük ekranda (SE) segment Devam ile çakışmaz.
+  const insets = useSafeAreaInsets();
+  const btnB = Math.max((step === 4 ? 20 : 40) * sy, insets.bottom + 4);
+  const next5B = Math.max(84 * sy, insets.bottom + 48);
+  const login5B = Math.max(40 * sy - 12, insets.bottom);
+  const segTop = Math.min(646 * sy, H - next5B - 56 - 56);
   const btnH = step === 4 ? 52 : 58;
 
   return (
-    <View style={styles.root} {...edge} testID="kayit-onb">
+    <View style={styles.root} {...edge} testID="kayit-onb" onAccessibilityEscape={back ?? undefined}>
       <StatusBar style={dark ? 'light' : 'dark'} />
       {/* Panorama: 5 panel yan yana */}
       <Animated.View style={[{ position: 'absolute', top: 0, bottom: 0, left: 0, width: W * 5, flexDirection: 'row' }, panStyle]} importantForAccessibility="no-hide-descendants">
@@ -211,18 +217,18 @@ export default function OnboardingScreen({ vitrinStep }: { /** YALNIZ geliştirm
           </View>
           {kisiselPlan ? (
             <>
-              <AppText nativeID="ob-profile-label" maxFontSizeMultiplier={1.3} style={[styles.segLabel, { top: 622 * sy }]}>
+              <AppText nativeID="ob-profile-label" maxFontSizeMultiplier={1.3} style={[styles.segLabel, { top: segTop - 24 }]}>
                 {t('kayit.onb.seg_label')}
               </AppText>
-              <SegmentOnDark top={646 * sy} value={choice} onChange={setChoice} labelNow={t('kayit.onb.seg_now')} labelLater={t('kayit.onb.seg_later')} group={t('kayit.onb.seg_label')} />
+              <SegmentOnDark top={segTop} value={choice} onChange={setChoice} labelNow={t('kayit.onb.seg_now')} labelLater={t('kayit.onb.seg_later')} group={t('kayit.onb.seg_label')} />
             </>
           ) : null}
-          <Pressable testID="kayit-onb-next" onPress={next} accessibilityRole="button" accessibilityLabel={t('kayit.onb.next')} style={[styles.next, { bottom: 84 * sy, height: 56, borderRadius: 28 }]}>
+          <Pressable testID="kayit-onb-next" onPress={next} accessibilityRole="button" accessibilityLabel={t('kayit.onb.next')} style={[styles.next, { bottom: next5B, height: 56, borderRadius: 28 }]}>
             <AppText maxFontSizeMultiplier={1.3} style={styles.nextText}>
               {t('kayit.onb.next')}
             </AppText>
           </Pressable>
-          <View style={[styles.loginRow, { bottom: 40 * sy - 12 }]}>
+          <View style={[styles.loginRow, { bottom: login5B }]}>
             <AppText maxFontSizeMultiplier={1.3} style={styles.loginQ}>
               {t('kayit.onb.login_q')}
             </AppText>
@@ -322,6 +328,7 @@ function SegmentOnDark({ top, value, onChange, labelNow, labelLater, group }: { 
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
             accessibilityLabel={k === 'a' ? labelNow : labelLater}
+            hitSlop={{ top: 4, bottom: 4 }}
             style={styles.segBtn}
           >
             <AppText maxFontSizeMultiplier={1.2} numberOfLines={1} style={[styles.segText, { color: on ? '#10301D' : '#FFFFFF' }]}>

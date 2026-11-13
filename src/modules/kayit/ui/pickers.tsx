@@ -56,7 +56,9 @@ export function ChoiceTile({
     s.value = selected ? withSpring(K_MOTION.pickScale, SPRING.bouncy) : withTiming(dimmed ? K_MOTION.dimScale : 1, { duration: K_MOTION.fast });
   }, [selected, dimmed, reduced, s]);
   const rise = useAnimatedStyle(() => ({
-    opacity: o.value * (dimmed ? K_MOTION.dimOpacity : 1),
+    // HIG/AA: soluklaştırma metne uygulanmaz (14 pt ikincil metin 4,5:1 altına düşüyordu); seçilmeyen kart
+    // yalnız 0,97 ölçek + saydam zeminle geri çekilir.
+    opacity: o.value,
     transform: [{ translateY: reduced ? 0 : (1 - o.value) * (16 + delay / 20) }, { scale: s.value }],
   }));
   return (
@@ -72,7 +74,7 @@ export function ChoiceTile({
         accessibilityLabel={sub ? `${label}, ${sub}` : label}
         style={[
           wide ? styles.tileWide : styles.tile,
-          { backgroundColor: selected ? P.accent : P.card, borderColor: selected ? P.accent : P.cardEdge },
+          { backgroundColor: selected ? P.accent : dimmed ? 'transparent' : P.card, borderColor: selected ? P.accent : P.cardEdge },
         ]}
       >
         {Ico ? (
@@ -125,7 +127,7 @@ export function OptionCard({ label, sub, icon: Ico, selected, dimmed, onPress, t
       accessibilityLabel={sub ? `${label}, ${sub}` : label}
       style={({ pressed }) => [
         styles.option,
-        { backgroundColor: selected ? P.accent : P.card, borderColor: selected ? P.accent : P.cardEdge, opacity: dimmed ? 0.7 : 1 },
+        { backgroundColor: selected ? P.accent : dimmed ? 'transparent' : P.card, borderColor: selected ? P.accent : P.cardEdge },
         pressed ? { transform: [{ scale: 0.98 }] } : null,
       ]}
     >

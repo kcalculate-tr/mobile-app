@@ -140,7 +140,7 @@ export function CalcScreen() {
             <NoticeCard testID="kayit-calc-offline" title={t('kayit.plan.offline_title')} sub={t('kayit.plan.offline_sub')} action={{ label: t('kayit.plan.retry'), onPress: () => setRun((r) => r + 1) }} />
           ) : null}
           {rows.map((r, i) => (
-            <View key={i} style={[styles.calcRow, { backgroundColor: P.card, borderColor: P.cardEdge }]} accessible accessibilityLabel={t(r.done ? r.ok : r.active ? r.act : r.idle)}>
+            <View key={i} style={[styles.calcRow, { backgroundColor: P.card, borderColor: P.cardEdge }]} accessible accessibilityLiveRegion={r.active ? 'polite' : 'none'} accessibilityLabel={t(r.done ? r.ok : r.active ? r.act : r.idle)}>
               <RingProgress size={28} stroke={4} progress={r.done ? 1 : r.active && !offline ? 0.5 : 0} color={P.ringFill} track={P.ringTrack} />
               <AppText maxFontSizeMultiplier={1.4} style={[styles.calcRowText, { color: r.done || r.active ? P.ink : P.sec }]}>
                 {t(r.done ? r.ok : r.active ? r.act : r.idle)}

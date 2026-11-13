@@ -403,7 +403,7 @@ export function EmailScreen() {
             <AppText maxFontSizeMultiplier={1.4} style={[styles.hint, { color: P.sec }]}>
               {t('kayit.signup.code_sub')}
             </AppText>
-            <Pressable onPress={() => inputRef.current?.focus()} accessibilityLabel={t('kayit.signup.code_label')} accessibilityHint={t('kayit.signup.code_sub')} style={styles.codeRow} disabled={expired || verifying}>
+            <Pressable onPress={() => inputRef.current?.focus()} accessibilityRole="button" accessibilityLabel={t('kayit.signup.code_label')} accessibilityValue={{ text: `${code.length}/${CODE_LENGTH}` }} accessibilityHint={t('kayit.signup.code_sub')} style={styles.codeRow} disabled={expired || verifying}>
               {Array.from({ length: CODE_LENGTH }).map((_, i) => {
                 const active = !expired && i === Math.min(code.length, CODE_LENGTH - 1);
                 return (
@@ -441,7 +441,7 @@ export function EmailScreen() {
               />
             </Pressable>
             {expired ? (
-              <Pressable testID="kayit-code-new" onPress={() => void send()} accessibilityRole="link" style={styles.link}>
+              <Pressable testID="kayit-code-new" onPress={() => void send()} accessibilityRole="button" style={styles.link}>
                 <AppText maxFontSizeMultiplier={1.4} style={[styles.linkText, { color: P.ink }]}>
                   {t('kayit.signup.code_new')}
                 </AppText>
