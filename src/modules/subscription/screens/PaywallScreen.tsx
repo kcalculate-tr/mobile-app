@@ -390,8 +390,9 @@ export const GLOW_BLEED = 2;
  * eski kayan katmanın kenarı ekranda dikey çizgi / açık yeşil dikdörtgen gibi görünüyordu).
  * Kök görünümün GERÇEK ölçüsüyle (onLayout; modal/pencere farkı olsa da) tam ekran, safe area dahil
  * her kenara taşar; ışıklar daire (userSpaceOnUse) ve dışa doğru 0 opaklığa iner. Dokunmayı engellemez.
+ * G43-S1: kayıt akışı T1 teklif ekranı da aynı zemini kullanır (ana paywall ile birebir).
  */
-function PaywallGlow({ dark }: { dark: boolean }) {
+export function PaywallGlow({ dark }: { dark: boolean }) {
   const win = useWindowDimensions();
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
   const onLayout = useCallback((e: LayoutChangeEvent) => {

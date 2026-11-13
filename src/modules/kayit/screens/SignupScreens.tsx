@@ -1,6 +1,8 @@
 // G42-S1 md.5 — K1 kayıt (A: "Planını kaydedelim" · B: "Hemen başlayalım") + E1/E2 e-posta kodu.
 // MEVCUT kimlik doğrulama (useAuth: Apple, Google, e-posta OTP; inceleme adresi için şifre girişi korunur).
-// Apple/Google düğmeleri resmî logolarla (G18-S5 kararı, pieces.tsx). İki İSTEĞE BAĞLI işaretsiz kutu:
+// G43-S1: Apple = expo-apple-authentication `AppleAuthenticationButton` (native, yalnız iOS; açıkta siyah, koyuda
+// beyaz), Google = resmî beyaz stil, e-posta ikincil (kenarlı); Koşullar · Gizlilik ayrı 44 pt bağlantı satırı;
+// OTP kutuları uygulamanın standart giriş alanı stilinde. İki İSTEĞE BAĞLI işaretsiz kutu:
 // Meta onayı (G41 requestMetaOptIn; iOS'ta işaretlenince ATT, reddedilirse kutu boşalır + K1d notu) ve
 // pazarlama e-postası onayı (notification_preferences.marketing_enabled). B yolunda doğum yılı sorulmadığı
 // için mevcut 18+ beyan kutusu (LoginV2 kuralı) zorunlu ve işaretsiz gelir.
@@ -10,6 +12,7 @@
 // doldu → kutular boşalır, "Yeni kod gönder".
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -23,9 +26,9 @@ import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { useReviewPasswordLogin } from '../../../lib/auth/useReviewPasswordLogin';
-import { AppleLogo, GoogleLogo } from '../../onboarding/components/pieces';
+import { GoogleLogo } from '../../onboarding/components/pieces';
 import { CODE_LENGTH, RESEND_SECONDS, formatCountdown, interpretSocialResult, isValidEmail, sanitizeCode } from '../../onboarding/v2/loginLogic';
-import { CheckBoxRow, FONT, KBackdrop, KButton, NoticeCard, QuestionHead, TopBar } from '../ui/parts';
+import { CheckBoxRow, FONT, KButton, KFooter, KTitle, NoticeCard, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
 import { K_MOTION, useK } from '../ui/theme';
 import { firstTabFor, type KPath } from '../model';
@@ -149,25 +152,21 @@ export function SignupScreen() {
   };
 
   void user;
-  const darkBtn = !P.isDark;
+  const openTerms = () => void openLegalWeb('terms', lang, () => navigation.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms }));
+  const openPrivacy = () => void openLegalWeb('privacy', lang, () => navigation.navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy }));
   return (
-    <View style={{ flex: 1 }} {...edge} testID={`kayit-signup-${path}`}>
+    <View style={{ flex: 1, backgroundColor: P.bg }} {...edge} testID={`kayit-signup-${path}`}>
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
-      <KBackdrop shift={22} />
-      <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
-        <TopBar onBack={back} progress={path === 'a' ? { index: 1, total: 1, hideNumber: true } : null} />
+      <View style={{ flex: 1, paddingTop: insets.top + 4 }}>
+        <TopBar onBack={back} />
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }} showsVerticalScrollIndicator={false}>
-          <View style={{ marginTop: 12 }}>
-            <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" typewriter={false} />
-          </View>
-          <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 12 }}>
+          <KTitle title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} style={{ marginTop: 12 }} />
+          <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 12 }}>
             {notice === 'offline' ? <NoticeCard testID="kayit-signup-offline" tone="error" title={t('kayit.signup.offline_title')} sub={t('kayit.signup.offline_sub')} action={{ label: t('kayit.signup.retry'), onPress: () => setNotice(null) }} /> : null}
             {notice === 'cancelled' ? <NoticeCard testID="kayit-signup-cancelled" title={t('kayit.signup.cancelled_title')} sub={t('kayit.signup.cancelled_sub')} /> : null}
             {notice === 'error' ? <NoticeCard tone="error" title={t('kayit.signup.error_title')} sub={errMsg} /> : null}
-            {Platform.OS === 'ios' || __DEV__ ? (
-              <SocialButton testID="kayit-apple" kind="apple" label={t('kayit.signup.apple')} dark={darkBtn} busy={busy === 'apple'} disabled={(!!busy && busy !== 'apple') || blocked} onPress={() => void runSocial('apple')} />
-            ) : null}
-            <SocialButton testID="kayit-google" kind="google" label={t('kayit.signup.google')} dark={false} busy={busy === 'google'} disabled={(!!busy && busy !== 'google') || blocked} onPress={() => void runSocial('google')} />
+            <AppleButton dark={P.isDark} label={t('kayit.signup.apple')} busy={busy === 'apple'} disabled={(!!busy && busy !== 'apple') || blocked} onPress={() => void runSocial('apple')} />
+            <GoogleButton testID="kayit-google" label={t('kayit.signup.google')} busy={busy === 'google'} disabled={(!!busy && busy !== 'google') || blocked} onPress={() => void runSocial('google')} />
             <Pressable
               testID="kayit-email"
               onPress={openEmail}
@@ -175,13 +174,38 @@ export function SignupScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('kayit.signup.email')}
               accessibilityState={{ disabled: !!busy || blocked }}
-              style={[styles.social, { backgroundColor: P.card, borderColor: P.cardEdge, borderWidth: 1, opacity: busy || blocked ? 0.5 : 1 }]}
+              style={({ pressed }) => [styles.social, { backgroundColor: 'transparent', borderColor: P.line2, borderWidth: 1, opacity: busy || blocked ? 0.5 : pressed ? 0.7 : 1 }]}
             >
               <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: P.ink }]}>
                 {t('kayit.signup.email')}
               </AppText>
             </Pressable>
-            <LegalLine />
+            <AppText maxFontSizeMultiplier={1.4} style={[styles.legal, { color: P.sec }]}>
+              {t('kayit.signup.legal_1')}
+              <AppText accessibilityRole="link" onPress={openTerms} style={[styles.legalLink, { color: P.ink }]}>
+                {t('kayit.signup.terms')}
+              </AppText>
+              {t('kayit.signup.legal_2')}
+              <AppText accessibilityRole="link" onPress={openPrivacy} style={[styles.legalLink, { color: P.ink }]}>
+                {t('kayit.signup.privacy')}
+              </AppText>
+              {t('kayit.signup.legal_3')}
+            </AppText>
+            <View style={styles.legalRow}>
+              <Pressable testID="kayit-terms" onPress={openTerms} accessibilityRole="link" accessibilityLabel={t('kayit.signup.terms')} style={styles.legalBtn}>
+                <AppText maxFontSizeMultiplier={1.4} style={[styles.legalBtnText, { color: P.ink }]}>
+                  {t('kayit.signup.terms')}
+                </AppText>
+              </Pressable>
+              <AppText importantForAccessibility="no" accessibilityElementsHidden style={[styles.legalBtnText, { color: P.sec }]}>
+                ·
+              </AppText>
+              <Pressable testID="kayit-privacy" onPress={openPrivacy} accessibilityRole="link" accessibilityLabel={t('kayit.signup.privacy')} style={styles.legalBtn}>
+                <AppText maxFontSizeMultiplier={1.4} style={[styles.legalBtnText, { color: P.ink }]}>
+                  {t('kayit.signup.privacy')}
+                </AppText>
+              </Pressable>
+            </View>
             {needsAge ? <CheckBoxRow testID="kayit-age" checked={age} onToggle={() => setAge(!age)} label={t('kayit.signup.age')} /> : null}
             <AppText accessibilityRole="header" maxFontSizeMultiplier={1.4} style={[styles.optional, { color: P.sec }]}>
               {t('kayit.signup.optional')}
@@ -193,28 +217,38 @@ export function SignupScreen() {
       </View>
     </View>
   );
-
-  function LegalLine() {
-    const nav = navigation;
-    return (
-      <AppText maxFontSizeMultiplier={1.4} style={[styles.legal, { color: P.sec }]}>
-        {t('kayit.signup.legal_1')}
-        <AppText accessibilityRole="link" onPress={() => void openLegalWeb('terms', lang, () => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.terms }))} style={[styles.legalLink, { color: P.ink }]}>
-          {t('kayit.signup.terms')}
-        </AppText>
-        {t('kayit.signup.legal_2')}
-        <AppText accessibilityRole="link" onPress={() => void openLegalWeb('privacy', lang, () => nav.navigate('ProfileContracts', { slug: LEGAL_SLUG.privacy }))} style={[styles.legalLink, { color: P.ink }]}>
-          {t('kayit.signup.privacy')}
-        </AppText>
-        {t('kayit.signup.legal_3')}
-      </AppText>
-    );
-  }
 }
 
-function SocialButton({ kind, label, dark, busy, disabled, onPress, testID }: { kind: 'apple' | 'google'; label: string; dark: boolean; busy: boolean; disabled: boolean; onPress: () => void; testID?: string }) {
-  const bg = dark ? '#000000' : '#FFFFFF';
-  const fg = dark ? '#FFFFFF' : '#1F1F1F';
+/**
+ * Apple ile giriş: YALNIZ iOS'ta native `AppleAuthenticationButton` (App Store 4.8 / HIG; açık temada siyah,
+ * koyuda beyaz). Android'de hiç çizilmez. Yükleniyor/devre dışı: native düğme dokunmaya kapanır; yüklenirken
+ * aynı ölçüde halka gösterilir.
+ */
+export function AppleButton({ dark, label, busy, disabled, onPress }: { dark: boolean; label: string; busy: boolean; disabled: boolean; onPress: () => void }) {
+  if (Platform.OS !== 'ios') return null;
+  if (busy) {
+    return (
+      <View testID="kayit-apple" accessible accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy: true, disabled: true }} style={[styles.social, { backgroundColor: dark ? '#FFFFFF' : '#000000' }]}>
+        <ActivityIndicator color={dark ? '#000000' : '#FFFFFF'} />
+      </View>
+    );
+  }
+  return (
+    <View testID="kayit-apple" pointerEvents={disabled ? 'none' : 'auto'} accessibilityState={{ disabled }} style={{ opacity: disabled ? 0.5 : 1 }}>
+      <AppleAuthentication.AppleAuthenticationButton
+        testID="kayit-apple-native"
+        buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+        buttonStyle={dark ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+        cornerRadius={27}
+        onPress={onPress}
+        style={styles.apple}
+      />
+    </View>
+  );
+}
+
+/** Google ile giriş — resmî beyaz stil (beyaz zemin, #747775 kenar, #1F1F1F yazı, renkli "G"). */
+function GoogleButton({ label, busy, disabled, onPress, testID }: { label: string; busy: boolean; disabled: boolean; onPress: () => void; testID?: string }) {
   return (
     <Pressable
       testID={testID}
@@ -223,10 +257,10 @@ function SocialButton({ kind, label, dark, busy, disabled, onPress, testID }: { 
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled, busy }}
-      style={({ pressed }) => [styles.social, { backgroundColor: bg, borderWidth: dark ? 0 : 1, borderColor: '#DADCE0', opacity: disabled ? 0.5 : pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [styles.social, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#747775', opacity: disabled ? 0.5 : pressed ? 0.85 : 1 }]}
     >
-      <View style={{ width: 24, alignItems: 'center' }}>{busy ? <ActivityIndicator color={fg} /> : kind === 'apple' ? <AppleLogo color={fg} /> : <GoogleLogo />}</View>
-      <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: fg }]}>
+      <View style={{ width: 24, alignItems: 'center' }}>{busy ? <ActivityIndicator color="#1F1F1F" /> : <GoogleLogo />}</View>
+      <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: '#1F1F1F' }]}>
         {label}
       </AppText>
     </Pressable>
@@ -318,16 +352,13 @@ export function EmailScreen() {
   if (step === 'email') {
     const valid = isValidEmail(email);
     return (
-      <View style={{ flex: 1 }} {...edge} testID="kayit-e1">
+      <View style={{ flex: 1, backgroundColor: P.bg }} {...edge} testID="kayit-e1">
         <StatusBar style={P.isDark ? 'light' : 'dark'} />
-        <KBackdrop shift={23} />
-        <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
+        <View style={{ flex: 1, paddingTop: insets.top + 4 }}>
           <TopBar onBack={back} />
           <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
-            <View style={{ marginTop: 12 }}>
-              <QuestionHead title={t('kayit.signup.email_title')} layout="left" typewriter={false} />
-            </View>
-            <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 10 }}>
+            <KTitle title={t('kayit.signup.email_title')} style={{ marginTop: 12 }} />
+            <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 10 }}>
               <AppText nativeID="kayit-email-label" maxFontSizeMultiplier={1.4} style={[styles.fieldLabel, { color: P.sec }]}>
                 {t('kayit.signup.email_label')}
               </AppText>
@@ -346,7 +377,7 @@ export function EmailScreen() {
                 placeholderTextColor={P.sec}
                 maxFontSizeMultiplier={1.4}
                 onSubmitEditing={() => void (review.active ? reviewLogin() : send())}
-                style={[styles.field, { backgroundColor: P.field, borderColor: P.cardEdge, color: P.ink }]}
+                style={[styles.field, { backgroundColor: P.surface, borderColor: P.line, color: P.ink }]}
               />
               {review.active ? (
                 <TextInput
@@ -360,7 +391,7 @@ export function EmailScreen() {
                   placeholder={t('kayit.signup.review_password')}
                   placeholderTextColor={P.sec}
                   maxFontSizeMultiplier={1.4}
-                  style={[styles.field, { backgroundColor: P.field, borderColor: P.cardEdge, color: P.ink }]}
+                  style={[styles.field, { backgroundColor: P.surface, borderColor: P.line, color: P.ink }]}
                 />
               ) : null}
               <AppText maxFontSizeMultiplier={1.4} style={[styles.hint, { color: P.sec }]}>
@@ -374,13 +405,13 @@ export function EmailScreen() {
               {sendErr ? <NoticeCard tone="error" title={t('kayit.signup.error_title')} sub={sendErr} /> : null}
             </View>
           </ScrollView>
-          <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
+          <KFooter bottom={insets.bottom}>
             {review.active ? (
               <KButton testID="kayit-review-login" label={t('kayit.signup.review_login')} onPress={() => void reviewLogin()} disabled={!review.password} loading={review.busy} />
             ) : (
               <KButton testID="kayit-send-code" label={t('kayit.signup.send_code')} onPress={() => void send()} disabled={!valid} loading={sending} />
             )}
-          </View>
+          </KFooter>
         </View>
       </View>
     );
@@ -388,21 +419,15 @@ export function EmailScreen() {
 
   const expired = err === 'expired';
   return (
-    <View style={{ flex: 1 }} {...edge} testID="kayit-e2">
+    <View style={{ flex: 1, backgroundColor: P.bg }} {...edge} testID="kayit-e2">
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
-      <KBackdrop shift={24} />
-      <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
+      <View style={{ flex: 1, paddingTop: insets.top + 4 }}>
         <TopBar onBack={back} />
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
-          <View style={{ marginTop: 12 }}>
-            <QuestionHead title={t('kayit.signup.code_title')} layout="right" typewriter={false} />
-          </View>
+          <KTitle title={t('kayit.signup.code_title')} sub={t('kayit.signup.code_sub')} style={{ marginTop: 12 }} />
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 16 }}>
             {err === 'wrong' ? <NoticeCard testID="kayit-code-wrong" tone="error" title={t('kayit.signup.code_wrong_title')} sub={t('kayit.signup.code_wrong_sub')} /> : null}
             {expired ? <NoticeCard testID="kayit-code-expired" title={t('kayit.signup.code_expired_title')} sub={t('kayit.signup.code_expired_sub')} /> : null}
-            <AppText maxFontSizeMultiplier={1.4} style={[styles.hint, { color: P.sec }]}>
-              {t('kayit.signup.code_sub')}
-            </AppText>
             <Pressable onPress={() => inputRef.current?.focus()} accessibilityRole="button" accessibilityLabel={t('kayit.signup.code_label')} accessibilityValue={{ text: `${code.length}/${CODE_LENGTH}` }} accessibilityHint={t('kayit.signup.code_sub')} style={styles.codeRow} disabled={expired || verifying}>
               {Array.from({ length: CODE_LENGTH }).map((_, i) => {
                 const active = !expired && i === Math.min(code.length, CODE_LENGTH - 1);
@@ -412,8 +437,8 @@ export function EmailScreen() {
                     style={[
                       styles.codeBox,
                       {
-                        backgroundColor: expired ? P.disabled : P.field,
-                        borderColor: err === 'wrong' ? P.danger : active ? P.ink : P.cardEdge,
+                        backgroundColor: expired ? P.disabled : P.surface,
+                        borderColor: err === 'wrong' ? P.danger : active ? P.ink : P.line,
                         borderWidth: err === 'wrong' || active ? 1.5 : 1,
                         opacity: verifying ? 0.6 : 1,
                       },
@@ -463,26 +488,30 @@ export function EmailScreen() {
             )}
           </View>
         </ScrollView>
-        <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
+        <KFooter bottom={insets.bottom}>
           <KButton testID="kayit-verify" label={verifying ? t('kayit.signup.verifying') : t('kayit.signup.verify')} onPress={() => void verify(code)} disabled={code.length < CODE_LENGTH || expired} loading={verifying} />
-        </View>
+        </KFooter>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  social: { height: 56, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
+  social: { height: 54, borderRadius: 27, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
+  apple: { height: 54, width: '100%' },
   socialText: { fontFamily: FONT.semi, fontSize: 17 },
   legal: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: 4 },
-  legalLink: { fontFamily: FONT.bold, textDecorationLine: 'underline' },
-  optional: { fontFamily: FONT.semi, fontSize: 15, marginTop: 10 },
-  fieldLabel: { fontFamily: FONT.semi, fontSize: 14 },
-  field: { minHeight: 56, borderRadius: 18, borderWidth: 1, paddingHorizontal: 18, fontFamily: FONT.body, fontSize: 17 },
+  legalLink: { fontFamily: FONT.semi, textDecorationLine: 'underline' },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: -6 },
+  legalBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
+  legalBtnText: { fontFamily: FONT.semi, fontSize: 14 },
+  optional: { fontFamily: FONT.semi, fontSize: 13, marginTop: 10 },
+  fieldLabel: { fontFamily: FONT.semi, fontSize: 13 },
+  field: { minHeight: 52, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, fontFamily: FONT.medium, fontSize: 16 },
   hint: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20 },
   codeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  codeBox: { flex: 1, height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  codeDigit: { fontFamily: FONT.display, fontSize: 26 },
+  codeBox: { flex: 1, height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  codeDigit: { fontFamily: FONT.display, fontSize: 24 },
   codeHidden: { position: 'absolute', opacity: 0, width: 1, height: 1 },
   link: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   linkText: { fontFamily: FONT.semi, fontSize: 15 },

@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useRoute } from '@react-navigation/native';
-import { REDUCED, useReducedMotion } from '../../core/design';
+import { useReducedMotion } from '../../core/design';
 import OnboardingScreen from './screens/OnboardingScreen';
 import QuestionsScreen from './screens/QuestionsScreen';
 import { CalcScreen, ResultScreen } from './screens/PlanScreens';
@@ -18,7 +18,7 @@ import { readDraft, shouldShowReturn, type KDraft } from './storage';
 import { kv, useKayit } from './store';
 import { emptyKAnswers, type KAnswers } from './model';
 import { computeKayitPlan, planSignature } from './plan';
-import { K_MOTION } from './ui/theme';
+import { K_MOTION, useK } from './ui/theme';
 
 export type KayitParamList = {
   KOnb: { vitrinStep?: number } | undefined;
@@ -81,6 +81,7 @@ function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitri
 
 export default function KayitNavigator() {
   const reduced = useReducedMotion();
+  const P = useK();
   // YALNIZ __DEV__ vitrini: { screen, params } ile doğrudan bir sahne.
   const p = (useRoute().params ?? {}) as { screen?: keyof KayitParamList; params?: Record<string, unknown> };
   const devScreen = __DEV__ ? p.screen : undefined;
@@ -101,17 +102,18 @@ export default function KayitNavigator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!initial) return <View style={{ flex: 1, backgroundColor: '#0D2617' }} />;
-  const push = reduced ? ({ animation: 'fade', animationDuration: REDUCED.duration } as const) : ({ animation: 'slide_from_right', animationDuration: K_MOTION.shared } as const);
-  const scene = reduced ? ({ animation: 'fade', animationDuration: REDUCED.duration } as const) : ({ animation: 'fade', animationDuration: K_MOTION.scene } as const);
+  if (!initial) return <View style={{ flex: 1, backgroundColor: P.bg }} />;
+  // G43-S1: standart yığın geçişi — native push (slide_from_right) ya da 220 ms fade; azaltılmışta anında.
+  const push = reduced ? ({ animation: 'none' } as const) : ({ animation: 'slide_from_right' } as const);
+  const scene = reduced ? ({ animation: 'none' } as const) : ({ animation: 'fade', animationDuration: K_MOTION.fade } as const);
   return (
     <Stack.Navigator
       initialRouteName={initial.name}
-      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0D2617' }, ...push }}
+      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: P.bg }, ...push }}
     >
-      <Stack.Screen name="KOnb" component={OnbRoute as never} initialParams={initial.name === 'KOnb' ? (initial.params as never) : undefined} options={{ animation: 'fade' }} />
-      <Stack.Screen name="KReturn" component={ReturnScreen} initialParams={initial.name === 'KReturn' ? (initial.params as never) : undefined} options={{ ...scene, animation: reduced ? 'fade' : 'slide_from_bottom' }} />
-      {/* O5 → P1: seçilen kart büyüyerek açılır (sahne geçişi 550 ms); sorular kendi içinde kayar (kenar jesti ekranın). */}
+      <Stack.Screen name="KOnb" component={OnbRoute as never} initialParams={initial.name === 'KOnb' ? (initial.params as never) : undefined} options={scene} />
+      <Stack.Screen name="KReturn" component={ReturnScreen} initialParams={initial.name === 'KReturn' ? (initial.params as never) : undefined} options={scene} />
+      {/* Sorular tek rota içinde adım değiştirir (220 ms fade); kenar jesti ekranın kendisinde. */}
       <Stack.Screen name="KQuestions" component={QuestionsScreen} initialParams={initial.name === 'KQuestions' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
       <Stack.Screen name="KCalc" component={CalcScreen} initialParams={initial.name === 'KCalc' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
       <Stack.Screen name="KResult" component={ResultScreen} options={{ ...scene, gestureEnabled: false }} />

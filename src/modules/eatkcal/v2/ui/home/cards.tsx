@@ -57,6 +57,7 @@ export function ProductCard({
   onPress,
   onAdd,
   adding,
+  hidePrice,
 }: {
   product: EkCardProduct;
   width?: number;
@@ -64,6 +65,8 @@ export function ProductCard({
   onPress: () => void;
   onAdd?: () => void;
   adding?: boolean;
+  /** G43-S1: tanıtım (kayıt onboarding'i) — gerçek fiyat bilinmiyorsa fiyat satırı çizilmez. */
+  hidePrice?: boolean;
 }) {
   const { c, t } = useEk();
   const overlay = useOverlayBg();
@@ -76,7 +79,7 @@ export function ProductCard({
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${money(price.now)}`}
+      accessibilityLabel={hidePrice ? product.name : `${product.name}, ${money(price.now)}`}
       style={({ pressed }) => [{ width, gap: 6 }, !width && { flex: 1, minWidth: 0 }, pressed && { opacity: 0.85 }]}
     >
       <View>
@@ -107,14 +110,14 @@ export function ProductCard({
       <Text style={[styles.name, { color: c.ink }]} numberOfLines={2}>
         {product.name}
       </Text>
-      <View style={styles.priceRow}>
+      {hidePrice ? null : <View style={styles.priceRow}>
         {price.before != null ? (
           <Text style={[ekType.c13, ekType.num, { color: c.secondary, textDecorationLine: 'line-through' }]}>
             {money(price.before)}
           </Text>
         ) : null}
         <Text style={[styles.price, ekType.num, { color: c.ink }]}>{money(price.now)}</Text>
-      </View>
+      </View>}
     </Pressable>
   );
 }
