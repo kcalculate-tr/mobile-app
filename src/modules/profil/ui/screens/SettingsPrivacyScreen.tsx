@@ -16,15 +16,21 @@
  * edilmez; bu ekran yalnız giriş noktasıdır (onBack ile geri dönüp Security
  * ekranındaki mevcut iki-adımlı silme akışına yönlendirilir — spesifikasyon
  * "delete account görünür hem Security hem Privacy'de" der, mantık tek yerde).
+ *
+ * G41-S1 md.2: "Meta reklam ölçümü: Açık/Kapalı" tek satır — onayın GERİ ÇEKİLDİĞİ yer
+ * (izinler sayfasındaki anahtar kalktı). Açarken iOS'ta ATT izinli olmalı (yalnız bu
+ * dokunuşla sorulur); ATT reddedilmişse satır kapalı kalır ve iPhone Ayarlar yolu gösterilir.
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, Switch, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme, FinCardSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { getProfilClient } from '../../client';
+import { onConsentChange } from '../../../../lib/consent/store';
+import { readMetaEffective, setMetaMeasurement } from '../../../../lib/consent/metaConsent';
 import { CaretRight, ChartBar, Prohibit } from '../../../../components/icons';
 import {
   FinScreen,
@@ -94,6 +100,88 @@ function PrivacyOption({
         {selected ? <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: t.color.ink }} /> : null}
       </View>
     </Pressable>
+  );
+}
+
+/** G41-S1 md.2 — Meta reklam ölçümü tek satırı (geri çekme / yeniden açma). */
+export function MetaMeasurementRow() {
+  const t = useTheme();
+  const { t: tr } = useT();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [attDenied, setAttDenied] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const read = () => {
+      void readMetaEffective()
+        .then((v) => alive && setOn(v))
+        .catch(() => alive && setOn(false));
+    };
+    read();
+    const off = onConsentChange(read);
+    return () => {
+      alive = false;
+      off();
+    };
+  }, []);
+  const toggle = async (next: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    setOn(next);
+    try {
+      const r = await setMetaMeasurement(next);
+      setOn(r.on);
+      setAttDenied(next && !r.on && r.att === 'denied');
+    } catch {
+      setOn(!next);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const value = on ?? false;
+  const valueLabel = tr(value ? 'consent.settings.meta_on' : 'consent.settings.meta_off');
+  return (
+    <View>
+      <View
+        style={[flatGroup(t), { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: 14, paddingVertical: 10 }]}
+        testID="privacy-meta-row"
+      >
+        <View style={{ flex: 1, gap: 1 }}>
+          <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>{tr('consent.settings.meta_row')}</Text>
+          <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }} testID="privacy-meta-value">
+            {on === null ? '—' : valueLabel}
+          </Text>
+        </View>
+        <Switch
+          value={value}
+          onValueChange={(v) => void toggle(v)}
+          disabled={busy || on === null}
+          trackColor={{ false: t.color.line, true: t.color.accentLine }}
+          thumbColor="#FFFFFF"
+          ios_backgroundColor={t.color.line}
+          accessibilityLabel={tr('consent.settings.meta_row')}
+          accessibilityValue={{ text: valueLabel }}
+          testID="privacy-meta-switch"
+        />
+      </View>
+      {attDenied ? (
+        <View style={{ gap: 4, paddingHorizontal: 4, paddingTop: 8 }} accessibilityLiveRegion="polite">
+          <Text style={{ fontFamily: bodyMedium, fontSize: 12, color: t.color.secondary }} testID="privacy-meta-att-denied">
+            {tr('consent.settings.meta_att_denied')}
+          </Text>
+          <Pressable
+            onPress={() => void Linking.openSettings().catch(() => {})}
+            accessibilityRole="link"
+            hitSlop={12}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text style={{ fontFamily: bodySemibold, fontSize: 13, color: t.color.ink, textDecorationLine: 'underline' }}>
+              {tr('consent.settings.meta_open_settings')}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -200,6 +288,9 @@ export default function SettingsPrivacyScreen({
                 {blockedCount === null ? '—' : String(blockedCount)}
               </Text>
             </View>
+
+            <FinSectionLabel>{tr('consent.settings.ads_section')}</FinSectionLabel>
+            <MetaMeasurementRow />
 
             {onOpenDataConsent ? (
               <>

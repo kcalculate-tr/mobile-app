@@ -37,8 +37,7 @@ import { UnderageView } from './components/UnderageView';
 import { useOnb } from './components/onbTheme';
 import { OpenSignature } from './first/OpenSignature';
 import { AccountEmailSheet } from './first/AccountEmailSheet';
-import { ConsentSheet } from './consent/ConsentSheet';
-import { PolicyAcceptRow } from './consent/ConsentBlock';
+import { MetaConsentRow, PolicyAcceptRow } from './consent/ConsentBlock';
 import { acceptPolicies, holdGate } from '../../lib/consent/store';
 import { welcomeVariant } from './first/state';
 import { writeIntroSeen } from './intro/storage';
@@ -193,14 +192,13 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
   const [emailOpen, setEmailOpen] = useState(vSheet != null);
   const homeAfterClose = useRef(false);
   // G27-S1 (İlter 11 Kas): reklam ölçümü (Meta) KAPALI gelir — yalnız kullanıcı açıkça
-  // açarsa (KVKK açık rıza). Apple/Google'da "Ayrıntılar" sheet'i, e-postada sheet
-  // içindeki blok aynı durumu değiştirir.
+  // açarsa (KVKK açık rıza). G41-S1 md.2: düğmelerin altında İŞARETSİZ isteğe bağlı kutu
+  // (MetaConsentRow; iOS'ta işaretlenince ATT). E-posta sheet'indeki blok aynı durumu değiştirir.
   const [adOn, setAdOn] = useState(false);
   // G20-S3 md.2b (İlter kararı): Apple/Google/e-posta — ZORUNLU onay kutusu
   // (Koşullar + Gizlilik + 18+ beyanı); işaretlenmeden düğmeler pasif. E-posta
   // sheet'i ve ayrıntı sheet'i AYNI durumu gösterir/değiştirir.
   const [accepted, setAccepted] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   // G22-S2 md.5 (FinOnbAccountError): ağ / hesap hatası → Apple–Google altında satır
   // içi uyarı + "Tekrar dene" (aynı sağlayıcı). İptal SESSİZ → uyarı yok.
   const [authFail, setAuthFail] = useState<{ kind: 'network' | 'account'; provider: 'apple' | 'google' } | null>(
@@ -265,7 +263,6 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
     }
   };
 
-  const link = { color: P.ink, textDecorationLine: 'underline' as const };
   return (
     <OnbScaffold
       glass={GLASS.bowlAccount}
@@ -286,28 +283,15 @@ function AccountScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
           <View style={styles.legalBox}>
             <PolicyAcceptRow accepted={accepted} onAcceptedChange={setAccepted} withAge testID="onb-account-consent" />
           </View>
-          {/* G20-S1: Apple/Google için kısa satır + ayrıntı sheet'i (aynı blok). */}
-          <AppText textRole="helper" style={[styles.legalAds, { color: P.sec }]} testID="onb-account-ads-line">
-            {i18n.t(adOn ? 'consent.account.ads_on' : 'consent.account.ads_off')}
-            <AppText textRole="helper" style={link} onPress={() => setDetailsOpen(true)} accessibilityRole="link" testID="onb-account-details">
-              {i18n.t('consent.account.details')}
-            </AppText>
-          </AppText>
+          {/* G41-S1 md.2: isteğe bağlı Meta kutusu (işaretsiz). Eski "Reklam ölçümü kapalı · Ayrıntılar" satırı kalktı. */}
+          <View style={styles.legalAds}>
+            <MetaConsentRow value={adOn} onChange={setAdOn} testID="onb-account-meta" />
+          </View>
         </View>
       }
     >
       <OnbTitle>{i18n.t('onboarding.account.title')}</OnbTitle>
       <OnbLead>{i18n.t('onboarding.account.sub')}</OnbLead>
-      <ConsentSheet
-        visible={detailsOpen}
-        mode="details"
-        adOn={adOn}
-        onAdChange={setAdOn}
-        accepted={accepted}
-        onAcceptedChange={setAccepted}
-        onConfirm={() => setDetailsOpen(false)}
-        onClose={() => setDetailsOpen(false)}
-      />
       <AccountEmailSheet
         adOn={adOn}
         onAdChange={setAdOn}
@@ -409,7 +393,7 @@ const styles = StyleSheet.create({
   brand: { marginBottom: 14 },
   headline: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 40, lineHeight: 43 },
   legalBox: { marginTop: 14 },
-  legalAds: { marginTop: 4, textAlign: 'center' },
+  legalAds: { marginTop: 4 },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1, paddingHorizontal: 8 },
 });

@@ -1,28 +1,49 @@
-// G19-S3 md.4/md.5 + G26-S1 — uygulama içi rıza (iOS ATT kaldırıldı).
+// G19-S3 md.4/md.5 + G26-S1 + G41-S1 — uygulama içi rıza; iOS'ta ayrıca ATT (yalnız kutudan sonra sorulur).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as consent from '../consent';
-import { fbSettingsFor, metaAllowed, parseAdConsent, parseFirstParty } from '../consent';
+import { fbSettingsFor, metaAllowed, parseAdConsent, parseFirstParty, toAttStatus } from '../consent';
 import { scanOutcomeEvent } from '../../../modules/ai/scan/scanMetrics';
 import { logSourceOf } from '../logSource';
 
-test('G27: Meta varsayılan KAPALI — yalnız açık rıza (granted) ile (iOS + Android; ATT yok)', () => {
-  assert.equal(metaAllowed({ adConsent: 'unset' }), false);
-  assert.equal(metaAllowed({ adConsent: 'granted' }), true);
-  assert.equal(metaAllowed({ adConsent: 'denied' }), false);
+test('G27: Meta varsayılan KAPALI — Android yalnız açık rıza (granted) ile', () => {
+  const a = { platform: 'android', att: 'unavailable' as const };
+  assert.equal(metaAllowed({ ...a, adConsent: 'unset' }), false);
+  assert.equal(metaAllowed({ ...a, adConsent: 'granted' }), true);
+  assert.equal(metaAllowed({ ...a, adConsent: 'denied' }), false);
 });
 
-test('G26: iOS izleme + IDFA HER ZAMAN kapalı; Android reklam kimliği rızaya bağlı', () => {
-  for (const adConsent of ['unset', 'granted', 'denied'] as const) {
-    assert.deepEqual(fbSettingsFor({ platform: 'ios', adConsent }), { advertiserTracking: false, advertiserIdCollection: false }, adConsent);
+test('G41: iOS Meta = onay açık VE ATT izinli; ATT sorulmadı/reddedildi → kapalı', () => {
+  for (const att of ['undetermined', 'denied', 'unavailable'] as const) {
+    assert.equal(metaAllowed({ platform: 'ios', adConsent: 'granted', att }), false, att);
   }
-  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'unset' }), { advertiserTracking: false, advertiserIdCollection: false });
-  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'granted' }), { advertiserTracking: true, advertiserIdCollection: true });
-  assert.deepEqual(fbSettingsFor({ platform: 'android', adConsent: 'denied' }), { advertiserTracking: false, advertiserIdCollection: false });
+  assert.equal(metaAllowed({ platform: 'ios', adConsent: 'granted', att: 'granted' }), true);
+  for (const adConsent of ['unset', 'denied'] as const) {
+    assert.equal(metaAllowed({ platform: 'ios', adConsent, att: 'granted' }), false, adConsent);
+  }
 });
 
-test('G26: ATT eşlemesi kaldırıldı', () => {
-  assert.equal((consent as Record<string, unknown>).toAttStatus, undefined);
+test('G41: iOS izleme + IDFA yalnız onay + ATT izinliyse; Android reklam kimliği rızaya bağlı', () => {
+  const off = { advertiserTracking: false, advertiserIdCollection: false };
+  const on = { advertiserTracking: true, advertiserIdCollection: true };
+  for (const adConsent of ['unset', 'granted', 'denied'] as const) {
+    for (const att of ['undetermined', 'denied'] as const) {
+      assert.deepEqual(fbSettingsFor({ platform: 'ios', adConsent, att }), off, `${adConsent}/${att}`);
+    }
+  }
+  assert.deepEqual(fbSettingsFor({ platform: 'ios', adConsent: 'granted', att: 'granted' }), on);
+  assert.deepEqual(fbSettingsFor({ platform: 'ios', adConsent: 'denied', att: 'granted' }), off);
+  const a = { platform: 'android', att: 'unavailable' as const };
+  assert.deepEqual(fbSettingsFor({ ...a, adConsent: 'unset' }), off);
+  assert.deepEqual(fbSettingsFor({ ...a, adConsent: 'granted' }), on);
+  assert.deepEqual(fbSettingsFor({ ...a, adConsent: 'denied' }), off);
+});
+
+test('G41: ATT eşlemesi — iOS dışı unavailable, bilinmeyen → undetermined', () => {
+  assert.equal(toAttStatus('android', 'granted'), 'unavailable');
+  assert.equal(toAttStatus('ios', 'granted'), 'granted');
+  assert.equal(toAttStatus('ios', 'denied'), 'denied');
+  assert.equal(toAttStatus('ios', 'undetermined'), 'undetermined');
+  assert.equal(toAttStatus('ios', null), 'undetermined');
 });
 
 test('kalıcı rıza değerleri: bilinmeyen → unset; birinci taraf yalnız "0" ile kapanır', () => {

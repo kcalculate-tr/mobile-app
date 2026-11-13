@@ -19,6 +19,10 @@ export const tr = {
     ads_label: 'Reklam ölçümü (Meta)',
     ads_desc: 'Kampanyalarımızın etkisini ölçmek için. Varsayılan kapalı; açarsan istediğin zaman kapatabilirsin.',
     required: 'Devam etmek için koşulları kabul etmelisin.',
+    // G41-S1 md.2: kayıt/giriş altında İŞARETSİZ, isteğe bağlı kutu (İlter metni). iOS'ta işaretlenince ATT.
+    meta_label: 'Kampanya ve reklam ölçümü için verilerimin Meta ile paylaşılmasına izin veriyorum.',
+    meta_hint: 'İsteğe bağlı. Profil › Gizlilik’ten istediğin zaman geri alabilirsin.',
+    meta_att_denied: 'iPhone takip izni verilmediği için Meta ile paylaşım kapalı kaldı.',
   },
   account: {
     ads_on: 'Reklam ölçümü (Meta) açık. ',
@@ -27,7 +31,7 @@ export const tr = {
   },
   sheet: {
     details_title: 'Politikalar ve izinler',
-    details_lead: 'Devam etmek için Kullanım Koşulları ve Gizlilik Politikası’nı kabul etmelisin. Reklam ölçümünü buradan kapatabilirsin.',
+    details_lead: 'Devam etmek için Kullanım Koşulları ve Gizlilik Politikası’nı kabul etmelisin. Meta ile paylaşım isteğe bağlıdır.',
     details_ok: 'Tamam',
     notice_title: 'Gizlilik ve izinler',
     notice_lead:
@@ -51,12 +55,17 @@ export const tr = {
     ai_coach_hint: 'Vazgeçersen koça mesaj gönderilmez. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
     ai_coach_ok: 'Kabul et',
     ai_coach_cancel: 'Vazgeç',
+    // G41-S1 md.2: önceki sürümde Meta anahtarı açık olan iOS kullanıcısına TEK SEFER (ATT öncesi).
+    att_notice_title: 'Reklam ölçümü tercihin',
+    att_notice_lead:
+      'Daha önce kampanya ve reklam ölçümü için Meta ile paylaşıma izin vermiştin. iPhone bunun için bir kez soracak; izin vermezsen paylaşım kapanır. Profil › Gizlilik’ten istediğin zaman değiştirebilirsin.',
+    att_notice_ok: 'Devam',
     privacy_link: 'Gizlilik Politikası',
     close: 'Kapat',
   },
   settings: {
     row: 'Veri ve reklam izinleri',
-    row_sub: 'Kullanım ölçümü ve reklam ölçümü',
+    row_sub: 'Kullanım ölçümü ve yapay zekâ',
     title: 'Veri ve reklam izinleri',
     measure_section: 'Ölçüm',
     ai_section: 'Yapay zekâ',
@@ -66,6 +75,13 @@ export const tr = {
     docs_section: 'Metinler',
     footer: 'Tercihlerin hesabına kaydedilir; istediğin zaman değiştirebilirsin.',
     error: 'Tercih kaydedilemedi. Tekrar dene.',
+    // G41-S1 md.2: Profil › Gizlilik tek satır (geri çekme). Meta anahtarı izinler sayfasından kalktı.
+    ads_section: 'Reklam',
+    meta_row: 'Meta reklam ölçümü',
+    meta_on: 'Açık',
+    meta_off: 'Kapalı',
+    meta_att_denied: 'iPhone takip izni kapalı. Açmak için iPhone Ayarlar › Gizlilik ve Güvenlik › Takip.',
+    meta_open_settings: 'Ayarları aç',
   },
   // G20-S3 md.6 (B-11): pazarlama bildirimi ayrı onay, varsayılan KAPALI.
   marketing: {
@@ -90,6 +106,9 @@ export const en: typeof tr = {
     ads_label: 'Ad measurement (Meta)',
     ads_desc: 'To measure how our campaigns perform. Off by default; if you turn it on, you can turn it off any time.',
     required: 'Please accept the terms to continue.',
+    meta_label: 'I agree to share my data with Meta for campaign and ad measurement.',
+    meta_hint: 'Optional. You can withdraw it any time in Profile › Privacy.',
+    meta_att_denied: 'Sharing with Meta stays off because iPhone tracking permission wasn’t given.',
   },
   account: {
     ads_on: 'Ad measurement (Meta) is on. ',
@@ -98,7 +117,7 @@ export const en: typeof tr = {
   },
   sheet: {
     details_title: 'Policies and permissions',
-    details_lead: 'To continue, please accept the Terms of Use and the Privacy Policy. You can turn ad measurement off here.',
+    details_lead: 'To continue, please accept the Terms of Use and the Privacy Policy. Sharing with Meta is optional.',
     details_ok: 'Done',
     notice_title: 'Privacy and permissions',
     notice_lead:
@@ -119,12 +138,16 @@ export const en: typeof tr = {
     ai_coach_hint: 'If you cancel, nothing is sent to the coach. You can withdraw this in Profile › Privacy › Data and ad permissions.',
     ai_coach_ok: 'Accept',
     ai_coach_cancel: 'Cancel',
+    att_notice_title: 'Your ad measurement choice',
+    att_notice_lead:
+      'You previously allowed sharing with Meta for campaign and ad measurement. Your iPhone will ask once; if you don’t allow it, sharing turns off. You can change this any time in Profile › Privacy.',
+    att_notice_ok: 'Continue',
     privacy_link: 'Privacy Policy',
     close: 'Close',
   },
   settings: {
     row: 'Data and ad permissions',
-    row_sub: 'Usage analytics and ad measurement',
+    row_sub: 'Usage analytics and AI',
     title: 'Data and ad permissions',
     measure_section: 'Measurement',
     ai_section: 'AI',
@@ -134,6 +157,12 @@ export const en: typeof tr = {
     docs_section: 'Documents',
     footer: 'Your choices are saved to your account; you can change them any time.',
     error: 'Couldn’t save your choice. Try again.',
+    ads_section: 'Advertising',
+    meta_row: 'Meta ad measurement',
+    meta_on: 'On',
+    meta_off: 'Off',
+    meta_att_denied: 'iPhone tracking is off. To turn it on, go to iPhone Settings › Privacy & Security › Tracking.',
+    meta_open_settings: 'Open Settings',
   },
   marketing: {
     label: 'Also send me offers and campaign notifications',

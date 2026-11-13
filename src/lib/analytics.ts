@@ -1,7 +1,7 @@
 // G19-S3 — Ölçüm istemcisi (tek giriş: `track(name, props)`).
 //
 //   track() ──► sözlük (metrics/events.ts) ─► beyaz liste + PII süzgeci (sanitize.ts)
-//          ├─► Meta SDK — YALNIZ reklam olayları (sözlükte `meta`), rıza açıksa (G26: ATT yok)
+//          ├─► Meta SDK — YALNIZ reklam olayları (sözlükte `meta`), rıza açıksa (G41: iOS'ta + ATT izinli)
 //          └─► kuyruk (queue.ts) ─► Supabase analytics_events (toplu, çevrimdışı, yeniden deneme)
 //
 // Kimlik: anon_id (cihazda kalıcı) her satırda; giriş yapılmışsa user_id.
@@ -29,22 +29,31 @@ import {
   parseAdConsent,
   parseFirstParty,
   type AdConsent,
+  type AttStatus,
 } from './metrics/consent';
+import { getAttStatus } from './att';
 
 export type { ClientEventName, PropsOf } from './metrics/events';
 
 // ── Rıza durumu ───────────────────────────────────────────────────────────
 let adConsent: AdConsent = 'unset';
 let firstParty = true;
+// G41-S1: iOS ATT durumu açılışta yalnız OKUNUR (soru yok); soru yalnız lib/att.ts (kullanıcı eylemiyle).
+let att: AttStatus = Platform.OS === 'ios' ? 'undetermined' : 'unavailable';
 let consentLoad: Promise<void> | null = null;
 
 const loadConsent = (): Promise<void> => {
   if (!consentLoad) {
     consentLoad = (async () => {
       try {
-        const [a, f] = await Promise.all([AsyncStorage.getItem(AD_CONSENT_KEY), AsyncStorage.getItem(FIRST_PARTY_KEY)]);
+        const [a, f, s] = await Promise.all([
+          AsyncStorage.getItem(AD_CONSENT_KEY),
+          AsyncStorage.getItem(FIRST_PARTY_KEY),
+          getAttStatus(),
+        ]);
         adConsent = parseAdConsent(a);
         firstParty = parseFirstParty(f);
+        att = s;
       } catch {
         /* varsayılanlar */
       }
@@ -53,15 +62,20 @@ const loadConsent = (): Promise<void> => {
   return consentLoad;
 };
 
-export const getConsent = () => ({ platform: Platform.OS, adConsent, firstParty });
+export const getConsent = () => ({ platform: Platform.OS, adConsent, firstParty, att });
+
+/** Açılışta rıza + ATT durumunun diskten/sistemden okunmasını bekle (soru yok). */
+export const ensureConsentLoaded = (): Promise<void> => loadConsent();
+
+const consentState = () => ({ platform: Platform.OS, adConsent, att });
 
 const applyFbSettings = (): void => {
-  const s = fbSettingsFor({ platform: Platform.OS, adConsent });
+  const s = fbSettingsFor(consentState());
   // G27-S1: otomatik uygulama olayları (yükleme / etkinleştirme) da yalnız açık rızada.
   // app.config autoLogAppEventsEnabled=false → varsayılan kapalı; burada rızaya göre açılır.
-  const allowed = metaAllowed({ adConsent });
+  // G41-S1: iOS'ta ayrıca ATT izinli olmalı (metaAllowed).
+  const allowed = metaAllowed(consentState());
   if (Platform.OS === 'ios') {
-    // G26-S1: ATT yok → izleme ve IDFA kapalı SABİT; olaylar rızaya göre (metaAllowed).
     void Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
     Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
   } else {
@@ -87,6 +101,18 @@ export const setAdConsent = async (value: Exclude<AdConsent, 'unset'>): Promise<
   }
 };
 
+/** G41-S1: ATT sonucu (kutu / Gizlilik satırı / bilgi kartı sonrası) — Meta ayarları yenilenir. */
+export const setAttStatus = (value: AttStatus): void => {
+  att = value;
+  if (initialized) {
+    try {
+      applyFbSettings();
+    } catch {
+      /* SDK yoksa yut */
+    }
+  }
+};
+
 /** Birinci taraf kullanım ölçümü aç/kapa (KVKK: itiraz hakkı). */
 export const setFirstPartyConsent = async (on: boolean): Promise<void> => {
   firstParty = on;
@@ -101,22 +127,21 @@ export const setFirstPartyConsent = async (on: boolean): Promise<void> => {
 let initialized = false;
 
 /**
- * Meta SDK başlatma. G26-S1 (İlter 11 Kas): iOS ATT KALDIRILDI — Apple izleme
- * sorusu hiç gösterilmez. iOS'ta `setAdvertiserTrackingEnabled(false)` ve IDFA
- * toplama kapalı SABİT, SONRA initializeSDK (app.config: isAutoInitEnabled=false,
- * advertiserIDCollectionEnabled=false → SDK açılışta IDFA okumaz). Meta ölçümü
- * ATT'siz (AEM / SKAdNetwork) sürer; G27-S1: olaylar (otomatik olanlar dahil) YALNIZ
- * uygulama içi reklam tercihi açıkça 'açık' ise gider (metaAllowed; varsayılan kapalı).
+ * Meta SDK başlatma. G41-S1 (İlter 13 Kas): açılışta ATT SORULMAZ — yalnız mevcut durum
+ * okunur (getAttStatus). iOS'ta `setAdvertiserTrackingEnabled` + IDFA toplama YALNIZ rıza
+ * 'granted' VE ATT 'granted' iken true, SONRA initializeSDK (app.config:
+ * isAutoInitEnabled=false, advertiserIDCollectionEnabled=false → SDK açılışta IDFA okumaz).
+ * G27-S1: olaylar (otomatik olanlar dahil) YALNIZ metaAllowed iken gider (varsayılan kapalı).
  */
 export const initFBSDK = async (): Promise<void> => {
   if (initialized) return;
   try {
     await loadConsent();
-    const s = fbSettingsFor({ platform: Platform.OS, adConsent });
+    const s = fbSettingsFor(consentState());
     if (Platform.OS === 'ios') {
       await Settings.setAdvertiserTrackingEnabled(s.advertiserTracking);
       Settings.setAdvertiserIDCollectionEnabled(s.advertiserIdCollection);
-      Settings.setAutoLogAppEventsEnabled(metaAllowed({ adConsent }));
+      Settings.setAutoLogAppEventsEnabled(metaAllowed(consentState()));
     } else {
       applyFbSettings();
     }
@@ -150,7 +175,7 @@ const num = (v: unknown): number => {
 const forwardToMeta = (name: ClientEventName, raw: Record<string, unknown>): void => {
   const adapter = eventDef(name)?.meta;
   if (!adapter) return;
-  if (!metaAllowed({ adConsent })) return;
+  if (!metaAllowed(consentState())) return;
   switch (adapter) {
     case 'viewContent':
       safeLog(AppEventsLogger.AppEvents.ViewedContent, {

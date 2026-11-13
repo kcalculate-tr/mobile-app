@@ -9,6 +9,9 @@
 //   • mevcut kullanıcı, kayıt yok   → bir kez bilgilendirme sheet'i (notice)
 //   • yeni belge sürümü             → tekrar kabul sheet'i (reconsent)
 // Sunucu (my_consent_status) okunamazsa yalnız cihaz kaydına bakılır (fail-open).
+// G41-S1 md.2: kapı 'ready' olduktan sonra (iOS) önceki Meta anahtarı açık + ATT sonucu yok →
+// TEK SEFER 'att_notice' kartı; "Devam" → ATT (reddedilirse onay "verilmedi"). Açılışta ATT
+// sistem sorusu DOĞRUDAN gösterilmez.
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '../../../core/AuthContext';
@@ -24,6 +27,7 @@ import {
   readPolicyRecord,
   rememberAccepted,
 } from '../../../lib/consent/store';
+import { continueAttNotice, markAttNoticeShown, shouldShowAttNotice } from '../../../lib/consent/metaConsent';
 import { ConsentSheet } from './ConsentSheet';
 
 // G26-S1: ATT yok → başlatma rızadan bağımsız tek yol.
@@ -47,13 +51,27 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
   // Kabulde yazılacak sürüm = kapının gördüğü sunucu sürümü (ayrı okuma başarısız
   // olursa eski sürüm yazılıp tekrar kabul sheet'i döngüye girmesin).
   const serverRef = useRef<ServerStatus | null>(null);
+  const [attOpen, setAttOpen] = useState(false);
+  const attChecked = useRef(false);
+  // G41-S1: mevcut kullanıcı ATT kartı — oturum başına bir kontrol, gösterildiği an işaretlenir.
+  const maybeAttNotice = async () => {
+    if (attChecked.current) return;
+    attChecked.current = true;
+    if (!(await shouldShowAttNotice().catch(() => false))) return;
+    if (gateHeld()) {
+      attChecked.current = false;
+      return;
+    }
+    await markAttNoticeShown();
+    setAttOpen(true);
+  };
 
   useEffect(() => onConsentChange(() => setTick((x) => x + 1)), []);
 
   useEffect(() => {
     if (!ready || loading) return;
     if (!flagsOn) {
-      void startMeta();
+      void startMeta().then(maybeAttNotice);
       return;
     }
     let cancelled = false;
@@ -78,7 +96,7 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
           void rememberAccepted(best);
         }
         setOpen(false);
-        void startMeta();
+        void startMeta().then(maybeAttNotice);
       } else if (d === 'notice' || d === 'reconsent') {
         setAdOn(server?.ad_measurement ?? getConsent().adConsent === 'granted');
         setSheet(d);
@@ -92,7 +110,26 @@ export function ConsentGate({ suppressed = false }: { suppressed?: boolean }) {
     };
   }, [ready, loading, flagsOn, uid, tick]);
 
-  if (!sheet || suppressed) return null;
+  if (suppressed) return null;
+  if (attOpen && !open) {
+    return (
+      <ConsentSheet
+        visible
+        mode="att_notice"
+        busy={busy}
+        onConfirm={async () => {
+          setBusy(true);
+          try {
+            await continueAttNotice();
+          } finally {
+            setBusy(false);
+            setAttOpen(false);
+          }
+        }}
+      />
+    );
+  }
+  if (!sheet) return null;
   return (
     <ConsentSheet
       visible={open}

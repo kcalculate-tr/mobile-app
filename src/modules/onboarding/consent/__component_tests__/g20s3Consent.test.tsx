@@ -115,8 +115,8 @@ describe('md.2b — zorunlu onay kutusu (18+ dahil)', () => {
     expect(ui.getByText(AGE_TR)).toBeTruthy();
     fireEvent.press(ui.getByTestId('consent-sheet-details-block-accept'));
     expect(onAcc).toHaveBeenCalledWith(true);
-    // Reklam ölçümü anahtarı ayrı ve AÇIK (değişmez).
-    expect(ui.getByTestId('consent-sheet-details-block-ads').props.value).toBe(true);
+    // G41-S1: Meta onayı ayrı kutu ve verilen değeri gösterir (kabul kutusu onu değiştirmez).
+    expect(ui.getByTestId('consent-sheet-details-block-ads').props.accessibilityState.checked).toBe(true);
   });
 
   test('E-posta sheet’i: Hesap ekranında işaretlenen kutu taşınır; doğrulamada 18+ hesaba yazılır', async () => {

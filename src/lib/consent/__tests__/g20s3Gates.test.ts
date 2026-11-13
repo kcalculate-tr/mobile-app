@@ -57,9 +57,9 @@ test('md.2b Hesap ekranı: Apple/Google/e-posta düğmeleri onay kutusu işaretl
   assert.match(nav, /<PolicyAcceptRow accepted=\{accepted\} onAcceptedChange=\{setAccepted\} withAge/);
   // "Devam ederek … kabul edersin" satırı kalktı (kabul = kutu)
   assert.doesNotMatch(nav, /onboarding\.account\.legal_pre/);
-  // e-posta sheet'i + ayrıntı sheet'i aynı durumu alır
+  // e-posta sheet'i aynı durumu alır (G41-S1: ayrıntı sheet'i kalktı; Meta kutusu ekranda)
   assert.match(nav, /<AccountEmailSheet[\s\S]*?accepted=\{accepted\}[\s\S]*?onAcceptedChange=\{setAccepted\}/);
-  assert.match(nav, /<ConsentSheet[\s\S]*?accepted=\{accepted\}/);
+  assert.match(nav, /<AccountEmailSheet[\s\S]*?adOn=\{adOn\}/);
   // reklam ölçümü anahtarı ayrı
   // G27-S1: reklam ölçümü varsayılan KAPALI (önceden işaretli değil; KVKK açık rıza).
   assert.match(nav, /const \[adOn, setAdOn\] = useState\(false\);/);

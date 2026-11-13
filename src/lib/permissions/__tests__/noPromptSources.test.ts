@@ -1,5 +1,5 @@
 // G26-S1 — izin envanteri bekçisi: kaynakta istenmeyen sistem izni çağrısı kalmasın.
-//  md.2 ATT yok · md.3 konum yalnız dokununca · md.4 galeri izni hiç istenmez ·
+//  md.2 ATT (G41-S1: yalnız src/lib/att.ts; soru yalnız Meta kutusu / Gizlilik satırı / tek seferlik kart) · md.3 konum yalnız dokununca · md.4 galeri izni hiç istenmez ·
 //  md.6 bildirim sistem penceresi yalnız tek fonksiyonda.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,8 +23,14 @@ function walk(dir: string, out: string[] = []): string[] {
 const files = [...walk(SRC), join(ROOT, 'App.tsx')].map((p) => ({ rel: relative(ROOT, p), src: readFileSync(p, 'utf8') }));
 const hits = (re: RegExp) => files.filter((f) => re.test(f.src)).map((f) => f.rel).sort();
 
-test('ATT çağrısı yok', () => {
-  assert.deepEqual(hits(/requestTrackingPermissions|getTrackingPermissions|expo-tracking-transparency/), []);
+test('G41-S1: ATT yerel çağrısı yalnız src/lib/att.ts; soru (requestAttOnce) yalnız metaConsent akışında', () => {
+  assert.deepEqual(hits(/requestTrackingPermissions|getTrackingPermissions|expo-tracking-transparency/), ['src/lib/att.ts']);
+  assert.deepEqual(hits(/requestAttOnce\(/), ['src/lib/att.ts', 'src/lib/consent/metaConsent.ts']);
+  // Açılış yolu (App.tsx, analytics) ATT SORMAZ — yalnız okur.
+  const app = files.find((f) => f.rel === 'App.tsx')!.src;
+  assert.doesNotMatch(app, /requestAtt|TrackingPermissions/);
+  const an = files.find((f) => f.rel === 'src/lib/analytics.ts')!.src;
+  assert.doesNotMatch(an, /requestAttOnce|requestTrackingPermissions/);
 });
 
 test('galeri (okuma) izni hiç istenmez — sistem seçicisi', () => {

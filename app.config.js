@@ -1,3 +1,57 @@
+const { withGradleProperties, withDangerousMod } = require('expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
+
+// G41-S1 md.5 — Android R8 (yerel config plugin; expo-build-properties YOK, yeni paket eklenmedi).
+// Expo şablonundaki app/build.gradle bu iki özelliği okur:
+//   minifyEnabled  ← android.enableProguardInReleaseBuilds
+//   shrinkResources ← android.enableShrinkResourcesInReleaseBuilds
+// Yalnız release derlemesini etkiler (debug / dev client aynı). R8 her release'te
+// app/build/outputs/mapping/release/mapping.txt üretir; AAB'nin BUNDLE-METADATA'sına girer
+// (Play Console otomatik kullanır). Sentry yüklemesi aşağıda Sentry eklentisi açıkken.
+const R8_RULES_MARK = '# --- G41-S1 R8 keep kuralları (app.config.js withAndroidR8) ---';
+// Yalnız kendi consumer kuralı OLMAYAN kütüphaneler (G41-S1 taraması):
+//   react-native-reanimated / react-native-worklets / react-native-svg / expo-modules-core /
+//   expo-updates → consumerProguardFiles VAR, eklenmedi.
+//   react-native-purchases (RevenueCat köprüsü), @sentry/react-native köprüsü,
+//   react-native-fbsdk-next köprüsü → consumer kuralı YOK (yerel SDK AAR'ları kendi kuralını getirir).
+const R8_RULES = `
+${R8_RULES_MARK}
+# RevenueCat (react-native-purchases köprüsü + hybrid common; JSON eşleme yansıma ile)
+-keep class com.revenuecat.purchases.** { *; }
+-dontwarn com.revenuecat.purchases.**
+# Sentry React Native köprüsü
+-keep class io.sentry.react.** { *; }
+-keepattributes LineNumberTable,SourceFile
+# Meta SDK RN köprüsü (react-native-fbsdk-next); facebook-android-sdk kendi kuralını getirir
+-keep class com.facebook.reactnative.androidsdk.** { *; }
+# Yerel modül (modules/subject-lift) — Expo modülü sınıf adıyla bulunur
+-keep class expo.modules.subjectlift.** { *; }
+# Google ile giriş köprüsü
+-keep class com.reactnativegooglesignin.** { *; }
+# --- G41-S1 son ---
+`;
+const withAndroidR8 = (config) => {
+  config = withGradleProperties(config, (c) => {
+    const set = (key, value) => {
+      c.modResults = c.modResults.filter((p) => !(p.type === 'property' && p.key === key));
+      c.modResults.push({ type: 'property', key, value });
+    };
+    set('android.enableProguardInReleaseBuilds', 'true');
+    set('android.enableShrinkResourcesInReleaseBuilds', 'true');
+    return c;
+  });
+  return withDangerousMod(config, [
+    'android',
+    async (c) => {
+      const file = path.join(c.modRequest.platformProjectRoot, 'app', 'proguard-rules.pro');
+      const prev = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+      if (!prev.includes(R8_RULES_MARK)) fs.writeFileSync(file, prev.replace(/\s*$/, '\n') + R8_RULES);
+      return c;
+    },
+  ]);
+};
+
 // Sentry kaynak haritasi yuklemesi yalnizca org + project tanimliysa devreye
 // girer. Tanimli degilse eklenti HIC eklenmez: build yesil kalir, yalnizca
 // stack trace'ler minified gorunur. SENTRY_AUTH_TOKEN'i EAS secret olarak ver.
@@ -10,6 +64,17 @@ const sentryPlugin =
             organization: process.env.SENTRY_ORG,
             project: process.env.SENTRY_PROJECT,
             url: process.env.SENTRY_URL || 'https://sentry.io/',
+            // G41-S1 md.5: R8 açık → Android ProGuard/R8 mapping.txt Sentry'ye yüklensin
+            // (Sentry Android Gradle Plugin). Yalnız mapping; yerel sembol yüklemesi kapalı.
+            experimental_android: {
+              enableAndroidGradlePlugin: true,
+              includeProguardMapping: true,
+              autoUploadProguardMapping: true,
+              uploadNativeSymbols: false,
+              autoUploadNativeSymbols: false,
+              includeNativeSources: false,
+              includeSourceContext: false,
+            },
           },
         ],
       ]
@@ -27,6 +92,8 @@ module.exports = {
     // remote'tan gelir (eas.json appVersionSource: 'remote' + production
     // autoIncrement) → aşağıdaki ios.buildNumber / android.versionCode alanları
     // EAS derlemesinde KULLANILMAZ; bilerek dokunulmadı.
+    // G41-S1 md.6: yerel değerler yine de yayın hedefiyle eşitlendi (iOS 32 / Android 11);
+    // EAS remote sayaç panelden kontrol edilir (docs/night/G41-S1-LOG.md).
     version: '1.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -50,7 +117,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.kcalmobile.app',
-      buildNumber: '1',
+      buildNumber: '32',
       userInterfaceStyle: 'automatic',
       // DERİN BAĞLANTI (G5-S4, G20-S2) — Universal Links. l.eatkcal.com'daki
       // .well-known/apple-app-site-association bu bundle'a
@@ -74,19 +141,25 @@ module.exports = {
           'Paylaşım kartlarını ve görselleri fotoğraflarına kaydetmek için izin gereklidir.',
         NSLocationWhenInUseUsageDescription:
           'Teslimat adresini haritada doğrulamak ve sana en yakın şubeyi bulmak için konumunu kullanıyoruz.',
+        // G41-S1 md.1 (İlter 13 Kas): ATT metni KALIR. Soru yalnız kayıttaki isteğe bağlı Meta
+        // kutusu işaretlenince (src/lib/att.ts). EN: locales/en.json. expo-tracking-transparency
+        // eklentisi KULLANILMAZ (Android'e AD_ID izni eklerdi); yerel modül autolinking ile gelir.
+        NSUserTrackingUsageDescription:
+          'Kampanya ve reklam ölçümü için, yalnız kayıtta izin verdiysen kullanılır.',
       },
       // GİZLİLİK MANİFESTİ (2026-11-03, G3-S1) — prebuild bundan
       // ios/Kcalculate/PrivacyInfo.xcprivacy'yi üretir. Her veri tipi kodda
       // GERÇEKTEN toplanan veridir; satır referansları docs/night/G3-S1-LOG.md.
-      //   · G26-S1: NSPrivacyTracking: false — ATT kaldırıldı, uygulama izleme
-      //     YAPMAZ (IDFA yok, setAdvertiserTrackingEnabled(false)). Meta olayları
-      //     ATT'siz AEM / SKAdNetwork ile toplu ölçüm. NSPrivacyTrackingDomains
-      //     yok (FBSDK'nın kendi manifesti ep1.facebook.com'u ayrıca bildirir;
-      //     ATT izni olmadığı için iOS o alana bağlantıyı zaten engeller).
+      //   · G41-S1: NSPrivacyTracking: true — ATT geri geldi (YALNIZ kayıttaki isteğe
+      //     bağlı Meta kutusu işaretlenince). İzin verende IDFA + Meta olayları izleme
+      //     sayılır. NSPrivacyTrackingDomains FBSDK manifestiyle aynı (ep1.facebook.com;
+      //     app seviyesinde true + boş domain = Apple reddi). ATT izni yoksa iOS bu
+      //     alana bağlantıyı engeller, analytics.ts de olay göndermez.
       //   · Required-reason API'ler (FileTimestamp/UserDefaults/BootTime/
       //     DiskSpace) mevcut native dosyadan BİREBİR taşındı — kaybolmasın.
       privacyManifests: {
-        NSPrivacyTracking: false,
+        NSPrivacyTracking: true,
+        NSPrivacyTrackingDomains: ['ep1.facebook.com'],
         NSPrivacyCollectedDataTypes: [
           {
             // auth (OTP/Apple/Google) — src/core/AuthContext.tsx
@@ -176,10 +249,10 @@ module.exports = {
             NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
           },
           {
-            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts (G26: izleme yok)
+            // siparişler + Meta logPurchase — orders / PaymentScreen / analytics.ts (G41: ATT izinliyse izleme)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypeTracking: true,
             NSPrivacyCollectedDataTypePurposes: [
               'NSPrivacyCollectedDataTypePurposeAppFunctionality',
               'NSPrivacyCollectedDataTypePurposeAnalytics',
@@ -187,10 +260,10 @@ module.exports = {
             ],
           },
           {
-            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts (G26: izleme yok)
+            // Meta app events (ViewedContent/AddToCart/…) + analytics_events — src/lib/analytics.ts (G41: ATT izinliyse izleme)
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypeTracking: true,
             NSPrivacyCollectedDataTypePurposes: [
               'NSPrivacyCollectedDataTypePurposeAppFunctionality',
               'NSPrivacyCollectedDataTypePurposeAnalytics',
@@ -198,12 +271,15 @@ module.exports = {
             ],
           },
           {
-            // G26-S1: IDFA TOPLANMAZ (ATT yok). Yalnız anon_id (cihazda kalıcı kurulum
-            // kimliği, analytics_events, G20-S2) → birinci taraf Analytics.
+            // G41-S1: IDFA — YALNIZ Meta kutusu + ATT izni verilince (analytics.ts fbSettingsFor);
+            // + anon_id (cihazda kalıcı kurulum kimliği, analytics_events, G20-S2) → Analytics.
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
             NSPrivacyCollectedDataTypeLinked: true,
-            NSPrivacyCollectedDataTypeTracking: false,
-            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypePurposes: [
+              'NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising',
+              'NSPrivacyCollectedDataTypePurposeAnalytics',
+            ],
           },
           {
             // Supabase kullanıcı kimliği — analytics_events.user_id
@@ -253,7 +329,7 @@ module.exports = {
     },
     android: {
       package: 'com.kcalmobile.app',
-      versionCode: 10,
+      versionCode: 11,
       // G23-S1: Android'de koyu tema yalnız expo-system-ui kuruluyken uygulanır (prebuild-config
       // otomatik eklentisi; İlter 10 Kas onayı). Yeni native derleme gerekir.
       userInterfaceStyle: 'automatic',
@@ -345,6 +421,8 @@ module.exports = {
     },
     plugins: [
       ...sentryPlugin,
+      // G41-S1 md.5: Android release R8 (minify + shrinkResources) + keep kuralları.
+      withAndroidR8,
       'expo-asset',
       [
         // Fontlar BUILD'e gömülür. Çıplak 'expo-font' ile yalnızca çalışma
@@ -465,9 +543,8 @@ module.exports = {
             'com.googleusercontent.apps.173333296344-d04r7n8hosc79b1pvjrg5e30pbq4cjss',
         },
       ],
-      // G26-S1 (İlter 11 Kas): expo-tracking-transparency (ATT) KALDIRILDI — Apple izleme
-      // sorusu yok, NSUserTrackingUsageDescription Info.plist'e yazılmaz. Meta ölçümü ATT'siz
-      // (AEM / SKAdNetwork); iOS'ta setAdvertiserTrackingEnabled(false) sabit (analytics.ts).
+      // G41-S1 md.1: ATT geri geldi ama expo-tracking-transparency EKLENTİSİ eklenmez — metin
+      // ios.infoPlist'te (Android AD_ID izni eklemesin). Soru yalnız kayıttaki Meta kutusundan.
       [
         'react-native-fbsdk-next',
         {
@@ -479,10 +556,9 @@ module.exports = {
           displayName: 'KCAL',
           scheme: 'fb4403872953189106',
           // SDK açılışta OTOMATİK başlatılmaz ve IDFA'yı TOPLAMAZ (G3-S1).
-          // G26-S1: ATT yok → src/lib/analytics.ts iOS'ta
-          // setAdvertiserTrackingEnabled(false) + setAdvertiserIDCollectionEnabled(false)
-          // SABİT çağırır, SONRA initializeSDK(). iosUserTrackingPermission VERİLMEZ
-          // (verilirse eklenti NSUserTrackingUsageDescription yazar).
+          // G41-S1: src/lib/analytics.ts iOS'ta izleme + IDFA'yı YALNIZ Meta onayı açık VE ATT
+          // izinli iken açar, SONRA initializeSDK(). iosUserTrackingPermission VERİLMEZ (metin
+          // ios.infoPlist'te tek kaynak).
           advertiserIDCollectionEnabled: false,
           // G27-S1: otomatik olaylar varsayılan KAPALI (KVKK açık rıza); analytics.ts yalnız
           // reklam tercihi açıkça 'açık' ise setAutoLogAppEventsEnabled(true) çağırır.

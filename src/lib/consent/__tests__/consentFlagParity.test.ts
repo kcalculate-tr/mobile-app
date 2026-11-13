@@ -37,14 +37,17 @@ test('App.tsx: Meta yalnız ConsentGate üzerinden (doğrudan initFBSDK çağrı
   assert.doesNotMatch(app, /initFBSDK\(/);
   assert.match(app, /<ConsentGate suppressed=\{forceUpdate\} \/>/);
   const gate = read('src/modules/onboarding/consent/ConsentGate.tsx');
-  assert.match(gate, /if \(!flagsOn\) \{\s*void startMeta\(\);/);
-  // G26-S1: ATT yok
-  assert.doesNotMatch(gate, /recordAtt|onAtt/);
+  assert.match(gate, /if \(!flagsOn\) \{\s*void startMeta\(\)\.then\(maybeAttNotice\);/);
+  // G41-S1: kapı ATT sistem sorusunu DOĞRUDAN çağırmaz — yalnız tek seferlik kartın "Devam"ı (continueAttNotice).
+  assert.doesNotMatch(gate, /requestAttOnce|requestTrackingPermissions/);
+  assert.match(gate, /mode="att_notice"/);
 });
 
 test('rıza bloğu yeni kabuk Hesap ekranında ve e-posta sheet’inde', () => {
   const nav = read('src/modules/onboarding/OnboardingNavigator.tsx');
-  assert.match(nav, /<ConsentSheet[\s\S]*mode="details"/);
+  // G41-S1 md.2: "Ayrıntılar" sheet'i yerine düğmelerin altında isteğe bağlı Meta kutusu.
+  assert.match(nav, /<MetaConsentRow value=\{adOn\} onChange=\{setAdOn\}/);
+  assert.doesNotMatch(nav, /consent\.account\.ads_(on|off)/);
   assert.match(nav, /acceptPolicies\(\{ source: 'signup_social', adOn, ageOk: true \}\)/);
   const sheet = read('src/modules/onboarding/first/AccountEmailSheet.tsx');
   assert.match(sheet, /<ConsentBlock/);

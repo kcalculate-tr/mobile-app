@@ -7,8 +7,8 @@
  * `metrics.consent.*` + G20-S1 `consent.settings.*`.
  *
  *  • Uygulama içi kullanım ölçümü aç/kapa → setFirstPartyConsent (+ user_consents)
- *  • Reklam ölçümü (Meta) aç/kapa → setAdConsent (+ user_consents). Yalnız uygulama
- *    içi tercih — G26-S1: iOS ATT kaldırıldı, Apple izleme sorusu gelmez.
+ *  • G41-S1 md.2: Reklam ölçümü (Meta) anahtarı BURADAN KALDIRILDI. Onay kayıtta isteğe
+ *    bağlı kutuyla verilir; geri çekme Profil › Gizlilik › "Meta reklam ölçümü" satırında.
  *  • G20-S3 md.2: Fotoğraf analizi (yapay zekâ) aç/kapa → ai_photo (+ user_consents).
  *    Kapalıyken Tara ilk çekimde izin sheet'ini yeniden gösterir; kuyruk gönderilmez.
  *  • Metinler: Kullanım Koşulları · Gizlilik Politikası · KVKK Aydınlatma Metni.
@@ -19,8 +19,7 @@ import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { getConsent } from '../../../../lib/analytics';
-import { metaAllowed } from '../../../../lib/metrics/consent';
-import { onConsentChange, setAdMeasurement, setUsageMeasurement } from '../../../../lib/consent/store';
+import { onConsentChange, setUsageMeasurement } from '../../../../lib/consent/store';
 import { hasLocalAiPhotoConsent, setAiPhotoConsent } from '../../../../lib/consent/aiPhoto';
 import { setCoachConsent, useCoachConsent, useCoachEnabled } from '../../../coach/access';
 import { LegalDocModal, type LegalSlug } from '../../../onboarding/consent/LegalDocModal';
@@ -88,18 +87,14 @@ function ToggleRow({
 
 const readState = () => {
   const c = getConsent();
-  return {
-    usage: c.firstParty,
-    // G26-S1: yalnız uygulama içi rıza (ATT yok).
-    ads: metaAllowed(c),
-  };
+  return { usage: c.firstParty };
 };
 
 export default function SettingsDataConsentScreen({ onBack }: { onBack: () => void }) {
   const t = useTheme();
   const { t: tr, lang } = useT();
   const [state, setState] = useState(readState);
-  const [saving, setSaving] = useState<'usage' | 'ads' | 'ai' | null>(null);
+  const [saving, setSaving] = useState<'usage' | 'ai' | null>(null);
   const [error, setError] = useState(false);
   const [doc, setDoc] = useState<LegalSlug | null>(null);
   const [aiOn, setAiOn] = useState(false);
@@ -152,21 +147,6 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
     }
   };
 
-  const toggleAds = async (on: boolean) => {
-    if (saving) return;
-    setSaving('ads');
-    setError(false);
-    setState((s) => ({ ...s, ads: on }));
-    try {
-      await setAdMeasurement(on);
-    } catch {
-      setError(true);
-    } finally {
-      setSaving(null);
-      setState(readState());
-    }
-  };
-
   return (
     <FinScreen scroll contentStyle={{ paddingTop: 0 }}>
       <FinHeader title={tr('consent.settings.title')} onBack={onBack} align="left" />
@@ -181,14 +161,6 @@ export default function SettingsDataConsentScreen({ onBack }: { onBack: () => vo
             onChange={toggleUsage}
             disabled={saving === 'usage'}
             testID="consent-usage-switch"
-          />
-          <ToggleRow
-            title={tr('metrics.consent.ads_label')}
-            desc={tr('metrics.consent.ads_desc')}
-            value={state.ads}
-            onChange={toggleAds}
-            disabled={saving === 'ads'}
-            testID="consent-ads-switch"
           />
         </View>
         <FinSectionLabel>{tr('consent.settings.ai_section')}</FinSectionLabel>

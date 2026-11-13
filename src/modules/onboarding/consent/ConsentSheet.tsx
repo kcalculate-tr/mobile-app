@@ -10,6 +10,9 @@
 //               + Kabul et / Vazgeç. Karartma / X / geri = Vazgeç.
 // G20-S3 md.2b: details kipinde `accepted` verilirse Hesap ekranındaki AYNI zorunlu
 // kutu (Koşullar + Gizlilik + 18+) burada da gösterilir.
+//   att_notice — G41-S1 md.2: önceki sürümde Meta anahtarı AÇIK olan iOS kullanıcısı, ATT sonucu
+//               yoksa bir sonraki açılışta TEK SEFER kısa bilgi + "Devam" → ATT. Kapatılamaz
+//               (tek düğme her zaman sistem sorusuna gider; Apple ön-izin kuralı).
 //   ai_coach  — G24-S1: kcalAI Koç'a ilk mesajdan önce BİR KEZ (ayrı onay). Metin TEK YERDE:
 //               lib/consent/i18n.ts `consent.sheet.ai_coach_lead`.
 // G24-S1 (FinScanAIConsent eşitleme): AI kiplerinde tutamak, kıvılcım ikon dairesi, gövde mürekkep
@@ -33,7 +36,7 @@ import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 const X_D =
   'M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z';
 
-export type ConsentSheetMode = 'details' | 'notice' | 'reconsent' | 'ai_photo' | 'ai_coach';
+export type ConsentSheetMode = 'details' | 'notice' | 'reconsent' | 'ai_photo' | 'ai_coach' | 'att_notice';
 
 export function ConsentSheet({
   visible,
@@ -199,6 +202,8 @@ export function ConsentSheet({
                   testID={`consent-sheet-${mode}-cancel`}
                 />
               </>
+            ) : mode === 'att_notice' ? (
+              <OnbButton kind="lime" label={ok} onPress={confirm} disabled={busy} testID="consent-sheet-att_notice-ok" />
             ) : (
               <>
                 <ConsentBlock
