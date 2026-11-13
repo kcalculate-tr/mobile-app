@@ -84,14 +84,14 @@ for (const scheme of ['light', 'dark'] as const) {
     const root = r.getByTestId('coach-home-card');
     expect(StyleSheet.flatten(root.props.style).backgroundColor).toBe(palette.brandLime);
     expect(palette.brandLime).toBe('#B9EF14');
-    const texts = root.findAll((n) => typeof n.type !== 'string' && typeof n.props?.children === 'string' && n.props?.style != null);
+    const texts = root.findAll((n: TNode) => typeof n.type !== 'string' && typeof n.props?.children === 'string' && n.props?.style != null);
     const btn = r.getByTestId('coach-home-open');
     const btnBg = StyleSheet.flatten(typeof btn.props.style === 'function' ? btn.props.style({ pressed: false }) : btn.props.style).backgroundColor;
     expect(btnBg).toBe('#0A0A0A');
     for (const t of texts) {
       const color = StyleSheet.flatten(t.props.style)?.color;
       if (color == null) continue;
-      const insideBtn = btn.findAll((n) => n === t).length > 0;
+      const insideBtn = btn.findAll((n: TNode) => n === t).length > 0;
       if (insideBtn) expect(color).toBe(palette.brandLime); // siyah düğme üstünde lime yazı
       else expect(['#0A0A0A', 'rgba(10,10,10,0.72)']).toContain(color);
     }
@@ -173,7 +173,11 @@ test('md.4: sohbet avatarı ve boş hâl (CoachGlass) kase değil maskot', () =>
     </>,
   );
   expect(src(r.getByTestId('coach-avatar-mascot', H))).toContain('koc-acik');
-  const imgs = r.getByTestId('coach-mascot', H).findAll((n) => n.props?.source != null);
+  const imgs = r.getByTestId('coach-mascot', H).findAll((n: TNode) => n.props?.source != null);
   expect(imgs.map(src).join()).toContain('koc-acik');
   expect(imgs.map(src).join()).not.toContain('bowl');
 });
+
+// Test ağacı düğümü (react-test-renderer tipi pakette yok).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TNode = { props: Record<string, any>; type: unknown };

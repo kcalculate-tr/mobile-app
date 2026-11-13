@@ -99,7 +99,7 @@ test('adres YOK: bannerların ÜSTÜNDE "Adresini gir…" kartı + "Adres ekle";
   fireEvent.press(btn);
   expect(h.onAddAddress).toHaveBeenCalled();
   // Sıra: adres kartı → kampanyalar → mağazalar.
-  const order = r.UNSAFE_root.findAll((n) => ['home-ek-address-prompt', 'home-ek-campaigns', 'home-ek-stores'].includes(n.props?.testID) && typeof n.type !== 'string').map((n) => n.props.testID);
+  const order = r.UNSAFE_root.findAll((n: TNode) => ['home-ek-address-prompt', 'home-ek-campaigns', 'home-ek-stores'].includes(n.props?.testID) && typeof n.type !== 'string').map((n: TNode) => n.props.testID);
   expect([...new Set(order)]).toEqual(['home-ek-address-prompt', 'home-ek-campaigns', 'home-ek-stores']);
 });
 
@@ -157,3 +157,7 @@ test('bölge: İzmir ve bilinmeyen → vitrin; İzmir dışı → bekleme listes
   expect(b.getByTestId('home-region-outside')).toBeTruthy();
   expect(b.queryByTestId('home-region-izmir')).toBeNull();
 });
+
+// Test ağacı düğümü (react-test-renderer tipi pakette yok).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TNode = { props: Record<string, any>; type: unknown };

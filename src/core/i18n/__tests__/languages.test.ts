@@ -9,6 +9,8 @@ import {
   isLangPref,
   languageSubtitle,
   resolveLang,
+  pickDeviceLang,
+  DEVICE_FALLBACK_LANG,
   type LanguageEntry,
 } from '../languages';
 import { SUPPORTED_LANGS } from '../dictionaries';
@@ -70,4 +72,19 @@ test('ekran metinleri TR + EN', () => {
     assert.ok(e && !e.includes('missing'), `${k} en`);
     assert.notEqual(t, e, `${k} çevrilmiş`);
   }
+});
+
+// G39-S1 md.7 — İngilizce birincil yayın: Türkçe cihaz → TR, diğer her dil → EN.
+test('pickDeviceLang: birincil dil Türkçe → tr, diğer her dil / boş / bilinmeyen → en', () => {
+  assert.equal(pickDeviceLang([{ languageCode: 'tr' }]), 'tr');
+  assert.equal(pickDeviceLang([{ languageCode: 'TR' }, { languageCode: 'en' }]), 'tr');
+  assert.equal(pickDeviceLang([{ languageCode: 'en' }]), 'en');
+  for (const code of ['de', 'fr', 'ar', 'ru', 'es', 'az', 'ja', '', null]) assert.equal(pickDeviceLang([{ languageCode: code }]), 'en', String(code));
+  // Yalnız birincil dil: Almanca birincil, Türkçe ikincil → EN.
+  assert.equal(pickDeviceLang([{ languageCode: 'de' }, { languageCode: 'tr' }]), 'en');
+  assert.equal(pickDeviceLang([]), 'en');
+  assert.equal(pickDeviceLang(null), 'en');
+  assert.equal(DEVICE_FALLBACK_LANG, 'en');
+  // Desteklenmeyen cihaz kodu (eski kayıt) → EN.
+  assert.equal(resolveLang(null, 'de' as never), 'en');
 });

@@ -1,20 +1,16 @@
 // Cihaz dili tespiti — expo-localization (NATIVE). Testlerde import EDİLMEZ.
+// G39-S1 md.7: Türkçe cihaz → TR, diğer her dil → EN (kural saf: languages.ts › pickDeviceLang).
 import { getLocales } from 'expo-localization';
 
-import { SUPPORTED_LANGS, DEFAULT_LANG, type Lang } from './dictionaries';
+import type { Lang } from './dictionaries';
+import { DEVICE_FALLBACK_LANG, pickDeviceLang } from './languages';
 
-/** Cihaz dilini desteklenen bir dile eşle; bilinmiyorsa varsayılan (tr). */
+/** Cihaz dilini desteklenen bir dile eşle: birincil dil Türkçe → 'tr', aksi hâlde 'en'. */
 export function detectDeviceLang(): Lang {
   try {
-    const locales = getLocales();
-    for (const l of locales) {
-      const code = (l.languageCode ?? '').toLowerCase();
-      if ((SUPPORTED_LANGS as readonly string[]).includes(code)) {
-        return code as Lang;
-      }
-    }
+    return pickDeviceLang(getLocales());
   } catch {
-    // expo-localization erişilemezse sessizce varsayılana düş.
+    // expo-localization erişilemezse sessizce İngilizceye düş.
+    return DEVICE_FALLBACK_LANG;
   }
-  return DEFAULT_LANG;
 }

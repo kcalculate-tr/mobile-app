@@ -1,4 +1,4 @@
-// i18n sağlayıcı + useT hook'u. Dil çözümü: kullanıcı tercihi → cihaz dili →
+// i18n sağlayıcı + useT hook'u. Dil çözümü: kullanıcı tercihi → cihaz dili (G39-S1: Türkçe → tr, diğer → en) →
 // varsayılan (tr). Tercih AsyncStorage'da saklanır. Üretim ekranları bu
 // provider'a HENÜZ bağlı değildir; yalnız G5 veri modülleri ve __DEV__ deneme
 // ekranı kullanır (davranış değişmez).

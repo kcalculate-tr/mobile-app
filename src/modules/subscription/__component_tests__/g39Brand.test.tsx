@@ -91,7 +91,7 @@ describe('BrandLogo — üç ad × iki tema', () => {
         const svg = r.getByTestId(`brand-logo-${name}-svg`);
         expect(svg.props.fill ?? svg.props.color).toBeTruthy();
         // Bütün yollar tema metin rengiyle (Light siyah · Dark beyaz).
-        const paths = r.UNSAFE_root.findAll((n) => typeof n.props?.d === 'string' && typeof n.props?.fill === 'string');
+        const paths = r.UNSAFE_root.findAll((n: TNode) => typeof n.props?.d === 'string' && typeof n.props?.fill === 'string');
         expect(paths.length).toBeGreaterThan(3);
         for (const p of paths) expect(p.props.fill).toBe(INK[scheme]);
       });
@@ -149,7 +149,7 @@ describe('Paywall üst başlık (Light/Dark) + maskot', () => {
       expect(brand.props.accessibilityLabel).toBe('kcalAI');
       const ai = r.getByTestId('sub-brand-ai', { includeHiddenElements: true });
       expect(StyleSheet.flatten(ai.props.style).color).toBe(INK[scheme]);
-      const logoPaths = r.getByTestId('sub-brand-logo', { includeHiddenElements: true }).findAll((n) => typeof n.props?.d === 'string' && typeof n.props?.fill === 'string');
+      const logoPaths = r.getByTestId('sub-brand-logo', { includeHiddenElements: true }).findAll((n: TNode) => typeof n.props?.d === 'string' && typeof n.props?.fill === 'string');
       expect(logoPaths.length).toBeGreaterThan(3);
       for (const p of logoPaths) expect(p.props.fill).toBe(INK[scheme]);
       // Logo ve "AI" ayrı düğümler; başlık yalnız plan adı.
@@ -160,7 +160,7 @@ describe('Paywall üst başlık (Light/Dark) + maskot', () => {
   test('Fresh: "Balance’a yükselt" satırında kase değil maskot', () => {
     const r = render(<PaywallScreen />);
     const up = r.getByTestId('sub-upgrade-balance');
-    const imgs = up.findAll((n) => n.props?.source != null && typeof n.type === 'string' ? false : n.props?.source != null);
+    const imgs = up.findAll((n: TNode) => n.props?.source != null && typeof n.type === 'string' ? false : n.props?.source != null);
     expect(imgs.length).toBeGreaterThan(0);
     expect(src(imgs[0])).toContain('koc-acik');
     expect(src(imgs[0])).not.toContain('bowl');
@@ -170,11 +170,15 @@ describe('Paywall üst başlık (Light/Dark) + maskot', () => {
     mockParams = { coach: true };
     const r = render(<PaywallScreen />);
     const row = r.getByTestId('sub-card-coach-balance_yearly', { includeHiddenElements: true });
-    const imgs = row.findAll((n) => n.props?.source != null);
+    const imgs = row.findAll((n: TNode) => n.props?.source != null);
     expect(src(imgs[0])).toContain('koc-acik');
     // Hiçbir yerde kase görseli yok (Fresh kamerası ve diğer cam ikonlar duruyor).
-    const all = r.UNSAFE_root.findAll((n) => n.props?.source != null && typeof n.type !== 'string').map(src);
-    expect(all.some((s) => s.includes('bowl'))).toBe(false);
-    expect(all.some((s) => s.includes('camera'))).toBe(true);
+    const all = r.UNSAFE_root.findAll((n: TNode) => n.props?.source != null && typeof n.type !== 'string').map(src);
+    expect(all.some((s: string) => s.includes('bowl'))).toBe(false);
+    expect(all.some((s: string) => s.includes('camera'))).toBe(true);
   });
 });
+
+// Test ağacı düğümü (react-test-renderer tipi pakette yok).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TNode = { props: Record<string, any>; type: unknown };

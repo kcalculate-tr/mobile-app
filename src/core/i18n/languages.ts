@@ -4,7 +4,7 @@
 // (2) aşağıya bir satır (`enabled: true`) + `LangFlag`'e bayrak. Sözlükler JS paketinde
 // olduğundan yeni dil OTA (eas update) ile gelebilir; native derleme gerekmez.
 // `enabled: false` satır listede GÖRÜNMEZ (hazırlık aşamasındaki dil).
-import { DEFAULT_LANG, SUPPORTED_LANGS, type Lang } from './dictionaries';
+import { SUPPORTED_LANGS, type Lang } from './dictionaries';
 
 /** Kullanıcı tercihi: belirli bir dil ya da "Telefon dili" (cihazı izle, varsayılan). */
 export type LangPref = Lang | 'system';
@@ -41,7 +41,8 @@ export function isLangPref(v: unknown): v is LangPref {
 /** Etkin dil: tercih yoksa / "Telefon dili" ise cihaz dili; desteklenmeyen kod → varsayılan. */
 export function resolveLang(pref: LangPref | null | undefined, device: Lang): Lang {
   if (pref && pref !== SYSTEM_PREF && (SUPPORTED_LANGS as readonly string[]).includes(pref)) return pref;
-  return (SUPPORTED_LANGS as readonly string[]).includes(device) ? device : DEFAULT_LANG;
+  // G39-S1 md.7: desteklenmeyen cihaz dili → İngilizce (DEFAULT_LANG yalnız sağlayıcısız iç varsayılan).
+  return (SUPPORTED_LANGS as readonly string[]).includes(device) ? device : DEVICE_FALLBACK_LANG;
 }
 
 /**
@@ -58,4 +59,14 @@ export function languageSubtitle(entry: LanguageEntry, uiLang: Lang): string {
 
 export function languageEntry(code: Lang): LanguageEntry | undefined {
   return LANGUAGES.find((l) => l.code === code);
+}
+
+/**
+ * G39-S1 md.7 — İngilizce birincil yayın: cihazın BİRİNCİL dili Türkçe → 'tr', diğer HER dil (de, fr, ar,
+ * bilinmeyen, boş liste) → 'en'. Yalnız ilk (tercih edilen) yerel dikkate alınır: ["de-DE", "tr-TR"] → 'en'.
+ */
+export const DEVICE_FALLBACK_LANG: Lang = 'en';
+export function pickDeviceLang(locales: readonly { languageCode?: string | null }[] | null | undefined): Lang {
+  const first = (locales?.[0]?.languageCode ?? '').toLowerCase();
+  return first === 'tr' ? 'tr' : DEVICE_FALLBACK_LANG;
 }
