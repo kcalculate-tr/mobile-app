@@ -25,7 +25,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { CaretDown, CaretLeft } from '../../../../components/icons';
 import { CachedImage } from '../../../../components/CachedImage';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
-import { gramajImageCandidates, optionImageCandidates } from '../model/optionImage';
+import { gramajImageCandidates, groupOptionImageCandidates, isGramajGroup } from '../model/optionImage';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../core/design';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
@@ -263,6 +263,7 @@ export default function EkProductScreen() {
     groups.forEach((group) => {
       const { min, max } = getGroupSelectionLimits(group);
       const sel = new Set(selections[group.id] || []);
+      const gramajGroup = isGramajGroup(group.name, group.items.map((i) => i.name));
       out.push({
         key: `g:${group.id}`,
         title: group.name,
@@ -276,11 +277,12 @@ export default function EkProductScreen() {
           name: item.name,
           priceDelta: item.priceAdjustment,
           kcal: optionKcal(item),
-          // G35: image_url → bağlı ürün görseli → ada göre ürün görseli → boş hâl
-          images: optionImageCandidates({
+          // G41-S1 md.4: bağlı ürün / adı eşleşen ürün fotoğrafı ÖNCE; protein çıkartması yalnız gramaj grubunda.
+          images: groupOptionImageCandidates({
             own: item.imageUrl,
             linked: item.linkedProductImageUrl,
             byName: imageFor(item.name),
+            gramajGroup,
           }),
           selected: sel.has(item.id),
           // ProductDetailScreen.tsx:1052-1054
@@ -307,7 +309,7 @@ export default function EkProductScreen() {
           priceDelta: Number(v.price_modifier) || 0,
           kcal: null,
           kcalDelta: Number(v.calorie_modifier) || 0,
-          images: optionImageCandidates({ own: v.image_url, byName: imageFor(v.name) }),
+          images: groupOptionImageCandidates({ own: v.image_url, byName: imageFor(v.name), gramajGroup: isGramajGroup(tpl.name, tpl.values.map((x) => x.name)) }),
           selected: sel.includes(v.id),
           // ProductDetailScreen.tsx:1124-1128
           disabled: multi && !sel.includes(v.id) && link.effective_max != null && sel.length >= link.effective_max,

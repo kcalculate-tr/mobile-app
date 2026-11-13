@@ -101,3 +101,70 @@ export function gramajImageCandidates(src: {
   if (own && sticker && !out.some((c) => c.uri === sticker)) out.splice(1, 0, { uri: sticker, kind: 'sticker' });
   return out;
 }
+
+// ── G41-S1 md.4: seçim grubu görsel kuralı ───────────────────────────────────
+// Hata: "Ana Yemek + Detoks/Shake Paketi" (id 33) ve 2 kişilik (id 43) "Ana Öğün Seçimi"
+// seçenekleri ÜRÜN, ama her biri tek köfte çıkartmasıyla görünüyordu (seçeneğin `image_url`'i
+// bağlı ürün fotoğrafının ÖNÜNDEYDİ; G35 eşlemesindeki gramaj LIKE'ı `Izgara Köfte %` gibi
+// ürün adlarını da yakalayabiliyor). Kural (İlter 13 Kas):
+//   • `linked_product_id` varsa (ya da ad bir ürünle eşleşiyorsa) → ÜRÜNÜN fotoğrafı ÖNCE.
+//   • Protein/şarküteri çıkartması YALNIZ gramaj gruplarında (products.gramaj_options →
+//     gramajImageCandidates; gramaj şablonları/grupları → başlığında "gramaj" geçen grup).
+//     Diğer gruplarda seçeneğin kendi görseli protein çıkartmasıysa hiç kullanılmaz.
+//   • Diğer çıkartmalar (sos, baz, ekmek …) bağlı/eşleşen ürün yoksa yine gösterilir.
+
+const STICKER_CODE_RE = /\/images\/options\/([a-z0-9-]+)\.webp(?:\?.*)?$/i;
+
+/** URL bir G35 protein/şarküteri çıkartması mı? (gramaj kartlarına özgü görseller) SAF. */
+export function isProteinSticker(url: string | null | undefined): boolean {
+  const s = clean(url);
+  if (!s) return false;
+  const m = STICKER_CODE_RE.exec(s);
+  return !!m && /^(protein|sarkuteri)-/.test(m[1]);
+}
+
+/** Grup/şablon başlığı gramaj grubu mu ("Et Gramajı", "Protein Gramajı" …). SAF. */
+export function isGramajGroupTitle(title: string | null | undefined): boolean {
+  return /gramaj/i.test(String(title ?? '').toLocaleLowerCase('tr-TR'));
+}
+
+/** Seçenek adı bir gramaj / adet çeşidi mi ("Mortadella 50g", "Izgara Tavuk Bonfile 150 gr", "3 Yumurta"). SAF. */
+export function isGramajVariantName(name: string | null | undefined): boolean {
+  const n = String(name ?? '').trim().toLocaleLowerCase('tr-TR');
+  return /\d+\s*(g|gr|gram)\b/.test(n) || /^\d+\s+yumurta$/.test(n);
+}
+
+/**
+ * Gramaj grubu: başlığında "gramaj" geçer YA DA bütün seçenekleri gramaj/adet çeşididir
+ * (tera/breaking_fast "Fıstıklı Mortadella Salam Seçimi" → "Mortadella 50g / 80g / 100g").
+ * Ürün adlı seçenekler ("Ana Öğün Seçimi" → "Izgara Köfte Bowl") gramaj grubu DEĞİLDİR. SAF.
+ */
+export function isGramajGroup(title: string | null | undefined, itemNames: ReadonlyArray<string | null | undefined>): boolean {
+  if (isGramajGroupTitle(title)) return true;
+  return itemNames.length > 0 && itemNames.every(isGramajVariantName);
+}
+
+/** option_items / şablon değeri kartının görsel adayları (G41 kuralı). SAF. */
+export function groupOptionImageCandidates(src: OptionImageSources & { gramajGroup: boolean }): OptionImageCandidate[] {
+  const own = clean(src.own);
+  const linked = clean(src.linked);
+  const byName = clean(src.byName);
+  if (src.gramajGroup) {
+    // Gramaj grubu: bağlı ürün varsa yine önce o; sonra çıkartma (G35/G38), sonra ada göre ürün.
+    const out: OptionImageCandidate[] = linked ? [{ uri: linked, kind: 'photo' }] : [];
+    const seen = new Set(out.map((c) => c.uri));
+    for (const c of optionImageCandidates({ own, byName })) if (!seen.has(c.uri)) out.push(c);
+    return out;
+  }
+  const out: OptionImageCandidate[] = [];
+  const seen = new Set<string>();
+  const push = (uri: string | null, kind: OptionImageKind) => {
+    if (!uri || seen.has(uri)) return;
+    seen.add(uri);
+    out.push({ uri, kind });
+  };
+  push(linked, 'photo');
+  push(byName, 'photo');
+  if (own && !isProteinSticker(own)) push(own, 'sticker');
+  return out;
+}

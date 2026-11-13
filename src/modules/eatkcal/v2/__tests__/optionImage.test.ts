@@ -9,6 +9,7 @@ import { join } from 'node:path';
 
 import { optionImageCandidates, primaryOptionImage } from '../model/optionImage';
 import { fetchProductOptionGroups } from '../../../../lib/products';
+import { groupOptionImageCandidates, isGramajGroup, isGramajGroupTitle, isGramajVariantName, isProteinSticker, OPTION_STICKER_BASE } from '../model/optionImage';
 
 const STICKER = 'https://xtjakvinklthlvsfcncu.supabase.co/storage/v1/object/public/images/options/sos-ranch.webp';
 const LINKED = 'https://xtjakvinklthlvsfcncu.supabase.co/storage/v1/object/public/images/products/ogun-1.jpg';
@@ -163,4 +164,80 @@ test('migration eşlemesi: gramaj LIKE, tam eşleşme ayrımları, yumurta adetl
   assert.equal(codeFor('Salatalık Turşusu'), null);
   assert.equal(codeFor('Roka Salatası'), null); // tam eşleşme türü LIKE kullanmaz
   assert.equal(codeFor('Basmati Üzeri Tavuk Fileto ve Brokoli'), null);
+});
+
+// ── G41-S1 md.4: bağlı/eşleşen ürün fotoğrafı önce; protein çıkartması yalnız gramaj grubunda ──
+
+const KOFTE = `${OPTION_STICKER_BASE}protein-izgara-kofte.webp`;
+const RANCH = `${OPTION_STICKER_BASE}sos-ranch.webp`;
+const PHOTO = 'https://xtjakvinklthlvsfcncu.supabase.co/storage/v1/object/public/images/products/kofte-bowl.jpg';
+const NAMEPHOTO = 'https://xtjakvinklthlvsfcncu.supabase.co/storage/v1/object/public/images/products/detoks.jpg';
+
+test('G41: protein/şarküteri çıkartması tanınır; diğer çıkartma ve fotoğraf tanınmaz', () => {
+  assert.equal(isProteinSticker(KOFTE), true);
+  assert.equal(isProteinSticker(`${OPTION_STICKER_BASE}sarkuteri-hindi-fume.webp`), true);
+  assert.equal(isProteinSticker(RANCH), false);
+  assert.equal(isProteinSticker(PHOTO), false);
+  assert.equal(isProteinSticker(null), false);
+});
+
+test('G41: gramaj grup başlığı', () => {
+  assert.equal(isGramajGroupTitle('Et Gramajı'), true);
+  assert.equal(isGramajGroupTitle('PROTEİN GRAMAJI'), true);
+  assert.equal(isGramajGroupTitle('Ana Öğün Seçimi'), false);
+  assert.equal(isGramajGroupTitle(null), false);
+});
+
+test('G41 hata (id 33/43 "Ana Öğün Seçimi"): bağlı ürün varsa ÜRÜN fotoğrafı; köfte çıkartması hiç yok', () => {
+  const c = groupOptionImageCandidates({ own: KOFTE, linked: PHOTO, byName: null, gramajGroup: false });
+  assert.deepEqual(c, [{ uri: PHOTO, kind: 'photo' }]);
+});
+
+test('G41: bağlı ürün yok ama ad bir ürünle eşleşiyor → o ürünün fotoğrafı önce, sonra (protein değilse) çıkartma', () => {
+  assert.deepEqual(groupOptionImageCandidates({ own: KOFTE, byName: NAMEPHOTO, gramajGroup: false }), [{ uri: NAMEPHOTO, kind: 'photo' }]);
+  assert.deepEqual(groupOptionImageCandidates({ own: RANCH, byName: NAMEPHOTO, gramajGroup: false }), [
+    { uri: NAMEPHOTO, kind: 'photo' },
+    { uri: RANCH, kind: 'sticker' },
+  ]);
+});
+
+test('G41: gramaj dışı grupta yalnız protein çıkartması varsa → boş hâl; sos çıkartması kalır', () => {
+  assert.deepEqual(groupOptionImageCandidates({ own: KOFTE, gramajGroup: false }), []);
+  assert.deepEqual(groupOptionImageCandidates({ own: RANCH, gramajGroup: false }), [{ uri: RANCH, kind: 'sticker' }]);
+});
+
+test('G41: gramaj grubunda protein çıkartması korunur (G35/G38); bağlı ürün yine önce', () => {
+  assert.deepEqual(groupOptionImageCandidates({ own: KOFTE, gramajGroup: true }), [{ uri: KOFTE, kind: 'sticker' }]);
+  assert.deepEqual(groupOptionImageCandidates({ own: KOFTE, linked: PHOTO, byName: NAMEPHOTO, gramajGroup: true }), [
+    { uri: PHOTO, kind: 'photo' },
+    { uri: KOFTE, kind: 'sticker' },
+    { uri: NAMEPHOTO, kind: 'photo' },
+  ]);
+});
+
+
+test('G41: gramaj grubu = başlıkta "gramaj" YA DA bütün seçenekler gramaj/adet çeşidi; ürün adlı grup değil', () => {
+  assert.equal(isGramajVariantName('Mortadella 50g'), true);
+  assert.equal(isGramajVariantName('Izgara Tavuk Bonfile 150 gr'), true);
+  assert.equal(isGramajVariantName('3 Yumurta'), true);
+  assert.equal(isGramajVariantName('Izgara Köfte Bowl'), false);
+  assert.equal(isGramajGroup('Fıstıklı Mortadella Salam Seçimi', ['Mortadella 50g', 'Mortadella 80g', 'Mortadella 100g']), true);
+  assert.equal(isGramajGroup('Et Gramajı', []), true);
+  assert.equal(isGramajGroup('Ana Öğün Seçimi', ['Izgara Köfte Bowl', 'Dengeli Izgara Köfte', 'Tavuk Fileto Bowl']), false);
+  assert.equal(isGramajGroup('Ana Öğün Seçimi', ['Izgara Köfte Basmati ve Brokoli Sebze', 'Izgara Köfte 150g']), false);
+  assert.equal(isGramajGroup('Protein', []), false);
+});
+
+test('G41 migration DOSYASI: yalnız bağlı ürünlü satırdaki protein çıkartması temizlenir, yedek + rollback var', () => {
+  const root = join(__dirname, '../../../../..');
+  const up = readFileSync(join(root, 'supabase/migrations/20261113100100_g41_option_image_fix.sql'), 'utf8');
+  const down = readFileSync(join(root, 'supabase/rollbacks/20261113100100_g41_option_image_fix_rollback.sql'), 'utf8');
+  assert.match(up, /YALNIZ DOSYA/);
+  assert.match(up, /set image_url = null\s+where oi\.linked_product_id is not null\s+and oi\.image_url ~ '\/images\/options\/\(protein\|sarkuteri\)-/);
+  assert.match(up, /_g41_option_image_backup/);
+  assert.match(up, /enable row level security/);
+  // Doldurma yalnız bağlı ürünsüz + boş satırlara.
+  assert.match(up, /where oi\.image_url is null and oi\.linked_product_id is null/);
+  assert.match(down, /set image_url = b\.image_url/);
+  assert.match(down, /drop table public\._g41_option_image_backup/);
 });
