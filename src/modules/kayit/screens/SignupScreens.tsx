@@ -28,6 +28,7 @@ import { CODE_LENGTH, RESEND_SECONDS, formatCountdown, interpretSocialResult, is
 import { CheckBoxRow, FONT, KBackdrop, KButton, NoticeCard, QuestionHead, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
 import { K_MOTION, useK } from '../ui/theme';
+import { PressScale, PushIn } from '../ui/motion';
 import { firstTabFor, type KPath } from '../model';
 import { finishSignup } from '../signup';
 import { flushDraft, useKayit } from '../store';
@@ -158,7 +159,7 @@ export function SignupScreen() {
         <TopBar onBack={back} progress={path === 'a' ? { index: 1, total: 1, hideNumber: true } : null} />
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }} showsVerticalScrollIndicator={false}>
           <View style={{ marginTop: 12 }}>
-            <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" typewriter={false} />
+            <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" fade={false} />
           </View>
           <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 12 }}>
             {notice === 'offline' ? <NoticeCard testID="kayit-signup-offline" tone="error" title={t('kayit.signup.offline_title')} sub={t('kayit.signup.offline_sub')} action={{ label: t('kayit.signup.retry'), onPress: () => setNotice(null) }} /> : null}
@@ -168,7 +169,7 @@ export function SignupScreen() {
               <SocialButton testID="kayit-apple" kind="apple" label={t('kayit.signup.apple')} dark={darkBtn} busy={busy === 'apple'} disabled={(!!busy && busy !== 'apple') || blocked} onPress={() => void runSocial('apple')} />
             ) : null}
             <SocialButton testID="kayit-google" kind="google" label={t('kayit.signup.google')} dark={false} busy={busy === 'google'} disabled={(!!busy && busy !== 'google') || blocked} onPress={() => void runSocial('google')} />
-            <Pressable
+            <PressScale
               testID="kayit-email"
               onPress={openEmail}
               disabled={!!busy || blocked}
@@ -180,7 +181,7 @@ export function SignupScreen() {
               <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: P.ink }]}>
                 {t('kayit.signup.email')}
               </AppText>
-            </Pressable>
+            </PressScale>
             <LegalLine />
             {needsAge ? <CheckBoxRow testID="kayit-age" checked={age} onToggle={() => setAge(!age)} label={t('kayit.signup.age')} /> : null}
             <AppText accessibilityRole="header" maxFontSizeMultiplier={1.4} style={[styles.optional, { color: P.sec }]}>
@@ -216,20 +217,20 @@ function SocialButton({ kind, label, dark, busy, disabled, onPress, testID }: { 
   const bg = dark ? '#000000' : '#FFFFFF';
   const fg = dark ? '#FFFFFF' : '#1F1F1F';
   return (
-    <Pressable
+    <PressScale
       testID={testID}
       onPress={onPress}
       disabled={disabled || busy}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled, busy }}
-      style={({ pressed }) => [styles.social, { backgroundColor: bg, borderWidth: dark ? 0 : 1, borderColor: '#DADCE0', opacity: disabled ? 0.5 : pressed ? 0.85 : 1 }]}
+      style={[styles.social, { backgroundColor: bg, borderWidth: dark ? 0 : 1, borderColor: '#DADCE0', opacity: disabled ? 0.5 : 1 }]}
     >
       <View style={{ width: 24, alignItems: 'center' }}>{busy ? <ActivityIndicator color={fg} /> : kind === 'apple' ? <AppleLogo color={fg} /> : <GoogleLogo />}</View>
       <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: fg }]}>
         {label}
       </AppText>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -321,11 +322,13 @@ export function EmailScreen() {
       <View style={{ flex: 1 }} {...edge} testID="kayit-e1">
         <StatusBar style={P.isDark ? 'light' : 'dark'} />
         <KBackdrop shift={23} />
+        {/* G44: E1 ↔ E2 native push hissi (E2 sağdan gelir, geri dönüşte E1 soldan). */}
+        <PushIn k={step} dir={-1}>
         <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
           <TopBar onBack={back} />
           <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
             <View style={{ marginTop: 12 }}>
-              <QuestionHead title={t('kayit.signup.email_title')} layout="left" typewriter={false} />
+              <QuestionHead title={t('kayit.signup.email_title')} layout="left" fade={false} />
             </View>
             <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 10 }}>
               <AppText nativeID="kayit-email-label" maxFontSizeMultiplier={1.4} style={[styles.fieldLabel, { color: P.sec }]}>
@@ -382,6 +385,7 @@ export function EmailScreen() {
             )}
           </View>
         </View>
+        </PushIn>
       </View>
     );
   }
@@ -391,11 +395,12 @@ export function EmailScreen() {
     <View style={{ flex: 1 }} {...edge} testID="kayit-e2">
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={24} />
+      <PushIn k={step} dir={1}>
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
         <TopBar onBack={back} />
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
           <View style={{ marginTop: 12 }}>
-            <QuestionHead title={t('kayit.signup.code_title')} layout="right" typewriter={false} />
+            <QuestionHead title={t('kayit.signup.code_title')} layout="right" fade={false} />
           </View>
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 16 }}>
             {err === 'wrong' ? <NoticeCard testID="kayit-code-wrong" tone="error" title={t('kayit.signup.code_wrong_title')} sub={t('kayit.signup.code_wrong_sub')} /> : null}
@@ -467,6 +472,7 @@ export function EmailScreen() {
           <KButton testID="kayit-verify" label={verifying ? t('kayit.signup.verifying') : t('kayit.signup.verify')} onPress={() => void verify(code)} disabled={code.length < CODE_LENGTH || expired} loading={verifying} />
         </View>
       </View>
+      </PushIn>
     </View>
   );
 }

@@ -2,6 +2,10 @@
 // tekerlek seçici, yatay cetvel, fark hapı, tempo seçici + tarih aralığı kartı, yana kaydırmalı hareket
 // kartları, gün hapları, ikonlu çipler, aramalı etiket bulutu, tabak adımlayıcı.
 // Erişilebilirlik: tekerlek/cetvel/adımlayıcı `adjustable` (VoiceOver yukarı/aşağı), kartlar radio/checkbox.
+// G44-S1 seçim hâli: seçili = mevcut lime ile TAM dolgu + üstünde limeInk (siyah) ikon/metin + sağ üstte dolu
+// onay rozeti; seçilmemiş = cam yüzey (P.card) + ince kenar, TAM opaklık ve ölçek (soluklaştırma/küçültme/geri
+// çekme yok). Hâl değişimi 160 ms renk/kenar geçişi (yay/zıplama yok); basışta 0,98 + 120 ms; seçimde hafif
+// seçim titreşimi. Girişler tek seferlik 10 pt + fade 240 ms. Azaltılmış harekette hepsi anlık.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -13,13 +17,41 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, REDUCED, SPRING, haptic, useReducedMotion } from '../../../core/design';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { AppText, CURVE, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Check, MagnifyingGlass, Minus, Plus, Sneaker, X, type Icon } from '../../../components/icons';
 import { FONT } from './parts';
-import { K_MOTION, useK } from './theme';
+import { K_MOTION, useK, type KPalette } from './theme';
+import { PressScale, mixColor, useSelectTween } from './motion';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+
+// ─── Seçim hâli renkleri ──────────────────────────────────────────────────────
+/** Seçili (k = 1) ↔ seçilmemiş (k = 0) renk takımı; ara karelerde doğrusal karışım. */
+export function pickColors(P: KPalette, k: number) {
+  return {
+    bg: mixColor(P.card, P.accent, k),
+    edge: mixColor(P.cardEdge, P.accent, k),
+    ink: mixColor(P.ink, P.limeInk, k),
+    sec: mixColor(P.sec, P.limeInkSec, k),
+    iconBg: mixColor(P.accentSoft, 'rgba(255,255,255,0.35)', k),
+  };
+}
+
+/** Tek seferlik giriş: 10 pt yukarı + fade, 240 ms; gecikme ≤ 150 ms. Azaltılmışta anlık. */
+function useEnter(delay: number) {
+  const reduced = useReducedMotion();
+  const o = useSharedValue(reduced ? 1 : 0);
+  useEffect(() => {
+    if (reduced) {
+      o.value = 1;
+      return;
+    }
+    o.value = withDelay(Math.min(delay, K_MOTION.staggerMax), withTiming(1, { duration: K_MOTION.enter, easing: CURVE.enter }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: (1 - o.value) * K_MOTION.enterDy }] }));
+}
 
 // ─── Seçim kartı (2×2 ızgara + geniş) ─────────────────────────────────────────
 export function ChoiceTile({
@@ -27,7 +59,6 @@ export function ChoiceTile({
   sub,
   icon: Ico,
   selected,
-  dimmed,
   onPress,
   wide,
   testID,
@@ -37,117 +68,98 @@ export function ChoiceTile({
   sub?: string;
   icon?: Icon;
   selected: boolean;
-  dimmed: boolean;
   onPress: () => void;
   wide?: boolean;
   testID?: string;
   delay?: number;
 }) {
   const P = useK();
-  const reduced = useReducedMotion();
-  const s = useSharedValue(1);
-  const o = useSharedValue(reduced ? 1 : 0);
-  useEffect(() => {
-    o.value = withTiming(1, { duration: reduced ? REDUCED.duration : K_MOTION.shared, easing: CURVE.enter });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    if (reduced) return;
-    s.value = selected ? withSpring(K_MOTION.pickScale, SPRING.bouncy) : withTiming(dimmed ? K_MOTION.dimScale : 1, { duration: K_MOTION.fast });
-  }, [selected, dimmed, reduced, s]);
-  const rise = useAnimatedStyle(() => ({
-    // HIG/AA: soluklaştırma metne uygulanmaz (14 pt ikincil metin 4,5:1 altına düşüyordu); seçilmeyen kart
-    // yalnız 0,97 ölçek + saydam zeminle geri çekilir.
-    opacity: o.value,
-    transform: [{ translateY: reduced ? 0 : (1 - o.value) * (16 + delay / 20) }, { scale: s.value }],
-  }));
+  const enter = useEnter(delay);
+  const k = useSelectTween(selected);
+  const c = pickColors(P, k);
   return (
-    <Animated.View style={[wide ? { width: '100%' } : { flex: 1 }, rise]}>
-      <Pressable
+    <Animated.View style={[wide ? { width: '100%' } : { flex: 1 }, enter]}>
+      <PressScale
+        outer={wide ? null : { flex: 1 }}
         testID={testID}
         onPress={() => {
-          haptic(selected ? 'selection' : 'light');
+          haptic('selection');
           onPress();
         }}
         accessibilityRole="radio"
-        accessibilityState={{ checked: selected }}
+        accessibilityState={{ checked: selected, selected }}
         accessibilityLabel={sub ? `${label}, ${sub}` : label}
-        style={[
-          wide ? styles.tileWide : styles.tile,
-          { backgroundColor: selected ? P.accent : dimmed ? 'transparent' : P.card, borderColor: selected ? P.accent : P.cardEdge },
-        ]}
+        style={[wide ? styles.tileWide : styles.tile, { backgroundColor: c.bg, borderColor: c.edge }]}
       >
         {Ico ? (
-          <View style={[styles.tileIcon, { backgroundColor: selected ? 'rgba(255,255,255,0.35)' : P.accentSoft }]}>
-            <Ico size={26} color={selected ? '#10301D' : P.ink} weight="bold" />
+          <View style={[styles.tileIcon, { backgroundColor: c.iconBg }]}>
+            <Ico size={26} color={c.ink} weight="bold" />
           </View>
         ) : null}
         <View style={wide ? { flex: 1 } : { marginTop: 'auto' }}>
-          <AppText maxFontSizeMultiplier={1.4} style={[styles.tileLabel, { color: selected ? '#10301D' : P.ink }]}>
+          <AppText maxFontSizeMultiplier={1.4} style={[styles.tileLabel, { color: c.ink }]}>
             {label}
           </AppText>
           {sub ? (
-            <AppText maxFontSizeMultiplier={1.4} style={[styles.tileSub, { color: selected ? 'rgba(16,48,29,0.72)' : P.sec }]}>
+            <AppText maxFontSizeMultiplier={1.4} style={[styles.tileSub, { color: c.sec }]}>
               {sub}
             </AppText>
           ) : null}
         </View>
-        {selected ? <CheckBadge /> : null}
-      </Pressable>
+        <CheckBadge k={k} />
+      </PressScale>
     </Animated.View>
   );
 }
 
-function CheckBadge() {
-  const reduced = useReducedMotion();
-  const s = useSharedValue(reduced ? 1 : 0.4);
-  useEffect(() => {
-    if (!reduced) s.value = withSpring(1, SPRING.bouncy);
-  }, [reduced, s]);
-  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
-  return (
-    <Animated.View style={[styles.badge, st]}>
-      <Check size={16} color="#10301D" weight="bold" />
-    </Animated.View>
-  );
-}
-
-/** Liste kartı (P13/P14): başlık + açıklama + onay rozeti; seçimde diğerleri %70 opaklık. */
-export function OptionCard({ label, sub, icon: Ico, selected, dimmed, onPress, testID }: { label: string; sub?: string; icon?: Icon; selected: boolean; dimmed: boolean; onPress: () => void; testID?: string }) {
+/** Sağ üstte dolu onay rozeti (limeInk daire + lime onay); seçim geçişiyle aynı saatle belirir, yay yok. */
+export function CheckBadge({ k }: { k: number }) {
   const P = useK();
+  if (k <= 0) return null;
   return (
-    <Pressable
-      testID={testID}
-      onPress={() => {
-        haptic('selection');
-        onPress();
-      }}
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      accessibilityLabel={sub ? `${label}, ${sub}` : label}
-      style={({ pressed }) => [
-        styles.option,
-        { backgroundColor: selected ? P.accent : dimmed ? 'transparent' : P.card, borderColor: selected ? P.accent : P.cardEdge },
-        pressed ? { transform: [{ scale: 0.98 }] } : null,
-      ]}
-    >
-      {Ico ? (
-        <View style={[styles.optIcon, { backgroundColor: selected ? 'rgba(255,255,255,0.35)' : P.accentSoft }]}>
-          <Ico size={22} color={selected ? '#10301D' : P.ink} weight="bold" />
-        </View>
-      ) : null}
-      <View style={{ flex: 1 }}>
-        <AppText maxFontSizeMultiplier={1.5} style={[styles.optLabel, { color: selected ? '#10301D' : P.ink }]}>
-          {label}
-        </AppText>
-        {sub ? (
-          <AppText maxFontSizeMultiplier={1.5} style={[styles.optSub, { color: selected ? 'rgba(16,48,29,0.72)' : P.sec }]}>
-            {sub}
-          </AppText>
+    <View pointerEvents="none" style={[styles.badge, { backgroundColor: P.limeInk, opacity: k }]}>
+      <Check size={16} color={P.accent} weight="bold" />
+    </View>
+  );
+}
+
+/** Liste kartı (P13/P14): başlık + açıklama + onay rozeti; seçilmeyenler tam opaklıkta cam yüzey. */
+export function OptionCard({ label, sub, icon: Ico, selected, onPress, testID, delay = 0 }: { label: string; sub?: string; icon?: Icon; selected: boolean; onPress: () => void; testID?: string; delay?: number }) {
+  const P = useK();
+  const enter = useEnter(delay);
+  const k = useSelectTween(selected);
+  const c = pickColors(P, k);
+  return (
+    <Animated.View style={enter}>
+      <PressScale
+        testID={testID}
+        onPress={() => {
+          haptic('selection');
+          onPress();
+        }}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: selected, selected }}
+        accessibilityLabel={sub ? `${label}, ${sub}` : label}
+        style={[styles.option, { backgroundColor: c.bg, borderColor: c.edge }]}
+      >
+        {Ico ? (
+          <View style={[styles.optIcon, { backgroundColor: c.iconBg }]}>
+            <Ico size={22} color={c.ink} weight="bold" />
+          </View>
         ) : null}
-      </View>
-      {selected ? <CheckBadge /> : null}
-    </Pressable>
+        <View style={{ flex: 1 }}>
+          <AppText maxFontSizeMultiplier={1.5} style={[styles.optLabel, { color: c.ink }]}>
+            {label}
+          </AppText>
+          {sub ? (
+            <AppText maxFontSizeMultiplier={1.5} style={[styles.optSub, { color: c.sec }]}>
+              {sub}
+            </AppText>
+          ) : null}
+        </View>
+        <CheckBadge k={k} />
+      </PressScale>
+    </Animated.View>
   );
 }
 
@@ -374,7 +386,7 @@ export function DiffPill({ text, testID }: { text: string; testID?: string }) {
   const P = useK();
   return (
     <View testID={testID} style={[styles.pill, { backgroundColor: P.accent }]}>
-      <AppText maxFontSizeMultiplier={1.3} style={[styles.pillText, { color: '#10301D' }]}>
+      <AppText maxFontSizeMultiplier={1.3} style={[styles.pillText, { color: P.limeInk }]}>
         {text}
       </AppText>
     </View>
@@ -386,34 +398,45 @@ export function PaceSelector<T extends number>({ options, value, onChange, label
   const P = useK();
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.paceWrap, { backgroundColor: P.card, borderColor: P.cardEdge }]}>
-      {options.map((o) => {
-        const on = o.key === value;
-        return (
-          <Pressable
-            key={String(o.key)}
-            testID={`kayit-pace-${o.key}`}
-            onPress={() => {
-              if (!on) haptic('selection');
-              onChange(o.key);
-            }}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
-            accessibilityLabel={`${o.title}, ${o.sub}`}
-            style={[styles.paceItem, on && { backgroundColor: P.accent }]}
-          >
-            <AppText maxFontSizeMultiplier={1.2} style={[styles.paceChev, { color: on ? '#10301D' : P.ink }]}>
-              {'›'.repeat(o.level)}
-            </AppText>
-            <AppText maxFontSizeMultiplier={1.3} style={[styles.paceTitle, { color: on ? '#10301D' : P.ink }]}>
-              {o.title}
-            </AppText>
-            <AppText maxFontSizeMultiplier={1.3} style={[styles.paceSub, { color: on ? 'rgba(16,48,29,0.75)' : P.sec }]}>
-              {o.sub}
-            </AppText>
-          </Pressable>
-        );
-      })}
+      {options.map((o) => (
+        <PaceItem
+          key={String(o.key)}
+          o={o}
+          on={o.key === value}
+          onPress={() => {
+            if (o.key !== value) haptic('selection');
+            onChange(o.key);
+          }}
+        />
+      ))}
     </View>
+  );
+}
+
+function PaceItem({ o, on, onPress }: { o: { key: number; title: string; sub: string; level: number }; on: boolean; onPress: () => void }) {
+  const P = useK();
+  const k = useSelectTween(on);
+  const ink = mixColor(P.ink, P.limeInk, k);
+  return (
+    <PressScale
+      outer={{ flex: 1 }}
+      testID={`kayit-pace-${o.key}`}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: on, selected: on }}
+      accessibilityLabel={`${o.title}, ${o.sub}`}
+      style={[styles.paceItem, { backgroundColor: mixColor('transparent', P.accent, k) }]}
+    >
+      <AppText maxFontSizeMultiplier={1.2} style={[styles.paceChev, { color: ink }]}>
+        {'›'.repeat(o.level)}
+      </AppText>
+      <AppText maxFontSizeMultiplier={1.3} style={[styles.paceTitle, { color: ink }]}>
+        {o.title}
+      </AppText>
+      <AppText maxFontSizeMultiplier={1.3} style={[styles.paceSub, { color: mixColor(P.sec, P.limeInkSec, k) }]}>
+        {o.sub}
+      </AppText>
+    </PressScale>
   );
 }
 
@@ -506,38 +529,9 @@ export function ActivityCarousel<T extends string>({ items, value, onChange, lab
         contentContainerStyle={{ paddingHorizontal: (width - cardW) / 2 - gapW / 2 }}
         accessibilityRole="radiogroup"
         accessibilityLabel={label}
-        renderItem={({ item, index }) => {
-          const on = index === active;
-          const Ico = item.icon;
-          return (
-            <Pressable
-              testID={`kayit-act-${item.key}`}
-              onPress={() => go(index)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
-              accessibilityLabel={`${item.title}. ${item.sub} ${item.steps}`}
-              style={{ width: itemW, paddingHorizontal: gapW / 2 }}
-            >
-              <View style={[styles.actCard, { backgroundColor: on ? P.accent : P.card, borderColor: on ? P.accent : P.cardEdge, opacity: on ? 1 : K_MOTION.dimOpacity, transform: [{ scale: on ? 1 : 0.92 }] }]}>
-                <View style={[styles.actIcon, { backgroundColor: on ? 'rgba(255,255,255,0.35)' : P.accentSoft }]}>
-                  <Ico size={34} color={on ? '#10301D' : P.ink} weight="bold" />
-                </View>
-                <AppText maxFontSizeMultiplier={1.3} style={[styles.actTitle, { color: on ? '#10301D' : P.ink }]}>
-                  {item.title}
-                </AppText>
-                <AppText maxFontSizeMultiplier={1.4} style={[styles.actSub, { color: on ? 'rgba(16,48,29,0.75)' : P.sec }]}>
-                  {item.sub}
-                </AppText>
-                <View style={[styles.stepPill, { backgroundColor: on ? 'rgba(255,255,255,0.7)' : P.field }]}>
-                  <Sneaker size={18} color={on ? '#10301D' : P.ink} weight="fill" />
-                  <AppText maxFontSizeMultiplier={1.3} style={[styles.stepText, { color: '#10301D' }, !on && { color: P.ink }]}>
-                    {item.steps}
-                  </AppText>
-                </View>
-              </View>
-            </Pressable>
-          );
-        }}
+        renderItem={({ item, index }) => (
+          <ActCard item={item} on={index === active} width={itemW} pad={gapW / 2} onPress={() => go(index)} />
+        )}
       />
       <View style={styles.dots} importantForAccessibility="no-hide-descendants">
         {items.map((it, i) => (
@@ -548,54 +542,86 @@ export function ActivityCarousel<T extends string>({ items, value, onChange, lab
   );
 }
 
+/** Galeri kartı: yan kartlar tam opaklık + tam ölçekte cam yüzey (G44: soluklaştırma/küçültme yok). */
+function ActCard<T extends string>({ item, on, width, pad, onPress }: { item: CarouselItem<T>; on: boolean; width: number; pad: number; onPress: () => void }) {
+  const P = useK();
+  const k = useSelectTween(on);
+  const c = pickColors(P, k);
+  const Ico = item.icon;
+  return (
+    <PressScale
+      outer={{ width }}
+      testID={`kayit-act-${item.key}`}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: on, selected: on }}
+      accessibilityLabel={`${item.title}. ${item.sub} ${item.steps}`}
+      style={{ width, paddingHorizontal: pad }}
+    >
+      <View style={[styles.actCard, { backgroundColor: c.bg, borderColor: c.edge }]}>
+        <View style={[styles.actIcon, { backgroundColor: c.iconBg }]}>
+          <Ico size={34} color={c.ink} weight="bold" />
+        </View>
+        <AppText maxFontSizeMultiplier={1.3} style={[styles.actTitle, { color: c.ink }]}>
+          {item.title}
+        </AppText>
+        <AppText maxFontSizeMultiplier={1.4} style={[styles.actSub, { color: c.sec }]}>
+          {item.sub}
+        </AppText>
+        <View style={[styles.stepPill, { backgroundColor: mixColor(P.field, 'rgba(255,255,255,0.7)', k) }]}>
+          <Sneaker size={18} color={c.ink} weight="fill" />
+          <AppText maxFontSizeMultiplier={1.3} style={[styles.stepText, { color: c.ink }]}>
+            {item.steps}
+          </AppText>
+        </View>
+        <CheckBadge k={k} />
+      </View>
+    </PressScale>
+  );
+}
+
 // ─── Gün hapları ──────────────────────────────────────────────────────────────
 export function DayPills({ labels, longLabels, value, onToggle, disabled }: { labels: string[]; longLabels: string[]; value: number[]; onToggle: (d: number) => void; disabled?: boolean }) {
-  const P = useK();
   return (
     <View style={styles.days}>
-      {labels.map((l, i) => {
-        const on = value.includes(i);
-        return <DayPill key={i} label={l} longLabel={longLabels[i]} on={on} disabled={disabled} onPress={() => onToggle(i)} accent={P.accent} card={P.card} edge={P.cardEdge} ink={P.ink} />;
-      })}
+      {labels.map((l, i) => (
+        <DayPill key={i} label={l} longLabel={longLabels[i]} on={value.includes(i)} disabled={disabled} onPress={() => onToggle(i)} />
+      ))}
     </View>
   );
 }
 
-function DayPill({ label, longLabel, on, onPress, disabled, accent, card, edge, ink }: { label: string; longLabel: string; on: boolean; onPress: () => void; disabled?: boolean; accent: string; card: string; edge: string; ink: string }) {
-  const reduced = useReducedMotion();
-  const s = useSharedValue(1);
-  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+function DayPill({ label, longLabel, on, onPress, disabled }: { label: string; longLabel: string; on: boolean; onPress: () => void; disabled?: boolean }) {
+  const P = useK();
+  const k = useSelectTween(on);
   return (
-    <Animated.View style={[{ flex: 1, alignItems: 'center' }, st]}>
-      <Pressable
-        testID={`kayit-day-${label}-${longLabel}`}
-        onPress={() => {
-          haptic('selection');
-          if (!reduced) {
-            s.value = 0.86;
-            s.value = withSpring(1, SPRING.bouncy);
-          }
-          onPress();
-        }}
-        disabled={disabled}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: on, disabled: !!disabled }}
-        accessibilityLabel={longLabel}
-        style={[styles.day, { backgroundColor: on ? accent : card, borderColor: on ? accent : edge, opacity: disabled ? 0.45 : 1 }]}
-      >
-        <AppText maxFontSizeMultiplier={1.2} style={[styles.dayText, { color: on ? '#10301D' : ink }]}>
-          {label}
-        </AppText>
-      </Pressable>
-    </Animated.View>
+    <PressScale
+      outer={{ flex: 1, alignItems: 'center' }}
+      testID={`kayit-day-${label}-${longLabel}`}
+      onPress={() => {
+        haptic('selection');
+        onPress();
+      }}
+      disabled={disabled}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on, disabled: !!disabled }}
+      accessibilityLabel={longLabel}
+      style={[styles.day, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }]}
+    >
+      <AppText maxFontSizeMultiplier={1.2} style={[styles.dayText, { color: mixColor(P.ink, P.limeInk, k) }]}>
+        {label}
+      </AppText>
+    </PressScale>
   );
 }
 
 // ─── Çipler ───────────────────────────────────────────────────────────────────
 export function ChipToggle({ label, icon: Ico, on, onPress, testID, disabled }: { label: string; icon?: Icon; on: boolean; onPress: () => void; testID?: string; disabled?: boolean }) {
   const P = useK();
+  const k = useSelectTween(on);
+  const ink = mixColor(P.ink, P.limeInk, k);
   return (
-    <Pressable
+    <PressScale
       testID={testID}
       onPress={() => {
         haptic('selection');
@@ -605,13 +631,13 @@ export function ChipToggle({ label, icon: Ico, on, onPress, testID, disabled }: 
       accessibilityRole="checkbox"
       accessibilityState={{ checked: on, disabled: !!disabled }}
       accessibilityLabel={label}
-      style={[styles.chip, { backgroundColor: on ? P.accent : P.card, borderColor: on ? P.accent : P.cardEdge, opacity: disabled ? 0.45 : 1 }]}
+      style={[styles.chip, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k), opacity: disabled ? 0.45 : 1 }]}
     >
-      {Ico ? <Ico size={18} color={on ? '#10301D' : P.ink} weight="bold" /> : null}
-      <AppText maxFontSizeMultiplier={1.4} style={[styles.chipText, { color: on ? '#10301D' : P.ink }]}>
+      {Ico ? <Ico size={18} color={ink} weight="bold" /> : null}
+      <AppText maxFontSizeMultiplier={1.4} style={[styles.chipText, { color: ink }]}>
         {label}
       </AppText>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -665,7 +691,7 @@ export function TagCloud<T extends string>({
           </AppText>
           <View style={styles.wrap}>
             {selected.map((k) => (
-              <Pressable
+              <PressScale
                 key={k}
                 testID={`kayit-dislike-sel-${k}`}
                 onPress={() => {
@@ -676,11 +702,11 @@ export function TagCloud<T extends string>({
                 accessibilityLabel={search.removeLabel(labelOf(k))}
                 style={[styles.chip, { backgroundColor: P.accent, borderColor: P.accent }]}
               >
-                <AppText maxFontSizeMultiplier={1.4} style={[styles.chipText, { color: '#10301D' }]}>
+                <AppText maxFontSizeMultiplier={1.4} style={[styles.chipText, { color: P.limeInk }]}>
                   {labelOf(k)}
                 </AppText>
-                <X size={14} color="#10301D" weight="bold" />
-              </Pressable>
+                <X size={14} color={P.limeInk} weight="bold" />
+              </PressScale>
             ))}
           </View>
         </View>
@@ -725,13 +751,13 @@ export function PlateStepper({ value, min, max, onChange, sub, lessLabel, moreLa
     >
       <View style={styles.stepRow}>
         <StepBtn testID="kayit-meals-less" label={lessLabel} disabled={value <= min} onPress={() => set(value - 1)}>
-          <Minus size={26} color={value <= min ? P.disabledText : '#10301D'} weight="bold" />
+          <Minus size={26} color={value <= min ? P.disabledText : P.limeInk} weight="bold" />
         </StepBtn>
         <AppText testID="kayit-meals-value" maxFontSizeMultiplier={1.2} style={[styles.stepValue, { color: P.ink }]}>
           {String(value)}
         </AppText>
         <StepBtn testID="kayit-meals-more" label={moreLabel} disabled={value >= max} onPress={() => set(value + 1)}>
-          <Plus size={26} color={value >= max ? P.disabledText : '#10301D'} weight="bold" />
+          <Plus size={26} color={value >= max ? P.disabledText : P.limeInk} weight="bold" />
         </StepBtn>
       </View>
       <View style={styles.plates} importantForAccessibility="no-hide-descendants">
@@ -749,7 +775,7 @@ export function PlateStepper({ value, min, max, onChange, sub, lessLabel, moreLa
 function StepBtn({ children, onPress, disabled, label, testID }: { children: React.ReactNode; onPress: () => void; disabled: boolean; label: string; testID?: string }) {
   const P = useK();
   return (
-    <Pressable
+    <PressScale
       testID={testID}
       onPress={onPress}
       disabled={disabled}
@@ -759,22 +785,18 @@ function StepBtn({ children, onPress, disabled, label, testID }: { children: Rea
       style={[styles.stepBtn, { backgroundColor: disabled ? P.disabled : P.accent }]}
     >
       {children}
-    </Pressable>
+    </PressScale>
   );
 }
 
+/** Tabak: dolu = lime tam dolgu, boş = cam yüzey + ince kenar (G44: küçültme yok); 160 ms renk geçişi. */
 function Plate({ on }: { on: boolean }) {
   const P = useK();
-  const reduced = useReducedMotion();
-  const s = useSharedValue(on ? 1 : 0.6);
-  useEffect(() => {
-    s.value = reduced ? (on ? 1 : 0.6) : on ? withSpring(1, SPRING.bouncy) : withTiming(0.6, { duration: K_MOTION.fast });
-  }, [on, reduced, s]);
-  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  const k = useSelectTween(on);
   return (
-    <Animated.View style={[styles.plate, { backgroundColor: on ? P.accent : 'transparent', borderColor: on ? P.accent : P.ringTrack }, st]}>
-      <View style={[styles.plateInner, { borderColor: on ? 'rgba(16,48,29,0.25)' : P.ringTrack }]} />
-    </Animated.View>
+    <View style={[styles.plate, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.ringTrack, P.accent, k) }]}>
+      <View style={[styles.plateInner, { borderColor: mixColor(P.ringTrack, 'rgba(10,10,10,0.25)', k) }]} />
+    </View>
   );
 }
 
@@ -784,7 +806,7 @@ const styles = StyleSheet.create({
   tileIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   tileLabel: { fontFamily: FONT.display, fontSize: 19, lineHeight: 23 },
   tileSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19, marginTop: 2 },
-  badge: { position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.55)', alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   option: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 24, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 16, minHeight: 76 },
   optIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   optLabel: { fontFamily: FONT.display, fontSize: 18, lineHeight: 23 },

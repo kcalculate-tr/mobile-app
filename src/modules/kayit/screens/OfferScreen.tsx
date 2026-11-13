@@ -8,8 +8,8 @@ import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, REDUCED, SPRING, haptic, useReducedMotion } from '../../../core/design';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { AppText, CURVE, REDUCED, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Check, X } from '../../../components/icons';
 import type { PlanCard, PlanKey } from '../../../lib/subscription/plans';
@@ -19,6 +19,7 @@ import SubLegalLinks from '../../subscription/ui/SubLegalLinks';
 import { useCoachEnabled } from '../../coach/access';
 import { CircleButton, FONT, KBackdrop, KButton, Mascot, NoticeCard, Segment } from '../ui/parts';
 import { K_MOTION, useK } from '../ui/theme';
+import { PressScale, mixColor, useSelectTween } from '../ui/motion';
 import { useKayit } from '../store';
 import { kTrack } from '../events';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
@@ -187,22 +188,17 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
 function PlanRow({ card, name, sub, recommended, selected, locked, onPress, testID }: { card: PlanCard; name: string; sub: string; recommended?: boolean; selected: boolean; locked: boolean; onPress: () => void; testID?: string }) {
   const { t, lang } = useT();
   const P = useK();
-  const reduced = useReducedMotion();
-  const s = useSharedValue(1);
-  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  // G44: seçili = tam lime dolgu + limeInk metin; seçilmeyen tam opaklıkta cam yüzey (satın alınırken de
+  // soluklaşmaz, yalnız dokunma kilitlenir); 160 ms renk geçişi; basışta 0,98 + 120 ms (yay yok).
+  const k = useSelectTween(selected);
+  const ink = mixColor(P.ink, P.limeInk, k);
+  const sec = mixColor(P.sec, P.limeInkSec, k);
   const priceLine = card.yearly ? t('kayit.offer.per_year', { price: card.priceText }) : t('kayit.offer.per_month', { price: card.priceText });
   const trial = card.yearly && card.trialDays ? t('kayit.offer.trial', { n: card.trialDays }) : null;
   return (
-    <Animated.View style={[st, { opacity: locked ? 0.6 : 1 }]}>
-      <Pressable
+    <PressScale
         testID={testID}
         disabled={locked}
-        onPressIn={() => {
-          if (!reduced) s.value = withTiming(0.96, { duration: K_MOTION.stagger });
-        }}
-        onPressOut={() => {
-          if (!reduced) s.value = withSpring(1, SPRING.bouncy);
-        }}
         onPress={() => {
           haptic('selection');
           onPress();
@@ -210,40 +206,46 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled: locked }}
         accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, !card.yearly ? t('kayit.offer.no_trial') : null, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
-        style={[styles.plan, { backgroundColor: selected ? P.accent : P.card, borderColor: selected ? P.accent : P.cardEdge }, recommended && card.yearly && card.discountPct ? { paddingBottom: 30 } : null]}
+        style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }, recommended && card.yearly && card.discountPct ? { paddingBottom: 30 } : null]}
       >
-        <View style={[styles.radio, { borderColor: selected ? '#10301D' : P.sec, backgroundColor: selected ? 'rgba(255,255,255,0.5)' : 'transparent' }]}>{selected ? <Check size={16} color="#10301D" weight="bold" /> : null}</View>
+        <View style={[styles.radio, { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) }]}>
+          {k > 0 ? (
+            <View style={{ opacity: k }}>
+              <Check size={16} color={P.accent} weight="bold" />
+            </View>
+          ) : null}
+        </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <AppText maxFontSizeMultiplier={1.3} style={[styles.planName, { color: selected ? '#10301D' : P.ink }]}>
+          <AppText maxFontSizeMultiplier={1.3} style={[styles.planName, { color: ink }]}>
             {name}
           </AppText>
-          <AppText maxFontSizeMultiplier={1.4} style={[styles.planSub, { color: selected ? 'rgba(16,48,29,0.72)' : P.sec }]}>
+          <AppText maxFontSizeMultiplier={1.4} style={[styles.planSub, { color: sec }]}>
             {sub}
           </AppText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: '52%' }}>
           {trial ? (
-            <View style={[styles.badgeSoft, { backgroundColor: selected ? 'rgba(255,255,255,0.6)' : P.infoBg }]}>
-              <AppText maxFontSizeMultiplier={1.3} style={[styles.badgeText, { color: '#10301D' }, !selected && { color: P.ink }]}>
+            <View style={[styles.badgeSoft, { backgroundColor: mixColor(P.infoBg, 'rgba(255,255,255,0.6)', k) }]}>
+              <AppText maxFontSizeMultiplier={1.3} style={[styles.badgeText, { color: ink }]}>
                 {trial}
               </AppText>
             </View>
           ) : !card.yearly ? (
-            <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: selected ? 'rgba(16,48,29,0.72)' : P.sec }]}>
+            <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: sec }]}>
               {t('kayit.offer.no_trial')}
             </AppText>
           ) : null}
-          <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: selected ? '#10301D' : P.ink }]}>
+          <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: ink }]}>
             {priceLine}
           </AppText>
           {card.monthlyText ? (
-            <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: selected ? 'rgba(16,48,29,0.72)' : P.sec }]}>
+            <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: sec }]}>
               {t('sub.paywall.per_month_equiv', { price: card.monthlyText })}
             </AppText>
           ) : null}
         </View>
         {recommended ? (
-          <View style={[styles.tag, { backgroundColor: P.accent, borderColor: selected ? '#10301D' : P.accent }]}>
+          <View style={[styles.tag, { backgroundColor: P.accent, borderColor: mixColor(P.accent, '#10301D', k) }]}>
             <AppText maxFontSizeMultiplier={1.2} style={styles.tagText}>
               {t('kayit.offer.recommended')}
             </AppText>
@@ -256,8 +258,7 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
             </AppText>
           </View>
         ) : null}
-      </Pressable>
-    </Animated.View>
+    </PressScale>
   );
 }
 
@@ -269,7 +270,7 @@ function Banner({ text, top }: { text: string; top: number }) {
   const [gone, setGone] = useState(false);
   useEffect(() => {
     if (reduced) o.value = withTiming(1, { duration: REDUCED.duration });
-    else y.value = withTiming(0, { duration: K_MOTION.shared, easing: CURVE.enter });
+    else y.value = withTiming(0, { duration: K_MOTION.banner, easing: CURVE.enter });
     const id = setTimeout(hide, K_MOTION.bannerHold);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,7 +278,7 @@ function Banner({ text, top }: { text: string; top: number }) {
   const hide = () => {
     if (reduced) o.value = withTiming(0, { duration: REDUCED.duration });
     else y.value = withTiming(-140, { duration: K_MOTION.fast, easing: CURVE.exit });
-    setTimeout(() => setGone(true), K_MOTION.shared);
+    setTimeout(() => setGone(true), K_MOTION.banner);
   };
   const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: y.value }] }));
   if (gone) return null;
@@ -300,11 +301,12 @@ function SuccessView({ plan, trialDays, onHome }: { plan: string; trialDays: num
   const P = useK();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
-  const s = useSharedValue(reduced ? 1 : 0.4);
+  // G44: onay rozeti yaysız — 240 ms fade + 0,9 → 1 (azaltılmışta anlık).
+  const s = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    if (!reduced) s.value = withSpring(1, SPRING.bouncy);
+    if (!reduced) s.value = withTiming(1, { duration: K_MOTION.enter, easing: CURVE.enter });
   }, [reduced, s]);
-  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  const st = useAnimatedStyle(() => ({ opacity: s.value, transform: [{ scale: 0.9 + 0.1 * s.value }] }));
   return (
     <View style={{ flex: 1 }} testID="kayit-offer-success">
       <KBackdrop shift={31} />

@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppText } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { FONT, KBackdrop, KButton, Mascot, Rise } from '../ui/parts';
-import { K_MOTION, useK } from '../ui/theme';
+import { useK } from '../ui/theme';
 import { draftDaysLeft, type KDraft } from '../storage';
 import { computeKayitPlan, planSignature } from '../plan';
 import { fmtInt } from '../format';
@@ -50,7 +50,7 @@ export default function ReturnScreen() {
         <View style={{ alignItems: 'center' }}>
           <Mascot size={130} react="hi" />
         </View>
-        <Rise duration={K_MOTION.scene} dy={80}>
+        <Rise>
           <View style={[styles.card, { backgroundColor: P.card, borderColor: P.cardEdge }]}>
             <AppText accessibilityRole="header" maxFontSizeMultiplier={1.35} style={[styles.title, { color: P.ink }]}>
               {t('kayit.ret.title')}

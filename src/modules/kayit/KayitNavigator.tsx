@@ -3,11 +3,14 @@
 //   KOnb (5 ekran) → A: KQuestions (P1–P14) → KCalc (L1) → KResult (L2) → KSignup (K1) → KEmail (E1/E2) → KOffer (T1) → Tabs (HA)
 //                  → B: KSignup (K1b) → Tabs (HB) → ilk kalori kaydında KayitShort (kısa profil, kök yığında) → HB2
 // Açılışta 7 günlük taslakta hesaplanmış plan varsa R1 (KReturn) önce gelir.
+// G44-S1 geçişler: O5 → P1, P14 → L1, L1 → L2 = 250 ms çapraz geçiş; K1 → E1 native push (E1 → E2 ekran içi
+// push, SignupScreens); T1 alttan tam ekran modal; soru → soru KQuestions içinde yığın geçişi (ui/motion
+// StackSwap). Paylaşılan öğe taklidi yok. Azaltılmış harekette geçiş yok (anlık).
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useRoute } from '@react-navigation/native';
-import { REDUCED, useReducedMotion } from '../../core/design';
+import { useReducedMotion } from '../../core/design';
 import OnboardingScreen from './screens/OnboardingScreen';
 import QuestionsScreen from './screens/QuestionsScreen';
 import { CalcScreen, ResultScreen } from './screens/PlanScreens';
@@ -102,22 +105,28 @@ export default function KayitNavigator() {
   }, []);
 
   if (!initial) return <View style={{ flex: 1, backgroundColor: '#0D2617' }} />;
-  const push = reduced ? ({ animation: 'fade', animationDuration: REDUCED.duration } as const) : ({ animation: 'slide_from_right', animationDuration: K_MOTION.shared } as const);
-  const scene = reduced ? ({ animation: 'fade', animationDuration: REDUCED.duration } as const) : ({ animation: 'fade', animationDuration: K_MOTION.scene } as const);
+  // Native push: iOS'ta sistem yığın geçişi (sağdan, standart eğri, kenardan geri kaydırma); Android'de sağdan kayma.
+  const push = reduced ? ({ animation: 'none' } as const) : ({ animation: 'slide_from_right', animationDuration: K_MOTION.push } as const);
+  const cross = reduced ? ({ animation: 'none' } as const) : ({ animation: 'fade', animationDuration: K_MOTION.cross } as const);
+  const modal = reduced
+    ? ({ animation: 'none', presentation: 'fullScreenModal' } as const)
+    : ({ animation: 'slide_from_bottom', presentation: 'fullScreenModal', animationDuration: K_MOTION.push } as const);
   return (
     <Stack.Navigator
       initialRouteName={initial.name}
       screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0D2617' }, ...push }}
     >
       <Stack.Screen name="KOnb" component={OnbRoute as never} initialParams={initial.name === 'KOnb' ? (initial.params as never) : undefined} options={{ animation: 'fade' }} />
-      <Stack.Screen name="KReturn" component={ReturnScreen} initialParams={initial.name === 'KReturn' ? (initial.params as never) : undefined} options={{ ...scene, animation: reduced ? 'fade' : 'slide_from_bottom' }} />
-      {/* O5 → P1: seçilen kart büyüyerek açılır (sahne geçişi 550 ms); sorular kendi içinde kayar (kenar jesti ekranın). */}
-      <Stack.Screen name="KQuestions" component={QuestionsScreen} initialParams={initial.name === 'KQuestions' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
-      <Stack.Screen name="KCalc" component={CalcScreen} initialParams={initial.name === 'KCalc' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
-      <Stack.Screen name="KResult" component={ResultScreen} options={{ ...scene, gestureEnabled: false }} />
-      <Stack.Screen name="KSignup" component={SignupScreen} initialParams={initial.name === 'KSignup' ? (initial.params as never) : undefined} options={scene} />
-      <Stack.Screen name="KEmail" component={EmailScreen} initialParams={initial.name === 'KEmail' ? (initial.params as never) : undefined} />
-      <Stack.Screen name="KOffer" component={OfferRoute as never} initialParams={initial.name === 'KOffer' ? (initial.params as never) : undefined} options={{ ...scene, gestureEnabled: false }} />
+      <Stack.Screen name="KReturn" component={ReturnScreen} initialParams={initial.name === 'KReturn' ? (initial.params as never) : undefined} options={{ animation: reduced ? 'none' : 'slide_from_bottom' }} />
+      {/* O5 → P1: 250 ms çapraz geçiş; sorular kendi içinde yığın geçişiyle kayar (kenar jesti ekranın). */}
+      <Stack.Screen name="KQuestions" component={QuestionsScreen} initialParams={initial.name === 'KQuestions' ? (initial.params as never) : undefined} options={{ ...cross, gestureEnabled: false }} />
+      <Stack.Screen name="KCalc" component={CalcScreen} initialParams={initial.name === 'KCalc' ? (initial.params as never) : undefined} options={{ ...cross, gestureEnabled: false }} />
+      <Stack.Screen name="KResult" component={ResultScreen} options={{ ...cross, gestureEnabled: false }} />
+      {/* K1 → E1: native push (geri kaydırma çalışır). */}
+      <Stack.Screen name="KSignup" component={SignupScreen} initialParams={initial.name === 'KSignup' ? (initial.params as never) : undefined} options={push} />
+      <Stack.Screen name="KEmail" component={EmailScreen} initialParams={initial.name === 'KEmail' ? (initial.params as never) : undefined} options={push} />
+      {/* T1: alttan tam ekran modal (aşağı kaydırarak kapanmaz; X → Ana sayfa). */}
+      <Stack.Screen name="KOffer" component={OfferRoute as never} initialParams={initial.name === 'KOffer' ? (initial.params as never) : undefined} options={{ ...modal, gestureEnabled: false }} />
     </Stack.Navigator>
   );
 }

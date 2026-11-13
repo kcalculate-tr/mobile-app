@@ -21,6 +21,10 @@ export interface KPalette {
   ringFill: string;
   accent: string;
   onAccent: string;
+  /** G44: tam lime dolgulu seçili öğenin üstündeki ikon/metin (tokens.palette.limeInk, her temada siyah). */
+  limeInk: string;
+  /** limeInk'in ikincil metin tonu (seçili kart alt satırı). */
+  limeInkSec: string;
   accentSoft: string;
   disabled: string;
   disabledText: string;
@@ -50,6 +54,8 @@ export const K_LIGHT: KPalette = {
   ringFill: '#2E5B12',
   accent: palette.lime,
   onAccent: '#10301D',
+  limeInk: palette.limeInk,
+  limeInkSec: 'rgba(10,10,10,0.72)',
   accentSoft: 'rgba(185,239,20,0.35)',
   disabled: '#E7DCCF',
   disabledText: 'rgba(16,48,29,0.45)',
@@ -79,6 +85,8 @@ export const K_DARK: KPalette = {
   ringFill: palette.lime,
   accent: palette.lime,
   onAccent: '#10301D',
+  limeInk: palette.limeInk,
+  limeInkSec: 'rgba(10,10,10,0.72)',
   accentSoft: 'rgba(185,239,20,0.22)',
   disabled: 'rgba(255,255,255,0.14)',
   disabledText: 'rgba(255,255,255,0.5)',
@@ -95,25 +103,55 @@ export function useK(): KPalette {
   return t.isDark ? K_DARK : K_LIGHT;
 }
 
-/** Hareket tablosu (kayit-final-notlar "Geçiş/Mikro" satırları; FinMoTokens ×1,1 bantları). */
+/**
+ * Hareket tablosu. G44-S1 (14 Kas): kayıt ekranlarında "modern, ölçülü" hareket — seçim hâli 160 ms renk/kenar
+ * geçişi (yay/zıplama yok), basış 0,98 + 120 ms geri dönüş, girişler tek seferlik 10 pt + fade 240 ms (toplam
+ * kademe ≤ 150 ms), soru balonu 200 ms fade (harf harf yok), sayaç ≤ 600 ms ease-out, maskot süzülmesi yarı
+ * genlik + cevapta tek baş sallama (≤ 300 ms), ışık paralaksı yarı genlik + yavaş. Azaltılmış harekette hepsi
+ * anlık. Paylaşılan öğe taklidi (seçilenin başlığa uçması) kaldırıldı.
+ * `pan`, `floatAmp`, `floatHalf`, `blink*` onboarding 1–5 ile ortaktır → G42 değerleri AYNI kalır.
+ */
 export const K_MOTION = {
-  /** Onboarding panorama kayması (Devam). */
+  /** Onboarding panorama kayması (Devam) — onboarding, G42 ile aynı. */
   pan: 450,
-  /** Sahne geçişi / kart aşağıdan gelir / O5 → P1 açılma. */
-  scene: 550,
-  /** Paylaşılan öğe (seçilen öğe sonraki başlığa uçar), push. */
-  shared: 330,
-  /** Çapraz geçiş, segment kayması, tarih kartı. */
+  /** Soru → soru / E1 → E2 yığın geçişi (native iOS push hissi). */
+  push: 330,
+  /** Yığın geçişi: ileri — giden katman ilk ~%45'te kaybolur; geri — alttaki önceki adım ~%60'ta belirir. */
+  pushFadeOut: 150,
+  pushFadeIn: 200,
+  /** O5 → P1, L1 → L2 (ve P14 → L1) çapraz geçiş. */
+  cross: 250,
+  /** Kart/öğe girişi: tek seferlik yukarı kayma + fade. */
+  enter: 240,
+  enterDy: 10,
+  /** Kademe adımı; 5 öğede toplam 4 × 35 = 140 ms (≤ 150). */
+  stagger: 35,
+  staggerMax: 150,
+  /** Soru balonu metni fade. */
+  bubbleFade: 200,
+  /** Seçim hâli renk/kenar geçişi (150–180 ms bandı). */
+  select: 160,
+  /** Basış geri bildirimi: 0,98 ölçeğe iniş + 120 ms geri dönüş. */
+  pressScale: 0.98,
+  pressIn: 80,
+  pressOut: 120,
+  /** Cevapta maskot baş sallaması (toplam ≤ 300 ms = nodIn + nodMid + nodOut). */
+  nod: 290,
+  nodIn: 90,
+  nodMid: 110,
+  nodOut: 90,
+  /** Çapraz geçiş (tarih kartı), düğme yükleme daralması, bant çıkışı. */
   fast: 220,
-  /** Kart sıralı yükselme kademesi. */
-  stagger: 110,
-  /** Soru balonu harf harf (ms/karakter). */
-  typeChar: 30,
-  /** L2 kalori sayımı. */
-  count: 990,
-  /** Maskot süzülme döngüsü (±7 pt). */
+  /** İlerleme halkası dolumu. */
+  ring: 330,
+  /** Işık katmanı paralaksı (yavaş). */
+  parallax: 700,
+  /** L1/L2 kalori sayımı (≤ 600 ms, ease-out). */
+  count: 600,
+  /** Maskot süzülme döngüsü (onboarding ±7 pt; kayıt ekranlarında yarı genlik). */
   floatPeriod: 3200,
   floatAmp: 7,
+  floatAmpKayit: 3.5,
   /** Süzülme yarım döngüsü (ileri / geri). */
   floatHalf: 1600,
   /** Göz kırpma aralığı (4–6 sn). */
@@ -125,10 +163,8 @@ export const K_MOTION = {
   calcShort: 1500,
   /** T1 bandı kendiliğinden kalkar. */
   bannerHold: 4000,
+  /** T1 bandı iner. */
+  banner: 330,
   /** İptal bilgi kartı kendiliğinden kalkar. */
   infoHold: 6000,
-  /** Seçimde büyüme / diğerleri. */
-  pickScale: 1.02,
-  dimScale: 0.97,
-  dimOpacity: 0.62,
 } as const;

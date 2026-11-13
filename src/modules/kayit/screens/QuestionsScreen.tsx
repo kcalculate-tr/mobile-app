@@ -1,15 +1,16 @@
 // G42-S1 md.3/md.9 — Kayıt soruları. A yolu P1–P14 (+ I1, I2, P3b) → L1; B yolu kısa profil (B-P1/P2/P3/P4/
 // P5/P8, halka 6 üzerinden, son düğme "Takibe başla") → MEVCUT takip kapısı kaydı (saveTakibeProfile) → HB2.
-// Her soru tek ekran; içerik sağdan gelir (paylaşılan öğe hissi, 330 ms), arkadaki ışık lekeleri 3 katman kayar;
-// maskot her cevaba küçük tepki verir. Sistem geri hareketi (kenar kaydırma / Android geri) bir önceki soruya.
+// Her soru tek ekran; soru → soru native iOS yığın geçişi hissi (yeni içerik sağdan, eskisi %30 sola; 330 ms
+// standart eğri; geri kaydırma / Android geri bir önceki soruya, tersi yönde). Arkadaki ışık lekeleri 3 katman
+// yavaş kayar (yarı genlik); maskot her cevapta tek küçük baş sallar. G44: paylaşılan öğe taklidi yok, seçim
+// soluklaştırması yok.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Localization from 'expo-localization';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, REDUCED, haptic, useReducedMotion } from '../../../core/design';
+import { AppText, haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import {
@@ -43,6 +44,7 @@ import { saveTakibeProfile } from '../../onboarding/takibe/save';
 import { CheckBoxRow, FONT, KBackdrop, KButton, Mascot, QuestionHead, Rise, Segment, TopBar, type BubbleLayout } from '../ui/parts';
 import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
 import { useEdgeBack } from '../ui/edge';
+import { StackSwap } from '../ui/motion';
 import { K_MOTION, useK } from '../ui/theme';
 import {
   K_COOKING,
@@ -110,7 +112,6 @@ export default function QuestionsScreen() {
   const { t, lang } = useT();
   const P = useK();
   const insets = useSafeAreaInsets();
-  const reduced = useReducedMotion();
   const navigation = useNavigation<any>();
   const params = (useRoute().params ?? {}) as NonNullable<Params>;
   const short = params.mode === 'short';
@@ -211,7 +212,7 @@ export default function QuestionsScreen() {
       <View style={{ paddingTop: insets.top + 8, flex: 1 }}>
         <TopBar onBack={back} progress={prog} glow={lastA} />
         <QCtx.Provider value={{ a, patch, setUnits, t: t as QCtxValue['t'], lang, P, year }}>
-        <StepSlide k={step} dir={dir} reduced={reduced}>
+        <StackSwap k={step} dir={dir}>
           {step === 'i1' || step === 'i2' ? (
             <Interstitial step={step} onNext={next} />
           ) : step === 'minor' ? (
@@ -236,7 +237,7 @@ export default function QuestionsScreen() {
               ) : null}
             </ScrollView>
           )}
-        </StepSlide>
+        </StackSwap>
         </QCtx.Provider>
         {step !== 'i1' && step !== 'i2' ? (
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
@@ -325,7 +326,7 @@ function GoalBody() {
     patch({ goal: g, ...extra });
   };
   const tile = (g: (typeof K_GOALS)[number], i: number, wide = false) => (
-    <ChoiceTile key={g} testID={`kayit-goal-${g}`} wide={wide} delay={i * K_MOTION.stagger} icon={GOAL_ICON[g]} label={t(`kayit.q.goal_${g}`)} selected={a.goal === g} dimmed={a.goal != null && a.goal !== g} onPress={() => pick(g)} />
+    <ChoiceTile key={g} testID={`kayit-goal-${g}`} wide={wide} delay={i * K_MOTION.stagger} icon={GOAL_ICON[g]} label={t(`kayit.q.goal_${g}`)} selected={a.goal === g} onPress={() => pick(g)} />
   );
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.goal_title')} style={styles.grid}>
@@ -348,7 +349,7 @@ function GenderBody() {
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.gender_title')} style={styles.grid}>
       <View style={styles.row}>
         {(['female', 'male'] as const).map((g, i) => (
-          <ChoiceTile key={g} testID={`kayit-gender-${g}`} delay={i * K_MOTION.stagger} label={t(`kayit.q.gender_${g}`)} selected={a.gender === g} dimmed={a.gender != null && a.gender !== g} onPress={() => patch({ gender: g })} />
+          <ChoiceTile key={g} testID={`kayit-gender-${g}`} delay={i * K_MOTION.stagger} label={t(`kayit.q.gender_${g}`)} selected={a.gender === g} onPress={() => patch({ gender: g })} />
         ))}
       </View>
       <View style={{ alignItems: 'center' }}>
@@ -531,7 +532,8 @@ function SportBody() {
   };
   return (
     <View style={{ gap: 16, paddingHorizontal: 20 }}>
-      <DayPills labels={days} longLabels={longs} value={a.sportDays} onToggle={toggle} disabled={a.noSport} />
+      {/* G44: "Spor yapmıyorum" seçiliyken günler/çipler soluklaşmaz; dokunmak o seçimi kaldırır. */}
+      <DayPills labels={days} longLabels={longs} value={a.sportDays} onToggle={toggle} />
       <AppText accessibilityLiveRegion="polite" maxFontSizeMultiplier={1.4} style={[styles.center, styles.semi, { color: P.sec }]}>
         {a.sportDays.length ? t('kayit.q.days_count', { n: a.sportDays.length }) : t('kayit.q.days_none')}
       </AppText>
@@ -546,7 +548,6 @@ function SportBody() {
             icon={SPORT_ICON[s]}
             label={t(`kayit.q.sport_${s}`)}
             on={a.sports.includes(s)}
-            disabled={a.noSport}
             onPress={() => patch({ sports: a.sports.includes(s) ? a.sports.filter((x) => x !== s) : [...a.sports, s], noSport: false })}
           />
         ))}
@@ -559,7 +560,7 @@ function SportBody() {
 function DietBody() {
   const { a, patch, t } = useQ();
   const tile = (d: (typeof K_DIETS)[number], i: number) => (
-    <ChoiceTile key={d} testID={`kayit-diet-${d}`} delay={i * K_MOTION.stagger} icon={DIET_ICON[d]} label={t(`kayit.q.diet_${d}`)} sub={t(`kayit.q.diet_${d}_sub`)} selected={a.diet === d} dimmed={a.diet != null && a.diet !== d} onPress={() => patch({ diet: d })} />
+    <ChoiceTile key={d} testID={`kayit-diet-${d}`} delay={i * K_MOTION.stagger} icon={DIET_ICON[d]} label={t(`kayit.q.diet_${d}`)} sub={t(`kayit.q.diet_${d}_sub`)} selected={a.diet === d} onPress={() => patch({ diet: d })} />
   );
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.diet_title')} style={styles.grid}>
@@ -620,8 +621,8 @@ function CookingBody() {
   const { a, patch, t } = useQ();
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.cooking_title')} style={[styles.grid, { gap: 12 }]}>
-      {K_COOKING.map((c) => (
-        <OptionCard key={c} testID={`kayit-cook-${c}`} icon={COOK_ICON[c]} label={t(`kayit.q.cook_${c}`)} sub={t(`kayit.q.cook_${c}_sub`)} selected={a.cooking === c} dimmed={a.cooking != null && a.cooking !== c} onPress={() => patch({ cooking: c })} />
+      {K_COOKING.map((c, i) => (
+        <OptionCard key={c} delay={i * K_MOTION.stagger} testID={`kayit-cook-${c}`} icon={COOK_ICON[c]} label={t(`kayit.q.cook_${c}`)} sub={t(`kayit.q.cook_${c}_sub`)} selected={a.cooking === c} onPress={() => patch({ cooking: c })} />
       ))}
     </View>
   );
@@ -631,8 +632,8 @@ function StruggleBody() {
   const { a, patch, t } = useQ();
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.struggle_title')} style={[styles.grid, { gap: 12 }]}>
-      {K_STRUGGLES.map((c) => (
-        <OptionCard key={c} testID={`kayit-st-${c}`} icon={STRUGGLE_ICON[c]} label={t(`kayit.q.st_${c}`)} sub={t(`kayit.q.st_${c}_sub`)} selected={a.struggle === c} dimmed={a.struggle != null && a.struggle !== c} onPress={() => patch({ struggle: c })} />
+      {K_STRUGGLES.map((c, i) => (
+        <OptionCard key={c} delay={i * K_MOTION.stagger} testID={`kayit-st-${c}`} icon={STRUGGLE_ICON[c]} label={t(`kayit.q.st_${c}`)} sub={t(`kayit.q.st_${c}_sub`)} selected={a.struggle === c} onPress={() => patch({ struggle: c })} />
       ))}
     </View>
   );
@@ -677,7 +678,7 @@ function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void 
       <View style={{ alignItems: 'center', marginBottom: 24 }}>
         <Mascot size={150} react={step} />
       </View>
-      <Rise duration={K_MOTION.scene} dy={60}>
+      <Rise>
         <View style={[styles.card, { backgroundColor: P.card, borderColor: P.cardEdge, paddingVertical: 28 }]}>
           <AppText maxFontSizeMultiplier={1.35} style={[styles.interTitle, { color: P.ink }]}>
             {t(`kayit.q.${step}_title`)}
@@ -692,31 +693,6 @@ function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void 
       </View>
     </Pressable>
   );
-}
-
-/** Adım içeriği: ileri → sağdan, geri → soldan (330 ms enter); azaltılmışta 220 ms opaklık. */
-function StepSlide({ k, dir, reduced, children }: { k: string; dir: 1 | -1; reduced: boolean; children: React.ReactNode }) {
-  const x = useSharedValue(0);
-  const o = useSharedValue(1);
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    if (reduced) {
-      o.value = 0;
-      o.value = withTiming(1, { duration: REDUCED.duration });
-      return;
-    }
-    x.value = dir * 60;
-    o.value = 0;
-    x.value = withTiming(0, { duration: K_MOTION.shared, easing: CURVE.enter });
-    o.value = withTiming(1, { duration: K_MOTION.shared, easing: CURVE.enter });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [k]);
-  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateX: x.value }] }));
-  return <Animated.View style={[{ flex: 1 }, st]}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

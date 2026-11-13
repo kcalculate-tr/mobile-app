@@ -1,6 +1,9 @@
 // G42-S1 md.3/md.10 — Kayıt akışı temel parçaları: zemin (3 katman bulanık ışık), maskot (süzülme + göz
-// kırpma + tepki), üst çubuk (geri + ilerleme halkası), soru balonu (harf harf), ana düğme (yükleme hâli),
-// segment. Dokunma alanları ≥ 44 pt, VoiceOver etiketleri, Dynamic Type tavanı, azaltılmış harekette sabit.
+// kırpma + tepki), üst çubuk (geri + ilerleme halkası), soru balonu, ana düğme (yükleme hâli), segment.
+// Dokunma alanları ≥ 44 pt, VoiceOver etiketleri, Dynamic Type tavanı, azaltılmış harekette sabit.
+// G44-S1: görsel dil AYNI; yalnız hareket/seçim hâli: balon 200 ms fade (harf harf yok), ışık paralaksı yarı
+// genlik + yavaş, maskot (kayıt) yarı genlik + cevapta tek baş sallama, düğme/segment/kutu basışta 0,98 +
+// 120 ms, seçim hâli 160 ms renk geçişi; azaltılmış harekette hepsi anlık.
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,10 +18,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { AppText, CURVE, DURATION, REDUCED, SPRING, haptic, useReducedMotion } from '../../../core/design';
+import { AppText, CURVE, DURATION, SPRING, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CaretLeft, Check } from '../../../components/icons';
 import { K_MOTION, useK } from './theme';
+import { PressScale, mixColor, useSelectTween } from './motion';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const MASCOT_OPEN = require('../../../../assets/coach/koc-acik.png');
@@ -34,17 +38,20 @@ export const FONT = {
 } as const;
 
 // ─── Zemin ────────────────────────────────────────────────────────────────────
-/** Degrade zemin + 3 katman bulanık ışık lekesi; `shift` değişince katmanlar farklı hızda kayar (paralaks). */
+/**
+ * Degrade zemin + 3 katman bulanık ışık lekesi; `shift` değişince katmanlar farklı hızda kayar (paralaks).
+ * G44: paralaks genliği yarıya (çarpan ve sarma aralığı ½), geçiş yavaş (700 ms); azaltılmışta sabit.
+ */
 export function KBackdrop({ shift = 0, children, style }: { shift?: number; children?: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const P = useK();
   const reduced = useReducedMotion();
   const x = useSharedValue(shift);
   useEffect(() => {
-    x.value = reduced ? shift : withTiming(shift, { duration: K_MOTION.shared, easing: CURVE.standard });
+    x.value = reduced ? shift : withTiming(shift, { duration: K_MOTION.parallax, easing: CURVE.standard });
   }, [shift, reduced, x]);
-  const l1 = useAnimatedStyle(() => ({ transform: [{ translateX: -((x.value * 18) % 120) }] }));
-  const l2 = useAnimatedStyle(() => ({ transform: [{ translateX: -((x.value * 34) % 160) }] }));
-  const l3 = useAnimatedStyle(() => ({ transform: [{ translateX: (x.value * 12) % 90 }] }));
+  const l1 = useAnimatedStyle(() => ({ transform: [{ translateX: -((x.value * 9) % 60) }] }));
+  const l2 = useAnimatedStyle(() => ({ transform: [{ translateX: -((x.value * 17) % 80) }] }));
+  const l3 = useAnimatedStyle(() => ({ transform: [{ translateX: (x.value * 6) % 45 }] }));
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: P.bgBottom }, style]}>
       <LinearGradient colors={[P.bgTop, P.bgMid, P.bgBottom]} locations={[0, 0.45, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -78,15 +85,40 @@ function Blob({ color, opacity, size }: { color: string; opacity: number; size: 
 }
 
 // ─── Maskot ───────────────────────────────────────────────────────────────────
+/** Onboarding maskot zıplaması — G42 değerleri (DURATION.instant + SPRING.bouncy) sabitlendi; onboarding AYNI. */
+const ONB_HOP_UP = DURATION.instant;
+const ONB_HOP_SPRING = SPRING.bouncy;
 /**
- * kcalAI Koç maskotu (assets/coach). Sürekli süzülme (±7 pt, 3,2 sn) + 4–6 sn'de göz kırpma; `react`
- * anahtarı değişince küçük zıplama (her cevaba tepki). Azaltılmış harekette sabit (kırpma da yok).
+ * kcalAI Koç maskotu (assets/coach). Sürekli süzülme (3,2 sn) + 4–6 sn'de göz kırpma. Azaltılmış harekette sabit.
+ * - `motion="onboarding"` (onboarding 1–5'in tam ekran katmanı, `fill`): G42 ile AYNI — ±7 pt süzülme, `react`
+ *   değişince küçük zıplama.
+ * - `motion="kayit"` (diğer her yer, varsayılan): G44 — süzülme yarı genlik (±3,5 pt), her cevapta zıplama yerine
+ *   tek küçük baş sallama (≤ 300 ms, yay yok); art arda değişimlerde (cetvel çentikleri) sallama tekrar etmez.
  */
-export function Mascot({ size = 96, fill = false, react, calm = false, label, style }: { size?: number; fill?: boolean; react?: unknown; calm?: boolean; label?: string; style?: StyleProp<ViewStyle> }) {
+export function Mascot({
+  size = 96,
+  fill = false,
+  react,
+  calm = false,
+  label,
+  style,
+  motion,
+}: {
+  size?: number;
+  fill?: boolean;
+  react?: unknown;
+  calm?: boolean;
+  label?: string;
+  style?: StyleProp<ViewStyle>;
+  motion?: 'onboarding' | 'kayit';
+}) {
   const reduced = useReducedMotion();
   const { t } = useT();
+  const mode = motion ?? (fill ? 'onboarding' : 'kayit');
   const y = useSharedValue(0);
   const hop = useSharedValue(0);
+  const nod = useSharedValue(0);
+  const lastNod = useRef(0);
   const [blink, setBlink] = useState(false);
   const first = useRef(true);
 
@@ -96,7 +128,8 @@ export function Mascot({ size = 96, fill = false, react, calm = false, label, st
       y.value = 0;
       return;
     }
-    const amp = calm ? K_MOTION.floatAmp / 2 : K_MOTION.floatAmp;
+    const base = mode === 'onboarding' ? K_MOTION.floatAmp : K_MOTION.floatAmpKayit;
+    const amp = calm ? base / 2 : base;
     y.value = withRepeat(
       withSequence(
         withTiming(-amp, { duration: K_MOTION.floatHalf, easing: CURVE.standard }),
@@ -106,7 +139,7 @@ export function Mascot({ size = 96, fill = false, react, calm = false, label, st
       false,
     );
     return () => cancelAnimation(y);
-  }, [reduced, calm, y]);
+  }, [reduced, calm, y, mode]);
 
   useEffect(() => {
     if (reduced) return;
@@ -137,10 +170,23 @@ export function Mascot({ size = 96, fill = false, react, calm = false, label, st
       return;
     }
     if (reduced || react === undefined) return;
-    hop.value = withSequence(withTiming(-10, { duration: DURATION.instant, easing: CURVE.enter }), withSpring(0, SPRING.bouncy));
-  }, [react, reduced, hop]);
+    if (mode === 'onboarding') {
+      hop.value = withSequence(withTiming(-10, { duration: ONB_HOP_UP, easing: CURVE.enter }), withSpring(0, ONB_HOP_SPRING));
+      return;
+    }
+    // Baş sallama: −6° → +4° → 0 (toplam 290 ms). Önceki sallama bitmeden gelen değişim yok sayılır.
+    const now = Date.now();
+    if (now - lastNod.current < K_MOTION.nod) return;
+    lastNod.current = now;
+    const ease = { easing: CURVE.standard };
+    nod.value = withSequence(
+      withTiming(-6, { duration: K_MOTION.nodIn, ...ease }),
+      withTiming(4, { duration: K_MOTION.nodMid, ...ease }),
+      withTiming(0, { duration: K_MOTION.nodOut, ...ease }),
+    );
+  }, [react, reduced, hop, nod, mode]);
 
-  const st = useAnimatedStyle(() => ({ transform: [{ translateY: y.value + hop.value }] }));
+  const st = useAnimatedStyle(() => ({ transform: [{ translateY: y.value + hop.value }, { rotate: `${nod.value}deg` }] }));
   return (
     <Animated.View
       accessible
@@ -175,7 +221,7 @@ export function ProgressRing({ index, total, size = 52, glow = false, hideNumber
     const start = Date.now();
     let raf = 0;
     const tick = () => {
-      const k = Math.min(1, (Date.now() - start) / K_MOTION.shared);
+      const k = Math.min(1, (Date.now() - start) / K_MOTION.ring);
       const e = 1 - Math.pow(1 - k, 3);
       const v = from + (ratio - from) * e;
       setDash(c * (1 - v));
@@ -221,7 +267,7 @@ export function ProgressRing({ index, total, size = 52, glow = false, hideNumber
 export function CircleButton({ onPress, label, children, testID, disabled }: { onPress: () => void; label: string; children: React.ReactNode; testID?: string; disabled?: boolean }) {
   const P = useK();
   return (
-    <Pressable
+    <PressScale
       testID={testID}
       onPress={onPress}
       disabled={disabled}
@@ -229,10 +275,10 @@ export function CircleButton({ onPress, label, children, testID, disabled }: { o
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
       hitSlop={6}
-      style={({ pressed }) => [styles.circleBtn, { backgroundColor: P.circle, opacity: disabled ? 0.5 : pressed ? 0.7 : 1 }]}
+      style={[styles.circleBtn, { backgroundColor: P.circle, opacity: disabled ? 0.5 : 1 }]}
     >
       {children}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -254,50 +300,39 @@ export function TopBar({ onBack, progress, right, glow }: { onBack?: (() => void
 }
 
 // ─── Soru balonu ──────────────────────────────────────────────────────────────
-/** Harf harf yazılan başlık (~30 ms/karakter); dokununca tamamlanır; azaltılmışta / ekran okuyucuda tam. */
-export function useTypewriter(text: string, enabled: boolean): [string, () => void] {
-  const [n, setN] = useState(enabled ? 0 : text.length);
+/** G44: harf harf yazma kaldırıldı — balon metni `text` değişince 200 ms fade ile gelir; azaltılmışta anlık. */
+function FadeText({ text, children }: { text: string; children: React.ReactNode }) {
+  const reduced = useReducedMotion();
+  const o = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    if (!enabled) {
-      setN(text.length);
+    if (reduced) {
+      o.value = 1;
       return;
     }
-    setN(0);
-    const id = setInterval(() => {
-      setN((v) => {
-        if (v >= text.length) {
-          clearInterval(id);
-          return v;
-        }
-        return v + 1;
-      });
-    }, K_MOTION.typeChar);
-    return () => clearInterval(id);
-  }, [text, enabled]);
-  return [text.slice(0, n), () => setN(text.length)];
+    o.value = 0;
+    o.value = withTiming(1, { duration: K_MOTION.bubbleFade, easing: CURVE.standard });
+  }, [text, reduced, o]);
+  const st = useAnimatedStyle(() => ({ opacity: o.value }));
+  return <Animated.View style={st}>{children}</Animated.View>;
 }
 
 export type BubbleLayout = 'left' | 'right' | 'title';
 
 /**
  * Maskot + soru. `left`: maskot solda, balon sağda (P2, P4…); `right`: balon solda, maskot sağda (P3, P5…);
- * `title`: büyük başlık + sağda maskot (P1, L2). Balon görünmez metinle ölçülür → yazarken boy oynamaz.
+ * `title`: büyük başlık + sağda maskot (P1, L2). G44: metin 200 ms fade (`fade={false}` → anlık; K1/E1/E2).
  */
-export function QuestionHead({ title, layout, react, typewriter = true, mascotSize = 104, testID }: { title: string; layout: BubbleLayout; react?: unknown; typewriter?: boolean; mascotSize?: number; testID?: string }) {
+export function QuestionHead({ title, layout, react, fade = true, mascotSize = 104, testID }: { title: string; layout: BubbleLayout; react?: unknown; fade?: boolean; mascotSize?: number; testID?: string }) {
   const P = useK();
-  const reduced = useReducedMotion();
-  const [shown, finish] = useTypewriter(title, typewriter && !reduced);
+  const label = (
+    <AppText testID={testID} maxFontSizeMultiplier={1.35} style={[layout === 'title' ? styles.titleBig : styles.bubbleText, { color: P.ink }]}>
+      {title}
+    </AppText>
+  );
   const text = (
-    <Pressable onPress={finish} accessibilityRole="header" accessibilityLabel={title} style={{ flexShrink: 1 }}>
-      <View>
-        <AppText maxFontSizeMultiplier={1.35} style={[layout === 'title' ? styles.titleBig : styles.bubbleText, { color: P.ink, opacity: 0 }]}>
-          {title}
-        </AppText>
-        <AppText testID={testID} maxFontSizeMultiplier={1.35} style={[layout === 'title' ? styles.titleBig : styles.bubbleText, styles.overlayText, { color: P.ink }]}>
-          {shown}
-        </AppText>
-      </View>
-    </Pressable>
+    <View accessible accessibilityRole="header" accessibilityLabel={title} style={{ flexShrink: 1 }}>
+      {fade ? <FadeText text={title}>{label}</FadeText> : label}
+    </View>
   );
   if (layout === 'title') {
     return (
@@ -318,7 +353,10 @@ export function QuestionHead({ title, layout, react, typewriter = true, mascotSi
 }
 
 // ─── Ana düğme ────────────────────────────────────────────────────────────────
-/** Lime hap (56 pt). Devre dışı: dolgu + yazı rengiyle ayrılır (yalnız opaklık değil). `loading`: 54 pt daireye daralır + halka. */
+/**
+ * Lime hap (56 pt). Devre dışı: dolgu + yazı rengiyle ayrılır (yalnız opaklık değil). `loading`: 54 pt daireye
+ * daralır + halka. G44: basışta 0,98 + 120 ms geri dönüş, hafif seçim titreşimi (seçim kartlarıyla aynı).
+ */
 export function KButton({ label, onPress, disabled, loading, testID, variant = 'primary' }: { label: string; onPress: () => void; disabled?: boolean; loading?: boolean; testID?: string; variant?: 'primary' | 'ghost' }) {
   const P = useK();
   const reduced = useReducedMotion();
@@ -332,22 +370,22 @@ export function KButton({ label, onPress, disabled, loading, testID, variant = '
   return (
     <View style={{ alignItems: 'center' }}>
       <Animated.View style={st}>
-        <Pressable
+        <PressScale
           testID={testID}
+          disabled={off || !!loading}
           onPress={() => {
             if (off || loading) return;
-            haptic('light');
+            haptic('selection');
             onPress();
           }}
           accessibilityRole="button"
           accessibilityLabel={label}
           accessibilityState={{ disabled: off || !!loading, busy: !!loading }}
-          style={({ pressed }) => [
+          style={[
             styles.btn,
             ghost
               ? { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: P.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(16,48,29,0.25)' }
               : { backgroundColor: off ? P.disabled : P.accent },
-            pressed && !off ? { transform: [{ scale: 0.98 }] } : null,
           ]}
         >
           {loading ? (
@@ -357,7 +395,7 @@ export function KButton({ label, onPress, disabled, loading, testID, variant = '
               {label}
             </AppText>
           )}
-        </Pressable>
+        </PressScale>
       </Animated.View>
     </View>
   );
@@ -386,7 +424,7 @@ export function Segment<T extends string>({
   const idx = Math.max(0, options.findIndex((o) => o.key === value));
   const x = useSharedValue(idx);
   useEffect(() => {
-    x.value = reduced ? idx : withTiming(idx, { duration: K_MOTION.fast, easing: CURVE.standard });
+    x.value = reduced ? idx : withTiming(idx, { duration: K_MOTION.select, easing: CURVE.standard });
   }, [idx, reduced, x]);
   const seg = (width - 8) / options.length;
   const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * seg }] }));
@@ -394,38 +432,48 @@ export function Segment<T extends string>({
   return (
     <View testID={testID} accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.seg, { width, backgroundColor: dark ? 'rgba(255,255,255,0.14)' : 'rgba(16,48,29,0.08)' }]}>
       <Animated.View style={[styles.segThumb, { width: seg, backgroundColor: P.accent }, thumb]} />
-      {options.map((o) => {
-        const on = o.key === value;
-        return (
-          <Pressable
-            key={o.key}
-            testID={testID ? `${testID}-${o.key}` : undefined}
-            onPress={() => {
-              if (!on) haptic('selection');
-              onChange(o.key);
-            }}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
-            accessibilityLabel={o.label}
-            style={styles.segItem}
-          >
-            <AppText numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.segText, { color: on ? '#10301D' : dark ? '#FFFFFF' : P.ink }]}>
-              {o.label}
-            </AppText>
-          </Pressable>
-        );
-      })}
+      {options.map((o) => (
+        <SegItem
+          key={o.key}
+          testID={testID ? `${testID}-${o.key}` : undefined}
+          label={o.label}
+          on={o.key === value}
+          offColor={dark ? '#FFFFFF' : P.ink}
+          onPress={() => {
+            if (o.key !== value) haptic('selection');
+            onChange(o.key);
+          }}
+        />
+      ))}
     </View>
+  );
+}
+
+/** Segment öğesi: kaydırıcı 160 ms'de kayarken yazı rengi aynı saatle değişir; basışta 0,98. */
+function SegItem({ label, on, offColor, onPress, testID }: { label: string; on: boolean; offColor: string; onPress: () => void; testID?: string }) {
+  const P = useK();
+  const k = useSelectTween(on);
+  return (
+    <PressScale outer={styles.segItemOuter} testID={testID} onPress={onPress} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={label} style={styles.segItem}>
+      <AppText numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.segText, { color: mixColor(offColor, P.limeInk, k) }]}>
+        {label}
+      </AppText>
+    </PressScale>
   );
 }
 
 // ─── Onay kutusu satırı ───────────────────────────────────────────────────────
 export function CheckBoxRow({ checked, onToggle, label, note, testID, disabled }: { checked: boolean; onToggle: () => void; label: string; note?: string | null; testID?: string; disabled?: boolean }) {
   const P = useK();
+  const k = useSelectTween(checked);
+  const edgeOff = P.isDark ? 'rgba(255,255,255,0.45)' : 'rgba(16,48,29,0.35)';
   return (
-    <Pressable
+    <PressScale
       testID={testID}
-      onPress={onToggle}
+      onPress={() => {
+        haptic('selection');
+        onToggle();
+      }}
       disabled={disabled}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled: !!disabled }}
@@ -433,8 +481,12 @@ export function CheckBoxRow({ checked, onToggle, label, note, testID, disabled }
       accessibilityHint={note ?? undefined}
       style={[styles.checkRow, { backgroundColor: P.card, borderColor: P.cardEdge }]}
     >
-      <View style={[styles.box, { borderColor: checked ? P.accent : P.isDark ? 'rgba(255,255,255,0.45)' : 'rgba(16,48,29,0.35)', backgroundColor: checked ? P.accent : 'transparent' }]}>
-        {checked ? <Check size={16} color="#10301D" weight="bold" /> : null}
+      <View style={[styles.box, { borderColor: mixColor(edgeOff, P.accent, k), backgroundColor: mixColor('transparent', P.accent, k) }]}>
+        {k > 0 ? (
+          <View style={{ opacity: k }}>
+            <Check size={16} color={P.limeInk} weight="bold" />
+          </View>
+        ) : null}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <AppText maxFontSizeMultiplier={1.4} style={[styles.checkText, { color: P.ink }]}>
@@ -446,7 +498,7 @@ export function CheckBoxRow({ checked, onToggle, label, note, testID, disabled }
           </AppText>
         ) : null}
       </View>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -476,13 +528,22 @@ export function NoticeCard({ title, sub, tone = 'info', action, testID }: { titl
   );
 }
 
-/** Girişte aşağıdan yükselir (kademeli); azaltılmışta yalnız opaklık. */
-export function Rise({ delay = 0, children, style, dy = 18, duration = K_MOTION.shared }: { delay?: number; children: React.ReactNode; style?: StyleProp<ViewStyle>; dy?: number; duration?: number }) {
+/**
+ * Giriş: tek seferlik 10 pt yukarı + fade, 240 ms (G44); kademe gecikmesi en çok 150 ms'ye kırpılır.
+ * Azaltılmış harekette anlık (hareket de fade de yok).
+ */
+export function Rise({ delay = 0, children, style, dy = K_MOTION.enterDy, duration = K_MOTION.enter }: { delay?: number; children: React.ReactNode; style?: StyleProp<ViewStyle>; dy?: number; duration?: number }) {
   const reduced = useReducedMotion();
-  const v = useSharedValue(0);
+  const v = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    v.value = withDelay(delay, withTiming(1, { duration: reduced ? REDUCED.duration : duration, easing: CURVE.enter }));
-  }, [delay, reduced, duration, v]);
+    if (reduced) {
+      v.value = 1;
+      return;
+    }
+    v.value = withDelay(Math.min(delay, K_MOTION.staggerMax), withTiming(1, { duration, easing: CURVE.enter }));
+    // tek seferlik: yalnız bağlanırken
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const st = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: reduced ? 0 : (1 - v.value) * dy }] }));
   return <Animated.View style={[st, style]}>{children}</Animated.View>;
 }
@@ -498,11 +559,11 @@ const styles = StyleSheet.create({
   bubble: { flex: 1, borderRadius: 26, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 16, justifyContent: 'center', minHeight: 68 },
   bubbleText: { fontFamily: FONT.display, fontSize: 24, lineHeight: 29, letterSpacing: -0.4 },
   titleBig: { fontFamily: FONT.display, fontSize: 34, lineHeight: 38, letterSpacing: -0.8 },
-  overlayText: { position: 'absolute', left: 0, top: 0, right: 0 },
   btn: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   btnText: { fontFamily: FONT.bold, fontSize: 17 },
   seg: { height: 52, borderRadius: 26, padding: 4, flexDirection: 'row', alignSelf: 'center' },
   segThumb: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 22 },
+  segItemOuter: { flex: 1 },
   segItem: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   segText: { fontFamily: FONT.bold, fontSize: 15 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 22, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 16, minHeight: 64 },

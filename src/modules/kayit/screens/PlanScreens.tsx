@@ -1,7 +1,7 @@
 // G42-S1 md.4 — L1 hesaplama + L2 plan sonucu. Hesap MEVCUT kişisel plan motoru (G34 computePlan; plan.ts).
 // L1: büyük halka dolar, sayı artar, satır halkaları sırayla (her satırda hafif titreşim, sonda başarı);
 // geri dönüşte cevap değiştiyse 1,5 sn kısa sürüm; değişmediyse doğrudan L2. Ağ yoksa halkalar durur + kart.
-// L2: kalori sayarak gelir (990 ms), makro halkaları, kilo tahmini ARALIK bandı (söz değil), öğün dağılımı,
+// L2: kalori sayarak gelir (G44: ≤ 600 ms ease-out; L1 de), makro halkaları, kilo tahmini ARALIK bandı (söz değil), öğün dağılımı,
 // Keşfet/G33 kataloğundan uygun 3 tarif, koşullu eatkcal kartı ("İzmir'deysen…"), sağlık verisi açık rızası.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -14,13 +14,14 @@ import { AppText, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { recordHealthConsent } from '../../../lib/consent/store';
 import { healthConsentGiven } from '../../personalPlan/api';
-import { DrawPath, RingProgress, useCountUp } from '../../personalPlan/ui/motion';
+import { DrawPath, RingProgress } from '../../personalPlan/ui/motion';
 import { GLASS } from '../../personalPlan/ui/parts';
 import { fetchRecipeCatalog } from '../../plan/client';
 import { loadEatkcalProducts, productToOption } from '../../plan/actions';
 import type { RecipeInfo } from '../../plan/types';
 import { CheckBoxRow, FONT, KBackdrop, KButton, Mascot, NoticeCard, Rise, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
+import { useKCount } from '../ui/motion';
 import { K_MOTION, useK } from '../ui/theme';
 import { computeKayitPlan, pickRecipes, planSignature, type KPlan } from '../plan';
 import { mealsSplit } from '../model';
@@ -40,7 +41,8 @@ export function CalcScreen() {
   const reduced = useReducedMotion();
   const navigation = useNavigation<any>();
   // YALNIZ __DEV__ vitrini: L1 ilk satırda bekler (ekran görüntüsü).
-  const hold = __DEV__ && !!((useRoute().params ?? {}) as { vitrinHold?: boolean }).vitrinHold;
+  const routeParams = (useRoute().params ?? {}) as { vitrinHold?: boolean };
+  const hold = __DEV__ && !!routeParams.vitrinHold;
   const answers = useKayit((s) => s.answers);
   const calcDone = useKayit((s) => s.calcDone);
   const planSig = useKayit((s) => s.planSig);
@@ -105,7 +107,7 @@ export function CalcScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run]);
 
-  const kcal = useCountUp(plan?.calories ?? 0, !!plan && !offline);
+  const kcal = useKCount(plan?.calories ?? 0, !!plan && !offline);
   const rows = [
     { done: row >= 1, active: row === 0, idle: 'kayit.plan.calc_kcal', act: 'kayit.plan.calc_kcal', ok: 'kayit.plan.calc_kcal_done' },
     { done: row >= 2, active: row === 1, idle: 'kayit.plan.calc_macros', act: 'kayit.plan.calc_macros_active', ok: 'kayit.plan.calc_macros_done' },
@@ -294,7 +296,7 @@ export function ResultScreen() {
 function DailyCard({ plan }: { plan: KPlan }) {
   const { t, lang } = useT();
   const P = useK();
-  const kcal = useCountUp(plan.calories);
+  const kcal = useKCount(plan.calories);
   const tot = Math.max(1, plan.protein * 4 + plan.carbs * 4 + plan.fat * 9);
   const macros = [
     { k: 'protein', v: plan.protein, r: (plan.protein * 4) / tot, c: P.isDark ? '#D8FF5A' : '#10301D' },
