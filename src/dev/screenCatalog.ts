@@ -631,6 +631,20 @@ function resolveParity(name: string): ResolvedEntry | null {
       hasDark: true, requested: name, scheme: g39[2] ? 'dark' : 'light',
     };
   }
+  // G40-S1 — `G40-<Sahne>(-Dark)`: tek marka yeşili çekimleri. Ürün sayfası seçim grubu olan ilk ürünle
+  // (`__withOptions__`, vitrinSetup) açılır, seçim katmanı açık (seçili seçenek + Sepete ekle).
+  const g40 = /^G40-([A-Za-z]+?)(-Dark)?$/.exec(name);
+  if (g40) {
+    const T: Record<string, { area: string; target: VitrinTarget; scene?: string }> = {
+      EkProductOpt: { area: 'eatkcal', target: route(ek('EkProduct', { productId: '__withOptions__', vitrinState: 'selected' })), scene: 'selected' },
+    };
+    const d = T[g40[1]];
+    if (!d) return null;
+    return {
+      pano: name, area: d.area, target: d.target, scene: d.scene, data: 'default', flags: FINAL_FLAGS, lang: 'tr', auth: 'user',
+      hasDark: true, requested: name, scheme: g40[2] ? 'dark' : 'light',
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

@@ -419,6 +419,20 @@ export default function EkProductScreen() {
     return () => clearTimeout(h);
   }, [vitrinState, loading]);
 
+  // YALNIZ __DEV__ vitrini (G40-S1): seçili hâlde zorunlu gruplar ilk seçeneklerle dolu
+  // (seçili kart + etkin "Sepete ekle" çekimi). Üretimde vitrinState hep undefined.
+  useEffect(() => {
+    if (!vitrinState || !groups.length) return;
+    setSelections((prev) => {
+      const next = { ...prev };
+      groups.forEach((g) => {
+        const need = Math.max(g.isRequired ? 1 : 0, g.minSelection ?? 0);
+        if (need > 0 && !next[g.id]?.length) next[g.id] = g.items.slice(0, need).map((i) => i.id);
+      });
+      return next;
+    });
+  }, [vitrinState, groups]);
+
   // ── İçerik (Final "İçerik"): seçili bileşenlerden kısa özet + "Tüm içerik" satırları ──
   const ingredients = useMemo(() => {
     const gram = groupModels.find((g) => g.key === 'gramaj')?.items.find((i) => i.selected);

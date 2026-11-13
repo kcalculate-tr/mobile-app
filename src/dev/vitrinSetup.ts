@@ -24,13 +24,29 @@ async function loadProducts(): Promise<any[]> {
   return (list ?? []).filter((p) => p && p.is_active !== false && Number(p.price) > 0);
 }
 
-function replaceFirst(routes: RouteSpec[], id: string | null, brand: string | null = null): RouteSpec[] {
+/** G40-S1 — seçim grubu olan ilk ürün (ürün sayfası "seçili seçenek" çekimi; yalnız GET okuma). */
+async function firstWithOptions(products: any[]): Promise<string | null> {
+  const { fetchProductOptionGroups } = require('../lib/products');
+  const { getSupabaseClient } = require('../core/supabase');
+  for (const p of products.filter((x) => x.img).slice(0, 40)) {
+    try {
+      const g: any[] = await fetchProductOptionGroups(getSupabaseClient(), String(p.id));
+      if (g.some((x) => (x.items ?? []).length > 1)) return String(p.id);
+    } catch {
+      /* sonraki ürün */
+    }
+  }
+  return null;
+}
+
+function replaceFirst(routes: RouteSpec[], id: string | null, brand: string | null = null, optId: string | null = null): RouteSpec[] {
   return routes.map((r) => {
     let params = r.params;
     if (params && params.productId === '__first__') params = { ...params, productId: id ?? '' };
+    if (params && params.productId === '__withOptions__') params = { ...params, productId: optId ?? id ?? '' };
     // G15-S5: mağaza panoları (FinEkStore/Reviews) gerçek menüdeki ilk marka anahtarıyla.
     if (params && params.brandKey === '__first__') params = { ...params, brandKey: brand ?? '' };
-    return { ...r, params, state: r.state ? { routes: replaceFirst(r.state.routes, id, brand) } : undefined };
+    return { ...r, params, state: r.state ? { routes: replaceFirst(r.state.routes, id, brand, optId) } : undefined };
   });
 }
 
@@ -93,7 +109,7 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   const isOrders = /"EkOrders?(Detail)?"|"EkOrders"/.test(JSON.stringify(entry.target));
   const needsProducts =
     entry.data !== 'empty' &&
-    (CART_SCENES.has(scene) || isOrders || JSON.stringify(entry.target).includes('__first__'));
+    (CART_SCENES.has(scene) || isOrders || /__first__|__withOptions__/.test(JSON.stringify(entry.target)));
   let productIds: string[] = [];
   if (needsProducts) {
     const products = await loadProducts().catch(() => []);
@@ -107,7 +123,8 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
       const brand = products.find((p) => typeof p.brand === 'string' && p.brand)?.brand ?? null;
       // G15-S5: makro verisi olan ilk ürün (Final ürün panosu dolu makro halkalarıyla).
       const withMacros = products.find((p) => Number(p.calories) > 0) ?? products[0];
-      routes = replaceFirst(entry.target.routes, withMacros ? String(withMacros.id) : null, brand);
+      const optId = JSON.stringify(entry.target).includes('__withOptions__') ? await firstWithOptions(products) : null;
+      routes = replaceFirst(entry.target.routes, withMacros ? String(withMacros.id) : null, brand, optId);
     }
   }
 
