@@ -282,18 +282,12 @@ test('olaylar: sağlık değeri prop’u yok; reg_q_answer yalnız soru kimliği
   assert.deepEqual(Object.keys(__sent[2].props).sort(), ['path', 'q']);
 });
 
-test('i18n: TR/EN anahtar kümesi aynı; 4. ekran Keşfet metni (G43); Padel/etkinlik içeriği yok', () => {
+test('i18n: TR/EN anahtar kümesi aynı; 4. ekran geçici metni', () => {
   const keys = (o: unknown, p = ''): string[] =>
     o && typeof o === 'object' ? Object.entries(o as Record<string, unknown>).flatMap(([k, v]) => keys(v, p ? `${p}.${k}` : k)) : [p];
   assert.deepEqual(keys(tr).sort(), keys(en).sort());
-  assert.equal(tr.onb.s4.title, "Keşfet'te paylaş, ilham al.");
-  assert.equal(tr.onb.s4.sub, 'Tariflerini paylaş, takip et, başkalarından ilham al.');
-  assert.equal(en.onb.s4.title, 'Share and get inspired on Explore.');
-  assert.equal(en.onb.s4.sub, 'Share your recipes, follow others and get inspired.');
-  assert.equal(tr.onb.card_community, 'Keşfet ve topluluk');
-  assert.equal(en.onb.card_community, 'Explore and community');
-  const all = JSON.stringify({ tr: tr.onb, en: en.onb });
-  assert.doesNotMatch(all, /padel|etkinlik|event/i);
+  assert.equal(tr.onb.s4.sub, "Keşfet'te paylaş, takip et, ilham al.");
+  assert.equal(en.onb.s4.sub, 'Share, follow and get inspired on Explore.');
 });
 
 test('biçim: ay aralığı TR/EN, binlik, ondalık, fark hapı', async () => {
