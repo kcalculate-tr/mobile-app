@@ -1,15 +1,15 @@
 // G42-S1 md.3/md.9 — Kayıt soruları. A yolu P1–P14 (+ I1, I2, P3b) → L1; B yolu kısa profil (B-P1/P2/P3/P4/
 // P5/P8, halka 6 üzerinden, son düğme "Takibe başla") → MEVCUT takip kapısı kaydı (saveTakibeProfile) → HB2.
-// G43-S1: her soru tek ekran = başlık + liste/ölçü girişi + Devam; maskot yok, adımlar arası 220 ms fade
-// (azaltılmışta anında). Sistem geri hareketi (kenar kaydırma / Android geri) bir önceki soruya.
+// Her soru tek ekran; içerik sağdan gelir (paylaşılan öğe hissi, 330 ms), arkadaki ışık lekeleri 3 katman kayar;
+// maskot her cevaba küçük tepki verir. Sistem geri hareketi (kenar kaydırma / Android geri) bir önceki soruya.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Localization from 'expo-localization';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, haptic, useReducedMotion } from '../../../core/design';
+import { AppText, CURVE, REDUCED, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import {
@@ -40,8 +40,8 @@ import {
 import { recordHealthConsent } from '../../../lib/consent/store';
 import { healthConsentGiven } from '../../personalPlan/api';
 import { saveTakibeProfile } from '../../onboarding/takibe/save';
-import { CheckBoxRow, FONT, KButton, KCard, KFooter, KTitle, Segment, TopBar } from '../ui/parts';
-import { ActivityList, ChipToggle, DayPills, DiffPill, OptionRow, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
+import { CheckBoxRow, FONT, KBackdrop, KButton, Mascot, QuestionHead, Rise, Segment, TopBar, type BubbleLayout } from '../ui/parts';
+import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
 import { useEdgeBack } from '../ui/edge';
 import { K_MOTION, useK } from '../ui/theme';
 import {
@@ -74,17 +74,29 @@ import {
   type KWeekday,
 } from '../model';
 import { computeKayitPlan, toTakibeDraft } from '../plan';
-import { fmtDiff, fmtHeight, fmtPace, fmtWeight, monthRange } from '../format';
+import { fmtDec1, fmtDiff, fmtHeight, fmtPace, fmtWeight, monthRange } from '../format';
 import { kv, useKayit } from '../store';
 import { setShortPending } from '../storage';
 import { dropDraft } from '../store';
 import { kTrack } from '../events';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const GLASS_TROPHY = require('../../../../assets/glass/trophy.png');
-const GLASS_BOWL = require('../../../../assets/glass/bowl.png');
-/* eslint-enable @typescript-eslint/no-require-imports */
+const LAYOUT: Record<KQuestion, BubbleLayout> = {
+  goal: 'title',
+  gender: 'left',
+  birth: 'right',
+  height: 'left',
+  weight: 'right',
+  target: 'left',
+  pace: 'right',
+  activity: 'left',
+  sport: 'right',
+  diet: 'left',
+  dislikes: 'right',
+  meals: 'left',
+  cooking: 'right',
+  struggle: 'left',
+};
 const GOAL_ICON = { lose: ArrowDown, maintain: Equals, gain: ArrowUp, muscle: Barbell, balanced: Leaf } as const;
 const DIET_ICON = { all: ForkKnife, vegetarian: Carrot, vegan: Plant, pescatarian: Fish } as const;
 const SPORT_ICON = { weights: Barbell, run: PersonSimpleRun, walk: PersonSimpleWalk, yoga: PersonSimpleTaiChi, swim: SwimmingPool, team: SoccerBall, other: Lightning } as const;
@@ -112,6 +124,7 @@ export default function QuestionsScreen() {
   const healthOk = useKayit((s) => s.healthOk);
   const setHealthOk = useKayit((s) => s.setHealthOk);
   const year = new Date().getFullYear();
+  const [dir, setDir] = useState<1 | -1>(1);
   const [saving, setSaving] = useState(false);
   const [consentKnown, setConsentKnown] = useState(false);
   const firstMount = useRef(true);
@@ -133,11 +146,14 @@ export default function QuestionsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const go = (target: KStep) => setStep(target);
+  const go = (target: KStep, d: 1 | -1) => {
+    setDir(d);
+    setStep(target);
+  };
 
   const back = () => {
     const p = prevStep(step, a, path);
-    if (p) go(p);
+    if (p) go(p, -1);
     else navigation.goBack();
   };
   const edge = useEdgeBack(back);
@@ -161,7 +177,7 @@ export default function QuestionsScreen() {
       await finishShort();
       return;
     }
-    go(n);
+    go(n, 1);
   };
 
   const finishShort = async () => {
@@ -186,54 +202,71 @@ export default function QuestionsScreen() {
   const can = canContinue(step, a) && (!needsConsent || healthOk);
   const label = lastA ? t('kayit.q.make_plan') : lastB ? t('kayit.q.short_start') : step === 'minor' ? t('kayit.q.minor_cta') : t('kayit.q.next');
 
+  const stepIdx = useMemo(() => ['goal', 'gender', 'birth', 'height', 'weight', 'i1', 'target', 'pace', 'activity', 'sport', 'diet', 'i2', 'dislikes', 'meals', 'cooking', 'struggle', 'minor'].indexOf(step), [step]);
+
   return (
-    <View style={[styles.root, { backgroundColor: P.bg }]} {...edge} testID={`kayit-q-${step}`} onAccessibilityEscape={back}>
+    <View style={styles.root} {...edge} testID={`kayit-q-${step}`} onAccessibilityEscape={back}>
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
-      <View style={{ paddingTop: insets.top + 4, flex: 1 }}>
-        <TopBar onBack={back} progress={prog} />
+      <KBackdrop shift={stepIdx} />
+      <View style={{ paddingTop: insets.top + 8, flex: 1 }}>
+        <TopBar onBack={back} progress={prog} glow={lastA} />
         <QCtx.Provider value={{ a, patch, setUnits, t: t as QCtxValue['t'], lang, P, year }}>
-          <StepFade k={step} reduced={reduced}>
-            {step === 'i1' || step === 'i2' ? (
-              <Interstitial step={step} onNext={next} />
-            ) : step === 'minor' ? (
-              <MinorView />
-            ) : (
-              <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-                <KTitle testID="kayit-q-title" title={titleFor(step as KQuestion, a.goal, t as QCtxValue['t'])} style={{ marginTop: 12 }} />
-                <View style={{ marginTop: 24 }}>
-                  <Body step={step as KQuestion} />
+        <StepSlide k={step} dir={dir} reduced={reduced}>
+          {step === 'i1' || step === 'i2' ? (
+            <Interstitial step={step} onNext={next} />
+          ) : step === 'minor' ? (
+            <MinorView />
+          ) : (
+            <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+              <View style={{ marginTop: 12 }}>
+                <QuestionHead
+                  testID="kayit-q-title"
+                  title={titleFor(step as KQuestion, a.goal, t as QCtxValue['t'])}
+                  layout={LAYOUT[step as KQuestion]}
+                  react={JSON.stringify(a)}
+                />
+              </View>
+              <View style={{ marginTop: 28 }}>
+                <Body step={step as KQuestion} />
+              </View>
+              {needsConsent ? (
+                <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+                  <CheckBoxRow testID="kayit-health-consent" checked={healthOk} onToggle={() => setHealthOk(!healthOk)} label={t('kayit.q.health_consent')} />
                 </View>
-                {needsConsent ? (
-                  <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-                    <CheckBoxRow testID="kayit-health-consent" checked={healthOk} onToggle={() => setHealthOk(!healthOk)} label={t('kayit.q.health_consent')} />
-                  </View>
-                ) : null}
-              </ScrollView>
-            )}
-          </StepFade>
+              ) : null}
+            </ScrollView>
+          )}
+        </StepSlide>
         </QCtx.Provider>
         {step !== 'i1' && step !== 'i2' ? (
-          <KFooter bottom={insets.bottom}>
-            <KButton testID="kayit-next" label={label} onPress={() => void next()} disabled={!can} loading={saving} />
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
             {step === 'target' && targetOptional(a.goal) ? (
-              <KButton
+              <Pressable
                 testID="kayit-skip"
-                variant="text"
-                label={t('kayit.q.skip')}
                 onPress={() => {
                   patch({ targetSkipped: true, targetWeightKg: null });
                   kTrack.answer('P6k_skip', path);
                   const n = nextStep('target', { ...a, targetSkipped: true }, year, path);
-                  if (n !== 'plan' && n !== 'done') go(n);
+                  if (n !== 'plan' && n !== 'done') go(n, 1);
                 }}
-              />
+                accessibilityRole="button"
+                accessibilityLabel={t('kayit.q.skip')}
+                style={styles.skip}
+              >
+                <AppText maxFontSizeMultiplier={1.3} style={[styles.skipText, { color: P.ink }]}>
+                  {t('kayit.q.skip')}
+                </AppText>
+              </Pressable>
             ) : null}
-          </KFooter>
+            <KButton testID="kayit-next" label={label} onPress={() => void next()} disabled={!can} loading={saving} />
+          </View>
         ) : null}
       </View>
     </View>
   );
+
 }
+
 
 // ─── Soru gövdeleri (modül düzeyi: her render'da yeniden kurulmaz → cetvel/tekerlek konumu korunur) ───────
 type QCtxValue = {
@@ -291,11 +324,20 @@ function GoalBody() {
     const extra = g !== a.goal ? { targetWeightKg: null, targetSkipped: false, pace: 0.5 as const } : {};
     patch({ goal: g, ...extra });
   };
+  const tile = (g: (typeof K_GOALS)[number], i: number, wide = false) => (
+    <ChoiceTile key={g} testID={`kayit-goal-${g}`} wide={wide} delay={i * K_MOTION.stagger} icon={GOAL_ICON[g]} label={t(`kayit.q.goal_${g}`)} selected={a.goal === g} dimmed={a.goal != null && a.goal !== g} onPress={() => pick(g)} />
+  );
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.goal_title')} style={styles.list}>
-      {K_GOALS.map((g) => (
-        <OptionRow key={g} testID={`kayit-goal-${g}`} icon={GOAL_ICON[g]} label={t(`kayit.q.goal_${g}`)} selected={a.goal === g} onPress={() => pick(g)} />
-      ))}
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.goal_title')} style={styles.grid}>
+      <View style={styles.row}>
+        {tile('lose', 0)}
+        {tile('maintain', 1)}
+      </View>
+      <View style={styles.row}>
+        {tile('gain', 2)}
+        {tile('muscle', 3)}
+      </View>
+      {tile('balanced', 4, true)}
     </View>
   );
 }
@@ -303,10 +345,15 @@ function GoalBody() {
 function GenderBody() {
   const { a, patch, t } = useQ();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.gender_title')} style={styles.list}>
-      {(['female', 'male', 'unspecified'] as const).map((g) => (
-        <OptionRow key={g} testID={`kayit-gender-${g}`} label={t(`kayit.q.gender_${g}`)} selected={a.gender === g} onPress={() => patch({ gender: g })} />
-      ))}
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.gender_title')} style={styles.grid}>
+      <View style={styles.row}>
+        {(['female', 'male'] as const).map((g, i) => (
+          <ChoiceTile key={g} testID={`kayit-gender-${g}`} delay={i * K_MOTION.stagger} label={t(`kayit.q.gender_${g}`)} selected={a.gender === g} dimmed={a.gender != null && a.gender !== g} onPress={() => patch({ gender: g })} />
+        ))}
+      </View>
+      <View style={{ alignItems: 'center' }}>
+        <ChipToggle testID="kayit-gender-unspecified" label={t('kayit.q.gender_unspecified')} on={a.gender === 'unspecified'} onPress={() => patch({ gender: 'unspecified' })} />
+      </View>
     </View>
   );
 }
@@ -322,8 +369,8 @@ function BirthBody() {
   return (
     <View style={{ alignItems: 'center', gap: 18, paddingHorizontal: 20 }}>
       <WheelPicker testID="kayit-wheel" values={years} value={value} onChange={(v) => patch({ birthYear: v })} label={t('kayit.q.birth_title')} />
-      <View style={[styles.agePill, { backgroundColor: P.surface }]}>
-        <AppText maxFontSizeMultiplier={1.3} style={[styles.agePillText, { color: P.ink }]}>
+      <View style={[styles.agePill, { backgroundColor: P.accent }]}>
+        <AppText maxFontSizeMultiplier={1.3} style={styles.agePillText}>
           {t('kayit.q.age', { age: year - value })}
         </AppText>
       </View>
@@ -464,14 +511,12 @@ function PaceBody() {
 function ActivityBody() {
   const { a, patch, t } = useQ();
   return (
-    <View style={{ paddingHorizontal: 20 }}>
-    <ActivityList
+    <ActivityCarousel
       label={t('kayit.q.activity_title')}
       value={a.activity}
       onChange={(v) => patch({ activity: v })}
       items={(['sedentary', 'light', 'moderate', 'active'] as const).map((k) => ({ key: k, title: t(`kayit.q.act_${k}`), sub: t(`kayit.q.act_${k}_sub`), steps: t(`kayit.q.steps_${k}`), icon: ACT_ICON[k] }))}
     />
-    </View>
   );
 }
 
@@ -513,11 +558,19 @@ function SportBody() {
 
 function DietBody() {
   const { a, patch, t } = useQ();
+  const tile = (d: (typeof K_DIETS)[number], i: number) => (
+    <ChoiceTile key={d} testID={`kayit-diet-${d}`} delay={i * K_MOTION.stagger} icon={DIET_ICON[d]} label={t(`kayit.q.diet_${d}`)} sub={t(`kayit.q.diet_${d}_sub`)} selected={a.diet === d} dimmed={a.diet != null && a.diet !== d} onPress={() => patch({ diet: d })} />
+  );
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.diet_title')} style={styles.list}>
-      {K_DIETS.map((d) => (
-        <OptionRow key={d} testID={`kayit-diet-${d}`} icon={DIET_ICON[d]} label={t(`kayit.q.diet_${d}`)} sub={t(`kayit.q.diet_${d}_sub`)} selected={a.diet === d} onPress={() => patch({ diet: d })} />
-      ))}
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.diet_title')} style={styles.grid}>
+      <View style={styles.row}>
+        {tile('all', 0)}
+        {tile('vegetarian', 1)}
+      </View>
+      <View style={styles.row}>
+        {tile('vegan', 2)}
+        {tile('pescatarian', 3)}
+      </View>
     </View>
   );
 }
@@ -566,9 +619,9 @@ function MealsBody() {
 function CookingBody() {
   const { a, patch, t } = useQ();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.cooking_title')} style={styles.list}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.cooking_title')} style={[styles.grid, { gap: 12 }]}>
       {K_COOKING.map((c) => (
-        <OptionRow key={c} testID={`kayit-cook-${c}`} icon={COOK_ICON[c]} label={t(`kayit.q.cook_${c}`)} sub={t(`kayit.q.cook_${c}_sub`)} selected={a.cooking === c} onPress={() => patch({ cooking: c })} />
+        <OptionCard key={c} testID={`kayit-cook-${c}`} icon={COOK_ICON[c]} label={t(`kayit.q.cook_${c}`)} sub={t(`kayit.q.cook_${c}_sub`)} selected={a.cooking === c} dimmed={a.cooking != null && a.cooking !== c} onPress={() => patch({ cooking: c })} />
       ))}
     </View>
   );
@@ -577,39 +630,33 @@ function CookingBody() {
 function StruggleBody() {
   const { a, patch, t } = useQ();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.struggle_title')} style={styles.list}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.struggle_title')} style={[styles.grid, { gap: 12 }]}>
       {K_STRUGGLES.map((c) => (
-        <OptionRow key={c} testID={`kayit-st-${c}`} icon={STRUGGLE_ICON[c]} label={t(`kayit.q.st_${c}`)} sub={t(`kayit.q.st_${c}_sub`)} selected={a.struggle === c} onPress={() => patch({ struggle: c })} />
+        <OptionCard key={c} testID={`kayit-st-${c}`} icon={STRUGGLE_ICON[c]} label={t(`kayit.q.st_${c}`)} sub={t(`kayit.q.st_${c}_sub`)} selected={a.struggle === c} dimmed={a.struggle != null && a.struggle !== c} onPress={() => patch({ struggle: c })} />
       ))}
     </View>
   );
 }
 
 function MinorView() {
-  const { t } = useQ();
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', gap: 20, paddingBottom: 40 }}>
-      <KTitle testID="kayit-minor-title" title={t('kayit.q.minor_title')} center />
-      <View style={{ paddingHorizontal: 20 }}>
-        <KCard style={{ gap: 6 }}>
-          <MinorText />
-        </KCard>
-      </View>
-    </View>
-  );
-}
-
-function MinorText() {
   const { t, P } = useQ();
   return (
-    <>
-      <AppText maxFontSizeMultiplier={1.4} style={[styles.cardTitle, { color: P.ink }]}>
-        {t('kayit.q.minor_card')}
+    <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center', gap: 22 }}>
+      <View style={{ alignItems: 'center' }}>
+        <Mascot size={120} calm />
+      </View>
+      <AppText testID="kayit-minor-title" accessibilityRole="header" maxFontSizeMultiplier={1.35} style={[styles.minorTitle, { color: P.ink }]}>
+        {t('kayit.q.minor_title')}
       </AppText>
-      <AppText maxFontSizeMultiplier={1.4} style={[styles.cardSub, { color: P.sec }]}>
-        {t('kayit.q.minor_sub')}
-      </AppText>
-    </>
+      <View style={[styles.card, { backgroundColor: P.card, borderColor: P.cardEdge }]}>
+        <AppText maxFontSizeMultiplier={1.4} style={[styles.cardTitle, { color: P.ink }]}>
+          {t('kayit.q.minor_card')}
+        </AppText>
+        <AppText maxFontSizeMultiplier={1.4} style={[styles.cardSub, { color: P.sec }]}>
+          {t('kayit.q.minor_sub')}
+        </AppText>
+      </View>
+    </View>
   );
 }
 
@@ -618,7 +665,6 @@ function titleFor(s: KQuestion, goal: string | null, t: (k: string, p?: Record<s
   return t(`kayit.q.${s}_title`);
 }
 
-/** I1/I2 ara ekranı: küçük cam ikon + tek cümle + Devam; maskot yok. Ekrana dokunmak da ilerletir. */
 function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void }) {
   const { t } = useT();
   const P = useK();
@@ -627,25 +673,30 @@ function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void 
     if (step === 'i2') haptic('success');
   }, [step]);
   return (
-    <View style={{ flex: 1 }}>
-      <Pressable testID={`kayit-${step}`} onPress={onNext} accessibilityRole="button" accessibilityLabel={`${t(`kayit.q.${step}_title`)} ${t(`kayit.q.${step}_sub`)}`} style={styles.inter}>
-        <Image source={step === 'i1' ? GLASS_TROPHY : GLASS_BOWL} style={styles.interIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
-        <AppText maxFontSizeMultiplier={1.35} style={[styles.interTitle, { color: P.ink }]}>
-          {t(`kayit.q.${step}_title`)}
-        </AppText>
-        <AppText maxFontSizeMultiplier={1.4} style={[styles.cardSub, { color: P.sec, textAlign: 'center' }]}>
-          {t(`kayit.q.${step}_sub`)}
-        </AppText>
-      </Pressable>
-      <KFooter bottom={insets.bottom}>
+    <Pressable testID={`kayit-${step}`} onPress={onNext} accessibilityRole="button" accessibilityLabel={`${t(`kayit.q.${step}_title`)} ${t(`kayit.q.${step}_sub`)}`} style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center' }}>
+      <View style={{ alignItems: 'center', marginBottom: 24 }}>
+        <Mascot size={150} react={step} />
+      </View>
+      <Rise duration={K_MOTION.scene} dy={60}>
+        <View style={[styles.card, { backgroundColor: P.card, borderColor: P.cardEdge, paddingVertical: 28 }]}>
+          <AppText maxFontSizeMultiplier={1.35} style={[styles.interTitle, { color: P.ink }]}>
+            {t(`kayit.q.${step}_title`)}
+          </AppText>
+          <AppText maxFontSizeMultiplier={1.4} style={[styles.cardSub, { color: P.sec, textAlign: 'center' }]}>
+            {t(`kayit.q.${step}_sub`)}
+          </AppText>
+        </View>
+      </Rise>
+      <View style={{ position: 'absolute', left: 24, right: 24, bottom: Math.max(insets.bottom, 16) + 8 }}>
         <KButton testID="kayit-next" label={t('kayit.q.next')} onPress={onNext} />
-      </KFooter>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
-/** Adımlar arası standart 220 ms fade; azaltılmışta anında. */
-function StepFade({ k, reduced, children }: { k: string; reduced: boolean; children: React.ReactNode }) {
+/** Adım içeriği: ileri → sağdan, geri → soldan (330 ms enter); azaltılmışta 220 ms opaklık. */
+function StepSlide({ k, dir, reduced, children }: { k: string; dir: 1 | -1; reduced: boolean; children: React.ReactNode }) {
+  const x = useSharedValue(0);
   const o = useSharedValue(1);
   const first = useRef(true);
   useEffect(() => {
@@ -654,31 +705,41 @@ function StepFade({ k, reduced, children }: { k: string; reduced: boolean; child
       return;
     }
     if (reduced) {
-      o.value = 1;
+      o.value = 0;
+      o.value = withTiming(1, { duration: REDUCED.duration });
       return;
     }
+    x.value = dir * 60;
     o.value = 0;
-    o.value = withTiming(1, { duration: K_MOTION.fade, easing: CURVE.standard });
+    x.value = withTiming(0, { duration: K_MOTION.shared, easing: CURVE.enter });
+    o.value = withTiming(1, { duration: K_MOTION.shared, easing: CURVE.enter });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [k]);
-  const st = useAnimatedStyle(() => ({ opacity: o.value }));
+  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateX: x.value }] }));
   return <Animated.View style={[{ flex: 1 }, st]}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  list: { paddingHorizontal: 20, gap: 10 },
+  footer: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
+  skip: { alignSelf: 'center', minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center' },
+  skipText: { fontFamily: FONT.bold, fontSize: 16, textDecorationLine: 'underline' },
+  grid: { paddingHorizontal: 20, gap: 14 },
+  row: { flexDirection: 'row', gap: 14 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   center: { textAlign: 'center' },
   semi: { fontFamily: FONT.semi, fontSize: 15 },
-  agePill: { borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8 },
-  agePillText: { fontFamily: FONT.semi, fontSize: 16 },
+  agePill: { borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8 },
+  agePillText: { fontFamily: FONT.bold, fontSize: 16, color: '#10301D' },
   bigRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 6 },
-  big: { fontFamily: FONT.display, fontSize: 48, lineHeight: 56, letterSpacing: -1, fontVariant: ['tabular-nums'] },
-  bigUnit: { fontFamily: FONT.medium, fontSize: 20, lineHeight: 26, marginBottom: 6 },
-  cardTitle: { fontFamily: FONT.semi, fontSize: 17, lineHeight: 23 },
+  big: { fontFamily: FONT.display, fontSize: 88, lineHeight: 96, letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  bigUnit: { fontFamily: FONT.semi, fontSize: 24, lineHeight: 30, marginBottom: 16 },
+  card: { borderRadius: 28, borderWidth: 1, padding: 22, gap: 8 },
+  cardTitle: { fontFamily: FONT.display, fontSize: 20 },
   cardSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21 },
-  inter: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  interIcon: { width: 56, height: 56, marginBottom: 4 },
-  interTitle: { fontFamily: FONT.display, fontSize: 28, lineHeight: 34, textAlign: 'center', letterSpacing: -0.4 },
+  minorTitle: { fontFamily: FONT.display, fontSize: 28, lineHeight: 33, textAlign: 'center' },
+  interTitle: { fontFamily: FONT.display, fontSize: 26, lineHeight: 31, textAlign: 'center' },
 });
+
+void Platform;
+void fmtDec1;
