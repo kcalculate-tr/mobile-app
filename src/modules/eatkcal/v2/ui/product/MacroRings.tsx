@@ -9,6 +9,7 @@ import { BlurView } from 'expo-blur';
 import { DURATION, ProgressRing, fontFamily, useReducedMotion } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { ringProgress, type DisplayMacros } from '../../model/productModel';
+import { palette } from '../../../../../core/design/tokens';
 
 const num = { fontFamily: fontFamily.headingBold, fontSize: 15, lineHeight: 19, fontVariant: ['tabular-nums' as const] };
 
@@ -25,7 +26,7 @@ function useCells(m: DisplayMacros) {
 
 /** Final (FinEkProduct `c.ring*`): kcal lime çizgi, P mürekkep, K ikincil, Y açık gri. */
 export function ringColor(key: string, dark: boolean): string {
-  if (key === 'kcal') return dark ? '#C6F04F' : '#4A6B00';
+  if (key === 'kcal') return dark ? palette.lime : '#4A6B00';
   if (key === 'p') return dark ? '#F5F5F5' : '#0A0A0A';
   if (key === 'k') return dark ? '#A1A1A6' : '#6B6B70';
   return dark ? '#48484A' : '#C3C7CC';

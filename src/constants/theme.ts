@@ -1,15 +1,17 @@
 // 🎨 Kcal Design System - Liquid Glass Aesthetic
 // Apple Design Award Standartları
 
+import { palette } from '../core/design/tokens';
+
 export const COLORS = {
   // Brand
-  // MARKA YEŞİLİ — tek kaynak. Eylül 2026'da #B9EF14'ten daha doygun/neon
-  // #B9EF14'e çekildi (referans: Mac sRGB ekran görüntüsü). Tüm UI bu
-  // token'ları kullanır; koddaki düz hex'ler de aynı değere güncellendi.
+  // MARKA YEŞİLİ — tek kaynak `src/core/design/tokens.ts › palette.lime` (#B9EF14).
+  // Eylül 2026'da eski soluk lime'dan daha doygun/neon #B9EF14'e çekildi (referans: Mac
+  // sRGB ekran görüntüsü); G40-S1'de yeni tasarım dili de aynı değere geçti.
   brand: {
-    green: '#B9EF14',
+    green: palette.lime,
     greenLight: '#D2F55E',
-    greenBright: '#B9EF14',
+    greenBright: palette.lime,
     // Kayan kampanya bandı referansta yarım ton daha yeşil ölçüldü.
     greenTicker: '#BAF112',
   },

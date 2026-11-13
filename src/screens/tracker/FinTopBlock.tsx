@@ -33,13 +33,14 @@ import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
 import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
 import { HomeFirstMealCard, HomeOnboardingSlot, useOrientTarget } from '../../modules/onboarding/first'; // G18-S1: profil kartı yuvası, ilk öğün kartı, Orient3 hedefi
+import { palette } from '../../core/design/tokens';
 
 export { pctLabel };
 
 /** FinHomeR3 renkleri (pano tokens()): iz, iç dolgu, Enerji konturu, ikincil. */
 export function finTokens(isDark: boolean) {
   return isDark
-    ? { track: '#2C2C2E', nested: '#2C2C2E', limeLine: '#C6F04F', sec: '#A1A1A6' }
+    ? { track: '#2C2C2E', nested: '#2C2C2E', limeLine: palette.lime, sec: '#A1A1A6' }
     : { track: '#E3E5E9', nested: '#FFFFFF', limeLine: '#4A6B00', sec: '#6B6B70' };
 }
 

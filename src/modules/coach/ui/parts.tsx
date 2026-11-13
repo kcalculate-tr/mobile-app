@@ -17,12 +17,13 @@ import { useT } from '../../../core/i18n';
 import { Sparkle, ThumbsDown, ThumbsUp } from '../../../components/icons';
 import { streamPlan } from '../model';
 import { KOC_ACIK } from './mascot';
+import { palette } from '../../../core/design/tokens';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const BOWL = require('../../../../assets/glass/bowl.png');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-export const LIME = '#C6F04F';
+export const LIME = palette.lime;
 export const LIME_INK = '#0A0A0A';
 
 /** Tasarım (FinCoachChat) ek tonları — tema rolleri dışındaki ikincil çizgi/çip yüzeyleri. */
@@ -40,7 +41,7 @@ export function useCoachTones() {
     chip: d ? '#2C2C2E' : '#E9EBEE',
     nested: d ? '#2C2C2E' : '#F3F4F6',
     red: d ? '#FF6961' : '#D70015',
-    glow: d ? 'rgba(198,240,79,0.22)' : 'rgba(198,240,79,0.55)',
+    glow: d ? 'rgba(185,239,20,0.22)' : 'rgba(185,239,20,0.55)',
     barOff: d ? '#636366' : '#B7BBC1',
   };
 }

@@ -30,6 +30,7 @@ import { KcalAiMark } from '../ui/KcalAiMark';
 import { trackSub } from '../subTrack';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useCoachEnabled } from '../../coach/access';
+import { palette } from '../../../core/design/tokens';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası (koç: maskot).
@@ -407,14 +408,14 @@ function PaywallGlow({ dark }: { dark: boolean }) {
       <Svg width={W} height={H} style={styles.glowSvg} testID="sub-glow-svg">
         <Defs>
           <RadialGradient id="pwA" cx={W * 0.22} cy={H * 0.2} rx={R} ry={R} gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor="#C6F04F" stopOpacity={oA} />
-            <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={oA * 0.55} />
-            <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+            <Stop offset="0" stopColor={palette.lime} stopOpacity={oA} />
+            <Stop offset="0.45" stopColor={palette.lime} stopOpacity={oA * 0.55} />
+            <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
           </RadialGradient>
           <RadialGradient id="pwB" cx={W * 0.85} cy={H * 0.62} rx={R * 0.9} ry={R * 0.9} gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor="#C6F04F" stopOpacity={oB} />
-            <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={oB * 0.55} />
-            <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+            <Stop offset="0" stopColor={palette.lime} stopOpacity={oB} />
+            <Stop offset="0.45" stopColor={palette.lime} stopOpacity={oB * 0.55} />
+            <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <Rect x={0} y={0} width={W} height={H} fill="url(#pwA)" />
@@ -454,7 +455,7 @@ function PlanRow({ c, selected, coach, onPress }: { c: PlanCard; selected: boole
   const t = useTheme();
   const { t: tr } = useT();
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
-  const frame = t.isDark ? '#C6F04F' : '#4A6B00';
+  const frame = t.isDark ? palette.lime : '#4A6B00';
   const ink = t.color.ink;
   const period = tr(c.yearly ? 'sub.paywall.yearly' : 'sub.paywall.monthly');
   const priceLine = `${c.priceText}${tr(c.yearly ? 'sub.paywall.per_year' : 'sub.paywall.per_month')}`;
@@ -476,7 +477,7 @@ function PlanRow({ c, selected, coach, onPress }: { c: PlanCard; selected: boole
         </View>
       ) : null}
       <View style={styles.cardRow}>
-        <View style={[styles.radio, selected ? { backgroundColor: '#C6F04F', borderColor: '#C6F04F' } : { borderColor: t.isDark ? '#48484A' : '#C3C7CC' }]}>
+        <View style={[styles.radio, selected ? { backgroundColor: palette.lime, borderColor: palette.lime } : { borderColor: t.isDark ? '#48484A' : '#C3C7CC' }]}>
           {selected ? <Check size={14} color="#0A0A0A" weight="bold" /> : null}
         </View>
         <AppText style={[styles.period, { color: ink }]}>{period}</AppText>
@@ -553,7 +554,7 @@ function Dots({ n, active, dark, line2 }: { n: number; active: number; dark: boo
   return (
     <View style={styles.dots} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
       {Array.from({ length: n }, (_, i) => (
-        <View key={i} style={[styles.dot, i === active ? { width: 18, backgroundColor: dark ? '#C6F04F' : '#0A0A0A' } : { backgroundColor: line2 }]} />
+        <View key={i} style={[styles.dot, i === active ? { width: 18, backgroundColor: dark ? palette.lime : '#0A0A0A' } : { backgroundColor: line2 }]} />
       ))}
     </View>
   );
@@ -587,7 +588,7 @@ const styles = StyleSheet.create({
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   period: { fontSize: 16, fontWeight: '600' },
   priceCol: { alignItems: 'flex-end', flexShrink: 1 },
-  trialChip: { backgroundColor: '#C6F04F', borderRadius: 8, paddingHorizontal: 8, minHeight: 20, justifyContent: 'center', marginBottom: 4 },
+  trialChip: { backgroundColor: palette.lime, borderRadius: 8, paddingHorizontal: 8, minHeight: 20, justifyContent: 'center', marginBottom: 4 },
   trialText: { fontSize: 12, fontWeight: '700', color: '#0A0A0A' },
   price: { fontSize: 18, fontWeight: '800' },
   monthly: { fontSize: 12, marginTop: 2 },
@@ -602,7 +603,7 @@ const styles = StyleSheet.create({
   upgradeSub: { fontSize: 12, marginTop: 2 },
   backFresh: { alignSelf: 'center', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12 },
   backFreshText: { fontSize: 14, fontWeight: '600' },
-  cta: { minHeight: 56, borderRadius: 28, backgroundColor: '#C6F04F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  cta: { minHeight: 56, borderRadius: 28, backgroundColor: palette.lime, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   ctaText: { fontSize: 17, fontWeight: '700', color: '#0A0A0A' },
   summary: { marginTop: 12, fontSize: 14, fontWeight: '600', textAlign: 'center' },
   legal: { marginTop: 12, fontSize: 12, lineHeight: 17 },

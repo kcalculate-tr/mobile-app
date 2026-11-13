@@ -24,6 +24,7 @@ import { useSheetKeyboard, SCROLL_KEYBOARD } from '../../../../../core/design/ke
 import { ekType, useEk } from '../kit';
 import { isDraftComplete, type WaitlistDraft, type WaitlistKind } from '../../model/waitlist';
 import { submitWaitlist } from './waitlistSend';
+import { palette } from '../../../../../core/design/tokens';
 
 const EAT_EASE = RN_CURVE.eat;
 const STD_EASE = RN_CURVE.standard;
@@ -268,6 +269,6 @@ const styles = StyleSheet.create({
   cta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   ctaText: { fontFamily: fontFamily.bodySemibold, fontSize: 16, lineHeight: 21 },
   done: { flex: 1, paddingTop: 40, paddingHorizontal: 24, alignItems: 'center', gap: 10 },
-  doneIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#C6F04F', alignItems: 'center', justifyContent: 'center' },
+  doneIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: palette.lime, alignItems: 'center', justifyContent: 'center' },
   doneT: { marginTop: 6, fontFamily: fontFamily.headingBold, fontSize: 22, lineHeight: 27, textAlign: 'center' },
 });

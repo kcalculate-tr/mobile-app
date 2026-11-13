@@ -1,4 +1,5 @@
 import { useTheme } from '../../../core/design/ThemeProvider';
+import { palette } from '../../../core/design/tokens';
 
 /**
  * Onboarding + Takibe başla paleti (G15-S1). Final panolarındaki `T` nesnesi
@@ -51,7 +52,7 @@ export const ONB_LIGHT: OnbPalette = {
   glowB: 0.22,
   dis: '#DCDEE2',
   disText: '#6B6B70',
-  accent: '#C6F04F',
+  accent: palette.lime,
   onAccent: '#0A0A0A',
   accentSub: 'rgba(10,10,10,0.72)',
   accentIcon: 'rgba(10,10,10,0.08)',
@@ -76,7 +77,7 @@ export const ONB_DARK: OnbPalette = {
   glowB: 0.32,
   dis: '#2C2C2E',
   disText: '#8E8E93',
-  accent: '#C6F04F',
+  accent: palette.lime,
   onAccent: '#0A0A0A',
   accentSub: 'rgba(10,10,10,0.72)',
   accentIcon: 'rgba(10,10,10,0.08)',

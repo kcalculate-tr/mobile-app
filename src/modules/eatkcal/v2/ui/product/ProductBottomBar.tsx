@@ -15,6 +15,7 @@ import { CaretRight, Check, Minus, Plus } from '../../../../../components/icons'
 import { DURATION, RN_CURVE, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, money, useEk } from '../kit';
 import type { DisplayMacros } from '../../model/productModel';
+import { palette } from '../../../../../core/design/tokens';
 
 /** eatkcal yayı 200/28'in CSS karşılığı (FinMoTokens) — tek kaynak motion.tsx. */
 const EAT_EASE = RN_CURVE.eat;
@@ -260,7 +261,7 @@ export function ProductBottomBar({
               testID="ek-product-go-cart"
             >
               <Animated.View style={[styles.chk, { opacity: chk, transform: [{ scale: chk }] }]}>
-                <Check size={13} color="#C6F04F" weight="bold" />
+                <Check size={13} color={palette.lime} weight="bold" />
               </Animated.View>
               <Text style={[styles.ctaText, { color: c.onAccent }]} numberOfLines={1}>
                 {t('eatkcal.v2.product.go_cart')}

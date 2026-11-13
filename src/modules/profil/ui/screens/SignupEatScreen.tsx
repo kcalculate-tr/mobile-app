@@ -92,7 +92,7 @@ export default function SignupEatScreen({
                   {city.name}
                 </Text>
                 {city.allowed ? (
-                  <Text style={{ fontFamily: bodyMedium, fontSize: 12, color: t.color.accent }}>
+                  <Text style={{ fontFamily: bodyMedium, fontSize: 12, color: t.color.accentLine }}>
                     {tr('eatkcal.city_gate.active_note')}
                   </Text>
                 ) : (
@@ -103,7 +103,7 @@ export default function SignupEatScreen({
               </View>
               {city.allowed ? (
                 selected === city.name ? (
-                  <Check size={18} color={t.color.accent} weight="bold" />
+                  <Check size={18} color={t.color.accentLine} weight="bold" />
                 ) : (
                   <CaretRight size={16} color={t.color.secondary} />
                 )

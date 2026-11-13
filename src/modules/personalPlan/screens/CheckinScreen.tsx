@@ -23,6 +23,7 @@ import { effectiveTargets, type PpMeasures, type PpSaved } from '../types';
 import { useMyPlan, weighedThisWeek } from '../useMyPlan';
 import { DrawPath, Expand, Rise } from '../ui/motion';
 import { GLASS, Note, Panel, PpBackdrop, PpButton, Row, ScreenHeader, Stepper, usePp } from '../ui/parts';
+import { palette } from '../../../core/design/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PersonalPlanCheckin'>;
 
@@ -314,9 +315,9 @@ export default function CheckinScreen({ navigation }: Props) {
             <Svg width={chartW} height={chartH}>
               <SvgLine x1={8} x2={chartW - 8} y1={Y(target)} y2={Y(target)} stroke={P.line2} strokeWidth={1} strokeDasharray="2 4" />
               <Path d={planD} stroke={P.sec} strokeWidth={1.5} fill="none" strokeDasharray="4 4" />
-              {pts.length > 1 ? <DrawPath d={real} length={Math.max(1, realLen)} color={P.isDark ? '#C6F04F' : '#5E7A12'} width={2.5} /> : null}
+              {pts.length > 1 ? <DrawPath d={real} length={Math.max(1, realLen)} color={P.isDark ? palette.lime : '#5E7A12'} width={2.5} /> : null}
               {pts.map((p, i) => (
-                <Circle key={p.date} cx={X(p.date)} cy={Y(p.weightKg)} r={i === pts.length - 1 ? 5 : 3} fill={i === pts.length - 1 ? '#C6F04F' : P.surface} stroke={P.ink} strokeWidth={1.5} />
+                <Circle key={p.date} cx={X(p.date)} cy={Y(p.weightKg)} r={i === pts.length - 1 ? 5 : 3} fill={i === pts.length - 1 ? palette.lime : P.surface} stroke={P.ink} strokeWidth={1.5} />
               ))}
               <Circle cx={X(endDate)} cy={Y(target)} r={4} fill={P.surface} stroke={P.sec} strokeWidth={1.5} />
             </Svg>

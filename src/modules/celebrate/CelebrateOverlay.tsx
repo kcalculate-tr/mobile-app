@@ -14,13 +14,14 @@ import { X, Export } from '../../components/icons';
 import { GlassObject } from './GlassObject';
 import { celebrateContent, type CelebrateMoment } from './types';
 import { useOverlayGate } from '../onboarding/first/overlayGate';
+import { palette } from '../../core/design/tokens';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // Paylasim karti tasarim sabitleri (bilerek sabit — kart koyu/lime "marka" ani).
 const CARD_BG = '#0A0A0A';
 const CARD_TRACK = '#2C2C2E';
-const LIME = '#C6F04F';
+const LIME = palette.lime;
 const CARD_SUB = '#A1A1A6';
 const RING = 132;
 const RING_STROKE = 10;

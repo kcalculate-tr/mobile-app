@@ -13,6 +13,7 @@ import { useT } from '../../../core/i18n';
 import { CaretLeft, Check, Minus, Plus } from '../../../components/icons';
 import { useOnb, type OnbPalette } from '../../onboarding/components/onbTheme';
 import { MorphSwap, PressCard } from './motion';
+import { palette } from '../../../core/design/tokens';
 
 export const GLASS: Record<'trophy' | 'flame' | 'drop' | 'foot' | 'bowl', ImageSourcePropType> = {
   trophy: require('../../../../assets/glass/trophy.png'),
@@ -45,12 +46,12 @@ export function PpBackdrop({ glow = true }: { glow?: boolean }) {
         <Svg width="100%" height="100%">
           <Defs>
             <RadialGradient id="ppA" cx="20%" cy="12%" rx="80%" ry="40%">
-              <Stop offset="0" stopColor="#C6F04F" stopOpacity={P.glowA} />
-              <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+              <Stop offset="0" stopColor={palette.lime} stopOpacity={P.glowA} />
+              <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
             </RadialGradient>
             <RadialGradient id="ppB" cx="85%" cy="70%" rx="75%" ry="40%">
-              <Stop offset="0" stopColor="#C6F04F" stopOpacity={P.glowB * 0.7} />
-              <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+              <Stop offset="0" stopColor={palette.lime} stopOpacity={P.glowB * 0.7} />
+              <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#ppA)" />
@@ -519,14 +520,14 @@ export function TargetCurve({
         <Svg width={w} height={height}>
           <Defs>
             <LinearGradient id="ppCurve" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#C6F04F" stopOpacity={P.isDark ? 0.28 : 0.4} />
-              <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+              <Stop offset="0" stopColor={palette.lime} stopOpacity={P.isDark ? 0.28 : 0.4} />
+              <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
             </LinearGradient>
           </Defs>
           <Path d={area} fill="url(#ppCurve)" />
-          <Path d={d} stroke={P.isDark ? '#C6F04F' : '#5E7A12'} strokeWidth={2} fill="none" strokeDasharray={dashed ? '4 4' : undefined} />
+          <Path d={d} stroke={P.isDark ? palette.lime : '#5E7A12'} strokeWidth={2} fill="none" strokeDasharray={dashed ? '4 4' : undefined} />
           <Circle cx={x0} cy={y0} r={4} fill={P.surface} stroke={P.ink} strokeWidth={2} />
-          <Circle cx={x1} cy={y1} r={6} fill="#C6F04F" stroke={P.ink} strokeWidth={2} />
+          <Circle cx={x1} cy={y1} r={6} fill={palette.lime} stroke={P.ink} strokeWidth={2} />
         </Svg>
       </MorphSwap>
       <View style={styles.curveLabels}>

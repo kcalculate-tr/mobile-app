@@ -64,6 +64,7 @@ import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
 import { badgeText, emitLogBadge, onLogBadge, setHomeTabNode, setHomeTabTarget } from './logTrace';
 import { useOrientTarget } from '../onboarding/first/orient/useOrientTarget'; // G18-S1 temas
+import { palette } from '../../core/design/tokens';
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
 function glassTokens(dark: boolean) {
@@ -72,7 +73,7 @@ function glassTokens(dark: boolean) {
       ink: '#F5F5F5',
       // FinTabBar: seçili olmayan sekme ikincil metin rengi.
       sec: '#A1A1A6',
-      dotBg: '#C6F04F',
+      dotBg: palette.lime,
       dotFg: '#0A0A0A',
       glass: 'rgba(44,44,46,0.55)',
       edge: 'rgba(255,255,255,0.14)',

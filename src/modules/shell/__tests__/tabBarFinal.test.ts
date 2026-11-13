@@ -33,7 +33,7 @@ test('TabBarR3: pasif sekme ikincil renk; rozet pano renkleri; seçili hap gri (
   assert.match(src, /sec: '#6B6B70'/);
   assert.match(src, /sec: '#A1A1A6'/);
   assert.match(src, /dotBg: '#4A6B00'/);
-  assert.match(src, /dotBg: '#C6F04F'/);
+  assert.match(src, /dotBg: palette\.lime/); // G40-S1: tek marka yeşili token'dan
   assert.match(src, /isActive \? g\.activeInk : g\.sec/);
   assert.doesNotMatch(src, /#1C1C1E/, 'Final siyah hap UYGULANMAZ');
   assert.doesNotMatch(src, /\$\{label\} · /, 'nokta ayraçsız erişilebilirlik etiketi');

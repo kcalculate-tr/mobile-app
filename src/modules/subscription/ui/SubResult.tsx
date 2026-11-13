@@ -14,6 +14,7 @@ import type { PlanCard } from '../../../lib/subscription/plans';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { PurchasePlanRow } from '../../personalPlan/ui/entries';
 import { KcalAiMark } from './KcalAiMark';
+import { palette } from '../../../core/design/tokens';
 
 export type SubResultState = 'success' | 'cancelled' | 'pending' | 'error';
 
@@ -125,7 +126,7 @@ export default function SubResult({
           <PurchasePlanRow />
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: Math.max(16, insets.bottom + 8) }]}>
-          <Pressable onPress={onPrimary} accessibilityRole="button" style={[styles.btn, { backgroundColor: '#C6F04F' }]} testID="sub-result-primary">
+          <Pressable onPress={onPrimary} accessibilityRole="button" style={[styles.btn, { backgroundColor: palette.lime }]} testID="sub-result-primary">
             <AppText style={[styles.btnText, { color: '#0A0A0A' }]}>{tr('sub.result.ok_primary')}</AppText>
           </Pressable>
           {onSecondary ? (
@@ -177,7 +178,7 @@ export default function SubResult({
         <Pressable
           onPress={onPrimary}
           accessibilityRole="button"
-          style={[styles.btn, { backgroundColor: M.lime ? '#C6F04F' : ink }]}
+          style={[styles.btn, { backgroundColor: M.lime ? palette.lime : ink }]}
           testID="sub-result-primary"
         >
           <AppText style={[styles.btnText, { color: M.lime ? '#0A0A0A' : t.color.bg }]}>{M.primary}</AppText>
@@ -219,7 +220,7 @@ function TrophyPop() {
 
 const styles = StyleSheet.create({
   trophyWrap: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center' },
-  glow: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(198,240,79,0.28)' },
+  glow: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(185,239,20,0.28)' },
   trophyImg: { width: 190, height: 190 },
   fill: { flex: 1 },
   scroll: { paddingHorizontal: 16, paddingBottom: 24 },
@@ -227,9 +228,9 @@ const styles = StyleSheet.create({
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   trophy: { alignItems: 'center', marginTop: 4 },
   center: { alignItems: 'center', marginTop: 8 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#C6F04F', borderRadius: 16, paddingHorizontal: 12, minHeight: 32, marginBottom: 10 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: palette.lime, borderRadius: 16, paddingHorizontal: 12, minHeight: 32, marginBottom: 10 },
   okTitle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 38, textAlign: 'center' },
-  mark: { backgroundColor: '#C6F04F', color: '#0A0A0A' },
+  mark: { backgroundColor: palette.lime, color: '#0A0A0A' },
   okBody: { marginTop: 8, fontSize: 16, lineHeight: 22, textAlign: 'center' },
   small: { marginTop: 6, fontSize: 13, textAlign: 'center' },
   rows: { marginTop: 32, borderRadius: 20, paddingHorizontal: 14 },

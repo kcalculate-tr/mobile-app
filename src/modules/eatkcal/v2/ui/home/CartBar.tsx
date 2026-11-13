@@ -16,6 +16,7 @@ import { DURATION, RN_CURVE, SPRING, fontFamily, haptic, useReducedMotion } from
 import { useCartStore } from '../../../../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from '../../../../shell/layout';
 import { ekType, money, useEk } from '../kit';
+import { palette } from '../../../../../core/design/tokens';
 
 const EAT_EASE = RN_CURVE.eat;
 const EXIT_EASE = RN_CURVE.exit;
@@ -134,7 +135,7 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
           <Text style={[styles.b15, { color: c.onAccent }]} numberOfLines={1} testID="ek-cart-bar-label">
             {label}
           </Text>
-          <CountPill count={count} bg={c.onAccent} fg="#C6F04F" testID="ek-cart-bar-count" />
+          <CountPill count={count} bg={c.onAccent} fg={palette.lime} testID="ek-cart-bar-count" />
         </Animated.View>
         <Animated.View style={rollStyle}>
           <Text style={[styles.total, ekType.num, { color: c.onAccent }]} numberOfLines={1} testID="ek-cart-bar-total">
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
   bar: {
     height: CART_BAR_H,
     borderRadius: 28,
-    backgroundColor: '#C6F04F',
+    backgroundColor: palette.lime,
     paddingLeft: 20,
     paddingRight: 14,
     flexDirection: 'row',

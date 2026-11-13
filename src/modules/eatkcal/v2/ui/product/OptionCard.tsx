@@ -13,6 +13,7 @@ import { SPRING, haptic, useReducedMotion } from '../../../../../core/design';
 import { ekType, useEk } from '../kit';
 import { formatPriceDelta } from '../../../../../lib/money';
 import { optionImageCandidates, type OptionImageCandidate } from '../../model/optionImage';
+import { palette } from '../../../../../core/design/tokens';
 
 /** G38 md.1: ad en fazla 2 satır; kırpma son çare (önce veri tarafında kısa ad, G38 migration). */
 export const OPTION_NAME_LINES = 2;
@@ -186,7 +187,7 @@ export function OptionCard({
           importantForAccessibility="no-hide-descendants"
           style={[styles.check, { backgroundColor: '#0A0A0A', transform: [{ scale: pop }] }]}
         >
-          <Check size={14} color="#C6F04F" weight="bold" />
+          <Check size={14} color={palette.lime} weight="bold" />
         </Animated.View>
       ) : null}
     </Pressable>

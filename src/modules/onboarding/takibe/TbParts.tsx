@@ -206,7 +206,7 @@ export function WheelPicker({
       >
         <View
           pointerEvents="none"
-          style={[styles.wheelBand, { backgroundColor: P.isDark ? 'rgba(198,240,79,0.22)' : 'rgba(198,240,79,0.42)' }]}
+          style={[styles.wheelBand, { backgroundColor: P.isDark ? 'rgba(185,239,20,0.22)' : 'rgba(185,239,20,0.42)' }]}
         />
         <ScrollView {...SCROLL_KEYBOARD}
           ref={ref}

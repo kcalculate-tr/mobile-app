@@ -23,6 +23,7 @@ import { usePpFlow } from '../../store';
 import type { PpAnswers } from '../../types';
 import { Expand, Pulse, Rise, RingProgress, Rotator, useCountUp, PP_MOTION } from '../../ui/motion';
 import { GLASS, Note, Panel, PpButton, PpCard, Stepper, TargetCurve, usePp } from '../../ui/parts';
+import { palette } from '../../../../core/design/tokens';
 
 const YEAR = () => new Date().getFullYear();
 
@@ -128,7 +129,7 @@ export function CalcStep({ onDone, onError }: { onDone: (r: PpResult) => void; o
     <PpCard scroll={false}>
       <View style={styles.calcHead}>
         <View style={styles.ringBox}>
-          <RingProgress size={132} stroke={10} progress={shown / 5} color="#C6F04F" track={P.track} />
+          <RingProgress size={132} stroke={10} progress={shown / 5} color={palette.lime} track={P.track} />
           <View style={StyleSheet.absoluteFill as object}>
             <View style={styles.ringCenter}>
               <Pulse active={state === 'running'} done={state === 'done'}>
@@ -337,7 +338,7 @@ export function KcalCard({ calories, protein, carbs, fat, suggested, onEdit, ani
   return (
     <View style={[styles.kcalCard, { backgroundColor: P.surface, borderColor: P.surfaceEdge }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <View style={[styles.flameRing, { borderColor: '#C6F04F' }]}>
+        <View style={[styles.flameRing, { borderColor: palette.lime }]}>
           <Image source={GLASS.flame} style={{ width: 34, height: 42 }} resizeMode="contain" />
         </View>
         <View style={{ flex: 1 }} accessible accessibilityLabel={`${i18n.t('pp.daily_kcal')}: ${calories} ${i18n.t('pp.kcal')}`}>
@@ -505,7 +506,7 @@ export function ResultStep({ onStart, saving }: { onStart: () => void; saving: b
       {editing ? (
         <View style={[styles.kcalCard, { backgroundColor: P.surface, borderColor: P.surfaceEdge }]} testID="pp-editor">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 6 }}>
-            <View style={[styles.flameRing, { borderColor: '#C6F04F' }]}>
+            <View style={[styles.flameRing, { borderColor: palette.lime }]}>
               <Image source={GLASS.flame} style={{ width: 34, height: 42 }} resizeMode="contain" />
             </View>
             <View>

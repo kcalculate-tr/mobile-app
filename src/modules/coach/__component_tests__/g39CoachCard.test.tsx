@@ -82,8 +82,8 @@ for (const scheme of ['light', 'dark'] as const) {
   test(`${scheme}: kart dolgusu marka lime'ı (#B9EF14), metin ve düğme SİYAH, lime üstünde beyaz yazı yok`, () => {
     const r = card(false, scheme);
     const root = r.getByTestId('coach-home-card');
-    expect(StyleSheet.flatten(root.props.style).backgroundColor).toBe(palette.brandLime);
-    expect(palette.brandLime).toBe('#B9EF14');
+    expect(StyleSheet.flatten(root.props.style).backgroundColor).toBe(palette.lime);
+    expect(palette.lime).toBe('#B9EF14');
     const texts = root.findAll((n: TNode) => typeof n.type !== 'string' && typeof n.props?.children === 'string' && n.props?.style != null);
     const btn = r.getByTestId('coach-home-open');
     const btnBg = StyleSheet.flatten(typeof btn.props.style === 'function' ? btn.props.style({ pressed: false }) : btn.props.style).backgroundColor;
@@ -92,7 +92,7 @@ for (const scheme of ['light', 'dark'] as const) {
       const color = StyleSheet.flatten(t.props.style)?.color;
       if (color == null) continue;
       const insideBtn = btn.findAll((n: TNode) => n === t).length > 0;
-      if (insideBtn) expect(color).toBe(palette.brandLime); // siyah düğme üstünde lime yazı
+      if (insideBtn) expect(color).toBe(palette.lime); // siyah düğme üstünde lime yazı
       else expect(['#0A0A0A', 'rgba(10,10,10,0.72)']).toContain(color);
     }
   });

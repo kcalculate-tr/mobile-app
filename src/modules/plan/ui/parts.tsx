@@ -17,6 +17,7 @@ import { Check, CheckCircle, Plus } from '../../../components/icons';
 import type { PlanItem, Slot } from '../types';
 import { SLOTS } from '../types';
 import { dayOfMonth, dayShort, type Lang } from '../week';
+import { palette } from '../../../core/design/tokens';
 
 
 export const GLASS = {
@@ -40,7 +41,7 @@ export function usePlanTones() {
     sec: t.color.secondary,
     lime: t.color.accent,
     onLime: t.color.onAccent,
-    limeSoft: dark ? 'rgba(198,240,79,0.32)' : '#E5F7B5',
+    limeSoft: dark ? 'rgba(185,239,20,0.32)' : '#E5F7B5',
     limeLine: t.color.accentLine,
     track: dark ? '#2C2C2E' : '#ECEEF1',
     chipSel: dark ? '#F5F5F5' : '#0A0A0A',
@@ -480,5 +481,5 @@ const styles = StyleSheet.create({
   toastUndo: { fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' },
   toastPill: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   toastPillText: { fontSize: 14, fontWeight: '700' },
-  logDot: { position: 'absolute', left: 0, top: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: '#C6F04F', shadowColor: '#C6F04F', shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, zIndex: 50 },
+  logDot: { position: 'absolute', left: 0, top: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: palette.lime, shadowColor: palette.lime, shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, zIndex: 50 },
 });

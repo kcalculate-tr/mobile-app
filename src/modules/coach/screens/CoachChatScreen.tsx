@@ -49,6 +49,7 @@ import { CoachAvatar, CoachGlass, FeedbackRow, QuotaPill, StreamText, TypingDots
 import { DeleteConfirm, MenuSheet, UpsellSheet } from '../ui/sheets';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { CoachPlanChip } from '../../personalPlan/ui/entries';
+import { palette } from '../../../core/design/tokens';
 
 type Nav = { navigate: (n: string, p?: object) => void; goBack: () => void; canGoBack?: () => boolean };
 
@@ -543,7 +544,7 @@ const styles = StyleSheet.create({
   stamp: { alignSelf: 'center', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 12 },
   stampText: { fontSize: 13, fontWeight: '500' },
   meRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingLeft: 56, paddingRight: 16 },
-  meBubble: { backgroundColor: '#C6F04F', borderRadius: 20, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10 },
+  meBubble: { backgroundColor: palette.lime, borderRadius: 20, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10 },
   meText: { fontSize: 16, lineHeight: 22, color: '#0A0A0A' },
   coachTurn: {},
   coachRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingLeft: 16 },

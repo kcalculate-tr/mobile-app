@@ -95,6 +95,7 @@ import { noteQuota, useSubscriptionStore, useTier } from '../../../../lib/subscr
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { monthlyPriceOf, usePlanCards } from '../../../../lib/subscription/usePlanCards';
 import type { AiScanOutcome } from '../types';
+import { palette } from '../../../../core/design/tokens';
 
 /**
  * G28-S1 md.4: ön planda başarıyla analiz edilen anahtar kuyruktaysa (önce çevrimdışı
@@ -1471,7 +1472,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#C6F04F',
+    backgroundColor: palette.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },

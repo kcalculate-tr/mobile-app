@@ -35,12 +35,13 @@ import {
 } from '../../../../components/icons';
 import { WAVE_BARS, isSheetPhase, splitSpokenItems, splitTail, waveHeights, type VoicePhase } from './voiceCore';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
+import { palette } from '../../../../core/design/tokens';
 
 export type ScanInputMode = 'photo' | 'voice' | 'barcode' | 'manual';
 
 function tokens(isDark: boolean) {
   return isDark
-    ? { bg: '#000000', card: '#1C1C1E', nested: '#2C2C2E', line: '#2C2C2E', line2: '#48484A', wave: '#C6F04F', halo: 'rgba(198,240,79,0.35)', dotHalo: 'rgba(198,240,79,0.18)', scrim: 'rgba(0,0,0,0.4)' }
+    ? { bg: '#000000', card: '#1C1C1E', nested: '#2C2C2E', line: '#2C2C2E', line2: '#48484A', wave: palette.lime, halo: 'rgba(185,239,20,0.35)', dotHalo: 'rgba(185,239,20,0.18)', scrim: 'rgba(0,0,0,0.4)' }
     : { bg: '#F3F4F6', card: '#FFFFFF', nested: '#F3F4F6', line: '#E9EBEE', line2: '#C3C7CC', wave: '#4A6B00', halo: 'rgba(74,107,0,0.3)', dotHalo: 'rgba(74,107,0,0.14)', scrim: 'rgba(10,10,10,0.4)' };
 }
 
@@ -168,7 +169,7 @@ export default function FinScanVoice(p: FinScanVoiceProps) {
             {processing ? (
               <Animated.View entering={reduced ? FadeIn.duration(DURATION.fast) : FadeIn.duration(DURATION.fast)} style={styles.procWrap} accessibilityLiveRegion="polite">
                 <View style={[styles.dotHalo, { backgroundColor: k.dotHalo }]}>
-                  <View style={[styles.dot, { backgroundColor: '#C6F04F' }]} />
+                  <View style={[styles.dot, { backgroundColor: palette.lime }]} />
                 </View>
                 <AppText style={styles.procTitle}>{tr('voice.processing')}</AppText>
                 <AppText tone="secondary" style={styles.procSub}>
@@ -280,7 +281,7 @@ export default function FinScanVoice(p: FinScanVoiceProps) {
                 style={[styles.mic, { borderColor: t.color.ink, opacity: processing ? 0.4 : 1 }]}
                 testID="voice-mic"
               >
-                <View style={[styles.micInner, { backgroundColor: '#C6F04F' }]}>
+                <View style={[styles.micInner, { backgroundColor: palette.lime }]}>
                   {recording ? <Stop size={24} color="#0A0A0A" weight="fill" /> : <Microphone size={26} color="#0A0A0A" weight="bold" />}
                 </View>
               </Pressable>

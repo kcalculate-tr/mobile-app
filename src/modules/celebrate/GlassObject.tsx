@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { CURVE, DURATION, SPRING, TIMING, useBreath, useEnter, useFloat, useReducedMotion } from '../../core/design';
+import { palette } from '../../core/design/tokens';
 
 /**
  * Kutlama modulunun cam nesnesi (FinMoGlass). Core'daki GlassObject REFERANS
@@ -135,6 +136,6 @@ const styles = StyleSheet.create({
   // Lime hale — kutlama vurgusu (tema'dan bağımsız sabit tasarım rengi). Final
   // go-glow bulanık radyal; RN'de bulanıklık yok → küçük + düşük opaklık.
   glowWrap: { position: 'absolute', alignItems: 'center', justifyContent: 'center', opacity: 0.45 },
-  glow: { backgroundColor: '#C6F04F' },
+  glow: { backgroundColor: palette.lime },
   clip: { alignItems: 'center', justifyContent: 'center' },
 });

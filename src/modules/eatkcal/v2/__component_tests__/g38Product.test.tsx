@@ -20,6 +20,7 @@ import {
 } from '../ui/product/OptionCard';
 import { OptionGroupSection } from '../ui/product/OptionGroupSection';
 import { ProductBottomBar } from '../ui/product/ProductBottomBar';
+import { palette } from '../../../../core/design/tokens';
 
 const METRICS = { frame: { x: 0, y: 0, width: 393, height: 852 }, insets: { top: 59, left: 0, right: 0, bottom: 34 } };
 const wrap = (ui: React.ReactElement, scheme: 'light' | 'dark' = 'light') => (
@@ -109,7 +110,7 @@ describe('md.1 seçenek kartı 2 satır', () => {
 // ── md.4 ─────────────────────────────────────────────────────────────────────────
 describe('md.4 rozet + ayrı fiyat', () => {
   test('CountPill: sayı, 99+ sınırı, VoiceOver\'dan gizli, ≥ 22 pt, tema renkleri', () => {
-    const r = render(<CountPill count={3} bg="#0A0A0A" fg="#C6F04F" testID="pill" />);
+    const r = render(<CountPill count={3} bg="#0A0A0A" fg={palette.lime} testID="pill" />);
     const pill = r.getByTestId('pill', HID);
     expect(pill.props.accessibilityElementsHidden).toBe(true);
     expect(pill.props.importantForAccessibility).toBe('no-hide-descendants');

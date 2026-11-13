@@ -19,6 +19,7 @@ import SubLegalLinks from '../ui/SubLegalLinks';
 import { formatSubDate } from '../ui/SubResult';
 import { trackSub } from '../subTrack';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { palette } from '../../../core/design/tokens';
 
 /** Kalan deneme günü (yukarı yuvarlanır; geçmişse 0). SAF. */
 export function trialDaysLeft(expiresAt: string | null | undefined, now: number = Date.now()): number | null {
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   cap: { fontSize: 13 },
   planName: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 24, lineHeight: 30 },
   planPrice: { fontSize: 15, marginTop: 2 },
-  trialChip: { marginTop: 10, alignSelf: 'flex-start', backgroundColor: '#C6F04F', borderRadius: 14, paddingHorizontal: 12, minHeight: 28, justifyContent: 'center' },
+  trialChip: { marginTop: 10, alignSelf: 'flex-start', backgroundColor: palette.lime, borderRadius: 14, paddingHorizontal: 12, minHeight: 28, justifyContent: 'center' },
   trialChipText: { fontSize: 14, fontWeight: '700', color: '#0A0A0A' },
   row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 8 },
   rowK: { fontSize: 15, flexShrink: 1 },

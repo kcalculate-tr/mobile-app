@@ -37,6 +37,7 @@ import {
   sanitizeCode,
   type GoalClient,
 } from './loginLogic';
+import { palette } from '../../../core/design/tokens';
 
 type LoginRouteProp = RouteProp<RootStackParamList, 'Login'>;
 type LoginNav = NativeStackNavigationProp<RootStackParamList>;
@@ -46,7 +47,7 @@ function KcalMark() {
   return (
     <View accessibilityElementsHidden style={styles.mark}>
       <AppText style={styles.markText}>kcal</AppText>
-      <AppText style={[styles.markText, { color: '#C6F04F' }]}>.</AppText>
+      <AppText style={[styles.markText, { color: palette.lime }]}>.</AppText>
     </View>
   );
 }

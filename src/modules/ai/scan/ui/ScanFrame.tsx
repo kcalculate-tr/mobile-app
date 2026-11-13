@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CURVE, DURATION, STAGGER, TIMING, useReducedMotion } from '../../../../core/design';
+import { palette } from '../../../../core/design/tokens';
 
 const SIZE = 260;
 const CORNER = 36;
@@ -100,6 +101,6 @@ const styles = StyleSheet.create({
     right: 6,
     height: 2,
     borderRadius: 1,
-    backgroundColor: '#C6F04F',
+    backgroundColor: palette.lime,
   },
 });

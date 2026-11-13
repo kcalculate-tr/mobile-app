@@ -12,6 +12,7 @@ import { useT } from '../../../core/i18n';
 import { Barcode, Check, Clock, X } from '../../../components/icons';
 import { limitTiles, type TierLimits } from '../../../lib/subscription/limits';
 import type { Tier } from '../../../lib/subscription/plans';
+import { palette } from '../../../core/design/tokens';
 
 export interface SubLimitSheetProps {
   visible: boolean;
@@ -135,7 +136,7 @@ export default function SubLimitSheet(p: SubLimitSheetProps) {
         </View>
 
         {showPlans ? (
-          <Pressable onPress={p.onPlans} accessibilityRole="button" style={[styles.btn, styles.first, { backgroundColor: '#C6F04F' }]} testID="sub-limit-plans">
+          <Pressable onPress={p.onPlans} accessibilityRole="button" style={[styles.btn, styles.first, { backgroundColor: palette.lime }]} testID="sub-limit-plans">
             <AppText style={[styles.btnText, { color: '#0A0A0A' }]}>{tr('sub.limit.plans')}</AppText>
           </Pressable>
         ) : null}

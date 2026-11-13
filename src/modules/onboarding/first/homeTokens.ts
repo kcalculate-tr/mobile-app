@@ -1,6 +1,7 @@
 // G18-S1 — FinHomeR3 `tokens(th)` (Light + Dark) birebir; profil kartı, boş hâl ve
 // "Profil hazır" sahnesi bu paletle çizilir (Ana sayfa yüzeyleriyle aynı renkler).
 import { useTheme } from '../../../core/design/ThemeProvider';
+import { palette } from '../../../core/design/tokens';
 
 export interface HomeTokens {
   isDark: boolean;
@@ -47,14 +48,14 @@ export const HOME_DARK: HomeTokens = {
   ph: '#3A3A3C',
   phText: '#C7C7CC',
   track: '#2C2C2E',
-  limeLine: '#C6F04F',
+  limeLine: palette.lime,
 };
 
 export function useHomeTokens(): HomeTokens {
   return useTheme().isDark ? HOME_DARK : HOME_LIGHT;
 }
 
-export const LIME = '#C6F04F';
+export const LIME = palette.lime;
 export const LIME_INK = '#0A0A0A';
 export const BRICOLAGE_SEMI = 'BricolageGrotesque_600SemiBold';
 export const BRICOLAGE_BOLD = 'BricolageGrotesque_700Bold';

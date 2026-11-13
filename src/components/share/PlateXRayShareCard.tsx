@@ -21,6 +21,7 @@ import Svg, {
   Path as SvgPath,
 } from 'react-native-svg';
 import { CARD_W, CARD_H, PHOTO_H, computeLabelPositions } from './plateXRayLayout';
+import { palette } from '../../core/design/tokens';
 
 export type PlateXRayItem = {
   name: string;
@@ -48,7 +49,7 @@ const COLORS = {
   secondary: '#6B6B70',
   tagBg: 'rgba(255,255,255,0.9)',
   overlay: 'rgba(10,10,10,0.25)',
-  lime: '#C6F04F',
+  lime: palette.lime,
 };
 
 const F = {

@@ -39,7 +39,7 @@ export function CoachHomeCard(props: { consumedKcal: number | null; targetKcal: 
 }
 
 /**
- * G39-S1 md.5 — yeni görünüm: dolgu marka lime'ı (`palette.brandLime`), üstündeki metin ve düğme HER TEMADA siyah;
+ * G39-S1 md.5 — yeni görünüm: dolgu marka lime'ı (`palette.lime`), üstündeki metin ve düğme HER TEMADA siyah;
  * sağ kenarda süzülen / göz kırpan maskot (CoachHomeMascot) ve arkasında siyah yumuşak ışıma. Metin, düğme,
  * kota/Balance mantığı ve "Koçuna sor" eylemi aynı. Metin sütunu maskota yer bırakır (sağ boşluk).
  */
@@ -58,7 +58,7 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consume
   const textRight = Math.round(h * 0.9 * 0.7);
   return (
     <View
-      style={[styles.home, { backgroundColor: palette.brandLime }]}
+      style={[styles.home, { backgroundColor: palette.lime }]}
       onLayout={onLayout}
       accessibilityLabel={tr('coach.name')}
       testID="coach-home-card"
@@ -81,8 +81,8 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consume
           style={({ pressed }) => [styles.homeBtn, { backgroundColor: HOME_INK }, pressed && { opacity: 0.85 }]}
           testID="coach-home-open"
         >
-          <AppText style={[styles.homeBtnText, { color: palette.brandLime }]}>{tr('coach.home_cta')}</AppText>
-          <CaretRight size={16} color={palette.brandLime} />
+          <AppText style={[styles.homeBtnText, { color: palette.lime }]}>{tr('coach.home_cta')}</AppText>
+          <CaretRight size={16} color={palette.lime} />
         </Pressable>
       </View>
     </View>

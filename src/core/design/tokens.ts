@@ -31,7 +31,9 @@ export const palette = {
   darkLine: '#2C2C2E',
 
   // Vurgu — lime YALNIZCA dolgu olarak kullanılır, üstündeki yazı her zaman siyah.
-  lime: '#C6F04F',
+  // G40-S1: TEK marka yeşili #B9EF14 (eski, daha soluk lime kalktı). `src/constants/theme.ts`
+  // `COLORS.brand.green` bu değeri buradan okur — hex kopyası yok.
+  lime: '#B9EF14',
   /** Lime'ın üstündeki yazı/ikon rengi — her iki temada da siyah. */
   limeInk: '#0A0A0A',
   /**
@@ -40,11 +42,6 @@ export const palette = {
    * okunmaz; bu aile tonu okunur.
    */
   limeLineOnLight: '#4A6B00',
-  /**
-   * G39-S1 md.5 — MARKA lime'ı (logo / koç kartı dolgusu; constants/theme `green` ile aynı).
-   * Yalnız dolgu; üstündeki metin/düğme her temada siyah (`limeInk`).
-   */
-  brandLime: '#B9EF14',
 
   // Mutlaklar
   black: '#000000',

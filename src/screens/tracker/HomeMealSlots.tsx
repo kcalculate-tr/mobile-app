@@ -111,6 +111,7 @@ function MealThumb({
   );
 }
 import type { Rect } from '../../modules/gun/home/popoverGeometry';
+import { palette } from '../../core/design/tokens';
 
 // FinHomeR3 yuva ikonları (pano SVG yolları, 24×24, stroke 1.75).
 const SLOT_ICON: Record<SlotKey, string> = {
@@ -190,7 +191,7 @@ export interface HomeMealSlotsProps {
 function LogDrop() {
   const t = useTheme();
   const reduced = useReducedMotion();
-  const c = t.isDark ? '#C6F04F' : '#4A6B00';
+  const c = t.isDark ? palette.lime : '#4A6B00';
   const s = useSharedValue(0);
   useEffect(() => {
     s.value = reduced ? withTiming(1, { duration: REDUCED.duration }) : withSpring(1, SPRING.ai);
@@ -458,7 +459,7 @@ function SlotItem({
   const { t: tt } = useT();
   const reduced = useReducedMotion();
   const lit = phase === 'row' || phase === 'ring';
-  const hlBg = t.isDark ? 'rgba(198,240,79,0.16)' : 'rgba(198,240,79,0.28)';
+  const hlBg = t.isDark ? 'rgba(185,239,20,0.16)' : 'rgba(185,239,20,0.28)';
 
   // Logla izi B: lime nokta satırın soluna iner (dot), satıra oturunca söner.
   const dot = useSharedValue(0);

@@ -20,8 +20,9 @@ import Animated, {
 
 import { AppText, CURVE, DURATION, REDUCED, TIMING, useReducedMotion } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
+import { palette } from '../../../../core/design/tokens';
 
-const LIME = '#C6F04F';
+const LIME = palette.lime;
 /** Analizde çerçeve bu orana daralır (FinMoScan: kare tabağa kilitlenir). */
 export const ANALYZE_FRAME_SCALE = 0.86;
 

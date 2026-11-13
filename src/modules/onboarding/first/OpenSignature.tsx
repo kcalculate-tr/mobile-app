@@ -32,10 +32,11 @@ import { useT } from '../../../core/i18n';
 import { useOnb } from '../components/onbTheme';
 import { OPEN_T } from './state';
 import { markOpenSeen, readOpenSeen } from './store';
+import { palette } from '../../../core/design/tokens';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const DESIGN_W = 393;
-const LIME = '#C6F04F';
+const LIME = palette.lime;
 const SPLASH_BG = '#000000';
 const SPLASH_ICON = 170;
 const R = 120;

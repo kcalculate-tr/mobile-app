@@ -28,6 +28,7 @@ import { ekType, useEk } from '../ui/kit';
 import { useEkNav } from '../nav';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { MONTHS_SHORT, RAIN_DOTS, isVerifiedOrder, successEta, type SuccessOrderRow } from '../model/orderSuccess';
+import { palette } from '../../../../core/design/tokens';
 
 type R = RouteProp<RootStackParamList, 'OrderSuccess'>;
 
@@ -171,7 +172,7 @@ export default function EkOrderSuccessScreen() {
                 width: d.d,
                 height: d.d,
                 borderRadius: d.d / 2,
-                backgroundColor: '#C6F04F',
+                backgroundColor: palette.lime,
                 opacity: rain.interpolate({ inputRange: [0, 0.1, 0.7, 1], outputRange: [0, 1, 1, 0] }),
                 transform: [{ translateY: rain.interpolate({ inputRange: [0, 1], outputRange: [0, d.fall] }) }],
               }}
@@ -202,7 +203,7 @@ export default function EkOrderSuccessScreen() {
                 width: r * 2,
                 height: r * 2,
                 borderRadius: r,
-                backgroundColor: `rgba(198,240,79,${theme.isDark ? 0.055 : 0.07})`,
+                backgroundColor: `rgba(185,239,20,${theme.isDark ? 0.055 : 0.07})`,
               }}
             />
           ))}
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   texts: { marginTop: 32, paddingHorizontal: 16, alignItems: 'center', gap: 8 },
   titleRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 8 },
   title: { fontFamily: fontFamily.headingBold, fontSize: 32, lineHeight: 37 },
-  titleMark: { backgroundColor: '#C6F04F', borderRadius: 8, paddingHorizontal: 6 },
+  titleMark: { backgroundColor: palette.lime, borderRadius: 8, paddingHorizontal: 6 },
   sub: { fontFamily: ekType.b15.fontFamily, fontSize: 16, lineHeight: 22, textAlign: 'center', maxWidth: 320 },
   card: { marginTop: 31, marginHorizontal: 16, borderRadius: 20, overflow: 'hidden' },
   row: { minHeight: 64, paddingVertical: 10, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
@@ -297,6 +298,6 @@ const styles = StyleSheet.create({
   notice: { marginTop: 12, paddingHorizontal: 24 },
   spacer: { flex: 1 },
   actions: { paddingHorizontal: 16, paddingBottom: 18 },
-  cta: { height: 52, borderRadius: 26, backgroundColor: '#C6F04F', alignItems: 'center', justifyContent: 'center' },
+  cta: { height: 52, borderRadius: 26, backgroundColor: palette.lime, alignItems: 'center', justifyContent: 'center' },
   ctaText: { fontFamily: fontFamily.bodySemibold, fontSize: 16, lineHeight: 21, color: '#0A0A0A' },
 });

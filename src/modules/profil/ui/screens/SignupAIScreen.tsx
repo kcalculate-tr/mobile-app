@@ -18,6 +18,7 @@ import { useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { AppleLogo, GoogleLogo, EnvelopeSimple } from '../../../../components/icons';
+import { palette } from '../../../../core/design/tokens';
 
 export default function SignupAIScreen({
   onSkip,
@@ -90,7 +91,7 @@ export default function SignupAIScreen({
           }}
         >
           <Text style={{ fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, color: '#FFFFFF' }}>kcal</Text>
-          <Text style={{ fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, color: '#C6F04F' }}>.</Text>
+          <Text style={{ fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, color: palette.lime }}>.</Text>
         </View>
 
         <FinDisplay size={32} style={{ lineHeight: 38 }}>

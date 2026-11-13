@@ -17,6 +17,7 @@ import { AppText } from '../../../core/design/components/AppText';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useEnter, useFloat } from '../../../core/design/motion';
 import { useOnb } from './onbTheme';
+import { palette } from '../../../core/design/tokens';
 
 /** Final panolarının tasarım genişliği (iPhone 393×852); ölçüler buna göre ölçeklenir. */
 const DESIGN_W = 393;
@@ -90,14 +91,14 @@ export function OnbScaffold({
           <Svg width={W} height={H}>
             <Defs>
               <RadialGradient id="glA" cx={90 * s} cy={170 * s} rx={300 * s} ry={300 * s} gradientUnits="userSpaceOnUse">
-                <Stop offset="0" stopColor="#C6F04F" stopOpacity={P.glowA} />
-                <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={P.glowA * 0.6} />
-                <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+                <Stop offset="0" stopColor={palette.lime} stopOpacity={P.glowA} />
+                <Stop offset="0.45" stopColor={palette.lime} stopOpacity={P.glowA * 0.6} />
+                <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
               </RadialGradient>
               <RadialGradient id="glB" cx={330 * s} cy={630 * s} rx={290 * s} ry={290 * s} gradientUnits="userSpaceOnUse">
-                <Stop offset="0" stopColor="#C6F04F" stopOpacity={P.glowB} />
-                <Stop offset="0.45" stopColor="#C6F04F" stopOpacity={P.glowB * 0.6} />
-                <Stop offset="1" stopColor="#C6F04F" stopOpacity={0} />
+                <Stop offset="0" stopColor={palette.lime} stopOpacity={P.glowB} />
+                <Stop offset="0.45" stopColor={palette.lime} stopOpacity={P.glowB * 0.6} />
+                <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
               </RadialGradient>
             </Defs>
             <Rect x={0} y={0} width={W} height={H} fill="url(#glA)" />
