@@ -1,0 +1,7 @@
+G42-S1 DONE — 2026-11-14
+Dal: feat/kayit-v2
+LOG: docs/night/G42-S1-LOG.md
+Ekran goruntuleri: docs/night/g42/
+Kontroller: hygiene+tsc OK, unit 1311/0 fail (1 skip), jest 673/673, expo export ios OK, android OK
+Migration (yalniz dosya): supabase/migrations/20261113120100_g42_yeni_kayit.sql (+ rollback)
+Deploy gerekir: supabase functions deploy plan-email
