@@ -2,7 +2,7 @@
 // Ayarlar'dan, 30 günde en fazla bir sistem penceresi.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decidePush, PUSH_REASK_DAYS } from '../pushPolicy';
+import { decideNotifyReoffer, decidePush, NOTIFY_REOFFER_DAYS, PUSH_REASK_DAYS } from '../pushPolicy';
 
 const NOW = Date.UTC(2026, 10, 11);
 const DAY = 86_400_000;
@@ -50,4 +50,18 @@ test('G27: kaçan teklif SONRAKİ oturumda öğün kaydında BİR kez daha; ayn�
   assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A', offered: true }), 'skip', 'ikinci şans kullanıldı');
   assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A', consentShownThisSession: true }), 'skip', 'hak korunur');
   assert.equal(decideNotifyOffer({ ...base, trigger: 'meal_log', missedSession: 'A', canOffer: false }), 'drop', 'izin verildi / sorulamaz');
+});
+
+// G41-S1 md.3 — ön kart "Şimdi değil" → 7 gün sonra EN FAZLA bir kez daha.
+
+test('G41: "Şimdi değil" sonrası ikinci kart yalnız 7 gün dolunca ve bir kez', () => {
+  const D = 86_400_000;
+  const base = { reoffered: false, consentShownThisSession: false, canOffer: true };
+  assert.equal(NOTIFY_REOFFER_DAYS, 7);
+  assert.equal(decideNotifyReoffer({ ...base, laterAt: null, now: 10 * D }), 'skip');
+  assert.equal(decideNotifyReoffer({ ...base, laterAt: 0, now: 6 * D }), 'skip');
+  assert.equal(decideNotifyReoffer({ ...base, laterAt: 0, now: 7 * D }), 'offer');
+  assert.equal(decideNotifyReoffer({ ...base, laterAt: 0, now: 30 * D, reoffered: true }), 'skip');
+  assert.equal(decideNotifyReoffer({ ...base, laterAt: 0, now: 30 * D, canOffer: false }), 'skip');
+  assert.equal(decideNotifyReoffer({ ...base, laterAt: 0, now: 30 * D, consentShownThisSession: true }), 'skip');
 });

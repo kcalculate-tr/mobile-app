@@ -90,3 +90,28 @@ export function decideNotifyOffer(i: {
   if (i.consentShownThisSession) return 'skip';
   return 'offer';
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G41-S1 md.3 (İlter 13 Kas) — uygulama içi ön kart "Öğün saatinde hatırlatayım mı?".
+//  • "Evet" → sistem penceresi (requestPushPermission('first_meal')).
+//  • "Şimdi değil" (ya da kartı kaydırıp kapatma) → sistem penceresi AÇILMAZ; zaman kaydedilir.
+//  • 7 gün sonra, bir öğün kaydından sonra kart EN FAZLA BİR KEZ daha gösterilir; sonrası
+//    yalnız Ayarlar › Bildirimler.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const NOTIFY_REOFFER_DAYS = 7;
+
+export function decideNotifyReoffer(i: {
+  /** "Şimdi değil" zamanı (ms) — hiç ertelenmediyse null. */
+  laterAt: number | null;
+  /** İkinci kart daha önce gösterildi mi. */
+  reoffered: boolean;
+  now: number;
+  /** Bu oturumda başka bir onay sheet'i açıldı (oturum başına tek sheet). */
+  consentShownThisSession: boolean;
+  /** canOfferPush('first_meal') — hiç sorulmamış + işletim sistemi sorabiliyor. */
+  canOffer: boolean;
+}): 'offer' | 'skip' {
+  if (i.laterAt == null || i.reoffered || !i.canOffer || i.consentShownThisSession) return 'skip';
+  return i.now - i.laterAt >= NOTIFY_REOFFER_DAYS * DAY ? 'offer' : 'skip';
+}

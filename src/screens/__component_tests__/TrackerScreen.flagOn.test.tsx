@@ -303,7 +303,7 @@ test('ilk öğün: gerçek sinyalle kutlama bir kez + ardından bildirim izni sh
   await flush();
   await flush();
   expect(tree.queryByText('İlk öğün eklendi')).toBeNull();
-  expect(tree.getByText('Serini korumak için akşam 19:30’da hatırlatayım mı?')).toBeTruthy();
+  expect(tree.getByText('Öğün saatinde hatırlatayım mı?')).toBeTruthy();
   // G19-S2 md.4: anahtar kullanıcıya özel.
   const shown = JSON.parse((await AsyncStorage.getItem('@kcal_celebrate_shown:u1')) ?? '{}');
   expect(shown.first).toBe(true);

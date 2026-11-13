@@ -20,6 +20,7 @@ import { DURATION, TIMING } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { getSupabaseClient } from '../../core/supabase';
 import { canOfferPush } from '../../core/push/pushPermission';
+import { decideNotifyReoffer } from '../../core/push/pushPolicy';
 import { decideNotifyOffer, type NotifyTrigger } from '../../core/push/pushPolicy';
 import { consentSheetShownThisSession, currentSessionId } from '../../lib/permissions/sheetSession';
 import {
@@ -40,6 +41,9 @@ import { track } from '../../lib/analytics';
 const NOTIFY_OFFERED_KEY = '@kcal_celebrate_notify_offered';
 /** G27-S1: ilk öğün teklifi KAÇTI → kaçtığı oturumun kimliği (ikinci şans hakkı). */
 export const NOTIFY_MISSED_KEY = '@kcal_celebrate_notify_missed';
+/** G41-S1 md.3: ön kartta "Şimdi değil" zamanı (ms) + ikinci kart gösterildi işareti. */
+export const NOTIFY_LATER_AT_KEY = '@kcal_celebrate_notify_later_at';
+export const NOTIFY_REOFFERED_KEY = '@kcal_celebrate_notify_reoffered';
 /** G19-S2 md.7: streak_day / ring_complete günde bir kez (kullanıcı + gün). */
 const DAY_EVENT_KEY = (uid: string, ev: string) => `@kcal_track_day_event:${ev}:${uid}`;
 
@@ -203,7 +207,28 @@ export function HomeCelebrations({
         AsyncStorage.getItem(NOTIFY_OFFERED_KEY),
         AsyncStorage.getItem(NOTIFY_MISSED_KEY),
       ]);
-      if (offered === '1') return;
+      if (offered === '1') {
+        // G41-S1 md.3: "Şimdi değil" → 7 gün sonra bir öğün kaydından sonra EN FAZLA bir kez daha.
+        if (trigger !== 'meal_log') return;
+        const [laterRaw, reoffered] = await Promise.all([
+          AsyncStorage.getItem(NOTIFY_LATER_AT_KEY),
+          AsyncStorage.getItem(NOTIFY_REOFFERED_KEY),
+        ]);
+        const laterAt = laterRaw == null ? null : Number(laterRaw);
+        if (laterAt == null || !Number.isFinite(laterAt) || reoffered === '1') return;
+        const r = decideNotifyReoffer({
+          laterAt,
+          reoffered: false,
+          now: Date.now(),
+          consentShownThisSession: consentSheetShownThisSession(),
+          canOffer: await canOfferPush('first_meal'),
+        });
+        if (r === 'offer') {
+          await AsyncStorage.setItem(NOTIFY_REOFFERED_KEY, '1');
+          setNotifyOpen(true);
+        }
+        return;
+      }
       if (trigger === 'meal_log' && !missed) return; // ikinci şans hakkı yoksa izni okumaya gerek yok
       // G26-S1 md.7: bu oturumda başka bir onay sheet'i açıldıysa teklif sonraki oturuma kalır.
       // G27-S1: kaçan teklif sonraki oturumda (ikinci öğün kaydında) BİR kez daha.
@@ -297,6 +322,12 @@ export function HomeCelebrations({
       <NotifyPermissionSheet
         visible={notifyOpen}
         onClose={() => setNotifyOpen(false)}
+        onLater={() => {
+          // İlk "Şimdi değil" zamanı saklanır (ikinci kartta yeniden yazılmaz; işaret zaten var).
+          void AsyncStorage.getItem(NOTIFY_LATER_AT_KEY)
+            .then((v) => (v == null ? AsyncStorage.setItem(NOTIFY_LATER_AT_KEY, String(Date.now())) : undefined))
+            .catch(() => {});
+        }}
         onResult={(status) => {
           if (status === 'granted') {
             void syncStreakReminder({ loggedToday: todayCount > 0, title: tt('profil.streak_reminder_title'), body: tt('profil.streak_reminder_body') });

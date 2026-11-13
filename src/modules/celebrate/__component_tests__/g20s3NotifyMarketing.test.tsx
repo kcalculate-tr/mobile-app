@@ -33,7 +33,7 @@ test('kutu varsayılan İŞARETSİZ; izin verilse de pazarlama açılmaz', async
   const ui = render(<NotifyPermissionSheet visible onClose={() => {}} onResult={onResult} />);
   expect(ui.getByText('Kampanya ve fırsat bildirimleri de gelsin')).toBeTruthy();
   expect(ui.getByTestId('notify-marketing-optin').props.accessibilityState).toEqual({ checked: false });
-  await act(async () => fireEvent.press(ui.getByLabelText('İzin ver')));
+  await act(async () => fireEvent.press(ui.getByLabelText('Evet')));
   await flush();
   expect(onResult).toHaveBeenCalledWith('granted');
   expect(mockOptIn).not.toHaveBeenCalled();
@@ -43,7 +43,7 @@ test('kutu işaretli + izin verildi → pazarlama açık onayı yazılır', asyn
   const ui = render(<NotifyPermissionSheet visible onClose={() => {}} />);
   fireEvent.press(ui.getByTestId('notify-marketing-optin'));
   expect(ui.getByTestId('notify-marketing-optin').props.accessibilityState).toEqual({ checked: true });
-  await act(async () => fireEvent.press(ui.getByLabelText('İzin ver')));
+  await act(async () => fireEvent.press(ui.getByLabelText('Evet')));
   await flush();
   expect(mockOptIn).toHaveBeenCalledWith(true);
 });
@@ -52,14 +52,14 @@ test('kutu işaretli ama izin reddedildi → pazarlama yazılmaz', async () => {
   mockStatus = 'denied';
   const ui = render(<NotifyPermissionSheet visible onClose={() => {}} />);
   fireEvent.press(ui.getByTestId('notify-marketing-optin'));
-  await act(async () => fireEvent.press(ui.getByLabelText('İzin ver')));
+  await act(async () => fireEvent.press(ui.getByLabelText('Evet')));
   await flush();
   expect(mockOptIn).not.toHaveBeenCalled();
 });
 
-test('G26-S1: "İzin ver" tek fonksiyonu first_meal kaynağıyla çağırır', async () => {
+test('G26-S1 + G41: "Evet" tek fonksiyonu first_meal kaynağıyla çağırır', async () => {
   const ui = render(<NotifyPermissionSheet visible onClose={() => {}} />);
-  await act(async () => fireEvent.press(ui.getByLabelText('İzin ver')));
+  await act(async () => fireEvent.press(ui.getByLabelText('Evet')));
   await flush();
   expect(mockReq).toHaveBeenCalledTimes(1);
   expect(mockReq).toHaveBeenCalledWith('first_meal');

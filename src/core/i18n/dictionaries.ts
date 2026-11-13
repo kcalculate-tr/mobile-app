@@ -849,9 +849,10 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       streak7_mark: 'seri',
       streak7_title2: '',
       streak7_body: 'Bir haftanın her günü. O merdivenler artık her gün biraz daha yakın.',
-      notify_title: 'Serini korumak için akşam 19:30’da hatırlatayım mı?',
-      notify_body: 'Günde en fazla bir kez. Saati sonra değiştirebilirsin.',
-      notify_allow: 'İzin ver',
+      // G41-S1 md.3: uygulama içi ön kart (sistem penceresi yalnız "Evet" ile).
+      notify_title: 'Öğün saatinde hatırlatayım mı?',
+      notify_body: 'Öğün saatlerinde kısa bir hatırlatma gönderirim. Saatleri sonra Bildirim ayarlarından değiştirebilirsin.',
+      notify_allow: 'Evet',
       notify_later: 'Şimdi değil',
       // G13-S1 — Ana sayfa mount (paylaşım kartı metinleri, FinCelebrate).
       card_first: 'İlk öğün eklendi',
@@ -2757,9 +2758,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       streak7_mark: 'streak',
       streak7_title2: '',
       streak7_body: 'Every day of a whole week. Those stairs get a little closer each day.',
-      notify_title: 'Remind you at 7:30 PM to keep your streak?',
-      notify_body: 'At most once a day. You can change the time later.',
-      notify_allow: 'Allow',
+      notify_title: 'Remind you at mealtimes?',
+      notify_body: 'I’ll send a short reminder at your mealtimes. You can change the times later in notification settings.',
+      notify_allow: 'Yes',
       notify_later: 'Not now',
       // G13-S1 — Home mount (share card texts, FinCelebrate).
       card_first: 'First meal logged',

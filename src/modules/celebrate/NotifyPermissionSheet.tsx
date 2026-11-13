@@ -18,20 +18,30 @@ const CHECK_D =
  * cagirir ve sonucu disari verir.
  * G20-S3 md.6 (B-11): pazarlama bildirimi AYRI onay kutusu (isaretsiz gelir);
  * yalniz izin verilip kutu isaretlenirse marketing_enabled acilir.
+ * G41-S1 md.3: uygulama ici ON KART "Ogun saatinde hatirlatayim mi?" — "Evet" sistem
+ * penceresini acar; "Simdi degil" / kaydirip kapatma pencereyi ACMAZ (onLater → 7 gun sonra
+ * en fazla bir kez daha, HomeCelebrations).
  */
 export function NotifyPermissionSheet({
   visible,
   onClose,
   onResult,
+  onLater,
 }: {
   visible: boolean;
   onClose: () => void;
   onResult?: (status: 'granted' | 'denied' | 'undetermined') => void;
+  /** G41-S1: "Şimdi değil" ya da Evet'e basmadan kapatma — sistem penceresi açılmadı. */
+  onLater?: () => void;
 }) {
   const t = useTheme();
   const { t: tt } = useT();
   const [busy, setBusy] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const later = () => {
+    onLater?.();
+    onClose();
+  };
   useOverlayGate(visible); // G18-S1 temas: açıkken oryantasyon ipucu beklesin
 
   const onAllow = async () => {
@@ -49,8 +59,8 @@ export function NotifyPermissionSheet({
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.6}>
-      <View style={styles.body}>
+    <Sheet visible={visible} onClose={later} maxHeightRatio={0.6}>
+      <View style={styles.body} testID="notify-precard">
         {/* G15-S4 — FinSheetNotify: gri daire + çizgi zil, sola dayalı başlık. */}
         <View style={[styles.iconWrap, { backgroundColor: t.color.bg }]}>
           <Bell size={24} color={t.color.ink} />
@@ -98,6 +108,7 @@ export function NotifyPermissionSheet({
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel={tt('celebrate.notify_allow')}
+          testID="notify-precard-yes"
           style={[styles.primary, { backgroundColor: t.color.ink, opacity: busy ? 0.6 : 1 }]}
         >
           {/* G14-S1 — FinSheetNotify: birincil siyah, ikincil çerçeveli. */}
@@ -109,10 +120,11 @@ export function NotifyPermissionSheet({
         <Pressable
           onPress={() => {
             haptic('selection');
-            onClose();
+            later();
           }}
           accessibilityRole="button"
           accessibilityLabel={tt('celebrate.notify_later')}
+          testID="notify-precard-later"
           style={[styles.secondary, { borderColor: t.color.line }]}
         >
           <AppText variant="body" tone="ink" style={{ fontWeight: '600' }}>
