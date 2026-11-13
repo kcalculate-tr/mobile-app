@@ -214,10 +214,10 @@ test('onboarding 5. ekran: segment kisisel_plan açıkken görünür; kapalıyke
   expect(useKayit.getState().path).toBe('b');
 });
 
-test('onboarding EN + koyu: 4. ekran geçici metni ve Devam', async () => {
+test('onboarding EN + koyu: 4. ekran Keşfet metni ve Devam', async () => {
   const r = render(wrap(<OnboardingScreen vitrinStep={4} />, 'en', 'dark'));
   await flush();
-  expect(r.getByText('Share, follow and get inspired on Explore.')).toBeTruthy();
+  expect(r.getByText('Share and get inspired on Explore.')).toBeTruthy();
   fireEvent.press(r.getByTestId('kayit-onb-next'));
   await flush();
   expect(r.getByText(/all set/)).toBeTruthy();
