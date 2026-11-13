@@ -39,7 +39,8 @@ import { fetchBusinessHours, type BusinessHours } from '../../../../lib/business
 import { vitrinYorumlariniGetir, type VitrinYorumu } from '../../../../lib/socialProof';
 import { fetchActiveOrder, subscribeToOrder, isDeliveredExpired, type ActiveOrder } from '../../../../lib/activeOrder';
 import { fetchMacroProfile, fetchMacroSettings, DEFAULT_MACRO_SETTINGS, type MacroProfile, type MacroSettings } from '../../../../lib/macros';
-import { fetchBrand, type Brand } from '../../../../lib/brands';
+import { fetchBrand } from '../../../../lib/brands';
+import { buildStoreItems, campaignCellsFrom, type StoreItem } from '../model/showcase';
 import { resolveNavigation } from '../../../../lib/navigation';
 import { useAddressStore } from '../../../../store/addressStore';
 import { readCityGatePassed, writeCityGatePassed } from '../../cityGateStorage';
@@ -47,7 +48,6 @@ import { CityGateView, type GateStep } from '../ui/gate/CityGateView';
 import type { Product } from '../../../../types';
 import {
   bannerTargetToEk,
-  distinctBrandKeys,
   filterProductsByQuery,
   macroStrip,
 } from '../model/homeData';
@@ -58,7 +58,6 @@ const NEARBY_INTEREST_KEY = 'eatkcal-nearby-interest-notified';
 // HomeScreen.tsx ile aynı "Tüm Ürünler" adları (lib/categories ALL_PRODUCTS_NAMES).
 const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
 
-type StoreItem = { key: string; brand: Brand; cover: string | null };
 
 function EkHomeContent() {
   const { c, t, insets } = useEk();
@@ -118,22 +117,10 @@ function EkHomeContent() {
       setProducts(prods);
       setFeatured(feat);
       setBusinessHours(bh);
-      setCampaigns(
-        [...banners.hero, ...banners.promo].flatMap((r) => r.cells).filter((cell) => !!cell.image_url),
-      );
+      // G39-S1 md.6: kampanya + mağaza kuralı ortak modelde (Ana sayfa eatkcal alanı da kullanır).
+      setCampaigns(campaignCellsFrom(banners));
       // Mağazalar: ürünlerin brand anahtarları → fetchBrand (aktif değilse null → gizli).
-      const keys = distinctBrandKeys(prods);
-      const brands = await Promise.all(keys.map((k) => fetchBrand(k).catch(() => null)));
-      setStores(
-        keys
-          .map((key, i) => {
-            const brand = brands[i];
-            if (!brand) return null;
-            const cover = brand.hero_image_url || prods.find((p) => p.brand === key && p.img)?.img || null;
-            return { key, brand, cover };
-          })
-          .filter((s): s is StoreItem => s !== null),
-      );
+      setStores(await buildStoreItems(prods, fetchBrand));
     } catch {
       setLoadError(true);
     } finally {

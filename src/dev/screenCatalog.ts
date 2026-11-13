@@ -609,6 +609,28 @@ function resolveParity(name: string): ResolvedEntry | null {
       data: 'default', flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: false, requested: name, scheme: 'light',
     };
   }
+  // G39-S1 — `G39-<Sahne>(-Dark)`: logo / maskot / Ana sayfa eatkcal vitrini çekimleri (Final panosu değil →
+  // allPanoNames'e girmez). Koç girişleri için `koc` + `abonelik` açık.
+  const g39 = /^G39-([A-Za-z]+?)(-Dark)?$/.exec(name);
+  if (g39) {
+    const flags: FlagKey[] = [...FINAL_FLAGS, 'koc', 'abonelik'];
+    const T: Record<string, { area: string; target: VitrinTarget; scene?: string }> = {
+      Home: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1180 })), scene: 'izmir' },
+      HomeNoAddr: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1180 })), scene: 'izmirNoAddr' },
+      HomeCoach: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 900 })), scene: 'izmir' },
+      PaywallFresh: { area: 'profil', target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'fresh', from: 'profile' } }]) },
+      PaywallBalance: { area: 'profil', target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'balance', coach: true, from: 'coach' } }]) },
+      Kesfet: { area: 'kesfet', target: route(kes()) },
+      EkHome: { area: 'eatkcal', target: route(tab('Home')) },
+      CoachChat: { area: 'ana', target: route([...tab('Tracker'), { name: 'CoachChat', params: { from: 'home' } }]), scene: 'coach' },
+    };
+    const d = T[g39[1]];
+    if (!d) return null;
+    return {
+      pano: name, area: d.area, target: d.target, scene: d.scene, data: 'default', flags, lang: 'tr', auth: 'user',
+      hasDark: true, requested: name, scheme: g39[2] ? 'dark' : 'light',
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

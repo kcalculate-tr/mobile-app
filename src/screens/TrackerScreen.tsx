@@ -75,6 +75,7 @@ import { HomeExploreStrip } from './tracker/HomeStrips';
 // G18-S2 — Ana sayfa Tur 26: öne çıkanlar banner'ı, bölge bölümü, boş hâl (S1 bileşeni).
 import { HomeBanner, useHomeBanners } from '../modules/gun/home/HomeBanner';
 import { HomeRegionSection } from '../modules/gun/home/HomeRegion';
+import { homeEatkcalActions } from '../modules/gun/home/homeEatkcalNav';
 import { HomeActivitySection } from '../modules/gun/home/HomeActivitySection';
 import { CoachHomeCard } from '../modules/coach/ui/entries';
 import { useHomeRegion } from '../modules/gun/home/useHomeRegion';
@@ -1567,11 +1568,8 @@ export default function TrackerScreen() {
     else navigation.navigate('NutritionProfile');
   };
   const openEatkcal = () => (navigation as any).navigate('Tabs', { screen: 'Home' });
-  const openProduct = (productId: string) =>
-    yeniSiparis
-      ? (navigation as any).navigate('EkProduct', { productId })
-      : navigation.navigate('ProductDetail', { productId });
   const openKesfet = () => (navigation as any).navigate('Tabs', { screen: 'KesfetTab' });
+  const homeEkActions = homeEatkcalActions(navigation as any, { yeniSiparis, openEatkcal });
   // G18-S2 md.3/6b: banner kartı tek dokunuş — gönderi detayı (FinDetail) ya da eatkcal.
   const openPost = (postId: string) => (navigation as any).navigate('SharedPost', { postId });
   const openBanner = (b: HomeBannerItem) => {
@@ -2875,15 +2873,8 @@ const html = `
                 {/* G21-S1 md.8: kare = o gönderinin detayı (banner'la aynı hedef); "Tümü" = Keşfet sekmesi. */}
                 <HomeExploreStrip onAll={openKesfet} onOpen={openPost} />
                 {/* G18-S2 md.4: bölge — İzmir tek öneri kartı / İzmir dışı bekleme listesi satırları. */}
-                <HomeRegionSection
-                  region={homeRegion}
-                  slot={slotFromHour(homeHour ?? istanbulHour())}
-                  proteinLeft={Math.max(0, targets.protein - homeTotals.protein)}
-                  proteinTarget={targets.protein}
-                  kcalLeft={Math.max(0, targets.kcal - homeTotals.kcal)}
-                  onOpenProduct={openProduct}
-                  onWaitlist={openWaitlist}
-                />
+                {/* G39-S1 md.6: İzmir / bilinmeyen bölge → eatkcal vitrini (banner + restoranlar, adres yoksa "Adres ekle"). */}
+                <HomeRegionSection region={homeRegion} {...homeEkActions} onWaitlist={openWaitlist} />
               </>
             ) : null}
             {/* ── Pantry ── */}

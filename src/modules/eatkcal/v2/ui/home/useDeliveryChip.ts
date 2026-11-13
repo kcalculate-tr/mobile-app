@@ -8,6 +8,8 @@ import { fetchAllDeliveryZones, type DeliveryZoneRow } from '../../../../../lib/
 import { fetchBusinessHours, isShopOpenNow, type BusinessHours } from '../../../../../lib/businessHours';
 import { useAddressStore } from '../../../../../store/addressStore';
 import { deliveryChip, pickZoneRowForAddress } from '../../model/homeData';
+import { useT } from '../../../../../core/i18n';
+import { etaForLang } from '../../model/showcase';
 
 export function useDeliveryChip(knownHours?: BusinessHours | null) {
   const address = useAddressStore((s) => s.selectedAddress);
@@ -43,9 +45,11 @@ export function useDeliveryChip(knownHours?: BusinessHours | null) {
     };
   }, [address?.district]);
 
-  const chip = useMemo(
-    () => deliveryChip(pickZoneRowForAddress(rows, address), hours ? isShopOpenNow(hours) : true),
-    [rows, address, hours],
-  );
+  // G39-S1 md.7: süre metni sunucu biçiminde "30-45 dk"; EN arayüzde "min".
+  const { lang } = useT();
+  const chip = useMemo(() => {
+    const ch = deliveryChip(pickZoneRowForAddress(rows, address), hours ? isShopOpenNow(hours) : true);
+    return ch ? { ...ch, estimate: etaForLang(ch.estimate, lang) } : null;
+  }, [rows, address, hours, lang]);
   return { address, chip };
 }

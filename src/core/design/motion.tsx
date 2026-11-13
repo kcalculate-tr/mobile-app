@@ -269,6 +269,27 @@ export function useLoopFloat(amp: number = PAYWALL_MOTION.floatAmp): { style: Mo
   return { style };
 }
 
+/**
+ * G39-S1 md.5 — Ana sayfa koç kartı maskotu: yavaş süzülme ±6 pt + ±3° (taban -15°), 3,5 sn döngü
+ * (yarım 1750 ileri / 1750 geri, ease-in-out sinüs), 3–5 sn'de bir 90 ms göz kırpma. README isteği; tasarım
+ * döngüsü token setinin (100–900) dışında olduğu için burada adlandırılmış sabit.
+ */
+export const COACH_MASCOT_MOTION = {
+  tilt: -15,
+  floatAmp: 6,
+  rotateAmp: 3,
+  period: 3500,
+  halfPeriod: 1750,
+  easing: Easing.inOut(Easing.sin),
+  blinkMin: 3000,
+  blinkMax: 5000,
+  blinkClosed: 90,
+  /** Maskot = kart yüksekliğinin ~%90'ı. */
+  sizeRatio: 0.9,
+  /** Işıma merkez opaklığı (siyah %25–40 aralığında). */
+  glowOpacity: 0.32,
+} as const;
+
 export const PLAN_MOTION = {
   /** Gün değişimi: çip basma 110, eski/yeni gün aynı yerde crossfade 220 (standard), kaydırma yok. Haptik: seçim. */
   chipPress: DURATION.instant,

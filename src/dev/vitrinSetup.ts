@@ -259,13 +259,38 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
       ],
       campaign: async () => ({ id: 'v-camp', title: en ? '[Campaign title]' : '[Kampanya başlığı]', subtitle: null, image: P.coban, link: null }),
     });
+    // G39-S1 md.6: Ana sayfa eatkcal vitrini — kampanya bannerları + restoran/mağaza kartları (örnek içerik).
+    const cell = (id: string, image: string | null, title: string) => ({ id, row_id: 'v-row', position: 0, image_url: image, title, link: null, navigate_to: null, is_active: true });
+    const brand = (key: string, name: string, tagline: string, cover: string | null) => ({
+      key,
+      brand: { key, name, tagline, description: null, hero_image_url: cover, accent_color: null },
+      cover,
+    });
     setHomeRegionProvider({
-      eta: '30–55 dk',
-      products: async () => [
-        { id: 9001, name: en ? 'Grilled Salmon Bowl' : 'Izgara Somon Bowl', price: 285, img: P.somon, calories: 520, protein: 42, order: 1, is_available: true },
+      eta: scene === 'izmirNoAddr' ? null : en ? '30-45 min' : '30-45 dk',
+      campaigns: async () => [
+        cell('v-c1', P.coban, en ? 'Fresh salads, 20% off' : 'Taze salatalarda %20 indirim'),
+        cell('v-c2', P.somon, en ? 'Salmon week' : 'Somon haftası'),
       ],
+      stores: async () =>
+        scene === 'izmirEmpty'
+          ? []
+          : [
+              brand('kcalculate', 'kcalculate', en ? 'Macro-counted meals' : 'Makrosu hesaplı öğünler', P.kinoa),
+              brand('tera', 'Tera', en ? 'Bowls and wraps' : 'Bowl ve dürümler', P.somon),
+              brand('breakingfast', 'Breaking Fast', en ? 'All-day breakfast' : 'Gün boyu kahvaltı', P.menemen),
+            ],
     });
     setHomeRegionOverride(scene === 'outside' ? 'other' : 'izmir');
+    // Adres var / yok (G39-S1 md.6): yalnız Ana sayfa sahnelerinde.
+    if (entry.area === 'ana') (useAddressStore.getState() as any).setSelectedAddress?.(scene === 'izmirNoAddr' ? null : vitrinHomeAddress());
+    // G39-S1: koç girişleri (bayrak koc + abonelik) vitrinde açık → koç kartı / sohbet çizilsin.
+    if (entry.flags.includes('koc' as any)) {
+      const { useSubscriptionStore } = require('../lib/subscription/purchases');
+      const { useCoachAccessStore } = require('../modules/coach/access');
+      useSubscriptionStore.setState({ available: true });
+      useCoachAccessStore.getState().setAvail('ok');
+    }
     setHomeStripsProvider({
       eta: '30–55 dk',
       city: 'İzmir',

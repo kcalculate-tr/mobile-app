@@ -8,26 +8,13 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AppState, Image, StyleSheet, View } from 'react-native';
 import * as RNav from '@react-navigation/native';
-import Animated, { Easing, cancelAnimation, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import { useReducedMotion } from '../../../core/design';
+import { COACH_MASCOT_MOTION, useReducedMotion } from '../../../core/design';
 import { KOC_ACIK, KOC_KAPALI } from './mascot';
 
-/** Kart maskotu hareket değerleri (README md.5). Döngü süresi tasarım isteği (3,5 sn), token dışı. */
-export const COACH_MASCOT_MOTION = {
-  tilt: -15,
-  floatAmp: 6,
-  rotateAmp: 3,
-  period: 3500,
-  blinkMin: 3000,
-  blinkMax: 5000,
-  blinkClosed: 90,
-  /** Maskot = kart yüksekliğinin ~%90'ı. */
-  sizeRatio: 0.9,
-  /** Işıma merkez opaklığı (siyah %25–40 aralığında). */
-  glowOpacity: 0.32,
-} as const;
+export { COACH_MASCOT_MOTION };
 
 type FocusNav = { isFocused?: () => boolean; addListener?: (e: 'focus' | 'blur', cb: () => void) => () => void };
 const NavCtx = (RNav as { NavigationContext?: React.Context<unknown> }).NavigationContext ?? React.createContext<unknown>(undefined);
@@ -75,7 +62,7 @@ export function CoachHomeMascot({ cardHeight }: { cardHeight: number }) {
     }
     f.value = 0.5;
     f.value = withRepeat(
-      withTiming(1, { duration: COACH_MASCOT_MOTION.period / 2, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1, { duration: COACH_MASCOT_MOTION.halfPeriod, easing: COACH_MASCOT_MOTION.easing }),
       -1,
       true,
     );
