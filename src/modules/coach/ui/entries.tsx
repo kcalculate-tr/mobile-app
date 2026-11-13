@@ -55,7 +55,7 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consume
     const next = Math.round(e.nativeEvent.layout.height);
     if (next > 0 && Math.abs(next - h) > 1) setH(next);
   };
-  const textRight = Math.round(h * 0.9 * 0.62);
+  const textRight = Math.round(h * 0.9 * 0.7);
   return (
     <View
       style={[styles.home, { backgroundColor: palette.brandLime }]}
@@ -67,9 +67,10 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consume
       <View style={[styles.homeText, { paddingRight: textRight }]}>
         <AppText style={[styles.homeName, { color: HOME_INK_SEC }]}>{tr('coach.name')}</AppText>
         <AppText style={[styles.homeLine, { color: HOME_INK }]}>{line}</AppText>
-      </View>
-      <View style={[styles.homeBottom, { paddingRight: textRight * 0.55 }]}>
         {tier !== 'balance' ? <AppText style={[styles.homeTrial, { color: HOME_INK_SEC }]}>{tr('coach.home_trial', { n: trial })}</AppText> : null}
+      </View>
+      {/* Düğme solda: sağ taraf maskotun (çakışma yok). */}
+      <View style={styles.homeBottom}>
         <Pressable
           onPress={() => {
             haptic('light');
@@ -180,8 +181,8 @@ const styles = StyleSheet.create({
   homeText: { gap: 2 },
   homeName: { fontSize: 13, fontWeight: '600' },
   homeLine: { fontSize: 15, fontWeight: '600', lineHeight: 20 },
-  homeBottom: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  homeTrial: { fontSize: 13, flexShrink: 1 },
+  homeBottom: { flexDirection: 'row', alignItems: 'center' },
+  homeTrial: { fontSize: 13, marginTop: 4 },
   homeBtn: { minHeight: 44, borderRadius: 22, paddingLeft: 16, paddingRight: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
   homeBtnText: { fontSize: 14, fontWeight: '600' },
   scan: { minHeight: 48, borderRadius: 24, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14 },

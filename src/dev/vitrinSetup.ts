@@ -288,8 +288,31 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     if (entry.flags.includes('koc' as any)) {
       const { useSubscriptionStore } = require('../lib/subscription/purchases');
       const { useCoachAccessStore } = require('../modules/coach/access');
-      useSubscriptionStore.setState({ available: true });
       useCoachAccessStore.getState().setAvail('ok');
+      // Paywall fiyatları: vitrinde RevenueCat yok → test ile aynı demo fiyatlar (yalnız __DEV__ vitrin).
+      const { buildPlanCards } = require('../lib/subscription/plans');
+      const { DEMO_PRICES_TRY: D } = require('../lib/subscription/demoPrices');
+      const { setPlanCardsMemo } = require('../lib/subscription/usePlanCards');
+      const { limitsFromSettings } = require('../lib/subscription/limits');
+      const trial = { price: 0, periodNumberOfUnits: 7, periodUnit: 'DAY' };
+      const P = (identifier: string, price: number, intro?: unknown) => ({ identifier, price, priceString: `${price} TL`, currencyCode: 'TRY', introPrice: intro ?? null });
+      setPlanCardsMemo(
+        buildPlanCards([
+          P('kcalai_fresh_monthly', D.fresh_monthly),
+          P('kcalai_fresh_yearly', D.fresh_yearly, trial),
+          P('kcalai_balance_monthly', D.balance_monthly),
+          P('kcalai_balance_yearly', D.balance_yearly, trial),
+        ]),
+      );
+      useSubscriptionStore.setState({
+        available: true,
+        limits: limitsFromSettings([
+          { key: 'ai_daily_free', value: 2 },
+          { key: 'ai_daily_fresh', value: 10 },
+          { key: 'ai_daily_balance', value: 50 },
+          { key: 'barcode_daily_free', value: 5 },
+        ]),
+      });
     }
     setHomeStripsProvider({
       eta: '30–55 dk',

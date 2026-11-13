@@ -108,7 +108,7 @@ export function CoachHomeMascot({ cardHeight }: { cardHeight: number }) {
   return (
     <View
       pointerEvents="none"
-      style={[styles.wrap, { width: size, height: size, right: -Math.round(size * 0.22), top: Math.round((cardHeight - size) / 2) + Math.round(size * 0.08) }]}
+      style={[styles.wrap, { width: size, height: size, right: -Math.round(size * 0.04), top: Math.round((cardHeight - size) / 2) }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID="coach-home-mascot"

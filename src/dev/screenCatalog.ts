@@ -615,9 +615,9 @@ function resolveParity(name: string): ResolvedEntry | null {
   if (g39) {
     const flags: FlagKey[] = [...FINAL_FLAGS, 'koc', 'abonelik'];
     const T: Record<string, { area: string; target: VitrinTarget; scene?: string }> = {
-      Home: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1180 })), scene: 'izmir' },
-      HomeNoAddr: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1180 })), scene: 'izmirNoAddr' },
-      HomeCoach: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 900 })), scene: 'izmir' },
+      Home: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1750 })), scene: 'izmir' },
+      HomeNoAddr: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1750 })), scene: 'izmirNoAddr' },
+      HomeCoach: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1180 })), scene: 'izmir' },
       PaywallFresh: { area: 'profil', target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'fresh', from: 'profile' } }]) },
       PaywallBalance: { area: 'profil', target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'balance', coach: true, from: 'coach' } }]) },
       Kesfet: { area: 'kesfet', target: route(kes()) },
