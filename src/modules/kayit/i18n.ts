@@ -223,7 +223,7 @@ export const tr = {
   signup: {
     title_a: 'Planını kaydedelim',
     title_b: 'Hemen başlayalım',
-    apple: 'Apple ile Giriş Yap',
+    apple: 'Apple ile devam et',
     google: 'Google ile devam et',
     email: 'E-posta ile devam et',
     legal_1: 'Devam ederek ',
@@ -527,7 +527,7 @@ export const en: typeof tr = {
   signup: {
     title_a: "Let's save your plan",
     title_b: "Let's get started",
-    apple: 'Sign in with Apple',
+    apple: 'Continue with Apple',
     google: 'Continue with Google',
     email: 'Continue with email',
     legal_1: 'By continuing you accept the ',

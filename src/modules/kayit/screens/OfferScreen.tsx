@@ -183,7 +183,7 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
           <SubLegalLinks navigation={navigation} />
         </View>
       </ScrollView>
-      {emailSent ? <Banner text={t('kayit.offer.banner')} top={insets.top + 6} /> : null}
+      {emailSent ? <Banner text={t('kayit.offer.banner')} top={insets.top + 52} /> : null}
     </View>
   );
 }

@@ -3,7 +3,7 @@
 // G43-S1: her soru tek ekran = başlık + liste/ölçü girişi + Devam; maskot yok, adımlar arası 220 ms fade
 // (azaltılmışta anında). Sistem geri hareketi (kenar kaydırma / Android geri) bir önceki soruya.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -618,7 +618,7 @@ function titleFor(s: KQuestion, goal: string | null, t: (k: string, p?: Record<s
   return t(`kayit.q.${s}_title`);
 }
 
-/** I1/I2 ara ekranı: küçük cam ikon + tek cümle + Devam; maskot yok. Ekrana dokunmak da ilerletir. */
+/** I1/I2 ara ekranı: küçük cam ikon + tek cümle + Devam; maskot yok. Yalnız Devam ilerletir (HIG: tek eylem). */
 function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void }) {
   const { t } = useT();
   const P = useK();
@@ -628,7 +628,7 @@ function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void 
   }, [step]);
   return (
     <View style={{ flex: 1 }}>
-      <Pressable testID={`kayit-${step}`} onPress={onNext} accessibilityRole="button" accessibilityLabel={`${t(`kayit.q.${step}_title`)} ${t(`kayit.q.${step}_sub`)}`} style={styles.inter}>
+      <View testID={`kayit-${step}`} accessible accessibilityRole="header" accessibilityLabel={`${t(`kayit.q.${step}_title`)} ${t(`kayit.q.${step}_sub`)}`} style={styles.inter}>
         <Image source={step === 'i1' ? GLASS_TROPHY : GLASS_BOWL} style={styles.interIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
         <AppText maxFontSizeMultiplier={1.35} style={[styles.interTitle, { color: P.ink }]}>
           {t(`kayit.q.${step}_title`)}
@@ -636,7 +636,7 @@ function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void 
         <AppText maxFontSizeMultiplier={1.4} style={[styles.cardSub, { color: P.sec, textAlign: 'center' }]}>
           {t(`kayit.q.${step}_sub`)}
         </AppText>
-      </Pressable>
+      </View>
       <KFooter bottom={insets.bottom}>
         <KButton testID="kayit-next" label={t('kayit.q.next')} onPress={onNext} />
       </KFooter>

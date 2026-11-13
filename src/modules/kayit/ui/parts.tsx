@@ -64,7 +64,8 @@ export function Mascot({ size = 96, blink = false, label, style }: { size?: numb
     };
   }, [blink, reduced]);
   return (
-    <View accessible accessibilityRole="image" accessibilityLabel={label ?? t('kayit.onb.mascot')} style={[{ width: size, height: size }, style]}>
+    // Dekoratif: VoiceOver'da okunmaz (HIG denetimi).
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" accessibilityLabel={label ?? t('kayit.onb.mascot')} style={[{ width: size, height: size }, style]}>
       <Image source={closed ? MASCOT_CLOSED : MASCOT_OPEN} style={{ width: size, height: size }} resizeMode="contain" />
     </View>
   );

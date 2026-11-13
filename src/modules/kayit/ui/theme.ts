@@ -18,7 +18,7 @@ export interface KPalette {
   sec: string;
   /** 1 px ayraç / kenar (color.line). */
   line: string;
-  /** Daha belirgin kenar: boş radyo/onay kutusu, alan kenarı (finExtras.line2). */
+  /** Daha belirgin kenar: boş radyo/onay kutusu, alan kenarı — HIG 3:1 (beyazda 3,3:1; koyu yüzeyde 3,7:1). */
   line2: string;
   /** İlerleme/segment izi, devre dışı dolgu (finExtras.track). */
   track: string;
@@ -44,7 +44,7 @@ export const K_LIGHT: KPalette = {
   ink: L.ink,
   sec: L.secondary,
   line: L.line,
-  line2: '#C3C7CC',
+  line2: '#8A8F96',
   track: '#DCDEE2',
   accent: palette.lime,
   onAccent: palette.limeInk,
@@ -62,7 +62,7 @@ export const K_DARK: KPalette = {
   ink: D.ink,
   sec: D.secondary,
   line: D.line,
-  line2: '#48484A',
+  line2: '#757575',
   track: '#2C2C2E',
   accent: palette.lime,
   onAccent: palette.limeInk,

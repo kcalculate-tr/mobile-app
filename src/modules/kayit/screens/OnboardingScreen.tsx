@@ -41,7 +41,7 @@ const STEPS = [1, 2, 3, 4, 5] as const;
 const STARTS: readonly KStart[] = ['track', 'recipes', 'community'];
 const START_ICON = { track: CameraIcon, recipes: ShoppingBag, community: Users } as const;
 /** Alt kartın yüksekliği (güvenli alan hariç): başlık 2 satır + metin 2 satır + noktalar + Devam + giriş satırı. */
-const CARD_H = 316;
+const CARD_H = 330;
 
 function assetUri(src: number): string {
   return Image.resolveAssetSource(src)?.uri ?? '';
@@ -146,10 +146,10 @@ export default function OnboardingScreen({ vitrinStep }: { /** YALNIZ geliştirm
               />
             </View>
             <View style={styles.text}>
-              <AppText accessibilityRole="header" maxFontSizeMultiplier={1.2} numberOfLines={3} style={[styles.title, { color: P.ink }]}>
+              <AppText accessibilityRole="header" maxFontSizeMultiplier={1.15} style={[styles.title, { color: P.ink }]}>
                 {t(`kayit.onb.s${s}.title`)}
               </AppText>
-              <AppText maxFontSizeMultiplier={1.25} numberOfLines={3} style={[styles.sub, { color: P.sec }]}>
+              <AppText maxFontSizeMultiplier={1.2} style={[styles.sub, { color: P.sec }]}>
                 {t(`kayit.onb.s${s}.sub`)}
               </AppText>
             </View>
@@ -159,7 +159,7 @@ export default function OnboardingScreen({ vitrinStep }: { /** YALNIZ geliştirm
 
       {/* Kartın altı: noktalar + Devam (+ 5. ekranda Giriş yap). */}
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 16) }]} pointerEvents="box-none">
-        <View accessible accessibilityRole="image" accessibilityLabel={t('kayit.onb.dots', { step })} style={styles.dots}>
+        <View accessible accessibilityRole="progressbar" accessibilityLabel={t('kayit.onb.dots', { step })} accessibilityValue={{ min: 1, max: 5, now: step }} style={styles.dots}>
           {STEPS.map((i) => (
             <View key={i} style={[styles.dot, i === step ? { width: 20, backgroundColor: P.ink } : { backgroundColor: P.line2 }]} />
           ))}

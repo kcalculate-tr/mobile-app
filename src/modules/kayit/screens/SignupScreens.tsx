@@ -165,6 +165,8 @@ export function SignupScreen() {
             {notice === 'offline' ? <NoticeCard testID="kayit-signup-offline" tone="error" title={t('kayit.signup.offline_title')} sub={t('kayit.signup.offline_sub')} action={{ label: t('kayit.signup.retry'), onPress: () => setNotice(null) }} /> : null}
             {notice === 'cancelled' ? <NoticeCard testID="kayit-signup-cancelled" title={t('kayit.signup.cancelled_title')} sub={t('kayit.signup.cancelled_sub')} /> : null}
             {notice === 'error' ? <NoticeCard tone="error" title={t('kayit.signup.error_title')} sub={errMsg} /> : null}
+            {/* B yolu: 18+ kutusu yöntemlerin ÜSTÜNDE (HIG: devre dışı düğmelerin nedeni görünür). */}
+            {needsAge ? <CheckBoxRow testID="kayit-age" checked={age} onToggle={() => setAge(!age)} label={t('kayit.signup.age')} /> : null}
             <AppleButton dark={P.isDark} label={t('kayit.signup.apple')} busy={busy === 'apple'} disabled={(!!busy && busy !== 'apple') || blocked} onPress={() => void runSocial('apple')} />
             <GoogleButton testID="kayit-google" label={t('kayit.signup.google')} busy={busy === 'google'} disabled={(!!busy && busy !== 'google') || blocked} onPress={() => void runSocial('google')} />
             <Pressable
@@ -206,7 +208,6 @@ export function SignupScreen() {
                 </AppText>
               </Pressable>
             </View>
-            {needsAge ? <CheckBoxRow testID="kayit-age" checked={age} onToggle={() => setAge(!age)} label={t('kayit.signup.age')} /> : null}
             <AppText accessibilityRole="header" maxFontSizeMultiplier={1.4} style={[styles.optional, { color: P.sec }]}>
               {t('kayit.signup.optional')}
             </AppText>

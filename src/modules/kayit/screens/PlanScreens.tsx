@@ -34,13 +34,14 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // ─── L1 ───────────────────────────────────────────────────────────────────────
 export function CalcScreen() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const P = useK();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const navigation = useNavigation<any>();
   // YALNIZ __DEV__ vitrini: L1 ilk satırda bekler (ekran görüntüsü).
-  const hold = __DEV__ && !!((useRoute().params ?? {}) as { vitrinHold?: boolean }).vitrinHold;
+  const routeParams = (useRoute().params ?? {}) as { vitrinHold?: boolean };
+  const hold = __DEV__ && !!routeParams.vitrinHold;
   const answers = useKayit((s) => s.answers);
   const calcDone = useKayit((s) => s.calcDone);
   const planSig = useKayit((s) => s.planSig);
