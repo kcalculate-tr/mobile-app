@@ -289,3 +289,28 @@ test('i18n: TR/EN anahtar kümesi aynı; 4. ekran geçici metni', () => {
   assert.equal(tr.onb.s4.sub, "Keşfet'te paylaş, takip et, ilham al.");
   assert.equal(en.onb.s4.sub, 'Share, follow and get inspired on Explore.');
 });
+
+test('biçim: ay aralığı TR/EN, binlik, ondalık, fark hapı', async () => {
+  const f = await import('../format');
+  assert.equal(f.monthRange('2027-02-10', '2027-03-20', 'tr'), 'Şubat – Mart 2027');
+  assert.equal(f.monthRange('2027-02-10', '2027-03-20', 'tr', true), 'Şub – Mar 2027');
+  assert.equal(f.monthRange('2026-12-10', '2027-01-20', 'en'), 'December 2026 – January 2027');
+  assert.equal(f.monthRange('2027-02-01', '2027-02-20', 'en'), 'February 2027');
+  assert.equal(f.fmtInt(1850, 'tr'), '1.850');
+  assert.equal(f.fmtInt(1850, 'en'), '1,850');
+  assert.equal(f.fmtDec1(72, 'tr'), '72,0');
+  assert.equal(f.fmtDec1(72, 'en'), '72.0');
+  assert.equal(f.fmtDiff(-6, 'metric', 'tr'), '−6 kg');
+  assert.equal(f.fmtDiff(2, 'metric', 'tr'), '+2 kg');
+  assert.equal(f.fmtHeight(170, 'imperial').value, '5′7″');
+  assert.equal(f.fmtPace(0.25, 'tr'), '0,25');
+});
+
+test('B kısa profil → takip kapısı taslağı (kas kazanmak → gain, sağlıklı → regular)', async () => {
+  const { toTakibeDraft } = await import('../plan');
+  assert.equal(toTakibeDraft(base({ goal: 'muscle' }), true).goal, 'gain');
+  assert.equal(toTakibeDraft(base({ goal: 'balanced' }), true).goal, 'regular');
+  const d = toTakibeDraft(base(), false);
+  assert.equal(d.consent, false);
+  assert.equal(d.activity, 'light');
+});
