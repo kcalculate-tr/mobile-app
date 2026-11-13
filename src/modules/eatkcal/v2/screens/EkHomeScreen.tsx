@@ -24,7 +24,7 @@ import { EkCartBar, CART_BAR_GAP, CART_BAR_H, cartBarBottom, useCartSummary } fr
 import { LiveOrderCard } from '../ui/home/LiveOrderCard';
 import { HomeSkeleton } from '../ui/home/HomeSkeleton';
 import { useDeliveryChip } from '../ui/home/useDeliveryChip';
-import { EmptyErrorCard, haptic } from '../../../../core/design';
+import { BrandLogo, EmptyErrorCard, haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { useFeature } from '../../../../core/flags';
 import { MagnifyingGlass, Receipt, MapPin, CaretRight, X, BellRinging, Info } from '../../../../components/icons';
@@ -316,9 +316,10 @@ function EkHomeContent() {
         </View>
       ) : (
         <>
-          <Text style={[ekType.h24, { color: c.ink, flex: 1 }]} accessibilityRole="header">
-            {t('eatkcal.v2.home.title')}
-          </Text>
+          {/* G39-S1 md.2: üst başlıkta "eatkcal" yazısı yerine eatkcal logosu. */}
+          <View style={styles.headerLogo}>
+            <BrandLogo name="eatkcal" height={24} color={c.ink} accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.home.title')} testID="ek-home-logo" />
+          </View>
           {/* G15-S5 (FinEkHome): Final sırası ara · siparişler · bilgi. Sepet başlıkta değil,
               sekme çubuğunun sepet hapında (yeni kabuk; v2 kayıtlıyken EkCart'a gider). */}
           <IconBtn label={t('eatkcal.v2.home.search')} onPress={() => setSearchOpen(true)} testID="ek-home-search">
@@ -560,6 +561,7 @@ function IconBtn({
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, marginTop: 6 },
+  headerLogo: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',

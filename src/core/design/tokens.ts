@@ -40,6 +40,11 @@ export const palette = {
    * okunmaz; bu aile tonu okunur.
    */
   limeLineOnLight: '#4A6B00',
+  /**
+   * G39-S1 md.5 — MARKA lime'ı (logo / koç kartı dolgusu; constants/theme `green` ile aynı).
+   * Yalnız dolgu; üstündeki metin/düğme her temada siyah (`limeInk`).
+   */
+  brandLime: '#B9EF14',
 
   // Mutlaklar
   black: '#000000',

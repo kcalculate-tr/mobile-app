@@ -1,4 +1,4 @@
-// G24-S1 md.3 — kcalAI Koç ortak parçaları: cam nesne (kase + alev), hak hapı, yazıyor noktaları,
+// G24-S1 md.3 — kcalAI Koç ortak parçaları: koç maskotu (G39-S1 md.4; önce kase + alev), hak hapı, yazıyor noktaları,
 // akan yanıt (FinMoCoach), geri bildirim satırı, "Koç tıbbi tavsiye vermez." satırı.
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
@@ -16,10 +16,10 @@ import { AppText, CURVE, DURATION, REDUCED, haptic, useReducedMotion, useTheme }
 import { useT } from '../../../core/i18n';
 import { Sparkle, ThumbsDown, ThumbsUp } from '../../../components/icons';
 import { streamPlan } from '../model';
+import { KOC_ACIK } from './mascot';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const BOWL = require('../../../../assets/glass/bowl.png');
-export const FLAME = require('../../../../assets/glass/flame.png');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 export const LIME = '#C6F04F';
@@ -45,14 +45,16 @@ export function useCoachTones() {
   };
 }
 
-/** Kase + alev cam nesnesi (FinCoachIntro / Empty / Upsell). Dekoratif → VoiceOver'da gizli. */
+/**
+ * Koç maskotu (FinCoachIntro / Empty / Upsell). G39-S1 md.4: kase + alev yerine maskot (gözler açık),
+ * arkasında aynı yumuşak lime ışıma. Dekoratif → VoiceOver'da gizli. Ad geriye uyum için korunuyor.
+ */
 export function CoachGlass({ size = 120 }: { size?: number }) {
   const c = useCoachTones();
   return (
-    <View style={{ width: size * 1.3, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <View style={{ width: size * 1.3, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="coach-mascot">
       <View style={{ position: 'absolute', width: size * 1.1, height: size * 1.1, borderRadius: size, backgroundColor: c.glow, opacity: 0.6 }} />
-      <Image source={BOWL} style={{ width: size, height: size * 0.62, marginTop: size * 0.2 }} resizeMode="contain" />
-      <Image source={FLAME} style={{ position: 'absolute', right: size * 0.08, top: 0, width: size * 0.36, height: size * 0.46 }} resizeMode="contain" />
+      <Image source={KOC_ACIK} style={{ width: size * 0.92, height: size * 0.92 }} resizeMode="contain" />
     </View>
   );
 }
@@ -62,7 +64,7 @@ export function CoachAvatar({ size = 32 }: { size?: number }) {
   const c = useCoachTones();
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: c.card, borderColor: c.line }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Image source={BOWL} style={{ width: size * 0.7, height: size * 0.5 }} resizeMode="contain" />
+      <Image source={KOC_ACIK} style={{ width: size * 0.8, height: size * 0.8 }} resizeMode="contain" testID="coach-avatar-mascot" />
     </View>
   );
 }

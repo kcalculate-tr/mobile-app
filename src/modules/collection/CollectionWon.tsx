@@ -13,7 +13,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import { AppText, CURVE, DURATION, REDUCED, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
+import { AppText, BrandLogo, CURVE, DURATION, REDUCED, TIMING, haptic, useReducedMotion, useTheme } from '../../core/design';
 import { useT } from '../../core/i18n';
 import { CachedImage } from '../../components/CachedImage';
 import { StatusBar } from 'expo-status-bar';
@@ -119,7 +119,7 @@ export function CollectionWon({
                 </View>
               ) : null}
 
-              <AppText style={[styles.brand, { color: ct.sec }]}>kcal.</AppText>
+              <BrandLogo name="kcal" height={14} color={ct.sec} style={styles.brand} />
             </View>
 
             {/* Lime çip: "No. NNN · İlk kez" — kartın sol üst köşesinde. */}
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
   tag: { borderWidth: 1, borderColor: '#C3C7CC', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
   tagText: { fontSize: 13, fontWeight: '500', color: '#0A0A0A' },
-  brand: { marginTop: 'auto', fontFamily: 'BricolageGrotesque_700Bold', fontSize: 14, color: '#6B6B70' },
+  brand: { marginTop: 'auto' },
   limeChip: { position: 'absolute', top: -14, left: 12, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   limeText: { fontSize: 13, fontWeight: '700' },
   actions: { position: 'absolute', left: 16, right: 16, bottom: 40, gap: 12 },

@@ -9,10 +9,11 @@ import { Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, DURATION, SPRING, haptic, useReducedMotion, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { Hourglass, Sparkle, Warning, X, XCircle } from '../../../components/icons';
+import { Hourglass, Warning, X, XCircle } from '../../../components/icons';
 import type { PlanCard } from '../../../lib/subscription/plans';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { PurchasePlanRow } from '../../personalPlan/ui/entries';
+import { KcalAiMark } from './KcalAiMark';
 
 export type SubResultState = 'success' | 'cancelled' | 'pending' | 'error';
 
@@ -90,8 +91,8 @@ export default function SubResult({
           <Animated.View entering={FadeIn.duration(reduced ? DURATION.fast : DURATION.base)} style={styles.center}>
             {/* G26-S1: "kcalAI" yalnız küçük hap; büyük başlıkta yalnız plan adı (Fresh / Balance). */}
             <View style={styles.brand} testID="sub-result-brand">
-              <Sparkle size={14} color="#0A0A0A" weight="fill" />
-              <AppText style={styles.brandText}>{tr('sub.brand')}</AppText>
+              {/* G39-S1 md.3: hap içinde de kcalculate logosu + "AI" (lime üstünde siyah). */}
+              <KcalAiMark height={12} color="#0A0A0A" label={tr('sub.brand')} testID="sub-result-brand-mark" />
             </View>
             <AppText style={[styles.okTitle, { color: ink }]} accessibilityRole="header" testID="sub-result-title">
               {tr('sub.result.ok_title', { plan: planName })}{' '}
@@ -227,7 +228,6 @@ const styles = StyleSheet.create({
   trophy: { alignItems: 'center', marginTop: 4 },
   center: { alignItems: 'center', marginTop: 8 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#C6F04F', borderRadius: 16, paddingHorizontal: 12, minHeight: 32, marginBottom: 10 },
-  brandText: { fontSize: 14, fontWeight: '700', color: '#0A0A0A' },
   okTitle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 38, textAlign: 'center' },
   mark: { backgroundColor: '#C6F04F', color: '#0A0A0A' },
   okBody: { marginTop: 8, fontSize: 16, lineHeight: 22, textAlign: 'center' },

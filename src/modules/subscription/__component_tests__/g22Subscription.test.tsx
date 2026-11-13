@@ -90,7 +90,9 @@ beforeEach(() => {
 test('Paywall: Fresh varsayılan — büyük başlık "Fresh", kcalAI küçük etiket, Yıllık "%58 tasarruf" + "7 gün ücretsiz" + "ayda 83 TL", deneme CTA', () => {
   const tree = render(<PaywallScreen />);
   expect(tree.getByTestId('sub-title').props.children).toBe('Fresh');
-  expect(tree.getByTestId('sub-brand').props.children).toBe('kcalAI');
+  // G39-S1 md.3: küçük etiket artık kcalculate logosu + "AI"; VoiceOver etiketi "kcalAI".
+  expect(tree.getByTestId('sub-brand').props.accessibilityLabel).toBe('kcalAI');
+  expect(tree.getByTestId('sub-brand-ai').props.children).toBe('AI');
   expect(tree.getByTestId('sub-card-fresh_yearly')).toBeTruthy();
   expect(tree.getByTestId('sub-card-fresh_monthly')).toBeTruthy();
   expect(tree.queryByTestId('sub-card-balance_yearly')).toBeNull();
@@ -313,7 +315,7 @@ test('Paywall: satın alma sonuçları — iptal / bekliyor / başarı', async (
   const flat = (n: unknown): string =>
     typeof n === 'string' ? n : Array.isArray(n) ? n.map(flat).join('') : n && typeof n === 'object' && 'props' in (n as object) ? flat((n as { props: { children: unknown } }).props.children) : '';
   expect(flat(title.props.children)).toBe('Balance etkin');
-  expect(flat(tree.getByTestId('sub-result-brand').props.children)).toContain('kcalAI');
+  expect(tree.getByTestId('sub-result-brand-mark').props.accessibilityLabel).toBe('kcalAI');
   expect(tree.getByText('Günde 50')).toBeTruthy();
   expect(tree.queryByText(/adil kullanım/)).toBeNull();
   expect(tree.getByText(/7 günlük ücretsiz denemen başladı/)).toBeTruthy();

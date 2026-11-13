@@ -6,7 +6,7 @@
 import React, { useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
-import { AppText, CURVE, DURATION, REDUCED, haptic, useReducedMotion } from '../../../core/design';
+import { AppText, BrandLogo, CURVE, DURATION, REDUCED, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CaretRight, Check, Heartbeat, Plus, ShoppingCart } from '../../../components/icons';
 import { formatPrice } from '../../../lib/money';
@@ -196,7 +196,7 @@ function Product({ card, onAdd }: { card: ProductCard; onAdd: CardHandlers['onAd
         {card.img ? <Image source={{ uri: card.img }} style={styles.prodImg} resizeMode="cover" accessibilityIgnoresInvertColors /> : <View style={[styles.prodImg, { backgroundColor: c.nested }]} />}
         <View style={styles.flex1}>
           <View style={styles.rowC}>
-            <AppText style={[styles.brand, { color: c.text }]}>eatkcal</AppText>
+            <BrandLogo name="eatkcal" height={13} color={c.text} decorative />
             <View style={[styles.izmir, { backgroundColor: c.nested }]}>
               <AppText style={[styles.izmirText, { color: c.sec }]}>İzmir</AppText>
             </View>
@@ -341,7 +341,6 @@ const styles = StyleSheet.create({
   recipeFoot: { paddingHorizontal: 14, paddingBottom: 14 },
   prodRow: { flexDirection: 'row', gap: 12 },
   prodImg: { width: 76, height: 76, borderRadius: 14 },
-  brand: { fontSize: 13, fontWeight: '700' },
   izmir: { borderRadius: 8, paddingHorizontal: 6, minHeight: 20, justifyContent: 'center' },
   izmirText: { fontSize: 12 },
   chartHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },

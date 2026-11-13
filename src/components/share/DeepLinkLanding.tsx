@@ -11,6 +11,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { Icon } from '../icons';
+import { BrandLogo } from '../../core/design/components/BrandLogo';
 
 const C = {
   bg: '#0A0A0A',
@@ -59,7 +60,8 @@ export default function DeepLinkLanding({
         <TouchableOpacity style={styles.primaryBtn} onPress={onPrimary} activeOpacity={0.85}>
           <Text style={styles.primaryBtnText}>{primaryLabel}</Text>
         </TouchableOpacity>
-        <Text style={styles.brand}>Kcalculate</Text>
+        {/* G39-S1 md.2: yazı yerine kcalculate logosu. */}
+        <BrandLogo name="kcalculate" height={14} color={C.textMuted} style={styles.brand} />
       </View>
     </View>
   );
@@ -127,10 +129,7 @@ const styles = StyleSheet.create({
     color: C.accentText,
   },
   brand: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 14,
-    color: C.textMuted,
     marginTop: 18,
-    letterSpacing: 0.5,
+    alignSelf: 'center',
   },
 });

@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { CaretLeft } from '../icons';
 import { useNavigation } from '@react-navigation/native';
 import { sportive } from '../../theme/sportive';
+import { BrandLogo } from '../../core/design/components/BrandLogo';
 
 interface Props {
   showBack?: boolean;
@@ -22,11 +23,8 @@ export const TopBar: React.FC<Props> = ({ showBack, pageIndicator, rightAction }
         <View style={{ width: 32 }} />
       )}
 
-      <Image
-        source={require('../../../assets/kcal-onboard-logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      {/* G39-S1 md.2: PNG yerine SVG "kcal." logosu (aynı yükseklik bandı). */}
+      <BrandLogo name="kcal" height={24} color={sportive.colors.textPrimary} />
 
       {pageIndicator ? (
         <Text style={styles.indicator}>{pageIndicator}</Text>
@@ -50,7 +48,6 @@ const styles = StyleSheet.create({
     borderColor: sportive.colors.glassBorder,
     alignItems: 'center', justifyContent: 'center',
   },
-  logo: { width: 80, height: 30 },
   indicator: { ...sportive.type.tactical, color: sportive.colors.textSecondary, width: 50, textAlign: 'right' },
   skip: { ...sportive.type.bodySm, color: sportive.colors.textSecondary, fontFamily: 'PlusJakartaSans_500Medium' },
 });

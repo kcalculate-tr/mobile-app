@@ -30,6 +30,7 @@ import { GLASS, MiniChip, Thumb, usePlanTones } from '../ui/parts';
 import { usePersonalPlanEntry } from '../../personalPlan/ui/entries';
 import { PersonalPlanFormSummary, PersonalPlanNeeded } from '../../personalPlan/ui/planForm';
 import { effectiveTargets } from '../../personalPlan/types';
+import { KOC_ACIK } from '../../coach/ui/mascot';
 
 type Nav = { goBack: () => void; navigate: (n: string, p?: object) => void; replace?: (n: string, p?: object) => void };
 export type PlanGenerateParams = { weekStart?: string } | undefined;
@@ -232,7 +233,7 @@ export default function PlanGenerateScreen() {
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 120 }]} showsVerticalScrollIndicator={false}>
           {coachMode ? (
             <View style={[styles.modeCard, { backgroundColor: c.card }]} testID="plan-mode-coach">
-              <Image source={GLASS.bowl} style={styles.modeBowl} resizeMode="contain" />
+              <Image source={KOC_ACIK} style={styles.modeBowl} resizeMode="contain" testID="plan-mode-coach-mascot" />
               <View style={styles.flex1}>
                 <AppText style={[styles.modeTitle, { color: c.ink }]}>{tr('plan.gen_coach_h')}</AppText>
                 <AppText style={[styles.small, { color: c.sec }]}>{tr('plan.gen_coach_sub')}</AppText>
@@ -252,7 +253,7 @@ export default function PlanGenerateScreen() {
                 <MiniChip text="Fresh" lime />
               </View>
               <Pressable onPress={() => nav.navigate('SubPaywall', { from: 'meal_plan', plan: 'balance' })} accessibilityRole="button" style={[styles.upsellRow, { borderTopColor: c.line }]} testID="plan-upsell-balance">
-                <Image source={GLASS.bowl} style={styles.upsellBowl} resizeMode="contain" />
+                <Image source={KOC_ACIK} style={styles.upsellBowl} resizeMode="contain" />
                 <AppText style={[styles.upsellText, { color: c.ink }]}>{tr('plan.gen_upsell')}</AppText>
                 <CaretRight size={16} color={c.sec} />
               </Pressable>
@@ -523,7 +524,7 @@ function Generating({ coach, steps, shown, days, lang, onCancel }: { coach: bool
             <Animated.View style={[styles.genRing, { borderColor: c.lime, borderTopColor: 'transparent' }, ringSt]} />
           ) : null}
           <Animated.View style={bowlSt}>
-            {coach ? <Image source={GLASS.bowl} style={styles.genBowl} resizeMode="contain" /> : <SquaresFour size={26} color={c.ink} />}
+            {coach ? <Image source={KOC_ACIK} style={styles.genBowl} resizeMode="contain" /> : <SquaresFour size={26} color={c.ink} />}
           </Animated.View>
         </View>
         <View style={styles.flex1}>
@@ -592,7 +593,7 @@ function Result({ result, coach, note, notice, days, openDays, lang, onUnlock, o
       {notice ? <AppText style={[styles.notice, { color: c.ink, backgroundColor: c.nested }]} testID="plan-result-notice">{notice}</AppText> : null}
       {coach && note ? (
         <View style={styles.noteRow} testID="plan-coach-note">
-          <Image source={GLASS.bowl} style={styles.noteBowl} resizeMode="contain" />
+          <Image source={KOC_ACIK} style={styles.noteBowl} resizeMode="contain" />
           <View style={[styles.noteBubble, { backgroundColor: c.card }]}>
             <AppText style={[styles.noteText, { color: c.ink }]}>{note}</AppText>
           </View>
@@ -646,7 +647,7 @@ function Result({ result, coach, note, notice, days, openDays, lang, onUnlock, o
         </View>
       ) : !coach ? (
         <Pressable onPress={onUpsell} accessibilityRole="button" style={[styles.upsellCard, { backgroundColor: c.card, borderColor: c.lime }]} testID="plan-result-upsell">
-          <Image source={GLASS.bowl} style={styles.modeBowl} resizeMode="contain" />
+          <Image source={KOC_ACIK} style={styles.modeBowl} resizeMode="contain" />
           <View style={styles.flex1}>
             <AppText style={[styles.modeTitle, { color: c.ink }]}>{tr('plan.gen_upsell')}</AppText>
             <AppText style={[styles.small, { color: c.sec }]}>{tr('plan.gen_upsell_sub')}</AppText>
@@ -670,10 +671,10 @@ const styles = StyleSheet.create({
   modeGroup: { borderRadius: 20, overflow: 'hidden' },
   modeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   modeIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  modeBowl: { width: 44, height: 30 },
+  modeBowl: { width: 40, height: 40 },
   modeTitle: { fontSize: 16, fontWeight: '700' },
   upsellRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, minHeight: 48, borderTopWidth: 1 },
-  upsellBowl: { width: 26, height: 18 },
+  upsellBowl: { width: 24, height: 24 },
   upsellText: { flex: 1, fontSize: 14, fontWeight: '600' },
   section: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 6 },
   sectionTitle: { fontSize: 17, fontWeight: '700' },
@@ -709,7 +710,7 @@ const styles = StyleSheet.create({
   genHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   genBowlWrap: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   genRing: { position: 'absolute', width: 56, height: 56, borderRadius: 28, borderWidth: 3 },
-  genBowl: { width: 40, height: 28 },
+  genBowl: { width: 36, height: 36 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 28 },
   stepCheck: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   stepText: { flex: 1, fontSize: 14 },
@@ -719,7 +720,7 @@ const styles = StyleSheet.create({
   resultH: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 24, lineHeight: 30 },
   notice: { borderRadius: 14, padding: 12, fontSize: 14, lineHeight: 19, overflow: 'hidden' },
   noteRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  noteBowl: { width: 28, height: 20, marginTop: 6 },
+  noteBowl: { width: 28, height: 28, marginTop: 2 },
   noteBubble: { flex: 1, borderRadius: 18, padding: 12 },
   noteText: { fontSize: 14, lineHeight: 20 },
   templNote: { borderRadius: 18, padding: 12, gap: 8, alignItems: 'flex-start' },

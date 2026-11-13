@@ -4,10 +4,10 @@
 //  • CoachScanButton (FinPhotoR1): Tara sonucunda sessiz çerçeveli "Koça sor" (asla lime değil).
 //  • CoachProfileRow (FinPrProfile): Profil › kcalAI'da "AI Koç" satırı + Balance rozeti.
 //  • CoachRecipeButton (FinRecipe): "Bu tarif bana uyar mı?".
-import React, { useContext } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { Image, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import * as RNav from '@react-navigation/native';
-import { AppText, haptic } from '../../../core/design';
+import { AppText, haptic, palette } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CaretRight, ChatCircleDots } from '../../../components/icons';
 import { useTier } from '../../../lib/subscription/purchases';
@@ -16,7 +16,13 @@ import { useCoachEnabled } from '../access';
 import { openCoach } from '../actions';
 import { COACH_TRIAL_FALLBACK, homeLine } from '../model';
 import type { CoachRef } from '../types';
-import { BOWL, LIME, LIME_INK, useCoachTones } from './parts';
+import { LIME, LIME_INK, useCoachTones } from './parts';
+import { KOC_ACIK } from './mascot';
+import { CoachHomeMascot } from './CoachHomeMascot';
+
+/** Lime üstünde metin: her temada siyah (ikincil = siyah %72, lime üstünde ≥ 7:1). */
+const HOME_INK = '#0A0A0A';
+const HOME_INK_SEC = 'rgba(10,10,10,0.72)';
 
 type Nav = { navigate: (n: string, p?: object) => void };
 
@@ -32,24 +38,38 @@ export function CoachHomeCard(props: { consumedKcal: number | null; targetKcal: 
   return enabled ? <CoachHomeCardInner {...props} /> : null;
 }
 
+/**
+ * G39-S1 md.5 — yeni görünüm: dolgu marka lime'ı (`palette.brandLime`), üstündeki metin ve düğme HER TEMADA siyah;
+ * sağ kenarda süzülen / göz kırpan maskot (CoachHomeMascot) ve arkasında siyah yumuşak ışıma. Metin, düğme,
+ * kota/Balance mantığı ve "Koçuna sor" eylemi aynı. Metin sütunu maskota yer bırakır (sağ boşluk).
+ */
+const HOME_CARD_MIN_H = 148;
 function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consumedKcal: number | null; targetKcal: number | null; proteinLeft: number | null }) {
   const nav = useNavSafe();
   const { t: tr } = useT();
-  const c = useCoachTones();
   const { tier } = useTier();
   const trial = useSubscriptionStore((s) => s.limits?.coach?.trial) ?? COACH_TRIAL_FALLBACK;
   const { line, question } = homeLine(consumedKcal, targetKcal, proteinLeft, tr);
+  const [h, setH] = useState(HOME_CARD_MIN_H);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const next = Math.round(e.nativeEvent.layout.height);
+    if (next > 0 && Math.abs(next - h) > 1) setH(next);
+  };
+  const textRight = Math.round(h * 0.9 * 0.62);
   return (
-    <View style={[styles.home, { backgroundColor: c.card, borderColor: c.line }]} accessibilityLabel={tr('coach.name')} testID="coach-home-card">
-      <View style={styles.homeTop}>
-        <Image source={BOWL} style={styles.homeBowl} resizeMode="contain" accessibilityElementsHidden importantForAccessibility="no" />
-        <View style={styles.flex1}>
-          <AppText style={[styles.homeName, { color: c.sec }]}>{tr('coach.name')}</AppText>
-          <AppText style={[styles.homeLine, { color: c.text }]}>{line}</AppText>
-        </View>
+    <View
+      style={[styles.home, { backgroundColor: palette.brandLime }]}
+      onLayout={onLayout}
+      accessibilityLabel={tr('coach.name')}
+      testID="coach-home-card"
+    >
+      <CoachHomeMascot cardHeight={h} />
+      <View style={[styles.homeText, { paddingRight: textRight }]}>
+        <AppText style={[styles.homeName, { color: HOME_INK_SEC }]}>{tr('coach.name')}</AppText>
+        <AppText style={[styles.homeLine, { color: HOME_INK }]}>{line}</AppText>
       </View>
-      <View style={styles.homeBottom}>
-        {tier !== 'balance' ? <AppText style={[styles.homeTrial, { color: c.sec }]}>{tr('coach.home_trial', { n: trial })}</AppText> : null}
+      <View style={[styles.homeBottom, { paddingRight: textRight * 0.55 }]}>
+        {tier !== 'balance' ? <AppText style={[styles.homeTrial, { color: HOME_INK_SEC }]}>{tr('coach.home_trial', { n: trial })}</AppText> : null}
         <Pressable
           onPress={() => {
             haptic('light');
@@ -57,11 +77,11 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consume
           }}
           accessibilityRole="button"
           accessibilityLabel={tr('coach.home_a11y', { line })}
-          style={[styles.homeBtn, { backgroundColor: c.text }]}
+          style={({ pressed }) => [styles.homeBtn, { backgroundColor: HOME_INK }, pressed && { opacity: 0.85 }]}
           testID="coach-home-open"
         >
-          <AppText style={[styles.homeBtnText, { color: c.bg }]}>{tr('coach.home_cta')}</AppText>
-          <CaretRight size={16} color={c.bg} />
+          <AppText style={[styles.homeBtnText, { color: palette.brandLime }]}>{tr('coach.home_cta')}</AppText>
+          <CaretRight size={16} color={palette.brandLime} />
         </Pressable>
       </View>
     </View>
@@ -89,7 +109,7 @@ function CoachScanButtonInner({ meal, compact }: { meal: { name: string; kcal: n
       style={[compact ? styles.scanCompact : styles.scan, { borderColor: c.line2, backgroundColor: compact ? c.card : 'transparent' }]}
       testID="coach-scan-open"
     >
-      <Image source={BOWL} style={styles.scanBowl} resizeMode="contain" accessibilityElementsHidden importantForAccessibility="no" />
+      <Image source={KOC_ACIK} style={styles.scanBowl} resizeMode="contain" accessibilityElementsHidden importantForAccessibility="no" />
       <AppText style={[styles.scanText, { color: c.text }]}>{tr('coach.scan_cta')}</AppText>
     </Pressable>
   );
@@ -147,7 +167,7 @@ function CoachRecipeButtonInner({ postId, name }: { postId: string; name: string
       style={[styles.recipe, { borderTopColor: c.line }]}
       testID="coach-recipe-fit"
     >
-      <Image source={BOWL} style={styles.scanBowl} resizeMode="contain" accessibilityElementsHidden importantForAccessibility="no" />
+      <Image source={KOC_ACIK} style={styles.scanBowl} resizeMode="contain" accessibilityElementsHidden importantForAccessibility="no" />
       <AppText style={[styles.recipeText, { color: c.text }]}>{tr('coach.recipe_fit')}</AppText>
       <CaretRight size={16} color={c.sec} />
     </Pressable>
@@ -156,14 +176,13 @@ function CoachRecipeButtonInner({ postId, name }: { postId: string; name: string
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
-  home: { marginTop: 24, marginHorizontal: 16, padding: 16, borderRadius: 20, borderWidth: 1, gap: 12 },
-  homeTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  homeBowl: { width: 44, height: 44 },
+  home: { marginTop: 24, marginHorizontal: 16, padding: 16, borderRadius: 20, gap: 12, overflow: 'hidden', minHeight: HOME_CARD_MIN_H },
+  homeText: { gap: 2 },
   homeName: { fontSize: 13, fontWeight: '600' },
   homeLine: { fontSize: 15, fontWeight: '600', lineHeight: 20 },
-  homeBottom: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  homeTrial: { fontSize: 13 },
-  homeBtn: { marginLeft: 'auto', minHeight: 44, borderRadius: 22, paddingLeft: 16, paddingRight: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  homeBottom: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  homeTrial: { fontSize: 13, flexShrink: 1 },
+  homeBtn: { minHeight: 44, borderRadius: 22, paddingLeft: 16, paddingRight: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
   homeBtnText: { fontSize: 14, fontWeight: '600' },
   scan: { minHeight: 48, borderRadius: 24, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14 },
   scanCompact: { minHeight: 44, borderRadius: 22, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 14 },

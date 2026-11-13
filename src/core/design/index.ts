@@ -22,6 +22,8 @@ export * from './motion';
 
 // Bileşenler
 export { AppText, TextScaleCapContext, withWeightFamily } from './components/AppText';
+export { BrandLogo, BRAND_LABEL, brandAspect, brandLogoWidth, brandLogoSvgMarkup } from './components/BrandLogo';
+export type { BrandName } from './components/BrandLogo';
 export { FinText, resolveFinTextStyle } from './components/FinText';
 export { Button } from './components/Button';
 export { Chip } from './components/Chip';

@@ -26,18 +26,20 @@ import { purchasePlan, restorePurchases, useSubscriptionStore, useTier, type Pur
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubResult, { type SubResultState } from '../ui/SubResult';
 import SubLegalLinks from '../ui/SubLegalLinks';
+import { KcalAiMark } from '../ui/KcalAiMark';
 import { trackSub } from '../subTrack';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useCoachEnabled } from '../../coach/access';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-// Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası.
+// Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası (koç: maskot).
 const FEATURE_IMG = {
   ai: require('../../../../assets/glass/camera.png'),
   voice: require('../../../../assets/glass/mic.png'),
   barcode: require('../../../../assets/glass/barcode.png'),
   manual: require('../../../../assets/glass/infinity.png'),
-  coach: require('../../../../assets/glass/bowl.png'),
+  // G39-S1 md.3: Koç = maskot (gözler açık); kase yalnız öğün anlamında kalır.
+  coach: require('../../../../assets/coach/koc-acik.png'),
 };
 /* eslint-enable @typescript-eslint/no-require-imports */
 type FeatureKey = keyof typeof FEATURE_IMG;
@@ -240,9 +242,8 @@ export default function PaywallScreen() {
         </View>
 
         <Animated.View key={`head-${group}`} entering={fade} style={styles.head}>
-          <AppText style={[styles.brand, { color: t.color.secondary }]} testID="sub-brand">
-            {tr('sub.brand')}
-          </AppText>
+          {/* G39-S1 md.3: "kcalAI" yazısı → kcalculate logosu + ayrı "AI" (aynı yükseklik, Bricolage Bold). */}
+          <KcalAiMark height={16} color={ink} label={tr('sub.brand')} style={styles.brand} testID="sub-brand" />
           <AppText style={[styles.title, { color: ink }]} accessibilityRole="header" accessibilityLabel={`${tr('sub.brand')} ${groupName}`} testID="sub-title">
             {groupName}
           </AppText>
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   head: { alignItems: 'center', marginTop: -4 },
-  brand: { fontSize: 13, fontWeight: '600', letterSpacing: 0.2 },
+  brand: { marginBottom: 2 },
   title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 36, lineHeight: 42, textAlign: 'center' },
   glowSvg: { position: 'absolute', left: -GLOW_BLEED, top: -GLOW_BLEED },
   iconRow: { alignItems: 'center', paddingTop: 8 },

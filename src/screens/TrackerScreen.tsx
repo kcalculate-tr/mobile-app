@@ -25,7 +25,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import * as Print from 'expo-print';
-import { KCALCULATE_LOGO_B64 } from '../constants/kcalculateLogo';
+import { brandLogoSvgMarkup } from '../core/design/components/brandLogoMarkup';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import { Circle, Svg, Polyline } from 'react-native-svg';
@@ -2220,7 +2220,6 @@ export default function TrackerScreen() {
       const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Kullanıcı';
       const userEmail = user?.email || '—';
 
-      const logoDataUrl = KCALCULATE_LOGO_B64;
       const activeDays = weeklyData7.filter((d: any) => d.kcal > 0);
       const avgKcal = activeDays.length > 0
         ? Math.round(activeDays.reduce((s: number, d: any) => s + d.kcal, 0) / activeDays.length)
@@ -2273,7 +2272,7 @@ const html = `
       border-bottom: 3px solid COLORS.brand.green;
     }
     .header-left { display: flex; align-items: center; gap: 14px; }
-    .logo-img { height: 36px; object-fit: contain; }
+    .logo-img { height: 22px; width: auto; flex-shrink: 0; }
     .header-title { color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
     .header-subtitle { color: #64748b; font-size: 13px; margin-top: 3px; }
     .header-right { text-align: right; }
@@ -2378,7 +2377,7 @@ const html = `
   <!-- ── Header ── -->
   <div class="header">
     <div class="header-left">
-      <img src="${KCALCULATE_LOGO_B64}" class="logo-img" alt="kcalculate" />
+      ${brandLogoSvgMarkup('kcalculate', { height: 22, className: 'logo-img' })}
       <div>
         <div class="header-title">Geçmiş Beslenme Raporu Özeti</div>
         <div class="header-subtitle">eatkcal.com · Kcalculate</div>

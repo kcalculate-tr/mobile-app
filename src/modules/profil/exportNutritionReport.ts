@@ -10,7 +10,7 @@
  */
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { KCALCULATE_LOGO_B64 } from '../../constants/kcalculateLogo';
+import { brandLogoSvgMarkup } from '../../core/design/components/brandLogoMarkup';
 
 export interface NutritionReportDay {
   date: string; // YYYY-MM-DD
@@ -79,7 +79,7 @@ function buildHtml(params: NutritionReportParams): string {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 13px; }
     .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #C6F04F; padding-bottom: 16px; margin-bottom: 20px; }
-    .logo-img { height: 32px; }
+    .logo-img { height: 20px; width: auto; flex-shrink: 0; }
     .title { font-size: 20px; font-weight: 800; }
     .sub { color: #6B6B70; font-size: 12px; margin-top: 4px; }
     .meta { display: flex; gap: 24px; margin-bottom: 20px; }
@@ -96,7 +96,7 @@ function buildHtml(params: NutritionReportParams): string {
 <body>
   <div class="header">
     <div style="display:flex; align-items:center; gap:12px;">
-      <img src="${KCALCULATE_LOGO_B64}" class="logo-img" alt="kcalculate" />
+      ${brandLogoSvgMarkup('kcalculate', { height: 20, className: 'logo-img' })}
       <div>
         <div class="title">Beslenme Raporu</div>
         <div class="sub">${escapeHtml(rangeLabel)}</div>

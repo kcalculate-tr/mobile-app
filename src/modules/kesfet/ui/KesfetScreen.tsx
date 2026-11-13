@@ -18,7 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Animated, { FadeIn, FadeOut, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
-import { AppText, useTheme, LogTrail } from '../../../core/design';
+import { AppText, BrandLogo, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { DURATION, REDUCED, WAIT, haptic, useReducedMotion } from '../../../core/design';
@@ -113,9 +113,8 @@ function Header({
   }, [unread, badgePop]);
   return (
     <View style={styles.header}>
-      <AppText textRole="screenTitle" style={styles.title}>
-        {tr('kesfet.title')}
-      </AppText>
+      {/* G39-S1 md.2: "Keşfet" yazısı yerine kcal. logosu; VoiceOver başlığı yine "Keşfet". */}
+      <BrandLogo name="kcal" height={26} accessibilityRole="header" accessibilityLabel={tr('kesfet.title')} testID="kesfet-header-logo" />
       <View style={styles.headerIcons}>
         <Pressable onPress={onSearch} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.search')} style={styles.iconBtn}>
           <Icon name="search" size={24} color={t.color.ink} />
@@ -1031,7 +1030,6 @@ export function KesfetScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 16, paddingRight: 4 },
-  title: {},
   headerIcons: { flexDirection: 'row' },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   dot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },

@@ -22,7 +22,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../../core/design';
+import { BrandLogo, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
@@ -319,7 +319,10 @@ export default function FinPrProfileScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 16, gap: 10 }}>
-          <FinSectionLabel>{tr('profil.section_eatkcal')}</FinSectionLabel>
+          {/* G39-S1 md.2: bölüm başlığı "eatkcal" yazısı yerine logo (13 pt etiket bandı, ikincil renk). */}
+          <View style={{ marginHorizontal: 4 }}>
+            <BrandLogo name="eatkcal" height={13} color={t.color.secondary} accessibilityRole="header" accessibilityLabel={tr('profil.section_eatkcal')} testID="profile-section-eatkcal" />
+          </View>
           <FinRowGroup>
             <FinRow
               first

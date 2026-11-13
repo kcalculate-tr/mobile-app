@@ -16,6 +16,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../../core/design/components/AppText';
+import { BrandLogo } from '../../../core/design/components/BrandLogo';
 import { CURVE, DURATION, REDUCED, haptic, useReducedMotion } from '../../../core/design/motion';
 import { useT } from '../../../core/i18n';
 import { BRICOLAGE_BOLD, LIME, LIME_INK, useHomeTokens } from './homeTokens';
@@ -107,7 +108,7 @@ export function CelebrateProfile({
           accessibilityLabel={i18n.t('onboarding.celebrate_profile.card_title')}
         >
           <View style={styles.cardTop}>
-            <AppText style={styles.brand}>kcal.</AppText>
+            <BrandLogo name="kcal" height={16} color="#FFFFFF" />
             <AppText style={styles.date}>{date}</AppText>
           </View>
           <View style={styles.ringBox}>
@@ -182,7 +183,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  brand: { fontFamily: BRICOLAGE_BOLD, fontSize: 15, lineHeight: 20, color: '#FFFFFF' },
   date: { fontSize: 13, lineHeight: 17, color: '#A1A1A6' },
   ringBox: { alignSelf: 'center', width: RING, height: RING },
   ringLabel: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },

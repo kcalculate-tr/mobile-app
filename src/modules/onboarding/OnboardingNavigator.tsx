@@ -22,6 +22,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppText } from '../../core/design/components/AppText';
+import { BrandLogo } from '../../core/design/components/BrandLogo';
 import { DURATION } from '../../core/design/motion';
 import { useT } from '../../core/i18n';
 import { useAuth } from '../../core/AuthContext';
@@ -112,7 +113,7 @@ function WelcomeScreen({ navigation, route }: NativeStackScreenProps<OnbParamLis
         </View>
       }
     >
-      <AppText style={[styles.brand, { color: P.ink }]}>{i18n.t('onboarding.welcome.brand')}</AppText>
+      <BrandLogo name="kcal" height={20} color={P.ink} style={styles.brand} />
       <AppText style={[styles.headline, { color: P.ink }]}>{i18n.t(`onboarding.welcome.${headlineKey}`)}</AppText>
       <OnbLead style={{ marginTop: 10, fontSize: 15, lineHeight: 21 }}>{i18n.t('onboarding.welcome.sub')}</OnbLead>
     </OnbScaffold>
@@ -405,7 +406,7 @@ export default function OnboardingNavigator() {
 
 const styles = StyleSheet.create({
   // FinOnbWelcome: kart içi dikey 14 boşluk; "kcal." 700/18; başlık 700/40, satır 1.08.
-  brand: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 18, lineHeight: 23, marginBottom: 14 },
+  brand: { marginBottom: 14 },
   headline: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 40, lineHeight: 43 },
   legalBox: { marginTop: 14 },
   legalAds: { marginTop: 4, textAlign: 'center' },

@@ -121,7 +121,7 @@ export const tr = {
   up_price: 'Yıllık planda 7 gün ücretsiz, sonra %{price}/yıl',
   up_cta: 'Balance’ı incele',
   not_now: 'Şimdi değil',
-  glass_a11y: 'Cam nesne: kase ve alev',
+  glass_a11y: 'kcalAI Koç maskotu',
   // Tanıtım
   intro_line: 'Öğünlerine bakıp kısa ve net öneriler veren beslenme koçun.',
   intro_do: 'Ne yapar',
@@ -272,7 +272,7 @@ export const en: typeof tr = {
   up_price: '7 days free on the yearly plan, then %{price}/yr',
   up_cta: 'Explore Balance',
   not_now: 'Not now',
-  glass_a11y: 'Glass object: bowl and flame',
+  glass_a11y: 'kcalAI Coach mascot',
   intro_line: 'Your nutrition coach: it looks at your meals and gives short, clear suggestions.',
   intro_do: 'What it does',
   intro_dont: 'What it doesn’t do',

@@ -94,11 +94,9 @@ const ENTRIES: Record<string, string[]> = {
 };
 
 // Bilinçli istisnalar (sebebiyle): boş = yok.
-const ALLOW: Record<string, string> = {
-  // Ölçüm raporu PDF'inin içindeki marka logosu (dışa aktarılan belge, uygulama ekranı
-  // değil). Final logo varlığı gelene kadar bilinçli istisna → LOG "SORULAR".
-  'constants/kcalculateLogo.ts': 'PDF rapor logosu (exportNutritionReport)',
-};
+// G39-S1 md.1: PDF rapor logosu artık `brandLogoMarkup` (assets/brand SVG yolu) → istisna kalmadı;
+// eski base64 PNG dosyası silindi.
+const ALLOW: Record<string, string> = {};
 
 for (const [name, files] of Object.entries(ENTRIES)) {
   test(`Eski tasarım: 0 — ${name} (bayrak açık yolda eski bileşen import edilmez)`, () => {
