@@ -1,0 +1,5 @@
+G39-S1 DONE — 2026-11-13
+Dal: release/1.1.0
+LOG: docs/night/G39-S1-LOG.md
+Ekran goruntuleri: docs/night/g39/ (16 JPEG, Light+Dark)
+Kontroller: hygiene+tsc OK, unit 1276/1276, jest 106 suite/638 test, expo export iOS OK, Android OK
