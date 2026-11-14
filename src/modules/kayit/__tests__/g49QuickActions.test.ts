@@ -68,7 +68,9 @@ test('Paylaş: profil kapısına takılmaz; oturum yoksa giriş katmanı; payla�
 
 test('TrackerScreen: profilsiz Ana sayfa = yeni kart + hemen altında 4 eylem; eylemler runQuickAction ile', () => {
   const s = fs.readFileSync(path.resolve(__dirname, '../../../screens/TrackerScreen.tsx'), 'utf8');
-  assert.match(s, /\{yeniKabuk && profileGate\.blocked \? <HomePlanGateCard onStart=\{\(\) => profileGate\.require\(null\)\} \/> : null\}\s*\{yeniKabuk && profileGate\.blocked \? <HomeQuickActions actions=\{quickActions\} onAction=\{onQuickAction\} \/> : null\}/);
+  // G50 md.1: kart ile eylemler arasına "İlk gün görevleri" girdi (profilsiz sıra: Plan → Görevler → Neler yapabilirsin);
+  // kart odak sayacını, eylemler tarama rozetini alır.
+  assert.match(s, /\{yeniKabuk && profileGate\.blocked \? <HomePlanGateCard onStart=\{\(\) => profileGate\.require\(null\)\}( cycleKey=\{focusTick\})? \/> : null\}\s*(\{yeniKabuk && profileGate\.blocked \? homeTasks : null\}\s*)?\{yeniKabuk && profileGate\.blocked \? <HomeQuickActions actions=\{quickActions\} onAction=\{onQuickAction\}( scanBadge=\{scanBadgeText\})? \/> : null\}/);
   assert.match(s, /runQuickAction\(a, \{\s*require: profileGate\.require,/);
   assert.match(s, /activity: homeTarget\(\{ finAddActivity: true \}\)/);
   assert.match(s, /coach: \{ name: 'CoachIntro', params: \{ from: 'home', prefill \} \}/);

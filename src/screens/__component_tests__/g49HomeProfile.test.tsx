@@ -11,6 +11,15 @@ jest.mock('../../core/flags', () => ({ useFeature: (k: string) => k === 'yeni_ka
 jest.mock('../../modules/coach/access', () => ({ ...jest.requireActual('../../modules/coach/access'), useCoachEnabled: () => true }));
 // md.4 (eatkcal bölümü) bu karşılaştırmanın dışında: brif "profilli Ana sayfa değişmez (madde 4 hariç)".
 jest.mock('../../modules/gun/home/HomeRegion', () => ({ HomeRegionSection: () => null, setHomeRegionProvider: () => {} }));
+// G50-S1: takip bölümünün ALTINA eklenen yeni bölümler bu karşılaştırmanın dışında (brif: "mevcut takip bölümü
+// anlık görüntüsü G49 ile birebir"; yeni bölümler g50HomeSections testinde). Mock'suz çalıştırmada fark yalnız
+// eklemeydi (Snapshot −0 / Received +1116).
+jest.mock('../../modules/gun/home/HomeExtras', () => ({
+  HomeFirstDayTasks: () => null,
+  HomeStreakWeek: () => null,
+  HomeCoachPrompts: () => null,
+  HomeTodayRecipes: () => null,
+}));
 // G19-S2: çevrimdışı kuyruk NetInfo dinler — testte paketin resmî sahtesi.
 jest.mock('@react-native-community/netinfo', () => require('@react-native-community/netinfo/jest/netinfo-mock.js'));
 // Test renderer measureInWindow çağırmaz → popover çapası sabit (home.test ile aynı).

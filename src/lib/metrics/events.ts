@@ -233,6 +233,15 @@ export const EVENTS = {
   // G49-S1 md.2–3: profilsiz Ana sayfa kartı + "Neler yapabilirsin" eylemleri (sağlık değeri / kişisel veri YOK).
   home_plan_card_view: { category: 'lifecycle', tr: 'Profilsiz Ana sayfa plan kartı görüldü', en: 'No-profile home plan card viewed', props: {} },
   home_plan_card_tap: { category: 'lifecycle', tr: 'Profilsiz Ana sayfa kartı / hızlı eylem dokunuşu', en: 'No-profile home card / quick action tap', props: { action: ['plan', 'scan', 'activity', 'share', 'coach'] } },
+  // G50-S1 md.1: Ana sayfa ek bölümleri (sağlık değeri / kişisel veri YOK: yalnız bölüm, eylem türü ve sayaç).
+  home_tasks_view: { category: 'lifecycle', tr: 'Ana sayfa ilk gün görevleri görüldü', en: 'Home first-day tasks viewed', props: { done: 'number', total: 'number' } },
+  home_tasks_tap: { category: 'lifecycle', tr: 'Ana sayfa ilk gün görevi dokunuşu', en: 'Home first-day task tap', props: { task: ['plan', 'scan', 'water'], done: 'boolean' } },
+  home_recipes_view: { category: 'lifecycle', tr: 'Ana sayfa bugünün tarifleri görüldü', en: 'Home today\'s recipes viewed', props: { count: 'number' } },
+  home_recipes_tap: { category: 'lifecycle', tr: 'Ana sayfa tarif dokunuşu', en: 'Home recipe tap', props: { action: ['open', 'add', 'all'] } },
+  home_coach_prompts_view: { category: 'lifecycle', tr: 'Ana sayfa Koç hazır soruları görüldü', en: 'Home coach prompts viewed', props: {} },
+  home_coach_prompts_tap: { category: 'lifecycle', tr: 'Ana sayfa Koç hazır sorusu dokunuşu', en: 'Home coach prompt tap', props: { prompt: ['dinner', 'protein', 'week'] } },
+  home_streak_view: { category: 'lifecycle', tr: 'Ana sayfa seri ve haftalık özet görüldü', en: 'Home streak and week summary viewed', props: {} },
+  home_streak_tap: { category: 'lifecycle', tr: 'Ana sayfa seri kartı dokunuşu', en: 'Home streak card tap', props: {} },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',

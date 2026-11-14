@@ -55,7 +55,12 @@ import { HomePlanGateCard } from '../modules/kayit/ui/HomePlanGateCard'; // G49-
 import { HomeQuickActions, type QuickAction } from '../modules/kayit/ui/HomeQuickActions'; // G49-S1 md.3
 import { useCoachEnabled } from '../modules/coach/access';
 import { openCoach } from '../modules/coach/actions';
-import { runQuickAction } from '../modules/kayit/quickActions'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
+import { runQuickAction } from '../modules/kayit/quickActions';
+// G50-S1 md.1: Ana sayfa ek bölümleri (ilk gün görevleri · seri · Koç soruları · tarifler) + tarama rozeti.
+import { HomeCoachPrompts, HomeFirstDayTasks, HomeStreakWeek, HomeTodayRecipes } from '../modules/gun/home/HomeExtras';
+import { scanBadge } from '../modules/gun/home/homeSectionRules';
+import type { CoachPrompt, FirstTask } from '../modules/gun/home/homeSectionRules';
+import { useSubscriptionStore } from '../lib/subscription/purchases'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
 import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
 import { buildSlots, normalizeMealType, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 // G19-S2 — günlük takip açılışı: İstanbul gün saati, tek yuvarlama, çevrimdışı kuyruk, olaylar.
@@ -1663,6 +1668,37 @@ export default function TrackerScreen() {
       openKesfet,
     });
   };
+  // ─── G50-S1 md.1: Ana sayfa ek bölümleri ────────────────────────────────────
+  // Odak sayacı: ekran her odaklandığında artar → kupa yeniden 3 döngü (md.2), görev durumu sunucudan yenilenir.
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setFocusTick((n) => n + 1);
+    }, []),
+  );
+  // 6b: kalan tarama hakkı (abonelik deposu: my_entitlement / reserve_ai_scan). Okunamazsa rozet yok.
+  const aiQuota = useSubscriptionStore((st) => st.ai);
+  const scanQ = aiTarama ? scanBadge(aiQuota) : null;
+  const scanBadgeText = scanQ ? tt(scanQ.paid ? 'home.x_scan_paid' : 'home.x_scan_free', { count: scanQ.n }) : null;
+  // 6a: görev satırları → ilgili eylem (hepsi profil kapısından geçer: logToSlot / handleWaterAdd kendi kapısını çağırır).
+  const onFirstTask = (task: FirstTask) => {
+    if (task === 'plan') {
+      if (profileGate.require(null)) return;
+      openGoal();
+    } else if (task === 'scan') logToSlot(slotFromHour(istanbulHour()));
+    else handleWaterAdd();
+  };
+  // 6d: hazır soru → Koç (mevcut giriş parametresi `prefill`; deneme hakkı / paywall Koç'ta aynen).
+  const onCoachPrompt = (_p: CoachPrompt, q: string) => {
+    if (profileGate.require({ name: 'CoachIntro', params: { from: 'home', prefill: q } })) return;
+    void openCoach(navigation as any, { from: 'home', prefill: q });
+  };
+  // 6c: "Güne ekle" → profil kapısı; kayıt akışından dönüşte sheet bu tarif için açılır.
+  const finAddRecipe = (route.params as { finAddRecipe?: string } | undefined)?.finAddRecipe;
+  const recipeGate = (postId: string) => profileGate.require(homeTarget({ finAddRecipe: postId }));
+  const recipeSignal = yeniKabuk && !profileGate.blocked ? finAddRecipe ?? null : null;
+  const clearRecipeSignal = () => (navigation as any).setParams?.({ finAddRecipe: undefined });
+  const openProgress = () => (navigation as any).navigate('ProfileSub', { sub: 'progress' });
   const openWaitlist = (kind: 'add' | 'suggest') =>
     setWaitlistKind(kind === 'add' ? 'restaurant_add' : 'restaurant_suggest');
   // G18-S2 md.4: bölge (kayıtlı adres → seçilen il → izinli konum); md.3/6b: banner verisi.
@@ -2615,6 +2651,25 @@ const html = `
   // nutritionProfile (ayrı sorgu) sadece hook henüz dönmemişken fallback.
   // G19-S2 md.1: hedef yoksa uydurma 2000 YOK → "Hedef belirlenmedi" (yeni kabuk).
   const homeGoal = goalState(nutritionSummary?.targetKcal, nutritionProfile?.target_calories);
+  // G50-S1 md.1/6a: ilk gün görevleri (profilli/profilsiz herkes; ilk 7 gün, görevler bitmemişken).
+  // Plan görevi = profil var mı (kapı durumu; bilinmiyorsa hedef var mı). Durum sunucudan, yerel sinyal yalnız hızlandırır.
+  const planDone = profileGate.status === 'has' ? true : profileGate.status === 'none' ? false : homeGoal.has;
+  const homeTasks = yeniKabuk ? (
+    <HomeFirstDayTasks
+      userId={user?.id ?? null}
+      createdAt={(user as { created_at?: string } | null)?.created_at}
+      planDone={planDone}
+      waterOn={suTakibi}
+      localScan={todayConsumed.some((r) => r.raw_source === 'ai_scan')}
+      localWater={suTakibi && (water.ml ?? 0) > 0}
+      refreshKey={focusTick}
+      onTask={onFirstTask}
+    />
+  ) : null;
+  // G50-S1 md.1/6c: bugünün tarifleri (Keşfet; kalorisi + görseli olanlar, ≤ 8).
+  const homeRecipes = yeniKabuk ? (
+    <HomeTodayRecipes onOpen={openPost} onAll={openKesfet} requireGate={recipeGate} openSignal={recipeSignal} onOpenSignalUsed={clearRecipeSignal} />
+  ) : null;
   const targets = {
     kcal: nutritionSummary?.targetKcal || nutritionProfile?.target_calories || 2000,
     protein: nutritionSummary?.targetProtein || nutritionProfile?.target_protein || 120,
@@ -2866,8 +2921,13 @@ const html = `
                  kapalıyken render OLMAZ (eski kalori halkası aşağıda kalır). ── */}
             {/* G47-S1 md.3: profil yoksa takip bölümü (halka, makrolar, Bugün, İlk öğününü ekle) yerine tek kart. */}
             {/* G49-S1 md.2–3: profilsiz Ana sayfa = yeni plan kartı + hemen altında "Neler yapabilirsin" (2×2). */}
-            {yeniKabuk && profileGate.blocked ? <HomePlanGateCard onStart={() => profileGate.require(null)} /> : null}
-            {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} /> : null}
+            {/* G50-S1 md.1 (profilsiz sıra): Plan kartı → İlk gün görevleri → Neler yapabilirsin (tarama rozeti) →
+                Koç hazır soruları → Bugünün tarifleri → (Öne çıkanlar · Keşfet) → eatkcal. */}
+            {yeniKabuk && profileGate.blocked ? <HomePlanGateCard onStart={() => profileGate.require(null)} cycleKey={focusTick} /> : null}
+            {yeniKabuk && profileGate.blocked ? homeTasks : null}
+            {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} scanBadge={scanBadgeText} /> : null}
+            {yeniKabuk && profileGate.blocked && coachEnabled ? <HomeCoachPrompts onPrompt={onCoachPrompt} /> : null}
+            {yeniKabuk && profileGate.blocked ? homeRecipes : null}
             {yeniKabuk && !profileGate.blocked ? (
               <TrackerDayHeader
                 kcal={Math.max(0, homeTotals.kcal - heldKcal)}
@@ -2881,6 +2941,7 @@ const html = `
                 onWaterAdd={handleWaterAdd}
                 onFirstLog={() => logToSlot(slotFromHour(istanbulHour()))}
                 onFirstManual={() => openMealFormFor(slotFromHour(istanbulHour()))}
+                scanBadge={scanBadgeText}
                 onOpenMacros={openGoal}
                 hasTarget={homeGoal.has}
               />
@@ -2942,6 +3003,19 @@ const html = `
                   targetKcal={targets.kcal || null}
                   proteinLeft={targets.protein ? Math.max(0, targets.protein - homeTotals.protein) : null}
                 />
+                {/* G50-S1 md.1 (profilli sıra): mevcut takip bölümü AYNEN üstte → İlk gün görevleri (koşul varsa) →
+                    Seri ve haftalık özet → Koç hazır soruları → Bugünün tarifleri → (Keşfet) → eatkcal. */}
+                {homeTasks}
+                <HomeStreakWeek
+                  days={weeklyConsumption}
+                  todayKey={homeDayKey}
+                  todayCount={todayConsumed.length}
+                  targetKcal={homeGoal.has ? homeGoal.kcal : null}
+                  ready={!dataLoading}
+                  onOpen={openProgress}
+                />
+                {coachEnabled ? <HomeCoachPrompts onPrompt={onCoachPrompt} /> : null}
+                {homeRecipes}
                 </>
                 )}
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}

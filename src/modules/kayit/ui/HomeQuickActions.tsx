@@ -22,7 +22,7 @@ export const QUICK_ACTIONS: readonly QuickAction[] = ['scan', 'activity', 'share
 
 const ICON: Record<QuickAction, Icon> = { scan: Scan, activity: Sneaker, share: ImageSquare, coach: ChatCircleDots };
 
-function ActionCard({ action, index, onPress }: { action: QuickAction; index: number; onPress: () => void }) {
+function ActionCard({ action, index, onPress, badge }: { action: QuickAction; index: number; onPress: () => void; badge?: string | null }) {
   const k = useHomeTokens();
   const { t } = useT();
   const reduced = useReducedMotion();
@@ -52,14 +52,24 @@ function ActionCard({ action, index, onPress }: { action: QuickAction; index: nu
           onPress();
         }}
         accessibilityRole="button"
-        accessibilityLabel={`${title}. ${sub}`}
+        accessibilityLabel={badge ? `${title}. ${sub}. ${badge}` : `${title}. ${sub}`}
         style={({ pressed }) => [
           styles.card,
           { backgroundColor: k.card, borderColor: k.line, transform: [{ scale: pressed ? HOME_GATE_MOTION.pressScale : 1 }] },
         ]}
       >
-        <View style={styles.icon} importantForAccessibility="no-hide-descendants">
-          <Ico size={22} color={palette.limeInk} weight="bold" />
+        <View style={styles.top}>
+          <View style={styles.icon} importantForAccessibility="no-hide-descendants">
+            <Ico size={22} color={palette.limeInk} weight="bold" />
+          </View>
+          {/* G50 md.1/6b: kalan tarama hakkı rozeti (kota okunamazsa yok). */}
+          {badge ? (
+            <View testID={`home-quick-${action}-badge`} style={[styles.badge, { borderColor: k.line }]}>
+              <AppText maxFontSizeMultiplier={1.3} style={[styles.badgeText, { color: k.text }]}>
+                {badge}
+              </AppText>
+            </View>
+          ) : null}
         </View>
         <AppText maxFontSizeMultiplier={1.3} style={[styles.title, { color: k.text }]}>
           {title}
@@ -73,7 +83,16 @@ function ActionCard({ action, index, onPress }: { action: QuickAction; index: nu
 }
 
 /** `actions`: gösterilecek eylemler (özelliği kapalı olan çağıranda çıkarılır); sıra sabit. */
-export function HomeQuickActions({ actions = QUICK_ACTIONS, onAction }: { actions?: readonly QuickAction[]; onAction: (a: QuickAction) => void }) {
+export function HomeQuickActions({
+  actions = QUICK_ACTIONS,
+  onAction,
+  scanBadge,
+}: {
+  actions?: readonly QuickAction[];
+  onAction: (a: QuickAction) => void;
+  /** G50 md.1/6b: "Tabağını tara" kartında kalan tarama rozeti (null → gizli). */
+  scanBadge?: string | null;
+}) {
   const k = useHomeTokens();
   const { t } = useT();
   const list = QUICK_ACTIONS.filter((a) => actions.includes(a));
@@ -89,7 +108,7 @@ export function HomeQuickActions({ actions = QUICK_ACTIONS, onAction }: { action
         {rows.map((row, r) => (
           <View key={r} style={styles.row}>
             {row.map((a) => (
-              <ActionCard key={a} action={a} index={list.indexOf(a)} onPress={() => onAction(a)} />
+              <ActionCard key={a} action={a} index={list.indexOf(a)} onPress={() => onAction(a)} badge={a === 'scan' ? scanBadge : null} />
             ))}
             {row.length === 1 ? <View style={styles.cell} /> : null}
           </View>
@@ -106,7 +125,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   cell: { flex: 1 },
   card: { flex: 1, minHeight: 104, borderRadius: 20, borderWidth: 1, padding: 14, gap: 4 },
-  icon: { width: 36, height: 36, borderRadius: 12, backgroundColor: palette.lime, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  top: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
+  icon: { width: 36, height: 36, borderRadius: 12, backgroundColor: palette.lime, alignItems: 'center', justifyContent: 'center' },
+  badge: { flexShrink: 1, marginLeft: 'auto', borderRadius: 10, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
+  badgeText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14 },
   title: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 },
   sub: { fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, lineHeight: 17 },
 });

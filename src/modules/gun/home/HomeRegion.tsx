@@ -117,6 +117,10 @@ export function HomeEatkcalShowcase({
       <View style={styles.pad}>
         {/* G49 md.4: yalnız logo (süre yazısı ve adres kartı yok). */}
         <Head sub={null} />
+        {/* G50 md.1/6f: eatkcal köprüsü — logonun altında tek satır, ikincil renk. */}
+        <AppText maxFontSizeMultiplier={1.3} testID="home-ek-bridge" style={[styles.bridge, { color: k.sec }]}>
+          {tt('home.x_ek_bridge')}
+        </AppText>
       </View>
       {state.status === 'loading' ? (
         <ShowcaseSkeleton />
@@ -234,6 +238,7 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: 16 },
   head: { minHeight: 44, paddingTop: 10, flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingBottom: 6 },
   headLogo: { marginBottom: 2 },
+  bridge: { fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_500Medium' },
   sub: { fontSize: 13, lineHeight: 17, flexShrink: 1 },
   block: { marginTop: 10 },
   storesHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, minHeight: 44 },
