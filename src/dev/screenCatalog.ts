@@ -624,6 +624,8 @@ function resolveParity(name: string): ResolvedEntry | null {
       Kesfet: { area: 'kesfet', target: route(kes()) },
       EkHome: { area: 'eatkcal', target: route(tab('Home')) },
       CoachChat: { area: 'ana', target: route([...tab('Tracker'), { name: 'CoachChat', params: { from: 'home' } }]), scene: 'coach' },
+      // G52-S1: Profil › Kcalculate AI grubu (işaret başlığı + Abonelik + AI Koç satırları; koc + abonelik açık).
+      Profile: { area: 'profil', target: route(tab('Profile')) },
     };
     const d = T[g39[1]];
     if (!d) return null;
