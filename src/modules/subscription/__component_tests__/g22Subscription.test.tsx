@@ -98,7 +98,7 @@ test('Paywall: Fresh varsayılan — büyük başlık "Fresh", kcalAI küçük e
   expect(tree.queryByTestId('sub-card-balance_yearly')).toBeNull();
   expect(tree.getByText('999,99 TL/yıl')).toBeTruthy();
   expect(tree.getByText('199,99 TL/ay')).toBeTruthy();
-  expect(tree.getByText('ayda 83 TL')).toBeTruthy();
+  expect(tree.getByText('Ayda yalnız 83 TL')).toBeTruthy();
   expect(tree.getByText('%58 tasarruf')).toBeTruthy();
   expect(tree.queryByText('%44 tasarruf')).toBeNull();
   expect(tree.queryAllByText('7 gün ücretsiz')).toHaveLength(0); // 14 Kas: kart rozeti kaldırıldı
@@ -125,7 +125,7 @@ test('Paywall: Balance’a yükselt → başlık "Balance", %50 tasarruf, ayda 2
   expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
   expect(tree.getByText('2999,99 TL/yıl')).toBeTruthy();
   expect(tree.getByText('%50 tasarruf')).toBeTruthy();
-  expect(tree.getByText('ayda 250 TL')).toBeTruthy();
+  expect(tree.getByText('Ayda yalnız 250 TL')).toBeTruthy();
   expect(tree.getByText('Günde 50 AI tarama')).toBeTruthy();
   expect(tree.getByText('Barkod sınırsız')).toBeTruthy();
   expect(tree.getByText('Elle giriş sınırsız')).toBeTruthy();

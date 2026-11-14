@@ -122,8 +122,8 @@ test('azaltılmış hareket: dolaşma yok, döngü hiç başlamaz; sabit ince (G
   layout(tree, 'fresh_yearly');
   const solid = tree.getByTestId('sub-card-fresh_yearly-neon-solid', H);
   expect(solid.props.strokeWidth).toBe(1.5);
-  // 14 Kas: neon yeşili (#5CFF2A) — react-native-svg rengi işler.
-  expect(solid.props.stroke.payload).toBe(0xff5cff2a);
+  // 14 Kas: marka lime (#B9EF14) — react-native-svg rengi işler.
+  expect(solid.props.stroke.payload).toBe(0xffb9ef14);
 });
 
 test('paywall görünmezken (uygulama arka planda) döngü durur; geri gelince sürer', () => {

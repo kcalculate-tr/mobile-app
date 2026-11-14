@@ -330,15 +330,18 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: '52%' }}>
           {/* G46 md.2: deneme rozeti yalnız denemeli planda; aylıkta hiçbir şey çizilmez (boşluk kalmaz). */}
-          <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: ink }]}>
+          <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: ink }, card.yearly ? { fontFamily: FONT.body, opacity: 0.78 } : null]}>
             {priceLine}
           </AppText>
           {/* 14 Kas (İlter): "Önerilen", deneme ve tasarruf rozetleri kaldırıldı — tasarruf aylık satırında düz metin. */}
           {card.monthlyText ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-              <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: sec }]}>
-                {t('sub.paywall.per_month_equiv', { price: card.monthlyText })}
-              </AppText>
+              {/* 14 Kas: aylık karşılık vurgulu hap; faturalanan yıllık tutar en büyük fiyat olarak kalır. */}
+              <View testID="kayit-offer-month" style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: P.isDark ? (selected ? 'rgba(255,255,255,0.7)' : P.accent) : '#E9F9B8' }}>
+                <AppText maxFontSizeMultiplier={1.3} style={{ fontFamily: FONT.bold, fontSize: 15, lineHeight: 19, color: '#0A0A0A' }}>
+                  {t('sub.paywall.per_month_only', { price: card.monthlyText })}
+                </AppText>
+              </View>
               {card.yearly && card.discountPct ? (
                 <AppText testID="kayit-offer-save" maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: ink, fontWeight: '700' }]}>
                   {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}

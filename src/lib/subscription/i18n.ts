@@ -31,6 +31,7 @@ export const tr = {
     // G33-S1 md.2 (Tur 26n Paywall): yıllık kart etiketi + aylık karşılık + kademe geçişi.
     save: '%%{pct} tasarruf',
     per_month_equiv: 'ayda %{price}',
+    per_month_only: 'Ayda yalnız %{price}',
     upgrade: 'Balance’a yükselt',
     upgrade_sub: 'Günde %{n} AI tarama ve Kcalculate AI Koç',
     upgrade_sub_plain: 'Daha çok AI tarama ve Kcalculate AI Koç',
@@ -211,6 +212,7 @@ export const en: typeof tr = {
     off: '-%{pct}%',
     save: 'Save %{pct}%',
     per_month_equiv: '%{price} a month',
+    per_month_only: 'Only %{price} a month',
     upgrade: 'Upgrade to Balance',
     upgrade_sub: '%{n} AI scans a day and Kcalculate AI Coach',
     upgrade_sub_plain: 'More AI scans and Kcalculate AI Coach',

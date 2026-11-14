@@ -46,16 +46,17 @@ export type NeonPalette = {
 };
 
 /** 14 Kas (İlter referansı): neon tüp ışığı — parlak beyaza yakın çekirdek + doygun elektrik yeşili hale. */
-export const NEON_GREEN = '#5CFF2A';
-const NEON_CORE = '#C9FFAE';
-const NEON_HOT = '#F4FFEE';
-const NEON_LINE_LIGHT = '#2FBF0F';
+// 14 Kas: renk markanın kendi lime yeşili (#B9EF14); tüp etkisi için çekirdek açık lime, uç beyaza yakın.
+export const NEON_GREEN = palette.lime;
+const NEON_CORE = '#E2FF8F';
+const NEON_HOT = '#F7FFE0';
+const NEON_LINE_LIGHT = palette.limeLineOnLight;
 
 /** Paywall kartı (beyaz / koyu gri). Açık temada temel kenar koyu neon yeşili (açık zeminde okunur). */
 export function neonPaywallPalette(isDark: boolean): NeonPalette {
   return isDark
     ? { base: NEON_GREEN, core: NEON_CORE, hot: NEON_HOT, glow: NEON_GREEN, glowOpacity: 1, inner: 0.08, solid: NEON_GREEN }
-    : { base: NEON_LINE_LIGHT, core: NEON_GREEN, hot: '#E9FFD9', glow: NEON_GREEN, glowOpacity: 0.7, inner: 0.05, solid: NEON_LINE_LIGHT };
+    : { base: NEON_LINE_LIGHT, core: NEON_GREEN, hot: '#F1FFC2', glow: NEON_GREEN, glowOpacity: 0.7, inner: 0.05, solid: NEON_LINE_LIGHT };
 }
 
 /** T1 kayıt teklifi. Koyu temada seçili kart lime dolgulu (çekirdek beyaz, hale neon yeşili dışarı taşar);

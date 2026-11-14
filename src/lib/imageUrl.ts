@@ -30,6 +30,9 @@ export const ImagePreset = {
   // Marka landing hero — WIDTH-only (height/resize YOK) → görselin kendi oranı
   // korunur, kırpılmaz. Container aspectRatio ile boyutlanır.
   brandHero: { width: 1200, quality: 80 },
+  // 14 Kas: kampanya şeridi 300×104 (≈2,88:1) — görseller 1800×624 aynı oranda; bannerMedium (16:10 kırpma)
+  // kenarlardaki yazıları kesiyordu. Yalnız genişlik → görselin kendi oranı korunur, kırpılmaz.
+  bannerCampaign: { width: 1200, quality: 82 },
   // Promo banner 155px height sabit, ~16:10 container
   bannerMedium: { width: 800, height: 500, quality: 80, resize: 'cover' as const },
   // Avatar

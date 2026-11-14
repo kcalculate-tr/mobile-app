@@ -185,7 +185,7 @@ test.each(['light', 'dark'] as const)('md.1 zemin (%s): tam ekran, taşar, harek
 test('md.3 fiyat biçimi: TRY → "999,99 TL" / "ayda 83 TL"; USD → "$29.99" / "ayda $2.50" (mağaza para birimi)', () => {
   let tree = render(<PaywallScreen />);
   expect(tree.getByText('999,99 TL/yıl')).toBeTruthy();
-  expect(tree.getByText('ayda 83 TL')).toBeTruthy();
+  expect(tree.getByText('Ayda yalnız 83 TL')).toBeTruthy();
   expect(tree.getByText('%58 tasarruf')).toBeTruthy();
   expect(tree.queryByText(/\$/, H)).toBeNull();
   tree.unmount();
@@ -194,7 +194,7 @@ test('md.3 fiyat biçimi: TRY → "999,99 TL" / "ayda 83 TL"; USD → "$29.99" /
   tree = render(<PaywallScreen />);
   expect(tree.getByText('$29.99/yıl')).toBeTruthy();
   expect(tree.getByText('$5.99/ay')).toBeTruthy();
-  expect(tree.getByText('ayda $2.50')).toBeTruthy();
+  expect(tree.getByText('Ayda yalnız $2.50')).toBeTruthy();
   expect(tree.getByText(`%${Math.round((1 - 29.99 / (5.99 * 12)) * 100)} tasarruf`)).toBeTruthy();
   expect(tree.queryByText(/ TL/, H)).toBeNull();
 });

@@ -207,8 +207,8 @@ function CampaignBanner({ forceIzmir }: { forceIzmir?: boolean }) {
   };
   return (
     <PressScale testID="kayit-banner" onPress={onPress} accessibilityRole="button" accessibilityLabel={cell.title?.trim() || t('kayit.plan.banner_label')} style={styles.banner}>
-      {/* eatkcal CampaignCard ile aynı kaynak ve kırpma (bannerMedium, cover). */}
-      <CachedImage uri={transformImageUrl(cell.image_url, ImagePreset.bannerMedium) || cell.image_url} style={StyleSheet.absoluteFill as never} />
+      {/* eatkcal CampaignCard ile aynı kaynak (bannerCampaign, kırpmasız oran). */}
+      <CachedImage uri={transformImageUrl(cell.image_url, ImagePreset.bannerCampaign) || cell.image_url} style={StyleSheet.absoluteFill as never} />
     </PressScale>
   );
 }

@@ -195,7 +195,7 @@ export function CampaignCard({
   onPress: () => void;
 }) {
   const { c, t } = useEk();
-  const src = transformImageUrl(imageUri, ImagePreset.bannerMedium) || imageUri;
+  const src = transformImageUrl(imageUri, ImagePreset.bannerCampaign) || imageUri;
   // Tur 26 md.11 (FinEkHome): banner yalnız görsel (karartma / "İncele" yok), tamamı
   // dokunulur; "Kampanya" + başlık görselin ALTINDA.
   return (

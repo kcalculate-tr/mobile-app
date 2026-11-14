@@ -485,14 +485,15 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
         <AppText style={[styles.period, { color: ink }]}>{period}</AppText>
         <View style={styles.flex1} />
         <View style={styles.priceCol}>
-          <AppText style={[styles.price, { color: ink }]} numberOfLines={1} adjustsFontSizeToFit>
+          <AppText style={[styles.price, { color: ink }, c.yearly ? styles.priceYearly : null]} numberOfLines={1} adjustsFontSizeToFit>
             {priceLine}
           </AppText>
           {c.monthlyText ? (
             <View style={styles.monthRow}>
-              <AppText tone="secondary" style={styles.monthly}>
-                {tr('sub.paywall.per_month_equiv', { price: c.monthlyText })}
-              </AppText>
+              {/* 14 Kas: aylık karşılık vurgulu hap (faturalanan yıllık tutar yine en büyük fiyat — App Store 3.1.2). */}
+              <View style={[styles.monthPill, { backgroundColor: t.isDark ? palette.lime : '#E9F9B8' }]} testID={`sub-month-${c.key}`}>
+                <AppText style={styles.monthPillText}>{tr('sub.paywall.per_month_only', { price: c.monthlyText })}</AppText>
+              </View>
               {c.yearly && c.discountPct ? (
                 <AppText style={[styles.monthly, styles.saveInline, { color: t.isDark ? palette.lime : '#4A7A0C' }]} testID={`sub-save-${c.key}`}>
                   {tr('sub.paywall.save', { pct: c.discountPct })}
@@ -593,8 +594,12 @@ const styles = StyleSheet.create({
   period: { fontSize: 16, fontWeight: '600' },
   priceCol: { alignItems: 'flex-end', flexShrink: 1 },
   price: { fontSize: 18, fontWeight: '800' },
+  // 14 Kas: yıllık (faturalanan) tutar aynı boyutta kalır, kalın değil ve hafif soluk; aylık karşılık hapı öne çıkar.
+  priceYearly: { fontWeight: '500', opacity: 0.78 },
   monthly: { fontSize: 12, marginTop: 2 },
   saveInline: { fontWeight: '700' },
+  monthPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  monthPillText: { fontSize: 15, fontWeight: '800', color: '#0A0A0A' },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
   coachRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   coachImg: { width: 24, height: 24 },
