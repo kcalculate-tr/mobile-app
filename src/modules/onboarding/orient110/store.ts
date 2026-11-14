@@ -153,3 +153,12 @@ export const useOrient110 = create<Orient110State>((set, get) => ({
     }),
   _set: (p) => set(p),
 }));
+
+// YALNIZ __DEV__ vitrini: tanıtım sayfası ya da ipucu doğrudan (screenCatalog G54-Orient*).
+let devForced: { intro?: number; tip?: Orient110Tip } | undefined;
+export function __devForceOrient110(v: { intro?: number; tip?: Orient110Tip } | undefined): void {
+  devForced = __DEV__ ? v : undefined;
+}
+export function __devOrient110Forced(): { intro?: number; tip?: Orient110Tip } | undefined {
+  return __DEV__ ? devForced : undefined;
+}

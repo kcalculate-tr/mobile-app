@@ -634,6 +634,49 @@ function resolveParity(name: string): ResolvedEntry | null {
       hasDark: true, requested: name, scheme: g39[2] ? 'dark' : 'light',
     };
   }
+  // G54-S1 — `G54-<Sahne>(-Dark)` (EN: `EN-G54-…`): kayıt sonu T1 + onay + tebrik, dolu Kişisel planım, düzenleme
+  // özeti, yemediklerim (arama + özel öğe), mutfak kartları, konum kapısı logosu, 1.1.0 oryantasyonu, neon.
+  const g54 = /^(EN-)?G54-([A-Za-z0-9]+?)(-Dark)?$/.exec(name);
+  if (g54) {
+    const scheme = g54[3] ? 'dark' : 'light';
+    const lang = g54[1] ? 'en' : 'tr';
+    if (g54[2] === 'Gate') {
+      const r = resolvePano(`G48-Gate${g54[3] ?? ''}`);
+      return r ? { ...r, pano: name, requested: name, scheme, hasDark: true } : null;
+    }
+    const flags: FlagKey[] = [...FINAL_FLAGS, 'yeni_kayit', 'kisisel_plan', 'koc', 'abonelik'];
+    const k = (screen: string, params?: Record<string, unknown>): VitrinTarget => route([{ name: 'Kayit', params: { screen, params } }]);
+    const home = (scene: string) => ({ target: route(tab('Tracker')), auth: 'user' as VitrinAuth, scene });
+    const T: Record<string, { target: VitrinTarget; auth?: VitrinAuth; scene?: string; area?: string }> = {
+      T1: { target: k('KOffer'), auth: 'user' },
+      T1c: { target: k('KOffer', { vitrinConfirm: true }), auth: 'user' },
+      Welcome: { target: k('KOffer', { vitrinPhase: 'success' }), auth: 'user' },
+      MyPlan: { target: route([...tab('Tracker'), { name: 'PersonalPlanMine' }]), auth: 'user', scene: 'g54Plan' },
+      Edit: { target: route([...tab('Tracker'), { name: 'KayitEdit' }]), auth: 'user', scene: 'g54Plan' },
+      EditRow: { target: route([...tab('Tracker'), { name: 'KayitEdit', params: { vitrinRow: 'cuisines' } }]), auth: 'user', scene: 'g54Plan' },
+      Dislikes: { target: k('KQuestions', { vitrinStep: 'dislikes', vitrinAnswers: { dislikes: ['mushroom', 'okra', 'custom:Ejder meyvesi'], eatsAll: false } }) },
+      DislikesSearch: { target: k('KQuestions', { vitrinStep: 'dislikes', vitrinAnswers: { dislikes: ['onion'], eatsAll: false }, vitrinQuery: 'mant' }) },
+      DislikesAdd: { target: k('KQuestions', { vitrinStep: 'dislikes', vitrinAnswers: { dislikes: ['onion'], eatsAll: false }, vitrinQuery: 'Ejder meyvesi' }) },
+      Cuisines: { target: k('KQuestions', { vitrinStep: 'cuisines', vitrinAnswers: { cuisines: ['turk', 'akdeniz', 'ege'] } }) },
+      OrientIntro1: home('noProfileO110-i1'),
+      OrientIntro2: home('noProfileO110-i2'),
+      OrientIntro3: home('noProfileO110-i3'),
+      OrientIntro4: home('noProfileO110-i4'),
+      OrientScan: home('noProfileO110-scan'),
+      OrientHome: home('noProfileO110-home'),
+      OrientRing: home('g54O110-home'),
+      OrientKesfet: home('noProfileO110-kesfet'),
+      OrientEatkcal: home('noProfileO110-eatkcal'),
+      Paywall: { target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'fresh', from: 'profile' } }]), area: 'profil', auth: 'user' },
+      PaywallBalance: { target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'balance', coach: true, from: 'coach' } }]), area: 'profil', auth: 'user' },
+    };
+    const d = T[g54[2]];
+    if (!d) return null;
+    return {
+      pano: name, area: d.area ?? 'onboarding', target: d.target, data: 'default', flags, lang, auth: d.auth ?? 'guest',
+      hasDark: true, requested: name, scheme, ...(d.scene ? { scene: d.scene } : {}),
+    };
+  }
   // G53-S1 — `G53-<Sahne>(-Dark)`: Keşfet profil kısayolu, Profil "+" + seçenek sayfası, kendi açık profil,
   // paylaşım "i" kılavuzu, paywall seçili kart neon, T1. `meAvatar` sahnesi kendi profil fotoğrafını verir.
   const g53 = /^G53-([A-Za-z0-9]+?)(-Dark)?$/.exec(name);

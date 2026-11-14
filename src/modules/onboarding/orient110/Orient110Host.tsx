@@ -26,10 +26,12 @@ import { FONT, KBackdrop, KButton, KText, Mascot } from '../../kayit/ui/parts';
 import { useK } from '../../kayit/ui/theme';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { ORIENT110_INTRO_PAGES, ORIENT110_TIPS, canStartNow, shouldOrient, type Orient110Tip } from './logic';
-import { useOrient110 } from './store';
+import { __devOrient110Forced, useOrient110 } from './store';
 
 /** Ekran yerleşme payı (hedef ölçülmeden önce). */
 const SETTLE = DURATION.slow;
+/** İkinci ölçüm (hedef animasyonu bitince). */
+const RESETTLE = DURATION.slow + DURATION.base;
 
 const GLASS = {
   camera: require('../../../../assets/glass/camera.png'),
@@ -60,7 +62,7 @@ export function Orient110Host({ vitrin }: { /** YALNIZ __DEV__ vitrini: tanıtı
   const homeReady = useOrient110((s) => !!s.targets.home);
   const overlays = useGateStore((s) => s.open);
   const celebrating = useOnbFirst((s) => s.celebrate != null);
-  const forced = __DEV__ ? vitrin : undefined;
+  const forced = __DEV__ ? (vitrin ?? __devOrient110Forced()) : undefined;
 
   useEffect(() => {
     if (flag && !forced) void hydrate(user?.id ?? null);
@@ -185,15 +187,18 @@ function TipLayer({ tip, vitrin }: { tip: Orient110Tip; vitrin?: boolean }) {
   useEffect(() => {
     setHole(null);
     if (!target) return;
-    const id = setTimeout(
-      () => {
-        target.current?.measureInWindow((x, y, w, h) => {
-          if (w > 0 && h > 0) setHole(holeFor(HOLE_SHAPE[tip], { x, y, w, h }, W));
-        });
-      },
-      vitrin ? 0 : DURATION.base,
-    );
-    return () => clearTimeout(id);
+    // Hedef (ör. sekme çubuğu açılışta yükselir) hareket ediyor olabilir → ilk ölçümden sonra yerleşince bir kez daha.
+    const measure = () =>
+      target.current?.measureInWindow((x, y, w, h) => {
+        if (w > 0 && h > 0) setHole(holeFor(HOLE_SHAPE[tip], { x, y, w, h }, W));
+      });
+    const first = vitrin ? 0 : DURATION.base;
+    const a = setTimeout(measure, first);
+    const b = setTimeout(measure, first + RESETTLE);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
   }, [target, tip, W, vitrin]);
   if (!hole) return null;
   return <Tip tip={tip} hole={hole} screen={{ w: W, h: H }} vitrin={!!vitrin} targetRef={target} />;

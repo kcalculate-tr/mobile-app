@@ -117,7 +117,9 @@ export function DislikePicker({
   onToggle,
   onAddCustom,
   onEatsAll,
+  initialQuery,
 }: {
+  initialQuery?: string;
   value: readonly string[];
   eatsAll: boolean;
   lang: string;
@@ -127,7 +129,7 @@ export function DislikePicker({
   onEatsAll: () => void;
 }) {
   const P = useK();
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialQuery ?? '');
   const query = q.trim();
   const hits = query ? searchFoods(query).filter((k) => !value.includes(k)) : [];
   const addable = query ? canAddCustom(query, value) : false;

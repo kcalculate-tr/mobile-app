@@ -96,7 +96,7 @@ const LAYOUT: Record<KQuestion, BubbleLayout> = {
 // G49 md.5: hedef/cinsiyet/hareket/beslenme/pişirme/zorluk seçenekleri cam PNG ikon (ui/glassIcons); spor çipleri vektör.
 const SPORT_ICON = { weights: Barbell, run: PersonSimpleRun, walk: PersonSimpleWalk, yoga: PersonSimpleTaiChi, swim: SwimmingPool, team: SoccerBall, other: Lightning } as const;
 
-type Params = { path?: KPath; mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: GateTarget | null; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask'; vitrinAnswers?: Record<string, unknown> } | undefined;
+type Params = { path?: KPath; mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: GateTarget | null; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask'; vitrinAnswers?: Record<string, unknown>; vitrinQuery?: string } | undefined;
 
 export default function QuestionsScreen() {
   const { t, lang } = useT();
@@ -234,7 +234,7 @@ export default function QuestionsScreen() {
       <KBackdrop shift={stepIdx} />
       <View style={{ paddingTop: insets.top + 8, flex: 1 }}>
         <TopBar onBack={back} progress={prog} />
-        <QCtx.Provider value={{ a, patch, setUnits, t: t as QCtxValue['t'], lang, P, year }}>
+        <QCtx.Provider value={{ a, patch, setUnits, t: t as QCtxValue['t'], lang, P, year, vitrinQuery: __DEV__ ? params.vitrinQuery : undefined }}>
         <StackSwap k={step} dir={dir}>
           {step === 'i1' || step === 'i2' ? (
             <Interstitial step={step} onNext={next} />
@@ -344,6 +344,8 @@ type QCtxValue = {
   lang: string;
   P: ReturnType<typeof useK>;
   year: number;
+  /** YALNIZ __DEV__ vitrini: P11 arama kutusu dolu açılır. */
+  vitrinQuery?: string;
 };
 const QCtx = React.createContext<QCtxValue | null>(null);
 function useQ(): QCtxValue {
@@ -686,13 +688,14 @@ function CuisineBody() {
 }
 
 function DislikeBody() {
-  const { a, patch, t, lang } = useQ();
+  const { a, patch, t, lang, vitrinQuery } = useQ();
   const st = { dislikes: a.dislikes, eatsAll: a.eatsAll };
   return (
     <View style={{ paddingHorizontal: 20 }}>
       <DislikePicker
         value={a.dislikes}
         eatsAll={a.eatsAll}
+        initialQuery={vitrinQuery}
         lang={lang}
         t={t}
         onToggle={(k) => patch(toggleDislike(st, k))}

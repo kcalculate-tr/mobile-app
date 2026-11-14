@@ -8,7 +8,7 @@
 //  · Kaydedilmemiş değişiklikle çıkış → "Değişiklikler kaydedilmedi" onayı. Sağlık rızası tekrar sorulmaz.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Sheet, haptic } from '../../../core/design';
@@ -139,6 +139,15 @@ export default function PlanEditScreen() {
   useEffect(() => {
     if (!draft && initial) setDraft(initial);
   }, [initial, draft]);
+  // YALNIZ __DEV__ vitrini: bir satırın düzenleme sayfası açık gelir.
+  const vitrinRow = __DEV__ ? ((useRoute().params ?? {}) as { vitrinRow?: EditRowKey }).vitrinRow : undefined;
+  useEffect(() => {
+    if (vitrinRow && draft && editing == null) {
+      setSheetDraft(draft);
+      setEditing(vitrinRow);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrinRow, draft == null]);
   useEffect(() => {
     void readMuscleSurplus()
       .then((v) => {

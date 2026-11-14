@@ -14,6 +14,9 @@ import { resolveVitrinPhotos } from './vitrinKesfet';
 import { useAddressStore } from '../store/addressStore';
 import { enterStoreSandbox } from '../store/storeSandbox';
 import { __devForceEatGate } from '../modules/eatkcal/gate/eatGate';
+import { __devForceOrient110 } from '../modules/onboarding/orient110/store';
+import { computeKayitPlan, toPpSaved } from '../modules/kayit/plan';
+import { emptyKAnswers } from '../modules/kayit/model';
 
 /** G48-S1: konum kapısı sahneleri (kapı zorla görünür). */
 const GATE_SCENES = new Set(['city', 'waitlist', 'berlin', 'gate48']);
@@ -57,6 +60,14 @@ function replaceFirst(routes: RouteSpec[], id: string | null, brand: string | nu
   });
 }
 
+/** G54-S1 — vitrin kişisel planı: yeni kayıt biçimi (G42 toPpSaved), 2320 kcal civarı örnek. */
+function g54DemoPlan() {
+  const a = { ...emptyKAnswers(), goal: 'lose' as const, gender: 'male' as const, birthYear: 1990, heightCm: 182, weightKg: 92, targetWeightKg: 84, pace: 0.5 as const, activity: 'moderate' as const, sportDays: [0, 2, 4] as (0 | 2 | 4)[], sports: ['run' as const, 'weights' as const], diet: 'all' as const, cuisines: ['turk' as const, 'ege' as const, 'japon' as const], dislikes: ['mushroom', 'okra', 'custom:Ejder meyvesi'], meals: 4, cooking: 'sometimes' as const, struggle: 'evening_snack' as const };
+  const start = new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10);
+  const plan = computeKayitPlan(a, { currentYear: new Date().getFullYear(), startIso: start });
+  return plan ? toPpSaved(a, plan, { startIso: start, nowIso: new Date().toISOString(), start: 'track' }) : null;
+}
+
 /** G18-S1 — `@kcal_onb_first_v1` vitrin tohumu (bkz. modules/onboarding/first/state.ts). */
 function onbFirstSeed(scene: string, pano: string) {
   const seen = (n: number) => ({ 1: n >= 1, 2: n >= 2, 3: n >= 3, 4: n >= 4 });
@@ -78,7 +89,10 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   __devForceEatGate(GATE_SCENES.has(scene));
   // G47-S1: profilsiz hesap sahnesi (profil kapısı kartı / Tara → P1).
   // G50-S1: `g50*` sahneleri profilli (görev ① tamam), `noProfileG50*` profilsiz.
-  __devForceProfileStatus(scene.startsWith('noProfile') ? 'none' : scene.startsWith('g50') ? 'has' : null);
+  __devForceProfileStatus(scene.startsWith('noProfile') ? 'none' : scene.startsWith('g50') || scene.startsWith('g54') ? 'has' : null);
+  // G54-S1 md.3: 1.1.0 oryantasyonu yalnız kendi sahnelerinde (zorlanmış sayfa / ipucu); diğer panolarda görüldü.
+  const o110 = /O110-(i([1-4])|scan|home|kesfet|eatkcal)$/.exec(scene);
+  __devForceOrient110(o110 ? (o110[2] ? { intro: Number(o110[2]) - 1 } : { tip: o110[1] as 'scan' | 'home' | 'kesfet' | 'eatkcal' }) : undefined);
   // G49-S1: profilsiz Ana sayfa kartının açılış dizisi (noProfileF<ms>): çizim o anda dondurulur.
   // G50-S1: ilk gün görevleri 3/3 kutlaması (g50T3) 1000. ms'de dondurulur (halka dolmuş, kart kaybolmadan).
   const frozen = /^noProfileF(\d+)$/.exec(scene);
@@ -90,6 +104,10 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     'eatkcal-city-gate-passed': GATE_SCENES.has(scene) ? null : '1',
     // G50-S1: ilk gün görevleri "kapatıldı" işareti (vitrin kullanıcısı) her sahnede temiz başlar.
     '@kcal_first_tasks_closed:00000000-0000-4000-8000-00000000a14e': null,
+    // G54-S1 md.3: vitrin kullanıcısında 1.1.0 oryantasyonu görüldü (kendi sahneleri zorlanır).
+    '@kcal_orient_v110:00000000-0000-4000-8000-00000000a14e': '1',
+    // G54-S1 md.2/5: dolu kişisel plan (yeni kayıt biçimi) — Kişisel planım + düzenleme özeti sahneleri.
+    '@kcal_pp_plan_00000000-0000-4000-8000-00000000a14e': scene === 'g54Plan' ? JSON.stringify(g54DemoPlan()) : null,
     // G18-S1 — ilk 60 saniye bayrakları: varsayılan kart tamam + oryantasyon atlandı
     // (diğer panolara karışmasın); kendi sahnelerinde açık.
     '@kcal_onb_first_v1': JSON.stringify(onbFirstSeed(scene, entry.pano)),
