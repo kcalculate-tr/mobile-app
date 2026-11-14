@@ -213,6 +213,7 @@ export const tr = {
     banner_label: 'eatkcal kampanyası',
     save: 'Planımı kaydet',
     save_consent: 'Onayla ve planımı kaydet',
+    save_error: 'Planın kaydedilemedi. İnternetini kontrol edip yeniden dene.',
   },
   signup: {
     title_a: 'Planını kaydedelim',
@@ -300,6 +301,20 @@ export const tr = {
   home: {
     improve_title: 'Planını geliştir',
     improve_sub: 'Kısa profilinle takip açık. Tam kişisel planını oluştur.',
+  },
+  // G47-S1 md.1 — tek giriş katmanı.
+  auth: {
+    title: 'Hesabına giriş yap',
+    close: 'Kapat',
+    terms: 'Koşullar',
+    privacy: 'Gizlilik',
+    offline_sub: 'İnternetini kontrol edip yeniden dene.',
+  },
+  // G47-S1 md.3 — profil kapısı (Ana sayfa kartı).
+  gate: {
+    title: 'Planını oluştur',
+    sub: 'Günlük kalori hedefin ve takibin için 1 dakika',
+    cta: 'Başla',
   },
 };
 
@@ -513,6 +528,7 @@ export const en: typeof tr = {
     banner_label: 'eatkcal campaign',
     save: 'Save my plan',
     save_consent: 'Agree and save my plan',
+    save_error: "Your plan couldn't be saved. Check your connection and try again.",
   },
   signup: {
     title_a: "Let's save your plan",
@@ -600,5 +616,17 @@ export const en: typeof tr = {
   home: {
     improve_title: 'Improve your plan',
     improve_sub: 'Tracking is on with your short profile. Build your full personal plan.',
+  },
+  auth: {
+    title: 'Log in to your account',
+    close: 'Close',
+    terms: 'Terms',
+    privacy: 'Privacy',
+    offline_sub: 'Check your connection and try again.',
+  },
+  gate: {
+    title: 'Create your plan',
+    sub: 'Your daily calorie goal and tracking, in 1 minute',
+    cta: 'Start',
   },
 };

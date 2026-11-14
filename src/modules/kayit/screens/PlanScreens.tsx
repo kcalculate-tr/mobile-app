@@ -8,7 +8,7 @@
 // not (düğme her zaman etkin; rıza basınca yazılır; önceden verilmişse not yok, düğme "Planımı kaydet"); üstte
 // ilerleme çubuğu yok; büyük rakamlarda açık satır yüksekliği (kırpılma yok).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -33,7 +33,7 @@ import { openCampaign, pickCampaign } from '../banner';
 import { HealthConsentNote } from '../ui/consent';
 import { PressScale } from '../ui/motion';
 import type { RecipeInfo } from '../../plan/types';
-import { FONT, KBackdrop, KButton, KText as AppText, Mascot, NoticeCard, Rise, TopBar } from '../ui/parts';
+import { CheckBoxRow, FONT, KBackdrop, KButton, KText as AppText, Mascot, NoticeCard, Rise, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
 import { useKCount } from '../ui/motion';
 import { K_MOTION, useK } from '../ui/theme';
@@ -44,6 +44,12 @@ import { flushDraft, useKayit } from '../store';
 import { readMuscleSurplus } from '../settings';
 import { kTrack } from '../events';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { useAuth } from '../../../core/AuthContext';
+import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
+import { finishSignup } from '../signup';
+import { offerAllowed } from '../offerOnce';
+import { markProfileCreated, useKayitFlow } from '../profileGate';
+import { completeGateFlow } from '../gateComplete';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -216,7 +222,7 @@ export function ResultScreen() {
   const stored = useKayit((s) => s.plan);
   const setHealthOk = useKayit((s) => s.setHealthOk);
   // YALNIZ __DEV__ vitrini: banner bölgesi İzmir sabit (ekran görüntüsü).
-  const resultParams = (useRoute().params ?? {}) as { vitrinIzmir?: boolean; vitrinConsent?: 'ask'; vitrinEnd?: boolean; vitrinScrollY?: number };
+  const resultParams = (useRoute().params ?? {}) as { vitrinIzmir?: boolean; vitrinConsent?: 'ask'; vitrinEnd?: boolean; vitrinScrollY?: number; vitrinAuthed?: boolean };
   const vitrinIzmir = __DEV__ && !!resultParams.vitrinIzmir;
   // YALNIZ __DEV__ vitrini: rıza sorulmamış gibi (not + "Onayla ve…") ve banner görünsün diye sona kaydır.
   const vitrinAsk = __DEV__ && resultParams.vitrinConsent === 'ask';
@@ -227,6 +233,16 @@ export function ResultScreen() {
   const plan = useMemo(() => stored ?? computeKayitPlan(answers, { currentYear: new Date().getFullYear(), startIso: todayIso() }), [stored, answers]);
   const [recipes, setRecipes] = useState<RecipeInfo[]>([]);
   const [consentKnown, setConsentKnown] = useState(false);
+  // G47-S1 md.1/md.3: oturum açıkken (profil kapısı ya da girişten sonra profil yok) K1 atlanır; L2 planı hesaba yazar.
+  const flow = useKayitFlow();
+  const authed = flow.origin === 'gate' || flow.origin === 'auth';
+  const showBoxes = flow.origin === 'auth' || (__DEV__ && !!resultParams.vitrinAuthed);
+  const { user } = useAuth();
+  const [meta, setMeta] = useState(false);
+  const [metaDenied, setMetaDenied] = useState(false);
+  const [marketing, setMarketing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState(false);
   const back = () => navigation.goBack();
   const edge = useEdgeBack(back);
 
@@ -253,8 +269,50 @@ export function ResultScreen() {
       setHealthOk(true);
       void recordHealthConsent(true, 'personal_plan').catch(() => {});
     }
-    await flushDraft('signup');
-    navigation.navigate('KSignup', { path: 'a' });
+    if (!authed) {
+      await flushDraft('signup');
+      navigation.navigate('KSignup', { path: 'a' });
+      return;
+    }
+    if (!user?.id || saving) return;
+    setSaving(true);
+    setSaveErr(false);
+    const r = await finishSignup({
+      userId: user.id,
+      method: flow.method ?? 'email',
+      metaOn: meta,
+      marketingOn: marketing,
+      lang: lang === 'en' ? 'en' : 'tr',
+      ageOk: true,
+      consents: flow.origin === 'auth' ? (flow.fresh || meta ? 'full' : 'marketing') : 'none',
+    });
+    setSaving(false);
+    if (!r.planSaved) {
+      haptic('warning');
+      setSaveErr(true);
+      return;
+    }
+    markProfileCreated();
+    haptic('success');
+    // T1 yalnız ilk kayıt sonrası (bu oturumda oluşan hesap) ve G46 "bir kez" kuralıyla.
+    if (flow.origin === 'auth' && flow.fresh && (await offerAllowed('a', user.user_metadata as Record<string, unknown> | undefined))) {
+      useKayitFlow.getState().setFlow({ origin: 'onb', returnTo: null });
+      navigation.navigate('KOffer');
+      return;
+    }
+    completeGateFlow(flow.returnTo);
+  };
+
+  const toggleMeta = async () => {
+    if (meta) {
+      setMeta(false);
+      kTrack.metaConsent(false, 'unavailable');
+      return;
+    }
+    const m = await requestMetaOptIn();
+    kTrack.metaConsent(m.granted, m.att);
+    setMeta(m.granted);
+    setMetaDenied(!m.granted);
   };
 
   return (
@@ -324,9 +382,25 @@ export function ResultScreen() {
             <CampaignBanner forceIzmir={vitrinIzmir} />
           </View>
         </ScrollView>
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
+        {/* G47 md.6: düğme önce, rıza metni ALTINDA (11 pt, 8 pt aralık); md.1: girişten gelen hesapta isteğe bağlı
+            Meta + pazarlama kutuları (işaretsiz) düğmenin üstünde. */}
+        <View testID="kayit-result-footer" style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 12) + 4 }}>
+          {saveErr ? (
+            <View style={{ marginBottom: 10 }}>
+              <NoticeCard testID="kayit-save-error" tone="error" title={t('kayit.signup.error_title')} sub={t('kayit.plan.save_error')} />
+            </View>
+          ) : null}
+          {showBoxes ? (
+            <View style={{ gap: 8, marginBottom: 12 }}>
+              <AppText accessibilityRole="header" maxFontSizeMultiplier={1.4} style={[styles.optional, { color: P.sec }]}>
+                {t('kayit.signup.optional')}
+              </AppText>
+              <CheckBoxRow testID="kayit-l2-meta" checked={meta} onToggle={() => void toggleMeta()} label={t('kayit.signup.meta')} note={metaDenied && (Platform.OS === 'ios' || __DEV__) ? t('kayit.signup.meta_denied') : null} />
+              <CheckBoxRow testID="kayit-l2-marketing" checked={marketing} onToggle={() => setMarketing(!marketing)} label={t('kayit.signup.marketing')} />
+            </View>
+          ) : null}
+          <KButton testID="kayit-save-plan" label={t(consentKnown ? 'kayit.plan.save' : 'kayit.plan.save_consent')} onPress={() => void save()} loading={saving} />
           {!consentKnown ? <HealthConsentNote /> : null}
-          <KButton testID="kayit-save-plan" label={t(consentKnown ? 'kayit.plan.save' : 'kayit.plan.save_consent')} onPress={() => void save()} />
         </View>
       </View>
     </View>
@@ -443,6 +517,7 @@ function MealSplitCard({ plan }: { plan: KPlan }) {
 }
 
 const styles = StyleSheet.create({
+  optional: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18 },
   h1: { fontFamily: FONT.display, fontSize: 32, lineHeight: 39, letterSpacing: -0.8 },
   h2: { fontFamily: FONT.display, fontSize: 20, lineHeight: 25 },
   h3: { fontFamily: FONT.display, fontSize: 18, lineHeight: 23 },

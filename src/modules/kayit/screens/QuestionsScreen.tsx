@@ -43,8 +43,12 @@ import {
 import { recordHealthConsent } from '../../../lib/consent/store';
 import { healthConsentGiven } from '../../personalPlan/api';
 import { saveTakibeProfile } from '../../onboarding/takibe/save';
-import { FONT, KBackdrop, KButton, KText as AppText, Mascot, QuestionHead, Rise, Segment, TopBar, type BubbleLayout } from '../ui/parts';
+import { CheckBoxRow, FONT, KBackdrop, KButton, KText as AppText, Mascot, QuestionHead, Rise, Segment, TopBar, type BubbleLayout } from '../ui/parts';
 import { HealthConsentNote } from '../ui/consent';
+import { markProfileCreated, useKayitFlow, type GateTarget } from '../profileGate';
+import { completeGateFlow } from '../gateComplete';
+import { writeAuthConsents } from '../signup';
+import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
 import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
 import { useEdgeBack } from '../ui/edge';
 import { StackSwap } from '../ui/motion';
@@ -109,7 +113,7 @@ const COOK_ICON = { daily: CookingPot, sometimes: Timer, ready: Package } as con
 const STRUGGLE_ICON = { evening_snack: Moon, eating_out: Storefront, no_time: Clock, sweet: Cookie } as const;
 const ACT_ICON = { sedentary: Armchair, light: PersonSimpleWalk, moderate: PersonSimpleWalk, active: PersonSimpleRun } as const;
 
-type Params = { path?: KPath; mode?: 'short'; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask' } | undefined;
+type Params = { path?: KPath; mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: GateTarget | null; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask' } | undefined;
 
 export default function QuestionsScreen() {
   const { t, lang } = useT();
@@ -130,6 +134,11 @@ export default function QuestionsScreen() {
   const [dir, setDir] = useState<1 | -1>(1);
   const [saving, setSaving] = useState(false);
   const [consentKnown, setConsentKnown] = useState(false);
+  // G47-S1: kısa profil profil kapısından / girişten sonra açıldıysa — akış sonunda dokunulan eyleme dön.
+  const origin = short ? params.origin : undefined;
+  const [meta, setMeta] = useState(false);
+  const [metaDenied, setMetaDenied] = useState(false);
+  const [marketing, setMarketing] = useState(false);
   const firstMount = useRef(true);
 
   // Açılış: kısa profil / vitrin adımı; EN'de birim cihaz bölgesine göre.
@@ -207,6 +216,15 @@ export default function QuestionsScreen() {
     if (!r.ok) return;
     haptic('success');
     await setShortPending(kv, false);
+    markProfileCreated();
+    if (origin) {
+      if (origin === 'auth') {
+        const f = useKayitFlow.getState();
+        await writeAuthConsents({ method: f.method ?? 'email', metaOn: meta, marketingOn: marketing, fresh: f.fresh });
+      }
+      completeGateFlow(params.returnTo ?? null);
+      return;
+    }
     // HB2: ana sayfa, takip açık (kısa profil hedefiyle).
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.navigate('Tabs');
@@ -270,8 +288,37 @@ export default function QuestionsScreen() {
                 </AppText>
               </Pressable>
             ) : null}
-            {needsConsent ? <HealthConsentNote /> : null}
-            <KButton testID="kayit-next" label={label} onPress={() => void next()} disabled={!can} loading={saving} />
+            {lastB && origin === 'auth' ? (
+              <View style={{ gap: 8, marginBottom: 12 }}>
+                <AppText accessibilityRole="header" maxFontSizeMultiplier={1.4} style={[styles.optional, { color: P.sec }]}>
+                  {t('kayit.signup.optional')}
+                </AppText>
+                <CheckBoxRow
+                  testID="kayit-short-meta"
+                  checked={meta}
+                  onToggle={() =>
+                    void (async () => {
+                      if (meta) {
+                        setMeta(false);
+                        return;
+                      }
+                      const m = await requestMetaOptIn();
+                      kTrack.metaConsent(m.granted, m.att);
+                      setMeta(m.granted);
+                      setMetaDenied(!m.granted);
+                    })()
+                  }
+                  label={t('kayit.signup.meta')}
+                  note={metaDenied ? t('kayit.signup.meta_denied') : null}
+                />
+                <CheckBoxRow testID="kayit-short-marketing" checked={marketing} onToggle={() => setMarketing(!marketing)} label={t('kayit.signup.marketing')} />
+              </View>
+            ) : null}
+            {/* G47 md.6: düğme önce, rıza metni altında (8 pt). */}
+            <View>
+              <KButton testID="kayit-next" label={label} onPress={() => void next()} disabled={!can} loading={saving} />
+              {needsConsent ? <HealthConsentNote /> : null}
+            </View>
           </View>
         ) : null}
       </View>
@@ -710,6 +757,7 @@ function Interstitial({ step, onNext }: { step: 'i1' | 'i2'; onNext: () => void 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   footer: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
+  optional: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18 },
   skip: { alignSelf: 'center', minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center' },
   skipText: { fontFamily: FONT.bold, fontSize: 16, lineHeight: 21, textDecorationLine: 'underline' },
   grid: { paddingHorizontal: 20, gap: 14 },

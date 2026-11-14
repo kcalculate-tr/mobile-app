@@ -49,7 +49,9 @@ import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
 import { WaitlistFormSheet } from '../modules/eatkcal/v2/ui/gate/WaitlistFormSheet';
-import { useShortProfileGate } from '../modules/kayit/gate'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
+import { useShortProfileGate } from '../modules/kayit/gate';
+import { useProfileGate } from '../modules/kayit/gateFlow';
+import { HomeProfileGateCard } from '../modules/kayit/ui/HomeProfileGateCard'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
 import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
 import { buildSlots, normalizeMealType, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 // G19-S2 — günlük takip açılışı: İstanbul gün saati, tek yuvarlama, çevrimdışı kuyruk, olaylar.
@@ -1429,7 +1431,11 @@ export default function TrackerScreen() {
     [yeniKabuk, todayConsumed, highlight],
   );
 
+  // G47-S1 md.3: profil kapısı — profil yoksa takip eylemleri doğrudan kayıt akışını açar; akış bitince eyleme dönülür.
+  const profileGate = useProfileGate((n, p) => (navigation as any).navigate(n, p));
+  const homeTarget = (params: Record<string, unknown>) => ({ name: 'Tabs', params: { screen: 'Tracker', params } });
   const openMealFormFor = (slot: SlotKey) => {
+    if (profileGate.require(homeTarget({ finOpenManual: slot }))) return;
     const formType = ({ breakfast: 'kahvalti', lunch: 'ogle', dinner: 'aksam', snack: 'atistirma' } as const)[slot];
     dispatchMealForm({ type: 'SET_MEAL_TYPE', payload: formType });
     dispatchMealForm({ type: 'SET_VISIBLE', payload: true });
@@ -1469,6 +1475,7 @@ export default function TrackerScreen() {
   const dismissHomeToast = useCallback(() => setHomeToast(null), []);
 
   const handleWaterAdd = () => {
+    if (profileGate.require(homeTarget({ finAddWater: true }))) return;
     if (suTakibi) {
       // G19-S2 md.3: sunucu sınırı (gün ≤ 20 L) — tavanda eklenen kadar geri alınır.
       const cur = water.ml ?? 0;
@@ -1551,6 +1558,7 @@ export default function TrackerScreen() {
   // G42-S1 md.9: B yolu ("Sonra oluştur") — ilk kalori kaydında kısa profil (yeni_kayit kapalıyken etkisiz).
   const shortGate = useShortProfileGate();
   const logToSlot = (slot: SlotKey, portion = 1) => {
+    if (profileGate.require(aiTarama ? { name: 'AiScan' } : homeTarget({ finOpenManual: slot }))) return;
     if (shortGate((n, p) => (navigation as any).navigate(n, p))) return;
     logPortionRef.current = aiTarama ? 1 : portion;
     setPendingSlot(slot);
@@ -1597,6 +1605,14 @@ export default function TrackerScreen() {
   // AÇILSIN (önce yalnız geri dönüyordu, kullanıcı ikinci kez dokunmak zorundaydı).
   // Çağıran: navigate('Tabs', { screen: 'Tracker', params: { finOpenManual: true } }).
   const finOpenManual = (route.params as { finOpenManual?: true | SlotKey } | undefined)?.finOpenManual;
+  // G47-S1 md.3: profil kapısından dönüş — "su ekle"ye dokunulmuştu → akış bitince bir kez eklenir.
+  const finAddWater = (route.params as { finAddWater?: true } | undefined)?.finAddWater;
+  useEffect(() => {
+    if (!yeniKabuk || !finAddWater || profileGate.blocked) return;
+    (navigation as any).setParams?.({ finAddWater: undefined });
+    handleWaterAdd();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finAddWater, yeniKabuk, profileGate.blocked]);
   useEffect(() => {
     if (!yeniKabuk || !finOpenManual) return;
     (navigation as any).setParams?.({ finOpenManual: undefined });
@@ -2804,7 +2820,9 @@ const html = `
             {/* ── Yeni kabuk Ana sayfa başlığı (yeni_kabuk) — gün halkası şeridi +
                  halka dolumu imza anı + seri + Logla izi + sessiz an. Bayrak
                  kapalıyken render OLMAZ (eski kalori halkası aşağıda kalır). ── */}
-            {yeniKabuk ? (
+            {/* G47-S1 md.3: profil yoksa takip bölümü (halka, makrolar, Bugün, İlk öğününü ekle) yerine tek kart. */}
+            {yeniKabuk && profileGate.blocked ? <HomeProfileGateCard onStart={() => profileGate.require(null)} /> : null}
+            {yeniKabuk && !profileGate.blocked ? (
               <TrackerDayHeader
                 kcal={Math.max(0, homeTotals.kcal - heldKcal)}
                 target={homeGoal.has ? homeGoal.kcal : targets.kcal}
@@ -2823,8 +2841,8 @@ const html = `
             ) : null}
             {/* G34-S1 md.5 (Tur 26o 04 "Ana sayfa kartı"): halkanın altında TEK SEFERLİK kişisel plan kartı
                 (`kisisel_plan`; plan varsa ya da × ile kapatıldıysa çizilmez). */}
-            {yeniKabuk ? <HomePlanCard /> : null}
-            {yeniKabuk ? <PlanImproveSlot /> : null}
+            {yeniKabuk && !profileGate.blocked ? <HomePlanCard /> : null}
+            {yeniKabuk && !profileGate.blocked ? <PlanImproveSlot /> : null}
             {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
             {yeniKabuk ? (
               <HomeBanner items={homeBanners} onOpen={openBanner} initialIndex={__DEV__ ? vitrinParams.vitrinBanner ?? 0 : 0} />
@@ -2835,6 +2853,8 @@ const html = `
             {yeniKabuk ? (
               <>
                 {/* G16-S1 (FinScanOffline): çevrimdışı çekilen bekleyen fotoğraflar (ai_tarama; kuyruk boşsa çizilmez). */}
+                {profileGate.blocked ? null : (
+                <>
                 {aiTarama ? <HomePendingScans forceOffline={__DEV__ && vitrinParams.vitrinOffline === true} onManual={() => openMealFormFor(slotFromHour(istanbulHour()))} /> : null}
                 <HomeMealSlots
                   slots={homeSlots}
@@ -2875,6 +2895,8 @@ const html = `
                   targetKcal={targets.kcal || null}
                   proteinLeft={targets.protein ? Math.max(0, targets.protein - homeTotals.protein) : null}
                 />
+                </>
+                )}
                 {/* G15-S2: FinHomeR3 alt bölümleri — eatkcal şeridi + Keşfet şeridi (veri yoksa gizli). */}
                 {/* G21-S1 md.8: kare = o gönderinin detayı (banner'la aynı hedef); "Tümü" = Keşfet sekmesi. */}
                 <HomeExploreStrip onAll={openKesfet} onOpen={openPost} />

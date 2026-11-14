@@ -17,11 +17,14 @@ import { CalcScreen, ResultScreen } from './screens/PlanScreens';
 import { EmailScreen, SignupScreen } from './screens/SignupScreens';
 import OfferScreen from './screens/OfferScreen';
 import ReturnScreen from './screens/ReturnScreen';
-import { readDraft, shouldShowReturn, type KDraft } from './storage';
+import { ONB_KEY, readDraft, shouldShowReturn, type KDraft } from './storage';
 import { kv, useKayit } from './store';
 import { emptyKAnswers, type KAnswers } from './model';
 import { computeKayitPlan, planSignature } from './plan';
 import { K_MOTION } from './ui/theme';
+import { useKayitFlow, type GateTarget } from './profileGate';
+import { defaultUnits } from './model';
+import * as Localization from 'expo-localization';
 
 export type KayitParamList = {
   KOnb: { vitrinStep?: number } | undefined;
@@ -82,6 +85,20 @@ function vitrinPrefill(screen: keyof KayitParamList, params: Record<string, unkn
 function OnbRoute({ route }: { route: { params?: { vitrinStep?: number } } }) {
   return <OnboardingScreen vitrinStep={route.params?.vitrinStep} />;
 }
+
+type Entry = 'gate' | 'auth' | 'signedOut';
+/**
+ * G47-S1 — giriş noktası:
+ *  · 'gate' (profil kapısı) / 'auth' (girişten sonra profil yok) → doğrudan P1 (A yolu); K1 atlanır, akış L2'de
+ *    hesaba kaydeder ve dokunulan eyleme / Ana sayfaya döner.
+ *  · 'signedOut' (çıkış / hesap silme / oturum süresi) → onboarding 1. ekranı: kaldığı yer kaydı (ONB_KEY) önce
+ *    silinir, onboarding ekranı (G42 ile bayt bayt aynı) 1. ekrandan açılır.
+ */
+export function initialForEntry(entry: Entry | undefined): { name: keyof KayitParamList; params?: Record<string, unknown> } | null {
+  if (entry === 'gate' || entry === 'auth') return { name: 'KQuestions', params: { path: 'a' } };
+  if (entry === 'signedOut') return { name: 'KOnb' };
+  return null;
+}
 function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean } } }) {
   const p = route.params;
   return <OfferScreen vitrinPhase={p?.vitrinPhase as never} vitrinPeriod={p?.vitrinPeriod as never} vitrinConfirm={p?.vitrinConfirm} vitrin={p?.vitrin} />;
@@ -90,15 +107,40 @@ function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitri
 export default function KayitNavigator() {
   const reduced = useReducedMotion();
   // YALNIZ __DEV__ vitrini: { screen, params } ile doğrudan bir sahne.
-  const p = (useRoute().params ?? {}) as { screen?: keyof KayitParamList; params?: Record<string, unknown> };
+  const p = (useRoute().params ?? {}) as { screen?: keyof KayitParamList; params?: Record<string, unknown>; entry?: Entry; returnTo?: GateTarget | null };
   const devScreen = __DEV__ ? p.screen : undefined;
-  const [initial, setInitial] = useState<{ name: keyof KayitParamList; params?: Record<string, unknown> } | null>(() =>
-    devScreen ? { name: devScreen, params: vitrinPrefill(devScreen, p.params) } : null,
-  );
+  const [initial, setInitial] = useState<{ name: keyof KayitParamList; params?: Record<string, unknown> } | null>(() => {
+    if (devScreen) return { name: devScreen, params: vitrinPrefill(devScreen, p.params) };
+    const e = initialForEntry(p.entry);
+    if (!e || p.entry === 'signedOut') {
+      useKayitFlow.getState().setFlow({ origin: 'onb', returnTo: null, method: null, fresh: false });
+      return null;
+    }
+    if (p.entry === 'gate' || p.entry === 'auth') {
+      // Taze A yolu: cevaplar sıfır, birim cihaz bölgesine göre; köken + dönüş hedefi ayrı depoda.
+      const k = useKayit.getState();
+      k.reset(defaultUnits('tr', Localization.getLocales?.()[0]?.regionCode));
+      k.setPath('a');
+      k.setStart('track');
+      if (p.entry === 'gate') useKayitFlow.getState().setFlow({ origin: 'gate', returnTo: p.returnTo ?? null, method: null, fresh: false });
+      else useKayitFlow.getState().setFlow({ origin: 'auth', returnTo: null });
+    } else {
+      useKayitFlow.getState().setFlow({ origin: 'onb', returnTo: null, method: null, fresh: false });
+    }
+    return e;
+  });
 
   useEffect(() => {
     if (initial) return;
     let alive = true;
+    if (p.entry === 'signedOut') {
+      void kv.removeItem(ONB_KEY).catch(() => undefined).then(() => {
+        if (alive) setInitial({ name: 'KOnb' });
+      });
+      return () => {
+        alive = false;
+      };
+    }
     void readDraft(kv).then((d) => {
       if (!alive) return;
       setInitial(shouldShowReturn(d) ? { name: 'KReturn', params: { draft: d } } : { name: 'KOnb' });

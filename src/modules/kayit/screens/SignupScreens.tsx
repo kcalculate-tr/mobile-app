@@ -37,6 +37,8 @@ import { finishSignup } from '../signup';
 import { offerAllowed } from '../offerOnce';
 import { flushDraft, useKayit } from '../store';
 import { kTrack } from '../events';
+import { useAuthSuccess } from '../auth/postAuth';
+import { markProfileCreated } from '../profileGate';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Method = 'apple' | 'google' | 'email';
@@ -59,6 +61,8 @@ function useFinishOnAuth(path: KPath) {
     const { method, c } = pending.current;
     void (async () => {
       const r = await finishSignup({ userId: user.id, method, metaOn: c.meta, marketingOn: c.marketing, lang: lang === 'en' ? 'en' : 'tr', ageOk: path === 'a' ? true : c.age });
+      // G47: plan kaydedildiyse profil kapısı hemen açılır (Ana sayfa takip bölümü kart yerine görünür).
+      if (r.planSaved) markProfileCreated();
       haptic('success');
       // G46 md.3: T1 kayıt teklifi cihaz + hesap bazında yalnız bir kez; daha önce gösterildiyse doğrudan HA.
       if (r.path === 'a' && (await offerAllowed('a', meta.current))) {
@@ -221,7 +225,7 @@ export function SignupScreen() {
   }
 }
 
-function SocialButton({ kind, label, dark, busy, disabled, onPress, testID }: { kind: 'apple' | 'google'; label: string; dark: boolean; busy: boolean; disabled: boolean; onPress: () => void; testID?: string }) {
+export function SocialButton({ kind, label, dark, busy, disabled, onPress, testID }: { kind: 'apple' | 'google'; label: string; dark: boolean; busy: boolean; disabled: boolean; onPress: () => void; testID?: string }) {
   const bg = dark ? '#000000' : '#FFFFFF';
   const fg = dark ? '#FFFFFF' : '#1F1F1F';
   return (
@@ -248,7 +252,8 @@ export function EmailScreen() {
   const P = useK();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const params = (useRoute().params ?? {}) as { path?: KPath; meta?: boolean; marketing?: boolean; age?: boolean; vitrinStep?: 'code'; vitrinState?: 'wrong' | 'expired' | 'verifying' };
+  // G47 md.1: `mode: 'login'` = giriş katmanından (AuthSheet) gelinen E1/E2 — kök yığında `AuthEmail` rotası.
+  const params = (useRoute().params ?? {}) as { path?: KPath; meta?: boolean; marketing?: boolean; age?: boolean; mode?: 'login'; redirectTo?: string; vitrinStep?: 'code'; vitrinState?: 'wrong' | 'expired' | 'verifying' };
   const path: KPath = params.path ?? useKayit.getState().path;
   const { signInWithOtp, verifyEmailOtp } = useAuth();
   const dev = __DEV__ ? params : {};
@@ -261,7 +266,10 @@ export function EmailScreen() {
   const [sendErr, setSendErr] = useState('');
   const [countdown, setCountdown] = useState(dev.vitrinStep ? 59 : 0);
   const review = useReviewPasswordLogin(email);
-  const markPending = useFinishOnAuth(path);
+  const markSignup = useFinishOnAuth(path);
+  const markLogin = useAuthSuccess(params.redirectTo);
+  const loginMode = params.mode === 'login';
+  const markPending = (m: Method, c: Consents) => (loginMode ? markLogin(m) : markSignup(m, c));
   const inputRef = useRef<TextInput>(null);
   const back = () => {
     if (step === 'code') {
@@ -327,7 +335,7 @@ export function EmailScreen() {
   if (step === 'email') {
     const valid = isValidEmail(email);
     return (
-      <View style={{ flex: 1 }} {...edge} testID="kayit-e1">
+      <View style={{ flex: 1 }} {...edge} testID={loginMode ? 'auth-e1' : 'kayit-e1'}>
         <StatusBar style={P.isDark ? 'light' : 'dark'} />
         <KBackdrop shift={23} />
         {/* G44: E1 ↔ E2 native push hissi (E2 sağdan gelir, geri dönüşte E1 soldan). */}

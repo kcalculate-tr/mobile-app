@@ -6,7 +6,7 @@ export type TabParamList = {
   Cart: undefined;
   Subscriptions: undefined;
   // G18-S4 md.3: FinPush seri/hatırlatma dokunuşu → logla sheet'i açık (S2 tüketir).
-  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack'; finOpenManual?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack' } | undefined;
+  Tracker: { finOpenLog?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack'; finOpenManual?: true | 'breakfast' | 'lunch' | 'dinner' | 'snack'; finAddWater?: true } | undefined;
   Profile: undefined;
   // G11-S2 yeni kabuk: Keşfet sekmesi (yalnız `kesfet` + `yeni_kabuk` açıkken
   // R3 tab navigatörüne eklenir). `asTab` ekrana tab bağlamında olduğunu söyler
@@ -22,8 +22,10 @@ export type RootStackParamList = {
   // soğuk açılış). Kapalıyken HİÇ kaydolmaz; WelcomeGate bugünküyle aynı.
   Onboarding: undefined;
   // G42-S1 — yeni onboarding + kayıt (yalnız yeni_kayit açıkken kayıtlı).
-  Kayit: { screen?: string; params?: Record<string, unknown> } | undefined;
-  KayitShort: { mode?: 'short' } | undefined;
+  Kayit: { screen?: string; params?: Record<string, unknown>; entry?: 'gate' | 'auth' | 'signedOut'; returnTo?: { name: string; params?: Record<string, unknown> } | null } | undefined;
+  KayitShort: { mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: { name: string; params?: Record<string, unknown> } | null } | undefined;
+  // G47-S1 — giriş katmanından E1/E2 (yalnız yeni_kayit açıkken kayıtlı).
+  AuthEmail: { mode?: 'login'; redirectTo?: string } | undefined;
   // G12-S1 — "Takibe başla" (hedef/tempo/beden/hareket/sonuç/ilk adım). Mevcut
   // beslenme profili servisini kullanır; `editGoal` Profil › Hedefim'den açılış.
   TakibeBasla: { editGoal?: boolean } | undefined;

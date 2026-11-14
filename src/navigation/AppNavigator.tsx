@@ -44,6 +44,12 @@ import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay, OrientHost } f
 // G42-S1 — yeni onboarding + kayıt (eager: koyu zemin, beyaz flash yok). Yalnız `yeni_kayit` açıkken kayıtlı.
 import KayitNavigator from '../modules/kayit/KayitNavigator';
 import KayitShortScreen from '../modules/kayit/screens/QuestionsScreen';
+// G47-S1 — tek giriş katmanı (AuthSheet, `Login` rotası saydam modal) + giriş kipi E1/E2 + profil kapısı.
+import AuthSheet from '../modules/kayit/auth/AuthSheet';
+import { EmailScreen as KayitEmailScreen } from '../modules/kayit/screens/SignupScreens';
+import { useProfileGateHost } from '../modules/kayit/gateFlow';
+import { gateRouterOverride } from './gateRouter';
+import { resetToSignedOut } from './signOutReset';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../modules/eatkcal/screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -472,6 +478,16 @@ export default function AppNavigator() {
   const push = pushTransition(yeniKabukRoutes && reducedMotion);
   const aiPush = yeniKabukRoutes ? push : AI_PUSH;
   const designThemeRoot = useDesignTheme();
+  // G47-S1 md.3: profil kapısı bağlamı (yönlendirici senkron okur) + oturum değişince profil durumu.
+  useProfileGateHost(yeniKayit, kisiselPlan);
+  // G47-S1 md.2: `yeni_kayit` açıkken oturum kapanınca (çıkış, hesap silme, süre dolması) kök yığın yeni
+  // onboarding 1. ekranına sıfırlanır — yalnız soğuk açılışta değil, oturum değiştiği her an.
+  const hadSession = useRef(!!session);
+  useEffect(() => {
+    const had = hadSession.current;
+    hadSession.current = !!session;
+    if (had && !session && yeniKayit) resetToSignedOut(yeniOnboarding);
+  }, [session, yeniKayit, yeniOnboarding]);
   const stackBg = yeniKabukRoutes ? designThemeRoot.color.bg : LEGACY_STACK_BG;
   const initialRouteName = session
     ? 'Tabs'
@@ -527,6 +543,8 @@ export default function AppNavigator() {
     <StackBgContext.Provider value={stackBg}>
     <Stack.Navigator
       initialRouteName={initialRouteName}
+      // G47-S1: takip rotaları profil kapısından geçer (bayrak kapalıyken hiçbir eylem değişmez).
+      UNSTABLE_router={gateRouterOverride}
       screenOptions={{
         headerShown: false,
         ...push,
@@ -538,22 +556,29 @@ export default function AppNavigator() {
       }}
     >
       {/* Tam ekran fotograf zeminli tek ekran — acik zemin burada parlama yapardi. */}
+      {/* G47-S1 md.2: `yeni_kayit` açıkken eski karşılama (WelcomeGate) ve eski onboarding KAYITLI DEĞİL. */}
+      {!yeniKayit ? (
       <Stack.Screen
         name="WelcomeGate"
         component={WelcomeGateScreen}
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#0A0A0A' } }}
       />
+      ) : null}
       {/* G12-S1 — yeni onboarding (koyu zemin, geri jesti kapalı). Bayrak
           kapalıyken initialRoute WelcomeGate olduğundan erişilmez. */}
+      {!yeniKayit ? (
       <Stack.Screen
         name="Onboarding"
         component={OnboardingNavigator}
         options={{ gestureEnabled: false, contentStyle: { backgroundColor: '#000000' } }}
       />
+      ) : null}
       {/* G12-S1 — Takibe başla (hedef/tempo/beden/hareket/sonuç/ilk adım).
           Onboarding'den (yeni kullanıcı) ve Profil › Hedefim'den (editGoal, S4
           bağlar) açılır. Mevcut beslenme profili servisini kullanır. */}
-      <Stack.Screen name="TakibeBasla" component={TakibeBaslaNavigator} />
+      {/* G47-S1 md.4: eski kupa görselli "Takibe başla" `yeni_kayit` açıkken KAYITLI DEĞİL (çağrılar gateRouter ile
+          yeni kayıt akışına / mevcut düzenleme ekranına yönlenir). */}
+      {!yeniKayit ? <Stack.Screen name="TakibeBasla" component={TakibeBaslaNavigator} /> : null}
       {/* G42-S1 — yeni onboarding + kayıt (A: kişisel plan · B: kısa profil). Kapalıyken kayıt YOK. */}
       {yeniKayit ? <Stack.Screen name="Kayit" component={KayitNavigator} options={{ animation: 'fade', contentStyle: { backgroundColor: '#0D2617' } }} /> : null}
       {yeniKayit ? <Stack.Screen name="KayitShort" component={KayitShortScreen} initialParams={{ mode: 'short' }} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
@@ -590,7 +615,16 @@ export default function AppNavigator() {
       )}
       <Stack.Screen name="PublicProfile" component={PublicProfileLazy} options={aiPush} />
       <Stack.Screen name="KcalAiSignUp" component={KcalAiSignUpLazy} options={aiPush} />
-      <Stack.Screen name="Login" component={UnifiedLoginLazy} />
+      {/* G47-S1 md.1: `yeni_kayit` açıkken `Login` = alttan açılan giriş katmanı (saydam modal); eski tam ekran giriş
+          sayfaları (LoginV2 / UnifiedLogin) hiçbir rotadan açılmaz. */}
+      {yeniKayit ? (
+        <Stack.Screen name="Login" component={AuthSheet} options={{ presentation: 'transparentModal', animation: 'none', gestureEnabled: false, contentStyle: { backgroundColor: 'transparent' } }} />
+      ) : (
+        <Stack.Screen name="Login" component={UnifiedLoginLazy} />
+      )}
+      {yeniKayit ? <Stack.Screen name="AuthEmail" component={KayitEmailScreen} options={{ ...push, contentStyle: { backgroundColor: '#0D2617' } }} /> : null}
+      {/* G47-S1 md.4: `yeni_kayit` açıkken bu rotaya giden her eylem gateRouter ile Kişisel planım / yeni kısa profile
+          (profil yoksa kayıt akışına) çevrilir; eski "Takibe başla"ya düşmez. */}
       <Stack.Screen name="NutritionProfile" component={finalScreenFor('NutritionProfile', finalFlag.yeni_onboarding, NutritionProfileLazy)} />
       <Stack.Screen name="MeasurementHistory" component={finalScreenFor('MeasurementHistory', finalFlag.yeni_kabuk, MeasurementHistoryLazy)} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileOrders" component={v2ScreenFor('ProfileOrders', yeniSiparis, OrdersLazy)} />

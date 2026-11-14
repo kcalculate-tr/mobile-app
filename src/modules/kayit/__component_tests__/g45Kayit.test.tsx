@@ -283,8 +283,9 @@ describe('md.5–6 L2', () => {
     const r = await renderL2();
     expect(r.queryByRole('checkbox')).toBeNull();
     const note = r.getByTestId('kayit-health-consent');
-    expect(flat(note.props.style)).toMatchObject({ fontSize: 13, textAlign: 'center' });
-    expect(plain(r.getByText(tr.q.consent_link).props.children)).toBe('Aydınlatma metni');
+    // G47 md.6: not 11 pt, düğmenin altında; bağlantı bölünmez boşluklu (aynı satırda kalır).
+    expect(flat(note.props.style)).toMatchObject({ fontSize: 11, textAlign: 'center' });
+    expect(plain(r.getByTestId('kayit-consent-link').props.children).replace(/\u00A0/g, ' ')).toBe('Aydınlatma metni');
     fireEvent.press(r.getByTestId('kayit-consent-link'));
     expect(mockNav.navigate).toHaveBeenCalledWith('ProfileContracts', { slug: 'kvkk' });
     const btn = r.getByTestId('kayit-save-plan');

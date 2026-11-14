@@ -23,6 +23,12 @@ export interface SignupFinishInput {
   lang: 'tr' | 'en';
   /** 18+ beyanı: A yolunda doğum yılından, B yolunda K1b kutusundan. */
   ageOk: boolean;
+  /**
+   * G47-S1: rıza yazımı. 'full' (varsayılan, yeni kayıt) = politika kabulü + Meta + pazarlama; 'marketing' (giriş
+   * yapan eski hesap, Meta işaretsiz) = yalnız işaretliyse pazarlama — önceki Meta tercihinin üstüne "hayır" yazılmaz;
+   * 'none' (profil kapısı: hesap zaten kayıtlı) = rıza yazılmaz, yalnız plan.
+   */
+  consents?: 'full' | 'marketing' | 'none';
 }
 
 export interface SignupFinishResult {
@@ -54,10 +60,17 @@ export async function sendPlanEmail(lang: 'tr' | 'en'): Promise<boolean> {
   }
 }
 
+/** G47-S1: kısa profil (B) girişten sonra — L2 ile aynı rıza kuralı (yeni hesap ya da Meta işaretli → politika kaydı). */
+export async function writeAuthConsents(i: { method: 'apple' | 'google' | 'email'; metaOn: boolean; marketingOn: boolean; fresh: boolean }): Promise<void> {
+  if (i.fresh || i.metaOn) await acceptPolicies({ source: i.method === 'email' ? 'signup_email' : 'signup_social', adOn: i.metaOn, ageOk: true }).catch(() => {});
+  if (i.marketingOn) await setMarketingOptIn(true).catch(() => false);
+}
+
 export async function finishSignup(i: SignupFinishInput): Promise<SignupFinishResult> {
   const s = useKayit.getState();
-  await acceptPolicies({ source: i.method === 'email' ? 'signup_email' : 'signup_social', adOn: i.metaOn, ageOk: i.ageOk }).catch(() => {});
-  if (i.marketingOn) await setMarketingOptIn(true).catch(() => false);
+  const mode = i.consents ?? 'full';
+  if (mode === 'full') await acceptPolicies({ source: i.method === 'email' ? 'signup_email' : 'signup_social', adOn: i.metaOn, ageOk: i.ageOk }).catch(() => {});
+  if (mode !== 'none' && i.marketingOn) await setMarketingOptIn(true).catch(() => false);
   try {
     await AsyncStorage.multiSet([
       [ONBOARDING_DONE_KEY, 'true'],

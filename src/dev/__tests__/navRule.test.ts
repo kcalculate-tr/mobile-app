@@ -44,6 +44,7 @@ const MODAL_FILES = [
   'modules/plan/screens/PlanGenerateScreen.tsx', // G33-S1 FinPlanGenerate (alttan, kapat X sağda)
   'modules/personalPlan/screens/PlanPaywallScreen.tsx', // G34-S1 FinPlanPaywall (alttan, kapat X sağda)
   'modules/kayit/screens/OfferScreen.tsx', // G42-S1 T1 teklif (kayıt sonrası sahne, kapat X sağ üstte → Ana sayfa)
+  'modules/kayit/auth/AuthSheet.tsx', // G47-S1 tek giriş katmanı (alttan sheet, kapat X sağ üstte)
   'modules/subscription/ui/SubResult.tsx',
   'modules/subscription/ui/SubLimitSheet.tsx',
 ];
