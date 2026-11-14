@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
   cell: { flex: 1 },
   card: { flex: 1, minHeight: 104, borderRadius: 20, borderWidth: 1, padding: 14, gap: 4 },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
-  // Ek gölge YOK: cam PNG'lerin kendi yumuşak gölgesi/ışığı var ve uygulamadaki diğer kullanımlar (Paywall, kişisel
-  // plan, öğün yuvaları) da düz Image; RN gölgesi bu PNG'lerde kare hale çiziyordu (G51 LOG › KARAR).
+  // Ek RN gölgesi YOK: cam PNG'lerin kendi yumuşak kenar ışığı var ve uygulamadaki diğer kullanımlar (Paywall,
+  // kişisel plan, öğün yuvaları) da düz Image (G51 LOG › KARAR).
   glass: { width: QUICK_GLASS_SIZE, height: QUICK_GLASS_SIZE },
   badge: { flexShrink: 1, marginLeft: 'auto', borderRadius: 10, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14 },
