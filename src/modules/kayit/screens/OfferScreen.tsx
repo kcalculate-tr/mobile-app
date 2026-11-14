@@ -1,15 +1,19 @@
 // G42-S1 md.8 — T1 teklif (yalnız A yolu). MEVCUT abonelik altyapısı: RevenueCat teklif kartları (usePlanCards,
 // yerel fiyat), purchasePlan / restorePurchases, SubLegalLinks (Koşullar/EULA + Gizlilik). Yıllık/Aylık segment
-// (varsayılan Yıllık); Balance Yıllık önerilen ve seçili, Fresh ikinci; aylıkta deneme yok; deneme sonrası ücret +
-// otomatik yenileme metni; geri yükleme. X ilk kareden görünür → HA (Ana sayfa, plan yüklü). Bildirim bandı
-// "Planın e-posta adresine gönderildi" üstten iner (330 ms), 4 sn sonra / dokununca kalkar.
+// (varsayılan Yıllık); Balance Yıllık önerilen ve seçili, Fresh ikinci; deneme sonrası ücret + otomatik yenileme
+// metni; geri yükleme. X ilk kareden görünür. Bildirim bandı "Planın e-posta adresine gönderildi" üstten iner
+// (330 ms), 4 sn sonra / dokununca kalkar.
+// G46-S1: md.2 aylık planlarda deneme rozeti/metni HİÇ yok (deneme koşulu yalnız denemeli planda). md.3 X → küçük
+// onay sayfası (core/design Sheet): "Denemeye başla" → sayfa kapanır, seçili planın denemeli (yıllık) ürünüyle satın
+// alma başlar; "Yine de çık" → HA. Seçili planda deneme yoksa onay sayfası açılmaz (deneme metni doğru olmaz) → HA.
+// Metin doğruluğu: T1 açıldığında cihaz + hesap "gösterildi" işareti yazılır (offerOnce) → bir daha açılmaz.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { CURVE, REDUCED, haptic, useReducedMotion } from '../../../core/design';
+import { CURVE, REDUCED, Sheet, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Check, X } from '../../../components/icons';
 import type { PlanCard, PlanKey } from '../../../lib/subscription/plans';
@@ -22,12 +26,13 @@ import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, mixColor, useSelectTween } from '../ui/motion';
 import { useKayit } from '../store';
 import { kTrack } from '../events';
+import { markOfferShown } from '../offerOnce';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 
 type Period = 'yearly' | 'monthly';
 type Phase = 'idle' | 'buying' | 'success' | 'cancelled' | 'error';
 
-export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase?: Phase; vitrinPeriod?: Period } = {}) {
+export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, vitrin }: { vitrinPhase?: Phase; vitrinPeriod?: Period; vitrinConfirm?: boolean; vitrin?: boolean } = {}) {
   const { t } = useT();
   const P = useK();
   const insets = useSafeAreaInsets();
@@ -39,7 +44,15 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
   const [tier, setTier] = useState<'balance' | 'fresh'>('balance');
   const [phase, setPhase] = useState<Phase>(__DEV__ && vitrinPhase ? vitrinPhase : 'idle');
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(__DEV__ && !!vitrinConfirm);
   const viewed = useRef<Set<Period>>(new Set());
+
+  // G46 md.3: T1 göründü → cihaz + hesap işareti (bir daha gösterilmez). YALNIZ __DEV__ vitrininde yazılmaz.
+  useEffect(() => {
+    if (__DEV__ && (vitrin || vitrinPhase || vitrinPeriod || vitrinConfirm)) return;
+    void markOfferShown();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (viewed.current.has(period)) return;
@@ -71,12 +84,14 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
   const fresh = pick('fresh');
   const selected = tier === 'balance' ? balance : fresh;
   const trialDays = period === 'yearly' ? (selected?.trialDays ?? null) : null;
+  // Onay sayfası: seçili planın denemeli ürünü (deneme yalnız yıllıkta) — aylık sekmedeyken de aynı plan (tier).
+  const trialCard = cards?.find((c) => c.tier === tier && c.yearly && (c.trialDays ?? 0) > 0) ?? null;
 
-  const buy = async () => {
-    if (!selected || phase === 'buying') return;
+  const buy = async (card: PlanCard | null = selected) => {
+    if (!card || phase === 'buying') return;
     setPhase('buying');
-    const r = await purchasePlan(selected.key as PlanKey);
-    kTrack.trialStart(selected.key, r);
+    const r = await purchasePlan(card.key as PlanKey);
+    kTrack.trialStart(card.key, r);
     if (r === 'success') {
       haptic('success');
       setPhase('success');
@@ -86,6 +101,29 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
       haptic('warning');
       setPhase('error');
     }
+  };
+
+  // G46 md.3: X → onay sayfası (deneme varsa); yoksa doğrudan HA.
+  const close = () => {
+    if (phase === 'buying') return;
+    if (!trialCard) {
+      goHome();
+      return;
+    }
+    haptic('selection');
+    setConfirm(true);
+  };
+  const stay = (startTrial: boolean) => {
+    kTrack.dismissConfirm('stay');
+    setConfirm(false);
+    if (!startTrial || !trialCard) return;
+    setPeriod('yearly');
+    void buy(trialCard);
+  };
+  const leave = () => {
+    kTrack.dismissConfirm('leave');
+    setConfirm(false);
+    goHome();
   };
 
   const restore = async () => {
@@ -107,7 +145,7 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
         <View style={styles.top}>
           <View style={{ width: 52 }} />
           <Mascot size={110} />
-          <CircleButton testID="kayit-offer-close" onPress={goHome} label={t('kayit.offer.close')} disabled={buying}>
+          <CircleButton testID="kayit-offer-close" onPress={close} label={t('kayit.offer.close')} disabled={buying}>
             <X size={22} color={P.ink} weight="bold" />
           </CircleButton>
         </View>
@@ -181,7 +219,52 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod }: { vitrinPhase
         </View>
       </ScrollView>
       {emailSent ? <Banner text={t('kayit.offer.banner')} top={insets.top + 6} /> : null}
+      <DismissConfirm
+        visible={confirm}
+        days={trialCard?.trialDays ?? 7}
+        terms={trialCard ? t('kayit.offer.after_trial', { n: trialCard.trialDays ?? 7, price: trialCard.priceText }) : ''}
+        onStart={() => stay(true)}
+        onDismiss={() => stay(false)}
+        onLeave={leave}
+      />
     </View>
+  );
+}
+
+/**
+ * G46 md.3 — T1 kapatma onayı (alttan sayfa; uygulamanın ortak `Sheet`i: 28 üst köşe, tutamaç, 44 pt kapat, scrim).
+ * Metin yalnız "bu ekran" için konuşur (T1 bir kez gösterilir — offerOnce); süre baskısı ifadesi YOK.
+ * Ana: lime "Denemeye başla"; ikincil metin düğmesi "Yine de çık" (≥ 44 pt). Scrim / kapat / Android geri = kal.
+ * HIG (apple-in-app-purchase › Clearly describe how a free trial works): "Denemeye başla" aylık sekmeden de yıllık
+ * denemeli ürünü başlatır → düğmenin altında deneme süresi + deneme sonrası ücret (mevcut `after_trial` metni).
+ */
+function DismissConfirm({ visible, days, terms, onStart, onDismiss, onLeave }: { visible: boolean; days: number; terms: string; onStart: () => void; onDismiss: () => void; onLeave: () => void }) {
+  const { t } = useT();
+  const P = useK();
+  return (
+    <Sheet visible={visible} onClose={onDismiss} testID="kayit-offer-confirm">
+      <View style={{ gap: 10, paddingBottom: 4 }}>
+        <AppText accessibilityRole="header" maxFontSizeMultiplier={1.4} style={[styles.confirmTitle, { color: P.ink }]}>
+          {t('kayit.offer.confirm_title', { n: days })}
+        </AppText>
+        <AppText maxFontSizeMultiplier={1.5} style={[styles.confirmBody, { color: P.sec }]}>
+          {t('kayit.offer.confirm_body')}
+        </AppText>
+        <View style={{ marginTop: 12, gap: 4 }}>
+          <KButton testID="kayit-offer-confirm-stay" label={t('kayit.offer.confirm_stay')} onPress={onStart} />
+          {terms ? (
+            <AppText testID="kayit-offer-confirm-terms" maxFontSizeMultiplier={1.5} style={[styles.confirmTerms, { color: P.sec }]}>
+              {terms}
+            </AppText>
+          ) : null}
+          <Pressable testID="kayit-offer-confirm-leave" onPress={onLeave} accessibilityRole="button" accessibilityLabel={t('kayit.offer.confirm_leave')} style={styles.leave}>
+            <AppText maxFontSizeMultiplier={1.4} style={[styles.leaveText, { color: P.ink }]}>
+              {t('kayit.offer.confirm_leave')}
+            </AppText>
+          </Pressable>
+        </View>
+      </View>
+    </Sheet>
   );
 }
 
@@ -207,7 +290,7 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
         }}
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled: locked }}
-        accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, !card.yearly ? t('kayit.offer.no_trial') : null, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
+        accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
         style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }]}
       >
         <View style={[styles.radio, { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) }]}>
@@ -226,16 +309,13 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
           </AppText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: '52%' }}>
+          {/* G46 md.2: deneme rozeti yalnız denemeli planda; aylıkta hiçbir şey çizilmez (boşluk kalmaz). */}
           {trial ? (
-            <View style={[styles.badgeSoft, { backgroundColor: mixColor(P.infoBg, 'rgba(255,255,255,0.6)', k) }]}>
+            <View testID="kayit-offer-trial-badge" style={[styles.badgeSoft, { backgroundColor: mixColor(P.infoBg, 'rgba(255,255,255,0.6)', k) }]}>
               <AppText maxFontSizeMultiplier={1.3} style={[styles.badgeText, { color: ink }]}>
                 {trial}
               </AppText>
             </View>
-          ) : !card.yearly ? (
-            <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: sec }]}>
-              {t('kayit.offer.no_trial')}
-            </AppText>
           ) : null}
           <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: ink }]}>
             {priceLine}
@@ -359,6 +439,11 @@ const styles = StyleSheet.create({
   bannerIn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, minHeight: 56 },
   bannerDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   bannerText: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 20, flex: 1 },
+  confirmTitle: { fontFamily: FONT.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 },
+  confirmBody: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21 },
+  confirmTerms: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 6 },
+  leave: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  leaveText: { fontFamily: FONT.semi, fontSize: 16, lineHeight: 21 },
   okBadge: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginTop: -8 },
 });
 

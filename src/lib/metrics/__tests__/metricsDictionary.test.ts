@@ -123,6 +123,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     'supabase/migrations/20261112110100_g34_personal_plan.sql',
     // G42-S1: yeni kayıt hunisi.
     'supabase/migrations/20261113120100_g42_yeni_kayit.sql',
+    // G46-S1: T1 kapatma onayı.
+    'supabase/migrations/20261114100100_g46_paywall_dismiss_confirm.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');
@@ -145,6 +147,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   assert.match(rb21, /delete from public\.analytics_event_names/);
   const rb22 = readFileSync(join(ROOT, 'supabase/rollbacks/20261110100100_g22_s1_subscriptions_rollback.sql'), 'utf8');
   assert.match(rb22, /delete from public\.analytics_event_names/);
+  const rb46 = readFileSync(join(ROOT, 'supabase/rollbacks/20261114100100_g46_paywall_dismiss_confirm_rollback.sql'), 'utf8');
+  assert.match(rb46, /delete from public\.analytics_event_names where name in \('paywall_dismiss_confirm'\)/);
 });
 
 test('D-S1 sözlüğündeki 38 ad istemci sözlüğünde de var (sözleşme)', () => {

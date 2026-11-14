@@ -31,7 +31,7 @@ export type KayitParamList = {
   KResult: undefined;
   KSignup: { path?: 'a' | 'b'; vitrin?: string } | undefined;
   KEmail: { path?: 'a' | 'b'; meta?: boolean; marketing?: boolean; age?: boolean; vitrinStep?: 'code'; vitrinState?: string } | undefined;
-  KOffer: { vitrinPhase?: string; vitrinPeriod?: string } | undefined;
+  KOffer: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean } | undefined;
 };
 
 const Stack = createNativeStackNavigator<KayitParamList>();
@@ -67,7 +67,11 @@ function vitrinPrefill(screen: keyof KayitParamList, params: Record<string, unkn
     s.setPlan(plan, planSignature(demo));
     s.setCalcDone(true);
   }
-  if (screen === 'KOffer') s.setEmailSent(true);
+  if (screen === 'KOffer') {
+    s.setEmailSent(true);
+    // Vitrin: T1 "gösterildi" işareti yazılmasın (G46).
+    return { ...(params ?? {}), vitrin: true };
+  }
   if (screen === 'KReturn' && plan) {
     const draft: KDraft = { v: 1, savedAt: new Date(Date.now() - 2 * 86400000).toISOString(), answers: demo, step: 'signup', start: 'track', plan: { calories: plan.calories, protein: plan.protein, carbs: plan.carbs, fat: plan.fat } };
     return { draft };
@@ -78,8 +82,9 @@ function vitrinPrefill(screen: keyof KayitParamList, params: Record<string, unkn
 function OnbRoute({ route }: { route: { params?: { vitrinStep?: number } } }) {
   return <OnboardingScreen vitrinStep={route.params?.vitrinStep} />;
 }
-function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitrinPeriod?: string } } }) {
-  return <OfferScreen vitrinPhase={route.params?.vitrinPhase as never} vitrinPeriod={route.params?.vitrinPeriod as never} />;
+function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean } } }) {
+  const p = route.params;
+  return <OfferScreen vitrinPhase={p?.vitrinPhase as never} vitrinPeriod={p?.vitrinPeriod as never} vitrinConfirm={p?.vitrinConfirm} vitrin={p?.vitrin} />;
 }
 
 export default function KayitNavigator() {

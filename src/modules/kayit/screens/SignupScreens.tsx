@@ -34,6 +34,7 @@ import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, PushIn } from '../ui/motion';
 import { firstTabFor, type KPath } from '../model';
 import { finishSignup } from '../signup';
+import { offerAllowed } from '../offerOnce';
 import { flushDraft, useKayit } from '../store';
 import { kTrack } from '../events';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
@@ -49,6 +50,9 @@ function useFinishOnAuth(path: KPath) {
   const kesfet = useFeature('kesfet');
   const pending = useRef<{ method: Method; c: Consents } | null>(null);
   const done = useRef(false);
+  // G46: hesap "T1 gösterildi" işareti (user_metadata) — etki yalnız kullanıcı kimliğiyle tetiklenir.
+  const meta = useRef<Record<string, unknown> | undefined>(undefined);
+  meta.current = user?.user_metadata as Record<string, unknown> | undefined;
   useEffect(() => {
     if (!user?.id || !pending.current || done.current) return;
     done.current = true;
@@ -56,11 +60,12 @@ function useFinishOnAuth(path: KPath) {
     void (async () => {
       const r = await finishSignup({ userId: user.id, method, metaOn: c.meta, marketingOn: c.marketing, lang: lang === 'en' ? 'en' : 'tr', ageOk: path === 'a' ? true : c.age });
       haptic('success');
-      if (r.path === 'a') {
+      // G46 md.3: T1 kayıt teklifi cihaz + hesap bazında yalnız bir kez; daha önce gösterildiyse doğrudan HA.
+      if (r.path === 'a' && (await offerAllowed('a', meta.current))) {
         navigation.navigate('KOffer');
         return;
       }
-      const tab = firstTabFor(useKayit.getState().start, kesfet);
+      const tab = r.path === 'a' ? 'Tracker' : firstTabFor(useKayit.getState().start, kesfet);
       const root = navigation.getParent?.() ?? navigation;
       root.reset({ index: 0, routes: [{ name: 'Tabs', params: { screen: tab } }] });
     })();

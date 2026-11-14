@@ -27,6 +27,8 @@ export const kTrack = {
   metaConsent: (granted: boolean, att: 'granted' | 'denied' | 'undetermined' | 'unavailable') => send('meta_consent', { granted, att }),
   paywallView: (period: 'yearly' | 'monthly') => send('paywall_view_reg', { period }),
   trialStart: (plan: string, result: 'success' | 'cancelled' | 'pending' | 'error') => send('trial_start_reg', { plan, result }),
+  /** G46 md.3: T1 kapatma onayı — stay (Denemeye başla / sayfayı kapat) · leave (Yine de çık). */
+  dismissConfirm: (choice: 'stay' | 'leave') => send('paywall_dismiss_confirm', { choice }),
 };
 
 /** Olay prop'larında sağlık değeri anahtarı var mı (test + savunma). */

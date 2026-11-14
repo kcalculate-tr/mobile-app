@@ -224,6 +224,8 @@ export const EVENTS = {
   meta_consent: { category: 'marketing', tr: 'Kayıtta Meta onay kutusu', en: 'Meta consent box at signup', props: { granted: 'boolean', att: ['granted', 'denied', 'undetermined', 'unavailable'] } },
   paywall_view_reg: { category: 'commerce', tr: 'Kayıt sonrası teklif görüntülendi', en: 'Post-signup offer viewed', props: { period: ['yearly', 'monthly'] } },
   trial_start_reg: { category: 'commerce', tr: 'Kayıt teklifinden satın alma/deneme', en: 'Purchase/trial from signup offer', props: { plan: 'text', result: ['success', 'cancelled', 'pending', 'error'] } },
+  // G46-S1 md.3: T1 kapatma onayı (sağlık değeri yok).
+  paywall_dismiss_confirm: { category: 'commerce', tr: 'Kayıt teklifi kapatma onayı', en: 'Signup offer dismiss confirmation', props: { choice: ['stay', 'leave'] } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',

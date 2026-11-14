@@ -182,3 +182,36 @@ export async function isShortPending(s: KvStore): Promise<boolean> {
     return false;
   }
 }
+
+// ─── G46-S1 md.3: T1 kayıt teklifi yalnız bir kez ─────────────────────────────
+// T1 (kayıt sonrası teklif) aynı kullanıcıya bir kez gösterilir: CİHAZ (bu cihazda herhangi bir hesapla görüldüyse)
+// ya da HESAP (`user_metadata.kayit_offer_shown_at`; başka cihazda görüldüyse) işaretlenmişse bir daha açılmaz.
+// Ana paywall'daki genel deneme bundan etkilenmez (yalnız T1 ekranı).
+export const OFFER_SHOWN_KEY = '@kcal_kayit_offer_shown';
+export const OFFER_META_KEY = 'kayit_offer_shown_at';
+
+/** Hesap işareti: kullanıcı metadata'sında gösterim zamanı var mı. */
+export function accountOfferShown(meta: Record<string, unknown> | null | undefined): boolean {
+  const v = meta?.[OFFER_META_KEY];
+  return typeof v === 'string' ? v.length > 0 : v != null && v !== false;
+}
+
+/** Saf karar: kayıt sonrası T1 açılsın mı (yalnız A yolu, cihazda ve hesapta daha önce gösterilmemişse). */
+export function shouldShowOffer(i: { path: KPath; device: boolean; account: boolean }): boolean {
+  return i.path === 'a' && !i.device && !i.account;
+}
+
+export async function isOfferShownOnDevice(s: KvStore): Promise<boolean> {
+  try {
+    return (await s.getItem(OFFER_SHOWN_KEY)) != null;
+  } catch {
+    return false;
+  }
+}
+export async function markOfferShownOnDevice(s: KvStore, now: number = Date.now()): Promise<void> {
+  try {
+    await s.setItem(OFFER_SHOWN_KEY, new Date(now).toISOString());
+  } catch {
+    /* yut */
+  }
+}

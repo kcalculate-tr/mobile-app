@@ -19,6 +19,7 @@ import { useT } from '../../../core/i18n';
 import { recordHealthConsent } from '../../../lib/consent/store';
 import { healthConsentGiven } from '../../personalPlan/api';
 import { DrawPath, RingProgress } from '../../personalPlan/ui/motion';
+import { WEIGHT_CHART, weightChartGeometry } from '../ui/chart';
 import { GLASS } from '../../personalPlan/ui/parts';
 import { fetchRecipeCatalog } from '../../plan/client';
 import { fetchBannerRows, type BannerCell } from '../../../lib/banners';
@@ -215,11 +216,13 @@ export function ResultScreen() {
   const stored = useKayit((s) => s.plan);
   const setHealthOk = useKayit((s) => s.setHealthOk);
   // YALNIZ __DEV__ vitrini: banner bölgesi İzmir sabit (ekran görüntüsü).
-  const resultParams = (useRoute().params ?? {}) as { vitrinIzmir?: boolean; vitrinConsent?: 'ask'; vitrinEnd?: boolean };
+  const resultParams = (useRoute().params ?? {}) as { vitrinIzmir?: boolean; vitrinConsent?: 'ask'; vitrinEnd?: boolean; vitrinScrollY?: number };
   const vitrinIzmir = __DEV__ && !!resultParams.vitrinIzmir;
   // YALNIZ __DEV__ vitrini: rıza sorulmamış gibi (not + "Onayla ve…") ve banner görünsün diye sona kaydır.
   const vitrinAsk = __DEV__ && resultParams.vitrinConsent === 'ask';
   const vitrinEnd = __DEV__ && !!resultParams.vitrinEnd;
+  // G46: yalnız __DEV__ vitrini — dar ekranda kilo grafiğini görünür alana getirmek için sabit kaydırma.
+  const vitrinScrollY = __DEV__ ? resultParams.vitrinScrollY : undefined;
   const scrollRef = useRef<ScrollView>(null);
   const plan = useMemo(() => stored ?? computeKayitPlan(answers, { currentYear: new Date().getFullYear(), startIso: todayIso() }), [stored, answers]);
   const [recipes, setRecipes] = useState<RecipeInfo[]>([]);
@@ -230,6 +233,7 @@ export function ResultScreen() {
   useEffect(() => {
     if (!vitrinAsk) void healthConsentGiven().then(setConsentKnown);
     if (vitrinEnd) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 2500);
+    if (vitrinScrollY) setTimeout(() => scrollRef.current?.scrollTo({ y: vitrinScrollY, animated: false }), 2500);
     if (!plan) return;
     let alive = true;
     void fetchRecipeCatalog().then((c) => {
@@ -379,13 +383,11 @@ function WeightCard({ from, to, range, units }: { from: number; to: number; rang
   const { t, lang } = useT();
   const P = useK();
   const { width } = useWindowDimensions();
-  const w = width - 40 - 44;
-  const h = 110;
+  // İç genişlik: ekran − 2×20 sayfa boşluğu − 2×18 kart dolgusu − 2×1 kenar.
+  const w = width - 40 - 38;
   const down = to < from;
-  const y0 = down ? 12 : h - 22;
-  const y1 = down ? h - 30 : 24;
-  const line = `M 6 ${y0} C ${w * 0.35} ${y0 + (y1 - y0) * 0.35}, ${w * 0.6} ${y1 - (y1 - y0) * 0.08}, ${w - 6} ${y1}`;
-  const band = `M 6 ${y0} C ${w * 0.35} ${y0 + (y1 - y0) * 0.25}, ${w * 0.6} ${y1 - (y1 - y0) * 0.2}, ${w - 6} ${y1 - 14} L ${w - 6} ${y1 + 14} C ${w * 0.6} ${y1 + 4}, ${w * 0.35} ${y0 + (y1 - y0) * 0.45}, 6 ${y0} Z`;
+  const g = weightChartGeometry(w, down);
+  const h = g.h;
   const kg = (v: number) => (units === 'imperial' ? `${fmtDec1(v * 2.2046226218, lang)} lb` : `${Number.isInteger(v) ? v : fmtDec1(v, lang)} kg`);
   return (
     <View testID="kayit-weight-card" style={[styles.card, { backgroundColor: P.card, borderColor: P.cardEdge }]} accessible accessibilityLabel={`${t('kayit.plan.weight_title')}, ${t('kayit.plan.weight_note')}. ${t('kayit.plan.today_kg', { kg: kg(from) })}. ${t('kayit.plan.range_kg', { range, kg: kg(to) })}`}>
@@ -397,11 +399,12 @@ function WeightCard({ from, to, range, units }: { from: number; to: number; rang
           {t('kayit.plan.weight_note')}
         </AppText>
       </View>
-      <Svg width={w} height={h} style={{ marginTop: 8 }}>
-        <Path d={band} fill={P.accent} fillOpacity={0.55} />
-        <DrawPath d={line} length={w * 1.15} color={P.isDark ? '#FFFFFF' : '#10301D'} width={3} />
-        <Circle cx={6} cy={y0} r={6} fill={P.isDark ? '#FFFFFF' : '#10301D'} />
-        <Circle cx={w - 6} cy={y1} r={7} fill={P.accent} stroke={P.isDark ? '#FFFFFF' : '#10301D'} strokeWidth={2.5} />
+      {/* G46 md.1: uç noktalar iç boşlukla alanın içinde; ayrıca kırpma kapalı (overflow visible). */}
+      <Svg testID="kayit-weight-chart" width={w} height={h} style={{ marginTop: 8, overflow: 'visible' }}>
+        <Path d={g.band} fill={P.accent} fillOpacity={0.55} />
+        <DrawPath d={g.line} length={w * 1.15} color={P.isDark ? '#FFFFFF' : '#10301D'} width={WEIGHT_CHART.line} />
+        <Circle cx={g.x0} cy={g.y0} r={WEIGHT_CHART.startR} fill={P.isDark ? '#FFFFFF' : '#10301D'} />
+        <Circle testID="kayit-weight-end" cx={g.x1} cy={g.y1} r={WEIGHT_CHART.endR} fill={P.accent} stroke={P.isDark ? '#FFFFFF' : '#10301D'} strokeWidth={WEIGHT_CHART.endStroke} />
       </Svg>
       <View style={[styles.sectionHeadInner, { marginTop: 6 }]}>
         <AppText maxFontSizeMultiplier={1.4} style={[styles.small, { color: P.sec }]}>

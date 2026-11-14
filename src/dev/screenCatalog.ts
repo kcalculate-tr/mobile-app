@@ -701,6 +701,8 @@ function resolveParity(name: string): ResolvedEntry | null {
       L2: { target: k('KResult', { vitrinIzmir: true }) },
       // G45: L2 banner + rıza notu (rıza sorulmamış gibi, sona kaydırılmış).
       L2c: { target: k('KResult', { vitrinIzmir: true, vitrinConsent: 'ask', vitrinEnd: true }) },
+      // G46: kilo tahmini grafiği görünür alanda (dar ekran; yalnız __DEV__).
+      L2w: { target: k('KResult', { vitrinIzmir: true, vitrinScrollY: 220 }) },
       K1: { target: k('KSignup', { path: 'a' }) },
       K1d: { target: k('KSignup', { path: 'a', vitrin: 'denied' }) },
       K1b: { target: k('KSignup', { path: 'b' }) },
@@ -708,6 +710,7 @@ function resolveParity(name: string): ResolvedEntry | null {
       E2: { target: k('KEmail', { path: 'a', vitrinStep: 'code' }) },
       T1: { target: k('KOffer'), auth: 'user' },
       T1m: { target: k('KOffer', { vitrinPeriod: 'monthly' }), auth: 'user' },
+      T1c: { target: k('KOffer', { vitrinConfirm: true }), auth: 'user' },
       R1: { target: k('KReturn') },
       BShort: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'goal' } }]), auth: 'user' },
       BShort8: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'activity' } }]), auth: 'user' },
