@@ -2,7 +2,7 @@
 // Tasarım girdisi: docs/tur28/eatkcal-kapi (01/03 adres formu · 02/04 çok yakında), 393×852 pano ölçüleri.
 //  • Tam ekran SABİT arka plan (assets/eatkcal/gate-bg.webp, cover, üstten hizalı) + altta zemine karışan koyu
 //    yeşil degrade. Açık ve koyu temada AYNI görünüm (görsel tabanlı sayfa). Pano "eatkcal." yazısı yerine
-//    uygulama logosu (lime, aynı yer/yükseklik). Pano alt sekme çubuğu yok sayılır (gerçek sekme çubuğu kalır).
+//    uygulama logosu (G54: beyaz, ≈1,4× büyük, aynı yer). Pano alt sekme çubuğu yok sayılır (gerçek sekme çubuğu kalır).
 //  • Durum A (adres formu): logo · "Adresini gir." · alt metin · koyu cam kartta 2×2 alan (ÜLKE · ŞEHİR · İLÇE ·
 //    POSTA KODU) · konum düğmesi (expo-location; izin yoksa sessiz) · lime "Restoranları gör".
 //  • Durum B (çok yakında): konum hapı "[İlçe], [Şehir] · Değiştir" · ÇOK YAKINDA · iki parçalı başlık (2. lime)
@@ -85,6 +85,9 @@ export const GATE = {
   onLime: '#0B1F10',
 } as const;
 
+/** G54-S1 md.6: konum kapısı logosu lime yerine beyaz (yalnız bu ekran; diğer eatkcal logoları aynı). */
+export const GATE_LOGO_COLOR = '#FFFFFF';
+
 /** Pano ölçüleri (393×852 pt). */
 export const GATE_SIZE = {
   side: 22,
@@ -100,7 +103,8 @@ export const GATE_SIZE = {
   bigBtn: 51,
   bigBtnRadius: 16,
   bigSide: 16,
-  logo: 12.5,
+  /** G54-S1 md.6: logo görünürlük için ≈1,4× (12,5 → 17,5 pt), beyaz. */
+  logo: 17.5,
   /** Bricolage Grotesque 800 · 34 · −1,7 (pano ölçümü: büyük harf 22,7 pt; 3 başlık genişliği ±1 %). */
   title: 34,
   titleTrack: -1.7,
@@ -295,7 +299,7 @@ export function EkLocationGate({
           {shown === 'address' ? (
             <View testID="ek-gate48-address">
               <Animated.View style={[{ paddingHorizontal: GATE_SIZE.side }, headStyle]}>
-                <BrandLogo name="eatkcal" height={GATE_SIZE.logo} color={GATE.lime} accessibilityLabel={g('logo_a11y')} testID="gate48-logo" />
+                <BrandLogo name="eatkcal" height={GATE_SIZE.logo} color={GATE_LOGO_COLOR} accessibilityLabel={g('logo_a11y')} testID="gate48-logo" />
                 <Text accessibilityRole="header" maxFontSizeMultiplier={1.2} style={styles.title} testID="gate48-title">
                   {g('title')}
                 </Text>

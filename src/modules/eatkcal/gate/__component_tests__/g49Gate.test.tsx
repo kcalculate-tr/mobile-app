@@ -231,3 +231,26 @@ describe('G49 md.1 · posta kodu', () => {
     expect(r.getByTestId('gate48-postcode').props.value).toBe('35040');
   });
 });
+
+// ─── G54-S1 md.6: konum kapısı logosu beyaz, ≈1,4× büyük; diğer eatkcal logolarına dokunulmaz ──────────────────
+describe('G54 md.6 konum kapısı logosu', () => {
+  const { readFileSync } = require('fs');
+  const { join } = require('path');
+  test.each(['light', 'dark'] as const)('%s: logo beyaz, yükseklik 17,5 pt (12,5 × 1,4), aynı yer (başlığın üstü)', async (scheme) => {
+    const r = mount({ country: 'TR', city: null, district: null } as never, scheme);
+    await flush();
+    expect(r.getByTestId("gate48-logo")).toBeTruthy();
+    const src = readFileSync(join(__dirname, '../EkLocationGate.tsx'), 'utf8');
+    expect(src).toMatch(/export const GATE_LOGO_COLOR = '#FFFFFF';/);
+    expect(src).toMatch(/logo: 17\.5,/);
+    expect(src).toMatch(/<BrandLogo name="eatkcal" height=\{GATE_SIZE\.logo\} color=\{GATE_LOGO_COLOR\}[^\n]*testID="gate48-logo" \/>\s*\n\s*<Text accessibilityRole="header"/);
+    expect(17.5 / 12.5).toBeCloseTo(1.4, 5);
+  });
+  test('diğer eatkcal logoları değişmedi (yalnız bu ekran)', () => {
+    const { execSync } = require('child_process');
+    const files = execSync('git grep -l "BrandLogo name=\\"eatkcal\\"" -- src', { cwd: join(__dirname, '../../../../..') }).toString().trim().split('\n');
+    for (const f of files.filter((x: string) => !x.endsWith('EkLocationGate.tsx') && !x.includes('__'))) {
+      expect(readFileSync(join(__dirname, '../../../../..', f), 'utf8')).not.toMatch(/GATE_LOGO_COLOR/);
+    }
+  });
+});
