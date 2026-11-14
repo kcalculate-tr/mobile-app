@@ -24,6 +24,7 @@ import { useOnbFirst } from '../first/store';
 import { ARROW, TIP_W, holeFor, placeTip, scrimPath, type Hole } from '../first/orient/geometry';
 import { FONT, KBackdrop, KButton, KText, Mascot } from '../../kayit/ui/parts';
 import { useK } from '../../kayit/ui/theme';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { ORIENT110_INTRO_PAGES, ORIENT110_TIPS, canStartNow, shouldOrient, type Orient110Tip } from './logic';
 import { useOrient110 } from './store';
 
@@ -140,6 +141,7 @@ function IntroPager({ page, vitrin }: { page: number; vitrin?: boolean }) {
         </Pressable>
       </View>
       <ScrollView
+        {...SCROLL_KEYBOARD}
         ref={ref}
         horizontal
         pagingEnabled
