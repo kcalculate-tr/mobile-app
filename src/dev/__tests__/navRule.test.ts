@@ -84,6 +84,7 @@ const IN_PLACE: Record<string, string> = {
   'dev/vitrinStress.tsx': 'yalnız __DEV__ vitrin',
   'modules/kayit/ui/parts.tsx': 'kayıt akışı üst çubuğu: adım geri akış İÇİ (KQuestions tek rota) / K1–E2 yığın geri; X yok',
   'modules/kayit/ui/pickers.tsx': 'P11 etiket bulutunda seçili etiketi × ile kaldır / aramayı temizle (rota değişmez)',
+  'modules/kayit/ui/foodPickers.tsx': 'G54 P11 seçili besini × ile kaldır / aramayı temizle (rota değişmez)',
   'modules/personalPlan/ui/flowHeader.tsx': 'kişisel plan akışı: adım geri akış İÇİ (rota değişmez) + Giriş / Kaldığın yerden kapat X (Tur 26o 01)',
   'modules/personalPlan/ui/entries.tsx': 'Ana sayfa tek seferlik kişisel plan kartını kapat',
 };

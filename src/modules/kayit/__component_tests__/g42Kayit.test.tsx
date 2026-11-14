@@ -106,32 +106,32 @@ test('cetvel birim dönüşümü: boy cm → ft-in (170 cm = 5′7″), kilo kg 
   expect(r.getByTestId('kayit-weight-value', { includeHiddenElements: true }).props.children).toBe('158,7');
 });
 
-test('koşullu atlama: korumak → P5 sonrası I1 → P8 (P6/P7 yok); halka 12 üzerinden', async () => {
+test('koşullu atlama: korumak → P5 sonrası I1 → P8 (P6/P7 yok); halka (G54: +mutfaklar) 13 üzerinden', async () => {
   useKayit.getState().patch(answers({ goal: 'maintain', targetWeightKg: null }));
   mockParams = { vitrinStep: 'weight' };
   const r = render(wrap(<QuestionsScreen />));
   await flush();
-  expect(ringLabel(r)).toBe('Soru 5 / 12');
+  expect(ringLabel(r)).toBe('Soru 5 / 13');
   fireEvent.press(r.getByTestId('kayit-next'));
   await flush();
   expect(useKayit.getState().step).toBe('i1');
   fireEvent.press(r.getAllByTestId('kayit-next')[0]);
   await flush();
   expect(useKayit.getState().step).toBe('activity');
-  expect(ringLabel(r)).toBe('Soru 6 / 12');
+  expect(ringLabel(r)).toBe('Soru 6 / 13');
 });
 
-test('koşullu atlama: kas kazanmakta P6k "Atla" → P8 (P7 yok), halka toplamı bir eksilir (13 → 12)', async () => {
+test('koşullu atlama: kas kazanmakta P6k "Atla" → P8 (P7 yok), halka toplamı bir eksilir (G54: 14 → 13)', async () => {
   useKayit.getState().patch(answers({ goal: 'muscle', targetWeightKg: null }));
   mockParams = { vitrinStep: 'target' };
   const r = render(wrap(<QuestionsScreen />));
   await flush();
-  expect(ringLabel(r)).toBe('Soru 6 / 13');
+  expect(ringLabel(r)).toBe('Soru 6 / 14');
   fireEvent.press(r.getByTestId('kayit-skip'));
   await flush();
   expect(useKayit.getState().step).toBe('activity');
   expect(useKayit.getState().answers.targetSkipped).toBe(true);
-  expect(ringLabel(r)).toBe('Soru 6 / 12');
+  expect(ringLabel(r)).toBe('Soru 6 / 13');
 });
 
 test('koşullu atlama: kilo almakta P7g iki kademe (Hızlı yok); kilo vermekte üç', async () => {
@@ -145,14 +145,14 @@ test('koşullu atlama: kilo almakta P7g iki kademe (Hızlı yok); kilo vermekte 
   expect(r.getByTestId('kayit-range')).toBeTruthy();
 });
 
-test('boş hâl: P1 seçim yokken Devam devre dışı; seçince etkin + halka 1/14', async () => {
+test('boş hâl: P1 seçim yokken Devam devre dışı; seçince etkin + halka 1/15', async () => {
   const r = render(wrap(<QuestionsScreen />));
   await flush();
   expect(r.getByTestId('kayit-next').props.accessibilityState.disabled).toBe(true);
   fireEvent.press(r.getByTestId('kayit-goal-lose'));
   await flush();
   expect(r.getByTestId('kayit-next').props.accessibilityState.disabled).toBe(false);
-  expect(ringLabel(r)).toBe('Soru 1 / 14');
+  expect(ringLabel(r)).toBe('Soru 1 / 15');
 });
 
 test('K1: iki isteğe bağlı kutu (Meta, pazarlama) işaretsiz gelir; iOS ATT reddinde Meta boş kalır + not', async () => {

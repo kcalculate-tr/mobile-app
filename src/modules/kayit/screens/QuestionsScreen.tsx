@@ -36,14 +36,15 @@ import { useMyPlanStore } from '../../personalPlan/useMyPlan';
 import { writeAuthConsents } from '../signup';
 import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
 import { ACT_GLASS, COOK_GLASS, DIET_GLASS, GENDER_GLASS, GOAL_GLASS, STRUGGLE_GLASS } from '../ui/glassIcons';
-import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
+import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, WheelPicker } from '../ui/pickers';
+import { CuisineCards, DislikePicker } from '../ui/foodPickers';
+import { addCustomDislike, toggleDislike, toggleEatsAll } from '../foods';
 import { useEdgeBack } from '../ui/edge';
 import { StackSwap } from '../ui/motion';
 import { K_MOTION, useK } from '../ui/theme';
 import {
   K_COOKING,
   K_DIETS,
-  K_DISLIKE_CLOUD,
   K_GOALS,
   K_SPORTS,
   K_STRUGGLES,
@@ -61,9 +62,7 @@ import {
   paceOptionsFor,
   prevStep,
   progressOf,
-  searchDislikes,
   targetOptional,
-  type KDislike,
   type KPath,
   type KQuestion,
   type KStep,
@@ -88,6 +87,7 @@ const LAYOUT: Record<KQuestion, BubbleLayout> = {
   activity: 'left',
   sport: 'right',
   diet: 'left',
+  cuisines: 'title',
   dislikes: 'right',
   meals: 'left',
   cooking: 'right',
@@ -226,7 +226,7 @@ export default function QuestionsScreen() {
   const can = canContinue(step, a);
   const label = lastA ? t('kayit.q.make_plan') : lastB ? t(needsConsent ? 'kayit.q.short_start_consent' : 'kayit.q.short_start') : step === 'minor' ? t('kayit.q.minor_cta') : t('kayit.q.next');
 
-  const stepIdx = useMemo(() => ['goal', 'gender', 'birth', 'height', 'weight', 'i1', 'target', 'pace', 'activity', 'sport', 'diet', 'i2', 'dislikes', 'meals', 'cooking', 'struggle', 'minor'].indexOf(step), [step]);
+  const stepIdx = useMemo(() => ['goal', 'gender', 'birth', 'height', 'weight', 'i1', 'target', 'pace', 'activity', 'sport', 'diet', 'cuisines', 'i2', 'dislikes', 'meals', 'cooking', 'struggle', 'minor'].indexOf(step), [step]);
 
   return (
     <View style={styles.root} {...edge} testID={`kayit-q-${step}`} onAccessibilityEscape={back}>
@@ -259,6 +259,24 @@ export default function QuestionsScreen() {
         </QCtx.Provider>
         {step !== 'i1' && step !== 'i2' ? (
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+            {step === 'cuisines' ? (
+              <Pressable
+                testID="kayit-cuisines-none"
+                onPress={() => {
+                  patch({ cuisines: [] });
+                  kTrack.answer(PANO.cuisines, path);
+                  const n = nextStep('cuisines', a, year, path);
+                  if (n !== 'plan' && n !== 'done') go(n, 1);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t('kayit.q.cuisines_none')}
+                style={styles.skip}
+              >
+                <AppText maxFontSizeMultiplier={1.3} style={[styles.skipText, { color: P.ink }]}>
+                  {t('kayit.q.cuisines_none')}
+                </AppText>
+              </Pressable>
+            ) : null}
             {step === 'target' && targetOptional(a.goal) ? (
               <Pressable
                 testID="kayit-skip"
@@ -356,6 +374,8 @@ function Body({ step: s }: { step: KQuestion }) {
       return <SportBody />;
     case 'diet':
       return <DietBody />;
+    case 'cuisines':
+      return <CuisineBody />;
     case 'dislikes':
       return <DislikeBody />;
     case 'meals':
@@ -624,27 +644,32 @@ function DietBody() {
   );
 }
 
-function DislikeBody() {
-  const { a, patch, t } = useQ();
-  const labelOf = (k: KDislike) => t(`kayit.q.dl_${k}`);
+function CuisineBody() {
+  const { a, patch, t, P } = useQ();
   return (
-    <View style={{ gap: 14, paddingHorizontal: 20 }}>
-      <TagCloud<KDislike>
-        testID="kayit-dislikes"
-        all={(q) => searchDislikes(q, labelOf)}
-        cloud={K_DISLIKE_CLOUD}
-        selected={a.dislikes}
-        labelOf={labelOf}
-        onToggle={(k) => patch({ dislikes: a.dislikes.includes(k) ? a.dislikes.filter((x) => x !== k) : [...a.dislikes, k], eatsAll: false })}
-        search={{
-          placeholder: t('kayit.q.dislikes_search'),
-          selectedTitle: t('kayit.q.dislikes_selected'),
-          emptyTitle: t('kayit.q.dislikes_empty_title'),
-          emptySub: t('kayit.q.dislikes_empty_sub'),
-          removeLabel: (n) => t('kayit.q.dislikes_remove', { name: n }),
-        }}
+    <View style={{ gap: 6 }}>
+      <AppText maxFontSizeMultiplier={1.4} style={[styles.cuisineSub, { color: P.sec }]}>
+        {t('kayit.q.cuisines_sub')}
+      </AppText>
+      <CuisineCards value={a.cuisines} t={t} onToggle={(k) => patch({ cuisines: a.cuisines.includes(k) ? a.cuisines.filter((x) => x !== k) : [...a.cuisines, k] })} />
+    </View>
+  );
+}
+
+function DislikeBody() {
+  const { a, patch, t, lang } = useQ();
+  const st = { dislikes: a.dislikes, eatsAll: a.eatsAll };
+  return (
+    <View style={{ paddingHorizontal: 20 }}>
+      <DislikePicker
+        value={a.dislikes}
+        eatsAll={a.eatsAll}
+        lang={lang}
+        t={t}
+        onToggle={(k) => patch(toggleDislike(st, k))}
+        onAddCustom={(text) => patch(addCustomDislike(st, text))}
+        onEatsAll={() => patch(toggleEatsAll(st))}
       />
-      <ChipToggle testID="kayit-eats-all" label={t('kayit.q.eats_all')} on={a.eatsAll} onPress={() => patch({ eatsAll: !a.eatsAll, dislikes: [] })} />
     </View>
   );
 }
@@ -749,6 +774,7 @@ const styles = StyleSheet.create({
   optional: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18 },
   skip: { alignSelf: 'center', minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center' },
   skipText: { fontFamily: FONT.bold, fontSize: 16, lineHeight: 21, textDecorationLine: 'underline' },
+  cuisineSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21, textAlign: 'center', paddingHorizontal: 24, marginTop: -14, marginBottom: 8 },
   grid: { paddingHorizontal: 20, gap: 14 },
   row: { flexDirection: 'row', gap: 14 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -27,8 +27,12 @@ export const K_ACTIVITIES: readonly PpActivity[] = ['sedentary', 'light', 'moder
 export const K_DISLIKE_CLOUD = ['red_meat', 'chicken', 'dairy', 'egg', 'legumes', 'nuts', 'onion', 'garlic', 'spicy', 'eggplant', 'mushroom', 'fish'] as const;
 /** Aramayla bulunabilen ek besinler (bulutta görünmez). */
 export const K_DISLIKE_EXTRA = ['broccoli', 'olive', 'tomato', 'pepper', 'zucchini', 'cauliflower', 'spinach', 'avocado', 'seafood', 'lamb', 'turkey', 'cheese', 'yogurt', 'oats', 'rice', 'potato', 'coriander', 'parsley', 'cinnamon', 'coconut'] as const;
-export type KDislike = (typeof K_DISLIKE_CLOUD)[number] | (typeof K_DISLIKE_EXTRA)[number];
+/** G54 md.4a: standart anahtar (foods.ts FOODS) ya da serbest metin `custom:<metin>`. */
+export type KDislike = string;
 export const K_DISLIKES: readonly KDislike[] = [...K_DISLIKE_CLOUD, ...K_DISLIKE_EXTRA];
+/** G54 md.4b: "Hangi mutfakları seversin?" — anahtar = görsel dosya adı (assets/kayit/cuisines/<anahtar>.jpg). */
+export const K_CUISINES = ['turk', 'akdeniz', 'ege', 'italyan', 'yunan', 'ispanyol', 'fransiz', 'ortadogu', 'hint', 'cin', 'japon', 'kore', 'tay', 'vietnam', 'meksika', 'latin', 'amerikan', 'balkan'] as const;
+export type KCuisine = (typeof K_CUISINES)[number];
 /** Hafta günleri 0 = Pazartesi … 6 = Pazar. */
 export type KWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export const MEALS_MIN = 2;
@@ -50,6 +54,8 @@ export interface KAnswers {
   noSport: boolean;
   sports: KSport[];
   diet: KDiet | null;
+  /** G54 md.4b: sevilen mutfaklar (çoklu, 0 olabilir). */
+  cuisines: KCuisine[];
   dislikes: KDislike[];
   eatsAll: boolean;
   meals: number;
@@ -73,6 +79,7 @@ export function emptyKAnswers(units: KUnits = 'metric'): KAnswers {
     noSport: false,
     sports: [],
     diet: null,
+    cuisines: [],
     dislikes: [],
     eatsAll: false,
     meals: 4,
@@ -93,6 +100,7 @@ export type KQuestion =
   | 'activity'
   | 'sport'
   | 'diet'
+  | 'cuisines'
   | 'dislikes'
   | 'meals'
   | 'cooking'
@@ -111,13 +119,15 @@ export const PANO: Record<KQuestion, string> = {
   activity: 'P8',
   sport: 'P9',
   diet: 'P10',
+  // G54: ölçüm `reg_q_answer` q = 'cuisines' (P10 ile P11 arası yeni soru).
+  cuisines: 'cuisines',
   dislikes: 'P11',
   meals: 'P12',
   cooking: 'P13',
   struggle: 'P14',
 };
 
-export const A_QUESTIONS: readonly KQuestion[] = ['goal', 'gender', 'birth', 'height', 'weight', 'target', 'pace', 'activity', 'sport', 'diet', 'dislikes', 'meals', 'cooking', 'struggle'];
+export const A_QUESTIONS: readonly KQuestion[] = ['goal', 'gender', 'birth', 'height', 'weight', 'target', 'pace', 'activity', 'sport', 'diet', 'cuisines', 'dislikes', 'meals', 'cooking', 'struggle'];
 export const B_QUESTIONS: readonly KQuestion[] = ['goal', 'gender', 'birth', 'height', 'weight', 'activity'];
 
 /** P6 hiç gelmez: korumak / daha sağlıklı beslenmek. */
@@ -158,7 +168,8 @@ export function flowSequence(a: Pick<KAnswers, 'goal' | 'targetSkipped'>, path: 
     if (q === 'pace' && !paceAsked(a.goal)) continue;
     out.push(q);
     if (q === 'weight') out.push('i1');
-    if (q === 'diet') out.push('i2');
+    // G54: mutfaklar "Nasıl beslenirsin"den HEMEN sonra; ara ekran (I2) mutfaklardan sonra.
+    if (q === 'cuisines') out.push('i2');
   }
   return out;
 }
@@ -187,7 +198,7 @@ export function progressOf(step: KStep, a: KAnswers, path: KPath = 'a'): { index
   const total = vis.length;
   if (step === 'minor') return { index: vis.indexOf('birth') + 1, total };
   if (step === 'i1') return { index: vis.indexOf('weight') + 1, total };
-  if (step === 'i2') return { index: vis.indexOf('diet') + 1, total };
+  if (step === 'i2') return { index: vis.indexOf('cuisines') + 1, total };
   const i = vis.indexOf(step as KQuestion);
   if (i >= 0) return { index: i + 1, total };
   // Atlanmış P6k'ye geri dönüldü: halkada bir önceki sorunun sırası.
@@ -219,6 +230,8 @@ export function canContinue(step: KStep, a: KAnswers): boolean {
       return true; // isteğe bağlı
     case 'diet':
       return a.diet != null;
+    case 'cuisines':
+      return true; // isteğe bağlı ("Fark etmez")
     case 'dislikes':
       return true; // "Devam et" boş aramada da etkin
     case 'meals':

@@ -22,6 +22,10 @@ export interface PersonalPlanCtx {
   /** Hedef tarihi YYYY-MM-DD (hedef yoksa null). */
   targetDate: string | null;
   startedAt: string | null;
+  /** G54-S1 md.4a: yemediklerin (standart anahtar `red_meat` → "red meat"; serbest metin aynen). Boşsa alan yok. */
+  avoid?: string[];
+  /** G54-S1 md.4b: sevilen mutfaklar (anahtar: turk, italyan, japon …). Boşsa alan yok. */
+  cuisines?: string[];
 }
 
 const GOALS = ['lose', 'maintain', 'gain', 'balanced'] as const;
@@ -64,5 +68,16 @@ export function personalPlanContext(row: Record<string, unknown> | null | undefi
     fat: num(custom?.fat) ?? num(macros.fat),
     targetDate: hasTarget ? (day(pp.targetDate) ?? day(row.plan_target_date) ?? day(result.targetDate)) : null,
     startedAt: day(pp.startedAt) ?? day(row.plan_started_at),
+    ...prefs(obj(pp.kayit), answers),
   };
+}
+
+const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '') : []);
+
+/** G54: kayıt tercihleri → istem (en çok 30 yemediğin, 18 mutfak; boşsa alan eklenmez). */
+export function prefs(kayit: Record<string, unknown>, answers: Record<string, unknown>): { avoid?: string[]; cuisines?: string[] } {
+  const raw = strs(kayit.dislikes).length ? strs(kayit.dislikes) : strs(answers.dislikes);
+  const avoid = kayit.eatsAll === true ? [] : raw.slice(0, 30).map((d) => (d.startsWith('custom:') ? d.slice(7).trim().slice(0, 40) : d.replace(/_/g, ' '))).filter(Boolean);
+  const cuisines = strs(kayit.cuisines).slice(0, 18);
+  return { ...(avoid.length ? { avoid } : {}), ...(cuisines.length ? { cuisines } : {}) };
 }

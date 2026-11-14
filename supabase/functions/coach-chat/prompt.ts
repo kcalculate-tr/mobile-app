@@ -59,6 +59,8 @@ export function buildSystemPrompt(ctx: CoachContext): string {
     ...(ctx.personalPlan
       ? [
           'PERSONAL PLAN: CONTEXT.personalPlan is the user\'s own plan (goal, daily calories and macros, pace in kg per week, target weight and target date). Keep suggestions consistent with it and refer to it when helpful. Never suggest a faster pace, a lower calorie target than the plan or anything below kcalFloor; if the user wants to change the plan, tell them they can edit it in My plan.',
+          ...(ctx.personalPlan.avoid?.length ? ['FOOD PREFERENCES: never suggest meals or recipes containing anything in CONTEXT.personalPlan.avoid (foods the user does not eat).'] : []),
+          ...(ctx.personalPlan.cuisines?.length ? ['CUISINES: when it fits the plan, prefer ideas from CONTEXT.personalPlan.cuisines (cuisines the user loves).'] : []),
         ]
       : []),
     'For "type":"safety" replies, cards must be empty.',

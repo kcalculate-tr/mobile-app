@@ -107,29 +107,32 @@ test('P3b: 18 yaş altı doğum yılında Devam → minor; minor → done; geri 
   assert.equal(prevStep('minor', base()), 'birth');
 });
 
-test('ara ekranlar: I1 P5 sonrası, I2 P10 sonrası; son soru → plan (A) / done (B)', () => {
+test('ara ekranlar: I1 P5 sonrası, (G54) mutfaklar P10 hemen sonrası, I2 mutfaklardan sonra; son soru → plan (A) / done (B)', () => {
   const a = base();
   assert.equal(nextStep('weight', a, Y), 'i1');
   assert.equal(nextStep('i1', a, Y), 'target');
-  assert.equal(nextStep('diet', a, Y), 'i2');
+  assert.equal(nextStep('diet', a, Y), 'cuisines');
+  assert.equal(nextStep('cuisines', a, Y), 'i2');
   assert.equal(nextStep('i2', a, Y), 'dislikes');
   assert.equal(nextStep('struggle', a, Y), 'plan');
   assert.equal(nextStep('activity', a, Y, 'b'), 'done');
   assert.equal(prevStep('goal', a), null);
 });
 
-test('dinamik halka: görünen soru sayısı (14 · 12 · 13 · P6k atlanınca 12)', () => {
-  assert.equal(visibleQuestions(base()).length, 14);
-  assert.equal(visibleQuestions(base({ goal: 'maintain' })).length, 12);
-  assert.equal(visibleQuestions(base({ goal: 'muscle' })).length, 13);
-  assert.equal(visibleQuestions(base({ goal: 'muscle', targetSkipped: true })).length, 12);
-  assert.deepEqual(progressOf('goal', base()), { index: 1, total: 14 });
-  assert.deepEqual(progressOf('struggle', base()), { index: 14, total: 14 });
-  assert.deepEqual(progressOf('i1', base()), { index: 5, total: 14 });
-  assert.deepEqual(progressOf('activity', base({ goal: 'maintain' })), { index: 6, total: 12 });
-  assert.deepEqual(progressOf('activity', base({ goal: 'muscle', targetSkipped: true })), { index: 6, total: 12 });
+test('dinamik halka (G54: mutfaklar sorusuyla +1): görünen soru sayısı (15 · 13 · 14 · P6k atlanınca 13)', () => {
+  assert.equal(visibleQuestions(base()).length, 15);
+  assert.equal(visibleQuestions(base({ goal: 'maintain' })).length, 13);
+  assert.equal(visibleQuestions(base({ goal: 'muscle' })).length, 14);
+  assert.equal(visibleQuestions(base({ goal: 'muscle', targetSkipped: true })).length, 13);
+  assert.deepEqual(progressOf('goal', base()), { index: 1, total: 15 });
+  assert.deepEqual(progressOf('struggle', base()), { index: 15, total: 15 });
+  assert.deepEqual(progressOf('i1', base()), { index: 5, total: 15 });
+  assert.deepEqual(progressOf('cuisines', base()), { index: 11, total: 15 });
+  assert.deepEqual(progressOf('i2', base()), { index: 11, total: 15 });
+  assert.deepEqual(progressOf('activity', base({ goal: 'maintain' })), { index: 6, total: 13 });
+  assert.deepEqual(progressOf('activity', base({ goal: 'muscle', targetSkipped: true })), { index: 6, total: 13 });
   // atlanmış P6k'ye geri dönülünce halka önceki soruda kalır
-  assert.deepEqual(progressOf('target', base({ goal: 'muscle', targetSkipped: true })), { index: 5, total: 12 });
+  assert.deepEqual(progressOf('target', base({ goal: 'muscle', targetSkipped: true })), { index: 5, total: 13 });
   assert.deepEqual(progressOf('activity', base(), 'b'), { index: 6, total: 6 });
 });
 

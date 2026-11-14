@@ -3,6 +3,7 @@
 //  · kas kazanmak → computePlan(maintain) TDEE'si + app_settings `kayit_muscle_surplus_kcal` (250, tahmini);
 //    makrolar aynı motorun computeMacros'u; hedef varsa süre aynı paceForDelta ile.
 // Saf (RN yok) → tsx --test.
+import { dislikeTerms } from './foods';
 import {
   addDays,
   calorieFloor,
@@ -168,8 +169,11 @@ export function toPpSaved(a: KAnswers, plan: KPlan, o: { startIso: string; nowIs
       goal: a.goal,
       sports: a.noSport ? [] : a.sports,
       noSport: a.noSport,
+      // G54 md.4a: standart anahtarlar + `custom:<metin>` (plan/öneri/Koç dışlama listesi).
       dislikes: a.dislikes,
       eatsAll: a.eatsAll,
+      // G54 md.4b: sevilen mutfaklar (öneri / Koç tercihi).
+      cuisines: a.cuisines,
       meals: a.meals,
       cooking: a.cooking,
       struggle: a.struggle,
@@ -189,44 +193,9 @@ export interface RecipeLike {
   ingredients: { key: string }[];
 }
 
-/** Yemediklerin → malzeme anahtarında aranan parçalar (tarif tohum sözlüğü İngilizce anahtarlı). */
-const DISLIKE_PARTS: Record<string, string[]> = {
-  red_meat: ['beef', 'lamb', 'veal', 'mince', 'kofte', 'steak'],
-  chicken: ['chicken'],
-  dairy: ['milk', 'yogurt', 'cheese', 'feta', 'labne', 'butter', 'cream', 'kefir'],
-  egg: ['egg'],
-  legumes: ['lentil', 'chickpea', 'bean'],
-  nuts: ['walnut', 'almond', 'hazelnut', 'peanut', 'pistachio', 'nut'],
-  onion: ['onion'],
-  garlic: ['garlic'],
-  spicy: ['chili', 'pepper_flake', 'isot', 'spicy'],
-  eggplant: ['eggplant'],
-  mushroom: ['mushroom'],
-  fish: ['salmon', 'tuna', 'fish', 'sea_bass', 'cod', 'anchovy', 'sardine'],
-  broccoli: ['broccoli'],
-  olive: ['olive'],
-  tomato: ['tomato'],
-  pepper: ['pepper'],
-  zucchini: ['zucchini'],
-  cauliflower: ['cauliflower'],
-  spinach: ['spinach'],
-  avocado: ['avocado'],
-  seafood: ['shrimp', 'squid', 'mussel', 'seafood'],
-  lamb: ['lamb'],
-  turkey: ['turkey'],
-  cheese: ['cheese', 'feta'],
-  yogurt: ['yogurt'],
-  oats: ['oat'],
-  rice: ['rice'],
-  potato: ['potato'],
-  coriander: ['coriander'],
-  parsley: ['parsley'],
-  cinnamon: ['cinnamon'],
-  coconut: ['coconut'],
-};
-
+/** Tarif yemediklerini içeriyor mu (G54: standart anahtar parçaları + serbest metin — foods.dislikeTerms). */
 export function recipeAvoids(r: Pick<RecipeLike, 'ingredients'>, dislikes: readonly string[]): boolean {
-  const parts = dislikes.flatMap((d) => DISLIKE_PARTS[d] ?? [d]);
+  const parts = dislikeTerms(dislikes);
   return r.ingredients.some((i) => parts.some((p) => i.key.toLowerCase().includes(p)));
 }
 
