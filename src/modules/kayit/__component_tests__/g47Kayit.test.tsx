@@ -354,7 +354,8 @@ describe('(c)/(d) profil kapısı', () => {
     fireEvent.press(b);
     expect(onStart).toHaveBeenCalled();
     const tracker = src('src/screens/TrackerScreen.tsx');
-    expect(tracker).toMatch(/yeniKabuk && profileGate\.blocked \? <HomePlanGateCard onStart=\{\(\) => profileGate\.require\(null\)\} \/> : null/);
+    // G50 md.2: kart odak sayacını da alır (kupa yeniden 3 döngü) — kayıt akışı bağlantısı aynı.
+    expect(tracker).toMatch(/yeniKabuk && profileGate\.blocked \? <HomePlanGateCard onStart=\{\(\) => profileGate\.require\(null\)\}( cycleKey=\{focusTick\})? \/> : null/);
     expect(tracker).toMatch(/yeniKabuk && !profileGate\.blocked \? \(\s*<TrackerDayHeader/);
     // Elle gir, su, öğün kaydı kapıdan geçer.
     expect(tracker).toMatch(/const openMealFormFor = \(slot: SlotKey\) => \{\s*if \(profileGate\.require/);

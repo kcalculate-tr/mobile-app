@@ -9,7 +9,7 @@
 // akışı (çağıranın `onStart`ı, mevcut yönlendirme). Ölçüm: home_plan_card_view (bir kez) · home_plan_card_tap {plan}.
 import React, { useEffect } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
 import { AppText } from '../../../core/design/components/AppText';
@@ -109,8 +109,12 @@ function Surface() {
   );
 }
 
-/** Cam kupa: sağ üst köşeden taşar; sağ üst ↔ sol alt süzülme + eğilme. Azaltılmış harekette sabit. */
-export function FloatingCup() {
+/**
+ * Cam kupa: sağ üst köşeden taşar; sağ üst ↔ sol alt süzülme + eğilme. Azaltılmış harekette sabit.
+ * G50 md.2: ilk 3 tam döngüden sonra durur ve orta konumda sabit kalır (pil + dikkat); `cycleKey` değişince
+ * (ekran yeniden odaklandı) yeniden 3 döngü.
+ */
+export function FloatingCup({ cycleKey = 0 }: { cycleKey?: number }) {
   const reduced = useReducedMotion();
   const p = useSharedValue(0.5);
   const still = reduced || devFrozenAt() != null;
@@ -120,9 +124,16 @@ export function FloatingCup() {
       return;
     }
     const M = HOME_GATE_MOTION;
-    p.value = 0;
-    p.value = withRepeat(withTiming(1, { duration: M.cupHalf, easing: M.cupCurve }), -1, true);
-  }, [still, p]);
+    p.value = 0.5;
+    // Orta → sağ üst ile başlar, 3 tam döngü (6 yarım), sonra ortaya yumuşakça dönüp durur.
+    p.value = withSequence(
+      withTiming(0, { duration: M.cupSettle, easing: M.cupCurve }),
+      withRepeat(withTiming(1, { duration: M.cupHalf, easing: M.cupCurve }), M.cupCycles * 2, true),
+      withTiming(0.5, { duration: M.cupSettle, easing: M.cupCurve }),
+    );
+    // `p` paylaşılan değer (kimliği sabit) — bağımlılık değil; yalnız hareket durumu ve odak sayacı yeniden başlatır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [still, cycleKey]);
   const moving = useAnimatedStyle(() => {
     const M = HOME_GATE_MOTION;
     const d = (0.5 - p.value) * M.cupShift; // +3 (sağ üst) … −3 (sol alt)
@@ -268,7 +279,7 @@ export function SamplePreview() {
   );
 }
 
-export function HomePlanGateCard({ onStart }: { onStart: () => void }) {
+export function HomePlanGateCard({ onStart, cycleKey = 0 }: { onStart: () => void; cycleKey?: number }) {
   const { t } = useT();
   const c = useCardTokens();
   useEffect(() => {
@@ -304,7 +315,7 @@ export function HomePlanGateCard({ onStart }: { onStart: () => void }) {
           </AppText>
         </Pressable>
       </View>
-      <FloatingCup />
+      <FloatingCup cycleKey={cycleKey} />
     </View>
   );
 }

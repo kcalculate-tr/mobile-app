@@ -453,6 +453,12 @@ export const HOME_GATE_MOTION = {
   cupShift: 6,
   cupTilt: 3,
   cupCurve: Easing.inOut(Easing.sin),
+  /** G50 md.2: süzülme ilk 3 tam döngüden (3 × 4 sn) sonra durur; ekran yeniden odaklanınca tekrar 3 döngü. */
+  cupCycles: 3,
+  /** Başlangıçta ortadan uca ve sonda uçtan ortaya geçiş (yarım süzülme = cupHalf / 2). */
+  cupSettle: 1000,
+  /** G50 md.1/6a: 3/3 kutlaması ekranda kalma süresi (halka dolar + "Harika başlangıç!"), sonra kart kaybolur. */
+  celebrateHold: 1600,
   draw: 600,
   drawCurve: Easing.out(Easing.cubic),
   colStagger: 40,
