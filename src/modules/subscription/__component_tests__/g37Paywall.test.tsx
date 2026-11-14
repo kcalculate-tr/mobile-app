@@ -22,6 +22,8 @@ jest.mock('react-native-safe-area-context', () => {
 // döngüsünün yeniden kurulup kurulmadığı ölçülür.
 const mockWithRepeat = jest.fn();
 const mockCancel = jest.fn();
+// 15 Kas: seçili plan kartının neon halesi de withRepeat ile nefes alır (hedef NEON_BREATH_MIN) — süzülme sayımından ayrılır.
+const floatRepeats = () => mockWithRepeat.mock.calls.filter((c) => c[0] !== 0.55).length;
 jest.mock('react-native-reanimated', () => {
   const R = jest.requireActual('react') as typeof import('react');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -87,7 +89,7 @@ test('md.2 karusel 3 kaydırma: üst ikon aynı örnek, süzülme döngüsü bir
   // Her rerender'da YENİ öğe (aynı öğe React'te bail-out olur, taklit stiller tazelenmez).
   const tree = render(<PaywallScreen />);
   const icon = tree.getByTestId('sub-feature-icon', H);
-  expect(mockWithRepeat).toHaveBeenCalledTimes(1);
+  expect(floatRepeats()).toBe(1);
   expect(visibleIcon(tree)).toEqual(['voice']);
 
   const strip = tree.getByTestId('sub-strip');
@@ -100,7 +102,7 @@ test('md.2 karusel 3 kaydırma: üst ikon aynı örnek, süzülme döngüsü bir
     tree.rerender(<PaywallScreen />);
     // Aynı bileşen örneği (yeniden mount YOK) + döngü yeniden kurulmadı / iptal edilmedi.
     expect(tree.getByTestId('sub-feature-icon', H)).toBe(icon);
-    expect(mockWithRepeat).toHaveBeenCalledTimes(1);
+    expect(floatRepeats()).toBe(1);
     expect(mockCancel).not.toHaveBeenCalled();
     expect(visibleIcon(tree)).toEqual([order[i - 1]]);
   }
@@ -109,7 +111,7 @@ test('md.2 karusel 3 kaydırma: üst ikon aynı örnek, süzülme döngüsü bir
     jest.advanceTimersByTime(9500);
   });
   expect(tree.getByTestId('sub-feature-icon', H)).toBe(icon);
-  expect(mockWithRepeat).toHaveBeenCalledTimes(1);
+  expect(floatRepeats()).toBe(1);
 
   // Kademe değişimi (Balance'a yükselt) şeridi yeniden kurar ama ikon/süzülme aynı kalır.
   await act(async () => {
@@ -118,7 +120,7 @@ test('md.2 karusel 3 kaydırma: üst ikon aynı örnek, süzülme döngüsü bir
   tree.rerender(<PaywallScreen />);
   expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
   expect(tree.getByTestId('sub-feature-icon', H)).toBe(icon);
-  expect(mockWithRepeat).toHaveBeenCalledTimes(1);
+  expect(floatRepeats()).toBe(1);
   expect(visibleIcon(tree)).toHaveLength(1);
 });
 
@@ -185,7 +187,7 @@ test.each(['light', 'dark'] as const)('md.1 zemin (%s): tam ekran, taşar, harek
 test('md.3 fiyat biçimi: TRY → "999,99 TL" / "ayda 83 TL"; USD → "$29.99" / "ayda $2.50" (mağaza para birimi)', () => {
   let tree = render(<PaywallScreen />);
   expect(tree.getByText('999,99 TL/yıl')).toBeTruthy();
-  expect(tree.getByText('Ayda yalnız 83 TL')).toBeTruthy();
+  expect(tree.getByText('83 TL/ay')).toBeTruthy();
   expect(tree.getByText('%58 tasarruf')).toBeTruthy();
   expect(tree.queryByText(/\$/, H)).toBeNull();
   tree.unmount();
@@ -194,7 +196,7 @@ test('md.3 fiyat biçimi: TRY → "999,99 TL" / "ayda 83 TL"; USD → "$29.99" /
   tree = render(<PaywallScreen />);
   expect(tree.getByText('$29.99/yıl')).toBeTruthy();
   expect(tree.getByText('$5.99/ay')).toBeTruthy();
-  expect(tree.getByText('Ayda yalnız $2.50')).toBeTruthy();
+  expect(tree.getByText('$2.50/ay')).toBeTruthy();
   expect(tree.getByText(`%${Math.round((1 - 29.99 / (5.99 * 12)) * 100)} tasarruf`)).toBeTruthy();
   expect(tree.queryByText(/ TL/, H)).toBeNull();
 });

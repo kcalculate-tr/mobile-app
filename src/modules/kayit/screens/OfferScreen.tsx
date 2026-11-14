@@ -35,8 +35,7 @@ import { completionRoutes } from '../gateLogic';
 import SubWelcome, { welcomeRights } from '../../subscription/ui/SubWelcome';
 import { formatSubDate } from '../../subscription/ui/SubResult';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
-import { NeonBorder, neonOnLimePalette, useNeonClock, useNeonVisible } from '../../subscription/ui/NeonBorder';
-import type { SharedValue } from 'react-native-reanimated';
+import { NeonBorder, neonOnLimePalette, useNeonVisible } from '../../subscription/ui/NeonBorder';
 
 type Period = 'yearly' | 'monthly';
 type Phase = 'idle' | 'buying' | 'success' | 'cancelled' | 'error';
@@ -58,11 +57,10 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, 
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(__DEV__ && !!vitrinConfirm);
   const viewed = useRef<Set<Period>>(new Set());
-  // G53-S1 md.4: seçili plan kartında dolaşan neon (ortak saat; yalnız ekran görünürken + azaltılmış hareket kapalıyken).
+  // 15 Kas: seçili plan kartında neon kenar (hale yalnız ekran görünürken + azaltılmış hareket kapalıyken nefes alır).
   const reducedMotion = useReducedMotion();
-  const neonVisible = useNeonVisible();
-  const neonClock = useNeonClock(!reducedMotion && neonVisible && phase !== 'success');
-  const neon = { clock: neonClock, reduced: reducedMotion, visible: neonVisible };
+  const neonVisible = useNeonVisible() && phase !== 'success';
+  const neon = { reduced: reducedMotion, visible: neonVisible };
 
   // G46 md.3: T1 göründü → cihaz + hesap işareti (bir daha gösterilmez). YALNIZ __DEV__ vitrininde yazılmaz.
   useEffect(() => {
@@ -286,7 +284,7 @@ function DismissConfirm({ visible, days, terms, onStart, onDismiss, onLeave }: {
   );
 }
 
-function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress, testID }: { card: PlanCard; name: string; sub: string; recommended?: boolean; selected: boolean; locked: boolean; neon: { clock: SharedValue<number>; reduced: boolean; visible: boolean }; onPress: () => void; testID?: string }) {
+function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress, testID }: { card: PlanCard; name: string; sub: string; recommended?: boolean; selected: boolean; locked: boolean; neon: { reduced: boolean; visible: boolean }; onPress: () => void; testID?: string }) {
   const { t, lang } = useT();
   const P = useK();
   // G44: seçili = tam lime dolgu + limeInk metin; seçilmeyen tam opaklıkta cam yüzey (satın alınırken de
@@ -311,8 +309,8 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
         accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
         style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, f), borderColor: P.isDark ? mixColor(P.cardEdge, P.accent, k) : mixColor(P.cardEdge, 'transparent', k) }]}
       >
-        {/* G53-S1 md.4: kenarda dolaşan neon (ilk çocuk → rozetler üstte kalır). */}
-        <NeonBorder selected={selected} radius={26} borderWidth={1} colors={neonOnLimePalette(P.isDark)} clock={neon.clock} reduced={neon.reduced} visible={neon.visible} testID={testID} />
+        {/* 15 Kas: seçili kartta neon kenar (ilk çocuk → içerik üstte kalır). */}
+        <NeonBorder selected={selected} radius={26} borderWidth={1} colors={neonOnLimePalette(P.isDark)} reduced={neon.reduced} visible={neon.visible} testID={testID} />
         <View style={[styles.radio, P.isDark ? { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) } : { borderColor: mixColor(P.sec, P.accent, k), backgroundColor: mixColor('transparent', P.accent, k) }]}>
           {k > 0 ? (
             <View style={{ opacity: k }}>
@@ -328,22 +326,18 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
             {sub}
           </AppText>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: '52%' }}>
-          {/* G46 md.2: deneme rozeti yalnız denemeli planda; aylıkta hiçbir şey çizilmez (boşluk kalmaz). */}
-          <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: ink }, card.yearly ? { fontFamily: FONT.body, opacity: 0.78 } : null]}>
-            {priceLine}
+        <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: '52%' }}>
+          {/* 15 Kas (İlter): sağ üstte her planda AYLIK fiyat büyük; yıllıkta faturalanan yıllık tutar altında küçük. */}
+          <AppText testID="kayit-offer-price" maxFontSizeMultiplier={1.25} numberOfLines={1} adjustsFontSizeToFit style={[styles.price, { color: ink }]}>
+            {t('kayit.offer.per_month', { price: card.yearly && card.monthlyText ? card.monthlyText : card.priceText })}
           </AppText>
-          {/* 14 Kas (İlter): "Önerilen", deneme ve tasarruf rozetleri kaldırıldı — tasarruf aylık satırında düz metin. */}
-          {card.monthlyText ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-              {/* 14 Kas: aylık karşılık vurgulu hap; faturalanan yıllık tutar en büyük fiyat olarak kalır. */}
-              <View testID="kayit-offer-month" style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: P.isDark ? (selected ? 'rgba(255,255,255,0.7)' : P.accent) : '#E9F9B8' }}>
-                <AppText maxFontSizeMultiplier={1.3} style={{ fontFamily: FONT.bold, fontSize: 15, lineHeight: 19, color: '#0A0A0A' }}>
-                  {t('sub.paywall.per_month_only', { price: card.monthlyText })}
-                </AppText>
-              </View>
-              {card.yearly && card.discountPct ? (
-                <AppText testID="kayit-offer-save" maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: ink, fontWeight: '700' }]}>
+          {card.yearly ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+              <AppText testID="kayit-offer-billed" maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.planSub, { color: sec }]}>
+                {priceLine}
+              </AppText>
+              {card.discountPct ? (
+                <AppText testID="kayit-offer-save" maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: ink, fontFamily: FONT.bold }]}>
                   {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}
                 </AppText>
               ) : null}
@@ -395,7 +389,7 @@ const styles = StyleSheet.create({
   radio: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   planName: { fontFamily: FONT.display, fontSize: 21, lineHeight: 26 },
   planSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19 },
-  price: { fontFamily: FONT.bold, fontSize: 19, lineHeight: 24, textAlign: 'right' },
+  price: { fontFamily: FONT.bold, fontSize: 22, lineHeight: 27, textAlign: 'right' },
   // G45 md.9: kenar çizgisi ve eğiklik yok (düz, dolgulu).
   after: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 21, textAlign: 'center' },
   renew: { fontFamily: FONT.body, fontSize: 13, lineHeight: 19, textAlign: 'center' },

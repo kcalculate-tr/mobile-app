@@ -31,8 +31,7 @@ import { trackSub } from '../subTrack';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useCoachEnabled } from '../../coach/access';
 import { palette } from '../../../core/design/tokens';
-import { NeonBorder, neonPaywallPalette, useNeonClock, useNeonVisible } from '../ui/NeonBorder';
-import type { SharedValue as NeonClock } from 'react-native-reanimated';
+import { NeonBorder, neonPaywallPalette, useNeonVisible } from '../ui/NeonBorder';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası (koç: maskot).
@@ -106,9 +105,8 @@ export default function PaywallScreen() {
     holdUntil.current = Date.now() + 3000;
   }, [group]);
   const autoOn = !reduced && !paused && !result;
-  // G53-S1 md.4: seçili plan kartında dolaşan neon — yalnız ekran görünürken ve azaltılmış hareket kapalıyken döner.
-  const neonVisible = useNeonVisible();
-  const neonClock = useNeonClock(!reduced && neonVisible && !result);
+  // 15 Kas: seçili plan kartında neon kenar — hale yalnız ekran görünürken ve azaltılmış hareket kapalıyken nefes alır.
+  const neonVisible = useNeonVisible() && !result;
 
   const coachDaily = limits?.coach?.daily ?? COACH_DAILY_FALLBACK;
   const features = useMemo(() => {
@@ -306,8 +304,8 @@ export default function PaywallScreen() {
           {loadFailed ? <LoadError onRetry={() => void reload()} /> : null}
           {cards && yearCard && monthCard ? (
             <Animated.View key={`cards-${group}`} entering={fade} style={styles.cards} accessibilityRole="radiogroup" testID="sub-cards">
-              <PlanRow c={yearCard} selected={yearly} coach={coach && group === 'balance'} neon={{ clock: neonClock, reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(true); }} />
-              <PlanRow c={monthCard} selected={!yearly} coach={coach && group === 'balance'} neon={{ clock: neonClock, reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(false); }} />
+              <PlanRow c={yearCard} selected={yearly} coach={coach && group === 'balance'} neon={{ reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(true); }} />
+              <PlanRow c={monthCard} selected={!yearly} coach={coach && group === 'balance'} neon={{ reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(false); }} />
               {group === 'fresh' ? (
                 <Pressable
                   onPress={() => switchGroup('balance')}
@@ -456,7 +454,7 @@ function IconLayer({ k, index, active }: { k: FeatureKey; index: number; active:
   return <Animated.Image source={FEATURE_IMG[k]} style={[styles.glass, styles.iconLayer, style]} resizeMode="contain" accessibilityIgnoresInvertColors testID={`sub-feature-icon-${k}`} />;
 }
 
-function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; neon: { clock: NeonClock<number>; reduced: boolean; visible: boolean }; onPress: () => void }) {
+function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; neon: { reduced: boolean; visible: boolean }; onPress: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
@@ -475,8 +473,8 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
       style={[styles.card, { backgroundColor: card, borderColor: 'transparent' }]}
       testID={`sub-card-${c.key}`}
     >
-      {/* G53-S1 md.4: sabit lime kenar yerine NeonBorder (kart kenarı yerleşim için 2 pt saydam kalır). */}
-      <NeonBorder selected={selected} radius={20} borderWidth={2} colors={neonPaywallPalette(t.isDark)} clock={neon.clock} reduced={neon.reduced} visible={neon.visible} testID={`sub-card-${c.key}`} />
+      {/* 15 Kas: seçili kartta neon kenar (kart kenarı yerleşim için 2 pt saydam kalır). */}
+      <NeonBorder selected={selected} radius={20} borderWidth={2} colors={neonPaywallPalette(t.isDark)} reduced={neon.reduced} visible={neon.visible} testID={`sub-card-${c.key}`} />
       {/* 14 Kas (İlter): tasarruf ve deneme rozetleri kaldırıldı — sade kart; tasarruf aylık satırında, deneme CTA + özet satırında. */}
       <View style={styles.cardRow}>
         <View style={[styles.radio, selected ? { backgroundColor: palette.lime, borderColor: palette.lime } : { borderColor: t.isDark ? '#48484A' : '#C3C7CC' }]}>
@@ -485,17 +483,17 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
         <AppText style={[styles.period, { color: ink }]}>{period}</AppText>
         <View style={styles.flex1} />
         <View style={styles.priceCol}>
-          <AppText style={[styles.price, { color: ink }, c.yearly ? styles.priceYearly : null]} numberOfLines={1} adjustsFontSizeToFit>
-            {priceLine}
+          {/* 15 Kas (İlter): sağ üstte her planda AYLIK fiyat büyük; yıllıkta faturalanan yıllık tutar altında küçük. */}
+          <AppText style={[styles.price, { color: ink }]} numberOfLines={1} adjustsFontSizeToFit testID={`sub-price-${c.key}`}>
+            {`${c.yearly && c.monthlyText ? c.monthlyText : c.priceText}${tr('sub.paywall.per_month')}`}
           </AppText>
-          {c.monthlyText ? (
-            <View style={styles.monthRow}>
-              {/* 14 Kas: aylık karşılık vurgulu hap (faturalanan yıllık tutar yine en büyük fiyat — App Store 3.1.2). */}
-              <View style={[styles.monthPill, { backgroundColor: t.isDark ? palette.lime : '#E9F9B8' }]} testID={`sub-month-${c.key}`}>
-                <AppText style={styles.monthPillText}>{tr('sub.paywall.per_month_only', { price: c.monthlyText })}</AppText>
-              </View>
-              {c.yearly && c.discountPct ? (
-                <AppText style={[styles.monthly, styles.saveInline, { color: t.isDark ? palette.lime : '#4A7A0C' }]} testID={`sub-save-${c.key}`}>
+          {c.yearly ? (
+            <View style={styles.subRow}>
+              <AppText style={[styles.yearlyBilled, { color: t.color.secondary }]} numberOfLines={1} testID={`sub-billed-${c.key}`}>
+                {priceLine}
+              </AppText>
+              {c.discountPct ? (
+                <AppText style={[styles.yearlyBilled, styles.saveInline, { color: t.isDark ? palette.lime : '#4A7A0C' }]} testID={`sub-save-${c.key}`}>
                   {tr('sub.paywall.save', { pct: c.discountPct })}
                 </AppText>
               ) : null}
@@ -593,14 +591,11 @@ const styles = StyleSheet.create({
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   period: { fontSize: 16, fontWeight: '600' },
   priceCol: { alignItems: 'flex-end', flexShrink: 1 },
-  price: { fontSize: 18, fontWeight: '800' },
+  price: { fontSize: 22, fontWeight: '800' },
   // 14 Kas: yıllık (faturalanan) tutar aynı boyutta kalır, kalın değil ve hafif soluk; aylık karşılık hapı öne çıkar.
-  priceYearly: { fontWeight: '500', opacity: 0.78 },
-  monthly: { fontSize: 12, marginTop: 2 },
   saveInline: { fontWeight: '700' },
-  monthPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  monthPillText: { fontSize: 15, fontWeight: '800', color: '#0A0A0A' },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
+  subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 2 },
+  yearlyBilled: { fontSize: 13, fontWeight: '500' },
   coachRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   coachImg: { width: 24, height: 24 },
   coachText: { flexShrink: 1, fontSize: 13, fontWeight: '600', lineHeight: 17 },

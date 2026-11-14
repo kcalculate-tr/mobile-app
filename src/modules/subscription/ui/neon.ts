@@ -1,113 +1,45 @@
-// G53-S1 md.4 · G54-S1 md.7 — Paywall / T1 seçili plan kartı "dolaşan neon ışık" SAF kuralları (RN importu YOK →
-// node:test). Bileşen: ./NeonBorder.tsx. Burada yalnız geometri (yuvarlak dikdörtgen YOLU ve çevresi, katmanlar,
-// kesik çizgi kaydırması) ve kip kuralı (çalış / sabit / kapalı) var.
+// G53/G54 → 15 Kas (İlter: "olmayacaksa yapmayalım, olacaksa düzgün yap") — seçili plan kartı neon kenarı SAF kuralları
+// (RN importu YOK → node:test). Bileşen: ./NeonBorder.tsx.
 //
-// G54 kök neden (İlter cihaz görüntüsü: ışık kart kenarını izlemiyor, alt kenarın altında ayrı bir şerit gibi kayıyor,
-// sağ alt köşeden taşıyor): ışık katmanları `rx`'li `<Rect>` üzerinde reanimated `animatedProps` ile çiziliyordu ve
-// SVG kutusu katmanın KENDİ onLayout ölçüsünden (negatif ofsetli mutlak görünüm) geliyordu. Köşe yarıçapı/kutu
-// animasyonlu katmanda temel kenarla aynı kalmadı (köşeler düz → köşeden taşma), geniş parlama kart dışına
-// taşıp kenardan ayrı ikinci bir çizgi gibi okundu. Düzeltme: geometri tek bir AÇIK yol (`roundRectPath`, köşe
-// yayları yolun içinde — kaybolamaz), kutu KARTIN kendi ölçüsü (rozetler hariç), temel kenar + ışık aynı yol.
+// Dolaşan SVG ışık kaldırıldı: kart kenarını cihazda birebir izlemedi (köşelerde kopuk şerit, kart zemininin altında
+// kalan parçalar). Yerine kartın KENDİ kutusuna çizilen sabit neon tüp: 2 pt lime kenar + yerel `boxShadow` (yeni
+// mimari, RN ≥ 0.76; iOS + Android) ile dışa doğru yumuşak hale ve içe ince ışıma. Kutu kartın kendisi olduğu için
+// hizalama kayamaz. Canlılık için halenin opaklığı yavaşça "nefes alır" (2,4 sn); azaltılmış harekette sabit.
 
-/** Tur süresi (ms) — sabit hız, kesintisiz döngü (G54: ≈ 7 sn, G53'ün 2,5 katı yavaş). */
-export const NEON_PERIOD_MS = 7000;
-/** Seçim değişince ışığın eski karttan yeni karta geçişi (ms, opaklık). */
+/** Seçim değişince eski karttan yeni karta geçiş (ms, opaklık). */
 export const NEON_SWITCH_MS = 250;
-/** Işığın kuyruğu = çevrenin ~%30'u (uçlar degrade ile söner; baş en parlak). */
-export const NEON_TAIL = 0.3;
-/** Sabit temel kenar: ince ve sakin. */
-export const NEON_STROKE = 1.5;
-export const NEON_BASE_OPACITY = 0.5;
-/** Dış hale için kartın dışına taşan çizim payı (pt). */
-export const NEON_BLEED = 10;
+/** Hale nefesi: bir yarım tur (ms) — ileri-geri tekrar → tam döngü 2 × bu süre. */
+export const NEON_BREATH_MS = 1600;
+/** Nefeste halenin en düşük opaklığı (en yüksek 1). */
+export const NEON_BREATH_MIN = 0.55;
+/** Neon kenar kalınlığı (pt). */
+export const NEON_STROKE = 2;
 
 export type NeonMode = 'off' | 'static' | 'run';
 
-/**
- * Seçili değilse kapalı. Azaltılmış harekette dolaşma YOK → sabit kenar + yumuşak hale. Ekran görünmüyorsa
- * (arka plan / başka ekran üstte) yine sabit çizilir ama kare döngüsü durur (pil/CPU harcamaz).
- */
+/** Seçili değilse kapalı. Azaltılmış harekette ya da ekran görünmüyorken nefes yok (sabit hale). */
 export function neonMode({ selected, reduced, visible }: { selected: boolean; reduced: boolean; visible: boolean }): NeonMode {
   if (!selected) return 'off';
   if (reduced || !visible) return 'static';
   return 'run';
 }
 
-/** Yuvarlak dikdörtgenin çevre uzunluğu (r köşe yarıçapı, en/boyun yarısıyla sınırlı). */
-export function roundRectPerimeter(w: number, h: number, r: number): number {
-  if (w <= 0 || h <= 0) return 0;
-  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
-  return 2 * (w - 2 * rr) + 2 * (h - 2 * rr) + 2 * Math.PI * rr;
-}
-
-const f = (n: number) => Math.round(n * 100) / 100;
-
-/** Yuvarlak dikdörtgen yolu (saat yönü, üst kenarın sol yay bitiminden başlar). Köşe yayları yolun içinde. */
-export function roundRectPath(x: number, y: number, w: number, h: number, r: number): string {
-  if (w <= 0 || h <= 0) return '';
-  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
-  const R = x + w;
-  const B = y + h;
-  return [
-    `M${f(x + rr)} ${f(y)}`,
-    `H${f(R - rr)}`,
-    `A${f(rr)} ${f(rr)} 0 0 1 ${f(R)} ${f(y + rr)}`,
-    `V${f(B - rr)}`,
-    `A${f(rr)} ${f(rr)} 0 0 1 ${f(R - rr)} ${f(B)}`,
-    `H${f(x + rr)}`,
-    `A${f(rr)} ${f(rr)} 0 0 1 ${f(x)} ${f(B - rr)}`,
-    `V${f(y + rr)}`,
-    `A${f(rr)} ${f(rr)} 0 0 1 ${f(x + rr)} ${f(y)}`,
-    'Z',
-  ].join(' ');
-}
-
-/** Kart kutusu (w × h, köşe `radius`) → çizim yolu: çizgi kalınlığının yarısı kadar içe, aynı yarıçap (−yarı). */
-export function neonGeometry(w: number, h: number, radius: number, stroke: number = NEON_STROKE, bleed: number = NEON_BLEED) {
-  const inset = stroke / 2;
-  const pw = Math.max(0, w - stroke);
-  const ph = Math.max(0, h - stroke);
-  const r = Math.max(0, radius - inset);
-  return { svgW: w + bleed * 2, svgH: h + bleed * 2, x: bleed + inset, y: bleed + inset, w: pw, h: ph, r, d: roundRectPath(bleed + inset, bleed + inset, pw, ph, r), perimeter: roundRectPerimeter(pw, ph, r) };
+/** '#RRGGBB' + opaklık → 'rgba(r,g,b,a)'. */
+export function rgba(hex: string, a: number): string {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h.slice(0, 6), 16);
+  const al = Math.max(0, Math.min(1, Math.round(a * 1000) / 1000));
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${al})`;
 }
 
 /**
- * Işık katmanları — hepsi BAŞTA (aynı noktada) biter, geriye doğru farklı uzunlukta uzanır → üst üste binince baş en
- * parlak, kuyruk degrade ile söner (sert uç / kesik çizgi yok). 3 katman: geniş yumuşak hale (≈10 pt, düşük opaklık),
- * orta parlama (≈5 pt), ince parlak çekirdek (1,75 pt) + baştaki kısa sıcak nokta. `glow` 0..1 (açık temada daha az).
+ * Neon tüp gölgesi (CSS box-shadow sözdizimi): geniş yumuşak dış hale + sıkı parlak dış çekirdek + içe ince ışıma.
+ * `glow` 0..1 (açık temada daha az).
  */
-export type NeonLayer = { tone: 'halo' | 'mid' | 'core' | 'hot'; len: number; w: number; opacity: number };
-
-export function neonLayers(glow: number): NeonLayer[] {
-  const T = NEON_TAIL;
-  // 14 Kas: neon tüp görünümü — daha güçlü hale ve parlak çekirdek (referans: elektrik neon çizgileri).
+export function neonShadow(color: string, glow: number, inner: number): string {
   return [
-    { tone: 'halo', len: T, w: 12, opacity: 0.14 * glow },
-    { tone: 'halo', len: T * 0.55, w: 12, opacity: 0.22 * glow },
-    { tone: 'mid', len: T * 0.8, w: 6, opacity: 0.3 * (0.5 + glow / 2) },
-    { tone: 'mid', len: T * 0.4, w: 6, opacity: 0.45 * (0.5 + glow / 2) },
-    { tone: 'core', len: T, w: 2, opacity: 0.45 },
-    { tone: 'core', len: T * 0.6, w: 2, opacity: 0.7 },
-    { tone: 'core', len: T * 0.3, w: 2, opacity: 0.95 },
-    { tone: 'hot', len: T * 0.1, w: 2.25, opacity: 1 },
-  ];
-}
-
-/**
- * İlerleme p (0..1) için bir katmanın strokeDashoffset'i: kesik çizgi `[len, L − len]`, BAŞI yol üstünde p·L
- * noktasında (kuyruk geride). SVG'de offset o → çizgi −o'dan başlar → o = len − p·L. [−L, L) aralığına indirgenir.
- */
-export function neonDashOffset(p: number, perimeter: number, lenFrac: number): number {
-  'worklet';
-  if (perimeter <= 0) return 0;
-  const raw = lenFrac * perimeter - p * perimeter;
-  return raw % perimeter;
-}
-
-/** Kare zamanından (ms) ilerleme — sabit hız, kesintisiz (mod periyot). */
-export function neonProgressAt(ms: number, period: number = NEON_PERIOD_MS): number {
-  'worklet';
-  if (period <= 0) return 0;
-  const m = ms % period;
-  return (m < 0 ? m + period : m) / period;
+    `0px 0px 22px 2px ${rgba(color, 0.55 * glow)}`,
+    `0px 0px 8px 0px ${rgba(color, 0.9 * glow)}`,
+    `inset 0px 0px 12px 0px ${rgba(color, inner)}`,
+  ].join(', ');
 }
