@@ -98,7 +98,7 @@ test('yalnız seçili kartta dolaşır; döngü UI thread kare geri çağrısın
   expect(tree.getByTestId('sub-save-fresh_yearly')).toBeTruthy();
 });
 
-test('seçim değişince ışık yeni karta geçer (200 ms opaklık)', async () => {
+test('seçim değişince ışık yeni karta geçer (G54: 250 ms opaklık)', async () => {
   const tree = render(<PaywallScreen />);
   await act(async () => {
     fireEvent.press(tree.getByTestId('sub-card-fresh_monthly'));
@@ -109,7 +109,7 @@ test('seçim değişince ışık yeni karta geçer (200 ms opaklık)', async () 
   expect(mockSetActive).not.toHaveBeenCalledWith(false);
 });
 
-test('azaltılmış hareket: dolaşma yok, döngü hiç başlamaz; sabit 2 pt lime kenar + hafif glow', () => {
+test('azaltılmış hareket: dolaşma yok, döngü hiç başlamaz; sabit ince (G54: 1,5 pt) lime kenar + yumuşak hale', () => {
   const tree = render(
     <ThemeProvider forceScheme="dark">
       <ReducedMotionProvider value>
@@ -121,7 +121,7 @@ test('azaltılmış hareket: dolaşma yok, döngü hiç başlamaz; sabit 2 pt li
   expect(mockSetActive).not.toHaveBeenCalledWith(true);
   layout(tree, 'fresh_yearly');
   const solid = tree.getByTestId('sub-card-fresh_yearly-neon-solid', H);
-  expect(solid.props.strokeWidth).toBe(2);
+  expect(solid.props.strokeWidth).toBe(1.5);
   // react-native-svg rengi işler: 0xFFB9EF14 = lime (#B9EF14).
   expect(solid.props.stroke.payload).toBe(0xffb9ef14);
 });
@@ -135,4 +135,37 @@ test('paywall görünmezken (uygulama arka planda) döngü durur; geri gelince s
   act(() => appHandlers.forEach((h) => h('active')));
   expect(mockSetActive).toHaveBeenLastCalledWith(true);
   expect(modeOf(tree, 'fresh_yearly')).toBe('run');
+});
+
+// ─── G54-S1 md.7: hizalama, tek yol, rozetler üstte ──────────────────────────
+describe('G54 md.7 neon hizalama', () => {
+  test.each([
+    [375, 'dark'],
+    [430, 'light'],
+  ] as const)('%i pt (%s): SVG kart kutusuna (kenarlık kutusu) birebir + taşma payı; temel kenar ve ışık aynı yol', (w, scheme) => {
+    const tree = render(
+      <ThemeProvider forceScheme={scheme}>
+        <PaywallScreen />
+      </ThemeProvider>,
+    );
+    const cardW = w - 32;
+    fireEvent(tree.getByTestId(/^sub-card-fresh_yearly-neon-/, H), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: cardW, height: 104 } } });
+    const layer = tree.getByTestId('sub-card-fresh_yearly-neon-run', H);
+    // Katman kartın kenarlık kutusunu kaplar (kart borderWidth 2 → −2), negatif taşma payı YOK (ölçü = kart).
+    const st = require('react-native').StyleSheet.flatten(layer.props.style);
+    expect(st).toMatchObject({ position: 'absolute', left: -2, top: -2, right: -2, bottom: -2 });
+    const svg = tree.getByTestId('sub-card-fresh_yearly-neon-svg', H);
+    expect(svg.props.width).toBe(cardW + 20);
+    expect(svg.props.height).toBe(104 + 20);
+    const base = tree.getByTestId('sub-card-fresh_yearly-neon-base', H);
+    // Yol: x = taşma 10 + yarı çizgi 0,75; köşe yayı yarıçapı 20 − 0,75.
+    expect(base.props.d.startsWith('M30 10.75')).toBe(true);
+    expect(base.props.d).toContain('A19.25 19.25 0 0 1');
+    expect(base.props.strokeWidth).toBe(1.5);
+    expect(base.props.strokeOpacity).toBe(0.35);
+    // Rozetler ışığın ÜSTÜNDE (kartta neon katmanından sonra çizilir) ve ölçüye girmez (mutlak konum).
+    const card = tree.getByTestId('sub-card-fresh_yearly');
+    const kids = card.findAll((n: { props: { testID?: string } }) => typeof n.props.testID === 'string' && /neon-run|sub-save-fresh_yearly/.test(n.props.testID)).map((n: { props: { testID?: string } }) => n.props.testID);
+    expect(kids.indexOf('sub-save-fresh_yearly')).toBeGreaterThan(kids.findIndex((k: string) => /neon-run/.test(k)));
+  });
 });

@@ -1,60 +1,62 @@
-// G53-S1 md.4 — Seçili plan kartının kenarında sürekli dolaşan neon lime ışık (Paywall + T1 kayıt teklifi).
+// G53-S1 md.4 · G54-S1 md.7 — Seçili plan kartının kenarında sürekli dolaşan neon lime ışık (Paywall + T1).
 //
-// Çizim: kartın üstüne (ilk çocuk; rozetler üstte kalır) dokunulmaz bir SVG katmanı. Kartın yuvarlak kenarı
-// boyunca 2 pt yarı saydam lime temel kenar + üstünde kenarı gezen parlak parça (çevrenin ~%25'i). Parça, aynı
-// merkezli üst üste kesik çizgilerden oluşur (kısa olan daha opak → yumuşak uçlar; geniş + soluk katmanlar →
-// dış parlama). Hareket `strokeDashoffset` ile UI thread'de (reanimated kare geri çağrısı; JS'e köprü yok);
-// tur 2,8 sn, sabit hız, kesintisiz (zaman mod periyot).
-// Kipler (neon.ts → neonMode): seçili değil = yok · azaltılmış hareket = sabit 2 pt lime + hafif glow, döngü YOK ·
-// ekran görünmüyor (arka plan / üstte başka ekran) = döngü DURUR. Seçim değişince eski kart söner, yeni kart
-// 200 ms'de yanar (ilerleme ortak saat → ışık yeni kartta aynı konumdan devam eder).
+// G54 düzeltmesi (kök neden neon.ts başında): SVG kartla BİREBİR aynı kutuda — ölçü kartın kendi kutusundan
+// (`position:absolute` + kenarlık kadar −inset → kartın kenarlık kutusu; rozetler mutlak konumlu olduğu için
+// ölçüye girmez), geometri tek açık yuvarlak dikdörtgen yolu (kartın köşe yarıçapı, çizgi kalınlığının yarısı içe).
+// Temel kenar ve ışık AYNI yolu kullanır → iki ayrı çizgi görüntüsü yok; ışık köşelerden dönerek tam çevreyi dolaşır.
+// Görünüm: temel kenar 1,5 pt lime %35; ışık 3 katman (geniş yumuşak hale ≈10 pt · orta parlama ≈5 pt · ince
+// çekirdek 1,75 pt), çevrenin ~%30'u uzunlukta degrade kuyruk; seçiliyken içe doğru çok hafif lime ışıma.
+// Açık temada hale daha az. Hız: tur 7 sn, sabit, kesintisiz (UI thread kare geri çağrısı). Seçim değişince 250 ms
+// opaklık geçişi (ortak saat → ışık yeni kartta aynı konumdan sürer). Azaltılmış hareket: dolaşma yok — sabit ince
+// kenar + yumuşak hale. Ekran görünmüyorken döngü durur.
 import React, { useEffect, useState } from 'react';
 import { AppState, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import * as Nav from '@react-navigation/native';
 import * as Reanimated from 'react-native-reanimated';
 import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
-import Svg, { Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { CURVE, palette } from '../../../core/design';
 import {
+  NEON_BASE_OPACITY,
   NEON_BLEED,
   NEON_STROKE,
   NEON_SWITCH_MS,
   neonDashOffset,
+  neonGeometry,
   neonLayers,
   neonMode,
   neonProgressAt,
-  roundRectPerimeter,
+  roundRectPath,
   type NeonLayer,
   type NeonMode,
 } from './neon';
 
 export type NeonPalette = {
-  /** 2 pt temel kenar (yarı saydam). */
+  /** Sabit temel kenar rengi (opaklık NEON_BASE_OPACITY ile). */
   base: string;
   core: string;
   hot: string;
   glow: string;
-  /** Koyu kontur (açık temada lime'ı açık zeminde okutur). */
-  edge: string;
-  withEdge: boolean;
-  /** Parlama gücü 0..1 (açık temada daha az). */
+  /** Hale gücü 0..1 (açık temada daha az). */
   glowOpacity: number;
+  /** İçe doğru hafif ışıma opaklığı (yalnız seçiliyken). */
+  inner: number;
   /** Azaltılmış harekette sabit kenar rengi. */
   solid: string;
 };
 
-/** Paywall (beyaz / koyu gri kart). */
+/** Paywall (beyaz / koyu gri kart). Açık temada lime açık zeminde okunmaz → temel/sabit kenar `limeLineOnLight`. */
 export function neonPaywallPalette(isDark: boolean): NeonPalette {
   return isDark
-    ? { base: 'rgba(185,239,20,0.38)', core: palette.lime, hot: '#F1FFC2', glow: palette.lime, edge: palette.limeLineOnLight, withEdge: false, glowOpacity: 1, solid: palette.lime }
-    : { base: 'rgba(74,107,0,0.38)', core: palette.lime, hot: '#E6FF8F', glow: palette.lime, edge: palette.limeLineOnLight, withEdge: true, glowOpacity: 0.5, solid: palette.limeLineOnLight };
+    ? { base: palette.lime, core: palette.lime, hot: '#F1FFC2', glow: palette.lime, glowOpacity: 1, inner: 0.07, solid: palette.lime }
+    : { base: palette.limeLineOnLight, core: palette.lime, hot: '#E6FF8F', glow: palette.lime, glowOpacity: 0.45, inner: 0.05, solid: palette.limeLineOnLight };
 }
 
-/** T1 kayıt teklifi: seçili kart tam lime dolgulu → parça açık lime/beyaz çekirdekli, parlama dışa taşar. */
+/** T1 kayıt teklifi: seçili kart tam lime dolgulu → çekirdek açık lime/beyaz, temel kenar beyaz/koyu-lime. */
 export function neonOnLimePalette(isDark: boolean): NeonPalette {
   return isDark
-    ? { base: 'rgba(241,255,194,0.55)', core: '#F1FFC2', hot: '#FFFFFF', glow: palette.lime, edge: palette.limeLineOnLight, withEdge: false, glowOpacity: 1, solid: '#F1FFC2' }
-    : { base: 'rgba(74,107,0,0.38)', core: '#F1FFC2', hot: '#FFFFFF', glow: palette.lime, edge: palette.limeLineOnLight, withEdge: true, glowOpacity: 0.5, solid: palette.limeLineOnLight };
+    ? { base: '#FFFFFF', core: '#F1FFC2', hot: '#FFFFFF', glow: palette.lime, glowOpacity: 1, inner: 0.1, solid: '#F1FFC2' }
+    : { base: palette.limeLineOnLight, core: '#F7FFE0', hot: '#FFFFFF', glow: palette.lime, glowOpacity: 0.45, inner: 0.1, solid: palette.limeLineOnLight };
 }
 
 // Kare geri çağrısı resmi jest taklidinde yok → modül düzeyinde (her render'da aynı) yedek. Üretimde gerçek kanca.
@@ -114,12 +116,12 @@ export function useNeonClock(running: boolean): SharedValue<number> {
   return p;
 }
 
-const AnimatedRect = Animated.createAnimatedComponent(Rect);
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 export function NeonBorder({
   selected,
   radius,
-  borderWidth = NEON_STROKE,
+  borderWidth = 0,
   colors,
   clock,
   reduced,
@@ -129,7 +131,7 @@ export function NeonBorder({
   selected: boolean;
   /** Kartın köşe yarıçapı (dış kenar). */
   radius: number;
-  /** Kartın kendi borderWidth'i (mutlak konum dolgu kutusuna göre → dış kenara hizalamak için). */
+  /** Kartın kendi borderWidth'i (mutlak konum dolgu kutusuna göre → kenarlık kutusuna hizalamak için). */
   borderWidth?: number;
   colors: NeonPalette;
   clock: SharedValue<number>;
@@ -139,7 +141,7 @@ export function NeonBorder({
 }) {
   const mode: NeonMode = neonMode({ selected, reduced, visible });
   const [size, setSize] = useState({ w: 0, h: 0 });
-  // Söndükten sonra 200 ms daha çiz (opaklık geçişi bitsin), sonra katmanları kaldır.
+  // Söndükten sonra 250 ms daha çiz (opaklık geçişi bitsin), sonra katmanları kaldır.
   const [drawn, setDrawn] = useState(selected);
   const op = useSharedValue(selected ? 1 : 0);
   useEffect(() => {
@@ -154,19 +156,17 @@ export function NeonBorder({
   }, [selected]);
   const fade = useAnimatedStyle(() => ({ opacity: op.value }));
 
+  // Kartın kenarlık kutusu (rozetler hariç) — ölçü buradan.
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (width !== size.w || height !== size.h) setSize({ w: width, h: height });
   };
 
-  const inset = NEON_BLEED + NEON_STROKE / 2;
-  const rw = Math.max(0, size.w - inset * 2);
-  const rh = Math.max(0, size.h - inset * 2);
-  const rx = Math.max(0, radius - NEON_STROKE / 2);
-  const perimeter = roundRectPerimeter(rw, rh, rx);
-  const rect = { x: inset, y: inset, width: rw, height: rh, rx, ry: rx };
-  const layers = neonLayers(colors.glowOpacity, colors.withEdge);
-  const toneColor = (l: NeonLayer) => (l.tone === 'glow' ? colors.glow : l.tone === 'edge' ? colors.edge : l.tone === 'hot' ? colors.hot : colors.core);
+  const g = neonGeometry(size.w, size.h, radius);
+  const layers = neonLayers(colors.glowOpacity);
+  const toneColor = (l: NeonLayer) => (l.tone === 'halo' || l.tone === 'mid' ? colors.glow : l.tone === 'hot' ? colors.hot : colors.core);
+  // İç ışıma: kenardan 3 pt içeride, 5 pt kalınlık (yalnız kartın içine düşer).
+  const innerD = size.w > 8 && size.h > 8 ? roundRectPath(NEON_BLEED + 3, NEON_BLEED + 3, size.w - 6, size.h - 6, Math.max(0, radius - 3)) : '';
 
   return (
     <Animated.View
@@ -175,22 +175,23 @@ export function NeonBorder({
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
       testID={testID ? `${testID}-neon-${mode}` : undefined}
-      style={[styles.layer, { left: -(NEON_BLEED + borderWidth), top: -(NEON_BLEED + borderWidth), right: -(NEON_BLEED + borderWidth), bottom: -(NEON_BLEED + borderWidth) }, fade]}
+      style={[styles.layer, { left: -borderWidth, top: -borderWidth, right: -borderWidth, bottom: -borderWidth }, fade]}
     >
-      {drawn && perimeter > 0 ? (
-        <Svg width={size.w} height={size.h}>
+      {drawn && g.perimeter > 0 ? (
+        <Svg width={g.svgW} height={g.svgH} style={{ position: 'absolute', left: -NEON_BLEED, top: -NEON_BLEED }} testID={testID ? `${testID}-neon-svg` : undefined}>
+          {innerD ? <Path d={innerD} fill="none" stroke={colors.glow} strokeWidth={5} strokeOpacity={colors.inner} /> : null}
           {reduced ? (
-            // Azaltılmış hareket: sabit kenar + hafif glow (hareket yok).
+            // Azaltılmış hareket: sabit ince kenar + yumuşak hale (hareket yok).
             <>
-              <Rect {...rect} fill="none" stroke={colors.glow} strokeWidth={7} strokeOpacity={0.14 * colors.glowOpacity} />
-              <Rect {...rect} fill="none" stroke={colors.glow} strokeWidth={4} strokeOpacity={0.24 * colors.glowOpacity} />
-              <Rect {...rect} fill="none" stroke={colors.solid} strokeWidth={NEON_STROKE} testID={testID ? `${testID}-neon-solid` : undefined} />
+              <Path d={g.d} fill="none" stroke={colors.glow} strokeWidth={8} strokeOpacity={0.1 * colors.glowOpacity} />
+              <Path d={g.d} fill="none" stroke={colors.glow} strokeWidth={4} strokeOpacity={0.18 * colors.glowOpacity} />
+              <Path d={g.d} fill="none" stroke={colors.solid} strokeWidth={NEON_STROKE} testID={testID ? `${testID}-neon-solid` : undefined} />
             </>
           ) : (
             <>
-              <Rect {...rect} fill="none" stroke={colors.base} strokeWidth={NEON_STROKE} />
+              <Path d={g.d} fill="none" stroke={colors.base} strokeOpacity={NEON_BASE_OPACITY} strokeWidth={NEON_STROKE} testID={testID ? `${testID}-neon-base` : undefined} />
               {layers.map((l, i) => (
-                <SegLayer key={i} rect={rect} layer={l} color={toneColor(l)} perimeter={perimeter} clock={clock} />
+                <SegLayer key={i} d={g.d} layer={l} color={toneColor(l)} perimeter={g.perimeter} clock={clock} />
               ))}
             </>
           )}
@@ -200,29 +201,18 @@ export function NeonBorder({
   );
 }
 
-function SegLayer({
-  rect,
-  layer,
-  color,
-  perimeter,
-  clock,
-}: {
-  rect: { x: number; y: number; width: number; height: number; rx: number; ry: number };
-  layer: NeonLayer;
-  color: string;
-  perimeter: number;
-  clock: SharedValue<number>;
-}) {
+function SegLayer({ d, layer, color, perimeter, clock }: { d: string; layer: NeonLayer; color: string; perimeter: number; clock: SharedValue<number> }) {
   const len = layer.len * perimeter;
   const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: neonDashOffset(clock.value, perimeter, layer.len) }));
   return (
-    <AnimatedRect
-      {...rect}
+    <AnimatedPath
+      d={d}
       fill="none"
       stroke={color}
       strokeWidth={layer.w}
       strokeOpacity={layer.opacity}
       strokeLinecap="round"
+      strokeLinejoin="round"
       strokeDasharray={[len, Math.max(0.001, perimeter - len)]}
       animatedProps={animatedProps}
     />
