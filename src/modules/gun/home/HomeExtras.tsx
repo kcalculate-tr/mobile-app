@@ -23,7 +23,7 @@ import { CaretRight, ChatCircleDots, Check, Plus } from '../../../components/ico
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { BRICOLAGE_SEMI, useHomeTokens } from '../../onboarding/first/homeTokens';
 import { GLASS } from '../../personalPlan/ui/parts';
-import { devFrozenAt, frozenEnter } from '../../kayit/ui/homeGateDev';
+import { devFrozenAt, frozenDraw, frozenEnter } from '../../kayit/ui/homeGateDev';
 import { getKesfetClient } from '../../kesfet/client';
 import { useKesfetStore } from '../../kesfet/store';
 import { AddToDaySheet } from '../../kesfet/ui/AddToDaySheet';
@@ -190,7 +190,7 @@ function TaskCheck({ done }: { done: boolean }) {
   return (
     <View
       importantForAccessibility="no-hide-descendants"
-      style={[styles.check, done ? { backgroundColor: palette.lime, borderColor: palette.lime } : { borderColor: k.line2 }]}
+      style={[styles.check, done ? { backgroundColor: palette.lime, borderColor: palette.lime } : { borderColor: k.sec }]}
     >
       {done ? <Check size={14} color={palette.limeInk} weight="bold" /> : null}
     </View>
@@ -218,9 +218,12 @@ function TasksCelebrate({ onDone }: { onDone: () => void }) {
   const k = useHomeTokens();
   const { t } = useT();
   const reduced = useReducedMotion();
-  const d = useSharedValue(reduced ? 1 : 0);
+  // Yalnız __DEV__ vitrini: kutlama belirli bir anda dondurulur (ekran görüntüsü; üretimde devFrozenAt() null).
+  const frozen = devFrozenAt();
+  const d = useSharedValue(frozen != null ? frozenDraw(frozen) : reduced ? 1 : 0);
   const o = useSharedValue(1);
   useEffect(() => {
+    if (frozen != null) return;
     if (!reduced) d.value = withTiming(1, { duration: HOME_GATE_MOTION.draw, easing: HOME_GATE_MOTION.drawCurve });
     haptic('success');
     const id = setTimeout(() => {
@@ -393,7 +396,8 @@ export function HomeStreakWeek({ days, todayKey, todayCount, targetKcal, ready, 
                   testID="home-streak-col"
                   style={[
                     styles.colFill,
-                    { height: c.kcal > 0 ? Math.max(4, Math.round(COL_H * c.k)) : 0, backgroundColor: c.today ? palette.lime : k.limeLine },
+                    // HIG: bugün = lime vurgusu (açık temada lime iz üstünde ~1:1 kalıyordu → koyu lime çizgi), diğer günler ikincil.
+                    { height: c.kcal > 0 ? Math.max(4, Math.round(COL_H * c.k)) : 0, backgroundColor: c.today ? (k.isDark ? palette.lime : k.limeLine) : k.sec },
                   ]}
                 />
               </View>
@@ -482,7 +486,7 @@ function RecipeCard({ r, index, onOpen, onAdd }: { r: HomeRecipe; index: number;
           <AppText maxFontSizeMultiplier={1.3} numberOfLines={2} style={[styles.recipeName, { color: k.text }]}>
             {r.name}
           </AppText>
-          <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.small, { color: k.sec }]}>
+          <AppText maxFontSizeMultiplier={1.3} numberOfLines={2} style={[styles.small, { color: k.sec }]}>
             {meta}
           </AppText>
         </View>
@@ -617,7 +621,7 @@ const styles = StyleSheet.create({
   weekCol: { alignItems: 'center', gap: 3 },
   colTrack: { width: 8, height: COL_H, borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end' },
   colFill: { width: 8, borderRadius: 4 },
-  dayLetter: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, lineHeight: 12 },
+  dayLetter: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 11, lineHeight: 13 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 44, borderRadius: 22, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   chipText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, lineHeight: 18, flexShrink: 1 },
