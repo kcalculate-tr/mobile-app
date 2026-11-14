@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { haptic } from '../../../core/design';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { Check, MagnifyingGlass, Plus, X } from '../../../components/icons';
 import { FONT, KText as AppText } from './parts';
 import { ChipToggle } from './pickers';
@@ -42,6 +43,7 @@ export function CuisineCards({ value, onToggle, t, testID = 'kayit-cuisines' }: 
   return (
     <View style={{ gap: 12 }}>
       <ScrollView
+        {...SCROLL_KEYBOARD}
         testID={testID}
         horizontal
         showsHorizontalScrollIndicator={false}
