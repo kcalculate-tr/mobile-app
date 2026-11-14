@@ -84,8 +84,10 @@ export function redirectGateAction(a: AnyAction, c: GateCtx): AnyAction | null {
     return null;
   }
   if (GOAL.has(name)) {
-    if (!c.session) return null;
+    // G54 md.2: eski kişisel plan funnel'ı (`PersonalPlan`) bayrak açıkken KAYITLI DEĞİL → hiçbir çağrı oraya düşmez.
+    if (!c.session) return name === 'PersonalPlan' ? withTarget(a, { name: 'Login' }) : null;
     if (c.status === 'none') return withTarget(a, kayitRouteFor(c.kisiselPlan, 'gate', null));
+    if (name === 'PersonalPlan') return withTarget(a, { name: 'PersonalPlanMine' });
     // Profil varken hedef düzenleme: kişisel plan açık → Kişisel planım (düzenleme orada); kapalı → yeni tasarımlı kısa
     // profil (cevaplar yeniden, hedef üstüne yazılır). Eski NutritionProfile / Takibe başla ekranları açılmaz.
     if (name === 'TakibeBasla' || name === 'NutritionProfile') {

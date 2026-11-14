@@ -89,6 +89,10 @@ export interface PpSaved {
   /** Son check-in'de kendiliğinden güncellenen hedef tarihi. */
   targetDate: string | null;
   updatedAt: string;
+  /** G42/G54: yeni kayıt akışına özgü cevaplar (hedef türü, spor, mutfaklar, yemediklerin, pişirme, zorlandıkların). */
+  kayit?: Record<string, unknown>;
+  /** G54 md.2: 'targets' = `personal_plan` yoktu, satırdaki hedeflerden türetildi (kısa profil / eski profil). */
+  source?: 'targets';
 }
 
 export const DEFAULT_MEALS: PpMeals = {
@@ -179,6 +183,8 @@ export function parseSaved(raw: unknown): PpSaved | null {
     startWeightKg: typeof o.startWeightKg === 'number' ? o.startWeightKg : (o.answers.weightKg ?? 0),
     targetDate: o.targetDate ?? o.result.targetDate ?? null,
     updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : '',
+    // G54 md.2: yeni kaydın ek cevapları kaybolmasın (Düzenle → kaydet aynı jsonb'yi geri yazar).
+    ...(o.kayit && typeof o.kayit === 'object' ? { kayit: o.kayit as Record<string, unknown> } : {}),
   };
 }
 

@@ -669,7 +669,9 @@ export default function AppNavigator() {
       {ogunPlani ? <Stack.Screen name="ShoppingList" component={ShoppingListLazy} options={push} /> : null}
       {/* G34-S1 — Kişisel plan: akış ve paywall alttan (sheet 330; akışın kendi kenar jesti var → yığın jesti kapalı),
           Kişisel planım / düzenle / check-in sağdan (push 330). */}
-      {kisiselPlan ? <Stack.Screen name="PersonalPlan" component={PersonalPlanFlowLazy} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
+      {/* G54-S1 md.2: tek kayıt/plan sistemi — eski kişisel plan funnel'ı `yeni_kayit` açıkken KAYITLI DEĞİL (gateRouter
+          `PersonalPlan` çağrılarını kayıt akışına / Kişisel planım'a yönlendirir). */}
+      {kisiselPlan && !yeniKayit ? <Stack.Screen name="PersonalPlan" component={PersonalPlanFlowLazy} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
       {kisiselPlan ? <Stack.Screen name="PersonalPlanMine" component={PersonalPlanMineLazy} options={push} /> : null}
       {kisiselPlan ? <Stack.Screen name="PersonalPlanEdit" component={PersonalPlanEditLazy} options={push} /> : null}
       {kisiselPlan ? <Stack.Screen name="PersonalPlanCheckin" component={PersonalPlanCheckinLazy} options={push} /> : null}

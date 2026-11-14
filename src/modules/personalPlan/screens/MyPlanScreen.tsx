@@ -32,8 +32,19 @@ export default function MyPlanScreen({ navigation, route }: Props) {
   const { tier } = useTier();
   const planOn = useFeature('ogun_plani');
   const kocOn = useFeature('koc');
-  const { saved, loaded } = useMyPlan();
+  const { saved, loaded, reload } = useMyPlan();
   const today = isoDay(new Date());
+  // G54 md.2: her açılışta sunucudan tazele (kayıt / başka cihazda değişiklik sonrası boş önbellek kalmasın).
+  React.useEffect(() => {
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // G54 md.2: plan yoksa → TEK kayıt akışı (yeni_kayit açıkken modules/kayit; kapalıyken eski kişisel plan akışı).
+  const yeniKayit = useFeature('yeni_kayit');
+  const create = () => {
+    if (yeniKayit) navigation.replace('Kayit', { entry: 'gate', returnTo: { name: 'PersonalPlanMine' } });
+    else navigation.replace('PersonalPlan', { origin: 'mine' });
+  };
 
   if (!saved) {
     return (
@@ -46,7 +57,7 @@ export default function MyPlanScreen({ navigation, route }: Props) {
             <AppText textRole="bodySm" style={{ color: P.sec, textAlign: 'center', marginVertical: 12 }}>
               {i18n.t('pp.mine_empty')}
             </AppText>
-            <PpButton label={i18n.t('pp.mine_create')} onPress={() => navigation.replace('PersonalPlan', { origin: 'mine' })} testID="pp-mine-create" />
+            <PpButton label={i18n.t('pp.mine_create')} onPress={create} testID="pp-mine-create" />
           </View>
         ) : null}
       </View>

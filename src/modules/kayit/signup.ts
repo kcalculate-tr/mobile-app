@@ -10,6 +10,7 @@ import { acceptPolicies } from '../../lib/consent/store';
 import { setMarketingOptIn } from '../../lib/notify/marketing';
 import { AGE_CONFIRMED_KEY, ONBOARDING_DONE_KEY } from '../onboarding/v2/loginLogic';
 import { savePlan } from '../personalPlan/api';
+import { useMyPlanStore } from '../personalPlan/useMyPlan';
 import { computeKayitPlan, toPpSaved } from './plan';
 import { readMuscleSurplus } from './settings';
 import { dropDraft, kv, useKayit } from './store';
@@ -95,6 +96,8 @@ export async function finishSignup(i: SignupFinishInput): Promise<SignupFinishRe
     const saved = toPpSaved(s.answers, plan, { startIso, nowIso: new Date().toISOString(), start: s.start });
     const r = await savePlan(i.userId, saved, year);
     planSaved = r.ok;
+    // G54 md.2: Kişisel planım hemen dolu açılsın (depo kayıttan önce boş yüklenmiş olabilir).
+    if (r.ok) useMyPlanStore.getState().prime(i.userId, saved);
   }
   if (planSaved) await dropDraft();
   const emailSent = planSaved ? await sendPlanEmail(i.lang) : false;

@@ -16,6 +16,8 @@ interface MyPlanState {
   load: (uid: string, force?: boolean) => Promise<void>;
   save: (uid: string, p: PpSaved) => Promise<SaveOutcome>;
   setWeighIns: (w: { date: string; weightKg: number }[]) => void;
+  /** G54 md.2: kayıt akışı planı yazdı → bellekteki (kayıttan önce boş yüklenmiş) durum hemen güncellenir. */
+  prime: (uid: string, p: PpSaved | null) => void;
   clear: () => void;
 }
 
@@ -42,6 +44,7 @@ export const useMyPlanStore = create<MyPlanState>((set, get) => ({
     return savePlan(uid, p, new Date().getFullYear());
   },
   setWeighIns: (weighIns) => set({ weighIns }),
+  prime: (uid, p) => set(p ? { uid, saved: p, loaded: true } : { uid: null, saved: null, weighIns: [], loaded: false }),
   clear: () => set({ uid: null, saved: null, weighIns: [], loaded: false, loading: false }),
 }));
 

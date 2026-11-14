@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '../../core/supabase';
 import { readHealthConsent, recordHealthConsent } from '../../lib/consent/store';
 import { calorieFloor, isoDay, type PpActivity, type PpGender, type PpGoal, type PpResult } from './calc';
+import { planFromRow } from './planReader';
 import { parseSaved, type PpAnswers, type PpSaved, type PpMeasures } from './types';
 import type { FlowStep } from './flow';
 
@@ -189,10 +190,11 @@ export async function loadPlan(userId: string, currentYear: number): Promise<{ s
   } catch {
     row = null;
   }
-  const fromServer = parseSaved(row?.personal_plan);
-  const saved = fromServer ?? (await readCachedPlan(userId));
+  // G54 md.2: tek okuyucu — personal_plan (eski akış + yeni kayıt) ya da satır hedefleri (kısa profil / eski profil).
+  const fromServer = planFromRow(row, currentYear, isoDay(new Date()));
+  // Sunucu okunamadıysa cihaz önbelleği; okunduysa ve plan yoksa (silinmiş/başka hesap) önbellek kullanılmaz.
+  const saved = fromServer ?? (row ? null : await readCachedPlan(userId));
   if (fromServer) await cachePlan(userId, fromServer);
-  void currentYear;
   return { saved, row };
 }
 
