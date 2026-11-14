@@ -14,6 +14,25 @@ import { useTier } from '../../../lib/subscription/purchases';
 import { CoachProfileRow } from '../../coach/ui/entries';
 import { useFeature } from '../../../core/flags';
 import { GlassSparkle } from './GlassSparkle';
+import { KcalAiMark, kcalAiHeightFor } from './KcalAiMark';
+
+/**
+ * G52-S1 md.1: Profil'in AI grubu başlığı — "Kcalculate AI" yazısı yerine işaret (logo + "AI").
+ * FinSectionLabel ile aynı yer: 13 pt gövde kalın yazının cap-height'ı, ikincil renk, yanda 4 pt.
+ */
+export function ProfileAiSectionLabel({ testID = 'profile-ai-section' }: { testID?: string }) {
+  const t = useTheme();
+  const { t: tr } = useT();
+  return (
+    <KcalAiMark
+      height={kcalAiHeightFor(13, 'body')}
+      color={t.color.secondary}
+      label={tr('profil.section_ai')}
+      style={styles.aiLabel}
+      testID={testID}
+    />
+  );
+}
 
 /**
  * G33-S1 md.1 (Tur 26n FinPrProfile): Abonelik satırı Profil'in "Kcalculate AI" grubunun İÇİNDE —
@@ -39,7 +58,7 @@ export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
   ];
   return (
     <View style={{ gap: 6 }} testID="profile-sub-section">
-      <FinSectionLabel>{tr('sub.profile.section')}</FinSectionLabel>
+      <ProfileAiSectionLabel testID="profile-sub-section-label" />
       <FinRowGroup>
         <FinRow first icon={<Sparkle size={18} color={t.color.ink} weight="fill" />} label={tr('sub.profile.row')} value={value} onPress={onOpen} />
         {/* G24-S1 (FinPrProfile Tur 26k): "AI Koç" satırı + Balance rozeti (`koc` kapalıysa çizilmez). */}
@@ -80,6 +99,7 @@ export default function ProfileSubSection({ onOpen }: { onOpen: () => void }) {
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
+  aiLabel: { marginHorizontal: 4, marginTop: 2, marginBottom: 1, alignSelf: 'flex-start' },
   row: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   icon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 16, fontWeight: '500' },

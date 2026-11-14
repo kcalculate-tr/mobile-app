@@ -1155,9 +1155,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_confirm_cta: 'Hesabı kalıcı olarak sil',
       // G25-S1 md.6 (A9): silme onayında abonelik uyarısı (platforma göre mağaza adı).
       delete_sub_note_ios:
-        'Aktif bir kcalAI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik App Store’da sürer ve yenilenir. Önce aboneliğini iptal et.',
+        'Aktif bir Kcalculate AI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik App Store’da sürer ve yenilenir. Önce aboneliğini iptal et.',
       delete_sub_note_android:
-        'Aktif bir kcalAI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik Google Play’de sürer ve yenilenir. Önce aboneliğini iptal et.',
+        'Aktif bir Kcalculate AI aboneliğin varsa hesabını silmek onu iptal etmez; abonelik Google Play’de sürer ve yenilenir. Önce aboneliğini iptal et.',
       delete_sub_manage: 'Aboneliği yönet',
       // Sözleşmeler
       agreements_title: 'Sözleşmeler',
@@ -1246,7 +1246,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       limit_title: 'Bugünkü AI tarama hakların bitti',
       limit_body: 'Yarın 00:00’da yenilenir. Bu arada elle girebilirsin.',
       manual_entry: 'Elle gir',
-      pro_soon: 'kcalAI planları (çok yakında)',
+      pro_soon: 'Kcalculate AI planları (çok yakında)',
       result_title: 'Tahmini sonuç',
       retry: 'Tekrar çek',
       save_to_day: 'Güne ekle',
@@ -3086,9 +3086,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       delete_confirm_word: 'DELETE',
       delete_confirm_cta: 'Permanently delete account',
       delete_sub_note_ios:
-        'If you have an active kcalAI subscription, deleting your account doesn’t cancel it; it continues and renews in the App Store. Cancel your subscription first.',
+        'If you have an active Kcalculate AI subscription, deleting your account doesn’t cancel it; it continues and renews in the App Store. Cancel your subscription first.',
       delete_sub_note_android:
-        'If you have an active kcalAI subscription, deleting your account doesn’t cancel it; it continues and renews on Google Play. Cancel your subscription first.',
+        'If you have an active Kcalculate AI subscription, deleting your account doesn’t cancel it; it continues and renews on Google Play. Cancel your subscription first.',
       delete_sub_manage: 'Manage subscription',
       agreements_title: 'Agreements',
       agreements_updated: 'Last updated',
@@ -3170,7 +3170,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       limit_title: 'You’ve used today’s AI scans',
       limit_body: 'Resets tomorrow at 00:00. You can enter manually meanwhile.',
       manual_entry: 'Enter manually',
-      pro_soon: 'kcalAI plans (coming soon)',
+      pro_soon: 'Kcalculate AI plans (coming soon)',
       result_title: 'Estimated result',
       retry: 'Retake photo',
       save_to_day: 'Add to my day',

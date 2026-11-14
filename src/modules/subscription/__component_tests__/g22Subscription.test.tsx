@@ -91,7 +91,7 @@ test('Paywall: Fresh varsayılan — büyük başlık "Fresh", kcalAI küçük e
   const tree = render(<PaywallScreen />);
   expect(tree.getByTestId('sub-title').props.children).toBe('Fresh');
   // G39-S1 md.3: küçük etiket artık kcalculate logosu + "AI"; VoiceOver etiketi "kcalAI".
-  expect(tree.getByTestId('sub-brand').props.accessibilityLabel).toBe('kcalAI');
+  expect(tree.getByTestId('sub-brand').props.accessibilityLabel).toBe('Kcalculate AI');
   expect(tree.getByTestId('sub-brand-ai').props.children).toBe('AI');
   expect(tree.getByTestId('sub-card-fresh_yearly')).toBeTruthy();
   expect(tree.getByTestId('sub-card-fresh_monthly')).toBeTruthy();
@@ -155,8 +155,8 @@ test('G24-S1 Paywall koçlu varyant: Balance Yıllık seçili, şeritte "kcalAI 
   const tree = render(<PaywallScreen />);
   expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
   expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityState).toMatchObject({ checked: true });
-  expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityLabel).toBe('Yıllık, 2999,99 TL/yıl, 7 gün ücretsiz, %50 tasarruf, kcalAI Koç dahil');
-  expect(tree.getByText('kcalAI Koç')).toBeTruthy();
+  expect(tree.getByTestId('sub-card-balance_yearly').props.accessibilityLabel).toBe('Yıllık, 2999,99 TL/yıl, 7 gün ücretsiz, %50 tasarruf, Kcalculate AI Koç dahil');
+  expect(tree.getByText('Kcalculate AI Koç')).toBeTruthy();
   expect(tree.getByText(/günde 30 mesaj\. Tıbbi tavsiye vermez\./)).toBeTruthy();
   expect(tree.getByTestId('sub-card-coach-balance_yearly')).toBeTruthy();
   expect(tree.getByTestId('sub-card-coach-balance_monthly')).toBeTruthy();
@@ -166,8 +166,8 @@ test('G24-S1 Paywall koçsuz (koc kapalı, diğer girişler): Balance’ta bile 
   mockParams = { plan: 'balance' };
   const tree = render(<PaywallScreen />);
   expect(tree.getByTestId('sub-title').props.children).toBe('Balance');
-  expect(tree.queryByText('kcalAI Koç')).toBeNull();
-  expect(tree.queryByText(/kcalAI Koç dahil/, H)).toBeNull();
+  expect(tree.queryByText('Kcalculate AI Koç')).toBeNull();
+  expect(tree.queryByText(/Kcalculate AI Koç dahil/, H)).toBeNull();
 });
 
 test('G25 md.5: fiyat gelmezse aynı ekranda hata kartı + Tekrar dene (yedek fiyat YOK, geri yükle ve bağlantılar yerinde)', () => {
@@ -315,7 +315,7 @@ test('Paywall: satın alma sonuçları — iptal / bekliyor / başarı', async (
   const flat = (n: unknown): string =>
     typeof n === 'string' ? n : Array.isArray(n) ? n.map(flat).join('') : n && typeof n === 'object' && 'props' in (n as object) ? flat((n as { props: { children: unknown } }).props.children) : '';
   expect(flat(title.props.children)).toBe('Balance etkin');
-  expect(tree.getByTestId('sub-result-brand-mark').props.accessibilityLabel).toBe('kcalAI');
+  expect(tree.getByTestId('sub-result-brand-mark').props.accessibilityLabel).toBe('Kcalculate AI');
   expect(tree.getByText('Günde 50')).toBeTruthy();
   expect(tree.queryByText(/adil kullanım/)).toBeNull();
   expect(tree.getByText(/7 günlük ücretsiz denemen başladı/)).toBeTruthy();
@@ -389,7 +389,7 @@ test('Profil › Abonelik: Ücretsiz (2 · 5 · Sınırsız, Planları gör) ve 
   tree = render(<SubProfileScreen />);
   // G26-S1: büyük ad yalnız plan adı; "kcalAI" üst satırda küçük etiket.
   expect(tree.getByTestId('sub-profile-name').props.children).toBe('Fresh');
-  expect(tree.getByTestId('sub-profile-cap').props.children).toBe('Mevcut kcalAI planın');
+  expect(tree.getByTestId('sub-profile-cap').props.children).toBe('Mevcut Kcalculate AI planın');
   expect(tree.getByText('Deneme sonrası 999,99 TL/yıl')).toBeTruthy();
   expect(tree.getByText('3 gün deneme kaldı')).toBeTruthy();
   expect(tree.getByText('Bugün 9/10')).toBeTruthy();
@@ -419,11 +419,11 @@ test('G26-S1: plan adı büyük başlıklarda yalnız Fresh / Balance (TR + EN);
   const { tr: subTr, en: subEn } = require('../../../lib/subscription/i18n');
   for (const d of [subTr, subEn]) {
     const sub = d as unknown as Record<string, Record<string, string>> & { brand: string };
-    expect(sub.result.ok_title).not.toMatch(/kcalAI/);
+    expect(sub.result.ok_title).not.toMatch(/Kcalculate AI|kcalAI/);
     expect(sub.profile.paid_name).toBe('%{plan}');
     expect(sub.paywall.fresh).toBe('Fresh');
     expect(sub.paywall.balance).toBe('Balance');
-    expect(sub.brand).toBe('kcalAI');
-    expect(sub.profile.current_paid).toMatch(/kcalAI/);
+    expect(sub.brand).toBe('Kcalculate AI');
+    expect(sub.profile.current_paid).toMatch(/Kcalculate AI/);
   }
 });

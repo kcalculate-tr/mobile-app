@@ -126,6 +126,10 @@ test('G33 md.1: Profil — Hedefim kartı grupta, ayrı kcalAI/Yakında bölüm�
   let r = render(<FinPrProfileScreen />);
   expect(r.getByTestId('profile-goal-card')).toBeTruthy();
   expect(r.getByText('Hedefi düzenle')).toBeTruthy();
+  // G52-S1 md.1: grup başlığı "Kcalculate AI" yazısı değil işaret (logo + "AI").
+  expect(r.getByTestId('profile-ai-section').props.accessibilityLabel).toBe('Kcalculate AI');
+  expect(r.getByTestId('profile-ai-section-ai', { includeHiddenElements: true }).props.children).toBe('AI');
+  expect(r.queryByText('Kcalculate AI')).toBeNull();
   expect(r.queryByTestId('profile-sub-section')).toBeNull();
   expect(r.queryByText('Egzersiz ve fitness rehberi')).toBeNull();
   expect(r.queryByText('Yakında')).toBeNull();

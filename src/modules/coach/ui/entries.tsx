@@ -19,6 +19,7 @@ import type { CoachRef } from '../types';
 import { LIME, LIME_INK, useCoachTones } from './parts';
 import { KOC_ACIK } from './mascot';
 import { CoachHomeMascot } from './CoachHomeMascot';
+import { KcalAiMark, kcalAiHeightFor } from '../../subscription/ui/KcalAiMark';
 
 /** Lime üstünde metin: her temada siyah (ikincil = siyah %72, lime üstünde ≥ 7:1). */
 const HOME_INK = '#0A0A0A';
@@ -69,7 +70,10 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft, gate }: { c
     >
       <CoachHomeMascot cardHeight={h} />
       <View style={[styles.homeText, { paddingRight: textRight }]}>
-        <AppText style={[styles.homeName, { color: HOME_INK_SEC }]}>{tr('coach.name')}</AppText>
+        {/* G52-S1: "Kcalculate AI Koç" başlığı = Kcalculate logosu + "AI Koç" (KcalAiMark; 13 pt yazının cap-height'ı). */}
+        <View style={styles.homeName}>
+          <KcalAiMark height={kcalAiHeightFor(13, 'body')} color={HOME_INK_SEC} suffix={tr('coach.mark_suffix')} label={tr('coach.name')} testID="coach-home-mark" />
+        </View>
         <AppText style={[styles.homeLine, { color: HOME_INK }]}>{line}</AppText>
         {tier !== 'balance' ? <AppText style={[styles.homeTrial, { color: HOME_INK_SEC }]}>{tr('coach.home_trial', { n: trial })}</AppText> : null}
       </View>
@@ -184,7 +188,8 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   home: { marginTop: 24, marginHorizontal: 16, padding: 16, borderRadius: 20, gap: 12, overflow: 'hidden', minHeight: HOME_CARD_MIN_H },
   homeText: { gap: 2 },
-  homeName: { fontSize: 13, fontWeight: '600' },
+  // Eski yazı satırıyla aynı satır yüksekliği (24) → kart düzeni kaymaz; işaret dikeyde ortada.
+  homeName: { minHeight: 24, justifyContent: 'center', alignItems: 'flex-start' },
   homeLine: { fontSize: 15, fontWeight: '600', lineHeight: 20 },
   homeBottom: { flexDirection: 'row', alignItems: 'center' },
   homeTrial: { fontSize: 13, marginTop: 4 },

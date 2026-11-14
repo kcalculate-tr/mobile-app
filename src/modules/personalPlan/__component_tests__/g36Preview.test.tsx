@@ -69,7 +69,7 @@ test('Balance: önizleme şablonla gelir, koç ÇAĞRILMAZ; "Koç’la kişisell
   });
   await flush();
   expect(mockAsk).toHaveBeenCalledTimes(1);
-  expect(r.getByTestId('pp-preview-tag').props.children).toBe('kcalAI Koç hazırladı');
+  expect(r.getByTestId('pp-preview-tag').props.children).toBe('Kcalculate AI Koç hazırladı');
   expect(r.queryByTestId('pp-preview-coach')).toBeNull();
 });
 

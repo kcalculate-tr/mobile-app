@@ -50,6 +50,7 @@ import { DeleteConfirm, MenuSheet, UpsellSheet } from '../ui/sheets';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { CoachPlanChip } from '../../personalPlan/ui/entries';
 import { palette } from '../../../core/design/tokens';
+import { KcalAiMark, kcalAiHeightFor } from '../../subscription/ui/KcalAiMark';
 
 type Nav = { navigate: (n: string, p?: object) => void; goBack: () => void; canGoBack?: () => boolean };
 
@@ -364,7 +365,10 @@ export default function CoachChatScreen() {
             <CoachAvatar size={36} />
           </ProgressRing>
           <View style={styles.flex1}>
-            <AppText style={[styles.headTitle, { color: c.text }]}>{tr('coach.name')}</AppText>
+            {/* G52-S1: başlık işareti — Kcalculate logosu + "AI Koç" (19 pt Bricolage cap-height'ı). */}
+            <View style={styles.headTitle}>
+              <KcalAiMark height={kcalAiHeightFor(HEAD_TITLE_SIZE)} color={c.text} suffix={tr('coach.mark_suffix')} label={tr('coach.name')} testID="coach-head-mark" />
+            </View>
             <AppText style={[styles.headSub, { color: c.sec }]}>{head.text}</AppText>
           </View>
         </View>
@@ -526,6 +530,7 @@ function CoachTurn({
   );
 }
 
+const HEAD_TITLE_SIZE = 19;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   flex1: { flex: 1 },
@@ -533,7 +538,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingBottom: 8, borderBottomWidth: 1, gap: 4 },
   icon44: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headMid: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headTitle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 19, lineHeight: 24 },
+  // Eski başlık satırı yüksekliği (24) korunur; işaret dikeyde ortada.
+  headTitle: { minHeight: 24, justifyContent: 'center', alignItems: 'flex-start' },
   headSub: { fontSize: 14 },
   pillWrap: { paddingTop: 10, paddingBottom: 4 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 10 },

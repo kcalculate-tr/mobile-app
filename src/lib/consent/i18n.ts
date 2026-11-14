@@ -49,7 +49,7 @@ export const tr = {
     ai_photo_ok: 'Kabul et',
     ai_photo_cancel: 'Vazgeç',
     // G24-S1 — kcalAI Koç ayrı AI izni. Metin İlter onaylı (11 Kas, G31-S1) — tek kaynak burası.
-    ai_coach_title: 'kcalAI Koç ve yapay zekâ',
+    ai_coach_title: 'Kcalculate AI Koç ve yapay zekâ',
     ai_coach_lead:
       'Koça yazdıkların ve günlük takip özetin, yanıt üretmek için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir.',
     ai_coach_hint: 'Vazgeçersen koça mesaj gönderilmez. İzni Profil › Gizlilik › Veri ve reklam izinleri’nden geri alabilirsin.',
@@ -70,7 +70,7 @@ export const tr = {
     measure_section: 'Ölçüm',
     ai_section: 'Yapay zekâ',
     ai_photo_label: 'Fotoğraf ve ses analizi',
-    ai_coach_label: 'kcalAI Koç',
+    ai_coach_label: 'Kcalculate AI Koç',
     ai_photo_desc: 'Tabak fotoğrafın (ve eklediğin not) ya da sesli girişinin metni, kalori tahmini için yapay zekâ hizmet sağlayıcımıza (ABD) gönderilir. Sesli giriş telefonun konuşma tanımasıyla yazıya çevrilir; ses kaydedilmez.',
     docs_section: 'Metinler',
     footer: 'Tercihlerin hesabına kaydedilir; istediğin zaman değiştirebilirsin.',
@@ -132,7 +132,7 @@ export const en: typeof tr = {
     ai_photo_hint: 'If you cancel, you can enter your meal manually. You can withdraw this in Profile › Privacy › Data and ad permissions.',
     ai_photo_ok: 'Accept',
     ai_photo_cancel: 'Cancel',
-    ai_coach_title: 'kcalAI Coach and AI',
+    ai_coach_title: 'Kcalculate AI Coach and AI',
     ai_coach_lead:
       'What you write to the coach and a summary of your daily tracking are sent to our AI service provider (USA) to generate replies.',
     ai_coach_hint: 'If you cancel, nothing is sent to the coach. You can withdraw this in Profile › Privacy › Data and ad permissions.',
@@ -152,7 +152,7 @@ export const en: typeof tr = {
     measure_section: 'Measurement',
     ai_section: 'AI',
     ai_photo_label: 'Photo and voice analysis',
-    ai_coach_label: 'kcalAI Coach',
+    ai_coach_label: 'Kcalculate AI Coach',
     ai_photo_desc: 'Your plate photo (and any note you add), or the text of your voice entry, is sent to our AI service provider (USA) to estimate calories. Voice entry is converted to text by your phone’s speech recognition; audio is not recorded.',
     docs_section: 'Documents',
     footer: 'Your choices are saved to your account; you can change them any time.',

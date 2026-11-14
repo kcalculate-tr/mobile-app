@@ -91,7 +91,10 @@ const styles = StyleSheet.create({
   },
   proBtn: {
     marginTop: 10,
-    height: 52,
+    // G52-S1: "Kcalculate AI planları (çok yakında)" daha uzun → 320 pt / 1,3× yazıda satır kırılır (kırpılma yok).
+    minHeight: 52,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 26,
     borderWidth: 1,
     borderColor: '#C3C7CC',
@@ -105,5 +108,7 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 15,
     color: '#0A0A0A',
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });

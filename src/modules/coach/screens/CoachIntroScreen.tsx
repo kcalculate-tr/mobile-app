@@ -19,6 +19,7 @@ import { COACH_DAILY_FALLBACK, COACH_TRIAL_FALLBACK } from '../model';
 import type { CoachChatParams } from '../types';
 import { CoachGlass, Disclaimer, LIME, LIME_INK, useCoachTones } from '../ui/parts';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { KcalAiMark, kcalAiHeightFor } from '../../subscription/ui/KcalAiMark';
 
 type Nav = { goBack: () => void; replace?: (n: string, p?: object) => void; navigate: (n: string, p?: object) => void };
 
@@ -54,9 +55,10 @@ export default function CoachIntroScreen() {
         <Animated.View entering={reduced ? FadeIn.duration(REDUCED.duration) : ZoomIn.delay(DURATION.instant).duration(DURATION.slow).springify().stiffness(260).damping(24)} style={styles.center}>
           <CoachGlass size={104} />
         </Animated.View>
-        <AppText style={[styles.title, { color: c.text }]} accessibilityRole="header">
-          {tr('coach.name')}
-        </AppText>
+        {/* G52-S1: başlık işareti — Kcalculate logosu + "AI Koç" (26 pt Bricolage cap-height'ı). */}
+        <View style={styles.titleWrap}>
+          <KcalAiMark height={kcalAiHeightFor(26)} color={c.text} suffix={tr('coach.mark_suffix')} label={tr('coach.name')} role="header" style={styles.title} testID="coach-intro-mark" />
+        </View>
         <AppText style={[styles.line, { color: c.sec }]}>{tr('coach.intro_line')}</AppText>
 
         <View style={[styles.group, { backgroundColor: c.nested }]}>
@@ -108,7 +110,9 @@ const styles = StyleSheet.create({
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   closeDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center' },
-  title: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 26, lineHeight: 32, textAlign: 'center', marginTop: -4 },
+  // Eski başlık satırı yüksekliği (32) korunur; işaret ortada.
+  titleWrap: { alignItems: 'center', justifyContent: 'center', minHeight: 32, marginTop: -4 },
+  title: { justifyContent: 'center' },
   line: { fontSize: 15, lineHeight: 21, textAlign: 'center', marginTop: -6, paddingHorizontal: 12 },
   group: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
   groupH: { fontSize: 13, lineHeight: 17, fontWeight: '500' },

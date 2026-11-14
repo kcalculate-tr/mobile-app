@@ -78,7 +78,7 @@ import { HomeInkToast } from '../../../../screens/tracker/HomeInkToast';
 import { tabBarContentInset } from '../../../shell';
 import { useFeature } from '../../../../core/flags';
 import { resetToSignedOut } from '../../../../navigation/signOutReset';
-import { ProfileSubRow } from '../../../subscription/ui/ProfileSubSection';
+import { ProfileAiSectionLabel, ProfileSubRow } from '../../../subscription/ui/ProfileSubSection';
 import { CoachProfileRow } from '../../../coach/ui/entries';
 import { ProfilePlanRows } from '../../../plan/ui/ProfilePlanRows';
 import { ProfilePlanRow, usePersonalPlanEntry } from '../../../personalPlan/ui/entries';
@@ -241,7 +241,8 @@ export default function FinPrProfileScreen() {
         />
 
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
-          <FinSectionLabel>{tr('profil.section_ai')}</FinSectionLabel>
+          {/* G52-S1: grup başlığı Kcalculate AI işareti (logo + "AI"). */}
+          <ProfileAiSectionLabel />
           <FinRowGroup>
             {/* G33-S1 md.1 (Tur 26n FinPrProfile) — TEK kart: halka + "Hedefim" + hedef özeti + "Hedefi düzenle".
                 Kişisel plan (26o) gelince aynı karta bağlanır. */}

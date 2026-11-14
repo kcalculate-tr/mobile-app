@@ -2,7 +2,7 @@
 // koç öğelerinde kase yerine maskot.
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
 import { buildPlanCards, type StoreProductLike } from '../../../lib/subscription/plans';
 import { DEMO_PRICES_TRY as D } from '../../../lib/subscription/demoPrices';
@@ -121,18 +121,43 @@ describe('BrandLogo — üç ad × iki tema', () => {
   });
 });
 
-describe('kcalAI işareti', () => {
-  test('"AI" büyük harf yüksekliği = logo yüksekliği (Bricolage cap 0,66), küçük boşluk, Bricolage Bold', () => {
+describe('Kcalculate AI işareti (G52: logo + bir boşluk + "AI")', () => {
+  test('"AI" büyük harf yüksekliği = logo yüksekliği (Bricolage cap 0,66), arada bir boşluk (0,23 em), Bricolage Bold', () => {
     const m = kcalAiMetrics(16);
     expect(m.fontSize * 0.66).toBeCloseTo(16, 0);
-    expect(m.gap).toBe(4);
+    expect(m.gap).toBeCloseTo(m.fontSize * 0.23, 1);
+    // Dynamic Type: logo + "AI" birlikte büyür, en çok 1,3× (jest RN ortamında fontScale 2 → tavan 1,3).
+    const scale = Math.min(Dimensions.get('window').fontScale || 1, 1.3);
+    expect(scale).toBe(1.3);
+    const ms = kcalAiMetrics(Math.round(16 * scale * 10) / 10);
     const r = render(<KcalAiMark height={16} />);
     const ai = r.getByTestId('kcalai-mark-ai', { includeHiddenElements: true });
     const st = StyleSheet.flatten(ai.props.style);
     expect(st.fontFamily).toBe('BricolageGrotesque_700Bold');
-    expect(st.fontSize).toBe(m.fontSize);
+    expect(st.fontSize).toBe(ms.fontSize);
+    expect(StyleSheet.flatten(r.getByTestId('kcalai-mark').props.style).columnGap).toBe(ms.gap);
+    expect(r.getByTestId('kcalai-mark-logo', { includeHiddenElements: true }).props.style).toEqual(expect.arrayContaining([expect.objectContaining({ height: 20.8 })]));
     expect(ai.props.allowFontScaling).toBe(false);
-    expect(r.getByTestId('kcalai-mark').props.accessibilityLabel).toBe('kcalAI');
+    expect(r.getByTestId('kcalai-mark').props.accessibilityLabel).toBe('Kcalculate AI');
+  });
+});
+
+describe('G52-S1 md.2: görünen metinlerde "kcalAI" yok → "Kcalculate AI"', () => {
+  test('TR + EN sözlükte hiçbir değer "kcalAI" içermez; marka adı "Kcalculate AI"', () => {
+    const { translations } = require('../../../core/i18n/dictionaries') as { translations: Record<string, Record<string, unknown>> };
+    const walk = (o: unknown, path: string, out: string[]) => {
+      if (typeof o === 'string') {
+        if (/kcalAI/.test(o)) out.push(path);
+      } else if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`, out);
+    };
+    for (const lang of ['tr', 'en']) {
+      const bad: string[] = [];
+      walk(translations[lang], lang, bad);
+      expect(bad).toEqual([]);
+      const d = translations[lang] as { sub: { brand: string }; coach: { name: string; mark_suffix: string } };
+      expect(d.sub.brand).toBe('Kcalculate AI');
+      expect(d.coach.name).toBe(`Kcalculate AI ${d.coach.mark_suffix}`);
+    }
   });
 });
 
@@ -145,8 +170,9 @@ describe('Paywall üst başlık (Light/Dark) + maskot', () => {
         </ThemeProvider>,
       );
       expect(r.queryByText('kcalAI')).toBeNull();
+      expect(r.queryByText('Kcalculate AI')).toBeNull();
       const brand = r.getByTestId('sub-brand');
-      expect(brand.props.accessibilityLabel).toBe('kcalAI');
+      expect(brand.props.accessibilityLabel).toBe('Kcalculate AI');
       const ai = r.getByTestId('sub-brand-ai', { includeHiddenElements: true });
       expect(StyleSheet.flatten(ai.props.style).color).toBe(INK[scheme]);
       const logoPaths = r.getByTestId('sub-brand-logo', { includeHiddenElements: true }).findAll((n: TNode) => typeof n.props?.d === 'string' && typeof n.props?.fill === 'string');

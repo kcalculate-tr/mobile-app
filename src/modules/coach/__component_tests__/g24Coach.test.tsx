@@ -174,7 +174,11 @@ test('bayrak açık + fonksiyon var → girişler görünür; Ana sayfa soru ön
 test('sohbet boş hâli: selam + 4 hazır soru + hap "Bugün 30/30" Balance + sabit satır; modül yoksa mikrofon gizli', async () => {
   const r = render(<CoachChatScreen />);
   await waitFor(() => expect(r.getByTestId('coach-empty')).toBeTruthy());
-  expect(r.getByText('Merhaba, ben kcalAI Koç')).toBeTruthy();
+  expect(r.getByText('Merhaba, ben Kcalculate AI Koç')).toBeTruthy();
+  // G52-S1 md.1: başlıkta "Kcalculate AI Koç" yazısı değil işaret (logo + "AI Koç").
+  expect(r.getByTestId('coach-head-mark').props.accessibilityLabel).toBe('Kcalculate AI Koç');
+  expect(r.getByTestId('coach-head-mark-ai', { includeHiddenElements: true }).props.children).toBe('AI Koç');
+  expect(r.queryByText('Kcalculate AI Koç')).toBeNull();
   for (const q of ['Bugün nasıl gidiyorum?', 'Akşam ne yesem?', 'Proteinimi nasıl tamamlarım?', 'Haftamı özetle']) expect(r.getByTestId(`coach-chip-${q}`)).toBeTruthy();
   expect(r.getByTestId('coach-pill').props.accessibilityLabel).toBe('Bugünkü Koç mesaj hakkın: 30 mesajdan 30 kaldı');
   expect(r.getByText('Bugün 30/30')).toBeTruthy();
@@ -264,7 +268,7 @@ test('Deneme: hap "Deneme N/3" + tanıtım satırı; deneme bitince "Koç Balanc
     fireEvent.press(r2.getByTestId('coach-send'));
   });
   expect(r2.getByTestId('coach-upsell')).toBeTruthy();
-  expect(r2.getByText('3 deneme mesajını kullandın. Koç ile devam etmek için kcalAI Balance’a geç.')).toBeTruthy();
+  expect(r2.getByText('3 deneme mesajını kullandın. Koç ile devam etmek için Kcalculate AI Balance’a geç.')).toBeTruthy();
   await act(async () => {
     fireEvent.press(r2.getByTestId('coach-upsell-plans'));
   });
@@ -341,6 +345,11 @@ test('Tanıtım: ne yapar / ne yapmaz (egzersiz "Yakında" satırı YOK — G31)
   mockParams = { from: 'profile', prefill: 'x' };
   const r = render(<CoachIntroScreen />);
   expect(r.getByText('Günün durumunu yorumlar')).toBeTruthy();
+  // G52-S1 md.1: tanıtım başlığı işaret (VoiceOver başlığı "Kcalculate AI Koç").
+  const mark = r.getByTestId('coach-intro-mark');
+  expect(mark.props.accessibilityRole).toBe('header');
+  expect(mark.props.accessibilityLabel).toBe('Kcalculate AI Koç');
+  expect(r.queryByText('Kcalculate AI Koç')).toBeNull();
   expect(r.getByText('Tıbbi tavsiye ya da teşhis vermez')).toBeTruthy();
   expect(r.queryByText('Yakında')).toBeNull();
   expect(r.queryByText('Egzersiz programı yazmaz')).toBeNull();

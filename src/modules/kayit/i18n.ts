@@ -6,7 +6,7 @@ export const tr = {
   onb: {
     // [a, em, b, sub] — em vurgulu kısım (koyu zeminde lime yazı, açık zeminde lime hap).
     s1: { a: 'Hayatına yön vermeye ', em: 'hazır mısın?', b: '', sub: 'kcalculate AI ile öğünlerin, tariflerin ve sosyal hayatın tek yerde.' },
-    s2: { a: 'Öğünlerini ', em: 'istediğin gibi', b: ' takip et.', sub: 'Çek, anlat ya da sor; hesabı kcalAI Koç yapsın.' },
+    s2: { a: 'Öğünlerini ', em: 'istediğin gibi', b: ' takip et.', sub: 'Çek, anlat ya da sor; hesabı Kcalculate AI Koç yapsın.' },
     s3: { a: 'Tarifi gör, ', em: 'sipariş ver.', b: '', sub: 'Beğen, kaydet, listene ekle ya da hazır öğünü kapına getir.' },
     s4: { a: 'Etkinliklere katıl, ', em: 'sosyalleş.', b: '', sub: "Keşfet'te paylaş, takip et, ilham al." },
     s5: { a: 'Başlamaya ', em: 'hazırsın.', b: '', sub: '' },
@@ -26,7 +26,7 @@ export const tr = {
     login_q: 'Zaten hesabın var mı? ',
     login_a: 'Giriş yap',
     dots: 'Adım {{step}} / 4',
-    mascot: 'kcalAI Koç maskotu',
+    mascot: 'Kcalculate AI Koç maskotu',
     start_group: 'Nereden başlamak istersin?',
   },
   q: {
@@ -259,14 +259,14 @@ export const tr = {
   },
   offer: {
     banner: 'Planın e-posta adresine gönderildi.',
-    title: 'Planını kcalAI ile hayata geçir',
+    title: 'Planını Kcalculate AI ile hayata geçir',
     yearly: 'Yıllık',
     monthly: 'Aylık',
     period_group: 'Ödeme dönemi',
     recommended: 'Önerilen',
     trial: '{{n}} gün ücretsiz',
     save_pct: '{{pct}} tasarruf',
-    balance_sub: 'Günde 50 AI tarama ve kcalAI Koç',
+    balance_sub: 'Günde 50 AI tarama ve Kcalculate AI Koç',
     balance_sub_nocoach: 'Günde 50 AI tarama',
     fresh_sub: 'Günde 10 AI tarama',
     per_year: '{{price}}/yıl',
@@ -337,7 +337,7 @@ export const tr = {
 export const en: typeof tr = {
   onb: {
     s1: { a: 'Ready to take charge of ', em: 'your life?', b: '', sub: 'With kcalculate AI, your meals, recipes and social life live in one place.' },
-    s2: { a: 'Track your meals ', em: 'your way.', b: '', sub: 'Snap, describe or ask; kcalAI Coach does the math.' },
+    s2: { a: 'Track your meals ', em: 'your way.', b: '', sub: 'Snap, describe or ask; Kcalculate AI Coach does the math.' },
     s3: { a: 'See a recipe, ', em: 'order it.', b: '', sub: 'Like it, save it, add it to your list or get a ready meal delivered.' },
     s4: { a: 'Join events, ', em: 'meet people.', b: '', sub: 'Share, follow and get inspired on Explore.' },
     s5: { a: "You're ", em: 'all set.', b: '', sub: '' },
@@ -357,7 +357,7 @@ export const en: typeof tr = {
     login_q: 'Already have an account? ',
     login_a: 'Log in',
     dots: 'Step {{step}} / 4',
-    mascot: 'kcalAI Coach mascot',
+    mascot: 'Kcalculate AI Coach mascot',
     start_group: 'Where would you like to start?',
   },
   q: {
@@ -590,14 +590,14 @@ export const en: typeof tr = {
   },
   offer: {
     banner: 'Your plan was sent to your email.',
-    title: 'Bring your plan to life with kcalAI',
+    title: 'Bring your plan to life with Kcalculate AI',
     yearly: 'Yearly',
     monthly: 'Monthly',
     period_group: 'Billing period',
     recommended: 'Recommended',
     trial: '{{n}}-day free trial',
     save_pct: 'Save {{pct}}',
-    balance_sub: '50 AI scans a day and kcalAI Coach',
+    balance_sub: '50 AI scans a day and Kcalculate AI Coach',
     balance_sub_nocoach: '50 AI scans a day',
     fresh_sub: '10 AI scans a day',
     per_year: '{{price}}/year',

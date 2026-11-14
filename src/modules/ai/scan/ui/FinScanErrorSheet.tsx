@@ -73,7 +73,8 @@ function Btn({
         style,
       ]}
     >
-      <AppText style={[styles.btnText, { color: primary ? t.color.bg : t.color.ink }]} numberOfLines={1}>
+      {/* G52-S1: uzun etiket ("Kcalculate AI planları (çok yakında)") 320 pt / 1,3× yazıda 2 satıra kırılır, küçülmez. */}
+      <AppText style={[styles.btnText, { color: primary ? t.color.bg : t.color.ink }]} numberOfLines={2}>
         {label}
       </AppText>
     </Pressable>
@@ -319,6 +320,6 @@ const styles = StyleSheet.create({
   next: { marginTop: 10 },
   pair: { flexDirection: 'row', gap: 8 },
   half: { flex: 1 },
-  btn: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  btnText: { fontSize: 15, fontWeight: '600' },
+  btn: { minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 6 },
+  btnText: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
 });

@@ -112,8 +112,12 @@ describe('onboarding 1–5 G42 ile bayt bayt aynı (069e521)', () => {
   });
 
   test('onboarding metinleri (TR + EN) değişmedi', () => {
-    expect(sha(tr.onb)).toBe('341720f851462055a3be3fc900d8c1f388658677');
-    expect(sha(en.onb)).toBe('38fd153660a22c47601bf00e6536816426b8a753');
+    // G52-S1: tek bilinçli fark "kcalAI" → "Kcalculate AI" (s2.sub + mascot); geri kalan G42 metni aynı.
+    const back = (o: unknown) => JSON.parse(JSON.stringify(o).replace(/Kcalculate AI/g, 'kcalAI'));
+    expect(sha(back(tr.onb))).toBe('341720f851462055a3be3fc900d8c1f388658677');
+    expect(sha(back(en.onb))).toBe('38fd153660a22c47601bf00e6536816426b8a753');
+    expect(sha(tr.onb)).toBe('38c12f9fa5801e778e960630db48fa18c545f434');
+    expect(sha(en.onb)).toBe('1bdcbf07132b9bdf6d28be6bbd576173415bcd30');
   });
 
   test('onboarding ile ortak hareket değerleri G42 ile aynı (panorama 450 ms, maskot ±7 pt / 3,2 sn, göz kırpma 4–6 sn)', () => {

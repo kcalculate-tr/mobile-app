@@ -191,7 +191,7 @@ export const EVENTS = {
   },
   // G24-S1 — kcalAI Koç (sunucu satırları 20261111100100_g24_coach.sql).
   coach_open: {
-    category: 'tracking', tr: 'kcalAI Koç açıldı', en: 'kcalAI Coach opened', props: { from: ['home', 'scan', 'profile', 'recipe', 'other'] },
+    category: 'tracking', tr: 'Kcalculate AI Koç açıldı', en: 'Kcalculate AI Coach opened', props: { from: ['home', 'scan', 'profile', 'recipe', 'other'] },
   },
   coach_send: {
     category: 'tracking', tr: 'Koç’a mesaj gönderildi', en: 'Message sent to the Coach', props: { via: ['text', 'chip', 'voice'], kind: ['daily', 'trial'] },

@@ -98,6 +98,24 @@ for (const scheme of ['light', 'dark'] as const) {
   });
 }
 
+// G52-S1 md.1: kart başlığı "Kcalculate AI Koç" yazısı değil, KcalAiMark (logo + "AI Koç"), her temada lime üstünde siyah.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`G52 ${scheme}: başlık işareti = Kcalculate logosu + "AI Koç", 13 pt yazının cap-height'ı, siyah (0,72)`, () => {
+    const r = card(false, scheme);
+    expect(r.queryByText(/kcalAI/)).toBeNull();
+    expect(r.queryByText('Kcalculate AI Koç')).toBeNull();
+    const mark = r.getByTestId('coach-home-mark');
+    expect(mark.props.accessibilityLabel).toBe('Kcalculate AI Koç');
+    const ai = r.getByTestId('coach-home-mark-ai', H);
+    expect(ai.props.children).toBe('AI Koç');
+    expect(StyleSheet.flatten(ai.props.style).color).toBe('rgba(10,10,10,0.72)');
+    const logo = r.getByTestId('coach-home-mark-logo', H);
+    const paths = logo.findAll((n: TNode) => typeof n.props?.d === 'string' && typeof n.props?.fill === 'string');
+    expect(paths.length).toBeGreaterThan(3);
+    for (const p of paths) expect(p.props.fill).toBe('rgba(10,10,10,0.72)');
+  });
+}
+
 test('azaltılmış hareket: süzülme yok (statik -15° poz), göz kırpma zamanlayıcısı kurulmaz', () => {
   const r = card(true);
   expect(r.getByTestId('coach-home-mascot-static', H)).toBeTruthy();
