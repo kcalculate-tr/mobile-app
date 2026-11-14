@@ -477,11 +477,7 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
     >
       {/* G53-S1 md.4: sabit lime kenar yerine NeonBorder (kart kenarı yerleşim için 2 pt saydam kalır). */}
       <NeonBorder selected={selected} radius={20} borderWidth={2} colors={neonPaywallPalette(t.isDark)} clock={neon.clock} reduced={neon.reduced} visible={neon.visible} testID={`sub-card-${c.key}`} />
-      {c.yearly && c.discountPct ? (
-        <View style={[styles.save, { backgroundColor: ink }]} testID={`sub-save-${c.key}`}>
-          <AppText style={[styles.saveText, { color: t.color.bg }]}>{tr('sub.paywall.save', { pct: c.discountPct })}</AppText>
-        </View>
-      ) : null}
+      {/* 14 Kas (İlter): tasarruf ve deneme rozetleri kaldırıldı — sade kart; tasarruf aylık satırında, deneme CTA + özet satırında. */}
       <View style={styles.cardRow}>
         <View style={[styles.radio, selected ? { backgroundColor: palette.lime, borderColor: palette.lime } : { borderColor: t.isDark ? '#48484A' : '#C3C7CC' }]}>
           {selected ? <Check size={14} color="#0A0A0A" weight="bold" /> : null}
@@ -489,18 +485,20 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
         <AppText style={[styles.period, { color: ink }]}>{period}</AppText>
         <View style={styles.flex1} />
         <View style={styles.priceCol}>
-          {c.trialDays ? (
-            <View style={styles.trialChip}>
-              <AppText style={styles.trialText}>{tr('sub.paywall.trial', { days: c.trialDays })}</AppText>
-            </View>
-          ) : null}
           <AppText style={[styles.price, { color: ink }]} numberOfLines={1} adjustsFontSizeToFit>
             {priceLine}
           </AppText>
           {c.monthlyText ? (
-            <AppText tone="secondary" style={styles.monthly}>
-              {tr('sub.paywall.per_month_equiv', { price: c.monthlyText })}
-            </AppText>
+            <View style={styles.monthRow}>
+              <AppText tone="secondary" style={styles.monthly}>
+                {tr('sub.paywall.per_month_equiv', { price: c.monthlyText })}
+              </AppText>
+              {c.yearly && c.discountPct ? (
+                <AppText style={[styles.monthly, styles.saveInline, { color: t.isDark ? palette.lime : '#4A7A0C' }]} testID={`sub-save-${c.key}`}>
+                  {tr('sub.paywall.save', { pct: c.discountPct })}
+                </AppText>
+              ) : null}
+            </View>
           ) : null}
         </View>
       </View>
@@ -594,12 +592,10 @@ const styles = StyleSheet.create({
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   period: { fontSize: 16, fontWeight: '600' },
   priceCol: { alignItems: 'flex-end', flexShrink: 1 },
-  trialChip: { backgroundColor: palette.lime, borderRadius: 8, paddingHorizontal: 8, minHeight: 20, justifyContent: 'center', marginBottom: 4 },
-  trialText: { fontSize: 12, fontWeight: '700', color: '#0A0A0A' },
   price: { fontSize: 18, fontWeight: '800' },
   monthly: { fontSize: 12, marginTop: 2 },
-  save: { position: 'absolute', top: -12, right: 14, borderRadius: 10, paddingHorizontal: 10, minHeight: 22, justifyContent: 'center', zIndex: 2 },
-  saveText: { fontSize: 12, fontWeight: '700' },
+  saveInline: { fontWeight: '700' },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' },
   coachRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   coachImg: { width: 24, height: 24 },
   coachText: { flexShrink: 1, fontSize: 13, fontWeight: '600', lineHeight: 17 },

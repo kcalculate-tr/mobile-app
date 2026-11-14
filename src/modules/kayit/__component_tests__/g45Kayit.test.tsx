@@ -390,15 +390,12 @@ test('md.8 balon ölçüsü: 22 pt (önce 24); dar ekranda (< 360 pt) maskot 64 
 });
 
 // ─── md.9 ────────────────────────────────────────────────────────────────────
-test('md.9 T1 rozetleri: kenar çizgisi ve eğiklik yok; "%… tasarruf" kartın içinde (mutlak değil); radyo ana paywall ile aynı kalır', () => {
+test('md.9 T1 rozetleri (14 Kas): rozet yok; "%… tasarruf" aylık satırında düz metin; radyo ana paywall ile aynı kalır', () => {
   const o = src('src/modules/kayit/screens/OfferScreen.tsx');
-  const tag = /  tag: \{[^}]*\}/.exec(o)?.[0] ?? '';
-  expect(tag).not.toMatch(/borderWidth|rotate|skew/);
-  const inline = /  tagInline: \{[^}]*\}/.exec(o)?.[0] ?? '';
-  expect(inline).not.toMatch(/position|borderWidth|rotate/);
-  expect(o).toMatch(/testID="kayit-offer-save" style=\{\[styles\.tagInline/);
+  expect(o).not.toMatch(/kayit-offer-recommended/);
+  expect(o).not.toMatch(/kayit-offer-trial-badge/);
+  expect(o).toMatch(/testID="kayit-offer-save"/);
   expect(o).not.toMatch(/bottom: -12/);
-  expect(o).toMatch(/const tagBg = mixColor\(P\.accent, '#FFFFFF', k\)/);
   // T1 radyo (md.3 kapsamı dışı) değişmedi.
   expect(o).toMatch(/styles\.radio, \{ borderColor: mixColor\(P\.sec, P\.limeInk, k\), backgroundColor: mixColor\('transparent', P\.limeInk, k\)/);
 });

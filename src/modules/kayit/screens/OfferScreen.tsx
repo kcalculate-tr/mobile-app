@@ -296,8 +296,6 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
   const sec = mixColor(P.sec, P.limeInkSec, k);
   const priceLine = card.yearly ? t('kayit.offer.per_year', { price: card.priceText }) : t('kayit.offer.per_month', { price: card.priceText });
   const trial = card.yearly && card.trialDays ? t('kayit.offer.trial', { n: card.trialDays }) : null;
-  // G45 md.9: rozet zemini lime; kart lime dolguluyken (seçili) aynı saatle beyaza döner → lime üstünde okunur. Yazı siyah.
-  const tagBg = mixColor(P.accent, '#FFFFFF', k);
   return (
     <PressScale
         testID={testID}
@@ -330,37 +328,23 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4, maxWidth: '52%' }}>
           {/* G46 md.2: deneme rozeti yalnız denemeli planda; aylıkta hiçbir şey çizilmez (boşluk kalmaz). */}
-          {trial ? (
-            <View testID="kayit-offer-trial-badge" style={[styles.badgeSoft, { backgroundColor: mixColor(P.infoBg, 'rgba(255,255,255,0.6)', k) }]}>
-              <AppText maxFontSizeMultiplier={1.3} style={[styles.badgeText, { color: ink }]}>
-                {trial}
-              </AppText>
-            </View>
-          ) : null}
           <AppText maxFontSizeMultiplier={1.25} style={[styles.price, { color: ink }]}>
             {priceLine}
           </AppText>
+          {/* 14 Kas (İlter): "Önerilen", deneme ve tasarruf rozetleri kaldırıldı — tasarruf aylık satırında düz metin. */}
           {card.monthlyText ? (
-            <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: sec }]}>
-              {t('sub.paywall.per_month_equiv', { price: card.monthlyText })}
-            </AppText>
-          ) : null}
-          {/* G45 md.9: "%… tasarruf" kartın İÇİNDE, fiyatın altında (alt kenara taşmaz); dolgulu, kenarsız, düz. */}
-          {recommended && card.yearly && card.discountPct ? (
-            <View testID="kayit-offer-save" style={[styles.tagInline, { backgroundColor: tagBg }]}>
-              <AppText maxFontSizeMultiplier={1.2} style={[styles.tagText, { color: P.limeInk }]}>
-                {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+              <AppText maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: sec }]}>
+                {t('sub.paywall.per_month_equiv', { price: card.monthlyText })}
               </AppText>
+              {card.yearly && card.discountPct ? (
+                <AppText testID="kayit-offer-save" maxFontSizeMultiplier={1.3} style={[styles.planSub, { color: ink, fontWeight: '700' }]}>
+                  {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}
+                </AppText>
+              ) : null}
             </View>
           ) : null}
         </View>
-        {recommended ? (
-          <View testID="kayit-offer-recommended" style={[styles.tag, { backgroundColor: tagBg }]}>
-            <AppText maxFontSizeMultiplier={1.2} style={[styles.tagText, { color: P.limeInk }]}>
-              {t('kayit.offer.recommended')}
-            </AppText>
-          </View>
-        ) : null}
     </PressScale>
   );
 }
@@ -407,12 +391,7 @@ const styles = StyleSheet.create({
   planName: { fontFamily: FONT.display, fontSize: 21, lineHeight: 26 },
   planSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19 },
   price: { fontFamily: FONT.bold, fontSize: 19, lineHeight: 24, textAlign: 'right' },
-  badgeSoft: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontFamily: FONT.semi, fontSize: 12, lineHeight: 16 },
   // G45 md.9: kenar çizgisi ve eğiklik yok (düz, dolgulu).
-  tag: { position: 'absolute', right: 22, top: -12, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
-  tagInline: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
-  tagText: { fontFamily: FONT.bold, fontSize: 13, lineHeight: 18 },
   after: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 21, textAlign: 'center' },
   renew: { fontFamily: FONT.body, fontSize: 13, lineHeight: 19, textAlign: 'center' },
   restore: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },

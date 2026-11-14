@@ -101,7 +101,7 @@ test('Paywall: Fresh varsayılan — büyük başlık "Fresh", kcalAI küçük e
   expect(tree.getByText('ayda 83 TL')).toBeTruthy();
   expect(tree.getByText('%58 tasarruf')).toBeTruthy();
   expect(tree.queryByText('%44 tasarruf')).toBeNull();
-  expect(tree.getAllByText('7 gün ücretsiz').length).toBeGreaterThan(0);
+  expect(tree.queryAllByText('7 gün ücretsiz')).toHaveLength(0); // 14 Kas: kart rozeti kaldırıldı
   expect(tree.queryByText(/₺/, H)).toBeNull();
   expect(tree.getByText('7 gün ücretsiz başla')).toBeTruthy();
   expect(tree.getByTestId('sub-summary').props.children).toBe('7 gün ücretsiz, sonra 999,99 TL/yıl. Ücret deneme bitince alınır.');

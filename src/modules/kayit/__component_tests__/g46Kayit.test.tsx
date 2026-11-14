@@ -166,7 +166,7 @@ describe('md.2 T1 aylık sekmesinde deneme rozeti yok', () => {
   it('yıllık: deneme rozeti ve deneme koşulu metni yalnız denemeli planda', async () => {
     const r = render(wrap(<OfferScreen vitrinPeriod="yearly" />));
     await flush();
-    expect(r.getAllByTestId('kayit-offer-trial-badge')).toHaveLength(2);
+    expect(r.queryAllByTestId('kayit-offer-trial-badge')).toHaveLength(0); // 14 Kas: rozet kaldırıldı, deneme CTA + özet satırında
     expect(r.getByText('7 gün ücretsiz, sonra 999 TL/yıl. Ücret deneme bitince alınır.')).toBeTruthy();
   });
   it('EN: "no trial" anahtarı kaldırıldı (TR + EN)', async () => {
