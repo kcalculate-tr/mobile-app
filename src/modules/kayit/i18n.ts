@@ -218,7 +218,7 @@ export const tr = {
   signup: {
     title_a: 'Planını kaydedelim',
     title_b: 'Hemen başlayalım',
-    apple: 'Apple ile Giriş Yap',
+    apple: 'Apple ile giriş yap',
     google: 'Google ile devam et',
     email: 'E-posta ile devam et',
     legal_1: 'Devam ederek ',

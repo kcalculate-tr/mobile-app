@@ -76,7 +76,7 @@ export const GATE = {
   fieldEdge: 'rgba(255,255,255,0.12)',
   locate: 'rgba(255,255,255,0.10)',
   ink: '#FFFFFF',
-  sub: 'rgba(255,255,255,0.80)',
+  sub: 'rgba(255,255,255,0.88)',
   label: 'rgba(255,255,255,0.58)',
   muted: 'rgba(255,255,255,0.55)',
   outline: 'rgba(255,255,255,0.38)',
@@ -93,14 +93,16 @@ export const GATE_SIZE = {
   field: 44,
   fieldRadius: 14,
   colGap: 10,
-  rowGap: 10,
+  rowGap: 9,
   btn: 50,
   btnRadius: 14,
   bigBtn: 51,
   bigBtnRadius: 16,
   bigSide: 16,
-  logo: 12,
-  title: 31,
+  logo: 12.5,
+  /** Bricolage Grotesque 800 · 34 · −1,7 (pano ölçümü: büyük harf 22,7 pt; 3 başlık genişliği ±1 %). */
+  title: 34,
+  titleTrack: -1.7,
   titleLine: 35,
   body: 14,
   bodyLine: 20,
@@ -336,7 +338,7 @@ export function EkLocationGate({
                     testID="gate48-postcode"
                   />
                 </View>
-                <View style={[styles.row, { marginTop: 12 }]}>
+                <View style={[styles.row, { marginTop: 11 }]}>
                   <Pressable
                     onPress={() => void onLocate()}
                     accessibilityRole="button"
@@ -500,7 +502,7 @@ function ExitButton({ onPress }: { onPress: () => void }) {
 
 function TargetIcon() {
   return (
-    <Svg width={18} height={18} viewBox="0 0 18 18" accessibilityElementsHidden importantForAccessibility="no">
+    <Svg width={17} height={17} viewBox="0 0 18 18" accessibilityElementsHidden importantForAccessibility="no">
       <Circle cx={9} cy={9} r={7.9} stroke={GATE.lime} strokeWidth={2.2} fill="none" />
       <Circle cx={9} cy={9} r={3.9} fill={GATE.lime} />
     </Svg>
@@ -744,10 +746,10 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   bg: { position: 'absolute', top: 0, left: 0, overflow: 'hidden' },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  title: { marginTop: 9, color: GATE.ink, fontFamily: fontFamily.bodyExtrabold, fontSize: GATE_SIZE.title, lineHeight: GATE_SIZE.titleLine, letterSpacing: -0.3 },
-  sub: { marginTop: 6, color: GATE.sub, fontFamily: fontFamily.bodyRegular, fontSize: GATE_SIZE.body, lineHeight: GATE_SIZE.bodyLine },
+  title: { marginTop: 8, color: GATE.ink, fontFamily: fontFamily.headingExtrabold, fontSize: GATE_SIZE.title, lineHeight: GATE_SIZE.titleLine, letterSpacing: GATE_SIZE.titleTrack },
+  sub: { marginTop: 4, color: GATE.sub, fontFamily: fontFamily.bodyMedium, fontSize: GATE_SIZE.body, lineHeight: GATE_SIZE.bodyLine },
   card: {
-    marginTop: 21,
+    marginTop: 19,
     marginHorizontal: GATE_SIZE.cardSide,
     padding: GATE_SIZE.cardPad,
     paddingTop: 14,
@@ -758,7 +760,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', gap: GATE_SIZE.colGap },
   col: { flex: 1, minWidth: 0 },
-  label: { color: GATE.label, fontFamily: fontFamily.bodyBold, fontSize: GATE_SIZE.label, lineHeight: 14, letterSpacing: 0.8, marginBottom: 4 },
+  label: { color: GATE.label, fontFamily: fontFamily.bodyBold, fontSize: GATE_SIZE.label, lineHeight: 14, letterSpacing: 0.8, marginBottom: 5.5 },
   field: {
     height: GATE_SIZE.field,
     borderRadius: GATE_SIZE.fieldRadius,
@@ -798,8 +800,8 @@ const styles = StyleSheet.create({
   pillText: { flexShrink: 1, color: GATE.ink, fontFamily: fontFamily.bodySemibold, fontSize: 12, lineHeight: 16 },
   pillChange: { color: GATE.muted, fontFamily: fontFamily.bodyMedium, fontSize: 12, lineHeight: 16 },
   soonLabel: { marginTop: 19, color: GATE.lime, fontFamily: fontFamily.bodyExtrabold, fontSize: 11, lineHeight: 14, letterSpacing: 1 },
-  soonTitle: { marginTop: 6, color: GATE.ink, fontFamily: fontFamily.bodyExtrabold, fontSize: GATE_SIZE.title, lineHeight: GATE_SIZE.titleLine, letterSpacing: -0.3 },
-  soonBody: { marginTop: 13, color: GATE.sub, fontFamily: fontFamily.bodyRegular, fontSize: GATE_SIZE.body, lineHeight: GATE_SIZE.bodyLine },
+  soonTitle: { marginTop: 6, color: GATE.ink, fontFamily: fontFamily.headingExtrabold, fontSize: GATE_SIZE.title, lineHeight: GATE_SIZE.titleLine, letterSpacing: GATE_SIZE.titleTrack },
+  soonBody: { marginTop: 8, color: GATE.sub, fontFamily: fontFamily.bodyMedium, fontSize: GATE_SIZE.body, lineHeight: GATE_SIZE.bodyLine },
   bigLime: { height: GATE_SIZE.bigBtn, borderRadius: GATE_SIZE.bigBtnRadius, backgroundColor: GATE.lime, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   bigOutline: {
     marginTop: 11,
