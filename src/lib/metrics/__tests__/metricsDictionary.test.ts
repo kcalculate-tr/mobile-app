@@ -121,6 +121,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     // G24-S1: kcalAI Koç olayları.
     'supabase/migrations/20261111100100_g24_coach.sql',
     'supabase/migrations/20261112110100_g34_personal_plan.sql',
+    // G42-S1: yeni kayıt hunisi.
+    'supabase/migrations/20261113120100_g42_yeni_kayit.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');

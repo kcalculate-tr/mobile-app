@@ -65,6 +65,10 @@ export const FLAG_DEFAULTS = {
   // G34-S1 — Kişisel plan akışı (Tur 26o): 4 giriş noktası, Kişisel planım, haftalık check-in.
   // Sunucu satırı 20261112110100_g34_personal_plan.sql (KAPALI, min_app_version 1.1.0). Native yok → OTA.
   kisisel_plan: false,
+  // G42-S1 — Yeni onboarding (5 ekran) + kayıt (A: kişisel plan · B: kısa profil). Sunucu satırı
+  // 20261113120100_g42_yeni_kayit.sql (KAPALI, min_app_version 1.1.0). Kapalıyken bugünkü onboarding
+  // bayt bayt aynı (rotalar kayıtlı değil). A yolu ayrıca `kisisel_plan` ister. Native yok → OTA.
+  yeni_kayit: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

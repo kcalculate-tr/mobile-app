@@ -1,0 +1,7 @@
+G45-S1 DONE — 2026-11-14
+dal: feat/kayit-v2
+commit: 855eff4 (feat: md.1-9 + vitrin + g45Kayit testleri), 2012967 (docs: ekran goruntuleri + LOG)
+kontroller: hygiene OK · tsc OK · unit 1311/0 (1 atlandi) · jest 112 paket / 706 test OK · expo export iOS OK · Android OK · eslint 0 hata
+onboarding 1-5: git diff 069e521 -- OnboardingScreen.tsx assets/onboarding assets/coach -> bos; tr.onb/en.onb hash testi gecti
+ekran goruntuleri: docs/night/g45 (24)
+LOG: docs/night/G45-S1-LOG.md

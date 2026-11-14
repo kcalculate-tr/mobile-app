@@ -41,6 +41,9 @@ import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 // import, WelcomeGate gibi). Yalnız `yeni_onboarding` açık + oturumsuz soğuk
 // açılışta initialRouteName buna gelir.
 import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay, OrientHost } from '../modules/onboarding';
+// G42-S1 — yeni onboarding + kayıt (eager: koyu zemin, beyaz flash yok). Yalnız `yeni_kayit` açıkken kayıtlı.
+import KayitNavigator from '../modules/kayit/KayitNavigator';
+import KayitShortScreen from '../modules/kayit/screens/QuestionsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../modules/eatkcal/screens/CartScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -453,6 +456,9 @@ export default function AppNavigator() {
   // yeni onboarding akışını gösterir (soğuk-başlangıçta bir kez okunur, böylece
   // process ömrü boyunca tek initialRoute). Kapalıyken WelcomeGate bugünküyle aynı.
   const yeniOnboarding = useColdStartFeature('yeni_onboarding');
+  // G42-S1: `yeni_kayit` açıkken oturumsuz soğuk açılış yeni onboarding + kayıt yığınıyla başlar
+  // (soğuk açılışta bir kez okunur). Kapalıyken rotalar KAYITLI DEĞİL, açılış bugünkü gibi.
+  const yeniKayit = useColdStartFeature('yeni_kayit');
   // G13-S2 — eatkcal v2 rotaları; kapalıyken `ekV2Routes(false)` → [] (hiç kayıt yok).
   const yeniSiparis = useColdStartFeature('yeni_siparis');
   // G17-S1 md.13 — rota bazında Final eşlemesi (bayrak kapalıyken eski bileşen AYNEN).
@@ -469,9 +475,11 @@ export default function AppNavigator() {
   const stackBg = yeniKabukRoutes ? designThemeRoot.color.bg : LEGACY_STACK_BG;
   const initialRouteName = session
     ? 'Tabs'
-    : yeniOnboarding
-      ? 'Onboarding'
-      : 'WelcomeGate';
+    : yeniKayit
+      ? 'Kayit'
+      : yeniOnboarding
+        ? 'Onboarding'
+        : 'WelcomeGate';
 
   // G20-S3 md.3: oturumsuz soğuk açılışta bayraklar (get_anon_features, en çok
   // ANON_TIMEOUT_MS) çözülene kadar splash açık kalır → yeni kurulumda karşılama /
@@ -546,6 +554,9 @@ export default function AppNavigator() {
           Onboarding'den (yeni kullanıcı) ve Profil › Hedefim'den (editGoal, S4
           bağlar) açılır. Mevcut beslenme profili servisini kullanır. */}
       <Stack.Screen name="TakibeBasla" component={TakibeBaslaNavigator} />
+      {/* G42-S1 — yeni onboarding + kayıt (A: kişisel plan · B: kısa profil). Kapalıyken kayıt YOK. */}
+      {yeniKayit ? <Stack.Screen name="Kayit" component={KayitNavigator} options={{ animation: 'fade', contentStyle: { backgroundColor: '#0D2617' } }} /> : null}
+      {yeniKayit ? <Stack.Screen name="KayitShort" component={KayitShortScreen} initialParams={{ mode: 'short' }} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
       <Stack.Screen name="Tabs" component={TabsRoot} />
       <Stack.Screen name="Categories" component={finalScreenFor('Categories', finalFlag.yeni_siparis, CategoriesLazy)} />
       <Stack.Screen name="CategoryProducts" component={finalScreenFor('CategoryProducts', finalFlag.yeni_siparis, CategoryProductsLazy)} />

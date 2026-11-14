@@ -48,7 +48,8 @@ import { HomeMealSlots } from './tracker/HomeMealSlots';
 import { HomePendingScans } from './tracker/HomePendingScans';
 import { useHomeHighlight } from './tracker/useHomeHighlight';
 import { HomeCelebrations } from './tracker/HomeCelebrations';
-import { WaitlistFormSheet } from '../modules/eatkcal/v2/ui/gate/WaitlistFormSheet'; // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
+import { WaitlistFormSheet } from '../modules/eatkcal/v2/ui/gate/WaitlistFormSheet';
+import { useShortProfileGate } from '../modules/kayit/gate'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
 import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
 import { buildSlots, normalizeMealType, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 // G19-S2 — günlük takip açılışı: İstanbul gün saati, tek yuvarlama, çevrimdışı kuyruk, olaylar.
@@ -84,6 +85,7 @@ import { HomeEmptyToday } from '../modules/onboarding/first';
 import { HomeInkToast } from './tracker/HomeInkToast';
 import { HomeManualMealSheet } from './tracker/HomeManualMealSheet';
 import { HomePlanCard } from '../modules/personalPlan/ui/entries';
+import { PlanImproveSlot } from '../modules/kayit/PlanImproveSlot'; // G42-S1 md.9
 import { homeBellTarget } from './tracker/homeBellTarget';
 import { useT } from '../core/i18n';
 import { pickAutoLogInstances } from '../modules/gun/delivery';
@@ -1546,7 +1548,10 @@ export default function TrackerScreen() {
   useEffect(() => {
     if (!mealModalVisible) logPortionRef.current = 1;
   }, [mealModalVisible]);
+  // G42-S1 md.9: B yolu ("Sonra oluştur") — ilk kalori kaydında kısa profil (yeni_kayit kapalıyken etkisiz).
+  const shortGate = useShortProfileGate();
   const logToSlot = (slot: SlotKey, portion = 1) => {
+    if (shortGate((n, p) => (navigation as any).navigate(n, p))) return;
     logPortionRef.current = aiTarama ? 1 : portion;
     setPendingSlot(slot);
     if (aiTarama) navigation.navigate('AiScan');
@@ -2819,6 +2824,7 @@ const html = `
             {/* G34-S1 md.5 (Tur 26o 04 "Ana sayfa kartı"): halkanın altında TEK SEFERLİK kişisel plan kartı
                 (`kisisel_plan`; plan varsa ya da × ile kapatıldıysa çizilmez). */}
             {yeniKabuk ? <HomePlanCard /> : null}
+            {yeniKabuk ? <PlanImproveSlot /> : null}
             {/* G18-S2 md.3/6b: Öne çıkanlar — halka + makroların altında (FinHomeR3 a, FinMoBanner); veri yoksa yok. */}
             {yeniKabuk ? (
               <HomeBanner items={homeBanners} onOpen={openBanner} initialIndex={__DEV__ ? vitrinParams.vitrinBanner ?? 0 : 0} />

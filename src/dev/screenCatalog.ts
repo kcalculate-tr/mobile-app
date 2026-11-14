@@ -51,7 +51,7 @@ export interface CatalogEntry {
   lang: VitrinLang;
   auth: VitrinAuth;
   /** iOS Dynamic Type — betik `simctl ui content_size` ile uygular. */
-  textSize?: 'large' | 'extra-extra-large' | 'accessibility-extra-large';
+  textSize?: 'large' | 'extra-extra-large' | 'extra-extra-extra-large' | 'accessibility-extra-large';
   /** R3 sekme çubuğu daralma değeri (0 tam, 0.5 orta, 1 küçük). */
   collapse?: number;
   /** Sahne içi ayrıntı (ör. açık sheet, kaydırılmış). vitrinScreens yorumlar. */
@@ -662,6 +662,64 @@ function resolveParity(name: string): ResolvedEntry | null {
     return {
       pano: name, area: 'eatkcal', target: route(ek('EkProduct', { productId: pid, vitrinState: 'selected' })), scene: 'selected',
       data: 'default', flags: FINAL_FLAGS, lang: 'tr', auth: 'user', hasDark: true, requested: name, scheme,
+    };
+  }
+  // G42-S1 — `G42-<Sahne>(-Dark)` (EN: `EN-G42-…`): yeni onboarding + kayıt akışı çekimleri (yeni_kayit +
+  // kisisel_plan açık; T1 için koc + abonelik → demo fiyatlar). Final panosu değil → allPanoNames'e girmez.
+  // G45: `-XL` soneki → büyük yazı (extra-extra-extra-large ≈ 1,35×; Dynamic Type 1,3× kontrolü).
+  const g42 = /^G42-([A-Za-z0-9]+?)(-Dark)?(-XL)?$/.exec(name);
+  if (g42) {
+    const flags: FlagKey[] = [...FINAL_FLAGS, 'yeni_kayit', 'kisisel_plan', 'koc', 'abonelik'];
+    const k = (screen: string, params?: Record<string, unknown>): VitrinTarget => route([{ name: 'Kayit', params: { screen, params } }]);
+    const T: Record<string, { target: VitrinTarget; auth?: VitrinAuth }> = {
+      Onb1: { target: k('KOnb', { vitrinStep: 1 }) },
+      Onb2: { target: k('KOnb', { vitrinStep: 2 }) },
+      Onb3: { target: k('KOnb', { vitrinStep: 3 }) },
+      Onb4: { target: k('KOnb', { vitrinStep: 4 }) },
+      Onb5: { target: k('KOnb', { vitrinStep: 5 }) },
+      P1: { target: k('KQuestions', { vitrinStep: 'goal' }) },
+      // G44: seçim geçişi dizisi (seçimsiz açılır, 6 sn sonra "Kilo vermek" seçilir).
+      P1pick: { target: k('KQuestions', { vitrinStep: 'goal', vitrinPick: 'lose' }) },
+      P2: { target: k('KQuestions', { vitrinStep: 'gender' }) },
+      P3: { target: k('KQuestions', { vitrinStep: 'birth' }) },
+      P3b: { target: k('KQuestions', { vitrinStep: 'minor' }) },
+      P4: { target: k('KQuestions', { vitrinStep: 'height' }) },
+      P5: { target: k('KQuestions', { vitrinStep: 'weight' }) },
+      I1: { target: k('KQuestions', { vitrinStep: 'i1' }) },
+      P6: { target: k('KQuestions', { vitrinStep: 'target' }) },
+      P7: { target: k('KQuestions', { vitrinStep: 'pace' }) },
+      P8: { target: k('KQuestions', { vitrinStep: 'activity' }) },
+      P9: { target: k('KQuestions', { vitrinStep: 'sport' }) },
+      P10: { target: k('KQuestions', { vitrinStep: 'diet' }) },
+      I2: { target: k('KQuestions', { vitrinStep: 'i2' }) },
+      P11: { target: k('KQuestions', { vitrinStep: 'dislikes' }) },
+      P12: { target: k('KQuestions', { vitrinStep: 'meals' }) },
+      P13: { target: k('KQuestions', { vitrinStep: 'cooking' }) },
+      P14: { target: k('KQuestions', { vitrinStep: 'struggle' }) },
+      L1: { target: k('KCalc', { vitrinHold: true }) },
+      // G45: banner bölgesi vitrinde İzmir sabit (yalnız __DEV__).
+      L2: { target: k('KResult', { vitrinIzmir: true }) },
+      // G45: L2 banner + rıza notu (rıza sorulmamış gibi, sona kaydırılmış).
+      L2c: { target: k('KResult', { vitrinIzmir: true, vitrinConsent: 'ask', vitrinEnd: true }) },
+      K1: { target: k('KSignup', { path: 'a' }) },
+      K1d: { target: k('KSignup', { path: 'a', vitrin: 'denied' }) },
+      K1b: { target: k('KSignup', { path: 'b' }) },
+      E1: { target: k('KEmail', { path: 'a' }) },
+      E2: { target: k('KEmail', { path: 'a', vitrinStep: 'code' }) },
+      T1: { target: k('KOffer'), auth: 'user' },
+      T1m: { target: k('KOffer', { vitrinPeriod: 'monthly' }), auth: 'user' },
+      R1: { target: k('KReturn') },
+      BShort: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'goal' } }]), auth: 'user' },
+      BShort8: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'activity' } }]), auth: 'user' },
+      // G45: B yolu son adım ("Takibe başla") rıza notuyla.
+      BShort8c: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'activity', vitrinConsent: 'ask' } }]), auth: 'user' },
+    };
+    const d = T[g42[1]];
+    if (!d) return null;
+    return {
+      pano: name, area: 'onboarding', target: d.target, data: 'default', flags, lang: 'tr', auth: d.auth ?? 'guest',
+      hasDark: true, requested: name, scheme: g42[2] ? 'dark' : 'light',
+      ...(g42[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);

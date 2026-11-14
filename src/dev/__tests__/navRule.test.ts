@@ -43,6 +43,7 @@ const MODAL_FILES = [
   'modules/coach/screens/CoachIntroScreen.tsx', // G24-S1 FinCoachIntro (sheet, kapat X)
   'modules/plan/screens/PlanGenerateScreen.tsx', // G33-S1 FinPlanGenerate (alttan, kapat X sağda)
   'modules/personalPlan/screens/PlanPaywallScreen.tsx', // G34-S1 FinPlanPaywall (alttan, kapat X sağda)
+  'modules/kayit/screens/OfferScreen.tsx', // G42-S1 T1 teklif (kayıt sonrası sahne, kapat X sağ üstte → Ana sayfa)
   'modules/subscription/ui/SubResult.tsx',
   'modules/subscription/ui/SubLimitSheet.tsx',
 ];
@@ -80,6 +81,8 @@ const IN_PLACE: Record<string, string> = {
   'modules/eatkcal/v2/screens/EkHomeScreen.tsx': 'arama alanını kapat',
   'modules/profil/ui/screens/SettingsSupportScreen.tsx': 'eklenen görseli kaldır',
   'dev/vitrinStress.tsx': 'yalnız __DEV__ vitrin',
+  'modules/kayit/ui/parts.tsx': 'kayıt akışı üst çubuğu: adım geri akış İÇİ (KQuestions tek rota) / K1–E2 yığın geri; X yok',
+  'modules/kayit/ui/pickers.tsx': 'P11 etiket bulutunda seçili etiketi × ile kaldır / aramayı temizle (rota değişmez)',
   'modules/personalPlan/ui/flowHeader.tsx': 'kişisel plan akışı: adım geri akış İÇİ (rota değişmez) + Giriş / Kaldığın yerden kapat X (Tur 26o 01)',
   'modules/personalPlan/ui/entries.tsx': 'Ana sayfa tek seferlik kişisel plan kartını kapat',
 };

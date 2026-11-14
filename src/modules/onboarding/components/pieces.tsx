@@ -174,7 +174,7 @@ export function AuthButton({
 // işaretleri (Apple HIG + Google marka kuralları; App Review riski). Path'ler `4dceffb` sürümünden
 // (SocialAuthButtons ile aynı). Kutu 22 pt = Final düğmedeki ikon alanı; düğme ölçü/yerleşimi Final.
 // Apple'ın onaylı tek-renk logosu — düğme metin rengiyle.
-function AppleLogo({ size = 22, color }: { size?: number; color: string }) {
+export function AppleLogo({ size = 22, color }: { size?: number; color: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
@@ -186,7 +186,7 @@ function AppleLogo({ size = 22, color }: { size?: number; color: string }) {
 }
 
 // Google'ın resmî 4 renkli "G" logosu (renkleri değiştirilmez).
-function GoogleLogo({ size = 22 }: { size?: number }) {
+export function GoogleLogo({ size = 22 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 18 18">
       <Path fill="#4285F4" d="M17.64 9.20455c0-.63864-.05727-1.25182-.16363-1.84091H9v3.48181h4.84364c-.20864 1.125-.84273 2.07819-1.79637 2.71592v2.25878h2.90862c1.70274-1.56802 2.68407-3.87668 2.68407-6.5142z" />

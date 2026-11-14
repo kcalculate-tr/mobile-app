@@ -148,3 +148,18 @@ export { Pause } from 'phosphor-react-native/lib/commonjs/icons/Pause';
 export { Play } from 'phosphor-react-native/lib/commonjs/icons/Play';
 export { Barcode } from 'phosphor-react-native/lib/commonjs/icons/Barcode';
 export { StarHalf } from 'phosphor-react-native/lib/commonjs/icons/StarHalf';
+// G42-S1 — Yeni kayıt akışı (hedef, hareket, spor, beslenme, zorlanma kartları).
+export { ArrowDown } from 'phosphor-react-native/lib/commonjs/icons/ArrowDown';
+export { Equals } from 'phosphor-react-native/lib/commonjs/icons/Equals';
+export { PersonSimpleWalk } from 'phosphor-react-native/lib/commonjs/icons/PersonSimpleWalk';
+export { PersonSimpleRun } from 'phosphor-react-native/lib/commonjs/icons/PersonSimpleRun';
+export { Armchair } from 'phosphor-react-native/lib/commonjs/icons/Armchair';
+export { Users } from 'phosphor-react-native/lib/commonjs/icons/Users';
+export { SwimmingPool } from 'phosphor-react-native/lib/commonjs/icons/SwimmingPool';
+export { SoccerBall } from 'phosphor-react-native/lib/commonjs/icons/SoccerBall';
+export { PersonSimpleTaiChi } from 'phosphor-react-native/lib/commonjs/icons/PersonSimpleTaiChi';
+export { Fish } from 'phosphor-react-native/lib/commonjs/icons/Fish';
+export { Carrot } from 'phosphor-react-native/lib/commonjs/icons/Carrot';
+export { Plant } from 'phosphor-react-native/lib/commonjs/icons/Plant';
+export { Moon } from 'phosphor-react-native/lib/commonjs/icons/Moon';
+export { Cookie } from 'phosphor-react-native/lib/commonjs/icons/Cookie';
