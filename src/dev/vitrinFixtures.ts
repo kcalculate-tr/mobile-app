@@ -164,7 +164,7 @@ export function mockRoutesFor(entry: ResolvedEntry, productIds: string[] = []): 
   const scene = entry.scene ?? '';
   const target = JSON.stringify(entry.target);
   const ekHomeTab = /"name":"Home"/.test(target) && !/"name":"Ek/.test(target) && !target.includes('"Tracker"');
-  if (ekHomeTab && !['city', 'waitlist', 'berlin'].includes(scene)) {
+  if (ekHomeTab && !['city', 'waitlist', 'berlin', 'gate48'].includes(scene)) {
     return [...identityRoutes(entry), { match: '/rest/v1/orders', body: entry.data === 'empty' ? [] : activeOrder(productIds) }];
   }
   if (/"Ek(Addresses|Checkout|Cart)"/.test(target)) {

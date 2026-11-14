@@ -91,3 +91,24 @@ export async function reverseGeocodeAt(latitude: number, longitude: number): Pro
     return null;
   }
 }
+
+/**
+ * G48-S1 konum kapısı: ham ters geocode (ülke kodu / il / ilçe / posta kodu). Yalnız native;
+ * alınamazsa null. Kapı bunu `gateRule.selectionFromGeocode` ile seçime çevirir.
+ */
+export async function reverseGeocodeAdmin(lat: number, lng: number): Promise<{
+  isoCountryCode?: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  subregion?: string | null;
+  district?: string | null;
+  postalCode?: string | null;
+} | null> {
+  try {
+    const [g] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    return g ?? null;
+  } catch {
+    return null;
+  }
+}

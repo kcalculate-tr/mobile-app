@@ -21,7 +21,16 @@ export type EkV2ParamList = {
   /** Adreslerim (FinEkAddresses / Empty). `selectMode` → seçip özete döner. */
   EkAddresses: { selectMode?: boolean } | undefined;
   /** Adres ekle / düzenle (FinEkAddress / NoPerm / NoMap). */
-  EkAddressAdd: { addressId?: string; selectMode?: boolean } | undefined;
+  EkAddressAdd:
+    | {
+        addressId?: string;
+        selectMode?: boolean;
+        /** G48-S1: konum kapısından (hizmet verilen İzmir ilçesi) — ilçe önceden dolu. */
+        gateDistrict?: string;
+        /** G48-S1: kapıdan gelindi → kayıttan sonra eatkcal ana sayfası (ya da kapının `next` hedefi). */
+        afterGate?: { next?: 'EkStore' | 'EkCart'; brandKey?: string };
+      }
+    | undefined;
   /** Siparişlerim (FinEkOrders / Empty / FilterEmpty). */
   EkOrders: undefined;
   /** Sipariş detayı (FinEkOrderDetail). */

@@ -24,6 +24,7 @@ import { useSheetKeyboard, SCROLL_KEYBOARD } from '../../../../../core/design/ke
 import { ekType, useEk } from '../kit';
 import { isDraftComplete, type WaitlistDraft, type WaitlistKind } from '../../model/waitlist';
 import { submitWaitlist } from './waitlistSend';
+import { track } from '../../../../../lib/analytics';
 import { palette } from '../../../../../core/design/tokens';
 
 const EAT_EASE = RN_CURVE.eat;
@@ -47,6 +48,7 @@ export function WaitlistFormSheet({
   kind,
   visible,
   city,
+  district,
   country,
   onClose,
   onPrivacy,
@@ -56,6 +58,8 @@ export function WaitlistFormSheet({
   visible: boolean;
   /** Seçilen il (alan önceden dolu, düzenlenebilir). */
   city: string;
+  /** G48-S1: konum kapısında seçilen ilçe (önceden dolu; `district` sütununa yazılır). */
+  district?: string;
   /** 'TR', ISO-3166 alfa-2 ülke kodu (G22-S2: Avrupa/Amerika) ya da 'OTHER' (şehirsiz eski yol). */
   country: string;
   onClose: () => void;
@@ -66,7 +70,7 @@ export function WaitlistFormSheet({
   const kb = useSheetKeyboard(visible);
   const reduced = useReducedMotion();
   const isAdd = kind === 'restaurant_add';
-  const empty = (): WaitlistDraft => ({ kind, country, city, restaurant_name: '', lang: lang === 'en' ? 'en' : 'tr' });
+  const empty = (): WaitlistDraft => ({ kind, country, city, ...(district ? { district } : {}), restaurant_name: '', lang: lang === 'en' ? 'en' : 'tr' });
   const [v, setV] = useState<WaitlistDraft>(empty);
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -124,6 +128,8 @@ export function WaitlistFormSheet({
     if (!ok || sending) return;
     setSending(true);
     haptic('success');
+    // G48-S1 md.4: ölçüm — yalnız form türü (telefon / e-posta olaya YAZILMAZ).
+    track('eatkcal_waitlist_submit', { kind: v.kind });
     try {
       await submitWaitlist(v);
     } finally {

@@ -165,17 +165,12 @@ test('mesaj metni: TR "Çok yakında X\'deki restoranlar burada listelenecek." /
   assert.ok(!JSON.stringify({ tr, en }).includes('₺'));
 });
 
-test('CityGateView: şehir arama listesinde "Çok yakında" yazılmaz (yalnız TR il satırları)', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/modules/eatkcal/v2/ui/gate/CityGateView.tsx'), 'utf8');
-  const start = src.indexOf('testID="ek-gate-city-list"');
-  const end = src.indexOf('</ScrollView>', start);
+test('G48 EkLocationGate: şehir seçicide "Çok yakında" yazılmaz (yalnız İzmir ilçe satırlarında hizmet durumu)', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/modules/eatkcal/gate/EkLocationGate.tsx'), 'utf8');
+  const start = src.indexOf("if (kind === 'city' && tr)");
+  const end = src.indexOf("if (kind === 'district')", start);
   assert.ok(start > 0 && end > start);
-  assert.ok(!src.slice(start, end).includes("gate.soon'"));
-  // G23-S1: TR il listesinde de yok.
-  const ilStart = src.indexOf('testID="ek-gate-list"');
-  const ilEnd = src.indexOf('</ScrollView>', ilStart);
-  assert.ok(ilStart > 0 && ilEnd > ilStart);
-  assert.ok(!src.slice(ilStart, ilEnd).includes("gate.soon'"));
+  assert.ok(!src.slice(start, end).includes('not_served'));
 });
 
 test('G23-S1 admin1: parseCityRows taşır (boş / şehirle aynıysa atar), cityLabel "Ad, Eyalet"', () => {

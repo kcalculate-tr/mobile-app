@@ -66,7 +66,8 @@ test('uçtan uca akış düzeltmeleri (G18-S5): e-posta sheet\'i kapanmadan gezi
   assert.match(onb, /onClosed=\{\(\) => \{[\s\S]*?goHome\(\);/);
   assert.match(read('modules/onboarding/first/AccountEmailSheet.tsx'), /onClosed\?\.\(\);/);
   assert.match(onb, /writeIntroSeen\(\)/);
-  assert.match(read('modules/eatkcal/v2/ui/gate/CityGateView.tsx'), /if \(!reg\.enabled\) \{\s*haptic\('success'\);\s*onAllowed\(\);/);
+  // G48-S1: CityGateView → EkLocationGate; denetim yalnız bayrak açıkken (kapalıyken hizmet ilçesi doğrudan geçer).
+  assert.match(read('modules/eatkcal/gate/EkLocationGate.tsx'), /if \(reg\.enabled\) \{\s*const ok = await reg\.checkCity\(\);/);
   const trail = read('core/design/components/LogTrail.tsx');
   assert.match(trail, /\[0, 0\.08, 0\.85, 1\], \[1, 1, 1, 0\]/);
   assert.match(trail, /interpolate\(pulse\.value, \[0, 1\], \[0, 1\]\)/);

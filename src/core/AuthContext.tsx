@@ -20,6 +20,8 @@ import { errorCodeOf } from '../modules/onboarding/socialAuthError';
 import { setSentryUser } from '../lib/sentry';
 import { useAddressStore } from '../store/addressStore';
 import { hydrateSelectedAddress } from '../lib/addresses';
+import { applySessionUser } from '../store/sessionScope';
+import { invalidateEatGateCache } from '../modules/eatkcal/gate/eatGate';
 
 const readEnvValue = (key: string): string =>
   (
@@ -177,12 +179,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Soğuk başlangıç: oturum AsyncStorage'dan geldiyse onAuthStateChange
           // tetiklenmeyebilir — gösterge yine dolsun.
           const mevcutKullaniciId = data.session?.user?.id;
-          if (mevcutKullaniciId && !useAddressStore.getState().selectedAddress) {
-            void hydrateSelectedAddress(
-              mevcutKullaniciId,
-              useAddressStore.getState().setSelectedAddress,
-            );
-          }
+          // G48 md.1: sepet + seçili adres oturum sahibine çevrilir (başkasınınki görünmez),
+          // adres doldurma ondan SONRA (sahip değiştiyse seçim temizlenmiş olur).
+          void applySessionUser(mevcutKullaniciId ?? null).then(() => {
+            if (mevcutKullaniciId && !useAddressStore.getState().selectedAddress) {
+              void hydrateSelectedAddress(
+                mevcutKullaniciId,
+                useAddressStore.getState().setSelectedAddress,
+              );
+            }
+          });
         }
 
         const {
@@ -196,9 +202,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setAuthLoading(false);
             // Bir önceki kullanıcının adresi header'da ("Adres: X Mahallesi")
-            // takılı kalmasın — bkz. useAddressStore, oturumdan bağımsız
-            // AsyncStorage'da kalıcı, çıkışta temizlenmiyordu.
+            // takılı kalmasın. G48 md.1: sepet de oturumsuza döner.
             useAddressStore.getState().setSelectedAddress(null);
+            invalidateEatGateCache();
+            void applySessionUser(null);
             return;
           }
           if (event === 'SIGNED_OUT') {
@@ -206,6 +213,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setAuthLoading(false);
             useAddressStore.getState().setSelectedAddress(null);
+            invalidateEatGateCache();
+            void applySessionUser(null);
             return;
           }
           setSession(nextSession ?? null);
@@ -220,12 +229,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // "Adres seçin" görüyordu. Oturum açıldığında varsayılan adres
           // sessizce çekilir (zaten seçili bir adres varsa dokunulmaz).
           const yeniKullaniciId = nextSession?.user?.id;
-          if (yeniKullaniciId && !useAddressStore.getState().selectedAddress) {
-            void hydrateSelectedAddress(
-              yeniKullaniciId,
-              useAddressStore.getState().setSelectedAddress,
-            );
-          }
+          // G48 md.1: önce sahibi çevir (A → B: A'nın sepeti/adresi kalkar), sonra B'nin adresini doldur.
+          void applySessionUser(yeniKullaniciId ?? null).then(() => {
+            if (yeniKullaniciId && !useAddressStore.getState().selectedAddress) {
+              void hydrateSelectedAddress(
+                yeniKullaniciId,
+                useAddressStore.getState().setSelectedAddress,
+              );
+            }
+          });
         });
 
         subscription = authSubscription;

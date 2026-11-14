@@ -226,6 +226,10 @@ export const EVENTS = {
   trial_start_reg: { category: 'commerce', tr: 'Kayıt teklifinden satın alma/deneme', en: 'Purchase/trial from signup offer', props: { plan: 'text', result: ['success', 'cancelled', 'pending', 'error'] } },
   // G46-S1 md.3: T1 kapatma onayı (sağlık değeri yok).
   paywall_dismiss_confirm: { category: 'commerce', tr: 'Kayıt teklifi kapatma onayı', en: 'Signup offer dismiss confirmation', props: { choice: ['stay', 'leave'] } },
+  // G48-S1 md.4: eatkcal konum kapısı (kişisel veri YOK — telefon/e-posta olaya yazılmaz).
+  eatkcal_gate_view: { category: 'commerce', tr: 'eatkcal konum kapısı görüldü', en: 'eatkcal location gate viewed', props: { state: ['address', 'soon'] } },
+  eatkcal_gate_select: { category: 'commerce', tr: 'eatkcal konum kapısında konum seçildi', en: 'eatkcal location gate selection', props: { country: 'text', city: 'text', district: 'text', served: 'boolean' } },
+  eatkcal_waitlist_submit: { category: 'commerce', tr: 'eatkcal bekleme listesi formu gönderildi', en: 'eatkcal waitlist form submitted', props: { kind: ['restaurant_add', 'restaurant_suggest'] } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',

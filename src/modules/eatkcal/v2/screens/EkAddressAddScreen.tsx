@@ -70,6 +70,7 @@ import {
 } from '../model/addressGeocode';
 import { AddressMap, NoMapCard, type AddressMapHandle } from '../ui/address/AddressMap';
 import { AddressInput, AddressSelectField, OptionPickerSheet, TitleChips } from '../ui/address/fields';
+import { markHasAddress } from '../../gate/eatGate';
 
 type Route = RouteProp<EkV2ParamList, 'EkAddressAdd'>;
 type Coords = { latitude: number; longitude: number };
@@ -85,6 +86,10 @@ export default function EkAddressAddScreen() {
   const route = useRoute<Route>();
   const editId = route.params?.addressId ?? '';
   const selectMode = Boolean(route.params?.selectMode);
+  // G48-S1 md.3: konum kapısından gelindi → ilçe dolu; harita ilk konumu ilçeyi EZMEZ (kullanıcı pini oynatana dek).
+  const gateDistrict = route.params?.gateDistrict ?? '';
+  const afterGate = route.params?.afterGate;
+  const lockDistrict = useRef(Boolean(gateDistrict));
   const rv = route.params as VitrinAddr | undefined;
   // Her erişim ayrı __DEV__ dalında → üretim paketinde vitrin adları kalmaz.
   const vitrinRef = useRef({
@@ -172,8 +177,11 @@ export default function EkAddressAddScreen() {
           setHasProfileContact(profileOk && Boolean(f.first_name && f.last_name));
         } else {
           const { first, last } = profileOk ? splitName(contact.fullName) : { first: '', last: '' };
+          const zi = buildZoneIndex(zoneRows);
+          const gateOpt = gateDistrict ? zi.districtOptions.find((o) => o.value.toLocaleLowerCase('tr') === gateDistrict.toLocaleLowerCase('tr')) : undefined;
           setForm({
             ...EMPTY_FORM,
+            district: gateOpt?.value ?? EMPTY_FORM.district,
             contact_email: user.email || '',
             first_name: first,
             last_name: last,
@@ -254,12 +262,14 @@ export default function EkAddressAddScreen() {
       setNeedsNeighbourhood(m.needsNeighbourhood);
       setFilledFromMap(Boolean(m.district || geo.street));
       setForm((prev) => {
-        const district = m.district || prev.district;
+        // G48-S1: kapıdan gelen ilçe kilitliyken haritanın ilk konumu ilçeyi değiştirmez.
+        const keep = lockDistrict.current && !!prev.district && m.district !== prev.district;
+        const district = keep ? prev.district : m.district || prev.district;
         const districtChanged = district !== prev.district;
         return {
           ...prev,
           district,
-          neighborhood: m.neighbourhood || (districtChanged ? '' : prev.neighborhood),
+          neighborhood: keep ? prev.neighborhood : m.neighbourhood || (districtChanged ? '' : prev.neighborhood),
           street: geo.street || prev.street,
           building_no: geo.streetNumber || prev.building_no,
         };
@@ -274,6 +284,7 @@ export default function EkAddressAddScreen() {
       // Düzenlemede konum alanları YALNIZ kullanıcı pini oynatınca değişir
       // (eski akışta "Konumu düzenle" — AddressesScreen:532-544).
       const fill = !editId || byUser;
+      if (byUser) lockDistrict.current = false;
       if (editId && byUser) setMovedByUser(true);
       if (geoTimer.current) clearTimeout(geoTimer.current);
       geoTimer.current = setTimeout(() => applyGeocode(coords, fill), GEOCODE_DEBOUNCE_MS);
@@ -334,8 +345,13 @@ export default function EkAddressAddScreen() {
         const { row } = await insertAddress(supabase, payload, addresses.length === 0);
         const inserted = normalizeAddress(row);
         setSelectedAddress(inserted);
+        // G48-S1 md.2: kayıtlı adres oldu → bu hesap için konum kapısı kalkar.
+        markHasAddress(user.id);
         haptic('success');
-        if (selectMode) navigation.navigate('EkCheckout', { selectedAddressId: inserted.id });
+        if (afterGate?.next === 'EkStore' && afterGate.brandKey) navigation.replace('EkStore', { brandKey: afterGate.brandKey });
+        else if (afterGate?.next === 'EkCart') navigation.replace('EkCart');
+        else if (afterGate) navigation.goBack();
+        else if (selectMode) navigation.navigate('EkCheckout', { selectedAddressId: inserted.id });
         else navigation.goBack();
       }
     } catch (error: unknown) {
@@ -359,6 +375,7 @@ export default function EkAddressAddScreen() {
     addresses.length,
     setSelectedAddress,
     selectMode,
+    afterGate,
     navigation,
   ]);
 

@@ -15,6 +15,7 @@ import { tr as consentTr, en as consentEn } from '../../lib/consent/i18n';
 import { tr as subTr, en as subEn } from '../../lib/subscription/i18n';
 import { tr as voiceTr, en as voiceEn } from '../../modules/ai/scan/voice/i18n';
 import { tr as ekGeoTr, en as ekGeoEn } from '../../modules/eatkcal/v2/i18n/geo';
+import { tr as ekGate48Tr, en as ekGate48En } from '../../modules/eatkcal/gate/i18n';
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
@@ -1360,6 +1361,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         blocked: 'Şu an yalnız İzmir’e teslimat var.',
         error: 'Şehir doğrulanamadı, tekrar dene.',
       },
+      // G48-S1 — konum kapısı (EkLocationGate).
+      gate48: ekGate48Tr,
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
         // G22-S2 md.3 — ülke + şehir araması (Avrupa + Amerika).
@@ -3256,6 +3259,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         blocked: 'We currently deliver only to İzmir.',
         error: 'Could not verify the city, try again.',
       },
+      // G48-S1 — location gate (EkLocationGate).
+      gate48: ekGate48En,
       // G13-S2 — eatkcal v2 (yeni_siparis). Kaynak: src/modules/eatkcal/v2/i18n/*.ts
       v2: {
         // G22-S2 md.3 — country + city search (Europe + Americas).

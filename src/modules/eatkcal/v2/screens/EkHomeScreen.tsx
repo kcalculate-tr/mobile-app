@@ -43,8 +43,10 @@ import { fetchBrand } from '../../../../lib/brands';
 import { buildStoreItems, campaignCellsFrom, type StoreItem } from '../model/showcase';
 import { resolveNavigation } from '../../../../lib/navigation';
 import { useAddressStore } from '../../../../store/addressStore';
-import { readCityGatePassed, writeCityGatePassed } from '../../cityGateStorage';
-import { CityGateView, type GateStep } from '../ui/gate/CityGateView';
+import { writeCityGatePassed } from '../../cityGateStorage';
+import { readEatGatePassed, useEatGate } from '../../gate/eatGate';
+import { EkLocationGate, type GateState } from '../../gate/EkLocationGate';
+import type { GateSelection } from '../../gate/gateRule';
 import type { Product } from '../../../../types';
 import {
   bannerTargetToEk,
@@ -226,7 +228,8 @@ function EkHomeContent() {
   const gatePassedRef = useRef(false);
   const gated = useCallback(
     async (go: () => void, gateParams?: { next?: 'EkStore'; brandKey?: string }) => {
-      if (!gatePassedRef.current) gatePassedRef.current = await readCityGatePassed();
+      // G48-S1 md.2: kural = kayıtlı adres (oturumlu) / oturumsuz gezinme işareti (eatGate).
+      if (!gatePassedRef.current) gatePassedRef.current = await readEatGatePassed();
       if (gatePassedRef.current) go();
       else navigation.navigate('EkCityGate', gateParams);
     },
@@ -582,65 +585,58 @@ const styles = StyleSheet.create({
   nearby: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20, borderWidth: 1 },
 });
 
-// ── G15-S5 md.2 — il kapısı eatkcal sekmesinde (FinCityR1 / WaitlistR1 / EatBerlin) ──
-// Final'de kapı, sekme çubuğuyla birlikte eatkcal sekmesinin ilk hâli. Kapı
-// geçilmemişse (bugünkü `eatkcal-city-gate-passed` anahtarı) sekme önce
-// fotoğraflı şehir seçimini gösterir; İzmir doğrulanınca (aynı checkCity)
-// EkCityGateScreen.onAllowed ile aynı adımlar: kapı geçildi → adres yoksa adres
-// ekranı → mağaza ana sayfası. Geçildikten sonra bir daha sorulmaz.
+// ── G48-S1 md.2 — konum kapısı eatkcal sekmesinde (EkLocationGate) ─────────────
+// Kural (eatGate/gateRule): oturumlu kullanıcının SUNUCUDA kayıtlı adresi yoksa ana sayfadan önce kapı;
+// varsa kapı hiç yok. Oturumsuz: kapı; İzmir hizmet ilçesi seçince menü gezilebilir (sepete ekleme /
+// ödeme AuthSheet'i açar). Hizmet verilen ilçe + oturum → adres ekleme (ilçe dolu) → kaydedince ana sayfa.
+// Diğer her seçim kapının "Çok yakında" durumunda kalır; sipariş akışı başlamaz.
 type HomeTabParams = {
-  /** YALNIZ __DEV__ vitrini: kapı adımı (FinWaitlistR1 / FinEatBerlin). */
-  vitrinGate?: GateStep;
-  vitrinCity?: string;
-  vitrinOtherCity?: string;
+  /** YALNIZ __DEV__ vitrini: kapı durumu ve seçim. */
+  vitrinGate?: GateState;
+  vitrinSel?: Partial<GateSelection>;
   /** YALNIZ __DEV__ vitrini: açık form sheet'i (FinWaitlistAdd / FinWaitlistSuggest). */
   vitrinSheet?: 'restaurant_add' | 'restaurant_suggest';
+  vitrinPicker?: 'country' | 'city' | 'district';
 };
 
 export default function EkHomeScreen() {
   const { c } = useEk();
   const navigation = useEkNav();
   const params = (useRoute().params ?? {}) as HomeTabParams;
-  const address = useAddressStore((s) => s.selectedAddress);
-  const [gate, setGate] = useState<'unknown' | 'show' | 'passed'>('unknown');
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+  const { state: gate, recheck, setState } = useEatGate(userId);
 
-  useEffect(() => {
-    let alive = true;
-    readCityGatePassed()
-      .then((passed) => {
-        if (alive) setGate(passed ? 'passed' : 'show');
-      })
-      .catch(() => {
-        if (alive) setGate('passed');
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // Adres ekleyip dönünce / başka sekmeden gelince yeniden değerlendir.
+  useFocusEffect(
+    useCallback(() => {
+      void recheck();
+    }, [recheck]),
+  );
 
-  const onAllowed = useCallback(async () => {
-    await writeCityGatePassed();
-    setGate('passed');
-    if (!useAddressStore.getState().selectedAddress) {
-      navigation.navigate('EkAddressAdd', { selectMode: true });
-    }
-  }, [navigation]);
+  const onServed = useCallback(
+    async (sel: GateSelection) => {
+      if (!userId) {
+        // Oturumsuz gezinme: menü açılır; sepete ekleme / ödeme giriş katmanını açar.
+        await writeCityGatePassed();
+        setState('pass');
+        return;
+      }
+      navigation.navigate('EkAddressAdd', { gateDistrict: sel.district ?? undefined, afterGate: {} });
+    },
+    [userId, navigation, setState],
+  );
 
-  const onTrack = useCallback(() => {
-    (navigation as unknown as { navigate: (name: string, p?: object) => void }).navigate('Tabs', { screen: 'Tracker' });
-  }, [navigation]);
-
-  if (gate === 'unknown') return <View style={{ flex: 1, backgroundColor: c.bg }} />;
+  if (gate === 'unknown') return <View style={{ flex: 1, backgroundColor: c.bg }} testID="ek-gate-pending" />;
   if (gate === 'show') {
     return (
-      <CityGateView
-        onAllowed={onAllowed}
-        onTrack={onTrack}
-        initialStep={__DEV__ ? params.vitrinGate : undefined}
-        initialCityKey={__DEV__ ? params.vitrinCity : undefined}
+      <EkLocationGate
+        onServed={onServed}
+        initialState={__DEV__ ? params.vitrinGate : undefined}
+        initialSelection={__DEV__ ? params.vitrinSel : undefined}
         initialSheet={__DEV__ ? params.vitrinSheet : undefined}
+        initialPicker={__DEV__ ? params.vitrinPicker : undefined}
         onPrivacy={() => navigation.navigate('ProfileContracts', { slug: 'kvkk' })}
-        otherCityName={(__DEV__ ? params.vitrinOtherCity : undefined) ?? address?.city ?? null}
       />
     );
   }

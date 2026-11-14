@@ -426,6 +426,21 @@ export const PREMIUM = {
   shake: { duration: DURATION.base, amplitude: 8, haptic: 'warning' as HapticKind },
 } as const;
 
+/**
+ * G48-S1 — eatkcal konum kapısı durum geçişi (Adres formu ↔ Çok yakında). Brif değerleri AYNEN:
+ * arka plan sabit; eski blok 180 ms opaklık + 8 pt aşağı, yeni blok 240 ms opaklık + 12 pt yukarıdan,
+ * ease-out (CURVE.enter); başlık ve kart arası ≤ 60 ms kademe. Azaltılmış harekette anlık.
+ */
+export const EK_GATE_MOTION = {
+  outMs: 180,
+  inMs: 240,
+  stagger: 60,
+  outShift: 8,
+  inShift: 12,
+  outCurve: CURVE.enter,
+  inCurve: CURVE.enter,
+} as const;
+
 /** Liste girişi gecikmesi: yalnız ilk 4 öğe kademelenir (≤ 300 ms) → toplam ≤ 500 ms. */
 export function listEnterDelay(index: number): number {
   'worklet';

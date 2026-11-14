@@ -38,7 +38,8 @@ async function sendRow(row: Record<string, string | null>): Promise<SendResult> 
   const client = getSupabaseClient();
   const { data } = await client.auth.getSession();
   if (!data?.session) return 'failed'; // oturum yok → kuyrukta kalır
-  const { error } = await client.from('eatkcal_waitlist_requests').insert(row);
+  // G48-S1 md.3: user_id açıkça (sütun varsayılanı auth.uid() ile aynı; RLS: user_id = auth.uid()).
+  const { error } = await client.from('eatkcal_waitlist_requests').insert({ ...row, user_id: data.session.user.id });
   return classifyInsertError(error);
 }
 

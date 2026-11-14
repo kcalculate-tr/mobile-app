@@ -389,12 +389,13 @@ const ENTRIES: Array<[string, string, VitrinTarget, Partial2?]> = [
 
   // ── eatkcal ────────────────────────────────────────────────────────────────
   // G15-S5: il kapısı eatkcal sekmesinde (sekme çubuğuyla); adım dev-only `vitrinGate` parametresi.
+  // G48-S1: tek ekran EkLocationGate (eski adlar aynı sahneleri yeni tasarımla açar).
   ['FinCityR1', 'eatkcal', route(tab('Home')), { scene: 'city' }],
-  ['FinWaitlistR1', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul' })), { scene: 'waitlist' }],
+  ['FinWaitlistR1', 'eatkcal', route(tab('Home', { vitrinGate: 'soon', vitrinSel: { country: 'TR', city: 'İstanbul', district: 'Kadıköy' } })), { scene: 'waitlist' }],
   // G18-S3 md.1: "Çok yakında" form sheet'leri (dev-only `vitrinSheet`).
-  ['FinWaitlistAdd', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul', vitrinSheet: 'restaurant_add' })), { scene: 'waitlist' }],
-  ['FinWaitlistSuggest', 'eatkcal', route(tab('Home', { vitrinGate: 'waitlist', vitrinCity: 'istanbul', vitrinSheet: 'restaurant_suggest' })), { scene: 'waitlist' }],
-  ['FinEatBerlin', 'eatkcal', route(tab('Home', { vitrinGate: 'other', vitrinOtherCity: 'Berlin' })), { scene: 'berlin' }],
+  ['FinWaitlistAdd', 'eatkcal', route(tab('Home', { vitrinGate: 'soon', vitrinSel: { country: 'TR', city: 'İstanbul', district: 'Kadıköy' }, vitrinSheet: 'restaurant_add' })), { scene: 'waitlist' }],
+  ['FinWaitlistSuggest', 'eatkcal', route(tab('Home', { vitrinGate: 'soon', vitrinSel: { country: 'TR', city: 'İstanbul', district: 'Kadıköy' }, vitrinSheet: 'restaurant_suggest' })), { scene: 'waitlist' }],
+  ['FinEatBerlin', 'eatkcal', route(tab('Home', { vitrinGate: 'soon', vitrinSel: { country: 'DE', city: 'Berlin', district: null } })), { scene: 'berlin' }],
   // G18-S3: Final'de yüzen sepet çubuğu "Sepet (2)" → sepetli sahne.
   ['FinEkHome', 'eatkcal', route(tab('Home')), { scene: 'cart' }],
   ['FinEkHomeSkeleton', 'eatkcal', route(tab('Home')), { data: 'loading' }],
@@ -752,6 +753,38 @@ function resolveParity(name: string): ResolvedEntry | null {
       pano: name, area: 'onboarding', target: d.target, data: 'default', flags, lang: 'tr', auth: d.auth ?? 'guest',
       hasDark: true, requested: name, scheme: g47[2] ? 'dark' : 'light', ...(d.scene ? { scene: d.scene } : {}),
       ...(g47[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
+    };
+  }
+  // G48-S1 — `G48-<Sahne>(-EN)(-Dark)(-XL)`: eatkcal konum kapısı (EkLocationGate) + adres ekleme + sepet.
+  const g48 = /^G48-([A-Za-z0-9]+?)(-EN)?(-Dark)?(-XL)?$/.exec(name);
+  if (g48) {
+    const KADIKOY = { country: 'TR', city: 'İstanbul', district: 'Kadıköy' };
+    const T: Record<string, { target: VitrinTarget; auth?: VitrinAuth; scene?: string }> = {
+      // Adres formu (pano 01/03): Türkiye › İzmir › Bornova.
+      Gate: { target: route(tab('Home', { vitrinSel: { country: 'TR', city: 'İzmir', district: 'Bornova' } })), scene: 'gate48' },
+      // Boş form (ilk açılış).
+      GateEmpty: { target: route(tab('Home')), scene: 'gate48' },
+      // İlçe adımı: İzmir seçili, ilçe seçici açık (delivery_zones; hizmet var / çok yakında).
+      District: { target: route(tab('Home', { vitrinSel: { country: 'TR', city: 'İzmir' }, vitrinPicker: 'district' })), scene: 'gate48' },
+      // Çok yakında (pano 02/04): başka il, hizmet dışı İzmir ilçesi, yabancı şehir.
+      Soon: { target: route(tab('Home', { vitrinGate: 'soon', vitrinSel: KADIKOY })), scene: 'gate48' },
+      SoonIzmir: { target: route(tab('Home', { vitrinGate: 'soon', vitrinSel: { country: 'TR', city: 'İzmir', district: 'Torbalı' } })), scene: 'gate48' },
+      SoonBerlin: { target: route(tab('Home', { vitrinGate: 'soon', vitrinSel: { country: 'DE', city: 'Berlin', district: null } })), scene: 'gate48' },
+      Add: { target: route(tab('Home', { vitrinGate: 'soon', vitrinSel: KADIKOY, vitrinSheet: 'restaurant_add' })), scene: 'gate48' },
+      Suggest: { target: route(tab('Home', { vitrinGate: 'soon', vitrinSel: KADIKOY, vitrinSheet: 'restaurant_suggest' })), scene: 'gate48' },
+      // Hizmet var → adres ekleme (il İzmir, ilçe kapıdan dolu).
+      Address: { target: route([...tab('Home'), { name: 'EkAddressAdd', params: { gateDistrict: 'Bornova', afterGate: {} } }]), auth: 'user' },
+      // A/B sepet: A hesabının sepeti (dolu) · B hesabı (boş).
+      CartA: { target: route([...tab('Home'), { name: 'EkCart' }]), auth: 'user', scene: 'cart' },
+      CartB: { target: route([...tab('Home'), { name: 'EkCart' }]), auth: 'user', scene: 'cartEmpty' },
+    };
+    const d = T[g48[1]];
+    if (!d) return null;
+    return {
+      pano: name, area: 'eatkcal', target: d.target, data: d.scene === 'cartEmpty' ? 'empty' : 'default', flags: FINAL_FLAGS,
+      lang: g48[2] ? 'en' : 'tr', auth: d.auth ?? 'guest', hasDark: true, requested: name, scheme: g48[3] ? 'dark' : 'light',
+      ...(d.scene ? { scene: d.scene } : {}),
+      ...(g48[4] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);

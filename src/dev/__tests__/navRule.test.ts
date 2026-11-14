@@ -60,7 +60,7 @@ const PUSH_FILES = [
   'modules/ai/scan/screens/ScanOfflineScreen.tsx',
   'modules/collection/CollectionCardDetail.tsx',
   'modules/eatkcal/v2/ui/kit.tsx',
-  'modules/eatkcal/v2/ui/gate/CityGateView.tsx',
+  'modules/eatkcal/gate/EkLocationGate.tsx', // G48-S1 konum kapısı (rota girişinde sol geri)
   'modules/eatkcal/v2/screens/EkProductScreen.tsx',
   'modules/eatkcal/v2/screens/EkStoreScreen.tsx',
   'modules/eatkcal/v2/ui/store/StoreHeader.tsx', // G32-S1 md.2 mağaza yapışkan başlığı (sol geri)

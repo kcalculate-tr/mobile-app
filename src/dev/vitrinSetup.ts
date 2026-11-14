@@ -11,6 +11,11 @@ import { FEED_TIP_SEEN_FLAG } from '../modules/kesfet/ui/FeedTip';
 import { mockRoutesFor, vitrinHomeAddress } from './vitrinFixtures';
 import { resolveVitrinPhotos } from './vitrinKesfet';
 import { useAddressStore } from '../store/addressStore';
+import { enterStoreSandbox } from '../store/storeSandbox';
+import { __devForceEatGate } from '../modules/eatkcal/gate/eatGate';
+
+/** G48-S1: konum kapısı sahneleri (kapı zorla görünür). */
+const GATE_SCENES = new Set(['city', 'waitlist', 'berlin', 'gate48']);
 
 export interface PreparedScene {
   routes: RouteSpec[] | null;
@@ -65,13 +70,18 @@ function onbFirstSeed(scene: string, pano: string) {
 
 export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene> {
   const scene = entry.scene ?? '';
+  // G48-S1 md.1: vitrin gerçek kalıcı depoya YAZMAZ — sepet ve seçili adres bellek içi depoya geçer
+  // (sahne ürünleri / örnek adres AsyncStorage'daki gerçek `kcal-cart`a ulaşmaz).
+  enterStoreSandbox([useCartStore, useAddressStore]);
+  // G48-S1: konum kapısı sahneleri kapıyı gösterir, diğer eatkcal panoları doğrudan ana sayfa.
+  __devForceEatGate(GATE_SCENES.has(scene));
   // G47-S1: profilsiz hesap sahnesi (profil kapısı kartı / Tara → P1).
   __devForceProfileStatus(scene === 'noProfile' ? 'none' : null);
 
   await seedStorage({
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
-    'eatkcal-city-gate-passed': ['city', 'waitlist', 'berlin'].includes(scene) ? null : '1',
+    'eatkcal-city-gate-passed': GATE_SCENES.has(scene) ? null : '1',
     // G18-S1 — ilk 60 saniye bayrakları: varsayılan kart tamam + oryantasyon atlandı
     // (diğer panolara karışmasın); kendi sahnelerinde açık.
     '@kcal_onb_first_v1': JSON.stringify(onbFirstSeed(scene, entry.pano)),
@@ -99,7 +109,7 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   const targetJson = JSON.stringify(entry.target);
   const isEkHomeTab = /"name":"Home"/.test(targetJson) && !/"name":"Ek/.test(targetJson);
   if (entry.area === 'eatkcal') (useAddressStore.getState() as any).setSelectedAddress?.(
-    (isEkHomeTab || CART_SCENES.has(scene)) && entry.data !== 'empty' && !['city', 'waitlist', 'berlin'].includes(scene)
+    (isEkHomeTab || CART_SCENES.has(scene)) && entry.data !== 'empty' && !GATE_SCENES.has(scene)
       ? vitrinHomeAddress()
       : null,
   );

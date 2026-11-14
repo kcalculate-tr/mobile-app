@@ -125,6 +125,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     'supabase/migrations/20261113120100_g42_yeni_kayit.sql',
     // G46-S1: T1 kapatma onayı.
     'supabase/migrations/20261114100100_g46_paywall_dismiss_confirm.sql',
+    // G48-S1: eatkcal konum kapısı.
+    'supabase/migrations/20261114200100_g48_eatkcal_gate_events.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');
@@ -149,6 +151,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   assert.match(rb22, /delete from public\.analytics_event_names/);
   const rb46 = readFileSync(join(ROOT, 'supabase/rollbacks/20261114100100_g46_paywall_dismiss_confirm_rollback.sql'), 'utf8');
   assert.match(rb46, /delete from public\.analytics_event_names where name in \('paywall_dismiss_confirm'\)/);
+  const rb48 = readFileSync(join(ROOT, 'supabase/rollbacks/20261114200100_g48_eatkcal_gate_events_rollback.sql'), 'utf8');
+  assert.match(rb48, /delete from public\.analytics_event_names where name in \('eatkcal_gate_view', 'eatkcal_gate_select', 'eatkcal_waitlist_submit'\)/);
 });
 
 test('D-S1 sözlüğündeki 38 ad istemci sözlüğünde de var (sözleşme)', () => {
