@@ -31,6 +31,7 @@ import { CheckBoxRow, FONT, KBackdrop, KButton, KText as AppText, Mascot, Questi
 import { HealthConsentNote } from '../ui/consent';
 import { markProfileCreated, useKayitFlow, type GateTarget } from '../profileGate';
 import { completeGateFlow } from '../gateComplete';
+import { openOfferIfAllowed } from '../offerOnce';
 import { writeAuthConsents } from '../signup';
 import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
 import { ACT_GLASS, COOK_GLASS, DIET_GLASS, GENDER_GLASS, GOAL_GLASS, STRUGGLE_GLASS } from '../ui/glassIcons';
@@ -200,11 +201,13 @@ export default function QuestionsScreen() {
     haptic('success');
     await setShortPending(kv, false);
     markProfileCreated();
+    if (origin === 'auth') {
+      const f = useKayitFlow.getState();
+      await writeAuthConsents({ method: f.method ?? 'email', metaOn: meta, marketingOn: marketing, fresh: f.fresh });
+    }
+    // G54 md.1: B kısa profil son adımı da kayıt sonu → aboneliksiz herkese T1 (hesap bazında bir kez); kapanınca dönüş.
+    if (await openOfferIfAllowed(navigation, { userId: user.id, meta: user.user_metadata as Record<string, unknown> | undefined, returnTo: origin ? (params.returnTo ?? null) : null })) return;
     if (origin) {
-      if (origin === 'auth') {
-        const f = useKayitFlow.getState();
-        await writeAuthConsents({ method: f.method ?? 'email', metaOn: meta, marketingOn: marketing, fresh: f.fresh });
-      }
       completeGateFlow(params.returnTo ?? null);
       return;
     }

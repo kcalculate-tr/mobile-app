@@ -4,11 +4,11 @@ import assert from 'node:assert/strict';
 import { WEIGHT_CHART, weightChartGeometry } from '../ui/chart';
 import {
   OFFER_META_KEY,
-  OFFER_SHOWN_KEY,
   accountOfferShown,
   isOfferShownOnDevice,
   markOfferShownOnDevice,
   shouldShowOffer,
+  offerDeviceKey,
   type KvStore,
 } from '../storage';
 
@@ -66,11 +66,11 @@ test('md.1: inen çizgi yukarıdan başlar, aşağıda biter (yön korunur)', ()
   assert.match(d.line, /^M 9 9\.5 C /);
 });
 
-test('md.3: T1 yalnız A yolunda ve cihazda/hesapta daha önce gösterilmediyse', () => {
-  assert.equal(shouldShowOffer({ path: 'a', device: false, account: false }), true);
-  assert.equal(shouldShowOffer({ path: 'a', device: true, account: false }), false);
-  assert.equal(shouldShowOffer({ path: 'a', device: false, account: true }), false);
-  assert.equal(shouldShowOffer({ path: 'b', device: false, account: false }), false);
+test('md.3 (G54 md.1): T1 aktif abonelik yoksa ve bu hesapta daha önce gösterilmediyse (yol fark etmez)', () => {
+  assert.equal(shouldShowOffer({ subscribed: false, device: false, account: false }), true);
+  assert.equal(shouldShowOffer({ subscribed: false, device: true, account: false }), false);
+  assert.equal(shouldShowOffer({ subscribed: false, device: false, account: true }), false);
+  assert.equal(shouldShowOffer({ subscribed: true, device: false, account: false }), false);
 });
 
 test('md.3: hesap işareti user_metadata.kayit_offer_shown_at', () => {
@@ -81,11 +81,12 @@ test('md.3: hesap işareti user_metadata.kayit_offer_shown_at', () => {
   assert.equal(accountOfferShown({ [OFFER_META_KEY]: '2026-11-14T10:00:00.000Z' }), true);
 });
 
-test('md.3: cihaz işareti bir kez yazılır, sonra gösterilmez', async () => {
+test('md.3 (G54): cihaz yedeği HESAP bazında bir kez yazılır; başka hesap etkilenmez', async () => {
   const s = mem();
-  assert.equal(await isOfferShownOnDevice(s), false);
-  await markOfferShownOnDevice(s, Date.parse('2026-11-14T10:00:00Z'));
-  assert.equal(s.data.get(OFFER_SHOWN_KEY), '2026-11-14T10:00:00.000Z');
-  assert.equal(await isOfferShownOnDevice(s), true);
-  assert.equal(shouldShowOffer({ path: 'a', device: await isOfferShownOnDevice(s), account: false }), false);
+  assert.equal(await isOfferShownOnDevice(s, 'u1'), false);
+  await markOfferShownOnDevice(s, 'u1', Date.parse('2026-11-14T10:00:00Z'));
+  assert.equal(s.data.get(offerDeviceKey('u1')), '2026-11-14T10:00:00.000Z');
+  assert.equal(await isOfferShownOnDevice(s, 'u1'), true);
+  assert.equal(await isOfferShownOnDevice(s, 'u2'), false);
+  assert.equal(shouldShowOffer({ subscribed: false, device: await isOfferShownOnDevice(s, 'u1'), account: false }), false);
 });

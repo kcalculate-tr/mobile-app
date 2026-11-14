@@ -403,7 +403,8 @@ describe('L2 (oturum açıkken) ve rıza metni yeri', () => {
     await flush();
   };
   async function renderL2(origin: 'auth' | 'gate', fresh = false) {
-    mockAuth.user = { id: 'u5', created_at: new Date().toISOString(), user_metadata: {} };
+    // G54 md.1: T1 artık aboneliksiz herkese (hesap bazında bir kez) — dönüş testleri için 'gate'te T1 daha önce görülmüş.
+    mockAuth.user = { id: 'u5', created_at: new Date().toISOString(), user_metadata: origin === 'gate' ? { kayit_offer_shown_at: '2026-11-01T00:00:00Z' } : {} };
     useKayit.getState().patch(ANSWERS);
     useKayitFlow.getState().setFlow({ origin, method: 'google', fresh, returnTo: origin === 'gate' ? { name: 'AiScan' } : null });
     const r = render(wrap(<ResultScreen />));
@@ -457,7 +458,7 @@ describe('L2 (oturum açıkken) ve rıza metni yeri', () => {
     await flush();
     expect(acceptPolicies).toHaveBeenCalledWith(expect.objectContaining({ source: 'signup_social', adOn: true }));
     expect(setMarketingOptIn).toHaveBeenCalledWith(true);
-    expect(mockNav.navigate).toHaveBeenCalledWith('KOffer');
+    expect(mockNav.navigate).toHaveBeenCalledWith('KayitOffer', { returnTo: null });
   });
 });
 

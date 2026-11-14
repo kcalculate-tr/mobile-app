@@ -19,6 +19,7 @@ import { tr as ekGate48Tr, en as ekGate48En } from '../../modules/eatkcal/gate/i
 import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet/search/i18n';
 import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as g53Tr, en as g53En } from './g53';
+import { tr as g54Tr, en as g54En } from './g54';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
@@ -43,6 +44,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     // G22-S2 md.5 — G21 tasarım boşlukları (26j): share_day · auth_error · notif_error · follow_error.
     ...g26jTr,
     ...g53Tr,
+    ...g54Tr,
     // G24-S1 — kcalAI Koç.
     coach: coachTr,
     // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
@@ -1995,6 +1997,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     kesfetSearch: kesfetSearchEn,
     ...g26jEn,
     ...g53En,
+    ...g54En,
     coach: coachEn,
     plan: planEn,
     pp: ppEn,

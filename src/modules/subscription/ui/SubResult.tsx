@@ -3,17 +3,16 @@
 // (tek sahne, döngü yok), metin base enter, buton base. Azaltılmışta yalnız 200 ms opaklık.
 // Uyarı haptiği yalnız hata durumunda; başarıda success.
 import React, { useEffect } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { Image } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, DURATION, SPRING, haptic, useReducedMotion, useTheme } from '../../../core/design';
+import { AppText, DURATION, haptic, useReducedMotion, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Hourglass, Warning, X, XCircle } from '../../../components/icons';
 import type { PlanCard } from '../../../lib/subscription/plans';
-import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { PurchasePlanRow } from '../../personalPlan/ui/entries';
-import { KcalAiMark } from './KcalAiMark';
+import SubWelcome, { welcomeRights } from './SubWelcome';
+import { useCoachEnabled } from '../../coach/access';
 import { palette } from '../../../core/design/tokens';
 
 export type SubResultState = 'success' | 'cancelled' | 'pending' | 'error';
@@ -56,9 +55,9 @@ export default function SubResult({
   const { t: tr, lang } = useT();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
+  const coachOn = useCoachEnabled();
   const ink = t.color.ink;
   const card2 = t.isDark ? '#1C1C1E' : '#FFFFFF';
-  const line = t.isDark ? '#2C2C2E' : '#E9EBEE';
   const line2 = t.isDark ? '#48484A' : '#C3C7CC';
 
   useEffect(() => {
@@ -68,74 +67,24 @@ export default function SubResult({
 
   const fade = FadeIn.duration(reduced ? DURATION.fast : DURATION.fast);
   const date = formatSubDate(expiresAt, lang);
-  const planName = card ? tr(card.tier === 'balance' ? 'sub.paywall.balance' : 'sub.paywall.fresh') : '';
-  const priceLine = card ? `${card.priceText}${tr(card.yearly ? 'sub.paywall.per_year' : 'sub.paywall.per_month')}` : '';
 
   if (state === 'success') {
+    // G54-S1 md.1: başarı hâli = ortak tebrik ekranı (kayıt görsel dili: degrade zemin, cam yüzey, kupa kutlaması).
     const trial = !!card?.trialDays;
-    const rows: [string, string][] = [
-      [tr('sub.result.row_ai'), aiPerDay != null ? tr('sub.result.v_per_day', { n: aiPerDay }) : '—'],
-      [tr('sub.result.row_barcode_manual'), tr('sub.result.v_unlimited')],
-    ];
-    if (date) rows.push([trial ? tr('sub.result.row_trial_end') : tr('sub.result.row_renews'), date]);
+    const tier = card?.tier === 'balance' ? 'balance' : 'fresh';
+    const trialIso = trial ? (expiresAt ?? new Date(Date.now() + (card?.trialDays ?? 0) * 86_400_000).toISOString()) : null;
     return (
-      <Animated.View entering={fade} style={[styles.fill, { backgroundColor: t.color.bg }]} testID="sub-result-success">
-        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12 }]}>
-          <View style={styles.closeRow}>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={tr('sub.close')} style={styles.close}>
-              <X size={22} color={ink} />
-            </Pressable>
-          </View>
-          <View style={styles.trophy} accessible accessibilityLabel={tr('sub.result.trophy')}>
-            <TrophyPop />
-          </View>
-          <Animated.View entering={FadeIn.duration(reduced ? DURATION.fast : DURATION.base)} style={styles.center}>
-            {/* G26-S1: "kcalAI" yalnız küçük hap; büyük başlıkta yalnız plan adı (Fresh / Balance). */}
-            <View style={styles.brand} testID="sub-result-brand">
-              {/* G39-S1 md.3: hap içinde de kcalculate logosu + "AI" (lime üstünde siyah). */}
-              <KcalAiMark height={12} color="#0A0A0A" label={tr('sub.brand')} testID="sub-result-brand-mark" />
-            </View>
-            <AppText style={[styles.okTitle, { color: ink }]} accessibilityRole="header" testID="sub-result-title">
-              {tr('sub.result.ok_title', { plan: planName })}{' '}
-              <AppText style={[styles.okTitle, styles.mark]}>{tr('sub.result.ok_mark')}</AppText>
-            </AppText>
-            <AppText style={styles.okBody}>
-              {trial && date
-                ? tr('sub.result.ok_body_trial', { days: card?.trialDays ?? '', date, price: priceLine })
-                : date
-                  ? tr('sub.result.ok_body', { date, price: priceLine })
-                  : ''}
-            </AppText>
-            {pendingVerify ? (
-              <AppText tone="secondary" style={styles.small}>
-                {tr('sub.result.ok_pending_verify')}
-              </AppText>
-            ) : null}
-          </Animated.View>
-          <View style={[styles.rows, { backgroundColor: card2 }]}>
-            {rows.map(([k, v], i) => (
-              <View key={k} style={[styles.row, i ? { borderTopWidth: 1, borderTopColor: line } : null]}>
-                <AppText tone="secondary" style={styles.rowK}>
-                  {k}
-                </AppText>
-                <AppText style={styles.rowV}>{v}</AppText>
-              </View>
-            ))}
-          </View>
-          {/* G34-S1 md.5 (Tur 26o 04 "Satın alma sonrası"): ikincil "Kişisel planımı oluştur" satırı (`kisisel_plan`, plan yoksa). */}
-          <PurchasePlanRow />
-        </ScrollView>
-        <View style={[styles.actions, { paddingBottom: Math.max(16, insets.bottom + 8) }]}>
-          <Pressable onPress={onPrimary} accessibilityRole="button" style={[styles.btn, { backgroundColor: palette.lime }]} testID="sub-result-primary">
-            <AppText style={[styles.btnText, { color: '#0A0A0A' }]}>{tr('sub.result.ok_primary')}</AppText>
-          </Pressable>
-          {onSecondary ? (
-            <Pressable onPress={onSecondary} accessibilityRole="button" style={[styles.btn, styles.next, { borderWidth: 1, borderColor: line2 }]}>
-              <AppText style={styles.btnText}>{tr('sub.result.ok_secondary')}</AppText>
-            </Pressable>
-          ) : null}
-        </View>
-      </Animated.View>
+      <SubWelcome
+        testID="sub-result-success"
+        tier={tier}
+        rights={welcomeRights({ tier, aiPerDay, coachOn }, tr)}
+        trialUntil={trialIso ? formatSubDate(trialIso, lang) : null}
+        renewsOn={!trial ? date : null}
+        note={pendingVerify ? tr('sub.result.ok_pending_verify') : null}
+        extra={<PurchasePlanRow />}
+        onStart={onPrimary}
+        secondary={onSecondary ? { label: tr('sub.result.ok_secondary'), onPress: onSecondary } : null}
+      />
     );
   }
 
@@ -197,46 +146,10 @@ export default function SubResult({
   );
 }
 
-const TROPHY = require('../../../../assets/glass/trophy.png');
-
-/** Kupa: base giriş + bouncy 220/14 tek sahne (döngü yok); azaltılmışta yalnız opaklık. */
-function TrophyPop() {
-  const reduced = useReducedMotion();
-  const s = useSharedValue(reduced ? 1 : 0.85);
-  const o = useSharedValue(0);
-  useEffect(() => {
-    o.value = withTiming(1, { duration: reduced ? DURATION.fast : DURATION.base });
-    if (!reduced) s.value = withSpring(1, SPRING.bouncy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ scale: s.value }] }));
-  return (
-    <Animated.View style={[styles.trophyWrap, st]}>
-      <View style={styles.glow} />
-      <Image source={TROPHY} style={styles.trophyImg} resizeMode="contain" />
-    </Animated.View>
-  );
-}
-
 const styles = StyleSheet.create({
-  trophyWrap: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center' },
-  glow: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(185,239,20,0.28)' },
-  trophyImg: { width: 190, height: 190 },
   fill: { flex: 1 },
-  scroll: { paddingHorizontal: 16, paddingBottom: 24 },
   closeRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  trophy: { alignItems: 'center', marginTop: 4 },
-  center: { alignItems: 'center', marginTop: 8 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: palette.lime, borderRadius: 16, paddingHorizontal: 12, minHeight: 32, marginBottom: 10 },
-  okTitle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 30, lineHeight: 38, textAlign: 'center' },
-  mark: { backgroundColor: palette.lime, color: '#0A0A0A' },
-  okBody: { marginTop: 8, fontSize: 16, lineHeight: 22, textAlign: 'center' },
-  small: { marginTop: 6, fontSize: 13, textAlign: 'center' },
-  rows: { marginTop: 32, borderRadius: 20, paddingHorizontal: 14 },
-  row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 8 },
-  rowK: { fontSize: 15, flexShrink: 1 },
-  rowV: { fontSize: 15, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
   actions: { paddingHorizontal: 16 },
   btn: { minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   btnText: { fontSize: 16, fontWeight: '700' },

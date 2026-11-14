@@ -47,7 +47,7 @@ import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useAuth } from '../../../core/AuthContext';
 import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
 import { finishSignup } from '../signup';
-import { offerAllowed } from '../offerOnce';
+import { openOfferIfAllowed } from '../offerOnce';
 import { markProfileCreated, useKayitFlow } from '../profileGate';
 import { completeGateFlow } from '../gateComplete';
 
@@ -294,13 +294,14 @@ export function ResultScreen() {
     }
     markProfileCreated();
     haptic('success');
-    // T1 yalnız ilk kayıt sonrası (bu oturumda oluşan hesap) ve G46 "bir kez" kuralıyla.
-    if (flow.origin === 'auth' && flow.fresh && (await offerAllowed('a', user.user_metadata as Record<string, unknown> | undefined))) {
+    // G54 md.1: aktif aboneliği olmayan HERKESE T1 (hesap yaşı / giriş yöntemi / köken fark etmez), hesap bazında bir kez.
+    // X → onay → "Yine de çık" ya da satın alma → tebrik: kullanıcı dokunduğu eyleme döner (returnTo).
+    const returnTo = flow.returnTo;
+    if (await openOfferIfAllowed(navigation, { userId: user.id, meta: user.user_metadata as Record<string, unknown> | undefined, returnTo })) {
       useKayitFlow.getState().setFlow({ origin: 'onb', returnTo: null });
-      navigation.navigate('KOffer');
       return;
     }
-    completeGateFlow(flow.returnTo);
+    completeGateFlow(returnTo);
   };
 
   const toggleMeta = async () => {

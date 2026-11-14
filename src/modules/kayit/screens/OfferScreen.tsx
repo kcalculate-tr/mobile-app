@@ -7,9 +7,13 @@
 // onay sayfası (core/design Sheet): "Denemeye başla" → sayfa kapanır, seçili planın denemeli (yıllık) ürünüyle satın
 // alma başlar; "Yine de çık" → HA. Seçili planda deneme yoksa onay sayfası açılmaz (deneme metni doğru olmaz) → HA.
 // Metin doğruluğu: T1 açıldığında cihaz + hesap "gösterildi" işareti yazılır (offerOnce) → bir daha açılmaz.
+// G54-S1 md.1: T1 kökte `KayitOffer` modalı olarak da açılır (kayıt sonu, aboneliksiz herkes). "Yine de çık" ve
+// tebrikteki "Başlayalım" kullanıcıyı DOKUNDUĞU EYLEME götürür (`returnTo`, ör. Tara); yoksa Ana sayfa. Başarı →
+// ortak tebrik ekranı `SubWelcome` (kayıt görsel dili; otomatik geçiş yok — kullanıcı "Başlayalım"a dokunur).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../../core/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -17,7 +21,7 @@ import { CURVE, REDUCED, Sheet, haptic, useReducedMotion } from '../../../core/d
 import { useT } from '../../../core/i18n';
 import { Check, X } from '../../../components/icons';
 import type { PlanCard, PlanKey } from '../../../lib/subscription/plans';
-import { purchasePlan, restorePurchases } from '../../../lib/subscription/purchases';
+import { purchasePlan, restorePurchases, useSubscriptionStore } from '../../../lib/subscription/purchases';
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubLegalLinks from '../../subscription/ui/SubLegalLinks';
 import { useCoachEnabled } from '../../coach/access';
@@ -26,7 +30,10 @@ import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, mixColor, useSelectTween } from '../ui/motion';
 import { useKayit } from '../store';
 import { kTrack } from '../events';
-import { markOfferShown } from '../offerOnce';
+import { markOfferShown, type OfferReturn } from '../offerOnce';
+import { completionRoutes } from '../gateLogic';
+import SubWelcome, { welcomeRights } from '../../subscription/ui/SubWelcome';
+import { formatSubDate } from '../../subscription/ui/SubResult';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { NeonBorder, neonOnLimePalette, useNeonClock, useNeonVisible } from '../../subscription/ui/NeonBorder';
 import type { SharedValue } from 'react-native-reanimated';
@@ -34,8 +41,11 @@ import type { SharedValue } from 'react-native-reanimated';
 type Period = 'yearly' | 'monthly';
 type Phase = 'idle' | 'buying' | 'success' | 'cancelled' | 'error';
 
-export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, vitrin }: { vitrinPhase?: Phase; vitrinPeriod?: Period; vitrinConfirm?: boolean; vitrin?: boolean } = {}) {
-  const { t } = useT();
+export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, vitrin, returnTo = null }: { vitrinPhase?: Phase; vitrinPeriod?: Period; vitrinConfirm?: boolean; vitrin?: boolean; returnTo?: OfferReturn } = {}) {
+  const { t, lang } = useT();
+  const { user } = useAuth();
+  const limits = useSubscriptionStore((s) => s.limits);
+  const rcExpires = useSubscriptionStore((s) => s.rc?.expiresAt ?? null);
   const P = useK();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -57,7 +67,7 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, 
   // G46 md.3: T1 göründü → cihaz + hesap işareti (bir daha gösterilmez). YALNIZ __DEV__ vitrininde yazılmaz.
   useEffect(() => {
     if (__DEV__ && (vitrin || vitrinPhase || vitrinPeriod || vitrinConfirm)) return;
-    void markOfferShown();
+    void markOfferShown(user?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -67,24 +77,14 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, 
     kTrack.paywallView(period);
   }, [period]);
 
+  // G54 md.1: kapanış / tebrik sonrası → dokunulan eylem (returnTo), yoksa Ana sayfa. Kök yığın sıfırlanır (T1 ve
+  // kayıt ekranları geri yığında kalmaz), hedef Ana sayfanın üstüne açılır.
   const goHome = () => {
     const root = navigation.getParent?.() ?? navigation;
-    root.reset({ index: 0, routes: [{ name: 'Tabs', params: { screen: 'Tracker' } }] });
+    const { reset, then } = completionRoutes(returnTo);
+    root.reset({ index: reset.length - 1, routes: reset.map((r) => ({ name: r.name, params: r.params })) });
+    if (then) requestAnimationFrame(() => root.navigate(then.name, then.params));
   };
-
-  // Başarı: 2 sn sonra kendiliğinden ana sayfa.
-  useEffect(() => {
-    if (phase !== 'success' || (__DEV__ && vitrinPhase)) return;
-    // HIG: ekran okuyucu açıkken duyuru kesilmesin → otomatik geçiş yok, "Ana sayfaya git" düğmesi kalır.
-    let id: ReturnType<typeof setTimeout> | undefined;
-    void AccessibilityInfo.isScreenReaderEnabled().then((sr) => {
-      if (!sr) id = setTimeout(goHome, 2000);
-    });
-    return () => {
-      if (id) clearTimeout(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
   const pick = (tr: 'balance' | 'fresh') => cards?.find((c) => c.tier === tr && c.yearly === (period === 'yearly')) ?? null;
   const balance = pick('balance');
@@ -140,7 +140,17 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, 
   };
 
   if (phase === 'success' && selected) {
-    return <SuccessView plan={selected.tier === 'balance' ? 'Balance' : 'Fresh'} trialDays={trialDays} onHome={goHome} />;
+    const trialIso = trialDays ? (rcExpires ?? new Date(Date.now() + trialDays * 86_400_000).toISOString()) : null;
+    return (
+      <SubWelcome
+        testID="kayit-offer-success"
+        tier={selected.tier === 'balance' ? 'balance' : 'fresh'}
+        rights={welcomeRights({ tier: selected.tier === 'balance' ? 'balance' : 'fresh', aiPerDay: limits?.ai[selected.tier === 'balance' ? 'balance' : 'fresh'] ?? null, coachOn }, t)}
+        trialUntil={trialIso ? formatSubDate(trialIso, lang) : null}
+        renewsOn={!trialDays ? formatSubDate(rcExpires, lang) : null}
+        onStart={goHome}
+      />
+    );
   }
 
   const buying = phase === 'buying';
@@ -389,44 +399,6 @@ function Banner({ text, top }: { text: string; top: number }) {
   );
 }
 
-function SuccessView({ plan, trialDays, onHome }: { plan: string; trialDays: number | null; onHome: () => void }) {
-  const { t } = useT();
-  const P = useK();
-  const insets = useSafeAreaInsets();
-  const reduced = useReducedMotion();
-  // G44: onay rozeti yaysız — 240 ms fade + 0,9 → 1 (azaltılmışta anlık).
-  const s = useSharedValue(reduced ? 1 : 0);
-  useEffect(() => {
-    if (!reduced) s.value = withTiming(1, { duration: K_MOTION.enter, easing: CURVE.enter });
-  }, [reduced, s]);
-  const st = useAnimatedStyle(() => ({ opacity: s.value, transform: [{ scale: 0.9 + 0.1 * s.value }] }));
-  return (
-    <View style={{ flex: 1 }} testID="kayit-offer-success">
-      <KBackdrop shift={31} />
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28, gap: 14 }}>
-        <Mascot size={130} react="ok" />
-        <Animated.View style={[styles.okBadge, { backgroundColor: P.accent }, st]}>
-          <Check size={30} color="#10301D" weight="bold" />
-        </Animated.View>
-        <AppText accessibilityRole="header" maxFontSizeMultiplier={1.3} style={[styles.title, { color: P.ink }]}>
-          {trialDays ? t('kayit.offer.success_title', { plan }) : t('kayit.offer.success_title_sub', { plan })}
-        </AppText>
-        <AppText maxFontSizeMultiplier={1.3} style={[styles.planName, { color: P.ink }]}>
-          {t('kayit.offer.success_hello')}
-        </AppText>
-        {trialDays ? (
-          <AppText maxFontSizeMultiplier={1.4} style={[styles.after, { color: P.sec }]}>
-            {t('kayit.offer.success_sub', { n: trialDays })}
-          </AppText>
-        ) : null}
-      </View>
-      <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
-        <KButton testID="kayit-offer-home" label={t('kayit.offer.success_cta')} onPress={onHome} />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   title: { fontFamily: FONT.display, fontSize: 30, lineHeight: 36, textAlign: 'center', letterSpacing: -0.6, marginTop: 6 },
@@ -454,7 +426,6 @@ const styles = StyleSheet.create({
   confirmTerms: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 6 },
   leave: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   leaveText: { fontFamily: FONT.semi, fontSize: 16, lineHeight: 21 },
-  okBadge: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginTop: -8 },
 });
 
 void useMemo;

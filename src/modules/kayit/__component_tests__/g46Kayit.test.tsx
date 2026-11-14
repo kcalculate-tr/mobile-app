@@ -52,7 +52,11 @@ const card = (tier: 'balance' | 'fresh', yearly: boolean) => ({
 const mockCards = [card('balance', true), card('fresh', true), card('balance', false), card('fresh', false)];
 jest.mock('../../../lib/subscription/usePlanCards', () => ({ usePlanCards: () => ({ cards: mockCards, loading: false, failed: false, reload: jest.fn() }) }));
 const mockPurchase = jest.fn(async (_: string) => 'cancelled');
-jest.mock('../../../lib/subscription/purchases', () => ({ purchasePlan: (k: string) => mockPurchase(k), restorePurchases: jest.fn(async () => 'none') }));
+jest.mock('../../../lib/subscription/purchases', () => {
+  const { create } = require('zustand');
+  const useSubscriptionStore = create(() => ({ rc: null, server: null, limits: null }));
+  return { purchasePlan: (k: string) => mockPurchase(k), restorePurchases: jest.fn(async () => 'none'), useSubscriptionStore };
+});
 jest.mock('../../subscription/ui/SubLegalLinks', () => () => null);
 jest.mock('../../coach/access', () => ({ useCoachEnabled: () => true }));
 jest.mock('../../personalPlan/api', () => ({ healthConsentGiven: jest.fn(async () => true), savePlan: jest.fn(async () => ({ ok: true })) }));
@@ -78,7 +82,7 @@ import { emptyKAnswers, type KAnswers } from '../model';
 import { computeKayitPlan, planSignature } from '../plan';
 import { __sent } from '../events';
 import { offerAllowed, markOfferShown } from '../offerOnce';
-import { OFFER_META_KEY, OFFER_SHOWN_KEY } from '../storage';
+import { OFFER_META_KEY, OFFER_SHOWN_KEY, offerDeviceKey } from '../storage';
 import { tr, en } from '../i18n';
 import { EVENTS } from '../../../lib/metrics/events';
 
@@ -235,24 +239,24 @@ describe('md.3 T1 kapatma onayı', () => {
   });
 });
 
-describe('md.3 T1 teklifi bir kez gösterilir (cihaz + hesap)', () => {
+describe('md.3 T1 teklifi bir kez gösterilir (G54: hesap bazında + cihaz yedeği)', () => {
   it('T1 açılınca cihaz + hesap işareti yazılır; sonra kayıt sonrası T1 açılmaz', async () => {
-    expect(await offerAllowed('a', {})).toBe(true);
+    expect(await offerAllowed(null, {})).toBe(true);
     render(wrap(<OfferScreen />));
     await flush();
     await flush();
     expect(await AsyncStorage.getItem(OFFER_SHOWN_KEY)).toBeTruthy();
     expect(mockUpdateUser).toHaveBeenCalledWith({ data: { [OFFER_META_KEY]: expect.any(String) } });
-    expect(await offerAllowed('a', {})).toBe(false);
+    expect(await offerAllowed(null, {})).toBe(false);
   });
-  it('başka cihazda gösterildiyse (hesap işareti) bu cihazda da açılmaz; B yolunda hiç açılmaz', async () => {
-    expect(await offerAllowed('a', { [OFFER_META_KEY]: '2026-11-14T09:00:00.000Z' })).toBe(false);
-    expect(await offerAllowed('b', {})).toBe(false);
+  it('başka cihazda gösterildiyse (hesap işareti) bu cihazda da açılmaz', async () => {
+    expect(await offerAllowed('u1', { [OFFER_META_KEY]: '2026-11-14T09:00:00.000Z' })).toBe(false);
   });
-  it('hesap yazımı başarısız olsa da cihaz işareti kalır', async () => {
+  it('hesap yazımı başarısız olsa da cihaz işareti (hesap anahtarıyla) kalır', async () => {
     mockUpdateUser.mockRejectedValueOnce(new Error('offline'));
-    await markOfferShown(Date.parse('2026-11-14T10:00:00Z'));
-    expect(await AsyncStorage.getItem(OFFER_SHOWN_KEY)).toBe('2026-11-14T10:00:00.000Z');
+    await markOfferShown('u1', Date.parse('2026-11-14T10:00:00Z'));
+    expect(await AsyncStorage.getItem(offerDeviceKey('u1'))).toBe('2026-11-14T10:00:00.000Z');
+    expect(await offerAllowed('u2', {})).toBe(true);
   });
   it('vitrin (__DEV__) işaret yazmaz', async () => {
     render(wrap(<OfferScreen vitrin />));
@@ -260,9 +264,9 @@ describe('md.3 T1 teklifi bir kez gösterilir (cihaz + hesap)', () => {
     expect(await AsyncStorage.getItem(OFFER_SHOWN_KEY)).toBeNull();
     expect(mockUpdateUser).not.toHaveBeenCalled();
   });
-  it('kayıt sonrası yönlendirme: T1 yalnız offerAllowed true ise; değilse HA (Tracker)', () => {
+  it('kayıt sonrası yönlendirme: A yolu plan kaydedildiyse openOfferIfAllowed; değilse HA (Tracker)', () => {
     const s = src('src/modules/kayit/screens/SignupScreens.tsx');
-    expect(s).toMatch(/r\.path === 'a' && \(await offerAllowed\('a', meta\.current\)\)/);
+    expect(s).toMatch(/r\.path === 'a' && r\.planSaved && \(await openOfferIfAllowed\(navigation, \{ userId: user\.id, meta: meta\.current, returnTo: null \}\)\)/);
     expect(s).toMatch(/meta\.current = user\?\.user_metadata/);
     expect(s).toMatch(/const tab = r\.path === 'a' \? 'Tracker' : firstTabFor/);
   });

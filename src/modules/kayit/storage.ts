@@ -183,12 +183,18 @@ export async function isShortPending(s: KvStore): Promise<boolean> {
   }
 }
 
-// ─── G46-S1 md.3: T1 kayıt teklifi yalnız bir kez ─────────────────────────────
-// T1 (kayıt sonrası teklif) aynı kullanıcıya bir kez gösterilir: CİHAZ (bu cihazda herhangi bir hesapla görüldüyse)
-// ya da HESAP (`user_metadata.kayit_offer_shown_at`; başka cihazda görüldüyse) işaretlenmişse bir daha açılmaz.
+// ─── G46-S1 md.3 / G54-S1 md.1: T1 kayıt teklifi yalnız bir kez (HESAP bazında) ─────
+// G54: kayıt akışı (A yolu L2 / B kısa profil) başarıyla bitince AKTİF ABONELİĞİ OLMAYAN herkese T1 açılır — hesabın
+// yaşı, giriş yöntemi, akışın açıldığı yer fark etmez (eski `isFreshAccount` şartı kalktı). "Bir kez" işareti HESAP
+// bazında: `user_metadata.kayit_offer_shown_at` + cihaz yedeği (anahtar kullanıcı kimliğiyle; başka hesap etkilenmez).
 // Ana paywall'daki genel deneme bundan etkilenmez (yalnız T1 ekranı).
 export const OFFER_SHOWN_KEY = '@kcal_kayit_offer_shown';
 export const OFFER_META_KEY = 'kayit_offer_shown_at';
+
+/** Cihaz yedeği anahtarı (hesap bazında). */
+export function offerDeviceKey(userId: string | null | undefined): string {
+  return userId ? `${OFFER_SHOWN_KEY}:${userId}` : OFFER_SHOWN_KEY;
+}
 
 /** Hesap işareti: kullanıcı metadata'sında gösterim zamanı var mı. */
 export function accountOfferShown(meta: Record<string, unknown> | null | undefined): boolean {
@@ -196,21 +202,21 @@ export function accountOfferShown(meta: Record<string, unknown> | null | undefin
   return typeof v === 'string' ? v.length > 0 : v != null && v !== false;
 }
 
-/** Saf karar: kayıt sonrası T1 açılsın mı (yalnız A yolu, cihazda ve hesapta daha önce gösterilmemişse). */
-export function shouldShowOffer(i: { path: KPath; device: boolean; account: boolean }): boolean {
-  return i.path === 'a' && !i.device && !i.account;
+/** Saf karar: kayıt sonu T1 açılsın mı — aktif abonelik yok VE bu hesapta daha önce gösterilmemiş. */
+export function shouldShowOffer(i: { subscribed: boolean; device: boolean; account: boolean }): boolean {
+  return !i.subscribed && !i.device && !i.account;
 }
 
-export async function isOfferShownOnDevice(s: KvStore): Promise<boolean> {
+export async function isOfferShownOnDevice(s: KvStore, userId?: string | null): Promise<boolean> {
   try {
-    return (await s.getItem(OFFER_SHOWN_KEY)) != null;
+    return (await s.getItem(offerDeviceKey(userId))) != null;
   } catch {
     return false;
   }
 }
-export async function markOfferShownOnDevice(s: KvStore, now: number = Date.now()): Promise<void> {
+export async function markOfferShownOnDevice(s: KvStore, userId?: string | null, now: number = Date.now()): Promise<void> {
   try {
-    await s.setItem(OFFER_SHOWN_KEY, new Date(now).toISOString());
+    await s.setItem(offerDeviceKey(userId), new Date(now).toISOString());
   } catch {
     /* yut */
   }

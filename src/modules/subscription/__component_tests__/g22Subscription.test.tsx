@@ -309,16 +309,13 @@ test('Paywall: satın alma sonuçları — iptal / bekliyor / başarı', async (
     fireEvent.press(tree.getByTestId('sub-cta'));
   });
   await waitFor(() => expect(tree.getByTestId('sub-result-success')).toBeTruthy());
-  expect(tree.getByText('etkin')).toBeTruthy();
-  // G26-S1: başlık "Balance etkin" (kcalAI büyük başlıkta YOK), kcalAI küçük hapta.
-  const title = tree.getByTestId('sub-result-title');
-  const flat = (n: unknown): string =>
-    typeof n === 'string' ? n : Array.isArray(n) ? n.map(flat).join('') : n && typeof n === 'object' && 'props' in (n as object) ? flat((n as { props: { children: unknown } }).props.children) : '';
-  expect(flat(title.props.children)).toBe('Balance etkin');
-  expect(tree.getByTestId('sub-result-brand-mark').props.accessibilityLabel).toBe('Kcalculate AI');
-  expect(tree.getByText('Günde 50')).toBeTruthy();
+  // G54-S1 md.1: başarı = ortak tebrik ekranı (kayıt görsel dili) — "Hoş geldin, Kcalculate AI Balance!" + gerçek haklar.
+  expect(tree.getByTestId('sub-result-success-title')).toHaveTextContent('Hoş geldin, Kcalculate AI Balance!');
+  expect(tree.getByText('Günde 50 AI tarama')).toBeTruthy();
+  expect(tree.getByText('Sınırsız barkod ve elle kayıt')).toBeTruthy();
   expect(tree.queryByText(/adil kullanım/)).toBeNull();
-  expect(tree.getByText(/7 günlük ücretsiz denemen başladı/)).toBeTruthy();
+  expect(tree.getByTestId('sub-result-success-terms')).toHaveTextContent(/^Deneme 17 Kasım 2026 tarihine kadar ücretsiz; istediğin an mağazadan iptal edebilirsin\.$/);
+  expect(tree.getByTestId('sub-result-success-start').props.accessibilityLabel).toBe('Başlayalım');
 });
 
 test('Hak sheet AI (G23-S1): karolar 2 · 10 · 50 + aylık yerel fiyat; Planları gör / Elle ekle', () => {

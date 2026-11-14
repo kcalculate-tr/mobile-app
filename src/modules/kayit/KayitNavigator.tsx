@@ -34,7 +34,7 @@ export type KayitParamList = {
   KResult: undefined;
   KSignup: { path?: 'a' | 'b'; vitrin?: string } | undefined;
   KEmail: { path?: 'a' | 'b'; meta?: boolean; marketing?: boolean; age?: boolean; vitrinStep?: 'code'; vitrinState?: string } | undefined;
-  KOffer: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean } | undefined;
+  KOffer: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean; returnTo?: GateTarget | null } | undefined;
 };
 
 const Stack = createNativeStackNavigator<KayitParamList>();
@@ -99,9 +99,10 @@ export function initialForEntry(entry: Entry | undefined): { name: keyof KayitPa
   if (entry === 'signedOut') return { name: 'KOnb' };
   return null;
 }
-function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean } } }) {
+/** T1 rotası — kayıt yığınında `KOffer` ve G54 md.1 kök `KayitOffer` modalı (kayıt sonu, dönüş hedefiyle) ortak. */
+export function OfferRoute({ route }: { route: { params?: { vitrinPhase?: string; vitrinPeriod?: string; vitrinConfirm?: boolean; vitrin?: boolean; returnTo?: GateTarget | null } } }) {
   const p = route.params;
-  return <OfferScreen vitrinPhase={p?.vitrinPhase as never} vitrinPeriod={p?.vitrinPeriod as never} vitrinConfirm={p?.vitrinConfirm} vitrin={p?.vitrin} />;
+  return <OfferScreen vitrinPhase={p?.vitrinPhase as never} vitrinPeriod={p?.vitrinPeriod as never} vitrinConfirm={p?.vitrinConfirm} vitrin={p?.vitrin} returnTo={p?.returnTo ?? null} />;
 }
 
 export default function KayitNavigator() {

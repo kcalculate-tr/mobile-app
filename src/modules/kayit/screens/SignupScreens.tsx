@@ -34,7 +34,7 @@ import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, PushIn } from '../ui/motion';
 import { firstTabFor, type KPath } from '../model';
 import { finishSignup } from '../signup';
-import { offerAllowed } from '../offerOnce';
+import { openOfferIfAllowed } from '../offerOnce';
 import { flushDraft, useKayit } from '../store';
 import { kTrack } from '../events';
 import { useAuthSuccess } from '../auth/postAuth';
@@ -64,11 +64,9 @@ function useFinishOnAuth(path: KPath) {
       // G47: plan kaydedildiyse profil kapısı hemen açılır (Ana sayfa takip bölümü kart yerine görünür).
       if (r.planSaved) markProfileCreated();
       haptic('success');
-      // G46 md.3: T1 kayıt teklifi cihaz + hesap bazında yalnız bir kez; daha önce gösterildiyse doğrudan HA.
-      if (r.path === 'a' && (await offerAllowed('a', meta.current))) {
-        navigation.navigate('KOffer');
-        return;
-      }
+      // G54 md.1: A yolu kaydı bitti (plan kaydedildi) → aboneliksiz herkese T1, hesap bazında bir kez; değilse doğrudan HA.
+      // B yolu burada profil oluşturmaz (kısa profil sonra) → T1 kısa profilin son adımında.
+      if (r.path === 'a' && r.planSaved && (await openOfferIfAllowed(navigation, { userId: user.id, meta: meta.current, returnTo: null }))) return;
       const tab = r.path === 'a' ? 'Tracker' : firstTabFor(useKayit.getState().start, kesfet);
       const root = navigation.getParent?.() ?? navigation;
       root.reset({ index: 0, routes: [{ name: 'Tabs', params: { screen: tab } }] });
