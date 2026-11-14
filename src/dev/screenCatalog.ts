@@ -787,6 +787,42 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(g48[4] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
+  // G49-S1 — `G49-<Sahne>(-Dark)(-XL)`: konum kapısı alanları (md.1), profilsiz Ana sayfa kartı + açılış dizisi +
+  // eylemler (md.2–3), Ana sayfa eatkcal bölümü (md.4), kayıt cam ikonları — biri seçili (md.5).
+  const g49 = /^G49-([A-Za-z0-9]+?)(-Dark)?(-XL)?$/.exec(name);
+  if (g49) {
+    const kFlags: FlagKey[] = [...FINAL_FLAGS, 'yeni_kayit', 'kisisel_plan', 'koc', 'abonelik'];
+    const q = (step: string, answers: Record<string, unknown>): VitrinTarget =>
+      route([{ name: 'Kayit', params: { screen: 'KQuestions', params: { vitrinStep: step, vitrinAnswers: answers } } }]);
+    const gate = (sel: Record<string, unknown>): VitrinTarget => route(tab('Home', { vitrinSel: sel }));
+    const home = (scene: string) => ({ area: 'ana', target: route(tab('Tracker')), auth: 'user' as VitrinAuth, scene, flags: kFlags });
+    const T: Record<string, { area: string; target: VitrinTarget; auth?: VitrinAuth; scene?: string; flags?: FlagKey[] }> = {
+      Gate: { area: 'eatkcal', target: gate({ country: 'TR', city: 'İstanbul', district: 'Kadıköy', postalCode: '34710' }), scene: 'gate48' },
+      GateIst: { area: 'eatkcal', target: gate({ country: 'TR', city: 'İstanbul', district: null }), scene: 'gate48' },
+      GateIzmir: { area: 'eatkcal', target: gate({ country: 'TR', city: 'İzmir', district: 'Bornova', postalCode: '35040' }), scene: 'gate48' },
+      GateBerlin: { area: 'eatkcal', target: gate({ country: 'DE', city: 'Berlin', district: 'Mitte', postalCode: '10115' }), scene: 'gate48' },
+      Home: home('noProfile'),
+      HomeF1: home('noProfileF80'),
+      HomeF2: home('noProfileF260'),
+      HomeF3: home('noProfileF1000'),
+      HomeActions: { ...home('noProfile'), target: route(tab('Tracker', { vitrinScroll: 300 })) },
+      Eatkcal: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1750 })), auth: 'user', scene: 'izmirNoAddr' },
+      EatkcalAddr: { area: 'ana', target: route(tab('Tracker', { ...HOME_VITRIN, vitrinScroll: 1750 })), auth: 'user', scene: 'izmir' },
+      P1: { area: 'onboarding', target: q('goal', { goal: 'lose' }), flags: kFlags },
+      P2: { area: 'onboarding', target: q('gender', { gender: 'female' }), flags: kFlags },
+      P8: { area: 'onboarding', target: q('activity', { activity: 'moderate' }), flags: kFlags },
+      P10: { area: 'onboarding', target: q('diet', { diet: 'vegan' }), flags: kFlags },
+      P13: { area: 'onboarding', target: q('cooking', { cooking: 'sometimes' }), flags: kFlags },
+      P14: { area: 'onboarding', target: q('struggle', { struggle: 'sweet' }), flags: kFlags },
+    };
+    const d = T[g49[1]];
+    if (!d) return null;
+    return {
+      pano: name, area: d.area, target: d.target, data: 'default', flags: d.flags ?? FINAL_FLAGS, lang: 'tr', auth: d.auth ?? 'guest',
+      hasDark: true, requested: name, scheme: g49[2] ? 'dark' : 'light', ...(d.scene ? { scene: d.scene } : {}),
+      ...(g49[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

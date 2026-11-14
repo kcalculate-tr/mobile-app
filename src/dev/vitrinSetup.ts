@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { __devForceProfileStatus } from '../modules/kayit/profileGate';
+import { __devFreezeHomeGate } from '../modules/kayit/ui/homeGateDev';
 import type { ResolvedEntry, RouteSpec } from './screenCatalog';
 import { seedStorage, type MockRoute } from './vitrinState';
 import { useCartStore } from '../store/cartStore';
@@ -76,7 +77,10 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   // G48-S1: konum kapısı sahneleri kapıyı gösterir, diğer eatkcal panoları doğrudan ana sayfa.
   __devForceEatGate(GATE_SCENES.has(scene));
   // G47-S1: profilsiz hesap sahnesi (profil kapısı kartı / Tara → P1).
-  __devForceProfileStatus(scene === 'noProfile' ? 'none' : null);
+  __devForceProfileStatus(scene.startsWith('noProfile') ? 'none' : null);
+  // G49-S1: profilsiz Ana sayfa kartının açılış dizisi (noProfileF<ms>): çizim o anda dondurulur.
+  const frozen = /^noProfileF(\d+)$/.exec(scene);
+  __devFreezeHomeGate(frozen ? Number(frozen[1]) : null);
 
   await seedStorage({
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',

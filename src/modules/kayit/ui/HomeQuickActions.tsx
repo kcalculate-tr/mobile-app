@@ -13,6 +13,7 @@ import { useT } from '../../../core/i18n';
 import { track } from '../../../lib/analytics';
 import { ChatCircleDots, ImageSquare, Scan, Sneaker, type Icon } from '../../../components/icons';
 import { BRICOLAGE_SEMI, useHomeTokens } from '../../onboarding/first/homeTokens';
+import { devFrozenAt, frozenEnter } from './homeGateDev';
 
 import type { QuickAction } from '../quickActions';
 
@@ -25,9 +26,11 @@ function ActionCard({ action, index, onPress }: { action: QuickAction; index: nu
   const k = useHomeTokens();
   const { t } = useT();
   const reduced = useReducedMotion();
-  const o = useSharedValue(0);
+  const frozen = devFrozenAt();
+  const o = useSharedValue(frozen != null ? frozenEnter(frozen, index) : 0);
   useEffect(() => {
     const M = HOME_GATE_MOTION;
+    if (frozen != null) return;
     if (reduced) o.value = withTiming(1, { duration: REDUCED.duration });
     else o.value = withDelay(index * M.actStagger, withTiming(1, { duration: M.actEnter, easing: M.actCurve }));
     // eslint-disable-next-line react-hooks/exhaustive-deps

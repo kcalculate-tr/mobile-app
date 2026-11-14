@@ -149,6 +149,8 @@ describe('G49 md.1 · alan yüksekliği', () => {
       expectBox(r.getByTestId('gate48-postcode') as unknown as Node, picker);
       // metin, etiketin üstüne binmesin: alan metni dikeyde ortalı, yatay iç boşluk 13
       expect(flat(r.getByTestId('gate48-postcode') as unknown as Node).textAlignVertical).toBe('center');
+      // İzmir posta kodu yer tutucusu ("35040") İstanbul'da gösterilmez.
+      expect(r.getByTestId('gate48-postcode').props.placeholder).toBe('');
     });
   }
 
@@ -165,6 +167,7 @@ describe('G49 md.1 · alan yüksekliği', () => {
     const r = mount({ country: 'TR', city: 'İzmir', district: 'Bornova' });
     await flush();
     expect(r.getByTestId('gate48-district').props.accessibilityRole).toBe('button');
+    expect(r.getByTestId('gate48-postcode').props.placeholder).toBe('35040');
     expectBox(r.getByTestId('gate48-postcode') as unknown as Node, r.getByTestId('gate48-city') as unknown as Node);
   });
 

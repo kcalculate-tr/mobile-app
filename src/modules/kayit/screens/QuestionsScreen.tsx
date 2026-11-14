@@ -94,7 +94,7 @@ const LAYOUT: Record<KQuestion, BubbleLayout> = {
 // G49 md.5: hedef/cinsiyet/hareket/beslenme/pişirme/zorluk seçenekleri cam PNG ikon (ui/glassIcons); spor çipleri vektör.
 const SPORT_ICON = { weights: Barbell, run: PersonSimpleRun, walk: PersonSimpleWalk, yoga: PersonSimpleTaiChi, swim: SwimmingPool, team: SoccerBall, other: Lightning } as const;
 
-type Params = { path?: KPath; mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: GateTarget | null; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask' } | undefined;
+type Params = { path?: KPath; mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: GateTarget | null; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask'; vitrinAnswers?: Record<string, unknown> } | undefined;
 
 export default function QuestionsScreen() {
   const { t, lang } = useT();
@@ -133,6 +133,8 @@ export default function QuestionsScreen() {
     } else if (s.answers.goal == null && s.answers.heightCm == null) {
       s.setUnits(defaultUnits(lang, Localization.getLocales?.()[0]?.regionCode));
     }
+    // YALNIZ __DEV__ vitrini (G49 cam ikon çekimi): soruda bir seçenek seçili açılır.
+    if (__DEV__ && params.vitrinAnswers) s.patch(params.vitrinAnswers as never);
     if (__DEV__ && params.vitrinStep) s.setStep(params.vitrinStep);
     else if (short || s.answers.goal == null) s.setStep('goal');
     // YALNIZ __DEV__ vitrini `vitrinConsent: 'ask'`: rıza sorulmamış gibi (G45 rıza notu çekimi).

@@ -333,7 +333,8 @@ export function EkLocationGate({
                     label={g('postcode')}
                     a11y={g('postcode_a11y')}
                     value={sel.postalCode ?? ''}
-                    placeholder={tr ? '35040' : ''}
+                    // G49 md.1: pano yer tutucusu "35040" bir İzmir kodu → yalnız İzmir'de (ya da il seçilmemişken).
+                    placeholder={tr && (!sel.city || izmir) ? '35040' : ''}
                     keyboardType="number-pad"
                     maxLength={10}
                     onChange={(v) => setSel((s) => ({ ...s, postalCode: v.replace(/[^0-9A-Za-z -]/g, '') }))}

@@ -21,6 +21,7 @@ import { track } from '../../../lib/analytics';
 import { GLASS } from '../../personalPlan/ui/parts';
 import { useReduceTransparency } from '../../personalPlan/bridge';
 import { BRICOLAGE_BOLD, HOME_LIGHT } from '../../onboarding/first/homeTokens';
+import { devFrozenAt, frozenDraw } from './homeGateDev';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -52,14 +53,15 @@ function useCardTokens() {
         glass: 'rgba(28,28,30,0.62)',
         edge: 'rgba(255,255,255,0.14)',
         ink: palette.darkInk,
-        sec: palette.darkSecondary,
+        // G49 HIG: lime ışıma üstünde #A1A1A6 ≈ 2,0:1 kalıyordu → darkInk %82 (≈ 5,6:1, AA).
+        sec: 'rgba(245,245,245,0.82)',
         panel: 'rgba(255,255,255,0.06)',
         panelEdge: 'rgba(255,255,255,0.08)',
         track: 'rgba(255,255,255,0.12)',
         fill: palette.lime,
         col: 'rgba(255,255,255,0.2)',
         tag: 'rgba(255,255,255,0.1)',
-        glowTop: 0.34,
+        glowTop: 0.22,
         glowEnd: 0,
       }
     : {
@@ -96,7 +98,7 @@ function Surface() {
             <Stop offset="1" stopColor={c.isDark ? palette.lime : palette.white} stopOpacity={c.isDark ? c.glowEnd : 0.9} />
           </LinearGradient>
           <RadialGradient id="g49Glow" cx="10%" cy="0%" rx="70%" ry="60%">
-            <Stop offset="0" stopColor={palette.lime} stopOpacity={c.isDark ? 0.3 : 0.55} />
+            <Stop offset="0" stopColor={palette.lime} stopOpacity={c.isDark ? 0.2 : 0.55} />
             <Stop offset="1" stopColor={palette.lime} stopOpacity={0} />
           </RadialGradient>
         </Defs>
@@ -111,15 +113,16 @@ function Surface() {
 export function FloatingCup() {
   const reduced = useReducedMotion();
   const p = useSharedValue(0.5);
+  const still = reduced || devFrozenAt() != null;
   useEffect(() => {
-    if (reduced) {
+    if (still) {
       p.value = 0.5;
       return;
     }
     const M = HOME_GATE_MOTION;
     p.value = 0;
     p.value = withRepeat(withTiming(1, { duration: M.cupHalf, easing: M.cupCurve }), -1, true);
-  }, [reduced, p]);
+  }, [still, p]);
   const moving = useAnimatedStyle(() => {
     const M = HOME_GATE_MOTION;
     const d = (0.5 - p.value) * M.cupShift; // +3 (sağ üst) … −3 (sol alt)
@@ -133,7 +136,7 @@ export function FloatingCup() {
       testID="home-gate-cup"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.cup, reduced ? null : moving]}
+      style={[styles.cup, still ? null : moving]}
     >
       <Image source={GLASS.trophy} style={{ width: CUP_W, height: CUP_H }} resizeMode="contain" />
     </Animated.View>
@@ -143,8 +146,13 @@ export function FloatingCup() {
 /** Çizim ilerlemesi (0 → 1, 600 ms ease-out). Azaltılmış harekette anlık (panel opaklıkla gelir). */
 function useDraw(delay = 0) {
   const reduced = useReducedMotion();
-  const v = useSharedValue(reduced ? 1 : 0);
+  const frozen = devFrozenAt();
+  const v = useSharedValue(frozen != null ? frozenDraw(frozen, delay) : reduced ? 1 : 0);
   useEffect(() => {
+    if (frozen != null) {
+      v.value = frozenDraw(frozen, delay);
+      return;
+    }
     if (reduced) {
       v.value = 1;
       return;
