@@ -7,6 +7,7 @@
 // ilk görünüşte çizilerek gelir (600 ms ease-out, sütunlar ≤ 40 ms kademe); köşede "Örnek" etiketi — gerçek kullanıcı
 // verisi gibi sunulmaz (VoiceOver: "Örnek analiz önizlemesi, gerçek verin değil"). Lime "Planımı oluştur" → G47 kayıt
 // akışı (çağıranın `onStart`ı, mevcut yönlendirme). Ölçüm: home_plan_card_view (bir kez) · home_plan_card_tap {plan}.
+import { useOrient110Target } from '../../onboarding/orient110/useOrient110Target';
 import React, { useEffect } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -282,12 +283,14 @@ export function SamplePreview() {
 export function HomePlanGateCard({ onStart, cycleKey = 0 }: { onStart: () => void; cycleKey?: number }) {
   const { t } = useT();
   const c = useCardTokens();
+  // G54-S1 md.3: 1.1.0 ipucu "Planını oluştur" kartı (profilsiz) — aynı zamanda "Ana sayfa odakta" sinyali.
+  const o110Home = useOrient110Target('home', { variant: 'card' });
   useEffect(() => {
     track('home_plan_card_view');
   }, []);
   return (
     <View testID="home-profile-gate" style={styles.wrap}>
-      <View style={[styles.card, { borderColor: c.edge }]}>
+      <View style={[styles.card, { borderColor: c.edge }]} {...o110Home}>
         <Surface />
         <View style={styles.text} accessible accessibilityLabel={`${t('kayit.gate.title')}. ${t('kayit.gate.sub')}`}>
           <AppText accessibilityRole="header" maxFontSizeMultiplier={1.3} style={[styles.title, { color: c.ink }]}>

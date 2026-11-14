@@ -59,6 +59,7 @@ import {
   LockSimple,
   Shield,
   FileText,
+  Compass,
   Headset,
   ChatText,
   SignOut,
@@ -66,6 +67,7 @@ import {
   Translate,
   SealCheck,
 } from '../../../../components/icons';
+import { useOrient110 } from '../../../onboarding/orient110/store';
 import { AppText } from '../../../../core/design';
 import { EkInfoSheet } from '../../../eatkcal/v2/ui/InfoSheet';
 import {
@@ -105,6 +107,7 @@ export default function FinPrProfileScreen() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
   const yeniOnboardingFlag = useFeature('yeni_onboarding');
+  const yeniKayitFlag = useFeature('yeni_kayit');
   // G25-S1 md.3 (A4): "Macro aboneliğim" yalnız "Öğün Aboneliği" (yakında) sekmesini açıyor →
   // `yakinda_satirlari` kapalıyken satır gizli (Macro bakiyesi "Macro" satırından açılır).
   const yakindaSatirlari = useFeature('yakinda_satirlari');
@@ -430,6 +433,18 @@ export default function FinPrProfileScreen() {
               onPress={() => openSub('language')}
             />
             <FinRow icon={<FileText size={18} color={t.color.ink} />} label={tr('profil.agreements')} onPress={() => openSub('agreements')} />
+            {/* G54-S1 md.3: 1.1.0 uygulama turu — ipuçlarını Ana sayfada yeniden başlatır. */}
+            {yeniKayitFlag ? (
+              <FinRow
+                testID="profile-replay-tour"
+                icon={<Compass size={18} color={t.color.ink} />}
+                label={tr('orient110.replay')}
+                onPress={() => {
+                  useOrient110.getState().replayTips();
+                  navigation.navigate('Tracker' as never);
+                }}
+              />
+            ) : null}
           </FinRowGroup>
         </View>
 

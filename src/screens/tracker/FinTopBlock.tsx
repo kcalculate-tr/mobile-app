@@ -33,6 +33,7 @@ import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
 import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
 import { HomeFirstMealCard, HomeOnboardingSlot, useOrientTarget } from '../../modules/onboarding/first'; // G18-S1: profil kartı yuvası, ilk öğün kartı, Orient3 hedefi
+import { useOrient110Target } from '../../modules/onboarding/orient110/useOrient110Target';
 import { palette } from '../../core/design/tokens';
 
 export { pctLabel };
@@ -262,6 +263,8 @@ export function FinTopBlock({
   const coreStyle = useFocusEntry();
 
   const orientRing = useOrientTarget('ring', { ready: !empty }); // G18-S1 temas: Orient3 (ilk kayıttan sonra)
+  // G54-S1 md.3: 1.1.0 ipucu "Ana sayfa kalori alanı" (profilli) — aynı zamanda "Ana sayfa odakta" sinyali.
+  const o110Home = useOrient110Target('home', { variant: 'ring' });
   const energyUnit = !hasTarget
     ? tt('home.kcal_today')
     : empty
@@ -278,7 +281,7 @@ export function FinTopBlock({
 
   return (
     <View style={styles.block}>
-      <View style={styles.hero} accessibilityLabel={tt('home.ring_region')}>
+      <View style={styles.hero} accessibilityLabel={tt('home.ring_region')} {...o110Home}>
         <Pressable
           onPress={onOpenMacros}
           disabled={!onOpenMacros}

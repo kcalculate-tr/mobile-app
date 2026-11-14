@@ -131,6 +131,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     'supabase/migrations/20261114220100_g49_home_plan_card_events.sql',
     // G50-S1: Ana sayfa ek bölümleri.
     'supabase/migrations/20261115000100_g50_home_sections_events.sql',
+    // G54-S1: 1.1.0 oryantasyonu.
+    'supabase/migrations/20261115100100_g54_orient_v110_events.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');

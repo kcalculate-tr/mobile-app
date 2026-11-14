@@ -36,6 +36,11 @@ export interface SyncedState {
    */
   age_ok?: true;
   age_ok_at?: string;
+  /**
+   * G54-S1 md.3: 1.1.0 oryantasyonu görüldü (HESAP bazında). Bu modül yazmaz; yalnız korur (persist ezmesin).
+   * Cihaz kaydından (hesaplar arası ortak) gelen değer birleştirmede yok sayılır → `stripDeviceOnly`.
+   */
+  orient_v110_seen_at?: string;
 }
 
 export const EMPTY_ORIENT: OrientState = {
@@ -58,7 +63,7 @@ export function parseSynced(raw: unknown): SyncedState {
   const r = raw as Record<string, unknown>;
   const o = (r.orient && typeof r.orient === 'object' ? r.orient : {}) as Record<string, unknown>;
   const seen = (o.seen && typeof o.seen === 'object' ? o.seen : {}) as Record<string, unknown>;
-  return withAge(
+  const base = withAge(
     {
       profileCard: asCard(r.profileCard),
       orient: {
@@ -70,6 +75,22 @@ export function parseSynced(raw: unknown): SyncedState {
     r.age_ok === true,
     typeof r.age_ok_at === 'string' ? r.age_ok_at : undefined,
   );
+  return withOrient(base, typeof r.orient_v110_seen_at === 'string' && r.orient_v110_seen_at ? r.orient_v110_seen_at : undefined);
+}
+
+function withOrient(s: SyncedState, at: string | undefined): SyncedState {
+  if (!at) {
+    if (s.orient_v110_seen_at === undefined) return s;
+    const { orient_v110_seen_at: _o, ...rest } = s;
+    void _o;
+    return rest;
+  }
+  return { ...s, orient_v110_seen_at: at };
+}
+
+/** G54: cihaz kaydı birden çok hesapta ortak → hesap bazındaki işaret cihazdan taşınmaz. */
+export function stripDeviceOnly(s: SyncedState): SyncedState {
+  return withOrient(s, undefined);
 }
 
 function withAge(s: SyncedState, ok: boolean, at: string | undefined): SyncedState {
@@ -88,7 +109,8 @@ export function mergeSynced(a: SyncedState, b: SyncedState): SyncedState {
     (x): x is string => typeof x === 'string',
   );
   // 18+ beyanı bir kez verildiyse kalır (VEYA); en erken zaman.
-  return withAge(mergeCore(a, b), !!(a.age_ok || b.age_ok), ats.sort()[0]);
+  const ors = [a.orient_v110_seen_at, b.orient_v110_seen_at].filter((x): x is string => typeof x === 'string').sort();
+  return withOrient(withAge(mergeCore(a, b), !!(a.age_ok || b.age_ok), ats.sort()[0]), ors[0]);
 }
 
 function mergeCore(a: SyncedState, b: SyncedState): SyncedState {

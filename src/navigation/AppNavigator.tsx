@@ -43,6 +43,7 @@ import WelcomeGateScreen from '../screens/WelcomeGateScreen';
 import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay, OrientHost } from '../modules/onboarding';
 // G42-S1 — yeni onboarding + kayıt (eager: koyu zemin, beyaz flash yok). Yalnız `yeni_kayit` açıkken kayıtlı.
 import KayitNavigator, { OfferRoute as KayitOfferRoute } from '../modules/kayit/KayitNavigator';
+import { Orient110Host } from '../modules/onboarding/orient110/Orient110Host';
 import KayitShortScreen from '../modules/kayit/screens/QuestionsScreen';
 // G47-S1 — tek giriş katmanı (AuthSheet, `Login` rotası saydam modal) + giriş kipi E1/E2 + profil kapısı.
 import AuthSheet from '../modules/kayit/auth/AuthSheet';
@@ -686,7 +687,8 @@ export default function AppNavigator() {
       ))}
     </Stack.Navigator>
     {/* G18-S1 temas — FinOrient1–4 ipuçları (yalnız yeni_onboarding; kapalıyken null). */}
-    <OrientHost />
+    {/* G54-S1 md.3: yeni_kayit açıkken 1.1.0 oryantasyonu (yeni_onboarding'den bağımsız); eski G18 ipuçları kapalı. */}
+    {yeniKayit ? <Orient110Host /> : <OrientHost />}
     </StackBgContext.Provider>
   );
 }

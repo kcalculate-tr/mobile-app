@@ -16,6 +16,7 @@ import {
   parseSynced,
   sameSynced,
   skipAll,
+  stripDeviceOnly,
   type OrientStep,
   type ProfileCardState,
   type SyncedState,
@@ -80,11 +81,12 @@ export const useOnbFirst = create<OnbFirstStore>((set, get) => ({
     let local = EMPTY_SYNCED;
     try {
       const raw = await AsyncStorage.getItem(ONB_FIRST_KEY);
-      if (raw) local = parseSynced(JSON.parse(raw));
+      if (raw) local = stripDeviceOnly(parseSynced(JSON.parse(raw)));
     } catch {
       // bozuk kayıt → boş
     }
-    const merged0 = mergeSynced(local, get().synced);
+    // G54: önceki hesabın hesap-bazlı işareti yeni hesaba taşınmaz.
+    const merged0 = mergeSynced(local, get().userId === userId ? get().synced : stripDeviceOnly(get().synced));
     set({ hydrated: true, userId, synced: merged0 });
     if (!userId) return;
     const remote = await readRemote(userId);

@@ -64,6 +64,7 @@ import { resolveShellTabs, shouldShowScan, type ShellTabDef } from './tabs';
 import { TAB_ICON_BY_KIND, ScanIcon } from './icons';
 import { badgeText, emitLogBadge, onLogBadge, setHomeTabNode, setHomeTabTarget } from './logTrace';
 import { useOrientTarget } from '../onboarding/first/orient/useOrientTarget'; // G18-S1 temas
+import { useOrient110Target } from '../onboarding/orient110/useOrient110Target';
 import { palette } from '../../core/design/tokens';
 
 /** R3 cam token'ları — tasarımın tokens() çıktısı (light/dark) birebir. */
@@ -117,6 +118,11 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   const aiTarama = useFeature('ai_tarama');
   const showScan = shouldShowScan({ ai_tarama: aiTarama });
   const orientScan = useOrientTarget('scan', { ready: state.routes[state.index]?.name === 'Tracker' }); // G18-S1 temas: Orient1
+  // G54-S1 md.3: 1.1.0 ipuçları — Tara düğmesi, Keşfet ve eatkcal sekmeleri (yalnız Ana sayfa sekmesindeyken).
+  const onHomeTab = state.routes[state.index]?.name === 'Tracker';
+  const o110Scan = useOrient110Target('scan', { ready: onHomeTab });
+  const o110Kesfet = useOrient110Target('kesfet', { ready: onHomeTab });
+  const o110Eat = useOrient110Target('eatkcal', { ready: onHomeTab });
   const cartCount = useCartStore((s) => s.items.reduce((sum, it) => sum + it.quantity, 0));
 
   // Görünür sekmeler: tasarım sırası + yalnız navigatörde KAYITLI olanlar
@@ -412,6 +418,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
                 return (
                   <Pressable
                     key={def.route}
+                    {...(def.route === 'KesfetTab' ? o110Kesfet : def.route === 'Home' ? o110Eat : null)}
                     style={styles.tab}
                     onPress={() => route && handleTabPress(def.route, route.key)}
                     accessibilityRole="tab"
@@ -471,7 +478,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
         {/* Ayrık Tara dairesi */}
         {showScan ? (
           <Animated.View style={scanPop.style} {...orientScan}>
-            <Animated.View style={[styles.scanWrap, scanSizeStyle]}>
+            <Animated.View style={[styles.scanWrap, scanSizeStyle]} {...o110Scan}>
               <BlurView
                 intensity={28}
                 tint={g.tint}

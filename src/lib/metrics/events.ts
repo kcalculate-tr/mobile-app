@@ -242,6 +242,10 @@ export const EVENTS = {
   home_coach_prompts_tap: { category: 'lifecycle', tr: 'Ana sayfa Koç hazır sorusu dokunuşu', en: 'Home coach prompt tap', props: { prompt: ['dinner', 'protein', 'week'] } },
   home_streak_view: { category: 'lifecycle', tr: 'Ana sayfa seri ve haftalık özet görüldü', en: 'Home streak and week summary viewed', props: {} },
   home_streak_tap: { category: 'lifecycle', tr: 'Ana sayfa seri kartı dokunuşu', en: 'Home streak card tap', props: {} },
+  // G54-S1 md.3: 1.1.0 oryantasyonu (tanıtım sayfası intro_1..4 ya da ipucu adı; kişisel veri yok).
+  orient_v110_view: { category: 'lifecycle', tr: '1.1.0 oryantasyon adımı görüldü', en: '1.1.0 orientation step viewed', props: { step: 'text' } },
+  orient_v110_complete: { category: 'lifecycle', tr: '1.1.0 oryantasyonu tamamlandı', en: '1.1.0 orientation completed', props: {} },
+  orient_v110_skip: { category: 'lifecycle', tr: '1.1.0 oryantasyonu geçildi', en: '1.1.0 orientation skipped', props: { step: 'text' } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',
