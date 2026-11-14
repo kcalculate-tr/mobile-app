@@ -56,6 +56,7 @@ import {
   isIzmir,
   locationLabel,
   selectionFromGeocode,
+  withCity,
   type DistrictOption,
   type GateSelection,
 } from './gateRule';
@@ -225,7 +226,8 @@ export function EkLocationGate({
   const countryText = countryRow ? countryName(countryRow, lang) : sel.country;
 
   const setCountry = (iso: string) => setSel({ country: iso, city: null, district: null, postalCode: null });
-  const setCity = (city: string) => setSel((s) => ({ ...s, city, district: null }));
+  // G49 md.1: şehir değişince ilçe ile birlikte posta kodu da temizlenir (İstanbul'da İzmir posta kodu kalmasın).
+  const setCity = (city: string) => setSel((s) => withCity(s, city));
   const setDistrict = (d: string) => setSel((s) => ({ ...s, district: d }));
 
   const onLocate = useCallback(async () => {
@@ -579,7 +581,8 @@ function InputField({
         accessibilityLabel={a11y}
         keyboardAppearance="dark"
         selectionColor={GATE.lime}
-        style={[styles.field, styles.fieldText, styles.input, !editable && { opacity: 0.6 }]}
+        // G49 md.1: `fieldText` (flex: 1) dikey sütunda TextInput yüksekliğini 0'a çekiyordu → ayrı, flex'siz metin stili.
+        style={[styles.field, styles.inputText, styles.input, !editable && { opacity: 0.6 }]}
         testID={testID}
       />
     </View>
@@ -770,7 +773,9 @@ const styles = StyleSheet.create({
   },
   fieldRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 13, paddingRight: 12, gap: 6 },
   fieldText: { flex: 1, color: GATE.ink, fontFamily: fontFamily.bodySemibold, fontSize: 16, lineHeight: 20 },
-  input: { paddingHorizontal: 13, paddingVertical: 0 },
+  // G49 md.1: metin alanı — flex YOK; kutu (44 pt, zemin, kenar) `field`ten, iç boşluk seçicilerle aynı (13).
+  inputText: { color: GATE.ink, fontFamily: fontFamily.bodySemibold, fontSize: 16 },
+  input: { paddingHorizontal: 13, paddingVertical: 0, textAlignVertical: 'center' },
   locate: {
     width: GATE_SIZE.btn,
     height: GATE_SIZE.btn,

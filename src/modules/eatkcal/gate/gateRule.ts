@@ -71,6 +71,49 @@ export interface GateSelection {
   postalCode?: string | null;
 }
 
+/** G49 md.1: şehir seçimi — ilçe VE posta kodu temizlenir (önceki şehrin posta kodu kalmasın). */
+export function withCity(sel: GateSelection, city: string): GateSelection {
+  return { ...sel, city, district: null, postalCode: null };
+}
+
+// ── G49 md.1: Türkiye posta kodu ↔ il tutarlılığı ───────────────────────────
+// TR posta kodu 5 hane; ilk iki hane ilin plaka kodudur (35xxx = İzmir, 34xxx = İstanbul).
+const TR_PLATE: readonly string[] = [
+  'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin', 'Aydın', 'Balıkesir',
+  'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli',
+  'Diyarbakır', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari',
+  'Hatay', 'Isparta', 'Mersin', 'İstanbul', 'İzmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir',
+  'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla', 'Muş', 'Nevşehir',
+  'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 'Tekirdağ', 'Tokat',
+  'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak', 'Van', 'Yozgat', 'Zonguldak', 'Aksaray', 'Bayburt', 'Karaman',
+  'Kırıkkale', 'Batman', 'Şırnak', 'Bartın', 'Ardahan', 'Iğdır', 'Yalova', 'Karabük', 'Kilis', 'Osmaniye', 'Düzce',
+];
+const PLATE_ALIAS: Record<string, string> = { afyon: 'afyonkarahisar', icel: 'mersin', maras: 'kahramanmaras', urfa: 'sanliurfa', antep: 'gaziantep', izmit: 'kocaeli', adapazari: 'sakarya' };
+
+/** İl adı → plaka kodu ("35"); bilinmiyorsa null. */
+export function trPlateCode(city: string | null | undefined): string | null {
+  if (!city) return null;
+  let k = fold(stripIl(city));
+  k = PLATE_ALIAS[k] ?? k;
+  const i = TR_PLATE.findIndex((n) => fold(n) === k);
+  return i < 0 ? null : String(i + 1).padStart(2, '0');
+}
+
+/**
+ * Posta kodu seçilen şehirle tutarlı mı: şehir yoksa posta kodu tutulmaz; Türkiye'de il biliniyorsa kodun ilk
+ * iki hanesi plakayla eşleşmeli (5 hane). Yabancı şehirde biçim denetimi yok (ülkeye göre değişir).
+ */
+export function consistentPostal(country: string, city: string | null | undefined, postal: string | null | undefined): string | null {
+  const p = (postal ?? '').trim();
+  if (!p || !city?.trim()) return null;
+  if (isTurkey(country)) {
+    if (!/^\d{5}$/.test(p)) return null;
+    const plate = trPlateCode(city);
+    if (plate && p.slice(0, 2) !== plate) return null;
+  }
+  return p;
+}
+
 /** "Restoranları gör" etkin mi: ülke + şehir şart; Türkiye › İzmir'de ilçe de zorunlu. */
 export function canSubmit(sel: GateSelection): boolean {
   if (!sel.country || !sel.city?.trim()) return false;
@@ -127,16 +170,17 @@ export function selectionFromGeocode(g: ReverseGeoResult | null | undefined, dis
   if (!country) return null;
   if (country === 'TR') {
     const city = stripIl(g.region ?? g.city ?? '');
-    if (!city) return { country, city: null, district: null, postalCode: g.postalCode ?? null };
+    if (!city) return { country, city: null, district: null, postalCode: null };
     const candidates = [g.subregion, g.city, g.district].filter((v): v is string => !!v && fold(v) !== fold(city));
     let district: string | null = candidates[0] ?? null;
     if (isIzmir(city)) {
       const hit = candidates.map((c) => findDistrict(districts, c)).find(Boolean);
       district = hit ? hit.name : null;
     }
-    return { country, city: isIzmir(city) ? IZMIR_NAME : city, district, postalCode: g.postalCode ?? null };
+    const outCity = isIzmir(city) ? IZMIR_NAME : city;
+    return { country, city: outCity, district, postalCode: consistentPostal(country, outCity, g.postalCode) };
   }
   const city = (g.city ?? g.subregion ?? g.region ?? '').trim() || null;
   const district = g.district && city && fold(g.district) !== fold(city) ? g.district : null;
-  return { country, city, district, postalCode: g.postalCode ?? null };
+  return { country, city, district, postalCode: consistentPostal(country, city, g.postalCode) };
 }
