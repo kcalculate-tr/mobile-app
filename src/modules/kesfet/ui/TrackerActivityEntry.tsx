@@ -28,7 +28,8 @@ export interface ActivityLogged {
   minutes: number;
 }
 
-export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; onLogged?: (r?: ActivityLogged) => void } = {}) {
+// G49-S1 md.3: `openSignal` 0'dan büyük bir değere değişince sheet açılır (Ana sayfa "Etkinlik ekle" eylemi).
+export function TrackerActivityEntry({ variant, onLogged, openSignal = 0 }: { variant?: 'home'; onLogged?: (r?: ActivityLogged) => void; openSignal?: number } = {}) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
   const [day, setDay] = useState<DayActivity | null>(null);
@@ -50,6 +51,9 @@ export function TrackerActivityEntry({ variant, onLogged }: { variant?: 'home'; 
   useEffect(() => {
     refresh();
   }, [refresh]);
+  useEffect(() => {
+    if (openSignal > 0) setSheet(true);
+  }, [openSignal]);
 
   const preview = activityDraftCard(draft);
   const limitErr = preview ? activityLimitError(preview.minutes, preview.distance_km) : null;

@@ -111,7 +111,7 @@ import AuthSheet from '../auth/AuthSheet';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import { EmailScreen } from '../screens/SignupScreens';
 import { ResultScreen } from '../screens/PlanScreens';
-import { HomeProfileGateCard } from '../ui/HomeProfileGateCard';
+import { HomePlanGateCard } from '../ui/HomePlanGateCard';
 import { initialForEntry } from '../KayitNavigator';
 import { useProfileGate } from '../gateFlow';
 import { completeGateFlow } from '../gateComplete';
@@ -344,17 +344,17 @@ describe('(c)/(d) profil kapısı', () => {
     raf.mockRestore();
   });
 
-  test('(c) Ana sayfa kartı: "Planını oluştur" + lime "Başla" → kayıt akışı', () => {
+  test('(c) Ana sayfa kartı (G49: yeni kart): başlık + lime "Planımı oluştur" → kayıt akışı', () => {
     const onStart = jest.fn();
-    const r = render(wrap(<HomeProfileGateCard onStart={onStart} />));
-    expect(r.getByText('Planını oluştur')).toBeTruthy();
-    expect(r.getByText('Günlük kalori hedefin ve takibin için 1 dakika')).toBeTruthy();
+    const r = render(wrap(<HomePlanGateCard onStart={onStart} />));
+    expect(r.getByText('Kalorilerini ve sağlığını takip et')).toBeTruthy();
+    expect(r.getByText('1 dakikalık planla günlük kalori hedefin ve makroların hazır.')).toBeTruthy();
     const b = r.getByTestId('home-profile-gate-start');
-    expect(b.props.accessibilityLabel).toBe('Başla');
+    expect(b.props.accessibilityLabel).toBe('Planımı oluştur');
     fireEvent.press(b);
     expect(onStart).toHaveBeenCalled();
     const tracker = src('src/screens/TrackerScreen.tsx');
-    expect(tracker).toMatch(/yeniKabuk && profileGate\.blocked \? <HomeProfileGateCard onStart=\{\(\) => profileGate\.require\(null\)\} \/> : null/);
+    expect(tracker).toMatch(/yeniKabuk && profileGate\.blocked \? <HomePlanGateCard onStart=\{\(\) => profileGate\.require\(null\)\} \/> : null/);
     expect(tracker).toMatch(/yeniKabuk && !profileGate\.blocked \? \(\s*<TrackerDayHeader/);
     // Elle gir, su, öğün kaydı kapıdan geçer.
     expect(tracker).toMatch(/const openMealFormFor = \(slot: SlotKey\) => \{\s*if \(profileGate\.require/);
@@ -467,7 +467,8 @@ test('metinler TR + EN eksiksiz', () => {
     for (const k of ['title', 'sub', 'cta']) expect(a.gate[k]).toBeTruthy();
     expect(a.plan.save_error).toBeTruthy();
   }
-  expect(tr.gate.title).toBe('Planını oluştur');
+  expect(tr.gate.title).toBe('Kalorilerini ve sağlığını takip et'); // G49 md.2
+  expect(en.gate.title).toBe('Track your calories and health');
   expect(tr.auth.title).toBe('Hesabına giriş yap');
   expect(en.auth.title).toBe('Log in to your account');
 });

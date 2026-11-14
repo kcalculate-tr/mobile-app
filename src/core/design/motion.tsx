@@ -441,6 +441,28 @@ export const EK_GATE_MOTION = {
   inCurve: CURVE.enter,
 } as const;
 
+/**
+ * G49-S1 md.2–3 — profilsiz Ana sayfa kartı + "Neler yapabilirsin" eylemleri (İlter brifi; tek kaynak).
+ * Kupa: 4 sn döngü (yarım 2000 ileri / 2000 geri), sağ üst ↔ sol alt 6 pt kayma + ±3° eğilme, ease-in-out sinüs.
+ * Analiz önizlemesi: halka ve makro çubukları 600 ms ease-out çizilir; 7 günlük sütunlar ≤ 40 ms kademe.
+ * Eylem kartları: 8 pt yukarı + fade 220 ms, kademe 50 ms (4 kart → toplam 150 ms); basışta 0,98.
+ * Azaltılmış harekette kupa SABİT; çizim/giriş yalnız opaklık (REDUCED.opacity).
+ */
+export const HOME_GATE_MOTION = {
+  cupHalf: 2000,
+  cupShift: 6,
+  cupTilt: 3,
+  cupCurve: Easing.inOut(Easing.sin),
+  draw: 600,
+  drawCurve: Easing.out(Easing.cubic),
+  colStagger: 40,
+  actEnter: DURATION.fast,
+  actShift: 8,
+  actStagger: 50,
+  actCurve: CURVE.enter,
+  pressScale: 0.98,
+} as const;
+
 /** Liste girişi gecikmesi: yalnız ilk 4 öğe kademelenir (≤ 300 ms) → toplam ≤ 500 ms. */
 export function listEnterDelay(index: number): number {
   'worklet';

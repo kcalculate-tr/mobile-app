@@ -51,7 +51,11 @@ import { HomeCelebrations } from './tracker/HomeCelebrations';
 import { WaitlistFormSheet } from '../modules/eatkcal/v2/ui/gate/WaitlistFormSheet';
 import { useShortProfileGate } from '../modules/kayit/gate';
 import { useProfileGate } from '../modules/kayit/gateFlow';
-import { HomeProfileGateCard } from '../modules/kayit/ui/HomeProfileGateCard'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
+import { HomePlanGateCard } from '../modules/kayit/ui/HomePlanGateCard'; // G49-S1 md.2 (G47 kartının yerine)
+import { HomeQuickActions, type QuickAction } from '../modules/kayit/ui/HomeQuickActions'; // G49-S1 md.3
+import { useCoachEnabled } from '../modules/coach/access';
+import { openCoach } from '../modules/coach/actions';
+import { runQuickAction } from '../modules/kayit/quickActions'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
 import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
 import { buildSlots, normalizeMealType, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 // G19-S2 — günlük takip açılışı: İstanbul gün saati, tek yuvarlama, çevrimdışı kuyruk, olaylar.
@@ -929,6 +933,9 @@ export default function TrackerScreen() {
   const aiTarama = useFeature('ai_tarama');
   // G8: Tracker'da etkinlik kaydı — bayrak kapalıyken aşağıdaki blok render olmaz.
   const etkinlik = useFeature('etkinlik');
+  // G49-S1 md.3: profilsiz Ana sayfa "Neler yapabilirsin" — paylaşım (Composer) ve Koç uygunluğu.
+  const kesfetPaylasim = useFeature('kesfet_paylasim');
+  const coachEnabled = useCoachEnabled();
   // G11-S4: yeni kabuk. Bayrak KAPALIYKEN (varsayılan — S2'nin registry satırı
   // S6 birleştirmesiyle gelir; o zamana dek mergeFlags tanımadığı anahtarı
   // false'a çözer) bu ekran bugünküyle BİREBİR aynı: yeni başlık render olmaz,
@@ -1619,6 +1626,43 @@ export default function TrackerScreen() {
     openMealFormFor(finOpenManual === true ? slotFromHour(istanbulHour()) : finOpenManual);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finOpenManual, yeniKabuk, navigation]);
+  // G49-S1 md.3: "Etkinlik ekle" profil kapısından dönüş → akış bitince etkinlik sheet'i bir kez açılır.
+  const finAddActivity = (route.params as { finAddActivity?: true } | undefined)?.finAddActivity;
+  const [activityOpenSignal, setActivityOpenSignal] = useState(0);
+  useEffect(() => {
+    if (!yeniKabuk || !finAddActivity || profileGate.blocked) return;
+    (navigation as any).setParams?.({ finAddActivity: undefined });
+    setActivityOpenSignal((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finAddActivity, yeniKabuk, profileGate.blocked]);
+  // G49-S1 md.3: hızlı eylemler. Tara · Etkinlik · Koç → profil kapısı (kayıt akışı, bitince bu eyleme dönülür);
+  // Paylaş → Keşfet kuralı (oturum yoksa AuthSheet = `Login`; `kesfet_paylasim` açıksa Composer, değilse Keşfet).
+  const quickActions: QuickAction[] = [
+    'scan',
+    ...(etkinlik ? (['activity'] as const) : []),
+    'share',
+    ...(coachEnabled ? (['coach'] as const) : []),
+  ];
+  const onQuickAction = (a: QuickAction) => {
+    const nav = navigation as any;
+    const prefill = tt('kayit.gate.act_coach_sub');
+    const slot = slotFromHour(istanbulHour());
+    runQuickAction(a, {
+      require: profileGate.require,
+      targets: {
+        scan: aiTarama ? { name: 'AiScan' } : homeTarget({ finOpenManual: slot }),
+        activity: homeTarget({ finAddActivity: true }),
+        coach: { name: 'CoachIntro', params: { from: 'home', prefill } },
+      },
+      startScan: () => logToSlot(slot),
+      openActivity: () => setActivityOpenSignal((n) => n + 1),
+      openCoach: () => void openCoach(nav, { from: 'home', prefill }),
+      signedIn: !!user,
+      openLogin: () => nav.navigate('Login'),
+      openComposer: kesfetPaylasim ? () => nav.navigate('Composer') : null,
+      openKesfet,
+    });
+  };
   const openWaitlist = (kind: 'add' | 'suggest') =>
     setWaitlistKind(kind === 'add' ? 'restaurant_add' : 'restaurant_suggest');
   // G18-S2 md.4: bölge (kayıtlı adres → seçilen il → izinli konum); md.3/6b: banner verisi.
@@ -2821,7 +2865,9 @@ const html = `
                  halka dolumu imza anı + seri + Logla izi + sessiz an. Bayrak
                  kapalıyken render OLMAZ (eski kalori halkası aşağıda kalır). ── */}
             {/* G47-S1 md.3: profil yoksa takip bölümü (halka, makrolar, Bugün, İlk öğününü ekle) yerine tek kart. */}
-            {yeniKabuk && profileGate.blocked ? <HomeProfileGateCard onStart={() => profileGate.require(null)} /> : null}
+            {/* G49-S1 md.2–3: profilsiz Ana sayfa = yeni plan kartı + hemen altında "Neler yapabilirsin" (2×2). */}
+            {yeniKabuk && profileGate.blocked ? <HomePlanGateCard onStart={() => profileGate.require(null)} /> : null}
+            {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} /> : null}
             {yeniKabuk && !profileGate.blocked ? (
               <TrackerDayHeader
                 kcal={Math.max(0, homeTotals.kcal - heldKcal)}
@@ -2883,6 +2929,7 @@ const html = `
                 {etkinlik ? (
                   <HomeActivitySection
                     refreshKey={activityRefresh}
+                    openSignal={activityOpenSignal}
                     onLogged={(r) => {
                       if (r) setHomeToast({ kind: 'activity', message: tt('gun.activity_added'), id: r.id, type: r.type, minutes: r.minutes });
                     }}

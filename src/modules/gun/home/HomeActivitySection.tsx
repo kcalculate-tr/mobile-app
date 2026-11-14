@@ -20,7 +20,8 @@ const hhmm = istanbulHHMM;
 
 // G19-S2 md.3: `onLogged` → Ana sayfa "Etkinlik eklendi · Geri al" toast'ı;
 // `refreshKey` değişince (geri al / gece yarısı / ön plan) liste yeniden okunur.
-export function HomeActivitySection({ onLogged, refreshKey = 0 }: { onLogged?: (r?: ActivityLogged) => void; refreshKey?: number } = {}) {
+// G49-S1 md.3: `openSignal` artınca "Etkinlik ekle" sheet'i açılır (profilsiz Ana sayfa eylemi → kayıt → dönüş).
+export function HomeActivitySection({ onLogged, refreshKey = 0, openSignal = 0 }: { onLogged?: (r?: ActivityLogged) => void; refreshKey?: number; openSignal?: number } = {}) {
   const k = useHomeTokens();
   const { t: tt, fmt } = useT();
   const [day, setDay] = useState<DayActivity | null>(null);
@@ -73,6 +74,7 @@ export function HomeActivitySection({ onLogged, refreshKey = 0 }: { onLogged?: (
       <View style={[styles.add, { borderTopColor: k.line }]}>
         <TrackerActivityEntry
           variant="home"
+          openSignal={openSignal}
           onLogged={(r) => {
             refresh();
             onLogged?.(r);

@@ -230,6 +230,9 @@ export const EVENTS = {
   eatkcal_gate_view: { category: 'commerce', tr: 'eatkcal konum kapısı görüldü', en: 'eatkcal location gate viewed', props: { state: ['address', 'soon'] } },
   eatkcal_gate_select: { category: 'commerce', tr: 'eatkcal konum kapısında konum seçildi', en: 'eatkcal location gate selection', props: { country: 'text', city: 'text', district: 'text', served: 'boolean' } },
   eatkcal_waitlist_submit: { category: 'commerce', tr: 'eatkcal bekleme listesi formu gönderildi', en: 'eatkcal waitlist form submitted', props: { kind: ['restaurant_add', 'restaurant_suggest'] } },
+  // G49-S1 md.2–3: profilsiz Ana sayfa kartı + "Neler yapabilirsin" eylemleri (sağlık değeri / kişisel veri YOK).
+  home_plan_card_view: { category: 'lifecycle', tr: 'Profilsiz Ana sayfa plan kartı görüldü', en: 'No-profile home plan card viewed', props: {} },
+  home_plan_card_tap: { category: 'lifecycle', tr: 'Profilsiz Ana sayfa kartı / hızlı eylem dokunuşu', en: 'No-profile home card / quick action tap', props: { action: ['plan', 'scan', 'activity', 'share', 'coach'] } },
   log_add: {
     category: 'tracking', kpi: true, aliasOf: 'log_meal',
     tr: 'Öğün kaydedildi', en: 'Meal logged',
