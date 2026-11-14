@@ -58,9 +58,7 @@ import { openCoach } from '../modules/coach/actions';
 import { runQuickAction } from '../modules/kayit/quickActions';
 // G50-S1 md.1: Ana sayfa ek bölümleri (ilk gün görevleri · seri · Koç soruları · tarifler) + tarama rozeti.
 import { HomeCoachPrompts, HomeFirstDayTasks, HomeStreakWeek, HomeTodayRecipes } from '../modules/gun/home/HomeExtras';
-import { scanBadge } from '../modules/gun/home/homeSectionRules';
 import type { CoachPrompt, FirstTask } from '../modules/gun/home/homeSectionRules';
-import { useSubscriptionStore } from '../lib/subscription/purchases'; // G42-S1 md.9 // G18-S5 temas: S2 → S3 bekleme listesi sheet'leri
 import type { WaitlistKind } from '../modules/eatkcal/v2/model/waitlist';
 import { buildSlots, normalizeMealType, slotFromHour, type HomeMealItem, type SlotKey } from '../modules/gun/homeData';
 // G19-S2 — günlük takip açılışı: İstanbul gün saati, tek yuvarlama, çevrimdışı kuyruk, olaylar.
@@ -1670,10 +1668,7 @@ export default function TrackerScreen() {
       setFocusTick((n) => n + 1);
     }, []),
   );
-  // 6b: kalan tarama hakkı (abonelik deposu: my_entitlement / reserve_ai_scan). Okunamazsa rozet yok.
-  const aiQuota = useSubscriptionStore((st) => st.ai);
-  const scanQ = aiTarama ? scanBadge(aiQuota) : null;
-  const scanBadgeText = scanQ ? tt(scanQ.paid ? 'home.x_scan_paid' : 'home.x_scan_free', { count: scanQ.n }) : null;
+  // G54-S1 md.8: G50 "Bugün N ücretsiz tarama" rozeti kaldırıldı (profilsiz ızgara + profilli ilk öğün kartı).
   // 6a: görev satırları → ilgili eylem (hepsi profil kapısından geçer: logToSlot / handleWaterAdd kendi kapısını çağırır).
   const onFirstTask = (task: FirstTask) => {
     if (task === 'plan') {
@@ -2921,7 +2916,7 @@ const html = `
                 [G51: Koç kartı →] Koç hazır soruları → Bugünün tarifleri → (Öne çıkanlar · Keşfet) → eatkcal. */}
             {yeniKabuk && profileGate.blocked ? <HomePlanGateCard onStart={() => profileGate.require(null)} cycleKey={focusTick} /> : null}
             {yeniKabuk && profileGate.blocked ? homeTasks : null}
-            {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} scanBadge={scanBadgeText} /> : null}
+            {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} /> : null}
             {/* G51-S1 md.2: ızgaranın hemen altında profilli sayfadaki mevcut Koç kartı (değerler yok → boş hâl);
                 `koc` kapalıysa kart kendisi çizilmez. Hazır sorular kartın hemen altında (ikinci Koç girişi yok). */}
             {yeniKabuk && profileGate.blocked ? <CoachHomeCard consumedKcal={null} targetKcal={null} proteinLeft={null} gate={coachGate} /> : null}
@@ -2940,7 +2935,6 @@ const html = `
                 onWaterAdd={handleWaterAdd}
                 onFirstLog={() => logToSlot(slotFromHour(istanbulHour()))}
                 onFirstManual={() => openMealFormFor(slotFromHour(istanbulHour()))}
-                scanBadge={scanBadgeText}
                 onOpenMacros={openGoal}
                 hasTarget={homeGoal.has}
               />

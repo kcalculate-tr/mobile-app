@@ -229,7 +229,6 @@ export interface FinTopBlockProps {
   /** Gün boşken "İlk öğününü ekle" → Elle gir (verilmezse onFirstLog). */
   onFirstManual?: () => void;
   /** G50 md.1/6b: kalan tarama rozeti (null → gizli). */
-  scanBadge?: string | null;
   onOpenMacros?: () => void;
   popStyle?: object;
   streak?: number;
@@ -246,7 +245,6 @@ export function FinTopBlock({
   onWaterAdd,
   onFirstLog,
   onFirstManual,
-  scanBadge,
   onOpenMacros,
   popStyle,
   streak = 0,
@@ -363,7 +361,7 @@ export function FinTopBlock({
       </View>
 
       {/* FinHomeEmptyR1: gün boşken hero altında "İlk öğününü ekle" (S1 bileşeni). */}
-      {empty && onFirstLog ? <HomeFirstMealCard onScan={onFirstLog} onManual={onFirstManual ?? onFirstLog} scanBadge={scanBadge} /> : null}
+      {empty && onFirstLog ? <HomeFirstMealCard onScan={onFirstLog} onManual={onFirstManual ?? onFirstLog} /> : null}
 
       {/* G18-S1 temas — FinHomeProfileCard / FinHomeEmptyR1: kart hero (+ İlk öğün) ile makro satırı arasında. */}
       <HomeOnboardingSlot />

@@ -67,25 +67,7 @@ export function tasksDismissKey(userId: string): string {
   return `@kcal_first_tasks_closed:${userId}`;
 }
 
-// ─── 6b Kalan tarama hakkı ───────────────────────────────────────────────────
-export interface ScanQuotaLike {
-  tier: 'free' | 'fresh' | 'balance' | null;
-  remaining: number | null;
-  limit?: number | null;
-  resetAt: string | null;
-}
-
-/** Rozet: { n, paid } ya da null (kota okunamadı / gün sınırı geçti → gizli). */
-export function scanBadge(q: ScanQuotaLike | null | undefined, now: number = Date.now()): { n: number; paid: boolean } | null {
-  if (!q || q.remaining == null || !Number.isFinite(q.remaining)) return null;
-  if (q.resetAt) {
-    const r = Date.parse(q.resetAt);
-    if (Number.isFinite(r) && now >= r) return null;
-  }
-  const cap = typeof q.limit === 'number' && Number.isFinite(q.limit) ? q.limit : Number.POSITIVE_INFINITY;
-  const n = Math.max(0, Math.min(Math.floor(q.remaining), cap));
-  return { n, paid: q.tier === 'fresh' || q.tier === 'balance' };
-}
+// ─── 6b Kalan tarama hakkı: G54-S1 md.8 ile KALDIRILDI (Ana sayfa rozeti yok). ───
 
 // ─── 6c Bugünün tarifleri ────────────────────────────────────────────────────
 export const RECIPE_MAX = 8;

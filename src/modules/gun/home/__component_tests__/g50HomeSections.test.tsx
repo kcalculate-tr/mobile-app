@@ -285,13 +285,20 @@ describe('6c Bugünün tarifleri', () => {
   });
 });
 
-describe('6b Kalan tarama hakkı rozeti', () => {
-  test('"Tabağını tara" kartında rozet; null → yok', () => {
-    const r = render(wrap(<HomeQuickActions onAction={jest.fn()} scanBadge="Bugün 2 ücretsiz tarama" />));
-    expect(r.getByText('Bugün 2 ücretsiz tarama')).toBeTruthy();
-    expect(r.getByTestId('home-quick-scan').props.accessibilityLabel).toMatch(/Bugün 2 ücretsiz tarama$/);
-    const n = render(wrap(<HomeQuickActions onAction={jest.fn()} scanBadge={null} />));
-    expect(n.queryByTestId('home-quick-scan-badge')).toBeNull();
+describe('G54 md.8: Ana sayfa tarama rozeti kaldırıldı', () => {
+  test('"Tabağını tara" kartında rozet yok; kartın geri kalanı aynı (başlık + alt metin etiketi)', () => {
+    const r = render(wrap(<HomeQuickActions onAction={jest.fn()} />));
+    expect(r.queryByTestId('home-quick-scan-badge')).toBeNull();
+    expect(r.queryByText(/ücretsiz tarama/)).toBeNull();
+    expect(r.getByTestId('home-quick-scan').props.accessibilityLabel).not.toMatch(/tarama$/i);
+  });
+  test('kaynak: TrackerScreen / ilk öğün kartı / sözlükte rozet yok', () => {
+    const { readFileSync } = require('fs');
+    const { join } = require('path');
+    const root = join(__dirname, '../../../../..');
+    expect(readFileSync(join(root, 'src/screens/TrackerScreen.tsx'), 'utf8')).not.toMatch(/scanBadge|x_scan_free|x_scan_paid/);
+    expect(readFileSync(join(root, 'src/modules/onboarding/first/HomeEmptyR1.tsx'), 'utf8')).not.toMatch(/home-scan-badge/);
+    expect(readFileSync(join(root, 'src/core/i18n/dictionaries.ts'), 'utf8')).not.toMatch(/x_scan_free|x_scan_paid/);
   });
 });
 

@@ -68,7 +68,6 @@ export interface TrackerDayHeaderProps {
   /** G18-S2: "İlk öğününü ekle" → Elle gir. */
   onFirstManual?: () => void;
   /** G50 md.1/6b: Tara girişindeki kalan tarama rozeti (kota okunamazsa null → gizli). */
-  scanBadge?: string | null;
   /** Enerji/Protein halkası ya da makro çipleri → makro ayrıntısı. */
   onOpenMacros?: () => void;
   /** G18-S2: kayıtlı hedef var mı (yoksa "Hedef belirlenmedi"). */
@@ -149,7 +148,6 @@ export function TrackerDayHeader({
   onWaterAdd,
   onFirstLog,
   onFirstManual,
-  scanBadge,
   onOpenMacros,
   hasTarget,
 }: TrackerDayHeaderProps) {
@@ -241,7 +239,6 @@ export function TrackerDayHeader({
           onWaterAdd={onWaterAdd}
           onFirstLog={onFirstLog}
           onFirstManual={onFirstManual}
-          scanBadge={scanBadge}
           onOpenMacros={onOpenMacros}
           hasTarget={hasTarget}
           popStyle={popStyle}

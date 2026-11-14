@@ -37,7 +37,7 @@ export function quickRows<T>(list: readonly T[]): T[][] {
   return rows;
 }
 
-function ActionCard({ action, index, onPress, badge }: { action: QuickAction; index: number; onPress: () => void; badge?: string | null }) {
+function ActionCard({ action, index, onPress }: { action: QuickAction; index: number; onPress: () => void }) {
   const k = useHomeTokens();
   const { t } = useT();
   const reduced = useReducedMotion();
@@ -66,7 +66,7 @@ function ActionCard({ action, index, onPress, badge }: { action: QuickAction; in
           onPress();
         }}
         accessibilityRole="button"
-        accessibilityLabel={badge ? `${title}. ${sub}. ${badge}` : `${title}. ${sub}`}
+        accessibilityLabel={`${title}. ${sub}`}
         style={({ pressed }) => [
           styles.card,
           { backgroundColor: k.card, borderColor: k.line, transform: [{ scale: pressed ? HOME_GATE_MOTION.pressScale : 1 }] },
@@ -83,13 +83,7 @@ function ActionCard({ action, index, onPress, badge }: { action: QuickAction; in
             importantForAccessibility="no"
           />
           {/* G50 md.1/6b: kalan tarama hakkı rozeti (kota okunamazsa yok). */}
-          {badge ? (
-            <View testID={`home-quick-${action}-badge`} style={[styles.badge, { borderColor: k.line }]}>
-              <AppText maxFontSizeMultiplier={1.3} style={[styles.badgeText, { color: k.text }]}>
-                {badge}
-              </AppText>
-            </View>
-          ) : null}
+          {/* G54-S1 md.8: tarama rozeti kaldırıldı. */}
         </View>
         <AppText maxFontSizeMultiplier={1.3} style={[styles.title, { color: k.text }]}>
           {title}
@@ -106,12 +100,10 @@ function ActionCard({ action, index, onPress, badge }: { action: QuickAction; in
 export function HomeQuickActions({
   actions = QUICK_ACTIONS,
   onAction,
-  scanBadge,
 }: {
   actions?: readonly QuickAction[];
   onAction: (a: QuickAction) => void;
   /** G50 md.1/6b: "Tabağını tara" kartında kalan tarama rozeti (null → gizli). */
-  scanBadge?: string | null;
 }) {
   const k = useHomeTokens();
   const { t } = useT();
@@ -127,7 +119,7 @@ export function HomeQuickActions({
         {rows.map((row, r) => (
           <View key={r} style={styles.row} testID={`home-quick-row-${r}`}>
             {row.map((a) => (
-              <ActionCard key={a} action={a} index={list.indexOf(a)} onPress={() => onAction(a)} badge={a === 'scan' ? scanBadge : null} />
+              <ActionCard key={a} action={a} index={list.indexOf(a)} onPress={() => onAction(a)} />
             ))}
           </View>
         ))}
@@ -147,8 +139,6 @@ const styles = StyleSheet.create({
   // Ek RN gölgesi YOK: cam PNG'lerin kendi yumuşak kenar ışığı var ve uygulamadaki diğer kullanımlar (Paywall,
   // kişisel plan, öğün yuvaları) da düz Image (G51 LOG › KARAR).
   glass: { width: QUICK_GLASS_SIZE, height: QUICK_GLASS_SIZE },
-  badge: { flexShrink: 1, marginLeft: 'auto', borderRadius: 10, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
-  badgeText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14 },
   title: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 },
   sub: { fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, lineHeight: 17 },
 });

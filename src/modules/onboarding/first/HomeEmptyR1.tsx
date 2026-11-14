@@ -56,7 +56,7 @@ export function HomeEmptyRing({ hasTarget }: { hasTarget: boolean }) {
   );
 }
 
-export function HomeFirstMealCard({ onScan, onManual, scanBadge }: { onScan: () => void; onManual: () => void; scanBadge?: string | null }) {
+export function HomeFirstMealCard({ onScan, onManual }: { onScan: () => void; onManual: () => void }) {
   const k = useHomeTokens();
   const i18n = useT();
   return (
@@ -101,12 +101,6 @@ export function HomeFirstMealCard({ onScan, onManual, scanBadge }: { onScan: () 
             <AppText style={[styles.btnText, { color: k.text }]}>{i18n.t('onboarding.home_empty.manual')}</AppText>
           </Pressable>
         </View>
-        {/* G50 md.1/6b: kalan tarama hakkı (yalnız kota okunabildiyse). */}
-        {scanBadge ? (
-          <AppText testID="home-scan-badge" style={[styles.p, { color: k.sec }]}>
-            {scanBadge}
-          </AppText>
-        ) : null}
       </View>
     </View>
   );

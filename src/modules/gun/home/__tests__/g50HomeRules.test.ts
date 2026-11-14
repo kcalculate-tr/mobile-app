@@ -6,7 +6,6 @@ import {
   FIRST_DAYS,
   homeStreak,
   recipesFromFeed,
-  scanBadge,
   taskRows,
   tasksDismissKey,
   tasksView,
@@ -58,16 +57,9 @@ test('kart hâli: 0/3 ve 2/3 → liste; 3/3 → kutlama (bir kez); kapatıldı /
   assert.equal(tasksDismissKey('u1'), '@kcal_first_tasks_closed:u1');
 });
 
-test('tarama rozeti: kota yok / gün sınırı geçti → null; ücretsiz ve ücretli ayrımı; limitle kırpılır', () => {
-  const tomorrow = new Date(NOW + DAY / 2).toISOString();
-  assert.equal(scanBadge(null, NOW), null);
-  assert.equal(scanBadge({ tier: 'free', remaining: null, resetAt: tomorrow }, NOW), null);
-  assert.equal(scanBadge({ tier: 'free', remaining: 2, resetAt: new Date(NOW - 1000).toISOString() }, NOW), null);
-  assert.deepEqual(scanBadge({ tier: 'free', remaining: 2, limit: 2, resetAt: tomorrow }, NOW), { n: 2, paid: false });
-  assert.deepEqual(scanBadge({ tier: null, remaining: 1, resetAt: null }, NOW), { n: 1, paid: false });
-  assert.deepEqual(scanBadge({ tier: 'balance', remaining: 47, limit: 50, resetAt: tomorrow }, NOW), { n: 47, paid: true });
-  assert.deepEqual(scanBadge({ tier: 'fresh', remaining: 12, limit: 10, resetAt: tomorrow }, NOW), { n: 10, paid: true });
-  assert.deepEqual(scanBadge({ tier: 'free', remaining: -3, resetAt: tomorrow }, NOW), { n: 0, paid: false });
+test('G54 md.8: tarama rozeti kuralı kaldırıldı (homeSectionRules dışa açmıyor)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  assert.equal((require('../homeSectionRules') as Record<string, unknown>).scanBadge, undefined);
 });
 
 const post = (id: string, meal: Partial<NonNullable<RecipeSourcePost['meal_card']>> | null, media: RecipeSourcePost['media'] = []): RecipeSourcePost => ({

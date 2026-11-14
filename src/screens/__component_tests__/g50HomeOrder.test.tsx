@@ -1,5 +1,5 @@
 // G50-S1 md.1 — Ana sayfa sırası (TrackerScreen tam render): profilsiz = Plan kartı → İlk gün görevleri → Neler
-// yapabilirsin (tarama rozeti) → Koç hazır soruları → Bugünün tarifleri → … → eatkcal; profilli = mevcut takip
+// yapabilirsin (G54: tarama rozeti kaldırıldı) → Koç hazır soruları → Bugünün tarifleri → … → eatkcal; profilli = mevcut takip
 // bölümü AYNEN üstte → İlk gün görevleri → Seri ve haftalık özet → Koç hazır soruları → Bugünün tarifleri → eatkcal.
 // Profilsiz kullanıcıda seri kartı YOK. (Kurulum g49HomeProfile ile aynı; yeni bölümler test kimlikli taklit.)
 import React from 'react';
@@ -227,24 +227,16 @@ test('profilli sıra: takip bölümü üstte (aynen) → Görevler → Seri → 
   expect(Array.isArray(mockSectionProps['x-streak'].days)).toBe(true);
 });
 
-test('tarama rozeti: kota okunamazsa yok; Ücretsiz kademede "Bugün N ücretsiz tarama" (profilsiz Tara kartı)', async () => {
+test('G54 md.8: tarama rozeti kaldırıldı — kota okunsa da (Ücretsiz / Balance) profilsiz Tara kartında rozet yok', async () => {
   setProfile('none');
   mockFlags.add('ai_tarama');
   try {
-    useSubscriptionStore.setState({ ai: null });
-    const a = render(<TrackerScreen />);
-    await flush();
-    expect(a.queryByTestId('home-quick-scan-badge')).toBeNull();
-    a.unmount();
     useSubscriptionStore.setState({ ai: { kind: 'ai', tier: 'free', remaining: 2, limit: 2, unlimited: false, resetAt: '2026-11-06T21:00:00.000Z' } });
     const b = render(<TrackerScreen />);
     await flush();
-    expect(b.getByText('Bugün 2 ücretsiz tarama')).toBeTruthy();
-    b.unmount();
-    useSubscriptionStore.setState({ ai: { kind: 'ai', tier: 'balance', remaining: 41, limit: 50, unlimited: false, resetAt: '2026-11-06T21:00:00.000Z' } });
-    const c = render(<TrackerScreen />);
-    await flush();
-    expect(c.getByText('Bugün 41 tarama')).toBeTruthy();
+    expect(b.queryByTestId('home-quick-scan-badge')).toBeNull();
+    expect(b.queryByText(/ücretsiz tarama|Bugün \d+ tarama/)).toBeNull();
+    expect(b.getByTestId('home-quick-scan')).toBeTruthy();
   } finally {
     mockFlags.delete('ai_tarama');
     useSubscriptionStore.setState({ ai: null });
