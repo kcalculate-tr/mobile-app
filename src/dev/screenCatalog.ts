@@ -823,6 +823,20 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(g49[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
+  // G50-S1 — `G50-<Sahne>(-S<kaydırma pt>)(-Dark)(-XL)`: Ana sayfa ek bölümleri. Home = profilsiz (görevler 0/3),
+  // Prof = profilli (2/3), T3 = profilli 3/3 kutlaması (1000. ms'de dondurulmuş). Hesap "dün" açılmış (VitrinGate).
+  const g50 = /^G50-([A-Za-z0-9]+?)(?:-S(\d+))?(-Dark)?(-XL)?$/.exec(name);
+  if (g50) {
+    const scenes: Record<string, string> = { Home: 'noProfileG50T0', Prof: 'g50T2', T3: 'g50T3' };
+    const scene = scenes[g50[1]];
+    if (!scene) return null;
+    const scroll = g50[2] ? Number(g50[2]) : 0;
+    return {
+      pano: name, area: 'ana', target: route(tab('Tracker', { vitrinHour: 9, ...(scroll ? { vitrinScroll: scroll } : {}) })), data: 'default',
+      flags: [...FINAL_FLAGS, 'yeni_kayit', 'kisisel_plan', 'koc', 'abonelik'], lang: 'tr', auth: 'user', hasDark: true, requested: name,
+      scheme: g50[3] ? 'dark' : 'light', scene, ...(g50[4] ? { textSize: 'extra-extra-extra-large' as const } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

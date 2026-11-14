@@ -77,15 +77,19 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   // G48-S1: konum kapısı sahneleri kapıyı gösterir, diğer eatkcal panoları doğrudan ana sayfa.
   __devForceEatGate(GATE_SCENES.has(scene));
   // G47-S1: profilsiz hesap sahnesi (profil kapısı kartı / Tara → P1).
-  __devForceProfileStatus(scene.startsWith('noProfile') ? 'none' : null);
+  // G50-S1: `g50*` sahneleri profilli (görev ① tamam), `noProfileG50*` profilsiz.
+  __devForceProfileStatus(scene.startsWith('noProfile') ? 'none' : scene.startsWith('g50') ? 'has' : null);
   // G49-S1: profilsiz Ana sayfa kartının açılış dizisi (noProfileF<ms>): çizim o anda dondurulur.
+  // G50-S1: ilk gün görevleri 3/3 kutlaması (g50T3) 1000. ms'de dondurulur (halka dolmuş, kart kaybolmadan).
   const frozen = /^noProfileF(\d+)$/.exec(scene);
-  __devFreezeHomeGate(frozen ? Number(frozen[1]) : null);
+  __devFreezeHomeGate(frozen ? Number(frozen[1]) : scene === 'g50T3' ? 1000 : null);
 
   await seedStorage({
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
     'eatkcal-city-gate-passed': GATE_SCENES.has(scene) ? null : '1',
+    // G50-S1: ilk gün görevleri "kapatıldı" işareti (vitrin kullanıcısı) her sahnede temiz başlar.
+    '@kcal_first_tasks_closed:00000000-0000-4000-8000-00000000a14e': null,
     // G18-S1 — ilk 60 saniye bayrakları: varsayılan kart tamam + oryantasyon atlandı
     // (diğer panolara karışmasın); kendi sahnelerinde açık.
     '@kcal_onb_first_v1': JSON.stringify(onbFirstSeed(scene, entry.pano)),
@@ -364,6 +368,49 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
               { id: 'post-3', title: 'Etiket Dedektifi: süzme yoğurt', thumb: P.yogurt },
             ],
     });
+  }
+  // G50-S1 — Ana sayfa ek bölümleri: yalnız G50 panolarında örnek içerik (görev durumu, tarifler, tarama hakkı).
+  // Diğer panolarda bölümler boş (önceki vitrin görüntüleri değişmesin). Üretimde gerçek kaynaklar.
+  {
+    const { setHomeExtrasProvider } = require('../modules/gun/home/HomeExtras');
+    if (entry.pano.startsWith('G50-')) {
+      const { Image: RNImage } = require('react-native');
+      const ph = (m: number) => RNImage.resolveAssetSource(m)?.uri ?? null;
+      const en = entry.lang === 'en';
+      const rec = scene === 'noProfileG50T0' ? { scan: false, water: false } : scene === 'g50T2' ? { scan: false, water: true } : { scan: true, water: true };
+      const recipe = (id: string, photo: number, tr: string, enName: string, kcal: number, protein: number) => ({
+        id,
+        author: { id: 'u-ed', display_name: 'kcal', handle: 'kcal', avatar_url: null, role: 'kurum', verified: true },
+        published_at: new Date().toISOString(),
+        lang: en ? 'en' : 'tr',
+        body: '',
+        media: [{ url: ph(photo), width: 1, height: 1, kind: 'image' }],
+        meal_card: { name: en ? enName : tr, kcal, protein_g: protein, carbs_g: 30, fat_g: 12, portion_label: '1', photo_url: ph(photo), product_id: null },
+        quote: null,
+        thread: null,
+        stats: { likes: 0, saves: 0, adds: 0, comments: 0, did_it: 0 },
+        me: { liked: false, saved: false, is_author: false },
+        post_type: 'ogun',
+        status: 'published',
+        activity_card: null,
+      });
+      setHomeExtrasProvider({
+        firstRecords: async () => rec,
+        feed: async () => [
+          recipe('v-r1', require('./assets/ph-tavuk-kinoa.jpg'), 'Tavuk kinoa bowl', 'Chicken quinoa bowl', 540, 32),
+          recipe('v-r2', require('./assets/ph-somon.jpg'), 'Izgara somon', 'Grilled salmon', 480, 38),
+          recipe('v-r3', require('./assets/ph-mercimek.jpg'), 'Mercimek çorbası', 'Red lentil soup', 220, 12),
+          recipe('v-r4', require('./assets/ph-menemen.jpg'), 'Menemen', 'Menemen', 320, 16),
+          recipe('v-r5', require('./assets/ph-coban.jpg'), 'Çoban salata', 'Shepherd’s salad', 180, 4),
+        ],
+      });
+      const { useSubscriptionStore } = require('../lib/subscription/purchases');
+      useSubscriptionStore.setState({
+        ai: { kind: 'ai', tier: 'free', remaining: 2, limit: 2, unlimited: false, resetAt: new Date(Date.now() + 864e5).toISOString() },
+      });
+    } else {
+      setHomeExtrasProvider({ firstRecords: async () => null, feed: async () => [] });
+    }
   }
   // G15-S3 — rota parametrelerindeki `__vitrinPhoto:<ad>` işaretlerini dev görsel URI'sine çevir.
   const base = routes ?? (entry.target.kind === 'route' ? entry.target.routes : null);

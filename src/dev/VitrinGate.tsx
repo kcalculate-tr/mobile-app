@@ -48,10 +48,14 @@ const DEV_SESSION = {
 
 const fail = async () => ({ error: 'vitrin' });
 
-function authValue(guest: boolean): AuthContextValue {
+/** G50-S1: ilk gün görevleri sahneleri — hesap "dün" açılmış (ilk 7 gün içinde). Sabit nesne (kimlik değişmez). */
+const DEV_USER_FRESH = { ...DEV_USER, created_at: new Date(Date.now() - 864e5).toISOString() } as unknown as User;
+const DEV_SESSION_FRESH = { ...DEV_SESSION, user: DEV_USER_FRESH } as unknown as Session;
+
+function authValue(guest: boolean, fresh = false): AuthContextValue {
   return {
-    user: guest ? null : DEV_USER,
-    session: guest ? null : DEV_SESSION,
+    user: guest ? null : fresh ? DEV_USER_FRESH : DEV_USER,
+    session: guest ? null : fresh ? DEV_SESSION_FRESH : DEV_SESSION,
     loading: false,
     authLoading: false,
     signIn: fail,
@@ -136,7 +140,7 @@ function VitrinRoot({ entry }: { entry: ResolvedEntry }) {
   }
 
   return (
-    <AuthContextForDev.Provider value={authValue(entry.auth === 'guest')}>
+    <AuthContextForDev.Provider value={authValue(entry.auth === 'guest', entry.pano.startsWith('G50-'))}>
       <FlagsOverrideProvider flags={flags}>
         {/* G15-S2: bileşen sahnelerinde (R3 kabuğu yok) durum çubuğu şemadan. */}
         <StatusBar style={entry.scheme === 'dark' ? 'light' : 'dark'} />
