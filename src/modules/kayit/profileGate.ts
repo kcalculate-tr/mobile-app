@@ -62,11 +62,21 @@ export async function fetchProfileStatus(userId: string): Promise<ProfileStatus>
   }
 }
 
+/** YALNIZ __DEV__ vitrini: profil durumunu sabitle (ör. profilsiz Ana sayfa çekimi). Üretimde etkisiz. */
+let devForced: ProfileStatus | null = null;
+export function __devForceProfileStatus(s: ProfileStatus | null): void {
+  if (__DEV__) devForced = s;
+}
+
 let inflight: Promise<ProfileStatus> | null = null;
 /** markProfileCreated sayacı: kaydetmeden önce başlamış bir sorgunun 'none' sonucu yeni 'has'ı ezmesin. */
 let markSeq = 0;
 /** Durumu yenile ve depoya yaz. Bilinen 'has' bilgisi hata ile 'unknown'a düşürülmez. */
 export async function refreshProfileStatus(userId: string): Promise<ProfileStatus> {
+  if (__DEV__ && devForced) {
+    useProfileGateStore.getState().setStatus(userId, devForced);
+    return devForced;
+  }
   const seq = markSeq;
   if (!inflight) {
     inflight = fetchProfileStatus(userId).finally(() => {

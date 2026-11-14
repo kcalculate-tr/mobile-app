@@ -2,6 +2,7 @@
 // Gerçek ağ yalnız OKUMA için kullanılır (herkese açık menü); yazma yok.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { __devForceProfileStatus } from '../modules/kayit/profileGate';
 import type { ResolvedEntry, RouteSpec } from './screenCatalog';
 import { seedStorage, type MockRoute } from './vitrinState';
 import { useCartStore } from '../store/cartStore';
@@ -64,6 +65,8 @@ function onbFirstSeed(scene: string, pano: string) {
 
 export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene> {
   const scene = entry.scene ?? '';
+  // G47-S1: profilsiz hesap sahnesi (profil kapısı kartı / Tara → P1).
+  __devForceProfileStatus(scene === 'noProfile' ? 'none' : null);
 
   await seedStorage({
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',

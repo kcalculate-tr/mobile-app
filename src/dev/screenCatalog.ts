@@ -725,6 +725,35 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(g42[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
+  // G47-S1 — `G47-<Sahne>(-Dark)(-XL)`: tek giriş katmanı, profil kapısı, çıkış sonrası onboarding, L2 alt kısım.
+  const g47 = /^G47-([A-Za-z0-9]+?)(-Dark)?(-XL)?$/.exec(name);
+  if (g47) {
+    const flags: FlagKey[] = [...FINAL_FLAGS, 'yeni_kayit', 'kisisel_plan', 'koc', 'abonelik'];
+    const k = (screen: string, params?: Record<string, unknown>): RouteSpec => ({ name: 'Kayit', params: { screen, params } });
+    const T: Record<string, { target: VitrinTarget; auth?: VitrinAuth; scene?: string }> = {
+      // Onboarding 5'te "Giriş yap" → AuthSheet (saydam modal; arkada onboarding 5).
+      Auth: { target: route([k('KOnb', { vitrinStep: 5 }), { name: 'Login' }]) },
+      // AuthSheet → "E-posta ile devam et" → E1 (giriş kipi).
+      E1: { target: route([k('KOnb', { vitrinStep: 5 }), { name: 'AuthEmail', params: { mode: 'login' } }]) },
+      // Profilsiz hesap Ana sayfası (takip bölümü yerine tek kart).
+      Home: { target: route(tab('Tracker')), auth: 'user', scene: 'noProfile' },
+      // Profilsiz hesap Tara'ya dokunur → doğrudan P1 (gateRouter'ın ürettiği rota; dönüş = AiScan).
+      P1: { target: route([...tab('Tracker'), { name: 'Kayit', params: { entry: 'gate', returnTo: { name: 'AiScan' } } }]), auth: 'user', scene: 'noProfile' },
+      // Çıkış sonrası kök: Kayit · signedOut → onboarding 1.
+      Out: { target: route([{ name: 'Kayit', params: { entry: 'signedOut' } }]) },
+      // L2 alt kısım (oturum açık, girişten): isteğe bağlı kutular + düğme + altında küçük rıza metni.
+      L2: { target: route([k('KResult', { vitrinConsent: 'ask', vitrinEnd: true, vitrinAuthed: true })]), auth: 'user' },
+      // L2 alt kısım (oturumsuz normal akış): düğme + altında rıza metni.
+      L2n: { target: route([k('KResult', { vitrinConsent: 'ask', vitrinEnd: true })]) },
+    };
+    const d = T[g47[1]];
+    if (!d) return null;
+    return {
+      pano: name, area: 'onboarding', target: d.target, data: 'default', flags, lang: 'tr', auth: d.auth ?? 'guest',
+      hasDark: true, requested: name, scheme: g47[2] ? 'dark' : 'light', ...(d.scene ? { scene: d.scene } : {}),
+      ...(g47[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

@@ -36,5 +36,5 @@ export function HealthConsentNote() {
 
 const styles = StyleSheet.create({
   note: { fontFamily: FONT.body, fontSize: CONSENT_NOTE.size, lineHeight: CONSENT_NOTE.lineHeight, letterSpacing: -0.1, textAlign: 'center', marginTop: CONSENT_NOTE.gap },
-  link: { fontFamily: FONT.semi, textDecorationLine: 'underline' },
+  link: { fontFamily: FONT.semi, fontSize: CONSENT_NOTE.size, lineHeight: CONSENT_NOTE.lineHeight, textDecorationLine: 'underline' },
 });
