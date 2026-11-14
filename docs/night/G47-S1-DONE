@@ -1,0 +1,5 @@
+G47-S1 tamam — 14 Kas 2026
+LOG: docs/night/G47-S1-LOG.md
+Kod: 97a8858 (feat), 1b1e16c (fix + ekran görüntüleri), a174520 (LOG)
+Kontroller: hygiene ✓ · tsc ✓ · unit 1328/1328 ✓ · jest 114 paket / 743 test ✓ · expo export iOS ✓ Android ✓
+Ekran görüntüleri: docs/night/g47 (12 JPEG)
