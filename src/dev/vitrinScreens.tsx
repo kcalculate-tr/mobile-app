@@ -43,6 +43,7 @@ import FinPrProgressScreen from '../modules/profil/ui/screens/ProgressScreen';
 import BadgesScreen from '../modules/profil/ui/screens/BadgesScreen';
 import CollectionScreen from '../modules/profil/ui/screens/CollectionScreen';
 import PublicPreviewScreen from '../modules/profil/ui/screens/PublicPreviewScreen';
+import { VITRIN_PHOTO } from './vitrinKesfet';
 import SignupAIScreen from '../modules/profil/ui/screens/SignupAIScreen';
 import SignupEatScreen from '../modules/profil/ui/screens/SignupEatScreen';
 import FinPhotoResult from '../modules/ai/scan/ui/FinPhotoResult';
@@ -271,6 +272,37 @@ function ProfileSubScene({ sub, what, history, mock }: { sub: string; what?: boo
       return <BadgesScreen onBack={noop} handle="deniz" />;
     case 'collection':
       return <CollectionScreen onBack={noop} />;
+    case 'publicMe':
+      // G53-S1 md.2: KENDİ açık profilim — avatarda "+" rozeti; ızgara vitrin tabaklarıyla.
+      return (
+        <PublicPreviewScreen
+          onBack={noop}
+          handle="deniz"
+          editable
+          vitrinProfile={{
+            id: '00000000-0000-4000-8000-00000000a14e',
+            display_name: 'Deniz Kaya',
+            handle: 'deniz',
+            avatar_url: VITRIN_PHOTO.tavukKinoa,
+            bio: 'Haftada 3 koşu, bol sebze. Tabaklarımı burada paylaşıyorum.',
+            role: 'user',
+            verified: false,
+            is_private: false,
+            followers: 214,
+            following: 180,
+            posts: 6,
+            me_following: 'none',
+          }}
+          vitrinPosts={[
+            { id: 'm1', photoUrl: VITRIN_PHOTO.tavukKinoa, adds: 12 },
+            { id: 'm2', photoUrl: VITRIN_PHOTO.mercimek, adds: 8 },
+            { id: 'm3', photoUrl: VITRIN_PHOTO.yogurt, adds: 3 },
+            { id: 'm4', photoUrl: VITRIN_PHOTO.coban, adds: 0 },
+            { id: 'm5', photoUrl: VITRIN_PHOTO.mercimek, adds: 5 },
+            { id: 'm6', photoUrl: VITRIN_PHOTO.yogurt, adds: 1 },
+          ]}
+        />
+      );
     case 'public':
       return (
         <PublicPreviewScreen

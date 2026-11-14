@@ -634,6 +634,29 @@ function resolveParity(name: string): ResolvedEntry | null {
       hasDark: true, requested: name, scheme: g39[2] ? 'dark' : 'light',
     };
   }
+  // G53-S1 — `G53-<Sahne>(-Dark)`: Keşfet profil kısayolu, Profil "+" + seçenek sayfası, kendi açık profil,
+  // paylaşım "i" kılavuzu, paywall seçili kart neon, T1. `meAvatar` sahnesi kendi profil fotoğrafını verir.
+  const g53 = /^G53-([A-Za-z0-9]+?)(-Dark)?$/.exec(name);
+  if (g53) {
+    const scheme = g53[2] ? 'dark' : 'light';
+    if (g53[1] === 'T1') {
+      const r = resolvePano(`G42-T1${g53[2] ?? ''}`);
+      return r ? { ...r, pano: name, requested: name, scheme, hasDark: true } : null;
+    }
+    const flags: FlagKey[] = [...FINAL_FLAGS, 'koc', 'abonelik'];
+    const T: Record<string, { area: string; target: VitrinTarget; scene?: string }> = {
+      KesfetBar: { area: 'kesfet', target: route(kes()), scene: 'meAvatar' },
+      KesfetBarInitial: { area: 'kesfet', target: route(kes()) },
+      Profile: { area: 'profil', target: route(tab('Profile')), scene: 'meAvatar' },
+      ProfileSheet: { area: 'profil', target: route(tab('Profile', { vitrinAvatarSheet: true })), scene: 'meAvatar' },
+      PublicMe: { area: 'profil', target: comp('profileSub', { sub: 'publicMe' }) },
+      ShareGuide: { area: 'kesfet', target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest', vitrinGuide: true } }]) },
+      Paywall: { area: 'profil', target: route([...tab('Tracker'), { name: 'SubPaywall', params: { plan: 'fresh', from: 'profile' } }]) },
+    };
+    const d = T[g53[1]];
+    if (!d) return null;
+    return { pano: name, area: d.area, target: d.target, scene: d.scene, data: 'default', flags, lang: 'tr', auth: 'user', hasDark: true, requested: name, scheme };
+  }
   // G40-S1 — `G40-<Sahne>(-Dark)`: tek marka yeşili çekimleri. Ürün sayfası seçim grubu olan ilk ürünle
   // (`__withOptions__`, vitrinSetup) açılır, seçim katmanı açık (seçili seçenek + Sepete ekle).
   const g40 = /^G40-([A-Za-z]+?)(-Dark)?$/.exec(name);

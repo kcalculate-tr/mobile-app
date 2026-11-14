@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import * as Nav from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -88,6 +89,11 @@ import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscrip
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+// Rota bağlamı (yalnız __DEV__ vitrin parametresi için) — navigasyon taklidi olan testlerde yoksa boş bağlam.
+const RouteCtx: React.Context<{ params?: unknown } | undefined> =
+  ((Nav as unknown as { NavigationRouteContext?: React.Context<{ params?: unknown } | undefined> }).NavigationRouteContext as
+    | React.Context<{ params?: unknown } | undefined>
+    | undefined) ?? React.createContext<{ params?: unknown } | undefined>(undefined);
 
 export default function FinPrProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
@@ -185,6 +191,15 @@ export default function FinPrProfileScreen() {
   }, [user?.id]);
   // G53-S1 md.2: kendi profil fotoğrafı "+" rozeti (başarıda ekrandaki avatar + açık profil parametresi güncellenir).
   const avatarEditor = useAvatarEditor({ current: avatarUrl, onChanged: setAvatarUrl });
+  // YALNIZ __DEV__ vitrini (G53-ProfileSheet): seçenek sayfası açık çekim.
+  const routeCtx = React.useContext(RouteCtx);
+  const vitrinAvatarSheet = __DEV__ && (routeCtx?.params as { vitrinAvatarSheet?: boolean } | undefined)?.vitrinAvatarSheet === true;
+  useEffect(() => {
+    if (!vitrinAvatarSheet) return;
+    const id = setTimeout(() => avatarEditor.open(), 600);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrinAvatarSheet]);
 
   useFocusEffect(
     useCallback(() => {

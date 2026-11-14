@@ -8,6 +8,7 @@
 
 import type { ResolvedEntry } from './screenCatalog';
 import type { MockRoute } from './vitrinState';
+import { VITRIN_PHOTO } from './vitrinKesfet';
 
 function todayAt(h: number, m: number): string {
   const d = new Date();
@@ -84,7 +85,8 @@ const HOME_SCENES = new Set(['meals', 'izmir', 'outside', 'delivered', 'activity
 function identityRoutes(entry: ResolvedEntry): MockRoute[] {
   if (entry.auth !== 'user') return [];
   return [
-    { match: '/rest/v1/profiles', body: [{ id: 'me', handle: 'deniz', is_private: false, avatar_url: null, display_name: 'Deniz Kaya' }] },
+    // G53-S1: `meAvatar` sahnesi → kendi profil fotoğrafı (Keşfet kısayolu / Profil "+" çekimleri).
+    { match: '/rest/v1/profiles', body: () => [{ id: 'me', handle: 'deniz', is_private: false, avatar_url: entry.scene === 'meAvatar' ? VITRIN_PHOTO.tavukKinoa : null, display_name: 'Deniz Kaya', full_name: 'Deniz Kaya' }] },
     { match: '/rest/v1/user_nutrition_profiles', body: PROFILE },
     { match: '/rpc/get_nutrition_summary', body: summary(entry.data === 'empty') },
   ];
