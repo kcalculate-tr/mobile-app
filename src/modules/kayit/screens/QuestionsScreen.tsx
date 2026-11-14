@@ -4,13 +4,15 @@
 // standart eğri; geri kaydırma / Android geri bir önceki soruya, tersi yönde). Arkadaki ışık lekeleri 3 katman
 // yavaş kayar (yarı genlik); maskot her cevapta tek küçük baş sallar. G44: paylaşılan öğe taklidi yok, seçim
 // soluklaştırması yok.
+// G45: üstte ince ilerleme çubuğu; B yolu son adımında ("Takibe başla") rıza kutusu yerine düğmenin hemen üstünde
+// küçük açık rıza metni + "Onayla ve takibe başla" (her zaman etkin; rıza basınca G27 yapısına yazılır).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Localization from 'expo-localization';
-import { AppText, haptic } from '../../../core/design';
+import { haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import {
@@ -41,7 +43,8 @@ import {
 import { recordHealthConsent } from '../../../lib/consent/store';
 import { healthConsentGiven } from '../../personalPlan/api';
 import { saveTakibeProfile } from '../../onboarding/takibe/save';
-import { CheckBoxRow, FONT, KBackdrop, KButton, Mascot, QuestionHead, Rise, Segment, TopBar, type BubbleLayout } from '../ui/parts';
+import { FONT, KBackdrop, KButton, KText as AppText, Mascot, QuestionHead, Rise, Segment, TopBar, type BubbleLayout } from '../ui/parts';
+import { HealthConsentNote } from '../ui/consent';
 import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
 import { useEdgeBack } from '../ui/edge';
 import { StackSwap } from '../ui/motion';
@@ -106,7 +109,7 @@ const COOK_ICON = { daily: CookingPot, sometimes: Timer, ready: Package } as con
 const STRUGGLE_ICON = { evening_snack: Moon, eating_out: Storefront, no_time: Clock, sweet: Cookie } as const;
 const ACT_ICON = { sedentary: Armchair, light: PersonSimpleWalk, moderate: PersonSimpleWalk, active: PersonSimpleRun } as const;
 
-type Params = { path?: KPath; mode?: 'short'; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number] } | undefined;
+type Params = { path?: KPath; mode?: 'short'; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask' } | undefined;
 
 export default function QuestionsScreen() {
   const { t, lang } = useT();
@@ -122,7 +125,6 @@ export default function QuestionsScreen() {
   const patch = useKayit((s) => s.patch);
   const setStep = useKayit((s) => s.setStep);
   const setUnits = useKayit((s) => s.setUnits);
-  const healthOk = useKayit((s) => s.healthOk);
   const setHealthOk = useKayit((s) => s.setHealthOk);
   const year = new Date().getFullYear();
   const [dir, setDir] = useState<1 | -1>(1);
@@ -143,7 +145,8 @@ export default function QuestionsScreen() {
     }
     if (__DEV__ && params.vitrinStep) s.setStep(params.vitrinStep);
     else if (short || s.answers.goal == null) s.setStep('goal');
-    if (short) void healthConsentGiven().then((v) => setConsentKnown(v));
+    // YALNIZ __DEV__ vitrini `vitrinConsent: 'ask'`: rıza sorulmamış gibi (G45 rıza notu çekimi).
+    if (short && !(__DEV__ && params.vitrinConsent === 'ask')) void healthConsentGiven().then((v) => setConsentKnown(v));
     // YALNIZ __DEV__ vitrini (G44 seçim geçişi dizisi): P1 seçimsiz açılır, 6 sn sonra seçim yapılır (vitrin açılış örtüsü kalktıktan sonra).
     if (__DEV__ && params.vitrinPick) {
       const pick = params.vitrinPick;
@@ -194,9 +197,12 @@ export default function QuestionsScreen() {
   const finishShort = async () => {
     if (!user?.id) return;
     setSaving(true);
-    const consent = consentKnown || healthOk;
-    if (healthOk && !consentKnown) void recordHealthConsent(true, 'takibe').catch(() => {});
-    const r = await saveTakibeProfile(user.id, toTakibeDraft(a, consent), year);
+    // G45 md.6: "Onayla ve takibe başla" = açık rıza (metin düğmenin hemen üstünde); önceden verilmişse yeniden yazılmaz.
+    if (!consentKnown) {
+      setHealthOk(true);
+      void recordHealthConsent(true, 'takibe').catch(() => {});
+    }
+    const r = await saveTakibeProfile(user.id, toTakibeDraft(a, true), year);
     setSaving(false);
     if (!r.ok) return;
     haptic('success');
@@ -210,8 +216,8 @@ export default function QuestionsScreen() {
   const lastA = path === 'a' && step === 'struggle';
   const lastB = path === 'b' && step === 'activity';
   const needsConsent = lastB && !consentKnown;
-  const can = canContinue(step, a) && (!needsConsent || healthOk);
-  const label = lastA ? t('kayit.q.make_plan') : lastB ? t('kayit.q.short_start') : step === 'minor' ? t('kayit.q.minor_cta') : t('kayit.q.next');
+  const can = canContinue(step, a);
+  const label = lastA ? t('kayit.q.make_plan') : lastB ? t(needsConsent ? 'kayit.q.short_start_consent' : 'kayit.q.short_start') : step === 'minor' ? t('kayit.q.minor_cta') : t('kayit.q.next');
 
   const stepIdx = useMemo(() => ['goal', 'gender', 'birth', 'height', 'weight', 'i1', 'target', 'pace', 'activity', 'sport', 'diet', 'i2', 'dislikes', 'meals', 'cooking', 'struggle', 'minor'].indexOf(step), [step]);
 
@@ -220,7 +226,7 @@ export default function QuestionsScreen() {
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={stepIdx} />
       <View style={{ paddingTop: insets.top + 8, flex: 1 }}>
-        <TopBar onBack={back} progress={prog} glow={lastA} />
+        <TopBar onBack={back} progress={prog} />
         <QCtx.Provider value={{ a, patch, setUnits, t: t as QCtxValue['t'], lang, P, year }}>
         <StackSwap k={step} dir={dir}>
           {step === 'i1' || step === 'i2' ? (
@@ -240,11 +246,6 @@ export default function QuestionsScreen() {
               <View style={{ marginTop: 28 }}>
                 <Body step={step as KQuestion} />
               </View>
-              {needsConsent ? (
-                <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-                  <CheckBoxRow testID="kayit-health-consent" checked={healthOk} onToggle={() => setHealthOk(!healthOk)} label={t('kayit.q.health_consent')} />
-                </View>
-              ) : null}
             </ScrollView>
           )}
         </StackSwap>
@@ -269,6 +270,7 @@ export default function QuestionsScreen() {
                 </AppText>
               </Pressable>
             ) : null}
+            {needsConsent ? <HealthConsentNote /> : null}
             <KButton testID="kayit-next" label={label} onPress={() => void next()} disabled={!can} loading={saving} />
           </View>
         ) : null}
@@ -709,22 +711,23 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   footer: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
   skip: { alignSelf: 'center', minHeight: 44, minWidth: 88, alignItems: 'center', justifyContent: 'center' },
-  skipText: { fontFamily: FONT.bold, fontSize: 16, textDecorationLine: 'underline' },
+  skipText: { fontFamily: FONT.bold, fontSize: 16, lineHeight: 21, textDecorationLine: 'underline' },
   grid: { paddingHorizontal: 20, gap: 14 },
   row: { flexDirection: 'row', gap: 14 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   center: { textAlign: 'center' },
-  semi: { fontFamily: FONT.semi, fontSize: 15 },
+  semi: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 20 },
   agePill: { borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8 },
-  agePillText: { fontFamily: FONT.bold, fontSize: 16, color: '#10301D' },
+  agePillText: { fontFamily: FONT.bold, fontSize: 16, lineHeight: 21, color: '#10301D' },
   bigRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 6 },
-  big: { fontFamily: FONT.display, fontSize: 88, lineHeight: 96, letterSpacing: -2, fontVariant: ['tabular-nums'] },
-  bigUnit: { fontFamily: FONT.semi, fontSize: 24, lineHeight: 30, marginBottom: 16 },
+  // G45: Bricolage doğal satırı 1,2 em → 88 pt rakam 106 pt satırda kırpılmaz (önce 96: üst kırpılabiliyordu).
+  big: { fontFamily: FONT.display, fontSize: 88, lineHeight: 106, letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  bigUnit: { fontFamily: FONT.semi, fontSize: 24, lineHeight: 30, marginBottom: 18 },
   card: { borderRadius: 28, borderWidth: 1, padding: 22, gap: 8 },
-  cardTitle: { fontFamily: FONT.display, fontSize: 20 },
+  cardTitle: { fontFamily: FONT.display, fontSize: 20, lineHeight: 25 },
   cardSub: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21 },
-  minorTitle: { fontFamily: FONT.display, fontSize: 28, lineHeight: 33, textAlign: 'center' },
-  interTitle: { fontFamily: FONT.display, fontSize: 26, lineHeight: 31, textAlign: 'center' },
+  minorTitle: { fontFamily: FONT.display, fontSize: 28, lineHeight: 34, textAlign: 'center' },
+  interTitle: { fontFamily: FONT.display, fontSize: 26, lineHeight: 32, textAlign: 'center' },
 });
 
 void Platform;

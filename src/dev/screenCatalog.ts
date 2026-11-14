@@ -51,7 +51,7 @@ export interface CatalogEntry {
   lang: VitrinLang;
   auth: VitrinAuth;
   /** iOS Dynamic Type — betik `simctl ui content_size` ile uygular. */
-  textSize?: 'large' | 'extra-extra-large' | 'accessibility-extra-large';
+  textSize?: 'large' | 'extra-extra-large' | 'extra-extra-extra-large' | 'accessibility-extra-large';
   /** R3 sekme çubuğu daralma değeri (0 tam, 0.5 orta, 1 küçük). */
   collapse?: number;
   /** Sahne içi ayrıntı (ör. açık sheet, kaydırılmış). vitrinScreens yorumlar. */
@@ -666,7 +666,8 @@ function resolveParity(name: string): ResolvedEntry | null {
   }
   // G42-S1 — `G42-<Sahne>(-Dark)` (EN: `EN-G42-…`): yeni onboarding + kayıt akışı çekimleri (yeni_kayit +
   // kisisel_plan açık; T1 için koc + abonelik → demo fiyatlar). Final panosu değil → allPanoNames'e girmez.
-  const g42 = /^G42-([A-Za-z0-9]+?)(-Dark)?$/.exec(name);
+  // G45: `-XL` soneki → büyük yazı (extra-extra-extra-large ≈ 1,35×; Dynamic Type 1,3× kontrolü).
+  const g42 = /^G42-([A-Za-z0-9]+?)(-Dark)?(-XL)?$/.exec(name);
   if (g42) {
     const flags: FlagKey[] = [...FINAL_FLAGS, 'yeni_kayit', 'kisisel_plan', 'koc', 'abonelik'];
     const k = (screen: string, params?: Record<string, unknown>): VitrinTarget => route([{ name: 'Kayit', params: { screen, params } }]);
@@ -696,7 +697,10 @@ function resolveParity(name: string): ResolvedEntry | null {
       P13: { target: k('KQuestions', { vitrinStep: 'cooking' }) },
       P14: { target: k('KQuestions', { vitrinStep: 'struggle' }) },
       L1: { target: k('KCalc', { vitrinHold: true }) },
-      L2: { target: k('KResult') },
+      // G45: banner bölgesi vitrinde İzmir sabit (yalnız __DEV__).
+      L2: { target: k('KResult', { vitrinIzmir: true }) },
+      // G45: L2 banner + rıza notu (rıza sorulmamış gibi, sona kaydırılmış).
+      L2c: { target: k('KResult', { vitrinIzmir: true, vitrinConsent: 'ask', vitrinEnd: true }) },
       K1: { target: k('KSignup', { path: 'a' }) },
       K1d: { target: k('KSignup', { path: 'a', vitrin: 'denied' }) },
       K1b: { target: k('KSignup', { path: 'b' }) },
@@ -707,12 +711,15 @@ function resolveParity(name: string): ResolvedEntry | null {
       R1: { target: k('KReturn') },
       BShort: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'goal' } }]), auth: 'user' },
       BShort8: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'activity' } }]), auth: 'user' },
+      // G45: B yolu son adım ("Takibe başla") rıza notuyla.
+      BShort8c: { target: route([...tab('Tracker'), { name: 'KayitShort', params: { mode: 'short', vitrinStep: 'activity', vitrinConsent: 'ask' } }]), auth: 'user' },
     };
     const d = T[g42[1]];
     if (!d) return null;
     return {
       pano: name, area: 'onboarding', target: d.target, data: 'default', flags, lang: 'tr', auth: d.auth ?? 'guest',
       hasDark: true, requested: name, scheme: g42[2] ? 'dark' : 'light',
+      ...(g42[3] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);

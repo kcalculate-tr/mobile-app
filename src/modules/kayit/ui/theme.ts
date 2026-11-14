@@ -19,6 +19,10 @@ export interface KPalette {
   circle: string;
   ringTrack: string;
   ringFill: string;
+  /** G45: üst çubuktaki ince ilerleme çubuğu dolgusu (açık: koyu yeşil #3A5A1E; koyu: mevcut koyu tema vurgusu lime). */
+  barFill: string;
+  /** İlerleme çubuğu izi (yarı saydam beyaz). */
+  barTrack: string;
   accent: string;
   onAccent: string;
   /** G44: tam lime dolgulu seçili öğenin üstündeki ikon/metin (tokens.palette.limeInk, her temada siyah). */
@@ -52,6 +56,8 @@ export const K_LIGHT: KPalette = {
   circle: 'rgba(255,255,255,0.6)',
   ringTrack: 'rgba(16,48,29,0.10)',
   ringFill: '#2E5B12',
+  barFill: '#3A5A1E',
+  barTrack: 'rgba(255,255,255,0.6)',
   accent: palette.lime,
   onAccent: '#10301D',
   limeInk: palette.limeInk,
@@ -83,6 +89,8 @@ export const K_DARK: KPalette = {
   circle: 'rgba(255,255,255,0.12)',
   ringTrack: 'rgba(255,255,255,0.14)',
   ringFill: palette.lime,
+  barFill: palette.lime,
+  barTrack: 'rgba(255,255,255,0.2)',
   accent: palette.lime,
   onAccent: '#10301D',
   limeInk: palette.limeInk,
@@ -142,8 +150,8 @@ export const K_MOTION = {
   nodOut: 90,
   /** Çapraz geçiş (tarih kartı), düğme yükleme daralması, bant çıkışı. */
   fast: 220,
-  /** İlerleme halkası dolumu. */
-  ring: 330,
+  /** G45: ince ilerleme çubuğu dolumu (ease-out). */
+  bar: 250,
   /** Işık katmanı paralaksı (yavaş). */
   parallax: 700,
   /** L1/L2 kalori sayımı (≤ 600 ms, ease-out). */

@@ -8,13 +8,16 @@
 // iptal (nötr kart, 6 sn sonra kalkar). E2: 6 kutu (yapıştırma, otomatik ilerleme, 6. hanede doğrular),
 // yeniden gönderme sayacı = mevcut 60 sn; yanlış kod → ince hata çizgisi + kart + hata titreşimi; süresi
 // doldu → kutular boşalır, "Yeni kod gönder".
+// G45-S1 md.7: K1 başlık balonu ~%15 küçük (`compact`, 20 pt), düğme metinleri 17 pt, "Devam ederek…" 13 pt, isteğe
+// bağlı kutu metni 14 pt (alt not 12 pt), "İsteğe bağlı" 13 pt; kutular işaretsiz başlar ve isteğe bağlı kalır (açık
+// rıza, "devam ederek"e bağlanmaz). Üstte ilerleme çubuğu yok. E1/E2 aynı ölçek.
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
-import { AppText, haptic } from '../../../core/design';
+import { haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { useFeature } from '../../../core/flags';
@@ -25,7 +28,7 @@ import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { useReviewPasswordLogin } from '../../../lib/auth/useReviewPasswordLogin';
 import { AppleLogo, GoogleLogo } from '../../onboarding/components/pieces';
 import { CODE_LENGTH, RESEND_SECONDS, formatCountdown, interpretSocialResult, isValidEmail, sanitizeCode } from '../../onboarding/v2/loginLogic';
-import { CheckBoxRow, FONT, KBackdrop, KButton, NoticeCard, QuestionHead, TopBar } from '../ui/parts';
+import { CheckBoxRow, FONT, KBackdrop, KButton, KText as AppText, NoticeCard, QuestionHead, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
 import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, PushIn } from '../ui/motion';
@@ -156,10 +159,10 @@ export function SignupScreen() {
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={22} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
-        <TopBar onBack={back} progress={path === 'a' ? { index: 1, total: 1, hideNumber: true } : null} />
+        <TopBar onBack={back} />
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }} showsVerticalScrollIndicator={false}>
           <View style={{ marginTop: 12 }}>
-            <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" fade={false} />
+            <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" fade={false} compact />
           </View>
           <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 12 }}>
             {notice === 'offline' ? <NoticeCard testID="kayit-signup-offline" tone="error" title={t('kayit.signup.offline_title')} sub={t('kayit.signup.offline_sub')} action={{ label: t('kayit.signup.retry'), onPress: () => setNotice(null) }} /> : null}
@@ -328,7 +331,7 @@ export function EmailScreen() {
           <TopBar onBack={back} />
           <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
             <View style={{ marginTop: 12 }}>
-              <QuestionHead title={t('kayit.signup.email_title')} layout="left" fade={false} />
+              <QuestionHead title={t('kayit.signup.email_title')} layout="left" fade={false} compact />
             </View>
             <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 10 }}>
               <AppText nativeID="kayit-email-label" maxFontSizeMultiplier={1.4} style={[styles.fieldLabel, { color: P.sec }]}>
@@ -400,7 +403,7 @@ export function EmailScreen() {
         <TopBar onBack={back} />
         <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }}>
           <View style={{ marginTop: 12 }}>
-            <QuestionHead title={t('kayit.signup.code_title')} layout="right" fade={false} />
+            <QuestionHead title={t('kayit.signup.code_title')} layout="right" fade={false} compact />
           </View>
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 16 }}>
             {err === 'wrong' ? <NoticeCard testID="kayit-code-wrong" tone="error" title={t('kayit.signup.code_wrong_title')} sub={t('kayit.signup.code_wrong_sub')} /> : null}
@@ -479,17 +482,17 @@ export function EmailScreen() {
 
 const styles = StyleSheet.create({
   social: { height: 56, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
-  socialText: { fontFamily: FONT.semi, fontSize: 17 },
-  legal: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: 4 },
+  socialText: { fontFamily: FONT.semi, fontSize: 17, lineHeight: 22 },
+  legal: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 4 },
   legalLink: { fontFamily: FONT.bold, textDecorationLine: 'underline' },
-  optional: { fontFamily: FONT.semi, fontSize: 15, marginTop: 10 },
-  fieldLabel: { fontFamily: FONT.semi, fontSize: 14 },
+  optional: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18, marginTop: 10 },
+  fieldLabel: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18 },
   field: { minHeight: 56, borderRadius: 18, borderWidth: 1, paddingHorizontal: 18, fontFamily: FONT.body, fontSize: 17 },
-  hint: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20 },
+  hint: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18 },
   codeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   codeBox: { flex: 1, height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  codeDigit: { fontFamily: FONT.display, fontSize: 26 },
+  codeDigit: { fontFamily: FONT.display, fontSize: 26, lineHeight: 32 },
   codeHidden: { position: 'absolute', opacity: 0, width: 1, height: 1 },
   link: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  linkText: { fontFamily: FONT.semi, fontSize: 15 },
+  linkText: { fontFamily: FONT.semi, fontSize: 14, lineHeight: 19 },
 });

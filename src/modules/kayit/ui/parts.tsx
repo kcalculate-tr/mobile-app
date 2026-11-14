@@ -4,8 +4,12 @@
 // G44-S1: görsel dil AYNI; yalnız hareket/seçim hâli: balon 200 ms fade (harf harf yok), ışık paralaksı yarı
 // genlik + yavaş, maskot (kayıt) yarı genlik + cevapta tek baş sallama, düğme/segment/kutu basışta 0,98 +
 // 120 ms, seçim hâli 160 ms renk geçişi; azaltılmış harekette hepsi anlık.
+// G45-S1: sağ üstteki sayılı halka → geri düğmesinin sağında ince ilerleme çubuğu (3 pt, 250 ms ease-out);
+// balon yazısı ~%10 küçük + dar ekranda (< 360 pt) küçük maskot → en çok 2 satır; K1/E1/E2 `compact` (~%15 küçük);
+// büyük yazılarda açık satır yüksekliği (AppText varsayılanı 24 pt kırpıyordu); `KText` f+i/f+l bitişik harfini
+// U+200C ile kapatır (Fabric iOS `fontVariant: no-common-ligatures` desteklemiyor).
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   cancelAnimation,
@@ -36,6 +40,27 @@ export const FONT = {
   medium: 'PlusJakartaSans_600SemiBold',
   body: 'PlusJakartaSans_500Medium',
 } as const;
+
+// ─── Metin: bitişik harf kapatma ──────────────────────────────────────────────
+/**
+ * G45 md.1: Plus Jakarta Sans `liga` (fi, fl, ff, ffi, ffl) Türkçe "fi"yi "fı" gibi gösterir; Bricolage 800'de `liga`
+ * yok ama başlık kuralı aynı. RN 0.81 Fabric iOS `fontVariant: ['no-common-ligatures']` değerini yok sayıyor →
+ * f ile i / l / f arasına U+200C (sıfır genişlikli birleştirmeyen) eklenir. Görünmez; VoiceOver okumaz;
+ * erişilebilirlik etiketleri ham metinle kalır.
+ */
+export const ZWNJ = '\u200C';
+export function noLig(s: string): string {
+  return s.replace(/f(?=[fil])/g, `f${ZWNJ}`);
+}
+function mapLig(c: React.ReactNode): React.ReactNode {
+  if (typeof c === 'string') return noLig(c);
+  if (Array.isArray(c)) return c.map((x) => (typeof x === 'string' ? noLig(x) : x));
+  return c;
+}
+/** Kayıt ekranlarının metin bileşeni: AppText + bitişik harf kapatma. */
+export function KText({ children, ...rest }: React.ComponentProps<typeof AppText>) {
+  return <AppText {...rest}>{mapLig(children)}</AppText>;
+}
 
 // ─── Zemin ────────────────────────────────────────────────────────────────────
 /**
@@ -199,66 +224,36 @@ export function Mascot({
   );
 }
 
-// ─── İlerleme halkası ─────────────────────────────────────────────────────────
-export function ProgressRing({ index, total, size = 52, glow = false, hideNumber = false }: { index: number; total: number; size?: number; glow?: boolean; hideNumber?: boolean }) {
+// ─── İlerleme çubuğu ──────────────────────────────────────────────────────────
+/**
+ * G45 md.4: 3 pt, yuvarlak uçlu ince çubuk; dolgu koyu yeşil (koyu temada lime), iz yarı saydam beyaz. Oran = görünen
+ * soru sayısına göre (progressOf). Dolma 250 ms ease-out; azaltılmışta anlık.
+ */
+/** Çubuk dolumu: ease-out = token `CURVE.enter` (0.05, 0.7, 0.1, 1 — hızlı başlar, yavaşlayarak oturur; aşma yok). */
+const BAR_EASE = CURVE.enter;
+
+export function ProgressBar({ index, total }: { index: number; total: number }) {
   const P = useK();
   const { t } = useT();
   const reduced = useReducedMotion();
-  const stroke = 4;
-  const r = (size - stroke) / 2 - 2;
-  const c = 2 * Math.PI * r;
-  const ratio = total > 0 ? Math.min(1, index / total) : 0;
-  const prog = useSharedValue(ratio);
-  const [dash, setDash] = useState(c * (1 - ratio));
+  const ratio = total > 0 ? Math.min(1, Math.max(0, index / total)) : 0;
+  const v = useSharedValue(ratio);
   useEffect(() => {
-    // SVG strokeDashoffset JS'te güncellenir (kısa geçiş; azaltılmışta anında).
-    if (reduced) {
-      setDash(c * (1 - ratio));
-      prog.value = ratio;
-      return;
-    }
-    const from = prog.value;
-    const start = Date.now();
-    let raf = 0;
-    const tick = () => {
-      const k = Math.min(1, (Date.now() - start) / K_MOTION.ring);
-      const e = 1 - Math.pow(1 - k, 3);
-      const v = from + (ratio - from) * e;
-      setDash(c * (1 - v));
-      if (k < 1) raf = requestAnimationFrame(tick);
-      else prog.value = ratio;
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [ratio, c, reduced, prog]);
+    v.value = reduced ? ratio : withTiming(ratio, { duration: K_MOTION.bar, easing: BAR_EASE });
+  }, [ratio, reduced, v]);
+  const fill = useAnimatedStyle(() => ({ width: `${v.value * 100}%` as `${number}%` }));
   return (
     <View
+      testID="kayit-progress"
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={t('kayit.q.progress', { index, total })}
       accessibilityValue={{ min: 0, max: total, now: index }}
-      style={[styles.ringWrap, { width: size, height: size, backgroundColor: P.circle }, glow && { shadowColor: P.accent, shadowOpacity: 0.8, shadowRadius: 12 }]}
+      style={styles.barHit}
     >
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={P.ringTrack} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={P.ringFill}
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={`${c} ${c}`}
-          strokeDashoffset={dash}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      {index > 0 && !hideNumber ? (
-        <AppText maxFontSizeMultiplier={1.2} style={[styles.ringNum, { color: P.ink }]}>
-          {String(index)}
-        </AppText>
-      ) : null}
+      <View style={[styles.bar, { backgroundColor: P.barTrack }]}>
+        <Animated.View testID="kayit-progress-fill" style={[styles.barFill, { backgroundColor: P.barFill }, fill]} />
+      </View>
     </View>
   );
 }
@@ -282,7 +277,11 @@ export function CircleButton({ onPress, label, children, testID, disabled }: { o
   );
 }
 
-export function TopBar({ onBack, progress, right, glow }: { onBack?: (() => void) | null; progress?: { index: number; total: number; hideNumber?: boolean } | null; right?: React.ReactNode; glow?: boolean }) {
+/**
+ * Üst çubuk: geri düğmesi + (sorularda) sağında ekran genişliğine yayılan ince ilerleme çubuğu. G45: sayılı halka yok;
+ * L1, L2, K1, E1, E2'de çubuk verilmez. `right`: L1 maskotu gibi sağ öğe.
+ */
+export function TopBar({ onBack, progress, right }: { onBack?: (() => void) | null; progress?: { index: number; total: number } | null; right?: React.ReactNode }) {
   const P = useK();
   const { t } = useT();
   return (
@@ -294,7 +293,8 @@ export function TopBar({ onBack, progress, right, glow }: { onBack?: (() => void
       ) : (
         <View style={{ width: 52 }} />
       )}
-      {right ?? (progress ? <ProgressRing index={progress.index} total={progress.total} glow={glow} hideNumber={progress.hideNumber} /> : <View style={{ width: 52 }} />)}
+      {progress ? <ProgressBar index={progress.index} total={progress.total} /> : <View style={{ flex: 1 }} />}
+      {right ?? null}
     </View>
   );
 }
@@ -318,16 +318,33 @@ function FadeText({ text, children }: { text: string; children: React.ReactNode 
 
 export type BubbleLayout = 'left' | 'right' | 'title';
 
+/** G45 md.8: bu genişliğin altında (320 pt sınıfı) maskot küçülür + balon iç boşluğu daralır → başlık ≤ 2 satır. */
+export const NARROW_W = 360;
+
 /**
  * Maskot + soru. `left`: maskot solda, balon sağda (P2, P4…); `right`: balon solda, maskot sağda (P3, P5…);
  * `title`: büyük başlık + sağda maskot (P1, L2). G44: metin 200 ms fade (`fade={false}` → anlık; K1/E1/E2).
+ * G45: balon 22 pt (önce 24), `compact` (K1/E1/E2) 20 pt (~%15 küçük); dar ekranda maskot 64 pt. Varsayılan yazı
+ * boyutunda balon en çok 2 satır (dar ekranda 21 pt; yine sığmazsa en çok %15 küçülür); büyük yazıda (Dynamic Type) satır
+ * kırılır, kırpılmaz.
  */
-export function QuestionHead({ title, layout, react, fade = true, mascotSize = 104, testID }: { title: string; layout: BubbleLayout; react?: unknown; fade?: boolean; mascotSize?: number; testID?: string }) {
+export function QuestionHead({ title, layout, react, fade = true, mascotSize = 104, compact = false, testID }: { title: string; layout: BubbleLayout; react?: unknown; fade?: boolean; mascotSize?: number; compact?: boolean; testID?: string }) {
   const P = useK();
+  const { width, fontScale } = useWindowDimensions();
+  const narrow = width < NARROW_W;
+  const mSize = narrow ? Math.min(mascotSize, 64) : mascotSize;
+  const fit = layout !== 'title' && fontScale <= 1;
   const label = (
-    <AppText testID={testID} maxFontSizeMultiplier={1.35} style={[layout === 'title' ? styles.titleBig : styles.bubbleText, { color: P.ink }]}>
+    <KText
+      testID={testID}
+      maxFontSizeMultiplier={1.35}
+      numberOfLines={fit ? 2 : undefined}
+      adjustsFontSizeToFit={fit}
+      minimumFontScale={0.85}
+      style={[layout === 'title' ? styles.titleBig : compact ? styles.bubbleCompact : narrow ? styles.bubbleTextNarrow : styles.bubbleText, { color: P.ink }]}
+    >
       {title}
-    </AppText>
+    </KText>
   );
   const text = (
     <View accessible accessibilityRole="header" accessibilityLabel={title} style={{ flexShrink: 1 }}>
@@ -338,16 +355,16 @@ export function QuestionHead({ title, layout, react, fade = true, mascotSize = 1
     return (
       <View style={styles.headTitle}>
         <View style={{ flex: 1, paddingTop: 8 }}>{text}</View>
-        <Mascot size={mascotSize * 0.9} react={react} style={{ marginTop: 48 }} />
+        <Mascot size={mSize * 0.9} react={react} style={{ marginTop: 48 }} />
       </View>
     );
   }
-  const bubble = <View style={[styles.bubble, { backgroundColor: P.bubble, borderColor: P.bubbleEdge }]}>{text}</View>;
+  const bubble = <View style={[styles.bubble, narrow && styles.bubbleNarrow, { backgroundColor: P.bubble, borderColor: P.bubbleEdge }]}>{text}</View>;
   return (
-    <View style={styles.headRow}>
-      {layout === 'left' ? <Mascot size={mascotSize} react={react} /> : null}
+    <View style={[styles.headRow, narrow && styles.headRowNarrow]}>
+      {layout === 'left' ? <Mascot size={mSize} react={react} /> : null}
       {bubble}
-      {layout === 'right' ? <Mascot size={mascotSize} react={react} /> : null}
+      {layout === 'right' ? <Mascot size={mSize} react={react} /> : null}
     </View>
   );
 }
@@ -391,9 +408,9 @@ export function KButton({ label, onPress, disabled, loading, testID, variant = '
           {loading ? (
             <ActivityIndicator color={P.onAccent} />
           ) : (
-            <AppText numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.btnText, { color: ghost ? P.ink : off ? P.disabledText : P.onAccent }]}>
+            <KText numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.btnText, { color: ghost ? P.ink : off ? P.disabledText : P.onAccent }]}>
               {label}
-            </AppText>
+            </KText>
           )}
         </PressScale>
       </Animated.View>
@@ -455,9 +472,9 @@ function SegItem({ label, on, offColor, onPress, testID }: { label: string; on: 
   const k = useSelectTween(on);
   return (
     <PressScale outer={styles.segItemOuter} testID={testID} onPress={onPress} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={label} style={styles.segItem}>
-      <AppText numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.segText, { color: mixColor(offColor, P.limeInk, k) }]}>
+      <KText numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.segText, { color: mixColor(offColor, P.limeInk, k) }]}>
         {label}
-      </AppText>
+      </KText>
     </PressScale>
   );
 }
@@ -489,13 +506,13 @@ export function CheckBoxRow({ checked, onToggle, label, note, testID, disabled }
         ) : null}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
-        <AppText maxFontSizeMultiplier={1.4} style={[styles.checkText, { color: P.ink }]}>
+        <KText maxFontSizeMultiplier={1.4} style={[styles.checkText, { color: P.ink }]}>
           {label}
-        </AppText>
+        </KText>
         {note ? (
-          <AppText maxFontSizeMultiplier={1.4} style={[styles.checkNote, { color: P.sec }]}>
+          <KText maxFontSizeMultiplier={1.4} style={[styles.checkNote, { color: P.sec }]}>
             {note}
-          </AppText>
+          </KText>
         ) : null}
       </View>
     </PressScale>
@@ -508,20 +525,20 @@ export function NoticeCard({ title, sub, tone = 'info', action, testID }: { titl
   return (
     <View testID={testID} accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.notice, { backgroundColor: tone === 'error' ? P.dangerBg : P.infoBg }]}>
       <View style={{ flex: 1, gap: 2 }}>
-        <AppText maxFontSizeMultiplier={1.4} style={[styles.noticeTitle, { color: tone === 'error' ? P.danger : P.ink }]}>
+        <KText maxFontSizeMultiplier={1.4} style={[styles.noticeTitle, { color: tone === 'error' ? P.danger : P.ink }]}>
           {title}
-        </AppText>
+        </KText>
         {sub ? (
-          <AppText maxFontSizeMultiplier={1.4} style={[styles.noticeSub, { color: P.sec }]}>
+          <KText maxFontSizeMultiplier={1.4} style={[styles.noticeSub, { color: P.sec }]}>
             {sub}
-          </AppText>
+          </KText>
         ) : null}
       </View>
       {action ? (
         <Pressable onPress={action.onPress} accessibilityRole="button" accessibilityLabel={action.label} style={styles.noticeBtn}>
-          <AppText maxFontSizeMultiplier={1.3} style={[styles.noticeAction, { color: P.ink }]}>
+          <KText maxFontSizeMultiplier={1.3} style={[styles.noticeAction, { color: P.ink }]}>
             {action.label}
-          </AppText>
+          </KText>
         </Pressable>
       ) : null}
     </View>
@@ -550,29 +567,35 @@ export function Rise({ delay = 0, children, style, dy = K_MOTION.enterDy, durati
 
 const styles = StyleSheet.create({
   blob: { position: 'absolute' },
-  ringWrap: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  ringNum: { fontFamily: FONT.bold, fontSize: 15 },
+  barHit: { flex: 1, minHeight: 44, justifyContent: 'center', marginLeft: 16 },
+  bar: { height: 3, borderRadius: 1.5, overflow: 'hidden' },
+  barFill: { height: 3, borderRadius: 1.5 },
   circleBtn: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 56 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20 },
+  headRowNarrow: { gap: 10, paddingHorizontal: 16 },
   headTitle: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 24, gap: 8 },
   bubble: { flex: 1, borderRadius: 26, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 16, justifyContent: 'center', minHeight: 68 },
-  bubbleText: { fontFamily: FONT.display, fontSize: 24, lineHeight: 29, letterSpacing: -0.4 },
-  titleBig: { fontFamily: FONT.display, fontSize: 34, lineHeight: 38, letterSpacing: -0.8 },
+  bubbleNarrow: { paddingHorizontal: 16 },
+  bubbleText: { fontFamily: FONT.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.4 },
+  /** 320 pt sınıfı: 21 pt → TR/EN tüm balonlar 180 pt metin alanında ≤ 2 satır (font metriğiyle ölçüldü). */
+  bubbleTextNarrow: { fontFamily: FONT.display, fontSize: 21, lineHeight: 27, letterSpacing: -0.4 },
+  bubbleCompact: { fontFamily: FONT.display, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 },
+  titleBig: { fontFamily: FONT.display, fontSize: 31, lineHeight: 38, letterSpacing: -0.7 },
   btn: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  btnText: { fontFamily: FONT.bold, fontSize: 17 },
+  btnText: { fontFamily: FONT.bold, fontSize: 17, lineHeight: 22 },
   seg: { height: 52, borderRadius: 26, padding: 4, flexDirection: 'row', alignSelf: 'center' },
   segThumb: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 22 },
   segItemOuter: { flex: 1 },
   segItem: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  segText: { fontFamily: FONT.bold, fontSize: 15 },
+  segText: { fontFamily: FONT.bold, fontSize: 15, lineHeight: 20 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 22, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 16, minHeight: 64 },
   box: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  checkText: { fontFamily: FONT.body, fontSize: 15, lineHeight: 21 },
-  checkNote: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18 },
+  checkText: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20 },
+  checkNote: { fontFamily: FONT.body, fontSize: 12, lineHeight: 17 },
   notice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14 },
-  noticeTitle: { fontFamily: FONT.semi, fontSize: 15 },
+  noticeTitle: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 20 },
   noticeSub: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18 },
   noticeBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  noticeAction: { fontFamily: FONT.bold, fontSize: 14, textDecorationLine: 'underline' },
+  noticeAction: { fontFamily: FONT.bold, fontSize: 14, lineHeight: 19, textDecorationLine: 'underline' },
 });

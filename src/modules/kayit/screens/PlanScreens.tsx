@@ -3,6 +3,10 @@
 // geri dönüşte cevap değiştiyse 1,5 sn kısa sürüm; değişmediyse doğrudan L2. Ağ yoksa halkalar durur + kart.
 // L2: kalori sayarak gelir (G44: ≤ 600 ms ease-out; L1 de), makro halkaları, kilo tahmini ARALIK bandı (söz değil), öğün dağılımı,
 // Keşfet/G33 kataloğundan uygun 3 tarif, koşullu eatkcal kartı ("İzmir'deysen…"), sağlık verisi açık rızası.
+// G45-S1: eatkcal kartı → eatkcal kampanya bannerı (ana sayfa şeridiyle aynı veri; yalnız İzmir + banner varsa;
+// başlıksız, tam genişlik 300×104, yarıçap 20); rıza kartı → "Onayla ve planımı kaydet" düğmesinin üstünde küçük
+// not (düğme her zaman etkin; rıza basınca yazılır; önceden verilmişse not yok, düğme "Planımı kaydet"); üstte
+// ilerleme çubuğu yok; büyük rakamlarda açık satır yüksekliği (kırpılma yok).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -10,16 +14,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { AppText, haptic, useReducedMotion } from '../../../core/design';
+import { haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { recordHealthConsent } from '../../../lib/consent/store';
 import { healthConsentGiven } from '../../personalPlan/api';
 import { DrawPath, RingProgress } from '../../personalPlan/ui/motion';
 import { GLASS } from '../../personalPlan/ui/parts';
 import { fetchRecipeCatalog } from '../../plan/client';
-import { loadEatkcalProducts, productToOption } from '../../plan/actions';
+import { fetchBannerRows, type BannerCell } from '../../../lib/banners';
+import { resolveNavigation } from '../../../lib/navigation';
+import { CachedImage } from '../../../components/CachedImage';
+import { ImagePreset, transformImageUrl } from '../../../lib/imageUrl';
+import { useFeature, type FlagKey } from '../../../core/flags';
+import { useHomeRegion } from '../../gun/home/useHomeRegion';
+import { homeEatkcalActions } from '../../gun/home/homeEatkcalNav';
+import { openCampaign, pickCampaign } from '../banner';
+import { HealthConsentNote } from '../ui/consent';
+import { PressScale } from '../ui/motion';
 import type { RecipeInfo } from '../../plan/types';
-import { CheckBoxRow, FONT, KBackdrop, KButton, Mascot, NoticeCard, Rise, TopBar } from '../ui/parts';
+import { FONT, KBackdrop, KButton, KText as AppText, Mascot, NoticeCard, Rise, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
 import { useKCount } from '../ui/motion';
 import { K_MOTION, useK } from '../ui/theme';
@@ -156,7 +169,42 @@ export function CalcScreen() {
 }
 
 // ─── L2 ───────────────────────────────────────────────────────────────────────
-type EatPick = { name: string; kcal: number; img: string | null } | null;
+/**
+ * G45 md.5: eatkcal kampanya bannerı. Yalnız İzmir teslimat bölgesi + kampanya şeridinde görselli hücre varsa;
+ * başlık satırı yok. Dokununca hücrenin `navigate_to` hedefi (eatkcal ana sayfasıyla aynı kural).
+ * `vitrinIzmir` yalnız __DEV__ vitrini (bölge çözümü yerine İzmir).
+ */
+function CampaignBanner({ forceIzmir }: { forceIzmir?: boolean }) {
+  const { t } = useT();
+  const navigation = useNavigation<any>();
+  const yeniSiparis = useFeature('yeni_siparis' as FlagKey);
+  const region = useHomeRegion(!forceIzmir);
+  const izmir = forceIzmir || region === 'izmir';
+  const [cell, setCell] = useState<BannerCell | null>(null);
+  useEffect(() => {
+    if (!izmir) return;
+    let alive = true;
+    fetchBannerRows()
+      .then((rows) => {
+        if (alive) setCell(pickCampaign(rows));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [izmir]);
+  if (!izmir || !cell?.image_url) return null;
+  const onPress = () => {
+    const actions = homeEatkcalActions(navigation, { yeniSiparis, openEatkcal: () => navigation.navigate('Tabs', { screen: 'Home' }) });
+    openCampaign(navigation, cell, { onCampaign: actions.onCampaign, resolve: resolveNavigation });
+  };
+  return (
+    <PressScale testID="kayit-banner" onPress={onPress} accessibilityRole="button" accessibilityLabel={cell.title?.trim() || t('kayit.plan.banner_label')} style={styles.banner}>
+      {/* eatkcal CampaignCard ile aynı kaynak ve kırpma (bannerMedium, cover). */}
+      <CachedImage uri={transformImageUrl(cell.image_url, ImagePreset.bannerMedium) || cell.image_url} style={StyleSheet.absoluteFill as never} />
+    </PressScale>
+  );
+}
 
 export function ResultScreen() {
   const { t, lang } = useT();
@@ -165,30 +213,27 @@ export function ResultScreen() {
   const navigation = useNavigation<any>();
   const answers = useKayit((s) => s.answers);
   const stored = useKayit((s) => s.plan);
-  const healthOk = useKayit((s) => s.healthOk);
   const setHealthOk = useKayit((s) => s.setHealthOk);
+  // YALNIZ __DEV__ vitrini: banner bölgesi İzmir sabit (ekran görüntüsü).
+  const resultParams = (useRoute().params ?? {}) as { vitrinIzmir?: boolean; vitrinConsent?: 'ask'; vitrinEnd?: boolean };
+  const vitrinIzmir = __DEV__ && !!resultParams.vitrinIzmir;
+  // YALNIZ __DEV__ vitrini: rıza sorulmamış gibi (not + "Onayla ve…") ve banner görünsün diye sona kaydır.
+  const vitrinAsk = __DEV__ && resultParams.vitrinConsent === 'ask';
+  const vitrinEnd = __DEV__ && !!resultParams.vitrinEnd;
+  const scrollRef = useRef<ScrollView>(null);
   const plan = useMemo(() => stored ?? computeKayitPlan(answers, { currentYear: new Date().getFullYear(), startIso: todayIso() }), [stored, answers]);
   const [recipes, setRecipes] = useState<RecipeInfo[]>([]);
-  const [eat, setEat] = useState<EatPick>(null);
   const [consentKnown, setConsentKnown] = useState(false);
   const back = () => navigation.goBack();
   const edge = useEdgeBack(back);
 
   useEffect(() => {
-    void healthConsentGiven().then(setConsentKnown);
+    if (!vitrinAsk) void healthConsentGiven().then(setConsentKnown);
+    if (vitrinEnd) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 2500);
     if (!plan) return;
     let alive = true;
     void fetchRecipeCatalog().then((c) => {
       if (alive) setRecipes(pickRecipes(c.recipes, answers, plan));
-    });
-    void loadEatkcalProducts().then((list) => {
-      if (!alive) return;
-      const dinner = plan.meals.find((m) => m.slot === 'dinner')?.kcal ?? plan.calories / 3;
-      const best = list
-        .map((p) => ({ p, o: productToOption(p) }))
-        .filter((x) => x.o)
-        .sort((x, y) => Math.abs(x.o!.kcal - dinner) - Math.abs(y.o!.kcal - dinner))[0];
-      setEat(best ? { name: best.o!.name, kcal: Math.round(best.o!.kcal), img: best.p.img ?? null } : null);
     });
     return () => {
       alive = false;
@@ -198,9 +243,12 @@ export function ResultScreen() {
 
   if (!plan) return null;
   const split = mealsSplit(answers.meals);
-  const okConsent = consentKnown || healthOk;
   const save = async () => {
-    if (healthOk && !consentKnown) void recordHealthConsent(true, 'personal_plan').catch(() => {});
+    // G45 md.6: "Onayla ve planımı kaydet" = açık rıza (metin düğmenin hemen üstünde) → mevcut G27/G36 yapısı.
+    if (!consentKnown) {
+      setHealthOk(true);
+      void recordHealthConsent(true, 'personal_plan').catch(() => {});
+    }
     await flushDraft('signup');
     navigation.navigate('KSignup', { path: 'a' });
   };
@@ -210,8 +258,8 @@ export function ResultScreen() {
       <StatusBar style={P.isDark ? 'light' : 'dark'} />
       <KBackdrop shift={21} />
       <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
-        <TopBar onBack={back} progress={{ index: 1, total: 1, hideNumber: true }} />
-        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <TopBar onBack={back} />
+        <ScrollView ref={scrollRef} {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
           <View style={styles.titleRow}>
             <AppText testID="kayit-result-title" accessibilityRole="header" maxFontSizeMultiplier={1.35} style={[styles.h1, { color: P.ink, flex: 1 }]}>
               {t('kayit.plan.ready_title')}
@@ -268,25 +316,13 @@ export function ResultScreen() {
               </ScrollView>
             </View>
           ) : null}
-          <View style={{ paddingHorizontal: 20, marginTop: 16, gap: 14 }}>
-            <View testID="kayit-eatkcal" style={[styles.eat, { backgroundColor: P.card, borderColor: P.cardEdge }]} accessible accessibilityLabel={`${t('kayit.plan.eatkcal_title')}. ${eat ? t('kayit.plan.eatkcal_sub', { name: eat.name, kcal: eat.kcal }) : t('kayit.plan.eatkcal_fallback')}`}>
-              <View style={[styles.eatImg, { backgroundColor: P.accentSoft }]}>
-                {eat?.img ? <Image source={{ uri: eat.img }} style={{ width: 64, height: 64, borderRadius: 14 }} /> : <Image source={GLASS.bowl} style={{ width: 48, height: 48 }} resizeMode="contain" />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <AppText maxFontSizeMultiplier={1.4} style={[styles.eatTitle, { color: P.ink }]}>
-                  {t('kayit.plan.eatkcal_title')}
-                </AppText>
-                <AppText maxFontSizeMultiplier={1.4} style={[styles.small, { color: P.sec }]}>
-                  {eat ? t('kayit.plan.eatkcal_sub', { name: eat.name, kcal: eat.kcal }) : t('kayit.plan.eatkcal_fallback')}
-                </AppText>
-              </View>
-            </View>
-            {!consentKnown ? <CheckBoxRow testID="kayit-health-consent" checked={healthOk} onToggle={() => setHealthOk(!healthOk)} label={t('kayit.q.health_consent')} /> : null}
+          <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+            <CampaignBanner forceIzmir={vitrinIzmir} />
           </View>
         </ScrollView>
         <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
-          <KButton testID="kayit-save-plan" label={t('kayit.plan.save')} onPress={() => void save()} disabled={!okConsent} />
+          {!consentKnown ? <HealthConsentNote /> : null}
+          <KButton testID="kayit-save-plan" label={t(consentKnown ? 'kayit.plan.save' : 'kayit.plan.save_consent')} onPress={() => void save()} />
         </View>
       </View>
     </View>
@@ -404,27 +440,26 @@ function MealSplitCard({ plan }: { plan: KPlan }) {
 }
 
 const styles = StyleSheet.create({
-  h1: { fontFamily: FONT.display, fontSize: 32, lineHeight: 36, letterSpacing: -0.8 },
-  h2: { fontFamily: FONT.display, fontSize: 20 },
-  h3: { fontFamily: FONT.display, fontSize: 18 },
+  h1: { fontFamily: FONT.display, fontSize: 32, lineHeight: 39, letterSpacing: -0.8 },
+  h2: { fontFamily: FONT.display, fontSize: 20, lineHeight: 25 },
+  h3: { fontFamily: FONT.display, fontSize: 18, lineHeight: 23 },
   small: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19 },
   note: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18, paddingHorizontal: 4 },
   calcNum: { fontFamily: FONT.display, fontSize: 52, lineHeight: 64, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
   calcUnit: { fontFamily: FONT.semi, fontSize: 18, lineHeight: 24 },
   calcRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, minHeight: 56 },
-  calcRowText: { fontFamily: FONT.semi, fontSize: 16, flex: 1 },
+  calcRowText: { fontFamily: FONT.semi, fontSize: 16, lineHeight: 21, flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, gap: 8 },
   card: { borderRadius: 26, borderWidth: 1, padding: 18 },
   daily: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
-  kcal: { fontFamily: FONT.display, fontSize: 48, lineHeight: 54, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+  kcal: { fontFamily: FONT.display, fontSize: 48, lineHeight: 58, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
   kcalUnit: { fontFamily: FONT.semi, fontSize: 18, lineHeight: 24, marginBottom: 8, marginLeft: 2 },
-  macroNum: { fontFamily: FONT.bold, fontSize: 14 },
+  macroNum: { fontFamily: FONT.bold, fontSize: 14, lineHeight: 19 },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10, flexWrap: 'wrap' },
   sectionHeadInner: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   recipe: { width: 168, borderRadius: 22, borderWidth: 1, overflow: 'hidden' },
   recipeImg: { height: 104, alignItems: 'center', justifyContent: 'center' },
-  recipeName: { fontFamily: FONT.semi, fontSize: 16 },
-  eat: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 24, borderWidth: 1, padding: 14 },
-  eatImg: { width: 72, height: 72, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  eatTitle: { fontFamily: FONT.semi, fontSize: 16 },
+  recipeName: { fontFamily: FONT.semi, fontSize: 16, lineHeight: 21 },
+  /** G45: eatkcal kampanya bannerı — tam genişlik, 300×104 oranı, yarıçap 20. */
+  banner: { width: '100%', aspectRatio: 300 / 104, borderRadius: 20, overflow: 'hidden' },
 });

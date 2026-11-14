@@ -6,6 +6,9 @@
 // onay rozeti; seçilmemiş = cam yüzey (P.card) + ince kenar, TAM opaklık ve ölçek (soluklaştırma/küçültme/geri
 // çekme yok). Hâl değişimi 160 ms renk/kenar geçişi (yay/zıplama yok); basışta 0,98 + 120 ms; seçimde hafif
 // seçim titreşimi. Girişler tek seferlik 10 pt + fade 240 ms. Azaltılmış harekette hepsi anlık.
+// G45-S1: ikon altı soluk daireler kaldırıldı (ikon doğrudan kartta; seçilmemiş P.ink, seçili limeInk); onay
+// rozeti/tik YOK (seçili hâl yalnız tam lime dolgu; accessibilityState.selected kalır); tekerlek satırı 60 pt +
+// açık satır yüksekliği (seçili yıl kırpılmıyordu); kart başlıkları ~%10 küçük + açık satır yüksekliği.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -18,10 +21,10 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, haptic, useReducedMotion } from '../../../core/design';
+import { CURVE, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { Check, MagnifyingGlass, Minus, Plus, Sneaker, X, type Icon } from '../../../components/icons';
-import { FONT } from './parts';
+import { MagnifyingGlass, Minus, Plus, Sneaker, X, type Icon } from '../../../components/icons';
+import { FONT, KText as AppText } from './parts';
 import { K_MOTION, useK, type KPalette } from './theme';
 import { PressScale, mixColor, useSelectTween } from './motion';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
@@ -34,7 +37,6 @@ export function pickColors(P: KPalette, k: number) {
     edge: mixColor(P.cardEdge, P.accent, k),
     ink: mixColor(P.ink, P.limeInk, k),
     sec: mixColor(P.sec, P.limeInkSec, k),
-    iconBg: mixColor(P.accentSoft, 'rgba(255,255,255,0.35)', k),
   };
 }
 
@@ -92,8 +94,8 @@ export function ChoiceTile({
         style={[wide ? styles.tileWide : styles.tile, { backgroundColor: c.bg, borderColor: c.edge }]}
       >
         {Ico ? (
-          <View style={[styles.tileIcon, { backgroundColor: c.iconBg }]}>
-            <Ico size={26} color={c.ink} weight="bold" />
+          <View style={styles.tileIcon} importantForAccessibility="no-hide-descendants">
+            <Ico size={28} color={c.ink} weight="bold" />
           </View>
         ) : null}
         <View style={wide ? { flex: 1 } : { marginTop: 'auto' }}>
@@ -106,24 +108,12 @@ export function ChoiceTile({
             </AppText>
           ) : null}
         </View>
-        <CheckBadge k={k} />
       </PressScale>
     </Animated.View>
   );
 }
 
-/** Sağ üstte dolu onay rozeti (limeInk daire + lime onay); seçim geçişiyle aynı saatle belirir, yay yok. */
-export function CheckBadge({ k }: { k: number }) {
-  const P = useK();
-  if (k <= 0) return null;
-  return (
-    <View pointerEvents="none" style={[styles.badge, { backgroundColor: P.limeInk, opacity: k }]}>
-      <Check size={16} color={P.accent} weight="bold" />
-    </View>
-  );
-}
-
-/** Liste kartı (P13/P14): başlık + açıklama + onay rozeti; seçilmeyenler tam opaklıkta cam yüzey. */
+/** Liste kartı (P13/P14): başlık + açıklama; seçili = tam lime dolgu (rozet yok); seçilmeyenler tam opaklıkta cam yüzey. */
 export function OptionCard({ label, sub, icon: Ico, selected, onPress, testID, delay = 0 }: { label: string; sub?: string; icon?: Icon; selected: boolean; onPress: () => void; testID?: string; delay?: number }) {
   const P = useK();
   const enter = useEnter(delay);
@@ -143,8 +133,8 @@ export function OptionCard({ label, sub, icon: Ico, selected, onPress, testID, d
         style={[styles.option, { backgroundColor: c.bg, borderColor: c.edge }]}
       >
         {Ico ? (
-          <View style={[styles.optIcon, { backgroundColor: c.iconBg }]}>
-            <Ico size={22} color={c.ink} weight="bold" />
+          <View style={styles.optIcon} importantForAccessibility="no-hide-descendants">
+            <Ico size={24} color={c.ink} weight="bold" />
           </View>
         ) : null}
         <View style={{ flex: 1 }}>
@@ -157,14 +147,14 @@ export function OptionCard({ label, sub, icon: Ico, selected, onPress, testID, d
             </AppText>
           ) : null}
         </View>
-        <CheckBadge k={k} />
       </PressScale>
     </Animated.View>
   );
 }
 
 // ─── Tekerlek seçici (yıl) ────────────────────────────────────────────────────
-const WHEEL_ROW = 52;
+/** G45: 52 → 60 pt; seçili yıl 34 pt / 44 satır, Dynamic Type tavanı 1,2× (≈ 53 pt satır < 60 pt). */
+export const WHEEL_ROW = 60;
 const WHEEL_VISIBLE = 5;
 
 export function WheelPicker({ values, value, onChange, format, label, testID }: { values: number[]; value: number; onChange: (v: number) => void; format?: (v: number) => string; label: string; testID?: string }) {
@@ -231,12 +221,7 @@ export function WheelPicker({ values, value, onChange, format, label, testID }: 
             <View style={{ height: WHEEL_ROW, alignItems: 'center', justifyContent: 'center' }} importantForAccessibility="no-hide-descendants">
               <AppText
                 maxFontSizeMultiplier={1.2}
-                style={{
-                  fontFamily: d === 0 ? FONT.display : FONT.semi,
-                  fontSize: d === 0 ? 34 : d === 1 ? 24 : 20,
-                  color: P.ink,
-                  opacity: d === 0 ? 1 : d === 1 ? 0.55 : 0.28,
-                }}
+                style={[d === 0 ? styles.wheelOn : d === 1 ? styles.wheelNear : styles.wheelFar, { color: P.ink }]}
               >
                 {fmt(item)}
               </AppText>
@@ -559,8 +544,8 @@ function ActCard<T extends string>({ item, on, width, pad, onPress }: { item: Ca
       style={{ width, paddingHorizontal: pad }}
     >
       <View style={[styles.actCard, { backgroundColor: c.bg, borderColor: c.edge }]}>
-        <View style={[styles.actIcon, { backgroundColor: c.iconBg }]}>
-          <Ico size={34} color={c.ink} weight="bold" />
+        <View style={styles.actIcon} importantForAccessibility="no-hide-descendants">
+          <Ico size={40} color={c.ink} weight="bold" />
         </View>
         <AppText maxFontSizeMultiplier={1.3} style={[styles.actTitle, { color: c.ink }]}>
           {item.title}
@@ -574,7 +559,6 @@ function ActCard<T extends string>({ item, on, width, pad, onPress }: { item: Ca
             {item.steps}
           </AppText>
         </View>
-        <CheckBadge k={k} />
       </View>
     </PressScale>
   );
@@ -604,7 +588,7 @@ function DayPill({ label, longLabel, on, onPress, disabled }: { label: string; l
       }}
       disabled={disabled}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: on, disabled: !!disabled }}
+      accessibilityState={{ checked: on, selected: on, disabled: !!disabled }}
       accessibilityLabel={longLabel}
       style={[styles.day, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }]}
     >
@@ -629,7 +613,7 @@ export function ChipToggle({ label, icon: Ico, on, onPress, testID, disabled }: 
       }}
       disabled={disabled}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: on, disabled: !!disabled }}
+      accessibilityState={{ checked: on, selected: on, disabled: !!disabled }}
       accessibilityLabel={label}
       style={[styles.chip, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k), opacity: disabled ? 0.45 : 1 }]}
     >
@@ -803,49 +787,51 @@ function Plate({ on }: { on: boolean }) {
 const styles = StyleSheet.create({
   tile: { minHeight: 148, borderRadius: 26, borderWidth: 1, padding: 18, gap: 12 },
   tileWide: { minHeight: 92, borderRadius: 26, borderWidth: 1, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16 },
-  tileIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  tileLabel: { fontFamily: FONT.display, fontSize: 19, lineHeight: 23 },
+  tileIcon: { width: 32, height: 32, justifyContent: 'center' },
+  tileLabel: { fontFamily: FONT.display, fontSize: 17, lineHeight: 22 },
   tileSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19, marginTop: 2 },
-  badge: { position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   option: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 24, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 16, minHeight: 76 },
-  optIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  optLabel: { fontFamily: FONT.display, fontSize: 18, lineHeight: 23 },
+  optIcon: { width: 28, alignItems: 'center', justifyContent: 'center' },
+  optLabel: { fontFamily: FONT.display, fontSize: 16, lineHeight: 21 },
   optSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19 },
+  wheelOn: { fontFamily: FONT.display, fontSize: 34, lineHeight: 44, opacity: 1, fontVariant: ['tabular-nums'] },
+  wheelNear: { fontFamily: FONT.semi, fontSize: 24, lineHeight: 32, opacity: 0.55, fontVariant: ['tabular-nums'] },
+  wheelFar: { fontFamily: FONT.semi, fontSize: 20, lineHeight: 27, opacity: 0.28, fontVariant: ['tabular-nums'] },
   wheelBand: { position: 'absolute', left: 24, right: 24, height: WHEEL_ROW, borderRadius: 18, borderWidth: 1 },
   ruler: { height: 112, borderTopWidth: 1, borderBottomWidth: 1 },
-  rulerLabel: { position: 'absolute', top: 76, width: 60, textAlign: 'center', fontFamily: FONT.semi, fontSize: 15 },
+  rulerLabel: { position: 'absolute', top: 76, width: 60, textAlign: 'center', fontFamily: FONT.semi, fontSize: 15, lineHeight: 20 },
   rulerNeedle: { position: 'absolute', top: 10, width: 6, height: 66, borderRadius: 3 },
   pill: { alignSelf: 'center', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8 },
-  pillText: { fontFamily: FONT.bold, fontSize: 16 },
+  pillText: { fontFamily: FONT.bold, fontSize: 16, lineHeight: 21 },
   paceWrap: { flexDirection: 'row', borderRadius: 26, borderWidth: 1, padding: 8, gap: 6 },
   paceItem: { flex: 1, borderRadius: 20, alignItems: 'center', paddingVertical: 16, minHeight: 96, justifyContent: 'center' },
   paceChev: { fontFamily: FONT.bold, fontSize: 26, lineHeight: 28 },
-  paceTitle: { fontFamily: FONT.display, fontSize: 18, marginTop: 4 },
-  paceSub: { fontFamily: FONT.semi, fontSize: 13, marginTop: 4, textAlign: 'center' },
+  paceTitle: { fontFamily: FONT.display, fontSize: 17, lineHeight: 22, marginTop: 4 },
+  paceSub: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18, marginTop: 4, textAlign: 'center' },
   rangeCard: { borderRadius: 26, borderWidth: 1, padding: 22, gap: 6 },
-  rangeLabel: { fontFamily: FONT.semi, fontSize: 14 },
+  rangeLabel: { fontFamily: FONT.semi, fontSize: 14, lineHeight: 19 },
   rangeValue: { fontFamily: FONT.display, fontSize: 30, lineHeight: 36, letterSpacing: -0.6 },
   rangeNote: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20 },
   actCard: { borderRadius: 30, borderWidth: 1, padding: 24, minHeight: 360, gap: 10 },
-  actIcon: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  actTitle: { fontFamily: FONT.display, fontSize: 28 },
+  actIcon: { width: 44, height: 44, justifyContent: 'center', marginBottom: 14 },
+  actTitle: { fontFamily: FONT.display, fontSize: 25, lineHeight: 32 },
   actSub: { fontFamily: FONT.body, fontSize: 16, lineHeight: 22 },
   stepPill: { marginTop: 'auto', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
-  stepText: { fontFamily: FONT.bold, fontSize: 15 },
+  stepText: { fontFamily: FONT.bold, fontSize: 15, lineHeight: 20 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 18 },
   days: { flexDirection: 'row', gap: 6 },
   day: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  dayText: { fontFamily: FONT.bold, fontSize: 15 },
+  dayText: { fontFamily: FONT.bold, fontSize: 15, lineHeight: 20 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, borderWidth: 1, paddingHorizontal: 16, minHeight: 44 },
-  chipText: { fontFamily: FONT.semi, fontSize: 15 },
+  chipText: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 20 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  groupTitle: { fontFamily: FONT.semi, fontSize: 14 },
+  groupTitle: { fontFamily: FONT.semi, fontSize: 14, lineHeight: 19 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 18, borderWidth: 1, paddingHorizontal: 14, minHeight: 50 },
   searchInput: { flex: 1, fontFamily: FONT.body, fontSize: 16, minHeight: 44 },
   emptyCard: { borderRadius: 20, borderWidth: 1.5, borderStyle: 'dashed', padding: 18, gap: 4 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 36 },
   stepBtn: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  stepValue: { fontFamily: FONT.display, fontSize: 88, lineHeight: 96, minWidth: 64, textAlign: 'center' },
+  stepValue: { fontFamily: FONT.display, fontSize: 88, lineHeight: 106, minWidth: 64, textAlign: 'center' },
   plates: { flexDirection: 'row', gap: 10 },
   plate: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   plateInner: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5 },

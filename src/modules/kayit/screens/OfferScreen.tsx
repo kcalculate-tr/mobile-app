@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, REDUCED, haptic, useReducedMotion } from '../../../core/design';
+import { CURVE, REDUCED, haptic, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { Check, X } from '../../../components/icons';
 import type { PlanCard, PlanKey } from '../../../lib/subscription/plans';
@@ -17,7 +17,7 @@ import { purchasePlan, restorePurchases } from '../../../lib/subscription/purcha
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubLegalLinks from '../../subscription/ui/SubLegalLinks';
 import { useCoachEnabled } from '../../coach/access';
-import { CircleButton, FONT, KBackdrop, KButton, Mascot, NoticeCard, Segment } from '../ui/parts';
+import { CircleButton, FONT, KBackdrop, KButton, KText as AppText, Mascot, NoticeCard, Segment } from '../ui/parts';
 import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, mixColor, useSelectTween } from '../ui/motion';
 import { useKayit } from '../store';
@@ -195,6 +195,8 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
   const sec = mixColor(P.sec, P.limeInkSec, k);
   const priceLine = card.yearly ? t('kayit.offer.per_year', { price: card.priceText }) : t('kayit.offer.per_month', { price: card.priceText });
   const trial = card.yearly && card.trialDays ? t('kayit.offer.trial', { n: card.trialDays }) : null;
+  // G45 md.9: rozet zemini lime; kart lime dolguluyken (seçili) aynı saatle beyaza döner → lime üstünde okunur. Yazı siyah.
+  const tagBg = mixColor(P.accent, '#FFFFFF', k);
   return (
     <PressScale
         testID={testID}
@@ -206,7 +208,7 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled: locked }}
         accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, !card.yearly ? t('kayit.offer.no_trial') : null, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
-        style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }, recommended && card.yearly && card.discountPct ? { paddingBottom: 30 } : null]}
+        style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }]}
       >
         <View style={[styles.radio, { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) }]}>
           {k > 0 ? (
@@ -243,18 +245,19 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
               {t('sub.paywall.per_month_equiv', { price: card.monthlyText })}
             </AppText>
           ) : null}
+          {/* G45 md.9: "%… tasarruf" kartın İÇİNDE, fiyatın altında (alt kenara taşmaz); dolgulu, kenarsız, düz. */}
+          {recommended && card.yearly && card.discountPct ? (
+            <View testID="kayit-offer-save" style={[styles.tagInline, { backgroundColor: tagBg }]}>
+              <AppText maxFontSizeMultiplier={1.2} style={[styles.tagText, { color: P.limeInk }]}>
+                {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}
+              </AppText>
+            </View>
+          ) : null}
         </View>
         {recommended ? (
-          <View style={[styles.tag, { backgroundColor: P.accent, borderColor: mixColor(P.accent, '#10301D', k) }]}>
-            <AppText maxFontSizeMultiplier={1.2} style={styles.tagText}>
+          <View testID="kayit-offer-recommended" style={[styles.tag, { backgroundColor: tagBg }]}>
+            <AppText maxFontSizeMultiplier={1.2} style={[styles.tagText, { color: P.limeInk }]}>
               {t('kayit.offer.recommended')}
-            </AppText>
-          </View>
-        ) : null}
-        {recommended && card.yearly && card.discountPct ? (
-          <View style={[styles.tag, { top: undefined, bottom: -12, backgroundColor: P.accent }]}>
-            <AppText maxFontSizeMultiplier={1.2} style={styles.tagText}>
-              {t('kayit.offer.save_pct', { pct: lang === 'en' ? `${card.discountPct}%` : `%${card.discountPct}` })}
             </AppText>
           </View>
         ) : null}
@@ -336,24 +339,26 @@ function SuccessView({ plan, trialDays, onHome }: { plan: string; trialDays: num
 
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  title: { fontFamily: FONT.display, fontSize: 30, lineHeight: 34, textAlign: 'center', letterSpacing: -0.6, marginTop: 6 },
+  title: { fontFamily: FONT.display, fontSize: 30, lineHeight: 36, textAlign: 'center', letterSpacing: -0.6, marginTop: 6 },
   plan: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 26, borderWidth: 1, padding: 18, paddingTop: 22, minHeight: 104 },
   radio: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  planName: { fontFamily: FONT.display, fontSize: 21 },
+  planName: { fontFamily: FONT.display, fontSize: 21, lineHeight: 26 },
   planSub: { fontFamily: FONT.body, fontSize: 14, lineHeight: 19 },
-  price: { fontFamily: FONT.bold, fontSize: 19, textAlign: 'right' },
+  price: { fontFamily: FONT.bold, fontSize: 19, lineHeight: 24, textAlign: 'right' },
   badgeSoft: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontFamily: FONT.semi, fontSize: 12 },
-  tag: { position: 'absolute', right: 22, top: -12, borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3, transform: [{ rotate: '2deg' }] },
-  tagText: { fontFamily: FONT.bold, fontSize: 13, color: '#10301D' },
+  badgeText: { fontFamily: FONT.semi, fontSize: 12, lineHeight: 16 },
+  // G45 md.9: kenar çizgisi ve eğiklik yok (düz, dolgulu).
+  tag: { position: 'absolute', right: 22, top: -12, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
+  tagInline: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
+  tagText: { fontFamily: FONT.bold, fontSize: 13, lineHeight: 18 },
   after: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 21, textAlign: 'center' },
   renew: { fontFamily: FONT.body, fontSize: 13, lineHeight: 19, textAlign: 'center' },
   restore: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  restoreText: { fontFamily: FONT.semi, fontSize: 14, textDecorationLine: 'underline' },
+  restoreText: { fontFamily: FONT.semi, fontSize: 14, lineHeight: 19, textDecorationLine: 'underline' },
   banner: { position: 'absolute', left: 16, right: 16, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
   bannerIn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, minHeight: 56 },
   bannerDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  bannerText: { fontFamily: FONT.semi, fontSize: 15, flex: 1 },
+  bannerText: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 20, flex: 1 },
   okBadge: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginTop: -8 },
 });
 

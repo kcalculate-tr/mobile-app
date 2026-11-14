@@ -163,10 +163,11 @@ test('renk karışımı: uçlar birebir, ara değer doğrusal; limeInk her temad
 
 test('P1: harf harf yok — başlık ilk karede tam metin', () => {
   const r = render(wrap(<QuestionsScreen />));
-  expect(r.getByTestId('kayit-q-title').props.children).toBe(tr.q.goal_title);
+  // G45: KText f+i arasına U+200C koyar (bitişik harf kapatma) — görünür metin aynı.
+  expect(String(r.getByTestId('kayit-q-title').props.children).replace(/\u200C/g, '')).toBe(tr.q.goal_title);
 });
 
-test('P1 seçim: diğer kartlar soluklaşmaz/küçülmez (cam yüzey, tam opaklık); seçili tam lime + limeInk + dolu rozet', async () => {
+test('P1 seçim: diğer kartlar soluklaşmaz/küçülmez (cam yüzey, tam opaklık); seçili tam lime + limeInk (G45: rozet yok)', async () => {
   const r = render(wrap(<QuestionsScreen />));
   await wait(20);
   fireEvent.press(r.getByTestId('kayit-goal-lose'));
@@ -177,9 +178,9 @@ test('P1 seçim: diğer kartlar soluklaşmaz/küçülmez (cam yüzey, tam opakl�
   expect(flat(sel.props.style).backgroundColor).toBe(K_LIGHT.accent);
   expect(flat(sel.props.style).borderColor).toBe(K_LIGHT.accent);
   expect(flat(r.getByText(tr.q.goal_lose).props.style).color).toBe(K_LIGHT.limeInk);
-  // Dolu onay rozeti: limeInk daire seçili kartın içinde.
+  // G45-S1 md.3 G44 rozetini kaldırdı: seçili hâl yalnız tam lime dolgu (rozet/tik yok).
   const badge = sel.findAll((n: { props: Record<string, unknown> }) => flat(n.props.style).backgroundColor === K_LIGHT.limeInk && flat(n.props.style).position === 'absolute');
-  expect(badge.length).toBeGreaterThan(0);
+  expect(badge.length).toBe(0);
 
   for (const g of ['maintain', 'gain', 'muscle', 'balanced']) {
     const tile = r.getByTestId(`kayit-goal-${g}`);

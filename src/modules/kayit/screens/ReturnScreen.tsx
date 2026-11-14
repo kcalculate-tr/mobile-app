@@ -6,9 +6,8 @@ import { StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { AppText } from '../../../core/design';
 import { useT } from '../../../core/i18n';
-import { FONT, KBackdrop, KButton, Mascot, Rise } from '../ui/parts';
+import { FONT, KBackdrop, KButton, KText as AppText, Mascot, Rise } from '../ui/parts';
 import { useK } from '../ui/theme';
 import { draftDaysLeft, type KDraft } from '../storage';
 import { computeKayitPlan, planSignature } from '../plan';
@@ -91,10 +90,10 @@ export default function ReturnScreen() {
 
 const styles = StyleSheet.create({
   card: { borderRadius: 28, borderWidth: 1, padding: 22, gap: 16 },
-  title: { fontFamily: FONT.display, fontSize: 26, lineHeight: 31 },
+  title: { fontFamily: FONT.display, fontSize: 26, lineHeight: 32 },
   small: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20 },
-  kcal: { fontFamily: FONT.display, fontSize: 40, letterSpacing: -1 },
+  kcal: { fontFamily: FONT.display, fontSize: 40, lineHeight: 48, letterSpacing: -1 },
   macros: { flexDirection: 'row', gap: 10, marginTop: 10 },
   macro: { flex: 1, borderRadius: 16, padding: 12, alignItems: 'center' },
-  macroV: { fontFamily: FONT.bold, fontSize: 17 },
+  macroV: { fontFamily: FONT.bold, fontSize: 17, lineHeight: 22 },
 });
