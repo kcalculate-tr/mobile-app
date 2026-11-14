@@ -1,7 +1,7 @@
 // G39-S1 md.6 — Ana sayfa eatkcal vitrini eylemleri. eatkcal sekmesindeki (EkHomeScreen) AYNI kurallar:
 //  • mağaza / ürün açmadan önce konum kapısı (G48: kayıtlı adres yoksa EkCityGate, sonra hedef);
 //  • banner hedefi bannerTargetToEk ile (ürün · mağaza; diğerleri → eatkcal sekmesi);
-//  • "Tümü" → eatkcal sekmesi; "Adres ekle" → mevcut adres ekleme akışı (EkAddressAdd).
+//  • "Tümü" → eatkcal sekmesi. (G49 md.4: Ana sayfadaki "Adres ekle" kartı kaldırıldı; adres konum kapısında.)
 // `yeni_siparis` kapalıyken v2 rotaları kayıtlı değil → her eylem eatkcal sekmesini açar.
 import { readEatGatePassed } from '../../eatkcal/gate/eatGate';
 import { bannerTargetToEk } from '../../eatkcal/v2/model/homeData';
@@ -26,6 +26,5 @@ export function homeEatkcalActions(nav: Nav, opts: { yeniSiparis: boolean; openE
     else if (target.kind === 'store') onOpenStore(target.brandKey);
     else opts.openEatkcal();
   };
-  const onAddAddress = () => (opts.yeniSiparis ? nav.navigate('EkAddressAdd') : opts.openEatkcal());
-  return { onOpenStore, onCampaign, onSeeAll: opts.openEatkcal, onAddAddress };
+  return { onOpenStore, onCampaign, onSeeAll: opts.openEatkcal };
 }

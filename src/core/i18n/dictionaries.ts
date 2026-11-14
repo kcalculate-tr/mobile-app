@@ -802,11 +802,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       banner_campaign: 'eatkcal kampanyası, yalnız İzmir’de',
       banner_campaign_meta: 'eatkcal’den sipariş ver',
       ek_region: 'eatkcal önerisi',
-      ek_eta: 'İzmir’de %{eta}',
       // G39-S1 md.6 — Ana sayfa eatkcal vitrini.
-      ek_eta_default: '30–45 dk',
-      ek_addr_title: 'Adresini gir, sana yakın restoranları gör',
-      ek_addr_cta: 'Adres ekle',
       ek_none: 'Şu an açık restoran yok',
       ek_all: 'Tümü',
       ek_all_a11y: 'Tüm restoranlar, eatkcal',
@@ -2714,11 +2710,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       banner_campaign: 'eatkcal offer, İzmir only',
       banner_campaign_meta: 'Order on eatkcal',
       ek_region: 'eatkcal suggestion',
-      ek_eta: '%{eta} in İzmir',
       // G39-S1 md.6 — Home eatkcal showcase.
-      ek_eta_default: '30–45 min',
-      ek_addr_title: 'Add your address to see restaurants near you',
-      ek_addr_cta: 'Add address',
       ek_none: 'No restaurants open right now',
       ek_all: 'See all',
       ek_all_a11y: 'All restaurants, eatkcal',

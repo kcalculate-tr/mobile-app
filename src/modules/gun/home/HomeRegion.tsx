@@ -1,7 +1,7 @@
 // G18-S2 md.4 — Ana sayfa eatkcal bölge bölümü.
-//  • İzmir / bölge bilinmiyor (G39-S1 md.6): başlık eatkcal LOGOSU + "İzmir'de <süre>"; adres yoksa
-//    "Adresini gir…" kartı; kampanya bannerları (yatay) + restoran/mağaza kartları (en fazla 6, "Tümü" →
-//    eatkcal sekmesi). İskelet · "Şu an açık restoran yok" · sessiz hata (bölüm gizli). Önceki TEK öneri
+//  • İzmir / bölge bilinmiyor (G39-S1 md.6): başlık eatkcal LOGOSU; kampanya bannerları (yatay) +
+//    restoran/mağaza kartları (en fazla 6, "Tümü" → eatkcal sekmesi). G49 md.4: "Adresini gir…" kartı ve logo
+//    yanındaki "İzmir'de 30–45 dk" yazısı KALDIRILDI (adres eatkcal sekmesindeki konum kapısında soruluyor). İskelet · "Şu an açık restoran yok" · sessiz hata (bölüm gizli). Önceki TEK öneri
 //    kartı (G18-S2) kaldırıldı.
 //  • İzmir dışı (FinHomeOutside): "eatkcal · Şimdilik yalnız İzmir'de" + iki satır
 //    (72 yükseklik, 44 ikon kutusu, sağ ok): "Restoranını eatkcal'a ekle" ·
@@ -21,7 +21,7 @@ import { fetchProducts } from '../../../lib/products';
 import { CampaignCard, HRow, STORE_CARD, StoreCard } from '../../eatkcal/v2/ui/home/cards';
 import { useDeliveryChip } from '../../eatkcal/v2/ui/home/useDeliveryChip';
 import { HOME_STORE_LIMIT, buildStoreItems, campaignCellsFrom, type StoreItem } from '../../eatkcal/v2/model/showcase';
-import { BRICOLAGE_SEMI, LIME, LIME_INK, useHomeTokens } from '../../onboarding/first/homeTokens';
+import { BRICOLAGE_SEMI, useHomeTokens } from '../../onboarding/first/homeTokens';
 import type { HomeRegion as Region } from './region';
 
 const STORE_D =
@@ -37,8 +37,6 @@ const CARET_D =
 type Provider = {
   campaigns: () => Promise<BannerCell[]>;
   stores: () => Promise<StoreItem[]>;
-  /** Yalnız vitrin/test: teslim süresi sabiti (yoksa seçili adresin bölge süresi, o da yoksa "30–45 dk"). */
-  eta?: string | null;
 };
 const realProvider: Provider = {
   campaigns: () => fetchBannerRows().then(campaignCellsFrom),
@@ -66,30 +64,6 @@ function Head({ sub }: { sub: string | null }) {
   );
 }
 
-function AddressPrompt({ onAdd }: { onAdd: () => void }) {
-  const k = useHomeTokens();
-  const { t: tt } = useT();
-  return (
-    <View style={[styles.addr, { backgroundColor: k.card, borderColor: k.line }]} testID="home-ek-address-prompt">
-      <View style={[styles.waitIcon, { backgroundColor: k.track }]}>
-        <Svg width={22} height={22} viewBox="0 0 256 256">
-          <Path d={PIN_D} fill={k.text} />
-        </Svg>
-      </View>
-      <AppText style={[styles.addrText, { color: k.text }]}>{tt('home.ek_addr_title')}</AppText>
-      <Pressable
-        onPress={onAdd}
-        accessibilityRole="button"
-        accessibilityLabel={tt('home.ek_addr_cta')}
-        style={({ pressed }) => [styles.addrBtn, { backgroundColor: LIME }, pressed && { opacity: 0.85 }]}
-        testID="home-ek-address-add"
-      >
-        <AppText style={[styles.addrBtnText, { color: LIME_INK }]}>{tt('home.ek_addr_cta')}</AppText>
-      </Pressable>
-    </View>
-  );
-}
-
 function ShowcaseSkeleton() {
   return (
     <View style={styles.skel} testID="home-ek-skeleton" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -111,12 +85,10 @@ export function HomeEatkcalShowcase({
   onOpenStore,
   onCampaign,
   onSeeAll,
-  onAddAddress,
 }: {
   onOpenStore: (brandKey: string) => void;
   onCampaign: (cell: BannerCell) => void;
   onSeeAll: () => void;
-  onAddAddress: () => void;
 }) {
   const k = useHomeTokens();
   const { t: tt } = useT();
@@ -138,15 +110,13 @@ export function HomeEatkcalShowcase({
   }, [addressId]);
   // Sessiz hata: alan tamamen gizlenir (Ana sayfanın geri kalanı etkilenmez).
   if (state.status === 'error') return null;
-  // Adres yokken / bölge süresi bilinmezken README md.6 varsayılanı (home.ek_eta_default: "30–45 dk").
-  const eta = (provider.eta !== undefined ? provider.eta : chip?.estimate) ?? tt('home.ek_eta_default');
   const stores = state.status === 'ready' ? state.stores.slice(0, HOME_STORE_LIMIT) : [];
   const campaigns = state.status === 'ready' ? state.campaigns : [];
   return (
     <View style={styles.section} accessibilityLabel={tt('home.ek_region')} testID="home-region-izmir">
       <View style={styles.pad}>
-        <Head sub={tt('home.ek_eta', { eta })} />
-        {!address ? <AddressPrompt onAdd={onAddAddress} /> : null}
+        {/* G49 md.4: yalnız logo (süre yazısı ve adres kartı yok). */}
+        <Head sub={null} />
       </View>
       {state.status === 'loading' ? (
         <ShowcaseSkeleton />
@@ -243,20 +213,19 @@ export function HomeOutsideCards({ onWaitlist }: { onWaitlist: (kind: 'add' | 's
 }
 
 /**
- * Bölgeye göre: İzmir ya da henüz bilinmeyen bölge → eatkcal vitrini (G39-S1 md.6: adres yoksa da restoranlar
- * listelenir, üstte "Adres ekle" kartı); İzmir dışı (adres/il/konum başka şehir) → bekleme listesi satırları.
+ * Bölgeye göre: İzmir ya da henüz bilinmeyen bölge → eatkcal vitrini (adres yoksa da restoranlar listelenir;
+ * G49 md.4: "Adres ekle" kartı yok); İzmir dışı (adres/il/konum başka şehir) → bekleme listesi satırları.
  */
 export function HomeRegionSection(props: {
   region: Region;
   onOpenStore: (brandKey: string) => void;
   onCampaign: (cell: BannerCell) => void;
   onSeeAll: () => void;
-  onAddAddress: () => void;
   onWaitlist: (kind: 'add' | 'suggest') => void;
 }) {
   if (props.region === 'other') return <HomeOutsideCards onWaitlist={props.onWaitlist} />;
   return (
-    <HomeEatkcalShowcase onOpenStore={props.onOpenStore} onCampaign={props.onCampaign} onSeeAll={props.onSeeAll} onAddAddress={props.onAddAddress} />
+    <HomeEatkcalShowcase onOpenStore={props.onOpenStore} onCampaign={props.onCampaign} onSeeAll={props.onSeeAll} />
   );
 }
 
@@ -271,10 +240,6 @@ const styles = StyleSheet.create({
   storesTitle: { flex: 1, fontFamily: BRICOLAGE_SEMI, fontSize: 17, lineHeight: 22 },
   allBtn: { minHeight: 44, minWidth: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 2 },
   allText: { fontSize: 13, lineHeight: 18, fontFamily: 'PlusJakartaSans_600SemiBold' },
-  addr: { marginTop: 6, padding: 12, borderRadius: 20, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  addrText: { flex: 1, minWidth: 140, fontSize: 15, lineHeight: 20, fontFamily: 'PlusJakartaSans_600SemiBold' },
-  addrBtn: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  addrBtnText: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold' },
   skel: { marginTop: 10, gap: 16, paddingLeft: 16, overflow: 'hidden' },
   skelRow: { flexDirection: 'row', gap: 10 },
   none: { marginTop: 10, minHeight: 56, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },

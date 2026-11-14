@@ -297,7 +297,6 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
       cover,
     });
     setHomeRegionProvider({
-      eta: scene === 'izmirNoAddr' ? null : en ? '30-45 min' : '30-45 dk',
       campaigns: async () => [
         cell('v-c1', P.coban, en ? 'Fresh salads, 20% off' : 'Taze salatalarda %20 indirim'),
         cell('v-c2', P.somon, en ? 'Salmon week' : 'Somon haftası'),

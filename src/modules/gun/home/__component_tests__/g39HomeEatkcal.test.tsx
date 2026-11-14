@@ -1,7 +1,7 @@
-// G39-S1 md.8 — Ana sayfa eatkcal alanı (md.6): tek ürün kartı yok; başlık eatkcal LOGOSU + "İzmir'de <süre>";
-// kampanya bannerları (yatay) + restoran/mağaza kartları (en fazla 6 + "Tümü"); kayıtlı adres YOKSA üstte
-// "Adresini gir…" kartı + "Adres ekle" (restoranlar yine listelenir); adres kaydedilince alan yenilenir;
+// G39-S1 md.8 — Ana sayfa eatkcal alanı (md.6): tek ürün kartı yok; başlık eatkcal LOGOSU;
+// kampanya bannerları (yatay) + restoran/mağaza kartları (en fazla 6 + "Tümü"); adres değişince alan yenilenir;
 // iskelet · "Şu an açık restoran yok" · sessiz hata (alan gizli). İzmir dışı → bekleme listesi aynen.
+// G49-S1 md.4: "Adresini gir… · Adres ekle" kartı ve logo yanındaki "İzmir'de 30–45 dk" yazısı YOK (tüm kullanıcılar).
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
@@ -39,7 +39,9 @@ const store = (i: number): StoreItem => ({
 });
 const ADDRESS = { id: 'a1', title: 'Ev', district: 'Konak', city: 'İzmir' } as never;
 
-const handlers = () => ({ onOpenStore: jest.fn(), onCampaign: jest.fn(), onSeeAll: jest.fn(), onAddAddress: jest.fn() });
+const handlers = () => ({ onOpenStore: jest.fn(), onCampaign: jest.fn(), onSeeAll: jest.fn() });
+/** G49 md.4: süre yazısı hiçbir biçimde yok. */
+const ETA_RE = /İzmir.?de \d|\d+[–-]\d+ (dk|min)/;
 
 function mount(h = handlers(), scheme: 'light' | 'dark' = 'light') {
   return render(
@@ -64,7 +66,7 @@ beforeEach(() => {
 afterAll(() => setHomeRegionProvider(null));
 
 for (const scheme of ['light', 'dark'] as const) {
-  test(`${scheme} · adres VAR: adres kartı yok; logo + "İzmir'de 30–45 dk"; bannerlar + en fazla 6 restoran + "Tümü"`, async () => {
+  test(`${scheme} · adres VAR: adres kartı yok; yalnız logo (süre yazısı yok); bannerlar + en fazla 6 restoran + "Tümü"`, async () => {
     useAddressStore.getState().setSelectedAddress(ADDRESS);
     const h = handlers();
     const r = mount(h, scheme);
@@ -73,7 +75,7 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(r.queryByTestId('home-ek-address-prompt')).toBeNull();
     expect(r.getByTestId('home-ek-logo').props.accessibilityLabel).toBe('eatkcal');
     expect(r.queryByText('eatkcal')).toBeNull(); // başlık yazı değil logo
-    expect(r.getByText('İzmir’de 30–45 dk')).toBeTruthy();
+    expect(r.queryByText(ETA_RE)).toBeNull();
     expect(r.getAllByTestId('ek-campaign-card')).toHaveLength(2);
     expect(r.getAllByTestId('ek-store-card')).toHaveLength(HOME_STORE_LIMIT);
     expect(HOME_STORE_LIMIT).toBe(6);
@@ -88,30 +90,30 @@ for (const scheme of ['light', 'dark'] as const) {
   });
 }
 
-test('adres YOK: bannerların ÜSTÜNDE "Adresini gir…" kartı + "Adres ekle"; restoranlar yine listelenir', async () => {
+test('G49 md.4 · adres YOK: "Adresini gir… · Adres ekle" kartı ve süre yazısı yok; logo → kampanyalar → mağazalar', async () => {
   const h = handlers();
   const r = mount(h);
   await waitFor(() => expect(r.getByTestId('home-ek-stores')).toBeTruthy());
-  expect(r.getByText('Adresini gir, sana yakın restoranları gör')).toBeTruthy();
+  expect(r.queryByTestId('home-ek-address-prompt')).toBeNull();
+  expect(r.queryByTestId('home-ek-address-add')).toBeNull();
+  expect(r.queryByText('Adresini gir, sana yakın restoranları gör')).toBeNull();
+  expect(r.queryByText('Adres ekle')).toBeNull();
+  expect(r.queryByText(ETA_RE)).toBeNull();
+  expect(r.getByTestId('home-ek-logo')).toBeTruthy();
   expect(r.getAllByTestId('ek-store-card').length).toBeGreaterThan(0);
-  const btn = r.getByTestId('home-ek-address-add');
-  expect(btn.props.accessibilityLabel).toBe('Adres ekle');
-  fireEvent.press(btn);
-  expect(h.onAddAddress).toHaveBeenCalled();
-  // Sıra: adres kartı → kampanyalar → mağazalar.
-  const order = r.UNSAFE_root.findAll((n: TNode) => ['home-ek-address-prompt', 'home-ek-campaigns', 'home-ek-stores'].includes(n.props?.testID) && typeof n.type !== 'string').map((n: TNode) => n.props.testID);
-  expect([...new Set(order)]).toEqual(['home-ek-address-prompt', 'home-ek-campaigns', 'home-ek-stores']);
+  const order = r.UNSAFE_root.findAll((n: TNode) => ['home-ek-logo', 'home-ek-campaigns', 'home-ek-stores'].includes(n.props?.testID) && typeof n.type !== 'string').map((n: TNode) => n.props.testID);
+  expect([...new Set(order)]).toEqual(['home-ek-logo', 'home-ek-campaigns', 'home-ek-stores']);
 });
 
-test('adres kaydedilince alan yenilenir: kart kalkar, liste yeniden okunur', async () => {
+test('adres kaydedilince alan yenilenir: liste yeniden okunur (kart yine yok)', async () => {
   const r = mount();
-  await waitFor(() => expect(r.getByTestId('home-ek-address-prompt')).toBeTruthy());
+  await waitFor(() => expect(r.getByTestId('home-ek-stores')).toBeTruthy());
   const before = storesCalls;
   await act(async () => {
     useAddressStore.getState().setSelectedAddress(ADDRESS);
   });
-  await waitFor(() => expect(r.queryByTestId('home-ek-address-prompt')).toBeNull());
-  expect(storesCalls).toBe(before + 1);
+  await waitFor(() => expect(storesCalls).toBe(before + 1));
+  expect(r.queryByTestId('home-ek-address-prompt')).toBeNull();
 });
 
 test('boş: "Şu an açık restoran yok" (bannerlar varsa durur)', async () => {
@@ -135,7 +137,7 @@ test('kampanya verisi düşse de restoranlar listelenir (banner satırı gizli)'
   expect(r.queryByTestId('home-ek-campaigns')).toBeNull();
 });
 
-test('EN: metinler İngilizce, varsayılan süre "30–45 min"', async () => {
+test('EN: metinler İngilizce; süre yazısı ve adres kartı yok', async () => {
   const { I18nProvider } = require('../../../../core/i18n');
   const r = render(
     <I18nProvider forceLang="en">
@@ -143,9 +145,9 @@ test('EN: metinler İngilizce, varsayılan süre "30–45 min"', async () => {
     </I18nProvider>,
   );
   await waitFor(() => expect(r.getByTestId('home-ek-stores')).toBeTruthy());
-  expect(r.getByText('30–45 min in İzmir')).toBeTruthy();
-  expect(r.getByText('Add your address to see restaurants near you')).toBeTruthy();
-  expect(r.getByText('Add address')).toBeTruthy();
+  expect(r.queryByText(ETA_RE)).toBeNull();
+  expect(r.queryByText('Add your address to see restaurants near you')).toBeNull();
+  expect(r.queryByText('Add address')).toBeNull();
   expect(r.getByText('See all')).toBeTruthy();
 });
 
