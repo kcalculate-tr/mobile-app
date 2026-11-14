@@ -139,6 +139,8 @@ export const K_MOTION = {
   bubbleFade: 200,
   /** Seçim hâli renk/kenar geçişi (150–180 ms bandı). */
   select: 160,
+  /** G49 md.5: cam ikon normal ↔ seçili (`_sel`) çapraz geçişi. */
+  iconCross: 150,
   /** Basış geri bildirimi: 0,98 ölçeğe iniş + 120 ms geri dönüş. */
   pressScale: 0.98,
   pressIn: 80,

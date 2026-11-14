@@ -94,6 +94,9 @@ beforeEach(async () => {
 });
 
 // ─── md.1 ────────────────────────────────────────────────────────────────────
+/** G49 md.5: cam ikonun normal / `_sel` katmanları (çapraz geçiş için üst üste, mutlak konumlu). */
+const GLASS_LAYER = /-glass-(normal|sel)$/;
+
 describe('md.1 kesilen yazılar', () => {
   test('bitişik harf kapatma: f+i / f+l / f+f arasına U+200C, diğerleri aynı', () => {
     expect(noLig('Hafif')).toBe(`Haf${ZWNJ}if`);
@@ -172,12 +175,13 @@ describe('md.2–3 seçim kartları', () => {
         return typeof st.borderRadius === 'number' && st.backgroundColor !== undefined && n !== tile && st.width === st.height;
       });
       expect(circles.length).toBe(0);
-      // Onay rozeti yok (mutlak konumlu öğe yok).
-      expect(tile.findAll((n) => flat(n.props.style).position === 'absolute').length).toBe(0);
-      // İkon rengi: her seçenekte aynı (seçilmemiş P.ink, seçili limeInk).
-      const icons = tile.findAll((n) => typeof n.props.color === 'string' && n.props.weight === 'bold');
-      expect(icons.length).toBeGreaterThan(0);
-      expect(icons[0].props.color).toBe(on ? K_LIGHT.limeInk : K_LIGHT.ink);
+      // Onay rozeti yok (mutlak konumlu öğe yok; G49 cam ikonun üst üste iki katmanı hariç).
+      expect(tile.findAll((n) => flat(n.props.style).position === 'absolute' && !GLASS_LAYER.test(String(n.props.testID ?? ''))).length).toBe(0);
+      // G49 md.5: vektör ikon yerine cam PNG — seçilmemiş kartta normal, seçili kartta `_sel` katmanı görünür.
+      const normal = tile.findAll((n) => n.props.testID === `kayit-goal-${g}-glass-normal`)[0];
+      const sel = tile.findAll((n) => n.props.testID === `kayit-goal-${g}-glass-sel`)[0];
+      expect(flat(normal.props.style).opacity).toBe(on ? 0 : 1);
+      expect(flat(sel.props.style).opacity).toBe(on ? 1 : 0);
     }
   });
 
@@ -188,7 +192,7 @@ describe('md.2–3 seçim kartları', () => {
     await wait(K_MOTION.select + 50);
     const tile = r.getByTestId('kayit-diet-vegan') as unknown as N;
     expect(flat(tile.props.style).backgroundColor).toBe(K_LIGHT.accent);
-    expect(tile.findAll((n) => flat(n.props.style).position === 'absolute').length).toBe(0);
+    expect(tile.findAll((n) => flat(n.props.style).position === 'absolute' && !GLASS_LAYER.test(String(n.props.testID ?? ''))).length).toBe(0);
     expect(tile.findAll((n) => flat(n.props.style).backgroundColor === K_LIGHT.accentSoft).length).toBe(0);
   });
 

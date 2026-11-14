@@ -16,28 +16,12 @@ import { haptic } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import {
-  ArrowDown,
-  ArrowUp,
-  Armchair,
   Barbell,
-  Carrot,
-  Clock,
-  Cookie,
-  CookingPot,
-  Equals,
-  Fish,
-  ForkKnife,
-  Leaf,
-  Moon,
-  Package,
   PersonSimpleRun,
   PersonSimpleTaiChi,
   PersonSimpleWalk,
-  Plant,
   SoccerBall,
-  Storefront,
   SwimmingPool,
-  Timer,
   Lightning,
 } from '../../../components/icons';
 import { recordHealthConsent } from '../../../lib/consent/store';
@@ -49,6 +33,7 @@ import { markProfileCreated, useKayitFlow, type GateTarget } from '../profileGat
 import { completeGateFlow } from '../gateComplete';
 import { writeAuthConsents } from '../signup';
 import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
+import { ACT_GLASS, COOK_GLASS, DIET_GLASS, GENDER_GLASS, GOAL_GLASS, STRUGGLE_GLASS } from '../ui/glassIcons';
 import { ActivityCarousel, ChipToggle, ChoiceTile, DayPills, DiffPill, OptionCard, PaceSelector, PlateStepper, RangeCard, Ruler, TagCloud, WheelPicker } from '../ui/pickers';
 import { useEdgeBack } from '../ui/edge';
 import { StackSwap } from '../ui/motion';
@@ -106,12 +91,8 @@ const LAYOUT: Record<KQuestion, BubbleLayout> = {
   cooking: 'right',
   struggle: 'left',
 };
-const GOAL_ICON = { lose: ArrowDown, maintain: Equals, gain: ArrowUp, muscle: Barbell, balanced: Leaf } as const;
-const DIET_ICON = { all: ForkKnife, vegetarian: Carrot, vegan: Plant, pescatarian: Fish } as const;
+// G49 md.5: hedef/cinsiyet/hareket/beslenme/pişirme/zorluk seçenekleri cam PNG ikon (ui/glassIcons); spor çipleri vektör.
 const SPORT_ICON = { weights: Barbell, run: PersonSimpleRun, walk: PersonSimpleWalk, yoga: PersonSimpleTaiChi, swim: SwimmingPool, team: SoccerBall, other: Lightning } as const;
-const COOK_ICON = { daily: CookingPot, sometimes: Timer, ready: Package } as const;
-const STRUGGLE_ICON = { evening_snack: Moon, eating_out: Storefront, no_time: Clock, sweet: Cookie } as const;
-const ACT_ICON = { sedentary: Armchair, light: PersonSimpleWalk, moderate: PersonSimpleWalk, active: PersonSimpleRun } as const;
 
 type Params = { path?: KPath; mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: GateTarget | null; vitrinStep?: KStep; vitrinPick?: (typeof K_GOALS)[number]; vitrinConsent?: 'ask' } | undefined;
 
@@ -385,7 +366,7 @@ function GoalBody() {
     patch({ goal: g, ...extra });
   };
   const tile = (g: (typeof K_GOALS)[number], i: number, wide = false) => (
-    <ChoiceTile key={g} testID={`kayit-goal-${g}`} wide={wide} delay={i * K_MOTION.stagger} icon={GOAL_ICON[g]} label={t(`kayit.q.goal_${g}`)} selected={a.goal === g} onPress={() => pick(g)} />
+    <ChoiceTile key={g} testID={`kayit-goal-${g}`} wide={wide} delay={i * K_MOTION.stagger} glass={GOAL_GLASS[g]} label={t(`kayit.q.goal_${g}`)} selected={a.goal === g} onPress={() => pick(g)} />
   );
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.goal_title')} style={styles.grid}>
@@ -408,7 +389,7 @@ function GenderBody() {
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.gender_title')} style={styles.grid}>
       <View style={styles.row}>
         {(['female', 'male'] as const).map((g, i) => (
-          <ChoiceTile key={g} testID={`kayit-gender-${g}`} delay={i * K_MOTION.stagger} label={t(`kayit.q.gender_${g}`)} selected={a.gender === g} onPress={() => patch({ gender: g })} />
+          <ChoiceTile key={g} testID={`kayit-gender-${g}`} delay={i * K_MOTION.stagger} glass={GENDER_GLASS[g]} label={t(`kayit.q.gender_${g}`)} selected={a.gender === g} onPress={() => patch({ gender: g })} />
         ))}
       </View>
       <View style={{ alignItems: 'center' }}>
@@ -575,7 +556,7 @@ function ActivityBody() {
       label={t('kayit.q.activity_title')}
       value={a.activity}
       onChange={(v) => patch({ activity: v })}
-      items={(['sedentary', 'light', 'moderate', 'active'] as const).map((k) => ({ key: k, title: t(`kayit.q.act_${k}`), sub: t(`kayit.q.act_${k}_sub`), steps: t(`kayit.q.steps_${k}`), icon: ACT_ICON[k] }))}
+      items={(['sedentary', 'light', 'moderate', 'active'] as const).map((k) => ({ key: k, title: t(`kayit.q.act_${k}`), sub: t(`kayit.q.act_${k}_sub`), steps: t(`kayit.q.steps_${k}`), glass: ACT_GLASS[k] }))}
     />
   );
 }
@@ -619,7 +600,7 @@ function SportBody() {
 function DietBody() {
   const { a, patch, t } = useQ();
   const tile = (d: (typeof K_DIETS)[number], i: number) => (
-    <ChoiceTile key={d} testID={`kayit-diet-${d}`} delay={i * K_MOTION.stagger} icon={DIET_ICON[d]} label={t(`kayit.q.diet_${d}`)} sub={t(`kayit.q.diet_${d}_sub`)} selected={a.diet === d} onPress={() => patch({ diet: d })} />
+    <ChoiceTile key={d} testID={`kayit-diet-${d}`} delay={i * K_MOTION.stagger} glass={DIET_GLASS[d]} label={t(`kayit.q.diet_${d}`)} sub={t(`kayit.q.diet_${d}_sub`)} selected={a.diet === d} onPress={() => patch({ diet: d })} />
   );
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.diet_title')} style={styles.grid}>
@@ -681,7 +662,7 @@ function CookingBody() {
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.cooking_title')} style={[styles.grid, { gap: 12 }]}>
       {K_COOKING.map((c, i) => (
-        <OptionCard key={c} delay={i * K_MOTION.stagger} testID={`kayit-cook-${c}`} icon={COOK_ICON[c]} label={t(`kayit.q.cook_${c}`)} sub={t(`kayit.q.cook_${c}_sub`)} selected={a.cooking === c} onPress={() => patch({ cooking: c })} />
+        <OptionCard key={c} delay={i * K_MOTION.stagger} testID={`kayit-cook-${c}`} glass={COOK_GLASS[c]} label={t(`kayit.q.cook_${c}`)} sub={t(`kayit.q.cook_${c}_sub`)} selected={a.cooking === c} onPress={() => patch({ cooking: c })} />
       ))}
     </View>
   );
@@ -692,7 +673,7 @@ function StruggleBody() {
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={t('kayit.q.struggle_title')} style={[styles.grid, { gap: 12 }]}>
       {K_STRUGGLES.map((c, i) => (
-        <OptionCard key={c} delay={i * K_MOTION.stagger} testID={`kayit-st-${c}`} icon={STRUGGLE_ICON[c]} label={t(`kayit.q.st_${c}`)} sub={t(`kayit.q.st_${c}_sub`)} selected={a.struggle === c} onPress={() => patch({ struggle: c })} />
+        <OptionCard key={c} delay={i * K_MOTION.stagger} testID={`kayit-st-${c}`} glass={STRUGGLE_GLASS[c]} label={t(`kayit.q.st_${c}`)} sub={t(`kayit.q.st_${c}_sub`)} selected={a.struggle === c} onPress={() => patch({ struggle: c })} />
       ))}
     </View>
   );

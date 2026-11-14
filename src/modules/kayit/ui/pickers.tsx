@@ -28,6 +28,7 @@ import { FONT, KText as AppText } from './parts';
 import { K_MOTION, useK, type KPalette } from './theme';
 import { PressScale, mixColor, useSelectTween } from './motion';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { GLASS_SIZE, GlassIcon, type GlassName } from './glassIcons';
 
 // ─── Seçim hâli renkleri ──────────────────────────────────────────────────────
 /** Seçili (k = 1) ↔ seçilmemiş (k = 0) renk takımı; ara karelerde doğrusal karışım. */
@@ -60,6 +61,7 @@ export function ChoiceTile({
   label,
   sub,
   icon: Ico,
+  glass,
   selected,
   onPress,
   wide,
@@ -69,6 +71,8 @@ export function ChoiceTile({
   label: string;
   sub?: string;
   icon?: Icon;
+  /** G49 md.5: cam PNG ikon (vektör `icon`un yerine; seçili kartta `_sel`). */
+  glass?: GlassName;
   selected: boolean;
   onPress: () => void;
   wide?: boolean;
@@ -93,7 +97,9 @@ export function ChoiceTile({
         accessibilityLabel={sub ? `${label}, ${sub}` : label}
         style={[wide ? styles.tileWide : styles.tile, { backgroundColor: c.bg, borderColor: c.edge }]}
       >
-        {Ico ? (
+        {glass ? (
+          <GlassIcon name={glass} selected={selected} size={GLASS_SIZE.tile} testID={testID ? `${testID}-glass` : undefined} />
+        ) : Ico ? (
           <View style={styles.tileIcon} importantForAccessibility="no-hide-descendants">
             <Ico size={28} color={c.ink} weight="bold" />
           </View>
@@ -114,7 +120,7 @@ export function ChoiceTile({
 }
 
 /** Liste kartı (P13/P14): başlık + açıklama; seçili = tam lime dolgu (rozet yok); seçilmeyenler tam opaklıkta cam yüzey. */
-export function OptionCard({ label, sub, icon: Ico, selected, onPress, testID, delay = 0 }: { label: string; sub?: string; icon?: Icon; selected: boolean; onPress: () => void; testID?: string; delay?: number }) {
+export function OptionCard({ label, sub, icon: Ico, glass, selected, onPress, testID, delay = 0 }: { label: string; sub?: string; icon?: Icon; glass?: GlassName; selected: boolean; onPress: () => void; testID?: string; delay?: number }) {
   const P = useK();
   const enter = useEnter(delay);
   const k = useSelectTween(selected);
@@ -132,7 +138,9 @@ export function OptionCard({ label, sub, icon: Ico, selected, onPress, testID, d
         accessibilityLabel={sub ? `${label}, ${sub}` : label}
         style={[styles.option, { backgroundColor: c.bg, borderColor: c.edge }]}
       >
-        {Ico ? (
+        {glass ? (
+          <GlassIcon name={glass} selected={selected} size={GLASS_SIZE.option} testID={testID ? `${testID}-glass` : undefined} />
+        ) : Ico ? (
           <View style={styles.optIcon} importantForAccessibility="no-hide-descendants">
             <Ico size={24} color={c.ink} weight="bold" />
           </View>
@@ -462,7 +470,9 @@ export interface CarouselItem<T> {
   title: string;
   sub: string;
   steps: string;
-  icon: Icon;
+  icon?: Icon;
+  /** G49 md.5: cam PNG ikon (varsa vektör ikonun yerine). */
+  glass?: GlassName;
 }
 
 export function ActivityCarousel<T extends string>({ items, value, onChange, label }: { items: readonly CarouselItem<T>[]; value: T | null; onChange: (v: T) => void; label: string }) {
@@ -544,9 +554,15 @@ function ActCard<T extends string>({ item, on, width, pad, onPress }: { item: Ca
       style={{ width, paddingHorizontal: pad }}
     >
       <View style={[styles.actCard, { backgroundColor: c.bg, borderColor: c.edge }]}>
-        <View style={styles.actIcon} importantForAccessibility="no-hide-descendants">
-          <Ico size={40} color={c.ink} weight="bold" />
-        </View>
+        {item.glass ? (
+          <View style={styles.actGlass}>
+            <GlassIcon name={item.glass} selected={on} size={GLASS_SIZE.carousel} testID={`kayit-act-${item.key}-glass`} />
+          </View>
+        ) : Ico ? (
+          <View style={styles.actIcon} importantForAccessibility="no-hide-descendants">
+            <Ico size={40} color={c.ink} weight="bold" />
+          </View>
+        ) : null}
         <AppText maxFontSizeMultiplier={1.3} style={[styles.actTitle, { color: c.ink }]}>
           {item.title}
         </AppText>
@@ -814,6 +830,7 @@ const styles = StyleSheet.create({
   rangeNote: { fontFamily: FONT.body, fontSize: 14, lineHeight: 20 },
   actCard: { borderRadius: 30, borderWidth: 1, padding: 24, minHeight: 360, gap: 10 },
   actIcon: { width: 44, height: 44, justifyContent: 'center', marginBottom: 14 },
+  actGlass: { marginBottom: 6 },
   actTitle: { fontFamily: FONT.display, fontSize: 25, lineHeight: 32 },
   actSub: { fontFamily: FONT.body, fontSize: 16, lineHeight: 22 },
   stepPill: { marginTop: 'auto', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
