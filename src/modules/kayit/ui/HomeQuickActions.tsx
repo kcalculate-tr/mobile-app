@@ -4,11 +4,11 @@
 // Paylaş Keşfet kuralıyla (oturum yoksa AuthSheet). Giriş: 8 pt yukarı + fade 220 ms, kademe 50 ms (toplam 150);
 // basışta 0,98. Azaltılmış harekette yalnız opaklık (REDUCED.duration). Dokunma alanı ≥ 44 pt (kart ≥ 88 pt).
 // G51-S1 md.1: lime kare zemindeki çizgi ikonlar yerine uygulamanın cam nesneleri (assets/glass, ~52 pt, zeminsiz,
-// açık + koyu temada aynı PNG): Tara = kamera · Paylaş = kase · Etkinlik = ayak izi.
+// açık + koyu temada aynı PNG, diğer kullanımlar gibi düz Image): Tara = kamera · Paylaş = kase · Etkinlik = ayak izi.
 // G51-S1 md.2: "Koç'a sor" ızgaradan çıktı (yerine ızgaranın altında mevcut CoachHomeCard). Izgara Tara + Paylaş
 // (+ `etkinlik` açıksa Etkinlik): çiftler yan yana, tek kalan kart tam genişlik satır.
 import React, { useEffect } from 'react';
-import { Image, Platform, Pressable, StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { Image, Pressable, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { AppText } from '../../../core/design/components/AppText';
 import { HOME_GATE_MOTION, REDUCED, haptic, useReducedMotion } from '../../../core/design/motion';
@@ -144,15 +144,9 @@ const styles = StyleSheet.create({
   cell: { flex: 1 },
   card: { flex: 1, minHeight: 104, borderRadius: 20, borderWidth: 1, padding: 14, gap: 4 },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
-  // Hafif gölge: iOS'ta PNG alfasını izler; Android'de elevation kare kutuya düşeceği için yok (nesne düz).
-  glass: {
-    width: QUICK_GLASS_SIZE,
-    height: QUICK_GLASS_SIZE,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
-      default: {},
-    }),
-  },
+  // Ek gölge YOK: cam PNG'lerin kendi yumuşak gölgesi/ışığı var ve uygulamadaki diğer kullanımlar (Paywall, kişisel
+  // plan, öğün yuvaları) da düz Image; RN gölgesi bu PNG'lerde kare hale çiziyordu (G51 LOG › KARAR).
+  glass: { width: QUICK_GLASS_SIZE, height: QUICK_GLASS_SIZE },
   badge: { flexShrink: 1, marginLeft: 'auto', borderRadius: 10, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14 },
   title: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 },
