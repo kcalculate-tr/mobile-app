@@ -1,0 +1,4 @@
+G54-S1 tamamlandı (14 Kas 2026).
+Maddeler 1-8 commit edildi: cd4b92f bb3bd42 b29f68c 6813308 04e040b a40c3ed b32dd94 579599d 345c4f0 d624404 da71418.
+Kontroller: hygiene + tsc OK, unit 1411/1411, jest 127 paket / 885 test, expo export iOS (3459) + Android (3466) OK.
+Ekran görüntüleri: docs/night/g54 (+ orient/, neon/). LOG: docs/night/G54-S1-LOG.md.
