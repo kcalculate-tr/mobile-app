@@ -1,16 +1,15 @@
 // G47-S1 md.1 — Tek giriş katmanı (AuthSheet). `yeni_kayit` açıkken kök yığındaki `Login` rotası BU katmandır
 // (saydam modal): uygulamadaki tüm "Giriş yap / Zaten hesabım var" girişleri (onboarding 5, Profil oturumsuz,
 // eatkcal oturum isteyen eylemler, takip rotaları oturumsuzken) aynı alttan açılan katmanı açar; ayrı tam ekran
-// giriş sayfası yok. Görsel dil kayıt ekranlarıyla (K1) aynı: cam zemin (KBackdrop), lime, 56 pt düğmeler.
+// giriş sayfası yok. Görsel dil kayıt ekranlarıyla (K1) aynı: cam zemin (KBackdrop), lime. G48 md.0: tek font Plus Jakarta Sans, başlık 20/700, düğmeler 50 pt · 15/600.
 // Arkası bulanık karartma; aşağı kaydırarak, karartmaya dokunarak, X ile ya da Android geri ile kapanır.
 // Geçiş 300 ms (enter/exit eğrisi); azaltılmış harekette yalnız 200 ms opaklık.
 // E-posta → E1 → E2 (KEmail ekranları, giriş kipi; inceleme adresleri için şifre alanı AYNEN).
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, PanResponder, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { BackHandler, PanResponder, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import NetInfo from '@react-native-community/netinfo';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { CURVE, DURATION, PREMIUM, REDUCED, haptic, useReducedMotion } from '../../../core/design';
@@ -21,7 +20,7 @@ import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { X } from '../../../components/icons';
 import { interpretSocialResult } from '../../onboarding/v2/loginLogic';
-import { FONT, KBackdrop, KText, NoticeCard } from '../ui/parts';
+import { AUTH_BTN, AUTH_TITLE, FONT, KBackdrop, KText, NoticeCard } from '../ui/parts';
 import { PressScale } from '../ui/motion';
 import { useK } from '../ui/theme';
 import { SocialButton } from '../screens/SignupScreens';
@@ -166,23 +165,10 @@ export default function AuthSheet() {
           {notice === 'offline' ? <NoticeCard testID="auth-offline" tone="error" title={t('kayit.signup.offline_title')} sub={t('kayit.auth.offline_sub')} action={{ label: t('kayit.signup.retry'), onPress: () => setNotice(null) }} /> : null}
           {notice === 'cancelled' ? <NoticeCard testID="auth-cancelled" title={t('kayit.signup.cancelled_title')} sub={t('kayit.signup.cancelled_sub')} /> : null}
           {notice === 'error' ? <NoticeCard testID="auth-error" tone="error" title={t('kayit.signup.error_title')} sub={errMsg} /> : null}
-          {iosApple ? (
-            <View testID="auth-apple" style={{ opacity: busy && busy !== 'apple' ? 0.5 : 1 }} pointerEvents={busy ? 'none' : 'auto'}>
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={P.isDark ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={28}
-                style={styles.apple}
-                onPress={() => void runSocial('apple')}
-              />
-              {busy === 'apple' ? (
-                <View style={[StyleSheet.absoluteFill, styles.appleBusy]}>
-                  <ActivityIndicator color={P.isDark ? '#000' : '#FFF'} />
-                </View>
-              ) : null}
-            </View>
-          ) : __DEV__ ? (
-            <SocialButton testID="auth-apple" kind="apple" label={t('kayit.signup.apple')} dark={!P.isDark} busy={busy === 'apple'} disabled={!!busy && busy !== 'apple'} onPress={() => void runSocial('apple')} />
+          {/* G48 md.0: native AppleAuthenticationButton yerine HIG özel düğmesi (tek font). Yalnız iOS; geliştirmede
+              Android'de de görünür (vitrin). */}
+          {iosApple || __DEV__ ? (
+            <SocialButton testID="auth-apple" kind="apple" label={t('kayit.auth.apple')} dark={!P.isDark} busy={busy === 'apple'} disabled={!!busy && busy !== 'apple'} onPress={() => void runSocial('apple')} />
           ) : null}
           <SocialButton testID="auth-google" kind="google" label={t('kayit.signup.google')} dark={false} busy={busy === 'google'} disabled={!!busy && busy !== 'google'} onPress={() => void runSocial('google')} />
           <PressScale
@@ -194,7 +180,7 @@ export default function AuthSheet() {
             accessibilityState={{ disabled: !!busy }}
             style={[styles.secondary, { backgroundColor: P.card, borderColor: P.cardEdge, opacity: busy ? 0.5 : 1 }]}
           >
-            <KText maxFontSizeMultiplier={1.3} style={[styles.secondaryText, { color: P.ink }]}>
+            <KText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.secondaryText, { color: P.ink }]}>
               {t('kayit.signup.email')}
             </KText>
           </PressScale>
@@ -224,13 +210,12 @@ const styles = StyleSheet.create({
   grabWrap: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
   grabber: { width: 40, height: 5, borderRadius: 3 },
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, gap: 12 },
-  title: { flex: 1, fontFamily: FONT.display, fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
+  // G48 md.0: tek font — başlık Plus Jakarta Sans 20/700 (Bricolage yok).
+  title: { flex: 1, fontFamily: AUTH_TITLE.font, fontSize: AUTH_TITLE.size, lineHeight: AUTH_TITLE.line },
   closeBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  body: { paddingHorizontal: 20, paddingTop: 20, gap: 12 },
-  apple: { height: 56, width: '100%' },
-  appleBusy: { alignItems: 'center', justifyContent: 'center' },
-  secondary: { height: 56, borderRadius: 28, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  secondaryText: { fontFamily: FONT.semi, fontSize: 17, lineHeight: 22 },
+  body: { paddingHorizontal: 20, paddingTop: 20, gap: AUTH_BTN.gap },
+  secondary: { height: AUTH_BTN.height, borderRadius: AUTH_BTN.radius, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  secondaryText: { fontFamily: AUTH_BTN.font, fontSize: AUTH_BTN.size, lineHeight: AUTH_BTN.line },
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 },
   legalHit: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   legal: { fontFamily: FONT.medium, fontSize: 12, lineHeight: 16, textDecorationLine: 'underline' },

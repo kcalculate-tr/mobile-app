@@ -305,6 +305,7 @@ export const tr = {
   // G47-S1 md.1 — tek giriş katmanı.
   auth: {
     title: 'Hesabına giriş yap',
+    apple: 'Apple ile giriş yap',
     close: 'Kapat',
     terms: 'Koşullar',
     privacy: 'Gizlilik',
@@ -619,6 +620,7 @@ export const en: typeof tr = {
   },
   auth: {
     title: 'Log in to your account',
+    apple: 'Sign in with Apple',
     close: 'Close',
     terms: 'Terms',
     privacy: 'Privacy',

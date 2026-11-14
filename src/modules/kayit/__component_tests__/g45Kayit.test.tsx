@@ -355,14 +355,14 @@ test('md.6 B yolu son adım ("Takibe başla"): kutu yok, not + "Onayla ve takibe
 });
 
 // ─── md.7 / md.8 ─────────────────────────────────────────────────────────────
-test('md.7 K1: balon 20 pt (~%15 küçük), düğme 17, "Devam ederek…" 13, kutu 14 / not 12, "İsteğe bağlı" 13; kutular işaretsiz; çubuk yok', async () => {
+test('md.7 K1: balon 20 pt (~%15 küçük), düğme 15 (G48), "Devam ederek…" 13, kutu 14 / not 12, "İsteğe bağlı" 13; kutular işaretsiz; çubuk yok', async () => {
   mockParams = { path: 'a' };
   const r = render(wrap(<SignupScreen />));
   await wait(20);
   expect(r.queryByTestId('kayit-progress')).toBeNull();
   const title = r.getByText(tr.signup.title_a);
   expect(flat(title.props.style)).toMatchObject({ fontSize: 20 });
-  expect(flat(r.getByText(tr.signup.google).props.style).fontSize).toBe(17);
+  expect(flat(r.getByText(tr.signup.google).props.style).fontSize).toBe(15); // G48 md.0: giriş düğmeleri 15/600
   expect(flat(r.getByText(tr.signup.optional).props.style).fontSize).toBe(13);
   const legal = r.getByText(/^Devam ederek/);
   expect(flat(legal.props.style).fontSize).toBe(13);

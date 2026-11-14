@@ -175,18 +175,19 @@ describe('(a) AuthSheet', () => {
     expect(nav).toMatch(/\) : \(\s*<Stack\.Screen name="Login" component=\{UnifiedLoginLazy\} \/>\s*\)\}/);
   });
 
-  test('içerik: kısa başlık, Apple (iOS native düğme), Google, "E-posta ile devam et", Koşullar · Gizlilik; modal erişilebilirlik', () => {
+  test('içerik: kısa başlık, Apple (G48: HIG özel düğme), Google, "E-posta ile devam et", Koşullar · Gizlilik; modal erişilebilirlik', () => {
     const r = render(wrap(<AuthSheet />));
     expect(r.getByTestId('auth-sheet-title').props.children).toBe('Hesabına giriş yap');
-    expect(r.getByTestId('apple-native')).toBeTruthy();
+    expect(r.queryByTestId('apple-native')).toBeNull();
+    expect(r.getByTestId('auth-apple').props.accessibilityLabel).toBe('Apple ile giriş yap');
     expect(r.getByTestId('auth-google').props.accessibilityLabel).toBe('Google ile devam et');
     expect(r.getByTestId('auth-email').props.accessibilityLabel).toBe('E-posta ile devam et');
     expect(r.getByTestId('auth-terms')).toBeTruthy();
     expect(r.getByTestId('auth-privacy')).toBeTruthy();
     expect(r.getByTestId('auth-sheet').props.accessibilityViewIsModal).toBe(true);
     expect(r.queryByText(/Devam etmek için giriş yap/)).toBeNull();
-    // Düğme ölçüleri K1 ile aynı (56 pt, yarıçap 28); kapat ≥ 44 pt.
-    expect(flat(r.getByTestId('auth-email').props.style)).toMatchObject({ height: 56, borderRadius: 28 });
+    // G48 md.0: düğme ölçüleri K1 ile aynı (50 pt, yarıçap 25); kapat ≥ 44 pt.
+    expect(flat(r.getByTestId('auth-email').props.style)).toMatchObject({ height: 50, borderRadius: 25 });
     expect(flat(r.getByTestId('auth-sheet-close').props.style)).toMatchObject({ width: 44, height: 44 });
     const en = render(wrap(<AuthSheet />, 'dark', 'en'));
     expect(en.getByTestId('auth-sheet-title').props.children).toBe('Log in to your account');

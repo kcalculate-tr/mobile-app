@@ -41,6 +41,10 @@ export const FONT = {
   body: 'PlusJakartaSans_500Medium',
 } as const;
 
+/** G48 md.0 — giriş katmanı ölçeği (AuthSheet, K1, E1/E2 giriş düğmeleri): tek font Plus Jakarta Sans. */
+export const AUTH_BTN = { height: 50, radius: 25, gap: 10, font: FONT.medium, size: 15, line: 20 } as const;
+export const AUTH_TITLE = { font: FONT.semi, size: 20, line: 26 } as const;
+
 // ─── Metin: bitişik harf kapatma ──────────────────────────────────────────────
 /**
  * G45 md.1: Plus Jakarta Sans `liga` (fi, fl, ff, ffi, ffl) Türkçe "fi"yi "fı" gibi gösterir; Bricolage 800'de `liga`
@@ -374,7 +378,7 @@ export function QuestionHead({ title, layout, react, fade = true, mascotSize = 1
  * Lime hap (56 pt). Devre dışı: dolgu + yazı rengiyle ayrılır (yalnız opaklık değil). `loading`: 54 pt daireye
  * daralır + halka. G44: basışta 0,98 + 120 ms geri dönüş, hafif seçim titreşimi (seçim kartlarıyla aynı).
  */
-export function KButton({ label, onPress, disabled, loading, testID, variant = 'primary' }: { label: string; onPress: () => void; disabled?: boolean; loading?: boolean; testID?: string; variant?: 'primary' | 'ghost' }) {
+export function KButton({ label, onPress, disabled, loading, testID, variant = 'primary', size = 'default' }: { label: string; onPress: () => void; disabled?: boolean; loading?: boolean; testID?: string; variant?: 'primary' | 'ghost'; /** G48 md.0: giriş düğmeleri (E1/E2) — 50 pt, 15 pt 600, AuthSheet ile aynı ölçek. */ size?: 'default' | 'auth' }) {
   const P = useK();
   const reduced = useReducedMotion();
   const w = useSharedValue(1);
@@ -400,6 +404,7 @@ export function KButton({ label, onPress, disabled, loading, testID, variant = '
           accessibilityState={{ disabled: off || !!loading, busy: !!loading }}
           style={[
             styles.btn,
+            size === 'auth' ? styles.btnAuth : null,
             ghost
               ? { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: P.isDark ? 'rgba(255,255,255,0.4)' : 'rgba(16,48,29,0.25)' }
               : { backgroundColor: off ? P.disabled : P.accent },
@@ -408,7 +413,7 @@ export function KButton({ label, onPress, disabled, loading, testID, variant = '
           {loading ? (
             <ActivityIndicator color={P.onAccent} />
           ) : (
-            <KText numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.btnText, { color: ghost ? P.ink : off ? P.disabledText : P.onAccent }]}>
+            <KText numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.btnText, size === 'auth' ? styles.btnTextAuth : null, { color: ghost ? P.ink : off ? P.disabledText : P.onAccent }]}>
               {label}
             </KText>
           )}
@@ -584,6 +589,8 @@ const styles = StyleSheet.create({
   titleBig: { fontFamily: FONT.display, fontSize: 31, lineHeight: 38, letterSpacing: -0.7 },
   btn: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   btnText: { fontFamily: FONT.bold, fontSize: 17, lineHeight: 22 },
+  btnAuth: { height: AUTH_BTN.height, borderRadius: AUTH_BTN.radius },
+  btnTextAuth: { fontFamily: AUTH_BTN.font, fontSize: AUTH_BTN.size, lineHeight: AUTH_BTN.line },
   seg: { height: 52, borderRadius: 26, padding: 4, flexDirection: 'row', alignSelf: 'center' },
   segThumb: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 22 },
   segItemOuter: { flex: 1 },

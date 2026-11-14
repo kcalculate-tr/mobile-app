@@ -26,9 +26,9 @@ import { requestMetaOptIn } from '../../../lib/consent/metaConsent';
 import { LEGAL_SLUG } from '../../../lib/legal/slugs';
 import { openLegalWeb } from '../../../lib/legal/openLegal';
 import { useReviewPasswordLogin } from '../../../lib/auth/useReviewPasswordLogin';
-import { AppleLogo, GoogleLogo } from '../../onboarding/components/pieces';
+import { AppleLogo, GoogleLogoMono } from '../../onboarding/components/pieces';
 import { CODE_LENGTH, RESEND_SECONDS, formatCountdown, interpretSocialResult, isValidEmail, sanitizeCode } from '../../onboarding/v2/loginLogic';
-import { CheckBoxRow, FONT, KBackdrop, KButton, KText as AppText, NoticeCard, QuestionHead, TopBar } from '../ui/parts';
+import { AUTH_BTN, CheckBoxRow, FONT, KBackdrop, KButton, KText as AppText, NoticeCard, QuestionHead, TopBar } from '../ui/parts';
 import { useEdgeBack } from '../ui/edge';
 import { K_MOTION, useK } from '../ui/theme';
 import { PressScale, PushIn } from '../ui/motion';
@@ -173,7 +173,7 @@ export function SignupScreen() {
           <View style={{ marginTop: 12 }}>
             <QuestionHead title={path === 'a' ? t('kayit.signup.title_a') : t('kayit.signup.title_b')} layout="left" fade={false} compact />
           </View>
-          <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 12 }}>
+          <View style={{ paddingHorizontal: 20, marginTop: 28, gap: AUTH_BTN.gap }}>
             {notice === 'offline' ? <NoticeCard testID="kayit-signup-offline" tone="error" title={t('kayit.signup.offline_title')} sub={t('kayit.signup.offline_sub')} action={{ label: t('kayit.signup.retry'), onPress: () => setNotice(null) }} /> : null}
             {notice === 'cancelled' ? <NoticeCard testID="kayit-signup-cancelled" title={t('kayit.signup.cancelled_title')} sub={t('kayit.signup.cancelled_sub')} /> : null}
             {notice === 'error' ? <NoticeCard tone="error" title={t('kayit.signup.error_title')} sub={errMsg} /> : null}
@@ -225,9 +225,17 @@ export function SignupScreen() {
   }
 }
 
+/**
+ * G48 md.0 — giriş düğmesi (K1 + AuthSheet). Tek font Plus Jakarta Sans 15/600, 50 pt, yarıçap 25.
+ * Apple: HIG "özel Sign in with Apple düğmesi" — düz siyah (koyu temada beyaz) dolgu, resmî tek renk logo,
+ * metin rengiyle aynı; native AppleAuthenticationButton kullanılmaz (sistem fontu tek font kuralını bozuyordu).
+ * Google: beyaz yüzey + ince kenar, tek renk "G" (metin rengi).
+ */
 export function SocialButton({ kind, label, dark, busy, disabled, onPress, testID }: { kind: 'apple' | 'google'; label: string; dark: boolean; busy: boolean; disabled: boolean; onPress: () => void; testID?: string }) {
   const bg = dark ? '#000000' : '#FFFFFF';
-  const fg = dark ? '#FFFFFF' : '#1F1F1F';
+  const fg = dark ? '#FFFFFF' : '#000000';
+  const ink = kind === 'google' ? '#1F1F1F' : fg;
+  const edge = kind === 'google' ? '#DADCE0' : dark ? '#000000' : '#FFFFFF';
   return (
     <PressScale
       testID={testID}
@@ -236,10 +244,12 @@ export function SocialButton({ kind, label, dark, busy, disabled, onPress, testI
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled, busy }}
-      style={[styles.social, { backgroundColor: bg, borderWidth: dark ? 0 : 1, borderColor: '#DADCE0', opacity: disabled ? 0.5 : 1 }]}
+      style={[styles.social, { backgroundColor: kind === 'google' ? '#FFFFFF' : bg, borderWidth: kind === 'google' ? 1 : 0, borderColor: edge, opacity: disabled ? 0.5 : 1 }]}
     >
-      <View style={{ width: 24, alignItems: 'center' }}>{busy ? <ActivityIndicator color={fg} /> : kind === 'apple' ? <AppleLogo color={fg} /> : <GoogleLogo />}</View>
-      <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: fg }]}>
+      <View style={styles.socialLogo} testID={testID ? `${testID}-logo` : undefined}>
+        {busy ? <ActivityIndicator color={ink} /> : kind === 'apple' ? <AppleLogo size={19} color={ink} /> : <GoogleLogoMono size={17} color={ink} />}
+      </View>
+      <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.socialText, { color: ink }]}>
         {label}
       </AppText>
     </PressScale>
@@ -395,9 +405,9 @@ export function EmailScreen() {
           </ScrollView>
           <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
             {review.active ? (
-              <KButton testID="kayit-review-login" label={t('kayit.signup.review_login')} onPress={() => void reviewLogin()} disabled={!review.password} loading={review.busy} />
+              <KButton size="auth" testID="kayit-review-login" label={t('kayit.signup.review_login')} onPress={() => void reviewLogin()} disabled={!review.password} loading={review.busy} />
             ) : (
-              <KButton testID="kayit-send-code" label={t('kayit.signup.send_code')} onPress={() => void send()} disabled={!valid} loading={sending} />
+              <KButton size="auth" testID="kayit-send-code" label={t('kayit.signup.send_code')} onPress={() => void send()} disabled={!valid} loading={sending} />
             )}
           </View>
         </View>
@@ -485,7 +495,7 @@ export function EmailScreen() {
           </View>
         </ScrollView>
         <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
-          <KButton testID="kayit-verify" label={verifying ? t('kayit.signup.verifying') : t('kayit.signup.verify')} onPress={() => void verify(code)} disabled={code.length < CODE_LENGTH || expired} loading={verifying} />
+          <KButton size="auth" testID="kayit-verify" label={verifying ? t('kayit.signup.verifying') : t('kayit.signup.verify')} onPress={() => void verify(code)} disabled={code.length < CODE_LENGTH || expired} loading={verifying} />
         </View>
       </View>
       </PushIn>
@@ -494,8 +504,9 @@ export function EmailScreen() {
 }
 
 const styles = StyleSheet.create({
-  social: { height: 56, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
-  socialText: { fontFamily: FONT.semi, fontSize: 17, lineHeight: 22 },
+  social: { height: AUTH_BTN.height, borderRadius: AUTH_BTN.radius, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 20 },
+  socialLogo: { width: 20, alignItems: 'center' },
+  socialText: { fontFamily: AUTH_BTN.font, fontSize: AUTH_BTN.size, lineHeight: AUTH_BTN.line },
   legal: { fontFamily: FONT.body, fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 4 },
   legalLink: { fontFamily: FONT.bold, textDecorationLine: 'underline' },
   optional: { fontFamily: FONT.semi, fontSize: 13, lineHeight: 18, marginTop: 10 },
