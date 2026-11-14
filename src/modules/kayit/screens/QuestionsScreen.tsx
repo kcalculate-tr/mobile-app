@@ -352,6 +352,35 @@ function useQ(): QCtxValue {
   return v;
 }
 
+/**
+ * G54-S1 md.5 — düzenleme özetinden bir sorunun KAYIT AKIŞINDAKİ bileşeni (aynı görsel dil), değer önceden seçili.
+ * Depoya yazmaz: taslak `answers` + `onChange` (Kaydet'e kadar özet değişmez).
+ */
+export function QuestionEditor({ step, answers, onChange }: { step: KQuestion; answers: ReturnType<typeof useKayit.getState>['answers']; onChange: (a: ReturnType<typeof useKayit.getState>['answers']) => void }) {
+  const { t, lang } = useT();
+  const P = useK();
+  const year = new Date().getFullYear();
+  const value: QCtxValue = {
+    a: answers,
+    patch: (p) => onChange({ ...answers, ...p }),
+    setUnits: (u) => onChange({ ...answers, units: u }),
+    t: t as QCtxValue['t'],
+    lang,
+    P,
+    year,
+  };
+  return (
+    <QCtx.Provider value={value}>
+      <View style={{ marginTop: 4 }}>
+        <QuestionHead testID="kayit-edit-q-title" title={titleFor(step, answers.goal, t as QCtxValue['t'])} layout={LAYOUT[step]} react={JSON.stringify(answers)} compact />
+      </View>
+      <View style={{ marginTop: 22 }}>
+        <Body step={step} />
+      </View>
+    </QCtx.Provider>
+  );
+}
+
 function Body({ step: s }: { step: KQuestion }) {
   switch (s) {
     case 'goal':

@@ -16,7 +16,7 @@ import {
   type PpResult,
 } from '../personalPlan/calc';
 import { emptyAnswers, PP_DISLIKES, type PpAnswers, type PpDislike, type PpSaved, type Weekday } from '../personalPlan/types';
-import { mealsSplit, type KAnswers, type KGoal, type KStart } from './model';
+import { K_COOKING, K_CUISINES, K_DIETS, K_GOALS, K_SPORTS, K_STRUGGLES, emptyKAnswers, mealsSplit, paceAsked, targetAsked, type KAnswers, type KGoal, type KStart } from './model';
 
 export const MUSCLE_SURPLUS_DEFAULT = 250;
 /** Tahmini tarih ARALIĞI bandı: motorun hafta sayısının %90'ı – %125'i (söz değil, aralık). */
@@ -230,4 +230,60 @@ export interface TakibeDraftLike {
 export function toTakibeDraft(a: KAnswers, consent: boolean): TakibeDraftLike {
   const goal = a.goal === 'muscle' ? 'gain' : a.goal === 'balanced' ? 'regular' : a.goal;
   return { goal, pace: 0.5, gender: a.gender, birthYear: a.birthYear, heightCm: a.heightCm, weightKg: a.weightKg, consent, activity: a.activity };
+}
+
+// ─── G54-S1 md.5: kayıt sonrası düzenleme (tek sayfa özet) ────────────────────
+/** Saf: kayıtlı plan (G34 PpSaved + `kayit` anahtarı) → kayıt cevapları (düzenleme taslağı). Eksik alan null kalır. */
+export function fromPpSaved(p: PpSaved): KAnswers {
+  const k = (p.kayit ?? {}) as Record<string, unknown>;
+  const a = p.answers;
+  const base = emptyKAnswers(a.units === 'imperial' ? 'imperial' : 'metric');
+  const kGoal = typeof k.goal === 'string' && (K_GOALS as readonly string[]).includes(k.goal) ? (k.goal as KGoal) : a.goal;
+  const arr = <T,>(v: unknown, ok: readonly T[]): T[] => (Array.isArray(v) ? (v.filter((x) => ok.includes(x as T)) as T[]) : []);
+  const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  return {
+    ...base,
+    goal: kGoal ?? null,
+    gender: a.gender,
+    birthYear: a.birthYear,
+    heightCm: a.heightCm,
+    weightKg: a.weightKg,
+    targetWeightKg: a.targetWeightKg,
+    targetSkipped: kGoal === 'muscle' && a.targetWeightKg == null,
+    pace: a.pace,
+    activity: a.activity,
+    sportDays: (a.exerciseWeekdays ?? []).filter((d) => d >= 0 && d <= 6) as KAnswers['sportDays'],
+    noSport: k.noSport === true,
+    sports: arr(k.sports, K_SPORTS),
+    diet: (K_DIETS as readonly string[]).includes(a.diet) ? (a.diet as KAnswers['diet']) : null,
+    cuisines: arr(k.cuisines, K_CUISINES),
+    dislikes: strs(k.dislikes).length ? strs(k.dislikes) : [...(a.dislikes ?? [])],
+    eatsAll: k.eatsAll === true,
+    meals: typeof k.meals === 'number' ? k.meals : a.meals.main + a.meals.snack,
+    cooking: typeof k.cooking === 'string' && (K_COOKING as readonly string[]).includes(k.cooking) ? (k.cooking as KAnswers['cooking']) : null,
+    struggle: typeof k.struggle === 'string' && (K_STRUGGLES as readonly string[]).includes(k.struggle) ? (k.struggle as KAnswers['struggle']) : null,
+  };
+}
+
+export type EditRowKey = 'goal' | 'gender' | 'birth' | 'height' | 'weight' | 'target' | 'pace' | 'activity' | 'sport' | 'diet' | 'cuisines' | 'dislikes' | 'meals' | 'cooking' | 'struggle';
+export const EDIT_GROUPS: readonly { key: 'goal' | 'body' | 'move' | 'food'; rows: readonly EditRowKey[] }[] = [
+  { key: 'goal', rows: ['goal', 'target', 'pace'] },
+  { key: 'body', rows: ['gender', 'birth', 'height', 'weight'] },
+  { key: 'move', rows: ['activity', 'sport'] },
+  { key: 'food', rows: ['diet', 'cuisines', 'dislikes', 'meals', 'cooking', 'struggle'] },
+];
+
+/** Saf: özetteki görünür satırlar (hedef kilo / tempo yalnız kayıttaki aynı koşulla). */
+export function visibleEditRows(a: Pick<KAnswers, 'goal'>): EditRowKey[] {
+  return EDIT_GROUPS.flatMap((g) => g.rows).filter((r) => (r === 'target' ? targetAsked(a.goal) : r === 'pace' ? paceAsked(a.goal) : true));
+}
+
+/** Saf: kaydetmeden önce/sonra günlük hedefler (yuvarlanmış). */
+export function editDiff(before: { calories: number; protein: number; carbs: number; fat: number }, after: KPlan): { from: number; to: number; changed: boolean; macros: { protein: number; carbs: number; fat: number } } {
+  return { from: Math.round(before.calories), to: Math.round(after.calories), changed: Math.round(before.calories) !== Math.round(after.calories), macros: { protein: after.protein, carbs: after.carbs, fat: after.fat } };
+}
+
+/** Saf: taslak kayıtlı cevaplardan farklı mı (kaydedilmemiş değişiklik uyarısı). */
+export function answersDirty(a: KAnswers, b: KAnswers): boolean {
+  return JSON.stringify(a) !== JSON.stringify(b);
 }

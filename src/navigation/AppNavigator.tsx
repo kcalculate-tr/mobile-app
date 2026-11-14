@@ -44,6 +44,7 @@ import { OnboardingNavigator, TakibeBaslaNavigator, IntroOverlay, OrientHost } f
 // G42-S1 — yeni onboarding + kayıt (eager: koyu zemin, beyaz flash yok). Yalnız `yeni_kayit` açıkken kayıtlı.
 import KayitNavigator, { OfferRoute as KayitOfferRoute } from '../modules/kayit/KayitNavigator';
 import { Orient110Host } from '../modules/onboarding/orient110/Orient110Host';
+import KayitEditScreen from '../modules/kayit/screens/PlanEditScreen';
 import KayitShortScreen from '../modules/kayit/screens/QuestionsScreen';
 // G47-S1 — tek giriş katmanı (AuthSheet, `Login` rotası saydam modal) + giriş kipi E1/E2 + profil kapısı.
 import AuthSheet from '../modules/kayit/auth/AuthSheet';
@@ -585,6 +586,8 @@ export default function AppNavigator() {
       {yeniKayit ? <Stack.Screen name="KayitShort" component={KayitShortScreen} initialParams={{ mode: 'short' }} options={{ ...AI_MODAL, gestureEnabled: false }} /> : null}
       {/* G54-S1 md.1: kayıt sonu T1 — alttan tam ekran modal (aşağı kaydırarak kapanmaz; X → onay → dokunulan eylem). */}
       {yeniKayit ? <Stack.Screen name="KayitOffer" component={KayitOfferRoute as never} options={{ ...AI_MODAL, presentation: 'fullScreenModal', gestureEnabled: false }} /> : null}
+      {/* G54-S1 md.5: kayıt sonrası düzenleme — tek sayfa özet (PersonalPlanEdit çağrıları gateRouter ile buraya). */}
+      {yeniKayit ? <Stack.Screen name="KayitEdit" component={KayitEditScreen} /> : null}
       <Stack.Screen name="Tabs" component={TabsRoot} />
       <Stack.Screen name="Categories" component={finalScreenFor('Categories', finalFlag.yeni_siparis, CategoriesLazy)} />
       <Stack.Screen name="CategoryProducts" component={finalScreenFor('CategoryProducts', finalFlag.yeni_siparis, CategoryProductsLazy)} />

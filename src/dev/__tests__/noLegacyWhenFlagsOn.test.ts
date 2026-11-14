@@ -180,6 +180,7 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   Kayit: { kind: 'final', file: 'modules/kayit/KayitNavigator.tsx' },
   KayitShort: { kind: 'final', file: 'modules/kayit/screens/QuestionsScreen.tsx' },
   KayitOffer: { kind: 'final', file: 'modules/kayit/screens/OfferScreen.tsx' },
+  KayitEdit: { kind: 'final', file: 'modules/kayit/screens/PlanEditScreen.tsx' },
   // G47-S1 — giriş katmanından E1/E2 (yalnız yeni_kayit açıkken kayıtlı).
   AuthEmail: { kind: 'final', file: 'modules/kayit/screens/SignupScreens.tsx' },
   PersonalPlanMine: { kind: 'final', file: 'modules/personalPlan/screens/MyPlanScreen.tsx' },

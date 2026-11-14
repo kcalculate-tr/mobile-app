@@ -26,6 +26,8 @@ export type RootStackParamList = {
   KayitShort: { mode?: 'short'; origin?: 'gate' | 'auth'; returnTo?: { name: string; params?: Record<string, unknown> } | null } | undefined;
   /** G54-S1 md.1: kayıt sonu T1 (kök modal; aboneliksiz herkes, hesap bazında bir kez). */
   KayitOffer: { returnTo?: { name: string; params?: Record<string, unknown> } | null } | undefined;
+  /** G54-S1 md.5: kayıt sonrası düzenleme özeti. */
+  KayitEdit: undefined;
   // G47-S1 — giriş katmanından E1/E2 (yalnız yeni_kayit açıkken kayıtlı).
   AuthEmail: { mode?: 'login'; redirectTo?: string } | undefined;
   // G12-S1 — "Takibe başla" (hedef/tempo/beden/hareket/sonuç/ilk adım). Mevcut

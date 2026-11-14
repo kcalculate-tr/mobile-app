@@ -15,7 +15,7 @@ export interface GateTarget {
 /** Takip rotaları: oturum + profil şart. */
 export const TRACK_ROUTES = ['AiScan', 'AiScanOffline', 'CoachIntro', 'CoachChat', 'CoachHistory', 'MeasurementHistory', 'PersonalPlanCheckin'] as const;
 /** Hedef/plan rotaları: profil yoksa kayıt akışı; varsa mevcut düzenleme ekranı (eski "Takibe başla" AÇILMAZ). */
-export const GOAL_ROUTES = ['TakibeBasla', 'NutritionProfile', 'PersonalPlanMine', 'PersonalPlan'] as const;
+export const GOAL_ROUTES = ['TakibeBasla', 'NutritionProfile', 'PersonalPlanMine', 'PersonalPlan', 'PersonalPlanEdit'] as const;
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : typeof v === 'string' && v !== '' ? Number(v) : NaN);
 
@@ -88,6 +88,8 @@ export function redirectGateAction(a: AnyAction, c: GateCtx): AnyAction | null {
     if (!c.session) return name === 'PersonalPlan' ? withTarget(a, { name: 'Login' }) : null;
     if (c.status === 'none') return withTarget(a, kayitRouteFor(c.kisiselPlan, 'gate', null));
     if (name === 'PersonalPlan') return withTarget(a, { name: 'PersonalPlanMine' });
+    // G54 md.5: eski "Tek ekranda düzenle" yerine kayıt cevaplarının tek sayfa özeti (kayıttaki aynı bileşenler).
+    if (name === 'PersonalPlanEdit') return withTarget(a, { name: 'KayitEdit' });
     // Profil varken hedef düzenleme: kişisel plan açık → Kişisel planım (düzenleme orada); kapalı → yeni tasarımlı kısa
     // profil (cevaplar yeniden, hedef üstüne yazılır). Eski NutritionProfile / Takibe başla ekranları açılmaz.
     if (name === 'TakibeBasla' || name === 'NutritionProfile') {
