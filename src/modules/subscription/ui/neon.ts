@@ -17,7 +17,7 @@ export const NEON_SWITCH_MS = 250;
 export const NEON_TAIL = 0.3;
 /** Sabit temel kenar: ince ve sakin. */
 export const NEON_STROKE = 1.5;
-export const NEON_BASE_OPACITY = 0.35;
+export const NEON_BASE_OPACITY = 0.5;
 /** Dış hale için kartın dışına taşan çizim payı (pt). */
 export const NEON_BLEED = 10;
 
@@ -80,15 +80,16 @@ export type NeonLayer = { tone: 'halo' | 'mid' | 'core' | 'hot'; len: number; w:
 
 export function neonLayers(glow: number): NeonLayer[] {
   const T = NEON_TAIL;
+  // 14 Kas: neon tüp görünümü — daha güçlü hale ve parlak çekirdek (referans: elektrik neon çizgileri).
   return [
-    { tone: 'halo', len: T, w: 10, opacity: 0.08 * glow },
-    { tone: 'halo', len: T * 0.55, w: 10, opacity: 0.12 * glow },
-    { tone: 'mid', len: T * 0.8, w: 5, opacity: 0.14 * (0.5 + glow / 2) },
-    { tone: 'mid', len: T * 0.4, w: 5, opacity: 0.22 * (0.5 + glow / 2) },
-    { tone: 'core', len: T, w: 1.75, opacity: 0.22 },
-    { tone: 'core', len: T * 0.6, w: 1.75, opacity: 0.32 },
-    { tone: 'core', len: T * 0.3, w: 1.75, opacity: 0.5 },
-    { tone: 'hot', len: T * 0.1, w: 2, opacity: 1 },
+    { tone: 'halo', len: T, w: 12, opacity: 0.14 * glow },
+    { tone: 'halo', len: T * 0.55, w: 12, opacity: 0.22 * glow },
+    { tone: 'mid', len: T * 0.8, w: 6, opacity: 0.3 * (0.5 + glow / 2) },
+    { tone: 'mid', len: T * 0.4, w: 6, opacity: 0.45 * (0.5 + glow / 2) },
+    { tone: 'core', len: T, w: 2, opacity: 0.45 },
+    { tone: 'core', len: T * 0.6, w: 2, opacity: 0.7 },
+    { tone: 'core', len: T * 0.3, w: 2, opacity: 0.95 },
+    { tone: 'hot', len: T * 0.1, w: 2.25, opacity: 1 },
   ];
 }
 

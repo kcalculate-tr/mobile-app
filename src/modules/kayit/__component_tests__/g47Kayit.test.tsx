@@ -229,7 +229,7 @@ describe('(a) AuthSheet', () => {
   });
 
   test('Google ile giriş, profil VAR → Ana sayfa', async () => {
-    mockRow = { target_calories: 1900 };
+    mockRow = { target_calories: 1900, personal_plan: { v: 1, kayit: { path: 'a' } } };
     mockAuth.signInWithGoogle.mockImplementation(async () => {
       mockAuth.user = { id: 'u8', created_at: '2025-01-01T00:00:00Z' };
       return { error: null };
@@ -365,7 +365,7 @@ describe('(c)/(d) profil kapısı', () => {
 
   test('(d) profilli hesap ve bilinmeyen durum etkilenmez', async () => {
     mockAuth.user = { id: 'u1' };
-    mockRow = { target_calories: 2000 };
+    mockRow = { target_calories: 2000, personal_plan: { v: 1, kayit: { path: 'a' } } };
     gateOn('has');
     const r = render(wrap(<GateHarness onReady={() => undefined} />));
     await flush();

@@ -186,9 +186,9 @@ export function SignupScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('kayit.signup.email')}
               accessibilityState={{ disabled: !!busy || blocked }}
-              style={[styles.social, { backgroundColor: P.card, borderColor: P.cardEdge, borderWidth: 1, opacity: busy || blocked ? 0.5 : 1 }]}
+              style={[styles.social, { backgroundColor: '#FFFFFF', borderColor: '#DADCE0', borderWidth: 1, opacity: busy || blocked ? 0.5 : 1 }]}
             >
-              <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: P.ink }]}>
+              <AppText maxFontSizeMultiplier={1.3} style={[styles.socialText, { color: '#1F1F1F' }]}>
                 {t('kayit.signup.email')}
               </AppText>
             </PressScale>

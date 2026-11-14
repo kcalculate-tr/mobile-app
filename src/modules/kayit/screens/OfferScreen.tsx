@@ -292,8 +292,10 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
   // G44: seçili = tam lime dolgu + limeInk metin; seçilmeyen tam opaklıkta cam yüzey (satın alınırken de
   // soluklaşmaz, yalnız dokunma kilitlenir); 160 ms renk geçişi; basışta 0,98 + 120 ms (yay yok).
   const k = useSelectTween(selected);
-  const ink = mixColor(P.ink, P.limeInk, k);
-  const sec = mixColor(P.sec, P.limeInkSec, k);
+  // 14 Kas (İlter): lime dolgu YALNIZ koyu temada; açık temada kart zemini aynı kalır, seçimi neon kenar + radyo gösterir.
+  const f = P.isDark ? k : 0;
+  const ink = mixColor(P.ink, P.limeInk, f);
+  const sec = mixColor(P.sec, P.limeInkSec, f);
   const priceLine = card.yearly ? t('kayit.offer.per_year', { price: card.priceText }) : t('kayit.offer.per_month', { price: card.priceText });
   const trial = card.yearly && card.trialDays ? t('kayit.offer.trial', { n: card.trialDays }) : null;
   return (
@@ -307,14 +309,14 @@ function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled: locked }}
         accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
-        style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }]}
+        style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, f), borderColor: P.isDark ? mixColor(P.cardEdge, P.accent, k) : mixColor(P.cardEdge, 'transparent', k) }]}
       >
         {/* G53-S1 md.4: kenarda dolaşan neon (ilk çocuk → rozetler üstte kalır). */}
         <NeonBorder selected={selected} radius={26} borderWidth={1} colors={neonOnLimePalette(P.isDark)} clock={neon.clock} reduced={neon.reduced} visible={neon.visible} testID={testID} />
-        <View style={[styles.radio, { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) }]}>
+        <View style={[styles.radio, P.isDark ? { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) } : { borderColor: mixColor(P.sec, P.accent, k), backgroundColor: mixColor('transparent', P.accent, k) }]}>
           {k > 0 ? (
             <View style={{ opacity: k }}>
-              <Check size={16} color={P.accent} weight="bold" />
+              <Check size={16} color={P.isDark ? P.accent : '#0A0A0A'} weight="bold" />
             </View>
           ) : null}
         </View>

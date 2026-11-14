@@ -24,6 +24,11 @@ test('profil var: target_calories / custom_calories > 0 ya da personal_plan dolu
   assert.equal(rowHasProfile({ target_calories: 0, custom_calories: 2100 }), true);
   assert.equal(rowHasProfile({ target_calories: 0, personal_plan: { calories: 1900 } }), true);
   assert.equal(rowHasProfile({ target_calories: 0, personal_plan: null }), false);
+  // 14 Kas: requireKayit → yalnız yeni kayıt (personal_plan.kayit) profil sayılır; eski hedef kapıdan geçirmez.
+  assert.equal(rowHasProfile({ target_calories: 1850 }, true), false);
+  assert.equal(rowHasProfile({ target_calories: 0, personal_plan: { calories: 1900 } }, true), false);
+  assert.equal(rowHasProfile({ target_calories: 2320, personal_plan: { v: 1, kayit: { path: 'a' } } }, true), true);
+  assert.equal(rowHasProfile({ personal_plan: { v: 1, kayit: null } }, true), false);
 });
 
 test('karar: bayrak kapalı → hep geçer; oturum yok → giriş; profil yok → kayıt; bilinmiyor/var → geçer', () => {

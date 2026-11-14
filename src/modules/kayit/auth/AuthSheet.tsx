@@ -178,9 +178,9 @@ export default function AuthSheet() {
             accessibilityRole="button"
             accessibilityLabel={t('kayit.signup.email')}
             accessibilityState={{ disabled: !!busy }}
-            style={[styles.secondary, { backgroundColor: P.card, borderColor: P.cardEdge, opacity: busy ? 0.5 : 1 }]}
+            style={[styles.secondary, { backgroundColor: '#FFFFFF', borderColor: '#DADCE0', opacity: busy ? 0.5 : 1 }]}
           >
-            <KText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.secondaryText, { color: P.ink }]}>
+            <KText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.secondaryText, { color: '#1F1F1F' }]}>
               {t('kayit.signup.email')}
             </KText>
           </PressScale>

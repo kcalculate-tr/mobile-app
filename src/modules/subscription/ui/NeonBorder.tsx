@@ -45,18 +45,25 @@ export type NeonPalette = {
   solid: string;
 };
 
-/** Paywall (beyaz / koyu gri kart). Açık temada lime açık zeminde okunmaz → temel/sabit kenar `limeLineOnLight`. */
+/** 14 Kas (İlter referansı): neon tüp ışığı — parlak beyaza yakın çekirdek + doygun elektrik yeşili hale. */
+export const NEON_GREEN = '#5CFF2A';
+const NEON_CORE = '#C9FFAE';
+const NEON_HOT = '#F4FFEE';
+const NEON_LINE_LIGHT = '#2FBF0F';
+
+/** Paywall kartı (beyaz / koyu gri). Açık temada temel kenar koyu neon yeşili (açık zeminde okunur). */
 export function neonPaywallPalette(isDark: boolean): NeonPalette {
   return isDark
-    ? { base: palette.lime, core: palette.lime, hot: '#F1FFC2', glow: palette.lime, glowOpacity: 1, inner: 0.07, solid: palette.lime }
-    : { base: palette.limeLineOnLight, core: palette.lime, hot: '#E6FF8F', glow: palette.lime, glowOpacity: 0.45, inner: 0.05, solid: palette.limeLineOnLight };
+    ? { base: NEON_GREEN, core: NEON_CORE, hot: NEON_HOT, glow: NEON_GREEN, glowOpacity: 1, inner: 0.08, solid: NEON_GREEN }
+    : { base: NEON_LINE_LIGHT, core: NEON_GREEN, hot: '#E9FFD9', glow: NEON_GREEN, glowOpacity: 0.7, inner: 0.05, solid: NEON_LINE_LIGHT };
 }
 
-/** T1 kayıt teklifi: seçili kart tam lime dolgulu → çekirdek açık lime/beyaz, temel kenar beyaz/koyu-lime. */
+/** T1 kayıt teklifi. Koyu temada seçili kart lime dolgulu (çekirdek beyaz, hale neon yeşili dışarı taşar);
+ *  açık temada dolgu YOK → paywall paletiyle aynı. */
 export function neonOnLimePalette(isDark: boolean): NeonPalette {
   return isDark
-    ? { base: '#FFFFFF', core: '#F1FFC2', hot: '#FFFFFF', glow: palette.lime, glowOpacity: 1, inner: 0.1, solid: '#F1FFC2' }
-    : { base: palette.limeLineOnLight, core: '#F7FFE0', hot: '#FFFFFF', glow: palette.lime, glowOpacity: 0.45, inner: 0.1, solid: palette.limeLineOnLight };
+    ? { base: '#FFFFFF', core: NEON_HOT, hot: '#FFFFFF', glow: NEON_GREEN, glowOpacity: 1, inner: 0.1, solid: NEON_CORE }
+    : neonPaywallPalette(false);
 }
 
 // Kare geri çağrısı resmi jest taklidinde yok → modül düzeyinde (her render'da aynı) yedek. Üretimde gerçek kanca.

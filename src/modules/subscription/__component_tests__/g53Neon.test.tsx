@@ -122,8 +122,8 @@ test('azaltılmış hareket: dolaşma yok, döngü hiç başlamaz; sabit ince (G
   layout(tree, 'fresh_yearly');
   const solid = tree.getByTestId('sub-card-fresh_yearly-neon-solid', H);
   expect(solid.props.strokeWidth).toBe(1.5);
-  // react-native-svg rengi işler: 0xFFB9EF14 = lime (#B9EF14).
-  expect(solid.props.stroke.payload).toBe(0xffb9ef14);
+  // 14 Kas: neon yeşili (#5CFF2A) — react-native-svg rengi işler.
+  expect(solid.props.stroke.payload).toBe(0xff5cff2a);
 });
 
 test('paywall görünmezken (uygulama arka planda) döngü durur; geri gelince sürer', () => {
@@ -162,7 +162,7 @@ describe('G54 md.7 neon hizalama', () => {
     expect(base.props.d.startsWith('M30 10.75')).toBe(true);
     expect(base.props.d).toContain('A19.25 19.25 0 0 1');
     expect(base.props.strokeWidth).toBe(1.5);
-    expect(base.props.strokeOpacity).toBe(0.35);
+    expect(base.props.strokeOpacity).toBe(0.5);
     // Rozetler ışığın ÜSTÜNDE (kartta neon katmanından sonra çizilir) ve ölçüye girmez (mutlak konum).
     const card = tree.getByTestId('sub-card-fresh_yearly');
     const kids = card.findAll((n: { props: { testID?: string } }) => typeof n.props.testID === 'string' && /neon-run|sub-save-fresh_yearly/.test(n.props.testID)).map((n: { props: { testID?: string } }) => n.props.testID);

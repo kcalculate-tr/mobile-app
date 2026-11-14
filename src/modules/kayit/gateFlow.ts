@@ -21,7 +21,8 @@ export function useProfileGateHost(flag: boolean, kisiselPlan: boolean): void {
     }
     if (useProfileGateStore.getState().userId !== user.id) setStatus(user.id, 'unknown');
     void refreshProfileStatus(user.id);
-  }, [flag, user?.id, setStatus]);
+    // 14 Kas: kisisel_plan profil tanımını değiştirir (yalnız yeni kayıt) → değişince yeniden hesapla.
+  }, [flag, kisiselPlan, user?.id, setStatus]);
 }
 
 /** Ekran içi takip eylemleri için kapı. `require(target)`: kayıt akışına yönlendirdiyse true. */

@@ -19,9 +19,18 @@ export const GOAL_ROUTES = ['TakibeBasla', 'NutritionProfile', 'PersonalPlanMine
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : typeof v === 'string' && v !== '' ? Number(v) : NaN);
 
-/** Saf: satırda profil var mı. */
-export function rowHasProfile(row: Record<string, unknown> | null | undefined): boolean {
+/**
+ * Saf: satırda profil var mı.
+ * 14 Kas (İlter): `requireKayit` açıkken (yeni_kayit + kisisel_plan) yalnız YENİ kayıt akışını tamamlamış
+ * satır profil sayılır (`personal_plan.kayit`). 1.1.0 öncesi eski hedefler (target_calories / eski plan)
+ * SİLİNMEZ ama kapıdan geçirmez: mevcut kullanıcılar takip için yeni kaydı bir kez yapar (sonunda T1).
+ */
+export function rowHasProfile(row: Record<string, unknown> | null | undefined, requireKayit = false): boolean {
   if (!row) return false;
+  if (requireKayit) {
+    const pp = row.personal_plan as Record<string, unknown> | null | undefined;
+    return pp != null && typeof pp === 'object' && pp.kayit != null && typeof pp.kayit === 'object';
+  }
   const tc = num(row.target_calories);
   const cc = num(row.custom_calories);
   if (Number.isFinite(tc) && tc > 0) return true;

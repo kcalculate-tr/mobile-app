@@ -397,7 +397,7 @@ test('md.9 T1 rozetleri (14 Kas): rozet yok; "%… tasarruf" aylık satırında 
   expect(o).toMatch(/testID="kayit-offer-save"/);
   expect(o).not.toMatch(/bottom: -12/);
   // T1 radyo (md.3 kapsamı dışı) değişmedi.
-  expect(o).toMatch(/styles\.radio, \{ borderColor: mixColor\(P\.sec, P\.limeInk, k\), backgroundColor: mixColor\('transparent', P\.limeInk, k\)/);
+  expect(o).toMatch(/styles\.radio, P\.isDark \? \{ borderColor: mixColor\(P\.sec, P\.limeInk, k\), backgroundColor: mixColor\('transparent', P\.limeInk, k\)/);
 });
 
 test('md.8 320 pt genişlik: balon 21 pt, maskot 64 pt, en çok 2 satır; büyük yazıda satır sınırı yok', () => {

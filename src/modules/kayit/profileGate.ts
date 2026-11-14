@@ -56,7 +56,7 @@ export async function fetchProfileStatus(userId: string): Promise<ProfileStatus>
   try {
     const { data, error } = await getSupabaseClient().from('user_nutrition_profiles').select('*').eq('user_id', userId).maybeSingle();
     if (error) return 'unknown';
-    return rowHasProfile(data as Record<string, unknown> | null) ? 'has' : 'none';
+    return rowHasProfile(data as Record<string, unknown> | null, runtime.flag && runtime.kisiselPlan) ? 'has' : 'none';
   } catch {
     return 'unknown';
   }
