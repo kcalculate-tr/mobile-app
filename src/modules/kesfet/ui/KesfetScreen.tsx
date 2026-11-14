@@ -83,6 +83,7 @@ import { reportReasonText } from './ReportFlow';
 import { track } from '../../../lib/analytics';
 import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { KesfetMeButton, useKesfetMe } from './KesfetMe';
 
 function Header({
   onSearch,
@@ -92,7 +93,10 @@ function Header({
   showBell,
   unread,
   finalHeader = true,
+  me,
 }: {
+  /** G53-S1 md.1: sağda kendi profil fotoğrafım (yoksa baş harf) → kendi herkese açık profilim. */
+  me?: { url: string | null; name: string; onPress: () => void };
   onSearch: () => void;
   onNotifications: () => void;
   onCompose: () => void;
@@ -141,6 +145,8 @@ function Header({
             ) : null}
           </Pressable>
         ) : null}
+        {/* G53-S1 md.1: sağda kendi profilim (36 pt avatar, 44 pt dokunma alanı). */}
+        {me ? <KesfetMeButton url={me.url} name={me.name} onPress={me.onPress} /> : null}
       </View>
     </View>
   );
@@ -237,6 +243,8 @@ export function KesfetScreen() {
   });
   const { t: tr, fmt, lang } = useT();
   const kesfetTakip = useFeature('kesfet_takip');
+  // G53-S1 md.1: üst çubukta kendi profilim. Kimlik ortak depodan (Profil'de foto değişince burası da güncellenir).
+  const me = useKesfetMe(navigation);
   // G8 bayrakları — her biri kapalıyken ilgili davranış HİÇ render olmaz.
   const kesfetPaylasim = useFeature('kesfet_paylasim');
   const kesfetYorum = useFeature('kesfet_yorum');
@@ -888,6 +896,7 @@ export function KesfetScreen() {
         onCompose={() => navigation.navigate('Composer')}
         showCompose={kesfetPaylasim}
         showBell={sosyalBildirim}
+        me={me}
         unread={unread}
       />
       <Tabs

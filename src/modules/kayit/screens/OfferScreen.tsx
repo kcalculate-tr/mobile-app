@@ -28,6 +28,8 @@ import { useKayit } from '../store';
 import { kTrack } from '../events';
 import { markOfferShown } from '../offerOnce';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { NeonBorder, neonOnLimePalette, useNeonClock, useNeonVisible } from '../../subscription/ui/NeonBorder';
+import type { SharedValue } from 'react-native-reanimated';
 
 type Period = 'yearly' | 'monthly';
 type Phase = 'idle' | 'buying' | 'success' | 'cancelled' | 'error';
@@ -46,6 +48,11 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, 
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(__DEV__ && !!vitrinConfirm);
   const viewed = useRef<Set<Period>>(new Set());
+  // G53-S1 md.4: seçili plan kartında dolaşan neon (ortak saat; yalnız ekran görünürken + azaltılmış hareket kapalıyken).
+  const reducedMotion = useReducedMotion();
+  const neonVisible = useNeonVisible();
+  const neonClock = useNeonClock(!reducedMotion && neonVisible && phase !== 'success');
+  const neon = { clock: neonClock, reduced: reducedMotion, visible: neonVisible };
 
   // G46 md.3: T1 göründü → cihaz + hesap işareti (bir daha gösterilmez). YALNIZ __DEV__ vitrininde yazılmaz.
   useEffect(() => {
@@ -179,10 +186,11 @@ export default function OfferScreen({ vitrinPhase, vitrinPeriod, vitrinConfirm, 
               recommended
               selected={tier === 'balance'}
               locked={buying}
+              neon={neon}
               onPress={() => setTier('balance')}
             />
           ) : null}
-          {fresh ? <PlanRow testID="kayit-plan-fresh" card={fresh} name="Fresh" sub={t('kayit.offer.fresh_sub')} selected={tier === 'fresh'} locked={buying} onPress={() => setTier('fresh')} /> : null}
+          {fresh ? <PlanRow testID="kayit-plan-fresh" card={fresh} name="Fresh" sub={t('kayit.offer.fresh_sub')} selected={tier === 'fresh'} locked={buying} neon={neon} onPress={() => setTier('fresh')} /> : null}
         </View>
         {selected ? (
           <View style={{ marginTop: 20, gap: 14 }}>
@@ -268,7 +276,7 @@ function DismissConfirm({ visible, days, terms, onStart, onDismiss, onLeave }: {
   );
 }
 
-function PlanRow({ card, name, sub, recommended, selected, locked, onPress, testID }: { card: PlanCard; name: string; sub: string; recommended?: boolean; selected: boolean; locked: boolean; onPress: () => void; testID?: string }) {
+function PlanRow({ card, name, sub, recommended, selected, locked, neon, onPress, testID }: { card: PlanCard; name: string; sub: string; recommended?: boolean; selected: boolean; locked: boolean; neon: { clock: SharedValue<number>; reduced: boolean; visible: boolean }; onPress: () => void; testID?: string }) {
   const { t, lang } = useT();
   const P = useK();
   // G44: seçili = tam lime dolgu + limeInk metin; seçilmeyen tam opaklıkta cam yüzey (satın alınırken de
@@ -293,6 +301,8 @@ function PlanRow({ card, name, sub, recommended, selected, locked, onPress, test
         accessibilityLabel={[name, sub, priceLine, card.monthlyText ? t('sub.paywall.per_month_equiv', { price: card.monthlyText }) : null, trial, recommended ? t('kayit.offer.recommended') : null].filter(Boolean).join(', ')}
         style={[styles.plan, { backgroundColor: mixColor(P.card, P.accent, k), borderColor: mixColor(P.cardEdge, P.accent, k) }]}
       >
+        {/* G53-S1 md.4: kenarda dolaşan neon (ilk çocuk → rozetler üstte kalır). */}
+        <NeonBorder selected={selected} radius={26} borderWidth={1} colors={neonOnLimePalette(P.isDark)} clock={neon.clock} reduced={neon.reduced} visible={neon.visible} testID={testID} />
         <View style={[styles.radio, { borderColor: mixColor(P.sec, P.limeInk, k), backgroundColor: mixColor('transparent', P.limeInk, k) }]}>
           {k > 0 ? (
             <View style={{ opacity: k }}>

@@ -170,6 +170,7 @@ export default function PublicProfileScreen() {
         vitrinProfile={profile}
         blocked={Boolean(profile.blocked)}
         locked={!canView}
+        editable={isMe}
         action={
           isMe
             ? { label: profile.is_private ? tt('profil.private_account') : tt('profil.privacy_public'), onPress: () => setPrivacyOpen(true), outlined: true }

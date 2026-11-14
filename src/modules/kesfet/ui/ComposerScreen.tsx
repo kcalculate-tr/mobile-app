@@ -52,7 +52,10 @@ import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, type LocalPhoto } 
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { RulesSheet, rulesSeen } from './RulesSheet';
 import { ComposeIcon, type ComposeIconName } from './compose/icons';
-import { X } from '../../../components/icons';
+import { Info, X } from '../../../components/icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ShareGuideSheet } from './ShareGuideSheet';
+import { SHARE_GUIDE_SEEN_KEY, shouldAutoShowGuide } from '../shareGuide';
 import { ActivityTile, F, MealPreview, SourceTile, composeTones } from './compose/pieces';
 import { fetchLastScanMeal } from './compose/lastScan';
 
@@ -124,7 +127,7 @@ export function ComposerScreen({
   route,
 }: {
   navigation?: { goBack: () => void };
-  route?: { params?: { vitrinKind?: PostType; vitrinPrefill?: VitrinPrefill } };
+  route?: { params?: { vitrinKind?: PostType; vitrinPrefill?: VitrinPrefill; vitrinGuide?: boolean } };
 }) {
   const t = useTheme();
   const tone = composeTones(t);
@@ -164,6 +167,24 @@ export function ComposerScreen({
   const [submit, setSubmit] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [rulesVisible, setRulesVisible] = useState(false);
+  // G53-S1 md.3: görsel kılavuzu (i) — ilk paylaşım ekranında bir kez kendiliğinden, sonra yalnız "i" ile.
+  const vitrinGuide = __DEV__ ? route?.params?.vitrinGuide === true : false;
+  const [guide, setGuide] = useState<{ open: boolean; first: boolean }>({ open: vitrinGuide, first: vitrinGuide });
+  useEffect(() => {
+    if (vitrinGuide) return;
+    let alive = true;
+    AsyncStorage.getItem(SHARE_GUIDE_SEEN_KEY)
+      .then((seen) => {
+        if (!alive || !shouldAutoShowGuide(seen)) return;
+        setGuide({ open: true, first: true });
+        void AsyncStorage.setItem(SHARE_GUIDE_SEEN_KEY, '1').catch(() => {});
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // G11 — ürün arama (search_products). RPC canlıda yoksa döşeme gizlenir
   // (ilk aramada { available:false } dönerse). Seçilen ürün öğün kartını doldurur.
@@ -718,7 +739,18 @@ export function ComposerScreen({
         <AppText style={styles.barHint} tone="secondary">
           {tr('kesfet.compose.media_limit')}
         </AppText>
+        {/* G53-S1 md.3: görsel kılavuzu — 44 pt dokunma alanı. */}
+        <Pressable
+          onPress={() => setGuide({ open: true, first: false })}
+          accessibilityRole="button"
+          accessibilityLabel={tr('share_guide.a11y')}
+          style={styles.infoBtn}
+          testID="composer-guide-info"
+        >
+          <Info size={22} color={t.color.secondary} />
+        </Pressable>
       </View>
+      <ShareGuideSheet visible={guide.open} firstTime={guide.first} showVideo={videoEnabled} onClose={() => setGuide((g) => ({ ...g, open: false }))} />
 
       <RulesSheet visible={rulesVisible} onAccept={onAcceptRules} onClose={() => setRulesVisible(false)} />
     </KeyboardAvoidingView>
@@ -805,4 +837,5 @@ const styles = StyleSheet.create({
   barBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
   barText: { fontSize: 13, lineHeight: 18 },
   barHint: { marginLeft: 'auto', flexShrink: 1, fontSize: 13, lineHeight: 18 },
+  infoBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
 });

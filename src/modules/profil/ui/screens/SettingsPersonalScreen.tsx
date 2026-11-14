@@ -35,6 +35,7 @@ import { useAuth } from '../../../../core/AuthContext';
 import { getSupabaseClient } from '../../../../core/supabase';
 import { Check } from '../../../../components/icons';
 import { pickAndUploadAvatar } from '../../avatarUpload';
+import { useMyProfileStore } from '../../myProfileStore';
 import { getProfilClient } from '../../client';
 import { useHandleClaim } from '../../useHandleClaim';
 import {
@@ -177,6 +178,8 @@ export default function SettingsPersonalScreen({ onBack }: { onBack: () => void 
       if (url) {
         setAvatarUrl(url);
         await getProfilClient().updatePublicProfile({ displayName: fullName || null as any, bio: null, avatarUrl: url });
+        // G53-S1: Keşfet üst çubuğu kısayolu aynı avatarı gösterir.
+        useMyProfileStore.getState().setAvatar(url);
       }
     } finally {
       setAvatarUploading(false);

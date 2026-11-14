@@ -31,6 +31,8 @@ import { trackSub } from '../subTrack';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useCoachEnabled } from '../../coach/access';
 import { palette } from '../../../core/design/tokens';
+import { NeonBorder, neonPaywallPalette, useNeonClock, useNeonVisible } from '../ui/NeonBorder';
+import type { SharedValue as NeonClock } from 'react-native-reanimated';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası (koç: maskot).
@@ -104,6 +106,9 @@ export default function PaywallScreen() {
     holdUntil.current = Date.now() + 3000;
   }, [group]);
   const autoOn = !reduced && !paused && !result;
+  // G53-S1 md.4: seçili plan kartında dolaşan neon — yalnız ekran görünürken ve azaltılmış hareket kapalıyken döner.
+  const neonVisible = useNeonVisible();
+  const neonClock = useNeonClock(!reduced && neonVisible && !result);
 
   const coachDaily = limits?.coach?.daily ?? COACH_DAILY_FALLBACK;
   const features = useMemo(() => {
@@ -301,8 +306,8 @@ export default function PaywallScreen() {
           {loadFailed ? <LoadError onRetry={() => void reload()} /> : null}
           {cards && yearCard && monthCard ? (
             <Animated.View key={`cards-${group}`} entering={fade} style={styles.cards} accessibilityRole="radiogroup" testID="sub-cards">
-              <PlanRow c={yearCard} selected={yearly} coach={coach && group === 'balance'} onPress={() => { haptic('selection'); setYearly(true); }} />
-              <PlanRow c={monthCard} selected={!yearly} coach={coach && group === 'balance'} onPress={() => { haptic('selection'); setYearly(false); }} />
+              <PlanRow c={yearCard} selected={yearly} coach={coach && group === 'balance'} neon={{ clock: neonClock, reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(true); }} />
+              <PlanRow c={monthCard} selected={!yearly} coach={coach && group === 'balance'} neon={{ clock: neonClock, reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(false); }} />
               {group === 'fresh' ? (
                 <Pressable
                   onPress={() => switchGroup('balance')}
@@ -451,11 +456,10 @@ function IconLayer({ k, index, active }: { k: FeatureKey; index: number; active:
   return <Animated.Image source={FEATURE_IMG[k]} style={[styles.glass, styles.iconLayer, style]} resizeMode="contain" accessibilityIgnoresInvertColors testID={`sub-feature-icon-${k}`} />;
 }
 
-function PlanRow({ c, selected, coach, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; onPress: () => void }) {
+function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; neon: { clock: NeonClock<number>; reduced: boolean; visible: boolean }; onPress: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
-  const frame = t.isDark ? palette.lime : '#4A6B00';
   const ink = t.color.ink;
   const period = tr(c.yearly ? 'sub.paywall.yearly' : 'sub.paywall.monthly');
   const priceLine = `${c.priceText}${tr(c.yearly ? 'sub.paywall.per_year' : 'sub.paywall.per_month')}`;
@@ -468,9 +472,11 @@ function PlanRow({ c, selected, coach, onPress }: { c: PlanCard; selected: boole
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       accessibilityLabel={a11y}
-      style={[styles.card, { backgroundColor: card, borderColor: selected ? frame : 'transparent' }]}
+      style={[styles.card, { backgroundColor: card, borderColor: 'transparent' }]}
       testID={`sub-card-${c.key}`}
     >
+      {/* G53-S1 md.4: sabit lime kenar yerine NeonBorder (kart kenarı yerleşim için 2 pt saydam kalır). */}
+      <NeonBorder selected={selected} radius={20} borderWidth={2} colors={neonPaywallPalette(t.isDark)} clock={neon.clock} reduced={neon.reduced} visible={neon.visible} testID={`sub-card-${c.key}`} />
       {c.yearly && c.discountPct ? (
         <View style={[styles.save, { backgroundColor: ink }]} testID={`sub-save-${c.key}`}>
           <AppText style={[styles.saveText, { color: t.color.bg }]}>{tr('sub.paywall.save', { pct: c.discountPct })}</AppText>

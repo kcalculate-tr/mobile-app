@@ -40,6 +40,8 @@ import { unregisterPushToken } from '../../../../core/notifications';
 import { useNavGate } from '../../../../store/navGateStore';
 import { RootStackParamList } from '../../../../navigation/types';
 import { ProfileSocialHeader } from '../ProfileSocialHeader';
+import { useAvatarEditor } from '../AvatarEditor';
+import { useMyProfileStore } from '../../myProfileStore';
 import { PrivacySheet } from '../PrivacySheet';
 import {
   Target,
@@ -173,8 +175,16 @@ export default function FinPrProfileScreen() {
       setAvatarUrl((data as { avatar_url?: string | null }).avatar_url ?? null);
       setHandle((data as { handle?: string | null }).handle ?? null);
       setIsPrivate(Boolean((data as { is_private?: boolean }).is_private));
+      // G53-S1: Keşfet kısayolu aynı kimliği okur.
+      useMyProfileStore.getState().setIdentity({
+        userId: user.id,
+        avatarUrl: (data as { avatar_url?: string | null }).avatar_url ?? null,
+        handle: (data as { handle?: string | null }).handle ?? null,
+      });
     }
   }, [user?.id]);
+  // G53-S1 md.2: kendi profil fotoğrafı "+" rozeti (başarıda ekrandaki avatar + açık profil parametresi güncellenir).
+  const avatarEditor = useAvatarEditor({ current: avatarUrl, onChanged: setAvatarUrl });
 
   useFocusEffect(
     useCallback(() => {
@@ -236,8 +246,9 @@ export default function FinPrProfileScreen() {
         <ProfileSocialHeader
           name={userName}
           avatarUrl={avatarUrl}
-          onAvatarPress={() => openSub('public', { handle, displayName: userName, avatarUrl, isPrivate })}
+          onAvatarPress={() => openSub('public', { handle, displayName: userName, avatarUrl: avatarEditor.shown, isPrivate })}
           onOpenSubscriptions={() => openSub('macro')}
+          avatarEditor={user?.id ? avatarEditor : undefined}
         />
 
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
@@ -445,6 +456,7 @@ export default function FinPrProfileScreen() {
         onDismiss={() => setCollectionToast(false)}
         autoHideMs={__DEV__ && collectionNew ? 0 : 4000}
       />
+      {avatarEditor.overlay}
     </FinScreen>
   );
 }

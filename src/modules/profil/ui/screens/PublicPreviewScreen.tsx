@@ -23,6 +23,7 @@ import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
 import { roleBadgeKey } from '../../../kesfet/ui/format';
 import { FinScreen, heading, body, bodyBold, bodySemibold } from '../finUi';
 import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../../core/design/sectionSlide';
+import { AvatarEditFrame, useAvatarEditor } from '../AvatarEditor';
 
 export type PublicPost = { id: string; photoUrl: string | null; adds: number };
 
@@ -37,8 +38,11 @@ export default function PublicPreviewScreen({
   action,
   locked,
   blocked,
+  editable = false,
 }: {
   onBack: () => void;
+  /** G53-S1 md.2: KENDİ profilim → avatarda "+" rozeti (başkasının profilinde false). */
+  editable?: boolean;
   /** Gerçek profil ekranı (`/u/:handle`): Takip et / İstek gönderildi / Takip ediliyor. Verilmezse önizleme düğmesi. */
   action?: { label: string; onPress: () => void; busy?: boolean; outlined?: boolean };
   /** Gizli hesap + takip etmiyorum: ızgara yerine kilit notu. */
@@ -95,7 +99,10 @@ export default function PublicPreviewScreen({
   const roleLabel = roleKey ? tr(`kesfet.ui.badge.${roleKey}`) : null;
   const privateAccount = isPrivate ?? profile?.is_private ?? false;
   const bio = (profile?.bio ?? '').trim();
-  const avatar = avatarUrl ?? profile?.avatar_url ?? null;
+  const baseAvatar = avatarUrl ?? profile?.avatar_url ?? null;
+  // Kanca her zaman çağrılır (sıra sabit); rozet + sayfa yalnız `editable` iken çizilir.
+  const avatarEditor = useAvatarEditor({ current: baseAvatar });
+  const avatar = editable ? avatarEditor.shown : baseAvatar;
   const cover = posts.find((p) => p.photoUrl)?.photoUrl ?? null;
   const totalAdds = posts.reduce((n, p) => n + p.adds, 0);
 
@@ -106,6 +113,7 @@ export default function PublicPreviewScreen({
   );
 
   return (
+    <>
     <FinScreen scroll contentStyle={{ paddingBottom: 40 }}>
       {/* Kapak */}
       <View style={{ height: 232, backgroundColor: t.color.line }}>
@@ -133,25 +141,37 @@ export default function PublicPreviewScreen({
 
       <View style={{ paddingHorizontal: 16, marginTop: -44 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <View
-            style={{
-              width: 92,
-              height: 92,
-              borderRadius: 46,
-              borderWidth: 4,
-              borderColor: t.color.bg,
-              backgroundColor: t.color.line,
-              overflow: 'hidden',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
-            ) : firstLetter ? (
-              <Text style={{ fontFamily: heading, fontSize: 32, color: t.color.ink }}>{firstLetter}</Text>
-            ) : null}
-          </View>
+          {(() => {
+            const avatarView = (
+              <View
+                style={{
+                  width: 92,
+                  height: 92,
+                  borderRadius: 46,
+                  borderWidth: 4,
+                  borderColor: t.color.bg,
+                  backgroundColor: t.color.line,
+                  overflow: 'hidden',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {avatar ? (
+                  <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
+                ) : firstLetter ? (
+                  <Text style={{ fontFamily: heading, fontSize: 32, color: t.color.ink }}>{firstLetter}</Text>
+                ) : null}
+              </View>
+            );
+            // Rozet 4 pt zemin halkasının içinde, fotoğraf dairesinin sağ altına oturur.
+            return editable ? (
+              <AvatarEditFrame size={92} editor={avatarEditor} ringColor={t.color.bg} testID="public-avatar-edit">
+                {avatarView}
+              </AvatarEditFrame>
+            ) : (
+              avatarView
+            );
+          })()}
           {/* Önizleme: başkalarının göreceği düğme; kendi profilinde etkileşimsiz. */}
           {blocked ? null : (
             <Pressable
@@ -294,5 +314,7 @@ export default function PublicPreviewScreen({
       )}
       </SectionSlide>
     </FinScreen>
+    {editable ? avatarEditor.overlay : null}
+    </>
   );
 }

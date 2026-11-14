@@ -9,10 +9,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { getSupabaseClient } from '../../core/supabase';
-import { POST_MEDIA_BUCKET, buildPostMediaPath } from './mediaPath';
+import { PHOTO_QUALITY, POST_MEDIA_BUCKET, buildPostMediaPath } from './mediaPath';
 import type { CreatePostMedia } from './types';
 
-export const MAX_PHOTOS = 4;
+// G53-S1: tek kaynak composer.ts (doğrulama + görsel kılavuzu aynı sayıyı okur).
+export { MAX_PHOTOS } from './composer';
 
 export interface LocalPhoto {
   uri: string;
@@ -28,7 +29,7 @@ export async function pickPhotos(remaining: number): Promise<LocalPhoto[]> {
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsMultipleSelection: true,
     selectionLimit: remaining,
-    quality: 0.6,
+    quality: PHOTO_QUALITY,
   });
   if (result.canceled) return [];
   return result.assets.slice(0, remaining).map((a) => ({

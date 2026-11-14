@@ -13,8 +13,10 @@ import { useT } from '../../../core/i18n';
 import { FeedVideo } from '../../media/video';
 import { getSupabaseClient } from '../../../core/supabase';
 import type { FeedMedia } from '../types';
+import { FEED_DEFAULT_H, feedSingleFrameHeight } from '../mediaPath';
 
-const H = 220;
+// G53-S1: çerçeve ölçüleri tek kaynaktan (görsel kılavuzu da aynı değerleri gösterir).
+const H = FEED_DEFAULT_H;
 const GAP = 2;
 const POST_MEDIA_BUCKET = 'post-media';
 
@@ -100,7 +102,7 @@ export function MediaGrid({
   const one = items.length === 1 ? items[0] : null;
   const w = Math.max(0, width - 84);
   const h =
-    one && one.width > 0 && one.height > 0 ? Math.round(Math.min(320, Math.max(180, (w * one.height) / one.width))) : H;
+    one && one.width > 0 && one.height > 0 ? feedSingleFrameHeight(w, one.width, one.height) : H;
 
   const cell = (m: FeedMedia) => <Cell media={m} postId={postId} isVisible={isVisible} onOpenVideo={onOpenVideo} />;
 

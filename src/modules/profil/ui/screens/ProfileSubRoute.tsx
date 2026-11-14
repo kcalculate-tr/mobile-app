@@ -115,6 +115,7 @@ export default function ProfileSubRoute() {
           displayName={params.displayName ?? fallbackName}
           avatarUrl={params.avatarUrl ?? null}
           isPrivate={params.isPrivate === true}
+          editable={Boolean(user?.id)}
         />
       );
     }

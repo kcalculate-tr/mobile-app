@@ -22,12 +22,15 @@ import type { NumLang } from '../../gun/motion';
 import { getProfilClient } from '../client';
 import type { PublicProfile } from '../types';
 import { PrivacySheet } from './PrivacySheet';
+import { AvatarEditFrame, type AvatarEditorState } from './AvatarEditor';
 
 export interface ProfileSocialHeaderProps {
   name: string;
   avatarUrl: string | null;
   onAvatarPress?: () => void;
   onOpenSubscriptions: () => void;
+  /** G53-S1 md.2: kendi profil fotoğrafı "+" rozeti (useAvatarEditor; sayfa + uyarı ekran kökünde). */
+  avatarEditor?: AvatarEditorState;
 }
 
 export function ProfileSocialHeader({
@@ -35,6 +38,7 @@ export function ProfileSocialHeader({
   avatarUrl,
   onAvatarPress,
   onOpenSubscriptions,
+  avatarEditor,
 }: ProfileSocialHeaderProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -85,20 +89,33 @@ export function ProfileSocialHeader({
       {/* G14-S1 — FinPrProfile kimlik bloğu: 76 avatar (foto yoksa baş harf),
           ad (Bricolage 24), @kullanıcı adı, açık/gizli hesap çipi (→ PrivacySheet). */}
       <View style={styles.identityRow}>
-        <Pressable
-          onPress={onAvatarPress}
-          style={[styles.avatar, { backgroundColor: t.color.line }]}
-          accessibilityRole="button"
-          accessibilityLabel={name}
-        >
-          {avatarUrl ? (
-            <CachedImage uri={avatarUrl} style={styles.avatarImg} />
+        {(() => {
+          const shownUrl = avatarEditor ? avatarEditor.shown : avatarUrl;
+          const avatar = (
+            <Pressable
+              onPress={onAvatarPress}
+              style={[styles.avatar, { backgroundColor: t.color.line }]}
+              accessibilityRole="button"
+              accessibilityLabel={name}
+              testID="profile-header-avatar"
+            >
+              {shownUrl ? (
+                <CachedImage uri={shownUrl} style={styles.avatarImg} />
+              ) : (
+                <AppText variant="title" style={styles.initial}>
+                  {initial}
+                </AppText>
+              )}
+            </Pressable>
+          );
+          return avatarEditor ? (
+            <AvatarEditFrame size={76} editor={avatarEditor} ringColor={t.color.bg} testID="profile-avatar-edit">
+              {avatar}
+            </AvatarEditFrame>
           ) : (
-            <AppText variant="title" style={styles.initial}>
-              {initial}
-            </AppText>
-          )}
-        </Pressable>
+            avatar
+          );
+        })()}
         <View style={styles.identityInfo}>
           <AppText variant="title" numberOfLines={1} style={styles.name}>
             {name}

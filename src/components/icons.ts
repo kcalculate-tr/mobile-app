@@ -163,3 +163,6 @@ export { Carrot } from 'phosphor-react-native/lib/commonjs/icons/Carrot';
 export { Plant } from 'phosphor-react-native/lib/commonjs/icons/Plant';
 export { Moon } from 'phosphor-react-native/lib/commonjs/icons/Moon';
 export { Cookie } from 'phosphor-react-native/lib/commonjs/icons/Cookie';
+// G53-S1: paylaşım görsel kılavuzu satır ikonları.
+export { Stack } from 'phosphor-react-native/lib/commonjs/icons/Stack';
+export { VideoCamera } from 'phosphor-react-native/lib/commonjs/icons/VideoCamera';
