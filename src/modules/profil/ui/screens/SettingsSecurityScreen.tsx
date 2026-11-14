@@ -49,6 +49,7 @@ import { getSupabaseClient } from '../../../../core/supabase';
 import { unregisterPushToken } from '../../../../core/notifications';
 import { mapSupabaseErrorToUserMessage } from '../../../../lib/supabaseErrors';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
+import { forgetSessionUser } from '../../../../store/sessionScope';
 
 function SecureField({
   label,
@@ -182,6 +183,8 @@ export default function SettingsSecurityScreen({ onBack }: { onBack: () => void 
         return;
       }
       await unregisterPushToken();
+      // G48 md.1: silinen hesabın cihazdaki sepeti/adresi de silinir.
+      if (user?.id) forgetSessionUser(user.id);
       await signOut();
       // G21-S1 md.8 (#D4): yığın oturumsuz soğuk açılışla aynı ilk ekrana sıfırlanır
       // (önce oturumsuz Profil sekmesi + üstüne Login kalıyordu).

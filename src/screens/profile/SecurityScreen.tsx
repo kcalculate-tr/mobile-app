@@ -24,6 +24,7 @@ import { mapSupabaseErrorToUserMessage } from '../../lib/supabaseErrors';
 import { RootStackParamList } from '../../navigation/types';
 import { COLORS } from '../../constants/theme';
 import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
+import { forgetSessionUser } from '../../store/sessionScope';
 
 type SecurityNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -157,6 +158,8 @@ export default function SecurityScreen() {
                         return;
                       }
                       await unregisterPushToken();
+                      // G48 md.1: silinen hesabın cihazdaki sepeti/adresi de silinir.
+                      if (user?.id) forgetSessionUser(user.id);
                       await signOut();
                       // Imperative reset YOK — signOut (ve zaten silinmiş
                       // olan) user'ı null yapınca AppNavigator state-driven

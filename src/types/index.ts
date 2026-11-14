@@ -216,6 +216,14 @@ export interface CartState {
   // aynı prensip: ürün/bundle-alt-ürün DB'de güncellenmişse sepetteki satır
   // bir sonraki tazelemede güncel değeri yansıtır.
   refreshMacros: () => Promise<void>;
+  /** G48 md.1: canlı sepetin sahibi (kullanıcı kimliği ya da 'anon'). */
+  ownerKey: string;
+  /** G48 md.1: oturumda olmayan hesapların bekleyen sepetleri (bkz. store/cartOwner). */
+  byOwner: Record<string, { items: CartItem[]; appliedCoupon: AppliedCoupon | null }>;
+  /** G48 md.1: oturum değişti → sepeti o kullanıcınınkine çevir (null = oturumsuz). */
+  switchOwner: (userId: string | null) => void;
+  /** G48 md.1: hesap silindi → o hesabın sepetini cihazdan sil. */
+  forgetOwner: (userId: string) => void;
 }
 
 // ─── Address ──────────────────────────────────────────────────────────────────

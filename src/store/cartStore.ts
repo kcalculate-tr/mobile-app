@@ -7,12 +7,31 @@ import { calculateOptionsPriceModifier, getEffectivePrice, hasDiscount } from '.
 import { track } from '../lib/analytics';
 import { computeLineMacros, computeUnitMacros } from '../lib/itemMacros';
 import type { CartItem, CartSelectedOptions, CartState, Product } from '../types';
+import { ANON_OWNER, CART_PERSIST_VERSION, forgetCartOwner, migrateCart, ownerKeyFor, switchCartOwner } from './cartOwner';
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
       appliedCoupon: null,
+      ownerKey: ANON_OWNER,
+      byOwner: {},
+
+      // G48 md.1: sepet hesaba özel — bkz. store/cartOwner (saf kurallar + testler).
+      switchOwner: (userId: string | null) => {
+        const s = get();
+        const next = switchCartOwner(
+          { ownerKey: s.ownerKey, items: s.items, appliedCoupon: s.appliedCoupon, byOwner: s.byOwner },
+          ownerKeyFor(userId),
+        );
+        if (next.ownerKey === s.ownerKey) return;
+        set(next);
+      },
+
+      forgetOwner: (userId: string) => {
+        const s = get();
+        set(forgetCartOwner({ ownerKey: s.ownerKey, items: s.items, appliedCoupon: s.appliedCoupon, byOwner: s.byOwner }, userId));
+      },
 
       addItem: (
         product: Product,
@@ -358,14 +377,12 @@ export const useCartStore = create<CartState>()(
     {
       name: 'kcal-cart',
       storage: createJSONStorage(() => AsyncStorage),
-      // v5: AppliedCoupon şeması validate_coupon RPC sözleşmesine göre değişti
-      // (discountAmount eklendi, minOrderAmount/campaign kaldırıldı) — eski
-      // persisted appliedCoupon şekli uyumsuz, sürüm atlanarak temizleniyor.
-      version: 5,
-      migrate: (_persistedState, _version) => ({
-        items: [],
-        appliedCoupon: null,
-      }) as Partial<CartState>,
+      // v5: AppliedCoupon şeması validate_coupon RPC sözleşmesine göre değişti.
+      // v6 (G48 md.1): sepet sahipli (ownerKey + byOwner). Eski sahipsiz kayıt kimin olduğu
+      // bilinmediği için ilk açılışta temizlenir (migrateCart).
+      version: CART_PERSIST_VERSION,
+      partialize: (s) => ({ items: s.items, appliedCoupon: s.appliedCoupon, ownerKey: s.ownerKey, byOwner: s.byOwner }),
+      migrate: (persisted, version) => migrateCart(persisted, version) as unknown as CartState,
     },
   ),
 );
