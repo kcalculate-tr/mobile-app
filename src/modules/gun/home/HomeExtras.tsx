@@ -7,7 +7,7 @@
 // HOME_GATE_MOTION; azaltılmış harekette yalnız opaklık). Gerçek veri yoksa bölüm HİÇ çizilmez.
 // Gezinme / profil kapısı çağıranda (TrackerScreen). Ölçüm: home_<bölüm>_view (bir kez) / _tap.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -470,8 +470,11 @@ function RecipeCard({ r, index, onOpen, onAdd }: { r: HomeRecipe; index: number;
   const k = useHomeTokens();
   const { t, fmt } = useT();
   const meta = r.protein != null ? t('home.x_recipe_meta', { kcal: fmt(r.kcal), protein: fmt(r.protein) }) : t('home.x_recipe_kcal', { kcal: fmt(r.kcal) });
+  // Dynamic Type: kart genişliği yazı ölçeğiyle büyür (Ana sayfa tavanı 1,3×) → "540 kcal, 32 g protein" kesilmez.
+  const { fontScale } = useWindowDimensions();
+  const width = Math.round(RECIPE_W * Math.min(Math.max(fontScale || 1, 1), 1.3));
   return (
-    <HomeEnter index={Math.min(index, 3)} style={styles.recipe}>
+    <HomeEnter index={Math.min(index, 3)} style={{ width }}>
       <Pressable
         testID={`home-recipe-${r.id}`}
         onPress={onOpen}
@@ -486,7 +489,8 @@ function RecipeCard({ r, index, onOpen, onAdd }: { r: HomeRecipe; index: number;
           <AppText maxFontSizeMultiplier={1.3} numberOfLines={2} style={[styles.recipeName, { color: k.text }]}>
             {r.name}
           </AppText>
-          <AppText maxFontSizeMultiplier={1.3} numberOfLines={2} style={[styles.small, { color: k.sec }]}>
+          {/* Satır sınırı YOK: 1,3× yazıda alt satır kesilmeden kırılır (HIG Dynamic Type). */}
+          <AppText maxFontSizeMultiplier={1.3} style={[styles.small, { color: k.sec }]}>
             {meta}
           </AppText>
         </View>
@@ -626,7 +630,6 @@ const styles = StyleSheet.create({
   chip: { minHeight: 44, borderRadius: 22, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   chipText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, lineHeight: 18, flexShrink: 1 },
   recipeRow: { gap: 12, paddingHorizontal: 16 },
-  recipe: { width: RECIPE_W },
   recipePhoto: { height: RECIPE_PHOTO, borderRadius: 16, overflow: 'hidden' },
   recipeText: { paddingHorizontal: 2, paddingTop: 8, gap: 2 },
   recipeName: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, lineHeight: 18 },
