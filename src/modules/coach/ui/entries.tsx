@@ -33,7 +33,11 @@ function useNavSafe(): Nav {
   return nav ?? { navigate: () => {} };
 }
 
-export function CoachHomeCard(props: { consumedKcal: number | null; targetKcal: number | null; proteinLeft: number | null }) {
+/**
+ * `gate` (G51-S1 md.2, profilsiz Ana sayfa): dokunuşta önce çağrılır; true dönerse (G47 profil kapısı kayıt akışına
+ * yönlendirdi) Koç açılmaz. Verilmezse davranış aynen (doğrudan Koç; deneme hakkı / paywall Koç'ta).
+ */
+export function CoachHomeCard(props: { consumedKcal: number | null; targetKcal: number | null; proteinLeft: number | null; gate?: (prefill: string) => boolean }) {
   const enabled = useCoachEnabled();
   return enabled ? <CoachHomeCardInner {...props} /> : null;
 }
@@ -44,7 +48,7 @@ export function CoachHomeCard(props: { consumedKcal: number | null; targetKcal: 
  * kota/Balance mantığı ve "Koçuna sor" eylemi aynı. Metin sütunu maskota yer bırakır (sağ boşluk).
  */
 const HOME_CARD_MIN_H = 148;
-function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consumedKcal: number | null; targetKcal: number | null; proteinLeft: number | null }) {
+function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft, gate }: { consumedKcal: number | null; targetKcal: number | null; proteinLeft: number | null; gate?: (prefill: string) => boolean }) {
   const nav = useNavSafe();
   const { t: tr } = useT();
   const { tier } = useTier();
@@ -74,6 +78,7 @@ function CoachHomeCardInner({ consumedKcal, targetKcal, proteinLeft }: { consume
         <Pressable
           onPress={() => {
             haptic('light');
+            if (gate?.(question)) return;
             void openCoach(nav, { from: 'home', prefill: question });
           }}
           accessibilityRole="button"

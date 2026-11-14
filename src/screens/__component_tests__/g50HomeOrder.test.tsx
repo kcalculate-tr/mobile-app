@@ -193,7 +193,7 @@ afterAll(() => __devForceProfileStatus(null));
 
 function order(tree: ReturnType<typeof render>): string[] {
   const seen: string[] = [];
-  tree.UNSAFE_root.findAll((n: { props: Record<string, unknown>; type: unknown }) => typeof n.type === 'string' && /^(x-|home-profile-gate$|home-quick-actions$)/.test(String(n.props?.testID ?? ''))).forEach(
+  tree.UNSAFE_root.findAll((n: { props: Record<string, unknown>; type: unknown }) => typeof n.type === 'string' && /^(x-|home-profile-gate$|home-quick-actions$|coach-home-card$)/.test(String(n.props?.testID ?? ''))).forEach(
     (n: { props: Record<string, unknown> }) => {
       const id = String(n.props.testID);
       if (!seen.includes(id)) seen.push(id);
@@ -202,11 +202,11 @@ function order(tree: ReturnType<typeof render>): string[] {
   return seen;
 }
 
-test('profilsiz sıra: Plan → Görevler → Neler yapabilirsin → Koç → Tarifler → eatkcal; seri kartı YOK', async () => {
+test('profilsiz sıra: Plan → Görevler → Neler yapabilirsin → Koç kartı (G51) → Koç soruları → Tarifler → eatkcal; seri kartı YOK', async () => {
   setProfile('none');
   const tree = render(<TrackerScreen />);
   await flush();
-  expect(order(tree)).toEqual(['home-profile-gate', 'x-tasks', 'home-quick-actions', 'x-coach', 'x-recipes', 'x-eatkcal']);
+  expect(order(tree)).toEqual(['home-profile-gate', 'x-tasks', 'home-quick-actions', 'coach-home-card', 'x-coach', 'x-recipes', 'x-eatkcal']);
   expect(tree.queryByTestId('x-streak')).toBeNull();
   expect(mockSectionProps['x-tasks'].planDone).toBe(false);
 });
@@ -215,7 +215,7 @@ test('profilli sıra: takip bölümü üstte (aynen) → Görevler → Seri → 
   setProfile('has');
   const tree = render(<TrackerScreen />);
   await flush();
-  expect(order(tree)).toEqual(['x-tasks', 'x-streak', 'x-coach', 'x-recipes', 'x-eatkcal']);
+  expect(order(tree)).toEqual(['coach-home-card', 'x-tasks', 'x-streak', 'x-coach', 'x-recipes', 'x-eatkcal']);
   // takip bölümü (bugünün öğün kaydı) yeni bölümlerden ÖNCE
   const seq = tree.UNSAFE_root.findAll(
     (n: { props: Record<string, unknown>; type: unknown }) => typeof n.type === 'string' && (n.props?.testID === 'x-tasks' || n.props?.children === 'Tavuklu Bowl'),

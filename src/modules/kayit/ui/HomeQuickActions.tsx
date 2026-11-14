@@ -1,26 +1,41 @@
 // G49-S1 md.3 — "Neler yapabilirsin" hızlı eylemleri (YALNIZ profilsiz Ana sayfa, plan kartının hemen altında).
-// 2×2 kompakt kart: ikon + kısa başlık + tek satır alt metin. Gezinme kuralı çağıranda (TrackerScreen):
-// Tara · Etkinlik · Koç G47 profil kapısından geçer (dokununca kayıt akışı; bitince dokunulan eyleme dönülür),
+// Kompakt kart: cam nesne + kısa başlık + tek satır alt metin. Gezinme kuralı çağıranda (TrackerScreen):
+// Tara · Etkinlik G47 profil kapısından geçer (dokununca kayıt akışı; bitince dokunulan eyleme dönülür),
 // Paylaş Keşfet kuralıyla (oturum yoksa AuthSheet). Giriş: 8 pt yukarı + fade 220 ms, kademe 50 ms (toplam 150);
 // basışta 0,98. Azaltılmış harekette yalnız opaklık (REDUCED.duration). Dokunma alanı ≥ 44 pt (kart ≥ 88 pt).
+// G51-S1 md.1: lime kare zemindeki çizgi ikonlar yerine uygulamanın cam nesneleri (assets/glass, ~52 pt, zeminsiz,
+// açık + koyu temada aynı PNG): Tara = kamera · Paylaş = kase · Etkinlik = ayak izi.
+// G51-S1 md.2: "Koç'a sor" ızgaradan çıktı (yerine ızgaranın altında mevcut CoachHomeCard). Izgara Tara + Paylaş
+// (+ `etkinlik` açıksa Etkinlik): çiftler yan yana, tek kalan kart tam genişlik satır.
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { AppText } from '../../../core/design/components/AppText';
 import { HOME_GATE_MOTION, REDUCED, haptic, useReducedMotion } from '../../../core/design/motion';
-import { palette } from '../../../core/design/tokens';
 import { useT } from '../../../core/i18n';
 import { track } from '../../../lib/analytics';
-import { ChatCircleDots, ImageSquare, Scan, Sneaker, type Icon } from '../../../components/icons';
 import { BRICOLAGE_SEMI, useHomeTokens } from '../../onboarding/first/homeTokens';
 import { devFrozenAt, frozenEnter } from './homeGateDev';
 
 import type { QuickAction } from '../quickActions';
 
 export type { QuickAction };
-export const QUICK_ACTIONS: readonly QuickAction[] = ['scan', 'activity', 'share', 'coach'];
+export const QUICK_ACTIONS: readonly QuickAction[] = ['scan', 'share', 'activity'];
 
-const ICON: Record<QuickAction, Icon> = { scan: Scan, activity: Sneaker, share: ImageSquare, coach: ChatCircleDots };
+/** Cam nesneler (sözlük: kase = öğün · ayak izi = etkinlik; kamera = tarama, Paywall'daki AI tarama nesnesi). */
+export const QUICK_GLASS: Record<QuickAction, ImageSourcePropType> = {
+  scan: require('../../../../assets/glass/camera.png'),
+  share: require('../../../../assets/glass/bowl.png'),
+  activity: require('../../../../assets/glass/foot.png'),
+};
+export const QUICK_GLASS_SIZE = 52;
+
+/** Çiftler yan yana; tek kalan kart (3. kart ya da tek kart) tam genişlik satır. */
+export function quickRows<T>(list: readonly T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < list.length; i += 2) rows.push(list.slice(i, i + 2));
+  return rows;
+}
 
 function ActionCard({ action, index, onPress, badge }: { action: QuickAction; index: number; onPress: () => void; badge?: string | null }) {
   const k = useHomeTokens();
@@ -39,7 +54,6 @@ function ActionCard({ action, index, onPress, badge }: { action: QuickAction; in
     opacity: o.value,
     transform: [{ translateY: reduced ? 0 : (1 - o.value) * HOME_GATE_MOTION.actShift }],
   }));
-  const Ico = ICON[action];
   const title = t(`kayit.gate.act_${action}`);
   const sub = t(`kayit.gate.act_${action}_sub`);
   return (
@@ -59,9 +73,15 @@ function ActionCard({ action, index, onPress, badge }: { action: QuickAction; in
         ]}
       >
         <View style={styles.top}>
-          <View style={styles.icon} importantForAccessibility="no-hide-descendants">
-            <Ico size={22} color={palette.limeInk} weight="bold" />
-          </View>
+          <Image
+            testID={`home-quick-${action}-glass`}
+            source={QUICK_GLASS[action]}
+            style={styles.glass}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
           {/* G50 md.1/6b: kalan tarama hakkı rozeti (kota okunamazsa yok). */}
           {badge ? (
             <View testID={`home-quick-${action}-badge`} style={[styles.badge, { borderColor: k.line }]}>
@@ -97,8 +117,7 @@ export function HomeQuickActions({
   const { t } = useT();
   const list = QUICK_ACTIONS.filter((a) => actions.includes(a));
   if (list.length === 0) return null;
-  const rows: QuickAction[][] = [];
-  for (let i = 0; i < list.length; i += 2) rows.push(list.slice(i, i + 2));
+  const rows = quickRows(list);
   return (
     <View style={styles.section} testID="home-quick-actions">
       <AppText accessibilityRole="header" maxFontSizeMultiplier={1.3} style={[styles.h2, { color: k.text }]}>
@@ -106,11 +125,10 @@ export function HomeQuickActions({
       </AppText>
       <View style={styles.grid}>
         {rows.map((row, r) => (
-          <View key={r} style={styles.row}>
+          <View key={r} style={styles.row} testID={`home-quick-row-${r}`}>
             {row.map((a) => (
               <ActionCard key={a} action={a} index={list.indexOf(a)} onPress={() => onAction(a)} badge={a === 'scan' ? scanBadge : null} />
             ))}
-            {row.length === 1 ? <View style={styles.cell} /> : null}
           </View>
         ))}
       </View>
@@ -126,7 +144,15 @@ const styles = StyleSheet.create({
   cell: { flex: 1 },
   card: { flex: 1, minHeight: 104, borderRadius: 20, borderWidth: 1, padding: 14, gap: 4 },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
-  icon: { width: 36, height: 36, borderRadius: 12, backgroundColor: palette.lime, alignItems: 'center', justifyContent: 'center' },
+  // Hafif gölge: iOS'ta PNG alfasını izler; Android'de elevation kare kutuya düşeceği için yok (nesne düz).
+  glass: {
+    width: QUICK_GLASS_SIZE,
+    height: QUICK_GLASS_SIZE,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+      default: {},
+    }),
+  },
   badge: { flexShrink: 1, marginLeft: 'auto', borderRadius: 10, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
   badgeText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11, lineHeight: 14 },
   title: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, lineHeight: 20 },

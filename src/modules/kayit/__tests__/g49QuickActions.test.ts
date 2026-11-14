@@ -10,7 +10,6 @@ import { kayitRouteFor, type GateTarget } from '../gateLogic';
 const T = {
   scan: { name: 'AiScan' },
   activity: { name: 'Tabs', params: { screen: 'Tracker', params: { finAddActivity: true } } },
-  coach: { name: 'CoachIntro', params: { from: 'home', prefill: 'Akşam ne yesem?' } },
 };
 
 function deps(blocked: boolean, over: Partial<QuickDeps> = {}) {
@@ -26,7 +25,6 @@ function deps(blocked: boolean, over: Partial<QuickDeps> = {}) {
     targets: T,
     startScan: () => calls.push('scan'),
     openActivity: () => calls.push('activity'),
-    openCoach: () => calls.push('coach'),
     signedIn: true,
     openLogin: () => calls.push('login'),
     openComposer: () => calls.push('composer'),
@@ -36,8 +34,8 @@ function deps(blocked: boolean, over: Partial<QuickDeps> = {}) {
   return { d, calls, routed };
 }
 
-test('profil yok: Tara · Etkinlik · Koç → kayıt akışı, dönüş hedefi dokunulan eylem; eylem AÇILMAZ', () => {
-  for (const a of ['scan', 'activity', 'coach'] as const) {
+test('profil yok: Tara · Etkinlik → kayıt akışı, dönüş hedefi dokunulan eylem; eylem AÇILMAZ', () => {
+  for (const a of ['scan', 'activity'] as const) {
     const { d, calls, routed } = deps(true);
     assert.equal(runQuickAction(a, d), 'kayit');
     assert.deepEqual(routed, [T[a]]);
@@ -48,7 +46,7 @@ test('profil yok: Tara · Etkinlik · Koç → kayıt akışı, dönüş hedefi 
 });
 
 test('profil var (kapı geçer): eylem doğrudan açılır', () => {
-  for (const a of ['scan', 'activity', 'coach'] as const) {
+  for (const a of ['scan', 'activity'] as const) {
     const { d, calls } = deps(false);
     assert.equal(runQuickAction(a, d), a);
     assert.deepEqual(calls, [a]);
@@ -73,7 +71,9 @@ test('TrackerScreen: profilsiz Ana sayfa = yeni kart + hemen altında 4 eylem; e
   assert.match(s, /\{yeniKabuk && profileGate\.blocked \? <HomePlanGateCard onStart=\{\(\) => profileGate\.require\(null\)\}( cycleKey=\{focusTick\})? \/> : null\}\s*(\{yeniKabuk && profileGate\.blocked \? homeTasks : null\}\s*)?\{yeniKabuk && profileGate\.blocked \? <HomeQuickActions actions=\{quickActions\} onAction=\{onQuickAction\}( scanBadge=\{scanBadgeText\})? \/> : null\}/);
   assert.match(s, /runQuickAction\(a, \{\s*require: profileGate\.require,/);
   assert.match(s, /activity: homeTarget\(\{ finAddActivity: true \}\)/);
-  assert.match(s, /coach: \{ name: 'CoachIntro', params: \{ from: 'home', prefill \} \}/);
+  // G51 md.2: Koç ızgarada yok; Koç kartı/hazır sorular aynı kapıdan (`coachGate`) geçer.
+  assert.doesNotMatch(s, /coach: \{ name: 'CoachIntro'/);
+  assert.match(s, /const coachGate = \(q: string\) => profileGate\.require\(\{ name: 'CoachIntro', params: \{ from: 'home', prefill: q \} \}\);/);
   assert.match(s, /openLogin: \(\) => nav\.navigate\('Login'\)/);
   // Dönüşte etkinlik sheet'i bir kez açılır (yalnız kapı açıldıktan sonra).
   assert.match(s, /if \(!yeniKabuk \|\| !finAddActivity \|\| profileGate\.blocked\) return;/);

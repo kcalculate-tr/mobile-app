@@ -331,8 +331,6 @@ export const tr = {
     act_activity_sub: 'Yürüyüş, spor, yaktığın kalori',
     act_share: 'Öğününü paylaş',
     act_share_sub: "Bugünkü tabağını Keşfet'te paylaş",
-    act_coach: "Koç'a sor",
-    act_coach_sub: 'Akşam ne yesem?',
   },
 };
 
@@ -661,7 +659,5 @@ export const en: typeof tr = {
     act_activity_sub: 'Walks, workouts, calories burned',
     act_share: 'Share your meal',
     act_share_sub: "Post today's plate on Explore",
-    act_coach: 'Ask the Coach',
-    act_coach_sub: 'What should I eat tonight?',
   },
 };

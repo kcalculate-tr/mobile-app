@@ -1640,28 +1640,22 @@ export default function TrackerScreen() {
     setActivityOpenSignal((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finAddActivity, yeniKabuk, profileGate.blocked]);
-  // G49-S1 md.3: hızlı eylemler. Tara · Etkinlik · Koç → profil kapısı (kayıt akışı, bitince bu eyleme dönülür);
+  // G49-S1 md.3: hızlı eylemler. Tara · Etkinlik → profil kapısı (kayıt akışı, bitince bu eyleme dönülür);
   // Paylaş → Keşfet kuralı (oturum yoksa AuthSheet = `Login`; `kesfet_paylasim` açıksa Composer, değilse Keşfet).
-  const quickActions: QuickAction[] = [
-    'scan',
-    ...(etkinlik ? (['activity'] as const) : []),
-    'share',
-    ...(coachEnabled ? (['coach'] as const) : []),
-  ];
+  // G51-S1 md.2: Koç ızgarada değil — ızgaranın altında mevcut CoachHomeCard (`coachGate`). Sıra: Tara · Paylaş
+  // (+ Etkinlik: tek kalan 3. kart tam genişlik satır).
+  const quickActions: QuickAction[] = ['scan', 'share', ...(etkinlik ? (['activity'] as const) : [])];
   const onQuickAction = (a: QuickAction) => {
     const nav = navigation as any;
-    const prefill = tt('kayit.gate.act_coach_sub');
     const slot = slotFromHour(istanbulHour());
     runQuickAction(a, {
       require: profileGate.require,
       targets: {
         scan: aiTarama ? { name: 'AiScan' } : homeTarget({ finOpenManual: slot }),
         activity: homeTarget({ finAddActivity: true }),
-        coach: { name: 'CoachIntro', params: { from: 'home', prefill } },
       },
       startScan: () => logToSlot(slot),
       openActivity: () => setActivityOpenSignal((n) => n + 1),
-      openCoach: () => void openCoach(nav, { from: 'home', prefill }),
       signedIn: !!user,
       openLogin: () => nav.navigate('Login'),
       openComposer: kesfetPaylasim ? () => nav.navigate('Composer') : null,
@@ -1689,8 +1683,10 @@ export default function TrackerScreen() {
     else handleWaterAdd();
   };
   // 6d: hazır soru → Koç (mevcut giriş parametresi `prefill`; deneme hakkı / paywall Koç'ta aynen).
+  // G51-S1 md.2: Koç kartı ve hazır sorular aynı kapıdan geçer (profil yoksa kayıt akışı → bitince CoachIntro, soru dolu).
+  const coachGate = (q: string) => profileGate.require({ name: 'CoachIntro', params: { from: 'home', prefill: q } });
   const onCoachPrompt = (_p: CoachPrompt, q: string) => {
-    if (profileGate.require({ name: 'CoachIntro', params: { from: 'home', prefill: q } })) return;
+    if (coachGate(q)) return;
     void openCoach(navigation as any, { from: 'home', prefill: q });
   };
   // 6c: "Güne ekle" → profil kapısı; kayıt akışından dönüşte sheet bu tarif için açılır.
@@ -2922,10 +2918,13 @@ const html = `
             {/* G47-S1 md.3: profil yoksa takip bölümü (halka, makrolar, Bugün, İlk öğününü ekle) yerine tek kart. */}
             {/* G49-S1 md.2–3: profilsiz Ana sayfa = yeni plan kartı + hemen altında "Neler yapabilirsin" (2×2). */}
             {/* G50-S1 md.1 (profilsiz sıra): Plan kartı → İlk gün görevleri → Neler yapabilirsin (tarama rozeti) →
-                Koç hazır soruları → Bugünün tarifleri → (Öne çıkanlar · Keşfet) → eatkcal. */}
+                [G51: Koç kartı →] Koç hazır soruları → Bugünün tarifleri → (Öne çıkanlar · Keşfet) → eatkcal. */}
             {yeniKabuk && profileGate.blocked ? <HomePlanGateCard onStart={() => profileGate.require(null)} cycleKey={focusTick} /> : null}
             {yeniKabuk && profileGate.blocked ? homeTasks : null}
             {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} scanBadge={scanBadgeText} /> : null}
+            {/* G51-S1 md.2: ızgaranın hemen altında profilli sayfadaki mevcut Koç kartı (değerler yok → boş hâl);
+                `koc` kapalıysa kart kendisi çizilmez. Hazır sorular kartın hemen altında (ikinci Koç girişi yok). */}
+            {yeniKabuk && profileGate.blocked ? <CoachHomeCard consumedKcal={null} targetKcal={null} proteinLeft={null} gate={coachGate} /> : null}
             {yeniKabuk && profileGate.blocked && coachEnabled ? <HomeCoachPrompts onPrompt={onCoachPrompt} /> : null}
             {yeniKabuk && profileGate.blocked ? homeRecipes : null}
             {yeniKabuk && !profileGate.blocked ? (

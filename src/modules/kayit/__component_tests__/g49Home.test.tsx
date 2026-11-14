@@ -21,7 +21,7 @@ import { ReducedMotionProvider } from '../../../core/design/motion';
 import { I18nProvider } from '../../../core/i18n';
 import { track } from '../../../lib/analytics';
 import { HomePlanGateCard, PLAN_SAMPLE } from '../ui/HomePlanGateCard';
-import { HomeQuickActions } from '../ui/HomeQuickActions';
+import { HomeQuickActions, QUICK_GLASS, QUICK_GLASS_SIZE, quickRows } from '../ui/HomeQuickActions';
 import { GlassIcon, KAYIT_GLASS, GOAL_GLASS, GENDER_GLASS, ACT_GLASS, DIET_GLASS, COOK_GLASS, STRUGGLE_GLASS } from '../ui/glassIcons';
 import { K_MOTION } from '../ui/theme';
 
@@ -127,15 +127,14 @@ describe('md.2 profilsiz Ana sayfa kartı', () => {
 });
 
 describe('md.3 Neler yapabilirsin', () => {
-  test('TR: başlık + 4 kart (ikon · başlık · alt metin), dokunma → eylem + ölçüm', () => {
+  test('TR: başlık + 3 kart (cam nesne · başlık · alt metin), dokunma → eylem + ölçüm (G51: Koç ızgarada yok)', () => {
     const onAction = jest.fn();
     const r = render(wrap(<HomeQuickActions onAction={onAction} />));
     expect(r.getByText('Neler yapabilirsin')).toBeTruthy();
     const rows: [string, string, string][] = [
       ['scan', 'Tabağını tara', 'Fotoğrafla, kalorisini gör'],
-      ['activity', 'Etkinlik ekle', 'Yürüyüş, spor, yaktığın kalori'],
       ['share', 'Öğününü paylaş', "Bugünkü tabağını Keşfet'te paylaş"],
-      ['coach', "Koç'a sor", 'Akşam ne yesem?'],
+      ['activity', 'Etkinlik ekle', 'Yürüyüş, spor, yaktığın kalori'],
     ];
     for (const [a, title, sub] of rows) {
       expect(r.getByText(title)).toBeTruthy();
@@ -146,16 +145,50 @@ describe('md.3 Neler yapabilirsin', () => {
       expect(onAction).toHaveBeenLastCalledWith(a);
       expect(trackMock).toHaveBeenLastCalledWith('home_plan_card_tap', { action: a });
     }
-    expect(onAction).toHaveBeenCalledTimes(4);
+    expect(onAction).toHaveBeenCalledTimes(3);
+    expect(r.queryByTestId('home-quick-coach')).toBeNull();
   });
 
   test('EN başlıklar; özelliği kapalı eylem gösterilmez (sıra korunur)', () => {
-    const r = render(wrap(<HomeQuickActions actions={['coach', 'scan', 'share']} onAction={jest.fn()} />, { lang: 'en' }));
+    const r = render(wrap(<HomeQuickActions actions={['share', 'scan']} onAction={jest.fn()} />, { lang: 'en' }));
     expect(r.getByText('What you can do')).toBeTruthy();
     expect(r.getByText('Scan your plate')).toBeTruthy();
     expect(r.queryByTestId('home-quick-activity')).toBeNull();
-    const ids = r.UNSAFE_root.findAll((n: { props: Record<string, unknown>; type: unknown }) => /^home-quick-(scan|share|coach)$/.test(String(n.props?.testID)) && typeof n.type !== 'string').map((n: { props: Record<string, unknown> }) => n.props.testID);
-    expect([...new Set(ids)]).toEqual(['home-quick-scan', 'home-quick-share', 'home-quick-coach']);
+    const ids = r.UNSAFE_root.findAll((n: { props: Record<string, unknown>; type: unknown }) => /^home-quick-(scan|share|activity)$/.test(String(n.props?.testID)) && typeof n.type !== 'string').map((n: { props: Record<string, unknown> }) => n.props.testID);
+    expect([...new Set(ids)]).toEqual(['home-quick-scan', 'home-quick-share']);
+  });
+
+  test('G51 md.1: ikonlar cam PNG (Image) — Tara = kamera · Paylaş = kase · Etkinlik = ayak izi; ~52 pt, lime kare zemin yok', () => {
+    expect(QUICK_GLASS.scan).toBe(require('../../../../assets/glass/camera.png'));
+    expect(QUICK_GLASS.share).toBe(require('../../../../assets/glass/bowl.png'));
+    expect(QUICK_GLASS.activity).toBe(require('../../../../assets/glass/foot.png'));
+    const r = render(wrap(<HomeQuickActions onAction={jest.fn()} />));
+    for (const a of ['scan', 'share', 'activity'] as const) {
+      const img = r.getByTestId(`home-quick-${a}-glass`, { includeHiddenElements: true });
+      expect(img.type).toBe('Image');
+      expect(img.props.source).toBe(QUICK_GLASS[a]);
+      const st = StyleSheet.flatten(img.props.style) as Record<string, unknown>;
+      expect(st.width).toBe(QUICK_GLASS_SIZE);
+      expect(st.height).toBe(QUICK_GLASS_SIZE);
+      expect(st.backgroundColor).toBeUndefined();
+    }
+    expect(QUICK_GLASS_SIZE).toBe(52);
+    const src = fs.readFileSync(path.join(ROOT, 'src/modules/kayit/ui/HomeQuickActions.tsx'), 'utf8');
+    expect(src).not.toMatch(/\b(Scan|ImageSquare|Sneaker|ChatCircleDots)\b/);
+    expect(src).not.toMatch(/backgroundColor: palette\.lime/);
+  });
+
+  test('G51 md.2: ızgara — 2 kart tek satır; 3 kartta üçüncü kart tam genişlik satır (boş dolgu hücresi yok)', () => {
+    expect(quickRows(['scan', 'share'])).toEqual([['scan', 'share']]);
+    expect(quickRows(['scan', 'share', 'activity'])).toEqual([['scan', 'share'], ['activity']]);
+    const r = render(wrap(<HomeQuickActions onAction={jest.fn()} />));
+    expect(r.getByTestId('home-quick-row-0').children).toHaveLength(2);
+    // 3. kart tek başına satırda: dolgu hücresi yok → hücre satırı tam doldurur.
+    expect(r.getByTestId('home-quick-row-1').children).toHaveLength(1);
+    expect(r.queryByTestId('home-quick-row-2')).toBeNull();
+    const two = render(wrap(<HomeQuickActions actions={['scan', 'share']} onAction={jest.fn()} />));
+    expect(two.getByTestId('home-quick-row-0').children).toHaveLength(2);
+    expect(two.queryByTestId('home-quick-row-1')).toBeNull();
   });
 
   test('kart ≥ 44 pt dokunma alanı', () => {

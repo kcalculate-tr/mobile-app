@@ -7,8 +7,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Bayraklar: yeni kabuk + etkinlik açık (4 eylemin hepsi görünür). ─────────────
 jest.mock('../../core/flags', () => ({ useFeature: (k: string) => k === 'yeni_kabuk' || k === 'etkinlik' }));
-// Koç uygun (ağ yoklaması yok).
-jest.mock('../../modules/coach/access', () => ({ ...jest.requireActual('../../modules/coach/access'), useCoachEnabled: () => true }));
+// Koç uygun (ağ yoklaması yok). G51: testte kapatılabilir (`koc` kapalı → Koç kartı yok).
+const mockCoach = { on: true };
+jest.mock('../../modules/coach/access', () => ({ ...jest.requireActual('../../modules/coach/access'), useCoachEnabled: () => mockCoach.on }));
 // md.4 (eatkcal bölümü) bu karşılaştırmanın dışında: brif "profilli Ana sayfa değişmez (madde 4 hariç)".
 jest.mock('../../modules/gun/home/HomeRegion', () => ({ HomeRegionSection: () => null, setHomeRegionProvider: () => {} }));
 // G50-S1: takip bölümünün ALTINA eklenen yeni bölümler bu karşılaştırmanın dışında (brif: "mevcut takip bölümü
@@ -186,7 +187,7 @@ test('profilli Ana sayfa anlık görüntüsü (G48 ile aynı)', async () => {
   expect(tree.toJSON()).toMatchSnapshot();
 });
 
-test('profilsiz Ana sayfa: yeni kart + hemen altında 4 eylem; takip bölümü yok', async () => {
+test('profilsiz Ana sayfa: yeni kart + hemen altında eylemler (G51: Tara · Paylaş · Etkinlik, Koç yok); takip bölümü yok', async () => {
   setProfile('none');
   const tree = render(<TrackerScreen />);
   await flush();
@@ -194,7 +195,8 @@ test('profilsiz Ana sayfa: yeni kart + hemen altında 4 eylem; takip bölümü y
   expect(tree.getByText('Kalorilerini ve sağlığını takip et')).toBeTruthy();
   expect(tree.getByTestId('home-gate-sample')).toBeTruthy();
   expect(tree.getByTestId('home-quick-actions')).toBeTruthy();
-  for (const a of ['scan', 'activity', 'share', 'coach']) expect(tree.getByTestId(`home-quick-${a}`)).toBeTruthy();
+  for (const a of ['scan', 'activity', 'share']) expect(tree.getByTestId(`home-quick-${a}`)).toBeTruthy();
+  expect(tree.queryByTestId('home-quick-coach')).toBeNull();
   // Sıra: kart → eylemler (kartın hemen altında).
   const ids = tree.UNSAFE_root.findAll((n: { props: Record<string, unknown>; type: unknown }) => ['home-profile-gate', 'home-quick-actions'].includes(String(n.props?.testID)) && typeof n.type !== 'string').map((n: { props: Record<string, unknown> }) => n.props.testID);
   expect([...new Set(ids)]).toEqual(['home-profile-gate', 'home-quick-actions']);
@@ -203,7 +205,7 @@ test('profilsiz Ana sayfa: yeni kart + hemen altında 4 eylem; takip bölümü y
   expect(tree.queryByText('Tavuklu Bowl')).toBeNull();
 });
 
-test('profilsiz: Tara · Etkinlik · Koç → kayıt akışı (dönüş = dokunulan eylem); Paylaş → Composer değil Keşfet/giriş kuralı', async () => {
+test('profilsiz: Tara · Etkinlik · Koç kartı → kayıt akışı (dönüş = dokunulan eylem); Paylaş → Composer değil Keşfet/giriş kuralı', async () => {
   setProfile('none');
   const tree = render(<TrackerScreen />);
   await flush();
@@ -211,11 +213,44 @@ test('profilsiz: Tara · Etkinlik · Koç → kayıt akışı (dönüş = dokunu
   expect(mockNavigate).toHaveBeenLastCalledWith('Kayit', { entry: 'gate', returnTo: { name: 'Tabs', params: { screen: 'Tracker', params: { finOpenManual: expect.any(String) } } } });
   fireEvent.press(tree.getByTestId('home-quick-activity'));
   expect(mockNavigate).toHaveBeenLastCalledWith('Kayit', { entry: 'gate', returnTo: { name: 'Tabs', params: { screen: 'Tracker', params: { finAddActivity: true } } } });
-  fireEvent.press(tree.getByTestId('home-quick-coach'));
-  expect(mockNavigate).toHaveBeenLastCalledWith('Kayit', { entry: 'gate', returnTo: { name: 'CoachIntro', params: { from: 'home', prefill: 'Akşam ne yesem?' } } });
+  // G51 md.2: Koç girişi ızgarada değil, altındaki Koç kartında; aynı kapı (dönüş = CoachIntro, kartın sorusu dolu).
+  fireEvent.press(tree.getByTestId('coach-home-open'));
+  expect(mockNavigate).toHaveBeenLastCalledWith('Kayit', { entry: 'gate', returnTo: { name: 'CoachIntro', params: { from: 'home', prefill: 'Kahvaltı için 3 öneri verir misin?' } } });
   fireEvent.press(tree.getByTestId('home-profile-gate-start'));
   expect(mockNavigate).toHaveBeenLastCalledWith('Kayit', { entry: 'gate', returnTo: null });
   // Paylaş profil kapısına takılmaz: oturum var + kesfet_paylasim kapalı → Keşfet sekmesi.
   fireEvent.press(tree.getByTestId('home-quick-share'));
   expect(mockNavigate).toHaveBeenLastCalledWith('Tabs', { screen: 'KesfetTab' });
+});
+
+// ── G51-S1 md.2: profilsiz Ana sayfada mevcut Koç kartı (ızgaranın hemen altında); `koc` kapalıysa yok. ──────
+describe('G51 Koç kartı (profilsiz)', () => {
+  afterEach(() => {
+    mockCoach.on = true;
+  });
+
+  test('koc açık: ızgarada coach yok; Koç kartı ızgaranın hemen altında, değerler olmadan (boş hâl metni)', async () => {
+    setProfile('none');
+    const tree = render(<TrackerScreen />);
+    await flush();
+    expect(tree.queryByTestId('home-quick-coach')).toBeNull();
+    expect(tree.getByTestId('coach-home-card')).toBeTruthy();
+    expect(tree.getByText('Nereden başlasan? Kahvaltı için 3 öneri ister misin?')).toBeTruthy();
+    const ids = tree.UNSAFE_root
+      .findAll((n: { props: Record<string, unknown>; type: unknown }) => typeof n.type === 'string' && ['home-quick-actions', 'coach-home-card'].includes(String(n.props?.testID)))
+      .map((n: { props: Record<string, unknown> }) => n.props.testID);
+    expect([...new Set(ids)]).toEqual(['home-quick-actions', 'coach-home-card']);
+    // Tek Koç kartı (ikinci bir Koç girişi yok).
+    expect(tree.getAllByTestId('coach-home-open')).toHaveLength(1);
+  });
+
+  test('koc kapalı: Koç kartı çizilmez, ızgara yine Tara · Paylaş · Etkinlik', async () => {
+    mockCoach.on = false;
+    setProfile('none');
+    const tree = render(<TrackerScreen />);
+    await flush();
+    expect(tree.queryByTestId('coach-home-card')).toBeNull();
+    expect(tree.queryByTestId('home-quick-coach')).toBeNull();
+    for (const a of ['scan', 'share', 'activity']) expect(tree.getByTestId(`home-quick-${a}`)).toBeTruthy();
+  });
 });
