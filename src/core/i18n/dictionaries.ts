@@ -20,6 +20,7 @@ import { tr as kesfetSearchTr, en as kesfetSearchEn } from '../../modules/kesfet
 import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as g53Tr, en as g53En } from './g53';
 import { tr as g54Tr, en as g54En } from './g54';
+import { tr as g56Tr, en as g56En } from './g56';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
@@ -45,6 +46,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g26jTr,
     ...g53Tr,
     ...g54Tr,
+    ...g56Tr,
     // G24-S1 — kcalAI Koç.
     coach: coachTr,
     // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
@@ -1996,6 +1998,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g26jEn,
     ...g53En,
     ...g54En,
+    ...g56En,
     coach: coachEn,
     plan: planEn,
     pp: ppEn,

@@ -10,6 +10,8 @@ export type BannerCell = {
   title: string | null;
   link: string | null;
   navigate_to: string | null;
+  /** G56-S1: opsiyonel görünürlük (signed_in · guest · no_orders · has_orders); boş = herkes. */
+  audience?: string | null;
   is_active: boolean;
 };
 

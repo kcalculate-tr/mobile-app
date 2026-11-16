@@ -5,6 +5,7 @@
 import { macroProgress, type MacroProfile, type MacroSettings } from '../../../../lib/macroRules';
 import { formatEstimatedDelivery, type DeliveryZoneRow } from '../../../../lib/deliveryRules';
 import { getEffectivePrice, hasDiscount } from '../../../../utils/price';
+import { FILTERS, type FilterKey } from '../growth/config';
 
 /** activeOrder.ts ORDER_STEPS ile aynı sıra (confirmed → delivered). */
 export const LIVE_ORDER_STATUSES = ['confirmed', 'preparing', 'on_way', 'delivered'] as const;
@@ -65,6 +66,8 @@ export type BannerTarget =
   | { kind: 'legacy'; dest: string }
   /** 16 Kas: kampanya bannerları — doğrudan ekran (paywall, davet). */
   | { kind: 'screen'; name: string; params?: Record<string, unknown> }
+  /** G56-S1: `ProductList:<filtre>` → Filtrelenmiş liste (growth/config FILTERS). */
+  | { kind: 'list'; filter: FilterKey }
   | { kind: 'none' };
 
 /** 16 Kas: cihaz diline göre banner görseli — EN görseli yoksa TR'ye düşer. */
@@ -94,6 +97,15 @@ export function bannerTargetToEk(dest: string | null | undefined): BannerTarget 
     return { kind: 'screen', name: 'SubPaywall', params };
   }
   if (target === 'Invite') return { kind: 'screen', name: 'EkInvite' };
+  // G56-S1: menü/liste (filtre) ve kampanya detayı (Kampanyalar ve kuponlar, detay açık).
+  if (target.startsWith('ProductList:')) {
+    const key = after('ProductList:') as FilterKey;
+    return { kind: 'list', filter: FILTERS.some((f) => f.key === key) ? key : 'all' };
+  }
+  if (target.startsWith('Campaign:')) {
+    const id = after('Campaign:');
+    return id ? { kind: 'screen', name: 'ProfileCoupons', params: { campaignId: id } } : { kind: 'none' };
+  }
   if (target.startsWith('CategoryProducts:')) {
     const n = after('CategoryProducts:');
     return n ? { kind: 'category', categoryName: n } : { kind: 'none' };

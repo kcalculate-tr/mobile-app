@@ -8,6 +8,7 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/types';
+import type { FilterKey } from './growth/config';
 
 export type EkV2ParamList = {
   /** Mağaza (FinEkStore) — `brandKey` mevcut `brands.key` / ürün `brand` alanı. */
@@ -37,6 +38,10 @@ export type EkV2ParamList = {
   EkOrderDetail: { orderId: number };
   /** İl kapısı (FinSignupEat → SignupEatScreen; FinCityR1/WaitlistR1). */
   EkCityGate: { next?: 'EkStore' | 'EkCart'; brandKey?: string } | undefined;
+  /** G56-S1: Filtrelenmiş liste (EkScr `liste`) — kategori çipi (`filter`) ya da banner kategorisi (`category`). */
+  EkList: { filter?: FilterKey; category?: string; maxKcal?: number; ids?: string[]; title?: string };
+  /** G56-S1: Arkadaşını davet et (EkScr `davet` / `davetBos` / `davetKopya`). Yalnız `davet` bayrağı açıkken girişi var. */
+  EkInvite: undefined;
 };
 
 export type EkRouteName = keyof EkV2ParamList;

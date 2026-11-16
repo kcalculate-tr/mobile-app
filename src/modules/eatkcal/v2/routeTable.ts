@@ -18,6 +18,8 @@ export const EK_V2_ROUTE_NAMES: readonly EkRouteName[] = [
   'EkOrders',
   'EkOrderDetail',
   'EkCityGate',
+  'EkList',
+  'EkInvite',
 ] as const;
 
 /** Alttan açılan (modal hissi) v2 ekranları — mevcut Checkout/OrderSuccess gibi. */

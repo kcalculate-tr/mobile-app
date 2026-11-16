@@ -62,13 +62,15 @@ const toItems = (raw: unknown): PastOrderItem[] => {
 export const fetchPastOrders = async (
   userId: string,
   limit = 3,
+  /** G56-S1: eatkcal "Tekrar sipariş ver" yalnız teslim edilmiş siparişleri ister. */
+  statuses: readonly string[] = REORDERABLE_STATUSES,
 ): Promise<PastOrder[]> => {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('orders')
     .select('id, order_code, created_at, total_amount, items, status')
     .eq('user_id', userId)
-    .in('status', REORDERABLE_STATUSES)
+    .in('status', [...statuses])
     .order('created_at', { ascending: false })
     .limit(limit);
 

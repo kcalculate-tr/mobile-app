@@ -37,6 +37,8 @@ const COMPONENTS: Record<EkRouteName, React.ComponentType<object>> = {
   EkOrders: withSuspense(lazy(() => import('./screens/EkOrdersScreen'))),
   EkOrderDetail: withSuspense(lazy(() => import('./screens/EkOrderDetailScreen'))),
   EkCityGate: withSuspense(lazy(() => import('./screens/EkCityGateScreen'))),
+  EkList: withSuspense(lazy(() => import('./screens/EkListScreen'))),
+  EkInvite: withSuspense(lazy(() => import('./screens/EkInviteScreen'))),
 };
 
 /** Home sekmesi (FinEkHome) — stack rotası değil, sekme içeriği. */
