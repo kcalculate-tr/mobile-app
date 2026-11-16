@@ -10,7 +10,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { useAuth } from '../AuthContext';
 import { getSupabaseClient } from '../supabase';
-import { FLAG_DEFAULTS, FlagKey } from './registry';
+import { FLAG_DEFAULTS, FlagKey, RELEASE_FALLBACK } from './registry';
 import { mergeFlags, type FlagMap } from './resolve';
 import { readCachedFlags, readFlagsDeviceId, writeCachedFlags } from './storage';
 import { readDevOverrides, setDevOverride as persistDevOverride } from './devOverrides';
@@ -138,6 +138,8 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // yut — önbellek/varsayılan kullanılır
       } finally {
+        // 16 Kas: sunucu yanıtı da geçerli önbellek de yoksa yayın yedeği (eski kabuk açılmasın).
+        setRemote((prev) => prev ?? (RELEASE_FALLBACK as FlagMap));
         setReady(true);
       }
       return;
@@ -159,6 +161,7 @@ export function FlagsProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // yut — önbellek/varsayılan kullanılır
     } finally {
+      setRemote((prev) => prev ?? (RELEASE_FALLBACK as FlagMap));
       setReady(true);
     }
   }, [userId]);

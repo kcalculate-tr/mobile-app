@@ -5,19 +5,25 @@
 // yazmalar best-effort: hata asla yukarı sızmaz, asla çökmez.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import type { FlagMap } from './resolve';
+import { parseCachedFlags } from './cacheFormat';
 
 const CACHE_KEY = 'kcal.flags.cache.v1';
 
+/**
+ * 16 Kas: önbellek uygulama sürümüyle saklanır. Sunucu bayrakları sürüme göre çözdüğü için (min_app_version)
+ * eski sürümün yazdığı harita (ör. 1.0.7: yeni_* false) güncellemeden sonraki ilk açılışta KULLANILMAZ.
+ * Eski biçim (düz harita, sürümsüz) de bayat sayılır.
+ */
+function appVersion(): string {
+  return String(Constants.expoConfig?.version ?? '');
+}
+
+
 export async function readCachedFlags(): Promise<FlagMap | null> {
   try {
-    const raw = await AsyncStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as FlagMap;
-    }
-    return null;
+    return parseCachedFlags(await AsyncStorage.getItem(CACHE_KEY), appVersion());
   } catch {
     return null;
   }
@@ -25,7 +31,7 @@ export async function readCachedFlags(): Promise<FlagMap | null> {
 
 export async function writeCachedFlags(map: FlagMap): Promise<void> {
   try {
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(map));
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ __v: appVersion(), map }));
   } catch {
     // yut — önbellek yazılamazsa bir sonraki açılış varsayılanla render eder
   }

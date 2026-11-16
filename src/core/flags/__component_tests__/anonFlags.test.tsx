@@ -60,7 +60,7 @@ test('oturum yok → get_anon_features (cihaz kimliği ile); yeni_onboarding aç
   expect(mockRpc.mock.calls[1][1].p_device_id).toBe(first);
 });
 
-test('fonksiyon yok (canlıya uygulanmadı) → varsayılan (kapalı), ready', async () => {
+test('fonksiyon yok → yayın yedeği (16 Kas: yeni_onboarding açık), ready', async () => {
   mockRpc.mockResolvedValue({ data: null, error: { message: 'function get_anon_features does not exist' } });
   const ui = render(
     <FlagsProvider>
@@ -68,10 +68,10 @@ test('fonksiyon yok (canlıya uygulanmadı) → varsayılan (kapalı), ready', a
     </FlagsProvider>,
   );
   await flush();
-  expect(ui.getByTestId('probe').props.children).toBe('ready:off');
+  expect(ui.getByTestId('probe').props.children).toBe('ready:on'); // 16 Kas: RELEASE_FALLBACK
 });
 
-test('ağ yanıt vermiyor → en çok ANON_TIMEOUT_MS sonra ready (kilitlenmez)', async () => {
+test('ağ yanıt vermiyor → en çok ANON_TIMEOUT_MS sonra ready, yayın yedeğiyle (kilitlenmez)', async () => {
   mockRpc.mockReturnValue(new Promise(() => {}));
   const ui = render(
     <FlagsProvider>
@@ -84,7 +84,7 @@ test('ağ yanıt vermiyor → en çok ANON_TIMEOUT_MS sonra ready (kilitlenmez)'
     jest.advanceTimersByTime(ANON_TIMEOUT_MS + 10);
   });
   await flush();
-  expect(ui.getByTestId('probe').props.children).toBe('ready:off');
+  expect(ui.getByTestId('probe').props.children).toBe('ready:on'); // 16 Kas: RELEASE_FALLBACK
 });
 
 test('önceki anonim sonuç önbellekte → ağ yokken de kullanılır', async () => {

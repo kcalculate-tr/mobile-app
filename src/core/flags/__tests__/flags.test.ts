@@ -109,3 +109,18 @@ test('rollout: dağılım kabaca dengeli (determinizm + yayılım kanıtı)', ()
   const ratio = inWave / N;
   assert.ok(ratio > 0.4 && ratio < 0.6, `oran ~0.5 olmalı, ölçülen ${ratio}`);
 });
+
+// 16 Kas — ilk açılış: bayat (eski sürüm) önbellek kullanılmaz; sunucu yoksa yayın yedeği.
+import { parseCachedFlags } from '../cacheFormat';
+import { RELEASE_FALLBACK } from '../registry';
+test('16 Kas: önbellek sürüme bağlı — eski sürümün ve eski biçimin haritası bayat', () => {
+  assert.equal(parseCachedFlags(JSON.stringify({ yeni_kabuk: false }), '1.1.0'), null);
+  assert.equal(parseCachedFlags(JSON.stringify({ __v: '1.0.7', map: { yeni_kabuk: false } }), '1.1.0'), null);
+  assert.deepEqual(parseCachedFlags(JSON.stringify({ __v: '1.1.0', map: { yeni_kabuk: true } }), '1.1.0'), { yeni_kabuk: true });
+  assert.equal(parseCachedFlags(null, '1.1.0'), null);
+  assert.equal(parseCachedFlags('bozuk', '1.1.0'), null);
+});
+test('16 Kas: yayın yedeği yeni kabuk/onboarding/kayıt/sipariş açık; davet ve kapalı özellikler yok', () => {
+  for (const k of ['yeni_kabuk', 'yeni_onboarding', 'yeni_kayit', 'yeni_siparis'] as const) assert.equal(RELEASE_FALLBACK[k], true);
+  for (const k of ['davet', 'ogun_plani', 'etkinlik', 'kesfet_video', 'paylasim_karti'] as const) assert.equal(RELEASE_FALLBACK[k], undefined);
+});

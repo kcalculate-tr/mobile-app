@@ -78,6 +78,31 @@ export type FlagKey = keyof typeof FLAG_DEFAULTS;
 
 export const FLAG_KEYS = Object.keys(FLAG_DEFAULTS) as FlagKey[];
 
+/**
+ * 16 Kas — YAYIN YEDEĞİ: sunucuya ulaşılamadığında (ilk açılış, yavaş ağ, zaman aşımı) ve geçerli önbellek
+ * yokken kullanılan değerler = bu sürümde %100 açık bayraklar. Önceden bu durumda tüm bayraklar false
+ * (1.0.7 davranışı) dönüyordu → ilk açılışta eski kabuk/eski onboarding açılıyor, sonra yeniye geçiyordu.
+ * Sunucu cevabı geldiğinde her zaman sunucu kazanır; varsayılanlar (FLAG_DEFAULTS) değişmedi.
+ */
+export const RELEASE_FALLBACK: Partial<Record<FlagKey, boolean>> = {
+  yeni_kabuk: true,
+  yeni_onboarding: true,
+  yeni_kayit: true,
+  yeni_siparis: true,
+  kesfet: true,
+  kesfet_takip: true,
+  kesfet_paylasim: true,
+  kesfet_yorum: true,
+  gun_halkasi: true,
+  ai_tarama: true,
+  restoran_yakinda: true,
+  su_takibi: true,
+  ogun_hatirlatma: true,
+  abonelik: true,
+  koc: true,
+  kisisel_plan: true,
+};
+
 // Yalnız okunabilir varsayılan harita (mutasyona kapalı kopya üretmek için).
 export function defaultFlags(): Record<FlagKey, boolean> {
   return { ...FLAG_DEFAULTS };

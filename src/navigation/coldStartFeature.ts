@@ -9,6 +9,7 @@
 // dönünce bütün sekme ağacı yeni kabukla YENİDEN KURULUYORDU (açılışta yanıp sönme).
 import { useRef } from 'react';
 import { useFeature, useFlagsContext, type FlagKey } from '../core/flags';
+import { RELEASE_FALLBACK } from '../core/flags/registry';
 
 export function useColdStartFeature(key: FlagKey): boolean {
   const live = useFeature(key);
@@ -18,7 +19,9 @@ export function useColdStartFeature(key: FlagKey): boolean {
   if (frozen.current === undefined && known) {
     frozen.current = live;
   }
-  return frozen.current ?? false;
+  // 16 Kas: bayrak henüz bilinmezken eski kabuk (false) yerine yayın yedeği — ilk açılışta eski arayüz
+  // görünüp sonra yenisine atlamasın.
+  return frozen.current ?? RELEASE_FALLBACK[key] ?? false;
 }
 
 /** Oturumlu soğuk açılışta bayrak bekleme üst sınırı (önbellek yoksa). */
