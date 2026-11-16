@@ -87,6 +87,7 @@ import { ProfileAiSectionLabel, ProfileSubRow } from '../../../subscription/ui/P
 import { CoachProfileRow } from '../../../coach/ui/entries';
 import { ProfilePlanRows } from '../../../plan/ui/ProfilePlanRows';
 import { ProfilePlanRow, usePersonalPlanEntry } from '../../../personalPlan/ui/entries';
+import { ProfileInviteRow } from '../../../eatkcal/v2/ui/growth/entries';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 
@@ -366,6 +367,8 @@ export default function FinPrProfileScreen() {
               label={tr('profil.orders')}
               onPress={() => (yeniSiparis ? (navigation as any).navigate('EkOrders') : navigation.navigate('ProfileOrders'))}
             />
+            {/* G56-S1 md.6: davet girişi (EkScr "profil") — `davet` bayrağı + oturum + ödül ayarı; Ek rotası yalnız yeni_siparis'te. */}
+            {yeniSiparis ? <ProfileInviteRow onOpen={() => (navigation as any).navigate('EkInvite')} /> : null}
             <FinRow
               icon={<MapPin size={18} color={t.color.ink} />}
               label={tr('profil.addresses')}

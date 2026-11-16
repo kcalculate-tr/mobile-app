@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sheet, useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
@@ -59,6 +59,18 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // G56-S1: banner hedefi `Campaign:<id>` → bu ekran, o kampanyanın detayı açık (bir kez).
+  const campaignParam = (useRoute().params as { campaignId?: string } | undefined)?.campaignId;
+  const openedParam = React.useRef(false);
+  useEffect(() => {
+    if (!campaignParam || openedParam.current || all.length === 0) return;
+    const hit = all.find((c) => String(c.id) === String(campaignParam));
+    if (hit) {
+      openedParam.current = true;
+      setSelected(hit);
+    }
+  }, [campaignParam, all]);
 
   const { offers, mine } = useMemo(() => {
     const personal = (c: Campaign) => c.source === 'macro_reward' || (c.user_id != null && c.user_id === user?.id);

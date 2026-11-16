@@ -2,24 +2,26 @@
 // Yalnız `yeni_siparis` açıkken Home sekmesinde gösterilir (routes.tsx
 // `EkHomeTab`); kapalıyken HİÇ mount edilmez.
 //
-// Veri — HEPSİ mevcut fonksiyonlar (bugünkü HomeScreen.tsx:161-167 ile aynı set):
-//   fetchCategories · fetchProducts · fetchBannerRows · fetchFeaturedProducts ·
-//   fetchBusinessHours (src/lib/*), vitrinYorumlariniGetir (socialProof),
-//   fetchActiveOrder + subscribeToOrder + isDeliveredExpired (activeOrder,
-//   HomeScreen.tsx:189-266 ile aynı desen), fetchMacroProfile/Settings (macros),
-//   fetchBrand (brands; anahtarlar katalog ürünlerinin `brand` alanından),
-//   fetchProductsByCategory (kategori çipi), fetchAllDeliveryZones (teslimat
-//   şeridindeki tahmini süre — yalnız gösterim; ui/home/useDeliveryChip).
-// Veri yoksa bölüm gizlenir; panodaki [N]/[Ürün] yer tutucu, uydurma yok.
+// G56-S1 — sipariş artırma bölümleri, sıra docs/g56/design/EkHome.dc.html (pack HARİÇ — İlter kararı):
+//   üst bar · canlı sipariş · Macro · teslimat · 0 kampanya şeridi · 1 kategori çipleri ·
+//   2 tekrar sipariş · 3 kalan kalori (öne çıkan) · 4 planından sipariş · mağazalar ·
+//   5 bu hafta en çok · 6 arkadaşını davet et · en iyi yorumlar (· restoran yakında, bayrakla).
+// Kurallar growth/rules (saf), yapılandırma growth/config, veri growth/growthApi.
+//
+// Veri — mevcut fonksiyonlar: fetchProducts · fetchBannerRows · fetchBusinessHours (src/lib/*),
+//   vitrinYorumlariniGetir (socialProof), fetchActiveOrder + subscribeToOrder + isDeliveredExpired,
+//   fetchMacroProfile/Settings, fetchBrand, useNutritionSummary (gün halkasıyla aynı RPC),
+//   addPlanMealsToCart (öğün planı), fetchPastOrders (teslim edilmiş).
+// Veri yoksa bölüm gizlenir; uydurma yok.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { EkScreen, EkSection, EkChip, EkButton, ekType, useEk } from '../ui/kit';
+import { EkScreen, EkSection, EkChip, EkButton, EkToastLayer, ekType, money, useEk } from '../ui/kit';
 import { useEkNav } from '../nav';
-import { HRow, ProductCard, StoreCard, CampaignCard, ReviewCard, CategoryPill } from '../ui/home/cards';
+import { HRow, ProductCard, StoreCard, ReviewCard } from '../ui/home/cards';
 import { EkCartBar, CART_BAR_GAP, CART_BAR_H, cartBarBottom, useCartSummary } from '../ui/home/CartBar';
 import { LiveOrderCard } from '../ui/home/LiveOrderCard';
 import { HomeSkeleton } from '../ui/home/HomeSkeleton';
@@ -27,19 +29,25 @@ import { useDeliveryChip } from '../ui/home/useDeliveryChip';
 import { BrandLogo, EmptyErrorCard, haptic } from '../../../../core/design';
 import { useAuth } from '../../../../core/AuthContext';
 import { useFeature } from '../../../../core/flags';
+import type { FlagKey } from '../../../../core/flags/registry';
 import { MagnifyingGlass, Receipt, MapPin, CaretRight, X, BellRinging, Info } from '../../../../components/icons';
 import { EkInfoSheet } from '../ui/InfoSheet';
 import { TAB_BAR_TOTAL } from '../../../../constants/layout';
 import { tabBarContentInset, useInR3Shell } from '../../../shell';
 
-import { fetchCategories, fetchProductsByCategory, type Category, type CategoryProduct } from '../../../../lib/categories';
-import { fetchProducts, fetchFeaturedProducts } from '../../../../lib/products';
+import { fetchProducts } from '../../../../lib/products';
 import { fetchBannerRows, type BannerCell } from '../../../../lib/banners';
 import { fetchBusinessHours, type BusinessHours } from '../../../../lib/businessHours';
 import { vitrinYorumlariniGetir, type VitrinYorumu } from '../../../../lib/socialProof';
 import { fetchActiveOrder, subscribeToOrder, isDeliveredExpired, type ActiveOrder } from '../../../../lib/activeOrder';
 import { fetchMacroProfile, fetchMacroSettings, DEFAULT_MACRO_SETTINGS, type MacroProfile, type MacroSettings } from '../../../../lib/macros';
 import { fetchBrand } from '../../../../lib/brands';
+import { dayKey } from '../../../../lib/dayKey';
+import type { PastOrder } from '../../../../lib/reorder';
+import { useNutritionSummary } from '../../../../hooks/useNutritionSummary';
+import { useCartStore } from '../../../../store/cartStore';
+import { addPlanMealsToCart } from '../../../plan/actions';
+import type { PlanItem } from '../../../plan/types';
 import { buildStoreItems, campaignCellsFrom, type StoreItem } from '../model/showcase';
 import { resolveNavigation } from '../../../../lib/navigation';
 import { useAddressStore } from '../../../../store/addressStore';
@@ -48,35 +56,70 @@ import { readEatGatePassed, useEatGate } from '../../gate/eatGate';
 import { EkLocationGate, type GateState } from '../../gate/EkLocationGate';
 import type { GateSelection } from '../../gate/gateRule';
 import type { Product } from '../../../../types';
-import {
-  bannerImage,
-  bannerTargetToEk,
-  filterProductsByQuery,
-  macroStrip,
-} from '../model/homeData';
+import { bannerImage, bannerTargetToEk, filterProductsByQuery, macroStrip } from '../model/homeData';
 import { fetchRestaurantRating, type RestaurantRating } from '../../../../lib/restaurantRating';
+import {
+  bannerVisible,
+  inviteVisible,
+  kcalPicks,
+  kcalSectionState,
+  matchPlanItems,
+  planReorder,
+  reorderUnavailable,
+  topRows,
+  type GrowthProduct,
+  type PlanItemLike,
+  type ReorderLine,
+  type TopRpcRow,
+} from '../growth/rules';
+import { KCAL_SECTION, type FilterKey } from '../growth/config';
+import {
+  fetchDeliveredOrders,
+  fetchOptionInfo,
+  fetchReferralSettings,
+  fetchTodayPlanItems,
+  fetchTopProductsWeek,
+} from '../growth/growthApi';
+import { growthFixture, type VitrinGrowthKind } from '../growth/vitrinFixture';
+import {
+  AddedToast,
+  BannerStrip,
+  ChipsRow,
+  InviteBanner,
+  KcalSection,
+  PlanSection,
+  ReorderSection,
+  SecSkeleton,
+  TopSection,
+  secTap,
+  type ReorderCardModel,
+} from '../ui/growth/sections';
+import { useQuickAdd } from '../ui/growth/useQuickAdd';
 
 // EatHomeScreen.tsx ile AYNI yerel anahtar ("haber ver" sunucuya gitmez).
 const NEARBY_INTEREST_KEY = 'eatkcal-nearby-interest-notified';
-// HomeScreen.tsx ile aynı "Tüm Ürünler" adları (lib/categories ALL_PRODUCTS_NAMES).
-const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
+const TOAST_MS = 2400;
 
+type AnyNav = { navigate: (name: string, params?: object) => void };
 
-function EkHomeContent() {
+function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vitrinScroll?: number }) {
   const { c, t, lang, insets } = useEk();
   // G16-S2: yeni kabukta bar indi → alt boşluk barın yeni üst kenarına göre;
   // bayrak kapalı kabukta (CustomTabBar) bugünkü değer AYNEN.
   const inR3 = useInR3Shell();
   const navigation = useEkNav();
+  const nav = navigation as unknown as AnyNav;
   const cartSummary = useCartSummary();
+  const addItem = useCartStore((s) => s.addItem);
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const restoranYakinda = useFeature('restoran_yakinda');
+  const davet = useFeature('davet' as FlagKey);
+  const isVitrin = __DEV__ && !!vitrin;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
   // G22-S1 md.6: restoran puanı (son 3 ay) — mağaza kartlarında kompakt.
   const [rating, setRating] = useState<RestaurantRating | null>(null);
   useEffect(() => {
@@ -89,7 +132,6 @@ function EkHomeContent() {
     };
   }, []);
   const [products, setProducts] = useState<Product[]>([]);
-  const [featured, setFeatured] = useState<Product[]>([]);
   const [campaigns, setCampaigns] = useState<BannerCell[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null);
   const [reviews, setReviews] = useState<VitrinYorumu[]>([]);
@@ -97,28 +139,28 @@ function EkHomeContent() {
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
   const [macroProfile, setMacroProfile] = useState<MacroProfile | null>(null);
   const [macroSettings, setMacroSettings] = useState<MacroSettings>(DEFAULT_MACRO_SETTINGS);
-  const [category, setCategory] = useState<string | null>(null);
-  const [categoryProducts, setCategoryProducts] = useState<CategoryProduct[] | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [nearbyNotified, setNearbyNotified] = useState(false);
 
+  // G56-S1 bölüm verisi (null = bilinmiyor / yükleniyor).
+  const [orders, setOrders] = useState<PastOrder[] | null>(null);
+  const [topRpc, setTopRpc] = useState<TopRpcRow[] | null>(null);
+  const [planItems, setPlanItems] = useState<PlanItemLike[]>([]);
+  const [rewardTl, setRewardTl] = useState<number | null>(null);
+  const [reorderBusy, setReorderBusy] = useState<number | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [toast, setToast] = useState(0);
+  const nutrition = useNutritionSummary();
+
   const address = useAddressStore((s) => s.selectedAddress);
 
-  // ── Katalog (HomeScreen.fetchData ile aynı fonksiyonlar) ─────────────────
+  // ── Katalog ──────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoadError(false);
     try {
-      const [cats, prods, banners, feat, bh] = await Promise.all([
-        fetchCategories(),
-        fetchProducts(),
-        fetchBannerRows(),
-        fetchFeaturedProducts(),
-        fetchBusinessHours(),
-      ]);
-      setCategories(cats);
+      const [prods, banners, bh] = await Promise.all([fetchProducts(), fetchBannerRows(), fetchBusinessHours()]);
       setProducts(prods);
-      setFeatured(feat);
       setBusinessHours(bh);
       // G39-S1 md.6: kampanya + mağaza kuralı ortak modelde (Ana sayfa eatkcal alanı da kullanır).
       setCampaigns(campaignCellsFrom(banners));
@@ -127,11 +169,11 @@ function EkHomeContent() {
     } catch {
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (!(__DEV__ && vitrin === 'skel')) setLoading(false);
     }
     // Yorumlar ayrı: vitrin boşsa/başarısızsa bölüm gizlenir, sayfa etkilenmez.
     vitrinYorumlariniGetir(12).then(setReviews).catch(() => setReviews([]));
-  }, []);
+  }, [vitrin]);
 
   useEffect(() => {
     fetchData();
@@ -140,15 +182,41 @@ function EkHomeContent() {
       .catch(() => {});
   }, [fetchData]);
 
+  // ── G56-S1 bölüm verisi (odakta yenilenir) ───────────────────────────────
+  const refreshGrowth = useCallback(async () => {
+    if (isVitrin) return;
+    const today = dayKey();
+    const [o, top, plan, ref] = await Promise.all([
+      userId ? fetchDeliveredOrders(userId) : Promise.resolve([] as PastOrder[]),
+      fetchTopProductsWeek(),
+      userId ? fetchTodayPlanItems(userId, today) : Promise.resolve([] as PlanItemLike[]),
+      userId && davet ? fetchReferralSettings() : Promise.resolve(null),
+    ]);
+    setOrders(o);
+    setTopRpc(top);
+    setPlanItems(plan);
+    setRewardTl(ref?.rewardTl ?? null);
+  }, [userId, davet, isVitrin]);
+
+  // YALNIZ __DEV__ vitrini: gerçek katalog üstüne örnek kullanıcı verisi.
+  const fixture = useMemo(() => (isVitrin && products.length > 0 ? growthFixture(vitrin as VitrinGrowthKind, products, dayKey()) : null), [isVitrin, vitrin, products]);
+  useEffect(() => {
+    if (!fixture) return;
+    setOrders(fixture.orders);
+    setTopRpc(fixture.top);
+    setPlanItems(fixture.plan);
+    setRewardTl(fixture.rewardTl);
+  }, [fixture]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchData();
+    await Promise.all([fetchData(), refreshGrowth(), nutrition.refetch()]);
     setRefreshing(false);
-  }, [fetchData]);
+  }, [fetchData, refreshGrowth, nutrition]);
 
   // ── Canlı sipariş (HomeScreen.tsx:189-266 deseni) ─────────────────────────
   const refreshActiveOrder = useCallback(async () => {
-    if (!userId) {
+    if (!userId || isVitrin) {
       setActiveOrder(null);
       return;
     }
@@ -157,7 +225,7 @@ function EkHomeContent() {
     } catch {
       /* sessiz — kart yoksa sayfa normal */
     }
-  }, [userId]);
+  }, [userId, isVitrin]);
 
   const refreshMacro = useCallback(async () => {
     if (!userId) {
@@ -172,11 +240,17 @@ function EkHomeContent() {
     setMacroSettings(s);
   }, [userId]);
 
+  const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
       refreshActiveOrder();
       refreshMacro();
-    }, [refreshActiveOrder, refreshMacro]),
+      void refreshGrowth();
+      // İlk odakta useNutritionSummary zaten çekiyor; sonraki dönüşlerde (log sonrası) yenile.
+      if (!firstFocus.current && !isVitrin) void nutrition.refetch();
+      firstFocus.current = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshActiveOrder, refreshMacro, refreshGrowth, isVitrin]),
   );
 
   useEffect(() => {
@@ -202,28 +276,14 @@ function EkHomeContent() {
     return () => clearInterval(timer);
   }, [activeOrder?.status]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(0), TOAST_MS);
+    return () => clearTimeout(id);
+  }, [toast]);
+
   // ── Teslimat şeridi: seçili adres + bölge tahmini süresi (yalnız gösterim) ──
   const { chip } = useDeliveryChip(businessHours);
-
-  // ── Kategori çipi → mevcut fetchProductsByCategory ────────────────────────
-  const orderedCategories = useMemo(() => {
-    const all = categories.find((cat) => ALL_PRODUCTS_NAMES.includes(cat.name));
-    if (!all) return categories;
-    return [all, ...categories.filter((cat) => !ALL_PRODUCTS_NAMES.includes(cat.name))];
-  }, [categories]);
-
-  const selectCategory = useCallback((name: string) => {
-    if (ALL_PRODUCTS_NAMES.includes(name)) {
-      setCategory(null);
-      setCategoryProducts(null);
-      return;
-    }
-    setCategory(name);
-    setCategoryProducts(null);
-    fetchProductsByCategory(name)
-      .then(setCategoryProducts)
-      .catch(() => setCategoryProducts([]));
-  }, []);
 
   // ── İl kapısı: ilk sipariş eyleminde (mağaza/ürün açmadan önce) ──────────
   const gatePassedRef = useRef(false);
@@ -246,19 +306,29 @@ function EkHomeContent() {
       gated(() => navigation.navigate('EkStore', { brandKey }), { next: 'EkStore', brandKey }),
     [gated, navigation],
   );
+  const openList = useCallback(
+    (params: { filter?: FilterKey; category?: string; maxKcal?: number; ids?: string[]; title?: string }) => navigation.navigate('EkList', params),
+    [navigation],
+  );
+
+  const inviteOn = inviteVisible({ signedIn: !!userId || isVitrin, flag: davet, rewardTl });
 
   const onCampaign = useCallback(
     (cell: BannerCell) => {
       const target = bannerTargetToEk(cell.navigate_to ?? cell.link);
       if (target.kind === 'product') openProduct(target.productId);
       else if (target.kind === 'store') openStore(target.brandKey);
-      else if (target.kind === 'category') selectCategory(target.categoryName);
+      else if (target.kind === 'category') openList({ category: target.categoryName });
+      else if (target.kind === 'list') openList({ filter: target.filter });
       else if (target.kind === 'legacy') resolveNavigation(navigation, target.dest);
-      else if (target.kind === 'screen') (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate(target.name, target.params);
+      else if (target.kind === 'screen') {
+        if (target.name === 'EkInvite' && !inviteOn) return;
+        nav.navigate(target.name, target.params);
+      }
       // G17-S1 md.11: bannerın hedefi yoksa kampanya sayfası (Kampanyalar ve kuponlar).
-      else (navigation as unknown as { navigate: (n: string) => void }).navigate('ProfileCoupons');
+      else nav.navigate('ProfileCoupons');
     },
-    [openProduct, openStore, selectCategory, navigation],
+    [openProduct, openStore, openList, navigation, nav, inviteOn],
   );
 
   const handleNearbyNotify = useCallback(async () => {
@@ -266,12 +336,98 @@ function EkHomeContent() {
     setNearbyNotified(true);
   }, []);
 
-  const popular: { id: number | string; name: string; price: number; img?: string | null; calories?: number | null; discount_type?: string | null; discount_value?: number | null }[] =
-    category != null
-      ? categoryProducts ?? []
-      : featured.length > 0
-        ? featured
-        : products.slice(0, 6); // HomeScreen.displayProducts ile aynı geri düşüş
+  const { addingId, quickAdd } = useQuickAdd(
+    useCallback((id: string) => void openProduct(id), [openProduct]),
+    setToast,
+  );
+
+  // ── Bölüm türetmeleri (saf kurallar) ──────────────────────────────────────
+  const productsById = useMemo(() => new Map(products.map((p) => [String(p.id), p])), [products]);
+  const onSaleIds = useMemo(() => (products.length > 0 ? new Set(products.map((p) => String(p.id))) : null), [products]);
+
+  const visibleCampaigns = useMemo(
+    () =>
+      campaigns
+        .filter((cell) => bannerVisible(cell, { signedIn: !!userId || isVitrin, hasOrders: orders == null ? null : orders.length > 0, inviteOn }))
+        .map((cell) => ({ id: cell.id, image: bannerImage(cell, lang) as string, title: cell.title })),
+    [campaigns, userId, isVitrin, orders, inviteOn, lang],
+  );
+
+  const reorderCards = useMemo<ReorderCardModel[]>(() => {
+    if (!orders) return [];
+    return orders
+      .filter((o) => o.items.length > 0)
+      .map((o) => {
+        const lines: ReorderLine[] = o.items.map((it) => ({ id: it.id, name: it.name, quantity: it.quantity, options: it.options }));
+        const missing = reorderUnavailable(lines, onSaleIds);
+        const d = new Date(o.createdAt);
+        return {
+          order: o,
+          date: Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: lang === 'en' ? 'short' : 'long' }),
+          names: o.items.map((it) => it.name).join(', '),
+          total: money(o.totalAmount),
+          oos: missing.length > 0 ? { n: missing.length, m: lines.length - missing.length } : null,
+        };
+      });
+  }, [orders, onSaleIds, lang]);
+
+  const kcal = useMemo(() => {
+    const target = fixture ? fixture.targetKcal : nutrition.summary?.targetKcal;
+    const consumed = fixture ? fixture.consumedKcal : nutrition.summary?.consumedKcal;
+    const s = kcalSectionState({ targetKcal: target, consumedKcal: consumed });
+    return { ...s, picks: kcalPicks(products, s.state, s.remaining) };
+  }, [fixture, nutrition.summary, products]);
+  const kcalLoading = !fixture && !!userId && nutrition.loading && !nutrition.summary;
+
+  const planRows = useMemo(() => matchPlanItems(planItems, products, dayKey()), [planItems, products]);
+  const top = useMemo(() => topRows(topRpc, products), [topRpc, products]);
+
+  const macLabel = useCallback(
+    (p: GrowthProduct) =>
+      p.protein != null || p.carbs != null || p.fats != null
+        ? t('ek56.card.mac', { p: Math.round(Number(p.protein) || 0), k: Math.round(Number(p.carbs) || 0), y: Math.round(Number(p.fats) || 0) })
+        : undefined,
+    [t],
+  );
+
+  // ── Eylemler ──────────────────────────────────────────────────────────────
+  const reorder = useCallback(
+    async (order: PastOrder) => {
+      secTap('reorder', 'reorder');
+      setReorderBusy(order.id);
+      try {
+        const lines: ReorderLine[] = order.items.map((it) => ({ id: it.id, name: it.name, quantity: it.quantity, options: it.options }));
+        const info = await fetchOptionInfo(lines.filter((l) => productsById.has(String(l.id))).map((l) => String(l.id)));
+        const plan = planReorder(lines, productsById, info);
+        for (const call of plan.calls) addItem(call.product, call.options, call.quantity, call.parentLineKey);
+        if (plan.added > 0) {
+          haptic('success');
+          setToast(plan.added);
+        }
+        if (plan.needsPage.length > 0) openProduct(plan.needsPage[0]);
+      } finally {
+        setReorderBusy(null);
+      }
+    },
+    [productsById, addItem, openProduct],
+  );
+
+  const addPlanAll = useCallback(async () => {
+    setPlanBusy(true);
+    try {
+      const items = planRows.map((r) => ({ ...r.item, source: 'eatkcal', refId: String(r.product.id) }) as unknown as PlanItem);
+      const res = await addPlanMealsToCart(items);
+      if (res.added > 0) {
+        haptic('success');
+        setToast(res.added);
+      }
+      if (res.choice.length > 0) openProduct(res.choice[0].id);
+    } finally {
+      setPlanBusy(false);
+    }
+  }, [planRows, openProduct]);
+
+  const popularFallback = products.slice(0, 6);
   const searchResults = useMemo(() => filterProductsByQuery(products, query), [products, query]);
   const macro = userId ? macroStrip(macroProfile, macroSettings) : null;
   const deliveryText = address
@@ -312,8 +468,7 @@ function EkHomeContent() {
           <View style={styles.headerLogo}>
             <BrandLogo name="eatkcal" height={24} color={c.ink} accessibilityRole="header" accessibilityLabel={t('eatkcal.v2.home.title')} testID="ek-home-logo" />
           </View>
-          {/* G15-S5 (FinEkHome): Final sırası ara · siparişler · bilgi. Sepet başlıkta değil,
-              sekme çubuğunun sepet hapında (yeni kabuk; v2 kayıtlıyken EkCart'a gider). */}
+          {/* G15-S5 (FinEkHome): Final sırası ara · siparişler · bilgi. */}
           <IconBtn label={t('eatkcal.v2.home.search')} onPress={() => setSearchOpen(true)} testID="ek-home-search">
             <MagnifyingGlass size={22} color={c.ink} />
           </IconBtn>
@@ -332,11 +487,28 @@ function EkHomeContent() {
   // Tur 26 md.12: yüzen lime sepet çubuğu (sekme çubuğunun 12 üstü); görünürken son kart altında kalmasın.
   const cartBarAt = inR3 ? cartBarBottom(insets.bottom, true) : insets.bottom + TAB_BAR_TOTAL + CART_BAR_GAP;
   const bottom = cartSummary.count > 0 ? cartBarAt + CART_BAR_H + CART_BAR_GAP - insets.bottom : baseBottom;
-  const cartBar = <EkCartBar bottom={cartBarAt} onPress={() => navigation.navigate('EkCart')} />;
+  const overlay = (
+    <>
+      <EkCartBar bottom={cartBarAt} onPress={() => navigation.navigate('EkCart')} />
+      {toast > 0 ? (
+        <EkToastLayer bottom={(cartSummary.count > 0 ? cartBarAt + CART_BAR_H + CART_BAR_GAP : cartBarAt) + 4}>
+          <AddedToast count={toast} onCart={() => navigation.navigate('EkCart')} />
+        </EkToastLayer>
+      ) : null}
+    </>
+  );
+
+  // YALNIZ __DEV__ vitrini: istenen kaydırma konumu (ekran görüntüsü parçaları).
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (!__DEV__ || !vitrinScroll || loading) return;
+    const id = setTimeout(() => scrollRef.current?.scrollTo({ y: vitrinScroll, animated: false }), 900);
+    return () => clearTimeout(id);
+  }, [vitrinScroll, loading, products.length]);
 
   if (searchOpen) {
     return (
-      <EkScreen header={header} bottomInset={bottom} testID="ek-home" overlay={cartBar}>
+      <EkScreen header={header} bottomInset={bottom} testID="ek-home" overlay={overlay}>
         <View style={styles.grid}>
           {searchResults.length === 0 ? (
             <Text style={[ekType.b15, { color: c.secondary, padding: 16 }]}>{t('eatkcal.v2.home.search_empty')}</Text>
@@ -357,7 +529,8 @@ function EkHomeContent() {
       header={header}
       bottomInset={bottom}
       testID="ek-home"
-      overlay={cartBar}
+      overlay={overlay}
+      scrollRef={scrollRef}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.secondary} />}
     >
       {loading ? (
@@ -427,28 +600,48 @@ function EkHomeContent() {
             </Pressable>
           </View>
 
-          {campaigns.length > 0 ? (
-            <HRow label={t('eatkcal.v2.home.campaign')}>
-              {campaigns.map((cell) => (
-                <CampaignCard key={cell.id} imageUri={bannerImage(cell, lang) as string} title={cell.title} onPress={() => onCampaign(cell)} />
-              ))}
-            </HRow>
-          ) : null}
+          {/* 0 · Kampanya şeridi (mevcut banner_rows / banner_cells; koşulu sağlamayan çıkar). */}
+          <BannerStrip
+            cells={visibleCampaigns}
+            onPress={(id) => {
+              const cell = campaigns.find((x) => x.id === id);
+              if (cell) onCampaign(cell);
+            }}
+          />
 
-          {orderedCategories.length > 0 ? (
-            <HRow label={t('eatkcal.v2.home.categories')}>
-              {orderedCategories.map((cat) => {
-                const isAll = ALL_PRODUCTS_NAMES.includes(cat.name);
-                const selected = isAll ? category == null : category === cat.name;
-                return (
-                  <CategoryPill key={cat.id} label={cat.name} selected={selected} onPress={() => selectCategory(cat.name)} />
-                );
-              })}
-            </HRow>
-          ) : null}
+          {/* 1 · Kategori çipleri → Filtrelenmiş liste. */}
+          <ChipsRow onPick={(key) => openList({ filter: key })} />
+
+          {/* 2 · Tekrar sipariş ver (yalnız ≥ 1 tamamlanmış sipariş). */}
+          {orders == null && userId ? <SecSkeleton sec="reorder" /> : <ReorderSection cards={reorderCards} busyId={reorderBusy} onReorder={reorder} />}
+
+          {/* 3 · Kalan kalorine uygun öğünler (öne çıkan). */}
+          {kcalLoading ? (
+            <SecSkeleton sec="kcal" />
+          ) : (
+            <KcalSection
+              state={kcal.state}
+              remaining={kcal.remaining}
+              picks={kcal.picks}
+              addingId={addingId}
+              macLabel={macLabel}
+              onOpen={(p) => openProduct(p.id)}
+              onAdd={(p) => void quickAdd(p as Product)}
+              onGoal={() => nav.navigate('NutritionProfile')}
+              onAll={() =>
+                openList({
+                  maxKcal: kcal.state === 'done' ? KCAL_SECTION.lightMaxKcal : kcal.remaining,
+                  title: kcal.state === 'done' ? t('ek56.kcal.done_title') : t('ek56.kcal.left_title', { n: kcal.remaining }),
+                })
+              }
+            />
+          )}
+
+          {/* 4 · Planından sipariş et (yalnız planı olanda; eşleşmeyen satır yok). */}
+          <PlanSection rows={planRows} busy={planBusy} onOpen={(p) => openProduct(p.id)} onAddAll={addPlanAll} />
 
           {stores.length > 0 ? (
-            <EkSection title={t('eatkcal.v2.home.stores')} style={{ marginTop: 14 }}>
+            <EkSection title={t('eatkcal.v2.home.stores')} style={{ marginTop: 4 }}>
               <HRow label={t('eatkcal.v2.home.stores')}>
                 {stores.map((s) => (
                   <StoreCard
@@ -466,23 +659,24 @@ function EkHomeContent() {
             </EkSection>
           ) : null}
 
-          {popular.length > 0 ? (
-            <EkSection
-              title={category ?? t('eatkcal.v2.home.popular')}
-              action={t('eatkcal.v2.home.see_all')}
-              onAction={() => setSearchOpen(true)}
-              style={{ marginTop: 14 }}
-            >
-              <HRow label={t('eatkcal.v2.home.popular')}>
-                {popular.map((p) => (
-                  <ProductCard key={String(p.id)} product={p} width={148} photoHeight={148} onPress={() => openProduct(p.id)} />
-                ))}
-              </HRow>
-            </EkSection>
-          ) : null}
+          {/* 5 · Bu hafta en çok sipariş edilenler (< 3 ürün → gizli). */}
+          {topRpc == null ? (
+            <SecSkeleton sec="top" />
+          ) : (
+            <TopSection
+              rows={top}
+              addingId={addingId}
+              onOpen={(p) => openProduct(p.id)}
+              onAdd={(p) => void quickAdd(p as Product)}
+              onAll={() => openList({ ids: top.map((r) => String(r.product.id)), title: t('ek56.top.title') })}
+            />
+          )}
+
+          {/* 6 · Arkadaşını davet et (giriş + `davet` bayrağı + ödül; misafirde gizli). */}
+          {inviteOn && rewardTl != null ? <InviteBanner rewardTl={rewardTl} onPress={() => navigation.navigate('EkInvite')} /> : null}
 
           {reviews.length > 0 ? (
-            <EkSection title={t('eatkcal.v2.home.reviews')} style={{ marginTop: 14 }}>
+            <EkSection title={t('eatkcal.v2.home.reviews')} style={{ marginTop: 4 }}>
               <HRow label={t('eatkcal.v2.home.reviews')}>
                 {reviews.map((r) => (
                   <ReviewCard key={r.id} review={r} />
@@ -508,6 +702,17 @@ function EkHomeContent() {
                 </View>
                 <Text style={[ekType.c13, { color: c.secondary, marginTop: 12 }]}>{t('eatkcal.footer')}</Text>
               </View>
+            </EkSection>
+          ) : null}
+
+          {/* Veri gelmediyse (top/öneri boş) yine de menüye bir giriş kalsın. */}
+          {top.length === 0 && topRpc != null && popularFallback.length > 0 ? (
+            <EkSection title={t('eatkcal.v2.home.popular')} action={t('eatkcal.v2.home.see_all')} onAction={() => openList({ filter: 'all' })} style={{ marginTop: 14 }}>
+              <HRow label={t('eatkcal.v2.home.popular')}>
+                {popularFallback.map((p) => (
+                  <ProductCard key={String(p.id)} product={p} width={148} photoHeight={148} onPress={() => openProduct(p.id)} />
+                ))}
+              </HRow>
             </EkSection>
           ) : null}
 
@@ -555,17 +760,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 16, marginTop: 6 },
   headerLogo: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 0,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   search: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 22, paddingLeft: 14 },
   gutter: { paddingHorizontal: 16 },
   macro: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -599,6 +793,9 @@ type HomeTabParams = {
   /** YALNIZ __DEV__ vitrini: açık form sheet'i (FinWaitlistAdd / FinWaitlistSuggest). */
   vitrinSheet?: 'restaurant_add' | 'restaurant_suggest';
   vitrinPicker?: 'country' | 'city' | 'district';
+  /** YALNIZ __DEV__ vitrini (G56-S1): bölüm verisi (dolu · yeni kullanıcı · iskelet) ve kaydırma. */
+  vitrinGrowth?: VitrinGrowthKind;
+  vitrinScroll?: number;
 };
 
 export default function EkHomeScreen() {
@@ -642,5 +839,5 @@ export default function EkHomeScreen() {
       />
     );
   }
-  return <EkHomeContent />;
+  return <EkHomeContent vitrin={__DEV__ ? params.vitrinGrowth : undefined} vitrinScroll={__DEV__ ? params.vitrinScroll : undefined} />;
 }

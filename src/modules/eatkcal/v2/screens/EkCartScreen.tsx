@@ -31,6 +31,7 @@ import { useEkNav } from '../nav';
 import { EkHeader, EkScreen, EkSkeleton, EkStickyBar, EkToastLayer, ekType, money, useEk, EkKV } from '../ui/kit';
 import { EkErrorCard } from '../ui/ErrorCard';
 import { CouponSheet } from '../ui/CouponSheet';
+import { CartInviteCodeRow } from '../ui/growth/entries';
 import { peekPendingCoupon, setPendingCoupon, takePendingCoupon } from '../model/pendingCoupon';
 import { priceError, stockError, type EkErrorModel } from '../model/errors';
 import { activeZoneRowOf, computeCartTotal, computeCheckoutTotals } from '../model/checkoutModel';
@@ -477,6 +478,9 @@ export default function EkCartScreen() {
             <CaretRight size={18} color={c.secondary} />
           </Pressable>
         )}
+
+        {/* G56-S1 md.6: "Davet kodun var mı?" — mevcut kupon satırının yanında; yalnız ilk siparişten önce. */}
+        <CartInviteCodeRow onMessage={setToast} />
 
         <View style={[styles.summary, { backgroundColor: c.surface }]}>
           <Text style={[ekType.h20, { color: c.ink }]} accessibilityRole="header">

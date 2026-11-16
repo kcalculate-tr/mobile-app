@@ -482,7 +482,7 @@ export function KcalSection({
         }}
       />
       {state === 'empty' ? (
-        <Glass radius={20} fill={k.glow.glass} edge={k.glow.glassEdge} style={styles.emptyCta} testID="ek56-kcal-empty">
+        <Glass radius={20} fill={k.glow.glass} edge={k.glow.glassEdge} style={styles.emptyCta} testID="ek56-kcal-empty-cta">
           <Image source={FLAME} style={styles.flame56} accessibilityIgnoresInvertColors accessible={false} />
           <View style={{ flex: 1, minWidth: 0, gap: 10 }}>
             <Text style={[styles.emptyText, { color: k.ink }]} maxFontSizeMultiplier={SCALE}>
