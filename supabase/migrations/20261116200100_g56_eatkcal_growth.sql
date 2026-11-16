@@ -322,6 +322,10 @@ begin
 
   update public.referrals set status = 'earned', earned_at = now(), order_id = new.id where id = r.id;
   return new;
+-- 16 Kas (güvenlik): davet mantığındaki hiçbir hata sipariş durum güncellemesini (teslim) DURDURMAZ.
+exception when others then
+  raise warning 'referral_on_delivery(%): %', new.id, sqlerrm;
+  return new;
 end;
 $$;
 revoke all on function public.referral_on_delivery() from public;
