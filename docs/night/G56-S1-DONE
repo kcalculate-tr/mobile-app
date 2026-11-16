@@ -1,0 +1,4 @@
+G56-S1 tamam — 2026-11-16
+LOG: docs/night/G56-S1-LOG.md
+Ekran görüntüleri: docs/night/g56/
+Canlıya uygulanacak: supabase/migrations/20261116200100_g56_eatkcal_growth.sql (+ supabase/rollbacks/…_rollback.sql)
