@@ -24,6 +24,7 @@ export function homeEatkcalActions(nav: Nav, opts: { yeniSiparis: boolean; openE
     const target = bannerTargetToEk(cell.navigate_to ?? cell.link);
     if (target.kind === 'product') void gated(() => nav.navigate('EkProduct', { productId: target.productId }));
     else if (target.kind === 'store') onOpenStore(target.brandKey);
+    else if (target.kind === 'screen') nav.navigate(target.name, target.params);
     else opts.openEatkcal();
   };
   return { onOpenStore, onCampaign, onSeeAll: opts.openEatkcal };

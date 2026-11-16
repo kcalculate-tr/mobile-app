@@ -133,6 +133,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     'supabase/migrations/20261115000100_g50_home_sections_events.sql',
     // G54-S1: 1.1.0 oryantasyonu.
     'supabase/migrations/20261115100100_g54_orient_v110_events.sql',
+    // G56-S1: eatkcal ana sayfa bölümleri + davet.
+    'supabase/migrations/20261116200100_g56_eatkcal_growth.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');
@@ -164,6 +166,10 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   const rb50 = readFileSync(join(ROOT, 'supabase/rollbacks/20261115000100_g50_home_sections_events_rollback.sql'), 'utf8');
   for (const n of ['home_tasks_view', 'home_tasks_tap', 'home_recipes_view', 'home_recipes_tap', 'home_coach_prompts_view', 'home_coach_prompts_tap', 'home_streak_view', 'home_streak_tap']) {
     assert.ok(rb50.includes(`'${n}'`), `${n} rollback'te yok`);
+  }
+  const rb56 = readFileSync(join(ROOT, 'supabase/rollbacks/20261116200100_g56_eatkcal_growth_rollback.sql'), 'utf8');
+  for (const n of ['eatkcal_sec_view', 'eatkcal_sec_tap', 'referral_share', 'referral_apply']) {
+    assert.ok(rb56.includes(`'${n}'`), `${n} rollback'te yok`);
   }
 });
 

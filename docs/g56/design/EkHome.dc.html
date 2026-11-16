@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>eatkcal ana sayfa, kampanya bölümleri</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+.hs{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:0 16px;margin:0 -16px}
+.hs::-webkit-scrollbar{display:none}
+a{color:inherit}
+.chkIn{animation:chkIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both}
+@keyframes chkIn{from{transform:scale(.4)}to{transform:scale(1)}}
+.sheetIn{animation:sheetIn 500ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes sheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.fadeIn{animation:fadeIn 200ms cubic-bezier(0.2, 0, 0, 1) both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.odo{animation:odo 500ms cubic-bezier(0.2, 0, 0, 1) both}
+@keyframes odo{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){.chkIn,.odo,.sheetIn{animation:fadeIn 200ms linear both!important}.lo,.lo *{animation:none!important}.lo .loEnd{opacity:0!important}.lo .loStart{opacity:1!important}}
+@keyframes loDot{0%,13%{transform:translateX(0);animation-timing-function:cubic-bezier(0.25, 0.9, 0.3, 1)}16%,33%{transform:translateX(98px);animation-timing-function:cubic-bezier(0.25, 0.9, 0.3, 1)}36%,53%{transform:translateX(196px);animation-timing-function:cubic-bezier(0.25, 0.9, 0.3, 1)}56%,100%{transform:translateX(294px)}}
+@keyframes loFill{0%,13%{transform:scaleX(0);animation-timing-function:cubic-bezier(0.25, 0.9, 0.3, 1)}16%,33%{transform:scaleX(.3333);animation-timing-function:cubic-bezier(0.25, 0.9, 0.3, 1)}36%,53%{transform:scaleX(.6666);animation-timing-function:cubic-bezier(0.25, 0.9, 0.3, 1)}56%,100%{transform:scaleX(1)}}
+@keyframes loA{0%,58%{opacity:1}61%,97%{opacity:0}100%{opacity:1}}
+@keyframes loB{0%,58%{opacity:0;transform:translateY(8px)}62%,86%{opacity:1;transform:translateY(0)}89%,100%{opacity:0;transform:translateY(0)}}
+@keyframes loCard{0%,86%{opacity:1;transform:translateY(0)}89%,97%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes loS0{0%,0%{opacity:0}0%,100%{opacity:1}}
+@keyframes loS1{0%,14%{opacity:0}15%,100%{opacity:1}}
+@keyframes loS2{0%,34%{opacity:0}35%,100%{opacity:1}}
+@keyframes loS3{0%,54%{opacity:0}55%,100%{opacity:1}}
+.lo .a{animation-duration:10000ms;animation-iteration-count:infinite;animation-fill-mode:both}
+.sk{animation:skP 1800ms cubic-bezier(0.2, 0, 0, 1) infinite}@keyframes skP{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){.sk{animation:none;opacity:.7}}
+.cbIn{animation:cbIn 500ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes cbIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.cbPop{animation:cbPop 300ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes cbPop{0%{transform:scale(1)}35%{transform:scale(1.03)}100%{transform:scale(1)}}
+.cbRoll{display:inline-block;animation:cbRoll 300ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes cbRoll{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){.cbIn,.cbPop,.cbRoll{animation:fadeIn 200ms linear both!important;transform:none!important}}
+</style>
+</helmet>
+<div style="position: relative; width: 430px; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.4; border-radius: 44px">
+<div style="position: absolute; left: 28px; top: 16px; font-size: 16px; font-weight: 600; color: {{c.ink}}; z-index: 30">9:41</div>
+<div style="position: relative">
+<div style="padding: 0 16px 184px; display: flex; flex-direction: column; gap: 10px">
+<header style="margin-top: 50px; height: 44px; display: flex; align-items: center; justify-content: space-between">
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px">eatkcal</h1>
+<span style="display: flex">
+<a href="#" aria-label="{{L.search}}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: transparent; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path></svg>
+</a>
+<a href="{{h.orders}}" aria-label="{{L.orders}}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: transparent; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M72,104a8,8,0,0,1,8-8h96a8,8,0,0,1,0,16H80A8,8,0,0,1,72,104Zm8,40h96a8,8,0,0,0,0-16H80a8,8,0,0,0,0,16ZM232,56V208a8,8,0,0,1-11.58,7.15L192,200.94l-28.42,14.21a8,8,0,0,1-7.16,0L128,200.94,99.58,215.15a8,8,0,0,1-7.16,0L64,200.94,35.58,215.15A8,8,0,0,1,24,208V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56Zm-16,0H40V195.06l20.42-10.22a8,8,0,0,1,7.16,0L96,199.06l28.42-14.22a8,8,0,0,1,7.16,0L160,199.06l28.42-14.22a8,8,0,0,1,7.16,0L216,195.06Z"></path></svg>
+</a>
+<a href="{{h.info}}" aria-label="{{L.info}}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: transparent; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path></svg>
+</a>
+</span>
+</header>
+<sc-if value="{{isFull}}" hint-placeholder-val="{{ true }}">
+<section aria-label="{{L.live}}" class="lo" style="position: relative">
+<div class="a" style="animation-name: loCard; position: relative; padding: 10px 14px; border-radius: 20px; background: {{c.card}}; box-shadow: inset 0 0 0 1px {{c.line}}">
+<div class="a loStart" style="animation-name: loA; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 1; display: flex; flex-direction: column">
+<span style="font-size: 13px; font-weight: 600; color: {{c.sec}}">{{L.order}}</span>
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 17px; color: {{c.ink}}">{{L.eta}}</span>
+</span>
+<a href="tel:02323322100" aria-label="{{L.call}}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: #B9EF14; color: #0A0A0A; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="#0A0A0A" style="flex: none"><path d="M222.37,158.46l-47.11-21.11-.13-.06a16,16,0,0,0-15.17,1.4,8.12,8.12,0,0,0-.75.56L134.87,160c-15.42-7.49-31.34-23.29-38.83-38.51l20.78-24.71c.2-.25.39-.5.57-.77a16,16,0,0,0,1.32-15.06l0-.12L97.54,33.64a16,16,0,0,0-16.62-9.52A56.26,56.26,0,0,0,32,80c0,79.4,64.6,144,144,144a56.26,56.26,0,0,0,55.88-48.92A16,16,0,0,0,222.37,158.46ZM176,208A128.14,128.14,0,0,1,48,80,40.2,40.2,0,0,1,82.87,40a.61.61,0,0,0,0,.12l21,47L83.2,111.86a6.13,6.13,0,0,0-.57.77,16,16,0,0,0-1,15.7c9.06,18.53,27.73,37.06,46.46,46.11a16,16,0,0,0,15.75-1.14,8.44,8.44,0,0,0,.74-.56L168.89,152l47,21.05h0s.08,0,.11,0A40.21,40.21,0,0,1,176,208Z"></path></svg>
+</a>
+<a href="{{h.detail}}" style="flex: none; height: 44px; padding: 0 14px; border-radius: 22px; box-shadow: inset 0 0 0 1px {{c.line2}}; display: flex; align-items: center; font-size: 14px; font-weight: 600; text-decoration: none">{{L.detail}}</a>
+</div>
+<div style="position: relative; height: 10px; margin: 0 5px">
+<span style="position: absolute; left: 0; right: 0; top: 4px; height: 2px; border-radius: 1px; background: {{c.line}}"></span>
+<span class="a" style="animation-name: loFill; position: absolute; left: 0; right: 0; top: 4px; height: 2px; border-radius: 1px; background: {{c.dot}}; transform-origin: 0 50%"></span>
+<span style="position: absolute; left: calc(0.00% - 3px); top: 2px; width: 6px; height: 6px; border-radius: 3px; background: {{c.line2}}"></span>
+<span style="position: absolute; left: calc(33.33% - 3px); top: 2px; width: 6px; height: 6px; border-radius: 3px; background: {{c.line2}}"></span>
+<span style="position: absolute; left: calc(66.66% - 3px); top: 2px; width: 6px; height: 6px; border-radius: 3px; background: {{c.line2}}"></span>
+<span style="position: absolute; left: calc(100.00% - 3px); top: 2px; width: 6px; height: 6px; border-radius: 3px; background: {{c.line2}}"></span>
+<span class="a" style="animation-name: loDot; position: absolute; left: -5px; top: 0; width: 10px; height: 10px; border-radius: 5px; background: {{c.dot}}"></span>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600">
+<span style="position: relative; color: {{c.sec}}">{{L.s0}}<span class="a" aria-hidden="true" style="animation-name: loS0; position: absolute; inset: 0; color: {{c.ink}}">{{L.s0}}</span></span>
+<span style="position: relative; color: {{c.sec}}">{{L.s1}}<span class="a" aria-hidden="true" style="animation-name: loS1; position: absolute; inset: 0; color: {{c.ink}}">{{L.s1}}</span></span>
+<span style="position: relative; color: {{c.sec}}">{{L.s2}}<span class="a" aria-hidden="true" style="animation-name: loS2; position: absolute; inset: 0; color: {{c.ink}}">{{L.s2}}</span></span>
+<span style="position: relative; color: {{c.sec}}">{{L.s3}}<span class="a" aria-hidden="true" style="animation-name: loS3; position: absolute; inset: 0; color: {{c.ink}}">{{L.s3}}</span></span>
+</div>
+</div>
+<div class="a loEnd" aria-hidden="true" style="animation-name: loB; position: absolute; inset: 10px 14px; display: flex; align-items: center; gap: 12px">
+<img src="/_blob/6c2e79e51144835926a0449bd0908c04" alt="" style="width: 66px; height: 49px; flex: none">
+<span style="flex: 1; display: flex; flex-direction: column">
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 18px">{{L.logged}}</span>
+<span style="font-size: 13px; color: {{c.sec}}">{{L.product}} <span aria-hidden="true" style="display: inline-block; width: 6px"></span>[N kcal] <span aria-hidden="true" style="display: inline-block; width: 6px"></span>eatkcal</span>
+</span>
+<span style="height: 44px; padding: 0 16px; border-radius: 22px; background: #B9EF14; color: #0A0A0A; display: flex; align-items: center; font-size: 15px; font-weight: 600">{{L.view}}</span>
+</div>
+</div>
+</section>
+</sc-if>
+<a href="{{h.macro}}" style="height: 44px; padding: 0 14px; border-radius: 22px; background: {{c.nested}}; display: flex; align-items: center; gap: 10px; text-decoration: none; font-size: 13px">
+<span style="flex: 1">{{L.mPre}}<b>[N] Macro</b>{{L.mPost}}</span>
+<span aria-hidden="true" style="display: flex; gap: 4px">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.ink}}"></span>
+<span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.ink}}"></span>
+<span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.ink}}"></span>
+<span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.line2}}"></span>
+<span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.line2}}"></span>
+</span>
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 256 256" fill="{{c.sec}}" style="flex: none"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"></path></svg>
+</a>
+<a href="{{h.addr}}" style="min-height: 52px; padding: 6px 14px; border-radius: 18px; background: {{c.card}}; box-shadow: inset 0 0 0 1px {{c.line}}; display: flex; align-items: center; gap: 10px; text-decoration: none">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z"></path></svg>
+<span style="flex: 1; display: flex; flex-direction: column">
+<span style="font-size: 13px; color: {{c.sec}}">{{L.delivery}}</span>
+<span style="font-size: 15px; font-weight: 600">{{L.addr}}</span>
+</span>
+<span style="height: 30px; padding: 0 10px; border-radius: 15px; background: {{c.nested}}; display: flex; align-items: center; font-size: 13px; font-weight: 700">{{L.now}}</span>
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 256 256" fill="{{c.sec}}" style="flex: none"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path></svg>
+</a>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="banners" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,190px"></dc-import></div>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="chips" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,44px"></dc-import></div>
+<sc-if value="{{isFull}}" hint-placeholder-val="{{ true }}">
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="reorder" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,203px"></dc-import></div>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="kcal" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,365px"></dc-import></div>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="plan" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,361px"></dc-import></div>
+</sc-if>
+<sc-if value="{{isNew}}" hint-placeholder-val="{{ true }}">
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="kcal" st="empty" theme="{{theme}}" lang="{{lang}}" hint-size="430px,213px"></dc-import></div>
+</sc-if>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="pack" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,321px"></dc-import></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+<h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; color: {{c.ink}}">{{L.stores}}</h2>
+</div>
+<div class="hs" role="list" aria-label="{{L.stores}}">
+<sc-for list="{{stores}}" as="s" hint-placeholder-count="3">
+<a href="{{h.store}}" style="flex: none; width: 236px; border-radius: 20px; overflow: hidden; background: {{c.card}}; box-shadow: inset 0 0 0 1px {{c.line}}; text-decoration: none">
+<img src="{{s.img}}" alt="" style="display: block; width: 236px; height: 92px; object-fit: cover; border-radius: 0px; flex: none">
+<div style="padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 3px">
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 17px">{{s.name}}</span>
+<!-- Tur 26h: puan = son 3 ayın değerlendirme ortalaması (yarım yıldız). 10'dan az değerlendirme → yıldız yerine "Yeni" rozeti. -->
+<span style="display: flex; align-items: center; gap: 6px; min-height: 22px">
+<sc-if value="{{s.rated}}" hint-placeholder-val="{{ true }}">
+<span role="img" aria-label="{{s.aria}}" style="display: inline-flex; align-items: center; gap: 6px">
+<span aria-hidden="true" style="display: inline-flex; gap: 1px">
+<sc-for list="{{s.stars}}" as="st" hint-placeholder-count="5">
+<span style="position: relative; width: 14px; height: 14px; flex: none"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="{{c.ink}}" style="position: absolute; inset: 0"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"></path></svg><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{st.w}}; overflow: hidden"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="{{c.ink}}" style="display: block"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg></span></span>
+</sc-for>
+</span>
+<b aria-hidden="true" style="font-size: 14px; color: {{c.ink}}; font-variant-numeric: tabular-nums">{{s.val}}</b>
+</span>
+</sc-if>
+<sc-if value="{{s.isNew}}" hint-placeholder-val="{{ false }}">
+<span role="img" aria-label="{{L.newAria}}" style="height: 22px; padding: 0 8px; border-radius: 11px; background: #B9EF14; color: #0A0A0A; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center">{{L.newB}}</span>
+</sc-if>
+<span style="margin-left: auto; font-size: 13px; color: {{c.sec}}; white-space: nowrap">{{L.eta2}}</span>
+</span>
+<span style="font-size: 13px; color: {{c.sec}}">{{s.sub}}</span>
+</div>
+</a>
+</sc-for>
+</div>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="top" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,308px"></dc-import></div>
+<div style="margin: 0 -16px"><dc-import name="EkSec" sec="invite" st="full" theme="{{theme}}" lang="{{lang}}" hint-size="430px,180px"></dc-import></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+<h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; color: {{c.ink}}">{{L.top}}</h2>
+</div>
+<div class="hs" role="list" aria-label="{{L.top}}">
+<sc-for list="{{revs}}" as="r" hint-placeholder-count="3">
+<figure style="flex: none; width: 260px; margin: 0; padding: 14px; border-radius: 20px; background: {{c.card}}; box-shadow: inset 0 0 0 1px {{c.line}}; display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; align-items: center; gap: 6px">
+<span aria-hidden="true" style="display: inline-flex; gap: 1px">
+<svg aria-hidden="true" width="13" height="13" viewBox="0 0 256 256" fill="{{c.ink}}" style="flex: none"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg>
+<svg aria-hidden="true" width="13" height="13" viewBox="0 0 256 256" fill="{{c.ink}}" style="flex: none"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg>
+<svg aria-hidden="true" width="13" height="13" viewBox="0 0 256 256" fill="{{c.ink}}" style="flex: none"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg>
+<svg aria-hidden="true" width="13" height="13" viewBox="0 0 256 256" fill="{{c.ink}}" style="flex: none"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg>
+<svg aria-hidden="true" width="13" height="13" viewBox="0 0 256 256" fill="{{c.ink}}" style="flex: none"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg>
+</span>
+<span style="font-size: 13px; color: {{c.sec}}">{{L.name}} <span aria-hidden="true" style="display: inline-block; width: 6px"></span>{{L.product}}</span>
+</span>
+<blockquote style="margin: 0; font-size: 14px; line-height: 1.4">{{L.quote}}</blockquote>
+</figure>
+</sc-for>
+</div>
+</div>
+</div>
+<a href="{{h.cart}}" class="cbIn" style="position: absolute; left: 16px; right: 16px; bottom: 98px; z-index: 26; height: 56px; box-sizing: border-box; padding: 0 14px 0 20px; border-radius: 28px; background: #B9EF14; color: #0A0A0A; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; text-decoration: none; box-shadow: 0 8px 24px {{c.shadow}}">
+<span style="font-size: 15px; font-weight: 700; white-space: nowrap">{{L.cartN}}</span>
+<span class="cbRoll" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center">[N] TL</span>
+<span style="justify-self: end; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; white-space: nowrap">{{L.goCart}}<svg aria-hidden="true" width="16" height="16" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"></path></svg></span>
+</a>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 100px; z-index: 25">
+<dc-import name="TabBarR3" theme="{{theme}}" lang="{{lang}}" active="eat" state="rest" hint-size="430px,100px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kind":{"editor":"enum","options":["full","yeni"],"default":"full"},"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"$preview":{"width":430,"height":2912}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var isNew = this.props.kind === 'yeni';
+    var P = this.props, dark = P.theme === 'dark', en = P.lang === 'en';
+    var sfx = dark ? '-Dark.dc.html' : '.dc.html', E = en ? 'EN' : '';
+    var c = dark
+      ? { bg: '#000000', card: '#1C1C1E', nested: '#2C2C2E', ink: '#F5F5F5', sec: '#A1A1A6', line: '#2C2C2E', line2: '#48484A', dot: '#B9EF14', shadow: 'rgba(0,0,0,0.5)' }
+      : { bg: '#F3F4F6', card: '#FFFFFF', nested: '#E9EBEE', ink: '#0A0A0A', sec: '#6B6B70', line: '#E9EBEE', line2: '#C3C7CC', dot: '#4A6B00', shadow: 'rgba(10,10,10,0.16)' };
+    var L = en
+      ? { search: 'Search products', orders: 'My orders', info: 'Delivery info', live: 'Live order', order: 'Order [KCAL-XXXX]', eta: 'Arriving in about [N] min', call: 'Call support: 0232 332 21 00', detail: 'Details',
+          s0: 'Received', s1: 'Preparing', s2: 'On the way', s3: 'Delivered', logged: 'Logged to Dinner', product: '[Product]', view: 'View',
+          mPre: '', mPost: ' to your next free meal', delivery: 'Delivery', addr: 'Home: Konak, İzmir', now: 'Now, 30–55 min',
+          offers: 'Offers (1 / 3)', offer: 'Offer', offerT: '[Offer title]', cats: 'Categories', all: 'All products', chips: ['Box deals', 'High protein', 'Fat burn', 'Balanced and healthy'],
+          stores: 'Stores', count: 'Last 3 months, [N] reviews', newB: 'New', newSub: 'Fewer than 10 reviews so far', newAria: 'New store, fewer than 10 reviews so far', eta2: '30–55 min', popular: 'Popular this week', seeAll: 'See all', top: 'Top reviews', name: '[Name]', quote: '“[Review]”',
+          cartN: 'Cart (2)', goCart: 'Go to cart' }
+      : { search: 'Ürün ara', orders: 'Siparişlerim', info: 'Teslimat bilgisi', live: 'Canlı sipariş', order: 'Sipariş [KCAL-XXXX]', eta: 'Tahmini varış [N] dk', call: 'Destek hattını ara: 0232 332 21 00', detail: 'Detay',
+          s0: 'Alındı', s1: 'Hazırlanıyor', s2: 'Yola çıktı', s3: 'Teslim edildi', logged: 'Akşam’a loglandı', product: '[Ürün]', view: 'Gör',
+          mPre: 'Bir sonraki ücretsiz öğüne ', mPost: '', delivery: 'Teslimat', addr: 'Ev: Konak, İzmir', now: 'Hemen, 30–55 dk',
+          offers: 'Kampanyalar (1 / 3)', offer: 'Kampanya', offerT: '[Kampanya başlığı]', cats: 'Kategoriler', all: 'Tüm ürünler', chips: ['Koliye özel fırsatlar', 'Yüksek protein', 'Yağ yakımı', 'Dengeli ve sağlıklı'],
+          stores: 'Mağazalar', count: 'Son 3 ay, [N] değerlendirme', newB: 'Yeni', newSub: 'Henüz 10 değerlendirme yok', newAria: 'Yeni mağaza, henüz 10 değerlendirme yok', eta2: '30–55 dk', popular: 'Bu hafta popüler', seeAll: 'Tümü', top: 'En iyi yorumlar', name: '[Ad]', quote: '“[Yorum]”',
+          cartN: 'Sepet (2)', goCart: 'Sepete git' };
+    // EN ekranlar EN hedeflere gider (FinXEN / FinXEN-Dark). FinPrMacro (profil ailesi) EN'i olmadığı için TR kalır.
+    var h = {
+      orders: 'FinEkOrders' + E + sfx, info: 'FinEkInfo' + E + sfx, detail: 'FinEkOrderDetail' + E + sfx, macro: 'FinPrMacro' + sfx,
+      addr: 'FinEkAddress' + E + sfx, store: 'FinEkStore' + E + sfx, product: 'FinEkProduct' + E + sfx, cart: 'FinEkCart' + E + sfx
+    };
+    return {
+      c: c, L: L, h: h, isNew: isNew, isFull: !isNew, theme: dark ? 'dark' : 'light', lang: en ? 'en' : 'tr',
+      camps: [{ img: '/_blob/c83fb10d95a50376d1d46bed71118356' }, { img: '/_blob/71d488add999490180743b36e0fef56b' }, { img: '/_blob/17081b7fbb2a49218ea02b46269e3313' }],
+      chips: L.chips.map(function (t) { return { t: t }; }),
+      // Puan: son 3 ay ortalaması, yarım yıldıza yuvarlanır. n < 10 → "Yeni". 4,5 örnek değerdir; sayılar [N].
+      stores: [{ name: 'kcalculate', img: '/_blob/70bae39a4a417f72ef0d4164159b979c', r: 4.5 }, { name: 'Breaking Fast', img: '/_blob/556643236dc01ae8e62a1031e0be0019', r: 0 }, { name: 'tera', img: '/_blob/420674b015670acee49985515502f432', r: 4.5 }].map(function (s) {
+        var rated = s.r > 0, v = Math.round(s.r * 2) / 2, vs = en ? v.toFixed(1) : v.toFixed(1).replace('.', ','), st = [];
+        for (var i = 1; i <= 5; i++) st.push({ w: (v >= i ? 100 : v >= i - 0.5 ? 50 : 0) + '%' });
+        return { name: s.name, img: s.img, rated: rated, isNew: !rated, stars: st, val: vs, sub: rated ? L.count : L.newSub,
+          aria: en ? vs + ' out of 5 stars, last 3 months' : '5 üzerinden ' + vs + ' yıldız, son 3 ay' };
+      }),
+      prods: [{ img: '/_blob/c83fb10d95a50376d1d46bed71118356' }, { img: '/_blob/70bae39a4a417f72ef0d4164159b979c' }, { img: '/_blob/71d488add999490180743b36e0fef56b' }, { img: '/_blob/17081b7fbb2a49218ea02b46269e3313' }],
+      revs: [{ k: 1 }, { k: 2 }, { k: 3 }]
+    };
+  }
+}
+</script>
+</body>
+</html>

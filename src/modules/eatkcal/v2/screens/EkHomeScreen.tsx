@@ -49,6 +49,7 @@ import { EkLocationGate, type GateState } from '../../gate/EkLocationGate';
 import type { GateSelection } from '../../gate/gateRule';
 import type { Product } from '../../../../types';
 import {
+  bannerImage,
   bannerTargetToEk,
   filterProductsByQuery,
   macroStrip,
@@ -62,7 +63,7 @@ const ALL_PRODUCTS_NAMES = ['Tüm Ürünler', 'Tum Urunler'];
 
 
 function EkHomeContent() {
-  const { c, t, insets } = useEk();
+  const { c, t, lang, insets } = useEk();
   // G16-S2: yeni kabukta bar indi → alt boşluk barın yeni üst kenarına göre;
   // bayrak kapalı kabukta (CustomTabBar) bugünkü değer AYNEN.
   const inR3 = useInR3Shell();
@@ -253,6 +254,7 @@ function EkHomeContent() {
       else if (target.kind === 'store') openStore(target.brandKey);
       else if (target.kind === 'category') selectCategory(target.categoryName);
       else if (target.kind === 'legacy') resolveNavigation(navigation, target.dest);
+      else if (target.kind === 'screen') (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate(target.name, target.params);
       // G17-S1 md.11: bannerın hedefi yoksa kampanya sayfası (Kampanyalar ve kuponlar).
       else (navigation as unknown as { navigate: (n: string) => void }).navigate('ProfileCoupons');
     },
@@ -428,7 +430,7 @@ function EkHomeContent() {
           {campaigns.length > 0 ? (
             <HRow label={t('eatkcal.v2.home.campaign')}>
               {campaigns.map((cell) => (
-                <CampaignCard key={cell.id} imageUri={cell.image_url as string} title={cell.title} onPress={() => onCampaign(cell)} />
+                <CampaignCard key={cell.id} imageUri={bannerImage(cell, lang) as string} title={cell.title} onPress={() => onCampaign(cell)} />
               ))}
             </HRow>
           ) : null}

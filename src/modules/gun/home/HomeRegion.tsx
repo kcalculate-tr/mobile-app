@@ -16,6 +16,7 @@ import { BrandLogo } from '../../../core/design/components/BrandLogo';
 import { FinSkeletonBlock } from '../../../core/design/components/FinSkeleton';
 import { useT } from '../../../core/i18n';
 import { fetchBannerRows, type BannerCell } from '../../../lib/banners';
+import { bannerImage } from '../../eatkcal/v2/model/homeData';
 import { fetchBrand } from '../../../lib/brands';
 import { fetchProducts } from '../../../lib/products';
 import { CampaignCard, HRow, STORE_CARD, StoreCard } from '../../eatkcal/v2/ui/home/cards';
@@ -91,7 +92,7 @@ export function HomeEatkcalShowcase({
   onSeeAll: () => void;
 }) {
   const k = useHomeTokens();
-  const { t: tt } = useT();
+  const { t: tt, lang } = useT();
   const { address, chip } = useDeliveryChip();
   const addressId = address ? String((address as { id?: string | number }).id ?? 'set') : null;
   const [state, setState] = useState<ShowcaseState>({ status: 'loading' });
@@ -130,7 +131,7 @@ export function HomeEatkcalShowcase({
             <View style={styles.block} testID="home-ek-campaigns">
               <HRow label={tt('eatkcal.v2.home.campaign')}>
                 {campaigns.map((cell) => (
-                  <CampaignCard key={cell.id} imageUri={cell.image_url as string} title={cell.title} onPress={() => onCampaign(cell)} />
+                  <CampaignCard key={cell.id} imageUri={bannerImage(cell, lang) as string} title={cell.title} onPress={() => onCampaign(cell)} />
                 ))}
               </HRow>
             </View>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>eatkcal ana sayfa bölümü</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+.ek-hs{display:flex;gap:10px;overflow:hidden;margin:0 -16px;padding:0 16px}
+.ek-sk{animation:ekSk 1800ms cubic-bezier(0.2,0,0,1) infinite}
+@keyframes ekSk{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.ek-sk{animation:none;opacity:.7}}
+</style>
+</helmet>
+<!-- One eatkcal home section, 430 pt wide. Props: sec (chips|reorder|kcal|plan|pack|top|invite), st (full|sel|toast|oos|empty|done|mine|skel), theme, lang. Same language as the approved eatkcal home: flat cards, 1 px line, Bricolage 20 section titles, 10 pt gaps. -->
+<div lang="{{langAttr}}" style="position: relative; width: 430px; box-sizing: border-box; padding: {{rootPad}}; isolation: isolate; background: {{t.bg}}; color: {{t.ink}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.4; display: flex; flex-direction: column; gap: 10px">
+<sc-if value="{{isGlow}}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="position: absolute; left: 8px; right: 8px; top: 0; bottom: 0; z-index: -1; border-radius: 28px; overflow: hidden; background: {{g.base}}; box-shadow: inset 0 0 0 1px {{g.edge}}"><span style="position: absolute; left: -60px; top: -70px; width: 240px; height: 240px; border-radius: 50%; background: {{g.a}}; filter: blur(48px)"></span><span style="position: absolute; right: -70px; top: 60px; width: 260px; height: 260px; border-radius: 50%; background: {{g.b}}; filter: blur(56px)"></span><span style="position: absolute; left: 90px; bottom: -110px; width: 280px; height: 220px; border-radius: 50%; background: {{g.c}}; filter: blur(52px)"></span></div></sc-if>
+
+<sc-if value="{{hasHead}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px">
+<div style="display: flex; align-items: center; gap: 8px; min-width: 0">
+<sc-if value="{{hasFlame}}" hint-placeholder-val="{{ false }}"><img src="/_blob/3fd5beea2b8158a05286b1a8c113dadf" alt="" style="flex: none; width: 30px; height: 30px; object-fit: contain"></sc-if>
+<div style="display: flex; flex-direction: column; min-width: 0"><h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; line-height: 1.2">{{head}}</h2><span style="font-size: 13px; color: {{t.sec}}">{{sub}}</span></div>
+</div>
+<sc-if value="{{hasAll}}" hint-placeholder-val="{{ false }}"><a href="#" style="flex: none; min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 600; color: {{t.ink}}; text-decoration: none">{{s.all}}</a></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isChips}}" hint-placeholder-val="{{ false }}">
+<div class="ek-hs" role="list" aria-label="{{s.cats}}">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="6"><a href="{{c.href}}" role="listitem" aria-current="{{c.cur}}" style="flex: none; height: 44px; padding: 0 14px; border-radius: 22px; background: {{c.bg}}; color: {{c.fg}}; box-shadow: {{c.sh}}; display: flex; align-items: center; font-size: 15px; font-weight: 600; white-space: nowrap; text-decoration: none">{{c.l}}</a></sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isReorder}}" hint-placeholder-val="{{ false }}">
+<div class="ek-hs" role="list" aria-label="{{head}}">
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="3">
+<div role="listitem" style="flex: none; width: 276px; box-sizing: border-box; padding: 12px; border-radius: 20px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span aria-hidden="true" style="display: flex">
+<sc-for list="{{o.imgs}}" as="im" hint-placeholder-count="3"><img src="{{im.src}}" alt="" style="width: 44px; height: 44px; border-radius: 22px; object-fit: cover; margin-left: {{im.ml}}; box-shadow: 0 0 0 2px {{t.card}}"></sc-for>
+</span>
+<span style="font-size: 13px; color: {{t.sec}}">{{o.date}}</span>
+</div>
+<span style="font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{o.names}}</span>
+<sc-if value="{{o.oos}}" hint-placeholder-val="{{ false }}"><span role="status" style="padding: 8px 10px; border-radius: 12px; background: {{t.nest}}; display: flex; align-items: center; gap: 8px; font-size: 13px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex: none"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.500v5.500M12 16.500v.010"></path></svg>{{s.oos}}</span></sc-if>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+<span style="display: flex; flex-direction: column"><span style="font-size: 12px; color: {{t.sec}}">{{s.total}}</span><span style="font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums">{{o.total}}</span></span>
+<button type="button" style="height: 44px; padding: 0 16px; border: none; border-radius: 22px; background: #B9EF14; color: #0A0A0A; font-family: inherit; font-size: 14px; font-weight: 700">{{s.reBtn}}</button>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isPcs}}" hint-placeholder-val="{{ false }}">
+<div class="ek-hs" role="list" aria-label="{{head}}" style="margin: {{hsM}}; padding: {{hsP}}">
+<sc-for list="{{pcs}}" as="p" hint-placeholder-count="3">
+<a href="#" role="listitem" style="flex: none; width: {{pw}}; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: {{t.ink}}">
+<span style="position: relative; display: block">
+<img src="{{p.img}}" alt="" style="display: block; width: {{pw}}; height: {{pw}}; object-fit: cover; border-radius: 16px">
+<span style="position: absolute; left: 8px; top: 8px; height: 22px; padding: 0 8px; border-radius: 11px; background: rgba(255,255,255,0.92); color: #0A0A0A; font-size: 13px; font-weight: 700; display: flex; align-items: center">{{p.kcal}}</span>
+<sc-if value="{{p.hasTag}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; left: 8px; bottom: 8px; height: 24px; padding: 0 9px; border-radius: 12px; background: #B9EF14; color: #0A0A0A; font-size: 12px; font-weight: 700; display: flex; align-items: center">{{p.tag}}</span></sc-if>
+<sc-if value="{{p.hasRank}}" hint-placeholder-val="{{ false }}"><span aria-label="{{p.rankA11y}}" style="position: absolute; left: 8px; bottom: 8px; width: 34px; height: 34px; border-radius: 17px; background: #0A0A0A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums">{{p.rank}}</span></sc-if>
+</span>
+<span style="font-size: 14px; font-weight: 600; line-height: 1.25; min-height: 35px">{{p.name}}</span>
+<sc-if value="{{p.hasMac}}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; height: 24px; padding: 0 8px; border-radius: 12px; background: {{kNest}}; backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums">{{p.mac}}</span></sc-if>
+<sc-if value="{{p.hasCnt}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: {{t.sec}}">{{p.cnt}}</span></sc-if>
+<span style="display: flex; align-items: center; justify-content: space-between"><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums">{{p.price}}</span><span role="button" aria-label="{{s.add}}" style="width: 44px; height: 44px; margin: -4px -6px -4px 0; display: flex; align-items: center; justify-content: center"><span style="width: 32px; height: 32px; border-radius: 16px; background: #B9EF14; color: #0A0A0A; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M5 12h14M12 5v14"></path></svg></span></span></span>
+</a>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isEmptyCta}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 16px; border-radius: 20px; background: {{g.glass}}; backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); box-shadow: inset 0 0 0 1px {{g.glassEdge}}; display: flex; align-items: center; gap: 14px">
+<img src="/_blob/3fd5beea2b8158a05286b1a8c113dadf" alt="" style="flex: none; width: 56px; height: 56px; object-fit: contain">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px"><span style="font-size: 15px; font-weight: 600; line-height: 1.3">{{s.kEmpty}}</span><a href="#" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 22px; background: #B9EF14; color: #0A0A0A; display: flex; align-items: center; font-size: 14px; font-weight: 700; text-decoration: none">{{s.kEmptyBtn}}</a></div>
+</div>
+</sc-if>
+
+<sc-if value="{{isPlan}}" hint-placeholder-val="{{ false }}">
+<div style="border-radius: 20px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; flex-direction: column">
+<sc-for list="{{plan}}" as="r" hint-placeholder-count="3">
+<div style="padding: 10px 12px; border-top: {{r.bt}}; display: flex; align-items: center; gap: 12px">
+<img src="{{r.img}}" alt="" style="flex: none; width: 56px; height: 56px; border-radius: 14px; object-fit: cover; opacity: {{r.op}}">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 12px; font-weight: 700; color: {{t.sec}}">{{r.meal}}</span><span style="font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span><span style="font-size: 13px; color: {{t.sec}}; font-variant-numeric: tabular-nums">{{r.meta}}</span></div>
+<span style="flex: none; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums">{{r.price}}</span>
+</div>
+</sc-for>
+<div style="padding: 10px 12px 12px; border-top: 1px solid {{t.line}}"><button type="button" style="width: 100%; height: 48px; border: none; border-radius: 24px; background: #B9EF14; color: #0A0A0A; font-family: inherit; font-size: 15px; font-weight: 700">{{s.planBtn}}</button></div>
+</div>
+</sc-if>
+
+<sc-if value="{{isPack}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 14px; border-radius: 20px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; flex-direction: column; gap: 12px">
+<div role="radiogroup" aria-label="{{s.packSize}}" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{sizes}}" as="z" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{z.sel}}" style="position: relative; min-height: 96px; padding: 12px; border: none; border-radius: 16px; background: {{z.bg}}; color: {{z.fg}}; box-shadow: {{z.sh}}; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; font-family: inherit"><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700">{{z.l}}</span><span style="font-size: 13px; opacity: 0.8; font-variant-numeric: tabular-nums">{{z.per}}</span><span style="margin-top: 6px; height: 22px; padding: 0 8px; border-radius: 11px; background: {{z.tagBg}}; color: {{z.tagFg}}; font-size: 12px; font-weight: 700; display: flex; align-items: center">{{z.off}}</span></button></sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; font-weight: 700; color: {{t.sec}}">{{s.days}}</span>
+<div role="group" aria-label="{{s.days}}" style="display: flex; justify-content: space-between">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7"><button type="button" aria-pressed="{{d.on}}" aria-label="{{d.full}}" style="width: 46px; height: 46px; border: none; border-radius: 23px; background: {{d.bg}}; color: {{d.fg}}; box-shadow: {{d.sh}}; font-family: inherit; font-size: 15px; font-weight: 700">{{d.l}}</button></sc-for>
+</div></div>
+<button type="button" style="height: 48px; border: none; border-radius: 24px; background: #B9EF14; color: #0A0A0A; font-family: inherit; font-size: 15px; font-weight: 700">{{s.packBtn}}</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isMine}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 14px; border-radius: 20px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; align-items: center; gap: 14px">
+<div role="img" aria-label="{{s.mineA11y}}" style="flex: none; position: relative; width: 72px; height: 72px"><svg aria-hidden="true" width="72" height="72" viewBox="0 0 72 72" style="transform: rotate(-90deg)"><circle cx="36" cy="36" r="29" fill="none" stroke="{{t.line}}" stroke-width="8"></circle><circle cx="36" cy="36" r="29" fill="none" stroke="{{t.limeLine}}" stroke-width="8" stroke-linecap="round" stroke-dasharray="127.5 182.2"></circle></svg><span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700">7</span></div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700">{{s.mineLeft}}</span><span style="font-size: 13px; color: {{t.sec}}">{{s.mineNext}}</span><a href="#" style="align-self: flex-start; min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 700; color: {{t.ink}}">{{s.mineBtn}}</a></div>
+</div>
+</sc-if>
+
+<sc-if value="{{isBans}}" hint-placeholder-val="{{ false }}">
+<div role="list" aria-label="{{s.bansA11y}}" style="display: flex; flex-direction: {{banDir}}; gap: {{banGap}}; overflow: hidden; margin: 0 -16px; padding: 0 16px">
+<sc-for list="{{bans}}" as="b" hint-placeholder-count="3">
+<div role="listitem" style="flex: none; display: flex; flex-direction: column; gap: 6px">
+<a href="{{b.href}}" style="width: {{banW}}; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: {{t.ink}}">
+<span role="img" aria-label="{{b.phA11y}}" style="width: {{banW}}; height: 104px; border-radius: 20px; background: {{t.ph}}; box-shadow: inset 0 0 0 1px {{t.line2}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: {{t.sec}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 16l4.500-4.500 4 4 3-3L20 17M15 9.500v.010"></path></svg><span style="font-size: 12px; font-weight: 600">{{b.ph}}</span></span>
+<span style="display: flex; flex-direction: column; gap: 2px; padding: 0 2px"><span style="font-size: 13px; font-weight: 600; color: {{t.sec}}">{{b.tag}}</span><span style="font-size: 15px; font-weight: 700; line-height: 1.25">{{b.t}}</span><span style="font-size: 13px; color: {{t.sec}}">{{b.d}}</span></span>
+</a>
+<sc-if value="{{b.hasRule}}" hint-placeholder-val="{{ false }}"><span style="width: {{banW}}; font-size: 12px; line-height: 1.4; color: {{t.sec}}">{{b.rule}}</span></sc-if>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{hasDots}}" hint-placeholder-val="{{ false }}"><div role="img" aria-label="{{s.dotsA11y}}" style="display: flex; justify-content: center; gap: 5px; padding-top: 2px">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="6"><span style="width: {{d.w}}; height: 6px; border-radius: 3px; background: {{d.bg}}"></span></sc-for>
+</div></sc-if>
+</sc-if>
+
+<sc-if value="{{isSkel}}" hint-placeholder-val="{{ false }}">
+<div role="status" aria-label="{{s.loading}}" style="display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{skRows}}" as="row" hint-placeholder-count="2"><div style="display: flex; gap: 10px; overflow: hidden; margin: {{hsM}}; padding: {{hsP}}">
+<sc-for list="{{row}}" as="k" hint-placeholder-count="3"><span class="ek-sk" style="flex: none; width: {{k.w}}; height: {{k.h}}; border-radius: {{k.r}}; background: {{skBg}}"></span></sc-for>
+</div></sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isToast}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="align-self: center; margin-top: 2px; min-height: 52px; padding: 6px 8px 6px 16px; border-radius: 26px; background: {{t.glass}}; backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); box-shadow: inset 0 0 0 1px {{t.glassEdge}}, 0 8px 28px {{t.glassSh}}; display: flex; align-items: center; gap: 12px"><span style="width: 24px; height: 24px; border-radius: 12px; background: #B9EF14; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span style="font-size: 14px; font-weight: 700">{{s.toast}}</span><a href="#" style="height: 40px; padding: 0 14px; border-radius: 20px; background: {{t.ink}}; color: {{t.bg}}; display: flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none">{{s.toCart}}</a></div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"sec":{"editor":"enum","options":["banners","chips","reorder","kcal","plan","pack","top","invite"],"default":"chips"},"st":{"editor":"enum","options":["full","all","sel","toast","oos","empty","done","mine","skel"],"default":"full"},"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"$preview":{"width":430,"height":320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var P = this.props, dark = P.theme === 'dark', en = P.lang === 'en', sec = P.sec || 'chips', st = P.st || 'full';
+    var T = function (a, b) { return en ? b : a; };
+    var LIME = '#B9EF14';
+    var t = dark
+      ? { bg: '#000000', card: '#1C1C1E', ink: '#F5F5F5', sec: '#A1A1A6', line: '#2C2C2E', line2: '#48484A', nest: '#2C2C2E', skel: '#2C2C2E', ph: 'repeating-linear-gradient(135deg, #1C1C1E 0 12px, #222225 12px 24px)', limeLine: LIME, glass: 'rgba(28,28,30,0.82)', glassEdge: 'rgba(255,255,255,0.12)', glassSh: 'rgba(0,0,0,0.5)' }
+      : { bg: '#F3F4F6', card: '#FFFFFF', ink: '#0A0A0A', sec: '#6B6B70', line: '#E9EBEE', line2: '#C3C7CC', nest: '#E9EBEE', skel: '#DCDEE2', ph: 'repeating-linear-gradient(135deg, #FFFFFF 0 12px, #F6F7F9 12px 24px)', limeLine: '#4A6B00', glass: 'rgba(255,255,255,0.86)', glassEdge: 'rgba(10,10,10,0.08)', glassSh: 'rgba(10,10,10,0.16)' };
+    var sfx = (en ? 'EN' : 'TR') + (dark ? '-Dark' : '');
+    var skel = st === 'skel';
+    var glow = sec === 'kcal';
+    var IMG = { somon: '/_blob/c83fb10d95a50376d1d46bed71118356', kinoa: '/_blob/70bae39a4a417f72ef0d4164159b979c', merc: '/_blob/420674b015670acee49985515502f432', coban: '/_blob/71d488add999490180743b36e0fef56b', men: '/_blob/556643236dc01ae8e62a1031e0be0019', yog: '/_blob/17081b7fbb2a49218ea02b46269e3313', bas: '/_blob/acf792367bbf6c6e6b3c0ece055890f3' };
+    var NM = {
+      bas: T('Basmati Üzeri Tavuk Fileto ve Brokoli', 'Chicken Fillet and Broccoli on Basmati'), somon: T('Izgara somon ve yeşillik', 'Grilled salmon and greens'), kinoa: T('Tavuk kinoa kase', 'Chicken quinoa bowl'),
+      merc: T('Mercimek çorbası', 'Lentil soup'), coban: T('Çoban salata', 'Shepherd’s salad'), men: 'Menemen', yog: T('Süzme yoğurt kasesi', 'Strained yogurt bowl')
+    };
+    var PRC = { bas: 450, somon: 390, kinoa: 285, merc: 140, coban: 150, men: 190, yog: 165 };
+    var mac = function (p, k, y) { return T('P ' + p + '  K ' + k + '  Y ' + y, 'P ' + p + '  C ' + k + '  F ' + y); };
+    var pc = function (key, kcal, o) { o = o || {}; return { img: IMG[key], name: NM[key], kcal: kcal + ' kcal', price: PRC[key] + ' TL', tag: o.tag || '', hasTag: !!o.tag, mac: o.mac || '', hasMac: !!o.mac, rank: o.rank || '', hasRank: !!o.rank, rankA11y: o.rank ? T('Sıra ', 'Rank ') + o.rank : '', cnt: o.rank ? T('Bu hafta [N] sipariş', '[N] orders this week') : '', hasCnt: !!o.rank }; };
+    var fits = T('Gününe uyar', 'Fits your day'), light = T('Hafif', 'Light');
+    var s = {
+      all: T('Tümü', 'See all'), cats: T('Kategoriler', 'Categories'), bansA11y: T('Kampanyalar', 'Offers'), dotsA11y: T('1 / 6', '1 of 6'), total: T('Toplam', 'Total'), reBtn: T('Tekrar sipariş ver', 'Order again'), add: T('Sepete ekle', 'Add to cart'),
+      oos: T('1 ürün stokta yok; kalan 2 ürün eklenir.', '1 item is out of stock; the other 2 will be added.'),
+      kEmpty: T('Kalori hedefini belirle, sana uygun öğünleri gösterelim', 'Set your calorie goal and we will show meals that fit'), kEmptyBtn: T('Hedefimi belirle', 'Set my goal'),
+      planBtn: T('Hepsini sepete ekle', 'Add all to cart'), packSize: T('Paket boyutu', 'Pack size'), days: T('Teslimat günleri', 'Delivery days'), packBtn: T('Öğünleri seç', 'Choose meals'),
+      mineA11y: T('10 öğünden 7\'si kaldı', '7 of 10 meals left'), mineLeft: T('7 öğün kaldı', '7 meals left'), mineNext: T('Sıradaki teslimat: Çarşamba, 12.00–13.00', 'Next delivery: Wednesday, 12:00–13:00'), mineBtn: T('Paketimi yönet', 'Manage my pack'),
+      invT: T('Arkadaşını davet et', 'Invite a friend'), invD: T('İkinize de [N] TL kupon', '[N] TL coupon for both of you'), invBtn: T('Davet et', 'Invite'),
+      loading: T('Yükleniyor', 'Loading'), toast: T('2 ürün sepete eklendi', '2 items added to cart'), toCart: T('Sepete git', 'Go to cart')
+    };
+    var H = {
+      chips: ['', ''], banners: ['', ''],
+      reorder: [T('Tekrar sipariş ver', 'Order again'), T('Son siparişlerin', 'Your recent orders')],
+      kcal: st === 'done' ? [T('Hafif bir şey?', 'Something light?'), T('Bugünkü hedefin doldu', 'You reached today’s goal')] : (st === 'empty' ? [T('Kalan kalorine uygun öğünler', 'Meals that fit your remaining calories'), ''] : [T('Bugün 760 kcal kaldı', '760 kcal left today'), T('Kalan kalorine uygun öğünler', 'Meals that fit what is left')]),
+      plan: [T('Planından sipariş et', 'Order from your plan'), T('Bugünün plan öğünleri', 'Today’s plan meals')],
+      pack: st === 'mine' ? [T('Paketim', 'My pack'), T('Haftalık öğün paketi', 'Weekly meal pack')] : [T('Haftalık öğün paketi', 'Weekly meal pack'), T('Haftanı tek seferde planla', 'Plan your week in one go')],
+      top: [T('Bu hafta en çok sipariş edilenler', 'Most ordered this week'), ''],
+      invite: ['', '']
+    }[sec];
+    var bph = T('Banner görseli', 'Banner image');
+    var BAN = [
+      [T('Davet', 'Invite'), T('Arkadaşını davet et', 'Invite a friend'), T('İkinize de [N] TL kupon', '[N] TL coupon for both of you'), T('Davet et', 'Invite'), 'Davet-' + sfx + '.dc.html', T('Hedef: Davet ekranı. Giriş yapmış her kullanıcıda.', 'Target: Invite screen. Every signed-in user.')],
+      [T('Paket', 'Pack'), T('Haftalık öğün paketi', 'Weekly meal pack'), T('5 ve 10 öğünde [%N] indirim', '[N%] off 5 and 10 meals'), T('Paketi kur', 'Build pack'), 'Paket1-' + sfx + '.dc.html', T('Hedef: paket sheet\'i. Aktif paketi olanda gizli.', 'Target: pack sheet. Hidden with an active pack.')],
+      [T('Kampanya', 'Offer'), T('İlk siparişine özel', 'For your first order'), T('[%N] indirim', '[N%] off'), T('İncele', 'View'), '#', T('Hedef: kampanya detayı. Yalnız hiç siparişi olmayanda.', 'Target: offer detail. Only users with no orders.')],
+      [T('Kampanya', 'Offer'), T('Koliye özel fırsatlar', 'Box deals'), T('[Kampanya açıklaması]', '[Offer description]'), T('İncele', 'View'), '#', T('Hedef: Koliye özel fırsatlar listesi. Her kullanıcıda.', 'Target: Box deals list. Every user.')],
+      [T('Teslimat', 'Delivery'), T('Ücretsiz teslimat', 'Free delivery'), T('[N] TL ve üzeri siparişlerde', 'On orders of [N] TL or more'), T('Sipariş ver', 'Order'), '#', T('Hedef: tüm ürünler. Kampanya tarihleri arasında.', 'Target: all products. Within the offer dates.')],
+      [T('Macro', 'Macro'), T('[N] kat Macro puan', '[N]x Macro points'), T('[Tarih] tarihine kadar', 'Until [Date]'), T('İncele', 'View'), '#', T('Hedef: Macro sayfası. Giriş yapmış her kullanıcıda.', 'Target: Macro page. Every signed-in user.')]
+    ].map(function (a) { return { tag: a[0], t: a[1], d: a[2], cta: a[3], href: a[4], rule: a[5], hasRule: false, ph: '[' + a[1] + ']', phA11y: bph + ': ' + a[1] }; });
+    var chipL = [T('Tüm ürünler', 'All'), T('Yüksek protein', 'High protein'), T('500 kcal altı', 'Under 500 kcal'), 'Vegan', T('Düşük karbonhidrat', 'Low carb'), T('Tatlı', 'Dessert'), T('İçecek', 'Drinks')];
+    var selIdx = st === 'sel' ? 1 : 0;
+    var d7 = en ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['P', 'S', 'Ç', 'P', 'C', 'C', 'P'], d7f = en ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] : ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    var SK = {
+      banners: [[[300, 104, 20], [300, 104, 20]], [[70, 14, 6], [220, 14, 6], [70, 14, 6]], [[200, 16, 6], [90, 16, 6], [200, 16, 6]]],
+      chips: [[[110, 44, 22], [130, 44, 22], [120, 44, 22], [90, 44, 22]]],
+      reorder: [[[180, 22, 8]], [[276, 168, 20], [276, 168, 20]]],
+      kcal: [[[220, 22, 8]], [[164, 164, 16], [164, 164, 16], [164, 164, 16]], [[120, 16, 6], [44, 16, 6], [120, 16, 6]]],
+      plan: [[[200, 22, 8]], [[398, 268, 20]]],
+      pack: [[[210, 22, 8]], [[398, 236, 20]]],
+      top: [[[280, 22, 8]], [[148, 148, 16], [148, 148, 16], [148, 148, 16]], [[110, 16, 6], [48, 16, 6], [110, 16, 6]]],
+      invite: [[[398, 104, 20]], [[60, 14, 6]], [[200, 16, 6]]]
+    }[sec];
+    return {
+      t: t, s: s, langAttr: en ? 'en' : 'tr',
+      hasHead: !!H[0] && !skel, head: H[0], sub: H[1], hasFlame: sec === 'kcal' && st === 'full', hasAll: (sec === 'top' || (sec === 'kcal' && st !== 'empty')) && !skel,
+      isChips: sec === 'chips' && !skel, chips: chipL.map(function (l, i) { var on = i === selIdx; return { l: l, cur: on ? 'true' : 'false', href: i === 1 ? 'Liste-' + sfx + '.dc.html' : '#', bg: on ? LIME : t.card, fg: on ? '#0A0A0A' : t.ink, sh: on ? 'none' : 'inset 0 0 0 1px ' + t.line }; }),
+      isReorder: sec === 'reorder' && !skel, orders: [
+        { keys: ['kinoa', 'merc', 'yog'], date: T('12 Kasım', '12 Nov') },
+        { keys: ['bas', 'coban'], date: T('8 Kasım', '8 Nov') },
+        { keys: ['somon', 'men', 'yog'], date: T('2 Kasım', '2 Nov') }
+      ].map(function (o, i) { return { imgs: o.keys.map(function (k, j) { return { src: IMG[k], ml: j ? '-14px' : '0' }; }), names: o.keys.map(function (k) { return NM[k]; }).join(', '), date: o.date, total: o.keys.reduce(function (a, k) { return a + PRC[k]; }, 0) + ' TL', oos: st === 'oos' && i === 0 }; }),
+      isToast: st === 'toast',
+      isGlow: glow, rootPad: glow ? '16px 16px 18px' : '0 16px', hsM: glow ? '0 -8px' : '0 -16px', hsP: glow ? '0 8px' : '0 16px',
+      g: dark ? { base: '#0D2617', edge: 'rgba(185,239,20,0.14)', a: 'rgba(185,239,20,0.30)', b: 'rgba(31,122,62,0.75)', c: 'rgba(254,204,170,0.20)', glass: 'rgba(255,255,255,0.08)', glassEdge: 'rgba(255,255,255,0.14)' }
+              : { base: '#FFF4EA', edge: 'rgba(10,10,10,0.05)', a: 'rgba(185,239,20,0.55)', b: 'rgba(254,204,170,0.95)', c: 'rgba(254,217,189,0.90)', glass: 'rgba(255,255,255,0.62)', glassEdge: 'rgba(255,255,255,0.75)' },
+      kNest: glow ? (dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.62)') : t.nest, skBg: glow ? (dark ? 'rgba(255,255,255,0.10)' : 'rgba(10,10,10,0.07)') : t.skel,
+      isPcs: (sec === 'kcal' && (st === 'full' || st === 'done')) || (sec === 'top' && !skel), pw: sec === 'top' ? '148px' : '164px',
+      pcs: sec === 'top'
+        ? [pc('bas', 820, { rank: '1' }), pc('kinoa', 540, { rank: '2' }), pc('somon', 480, { rank: '3' }), pc('merc', 220, { rank: '4' })]
+        : (st === 'done' ? [pc('coban', 180, { tag: light, mac: mac(4, 14, 12) }), pc('yog', 160, { tag: light, mac: mac(14, 9, 6) }), pc('merc', 220, { tag: light, mac: mac(12, 30, 5) })] : [pc('kinoa', 540, { tag: fits, mac: mac(42, 48, 16) }), pc('somon', 480, { tag: fits, mac: mac(38, 12, 28) }), pc('merc', 220, { tag: fits, mac: mac(12, 30, 5) })]),
+      isEmptyCta: sec === 'kcal' && st === 'empty',
+      isPlan: sec === 'plan' && !skel, plan: [[T('Kahvaltı', 'Breakfast'), 'men', 320], [T('Öğle', 'Lunch'), 'kinoa', 540], [T('Akşam', 'Dinner'), 'somon', 480]].map(function (a, i) { return { meal: a[0], img: IMG[a[1]], name: NM[a[1]], meta: a[2] + ' kcal', price: PRC[a[1]] + ' TL', bt: i ? '1px solid ' + t.line : 'none', op: '1' }; }),
+      isPack: sec === 'pack' && st !== 'mine' && !skel, sizes: [[T('5 öğün', '5 meals'), 0], [T('10 öğün', '10 meals'), 1]].map(function (a) { var on = a[1] === 1; return { l: a[0], per: T('[N] TL / öğün', '[N] TL / meal'), off: T('[%N] indirim', '[N%] off'), sel: on ? 'true' : 'false', bg: on ? LIME : t.nest, fg: on ? '#0A0A0A' : t.ink, sh: 'none', tagBg: on ? '#0A0A0A' : t.card, tagFg: on ? '#FFFFFF' : t.ink }; }),
+      days: d7.map(function (l, i) { var on = [0, 2, 4].indexOf(i) >= 0; return { l: l, full: d7f[i], on: on ? 'true' : 'false', bg: on ? LIME : t.nest, fg: on ? '#0A0A0A' : t.ink, sh: 'none' }; }),
+      isMine: sec === 'pack' && st === 'mine',
+      isBans: (sec === 'banners' || sec === 'invite') && !skel, bans: sec === 'invite' ? [BAN[0]] : (st === 'all' ? BAN.map(function (b) { b.hasRule = true; return b; }) : BAN),
+      banW: (sec === 'invite' || st === 'all') ? '398px' : '300px', banDir: st === 'all' ? 'column' : 'row', banGap: st === 'all' ? '14px' : '10px',
+      hasDots: sec === 'banners' && st === 'full', dots: BAN.map(function (b, i) { return { w: i ? '6px' : '18px', bg: i ? t.line2 : t.limeLine }; }),
+      isSkel: skel, skRows: (SK || []).map(function (row) { return row.map(function (k) { return { w: k[0] + 'px', h: k[1] + 'px', r: k[2] + 'px' }; }); })
+    };
+  }
+}
+</script>
+</body>
+</html>

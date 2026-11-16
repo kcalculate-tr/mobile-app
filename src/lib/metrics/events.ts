@@ -58,6 +58,8 @@ const BARCODE_MISS = ['missing', 'no_kcal', 'timeout', 'network', 'http', 'offli
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 const SHARE_TARGETS = ['post', 'day', 'meal', 'product', 'app', 'report', 'streak'] as const;
 const UI = ['ek_v2', 'legacy', 'fin'] as const;
+// G56-S1: eatkcal ana sayfa bölümleri (EkSec `sec`).
+const EK_SECS = ['banners', 'chips', 'reorder', 'kcal', 'plan', 'top', 'invite'] as const;
 
 // Sipariş hunisi olaylarına eklenen kaynak alanları (attribution.ts doldurur).
 export const ATTRIBUTION_PROPS = {
@@ -242,6 +244,11 @@ export const EVENTS = {
   home_coach_prompts_tap: { category: 'lifecycle', tr: 'Ana sayfa Koç hazır sorusu dokunuşu', en: 'Home coach prompt tap', props: { prompt: ['dinner', 'protein', 'week'] } },
   home_streak_view: { category: 'lifecycle', tr: 'Ana sayfa seri ve haftalık özet görüldü', en: 'Home streak and week summary viewed', props: {} },
   home_streak_tap: { category: 'lifecycle', tr: 'Ana sayfa seri kartı dokunuşu', en: 'Home streak card tap', props: {} },
+  // G56-S1: eatkcal ana sayfa sipariş artırma bölümleri + davet (kişisel veri / sağlık değeri YOK).
+  eatkcal_sec_view: { category: 'commerce', tr: 'eatkcal ana sayfa bölümü görüldü', en: 'eatkcal home section viewed', props: { sec: EK_SECS, st: 'text' } },
+  eatkcal_sec_tap: { category: 'commerce', tr: 'eatkcal ana sayfa bölümü dokunuşu', en: 'eatkcal home section tap', props: { sec: EK_SECS, action: 'text' } },
+  referral_share: { category: 'commerce', tr: 'Davet kodu paylaşıldı / kopyalandı', en: 'Invite code shared / copied', props: { method: ['share', 'copy'] } },
+  referral_apply: { category: 'commerce', tr: 'Davet kodu girildi', en: 'Invite code applied', props: { result: ['ok', 'invalid_code', 'own_code', 'already_applied', 'has_orders', 'same_person', 'disabled', 'not_signed_in', 'error'], where: ['cart'] } },
   // G54-S1 md.3: 1.1.0 oryantasyonu (tanıtım sayfası intro_1..4 ya da ipucu adı; kişisel veri yok).
   orient_v110_view: { category: 'lifecycle', tr: '1.1.0 oryantasyon adımı görüldü', en: '1.1.0 orientation step viewed', props: { step: 'text' } },
   orient_v110_complete: { category: 'lifecycle', tr: '1.1.0 oryantasyonu tamamlandı', en: '1.1.0 orientation completed', props: {} },

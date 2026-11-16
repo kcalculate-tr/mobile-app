@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  bannerImage,
   bannerTargetToEk,
   cardKcal,
   cardPrice,
@@ -102,4 +103,19 @@ test('cardPrice / cardKcal: utils/price ile; veri yoksa rozet gizli', () => {
   assert.equal(cardKcal({ calories: 512.4 }), 512);
   assert.equal(cardKcal({ calories: 0 }), null);
   assert.equal(cardKcal({}), null);
+});
+
+test('16 Kas: kampanya banner hedefleri — paywall (plan + yıllık) ve davet ekranı', () => {
+  assert.deepEqual(bannerTargetToEk('SubPaywall:fresh:yearly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'fresh', yearly: true } });
+  assert.deepEqual(bannerTargetToEk('SubPaywall:balance:monthly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'balance', yearly: false } });
+  assert.deepEqual(bannerTargetToEk('SubPaywall'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner' } });
+  assert.deepEqual(bannerTargetToEk('Invite'), { kind: 'screen', name: 'EkInvite' });
+});
+
+test('16 Kas: banner görseli cihaz diline göre, EN yoksa TR', () => {
+  const cell = { image_url: 'tr.webp', image_url_en: 'en.webp' };
+  assert.equal(bannerImage(cell, 'en'), 'en.webp');
+  assert.equal(bannerImage(cell, 'tr'), 'tr.webp');
+  assert.equal(bannerImage({ image_url: 'tr.webp', image_url_en: null }, 'en'), 'tr.webp');
+  assert.equal(bannerImage({ image_url: 'tr.webp' }, 'en'), 'tr.webp');
 });

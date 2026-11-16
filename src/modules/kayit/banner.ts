@@ -31,6 +31,7 @@ export function openCampaign(
 ): void {
   const target = bannerTargetToEk(cell.navigate_to ?? cell.link);
   if (target.kind === 'legacy') deps.resolve(nav, target.dest);
+  else if (target.kind === 'screen') nav.navigate(target.name, target.params);
   else if (target.kind === 'none') nav.navigate('ProfileCoupons');
   else deps.onCampaign(cell);
 }

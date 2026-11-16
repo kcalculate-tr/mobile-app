@@ -23,6 +23,7 @@ import { WEIGHT_CHART, weightChartGeometry } from '../ui/chart';
 import { GLASS } from '../../personalPlan/ui/parts';
 import { fetchRecipeCatalog } from '../../plan/client';
 import { fetchBannerRows, type BannerCell } from '../../../lib/banners';
+import { bannerImage } from '../../eatkcal/v2/model/homeData';
 import { resolveNavigation } from '../../../lib/navigation';
 import { CachedImage } from '../../../components/CachedImage';
 import { ImagePreset, transformImageUrl } from '../../../lib/imageUrl';
@@ -182,7 +183,7 @@ export function CalcScreen() {
  * `vitrinIzmir` yalnız __DEV__ vitrini (bölge çözümü yerine İzmir).
  */
 function CampaignBanner({ forceIzmir }: { forceIzmir?: boolean }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const navigation = useNavigation<any>();
   const yeniSiparis = useFeature('yeni_siparis' as FlagKey);
   const region = useHomeRegion(!forceIzmir);
@@ -208,7 +209,7 @@ function CampaignBanner({ forceIzmir }: { forceIzmir?: boolean }) {
   return (
     <PressScale testID="kayit-banner" onPress={onPress} accessibilityRole="button" accessibilityLabel={cell.title?.trim() || t('kayit.plan.banner_label')} style={styles.banner}>
       {/* eatkcal CampaignCard ile aynı kaynak (bannerCampaign, kırpmasız oran). */}
-      <CachedImage uri={transformImageUrl(cell.image_url, ImagePreset.bannerCampaign) || cell.image_url} style={StyleSheet.absoluteFill as never} />
+      <CachedImage uri={transformImageUrl(bannerImage(cell, lang) ?? cell.image_url, ImagePreset.bannerCampaign) || bannerImage(cell, lang) || cell.image_url} style={StyleSheet.absoluteFill as never} />
     </PressScale>
   );
 }

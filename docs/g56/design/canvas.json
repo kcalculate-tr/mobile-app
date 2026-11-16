@@ -1,0 +1,953 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-16T09:00:00Z"
+ },
+ "title": "eatkcal Ana Sayfa — Kampanya Bölümleri",
+ "launch": {
+  "view": "canvas",
+  "page": "ana"
+ },
+ "pages": [
+  {
+   "id": "ana",
+   "name": "Ana sayfa"
+  },
+  {
+   "id": "hal",
+   "name": "Bölüm hâlleri"
+  },
+  {
+   "id": "ekran",
+   "name": "Ekranlar"
+  },
+  {
+   "id": "bilesen",
+   "name": "Bileşenler"
+  }
+ ],
+ "boards": {
+  "Ana-TR.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 430,
+   "h": 2912,
+   "title": "TR Açık",
+   "page": "ana"
+  },
+  "Ana-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 0,
+   "w": 430,
+   "h": 2912,
+   "title": "TR Koyu",
+   "page": "ana"
+  },
+  "Ana-EN.dc.html": {
+   "x": 1020,
+   "y": 0,
+   "w": 430,
+   "h": 2912,
+   "title": "EN Light",
+   "page": "ana"
+  },
+  "Ana-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 0,
+   "w": 430,
+   "h": 2912,
+   "title": "EN Dark",
+   "page": "ana"
+  },
+  "AnaYeni-TR.dc.html": {
+   "x": 0,
+   "y": 3392,
+   "w": 430,
+   "h": 2061,
+   "title": "TR Açık",
+   "page": "ana"
+  },
+  "AnaYeni-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 3392,
+   "w": 430,
+   "h": 2061,
+   "title": "TR Koyu",
+   "page": "ana"
+  },
+  "AnaYeni-EN.dc.html": {
+   "x": 1020,
+   "y": 3392,
+   "w": 430,
+   "h": 2061,
+   "title": "EN Light",
+   "page": "ana"
+  },
+  "AnaYeni-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 3392,
+   "w": 430,
+   "h": 2061,
+   "title": "EN Dark",
+   "page": "ana"
+  },
+  "AnaIsk-TR.dc.html": {
+   "x": 0,
+   "y": 5933,
+   "w": 430,
+   "h": 1990,
+   "title": "TR Açık",
+   "page": "ana"
+  },
+  "AnaIsk-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 5933,
+   "w": 430,
+   "h": 1990,
+   "title": "TR Koyu",
+   "page": "ana"
+  },
+  "AnaIsk-EN.dc.html": {
+   "x": 1020,
+   "y": 5933,
+   "w": 430,
+   "h": 1990,
+   "title": "EN Light",
+   "page": "ana"
+  },
+  "AnaIsk-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 5933,
+   "w": 430,
+   "h": 1990,
+   "title": "EN Dark",
+   "page": "ana"
+  },
+  "Hal-banners-TR.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 430,
+   "h": 1837,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-banners-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 0,
+   "w": 430,
+   "h": 1837,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-banners-EN.dc.html": {
+   "x": 1020,
+   "y": 0,
+   "w": 430,
+   "h": 1837,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-banners-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 0,
+   "w": 430,
+   "h": 1837,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-chips-TR.dc.html": {
+   "x": 0,
+   "y": 2317,
+   "w": 430,
+   "h": 374,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-chips-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 2317,
+   "w": 430,
+   "h": 374,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-chips-EN.dc.html": {
+   "x": 1020,
+   "y": 2317,
+   "w": 430,
+   "h": 374,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-chips-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 2317,
+   "w": 430,
+   "h": 374,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-reorder-TR.dc.html": {
+   "x": 0,
+   "y": 3171,
+   "w": 430,
+   "h": 1232,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-reorder-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 3171,
+   "w": 430,
+   "h": 1232,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-reorder-EN.dc.html": {
+   "x": 1020,
+   "y": 3171,
+   "w": 430,
+   "h": 1232,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-reorder-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 3171,
+   "w": 430,
+   "h": 1232,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-kcal-TR.dc.html": {
+   "x": 0,
+   "y": 4883,
+   "w": 430,
+   "h": 1504,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-kcal-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 4883,
+   "w": 430,
+   "h": 1504,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-kcal-EN.dc.html": {
+   "x": 1020,
+   "y": 4883,
+   "w": 430,
+   "h": 1504,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-kcal-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 4883,
+   "w": 430,
+   "h": 1504,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-plan-TR.dc.html": {
+   "x": 0,
+   "y": 6867,
+   "w": 430,
+   "h": 858,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-plan-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 6867,
+   "w": 430,
+   "h": 858,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-plan-EN.dc.html": {
+   "x": 1020,
+   "y": 6867,
+   "w": 430,
+   "h": 858,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-plan-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 6867,
+   "w": 430,
+   "h": 858,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-pack-TR.dc.html": {
+   "x": 0,
+   "y": 8205,
+   "w": 430,
+   "h": 1001,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-pack-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 8205,
+   "w": 430,
+   "h": 1001,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-pack-EN.dc.html": {
+   "x": 1020,
+   "y": 8205,
+   "w": 430,
+   "h": 1001,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-pack-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 8205,
+   "w": 430,
+   "h": 1001,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-top-TR.dc.html": {
+   "x": 0,
+   "y": 9686,
+   "w": 430,
+   "h": 711,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-top-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 9686,
+   "w": 430,
+   "h": 711,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-top-EN.dc.html": {
+   "x": 1020,
+   "y": 9686,
+   "w": 430,
+   "h": 711,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-top-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 9686,
+   "w": 430,
+   "h": 711,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Hal-invite-TR.dc.html": {
+   "x": 0,
+   "y": 10877,
+   "w": 430,
+   "h": 522,
+   "title": "TR Açık",
+   "page": "hal"
+  },
+  "Hal-invite-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 10877,
+   "w": 430,
+   "h": 522,
+   "title": "TR Koyu",
+   "page": "hal"
+  },
+  "Hal-invite-EN.dc.html": {
+   "x": 1020,
+   "y": 10877,
+   "w": 430,
+   "h": 522,
+   "title": "EN Light",
+   "page": "hal"
+  },
+  "Hal-invite-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 10877,
+   "w": 430,
+   "h": 522,
+   "title": "EN Dark",
+   "page": "hal"
+  },
+  "Liste-TR.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "Liste-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 0,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "Liste-EN.dc.html": {
+   "x": 1020,
+   "y": 0,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "Liste-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 0,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "Paket1-TR.dc.html": {
+   "x": 0,
+   "y": 1412,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "Paket1-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 1412,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "Paket1-EN.dc.html": {
+   "x": 1020,
+   "y": 1412,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "Paket1-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 1412,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "PaketOto-TR.dc.html": {
+   "x": 0,
+   "y": 2824,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "PaketOto-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 2824,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "PaketOto-EN.dc.html": {
+   "x": 1020,
+   "y": 2824,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "PaketOto-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 2824,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "Paket2-TR.dc.html": {
+   "x": 0,
+   "y": 4236,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "Paket2-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 4236,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "Paket2-EN.dc.html": {
+   "x": 1020,
+   "y": 4236,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "Paket2-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 4236,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "Paket3-TR.dc.html": {
+   "x": 0,
+   "y": 5648,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "Paket3-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 5648,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "Paket3-EN.dc.html": {
+   "x": 1020,
+   "y": 5648,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "Paket3-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 5648,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "Davet-TR.dc.html": {
+   "x": 0,
+   "y": 7060,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "Davet-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 7060,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "Davet-EN.dc.html": {
+   "x": 1020,
+   "y": 7060,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "Davet-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 7060,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "DavetBos-TR.dc.html": {
+   "x": 0,
+   "y": 8472,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "DavetBos-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 8472,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "DavetBos-EN.dc.html": {
+   "x": 1020,
+   "y": 8472,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "DavetBos-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 8472,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "DavetKopya-TR.dc.html": {
+   "x": 0,
+   "y": 9884,
+   "w": 430,
+   "h": 932,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "DavetKopya-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 9884,
+   "w": 430,
+   "h": 932,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "DavetKopya-EN.dc.html": {
+   "x": 1020,
+   "y": 9884,
+   "w": 430,
+   "h": 932,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "DavetKopya-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 9884,
+   "w": 430,
+   "h": 932,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "Profil-TR.dc.html": {
+   "x": 0,
+   "y": 11296,
+   "w": 430,
+   "h": 200,
+   "title": "TR Açık",
+   "page": "ekran"
+  },
+  "Profil-TR-Dark.dc.html": {
+   "x": 510,
+   "y": 11296,
+   "w": 430,
+   "h": 200,
+   "title": "TR Koyu",
+   "page": "ekran"
+  },
+  "Profil-EN.dc.html": {
+   "x": 1020,
+   "y": 11296,
+   "w": 430,
+   "h": 200,
+   "title": "EN Light",
+   "page": "ekran"
+  },
+  "Profil-EN-Dark.dc.html": {
+   "x": 1530,
+   "y": 11296,
+   "w": 430,
+   "h": 200,
+   "title": "EN Dark",
+   "page": "ekran"
+  },
+  "EkHome.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 430,
+   "h": 2912,
+   "title": "Ana sayfa bileşeni (kind, theme, lang)",
+   "page": "bilesen"
+  },
+  "EkSec.dc.html": {
+   "x": 510,
+   "y": 0,
+   "w": 430,
+   "h": 320,
+   "title": "Bölüm bileşeni (sec, st, theme, lang)",
+   "page": "bilesen"
+  },
+  "EkScr.dc.html": {
+   "x": 1020,
+   "y": 0,
+   "w": 430,
+   "h": 932,
+   "title": "Ekran bileşeni (scr, theme, lang)",
+   "page": "bilesen"
+  },
+  "TabBarR3.dc.html": {
+   "x": 1530,
+   "y": 0,
+   "w": 1259,
+   "h": 320,
+   "title": "Sekme çubuğu (mevcut)",
+   "page": "bilesen"
+  }
+ },
+ "order": [
+  "Ana-TR.dc.html",
+  "Ana-TR-Dark.dc.html",
+  "Ana-EN.dc.html",
+  "Ana-EN-Dark.dc.html",
+  "AnaYeni-TR.dc.html",
+  "AnaYeni-TR-Dark.dc.html",
+  "AnaYeni-EN.dc.html",
+  "AnaYeni-EN-Dark.dc.html",
+  "AnaIsk-TR.dc.html",
+  "AnaIsk-TR-Dark.dc.html",
+  "AnaIsk-EN.dc.html",
+  "AnaIsk-EN-Dark.dc.html",
+  "Hal-banners-TR.dc.html",
+  "Hal-banners-TR-Dark.dc.html",
+  "Hal-banners-EN.dc.html",
+  "Hal-banners-EN-Dark.dc.html",
+  "Hal-chips-TR.dc.html",
+  "Hal-chips-TR-Dark.dc.html",
+  "Hal-chips-EN.dc.html",
+  "Hal-chips-EN-Dark.dc.html",
+  "Hal-reorder-TR.dc.html",
+  "Hal-reorder-TR-Dark.dc.html",
+  "Hal-reorder-EN.dc.html",
+  "Hal-reorder-EN-Dark.dc.html",
+  "Hal-kcal-TR.dc.html",
+  "Hal-kcal-TR-Dark.dc.html",
+  "Hal-kcal-EN.dc.html",
+  "Hal-kcal-EN-Dark.dc.html",
+  "Hal-plan-TR.dc.html",
+  "Hal-plan-TR-Dark.dc.html",
+  "Hal-plan-EN.dc.html",
+  "Hal-plan-EN-Dark.dc.html",
+  "Hal-pack-TR.dc.html",
+  "Hal-pack-TR-Dark.dc.html",
+  "Hal-pack-EN.dc.html",
+  "Hal-pack-EN-Dark.dc.html",
+  "Hal-top-TR.dc.html",
+  "Hal-top-TR-Dark.dc.html",
+  "Hal-top-EN.dc.html",
+  "Hal-top-EN-Dark.dc.html",
+  "Hal-invite-TR.dc.html",
+  "Hal-invite-TR-Dark.dc.html",
+  "Hal-invite-EN.dc.html",
+  "Hal-invite-EN-Dark.dc.html",
+  "Liste-TR.dc.html",
+  "Liste-TR-Dark.dc.html",
+  "Liste-EN.dc.html",
+  "Liste-EN-Dark.dc.html",
+  "Paket1-TR.dc.html",
+  "Paket1-TR-Dark.dc.html",
+  "Paket1-EN.dc.html",
+  "Paket1-EN-Dark.dc.html",
+  "PaketOto-TR.dc.html",
+  "PaketOto-TR-Dark.dc.html",
+  "PaketOto-EN.dc.html",
+  "PaketOto-EN-Dark.dc.html",
+  "Paket2-TR.dc.html",
+  "Paket2-TR-Dark.dc.html",
+  "Paket2-EN.dc.html",
+  "Paket2-EN-Dark.dc.html",
+  "Paket3-TR.dc.html",
+  "Paket3-TR-Dark.dc.html",
+  "Paket3-EN.dc.html",
+  "Paket3-EN-Dark.dc.html",
+  "Davet-TR.dc.html",
+  "Davet-TR-Dark.dc.html",
+  "Davet-EN.dc.html",
+  "Davet-EN-Dark.dc.html",
+  "DavetBos-TR.dc.html",
+  "DavetBos-TR-Dark.dc.html",
+  "DavetBos-EN.dc.html",
+  "DavetBos-EN-Dark.dc.html",
+  "DavetKopya-TR.dc.html",
+  "DavetKopya-TR-Dark.dc.html",
+  "DavetKopya-EN.dc.html",
+  "DavetKopya-EN-Dark.dc.html",
+  "Profil-TR.dc.html",
+  "Profil-TR-Dark.dc.html",
+  "Profil-EN.dc.html",
+  "Profil-EN-Dark.dc.html",
+  "EkHome.dc.html",
+  "EkSec.dc.html",
+  "EkScr.dc.html",
+  "TabBarR3.dc.html"
+ ],
+ "notes": {
+  "n1": {
+   "x": 0,
+   "y": -230,
+   "text": "Ana sayfa: tüm bölümler (siparişi, kalori takibi ve planı olan kullanıcı)",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ana"
+  },
+  "n2": {
+   "x": 0,
+   "y": 3162,
+   "text": "Ana sayfa: yeni kullanıcı (sipariş, profil ve plan yok; 2 ve 4 gizli, 3 boş hâl)",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ana"
+  },
+  "n3": {
+   "x": 0,
+   "y": 5703,
+   "text": "Ana sayfa: yükleniyor iskeleti",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ana"
+  },
+  "n4": {
+   "x": 0,
+   "y": -230,
+   "text": "0 Kampanya bannerları. Kural: Mevcut kampanya şeridi. Görseller yer tutucu; her banner kendi hedefine gider. Koşulu sağlamayan banner sıradan çıkar.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n5": {
+   "x": 0,
+   "y": 2087,
+   "text": "1 Kategori çipleri. Kural: Her kullanıcıda görünür. Çipe dokununca filtrelenmiş liste ekranı açılır.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n6": {
+   "x": 0,
+   "y": 2941,
+   "text": "2 Tekrar sipariş ver. Kural: Yalnız en az 1 siparişi olan kullanıcıda görünür; yoksa bölüm gizlenir. Son 3 sipariş listelenir.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n7": {
+   "x": 0,
+   "y": 4653,
+   "text": "3 Kalan kalorine uygun öğünler. Kural: Öne çıkan bölüm: yalnız bu bölümde bulanık renkli arka plan ve cam yüzeyler var. Kalori takibi yapan kullanıcıda dolu hâl. Profil ya da hedef yoksa boş hâl. Hedef dolduysa hafif öğünler.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n8": {
+   "x": 0,
+   "y": 6637,
+   "text": "4 Planından sipariş et. Kural: Yalnız kişisel planı olan kullanıcıda görünür; planı olmayanda bölüm gizlenir. Eşleşmeyen öğün satırı gösterilmez.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n9": {
+   "x": 0,
+   "y": 7975,
+   "text": "5 Haftalık öğün paketi. Kural: Her kullanıcıda görünür. Aktif paketi olanda kart yerine Paketim hâli gelir.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n10": {
+   "x": 0,
+   "y": 9456,
+   "text": "6 Bu hafta en çok sipariş edilenler. Kural: Gerçek sipariş verisinden gelir. 3 üründen az veri varsa bölüm gizlenir.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n11": {
+   "x": 0,
+   "y": 10647,
+   "text": "7 Arkadaşını davet et. Kural: Banner biçiminde. Giriş yapmış her kullanıcıda görünür; misafirde gizlenir. Aynı banner üst şeritte de yer alır.",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "hal"
+  },
+  "n12": {
+   "x": 0,
+   "y": -230,
+   "text": "Filtrelenmiş liste",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n13": {
+   "x": 0,
+   "y": 1182,
+   "text": "Paket 1: menüden seç",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n14": {
+   "x": 0,
+   "y": 2594,
+   "text": "Paket 1: benim için seç",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n15": {
+   "x": 0,
+   "y": 4006,
+   "text": "Paket 2: gün ve saat",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n16": {
+   "x": 0,
+   "y": 5418,
+   "text": "Paket 3: özet ve ödeme",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n17": {
+   "x": 0,
+   "y": 6830,
+   "text": "Davet ekranı",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n18": {
+   "x": 0,
+   "y": 8242,
+   "text": "Davet: boş geçmiş",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n19": {
+   "x": 0,
+   "y": 9654,
+   "text": "Davet: kod kopyalandı",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  },
+  "n20": {
+   "x": 0,
+   "y": 11066,
+   "text": "Profil giriş satırı",
+   "kind": "title1",
+   "maxW": 1960,
+   "page": "ekran"
+  }
+ },
+ "designSystems": []
+}

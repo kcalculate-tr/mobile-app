@@ -5,6 +5,8 @@ export type BannerCell = {
   row_id: string;
   position: number;
   image_url: string | null;
+  /** 16 Kas: İngilizce görsel (yoksa image_url). */
+  image_url_en?: string | null;
   title: string | null;
   link: string | null;
   navigate_to: string | null;

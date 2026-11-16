@@ -63,7 +63,15 @@ export type BannerTarget =
   | { kind: 'store'; brandKey: string }
   | { kind: 'category'; categoryName: string }
   | { kind: 'legacy'; dest: string }
+  /** 16 Kas: kampanya bannerları — doğrudan ekran (paywall, davet). */
+  | { kind: 'screen'; name: string; params?: Record<string, unknown> }
   | { kind: 'none' };
+
+/** 16 Kas: cihaz diline göre banner görseli — EN görseli yoksa TR'ye düşer. */
+export function bannerImage(cell: { image_url: string | null; image_url_en?: string | null }, lang: string | null | undefined): string | null {
+  if (lang === 'en' && cell.image_url_en) return cell.image_url_en;
+  return cell.image_url;
+}
 
 export function bannerTargetToEk(dest: string | null | undefined): BannerTarget {
   const target = String(dest ?? '').trim();
@@ -77,6 +85,15 @@ export function bannerTargetToEk(dest: string | null | undefined): BannerTarget 
     const k = after('BrandLanding:');
     return k ? { kind: 'store', brandKey: k } : { kind: 'none' };
   }
+  // 16 Kas: `SubPaywall[:fresh|balance[:yearly|monthly]]` → paywall, plan önceden seçili; `Invite` → Davet ekranı.
+  if (target === 'SubPaywall' || target.startsWith('SubPaywall:')) {
+    const [, plan, period] = target.split(':').map((x) => x.trim());
+    const params: Record<string, unknown> = { from: 'banner' };
+    if (plan === 'fresh' || plan === 'balance') params.plan = plan;
+    if (period === 'yearly' || period === 'monthly') params.yearly = period === 'yearly';
+    return { kind: 'screen', name: 'SubPaywall', params };
+  }
+  if (target === 'Invite') return { kind: 'screen', name: 'EkInvite' };
   if (target.startsWith('CategoryProducts:')) {
     const n = after('CategoryProducts:');
     return n ? { kind: 'category', categoryName: n } : { kind: 'none' };

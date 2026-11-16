@@ -69,6 +69,9 @@ export const FLAG_DEFAULTS = {
   // 20261113120100_g42_yeni_kayit.sql (KAPALI, min_app_version 1.1.0). Kapalıyken bugünkü onboarding
   // bayt bayt aynı (rotalar kayıtlı değil). A yolu ayrıca `kisisel_plan` ister. Native yok → OTA.
   yeni_kayit: false,
+  // G56-S1 — Arkadaşını davet et (ana sayfa kartı, Invite banner'ı, Davet ekranı, Profil satırı, sepette kod satırı).
+  // Sunucu satırı 20261116200100_g56_eatkcal_growth.sql (KAPALI, min_app_version 1.1.0). Native yok → OTA.
+  davet: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
