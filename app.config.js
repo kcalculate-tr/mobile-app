@@ -97,7 +97,9 @@ module.exports = {
     // EAS derlemesinde KULLANILMAZ; bilerek dokunulmadı.
     // G41-S1 md.6: yerel değerler yine de yayın hedefiyle eşitlendi (iOS 32 / Android 11);
     // EAS remote sayaç panelden kontrol edilir (docs/night/G41-S1-LOG.md).
-    version: '1.1.0',
+    // 16 Kas: 1.1.1 (mağaza görselleri + 1.1.0 sonrası OTA'lar). Native değişiklik yok → runtime 1.1.0'da sabit
+    // (aşağıda) ki tek `eas update` hem 1.1.0 hem 1.1.1 cihazlara gitsin.
+    version: '1.1.1',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
@@ -403,7 +405,8 @@ module.exports = {
       url: 'https://u.expo.dev/5a65d66c-617a-423a-8346-d6a19e1bfca8',
       fallbackToCacheTimeout: 0,
     },
-    runtimeVersion: { policy: 'appVersion' },
+    // 16 Kas: sabit runtime — 1.1.0 ve 1.1.1 aynı native taban (yeni yerel paket eklenince bu değer artırılmalı).
+    runtimeVersion: '1.1.0',
     extra: {
       eas: {
         projectId: '5a65d66c-617a-423a-8346-d6a19e1bfca8',
