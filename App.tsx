@@ -21,7 +21,7 @@ import { FlagsProvider } from './src/core/flags';
 import { AppSchemeGate } from './src/core/design/SchemeGate';
 import { LogTraceHost } from './src/modules/shell/LogTraceHost';
 import { useFeature } from './src/core/flags';
-import { I18nProvider } from './src/core/i18n';
+import { I18nProvider, useT } from './src/core/i18n';
 import { useBranchStockWatch } from './src/hooks/useBranchStockWatch';
 import { useSubscriptionBootstrap } from './src/lib/subscription/useSubscriptionBootstrap';
 import { useNearestLocationBootstrap } from './src/hooks/useNearestLocationBootstrap';
@@ -29,6 +29,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import {
   registerForPushNotifications,
   setupNotificationListeners,
+  syncPushLocale,
 } from './src/core/notifications';
 import { navigationRef } from './src/navigation/navigationRef';
 import { linking } from './src/navigation/linking';
@@ -108,6 +109,14 @@ function AppContent() {
       setTrackSink(null);
     };
   }, []);
+
+  // G55-S1 md.1: bildirim dili = arayüz dili. Dil değişince bu cihazın push_tokens
+  // satırı güncellenir (sunucu TR/EN metni token diline göre seçer).
+  const { lang, ready: langReady } = useT();
+  useEffect(() => {
+    if (!langReady) return;
+    void syncPushLocale(lang);
+  }, [lang, langReady]);
 
   // G26-S1: oturum açılınca yalnız jeton kaydı — izin yoksa SORMAZ (sistem penceresi yok).
   useEffect(() => {

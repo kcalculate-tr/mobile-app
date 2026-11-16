@@ -6,6 +6,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { resolveNavigation } from '../lib/navigation';
 import { handleFinPushResponse, isFinPushData, shouldSuppressFinPush } from './push/finPushNative';
+import { isMissingLocaleColumn, toPushLocale, type PushLocale } from './push/pushLocale';
+import { readLangPref } from './i18n/storage';
+import { detectDeviceLang } from './i18n/detect';
+import { resolveLang } from './i18n/languages';
 
 export const PUSH_PERMISSION_FLAG = '@kcal_push_permission_status';
 
@@ -64,6 +68,41 @@ export type RegisterResult = {
   error?: string;
 };
 
+// G55-S1 md.1: bildirim dili. Sunucu `push_tokens.locale`'e göre TR/EN metin seçer.
+// `syncPushLocale` (App.tsx, I18nProvider içinde) arayüz dilini buraya bildirir; dil
+// değişirse bu cihazın token satırı güncellenir. Henüz bildirilmediyse (açılışta yarış)
+// kayıtlı tercih + cihaz dili okunur — I18nProvider ile aynı çözüm.
+let currentPushLocale: PushLocale | null = null;
+let registeredToken: { userId: string; token: string } | null = null;
+
+async function resolvePushLocale(): Promise<PushLocale> {
+  if (currentPushLocale) return currentPushLocale;
+  try {
+    return toPushLocale(resolveLang(await readLangPref(), detectDeviceLang()));
+  } catch {
+    return 'tr';
+  }
+}
+
+export async function syncPushLocale(lang: string): Promise<void> {
+  const next = toPushLocale(lang);
+  const changed = next !== currentPushLocale;
+  currentPushLocale = next;
+  if (!changed || !registeredToken) return;
+  try {
+    const { error } = await supabase
+      .from('push_tokens')
+      .update({ locale: next })
+      .eq('user_id', registeredToken.userId)
+      .eq('expo_push_token', registeredToken.token);
+    if (error && !isMissingLocaleColumn(error)) {
+      console.warn('[push] locale update error:', error.message);
+    }
+  } catch (e) {
+    console.warn('[push] locale update error:', e);
+  }
+}
+
 // Token al + push_tokens tablosuna upsert. Oturum açılınca ve izin verilince çağrılır.
 // G26-S1: izin YOKSA SORMAZ (sistem penceresi yok) — yalnız mevcut izinle jeton kaydı.
 export async function registerForPushNotifications(): Promise<RegisterResult> {
@@ -100,24 +139,37 @@ export async function registerForPushNotifications(): Promise<RegisterResult> {
     const deviceName = Device.deviceName ?? Device.modelName ?? 'Unknown';
     const appVersion = Constants.expoConfig?.version ?? '0.0.0';
 
-    const { error: upsertError } = await supabase
+    const row = {
+      user_id: user.id,
+      expo_push_token: token,
+      device_type: deviceType,
+      device_name: deviceName,
+      app_version: appVersion,
+      is_active: true,
+      last_used_at: new Date().toISOString(),
+    };
+    const locale = await resolvePushLocale();
+    let { error: upsertError } = await supabase
       .from('push_tokens')
-      .upsert(
-        {
-          user_id: user.id,
-          expo_push_token: token,
-          device_type: deviceType,
-          device_name: deviceName,
-          app_version: appVersion,
-          is_active: true,
-          last_used_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,expo_push_token' },
-      );
+      .upsert({ ...row, locale }, { onConflict: 'user_id,expo_push_token' });
+    // G55-S1: `locale` kolonu canlıda henüz yoksa kayıt kolonsuz tekrarlanır (bildirimler TR gelir).
+    if (upsertError && isMissingLocaleColumn(upsertError)) {
+      ({ error: upsertError } = await supabase
+        .from('push_tokens')
+        .upsert(row, { onConflict: 'user_id,expo_push_token' }));
+    }
 
     if (upsertError) {
       console.error('[push] token upsert error:', upsertError.message);
       return { success: false, error: upsertError.message };
+    }
+
+    registeredToken = { userId: user.id, token };
+    // Kayıt sırasında dil değiştiyse son dili yaz.
+    if (currentPushLocale && currentPushLocale !== locale) {
+      const latest = currentPushLocale;
+      currentPushLocale = null;
+      void syncPushLocale(latest);
     }
 
     if (__DEV__) {
@@ -151,6 +203,7 @@ export async function unregisterPushToken(): Promise<void> {
       .update({ is_active: false })
       .eq('user_id', user.id)
       .eq('expo_push_token', tokenResult.data);
+    registeredToken = null;
   } catch (e) {
     console.warn('[push] unregister error:', e);
   }
