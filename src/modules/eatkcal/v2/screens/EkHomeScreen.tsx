@@ -502,8 +502,9 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => {
     if (!__DEV__ || !vitrinScroll || loading) return;
-    const id = setTimeout(() => scrollRef.current?.scrollTo({ y: vitrinScroll, animated: false }), 900);
-    return () => clearTimeout(id);
+    // Bölümler sırayla doluyor (iskelet → içerik); birkaç kez uygula ki son yerleşimde dursun.
+    const ids = [1200, 2400, 3600].map((ms) => setTimeout(() => scrollRef.current?.scrollTo({ y: vitrinScroll, animated: false }), ms));
+    return () => ids.forEach(clearTimeout);
   }, [vitrinScroll, loading, products.length]);
 
   if (searchOpen) {

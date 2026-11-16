@@ -149,30 +149,34 @@ function Glass({ children, style, radius, fill, edge, testID }: { children: Reac
   );
 }
 
-/** Yumuşak renk lekesi: eşmerkezli halkalarla radyal düşüş (CSS blur yerine, iki platformda aynı). */
+/** rgba(...)/#hex → aynı renk, alfa 0 (gradyan saydama giderken siyaha kaymasın). */
+function clearOf(color: string): string {
+  const m = /rgba?\(([^)]+)\)/.exec(color);
+  if (m) {
+    const [r, g, b] = m[1].split(',').map((x) => x.trim());
+    return `rgba(${r}, ${g}, ${b}, 0)`;
+  }
+  return 'rgba(255, 255, 255, 0)';
+}
+
+/**
+ * Yumuşak renk lekesi (tasarımdaki `filter: blur(48–56px)` daireler): radyal gradyan, iki platformda aynı.
+ * `size` = bulanık dairenin kapladığı alan (daire çapı + 2 × bulanıklık).
+ */
 function SoftBlob({ size, color, style }: { size: number; color: string; style: StyleProp<ViewStyle> }) {
-  const rings = 9;
   return (
-    <View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size }, style]}>
-      {Array.from({ length: rings }).map((_, i) => {
-        const s = size * (1 - i / rings);
-        return (
-          <View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: (size - s) / 2,
-              top: (size - s) / 2,
-              width: s,
-              height: s,
-              borderRadius: s / 2,
-              backgroundColor: color,
-              opacity: 0.16,
-            }}
-          />
-        );
-      })}
-    </View>
+    <View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          width: size,
+          height: size,
+          experimental_backgroundImage: `radial-gradient(circle closest-side, ${color} 0%, ${color} 38%, ${clearOf(color)} 100%)`,
+        } as ViewStyle,
+        style,
+      ]}
+    />
   );
 }
 
