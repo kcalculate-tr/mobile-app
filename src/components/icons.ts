@@ -166,3 +166,4 @@ export { Cookie } from 'phosphor-react-native/lib/commonjs/icons/Cookie';
 // G53-S1: paylaşım görsel kılavuzu satır ikonları.
 export { Stack } from 'phosphor-react-native/lib/commonjs/icons/Stack';
 export { VideoCamera } from 'phosphor-react-native/lib/commonjs/icons/VideoCamera';
+export { Repeat } from 'phosphor-react-native/lib/commonjs/icons/Repeat';

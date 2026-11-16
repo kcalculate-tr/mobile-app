@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { CountPill } from '../../../../../core/design/components/CountPill';
-import { CaretRight } from '../../../../../components/icons';
+import { ShoppingBag } from '../../../../../components/icons';
 import { DURATION, RN_CURVE, SPRING, fontFamily, haptic, useReducedMotion } from '../../../../../core/design';
 import { useCartStore } from '../../../../../store/cartStore';
 import { TAB_BAR_R3, tabBarBottomOffset } from '../../../../shell/layout';
@@ -100,8 +100,7 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
     opacity: roll,
     transform: reduced ? [] : [{ translateY: roll.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   };
-  // G38 md.4: "Sepet (1)" yerine "Sepet" + sayı hapı; sesli etikette sayı düz metin.
-  const label = t('eatkcal.v2.home.cart');
+  // 16 Kas: kompakt hap — çanta ikonu + sayı hapı + toplam (yazı yok); sesli etikette tam metin.
   const a11yCount = t('eatkcal.v2.home.cart_count', { count });
 
   return (
@@ -131,47 +130,35 @@ export function EkCartBar({ bottom, onPress }: { /** Ekran altına uzaklık (car
           { shadowColor: theme.isDark ? '#000000' : '#0A0A0A', shadowOpacity: theme.isDark ? 0.5 : 0.16, opacity: pressed ? 0.92 : 1 },
         ]}
       >
-        <Animated.View style={[styles.side, styles.labelRow, rollStyle]}>
-          <Text style={[styles.b15, { color: c.onAccent }]} numberOfLines={1} testID="ek-cart-bar-label">
-            {label}
-          </Text>
+        <View style={styles.labelRow}>
+          <ShoppingBag size={20} color={c.onAccent} weight="bold" />
           <CountPill count={count} bg={c.onAccent} fg={palette.lime} testID="ek-cart-bar-count" />
-        </Animated.View>
+        </View>
         <Animated.View style={rollStyle}>
           <Text style={[styles.total, ekType.num, { color: c.onAccent }]} numberOfLines={1} testID="ek-cart-bar-total">
             {money(total)}
           </Text>
         </Animated.View>
-        <View style={[styles.side, styles.end]}>
-          <Text style={[styles.go, { color: c.onAccent }]} numberOfLines={1}>
-            {t('eatkcal.v2.home.go_cart')}
-          </Text>
-          <CaretRight size={16} color={c.onAccent} />
-        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 16, right: 16, zIndex: 26 },
+  wrap: { position: 'absolute', left: 16, right: 16, zIndex: 26, alignItems: 'center' },
   bar: {
     height: CART_BAR_H,
     borderRadius: 24,
     backgroundColor: palette.lime,
-    paddingLeft: 16,
-    paddingRight: 12,
+    paddingLeft: 14,
+    paddingRight: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
-  side: { flex: 1, minWidth: 0 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  end: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
-  b15: { fontFamily: fontFamily.bodyBold, fontSize: 14, lineHeight: 18 },
-  total: { fontFamily: fontFamily.headingBold, fontSize: 15, lineHeight: 20, textAlign: 'center' },
-  go: { fontFamily: fontFamily.bodySemibold, fontSize: 14, lineHeight: 18 },
+  total: { fontFamily: fontFamily.headingBold, fontSize: 16, lineHeight: 21 },
 });

@@ -19,7 +19,7 @@ export const tr = {
       invite_tag: 'Davet',
     },
     reorder: {
-      title: 'Tekrar sipariş ver',
+      title: 'Önceki siparişlerim',
       sub: 'Son siparişlerin',
       total: 'Toplam',
       btn: 'Tekrar sipariş ver',
@@ -126,7 +126,7 @@ export const en: typeof tr = {
       invite_tag: 'Invite',
     },
     reorder: {
-      title: 'Order again',
+      title: 'My previous orders',
       sub: 'Your recent orders',
       total: 'Total',
       btn: 'Order again',

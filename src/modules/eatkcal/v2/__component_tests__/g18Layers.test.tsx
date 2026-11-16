@@ -65,7 +65,7 @@ test('kuruşlu tutar virgülle: 285,50 TL', () => {
   expect(getByText('285,50 TL')).toBeTruthy();
 });
 
-test('yüzen sepet çubuğu: sepet boşken yok, ürün varken "Sepet" + sayı hapı, toplam, "Sepete git"', () => {
+test('yüzen sepet çubuğu (kompakt): sepet boşken yok, ürün varken ikon + sayı hapı + toplam, yazı yok', () => {
   useCartStore.getState().clearCart();
   const onPress = jest.fn();
   const r = render(<EkCartBar bottom={98} onPress={onPress} />);
@@ -75,11 +75,12 @@ test('yüzen sepet çubuğu: sepet boşken yok, ürün varken "Sepet" + sayı ha
     useCartStore.getState().addItem(p, {}, 2);
   });
   expect(r.getByTestId('ek-cart-bar')).toBeTruthy();
-  expect(r.getByTestId('ek-cart-bar-label')).toHaveTextContent('Sepet');
+  expect(r.queryByTestId('ek-cart-bar-label')).toBeNull();
   expect(r.getByTestId('ek-cart-bar-count', { includeHiddenElements: true })).toHaveTextContent('2');
   expect(r.queryByText('Sepet (2)')).toBeNull();
   expect(r.getByText('570 TL')).toBeTruthy();
-  expect(r.getByText('Sepete git')).toBeTruthy();
+  expect(r.queryByText('Sepete git')).toBeNull();
+  expect(r.getByRole('link').props.accessibilityLabel).toContain('Sepete git');
   fireEvent.press(r.getByRole('link'));
   expect(onPress).toHaveBeenCalledTimes(1);
   act(() => {

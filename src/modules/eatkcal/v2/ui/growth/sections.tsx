@@ -19,7 +19,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { FinText as Text } from '../../../../../core/design/components/FinText';
 import { CachedImage } from '../../../../../components/CachedImage';
-import { Plus, Info, Check } from '../../../../../components/icons';
+import { Plus, Info, Check, Repeat } from '../../../../../components/icons';
 import { transformImageUrl, ImagePreset } from '../../../../../lib/imageUrl';
 import { fontFamily, haptic } from '../../../../../core/design';
 import { track } from '../../../../../lib/analytics';
@@ -395,29 +395,32 @@ export function ReorderSection({ cards, busyId, onReorder }: { cards: ReorderCar
   return (
     <View style={{ gap: 10 }} testID="ek56-reorder">
       <View style={styles.gutter}>
-        <SecHead title={t('ek56.reorder.title')} sub={t('ek56.reorder.sub')} />
+        <SecHead title={t('ek56.reorder.title')} />
       </View>
       <HScroll label={t('ek56.reorder.title')}>
         {cards.map((c) => {
-          const imgs = c.order.items.slice(0, 3);
+          const imgs = c.order.items.slice(0, 4);
+          const extra = c.order.items.length - imgs.length;
           const allOos = !!c.oos && c.oos.m === 0;
           return (
             <View key={c.order.id} style={[styles.reCard, { backgroundColor: k.card, borderColor: k.line }]} testID="ek56-reorder-card">
-              <View style={styles.between} accessible accessibilityLabel={t('ek56.reorder.card_a11y', { date: c.date, names: c.names, total: c.total })}>
-                <View style={{ flexDirection: 'row' }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-                  {imgs.map((it, j) => (
-                    <View key={`${it.id}-${j}`} style={[styles.reImgWrap, { marginLeft: j ? -10 : 0, borderColor: k.card, backgroundColor: k.nest }]}>
-                      {it.imageUrl ? <CachedImage uri={transformImageUrl(it.imageUrl, ImagePreset.productCard) || it.imageUrl} style={styles.reImg} /> : null}
-                    </View>
-                  ))}
-                </View>
-                <Text style={[ekType.c13, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
-                  {c.date}
+              <View style={{ flexDirection: 'row' }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+                {imgs.map((it, j) => (
+                  <View key={`${it.id}-${j}`} style={[styles.reImgWrap, { marginLeft: j ? -18 : 0, zIndex: 10 - j, borderColor: k.card, backgroundColor: k.nest }]}>
+                    {it.imageUrl ? <CachedImage uri={transformImageUrl(it.imageUrl, ImagePreset.productCard) || it.imageUrl} style={styles.reImg} /> : null}
+                  </View>
+                ))}
+                {extra > 0 ? (
+                  <View style={[styles.reImgWrap, styles.reMore, { marginLeft: -18, borderColor: k.card }]}>
+                    <Text style={styles.reMoreText} maxFontSizeMultiplier={SCALE}>{`+${extra}`}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View accessible accessibilityLabel={t('ek56.reorder.card_a11y', { date: c.date, names: c.names, total: c.total })}>
+                <Text style={[styles.reName, { color: k.ink }]} numberOfLines={1} maxFontSizeMultiplier={SCALE}>
+                  {c.names}
                 </Text>
               </View>
-              <Text style={[styles.reName, { color: k.ink }]} numberOfLines={1} maxFontSizeMultiplier={SCALE} accessible={false}>
-                {c.names}
-              </Text>
               {c.oos ? (
                 <View style={[styles.oos, { backgroundColor: k.nest }]} accessibilityRole="alert" testID="ek56-reorder-oos">
                   <Info size={16} color={k.ink} />
@@ -427,16 +430,29 @@ export function ReorderSection({ cards, busyId, onReorder }: { cards: ReorderCar
                 </View>
               ) : null}
               <View style={[styles.between, { gap: 10 }]}>
-                <View>
-                  <Text style={[styles.c12, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
-                    {t('ek56.reorder.total')}
+                <View style={{ flexShrink: 1 }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+                  <Text style={[styles.c12, { color: k.sec }]} numberOfLines={1} maxFontSizeMultiplier={SCALE}>
+                    {c.date}
                   </Text>
                   <Text style={[styles.total, ekType.num, { color: k.ink }]} maxFontSizeMultiplier={SCALE}>
                     {c.total}
                   </Text>
                 </View>
                 {allOos ? null : (
-                  <LimeButton label={t('ek56.reorder.btn')} busy={busyId === c.order.id} onPress={() => onReorder(c.order)} testID="ek56-reorder-btn" />
+                  <Pressable
+                    onPress={() => {
+                      haptic('light');
+                      onReorder(c.order);
+                    }}
+                    disabled={busyId === c.order.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('ek56.reorder.btn')}
+                    accessibilityState={{ busy: busyId === c.order.id }}
+                    style={({ pressed }) => [styles.reBtn, { backgroundColor: k.lime }, pressed && { opacity: 0.85 }]}
+                    testID="ek56-reorder-btn"
+                  >
+                    {busyId === c.order.id ? <ActivityIndicator size="small" color={k.limeInk} /> : <Repeat size={22} color={k.limeInk} weight="bold" />}
+                  </Pressable>
                 )}
               </View>
             </View>
@@ -777,8 +793,11 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, paddingTop: 2 },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   reCard: { width: SEC.reorderCardW, padding: 10, borderRadius: 18, borderWidth: 1, gap: 6 },
-  reImgWrap: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
-  reImg: { width: 32, height: 32, borderRadius: 16 },
+  reImgWrap: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, overflow: 'hidden' },
+  reImg: { width: 58, height: 58, borderRadius: 29 },
+  reMore: { backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
+  reMoreText: { fontFamily: fontFamily.headingBold, fontSize: 18, color: '#FFFFFF' },
+  reBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   oos: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   c12: { fontFamily: fontFamily.bodyMedium, fontSize: 12, lineHeight: 16 },
   c12b: { fontFamily: fontFamily.bodyBold, fontSize: 12, lineHeight: 16 },
