@@ -8,8 +8,8 @@
 import React, { useEffect, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import * as Nav from '@react-navigation/native';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
-import { CURVE, palette } from '../../../core/design';
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
+import { CURVE, PAYWALL_MOTION, palette } from '../../../core/design';
 import { NEON_BREATH_MIN, NEON_BREATH_MS, NEON_STROKE, NEON_SWITCH_MS, neonMode, neonShadow, type NeonMode } from './neon';
 
 export type NeonPalette = {
@@ -101,7 +101,7 @@ export function NeonBorder({
   useEffect(() => {
     if (mode !== 'run') return;
     breath.value = 1;
-    breath.value = withRepeat(withTiming(NEON_BREATH_MIN, { duration: NEON_BREATH_MS, easing: Easing.inOut(Easing.sin) }), -1, true);
+    breath.value = withRepeat(withTiming(NEON_BREATH_MIN, { duration: NEON_BREATH_MS, easing: PAYWALL_MOTION.neonBreathEasing }), -1, true);
     return () => {
       cancelAnimation(breath);
       breath.value = 1;

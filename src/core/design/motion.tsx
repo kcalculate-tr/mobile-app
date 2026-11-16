@@ -246,6 +246,8 @@ export const PAYWALL_MOTION = {
   floatPeriod: 3200,
   floatAmp: 6,
   iconFade: DURATION.fast,
+  /** Seçili plan neon kenarının nefesi (NeonBorder) — sinüs yumuşaklığı; süre `neon.ts` NEON_BREATH_MS. */
+  neonBreathEasing: Easing.inOut(Easing.sin),
 } as const;
 
 /**

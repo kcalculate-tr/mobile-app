@@ -32,8 +32,8 @@ const aasa = JSON.parse(readFileSync(join(ROOT, 'docs/store/well-known/apple-app
 // Uygulamanın tanıdığı yollar: linking.ts (p, u, kesfet) + attribution.ts (k, s).
 const EXPECTED = ['/p/*', '/u/*', '/k/*', '/s/*', '/kesfet'];
 
-test('sürüm 1.1.0 (build numarası EAS remote)', () => {
-  assert.equal(appConfig.expo.version, '1.1.0');
+test('sürüm 1.1.1 (build numarası EAS remote)', () => {
+  assert.equal(appConfig.expo.version, '1.1.1');
 });
 
 test('AASA içerik dosyası: doğru appID ve beklenen yollar', () => {
@@ -183,13 +183,15 @@ test('G41-S1 md.5: Android R8 — yerel plugin (expo-build-properties yok), mini
   assert.ok(names.includes('fn'), 'withAndroidR8 eklenti dizisinde');
 });
 
-test('G41-S1 md.6: sürüm 1.1.0 / runtime appVersion; iOS buildNumber 32, Android versionCode 11', () => {
+// G55-S1 md.2: 1.1.1 aynı native tabanı taşır → runtime 1.1.0'da SABİT (tek `eas update` iki sürüme de gider).
+// Yeni yerel paket/plugin eklenince runtimeVersion artırılmalı (bkz. docs/night/G55-S1-LOG.md).
+test('G55-S1 md.2: sürüm 1.1.1 / runtime sabit 1.1.0; iOS buildNumber 32, Android versionCode 11 (yerel, EAS remote sayar)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const cfg = require('../../../app.config.js') as {
-    expo: { version: string; runtimeVersion: { policy: string }; ios: { buildNumber: string }; android: { versionCode: number } };
+    expo: { version: string; runtimeVersion: unknown; ios: { buildNumber: string }; android: { versionCode: number } };
   };
-  assert.equal(cfg.expo.version, '1.1.0');
-  assert.deepEqual(cfg.expo.runtimeVersion, { policy: 'appVersion' });
+  assert.equal(cfg.expo.version, '1.1.1');
+  assert.equal(cfg.expo.runtimeVersion, '1.1.0');
   assert.equal(cfg.expo.ios.buildNumber, '32');
   assert.equal(cfg.expo.android.versionCode, 11);
 });
