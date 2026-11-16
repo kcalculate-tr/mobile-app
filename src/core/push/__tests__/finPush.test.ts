@@ -145,7 +145,13 @@ test('FinPush: send-notification fin_* şablonlarında categoryId + channelId ek
   );
   assert.match(src, /import \{ FIN_TEMPLATES, type FinTemplateKey \} from '\.\/finPushTemplates\.ts'/);
   assert.match(src, /if \(!templateKey \|\| !\(templateKey in FIN_TEMPLATES\)\) return \{\}/);
-  assert.match(src, /\.\.\.finPushExtras\(content\.templateKey\),/);
+  // G55-S1: ek alanlar index.ts'te hesaplanıp batch.ts'te Expo mesajına yayılır.
+  assert.match(src, /extras: finPushExtras\(templateKey\),/);
+  const batch = fs.readFileSync(
+    path.resolve(__dirname, '../../../../supabase/functions/send-notification/batch.ts'),
+    'utf8',
+  );
+  assert.match(batch, /\.\.\.\(content\.extras \?\? \{\}\),/);
   for (const t of Object.values(FIN_TEMPLATES)) {
     assert.ok(Object.values(FIN_PUSH_CATEGORY).includes(t.categoryId));
     assert.equal(t.channelId, 'fin');

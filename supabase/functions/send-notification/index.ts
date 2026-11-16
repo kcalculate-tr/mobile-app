@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { FIN_TEMPLATES, type FinTemplateKey } from './finPushTemplates.ts'
-import { kategoriAcikMi } from './prefs.ts'
+import { sendToUsers as sendBatch, campaignOutcome, type Category, type SendContent, type SendResults } from './batch.ts'
+import { campaignText, templateText, type BilingualText } from './locale.ts'
 
 // G18-S4 md.3 — FinPush: `fin_*` şablonlarında Expo mesajına kategori (aksiyon
 // düğmeleri) + Android gizli önizleme kanalı eklenir; diğer bütün bildirimler aynen.
@@ -21,7 +22,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-api-version',
 }
 
-type Category = 'transactional' | 'marketing' | 'reminder' | 'behavioral'
 
 type SendInput =
   | {
@@ -43,6 +43,9 @@ type SendInput =
       user_ids: string[]
       title: string
       body: string
+      /** G55-S1: isteğe bağlı İngilizce metin (boşsa TR). */
+      title_en?: string | null
+      body_en?: string | null
       deep_link?: string
       category: Category
       data?: Record<string, unknown>
@@ -54,26 +57,6 @@ type SendInput =
   | {
       mode: 'dispatch_scheduled'
     }
-
-type SendContent = {
-  templateKey: string | null
-  title: string
-  body: string
-  deepLink: string | null
-  category: Category
-  data: Record<string, unknown> | null
-}
-
-type SendResults = {
-  sent: number
-  skipped: number
-  failed: number
-  details: Array<Record<string, unknown>>
-}
-
-function renderTemplate(tpl: string, vars: Record<string, string>): string {
-  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`)
-}
 
 // Token'in role claim'i service_role mu?
 //
@@ -108,205 +91,38 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
-// ── Toplu gonderim: tercih + idempotency + token + Expo push ───────────────
-//
-// 17.10.2026 — ONCEKI HALI N+1'DI: kullanici basina 4-6 DB sorgusu ve token
-// basina AYRI bir Expo HTTP istegi atiyordu. 5.000 kisilik bir kampanya
-// ~25.000 sorgu + 5.000 istek demek; fonksiyon timeout'a girer ve gonderim
-// yarida kalirdi. Artik sorgu sayisi kullanici sayisindan BAGIMSIZ.
-//
-// notification_sends.id'leri burada uretiyoruz (kolon gen_random_uuid()
-// varsayilanli): boylece toplu insert'in DONUS SIRASINA guvenmek zorunda
-// kalmadan her satirin id'sini biliyoruz.
-const EXPO_BATCH = 100
-
-function parcala<T>(dizi: T[], boyut: number): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < dizi.length; i += boyut) out.push(dizi.slice(i, i + boyut))
-  return out
+// ── Toplu gonderim ─────────────────────────────────────────────────────────
+// 17.10.2026: N+1 kaldirildi (sorgu sayisi kullanici sayisindan bagimsiz).
+// G55-S1 (16.11.2026): cekirdek `batch.ts`'e tasindi — `.in()` sorgulari 100'luk,
+// insert'ler 500'luk parcali, her hata loglanir; metin token diline gore secilir
+// (`locale.ts`). Neden: 14 Kas "herkes" kampanyasi (829 hedef) 400 donen GET yuzunden
+// 0 gonderimle "sent" oldu (ayrinti batch.ts basinda).
+const EXPO_HEADERS: Record<string, string> = {
+  'content-type': 'application/json',
+  accept: 'application/json',
+  'accept-encoding': 'gzip, deflate',
+  ...(EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${EXPO_ACCESS_TOKEN}` } : {}),
 }
 
-async function sendToUsers(
+function sendToUsers(supabase: SupabaseClient, userIds: string[], content: SendContent): Promise<SendResults> {
+  return sendBatch({ db: supabase, fetchFn: fetch, expoHeaders: EXPO_HEADERS }, userIds, content)
+}
+
+// Kampanya satırını günceller. `skipped_count` / `error_message` kolonları G55 migration'ıyla
+// gelir; migration uygulanmadan deploy edilirse bu iki alan düşürülüp tekrar denenir.
+async function kampanyaGuncelle(
   supabase: SupabaseClient,
-  userIds: string[],
-  content: SendContent,
-): Promise<SendResults> {
-  const results: SendResults = { sent: 0, skipped: 0, failed: 0, details: [] }
-  const hedefKullanicilar = [...new Set((userIds ?? []).filter(Boolean))]
-  if (hedefKullanicilar.length === 0) return results
-
-  const ortak = {
-    template_key: content.templateKey,
-    category: content.category,
-    title: content.title,
-    body: content.body,
-    deep_link: content.deepLink,
-    data: content.data,
+  id: string,
+  alanlar: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await supabase.from('notification_campaigns').update(alanlar).eq('id', id)
+  if (!error) return
+  console.error(`[send-notification] kampanya ${id} güncellenemedi: ${error.code ?? ''} ${error.message}`)
+  if ('skipped_count' in alanlar || 'error_message' in alanlar) {
+    const { skipped_count: _s, error_message: _e, ...kalan } = alanlar
+    const r = await supabase.from('notification_campaigns').update(kalan).eq('id', id)
+    if (r.error) console.error(`[send-notification] kampanya ${id} yedek güncelleme de başarısız: ${r.error.message}`)
   }
-
-  // 1) Tercihler — tek sorgu
-  const { data: prefRows } = await supabase
-    .from('notification_preferences').select('*').in('user_id', hedefKullanicilar)
-  const prefMap = new Map<string, Record<string, unknown>>(
-    (prefRows ?? []).map((r: Record<string, unknown>) => [String(r.user_id), r]),
-  )
-
-  // 2) Idempotency — tek sorgu (yalniz template bazli gonderimlerde)
-  const yakinZamandaGonderildi = new Set<string>()
-  if (content.templateKey) {
-    const besDakikaOnce = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    const { data } = await supabase
-      .from('notification_sends').select('user_id')
-      .in('user_id', hedefKullanicilar)
-      .eq('template_key', content.templateKey)
-      .in('status', ['sent', 'delivered'])
-      .gte('created_at', besDakikaOnce)
-    for (const r of data ?? []) yakinZamandaGonderildi.add(String(r.user_id))
-  }
-
-  // 3) Token'lar — tek sorgu
-  const { data: tokenRows } = await supabase
-    .from('push_tokens').select('id, user_id, expo_push_token')
-    .in('user_id', hedefKullanicilar).eq('is_active', true)
-  const tokenMap = new Map<string, Array<{ id: string; expo_push_token: string }>>()
-  for (const t of tokenRows ?? []) {
-    const uid = String(t.user_id)
-    if (!tokenMap.has(uid)) tokenMap.set(uid, [])
-    tokenMap.get(uid)!.push({ id: String(t.id), expo_push_token: String(t.expo_push_token) })
-  }
-
-  // 4) Kimler atlanacak, kimlere gidilecek
-  type Hedef = { sendId: string; userId: string; tokenId: string; expoToken: string }
-  const hedefler: Hedef[] = []
-  const atlananSatirlar: Array<Record<string, unknown>> = []
-
-  for (const userId of hedefKullanicilar) {
-    const prefs = prefMap.get(userId)
-    // G20-S3 md.6 (B-11 / ETK md.6): pazarlama açık onayla gider — tercih satırı
-    // yoksa pazarlama KAPALI, diğer kategoriler açık (bugünkü gibi).
-    const kategoriAcik = kategoriAcikMi(prefs, content.category)
-    if (!kategoriAcik) {
-      atlananSatirlar.push({
-        ...ortak, user_id: userId, status: 'skipped',
-        error_message: `${content.category} disabled by user`,
-      })
-      results.skipped++
-      continue
-    }
-    if (yakinZamandaGonderildi.has(userId)) { results.skipped++; continue }
-
-    const tokenlar = tokenMap.get(userId) ?? []
-    if (tokenlar.length === 0) {
-      atlananSatirlar.push({
-        ...ortak, user_id: userId, status: 'skipped', error_message: 'no active tokens',
-      })
-      results.skipped++
-      continue
-    }
-    for (const t of tokenlar) {
-      hedefler.push({
-        sendId: crypto.randomUUID(), userId, tokenId: t.id, expoToken: t.expo_push_token,
-      })
-    }
-  }
-
-  if (atlananSatirlar.length > 0) {
-    await supabase.from('notification_sends').insert(atlananSatirlar)
-  }
-  if (hedefler.length === 0) return results
-
-  // 5) queued satirlari toplu insert (id'ler bizde)
-  await supabase.from('notification_sends').insert(
-    hedefler.map((h) => ({ ...ortak, id: h.sendId, user_id: h.userId, status: 'queued' })),
-  )
-
-  // 6) Expo'ya 100'luk partiler halinde. Expo ticket dizisi istek sirasini korur.
-  const expoHeaders: Record<string, string> = {
-    'content-type': 'application/json',
-    accept: 'application/json',
-    'accept-encoding': 'gzip, deflate',
-  }
-  if (EXPO_ACCESS_TOKEN) expoHeaders['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`
-
-  const basarili: string[] = []
-  const basarisiz: Array<{ sendId: string; hata: string }> = []
-  const kapatilacakTokenlar: string[] = []
-  const simdi = new Date().toISOString()
-
-  for (const parti of parcala(hedefler, EXPO_BATCH)) {
-    const govde = parti.map((h) => ({
-      to: h.expoToken,
-      title: content.title,
-      body: content.body,
-      sound: 'default',
-      data: {
-        ...(content.data ?? {}),
-        ...(content.deepLink ? { deep_link: content.deepLink } : {}),
-        send_id: h.sendId,
-      },
-      priority: content.category === 'transactional' ? 'high' : 'normal',
-      ...finPushExtras(content.templateKey),
-    }))
-
-    try {
-      const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST', headers: expoHeaders, body: JSON.stringify(govde),
-      })
-      const expoData = await expoRes.json()
-      const ticketlar = Array.isArray(expoData?.data) ? expoData.data : []
-
-      parti.forEach((h, i) => {
-        const ticket = ticketlar[i]
-        if (ticket?.status === 'ok') {
-          basarili.push(h.sendId)
-          results.sent++
-          return
-        }
-        const hata = ticket?.message ?? expoData?.errors?.[0]?.message ?? 'Unknown Expo error'
-        basarisiz.push({ sendId: h.sendId, hata })
-        if (ticket?.details?.error === 'DeviceNotRegistered') kapatilacakTokenlar.push(h.tokenId)
-        results.failed++
-        results.details.push({ user_id: h.userId, error: hata })
-      })
-    } catch (e) {
-      // Parti komple basarisiz: hepsini failed isaretle, digerleri devam etsin.
-      const msg = (e as Error)?.message ?? String(e)
-      for (const h of parti) {
-        basarisiz.push({ sendId: h.sendId, hata: msg })
-        results.failed++
-        results.details.push({ user_id: h.userId, error: msg })
-      }
-    }
-  }
-
-  // 7) Durumlari toplu yaz
-  if (basarili.length > 0) {
-    for (const parca of parcala(basarili, 500)) {
-      await supabase.from('notification_sends')
-        .update({ status: 'sent', sent_at: simdi }).in('id', parca)
-    }
-  }
-  if (basarisiz.length > 0) {
-    // Ayni hata metnini paylasanlari grupla — tipik olarak 1-2 grup cikar.
-    const gruplar = new Map<string, string[]>()
-    for (const b of basarisiz) {
-      if (!gruplar.has(b.hata)) gruplar.set(b.hata, [])
-      gruplar.get(b.hata)!.push(b.sendId)
-    }
-    for (const [hata, idler] of gruplar) {
-      for (const parca of parcala(idler, 500)) {
-        await supabase.from('notification_sends')
-          .update({ status: 'failed', error_message: hata, sent_at: simdi }).in('id', parca)
-      }
-    }
-  }
-  if (kapatilacakTokenlar.length > 0) {
-    for (const parca of parcala([...new Set(kapatilacakTokenlar)], 500)) {
-      await supabase.from('push_tokens').update({ is_active: false }).in('id', parca)
-    }
-  }
-
-  return results
 }
 
 // ── Main handler ────────────────────────────────────────────────────────────
@@ -435,43 +251,44 @@ Deno.serve(async (req: Request) => {
 
         const results = await sendToUsers(supabase, userIds, {
           templateKey: null,
-          title: campaign.title,
-          body: campaign.body,
+          text: campaignText(campaign),
           deepLink: campaign.deep_link ?? null,
           category: 'marketing',
           data: { campaign_id: campaign.id },
         })
 
-        await supabase
-          .from('notification_campaigns')
-          .update({
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            target_count: userIds.length,
-            sent_count: results.sent,
-            failed_count: results.failed,
-          })
-          .eq('id', campaign.id)
+        // G55-S1 md.0: hedef > 0 iken 0 gönderim → `failed` + hata; atlanan sayısı da yazılır.
+        const sonuc = campaignOutcome(userIds.length, results)
+        if (sonuc.status === 'failed') {
+          console.error(`[send-notification] kampanya ${campaign.id} başarısız: ${sonuc.error_message}`)
+        }
+        await kampanyaGuncelle(supabase, campaign.id, {
+          status: sonuc.status,
+          sent_at: new Date().toISOString(),
+          target_count: userIds.length,
+          sent_count: results.sent,
+          failed_count: results.failed,
+          skipped_count: results.skipped,
+          error_message: sonuc.error_message,
+        })
 
         return jsonResponse({
           campaign_id: campaign.id,
           target_count: userIds.length,
+          status: sonuc.status,
           ...results,
         })
       } catch (e) {
         const msg = (e as Error)?.message ?? String(e)
-        await supabase
-          .from('notification_campaigns')
-          .update({ status: 'failed' })
-          .eq('id', campaign.id)
+        console.error(`[send-notification] kampanya ${campaign.id} hata: ${msg}`)
+        await kampanyaGuncelle(supabase, campaign.id, { status: 'failed', error_message: msg.slice(0, 500) })
         return jsonResponse({ error: msg, campaign_id: campaign.id }, 500)
       }
     }
 
     // ── mode: by_template / by_template_single / by_content ──────────────
     let templateKey: string | null = null
-    let title = ''
-    let body = ''
+    let text: BilingualText = { title: '', body: '' }
     let deepLink: string | null = null
     let category: Category
     let userIds: string[] = []
@@ -490,15 +307,14 @@ Deno.serve(async (req: Request) => {
       }
 
       templateKey = template.key
-      title = renderTemplate(template.title_template, input.vars ?? {})
-      body = renderTemplate(template.body_template, input.vars ?? {})
+      // G55-S1 md.1: `_en` alanları da aynı değişkenlerle doldurulur; dil seçimi token başına.
+      text = templateText(template, input.vars ?? {})
       deepLink = template.deep_link ?? null
       category = template.category as Category
       userIds = input.mode === 'by_template_single' ? [input.user_id] : input.user_ids
       extraData = input.data ?? null
     } else if (input.mode === 'by_content') {
-      title = input.title
-      body = input.body
+      text = { title: input.title, body: input.body, en: { title: input.title_en ?? null, body: input.body_en ?? null } }
       deepLink = input.deep_link ?? null
       category = input.category
       userIds = input.user_ids
@@ -509,11 +325,11 @@ Deno.serve(async (req: Request) => {
 
     const results = await sendToUsers(supabase, userIds, {
       templateKey,
-      title,
-      body,
+      text,
       deepLink,
       category,
       data: extraData,
+      extras: finPushExtras(templateKey),
     })
 
     return jsonResponse(results)

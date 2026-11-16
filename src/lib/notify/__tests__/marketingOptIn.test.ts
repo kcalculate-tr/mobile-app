@@ -30,9 +30,10 @@ test('send-notification: satır yoksa pazarlama gitmez, diğer kategoriler gider
   assert.equal(kategoriAcikMi(undefined, 'behavioral'), true);
   assert.equal(kategoriAcikMi({ marketing_enabled: true }, 'marketing'), true);
   assert.equal(kategoriAcikMi({ marketing_enabled: false }, 'marketing'), false);
-  const idx = read('supabase/functions/send-notification/index.ts');
-  assert.match(idx, /import \{ kategoriAcikMi \} from '\.\/prefs\.ts'/);
-  assert.match(idx, /const kategoriAcik = kategoriAcikMi\(prefs, content\.category\)/);
+  // G55-S1: toplu gönderim çekirdeği index.ts → batch.ts'e taşındı.
+  const idx = read('supabase/functions/send-notification/batch.ts');
+  assert.match(idx, /import \{ kategoriAcikMi, type Category \} from '\.\/prefs\.ts'/);
+  assert.match(idx, /if \(!kategoriAcikMi\(prefs, content\.category\)\)/);
   assert.doesNotMatch(idx, /prefs \? Boolean\(prefs\[categoryEnabledKey\]\) : true/);
 });
 
