@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type StyleProp,
@@ -206,6 +207,10 @@ export function GrowthProductCard({
 }) {
   const k = useGrowthTokens();
   const { t } = useEk();
+  // Büyük yazıda (Dynamic Type) kart yazıyla büyür, ad kırpılmaz (G50 kuralı: en çok 1,3×).
+  const { fontScale } = useWindowDimensions();
+  const scale = Math.min(Math.max(fontScale || 1, 1), SCALE);
+  width = Math.round(width * scale);
   const kcal = productKcal(product);
   const price = cardPrice(product);
   const src = product.img ? transformImageUrl(product.img, ImagePreset.productCard) : '';
@@ -251,7 +256,7 @@ export function GrowthProductCard({
             </View>
           ) : null}
         </View>
-        <Text style={[styles.pname, { color: k.ink }]} numberOfLines={2} maxFontSizeMultiplier={SCALE}>
+        <Text style={[styles.pname, { color: k.ink }]} numberOfLines={scale > 1 ? 3 : 2} maxFontSizeMultiplier={SCALE}>
           {product.name}
         </Text>
         {mac ? (
@@ -268,7 +273,7 @@ export function GrowthProductCard({
         ) : null}
       </Pressable>
       <View style={styles.priceRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, flexShrink: 1 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6, flex: 1, minWidth: 0 }}>
           {price.before != null ? (
             <Text style={[ekType.c13, ekType.num, { color: k.sec, textDecorationLine: 'line-through' }]} maxFontSizeMultiplier={SCALE}>
               {money(price.before)}
@@ -576,7 +581,7 @@ export function PlanSection({ rows, busy, onOpen, onAddAll }: { rows: PlanRow[];
                 <Text style={[styles.c12b, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
                   {meal}
                 </Text>
-                <Text style={[ekType.b15s, { color: k.ink }]} numberOfLines={1} maxFontSizeMultiplier={SCALE}>
+                <Text style={[ekType.b15s, { color: k.ink }]} numberOfLines={2} maxFontSizeMultiplier={SCALE}>
                   {r.product.name}
                 </Text>
                 {kcal ? (
