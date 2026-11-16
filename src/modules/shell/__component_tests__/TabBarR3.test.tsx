@@ -70,6 +70,15 @@ describe('TabBarR3 (yeni kabuk)', () => {
     }
   });
 
+  test('16 Kas Android: tam durumda görünmez "aç" katmanı dokunuş almaz, sekmeler alır', () => {
+    const { props } = makeProps(R3_ROUTES, 0);
+    const ui = render(<TabBarR3 {...props} />);
+    expect(ui.getByTestId('tabbar-mini-layer').props.pointerEvents).toBe('none');
+    expect(ui.getByTestId('tabbar-full-row').props.pointerEvents).toBe('box-none');
+    fireEvent.press(ui.getByLabelText('Profil'));
+    expect(props.navigation.navigate).toHaveBeenCalledWith('Profile');
+  });
+
   test('sekme hücresi dokunma alanı ≥ 44 pt (Apple HIG)', () => {
     const { props } = makeProps(R3_ROUTES, 0);
     const { getByLabelText } = render(<TabBarR3 {...props} />);

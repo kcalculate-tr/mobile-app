@@ -33,6 +33,7 @@ import { CountPill } from '../../core/design/components/CountPill';
 import Animated, {
   interpolate,
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -293,6 +294,18 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
   const miniStyle = useAnimatedStyle(() => ({
     opacity: interpolate(collapsedShared?.value ?? 0, [0.5, 1], [0, 1], 'clamp'),
   }));
+  // 16 Kas — ANDROID DÜZELTMESİ: opaklığı 0 olan görünüm iOS'ta dokunuş almaz ama Android'de ALIR.
+  // Küçük durum katmanı (tüm hapı kaplayan "aç" düğmesi) tam durumda görünmez olsa da Android'de
+  // sekmelerin üstünde dokunuşları yutuyordu → hiçbir sekme açılmıyordu. Dokunuş hedefi artık
+  // daralma durumuna göre açılıp kapanır (yalnız küçükken "aç", yalnız tamken sekmeler).
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  useAnimatedReaction(
+    () => (collapsedShared?.value ?? 0) > 0.5,
+    (now, prev) => {
+      if (now !== prev) runOnJS(setIsCollapsed)(now);
+    },
+    [collapsedShared],
+  );
   const scanSizeStyle = useAnimatedStyle(() => {
     const c = collapsedShared?.value ?? 0;
     const size = interpolate(c, [0, 1], [TAB_BAR_R3.SCAN_SIZE, TAB_BAR_R3.SCAN_SIZE_MINI]);
@@ -397,7 +410,7 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
           <View style={[styles.pillHighlight, { backgroundColor: g.hi }]} pointerEvents="none" />
 
           {/* TAM durum — 4 sekme + aktif gösterge */}
-          <Animated.View style={[styles.fullRow, fullRowStyle]} pointerEvents="box-none">
+          <Animated.View style={[styles.fullRow, fullRowStyle]} pointerEvents={isCollapsed ? 'none' : 'box-none'} testID="tabbar-full-row">
             {activeIndex >= 0 ? (
               <Animated.View
                 pointerEvents="none"
@@ -457,7 +470,11 @@ export function TabBarR3({ state, navigation, descriptors }: BottomTabBarProps) 
           </Animated.View>
 
           {/* KÜÇÜK durum — tek aktif ikon, basınca açılır */}
-          <Animated.View style={[StyleSheet.absoluteFill, styles.miniCenter, miniStyle]}>
+          <Animated.View
+            style={[StyleSheet.absoluteFill, styles.miniCenter, miniStyle]}
+            pointerEvents={isCollapsed ? 'auto' : 'none'}
+            testID="tabbar-mini-layer"
+          >
             <Pressable
               onPress={expand}
               style={StyleSheet.absoluteFill}
