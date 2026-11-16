@@ -212,14 +212,6 @@ export function CampaignCard({
       <View style={styles.campaignImg}>
         <CachedImage uri={src} style={StyleSheet.absoluteFill as never} />
       </View>
-      <View style={styles.campaignText}>
-        <Text style={[ekType.c13s, { color: c.secondary }]}>{t('eatkcal.v2.home.campaign')}</Text>
-        {title ? (
-          <Text style={[styles.campaignTitle, { color: c.ink }]} numberOfLines={2}>
-            {title}
-          </Text>
-        ) : null}
-      </View>
     </Pressable>
   );
 }
@@ -257,10 +249,8 @@ const styles = StyleSheet.create({
   storeBody: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8, gap: 1 },
   storeName: { fontFamily: ekType.h20.fontFamily, fontSize: 16, lineHeight: 20 },
   storeMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6 },
-  campaign: { width: 300, gap: 8 },
+  campaign: { width: 300 },
   campaignImg: { width: 300, height: 104, borderRadius: 20, overflow: 'hidden' },
-  campaignText: { gap: 2, paddingHorizontal: 2 },
-  campaignTitle: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 19 },
   review: { width: 260, padding: 14, borderRadius: 20, borderWidth: 1, gap: 8 },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   quote: { fontFamily: ekType.b15.fontFamily, fontSize: 14, lineHeight: 20 },

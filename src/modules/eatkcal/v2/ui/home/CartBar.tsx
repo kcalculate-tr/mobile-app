@@ -1,6 +1,6 @@
 // eatkcal v2 — yüzen lime sepet çubuğu (Tur 26 md.12, FinMoCart). YALNIZ FinEkHome
 // ve FinEkStore; ürün sayfasında YOK (orada tek alt katman "Sepete git" olur).
-// Yükseklik 56, yan 16, köşe 28, düz lime dolgu (cam yok), metin mürekkep.
+// Yükseklik 48, yan 16, köşe 24, düz lime dolgu (cam yok), metin mürekkep.
 // Sol "Sepet (N)", orta toplam (Bricolage 17), sağ "Sepete git ›". Tamamı tek
 // bağlantı → EkCart. Konum: sekme çubuğunun üst kenarından 12 yukarıda (Tara
 // dairesiyle çakışmaz); sekme çubuğu yoksa güvenli alanın 12 üstü.
@@ -20,7 +20,7 @@ import { palette } from '../../../../../core/design/tokens';
 
 const EAT_EASE = RN_CURVE.eat;
 const EXIT_EASE = RN_CURVE.exit;
-export const CART_BAR_H = 56;
+export const CART_BAR_H = 48;
 export const CART_BAR_GAP = 12;
 
 /** Çubuğun ekran altına uzaklığı: sekme çubuğu varsa onun üst kenarı + 12, yoksa güvenli alan + 12. */
@@ -157,10 +157,10 @@ const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, zIndex: 26 },
   bar: {
     height: CART_BAR_H,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: palette.lime,
-    paddingLeft: 20,
-    paddingRight: 14,
+    paddingLeft: 16,
+    paddingRight: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   side: { flex: 1, minWidth: 0 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   end: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
-  b15: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 20 },
-  total: { fontFamily: fontFamily.headingBold, fontSize: 17, lineHeight: 22, textAlign: 'center' },
-  go: { fontFamily: fontFamily.bodySemibold, fontSize: 15, lineHeight: 20 },
+  b15: { fontFamily: fontFamily.bodyBold, fontSize: 14, lineHeight: 18 },
+  total: { fontFamily: fontFamily.headingBold, fontSize: 15, lineHeight: 20, textAlign: 'center' },
+  go: { fontFamily: fontFamily.bodySemibold, fontSize: 14, lineHeight: 18 },
 });

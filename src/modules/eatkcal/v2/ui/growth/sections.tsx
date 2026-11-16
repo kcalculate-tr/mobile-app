@@ -406,7 +406,7 @@ export function ReorderSection({ cards, busyId, onReorder }: { cards: ReorderCar
               <View style={styles.between} accessible accessibilityLabel={t('ek56.reorder.card_a11y', { date: c.date, names: c.names, total: c.total })}>
                 <View style={{ flexDirection: 'row' }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
                   {imgs.map((it, j) => (
-                    <View key={`${it.id}-${j}`} style={[styles.reImgWrap, { marginLeft: j ? -14 : 0, borderColor: k.card, backgroundColor: k.nest }]}>
+                    <View key={`${it.id}-${j}`} style={[styles.reImgWrap, { marginLeft: j ? -10 : 0, borderColor: k.card, backgroundColor: k.nest }]}>
                       {it.imageUrl ? <CachedImage uri={transformImageUrl(it.imageUrl, ImagePreset.productCard) || it.imageUrl} style={styles.reImg} /> : null}
                     </View>
                   ))}
@@ -415,7 +415,7 @@ export function ReorderSection({ cards, busyId, onReorder }: { cards: ReorderCar
                   {c.date}
                 </Text>
               </View>
-              <Text style={[ekType.b15s, { color: k.ink }]} numberOfLines={1} maxFontSizeMultiplier={SCALE} accessible={false}>
+              <Text style={[styles.reName, { color: k.ink }]} numberOfLines={1} maxFontSizeMultiplier={SCALE} accessible={false}>
                 {c.names}
               </Text>
               {c.oos ? (
@@ -638,7 +638,6 @@ export function TopSection({ rows, addingId, onOpen, onAdd, onAll }: { rows: Top
             product={r.product}
             width={SEC.topCardW}
             rank={r.rank}
-            count={t('ek56.top.count', { n: r.orderCount })}
             adding={addingId === String(r.product.id)}
             onPress={() => {
               secTap('top', 'open');
@@ -777,13 +776,14 @@ const styles = StyleSheet.create({
   chip: { height: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, justifyContent: 'center' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, paddingTop: 2 },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reCard: { width: SEC.reorderCardW, padding: 12, borderRadius: 20, borderWidth: 1, gap: 8 },
-  reImgWrap: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, overflow: 'hidden' },
-  reImg: { width: 44, height: 44, borderRadius: 22 },
+  reCard: { width: SEC.reorderCardW, padding: 10, borderRadius: 18, borderWidth: 1, gap: 6 },
+  reImgWrap: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
+  reImg: { width: 32, height: 32, borderRadius: 16 },
   oos: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   c12: { fontFamily: fontFamily.bodyMedium, fontSize: 12, lineHeight: 16 },
   c12b: { fontFamily: fontFamily.bodyBold, fontSize: 12, lineHeight: 16 },
-  total: { fontFamily: fontFamily.bodyBold, fontSize: 16, lineHeight: 21 },
+  total: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 19 },
+  reName: { fontFamily: fontFamily.bodySemibold, fontSize: 14, lineHeight: 18 },
   kcalBadge: { position: 'absolute', left: 8, top: 8, height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center' },
   kcalText: { fontFamily: fontFamily.bodyBold, fontSize: 13, color: '#0A0A0A' },
   tag: { position: 'absolute', left: 8, bottom: 8, height: 24, paddingHorizontal: 9, borderRadius: 12, justifyContent: 'center' },

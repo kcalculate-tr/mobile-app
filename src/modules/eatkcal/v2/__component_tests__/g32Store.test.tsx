@@ -31,7 +31,7 @@ jest.mock('../../../../lib/restaurantRating', () => ({ fetchRestaurantRating: je
 jest.mock('../../../../lib/socialProof', () => ({ vitrinYorumlariniGetir: jest.fn(async () => []) }));
 jest.mock('../ui/home/useDeliveryChip', () => ({ useDeliveryChip: () => ({ chip: null }) }));
 jest.mock('../ui/home/CartBar', () => ({
-  CART_BAR_H: 56,
+  CART_BAR_H: 48,
   CART_BAR_GAP: 12,
   cartBarBottom: () => 40,
   useCartSummary: () => ({ count: 0, total: 0 }),

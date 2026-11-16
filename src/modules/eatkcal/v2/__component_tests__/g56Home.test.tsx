@@ -83,7 +83,7 @@ jest.mock('../growth/growthApi', () => ({
   fetchOptionInfo: (...a: unknown[]) => mockApi.fetchOptionInfo(...(a as [])),
 }));
 jest.mock('../ui/home/useDeliveryChip', () => ({ useDeliveryChip: () => ({ chip: null }) }));
-jest.mock('../ui/home/CartBar', () => ({ CART_BAR_H: 56, CART_BAR_GAP: 12, cartBarBottom: () => 40, useCartSummary: () => ({ count: 0, total: 0 }), EkCartBar: () => null }));
+jest.mock('../ui/home/CartBar', () => ({ CART_BAR_H: 48, CART_BAR_GAP: 12, cartBarBottom: () => 40, useCartSummary: () => ({ count: 0, total: 0 }), EkCartBar: () => null }));
 jest.mock('../../../shell', () => ({ useInR3Shell: () => false, tabBarContentInset: () => 100 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -189,7 +189,7 @@ test('siparişli + takipli kullanıcı: oos uyarısı, yalnız kalanlar sepete, 
 
   // Top: sıra + gerçek adet.
   expect(r.getByTestId('ek56-top')).toBeTruthy();
-  expect(r.getByText('Bu hafta 9 sipariş')).toBeTruthy();
+  expect(r.queryByText('Bu hafta 9 sipariş')).toBeNull();
 
   // Davet kartı: ödül tutarıyla.
   expect(r.getByTestId('ek56-invite')).toBeTruthy();

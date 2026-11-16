@@ -91,7 +91,7 @@ export function useGrowthTokens(): GrowthTokens {
 export const SEC = {
   gap: 10,
   headMin: 44,
-  reorderCardW: 276,
+  reorderCardW: 232,
   kcalCardW: 164,
   topCardW: 148,
   bannerW: 300,
