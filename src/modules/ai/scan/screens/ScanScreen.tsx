@@ -176,7 +176,7 @@ export default function ScanScreen() {
   const savingRef = useRef(false);
   const mountedRef = useRef(true);
   const lastSourceRef = useRef<'camera' | 'gallery'>('camera');
-  const [failReason, setFailReason] = useState<LocalImageCheck | null>(null);
+  const [failReason, setFailReason] = useState<LocalImageCheck | 'no_food' | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [galleryDenied, setGalleryDenied] = useState(false);
   // G20-S3 md.2 (Apple 5.1.2(i)): ilk taramadan önce BİR KEZ yapay zekâ fotoğraf
@@ -457,6 +457,7 @@ export default function ScanScreen() {
         if (outcome.status === 'failed') {
           if (!mountedRef.current) return;
           setStage('viewfinder');
+          if (outcome.failure?.code === 'no_food') setFailReason('no_food');
           setErrorKind('failed');
           return;
         }
@@ -1161,7 +1162,7 @@ export default function ScanScreen() {
           remaining={remaining ?? 0}
           pendingCount={pendingCount}
           photoUri={photoUri}
-          reason={failReason === 'too_large' ? 'too_large' : failReason === 'missing' ? 'missing' : undefined}
+          reason={failReason === 'too_large' ? 'too_large' : failReason === 'missing' ? 'missing' : failReason === 'no_food' ? 'no_food' : undefined}
           onClose={() => {
             // FinScanOffline: çevrimdışı kuyruğa alındı → sade durum ekranı.
             if (errorKind === 'offline') navigation.replace('AiScanOffline');

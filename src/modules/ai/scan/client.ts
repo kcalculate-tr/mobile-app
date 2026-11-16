@@ -80,7 +80,10 @@ export const realAiScanClient: AiScanClient = {
     });
     // G17-S2 md.6: edge gövdesindeki `error` kodu (config/server/timeout/…) korunur.
     if (error) throw await analyzeErrorFromInvoke(error);
-    return mapAnalyzeResponse(data, lang);
+    const est = mapAnalyzeResponse(data, lang);
+    // 16 Kas: eski sunucu boş masaya 0 kcal "Yemek" dönebiliyordu → sonuç gösterilmez.
+    if (isNoFoodEstimate(est)) throw new ScanStageError('analyze', 'no_food', null);
+    return est;
   },
 
   async analyzeText({ idempotencyKey, text, lang }): Promise<Omit<ScanEstimate, 'isEstimate'>> {
@@ -148,6 +151,11 @@ function n(v: unknown): number {
  * makrolar KORUNUR (önceden yalnız ad+gram alınıyordu → sonuçta satırlar "0 kcal"
  * görünüyor, gram düzeltmesi/öğe silme toplamı değiştirmiyordu).
  */
+/** Fotoğrafta yemek yok: öğe yok ya da toplam < 1 kcal (0 kcal "Yemek"). */
+export function isNoFoodEstimate(e: { kcal: number; ingredients: { kcal?: number }[] }): boolean {
+  return e.ingredients.length === 0 || (e.kcal < 1 && e.ingredients.every((i) => (i.kcal ?? 0) < 1));
+}
+
 export function mapAnalyzeResponse(data: unknown, lang?: 'tr' | 'en'): Omit<ScanEstimate, 'isEstimate'> {
   const res = (data ?? {}) as {
     items?: { name?: unknown; grams?: unknown; kcal?: unknown; protein_g?: unknown; carb_g?: unknown; fat_g?: unknown }[];

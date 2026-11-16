@@ -74,7 +74,7 @@ export async function analyzeErrorFromInvoke(error: unknown): Promise<ScanStageE
 export type ScanFailureClass = 'permanent' | 'transient' | 'counted';
 export function classifyScanFailure(code: string | null | undefined): ScanFailureClass {
   const c = code ?? 'unknown';
-  if (['file_missing', 'image_too_large', 'image_type', 'image_not_found', 'forbidden', 'no_user', 'bad_request'].includes(c)) {
+  if (['file_missing', 'image_too_large', 'image_type', 'image_not_found', 'forbidden', 'no_user', 'bad_request', 'no_food'].includes(c)) {
     return 'permanent';
   }
   if (['network', 'relay', 'timeout', 'rate_limit', 'storage', 'upload_failed'].includes(c)) return 'transient';

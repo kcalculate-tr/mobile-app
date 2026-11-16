@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildAnalyzeBody, mapAnalyzeResponse, ANALYZE_CLIENT_TIMEOUT_MS } from '../client';
+import { buildAnalyzeBody, mapAnalyzeResponse, isNoFoodEstimate, ANALYZE_CLIENT_TIMEOUT_MS } from '../client';
 import { computeAdjusted, manualRow, productRow, rowKcal, rowsFromEstimate, type Estimate } from '../adjust';
 import { effectiveRemaining } from '../quotaStore';
 import { runAiScan } from '../runScan';
@@ -329,4 +329,12 @@ test('saveAiScanEstimate: aynı tarama ikinci kez loglanırsa hata değil, mevcu
   );
   assert.equal(isUniqueViolation({ message: 'x', code: '23505' }), true);
   assert.equal(isUniqueViolation({ message: 'permission denied' }), false);
+});
+
+test('16 Kas: boş masa — öğe yok ya da 0 kcal "Yemek" → yemek yok sayılır; gerçek tabak sayılmaz', () => {
+  assert.equal(isNoFoodEstimate(mapAnalyzeResponse({ items: [], total: { kcal: 0 } }, 'tr')), true);
+  assert.equal(isNoFoodEstimate(mapAnalyzeResponse({ items: [{ name: 'Yemek', kcal: 0 }], total: { kcal: 0 } }, 'tr')), true);
+  assert.equal(isNoFoodEstimate(mapAnalyzeResponse(EDGE, 'tr')), false);
+  // çevrimdışı kuyrukta kalıcı hata: girdi düşer, kuyruğu kilitlemez
+  assert.equal(classifyScanFailure('no_food'), 'permanent');
 });

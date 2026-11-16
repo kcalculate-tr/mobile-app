@@ -104,7 +104,7 @@ export default function FinScanErrorSheet({
   /** G21-S1 md.2: okunan barkod — durum hapında gösterilir. */
   barcode?: string | null;
   /** G19-S1 md.4: 'failed' alt nedeni — dosya 5 MB üstü / bulunamadı (hak harcanmadı). */
-  reason?: 'too_large' | 'missing';
+  reason?: 'too_large' | 'missing' | 'no_food';
   visible: boolean;
   kind: FinScanErrorKind;
   remaining: number;
@@ -153,7 +153,9 @@ export default function FinScanErrorSheet({
         : kind === 'barcode_offline'
           ? tr('ai_scan.offline_title')
           : kind === 'failed'
-      ? tr('ai_scan.failed_title')
+      ? reason === 'no_food'
+        ? tr('ai_scan.no_food_title')
+        : tr('ai_scan.failed_title')
       : kind === 'offline'
         ? tr('ai_scan.offline_title')
         : kind === 'camera'
@@ -177,6 +179,8 @@ export default function FinScanErrorSheet({
         ? tr('ai_scan.failed_body_large')
         : reason === 'missing'
           ? tr('ai_scan.failed_body_missing')
+          : reason === 'no_food'
+            ? tr('ai_scan.no_food_body')
           : tr('ai_scan.failed_body')
       : kind === 'offline'
         ? tr('ai_scan.offline_body')

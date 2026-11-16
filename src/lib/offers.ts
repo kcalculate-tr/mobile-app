@@ -32,6 +32,9 @@ export interface Campaign {
   source?: string | null;
   /** free_item kuponunun geçmediği ürün kategorileri. */
   excluded_categories?: string[] | null;
+  /** Yalnız ilk siparişte geçerli (HOSGELDIN250 vb.). */
+  first_order_only?: boolean | null;
+  profile_id?: string | null;
 }
 
 export async function fetchCampaigns(): Promise<Campaign[]> {

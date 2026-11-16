@@ -18,7 +18,10 @@ import { BannerCell, fetchBannerRows } from '../../../../lib/banners';
 import { resolveNavigation } from '../../../../lib/navigation';
 import { formatDate, gunKaldi, indirimEtiketi } from '../../../../lib/campaignVisual';
 import { transformImageUrl, ImagePreset } from '../../../../lib/imageUrl';
-import { FinHeader, FinScreen, FinCard, FinSegmented, FinSecondaryButton, body, bodyBold, bodyMedium, bodySemibold, heading } from '../finUi';
+import { FinHeader, FinScreen, FinCard, FinSegmented, FinSecondaryButton, FinPrimaryButton, body, bodyBold, bodyMedium, bodySemibold, heading } from '../finUi';
+import { campaignTerms } from '../../../../lib/campaignTerms';
+import { setPendingCoupon } from '../../../eatkcal/v2/model/pendingCoupon';
+import { useCartStore } from '../../../../store/cartStore';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 import { CountPill } from '../../../../core/design/components/CountPill';
 
@@ -39,6 +42,22 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   const [code, setCode] = useState('');
   const [hint, setHint] = useState('');
   const [copied, setCopied] = useState('');
+  // 16 Kas: "Kodu tanımla" — sepet doluysa sepete gider (orada doğrulanıp uygulanır);
+  // boşsa kod bekletilir, ilk sepette otomatik uygulanır.
+  const [defined, setDefined] = useState('');
+  const cartCount = useCartStore((s) => s.items.length);
+  const defineCode = (raw: string) => {
+    const c = raw.trim().toUpperCase();
+    if (!c) return;
+    setPendingCoupon(c);
+    if (cartCount > 0) {
+      setSelected(null);
+      setDefined('');
+      navigation.navigate('EkCart', { couponCode: c });
+    } else {
+      setDefined(c);
+    }
+  };
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -74,7 +93,11 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   }, [campaignParam, all]);
 
   const { offers, mine } = useMemo(() => {
-    const personal = (c: Campaign) => c.source === 'macro_reward' || (c.user_id != null && c.user_id === user?.id);
+    const personal = (c: Campaign) =>
+      c.source === 'macro_reward' ||
+      c.source === 'cart_recovery_personal' ||
+      (c.user_id != null && c.user_id === user?.id) ||
+      (c.profile_id != null && c.profile_id === user?.id);
     return { offers: all.filter((c) => !personal(c)), mine: all.filter(personal) };
   }, [all, user?.id]);
   const list = tab === 0 ? offers : mine;
@@ -143,7 +166,14 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
                     style={{ flex: 1, height: 48, borderRadius: 14, paddingHorizontal: 14, backgroundColor: t.color.line, fontFamily: bodyMedium, fontSize: 15, color: t.color.ink }}
                   />
                   <Pressable
-                    onPress={() => setHint(code.trim() ? tr('profil.coupons_apply_hint') : tr('profil.coupons_enter_code'))}
+                    onPress={() => {
+                      if (!code.trim()) {
+                        setHint(tr('profil.coupons_enter_code'));
+                        return;
+                      }
+                      defineCode(code);
+                      setHint(cartCount > 0 ? '' : tr('profil.coupons_defined'));
+                    }}
                     accessibilityRole="button"
                     style={{ height: 48, paddingHorizontal: 18, borderRadius: 24, backgroundColor: t.color.ink, alignItems: 'center', justifyContent: 'center' }}
                   >
@@ -214,6 +244,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
         onClose={() => {
           setSelected(null);
           setCopied('');
+          setDefined('');
         }}
         title={selected?.title}
         scroll
@@ -224,11 +255,19 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
             {selected.description ? (
               <Text style={{ fontFamily: body, fontSize: 15, lineHeight: 21, color: t.color.ink }}>{selected.description}</Text>
             ) : null}
-            {selected.end_date ? (
-              <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>
-                {tr('profil.coupons_until', { date: formatDate(selected.end_date) })}
+            <View style={{ gap: 8 }} testID="coupon-terms">
+              <Text style={{ fontFamily: bodyBold, fontSize: 15, color: t.color.ink }} accessibilityRole="header">
+                {tr('profil.coupons_terms')}
               </Text>
-            ) : null}
+              {campaignTerms(selected, (d) => formatDate(d)).map((term) => (
+                <View key={term.key} style={{ flexDirection: 'row', gap: 8 }}>
+                  <Text style={{ fontFamily: body, fontSize: 14, lineHeight: 20, color: t.color.secondary }}>•</Text>
+                  <Text style={{ fontFamily: body, fontSize: 14, lineHeight: 20, color: t.color.ink, flex: 1 }}>
+                    {tr(`profil.${term.key}`, term.params)}
+                  </Text>
+                </View>
+              ))}
+            </View>
             {selected.code ? (
               <Pressable
                 onPress={() => copy(selected.code!)}
@@ -244,7 +283,25 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
                 </View>
               </Pressable>
             ) : null}
-            <Text style={{ fontFamily: body, fontSize: 13, color: t.color.secondary }}>{tr('profil.coupons_apply_hint')}</Text>
+            {selected.code ? (
+              defined === selected.code.toUpperCase() ? (
+                <View style={{ gap: 10 }} testID="coupon-defined">
+                  <Text style={{ fontFamily: bodyMedium, fontSize: 14, lineHeight: 20, color: t.color.ink }}>{tr('profil.coupons_defined')}</Text>
+                  <FinPrimaryButton
+                    label={tr('profil.coupons_shop')}
+                    tone="lime"
+                    onPress={() => {
+                      setSelected(null);
+                      setDefined('');
+                      navigation.navigate('Home');
+                    }}
+                    testID="coupon-shop"
+                  />
+                </View>
+              ) : (
+                <FinPrimaryButton label={tr('profil.coupons_define')} tone="lime" onPress={() => defineCode(selected.code!)} testID="coupon-define" />
+              )
+            ) : null}
           </View>
         ) : null}
       </Sheet>

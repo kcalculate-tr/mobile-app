@@ -65,7 +65,7 @@ test('kuruşlu tutar virgülle: 285,50 TL', () => {
   expect(getByText('285,50 TL')).toBeTruthy();
 });
 
-test('yüzen sepet çubuğu (kompakt): sepet boşken yok, ürün varken ikon + sayı hapı + toplam, yazı yok', () => {
+test('yüzen sepet (16 Kas): yuvarlak düğme + adet rozeti; 1. dokunuş açar (toplam), 2. dokunuş sepete gider', () => {
   useCartStore.getState().clearCart();
   const onPress = jest.fn();
   const r = render(<EkCartBar bottom={98} onPress={onPress} />);
@@ -75,13 +75,14 @@ test('yüzen sepet çubuğu (kompakt): sepet boşken yok, ürün varken ikon + s
     useCartStore.getState().addItem(p, {}, 2);
   });
   expect(r.getByTestId('ek-cart-bar')).toBeTruthy();
-  expect(r.queryByTestId('ek-cart-bar-label')).toBeNull();
   expect(r.getByTestId('ek-cart-bar-count', { includeHiddenElements: true })).toHaveTextContent('2');
-  expect(r.queryByText('Sepet (2)')).toBeNull();
-  expect(r.getByText('570 TL')).toBeTruthy();
   expect(r.queryByText('Sepete git')).toBeNull();
-  expect(r.getByRole('link').props.accessibilityLabel).toContain('Sepete git');
-  fireEvent.press(r.getByRole('link'));
+  const btn = r.getByRole('button');
+  expect(btn.props.accessibilityLabel).toContain('570 TL');
+  fireEvent.press(btn);
+  expect(onPress).not.toHaveBeenCalled();
+  expect(r.getByRole('button').props.accessibilityState).toMatchObject({ expanded: true });
+  fireEvent.press(r.getByRole('button'));
   expect(onPress).toHaveBeenCalledTimes(1);
   act(() => {
     useCartStore.getState().clearCart();

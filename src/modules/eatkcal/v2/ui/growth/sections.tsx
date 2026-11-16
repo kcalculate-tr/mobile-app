@@ -399,25 +399,27 @@ export function ReorderSection({ cards, busyId, onReorder }: { cards: ReorderCar
       </View>
       <HScroll label={t('ek56.reorder.title')}>
         {cards.map((c) => {
-          const imgs = c.order.items.slice(0, 4);
+          // 16 Kas: dar kart — en çok 3 yuvarlak (fazlası "+N").
+          const many = c.order.items.length > 3;
+          const imgs = c.order.items.slice(0, many ? 2 : 3);
           const extra = c.order.items.length - imgs.length;
           const allOos = !!c.oos && c.oos.m === 0;
           return (
             <View key={c.order.id} style={[styles.reCard, { backgroundColor: k.card, borderColor: k.line }]} testID="ek56-reorder-card">
               <View style={{ flexDirection: 'row' }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
                 {imgs.map((it, j) => (
-                  <View key={`${it.id}-${j}`} style={[styles.reImgWrap, { marginLeft: j ? -18 : 0, zIndex: 10 - j, borderColor: k.card, backgroundColor: k.nest }]}>
+                  <View key={`${it.id}-${j}`} style={[styles.reImgWrap, { marginLeft: j ? -20 : 0, zIndex: 10 - j, borderColor: k.card, backgroundColor: k.nest }]}>
                     {it.imageUrl ? <CachedImage uri={transformImageUrl(it.imageUrl, ImagePreset.productCard) || it.imageUrl} style={styles.reImg} /> : null}
                   </View>
                 ))}
                 {extra > 0 ? (
-                  <View style={[styles.reImgWrap, styles.reMore, { marginLeft: -18, borderColor: k.card }]}>
+                  <View style={[styles.reImgWrap, styles.reMore, { marginLeft: -20, borderColor: k.card }]}>
                     <Text style={styles.reMoreText} maxFontSizeMultiplier={SCALE}>{`+${extra}`}</Text>
                   </View>
                 ) : null}
               </View>
               <View accessible accessibilityLabel={t('ek56.reorder.card_a11y', { date: c.date, names: c.names, total: c.total })}>
-                <Text style={[styles.reName, { color: k.ink }]} numberOfLines={1} maxFontSizeMultiplier={SCALE}>
+                <Text style={[styles.reName, { color: k.sec }]} numberOfLines={1} maxFontSizeMultiplier={SCALE}>
                   {c.names}
                 </Text>
               </View>
@@ -745,7 +747,7 @@ export function AddedToast({ count, onCart }: { count: number; onCart: () => voi
 const SK: Record<EkSecKey, number[][][]> = {
   banners: [[[300, 104, 20], [300, 104, 20]], [[70, 14, 6], [220, 14, 6], [70, 14, 6]], [[200, 16, 6], [90, 16, 6], [200, 16, 6]]],
   chips: [[[110, 44, 22], [130, 44, 22], [120, 44, 22], [90, 44, 22]]],
-  reorder: [[[180, 22, 8]], [[276, 168, 20], [276, 168, 20]]],
+  reorder: [[[180, 22, 8]], [[156, 150, 18], [156, 150, 18], [156, 150, 18]]],
   kcal: [[[220, 22, 8]], [[164, 164, 16], [164, 164, 16], [164, 164, 16]], [[120, 16, 6], [44, 16, 6], [120, 16, 6]]],
   plan: [[[200, 22, 8]], [[398, 268, 20]]],
   top: [[[280, 22, 8]], [[148, 148, 16], [148, 148, 16], [148, 148, 16]], [[110, 16, 6], [48, 16, 6], [110, 16, 6]]],
@@ -792,17 +794,17 @@ const styles = StyleSheet.create({
   chip: { height: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, justifyContent: 'center' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, paddingTop: 2 },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reCard: { width: SEC.reorderCardW, padding: 10, borderRadius: 18, borderWidth: 1, gap: 6 },
-  reImgWrap: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, overflow: 'hidden' },
-  reImg: { width: 58, height: 58, borderRadius: 29 },
+  reCard: { width: SEC.reorderCardW, padding: 10, borderRadius: 18, borderWidth: 1, gap: 4 },
+  reImgWrap: { width: 52, height: 52, borderRadius: 26, borderWidth: 3, overflow: 'hidden' },
+  reImg: { width: 46, height: 46, borderRadius: 23 },
   reMore: { backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
-  reMoreText: { fontFamily: fontFamily.headingBold, fontSize: 18, color: '#FFFFFF' },
+  reMoreText: { fontFamily: fontFamily.headingBold, fontSize: 15, color: '#FFFFFF' },
   reBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   oos: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   c12: { fontFamily: fontFamily.bodyMedium, fontSize: 12, lineHeight: 16 },
   c12b: { fontFamily: fontFamily.bodyBold, fontSize: 12, lineHeight: 16 },
-  total: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 19 },
-  reName: { fontFamily: fontFamily.bodySemibold, fontSize: 14, lineHeight: 18 },
+  total: { fontFamily: fontFamily.bodyBold, fontSize: 14, lineHeight: 18 },
+  reName: { fontFamily: fontFamily.bodyMedium, fontSize: 12, lineHeight: 15 },
   kcalBadge: { position: 'absolute', left: 8, top: 8, height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center' },
   kcalText: { fontFamily: fontFamily.bodyBold, fontSize: 13, color: '#0A0A0A' },
   tag: { position: 'absolute', left: 8, bottom: 8, height: 24, paddingHorizontal: 9, borderRadius: 12, justifyContent: 'center' },

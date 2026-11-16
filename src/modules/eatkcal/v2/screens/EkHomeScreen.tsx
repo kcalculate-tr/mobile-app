@@ -613,9 +613,6 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
           {/* 1 · Kategori çipleri → Filtrelenmiş liste. */}
           <ChipsRow onPick={(key) => openList({ filter: key })} />
 
-          {/* 2 · Tekrar sipariş ver (yalnız ≥ 1 tamamlanmış sipariş). */}
-          {orders == null && userId ? <SecSkeleton sec="reorder" /> : <ReorderSection cards={reorderCards} busyId={reorderBusy} onReorder={reorder} />}
-
           {/* 3 · Kalan kalorine uygun öğünler (öne çıkan). */}
           {kcalLoading ? (
             <SecSkeleton sec="kcal" />
@@ -672,6 +669,9 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
               onAll={() => openList({ ids: top.map((r) => String(r.product.id)), title: t('ek56.top.title') })}
             />
           )}
+
+          {/* 16 Kas: Önceki siparişlerim — en çok sipariş edilenlerin ALTINDA (İlter). */}
+          {orders == null && userId ? <SecSkeleton sec="reorder" /> : <ReorderSection cards={reorderCards} busyId={reorderBusy} onReorder={reorder} />}
 
           {/* 6 · Arkadaşını davet et (giriş + `davet` bayrağı + ödül; misafirde gizli). */}
           {inviteOn && rewardTl != null ? <InviteBanner rewardTl={rewardTl} onPress={() => navigation.navigate('EkInvite')} /> : null}

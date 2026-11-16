@@ -56,7 +56,7 @@ export function ReviewsSheet({
   const maxBar = aggregate?.distribution ? Math.max(1, ...aggregate.distribution) : 1;
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.reviews.title')} product="eat" testID="ek-reviews-sheet">
+    <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.reviews.title')} product="eat" scroll testID="ek-reviews-sheet">
       {aggregate && aggregate.count > 0 ? (
         <View style={styles.agg}>
           <View style={{ alignItems: 'center', gap: 4 }}>

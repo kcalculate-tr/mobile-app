@@ -142,7 +142,7 @@ export function EkInfoSheet({
   ];
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.info.title')} product="eat" maxHeightRatio={0.88}>
+    <Sheet visible={visible} onClose={onClose} title={t('eatkcal.v2.info.title')} product="eat" maxHeightRatio={0.88} scroll>
       {/* G15-S5: Final sheet sabit yükseklikte (~%85); sekme değişince zıplamaz. */}
       <View style={{ minHeight: winH * 0.85 - 150 }}>
       <View style={[styles.tabs, { backgroundColor: c.line }]} accessibilityRole="tablist">
