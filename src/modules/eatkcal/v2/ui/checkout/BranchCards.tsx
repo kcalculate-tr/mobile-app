@@ -62,7 +62,7 @@ export function BranchCards({
           >
             <View style={[styles.img, { backgroundColor: c.line }]}>
               {banner ? (
-                <Image source={banner} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+                <Image source={banner} style={styles.photo} resizeMode="cover" accessibilityIgnoresInvertColors testID="ek-branch-card-photo" />
               ) : (
                 <Image source={BOWL} style={styles.bowl} resizeMode="contain" testID="ek-branch-card-placeholder" />
               )}
@@ -109,6 +109,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   card: { flex: 1, minWidth: 0, borderRadius: 18, overflow: 'hidden' },
   img: { height: 84, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  // 17 Kas: absoluteFill + ortalı kap iOS'ta yerel görseli doğal boyutunda (1600×667) çiziyordu →
+  // sol üst köşe büyütülmüş görünüyordu. Açık genişlik/yükseklik ile kutuya sığar (cover).
+  photo: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   bowl: { width: 64, height: 64 },
   tick: { position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   nearest: { position: 'absolute', left: 8, bottom: 8, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
