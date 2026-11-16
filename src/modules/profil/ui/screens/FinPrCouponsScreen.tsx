@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Clipboard, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { NavigationRouteContext, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sheet, useTheme, FinListSkeleton } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
@@ -61,7 +61,8 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   }, [load]);
 
   // G56-S1: banner hedefi `Campaign:<id>` → bu ekran, o kampanyanın detayı açık (bir kez).
-  const campaignParam = (useRoute().params as { campaignId?: string } | undefined)?.campaignId;
+  // Gezgin dışında da (alt sayfa / test) güvenli: rota bağlamı yoksa parametre yok.
+  const campaignParam = (React.useContext(NavigationRouteContext)?.params as { campaignId?: string } | undefined)?.campaignId;
   const openedParam = React.useRef(false);
   useEffect(() => {
     if (!campaignParam || openedParam.current || all.length === 0) return;

@@ -905,6 +905,35 @@ function resolveParity(name: string): ResolvedEntry | null {
       scheme: g50[3] ? 'dark' : 'light', scene, ...(g50[4] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
+  // G56-S1 — `G56-<Sahne>(-S<kaydırma pt>)(-EN)(-Dark)(-XL)`: eatkcal ana sayfa sipariş artırma bölümleri.
+  // Full = siparişli + kalori takipli + planlı kullanıcı · Yeni = sipariş/profil/plan yok · Isk = iskelet ·
+  // Davet / DavetBos / DavetKopya = Davet ekranı · Liste = Filtrelenmiş liste (Yüksek protein).
+  // Ürünler GERÇEK katalog; sipariş, haftalık adet, kalori hedefi, plan ve davet geçmişi yalnız __DEV__ örneği.
+  const g56 = /^G56-(Full|Yeni|Isk|DavetBos|DavetKopya|Davet|Liste)(?:-S(\d+))?(-EN)?(-Dark)?(-XL)?$/.exec(name);
+  if (g56) {
+    const scroll = g56[2] ? Number(g56[2]) : 0;
+    const home = (kind: string) => route(tab('Home', { vitrinGrowth: kind, ...(scroll ? { vitrinScroll: scroll } : {}) }));
+    const ref = (history: unknown[]) => ({ code: 'K7M3QX9', rewardTl: 100, minOrderTl: 300, history });
+    const HIST = [
+      { id: 'r1', name: 'Ayşe K.', status: 'earned', createdAt: '2026-11-08T10:00:00Z', earnedAt: '2026-11-12T10:00:00Z' },
+      { id: 'r2', name: 'Mert D.', status: 'pending', createdAt: '2026-11-14T10:00:00Z', earnedAt: null },
+    ];
+    const T: Record<string, { target: VitrinTarget; scene?: string }> = {
+      Full: { target: home('full'), scene: 'cart' },
+      Yeni: { target: home('yeni'), scene: 'cart' },
+      Isk: { target: home('skel'), scene: 'cart' },
+      Davet: { target: route([{ name: 'EkInvite', params: { vitrin: ref(HIST) } }]) },
+      DavetBos: { target: route([{ name: 'EkInvite', params: { vitrin: ref([]) } }]) },
+      DavetKopya: { target: route([{ name: 'EkInvite', params: { vitrin: ref(HIST), vitrinCopied: true } }]) },
+      Liste: { target: route([{ name: 'EkList', params: { filter: 'high_protein' } }]) },
+    };
+    const d = T[g56[1]];
+    return {
+      pano: name, area: 'eatkcal', target: d.target, data: 'default', flags: [...FINAL_FLAGS, 'davet'], lang: g56[3] ? 'en' : 'tr',
+      auth: 'user', hasDark: true, requested: name, scheme: g56[4] ? 'dark' : 'light', ...(d.scene ? { scene: d.scene } : {}),
+      ...(g56[5] ? { textSize: 'extra-extra-extra-large' as const } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

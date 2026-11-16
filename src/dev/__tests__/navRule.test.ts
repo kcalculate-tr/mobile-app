@@ -67,6 +67,9 @@ const PUSH_FILES = [
   'modules/eatkcal/v2/screens/EkAddressAddScreen.tsx',
   'modules/eatkcal/v2/screens/EkAddCardScreen.tsx',
   'modules/eatkcal/v2/screens/EkPaymentScreen.tsx',
+  // G56-S1: Filtrelenmiş liste + Davet ekranı (EkScr: itilen sayfa, yalnız sol geri).
+  'modules/eatkcal/v2/screens/EkListScreen.tsx',
+  'modules/eatkcal/v2/screens/EkInviteScreen.tsx',
   // G22-S1: Profil › Abonelik (sağdan itilen sayfa, sol geri).
   'modules/subscription/screens/SubProfileScreen.tsx',
   'modules/coach/screens/CoachChatScreen.tsx', // G24-S1 FinCoachChat (sol geri)
