@@ -1,0 +1,123 @@
+From 8c139ff91725d6e3b83c3e8c31ead1bd6c317cbd Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=C4=B0lter=20=C3=96zi=C5=9Fseven?= <iozisseven@gmail.com>
+Date: Mon, 16 Nov 2026 12:28:25 +0300
+Subject: [PATCH] feat(kampanya): G55 istege bagli Ingilizce baslik/metin
+ alanlari
+
+title_en/body_en yalniz doluysa (ya da satirda kolon varsa) gonderilir; migration
+20261116100100_g55_notification_locale uygulanmadan da kayit bozulmaz.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/pages/admin/Campaigns.jsx | 74 +++++++++++++++++++++++++++++++----
+ 1 file changed, 67 insertions(+), 7 deletions(-)
+
+diff --git a/src/pages/admin/Campaigns.jsx b/src/pages/admin/Campaigns.jsx
+index 8829e5e..0ccf9fa 100644
+--- a/src/pages/admin/Campaigns.jsx
++++ b/src/pages/admin/Campaigns.jsx
+@@ -83,6 +83,10 @@ const EMPTY_FORM = {
+   name: '',
+   title: '',
+   body: '',
++  // G55: isteğe bağlı İngilizce metin — uygulaması İngilizce olan kullanıcılara gider; boşsa Türkçe.
++  title_en: '',
++  body_en: '',
++  hasEnColumns: false,    // düzenlenen satırda title_en/body_en kolonu var mı (migration uygulanmış mı)
+   deep_link: '',
+   target_type: 'all',
+   sendWhen: 'now',        // 'now' | 'schedule'
+@@ -173,6 +177,9 @@ export default function Campaigns() {
+       name: c.name || '',
+       title: c.title || '',
+       body: c.body || '',
++      title_en: c.title_en || '',
++      body_en: c.body_en || '',
++      hasEnColumns: 'title_en' in c,
+       deep_link: c.deep_link || '',
+       target_type: c.target_type || 'all',
+       sendWhen: c.scheduled_at ? 'schedule' : 'now',
+@@ -208,13 +215,23 @@ export default function Campaigns() {
+   }, [form]);
+ 
+   // ── Save handlers ────────────────────────────────────────────────────────
+-  const basePayload = useCallback(() => ({
+-    name: form.name.trim(),
+-    title: form.title.trim(),
+-    body: form.body.trim(),
+-    deep_link: form.deep_link || null,
+-    target_type: form.target_type,
+-  }), [form]);
++  const basePayload = useCallback(() => {
++    // G55: İngilizce alanlar yalnız doluysa (ya da satırda kolon zaten varsa — silmek için)
++    // gönderilir; böylece migration uygulanmadan önce de kayıt bozulmaz.
++    const titleEn = form.title_en.trim();
++    const bodyEn = form.body_en.trim();
++    const en = titleEn || bodyEn || form.hasEnColumns
++      ? { title_en: titleEn || null, body_en: bodyEn || null }
++      : {};
++    return {
++      name: form.name.trim(),
++      title: form.title.trim(),
++      body: form.body.trim(),
++      ...en,
++      deep_link: form.deep_link || null,
++      target_type: form.target_type,
++    };
++  }, [form]);
+ 
+   const upsertCampaign = async (extra) => {
+     const payload = { ...basePayload(), ...extra };
+@@ -719,6 +736,49 @@ function EditorView({
+               />
+             </div>
+ 
++            {/* G55: İngilizce metin (isteğe bağlı). Uygulama dili İngilizce olanlara gider; boş alan Türkçeye düşer. */}
++            <div className="mb-3 rounded-xl border border-dashed border-geex-border p-3">
++              <p className="mb-2 text-xs text-slate-500">
++                İngilizce (isteğe bağlı) — uygulaması İngilizce olan kullanıcılar bunu görür. Boş bırakılan alan Türkçe gider.
++              </p>
++              <div className="mb-3">
++                <div className="mb-1.5 flex items-center justify-between">
++                  <label htmlFor="campaign-title-en" className="text-sm font-medium text-geex-text">İngilizce başlık</label>
++                  <span className={`text-xs ${form.title_en.length >= TITLE_MAX - 5 ? 'text-amber-600' : 'text-slate-400'}`}>
++                    {form.title_en.length}/{TITLE_MAX}
++                  </span>
++                </div>
++                <input
++                  id="campaign-title-en"
++                  type="text"
++                  lang="en"
++                  value={form.title_en}
++                  maxLength={TITLE_MAX}
++                  onChange={(e) => updateForm({ title_en: e.target.value })}
++                  placeholder="e.g. Surprise discount! 🎉"
++                  className="w-full rounded-xl border border-geex-border bg-white px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none"
++                />
++              </div>
++              <div>
++                <div className="mb-1.5 flex items-center justify-between">
++                  <label htmlFor="campaign-body-en" className="text-sm font-medium text-geex-text">İngilizce metin</label>
++                  <span className={`text-xs ${form.body_en.length >= BODY_MAX - 10 ? 'text-amber-600' : 'text-slate-400'}`}>
++                    {form.body_en.length}/{BODY_MAX}
++                  </span>
++                </div>
++                <textarea
++                  id="campaign-body-en"
++                  lang="en"
++                  value={form.body_en}
++                  maxLength={BODY_MAX}
++                  onChange={(e) => updateForm({ body_en: e.target.value })}
++                  rows={3}
++                  placeholder="e.g. 30% off today only. Don't miss it!"
++                  className="w-full rounded-xl border border-geex-border bg-white px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none"
++                />
++              </div>
++            </div>
++
+             <div>
+               <span className="mb-1.5 block text-sm font-medium text-geex-text">Tıklayınca nereye gitsin?</span>
+               <select
+-- 
+2.50.1 (Apple Git-155)
+
