@@ -34,6 +34,19 @@ function sb() {
   return (require('../../core/supabase') as SupabaseModule).getSupabaseClient();
 }
 
+/**
+ * G57: `post_media.url` depo içi yol (`posts/{uid}/…`, create_post böyle yazar) ya da tam adres olabilir.
+ * Önceden yol doğrudan resim adresi sanılıyordu → fotoğraflı gönderiler gri kutu kalıyordu.
+ */
+export function resolvePostMediaUrl(pathOrUrl: string): string {
+  if (!pathOrUrl || /^(https?:|file:|data:)/i.test(pathOrUrl)) return pathOrUrl;
+  try {
+    return sb().storage.from('post-media').getPublicUrl(pathOrUrl.replace(/^\/+/, '')).data.publicUrl;
+  } catch {
+    return pathOrUrl;
+  }
+}
+
 function rpcError(name: string, error: { message: string }): never {
   throw new Error(`${name}: ${error.message}`);
 }
@@ -85,6 +98,8 @@ function normalizePost(raw: Partial<FeedPost> & { id: string }): FeedPost {
       saved: me.saved ?? false,
       is_author: me.is_author ?? false,
     },
+    // G57: depo içi yol → herkese açık adres (önceden fotoğraflı gönderiler gri kalıyordu).
+    media: (raw.media ?? []).map((m) => ({ ...m, url: resolvePostMediaUrl(m.url) })),
     post_type: raw.post_type ?? 'ogun',
     status: raw.status ?? 'published',
     activity_card: raw.activity_card ?? null,

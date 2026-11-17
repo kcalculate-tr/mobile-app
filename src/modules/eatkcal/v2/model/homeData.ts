@@ -94,6 +94,8 @@ export function bannerTargetToEk(dest: string | null | undefined): BannerTarget 
     const params: Record<string, unknown> = { from: 'banner' };
     if (plan === 'fresh' || plan === 'balance') params.plan = plan;
     if (period === 'yearly' || period === 'monthly') params.yearly = period === 'yearly';
+    // G57: eatkcal banner'ı (yalnız İzmir) Fresh yıllık → İzmir teklifi (fileto +2, 2 öğün ücretsiz).
+    if (plan === 'fresh' && period === 'yearly') params.offer = 'izmir_fresh';
     return { kind: 'screen', name: 'SubPaywall', params };
   }
   if (target === 'Invite') return { kind: 'screen', name: 'EkInvite' };

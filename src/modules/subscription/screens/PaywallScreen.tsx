@@ -32,6 +32,7 @@ import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useCoachEnabled } from '../../coach/access';
 import { palette } from '../../../core/design/tokens';
 import { NeonBorder, neonPaywallPalette, useNeonVisible } from '../ui/NeonBorder';
+import { IZMIR_OFFER_MEAL_IMG } from '../izmirOffer';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Dosya adları SABİT (İlter ChatGPT ile üretiyor) — şimdilik mevcut cam nesnelerin kopyası (koç: maskot).
@@ -48,7 +49,7 @@ type FeatureKey = keyof typeof FEATURE_IMG;
 /** Üst ikon katmanları (hep monte; görünür olan `activeImg` paylaşılan değeriyle seçilir). */
 const FEATURE_KEYS: readonly FeatureKey[] = ['ai', 'voice', 'barcode', 'manual', 'coach'];
 
-export type PaywallParams = { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean } | undefined;
+export type PaywallParams = { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean; offer?: 'izmir_fresh' } | undefined;
 type Group = 'fresh' | 'balance';
 
 /** Koç günlük mesaj hakkı sunucudan gelmezse şeritte gösterilen sayı (README: günde 30). */
@@ -67,6 +68,8 @@ export default function PaywallScreen() {
   const { tier, status } = useTier();
 
   const coach = params.coach === true;
+  // G57: İzmir teklifi — Fresh yıllık kartında fileto görseli + "+2", üstte teklif cümlesi.
+  const izmirOffer = params.offer === 'izmir_fresh';
   // Koç yalnız `koc` açık + uç nokta hazırken anlatılır (kapalıyken Balance şeridinde/yükselt kartında koç YOK).
   const coachOn = useCoachEnabled() || coach;
   const [group, setGroup] = useState<Group>(() => (coach ? 'balance' : params.plan ?? (tier === 'fresh' ? 'balance' : 'fresh')));
@@ -302,9 +305,14 @@ export default function PaywallScreen() {
         <View style={styles.pad}>
           {pricesLoading ? <PlanSkeleton /> : null}
           {loadFailed ? <LoadError onRetry={() => void reload()} /> : null}
+          {izmirOffer && group === 'fresh' ? (
+            <AppText style={[styles.offerHead, { color: ink }]} testID="sub-izmir-offer-head">
+              {tr('sub.izmir_offer.head')}
+            </AppText>
+          ) : null}
           {cards && yearCard && monthCard ? (
             <Animated.View key={`cards-${group}`} entering={fade} style={styles.cards} accessibilityRole="radiogroup" testID="sub-cards">
-              <PlanRow c={yearCard} selected={yearly} coach={coach && group === 'balance'} neon={{ reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(true); }} />
+              <PlanRow c={yearCard} selected={yearly} coach={coach && group === 'balance'} offer={izmirOffer && group === 'fresh'} neon={{ reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(true); }} />
               <PlanRow c={monthCard} selected={!yearly} coach={coach && group === 'balance'} neon={{ reduced, visible: neonVisible }} onPress={() => { haptic('selection'); setYearly(false); }} />
               {group === 'fresh' ? (
                 <Pressable
@@ -454,7 +462,7 @@ function IconLayer({ k, index, active }: { k: FeatureKey; index: number; active:
   return <Animated.Image source={FEATURE_IMG[k]} style={[styles.glass, styles.iconLayer, style]} resizeMode="contain" accessibilityIgnoresInvertColors testID={`sub-feature-icon-${k}`} />;
 }
 
-function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; neon: { reduced: boolean; visible: boolean }; onPress: () => void }) {
+function PlanRow({ c, selected, coach, offer, neon, onPress }: { c: PlanCard; selected: boolean; coach?: boolean; offer?: boolean; neon: { reduced: boolean; visible: boolean }; onPress: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
   const card = t.isDark ? '#1C1C1E' : '#FFFFFF';
@@ -463,7 +471,7 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
   const priceLine = `${c.priceText}${tr(c.yearly ? 'sub.paywall.per_year' : 'sub.paywall.per_month')}`;
   const a11y = `${tr('sub.paywall.plan_a11y', { period, price: priceLine })}${c.trialDays ? tr('sub.paywall.card_trial_a11y', { days: c.trialDays }) : ''}${
     c.discountPct ? `, ${tr('sub.paywall.save', { pct: c.discountPct })}` : ''
-  }${coach ? `, ${tr('sub.feature.coach_card')}` : ''}`;
+  }${coach ? `, ${tr('sub.feature.coach_card')}` : ''}${offer ? `, ${tr('sub.izmir_offer.card')}` : ''}`;
   return (
     <Pressable
       onPress={onPress}
@@ -501,6 +509,17 @@ function PlanRow({ c, selected, coach, neon, onPress }: { c: PlanCard; selected:
           ) : null}
         </View>
       </View>
+      {offer ? (
+        <View style={[styles.coachRow, { borderTopColor: t.color.line }]} testID={`sub-card-offer-${c.key}`}>
+          <View style={styles.offerImgWrap}>
+            <Image source={{ uri: IZMIR_OFFER_MEAL_IMG }} style={styles.offerImg} resizeMode="cover" accessibilityIgnoresInvertColors />
+            <View style={[styles.offerBadge, { backgroundColor: palette.lime }]}>
+              <AppText style={styles.offerBadgeText}>+2</AppText>
+            </View>
+          </View>
+          <AppText style={[styles.coachText, { color: ink }]}>{tr('sub.izmir_offer.card')}</AppText>
+        </View>
+      ) : null}
       {coach ? (
         <View style={[styles.coachRow, { borderTopColor: t.color.line }]} testID={`sub-card-coach-${c.key}`}>
           <Image source={FEATURE_IMG.coach} style={styles.coachImg} resizeMode="contain" accessibilityIgnoresInvertColors />
@@ -596,6 +615,11 @@ const styles = StyleSheet.create({
   saveInline: { fontWeight: '700' },
   subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 2 },
   yearlyBilled: { fontSize: 13, fontWeight: '500' },
+  offerHead: { fontSize: 17, lineHeight: 23, fontWeight: '700', textAlign: 'center', marginBottom: 12, paddingHorizontal: 8 },
+  offerImgWrap: { width: 40, height: 40 },
+  offerImg: { width: 40, height: 40, borderRadius: 10 },
+  offerBadge: { position: 'absolute', right: -6, top: -6, minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  offerBadgeText: { fontSize: 12, fontWeight: '800', color: '#0A0A0A' },
   coachRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   coachImg: { width: 24, height: 24 },
   coachText: { flexShrink: 1, fontSize: 13, fontWeight: '600', lineHeight: 17 },

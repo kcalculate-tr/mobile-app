@@ -58,10 +58,16 @@ export function ScanNoteField({
   value,
   onChange,
   onClose,
+  prompt,
 }: {
   value: string;
   onChange: (v: string) => void;
   onClose: () => void;
+  /**
+   * G57 (İlter 17 Kas): deklanşörden SONRA aynı alan soru olarak açılır; altında "Tara" (not
+   * varsa notla) ve "Detaysız tara". Alan dışına dokunmak = detaysız tara.
+   */
+  prompt?: { onScan: () => void; onSkip: () => void };
 }) {
   const t = useTheme();
   const { t: tt } = useT();
@@ -83,9 +89,9 @@ export function ScanNoteField({
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none" testID="fin-scan-note-field">
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPress={onClose}
+        onPress={prompt ? prompt.onSkip : onClose}
         accessibilityRole="button"
-        accessibilityLabel={tt('common.close')}
+        accessibilityLabel={prompt ? tt('ai_scan.note_prompt_scan_plain') : tt('common.close')}
       />
       <View style={[styles.fieldWrap, { bottom: kb + 12 }]}>
         <FinErrorReveal>
@@ -102,10 +108,10 @@ export function ScanNoteField({
                 autoFocus
                 returnKeyType="done"
                 blurOnSubmit
-                onSubmitEditing={onClose}
+                onSubmitEditing={prompt ? prompt.onScan : onClose}
                 accessibilityLabel={tt('ai_scan.note_question')}
                 style={[styles.input, { color: t.color.ink, fontFamily: fontFamily.bodyRegular }]}
-                testID="fin-scan-note-input"
+                testID={prompt ? 'scan-note-prompt-input' : 'fin-scan-note-input'}
               />
               {value ? (
                 <Pressable
@@ -122,6 +128,26 @@ export function ScanNoteField({
             <AppText style={[styles.count, { color: t.color.secondary }]}>
               {`${value.length}/${SCAN_NOTE_MAX}`}
             </AppText>
+            {prompt ? (
+              <View style={styles.promptRow}>
+                <Pressable onPress={prompt.onSkip} accessibilityRole="button" style={styles.promptSkip} testID="scan-note-prompt-skip">
+                  <AppText style={[styles.promptSkipText, { color: t.color.secondary }]}>{tt('ai_scan.note_prompt_scan_plain')}</AppText>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    haptic('light');
+                    prompt.onScan();
+                  }}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.promptScan, { backgroundColor: t.color.accent, opacity: pressed ? 0.88 : 1 }]}
+                  testID="scan-note-prompt-scan"
+                >
+                  <AppText style={[styles.promptScanText, { color: t.color.onAccent }]}>
+                    {value.trim() ? tt('ai_scan.note_prompt_scan') : tt('ai_scan.note_prompt_scan_plain')}
+                  </AppText>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         </FinErrorReveal>
       </View>
@@ -164,4 +190,9 @@ const styles = StyleSheet.create({
   clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -12 },
   count: { fontSize: 13, textAlign: 'right' },
   row: { marginTop: 6, fontSize: 13, lineHeight: 18 },
+  promptRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
+  promptSkip: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
+  promptSkipText: { fontSize: 15, fontWeight: '600' },
+  promptScan: { height: 44, paddingHorizontal: 20, borderRadius: 22, justifyContent: 'center' },
+  promptScanText: { fontSize: 15, fontWeight: '700' },
 });

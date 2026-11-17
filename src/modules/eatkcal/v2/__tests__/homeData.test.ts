@@ -106,7 +106,7 @@ test('cardPrice / cardKcal: utils/price ile; veri yoksa rozet gizli', () => {
 });
 
 test('16 Kas: kampanya banner hedefleri — paywall (plan + yıllık) ve davet ekranı', () => {
-  assert.deepEqual(bannerTargetToEk('SubPaywall:fresh:yearly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'fresh', yearly: true } });
+  assert.deepEqual(bannerTargetToEk('SubPaywall:fresh:yearly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'fresh', yearly: true, offer: 'izmir_fresh' } });
   assert.deepEqual(bannerTargetToEk('SubPaywall:balance:monthly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'balance', yearly: false } });
   assert.deepEqual(bannerTargetToEk('SubPaywall'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner' } });
   assert.deepEqual(bannerTargetToEk('Invite'), { kind: 'screen', name: 'EkInvite' });

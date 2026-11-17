@@ -160,6 +160,7 @@ export function CommentsSheet({
   count,
   onClose,
   onToast,
+  onSent,
   vitrinMenu,
 }: {
   visible: boolean;
@@ -169,6 +170,8 @@ export function CommentsSheet({
   count?: number;
   onClose: () => void;
   onToast?: (message: string) => void;
+  /** G57: yorum başarıyla gönderildi (ilk yorum bildirimi için). */
+  onSent?: () => void;
   /** YALNIZ __DEV__ vitrini: FinComments kare 2 — ilk yorumun ⋯ menüsü açık. */
   vitrinMenu?: boolean;
 }) {
@@ -239,8 +242,11 @@ export function CommentsSheet({
     setReplyTo(null);
     haptic('light');
     const id = await useCommentsStore.getState().add(body, author, parent, key);
-    if (id) onToast?.(tr('kesfet.comments.sent'));
-  }, [text, submitting, currentUser, tr, postId, replyTo, onToast]);
+    if (id) {
+      onToast?.(tr('kesfet.comments.sent'));
+      onSent?.();
+    }
+  }, [text, submitting, currentUser, tr, postId, replyTo, onToast, onSent]);
 
   const remaining = MAX_LEN - text.length;
   const { panelStyle, backdropStyle, onLayout } = useSheetRise(visible);

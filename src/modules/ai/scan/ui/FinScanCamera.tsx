@@ -79,6 +79,7 @@ export default function FinScanCamera({
   onPermissionGranted,
   note = '',
   onNoteChange,
+  notePrompt,
   onBarcode,
   barcodeBusy = false,
   initialMode = 'photo',
@@ -100,6 +101,8 @@ export default function FinScanCamera({
   modeKey?: number;
   /** G18-S4 md.5: "Detay ekle" notu (ScanScreen tutar). onNoteChange yoksa hap çizilmez. */
   note?: string;
+  /** G57: deklanşör sonrası "detay var mı?" — aynı not alanı soru olarak açılır. */
+  notePrompt?: { onScan: () => void; onSkip: () => void } | null;
   onNoteChange?: (v: string) => void;
   cam: ExpoCameraModule;
   remaining: number | null;
@@ -446,7 +449,9 @@ export default function FinScanCamera({
         </View>
       </View>
 
-      {noteOpen && onNoteChange ? (
+      {notePrompt && onNoteChange ? (
+        <ScanNoteField value={note} onChange={onNoteChange} onClose={notePrompt.onSkip} prompt={notePrompt} />
+      ) : noteOpen && onNoteChange ? (
         <ScanNoteField value={note} onChange={onNoteChange} onClose={() => setNoteOpen(false)} />
       ) : null}
     </View>

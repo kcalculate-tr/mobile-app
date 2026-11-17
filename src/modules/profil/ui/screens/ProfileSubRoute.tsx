@@ -28,6 +28,7 @@ import FinPrReviewsScreen from './FinPrReviewsScreen';
 import FinPrCouponsScreen from './FinPrCouponsScreen';
 import FinPrCardsScreen from './FinPrCardsScreen';
 import FinPrMeasurementsScreen from './FinPrMeasurementsScreen';
+import FinPrKesfetActivityScreen from './FinPrKesfetActivityScreen';
 import { isProfileSub, type ProfileSubName, type ProfileSubParams } from './profileSub';
 
 type Nav = {
@@ -105,6 +106,8 @@ export default function ProfileSubRoute() {
       return <FinPrCouponsScreen onBack={back} />;
     case 'measurements':
       return <FinPrMeasurementsScreen onBack={back} />;
+    case 'kesfetActivity':
+      return <FinPrKesfetActivityScreen onBack={back} initialTab={params.tab} />;
     case 'public': {
       const fallbackName =
         String(user?.user_metadata?.full_name || '').trim() || String(user?.email || 'Kcal Misafir').split('@')[0];

@@ -203,7 +203,7 @@ export default function PublicProfileScreen() {
           {profile.display_name}
         </AppText>
         <AppText variant="body" tone="secondary">
-          @{profile.handle}
+          {profile.handle ? `@${profile.handle}` : null}
         </AppText>
         {profile.bio ? (
           <AppText variant="body" style={styles.bio}>

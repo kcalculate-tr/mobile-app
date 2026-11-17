@@ -371,11 +371,23 @@ export default function ScanScreen() {
     });
   };
 
+  // G57 (İlter 17 Kas): deklanşör / galeri sonrası, not yoksa küçük "detay var mı?" sorusu.
+  const [pendingCapture, setPendingCapture] = useState<{ uri: string; source: 'camera' | 'gallery'; size?: ImageSize | null } | null>(null);
+  const beginCapture = (uri: string, source: 'camera' | 'gallery', size?: ImageSize | null) => {
+    // Soru yalnız canlı kamera ekranında (not alanı orada); eski derlemede doğrudan analiz.
+    if (normalizeScanNote(scanNote) || !liveCam) {
+      void runFinCapture(uri, source, false, size);
+      return;
+    }
+    setPendingCapture({ uri, source, size });
+  };
+
   const runFinCapture = async (
     rawUri: string,
     source: 'camera' | 'gallery',
     retry = false,
     size?: ImageSize | null,
+    noteOverride?: string,
   ) => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -390,7 +402,7 @@ export default function ScanScreen() {
       startStickerLift(uri);
       const idempotencyKey = `${user?.id ?? 'anon'}-${uri}`;
       setScanRef(idempotencyKey);
-      const hint = normalizeScanNote(scanNote);
+      const hint = normalizeScanNote(noteOverride ?? scanNote);
 
       // md.4: dosya yok / 5 MB üstü → rezervasyon YOK (hak harcanmaz), belleğe okunmaz.
       const local = await checkLocalImage(uri);
@@ -499,7 +511,7 @@ export default function ScanScreen() {
     if (await aiBlocked(() => void handleCaptureFin())) return;
     const asset = await captureOnce();
     if (!asset?.uri) return;
-    await runFinCapture(asset.uri, 'camera', false, asset);
+    beginCapture(asset.uri, 'camera', asset);
   };
 
   // G19-S1 md.5: yeni kabukta galeri İZİN İSTEMEDEN açılır (iOS PHPicker / Android
@@ -529,7 +541,7 @@ export default function ScanScreen() {
     if (yeniKabuk) {
       const asset = await pickFromGalleryFin();
       if (!asset?.uri) return;
-      await runFinCapture(asset.uri, 'gallery', false, asset);
+      beginCapture(asset.uri, 'gallery', asset);
       return;
     }
     const uri = await pickFromGallery();
@@ -1128,15 +1140,32 @@ export default function ScanScreen() {
             remaining={remaining}
             analyzing={stage === 'scanning'}
             photoUri={photoUri}
-            paused={errorKind !== null || aiSheet || subLimit !== null}
+            paused={errorKind !== null || aiSheet || subLimit !== null || pendingCapture !== null}
             onClose={() => navigation.goBack()}
-            onCaptured={(uri, size) => void runFinCapture(uri, 'camera', false, size)}
+            onCaptured={(uri, size) => beginCapture(uri, 'camera', size)}
             onGallery={handleGalleryPick}
             onManual={handleManualEntry}
             onPermissionDenied={() => setErrorKind('camera')}
             onPermissionGranted={() => setErrorKind((k) => (k === 'camera' ? null : k))}
             note={scanNote}
             onNoteChange={setScanNote}
+            notePrompt={
+              pendingCapture
+                ? {
+                    onScan: () => {
+                      const p = pendingCapture;
+                      setPendingCapture(null);
+                      void runFinCapture(p.uri, p.source, false, p.size, scanNote);
+                    },
+                    onSkip: () => {
+                      const p = pendingCapture;
+                      setPendingCapture(null);
+                      setScanNote('');
+                      void runFinCapture(p.uri, p.source, false, p.size, '');
+                    },
+                  }
+                : null
+            }
             onBarcode={(code) => void handleBarcode(code)}
             barcodeBusy={barcodeBusy}
             initialMode={cameraMode}

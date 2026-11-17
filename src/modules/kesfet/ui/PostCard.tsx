@@ -8,7 +8,7 @@
 // nokta izi (useDotBurst). ÇİFT DOKUNMA görselde → beğen + büyük kalp damgası
 // (opaklık + yay ölçek, FinMoLike). Haptik: beğen/kaydet light. Azaltılmış harekete
 // hook'lar uyar.
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -30,6 +30,7 @@ import { Icon, type IconName } from './icons';
 import { useFeedCardEnter, useIconPop, useDotBurst, useCountRoll } from '../motion';
 import type { PostCardModel } from './format';
 import type { MealType } from '../types';
+import { FEED_BODY_LINES, isLongBody } from '../myActivity';
 
 function Action({
   icon,
@@ -113,6 +114,7 @@ export function PostCard({
   tip,
   onOpenVideo,
   onOpenAuthor,
+  onOpenMedia,
 }: {
   model: PostCardModel;
   /** Akışta sıra — girişte ardışık animasyon için (en fazla 6 gecikir). */
@@ -152,6 +154,8 @@ export function PostCard({
   onOpenVideo?: () => void;
   /** G21-S1 md.8 — avatar / ada dokun = yazarın açık profili (FinProfilePublic; takip oradan). */
   onOpenAuthor?: () => void;
+  /** G57 — görsele TEK dokunuş = tam ekran görüntüleyici (çift dokunuş beğenmeye devam eder). */
+  onOpenMedia?: (index: number) => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -185,17 +189,36 @@ export function PostCard({
     );
   };
   // Görselde çift dokunma: 300 ms içinde ikinci dokunma → beğen (değilse) + damga.
+  // G57: tek dokunuş görüntüleyiciyi açar; ikinci dokunuş 300 ms içinde gelirse beğeni (açma iptal).
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (openTimer.current) clearTimeout(openTimer.current);
+  }, []);
   const onMediaTap = () => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
       lastTap.current = 0;
+      if (openTimer.current) clearTimeout(openTimer.current);
+      openTimer.current = null;
       burstHeart();
       if (!model.me.liked) like();
       else haptic('light');
     } else {
       lastTap.current = now;
+      if (onOpenMedia) {
+        if (openTimer.current) clearTimeout(openTimer.current);
+        openTimer.current = setTimeout(() => {
+          openTimer.current = null;
+          onOpenMedia(0);
+        }, 300);
+      }
     }
   };
+  // G57: uzun metin akışta 6 satırla kısalır + "Devamını gör" (Twitter gibi; dokunuş = ayrıntı).
+  const longBody = isLongBody(model.body);
+  const [bodyOpen, setBodyOpen] = useState(false);
+  const clampBody = longBody && !bodyOpen;
+  const openMore = () => (onOpen ? onOpen() : setBodyOpen(true));
 
   // FinFeedTip balonu: öğün kartının altına (kartın son katmanı → aksiyonların üstünde).
   const [mealBottom, setMealBottom] = useState(0);
@@ -208,7 +231,7 @@ export function PostCard({
           onPress={onOpenAuthor}
           disabled={!onOpenAuthor}
           accessibilityRole={onOpenAuthor ? 'link' : undefined}
-          accessibilityLabel={onOpenAuthor ? `${model.authorName} @${model.handle}` : undefined}
+          accessibilityLabel={onOpenAuthor ? (model.handle ? `${model.authorName} @${model.handle}` : model.authorName) : undefined}
           hitSlop={4}
           testID="post-card-author"
         >
@@ -227,8 +250,8 @@ export function PostCard({
               </AppText>
             ) : null}
             <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.handle}>
-              @{model.handle}
-              {model.time ? `, ${model.time}` : ''}
+              {/* 17 Kas: kullanıcı adı yoksa "@," yerine yalnız süre. */}
+              {[model.handle ? `@${model.handle}` : null, model.time || null].filter(Boolean).join(', ')}
             </AppText>
             <Pressable
               onPress={onOpenMenu}
@@ -253,9 +276,29 @@ export function PostCard({
 
           {/* Metin — serbest sarar (dinamik yazı boyutunda kırılmasın diye clamp yok) */}
           {model.body ? (
-            <AppText variant="body" style={styles.text} onPress={onOpen} suppressHighlighting>
-              {model.body}
-            </AppText>
+            <>
+              <AppText
+                variant="body"
+                style={styles.text}
+                onPress={onOpen}
+                suppressHighlighting
+                numberOfLines={clampBody ? FEED_BODY_LINES : undefined}
+              >
+                {model.body}
+              </AppText>
+              {clampBody ? (
+                <AppText
+                  variant="body"
+                  style={[styles.readMore, { color: t.color.secondary }]}
+                  onPress={openMore}
+                  accessibilityRole="button"
+                  suppressHighlighting
+                  testID="kesfet-read-more"
+                >
+                  {tr('kesfet_act.read_more')}
+                </AppText>
+              ) : null}
+            </>
           ) : null}
 
           {/* Görseller — çift dokunma beğen + büyük kalp damgası */}
@@ -363,6 +406,7 @@ const styles = StyleSheet.create({
   handle: { flexShrink: 1, fontFamily: fontFamily.bodyRegular, fontSize: 14 },
   more: { marginLeft: 'auto', minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   text: { marginTop: 2, fontSize: 15, lineHeight: 22 },
+  readMore: { marginTop: 2, fontSize: 15, lineHeight: 22, fontWeight: '600' },
   pending: { alignSelf: 'flex-start', marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth },
   pendingLabel: {},
   tip: { position: 'absolute', right: 0 },

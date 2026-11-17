@@ -93,7 +93,7 @@ export type RootStackParamList = {
   AiScan: undefined;
   AiScanOffline: undefined;
   // G22-S1 md.4 — kcalAI abonelikleri (`abonelik` bayrağı + RevenueCat anahtarı).
-  SubPaywall: { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean } | undefined;
+  SubPaywall: { from?: string; plan?: 'fresh' | 'balance'; yearly?: boolean; coach?: boolean; offer?: 'izmir_fresh' } | undefined;
   SubProfile: undefined;
   // G24-S1 — kcalAI Koç (`koc` bayrağı). Parametreler: modules/coach/types CoachChatParams.
   CoachIntro: import('../modules/coach/types').CoachChatParams | undefined;

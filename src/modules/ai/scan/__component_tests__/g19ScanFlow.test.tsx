@@ -70,6 +70,23 @@ jest.mock('../ui/FinScanCamera', () => {
 // eslint-disable-next-line import/first
 import ScanScreen from '../screens/ScanScreen';
 
+// G57: deklanşör/galeri sonrası "detay var mı?" sorusu → "Detaysız tara" (görünürse).
+async function passNotePrompt(tree: { queryByTestId: (id: string) => unknown }) {
+  for (let i = 0; i < 5; i++) {
+    const btn = tree.queryByTestId('scan-note-prompt-scan');
+    if (btn) {
+      await act(async () => {
+        fireEvent.press(btn as never);
+      });
+      return;
+    }
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
+
 const EST: Omit<ScanEstimate, 'isEstimate'> = {
   name: 'Pilav, Ayran',
   kcal: 280,
@@ -128,6 +145,7 @@ async function shutter(tree: ReturnType<typeof render>) {
   await act(async () => {
     fireEvent.press(tree.getByTestId('fin-scan-shutter'));
   });
+  await passNotePrompt(tree);
 }
 
 test('çift dokunma: analiz başlamadan ikinci deklanşör İKİNCİ rezervasyon açmaz', async () => {
@@ -293,4 +311,22 @@ test('kota bitti → FinErrLimit + scan_limit olayı, analiz yok', async () => {
   await waitFor(() => expect(tree.getByText('Bugünkü 2 AI taramanı kullandın')).toBeTruthy());
   expect(c.analyzeImage).not.toHaveBeenCalled();
   expect(events.some((e) => e[0] === 'scan_limit')).toBe(true);
+});
+
+test('G57: deklanşör sonrası "detay var mı?" → not yazılırsa analize hint olarak gider', async () => {
+  const analyze = jest.fn(async () => EST);
+  setAiScanClient(client(analyze));
+  const tree = render(<ScanScreen />);
+  await waitFor(() => expect(tree.getByTestId('fin-scan-camera')).toBeTruthy());
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('fin-scan-shutter'));
+  });
+  await waitFor(() => expect(tree.getByTestId('scan-note-prompt-input')).toBeTruthy());
+  expect(analyze).not.toHaveBeenCalled();
+  fireEvent.changeText(tree.getByTestId('scan-note-prompt-input'), 'kıymalı börek');
+  await act(async () => {
+    fireEvent.press(tree.getByTestId('scan-note-prompt-scan'));
+  });
+  await waitFor(() => expect(analyze).toHaveBeenCalled());
+  expect((analyze.mock.calls[0] as unknown as [{ hint?: string }])[0].hint).toBe('kıymalı börek');
 });

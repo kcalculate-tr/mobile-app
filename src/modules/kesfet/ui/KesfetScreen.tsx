@@ -55,6 +55,9 @@ import { EditPostSheet } from './EditPostSheet';
 import { CommentsSheet } from './CommentsSheet';
 import { FeedTip, feedTipSeen } from './FeedTip';
 import { AddToast, type ToastState } from './AddToast';
+import { ImageViewer, type ImageViewerState } from './ImageViewer';
+import { firstActionTip } from '../activityRuntime';
+import { KIND_TAB, type MyActivityKind } from '../myActivity';
 import { ShareDaySheet } from './ShareDaySheet';
 import { buildShareDayCard, shareDayToastKey, type ShareDayCard } from '../../gun/shareDay';
 
@@ -152,6 +155,9 @@ function Header({
   );
 }
 
+/** 17 Kas: Keşfet oturumda ilk kez açıldı mı (bir kez "Sana Özel"e geçilir). */
+let openedPersonal = false;
+
 function Tabs({
   tab,
   showFollowing,
@@ -163,10 +169,14 @@ function Tabs({
 }) {
   const t = useTheme();
   const { t: tr } = useT();
-  const items: Array<{ key: 'for_you' | 'following'; label: string }> = [
-    { key: 'for_you', label: tr('kesfet.ui.tab.for_you') },
-  ];
-  if (showFollowing) items.push({ key: 'following', label: tr('kesfet.ui.tab.following') });
+  // 17 Kas (İlter): solda "Sana Özel" = kendi + takip ettiklerim (sunucu 'following'),
+  // sağda "Keşfet" = herkese açık hesaplardan herkes (sunucu 'for_you').
+  const items: Array<{ key: 'for_you' | 'following'; label: string }> = showFollowing
+    ? [
+        { key: 'following', label: tr('kesfet.ui.tab.following') },
+        { key: 'for_you', label: tr('kesfet.ui.tab.for_you') },
+      ]
+    : [{ key: 'for_you', label: tr('kesfet.ui.tab.for_you') }];
   const [rowW, onRowLayout] = useRowWidth();
   const activeIndex = Math.max(0, items.findIndex((it) => it.key === tab));
 
@@ -280,6 +290,22 @@ export function KesfetScreen() {
   const [sheetPost, setSheetPost] = useState<FeedPost | null>(null);
   const [menuPost, setMenuPost] = useState<FeedPost | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  // G57: tam ekran görsel + ilk beğeni/kaydet/yorumda bir kez "nerede görürsün" bildirimi.
+  const [viewer, setViewer] = useState<ImageViewerState | null>(null);
+  const showFirstTip = useCallback(
+    async (kind: MyActivityKind) => {
+      if (!(await firstActionTip(kind))) return;
+      setToast({
+        message: tr(`kesfet_act.tip_${kind}`),
+        actionLabel: tr('kesfet_act.tip_action'),
+        onAction: () => {
+          setToast(null);
+          navigation.navigate('ProfileSub', { sub: 'kesfetActivity', tab: KIND_TAB[kind] });
+        },
+      });
+    },
+    [tr, navigation],
+  );
   const [suggestions, setSuggestions] = useState<SuggestedAccount[]>([]);
   // G18-S4 md.4 — FinFollowingEmpty "Başlangıç için": for_you'daki kcal (Marka/Editör)
   // gönderileri; Takip boşken bir kez okunur. Gerçek veri yoksa bölüm gizli.
@@ -320,6 +346,10 @@ export function KesfetScreen() {
   // İlk yükleme + gün halkaları. (Vitrin: `initialTab: 'following'` → Takip sekmesiyle aç.)
   useEffect(() => {
     if (__DEV__ && route.params?.initialTab === 'following') {
+      void useKesfetStore.getState().setTab('following');
+    } else if (kesfetTakip && !openedPersonal) {
+      // 17 Kas: oturumun ilk açılışı "Sana Özel"de (kendi + takip ettiklerim).
+      openedPersonal = true;
       void useKesfetStore.getState().setTab('following');
     } else if (useKesfetStore.getState().posts.length === 0) {
       void useKesfetStore.getState().load();
@@ -710,16 +740,27 @@ export function KesfetScreen() {
             plateOpen={vitrinXray}
             onOpen={() => navigation.navigate('SharedPost', { postId: item.id })}
             // G21-S1 md.8 (#D1): avatar / ad → açık profil (takip düğmesi oradan; önce yalnız bildirimden ulaşılıyordu).
+            // 17 Kas: kullanıcı adı olmayan hesap (çoğunluk) id ile açılır (get_public_profile uuid kabul eder).
             onOpenAuthor={
-              item.author.handle
-                ? () => navigation.navigate('PublicProfile', { handle: item.author.handle.replace(/^@/, '') })
+              item.author.handle || item.author.id
+                ? () => navigation.navigate('PublicProfile', { handle: (item.author.handle || item.author.id).replace(/^@/, '') })
                 : undefined
             }
             onOpenVideo={() => setVideoPostId(item.id)}
             onLike={() => {
-              void useKesfetStore.getState().react(item.id, 'like', !item.me.liked);
+              const on = !item.me.liked;
+              void useKesfetStore.getState().react(item.id, 'like', on);
+              if (on) void showFirstTip('like');
             }}
-            onSave={() => useKesfetStore.getState().react(item.id, 'save', !item.me.saved)}
+            onSave={() => {
+              const on = !item.me.saved;
+              void useKesfetStore.getState().react(item.id, 'save', on);
+              if (on) void showFirstTip('save');
+            }}
+            onOpenMedia={(i) => {
+              const urls = item.media.filter((m) => m.kind !== 'video').map((m) => m.url);
+              if (urls.length) setViewer({ urls, index: Math.min(i, urls.length - 1) });
+            }}
             onShare={paylasimBaglanti ? () => onShare(item) : undefined}
             quickMeal={yeniKabukMenu ? quickMealType : undefined}
             onQuickLog={(frame, meal, portion) => onQuickLog(item, frame, meal, portion)}
@@ -909,7 +950,7 @@ export function KesfetScreen() {
       />
       </Animated.View>
       {/* G21-S1 md.9: Senin için ↔ Takip — içerik yatay kayarak geçer. */}
-      <SectionSlide index={tab === 'following' ? 1 : 0} style={styles.content} testID="kesfet-section">
+      <SectionSlide index={kesfetTakip && tab === 'for_you' ? 1 : 0} style={styles.content} testID="kesfet-section">
         {body}
       </SectionSlide>
 
@@ -973,6 +1014,7 @@ export function KesfetScreen() {
       />
       <RulesSheet visible={rulesOpen} onAccept={() => setRulesOpen(false)} onClose={() => setRulesOpen(false)} />
       <AddToast toast={toast} onDismiss={() => (vitrin ? undefined : setToast(null))} />
+      <ImageViewer state={viewer} onClose={() => setViewer(null)} />
       <ShareDaySheet
         visible={shareDayOpen}
         onClose={() => setShareDayOpen(false)}
@@ -1005,6 +1047,7 @@ export function KesfetScreen() {
           count={commentsPost?.stats.comments}
           onClose={() => setCommentsPost(null)}
           onToast={(message) => setToast({ message })}
+          onSent={() => void showFirstTip('comment')}
           vitrinMenu={vitrin === 'commentsMenu'}
         />
       ) : null}

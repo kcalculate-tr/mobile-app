@@ -21,6 +21,7 @@ export const PROFILE_SUBS = [
   'coupons',
   'measurements',
   'cards',
+  'kesfetActivity',
 ] as const;
 
 export type ProfileSubName = (typeof PROFILE_SUBS)[number];
@@ -32,6 +33,8 @@ export type ProfileSubParams = {
   displayName?: string;
   avatarUrl?: string | null;
   isPrivate?: boolean;
+  /** G57: Etkinliğim başlangıç sekmesi. */
+  tab?: 'saved' | 'liked' | 'comments';
 };
 
 export function isProfileSub(v: unknown): v is ProfileSubName {

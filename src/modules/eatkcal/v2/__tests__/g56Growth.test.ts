@@ -213,7 +213,7 @@ test('banner koşulu: hücre bazında opsiyonel; davet misafirde/kapalıyken, "i
 
 test('banner hedefleri: Davet, paywall (Fresh yıllık), liste (filtre/kategori), kampanya detayı', () => {
   assert.deepEqual(bannerTargetToEk('Invite'), { kind: 'screen', name: 'EkInvite' });
-  assert.deepEqual(bannerTargetToEk('SubPaywall:fresh:yearly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'fresh', yearly: true } });
+  assert.deepEqual(bannerTargetToEk('SubPaywall:fresh:yearly'), { kind: 'screen', name: 'SubPaywall', params: { from: 'banner', plan: 'fresh', yearly: true, offer: 'izmir_fresh' } });
   assert.deepEqual(bannerTargetToEk('ProductList:high_protein'), { kind: 'list', filter: 'high_protein' });
   assert.deepEqual(bannerTargetToEk('ProductList:bilinmeyen'), { kind: 'list', filter: 'all' });
   assert.deepEqual(bannerTargetToEk('CategoryProducts:Koliye Özel Fırsatlar'), { kind: 'category', categoryName: 'Koliye Özel Fırsatlar' });

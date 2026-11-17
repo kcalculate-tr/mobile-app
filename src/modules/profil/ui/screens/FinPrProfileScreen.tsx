@@ -90,6 +90,7 @@ import { ProfilePlanRow, usePersonalPlanEntry } from '../../../personalPlan/ui/e
 import { ProfileInviteRow } from '../../../eatkcal/v2/ui/growth/entries';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
+import { Icon as KesfetIcon } from '../../../kesfet/ui/icons';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 // Rota bağlamı (yalnız __DEV__ vitrin parametresi için) — navigasyon taklidi olan testlerde yoksa boş bağlam.
@@ -112,6 +113,8 @@ export default function FinPrProfileScreen() {
   // G25-S1 md.3 (A4): "Macro aboneliğim" yalnız "Öğün Aboneliği" (yakında) sekmesini açıyor →
   // `yakinda_satirlari` kapalıyken satır gizli (Macro bakiyesi "Macro" satırından açılır).
   const yakindaSatirlari = useFeature('yakinda_satirlari');
+  // G57: Keşfet açıkken "Kaydettiklerim ve beğendiklerim" satırı.
+  const kesfetOn = useFeature('kesfet');
   // G34-S1 md.5: Hedefim + Kişisel planım TEK kart (`kisisel_plan`). Plan yoksa kart "Kişisel planımı oluştur"
   // satırına döner; varsa halka + hedef özeti kalır, düğme Kişisel planım'ı açar. Kapalıyken G33 kartı AYNEN.
   const personalPlan = usePersonalPlanEntry();
@@ -345,6 +348,15 @@ export default function FinPrProfileScreen() {
             )}
             {/* G33-S1: Alışveriş listesi + Öğün planı (`ogun_plani` bayrağı; değerler bu haftanın planından). */}
             <ProfilePlanRows onOpen={(route) => (navigation as any).navigate(route)} />
+            {/* G57: Keşfet'te kaydettiklerim / beğendiklerim / yorumlarım. */}
+            {kesfetOn ? (
+              <FinRow
+                icon={<KesfetIcon name="bookmark" size={18} color={t.color.ink} />}
+                label={tr('kesfet_act.row')}
+                onPress={() => openSub('kesfetActivity')}
+                testID="profile-kesfet-activity"
+              />
+            ) : null}
           </FinRowGroup>
           {/* G31 kararı: "Yakında · Egzersiz ve fitness rehberi" satırı YOK. */}
         </View>

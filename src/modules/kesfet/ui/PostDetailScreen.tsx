@@ -39,6 +39,10 @@ import type { Comment, FeedPost } from '../types';
 import { Avatar } from './Avatar';
 import { VerifiedBadge } from './VerifiedBadge';
 import { MediaGrid } from './MediaGrid';
+import { ImageViewer, type ImageViewerState } from './ImageViewer';
+import { firstActionTip } from '../activityRuntime';
+import { KIND_TAB, type MyActivityKind } from '../myActivity';
+import { useNavigation } from '@react-navigation/native';
 import { ActivityCard } from './ActivityCard';
 import { DidItSheet } from './DidItSheet';
 import { PostMenu } from './PostMenu';
@@ -248,6 +252,23 @@ export function PostDetailScreen({
   const [post, setPost] = useState<FeedPost | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'notfound'>('loading');
   const [toast, setToast] = useState<ToastState | null>(null);
+  // G57: tam ekran görsel + ilk beğeni/kaydet/yorum bildirimi (Keşfet akışıyla aynı).
+  const navigation = useNavigation<any>();
+  const [viewer, setViewer] = useState<ImageViewerState | null>(null);
+  const showFirstTip = useCallback(
+    async (kind: MyActivityKind) => {
+      if (!(await firstActionTip(kind))) return;
+      setToast({
+        message: tr(`kesfet_act.tip_${kind}`),
+        actionLabel: tr('kesfet_act.tip_action'),
+        onAction: () => {
+          setToast(null);
+          navigation.navigate('ProfileSub', { sub: 'kesfetActivity', tab: KIND_TAB[kind] });
+        },
+      });
+    },
+    [tr, navigation],
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [didItOpen, setDidItOpen] = useState(false);
   const [didItDone, setDidItDone] = useState(false);
@@ -309,8 +330,9 @@ export function PostDetailScreen({
         .getState()
         .react(post.id, kind, on)
         .catch(() => setPost(prev));
+      if (on) void showFirstTip(kind);
     },
-    [post],
+    [post, showFirstTip],
   );
 
   const logMeToo = useCallback(async (from: View | null = null) => {
@@ -367,12 +389,13 @@ export function PostDetailScreen({
       setComments((list) => list.map((c) => (c.id === tempId ? { ...c, id: res.comment_id, status: res.status } : c)));
       getKesfetClient().moderateContent({ targetType: 'comment', targetId: res.comment_id }).catch(() => {});
       setToast({ message: tr('kesfet.comments.sent') });
+      void showFirstTip('comment');
     } catch {
       setComments((list) => list.filter((c) => c.id !== tempId));
     } finally {
       setSubmitting(false);
     }
-  }, [text, submitting, postId, tr, replyTo]);
+  }, [text, submitting, postId, tr, replyTo, showFirstTip]);
 
   // Tek seviye: üst yorumlar + hemen altına yanıtları (CommentsSheet ile aynı kural).
   const thread = useMemo(() => {
@@ -443,8 +466,8 @@ export function PostDetailScreen({
             {/* Yazar */}
             <Pressable
               style={styles.author}
-              onPress={onOpenAuthor && post.author.handle ? () => onOpenAuthor(post.author.handle) : undefined}
-              disabled={!onOpenAuthor || !post.author.handle}
+              onPress={onOpenAuthor && (post.author.handle || post.author.id) ? () => onOpenAuthor(post.author.handle || post.author.id) : undefined}
+              disabled={!onOpenAuthor || !(post.author.handle || post.author.id)}
               accessibilityRole={onOpenAuthor ? 'link' : undefined}
               testID="post-detail-author"
             >
@@ -483,9 +506,17 @@ export function PostDetailScreen({
             ) : null}
 
             {post.media.length > 0 ? (
-              <View style={styles.media}>
+              <Pressable
+                style={styles.media}
+                onPress={() => {
+                  const urls = post.media.filter((m) => m.kind !== 'video').map((m) => m.url);
+                  if (urls.length) setViewer({ urls, index: 0 });
+                }}
+                accessibilityRole="imagebutton"
+                testID="kesfet-detail-media"
+              >
                 <MediaGrid media={post.media} postId={post.id} isVisible />
-              </View>
+              </Pressable>
             ) : null}
 
             {isMeal ? <DetailMealCard post={post} onLog={(from) => void logMeToo(from)} /> : null}
@@ -669,6 +700,7 @@ export function PostDetailScreen({
         }}
       />
       <AddToast toast={toast} onDismiss={() => setToast(null)} />
+      <ImageViewer state={viewer} onClose={() => setViewer(null)} />
     </View>
   );
 }

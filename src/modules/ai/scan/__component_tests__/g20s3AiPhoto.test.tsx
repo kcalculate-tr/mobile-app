@@ -55,6 +55,23 @@ jest.mock('expo-image-picker', () => ({
 // eslint-disable-next-line import/first
 import ScanScreen from '../screens/ScanScreen';
 
+// G57: deklanşör/galeri sonrası "detay var mı?" sorusu → "Detaysız tara" (görünürse).
+async function passNotePrompt(tree: { queryByTestId: (id: string) => unknown }) {
+  for (let i = 0; i < 5; i++) {
+    const btn = tree.queryByTestId('scan-note-prompt-scan');
+    if (btn) {
+      await act(async () => {
+        fireEvent.press(btn as never);
+      });
+      return;
+    }
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
+
 const EST: Omit<ScanEstimate, 'isEstimate'> = {
   name: 'Mercimek çorbası',
   kcal: 180,
@@ -97,12 +114,14 @@ test('izin yok → açılışta sheet YOK; deklanşöre basınca sheet, fotoğra
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
   expect(tree.getByText(LEAD)).toBeTruthy();
   expect(tree.getByText('Fotoğraf ve ses analizi')).toBeTruthy();
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Galeriden seç'));
   });
+  await passNotePrompt(tree);
   expect(mockPicker.launchCameraAsync).not.toHaveBeenCalled();
   expect(mockPicker.launchImageLibraryAsync).not.toHaveBeenCalled();
   expect(c.reserveScan).not.toHaveBeenCalled();
@@ -117,10 +136,12 @@ test('Kabul et → izin kaydı (ai_photo, scan), sheet kapanır, bekleyen çekim
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
   await act(async () => {
     fireEvent.press(tree.getByTestId('consent-sheet-ai_photo-accept'));
   });
+  await passNotePrompt(tree);
   expect(mockSetAi).toHaveBeenCalledWith(true, 'scan');
   // Deklanşöre yeniden basmaya gerek yok — onaydan sonra çekim kendiliğinden sürer.
   await waitFor(() => expect(c.reserveScan).toHaveBeenCalledTimes(1));
@@ -136,6 +157,7 @@ test('Vazgeç → ret kaydı + Elle gir yolu (Tara kapanır), fotoğraf gönderi
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(tree.getByTestId('consent-sheet-ai_photo')).toBeTruthy());
   await act(async () => {
     fireEvent.press(tree.getByTestId('consent-sheet-ai_photo-cancel'));
@@ -154,6 +176,7 @@ test('izin daha önce verilmiş → sheet YOK, tarama doğrudan', async () => {
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(c.reserveScan).toHaveBeenCalledTimes(1));
   expect(tree.queryByTestId('consent-sheet-ai_photo')).toBeNull();
 });

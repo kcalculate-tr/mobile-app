@@ -8,6 +8,11 @@
 export const tr = {
   brand: 'Kcalculate AI',
   close: 'Kapat',
+  // G57 (İlter 17 Kas): eatkcal İzmir teklifi.
+  izmir_offer: {
+    head: '2 öğün fiyatına Fresh yıllık üyelik, ekstra 2 öğün bizden.',
+    card: '2 öğün ücretsiz',
+  },
   pill: {
     today: 'Bugün %{n}/%{cap}',
     unlimited: 'Sınırsız',
@@ -189,6 +194,10 @@ export const tr = {
 
 export const en: typeof tr = {
   brand: 'Kcalculate AI',
+  izmir_offer: {
+    head: 'Fresh yearly for the price of 2 meals, plus 2 extra meals on us.',
+    card: '2 meals free',
+  },
   close: 'Close',
   pill: {
     today: 'Today %{n}/%{cap}',

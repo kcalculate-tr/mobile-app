@@ -326,7 +326,7 @@ export default function NotificationsScreen() {
     (n: SocialNotification) => {
       if (n.kind === 'system' || n.kind === 'report_result') return;
       if (n.post_id) navigation.navigate('SharedPost', { postId: n.post_id });
-      else if (n.actor.handle) navigation.navigate('PublicProfile', { handle: n.actor.handle });
+      else if (n.actor.handle || n.actor.id) navigation.navigate('PublicProfile', { handle: n.actor.handle || n.actor.id });
     },
     [navigation],
   );

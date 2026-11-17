@@ -56,6 +56,23 @@ jest.mock('expo-image-picker', () => ({
 // eslint-disable-next-line import/first
 import ScanScreen from '../screens/ScanScreen';
 
+// G57: deklanşör/galeri sonrası "detay var mı?" sorusu → "Detaysız tara" (görünürse).
+async function passNotePrompt(tree: { queryByTestId: (id: string) => unknown }) {
+  for (let i = 0; i < 5; i++) {
+    const btn = tree.queryByTestId('scan-note-prompt-scan');
+    if (btn) {
+      await act(async () => {
+        fireEvent.press(btn as never);
+      });
+      return;
+    }
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
+
 const EST: Omit<ScanEstimate, 'isEstimate'> = {
   name: 'Mercimek çorbası',
   kcal: 180,
@@ -91,6 +108,7 @@ test('eski derleme: sistem kamerası → analiz → sonuç (yedek yol çalışı
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(tree.getAllByText('Mercimek çorbası').length).toBeGreaterThan(0));
   expect(c.reserveScan).toHaveBeenCalledWith({ idempotencyKey: 'u1-file:///cache/sys.jpg' });
 });
@@ -103,6 +121,7 @@ test('eski derleme: kamera izni reddi → "Kameraya erişim kapalı" (Alert yok)
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Fotoğraf çek'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(tree.getByText('Kameraya erişim kapalı')).toBeTruthy());
   expect(alert).not.toHaveBeenCalled();
   expect(mockPicker.launchCameraAsync).not.toHaveBeenCalled();
@@ -117,6 +136,7 @@ test('galeri: izin İSTENMEDEN açılır (sınırlı erişim sorun değil)', asy
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Galeriden seç'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(c.reserveScan).toHaveBeenCalledTimes(1));
   expect(mockPicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled();
 });
@@ -130,6 +150,7 @@ test('galeri açılamaz → toast, izin İSTENMEZ (G26-S1), Alert yok, rezervasy
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Galeriden seç'));
   });
+  await passNotePrompt(tree);
   await waitFor(() => expect(tree.getByText('Fotoğraflara erişim kapalı. Ayarlar’dan izin verebilirsin.')).toBeTruthy());
   expect(alert).not.toHaveBeenCalled();
   expect(c.reserveScan).not.toHaveBeenCalled();
@@ -145,6 +166,7 @@ test('galeri iptal → hiçbir şey olmaz', async () => {
   await act(async () => {
     fireEvent.press(tree.getByLabelText('Galeriden seç'));
   });
+  await passNotePrompt(tree);
   expect(c.reserveScan).not.toHaveBeenCalled();
   expect(tree.getByTestId('fin-scan-open-camera')).toBeTruthy();
 });

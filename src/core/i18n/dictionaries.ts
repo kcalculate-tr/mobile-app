@@ -21,6 +21,7 @@ import { tr as g26jTr, en as g26jEn } from './g26j';
 import { tr as g53Tr, en as g53En } from './g53';
 import { tr as g54Tr, en as g54En } from './g54';
 import { tr as g56Tr, en as g56En } from './g56';
+import { tr as g57Tr, en as g57En } from './g57';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
@@ -47,6 +48,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g53Tr,
     ...g54Tr,
     ...g56Tr,
+    ...g57Tr,
     // G24-S1 — kcalAI Koç.
     coach: coachTr,
     // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
@@ -321,9 +323,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
     kesfet: {
       title: 'Keşfet',
-      tab: { for_you: 'Senin için', following: 'Keşfet' },
+      tab: { for_you: 'Keşfet', following: 'Sana Özel' },
       empty: 'Henüz gönderi yok.',
-      empty_following: 'Takip ettiklerinden henüz gönderi yok.',
+      empty_following: 'Burada senin ve takip ettiklerinin paylaşımları görünür.',
       loadError: 'Akış yüklenemedi.',
       liked: 'Beğenildi',
       saved: 'Kaydedildi',
@@ -348,7 +350,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // Keşfet arayüzü (G6-S2) — yalnız UI metinleri. Veri katmanının yukarıdaki
       // anahtarlarına dokunmaz (added_toast i18n testiyle kilitli, değişmez).
       ui: {
-        tab: { for_you: 'Sana Özel', following: 'Keşfet' },
+        tab: { for_you: 'Keşfet', following: 'Sana Özel' },
         a11y: {
           like: 'Beğen',
           save: 'Kaydet',
@@ -1283,6 +1285,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       note_clear: 'Notu sil',
       note_edit_a11y: 'Notun: %{note}. Düzenle',
       note_row: 'Notun: %{note}',
+      note_prompt_scan: 'Notla tara',
+      note_prompt_scan_plain: 'Detaysız tara',
+      note_prompt_skip: 'Notu kullanmadan tara',
       camera_open_title: 'Kamerayı aç',
       camera_open_body: 'Tabağının fotoğrafını çek; kalorisini ve makrolarını tahmin edelim.',
       camera_open_cta: 'Kamerayı aç',
@@ -2014,6 +2019,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g53En,
     ...g54En,
     ...g56En,
+    ...g57En,
     coach: coachEn,
     plan: planEn,
     pp: ppEn,
@@ -2278,9 +2284,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
     kesfet: {
       title: 'Discover',
-      tab: { for_you: 'For you', following: 'Explore' },
+      tab: { for_you: 'Explore', following: 'For you' },
       empty: 'No posts yet.',
-      empty_following: 'No posts from people you follow yet.',
+      empty_following: 'Posts from you and people you follow show up here.',
       loadError: 'Could not load the feed.',
       liked: 'Liked',
       saved: 'Saved',
@@ -2302,7 +2308,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         adds: { one: '%{count} add', other: '%{count} adds' },
       },
       ui: {
-        tab: { for_you: 'For you', following: 'Explore' },
+        tab: { for_you: 'Explore', following: 'For you' },
         a11y: {
           like: 'Like',
           save: 'Save',
@@ -3223,6 +3229,9 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       note_clear: 'Clear note',
       note_edit_a11y: 'Your note: %{note}. Edit',
       note_row: 'Your note: %{note}',
+      note_prompt_scan: 'Scan with note',
+      note_prompt_scan_plain: 'Scan without details',
+      note_prompt_skip: 'Scan without the note',
       camera_open_title: 'Open the camera',
       camera_open_body: 'Take a photo of your plate and we will estimate its calories and macros.',
       camera_open_cta: 'Open camera',

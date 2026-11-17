@@ -95,6 +95,9 @@ import {
   type ReorderCardModel,
 } from '../ui/growth/sections';
 import { useQuickAdd } from '../ui/growth/useQuickAdd';
+import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
+import { useTier } from '../../../../lib/subscription/purchases';
+import { IZMIR_OFFER_FROM, IZMIR_OFFER_SEEN_KEY, shouldShowIzmirOffer } from '../../../subscription/izmirOffer';
 
 // EatHomeScreen.tsx ile AYNI yerel anahtar ("haber ver" sunucuya gitmez).
 const NEARBY_INTEREST_KEY = 'eatkcal-nearby-interest-notified';
@@ -284,6 +287,38 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
 
   // ── Teslimat şeridi: seçili adres + bölge tahmini süresi (yalnız gösterim) ──
   const { chip } = useDeliveryChip(businessHours);
+
+  // G57 (İlter 17 Kas): İzmir teslimat bölgesinden giren, aboneliği olmayan kullanıcıya paywall
+  // (Fresh yıllık seçili + "2 öğün fiyatına Fresh yıllık, ekstra 2 öğün bizden") BİR KEZ doğrudan açılır.
+  const subsOn = useSubscriptionEnabled();
+  const { tier, status: tierStatus } = useTier();
+  const inZone = chip != null;
+  useEffect(() => {
+    if (isVitrin) return;
+    let alive = true;
+    const id = setTimeout(() => {
+      AsyncStorage.getItem(IZMIR_OFFER_SEEN_KEY)
+        .then((seen) => {
+          if (!alive) return;
+          const show = shouldShowIzmirOffer({
+            signedIn: !!userId,
+            inZone,
+            tier,
+            tierKnown: tierStatus !== 'unknown',
+            subscriptionsEnabled: subsOn,
+            seen: !!seen,
+          });
+          if (!show) return;
+          void AsyncStorage.setItem(IZMIR_OFFER_SEEN_KEY, '1').catch(() => {});
+          nav.navigate('SubPaywall', { plan: 'fresh', yearly: true, from: IZMIR_OFFER_FROM, offer: 'izmir_fresh' });
+        })
+        .catch(() => {});
+    }, 1200);
+    return () => {
+      alive = false;
+      clearTimeout(id);
+    };
+  }, [isVitrin, userId, inZone, tier, tierStatus, subsOn, nav]);
 
   // ── İl kapısı: ilk sipariş eyleminde (mağaza/ürün açmadan önce) ──────────
   const gatePassedRef = useRef(false);

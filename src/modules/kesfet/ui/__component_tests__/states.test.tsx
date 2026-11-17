@@ -10,7 +10,7 @@ test('FeedEmpty: Sana Özel boş metni', () => {
 
 test('FeedEmpty: Takip boş metni', () => {
   const { getByText } = render(<FeedEmpty following />);
-  expect(getByText('Takip ettiklerinden henüz gönderi yok.')).toBeTruthy();
+  expect(getByText('Burada senin ve takip ettiklerinin paylaşımları görünür.')).toBeTruthy();
 });
 
 test('FeedError: mesaj + Tekrar dene', () => {
