@@ -18,6 +18,8 @@ export const CITY_QUERY_MIN = 2;
 export const CITY_QUERY_MAX = 64;
 /** RPC en çok bu kadar satır döner. */
 export const CITY_RESULTS_MAX = 20;
+/** G60-S1 md.4: arama boşken listelenen en kalabalık şehir sayısı (top_cities). */
+export const TOP_CITIES_LIMIT = 30;
 /** Yazma duraksaması (ağ isteği seyreltme; hareket süresi DEĞİL). */
 export const CITY_SEARCH_DEBOUNCE_MS = 300;
 
@@ -98,8 +100,8 @@ export function filterCountries(list: readonly GeoCountry[], q: string, lang: La
 }
 
 // ── Şehir araması ──────────────────────────────────────────────────────────
-/** RPC satırları → doğrulanmış şehir listesi (bozuk satırlar atılır, en çok 20). */
-export function parseCityRows(data: unknown): GeoCity[] {
+/** RPC satırları → doğrulanmış şehir listesi (bozuk satırlar atılır, en çok `max`, varsayılan 20). */
+export function parseCityRows(data: unknown, max: number = CITY_RESULTS_MAX): GeoCity[] {
   if (!Array.isArray(data)) return [];
   const out: GeoCity[] = [];
   for (const r of data) {
@@ -118,7 +120,7 @@ export function parseCityRows(data: unknown): GeoCity[] {
       population: Number.isFinite(pop) && pop > 0 ? pop : 0,
       ...(admin1 && admin1 !== name ? { admin1 } : {}),
     });
-    if (out.length >= CITY_RESULTS_MAX) break;
+    if (out.length >= max) break;
   }
   return out;
 }
@@ -139,6 +141,44 @@ export async function searchCities(rpc: Rpc, rawQuery: string, country: string |
   } catch {
     return { status: 'error' };
   }
+}
+
+// ── G60-S1 md.4: arama boşken ülkenin büyük şehirleri ───────────────────────
+/**
+ * 'ok' = liste · 'nodata' = ülkenin şehir verisi yok (ya da top_cities canlıda henüz yok) → serbest yazım
+ * · 'error' = ağ/sunucu hatası → "Şehirler yüklenemedi" + Tekrar dene (boş liste DEĞİL).
+ */
+export type TopCitiesResult = { status: 'ok'; cities: GeoCity[] } | { status: 'nodata' } | { status: 'error' };
+
+type TopRpc = (fn: 'top_cities', args: { p_country: string; p_limit: number }) => PromiseLike<{ data: unknown; error: unknown }>;
+
+/** PostgREST "fonksiyon yok" (PGRST202) / Postgres undefined_function (42883). */
+export function isMissingRpc(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: unknown; message?: unknown };
+  if (e.code === 'PGRST202' || e.code === '42883') return true;
+  const m = typeof e.message === 'string' ? e.message.toLowerCase() : '';
+  return m.includes('could not find the function') || (m.includes('function') && m.includes('does not exist'));
+}
+
+export async function fetchTopCities(rpc: TopRpc, country: string | null | undefined): Promise<TopCitiesResult> {
+  const cc = (country ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc) || isTurkey(cc)) return { status: 'nodata' };
+  try {
+    const { data, error } = await rpc('top_cities', { p_country: cc, p_limit: TOP_CITIES_LIMIT });
+    if (error) return isMissingRpc(error) ? { status: 'nodata' } : { status: 'error' };
+    const cities = parseCityRows(data, TOP_CITIES_LIMIT).filter((c) => c.country === cc);
+    return cities.length ? { status: 'ok', cities } : { status: 'nodata' };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+/** 0–1 harfte büyük şehir listesini yerelde süz (ad başı, aksansız). Boş sorgu → hepsi. */
+export function filterTopCities(cities: readonly GeoCity[], raw: string): GeoCity[] {
+  const f = foldText(raw.replace(/\s+/g, ' ').trim());
+  if (!f) return cities.slice();
+  return cities.filter((c) => foldText(c.name).startsWith(f) || (c.admin1 ? foldText(c.admin1).startsWith(f) : false));
 }
 
 /** Ağ/sonuç yokken yazılan adla devam: kimliksiz (geonameid 0) şehir. */

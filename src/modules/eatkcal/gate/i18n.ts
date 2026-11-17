@@ -36,6 +36,11 @@ export const tr = {
   sheet_district: 'İlçe seç',
   no_match: 'Sonuç yok',
   logo_a11y: 'eatkcal',
+  // G60-S1 md.4 — yabancı ülke şehir listesi
+  top_cities: 'Büyük şehirler',
+  cities_error: 'Şehirler yüklenemedi.',
+  type_city: 'Şehrini yaz',
+  type_city_hint: 'Bu ülkenin şehir listesi henüz yok. Şehrini yaz, yazdığınla devam et.',
 };
 
 export const en: typeof tr = {
@@ -74,4 +79,8 @@ export const en: typeof tr = {
   sheet_district: 'Select district',
   no_match: 'No results',
   logo_a11y: 'eatkcal',
+  top_cities: 'Major cities',
+  cities_error: 'Couldn’t load cities.',
+  type_city: 'Type your city',
+  type_city_hint: 'We don’t have a city list for this country yet. Type your city and continue with it.',
 };

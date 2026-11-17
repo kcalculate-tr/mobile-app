@@ -40,9 +40,20 @@ import { tabBarBottomOffset, TAB_BAR_R3 } from '../../shell/layout';
 import { useInR3Shell } from '../../shell';
 import { useT } from '../../../core/i18n';
 import { track } from '../../../lib/analytics';
-import { countryName, filterCountries, findCountry, isTurkey, orderedCountries, typedCity, TURKEY } from '../v2/model/geo';
+import {
+  countryName,
+  filterCountries,
+  filterTopCities,
+  findCountry,
+  isTurkey,
+  normalizeCityQuery,
+  orderedCountries,
+  typedCity,
+  TURKEY,
+} from '../v2/model/geo';
 import { filterProvinces, orderedProvinces } from '../v2/model/provinces';
 import { useCitySearch } from '../v2/ui/gate/useCitySearch';
+import { useTopCities } from '../v2/ui/gate/useTopCities';
 import { WaitlistFormSheet } from '../v2/ui/gate/WaitlistFormSheet';
 import { flushWaitlistQueue } from '../v2/ui/gate/waitlistSend';
 import type { WaitlistKind } from '../v2/model/waitlist';
@@ -628,14 +639,23 @@ function GatePicker({
   }, [visible, kind]);
   const tr = isTurkey(sel.country);
   const foreignCity = kind === 'city' && !tr;
-  const search = useCitySearch(q, foreignCity ? sel.country : null, foreignCity);
+  // G60-S1 md.4: arama boşken (ya da 1 harf) ülkenin en kalabalık 30 şehri; veri yoksa serbest yazım.
+  const top = useTopCities(foreignCity ? sel.country : null, foreignCity && visible);
+  const freeType = foreignCity && top.state.status === 'nodata';
+  const longQuery = normalizeCityQuery(q) !== '';
+  const search = useCitySearch(q, foreignCity ? sel.country : null, foreignCity && !freeType);
   const countries = useMemo(() => orderedCountries(lang), [lang]);
 
   const rows: Row[] = useMemo(() => {
     if (kind === 'country') return filterCountries(countries, q, lang).map((c) => ({ value: c.iso2, label: countryName(c, lang) }));
     if (kind === 'city' && tr) return filterProvinces(orderedProvinces(), q).map((p) => ({ value: p, label: p }));
     if (kind === 'city') {
-      const list: Row[] = search.state.status === 'ok' ? search.state.cities.map((c) => ({ value: c.name, label: c.name, sub: c.admin1 })) : [];
+      const list: Row[] = [];
+      if (!freeType && longQuery && search.state.status === 'ok') {
+        list.push(...search.state.cities.map((c) => ({ value: c.name, label: c.name, sub: c.admin1 })));
+      } else if (!longQuery && top.state.status === 'ok') {
+        list.push(...filterTopCities(top.state.cities, q).map((c) => ({ value: c.name, label: c.name, sub: c.admin1 })));
+      }
       const typed = typedCity(q, sel.country);
       if (typed && !list.some((r) => r.label.toLocaleLowerCase() === typed.name.toLocaleLowerCase())) {
         list.push({ value: typed.name, label: t('eatkcal.v2.geo.use_typed', { q: typed.name }) });
@@ -650,11 +670,37 @@ function GatePicker({
     }
     return [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, q, countries, lang, tr, search.state, districts, sel.country]);
+  }, [kind, q, countries, lang, tr, search.state, top.state, freeType, longQuery, districts, sel.country]);
 
   const current = kind === 'country' ? sel.country : kind === 'city' ? sel.city : sel.district;
   const title = kind === 'country' ? g('sheet_country') : kind === 'city' ? g('sheet_city') : g('sheet_district');
-  const ph = kind === 'country' ? g('search_country') : kind === 'city' ? g('search_city') : g('search_district');
+  const ph =
+    kind === 'country' ? g('search_country') : kind === 'city' ? (freeType ? g('type_city') : g('search_city')) : g('search_district');
+  // Şehir (yabancı) hata hâli: büyük şehirler ya da arama yüklenemedi → "Şehirler yüklenemedi" + Tekrar dene.
+  const cityError =
+    foreignCity && !freeType
+      ? longQuery
+        ? search.state.status === 'error'
+          ? search.retry
+          : null
+        : top.state.status === 'error'
+          ? top.retry
+          : null
+      : null;
+  const cityLoading =
+    foreignCity && !freeType && (longQuery ? search.state.status === 'loading' : top.state.status === 'loading');
+  const error =
+    kind === 'district' && districtsStatus === 'error'
+      ? { text: g('districts_error'), retry: g('retry'), onRetry: onRetryDistricts, testID: 'gate48-districts-retry' }
+      : cityError
+        ? { text: g('cities_error'), retry: g('retry'), onRetry: cityError, testID: 'gate48-cities-retry' }
+        : null;
+  const header =
+    foreignCity && freeType
+      ? g('type_city_hint')
+      : foreignCity && !longQuery && top.state.status === 'ok' && rows.length > 0
+        ? g('top_cities')
+        : undefined;
 
   return (
     <Sheet visible={visible} onClose={onClose} title={title} product="eat" maxHeightRatio={0.8} testID={`gate48-picker-${kind}`}>
@@ -664,9 +710,10 @@ function GatePicker({
         ph={ph}
         rows={rows}
         current={current ?? ''}
-        loading={(kind === 'city' && !tr && search.state.status === 'loading') || (kind === 'district' && districtsStatus === 'loading')}
-        error={kind === 'district' && districtsStatus === 'error' ? { text: g('districts_error'), retry: g('retry'), onRetry: onRetryDistricts } : null}
-        empty={g('no_match')}
+        loading={cityLoading || (kind === 'district' && districtsStatus === 'loading')}
+        error={error}
+        header={header}
+        empty={freeType ? '' : g('no_match')}
         onPick={(v) => onPick(kind, v)}
       />
     </Sheet>
@@ -681,6 +728,7 @@ function PickerBody({
   current,
   loading,
   error,
+  header,
   empty,
   onPick,
 }: {
@@ -690,7 +738,9 @@ function PickerBody({
   rows: Row[];
   current: string;
   loading: boolean;
-  error: { text: string; retry: string; onRetry: () => void } | null;
+  error: { text: string; retry: string; onRetry: () => void; testID: string } | null;
+  /** G60-S1: liste üstü kısa açıklama ("Büyük şehirler" / serbest yazım ipucu). */
+  header?: string;
   empty: string;
   onPick: (v: string) => void;
 }) {
@@ -712,13 +762,24 @@ function PickerBody({
       </View>
       <ScrollView {...SCROLL_KEYBOARD} style={{ maxHeight: 440 }}>
         {loading ? <ActivityIndicator style={{ marginVertical: 16 }} color={c.secondary} /> : null}
+        {header && !loading ? (
+          <Text style={[styles.optSub, { color: c.secondary, paddingVertical: 8 }]} testID="gate48-list-header">
+            {header}
+          </Text>
+        ) : null}
         {error ? (
-          <Pressable onPress={error.onRetry} accessibilityRole="button" style={styles.optRow} testID="gate48-districts-retry">
+          <Pressable
+            onPress={error.onRetry}
+            accessibilityRole="button"
+            accessibilityLabel={`${error.text} ${error.retry}`}
+            style={styles.optRow}
+            testID={error.testID}
+          >
             <Text style={[styles.optText, { color: c.ink }]}>{error.text}</Text>
             <Text style={[styles.optSub, { color: c.accentLine }]}>{error.retry}</Text>
           </Pressable>
         ) : null}
-        {!loading && !error && rows.length === 0 && q.trim().length > 0 ? (
+        {empty && !loading && !error && rows.length === 0 && q.trim().length > 0 ? (
           <Text style={[styles.optSub, { color: c.secondary, paddingVertical: 16 }]}>{empty}</Text>
         ) : null}
         {rows.map((r) => {
