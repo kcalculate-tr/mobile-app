@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 
 import { getKesfetClient } from './client';
+import { useKesfetStore } from './store';
 import type { Comment, CommentAuthor } from './types';
 
 const PAGE_LIMIT = 30;
@@ -96,6 +97,8 @@ export const useCommentsStore = create<CommentsState>((set, get) => ({
       set((s) => ({
         items: s.items.map((c) => (c.id === tempId ? { ...c, id: res.comment_id, status: res.status } : c)),
       }));
+      // G58-S2 md.2: yayımlanan yorum akış kartı / görüntüleyici / Reels sayacına yansır.
+      if (res.status === 'published') useKesfetStore.getState().bumpComments(postId, 1);
       // Yayın öncesi AI denetimi (ateşle-unut).
       getKesfetClient().moderateContent({ targetType: 'comment', targetId: res.comment_id }).catch(() => {});
       return res.comment_id;
@@ -113,10 +116,12 @@ export const useCommentsStore = create<CommentsState>((set, get) => ({
 
   remove: async (commentId) => {
     const prev = get().items;
+    const target = prev.find((c) => c.id === commentId);
     // İyimser: hemen çıkar.
     set({ items: prev.filter((c) => c.id !== commentId) });
     try {
       await getKesfetClient().deleteMyComment({ comment: commentId });
+      if (target && target.status === 'published') useKesfetStore.getState().bumpComments(target.post_id, -1);
       return true;
     } catch (e) {
       set({ items: prev, error: e instanceof Error ? e.message : 'comment_delete_failed' });

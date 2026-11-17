@@ -29,6 +29,7 @@ import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
 import { feedPlayablePostId } from '../../media/video/rules';
+import { viewerImageUrls } from '../reels';
 import { logTrace } from '../../shell/logTrace';
 import { trackEvent } from '../../gun/track/events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
@@ -292,7 +293,8 @@ export function KesfetScreen() {
   const [menuPost, setMenuPost] = useState<FeedPost | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   // G57: tam ekran görsel + ilk beğeni/kaydet/yorumda bir kez "nerede görürsün" bildirimi.
-  const [viewer, setViewer] = useState<ImageViewerState | null>(null);
+  // G58-S2 md.2: görüntüleyici gönderiyi kimlikle tutar → beğeni/kaydet/yorum sayıları store'dan canlı.
+  const [viewer, setViewer] = useState<(ImageViewerState & { postId: string }) | null>(null);
   const showFirstTip = useCallback(
     async (kind: MyActivityKind) => {
       if (!(await firstActionTip(kind))) return;
@@ -316,6 +318,7 @@ export function KesfetScreen() {
   // G15 — FinVideo kare 2: tam ekran oynatıcı (videoya dokun).
   const [videoPostId, setVideoPostId] = useState<string | null>(null);
   const videoPost = videoPostId ? posts.find((p) => p.id === videoPostId) ?? null : null;
+  const viewerPost = viewer ? allPosts.find((p) => p.id === viewer.postId) ?? null : null;
   // G12-S2 — FinFeedTip: akışa ilk kez girişte bir kez ipucu şeridi.
   const [showFeedTip, setShowFeedTip] = useState(false);
   // G11 — gönderi düzenleme. editAvailable: update_my_post RPC canlıda yoksa
@@ -786,8 +789,8 @@ export function KesfetScreen() {
               if (on) void showFirstTip('save');
             }}
             onOpenMedia={(i) => {
-              const urls = item.media.filter((m) => m.kind !== 'video').map((m) => m.url);
-              if (urls.length) setViewer({ urls, index: Math.min(i, urls.length - 1) });
+              const urls = viewerImageUrls(item);
+              if (urls.length) setViewer({ urls, index: Math.min(i, urls.length - 1), postId: item.id });
             }}
             onShare={paylasimBaglanti ? () => onShare(item) : undefined}
             quickMeal={yeniKabukMenu ? quickMealType : undefined}
@@ -1044,7 +1047,34 @@ export function KesfetScreen() {
       />
       <RulesSheet visible={rulesOpen} onAccept={() => setRulesOpen(false)} onClose={() => setRulesOpen(false)} />
       <AddToast toast={toast} onDismiss={() => (vitrin ? undefined : setToast(null))} />
-      <ImageViewer state={viewer} onClose={() => setViewer(null)} />
+      <ImageViewer
+        state={viewer}
+        onClose={() => setViewer(null)}
+        post={viewerPost}
+        commentsEnabled={kesfetYorum}
+        onLike={() => {
+          if (!viewerPost) return;
+          const on = !viewerPost.me.liked;
+          void useKesfetStore.getState().react(viewerPost.id, 'like', on);
+          if (on) void showFirstTip('like');
+        }}
+        onSave={() => {
+          if (!viewerPost) return;
+          const on = !viewerPost.me.saved;
+          void useKesfetStore.getState().react(viewerPost.id, 'save', on);
+          if (on) void showFirstTip('save');
+        }}
+        onShare={paylasimBaglanti && viewerPost ? () => void onShare(viewerPost) : undefined}
+        onOpenAuthor={
+          viewerPost && (viewerPost.author.handle || viewerPost.author.id)
+            ? () => {
+                const handle = (viewerPost.author.handle || viewerPost.author.id).replace(/^@/, '');
+                setViewer(null);
+                navigation.navigate('PublicProfile', { handle });
+              }
+            : undefined
+        }
+      />
       <ShareDaySheet
         visible={shareDayOpen}
         onClose={() => setShareDayOpen(false)}

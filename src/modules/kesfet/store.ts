@@ -66,6 +66,8 @@ interface KesfetState {
   // dönerse kartta "İncelemede") güncellenir. Dönen result caller'a geri verilir;
   // `available:false` ise çağıran "Düzenle" seçeneğini gizler. RPC yoksa liste değişmez.
   editPost: (postId: string, body: string) => Promise<UpdatePostResult>;
+  // G58-S2 md.2 — yorum eklendi/silindi: kart, görüntüleyici ve Reels sayacı senkron (yerel, RPC yok).
+  bumpComments: (postId: string, delta: number) => void;
   reset: () => void;
 }
 
@@ -302,6 +304,15 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
       set({ error: e instanceof Error ? e.message : 'edit_failed' });
       return { available: true, ok: false, status: 'published' };
     }
+  },
+
+  bumpComments: (postId, delta) => {
+    if (!get().posts.some((p) => p.id === postId)) return;
+    set({
+      posts: get().posts.map((p) =>
+        p.id === postId ? { ...p, stats: { ...p.stats, comments: Math.max(0, p.stats.comments + delta) } } : p,
+      ),
+    });
   },
 
   reset: () => {

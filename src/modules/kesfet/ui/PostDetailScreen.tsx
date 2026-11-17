@@ -40,6 +40,7 @@ import { Avatar } from './Avatar';
 import { VerifiedBadge } from './VerifiedBadge';
 import { MediaGrid } from './MediaGrid';
 import { ImageViewer, type ImageViewerState } from './ImageViewer';
+import { viewerImageUrls } from '../reels';
 import { firstActionTip } from '../activityRuntime';
 import { KIND_TAB, type MyActivityKind } from '../myActivity';
 import { useNavigation } from '@react-navigation/native';
@@ -309,6 +310,21 @@ export function PostDetailScreen({
     };
   }, [yorum, postId]);
 
+  // G58-S2 md.2: görüntüleyicide yorum sayfası kapandı → yerel liste + sayaç sunucudan tazelenir.
+  const refreshComments = useCallback(() => {
+    if (!yorum || !postId) return;
+    getKesfetClient()
+      .listComments({ post: postId, limit: 30 })
+      .then((page) => setComments(page.items))
+      .catch(() => {});
+    getKesfetClient()
+      .getPost({ post: postId })
+      .then((p) => {
+        if (p) setPost((cur) => (cur ? { ...cur, stats: { ...cur.stats, comments: p.stats.comments } } : p));
+      })
+      .catch(() => {});
+  }, [yorum, postId]);
+
   const nowMs = Date.now();
 
   const react = useCallback(
@@ -509,7 +525,7 @@ export function PostDetailScreen({
               <Pressable
                 style={styles.media}
                 onPress={() => {
-                  const urls = post.media.filter((m) => m.kind !== 'video').map((m) => m.url);
+                  const urls = viewerImageUrls(post);
                   if (urls.length) setViewer({ urls, index: 0 });
                 }}
                 accessibilityRole="imagebutton"
@@ -700,7 +716,25 @@ export function PostDetailScreen({
         }}
       />
       <AddToast toast={toast} onDismiss={() => setToast(null)} />
-      <ImageViewer state={viewer} onClose={() => setViewer(null)} />
+      {/* G58-S2 md.2: akıştakiyle AYNI görüntüleyici — sayılar bu sayfanın iyimser durumundan. */}
+      <ImageViewer
+        state={viewer}
+        onClose={() => setViewer(null)}
+        post={post}
+        commentsEnabled={yorum}
+        onLike={() => react('like')}
+        onSave={() => react('save')}
+        onShare={paylasimBaglanti ? onShare : undefined}
+        onOpenAuthor={
+          post && onOpenAuthor && (post.author.handle || post.author.id)
+            ? () => {
+                setViewer(null);
+                onOpenAuthor(post.author.handle || post.author.id);
+              }
+            : undefined
+        }
+        onCommentsClosed={refreshComments}
+      />
     </View>
   );
 }
