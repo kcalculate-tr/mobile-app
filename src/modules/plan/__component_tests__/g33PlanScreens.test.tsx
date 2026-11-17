@@ -27,7 +27,8 @@ jest.mock('@react-navigation/native', () => {
     NavigationContext: React.createContext(undefined),
   };
 });
-jest.mock('../../../core/AuthContext', () => ({ useAuth: () => ({ user: { id: 'u-1', email: 'deniz@example.com' } }) }));
+let mockUser: { id: string; email: string } | null = { id: 'u-1', email: 'deniz@example.com' };
+jest.mock('../../../core/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('../../../hooks/useNutritionSummary', () => ({
   useNutritionSummary: () => ({ summary: { targetKcal: 2180, targetProtein: 140, consumedKcal: 0 }, refetch: jest.fn() }),
 }));
@@ -36,14 +37,16 @@ let mockFlags: Record<string, boolean> = {};
 jest.mock('../../../core/flags', () => ({ __esModule: true, useFeature: (k: string) => !!mockFlags[k] }));
 
 let mockWeekItems: PlanItem[] = [];
+let mockWeekFail = false;
+let mockManual: { id: string; name: string; quantity: number | null; unit: string | null; category: string; checked: boolean }[] = [];
 jest.mock('../client', () => {
   const actual = jest.requireActual('../client');
   return {
     ...actual,
     // Tablo boş (jest supabase taklidi) → uygulama içi TASLAK tohum (yalnız geliştirme yolu).
     fetchRecipeCatalog: () => actual.fetchRecipeCatalog(true),
-    fetchWeek: () => Promise.resolve({ planId: mockWeekItems.length ? 'p-1' : null, note: null, items: mockWeekItems }),
-    fetchShop: () => Promise.resolve({ state: [], manual: [] }),
+    fetchWeek: () => (mockWeekFail ? Promise.reject(new Error('net')) : Promise.resolve({ planId: mockWeekItems.length ? 'p-1' : null, note: null, items: mockWeekItems })),
+    fetchShop: () => Promise.resolve({ state: [], manual: mockManual }),
     ensurePlan: () => Promise.resolve('p-1'),
     upsertItem: jest.fn(() => Promise.resolve()),
     deleteItem: jest.fn(() => Promise.resolve()),
@@ -128,6 +131,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockParams = undefined;
   mockWeekItems = [];
+  mockWeekFail = false;
+  mockManual = [];
+  mockUser = { id: 'u-1', email: 'deniz@example.com' };
   mockIzmir = false;
   mockConsent = false;
   mockFlags = { ogun_plani: true };
@@ -602,5 +608,79 @@ describe('G34-S1 md.5 — kişisel plandan oku', () => {
     expect(r.queryByTestId('pp-form-summary')).toBeNull();
     expect(r.queryByTestId('pp-form-needed')).toBeNull();
     expect(r.getByTestId('plan-diet-all')).toBeTruthy();
+  });
+});
+
+// ── G58-S1 md.1 — bayrak açma turu: misafir / hata / kilitli liste / plansız elle kalem ──
+describe('G58 öğün planı hâlleri', () => {
+  test('misafir: plan ekranı giriş kartı → Login', async () => {
+    mockUser = null;
+    const r = render(<MealPlanScreen />);
+    await flush();
+    expect(r.getByTestId('plan-guest')).toBeTruthy();
+    expect(r.queryByTestId('plan-empty')).toBeNull();
+    fireEvent.press(r.getByTestId('plan-guest-login'));
+    expect(mockNav.navigate).toHaveBeenCalledWith('Login');
+  });
+
+  test('yükleme hatası: hata kartı + Tekrar dene yeniden yükler', async () => {
+    mockWeekFail = true;
+    const r = render(<MealPlanScreen />, 'dark', 'en');
+    await flush();
+    expect(r.getByTestId('plan-error')).toBeTruthy();
+    expect(r.getByText('Couldn’t load your plan')).toBeTruthy();
+    mockWeekFail = false;
+    await act(async () => {
+      fireEvent.press(r.getByTestId('plan-retry'));
+    });
+    await flush();
+    expect(r.queryByTestId('plan-error')).toBeNull();
+    expect(r.getByTestId('plan-empty')).toBeTruthy();
+  });
+
+  test('Ücretsiz: paywall bir kez açılır, altta liste DEĞİL kilitli kart', async () => {
+    mockWeekItems = [item({ id: '00000000-0000-4000-8000-000000000021' })];
+    const r = render(<ShoppingListScreen />);
+    await flush();
+    expect(r.getByTestId('shop-locked')).toBeTruthy();
+    expect(r.queryByTestId('shop-from')).toBeNull();
+    expect(r.queryByTestId('shop-share')).toBeNull();
+    expect(mockNav.navigate).toHaveBeenCalledTimes(1);
+    fireEvent.press(r.getByTestId('shop-locked-cta'));
+    expect(mockNav.navigate).toHaveBeenLastCalledWith('SubPaywall', { from: 'shopping_list', plan: 'fresh' });
+  });
+
+  test('abonelik durumu bilinmiyorken Fresh kullanıcı paywall\'a atılmaz; gelince liste açılır', async () => {
+    useSubscriptionStore.setState({ rc: null, server: null });
+    const r = render(<ShoppingListScreen />);
+    await flush();
+    expect(mockNav.navigate).not.toHaveBeenCalled();
+    expect(r.queryByTestId('shop-locked')).toBeNull();
+    await act(async () => setTier('fresh'));
+    await flush();
+    expect(r.getByTestId('shop-empty')).toBeTruthy();
+    expect(mockNav.navigate).not.toHaveBeenCalled();
+  });
+
+  test('misafir: alışveriş listesi giriş kartı, paywall açılmaz', async () => {
+    mockUser = null;
+    useSubscriptionStore.setState({ rc: null, server: null });
+    const r = render(<ShoppingListScreen />);
+    await flush();
+    expect(r.getByTestId('shop-locked')).toBeTruthy();
+    expect(r.getByText('Planını kaydetmek için giriş yap')).toBeTruthy();
+    expect(mockNav.navigate).not.toHaveBeenCalled();
+    fireEvent.press(r.getByTestId('shop-locked-cta'));
+    expect(mockNav.navigate).toHaveBeenCalledWith('Login');
+  });
+
+  test('plan yok + elle eklenmiş kalem → liste görünür (boş hâl değil)', async () => {
+    setTier('fresh');
+    mockManual = [{ id: 'm-1', name: 'Zeytinyağı', quantity: 1, unit: 'paket', category: 'other', checked: false }];
+    const r = render(<ShoppingListScreen />);
+    await flush();
+    expect(r.queryByTestId('shop-empty')).toBeNull();
+    expect(r.getByText('Zeytinyağı')).toBeTruthy();
+    expect(r.queryByTestId('shop-from')).toBeNull();
   });
 });

@@ -20,7 +20,7 @@ import type { PlanItem, ShopCategory } from '../types';
 import { usePlanStore } from '../store';
 import { buildShoppingList, eatkcalMeals, groupShopping, recipeCountOf, type ShopLine } from '../shopping';
 import { dayName, weekRange, weekStartOf } from '../week';
-import { planAccess } from '../access';
+import { shopGate } from '../access';
 import { addPlanMealsToCart, type BasketChoice } from '../actions';
 import { localId } from '../generate';
 import { GLASS, PlanToast, Thumb, usePlanTones } from '../ui/parts';
@@ -37,8 +37,10 @@ export default function ShoppingListScreen() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const { user } = useAuth();
-  const { tier } = useTier();
-  const allowed = planAccess(tier).shopping;
+  const { tier, status: tierStatus } = useTier();
+  // G58: abonelik durumu bilinmiyorken bekle; Ücretsiz/misafir → liste HİÇ çizilmez (kilitli kart).
+  const gate = shopGate({ tier, status: tierStatus, signedIn: !!user?.id });
+  const allowed = gate === 'open';
   const ws = params.weekStart ?? weekStartOf(dayKey());
 
   const setUser = usePlanStore((s) => s.setUser);
@@ -55,10 +57,15 @@ export default function ShoppingListScreen() {
     void loadCatalog();
   }, [user?.id, ws, setUser, loadWeek, loadCatalog]);
 
+  const openPaywall = useCallback(() => nav.navigate('SubPaywall', { from: 'shopping_list', plan: 'fresh' }), [nav]);
+  // Kilit bir kez paywall'u açar (eskisi gibi); kapatılınca altta liste DEĞİL kilitli kart kalır.
+  const paywallShown = useRef(false);
   useEffect(() => {
-    if (!allowed) nav.navigate('SubPaywall', { from: 'shopping_list', plan: 'fresh' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowed]);
+    if (gate === 'locked' && !!user?.id && !paywallShown.current) {
+      paywallShown.current = true;
+      openPaywall();
+    }
+  }, [gate, user?.id, openPaywall]);
 
   const items = useMemo(() => entry?.items ?? [], [entry?.items]);
   const lines = useMemo(
@@ -68,7 +75,9 @@ export default function ShoppingListScreen() {
   const { groups, done, remaining } = groupShopping(lines);
   const eatMeals = eatkcalMeals(items);
   const nRecipes = recipeCountOf(items);
-  const hasPlan = items.length > 0;
+  // G58: plansız ama elle eklenmiş kalem varsa liste görünür (eskiden boş hâl kalıyor, eklenen kalem görünmüyordu).
+  const hasPlan = items.length > 0 || (entry?.manual.length ?? 0) > 0;
+  const loadFailed = entry?.status === 'error' && !hasPlan;
 
   const [edit, setEdit] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -144,7 +153,7 @@ export default function ShoppingListScreen() {
           <ArrowLeft size={24} color={c.ink} />
         </Pressable>
         <View style={styles.flex1} />
-        {hasPlan ? (
+        {allowed && hasPlan ? (
           <>
             <Pressable onPress={() => setEdit((v) => !v)} accessibilityRole="button" style={styles.textBtn} testID="shop-edit">
               <AppText style={[styles.textBtnText, { color: c.ink }]}>{edit ? tr('plan.shop_done') : tr('plan.shop_edit')}</AppText>
@@ -161,16 +170,41 @@ export default function ShoppingListScreen() {
         </AppText>
         <View style={styles.metaRow}>
           <AppText style={[styles.small, { color: c.sec }]}>{weekRange(ws, lang)}</AppText>
-          {hasPlan ? <AppText style={[styles.smallBold, { color: c.ink }]}>{tr('plan.shop_left', { n: remaining })}</AppText> : null}
+          {allowed && hasPlan ? <AppText style={[styles.smallBold, { color: c.ink }]}>{tr('plan.shop_left', { n: remaining })}</AppText> : null}
         </View>
-        {hasPlan ? (
+        {allowed && items.length > 0 ? (
           <Pressable onPress={() => nav.navigate('MealPlan', { weekStart: ws })} accessibilityRole="link" style={styles.fromRow} testID="shop-from">
             <AppText style={[styles.fromText, { color: c.ink }]}>{tr('plan.shop_from', { n: nRecipes })}</AppText>
             <CaretRight size={14} color={c.ink} />
           </Pressable>
         ) : null}
 
-        {!hasPlan ? (
+        {!allowed ? (
+          gate === 'locked' ? (
+            <Animated.View entering={enter} style={styles.empty} testID="shop-locked">
+              <View style={[styles.emptyGlass, { backgroundColor: c.card }]}>
+                <Image source={GLASS.bowl} style={styles.emptyImg} resizeMode="contain" />
+              </View>
+              <AppText style={[styles.emptyTitle, { color: c.ink }]} accessibilityRole="header">
+                {tr(user?.id ? 'plan.shop_locked_title' : 'plan.guest_title')}
+              </AppText>
+              <AppText style={[styles.emptyBody, { color: c.sec }]}>{tr(user?.id ? 'plan.shop_locked_body' : 'plan.guest_body')}</AppText>
+              <Pressable onPress={user?.id ? openPaywall : () => nav.navigate('Login')} accessibilityRole="button" style={[styles.blackBtn, { backgroundColor: c.chipSel }]} testID="shop-locked-cta">
+                <AppText style={[styles.blackBtnText, { color: c.chipSelInk }]}>{tr(user?.id ? 'plan.shop_locked_cta' : 'plan.guest_cta')}</AppText>
+              </Pressable>
+            </Animated.View>
+          ) : null
+        ) : loadFailed ? (
+          <Animated.View entering={enter} style={styles.empty} testID="shop-error">
+            <AppText style={[styles.emptyTitle, { color: c.ink }]} accessibilityRole="header">
+              {tr('plan.error_title')}
+            </AppText>
+            <AppText style={[styles.emptyBody, { color: c.sec }]}>{tr('plan.offline')}</AppText>
+            <Pressable onPress={() => void loadWeek(ws)} accessibilityRole="button" style={[styles.blackBtn, { backgroundColor: c.chipSel }]} testID="shop-retry">
+              <AppText style={[styles.blackBtnText, { color: c.chipSelInk }]}>{tr('plan.retry')}</AppText>
+            </Pressable>
+          </Animated.View>
+        ) : !hasPlan ? (
           <>
             <AddRow adding={adding} draft={draft} setDraft={setDraft} onOpen={() => setAdding(true)} onSubmit={submitManual} />
             <Animated.View entering={enter} style={styles.empty} testID="shop-empty">

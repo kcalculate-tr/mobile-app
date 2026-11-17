@@ -20,6 +20,7 @@ import { usePlanStore, itemAt } from '../store';
 import { dayTitle, rollingWeeks, weekDays, weekRange, weekStartOf } from '../week';
 import { loadEatkcalOptions, logPlanItem, unlogPlanItem, userInIzmir } from '../actions';
 import { planConsumedAt } from '../logTime';
+import { planScreenState } from '../access';
 import { usePersonalPlanEntry } from '../../personalPlan/ui/entries';
 import { AddSheet } from '../ui/AddSheet';
 import { DayCard, DayChips, GLASS, LogDot, PlanToast, SlotRow, usePlanTones } from '../ui/parts';
@@ -103,7 +104,10 @@ export default function MealPlanScreen() {
   }, [params.applied]);
 
   const dayItems = items.filter((x) => x.date === sel);
-  const empty = entry?.status !== 'loading' && items.length === 0;
+  // G58: misafir (oturum yok) → giriş kartı; yükleme hatası + önbellek yok → hata kartı (eskiden boş plan
+  // kartı görünüyor, "Elle planla" sessizce başarısız oluyordu).
+  const view = planScreenState({ signedIn: !!user?.id, status: entry?.status, count: items.length });
+  const empty = view === 'empty';
 
   // Konum ölçümü en çok 1 kare beklenir; gelmezse iz atlanır (kayıt yine yazılır, değer nabzı oynar).
   const measure = (v: View | null | undefined) =>
@@ -215,7 +219,25 @@ export default function MealPlanScreen() {
           <DayChips days={days} selected={sel} today={today} items={items} lang={lang} onSelect={setSel} dotsReveal={reveal} />
         </Animated.View>
 
-        {empty ? (
+        {view === 'guest' || view === 'error' ? (
+          <Animated.View key={`${view}-${ws}`} entering={fade} style={[styles.emptyCard, { backgroundColor: c.card }]} testID={`plan-${view}`}>
+            <View style={[styles.emptyGlass, { backgroundColor: c.nested }]}>
+              <Image source={GLASS.bowl} style={styles.emptyImg} resizeMode="contain" />
+            </View>
+            <AppText style={[styles.emptyTitle, { color: c.ink }]} accessibilityRole="header">
+              {tr(view === 'guest' ? 'plan.guest_title' : 'plan.error_title')}
+            </AppText>
+            <AppText style={[styles.emptyBody, { color: c.sec }]}>{tr(view === 'guest' ? 'plan.guest_body' : 'plan.offline')}</AppText>
+            <Pressable
+              onPress={() => (view === 'guest' ? nav.navigate('Login') : void loadWeek(ws))}
+              accessibilityRole="button"
+              style={[styles.blackBtn, { backgroundColor: c.chipSel }]}
+              testID={view === 'guest' ? 'plan-guest-login' : 'plan-retry'}
+            >
+              <AppText style={[styles.blackBtnText, { color: c.chipSelInk }]}>{tr(view === 'guest' ? 'plan.guest_cta' : 'plan.retry')}</AppText>
+            </Pressable>
+          </Animated.View>
+        ) : empty ? (
           <Animated.View key={`empty-${ws}`} entering={fade} style={[styles.emptyCard, { backgroundColor: c.card }]} testID="plan-empty">
             <View style={[styles.emptyGlass, { backgroundColor: c.nested }]}>
               <Image source={GLASS.bowl} style={styles.emptyImg} resizeMode="contain" />

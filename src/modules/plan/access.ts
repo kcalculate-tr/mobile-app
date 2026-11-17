@@ -27,3 +27,30 @@ export function planAccess(tier: Tier): PlanAccess {
 export function planEntryVisible(flag: boolean): boolean {
   return flag === true;
 }
+
+export type PlanScreenState = 'guest' | 'error' | 'empty' | 'content';
+
+/**
+ * G58 — Öğün planı ekranının hâli. Misafir (oturum yok) plan yazamaz → giriş kartı. Sunucu hatası ve
+ * önbellek yok → hata kartı + Tekrar dene. Yükleniyorken boş plan kartı GÖSTERİLMEZ (yuvalar çizilir).
+ */
+export function planScreenState(p: { signedIn: boolean; status: 'idle' | 'loading' | 'ready' | 'error' | undefined; count: number }): PlanScreenState {
+  if (!p.signedIn) return 'guest';
+  if (p.count > 0) return 'content';
+  if (p.status === 'error') return 'error';
+  if (p.status === 'loading') return 'content';
+  return 'empty';
+}
+
+export type ShopGate = 'wait' | 'locked' | 'open';
+
+/**
+ * G58 — Alışveriş listesi kapısı. Abonelik durumu henüz bilinmiyorken (`unknown`) Fresh kullanıcıyı
+ * paywall'a atmamak için bekler; Ücretsiz ise liste HİÇ çizilmez (paywall kapatılınca içerik
+ * görünmesin) → kilitli kart. Misafir de kilitli (abonelik durumu gelmez).
+ */
+export function shopGate(p: { tier: Tier; status: 'verified' | 'pending' | 'rc_only' | 'server_only' | 'unknown'; signedIn: boolean }): ShopGate {
+  if (planAccess(p.tier).shopping) return 'open';
+  if (p.signedIn && p.status === 'unknown') return 'wait';
+  return 'locked';
+}
