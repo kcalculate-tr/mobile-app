@@ -4,7 +4,7 @@
 // yüzden seçim sonrası süre/boyut burada AYRICA doğrulanır.
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { assertVideoDuration, assertVideoSize } from './rules';
+import { assertVideoDuration, assertVideoMime, assertVideoSize, assertVideoSizeKnown, videoMimeOf } from './rules';
 import type { PickedVideo } from './types';
 
 export async function pickVideo(): Promise<PickedVideo | null> {
@@ -14,6 +14,9 @@ export async function pickVideo(): Promise<PickedVideo | null> {
     mediaTypes: ImagePicker.MediaTypeOptions.Videos,
     videoMaxDuration: 60,
     videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+    // G58: iOS galeriden seçilen video 720p H.264'e dışa aktarılır (Passthrough = orijinal 4K/1080p).
+    // Android'de seçicinin sıkıştırma seçeneği yok → 50 MB sınırı doğrudan uygulanır (LOG).
+    videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     quality: 0.7,
   });
   if (result.canceled || !result.assets[0]) return null;
@@ -28,7 +31,9 @@ export async function pickVideo(): Promise<PickedVideo | null> {
     fileSizeBytes = info.exists ? info.size : 0;
   }
 
+  assertVideoMime(asset.mimeType, asset.uri);
   assertVideoDuration(durationMs);
+  assertVideoSizeKnown(fileSizeBytes);
   assertVideoSize(fileSizeBytes);
 
   return {
@@ -37,6 +42,6 @@ export async function pickVideo(): Promise<PickedVideo | null> {
     height: asset.height,
     durationMs,
     fileSizeBytes,
-    mimeType: asset.mimeType ?? null,
+    mimeType: videoMimeOf(asset.mimeType, asset.uri),
   };
 }

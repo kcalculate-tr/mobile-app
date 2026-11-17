@@ -520,6 +520,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         media_limit: 'En fazla 4 foto veya 60 sn video',
         video_too_long: 'Video en fazla 60 sn olabilir.',
         video_too_large: 'Video en fazla 50 MB olabilir.',
+        video_unsupported: 'Bu video eklenemiyor. MP4 ya da MOV bir video seç.',
+        video_failed: 'Video eklenemedi, tekrar dene.',
       },
       // G8 — Etkinlik kartı + "Ben de yaptım".
       activity: {
@@ -2479,6 +2481,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         media_limit: 'Up to 4 photos or a 60 s video',
         video_too_long: 'Video can be at most 60 s.',
         video_too_large: 'Video can be at most 50 MB.',
+        video_unsupported: 'This video can’t be added. Pick an MP4 or MOV video.',
+        video_failed: 'Couldn’t add the video, try again.',
       },
       // G8 — Activity card + "I did it too".
       activity: {

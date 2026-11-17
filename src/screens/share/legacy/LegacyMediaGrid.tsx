@@ -13,6 +13,7 @@ import { useTheme } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { FeedVideo } from '../../../modules/media/video';
+import { gridMedia } from '../../../modules/media/video/rules';
 import { getSupabaseClient } from '../../../core/supabase';
 import type { FeedMedia } from '../../../modules/kesfet/types';
 
@@ -80,7 +81,7 @@ export function MediaGrid({
   isVisible?: boolean;
 }) {
   if (media.length === 0) return null;
-  const items = media.slice(0, 4);
+  const items = gridMedia(media); // G58: video varsa ilk hücre (4 foto + video'da video düşmesin)
 
   const cell = (m: FeedMedia) => <Cell media={m} postId={postId} isVisible={isVisible} />;
 

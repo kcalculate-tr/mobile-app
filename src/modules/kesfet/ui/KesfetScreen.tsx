@@ -28,6 +28,7 @@ import { useIconPop } from '../motion';
 import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
 import { useNotificationsStore } from '../notificationsStore';
+import { feedPlayablePostId } from '../../media/video/rules';
 import { logTrace } from '../../shell/logTrace';
 import { trackEvent } from '../../gun/track/events';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
@@ -335,6 +336,18 @@ export function KesfetScreen() {
 
   // Hangi gönderi ekranda görünür — FeedVideo otomatik oynat/durdur (G8-S3).
   const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
+  // G58 (kesfet_video): ekran arka planda kalınca (başka sayfa açık / sekme değişti) ya da tam ekran
+  // oynatıcı açıkken akıştaki video DURUR — eskiden çalmaya devam ediyor, ses açıksa iki ses oluyordu.
+  const [screenFocused, setScreenFocused] = useState(true);
+  useEffect(() => {
+    const offF = navigation?.addListener?.('focus', () => setScreenFocused(true));
+    const offB = navigation?.addListener?.('blur', () => setScreenFocused(false));
+    return () => {
+      if (typeof offF === 'function') offF();
+      if (typeof offB === 'function') offB();
+    };
+  }, [navigation]);
+  const playablePostId = feedPlayablePostId(visiblePostId, screenFocused, videoPostId);
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<{ item: FeedPost; isViewable: boolean }> }) => {
@@ -734,7 +747,7 @@ export function KesfetScreen() {
             model={model}
             index={index}
             showComment={kesfetYorum}
-            isVisible={item.id === visiblePostId}
+            isVisible={item.id === playablePostId}
             quickMealLabel={quickMealLabel}
             quickLogLabel={quickLogLabel}
             tip={
@@ -779,7 +792,7 @@ export function KesfetScreen() {
         </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, didItDone, visiblePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
+    [nowMs, lang, onShare, kesfetYorum, didItDone, playablePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa

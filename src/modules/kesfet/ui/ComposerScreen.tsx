@@ -57,6 +57,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ShareGuideSheet } from './ShareGuideSheet';
 import { SHARE_GUIDE_SEEN_KEY, shouldAutoShowGuide } from '../shareGuide';
 import { ActivityTile, F, MealPreview, SourceTile, composeTones } from './compose/pieces';
+import { composerMediaCaps, formatVideoDuration } from '../../media/video/rules';
 import { fetchLastScanMeal } from './compose/lastScan';
 
 const POST_TYPES: PostType[] = ['serbest', 'ogun', 'etkinlik'];
@@ -281,7 +282,9 @@ export function ComposerScreen({
   }, []);
 
   // Doğrulama: video da medya sayılır (serbest gönderi "boş" değil); fotoğraf sınırı aynı.
-  const mediaCount = Math.min(MAX_PHOTOS, photos.length + (video ? 1 : 0));
+  // G58: video da 1 hücre (toplam ≤ 4) — 4 foto + video gönderisinde video akışta düşüyordu.
+  const caps = composerMediaCaps(photos.length, video != null, MAX_PHOTOS);
+  const mediaCount = caps.used;
   const draft: ComposerDraft = useMemo(
     () => ({ type, body, photoCount: mediaCount, meal: type === 'ogun' ? meal : null, activity: type === 'etkinlik' ? activity : null }),
     [type, body, mediaCount, meal, activity],
@@ -292,9 +295,10 @@ export function ComposerScreen({
   const livePreview = type === 'etkinlik' ? activityDraftCard(activity) : null;
 
   const addPhotos = useCallback(async () => {
-    const picked = await pickPhotos(MAX_PHOTOS - photos.length);
-    if (picked.length) setPhotos((p) => [...p, ...picked].slice(0, MAX_PHOTOS));
-  }, [photos.length]);
+    if (caps.photoSlots <= 0) return;
+    const picked = await pickPhotos(caps.photoSlots);
+    if (picked.length) setPhotos((p) => [...p, ...picked].slice(0, MAX_PHOTOS - (video ? 1 : 0)));
+  }, [caps.photoSlots, video]);
 
   const addVideo = useCallback(async () => {
     setError(null);
@@ -303,10 +307,9 @@ export function ComposerScreen({
       const picked = await pickVideo();
       if (picked) setVideo(picked);
     } catch (e) {
-      const name = e instanceof Error ? e.name : '';
-      setError(
-        name === 'VideoTooLargeError' ? tr('kesfet.compose.video_too_large') : tr('kesfet.compose.video_too_long'),
-      );
+      // G58: hata türüne göre metin (eskiden her hata "çok uzun" diyordu).
+      const { videoPickErrorKey } = require('../../media/video/rules') as typeof import('../../media/video/rules');
+      setError(tr(`kesfet.compose.${videoPickErrorKey(e)}`));
     }
   }, [tr]);
 
@@ -501,7 +504,7 @@ export function ComposerScreen({
                 <Pressable
                   onPress={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
                   style={styles.thumbRemove}
-                  hitSlop={10}
+                  hitSlop={12}
                   accessibilityRole="button"
                   accessibilityLabel={tr('kesfet.compose.remove_media')}
                 >
@@ -513,12 +516,12 @@ export function ComposerScreen({
               <View style={[styles.thumb, { backgroundColor: tone.photoPh }]}>
                 <ComposeIcon name="video" size={22} color={t.color.secondary} />
                 <AppText style={[styles.addText, F.semibold]} tone="secondary">
-                  {`0:${String(Math.round(video.durationMs / 1000)).padStart(2, '0')}`}
+                  {formatVideoDuration(video.durationMs)}
                 </AppText>
                 <Pressable
                   onPress={() => setVideo(null)}
                   style={styles.thumbRemove}
-                  hitSlop={10}
+                  hitSlop={12}
                   accessibilityRole="button"
                   accessibilityLabel={tr('kesfet.compose.remove_media')}
                 >
@@ -526,7 +529,7 @@ export function ComposerScreen({
                 </Pressable>
               </View>
             ) : null}
-            {photos.length < MAX_PHOTOS ? (
+            {caps.photoSlots > 0 ? (
               <Pressable
                 onPress={addPhotos}
                 style={[styles.addTile, { borderColor: tone.outline }]}
@@ -535,7 +538,7 @@ export function ComposerScreen({
               >
                 <ComposeIcon name="plus" size={20} color={t.color.secondary} />
                 <AppText style={[styles.addText, F.semibold]} tone="secondary">
-                  {tr('kesfet.compose.add_tile', { n: photos.length, max: MAX_PHOTOS })}
+                  {tr('kesfet.compose.add_tile', { n: caps.used, max: MAX_PHOTOS })}
                 </AppText>
               </Pressable>
             ) : null}
@@ -728,10 +731,10 @@ export function ComposerScreen({
       <View style={[styles.bar, { borderTopColor: t.color.line, paddingBottom: Math.max(insets.bottom, 8) }]}>
         <Pressable
           onPress={addPhotos}
-          disabled={photos.length >= MAX_PHOTOS}
+          disabled={caps.photoSlots <= 0}
           accessibilityRole="button"
           accessibilityLabel={tr('kesfet.compose.add_photo')}
-          style={({ pressed }) => [styles.barBtn, (pressed || photos.length >= MAX_PHOTOS) && { opacity: 0.5 }]}
+          style={({ pressed }) => [styles.barBtn, (pressed || caps.photoSlots <= 0) && { opacity: 0.5 }]}
         >
           <ComposeIcon name="photo" size={22} color={t.color.ink} />
           <AppText style={[styles.barText, F.semibold]}>{tr('kesfet.compose.add_photo')}</AppText>
@@ -739,10 +742,12 @@ export function ComposerScreen({
         {videoEnabled ? (
           <Pressable
             onPress={() => void addVideo()}
-            disabled={video != null}
+            disabled={!caps.canAddVideo}
             accessibilityRole="button"
             accessibilityLabel={tr('kesfet.compose.video')}
-            style={({ pressed }) => [styles.barBtn, (pressed || video != null) && { opacity: 0.5 }]}
+            accessibilityState={{ disabled: !caps.canAddVideo }}
+            testID="composer-video"
+            style={({ pressed }) => [styles.barBtn, (pressed || !caps.canAddVideo) && { opacity: 0.5 }]}
           >
             <ComposeIcon name="video" size={22} color={t.color.ink} />
             <AppText style={[styles.barText, F.semibold]}>{tr('kesfet.compose.video')}</AppText>

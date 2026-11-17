@@ -11,6 +11,7 @@ import { useTheme } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { FeedVideo } from '../../media/video';
+import { gridMedia } from '../../media/video/rules';
 import { getSupabaseClient } from '../../../core/supabase';
 import type { FeedMedia } from '../types';
 import { FEED_DEFAULT_H, feedSingleFrameHeight } from '../mediaPath';
@@ -96,7 +97,7 @@ export function MediaGrid({
 }) {
   const { width } = useWindowDimensions();
   if (media.length === 0) return null;
-  const items = media.slice(0, 4);
+  const items = gridMedia(media); // G58: video varsa ilk hücre (4 foto + video'da video düşmesin)
   // G15 — tek görselde yükseklik en-boy oranından (Final: yatay ~220, kare ~300);
   // ölçü yoksa 220. Genişlik = ekran − 16·2 − 40 avatar − 12 aralık.
   const one = items.length === 1 ? items[0] : null;

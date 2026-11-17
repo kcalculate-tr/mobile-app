@@ -8,6 +8,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useActiveVideoStore } from '../activeVideo';
 import { useAutoplayAllowed } from '../useAutoplayAllowed';
+import { shouldMountPlayer } from '../rules';
 import { PlayIcon, VolumeOnIcon, VolumeOffIcon, ExpandIcon } from './icons';
 import Svg, { Path } from 'react-native-svg';
 
@@ -34,7 +35,54 @@ const DEFAULT_LABELS: FeedVideoLabels = {
   play: 'Oynat',
 };
 
-export function FeedVideo({
+type FeedVideoProps = {
+  id: string;
+  source: string;
+  posterUri: string | null;
+  isVisible: boolean;
+  style?: object;
+  labels?: FeedVideoLabels;
+  onOpen?: () => void;
+  durationS?: number | null;
+  phColor?: string;
+  phIconColor?: string;
+};
+
+/**
+ * G58 (kesfet_video): native oynatıcı YALNIZ görünür hücrede yaratılır (`shouldMountPlayer`);
+ * görünmeyen hücre kapak + süre hapı çizer. Eskiden listedeki HER video satırı kendi oynatıcısını
+ * açıp kaynağı yüklüyordu (Android'de decoder/bellek sınırı, gereksiz veri). Kaydırınca hücre
+ * görünmez olur → oynatıcı sökülür ve serbest kalır.
+ */
+export function FeedVideo(props: FeedVideoProps) {
+  if (shouldMountPlayer(props.isVisible)) return <FeedVideoLive {...props} />;
+  return <FeedVideoPoster {...props} />;
+}
+
+function FeedVideoPoster({ posterUri, style, labels = DEFAULT_LABELS, onOpen, durationS, phColor, phIconColor }: FeedVideoProps) {
+  return (
+    <View style={[styles.wrap, style]} testID="feed-video-poster">
+      {posterUri ? (
+        <Image source={{ uri: posterUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      ) : (
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.ph, { backgroundColor: phColor ?? '#CFD2D7' }]}>
+          <CameraIcon size={28} color={phIconColor ?? '#45454A'} />
+        </View>
+      )}
+      {onOpen ? (
+        <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={labels.fullscreen} onPress={onOpen} />
+      ) : null}
+      {durationS && durationS > 0 ? (
+        <View pointerEvents="none" style={styles.durPill}>
+          <PlayIcon size={12} />
+          <Text style={styles.durText}>{fmtTime(durationS)}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function FeedVideoLive({
   id,
   source,
   posterUri,
@@ -67,14 +115,16 @@ export function FeedVideo({
   const autoplayAllowed = useAutoplayAllowed();
   const activeId = useActiveVideoStore((s) => s.activeId);
   const setActive = useActiveVideoStore((s) => s.setActive);
-  const [muted, setMuted] = useState(true);
+  const muted = useActiveVideoStore((s) => s.muted);
+  const setMutedStore = useActiveVideoStore((s) => s.setMuted);
+  const setMuted = (fn: (m: boolean) => boolean) => setMutedStore(fn(useActiveVideoStore.getState().muted));
   const [frameRendered, setFrameRendered] = useState(false);
   const [manualPlay, setManualPlay] = useState(false);
   const viewRef = useRef<VideoView>(null);
 
   const player = useVideoPlayer(source, (p) => {
     p.loop = true;
-    p.muted = true;
+    p.muted = useActiveVideoStore.getState().muted;
   });
 
   useEffect(() => {
@@ -203,6 +253,7 @@ export function FeedVideo({
           accessibilityRole="button"
           accessibilityLabel={labels.fullscreen}
           style={styles.badge}
+          hitSlop={8}
           onPress={() => void viewRef.current?.enterFullscreen()}
         >
           <ExpandIcon size={16} />
