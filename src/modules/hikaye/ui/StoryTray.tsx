@@ -4,7 +4,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { AppText, fontFamily, useTheme } from '../../../core/design';
+import { AppText, fontFamily, ProgressRing, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { CachedImage } from '../../../components/CachedImage';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
@@ -61,23 +61,39 @@ function initialsOf(name: string): string {
     .join('');
 }
 
+/** 17 Kas (İlter): eski "Günüm" gün halkası şeridi tepsiye katıldı (tek sıra, tek "Hikâyen" avatarı). */
+export type TrayDayRing = { userId: string; name: string; avatarUrl: string | null; progress: number };
+
 export function StoryTray({
   items,
   meAvatar,
   onOpen,
   onCreate,
+  myDayProgress,
+  dayRings,
+  onOpenDay,
 }: {
   items: TrayItem[];
   /** Tepsi boşken (RPC yok / yükleniyor) "Hikâyen" yine çizilir. */
   meAvatar?: string | null;
   onOpen: (userId: string) => void;
   onCreate: () => void;
+  /** Hikâyem yokken avatarın çevresinde bugünkü gün halkası (0–1). */
+  myDayProgress?: number | null;
+  /** Başkalarının gün halkaları (hikâyesi olmayanlar) — hikâyelerden sonra. */
+  dayRings?: TrayDayRing[];
+  onOpenDay?: (userId: string) => void;
 }) {
   const t = useTheme();
   const { t: tr } = useT();
+  const track = t.isDark ? '#3A3A3C' : '#DCDEE2';
   const me = items.find((i) => i.is_me);
   const others = items.filter((i) => !i.is_me && i.story_count > 0);
   const meHas = (me?.story_count ?? 0) > 0;
+  const storyIds = new Set(others.map((o) => o.user_id));
+  const days = (dayRings ?? []).filter((d) => !storyIds.has(d.userId));
+  const meUrl = me?.avatar_url ?? meAvatar ?? null;
+  const meInitials = me ? initialsOf(me.display_name) : undefined;
   return (
     <View style={[styles.wrap, { borderBottomColor: t.color.line }]} accessibilityLabel={tr('hikaye.tray')} testID="story-tray">
       <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -89,7 +105,13 @@ export function StoryTray({
             style={styles.ringBox}
             testID="story-tray-me"
           >
-            <StoryRingAvatar url={me?.avatar_url ?? meAvatar ?? null} state={meHas ? 'seen' : 'none'} initials={me ? initialsOf(me.display_name) : undefined} />
+            {!meHas && myDayProgress != null ? (
+              <ProgressRing progress={Math.max(0, Math.min(1, myDayProgress))} size={SIZE} strokeWidth={STROKE} color={t.color.accentLine} trackColor={track}>
+                <StoryRingAvatar url={meUrl} state="none" size={AVATAR} avatar={AVATAR} initials={meInitials} />
+              </ProgressRing>
+            ) : (
+              <StoryRingAvatar url={meUrl} state={meHas ? 'seen' : 'none'} initials={meInitials} />
+            )}
           </Pressable>
           <Pressable
             onPress={onCreate}
@@ -126,6 +148,26 @@ export function StoryTray({
             </View>
           );
         })}
+        {onOpenDay
+          ? days.map((d) => (
+              <View key={`day-${d.userId}`} style={styles.item}>
+                <Pressable
+                  onPress={() => onOpenDay(d.userId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('hikaye.tray_seen', { name: d.name })}
+                  style={styles.ringBox}
+                  testID={`story-tray-day-${d.userId}`}
+                >
+                  <ProgressRing progress={Math.max(0, Math.min(1, d.progress))} size={SIZE} strokeWidth={STROKE} color={t.color.accentLine} trackColor={track}>
+                    <StoryRingAvatar url={d.avatarUrl} state="none" size={AVATAR} avatar={AVATAR} initials={initialsOf(d.name)} />
+                  </ProgressRing>
+                </Pressable>
+                <AppText numberOfLines={1} style={[styles.label, { color: t.color.secondary }]}>
+                  {d.name}
+                </AppText>
+              </View>
+            ))
+          : null}
       </ScrollView>
     </View>
   );

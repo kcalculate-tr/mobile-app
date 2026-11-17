@@ -911,18 +911,23 @@ export function KesfetScreen() {
     [rings, kesfetPaylasim, navigation, feedIsEmpty],
   );
 
+  // 17 Kas (İlter): hikâye açıkken "Günüm" şeridi ayrı sıra olarak ÇİZİLMEZ — tepsiye katılır
+  // (tek "Hikâyen" avatarı; hikâye yokken çevresinde gün halkası; başkalarının gün halkaları sonda).
   const storyTray = hikaye ? (
     <StoryTray
       items={storyItems}
       onOpen={(userId) => navigation.navigate('StoryViewer', { userIds: viewerQueue(storyItems), startUserId: userId })}
       onCreate={() => navigation.navigate('StoryCamera')}
+      myDayProgress={rings[0]?.progress ?? null}
+      dayRings={rings.slice(1).map((r) => ({ userId: r.user.id, name: r.user.display_name, avatarUrl: r.user.avatar_url ?? null, progress: r.progress ?? 0 }))}
+      onOpenDay={(userId) => setViewerUserId(userId)}
     />
   ) : null;
 
   const feedHeader = (
     <>
       {storyTray}
-      {ringStrip}
+      {hikaye ? null : ringStrip}
       <PostingStatus
         phase={postingPhase}
         error={postingError}
