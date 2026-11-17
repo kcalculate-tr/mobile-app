@@ -181,10 +181,9 @@ export const DayCard = forwardRef<View, {
       <Bar icon={GLASS.trophy} label={tr('plan.protein')} value={plannedP} target={target.protein} unit="g" logged={loggedP} pulse={pulse} />
       <View style={styles.legend}>
         <View style={[styles.legendSq, { backgroundColor: c.lime }]} />
-        <AppText style={[styles.small, { color: c.sec }]}>
-          {tr('plan.logged')}{' '}
-          <PulseNum value={`${logged} kcal`} pulse={pulse} ref={ref} />
-        </AppText>
+        {/* G58: sayı metnin İÇİNDE değil yanında — iOS'ta Text içindeki Animated.View satırın üstüne kayıyordu. */}
+        <AppText style={[styles.small, { color: c.sec }]}>{tr('plan.logged')}</AppText>
+        <PulseNum value={`${logged} kcal`} pulse={pulse} ref={ref} />
         <View style={[styles.legendSq, { backgroundColor: c.limeSoft, marginLeft: 14 }]} />
         <AppText style={[styles.small, { color: c.sec }]}>{tr('plan.planned')}</AppText>
       </View>
@@ -452,7 +451,7 @@ const styles = StyleSheet.create({
   dayTitle: { fontSize: 17, fontWeight: '700' },
   small: { fontSize: 13 },
   smallBold: { fontSize: 13, fontWeight: '700' },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legend: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   legendSq: { width: 10, height: 10, borderRadius: 3 },
   pulseWrap: { alignSelf: 'flex-start' },
   bar: { gap: 6 },
