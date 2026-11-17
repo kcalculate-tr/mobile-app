@@ -938,7 +938,7 @@ function resolveParity(name: string): ResolvedEntry | null {
   // Plan / PlanBos = Öğün planı dolu / boş · Liste / ListeBos = Alışveriş listesi (Fresh) dolu / boş ·
   // ListeKilit = Ücretsiz kilitli kart · Bildirim / BildirimBos = Keşfet bildirimleri · Video = akışta
   // sessiz otomatik oynatma · VideoTam = tam ekran · VideoYaz = Composer (video düğmesi, seçim yok).
-  const g58 = /^G58-(PlanBos|Plan|ListeBos|ListeKilit|Liste|BildirimBos|Bildirim|VideoTam|VideoYaz|VideoSecili|Video)(-EN)?(-Dark)?$/.exec(name);
+  const g58 = /^G58-(PlanBos|Plan|ListeBos|ListeKilit|Liste|BildirimBos|Bildirim|VideoTam|VideoYaz|VideoSecili|Video)(-EN)?(-Dark)?(-XL)?$/.exec(name);
   if (g58) {
     const prof = (screen: string, params?: Record<string, unknown>) => route([...tab('Profile'), { name: screen, ...(params ? { params } : {}) }]);
     const T: Record<string, { area: string; target: VitrinTarget; scene?: string; data?: VitrinDataState }> = {
@@ -963,6 +963,7 @@ function resolveParity(name: string): ResolvedEntry | null {
       pano: name, area: d.area, target: d.target, data: d.data ?? 'default', flags: [...FINAL_FLAGS, 'ogun_plani', 'abonelik'],
       lang: g58[2] ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g58[3] ? 'dark' : 'light',
       ...(d.scene ? { scene: d.scene } : {}),
+      ...(g58[4] ? { textSize: 'accessibility-extra-large' as const } : {}),
     };
   }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);

@@ -1,7 +1,7 @@
 // G33-S1 md.6/md.9 — Öğün planı yapı taşları (04-haftalik-plan + 01-ogun-plani-hareket).
 // Renkler tema rollerinden; lime yalnız dolgu (üstünde siyah). Süreler PLAN_MOTION'dan.
 import React, { forwardRef, useEffect } from 'react';
-import { Image, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -264,6 +264,7 @@ export function SlotRow({
 }) {
   const c = usePlanTones();
   const { t: tr } = useT();
+  const { fontScale } = useWindowDimensions();
   const slotName = tr(`plan.slot.${slot}`);
   return (
     <View style={[styles.slot, first ? null : { borderTopWidth: 1, borderTopColor: c.line }]} testID={`plan-slot-${slot}`}>
@@ -283,7 +284,8 @@ export function SlotRow({
         >
           <Thumb uri={null} />
           <View style={styles.flex1}>
-            <AppText style={[styles.itemName, { color: c.ink }]} numberOfLines={2}>
+            {/* G58: büyük yazıda ad kesilmesin (2 satır yalnız varsayılan boyutta). */}
+            <AppText style={[styles.itemName, { color: c.ink }]} numberOfLines={fontScale > 1.3 ? 5 : 2}>
               {item.name}
             </AppText>
             <View style={styles.chipRow}>
@@ -447,7 +449,7 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 2, height: 5, alignItems: 'center' },
   dot: { width: 4, height: 4, borderRadius: 2 },
   dayCard: { borderRadius: 20, padding: 16, gap: 12 },
-  dayHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dayHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   dayTitle: { fontSize: 17, fontWeight: '700' },
   small: { fontSize: 13 },
   smallBold: { fontSize: 13, fontWeight: '700' },
