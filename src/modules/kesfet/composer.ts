@@ -12,6 +12,20 @@ import type {
 } from './types';
 
 export const MAX_BODY = 2000;
+
+/** G60-S1 md.2 — gönderi dili (posts.lang CHECK: 'tr' | 'en'). */
+export type PostLang = 'tr' | 'en';
+export const POST_LANGS: readonly PostLang[] = ['tr', 'en'] as const;
+
+/** Varsayılan gönderi dili = yazarın uygulama dili (composer'daki TR/EN seçiciyle değişir). */
+export function defaultPostLang(appLang: string | null | undefined): PostLang {
+  return appLang === 'en' ? 'en' : 'tr';
+}
+
+/** Seçici: TR ↔ EN. */
+export function togglePostLang(l: PostLang): PostLang {
+  return l === 'tr' ? 'en' : 'tr';
+}
 export const MAX_PHOTOS = 4;
 
 export interface MealDraft {

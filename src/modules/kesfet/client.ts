@@ -20,6 +20,7 @@ import type {
   FeedPost,
   KesfetClient,
   NotificationPage,
+  PostViewItem,
   ProductSearchItem,
   ProductSearchResult,
   RateLimitedResult,
@@ -121,6 +122,34 @@ export const realKesfetClient: KesfetClient = {
       items: items.map((p) => normalizePost(p as Partial<FeedPost> & { id: string })),
       next_cursor: page.next_cursor ?? null,
     };
+  },
+
+  // G60-S1 — Keşfet sıralı akış (bayrak kesfet_siralama). Hata fırlatır; store get_feed'e düşer.
+  async getFeedRanked({ lang, cursor = null, limit = 20 }): Promise<FeedPage> {
+    const { data, error } = await sb().rpc('get_feed_ranked', {
+      p_lang: lang,
+      p_cursor: cursor,
+      p_limit: limit,
+    });
+    if (error) rpcError('get_feed_ranked', error);
+    const page = (data ?? {}) as Partial<FeedPage>;
+    const items = Array.isArray(page.items) ? page.items : [];
+    return {
+      items: items.map((p) => normalizePost(p as Partial<FeedPost> & { id: string })),
+      next_cursor: page.next_cursor ?? null,
+    };
+  },
+
+  // G60-S1 md.3 — görüntülenme paketi. Hata yutulur (ölçüm asla akışı bozmaz).
+  async recordPostViews(items: PostViewItem[]): Promise<'ok' | 'off' | 'missing'> {
+    if (items.length === 0) return 'ok';
+    try {
+      const { data, error } = await sb().rpc('record_post_views', { p_items: items });
+      if (error) return isMissingFunction(error) ? 'missing' : 'ok';
+      return (data as { ok?: boolean } | null)?.ok === false ? 'off' : 'ok';
+    } catch {
+      return 'ok';
+    }
   },
 
   async getPost({ post }): Promise<FeedPost | null> {

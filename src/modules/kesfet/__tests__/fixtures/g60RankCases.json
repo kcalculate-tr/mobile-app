@@ -1,0 +1,229 @@
+{
+  "note": "G60-S1: beklenen değerler PGlite'ta kesfet_rank_score (SQL) ile üretildi — supabase/tests/g60_s1.check.mts",
+  "cases": [
+    {
+      "name": "yeni, etkileşimsiz, aynı dil",
+      "input": {
+        "ageH": 0,
+        "adds": 0,
+        "saves": 0,
+        "comments": 0,
+        "likes": 0,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 1.5
+    },
+    {
+      "name": "yeni, başka dil",
+      "input": {
+        "ageH": 0,
+        "adds": 0,
+        "saves": 0,
+        "comments": 0,
+        "likes": 0,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": false,
+        "reports": 0
+      },
+      "sql": 0.5249999999999999
+    },
+    {
+      "name": "23,9 sa (bonus var)",
+      "input": {
+        "ageH": 23.9,
+        "adds": 0,
+        "saves": 0,
+        "comments": 0,
+        "likes": 0,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 1.1077955824240162
+    },
+    {
+      "name": "24 sa (bonus biter)",
+      "input": {
+        "ageH": 24,
+        "adds": 0,
+        "saves": 0,
+        "comments": 0,
+        "likes": 0,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 0.6065306597126334
+    },
+    {
+      "name": "48 sa",
+      "input": {
+        "ageH": 48,
+        "adds": 0,
+        "saves": 0,
+        "comments": 0,
+        "likes": 0,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 0.36787944117144233
+    },
+    {
+      "name": "1 ekleme = 4 beğeni",
+      "input": {
+        "ageH": 10,
+        "adds": 1,
+        "saves": 0,
+        "comments": 0,
+        "likes": 0,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 3.4234164403457346
+    },
+    {
+      "name": "4 beğeni",
+      "input": {
+        "ageH": 10,
+        "adds": 0,
+        "saves": 0,
+        "comments": 0,
+        "likes": 4,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 3.4234164403457346
+    },
+    {
+      "name": "karışık etkileşim",
+      "input": {
+        "ageH": 30,
+        "adds": 2,
+        "saves": 3,
+        "comments": 4,
+        "likes": 25,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 2.639816033378596
+    },
+    {
+      "name": "takip + etkileşim + aynı şehir",
+      "input": {
+        "ageH": 30,
+        "adds": 2,
+        "saves": 3,
+        "comments": 4,
+        "likes": 25,
+        "follows": true,
+        "interacted": true,
+        "sameCity": true,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 6.177169518105916
+    },
+    {
+      "name": "takip, başka dil",
+      "input": {
+        "ageH": 5,
+        "adds": 0,
+        "saves": 1,
+        "comments": 0,
+        "likes": 3,
+        "follows": true,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": false,
+        "reports": 0
+      },
+      "sql": 2.1669067211048754
+    },
+    {
+      "name": "2 şikayet",
+      "input": {
+        "ageH": 5,
+        "adds": 0,
+        "saves": 1,
+        "comments": 0,
+        "likes": 3,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 2
+      },
+      "sql": 3.7274413735330962
+    },
+    {
+      "name": "9 şikayet (sınır 5)",
+      "input": {
+        "ageH": 5,
+        "adds": 0,
+        "saves": 1,
+        "comments": 0,
+        "likes": 3,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": 9
+      },
+      "sql": 3.127441373533096
+    },
+    {
+      "name": "negatif yaş/sayı → 0",
+      "input": {
+        "ageH": -3,
+        "adds": -1,
+        "saves": -2,
+        "comments": -3,
+        "likes": -4,
+        "follows": false,
+        "interacted": false,
+        "sameCity": false,
+        "langMatch": true,
+        "reports": -1
+      },
+      "sql": 1.5
+    },
+    {
+      "name": "eski (10 gün), çok etkileşim",
+      "input": {
+        "ageH": 240,
+        "adds": 10,
+        "saves": 20,
+        "comments": 15,
+        "likes": 300,
+        "follows": false,
+        "interacted": false,
+        "sameCity": true,
+        "langMatch": true,
+        "reports": 0
+      },
+      "sql": 0.06189438034120651
+    }
+  ]
+}

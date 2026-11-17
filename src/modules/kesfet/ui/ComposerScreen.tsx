@@ -43,6 +43,9 @@ import {
 import {
   activityDraftCard,
   buildCreateInput,
+  defaultPostLang,
+  togglePostLang,
+  type PostLang,
   validateComposer,
   type ActivityDraft,
   type ComposerDraft,
@@ -143,6 +146,8 @@ export function ComposerScreen({
 
   const [type, setType] = useState<PostType>(vitrinKind ?? 'ogun');
   const [body, setBody] = useState(pre?.body ?? '');
+  // G60-S1 md.2: gönderi dili — varsayılan uygulama dili; alt çubuktaki TR/EN seçiciyle değişir.
+  const [postLang, setPostLang] = useState<PostLang>(() => defaultPostLang(lang));
   const [photos, setPhotos] = useState<LocalPhoto[]>(pre?.photos ?? []);
   const [video, setVideo] = useState<PickedVideoLite | null>(pre?.video ?? null);
   const [meal, setMeal] = useState<MealDraft>(() =>
@@ -351,7 +356,7 @@ export function ComposerScreen({
       setSubmit('publishing');
       posting.set('publishing');
       const key = `composer-${type}-${body.length}-${photos.length}-${Date.now()}`;
-      const input = buildCreateInput(draft, media, lang, key);
+      const input = buildCreateInput(draft, media, postLang, key);
       const res = await getKesfetClient().createPost(input);
       if ('error' in res) {
         setSubmit('idle');
@@ -370,7 +375,7 @@ export function ComposerScreen({
       setError(tr('kesfet.compose.err_network'));
       posting.set('error', { error: tr('kesfet.compose.err_network'), retry });
     }
-  }, [draft, photos, video, type, body.length, lang, tr]);
+  }, [draft, photos, video, type, body.length, postLang, tr]);
 
   const onSubmit = useCallback(async () => {
     if (validateComposer(draft) != null) return;
@@ -766,6 +771,22 @@ export function ComposerScreen({
         <AppText style={styles.barHint} tone="secondary">
           {tr('kesfet.compose.media_limit')}
         </AppText>
+        {/* G60-S1 md.2: gönderi dili (TR / EN) — 44 pt dokunma alanı; dokununca değişir. */}
+        <Pressable
+          onPress={() => {
+            haptic('selection');
+            setPostLang((l) => togglePostLang(l));
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`${tr('compose_lang.label')}: ${tr(`compose_lang.${postLang}_a11y`)}`}
+          accessibilityHint={tr('compose_lang.hint')}
+          style={styles.langBtn}
+          testID="composer-lang"
+        >
+          <View style={[styles.langChip, { borderColor: t.color.line }]}>
+            <AppText style={[styles.langText, F.semibold]}>{tr(`compose_lang.${postLang}`)}</AppText>
+          </View>
+        </Pressable>
         {/* G53-S1 md.3: görsel kılavuzu — 44 pt dokunma alanı. */}
         <Pressable
           onPress={() => setGuide({ open: true, first: false })}
@@ -864,5 +885,8 @@ const styles = StyleSheet.create({
   barBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
   barText: { fontSize: 13, lineHeight: 18 },
   barHint: { marginLeft: 'auto', flexShrink: 1, fontSize: 13, lineHeight: 18 },
+  langBtn: { minWidth: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  langChip: { minWidth: 34, height: 26, paddingHorizontal: 7, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  langText: { fontSize: 13, lineHeight: 17, letterSpacing: 0.3 },
   infoBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -10 },
 });

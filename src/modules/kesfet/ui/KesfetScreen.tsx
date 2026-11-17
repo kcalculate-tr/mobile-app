@@ -5,6 +5,7 @@
 // (kopyala/şikayet/engelle). Hepsi `kesfet` bayrağı arkasında (AppNavigator).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   FlatList,
   Pressable,
   RefreshControl,
@@ -28,6 +29,7 @@ import { useIconPop } from '../motion';
 
 import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
+import { sessionImpressions } from '../impressions';
 import { useNotificationsStore } from '../notificationsStore';
 import { feedPlayablePostId } from '../../media/video/rules';
 import { viewerImageUrls } from '../reels';
@@ -178,6 +180,14 @@ function ReelsGlyph({ color }: { color: string }) {
   );
 }
 
+/** G60-S1 md.3: oturum görüntülenme izleyicisi (record_post_views; RPC yoksa sessizce durur). */
+function viewImpressions() {
+  return sessionImpressions((items) => {
+    const c = getKesfetClient();
+    return c.recordPostViews ? c.recordPostViews(items) : Promise.resolve('missing' as const);
+  });
+}
+
 /** 17 Kas: Keşfet oturumda ilk kez açıldı mı (bir kez "Sana Özel"e geçilir). */
 let openedPersonal = false;
 
@@ -290,6 +300,10 @@ export function KesfetScreen() {
   const kesfetVideo = useFeature('kesfet_video');
   // G59-S1: hikâye tepsisi yalnız `hikaye` açıkken (kapalıyken tepsi, istek ve rota YOK).
   const hikaye = useFeature('hikaye');
+  // G60-S1: Keşfet sekmesi sıralaması v2 + görüntülenme ölçümü (kapalıyken get_feed + dil 'tr' AYNEN).
+  const kesfetSiralama = useFeature('kesfet_siralama');
+  const siralamaRef = useRef(kesfetSiralama);
+  siralamaRef.current = kesfetSiralama;
   const storyItems = useStoryTray((s) => s.items);
   const refreshStories = useStoryTray((s) => s.refresh);
   useFocusEffect(
@@ -394,8 +408,37 @@ export function KesfetScreen() {
     ({ viewableItems }: { viewableItems: Array<{ item: FeedPost; isViewable: boolean }> }) => {
       const visible = viewableItems.find((v) => v.isViewable);
       setVisiblePostId(visible ? visible.item.id : null);
+      // G60-S1 md.3: ≥ 1 sn görünen kart → görüntülenme (oturumda bir kez, toplu). Yalnız bayrak açıkken.
+      if (siralamaRef.current) {
+        const ids = viewableItems.filter((v) => v.isViewable && v.item?.id).map((v) => String(v.item.id));
+        viewImpressions().update(ids);
+      }
     },
   ).current;
+  // Odak gidince / uygulama arka plana geçince görünenleri kapat + kuyruğu gönder.
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        if (!siralamaRef.current) return;
+        viewImpressions().pause();
+        void viewImpressions().flush();
+      },
+      [],
+    ),
+  );
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active' && siralamaRef.current) {
+        viewImpressions().pause();
+        void viewImpressions().flush();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+  // G60-S1: bayrak + uygulama dili → akış isteği (yükleme etkisinden ÖNCE çalışır; değişirse akış yenilenir).
+  useEffect(() => {
+    void useKesfetStore.getState().setFeedOptions({ ranked: kesfetSiralama, appLang: lang === 'en' ? 'en' : 'tr' });
+  }, [kesfetSiralama, lang]);
 
   // İlk yükleme + gün halkaları. (Vitrin: `initialTab: 'following'` → Takip sekmesiyle aç.)
   useEffect(() => {

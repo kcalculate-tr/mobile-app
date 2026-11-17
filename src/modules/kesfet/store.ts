@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { getKesfetClient } from './client';
 import type {
   AddToDayResult,
+  FeedPage,
   FeedPost,
   FeedStats,
   FeedTab,
@@ -16,6 +17,30 @@ import type {
 } from './types';
 
 const PAGE_LIMIT = 20;
+
+/** G60-S1 — akış isteği seçenekleri (KesfetScreen bayrak + uygulama dilinden besler). */
+export interface FeedOptions {
+  /** `kesfet_siralama` bayrağı. */
+  ranked: boolean;
+  /** Uygulama dili (i18n). */
+  appLang: 'tr' | 'en';
+}
+
+/** Sayfanın geldiği yol: sıralı (get_feed_ranked) ya da eski (get_feed). İmleçler birbirine karışmaz. */
+export type FeedSource = 'ranked' | 'legacy';
+
+/**
+ * G60-S1 md.2 — akışa giden dil. Sabit 'tr' kaldırıldı; ama get_feed dili SERT filtrelediği için bayrak
+ * KAPALIYKEN bugünkü davranış birebir korunur ('tr'). Bayrak açıkken uygulama dili gider.
+ */
+export function feedRequestLang(opts: FeedOptions): 'tr' | 'en' {
+  return opts.ranked ? opts.appLang : 'tr';
+}
+
+/** Yalnız "Keşfet" (for_you) sekmesi sıralanır; "Sana Özel" (following) kronolojik kalır. */
+export function usesRankedFeed(opts: FeedOptions, tab: FeedTab): boolean {
+  return opts.ranked && tab === 'for_you';
+}
 
 // Aynı idempotency anahtarıyla eşzamanlı "ekle" çağrılarını tek RPC'ye indirger
 // (çift dokunma koruması). Store state'i dışında tutulur çünkü Promise taşır.
@@ -32,6 +57,12 @@ interface KesfetState {
   error: string | null;
   // idempotency: anahtar → consumption_id (oturum içi tekrar koruması)
   addedKeys: Record<string, string>;
+  // G60-S1 — bayrak + dil; son sayfanın kaynağı (imleç hangi RPC'ye ait).
+  feedOptions: FeedOptions;
+  feedSource: FeedSource;
+
+  /** G60-S1 — seçenekler değişirse (bayrak açıldı/kapandı, dil değişti) yüklüyse akış yenilenir. */
+  setFeedOptions: (opts: FeedOptions) => Promise<void>;
 
   setTab: (tab: FeedTab) => Promise<void>;
   load: () => Promise<void>;
@@ -77,6 +108,36 @@ function applyReaction(stats: FeedStats, kind: ReactionKind, on: boolean): FeedS
   return { ...stats, saves: Math.max(0, stats.saves + delta) };
 }
 
+const DEFAULT_FEED_OPTIONS: FeedOptions = { ranked: false, appLang: 'tr' };
+
+/**
+ * Tek sayfa getir. Sıralı yol yalnız bayrak açık + for_you + istemci destekliyorsa; İLK sayfada
+ * hata olursa (bayrak sunucuda kapalı, RPC yok, ağ) eski get_feed('tr') — yani bugünkü davranış.
+ * Sonraki sayfa, ilk sayfanın kaynağıyla aynı RPC'ye gider (imleç biçimleri farklı).
+ */
+async function fetchFeedPage(
+  tab: FeedTab,
+  opts: FeedOptions,
+  cursor: string | null,
+  source: FeedSource | null,
+): Promise<{ page: FeedPage; source: FeedSource }> {
+  const client = getKesfetClient();
+  const wantRanked = usesRankedFeed(opts, tab) && typeof client.getFeedRanked === 'function';
+  if (wantRanked && source !== 'legacy') {
+    try {
+      const page = await client.getFeedRanked!({ lang: opts.appLang, cursor, limit: PAGE_LIMIT });
+      return { page, source: 'ranked' };
+    } catch (e) {
+      if (cursor != null) throw e; // sıralı imleç eski RPC'de geçersiz → normal hata yolu
+      const page = await client.getFeed({ tab, lang: 'tr', limit: PAGE_LIMIT });
+      return { page, source: 'legacy' };
+    }
+  }
+  const lang = source === 'legacy' && wantRanked ? 'tr' : feedRequestLang(opts);
+  const page = await client.getFeed({ tab, lang, cursor, limit: PAGE_LIMIT });
+  return { page, source: 'legacy' };
+}
+
 export const useKesfetStore = create<KesfetState>((set, get) => ({
   tab: 'for_you',
   posts: [],
@@ -87,6 +148,22 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
   loadingMore: false,
   error: null,
   addedKeys: {},
+  feedOptions: DEFAULT_FEED_OPTIONS,
+  feedSource: 'legacy',
+
+  setFeedOptions: async (opts) => {
+    const prev = get().feedOptions;
+    if (prev.ranked === opts.ranked && prev.appLang === opts.appLang) return;
+    set({ feedOptions: { ranked: opts.ranked, appLang: opts.appLang } });
+    // Yüklü bir akış varsa ve isteği gerçekten değişiyorsa baştan yükle (imleç eski yola ait olabilir).
+    const tab = get().tab;
+    const changed =
+      usesRankedFeed(prev, tab) !== usesRankedFeed(opts, tab) || feedRequestLang(prev) !== feedRequestLang(opts);
+    if (changed && get().posts.length > 0) {
+      set({ posts: [], cursor: null, hasMore: true });
+      await get().load();
+    }
+  },
 
   setTab: async (tab) => {
     if (get().tab === tab) return;
@@ -98,8 +175,8 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
     if (get().loading) return;
     set({ loading: true, error: null });
     try {
-      const page = await getKesfetClient().getFeed({ tab: get().tab, lang: 'tr', limit: PAGE_LIMIT });
-      set({ posts: page.items, cursor: page.next_cursor, hasMore: page.next_cursor != null });
+      const { page, source } = await fetchFeedPage(get().tab, get().feedOptions, null, null);
+      set({ posts: page.items, cursor: page.next_cursor, hasMore: page.next_cursor != null, feedSource: source });
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'load_failed' });
     } finally {
@@ -112,12 +189,7 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
     if (loadingMore || !hasMore || cursor == null) return;
     set({ loadingMore: true });
     try {
-      const page = await getKesfetClient().getFeed({
-        tab: get().tab,
-        lang: 'tr',
-        cursor,
-        limit: PAGE_LIMIT,
-      });
+      const { page } = await fetchFeedPage(get().tab, get().feedOptions, cursor, get().feedSource);
       // Aynı id'yi iki kez eklemeyi önle (imleç kayması güvenliği).
       const seen = new Set(posts.map((p) => p.id));
       const fresh = page.items.filter((p) => !seen.has(p.id));
@@ -137,8 +209,8 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
     if (get().refreshing) return;
     set({ refreshing: true, error: null });
     try {
-      const page = await getKesfetClient().getFeed({ tab: get().tab, lang: 'tr', limit: PAGE_LIMIT });
-      set({ posts: page.items, cursor: page.next_cursor, hasMore: page.next_cursor != null });
+      const { page, source } = await fetchFeedPage(get().tab, get().feedOptions, null, null);
+      set({ posts: page.items, cursor: page.next_cursor, hasMore: page.next_cursor != null, feedSource: source });
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'refresh_failed' });
     } finally {
@@ -326,6 +398,8 @@ export const useKesfetStore = create<KesfetState>((set, get) => ({
       loadingMore: false,
       error: null,
       addedKeys: {},
+      feedOptions: DEFAULT_FEED_OPTIONS,
+      feedSource: 'legacy',
     });
   },
 }));

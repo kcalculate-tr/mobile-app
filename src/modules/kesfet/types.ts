@@ -137,6 +137,12 @@ export interface FeedPage {
   next_cursor: string | null;
 }
 
+/** G60-S1 md.3 — tek görüntülenme: kart ≥ 1 sn ekranda kaldı (oturumda gönderi başına bir kez). */
+export interface PostViewItem {
+  post_id: string;
+  dwell_ms: number;
+}
+
 export interface ReactResult {
   stats: FeedStats;
   me: FeedMe;
@@ -314,6 +320,13 @@ export interface KesfetClient {
     cursor?: string | null;
     limit?: number;
   }): Promise<FeedPage>;
+  // G60-S1 — Keşfet (for_you) sıralı akış: get_feed_ranked(p_lang, p_cursor, p_limit). Yalnız
+  // `kesfet_siralama` açıkken çağrılır. Hata (bayrak sunucuda kapalı / RPC yok) → store get_feed'e düşer.
+  // İsteğe bağlı: uygulamayan istemci (eski mock) için store doğrudan get_feed kullanır.
+  getFeedRanked?(params: { lang: string; cursor?: string | null; limit?: number }): Promise<FeedPage>;
+  // G60-S1 md.3 — görüntülenme paketi (record_post_views). Yalnız ölçüm; puana girmez.
+  // 'missing' = RPC canlıda yok → çağıran gönderimi bu oturum için durdurur.
+  recordPostViews?(items: PostViewItem[]): Promise<'ok' | 'off' | 'missing'>;
   // get_post(p_post) → tek gönderi (derin bağlantı /p/:postId için). Görünürlük
   // (gizlilik + engel) SUNUCUDA denetlenir; erişilemezse null.
   getPost(params: { post: string }): Promise<FeedPost | null>;

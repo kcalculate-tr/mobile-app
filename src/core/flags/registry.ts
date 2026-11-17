@@ -76,6 +76,10 @@ export const FLAG_DEFAULTS = {
   // Sunucu satırı 20261117220100_g59_hikaye.sql (KAPALI, min_app_version 1.1.0). Video hikâye ayrıca `kesfet_video`.
   // Native yok → OTA. Kapalıyken giriş YOK (tepsi, profil halkası, öne çıkanlar, rotalar kayıtlı değil).
   hikaye: false,
+  // G60-S1 — Keşfet sekmesi sıralaması v2 (get_feed_ranked: dil + yerellik + etkileşim) + görüntülenme ölçümü.
+  // Sunucu satırı 20261117230300_g60_get_feed_ranked.sql (KAPALI, min_app_version 1.1.0). Kapalıyken get_feed
+  // (kronolojik, dil 'tr') bayt bayt aynı; "Sana Özel" her durumda kronolojik. Geri alma = kapat. Native yok → OTA.
+  kesfet_siralama: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;
