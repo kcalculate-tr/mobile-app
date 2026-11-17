@@ -24,7 +24,8 @@ describe('G21-S1 md.8 devredilenler', () => {
 
   test('#D1 Keşfet akışında avatar/ad → açık profil', () => {
     expect(read('modules/kesfet/ui/KesfetScreen.tsx')).toMatch(
-      /onOpenAuthor=\{\s*item\.author\.handle\s*\?\s*\(\) => navigation\.navigate\('PublicProfile'/,
+      // G57: handle'sız yazar kimlikle açılır (`handle || id`).
+      /onOpenAuthor=\{\s*item\.author\.handle \|\| item\.author\.id\s*\?\s*\(\) => navigation\.navigate\('PublicProfile'/,
     );
   });
 

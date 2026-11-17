@@ -25,6 +25,7 @@ const MODAL_FILES = [
   'modules/kesfet/ui/RulesSheet.tsx',
   'modules/kesfet/ui/ReportFlow.tsx',
   'modules/kesfet/ui/VideoPlayer.tsx',
+  'modules/kesfet/ui/ImageViewer.tsx', // G57: tam ekran fotoğraf (Modal, X sağ üstte)
   'modules/kesfet/ui/ComposerScreen.tsx',
   'modules/kesfet/ui/CommentsSheet.tsx',
   'modules/kesfet/ui/ShareDaySheet.tsx', // G22-S2 md.5: FinShareDay sheet'i (X sağda)

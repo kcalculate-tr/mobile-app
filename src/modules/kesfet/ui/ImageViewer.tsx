@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../../core/design';
 import { useT } from '../../../core/i18n';
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { Icon } from './icons';
 
 export interface ImageViewerState {
@@ -28,6 +29,7 @@ export function ImageViewer({ state, onClose }: { state: ImageViewerState | null
       <StatusBar barStyle="light-content" />
       <View style={styles.root} testID="kesfet-image-viewer">
         <FlatList
+          {...SCROLL_KEYBOARD}
           data={state.urls}
           keyExtractor={(u, i) => `${i}-${u}`}
           horizontal
@@ -38,6 +40,7 @@ export function ImageViewer({ state, onClose }: { state: ImageViewerState | null
           onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
           renderItem={({ item, index }) => (
             <ScrollView
+              {...SCROLL_KEYBOARD}
               style={{ width, height }}
               contentContainerStyle={styles.center}
               maximumZoomScale={3}
