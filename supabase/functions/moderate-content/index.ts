@@ -1,7 +1,8 @@
 // moderate-content — Keşfet gönderi/yorum AI içerik denetimi (G8-CONTRACT.md §Edge).
 // YALNIZ DOSYA: deploy edilmez, anahtar koda yazılmaz. analyze-ai-scan stiliyle birebir.
 //
-// POST { target_type: 'post'|'comment', target_id: uuid }
+// POST { target_type: 'post'|'comment'|'story', target_id: uuid }
+//   G59-S1: 'story' — metin katmanları (yazı/konum/bahset/etiket/anket) + taban görsel (videoda kapak).
 //   Servis rolüyle hedefi okur. Gönderide: görseller (+ varsa video kareleri) + metin;
 //   yorumda: metin. Anthropic Messages API → JSON { allow, categories, confidence }.
 //     allow        → hedef 'published'.
@@ -18,6 +19,7 @@
 // ÖNEMLİ (fitness uygulaması): Spor kıyafeti, mayo, antrenman veya beden/vücut
 // fotoğrafı TEK BAŞINA ihlal DEĞİLDİR; talimatta açıkça belirtilir.
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { storyImagePaths, storyModerationText } from './story.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -140,7 +142,7 @@ Deno.serve(async (req: Request) => {
   }
   const targetType = (body.target_type ?? '').trim()
   const targetId = (body.target_id ?? '').trim()
-  if ((targetType !== 'post' && targetType !== 'comment') || !targetId) {
+  if ((targetType !== 'post' && targetType !== 'comment' && targetType !== 'story') || !targetId) {
     return json({ error: 'bad_request' }, 400)
   }
 
@@ -149,6 +151,7 @@ Deno.serve(async (req: Request) => {
   let status = ''
   let text = ''
   const images: Array<{ mediaType: string; data: string }> = []
+  let storyPaths: string[] = []
 
   if (targetType === 'post') {
     const { data: post, error } = await admin
@@ -161,6 +164,18 @@ Deno.serve(async (req: Request) => {
     authorId = post.author_id
     status = post.status
     text = post.body ?? ''
+  } else if (targetType === 'story') {
+    const { data: st, error } = await admin
+      .from('stories')
+      .select('author_id, status, overlays, media_url, media_type, thumb_url')
+      .eq('id', targetId)
+      .maybeSingle()
+    if (error) return json({ error: 'server' }, 500)
+    if (!st) return json({ error: 'not_found' }, 404)
+    authorId = st.author_id
+    status = st.status
+    text = storyModerationText(st.overlays)
+    storyPaths = storyImagePaths(st)
   } else {
     const { data: c, error } = await admin
       .from('post_comments')
@@ -220,10 +235,21 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // 5b) G59: hikâye taban görseli (videoda kapak karesi).
+  if (targetType === 'story') {
+    for (const path of storyPaths.slice(0, MAX_IMAGES)) {
+      const { data: blob, error: dlErr } = await admin.storage.from(BUCKET).download(path)
+      if (dlErr || !blob || blob.size > MAX_IMAGE_BYTES) continue
+      const mediaType = mediaTypeFor(path, blob.type)
+      if (!mediaType) continue
+      images.push({ mediaType, data: bytesToBase64(new Uint8Array(await blob.arrayBuffer())) })
+    }
+  }
+
   // 6) Anthropic Messages API — denetim JSON'ı iste. 20 sn zaman aşımı.
   const prompt =
     'You are a content safety classifier for a fitness/nutrition social app. ' +
-    'Review the user post/comment (text and any images) and decide if it is allowed. ' +
+    'Review the user post/comment/story (text and any images) and decide if it is allowed. ' +
     'PROHIBITED: real violence or threats, sexual/explicit content, nudity, hate speech, ' +
     'self-harm/suicide promotion, content involving minors in unsafe/inappropriate ways, spam. ' +
     'IMPORTANT: This is a FITNESS app. Sportswear, swimwear/bikini, gym/training photos, ' +
@@ -289,7 +315,7 @@ Deno.serve(async (req: Request) => {
   // 8) Karar uygula.
   if (parsed.allow && cats.length === 0) {
     // Onaylandı → yayımla.
-    const table = targetType === 'post' ? 'posts' : 'post_comments'
+    const table = targetType === 'post' ? 'posts' : targetType === 'story' ? 'stories' : 'post_comments'
     await admin.from(table).update({ status: 'published' }).eq('id', targetId).eq('status', 'pending')
     // Varsa önceki AI şikayetini temizle (tekrar denemede onaylandıysa).
     await admin.from('content_reports').delete()
