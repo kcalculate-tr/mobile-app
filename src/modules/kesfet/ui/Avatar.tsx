@@ -25,7 +25,8 @@ export function Avatar({
   const t = useTheme();
   const radius = size / 2;
 
-  if (official) {
+  // 17 Kas (İlter): resmi hesabın kendi profil fotoğrafı varsa o gösterilir; yoksa "kcal" yazı işareti.
+  if (official && !url) {
     return (
       <View
         style={[
