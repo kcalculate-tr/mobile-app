@@ -43,8 +43,8 @@ export function viewerImageUrls(post: Pick<FeedPost, 'media'> | null | undefined
 // ── Reels ────────────────────────────────────────────────────────────────────
 
 /** Tasarım (FinReelsPlayer): kaydırma 330 ms standart eğri, eşik 140 pt; Reduce Motion'da 220 ms solma. */
-export const REELS_SWIPE_MS = 330;
-export const REELS_FADE_MS = 220;
+export const REELS_SWIPE_MS = 330; // = DURATION.base (motion.tsx); ekran DURATION.base kullanır
+export const REELS_FADE_MS = 220; // = DURATION.instant ×2 (çıkış + giriş)
 export const REELS_THRESHOLD_PT = 140;
 /** Hızlı fiske de sayfa çevirir (pt/ms). */
 export const REELS_FLICK_VY = 0.8;

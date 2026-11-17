@@ -18,7 +18,7 @@ import {
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { AppText, fontFamily, useTheme, haptic } from '../../../core/design';
+import { AppText, fontFamily, useTheme, haptic, palette } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { KeyboardLiftView } from '../../../core/design/components/KeyboardLiftView';
 import { CountPill } from '../../../core/design/components/CountPill';
@@ -383,7 +383,7 @@ export function CommentsSheet({
                 style={({ pressed }) => [
                   styles.sendBtn,
                   {
-                    backgroundColor: showClose ? (text.trim() ? '#C6F04F' : line2) : t.color.ink,
+                    backgroundColor: showClose ? (text.trim() ? palette.lime : line2) : t.color.ink,
                     opacity: pressed ? 0.85 : 1,
                   },
                 ]}

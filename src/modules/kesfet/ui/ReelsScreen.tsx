@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Svg, { Path } from 'react-native-svg';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import { AppText, CURVE, fontFamily, haptic, useReducedMotion } from '../../../core/design';
+import { AppText, CURVE, DURATION, fontFamily, haptic, palette, useReducedMotion } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
 import { useT } from '../../../core/i18n';
 import { getProfilClient } from '../../profil';
@@ -28,8 +28,6 @@ import { track } from '../../../lib/analytics';
 import { useKesfetStore } from '../store';
 import { getKesfetClient } from '../client';
 import {
-  REELS_FADE_MS,
-  REELS_SWIPE_MS,
   buildReelsQueue,
   reelShouldPlay,
   reelSlot,
@@ -45,7 +43,8 @@ import { postLink } from './format';
 import type { FeedPost } from '../types';
 
 const WHITE = '#FFFFFF';
-const LIME = '#C6F04F';
+// G40-S1 tek marka yeşili (tasarım dosyasındaki eski soluk lime yerine palette.lime).
+const LIME = palette.lime;
 const SHADOW = { textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 } as const;
 
 // Tasarımdaki çizgi ikonlar (24 birim, 1.8 çizgi).
@@ -456,23 +455,23 @@ export function ReelsScreen() {
     (next: number) => {
       const { active: cur, reduced: rm, H: h } = stateRef.current;
       if (next === cur) {
-        dy.value = withTiming(0, { duration: REELS_SWIPE_MS, easing: CURVE.standard }, () => runOnJS(unlock)());
+        dy.value = withTiming(0, { duration: DURATION.base, easing: CURVE.standard }, () => runOnJS(unlock)());
         return;
       }
       busy.current = true;
       if (rm) {
-        // Reduce Motion: kaydırma yok — anlık değişim + 220 ms solma.
+        // Reduce Motion: kaydırma yok — anlık değişim + 220 ms solma (110 çıkış + 110 giriş = DURATION.instant ×2).
         dy.value = 0;
         fade.value = withSequence(
-          withTiming(0, { duration: REELS_FADE_MS / 2 }, (done) => {
+          withTiming(0, { duration: DURATION.instant }, (done) => {
             if (done) runOnJS(settle)(next);
           }),
-          withTiming(1, { duration: REELS_FADE_MS / 2 }),
+          withTiming(1, { duration: DURATION.instant }),
         );
         return;
       }
       const target = next > cur ? -h : h;
-      dy.value = withTiming(target, { duration: REELS_SWIPE_MS, easing: CURVE.standard }, (done) => {
+      dy.value = withTiming(target, { duration: DURATION.base, easing: CURVE.standard }, (done) => {
         if (done) runOnJS(settle)(next);
       });
     },

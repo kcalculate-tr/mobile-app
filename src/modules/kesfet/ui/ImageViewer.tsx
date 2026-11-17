@@ -31,7 +31,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { AppText, CURVE, DURATION, REDUCED, SPRING, fontFamily, haptic, useReducedMotion } from '../../../core/design';
+import { AppText, CURVE, DURATION, REDUCED, SPRING, fontFamily, haptic, palette, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { Icon, type IconName } from './icons';
@@ -46,7 +46,7 @@ export interface ImageViewerState {
 }
 
 const WHITE = '#FFFFFF';
-const LIME = '#C6F04F';
+const LIME = palette.lime;
 
 function ViewerAction({
   icon,
