@@ -134,7 +134,7 @@ function Header({
           <Icon name="search" size={24} color={t.color.ink} />
         </Pressable>
         {showBell ? (
-          <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn}>
+          <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={unread > 0 ? `${tr('kesfet.ui.a11y.notifications')}, ${tr('kesfet.ui.a11y.notifications_unread', { count: unread })}` : tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn} testID="kesfet-bell">
             <Icon name="bell" size={24} color={t.color.ink} />
             {unread > 0 && finalHeader ? (
               // Final: okunmamış varsa zilin sağ üstünde lime nokta (sayı yok).
@@ -447,8 +447,12 @@ export function KesfetScreen() {
 
   // Sosyal bildirim rozeti — yalnız bayrak açıkken sayaç çek.
   useEffect(() => {
-    if (sosyalBildirim) void useNotificationsStore.getState().refreshUnread();
-  }, [sosyalBildirim]);
+    if (!sosyalBildirim) return undefined;
+    void useNotificationsStore.getState().refreshUnread();
+    // G58: rozet yalnız ilk açılışta değil, ekran her öne geldiğinde tazelenir (sekme açık kalır).
+    const off = navigation?.addListener?.('focus', () => void useNotificationsStore.getState().refreshUnread());
+    return typeof off === 'function' ? off : undefined;
+  }, [sosyalBildirim, navigation]);
 
   // G26-S1 (İlter 11 Kas): sosyal modül bildirim izni İSTEMEZ (eski SocialPushPrompt
   // ön sayfası kalktı). İzin tek fonksiyondan (core/push/pushPermission) — ilk öğün

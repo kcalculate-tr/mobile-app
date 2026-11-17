@@ -357,6 +357,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           share: 'Paylaş',
           search: 'Ara',
           notifications: 'Bildirimler',
+          notifications_unread: { one: '%{count} okunmamış', other: '%{count} okunmamış' },
           more: 'Daha fazla',
           open_day: '%{name} gününü aç',
           post_menu: 'Gönderi menüsü',
@@ -592,6 +593,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         n_people: { one: '%{count} kişi', other: '%{count} kişi' },
         approve: 'Onayla',
         decline: 'Sil',
+        unread_a11y: 'Okunmamış',
         section: { requests: 'Takip istekleri', today: 'Bugün', week: 'Bu hafta', earlier: 'Daha önce' },
         line: {
           like: 'gönderini beğendi.',
@@ -2315,6 +2317,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           share: 'Share',
           search: 'Search',
           notifications: 'Notifications',
+          notifications_unread: { one: '%{count} unread', other: '%{count} unread' },
           more: 'More',
           open_day: 'Open %{name}’s day',
           post_menu: 'Post menu',
@@ -2549,6 +2552,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         n_people: { one: '%{count} other', other: '%{count} others' },
         approve: 'Approve',
         decline: 'Remove',
+        unread_a11y: 'Unread',
         section: { requests: 'Follow requests', today: 'Today', week: 'This week', earlier: 'Earlier' },
         line: {
           like: 'liked your post.',

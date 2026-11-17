@@ -9,6 +9,7 @@ import { useT } from '../../../core/i18n';
 
 import { useSheetRise } from '../motion';
 import { useNotificationsStore } from '../notificationsStore';
+import { markReadUntil } from '../notifRoute';
 import type { SocialNotification } from '../types';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './icons';
@@ -50,9 +51,9 @@ export function NotificationsSheet({
 
   useEffect(() => {
     if (visible) {
-      void useNotificationsStore.getState().load().then(() => {
-        // Açılışta okundu işaretle (rozet sıfırlanır).
-        void useNotificationsStore.getState().markAllRead();
+      void useNotificationsStore.getState().load().then((ok) => {
+        // Açılışta okundu işaretle (rozet sıfırlanır) — G58: yalnız başarılı yüklemede, en yeni satıra kadar.
+        if (ok) void useNotificationsStore.getState().markAllRead(markReadUntil(useNotificationsStore.getState().items));
       });
     }
   }, [visible]);
@@ -65,7 +66,7 @@ export function NotificationsSheet({
         onPress={() => {
           onClose();
           if (item.post_id) onOpenPost(item.post_id);
-          else onOpenProfile(item.actor.handle);
+          else onOpenProfile(item.actor.handle || item.actor.id); // G58: handle'sız kullanıcı
         }}
         style={({ pressed }) => [
           styles.row,

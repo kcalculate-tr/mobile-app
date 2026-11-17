@@ -17,6 +17,7 @@ import { useT } from '../../../core/i18n';
 import { getProfilClient } from '../../profil';
 
 import { useNotificationsStore } from '../notificationsStore';
+import { followRequestGone, markReadUntil, notificationTarget } from '../notifRoute';
 import type { SocialNotification } from '../types';
 import { Avatar } from './Avatar';
 import { relativeTime, type UiLang } from './format';
@@ -160,6 +161,18 @@ function Row({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      // G58: satır tek etiket (ad + eylem + zaman + okunmamış). Takip isteğinde satır gruplanmaz →
+      // VoiceOver "Onayla / Reddet" düğmelerine ayrı ayrı ulaşır.
+      accessible={n.kind !== 'follow_request'}
+      accessibilityLabel={[
+        group.unread ? tr('kesfet.notif.unread_a11y') : null,
+        isSystem ? null : group.others > 0 ? `${n.actor.display_name} ${tr('kesfet.notif.and')} ${tr('kesfet.notif.n_people', { count: group.others })}` : n.actor.display_name,
+        line,
+        time,
+      ]
+        .filter(Boolean)
+        .join(', ')}
+      testID={`notif-row-${n.id}`}
       style={({ pressed }) => [
         styles.row,
         { borderBottomColor: t.color.line },
@@ -282,31 +295,31 @@ export default function NotificationsScreen() {
   const items = useNotificationsStore((s) => s.items);
   const loading = useNotificationsStore((s) => s.loading);
   const error = useNotificationsStore((s) => s.error);
+  const loadingMore = useNotificationsStore((s) => s.loadingMore);
   const [handled, setHandled] = useState<Set<string>>(new Set());
   const nowMs = Date.now();
+
+  // İlk görüldüğü andaki okunmamışlar → markAllRead sonrası vurgu bu oturumda kalır.
+  const [unreadAtOpen, setUnreadAtOpen] = useState<Set<string> | null>(null);
 
   const loadAndMark = useCallback(() => {
     void useNotificationsStore
       .getState()
       .load()
-      .then(() => {
-        // Açılışta okundu işaretle (rozet sıfırlanır). Vurgu bu oturumda kalır
-        // (ilk yükleme anındaki okunmamışlar) — bkz. `unreadAtOpen`.
-        void useNotificationsStore.getState().markAllRead();
+      .then((ok) => {
+        // G58: yükleme başarısızsa okundu İŞARETLENMEZ (kullanıcı hiçbirini görmedi).
+        if (!ok) return;
+        const loaded = useNotificationsStore.getState().items;
+        // Okunmamışlar işaretlemeden ÖNCE yakalanır (aynı karede toplu güncellemede vurgu kaybolmasın).
+        setUnreadAtOpen((prev) => prev ?? new Set(loaded.filter((n) => n.read_at == null).map((n) => n.id)));
+        // Üst sınır: yüklenen en yeni satır (arada gelen görülmemiş bildirim okunmaz).
+        void useNotificationsStore.getState().markAllRead(markReadUntil(loaded));
       });
   }, []);
 
   useEffect(() => {
     loadAndMark();
   }, [loadAndMark]);
-
-  // İlk görüldüğü andaki okunmamışları sakla → markAllRead sonrası vurgu kaybolmasın.
-  const [unreadAtOpen, setUnreadAtOpen] = useState<Set<string> | null>(null);
-  useEffect(() => {
-    if (unreadAtOpen == null && items.length > 0) {
-      setUnreadAtOpen(new Set(items.filter((n) => n.read_at == null).map((n) => n.id)));
-    }
-  }, [items, unreadAtOpen]);
 
   const visible = useMemo(() => {
     const seen = unreadAtOpen ?? new Set<string>();
@@ -324,9 +337,8 @@ export default function NotificationsScreen() {
 
   const open = useCallback(
     (n: SocialNotification) => {
-      if (n.kind === 'system' || n.kind === 'report_result') return;
-      if (n.post_id) navigation.navigate('SharedPost', { postId: n.post_id });
-      else if (n.actor.handle || n.actor.id) navigation.navigate('PublicProfile', { handle: n.actor.handle || n.actor.id });
+      const target = notificationTarget(n);
+      if (target) navigation.navigate(target.name, target.params);
     },
     [navigation],
   );
@@ -336,7 +348,10 @@ export default function NotificationsScreen() {
     setHandled((prev) => new Set(prev).add(n.id));
     try {
       await getProfilClient().respondFollowRequest({ requester: n.actor.id, accept });
-    } catch {
+    } catch (e) {
+      // G58: istek zaten sonuçlanmış/iptal ('istek_yok') → satır gizli kalır (geri getirmek
+      // tekrar "Onayla/Reddet" gösterip yine hata verirdi).
+      if (followRequestGone(e)) return;
       // Olumsuz an sessiz: satırı geri getir, kullanıcı yeniden dener.
       setHandled((prev) => {
         const next = new Set(prev);
@@ -382,7 +397,17 @@ export default function NotificationsScreen() {
           </AppText>
         </View>
       ) : (
-        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          {...SCROLL_KEYBOARD}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={200}
+          // G58: ilk 30'dan sonrası da gelir (eskiden sayfalama yoktu).
+          onScroll={({ nativeEvent: e }) => {
+            if (e.layoutMeasurement.height + e.contentOffset.y >= e.contentSize.height - 400) void useNotificationsStore.getState().loadMore();
+          }}
+          testID="notif-list"
+        >
           {report.length > 0 ? (
             <>
               <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>
@@ -416,6 +441,7 @@ export default function NotificationsScreen() {
               </View>
             ),
           )}
+          {loadingMore ? <FinListSkeleton rows={2} testID="notif-more" /> : null}
         </ScrollView>
       )}
     </View>

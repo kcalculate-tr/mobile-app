@@ -17,10 +17,12 @@ interface NotificationsState {
 
   // Rozet için hafif sayaç çekimi (listeyi doldurmadan). Zil açılışında load().
   refreshUnread: () => Promise<void>;
-  load: () => Promise<void>;
+  /** true = sayfa geldi (G58: yalnız başarılı yüklemeden sonra okundu işaretlenir). */
+  load: () => Promise<boolean>;
   loadMore: () => Promise<void>;
   // İyimser: rozet anında sıfırlanır + listedeki read_at set edilir, sonra RPC.
-  markAllRead: () => Promise<void>;
+  // G58: `until` = yüklenen en yeni bildirimin zamanı (sonradan gelen görülmemiş satır okunmaz).
+  markAllRead: (until?: string | null) => Promise<void>;
   reset: () => void;
 }
 
@@ -43,7 +45,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   load: async () => {
-    if (get().loading) return;
+    if (get().loading) return false;
     set({ loading: true, error: null });
     try {
       const page = await getKesfetClient().listSocialNotifications();
@@ -53,8 +55,10 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         hasMore: page.next_cursor != null,
         unread: page.unread,
       });
+      return true;
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'notifications_load_failed' });
+      return false;
     } finally {
       set({ loading: false });
     }
@@ -76,7 +80,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     }
   },
 
-  markAllRead: async () => {
+  markAllRead: async (until) => {
     const prev = get().items;
     const prevUnread = get().unread;
     if (prevUnread === 0) return;
@@ -87,7 +91,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       items: prev.map((n) => (n.read_at == null ? { ...n, read_at: n.read_at ?? stamp } : n)),
     });
     try {
-      await getKesfetClient().markSocialNotificationsRead();
+      await getKesfetClient().markSocialNotificationsRead(until ? { until } : undefined);
     } catch (e) {
       // Geri al.
       set({ items: prev, unread: prevUnread, error: e instanceof Error ? e.message : 'mark_read_failed' });
