@@ -37,7 +37,7 @@ export const MAX_SCALE = 4;
 export const STORY_COLORS: ReadonlyArray<{ id: StoryColorId; hex: string }> = [
   { id: 'white', hex: '#FFFFFF' },
   { id: 'black', hex: '#0A0A0A' },
-  { id: 'lime', hex: '#C6F04F' },
+  { id: 'lime', hex: '#B9EF14' }, // G40 tek marka yeşili (palette.lime; tasarımdaki eski soluk lime yerine)
   { id: 'coral', hex: '#FF7A59' },
   { id: 'sky', hex: '#6EC1FF' },
   { id: 'sun', hex: '#FFD84D' },

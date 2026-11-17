@@ -14,7 +14,7 @@ import { ActivityIndicator, Image, Pressable, View, useWindowDimensions } from '
 import { FinText as Text } from '../../../../core/design/components/FinText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useTheme } from '../../../../core/design';
+import { palette, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
 import { ArrowLeft, LockSimple } from '../../../../components/icons';
 import { getProfilClient } from '../../client';
@@ -39,8 +39,14 @@ export default function PublicPreviewScreen({
   locked,
   blocked,
   editable = false,
+  storyRing = null,
+  afterStats = null,
 }: {
   onBack: () => void;
+  /** G59-S1: aktif hikâye halkası (lime = görülmemiş, gri = görülmüş); dokununca görüntüleyici. */
+  storyRing?: { state: 'unseen' | 'seen' | 'none'; onOpen: () => void } | null;
+  /** G59-S1: sayaçların altında öne çıkanlar satırı. */
+  afterStats?: React.ReactNode;
   /** G53-S1 md.2: KENDİ profilim → avatarda "+" rozeti (başkasının profilinde false). */
   editable?: boolean;
   /** Gerçek profil ekranı (`/u/:handle`): Takip et / İstek gönderildi / Takip ediliyor. Verilmezse önizleme düğmesi. */
@@ -142,14 +148,16 @@ export default function PublicPreviewScreen({
       <View style={{ paddingHorizontal: 16, marginTop: -44 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           {(() => {
-            const avatarView = (
+            const ringOn = !!storyRing && storyRing.state !== 'none';
+            const avatarCircle = (
               <View
+                testID={ringOn ? 'public-story-ring' : undefined}
                 style={{
                   width: 92,
                   height: 92,
                   borderRadius: 46,
                   borderWidth: 4,
-                  borderColor: t.color.bg,
+                  borderColor: ringOn ? (storyRing!.state === 'unseen' ? palette.lime : t.isDark ? '#3A3A3C' : '#DCDEE2') : t.color.bg,
                   backgroundColor: t.color.line,
                   overflow: 'hidden',
                   alignItems: 'center',
@@ -162,6 +170,13 @@ export default function PublicPreviewScreen({
                   <Text style={{ fontFamily: heading, fontSize: 32, color: t.color.ink }}>{firstLetter}</Text>
                 ) : null}
               </View>
+            );
+            const avatarView = ringOn ? (
+              <Pressable onPress={storyRing!.onOpen} accessibilityRole="button" accessibilityLabel={tr('hikaye.ring_open_a11y')}>
+                {avatarCircle}
+              </Pressable>
+            ) : (
+              avatarCircle
             );
             // Rozet 4 pt zemin halkasının içinde, fotoğraf dairesinin sağ altına oturur.
             return editable ? (
@@ -237,6 +252,7 @@ export default function PublicPreviewScreen({
           {posts.length > 0 ? stat(totalAdds, tr('profil.added_total')) : null}
         </View>
       </View>
+      {afterStats}
 
       {/* Sekmeler */}
       <View

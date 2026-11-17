@@ -33,6 +33,8 @@ import { runOptimisticFollow } from '../followOptimistic';
 import { FinSkeletonBlock } from '../../../core/design/components/FinSkeleton';
 import { useBreath } from '../../../core/design/motion';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
+import { useStoryRing } from '../../hikaye/useStoryRing';
+import { HighlightsRow } from '../../hikaye/ui/Highlights';
 
 // G22-S2 md.5 (FinFollowError): "Takip edilemedi." uyarısı ~6 sn kalır (okuma süresi).
 const FOLLOW_ERROR_HOLD = WAIT.actionToastHold;
@@ -49,8 +51,11 @@ export default function PublicProfileScreen() {
   const { user } = useAuth();
   const handle = (route.params?.handle ?? '').trim().replace(/^@/, '');
   const yeniKabuk = useFeature('yeni_kabuk' as any);
+  // G59-S1: profil fotoğrafı hikâye halkası + öne çıkanlar (yalnız `hikaye` açıkken).
+  const hikaye = useFeature('hikaye');
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const storyRingState = useStoryRing(profile && !profile.blocked ? profile.id : null, hikaye, Boolean(user?.id && profile?.id === user.id));
   const [loading, setLoading] = useState(true);
   const [followBusy, setFollowBusy] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -171,6 +176,17 @@ export default function PublicProfileScreen() {
         blocked={Boolean(profile.blocked)}
         locked={!canView}
         editable={isMe}
+        storyRing={hikaye && !profile.blocked ? { state: storyRingState.state, onOpen: () => navigation.navigate('StoryViewer', { userIds: [profile.id], startUserId: profile.id, ownerName: profile.display_name, ownerAvatar: profile.avatar_url }) } : null}
+        afterStats={
+          hikaye && !profile.blocked && canView ? (
+            <HighlightsRow
+              userId={profile.id}
+              isOwner={isMe}
+              enabled={hikaye}
+              onOpen={(h) => navigation.navigate('StoryViewer', { highlightId: h.id, highlightOwnerId: profile.id, title: h.title, ownerAvatar: profile.avatar_url })}
+            />
+          ) : null
+        }
         action={
           isMe
             ? { label: profile.is_private ? tt('profil.private_account') : tt('profil.privacy_public'), onPress: () => setPrivacyOpen(true), outlined: true }

@@ -90,6 +90,8 @@ import { ProfilePlanRow, usePersonalPlanEntry } from '../../../personalPlan/ui/e
 import { ProfileInviteRow } from '../../../eatkcal/v2/ui/growth/entries';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
+import { useStoryRing } from '../../../hikaye/useStoryRing';
+import { HighlightsRow } from '../../../hikaye/ui/Highlights';
 import { Icon as KesfetIcon } from '../../../kesfet/ui/icons';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -105,6 +107,9 @@ export default function FinPrProfileScreen() {
   const t = useTheme();
   const { t: tr, lang, pref: langPref } = useT();
   const { user, signOut } = useAuth();
+  // G59-S1: kendi profilinde hikâye halkası + öne çıkanlar (yalnız `hikaye` açıkken).
+  const hikaye = useFeature('hikaye');
+  const myRing = useStoryRing(user?.id, hikaye, true);
   const [infoOpen, setInfoOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const yeniSiparis = useFeature('yeni_siparis' as any);
@@ -271,7 +276,16 @@ export default function FinPrProfileScreen() {
           onAvatarPress={() => openSub('public', { handle, displayName: userName, avatarUrl: avatarEditor.shown, isPrivate })}
           onOpenSubscriptions={() => openSub('macro')}
           avatarEditor={user?.id ? avatarEditor : undefined}
+          storyRing={hikaye ? { state: myRing.state, onOpen: () => user?.id && navigation.navigate('StoryViewer', { userIds: [user.id], startUserId: user.id }) } : null}
         />
+        {hikaye ? (
+          <HighlightsRow
+            userId={user?.id}
+            isOwner
+            enabled={hikaye}
+            onOpen={(h) => navigation.navigate('StoryViewer', { highlightId: h.id, highlightOwnerId: user?.id, title: h.title, ownerAvatar: avatarUrl })}
+          />
+        ) : null}
 
         <View style={{ paddingHorizontal: 16, gap: 6 }}>
           {/* G52-S1: grup başlığı Kcalculate AI işareti (logo + "AI"). */}

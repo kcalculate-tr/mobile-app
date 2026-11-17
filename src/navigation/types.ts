@@ -56,7 +56,38 @@ export type RootStackParamList = {
   // koşullu. Bayrak kapalı + üretimde HİÇ kaydolmaz; uygulama bugünküyle aynı.
   Kesfet: undefined;
   // G8 — Composer (herkes paylaşır); yalnız `kesfet_paylasim` açıkken erişilir.
-  Composer: undefined;
+  // G59-S1: hikâye kamerasının "Reels" sekmesi `startVideo` ile açar (video seçici hemen açılır).
+  Composer: { startVideo?: boolean } | undefined;
+  // G59-S1 — Hikâye (yalnız `hikaye` açıkken ya da __DEV__ kayıtlı): kamera → düzenleyici → paylaş; görüntüleyici.
+  StoryCamera: { start?: 'camera' | 'create' | 'day' } | undefined;
+  StoryEditor: {
+    mediaType: 'image' | 'video' | 'none';
+    mediaUri?: string | null;
+    width?: number;
+    height?: number;
+    durationMs?: number;
+    fileSizeBytes?: number;
+    mimeType?: string | null;
+    /** Bugünün öğün fotoğrafı (user-media yolu) — paylaşırken stories/ altına kopyalanır. */
+    mealPhotoPath?: string | null;
+    /** Fotoğrafın eşleştiği öğün kaydı (araç çubuğu "Bu fotoğraf öğle kaydında"). */
+    mealId?: string | null;
+    preset?: 'tools' | 'text' | 'kit';
+  };
+  StoryViewer: {
+    /** Tepsi sırası (kişiler); startUserId'den açılır. */
+    userIds?: string[];
+    startUserId?: string;
+    /** Öne çıkan modu (24 saati dolmuş hikâyeler dahil). */
+    highlightId?: string;
+    highlightOwnerId?: string;
+    /** Başlık satırı (öne çıkan modu ya da tepside olmayan kişi): ad + avatar. */
+    title?: string;
+    ownerName?: string;
+    ownerAvatar?: string | null;
+    /** Görenler sayfasını açık başlat (sahibi). */
+    openViewers?: boolean;
+  };
   // G15-S3 — Bildirimler tam sayfa; yalnız `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
   KesfetNotifications: undefined;
   // G58-S2 md.3 — Reels dikey video akışı; yalnız `kesfet_video` açıkken (ya da __DEV__) kayıtlı.

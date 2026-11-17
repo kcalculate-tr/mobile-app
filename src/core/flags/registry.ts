@@ -72,6 +72,10 @@ export const FLAG_DEFAULTS = {
   // G56-S1 — Arkadaşını davet et (ana sayfa kartı, Invite banner'ı, Davet ekranı, Profil satırı, sepette kod satırı).
   // Sunucu satırı 20261116200100_g56_eatkcal_growth.sql (KAPALI, min_app_version 1.1.0). Native yok → OTA.
   davet: false,
+  // G59-S1 — Hikâye (müziksiz; tepsi, kamera → düzenleyici → paylaş, görüntüleyici, görenler, öne çıkanlar).
+  // Sunucu satırı 20261117220100_g59_hikaye.sql (KAPALI, min_app_version 1.1.0). Video hikâye ayrıca `kesfet_video`.
+  // Native yok → OTA. Kapalıyken giriş YOK (tepsi, profil halkası, öne çıkanlar, rotalar kayıtlı değil).
+  hikaye: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

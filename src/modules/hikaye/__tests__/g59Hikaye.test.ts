@@ -100,7 +100,7 @@ test('katman: etiket/bahset biçimlenir; anket ≤ 4 seçenek; aynı kimlik bir 
 
 test('katman: çizim yolları kırpılır (3 ondalık) ve 64 KB tavanı korunur', () => {
   const pts = Array.from({ length: 1600 }, (_, i) => (i % 2 ? 0.123456 : 0.654321));
-  const draw: StoryOverlay = { id: 'd', kind: 'draw', x: 0.5, y: 0.5, scale: 1, rotation: 0, z: 0, data: { paths: Array.from({ length: 60 }, () => ({ pts, color: '#C6F04F', width: 10, brush: 'pen' as const })) } };
+  const draw: StoryOverlay = { id: 'd', kind: 'draw', x: 0.5, y: 0.5, scale: 1, rotation: 0, z: 0, data: { paths: Array.from({ length: 60 }, () => ({ pts, color: '#B9EF14', width: 10, brush: 'pen' as const })) } };
   const out = serializeOverlays([draw]);
   assert.ok(JSON.stringify(out).length <= 65536);
   const d = out[0];

@@ -11,7 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText, useTheme } from '../../../core/design';
+import { AppText, palette, useTheme } from '../../../core/design';
 import { useT } from '../../../core/i18n';
 import { useAuth } from '../../../core/AuthContext';
 import { getSupabaseClient } from '../../../core/supabase';
@@ -31,6 +31,8 @@ export interface ProfileSocialHeaderProps {
   onOpenSubscriptions: () => void;
   /** G53-S1 md.2: kendi profil fotoğrafı "+" rozeti (useAvatarEditor; sayfa + uyarı ekran kökünde). */
   avatarEditor?: AvatarEditorState;
+  /** G59-S1: aktif hikâye halkası (lime = görülmemiş, gri = görülmüş). Varsa dokun = hikâye, uzun bas = eski eylem. */
+  storyRing?: { state: 'unseen' | 'seen' | 'none'; onOpen: () => void } | null;
 }
 
 export function ProfileSocialHeader({
@@ -39,6 +41,7 @@ export function ProfileSocialHeader({
   onAvatarPress,
   onOpenSubscriptions,
   avatarEditor,
+  storyRing = null,
 }: ProfileSocialHeaderProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -93,19 +96,26 @@ export function ProfileSocialHeader({
           const shownUrl = avatarEditor ? avatarEditor.shown : avatarUrl;
           const avatar = (
             <Pressable
-              onPress={onAvatarPress}
-              style={[styles.avatar, { backgroundColor: t.color.line }]}
+              onPress={storyRing && storyRing.state !== 'none' ? storyRing.onOpen : onAvatarPress}
+              onLongPress={storyRing && storyRing.state !== 'none' ? onAvatarPress : undefined}
+              style={[styles.avatar, { backgroundColor: storyRing && storyRing.state !== 'none' ? 'transparent' : t.color.line }]}
               accessibilityRole="button"
               accessibilityLabel={name}
+              accessibilityHint={storyRing && storyRing.state !== 'none' ? tt('hikaye.ring_open_a11y') : undefined}
               testID="profile-header-avatar"
             >
-              {shownUrl ? (
-                <CachedImage uri={shownUrl} style={styles.avatarImg} />
-              ) : (
-                <AppText variant="title" style={styles.initial}>
-                  {initial}
-                </AppText>
-              )}
+              {storyRing && storyRing.state !== 'none' ? (
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 38, borderWidth: 3, borderColor: storyRing.state === 'unseen' ? palette.lime : t.isDark ? '#3A3A3C' : '#DCDEE2' }]} testID="profile-story-ring" />
+              ) : null}
+              <View style={storyRing && storyRing.state !== 'none' ? { width: 66, height: 66, borderRadius: 33, overflow: 'hidden', backgroundColor: t.color.line, alignItems: 'center', justifyContent: 'center' } : styles.fillCenter}>
+                {shownUrl ? (
+                  <CachedImage uri={shownUrl} style={styles.avatarImg} />
+                ) : (
+                  <AppText variant="title" style={styles.initial}>
+                    {initial}
+                  </AppText>
+                )}
+              </View>
             </Pressable>
           );
           return avatarEditor ? (
@@ -180,6 +190,7 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, gap: 12 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  fillCenter: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   avatarImg: { width: '100%', height: '100%' },
   initial: { fontSize: 28, lineHeight: 34 },
   identityInfo: { flex: 1, minWidth: 0, gap: 2 },

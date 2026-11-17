@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import Animated, { FadeIn, FadeOut, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -90,6 +90,8 @@ import { track } from '../../../lib/analytics';
 import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../core/design/sectionSlide';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { KesfetMeButton, useKesfetMe } from './KesfetMe';
+import { StoryTray } from '../../hikaye/ui/StoryTray';
+import { useStoryTray, viewerQueue } from '../../hikaye/store';
 
 function Header({
   onSearch,
@@ -286,6 +288,15 @@ export function KesfetScreen() {
   const sosyalBildirim = useFeature('sosyal_bildirim');
   // G58-S2 md.3: Reels yalnız `kesfet_video` açıkken (kapalıyken hiçbir giriş yok).
   const kesfetVideo = useFeature('kesfet_video');
+  // G59-S1: hikâye tepsisi yalnız `hikaye` açıkken (kapalıyken tepsi, istek ve rota YOK).
+  const hikaye = useFeature('hikaye');
+  const storyItems = useStoryTray((s) => s.items);
+  const refreshStories = useStoryTray((s) => s.refresh);
+  useFocusEffect(
+    useCallback(() => {
+      if (hikaye) void refreshStories();
+    }, [hikaye, refreshStories]),
+  );
 
   const unread = useNotificationsStore((s) => s.unread);
   const online = useIsOnline();
@@ -857,8 +868,17 @@ export function KesfetScreen() {
     [rings, kesfetPaylasim, navigation, feedIsEmpty],
   );
 
+  const storyTray = hikaye ? (
+    <StoryTray
+      items={storyItems}
+      onOpen={(userId) => navigation.navigate('StoryViewer', { userIds: viewerQueue(storyItems), startUserId: userId })}
+      onCreate={() => navigation.navigate('StoryCamera')}
+    />
+  ) : null;
+
   const feedHeader = (
     <>
+      {storyTray}
       {ringStrip}
       <PostingStatus
         phase={postingPhase}

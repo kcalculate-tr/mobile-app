@@ -12,7 +12,7 @@
 // İnceleniyor". Hatalar: hız sınırı, ağ (sakin metin, kırmızı yok).
 // Video (Final "Video"): `kesfet_video` açıkken 1 video (≤60 sn) — G8-S3 video
 // modülüyle (pickVideo → extractFrames → uploadVideoPost) p_media'ya eklenir.
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -130,7 +130,7 @@ export function ComposerScreen({
   route,
 }: {
   navigation?: { goBack: () => void };
-  route?: { params?: { vitrinKind?: PostType; vitrinPrefill?: VitrinPrefill; vitrinGuide?: boolean } };
+  route?: { params?: { vitrinKind?: PostType; vitrinPrefill?: VitrinPrefill; vitrinGuide?: boolean; startVideo?: boolean } };
 }) {
   const t = useTheme();
   const tone = composeTones(t);
@@ -314,6 +314,14 @@ export function ComposerScreen({
       setError(tr(`kesfet.compose.${videoPickErrorKey(e)}`));
     }
   }, [tr]);
+
+  // G59-S1: hikâye kamerasının "Reels" sekmesi → video seçici hemen açılır (yalnız kesfet_video açıkken, bir kez).
+  const startVideoDone = useRef(false);
+  useEffect(() => {
+    if (!route?.params?.startVideo || !videoEnabled || startVideoDone.current) return;
+    startVideoDone.current = true;
+    void addVideo();
+  }, [route?.params?.startVideo, videoEnabled, addVideo]);
 
   // G15 (Final FinPosting): "Paylaş" → composer kapanır, gönderim arka planda sürer
   // ve akışta durum satırı görünür (paylaşılıyor → inceleniyor → yayında / sakin
