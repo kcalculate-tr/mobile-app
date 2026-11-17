@@ -215,6 +215,19 @@ export async function loadOfferingProducts(): Promise<StoreProductLike[] | null>
   }
 }
 
+/**
+ * G58-S2 md.4 — paywall teklifi (izmir_fresh) RevenueCat subscriber attribute olarak (`offer`); webhook
+ * olayında `subscriber_attributes.offer` ile gelir. Yapılandırma yoksa / hata → sessiz (sunucu kaydı yedek).
+ */
+export async function setPurchaseOffer(offer: 'izmir_fresh'): Promise<void> {
+  if (!configured || !mod) return;
+  try {
+    await (mod as unknown as { setAttributes: (a: Record<string, string | null>) => Promise<void> }).setAttributes({ offer });
+  } catch {
+    // yok say
+  }
+}
+
 export async function purchasePlan(plan: PlanKey): Promise<PurchaseResult> {
   if (!configured || !mod) return 'error';
   // G23-S1: iOS `kcalai_fresh_monthly` ve Play `kcalai_fresh:monthly` aynı plana eşlenir (önek + dönem).

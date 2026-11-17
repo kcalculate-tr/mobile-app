@@ -22,7 +22,9 @@ import { AppText, DURATION, PAYWALL_MOTION, REDUCED, haptic, useLoopFloat, useRe
 import { useT } from '../../../core/i18n';
 import { CaretRight, Check, Pause, Play, X } from '../../../components/icons';
 import { type PlanCard, type PlanKey } from '../../../lib/subscription/plans';
-import { purchasePlan, restorePurchases, useSubscriptionStore, useTier, type PurchaseResult } from '../../../lib/subscription/purchases';
+import { purchasePlan, restorePurchases, setPurchaseOffer, useSubscriptionStore, useTier, type PurchaseResult } from '../../../lib/subscription/purchases';
+import { recordSubscriptionOffer } from '../../../lib/freeMeal/api';
+import { normalizePaywallParams, offerForPurchase } from '../../../navigation/offerLinks';
 import { usePlanCards } from '../../../lib/subscription/usePlanCards';
 import SubResult, { type SubResultState } from '../ui/SubResult';
 import SubLegalLinks from '../ui/SubLegalLinks';
@@ -61,7 +63,8 @@ export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const navigation = useNavigation();
-  const params = (useRoute().params ?? {}) as NonNullable<PaywallParams>;
+  // G58-S2 md.5: teklif bağlantısından (kcal://teklif/izmir) gelince plan/dönem teklifin planına oturur.
+  const params = normalizePaywallParams((useRoute().params ?? {}) as NonNullable<PaywallParams>);
   const { width: winW } = useWindowDimensions();
   const { cards, loading, failed, reload } = usePlanCards(true);
   const limits = useSubscriptionStore((s) => s.limits);
@@ -175,6 +178,10 @@ export default function PaywallScreen() {
   const buy = async () => {
     if (!cur || buying) return;
     setBuying(true);
+    // G58-S2 md.4: İzmir teklifi → satın almadan ÖNCE teklif kaydı (RevenueCat attribute + sunucu kaydı);
+    // webhook Fresh yıllık INITIAL_PURCHASE'ta 2 ücretsiz öğün kuponu tanımlar. Kayıt hatası satın almayı durdurmaz.
+    const offer = offerForPurchase(params.offer, cur.key);
+    if (offer) await Promise.all([setPurchaseOffer(offer), recordSubscriptionOffer(offer)]).catch(() => {});
     const r: PurchaseResult = await purchasePlan(cur.key);
     trackSub('sub_purchase', { product: cur.productId, result: r });
     setBuying(false);

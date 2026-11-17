@@ -14,6 +14,8 @@
 //  • G36-S1 md.14: kişisel plan bildirimleri (planLinks.ts) — kcal://plan/checkin → Haftalık
 //    tartı, kcal://plan/today → Öğün planı (bugün), kcal://plan/mine → Kişisel planım. Rotalar
 //    bayrak (kisisel_plan / ogun_plani) kapalıyken kayıtlı değil → React Navigation yok sayar.
+//  • G58-S2 md.5: kcal://teklif/izmir (ve https://l.eatkcal.com/teklif/izmir) → SubPaywall
+//    { plan:'fresh', yearly:true, offer:'izmir_fresh' } (offerLinks.ts).
 //  • Eşleşmeyen her URL (ör. kcal://reviews) config'de yok → React Navigation
 //    yok sayar, normal açılışa (initialRouteName) düşer.
 //
@@ -25,6 +27,7 @@ import * as Linking from 'expo-linking';
 import type { LinkingOptions } from '@react-navigation/native';
 import { RootStackParamList } from './types';
 import { PLAN_LINK } from './planLinks';
+import { OFFER_LINK, offerFromSlug } from './offerLinks';
 
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [
@@ -49,6 +52,9 @@ export const linking: LinkingOptions<RootStackParamList> = {
       PersonalPlanCheckin: PLAN_LINK.checkin,
       MealPlan: PLAN_LINK.today,
       PersonalPlanMine: PLAN_LINK.mine,
+      // G58-S2 md.5: kcal://teklif/izmir → paywall (Fresh yıllık + İzmir teklifi); bölge/abonelik/görüldü
+      // koşulları atlanır (offerLinks.ts). Bilinmeyen teklif adı → teklifsiz paywall.
+      SubPaywall: { path: OFFER_LINK, parse: { offer: (v: string) => offerFromSlug(v) as never } },
     },
   },
 };
