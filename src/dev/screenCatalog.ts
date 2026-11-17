@@ -934,6 +934,32 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(g56[5] ? { textSize: 'extra-extra-extra-large' as const } : {}),
     };
   }
+  // G58-S1 — `G58-<Sahne>(-EN)(-Dark)`: bayrak açma turu (ogun_plani · sosyal_bildirim · kesfet_video).
+  // Plan / PlanBos = Öğün planı dolu / boş · Liste / ListeBos = Alışveriş listesi (Fresh) dolu / boş ·
+  // ListeKilit = Ücretsiz kilitli kart · Bildirim / BildirimBos = Keşfet bildirimleri · Video = akışta
+  // sessiz otomatik oynatma · VideoTam = tam ekran · VideoYaz = Composer (video düğmesi, seçim yok).
+  const g58 = /^G58-(PlanBos|Plan|ListeBos|ListeKilit|Liste|BildirimBos|Bildirim|VideoTam|VideoYaz|Video)(-EN)?(-Dark)?$/.exec(name);
+  if (g58) {
+    const prof = (screen: string) => route([...tab('Profile'), { name: screen }]);
+    const T: Record<string, { area: string; target: VitrinTarget; scene?: string; data?: VitrinDataState }> = {
+      Plan: { area: 'profil', target: prof('MealPlan'), scene: 'g58Plan' },
+      PlanBos: { area: 'profil', target: prof('MealPlan'), scene: 'g58PlanBos' },
+      Liste: { area: 'profil', target: prof('ShoppingList'), scene: 'g58Plan' },
+      ListeBos: { area: 'profil', target: prof('ShoppingList'), scene: 'g58PlanBos' },
+      ListeKilit: { area: 'profil', target: prof('ShoppingList'), scene: 'g58PlanKilit' },
+      Bildirim: { area: 'kesfet', target: route([...kes(), { name: 'KesfetNotifications' }]), scene: 'notifications' },
+      BildirimBos: { area: 'kesfet', target: route([...kes(), { name: 'KesfetNotifications' }]), scene: 'notifications', data: 'empty' },
+      Video: { area: 'kesfet', target: route(kes()), scene: 'video' },
+      VideoTam: { area: 'kesfet', target: route(kes({ vitrin: 'videoFull' })), scene: 'videoFull' },
+      VideoYaz: { area: 'kesfet', target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest' } }]), scene: 'composeVideo' },
+    };
+    const d = T[g58[1]];
+    return {
+      pano: name, area: d.area, target: d.target, data: d.data ?? 'default', flags: [...FINAL_FLAGS, 'ogun_plani', 'abonelik'],
+      lang: g58[2] ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g58[3] ? 'dark' : 'light',
+      ...(d.scene ? { scene: d.scene } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

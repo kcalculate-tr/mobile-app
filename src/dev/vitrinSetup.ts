@@ -387,6 +387,15 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
             ],
     });
   }
+  // G58-S1 — Öğün planı vitrini: Liste / Plan Fresh kademesinde (alışveriş listesi açık); ListeKilit Ücretsiz.
+  // Plan deposu sıfırlanır (önceki pano önbelleği karışmasın). YALNIZ __DEV__.
+  if (scene.startsWith('g58Plan')) {
+    const { useSubscriptionStore } = require('../lib/subscription/purchases');
+    const tier = scene === 'g58PlanKilit' ? 'free' : 'fresh';
+    useSubscriptionStore.setState({ available: true, rc: { tier }, server: { tier } });
+    const { usePlanStore } = require('../modules/plan/store');
+    usePlanStore.setState({ userId: null, weeks: {}, catalog: null });
+  }
   // G50-S1 — Ana sayfa ek bölümleri: yalnız G50 panolarında örnek içerik (görev durumu, tarifler, tarama hakkı).
   // Diğer panolarda bölümler boş (önceki vitrin görüntüleri değişmesin). Üretimde gerçek kaynaklar.
   {

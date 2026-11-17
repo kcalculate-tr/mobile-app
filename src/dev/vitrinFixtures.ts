@@ -162,8 +162,55 @@ function activeOrder(ids: string[]): any[] {
   ];
 }
 
+/**
+ * G58-S1 — Öğün planı vitrin haftası (YALNIZ __DEV__): bu haftanın 5 günü tohum tariflerden deterministik
+ * şablonla dolu (bugün kahvaltı loglanmış). Satırlar `meal_plan_items` biçiminde (istemci aynen okur).
+ */
+export function g58PlanRows(): Record<string, unknown>[] {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { generatePlan } = require('../modules/plan/generate') as typeof import('../modules/plan/generate');
+  const { seedRecipeInfos } = require('../modules/plan/nutrition') as typeof import('../modules/plan/nutrition');
+  const { weekDays, weekStartOf } = require('../modules/plan/week') as typeof import('../modules/plan/week');
+  const { dayKey } = require('../modules/gun/track/dayClock') as typeof import('../modules/gun/track/dayClock');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const today = dayKey();
+  const days = weekDays(weekStartOf(today)).slice(0, 5);
+  const res = generatePlan({ recipes: seedRecipeInfos(), days, target: { kcal: 2000, protein: 120 }, diet: 'all', avoid: [], eatkcal: null, keep: [], keepPlanned: false, variant: 0 });
+  return res.items.map((it, i) => ({
+    id: `00000000-0000-4000-8000-${String(580000000000 + i)}`,
+    plan_id: 'g58-plan',
+    date: it.date,
+    slot: it.slot,
+    source: it.source,
+    ref_id: it.refId,
+    name: it.name,
+    portion: it.portion,
+    kcal: it.kcal,
+    protein: it.protein,
+    carbs: it.carbs,
+    fat: it.fat,
+    price: null,
+    logged_consumption_id: it.date === today && it.slot === 'breakfast' ? '00000000-0000-4000-8000-000000058001' : null,
+  }));
+}
+
+function g58PlanRoutes(entry: ResolvedEntry): MockRoute[] {
+  const empty = entry.scene === 'g58PlanBos';
+  return [
+    ...identityRoutes(entry),
+    { match: '/rest/v1/meal_plans', body: empty ? [] : [{ id: 'g58-plan', note: null }] },
+    { match: '/rest/v1/meal_plan_items', body: () => (empty ? [] : g58PlanRows()) },
+    { match: '/rest/v1/shopping_list_items', body: [] },
+    // Yayımlanmış tarif yok → geliştirmede uygulama içi tohum (üretimde boş; LOG).
+    { match: '/rest/v1/recipes', body: [] },
+    { match: '/rest/v1/ingredient_nutrition', body: [] },
+    { match: '/rest/v1/addresses', body: [] },
+  ];
+}
+
 export function mockRoutesFor(entry: ResolvedEntry, productIds: string[] = []): MockRoute[] {
   const scene = entry.scene ?? '';
+  if (scene.startsWith('g58Plan')) return g58PlanRoutes(entry);
   const target = JSON.stringify(entry.target);
   const ekHomeTab = /"name":"Home"/.test(target) && !/"name":"Ek/.test(target) && !target.includes('"Tracker"');
   if (ekHomeTab && !['city', 'waitlist', 'berlin', 'gate48'].includes(scene)) {

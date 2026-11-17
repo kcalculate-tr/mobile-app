@@ -33,8 +33,9 @@ export async function pickVideo(): Promise<PickedVideo | null> {
 
   assertVideoMime(asset.mimeType, asset.uri);
   assertVideoDuration(durationMs);
-  assertVideoSizeKnown(fileSizeBytes);
   assertVideoSize(fileSizeBytes);
+  // G58: boyut okunamadıysa 50 MB sınırı doğrulanamaz → ret.
+  assertVideoSizeKnown(fileSizeBytes);
 
   return {
     uri: asset.uri,
