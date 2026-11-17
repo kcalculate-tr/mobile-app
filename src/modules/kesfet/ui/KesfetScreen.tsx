@@ -420,6 +420,14 @@ export function KesfetScreen() {
     return () => clearTimeout(id);
   }, [vitrinScroll, posts.length]);
 
+  // Vitrin (YALNIZ __DEV__, G58-S2): ilk fotoğraflı gönderinin görüntüleyicisi etkileşim katmanıyla açık.
+  useEffect(() => {
+    if (vitrin !== 'viewer' || viewer) return;
+    const p = posts.find((x) => viewerImageUrls(x).length > 0);
+    if (p) setViewer({ urls: viewerImageUrls(p), index: 0, postId: p.id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrin, posts.length]);
+
   // Vitrin (FinVideo kare 2): ilk video gönderisini tam ekran aç.
   useEffect(() => {
     if (vitrin !== 'videoFull') return;

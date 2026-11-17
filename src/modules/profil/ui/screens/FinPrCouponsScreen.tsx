@@ -61,7 +61,23 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
     }
   };
 
+  // YALNIZ __DEV__ vitrini (G58-S2): örnek ücretsiz öğün kuponları (İzmir teklifi ×2 + davet), ilki açık.
+  const vitrinFreeMeal = __DEV__ && (React.useContext(NavigationRouteContext)?.params as { vitrinFreeMeal?: boolean } | undefined)?.vitrinFreeMeal === true;
   const load = useCallback(async (isRefresh = false) => {
+    if (vitrinFreeMeal) {
+      const end = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const start = new Date().toISOString().slice(0, 10);
+      const fm = (id: string, code: string, badge: string, source: string): Campaign => ({
+        id, title: '1 Öğün Ücretsiz', description: 'Sepetteki en pahalı 1 ana öğün ücretsiz. İçecek ve yan ürünler hariç. Tek kullanımlık.',
+        code, badge, is_active: true, start_date: start, end_date: end, min_cart_total: 0, discount_type: 'free_item', discount_value: 0,
+        max_discount: 0, max_uses_per_user: 1, user_id: user?.id ?? 'vitrin', source, excluded_categories: ['Detoks & Shake', 'Soslar', 'Koliye Özel Fırsatlar'],
+      });
+      const list = [fm('v-fm1', 'OGUN261117K7M3Q', 'İzmir teklifi', 'izmir_fresh'), fm('v-fm2', 'OGUN261117X9P2D', 'İzmir teklifi', 'izmir_fresh'), fm('v-fm3', 'OGUN261117B4TQW', 'Davet', 'referral')];
+      setAll(list);
+      setSelected(list[0]);
+      setLoading(false);
+      return;
+    }
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError('');
@@ -75,7 +91,7 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [tr]);
+  }, [tr, vitrinFreeMeal, user?.id]);
 
   useEffect(() => {
     void load();

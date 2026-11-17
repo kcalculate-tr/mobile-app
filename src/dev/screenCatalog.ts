@@ -966,6 +966,25 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(g58[4] ? { textSize: 'accessibility-extra-large' as const } : {}),
     };
   }
+  // G58-S2 — `G58S2-<Sahne>(-EN)(-Dark)`: Viewer = tam ekran görsel + etkileşim katmanı · Reels = dikey video
+  // akışı · ReelsYorum = Reels yorum sayfası · Kupon = Kuponlarım (1 öğün ücretsiz, şartlar açık). Örnek veri yalnız __DEV__.
+  const g58b = /^G58S2-(Viewer|ReelsYorum|Reels|Kupon)(-EN)?(-Dark)?$/.exec(name);
+  if (g58b) {
+    const prof = (screen: string, params?: Record<string, unknown>) => route([...tab('Profile'), { name: screen, ...(params ? { params } : {}) }]);
+    const reels = (extra?: Record<string, unknown>) => route([...kes({ initialTab: 'for_you' }), { name: 'KesfetReels', params: { startId: 'post-v1', ...extra } }]);
+    const T: Record<string, { area: string; target: VitrinTarget; scene?: string }> = {
+      Viewer: { area: 'kesfet', target: route(kes({ vitrin: 'viewer', initialTab: 'for_you' })) },
+      Reels: { area: 'kesfet', target: reels(), scene: 'video' },
+      ReelsYorum: { area: 'kesfet', target: reels({ vitrinComments: true }), scene: 'video' },
+      Kupon: { area: 'profil', target: prof('ProfileCoupons', { tab: 'mine', vitrinFreeMeal: true }) },
+    };
+    const d = T[g58b[1]];
+    return {
+      pano: name, area: d.area, target: d.target, data: 'default', flags: [...FINAL_FLAGS, 'paylasim_baglanti'],
+      lang: g58b[2] ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g58b[3] ? 'dark' : 'light',
+      ...(d.scene ? { scene: d.scene } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

@@ -433,6 +433,12 @@ export function ReelsScreen() {
   const [muted, setMuted] = useState(false);
   const [following, setFollowing] = useState<ReadonlySet<string>>(() => new Set());
   const [commentsPost, setCommentsPost] = useState<FeedPost | null>(null);
+  // YALNIZ __DEV__ vitrini (FinReelsComments karesi): ilk reel'in yorum sayfası açık.
+  const vitrinComments = __DEV__ && route.params?.vitrinComments === true;
+  useEffect(() => {
+    if (vitrinComments && !commentsPost && queue[0]) setCommentsPost(queue[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vitrinComments, queue.length]);
 
   // ── Sayfa kaydırma (330 ms standart eğri, eşik 140 pt; azaltılmışta 220 ms solma) ──
   const dy = useSharedValue(0);
