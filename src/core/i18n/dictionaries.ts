@@ -321,7 +321,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
     kesfet: {
       title: 'Keşfet',
-      tab: { for_you: 'Senin için', following: 'Takip' },
+      tab: { for_you: 'Senin için', following: 'Keşfet' },
       empty: 'Henüz gönderi yok.',
       empty_following: 'Takip ettiklerinden henüz gönderi yok.',
       loadError: 'Akış yüklenemedi.',
@@ -348,7 +348,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
       // Keşfet arayüzü (G6-S2) — yalnız UI metinleri. Veri katmanının yukarıdaki
       // anahtarlarına dokunmaz (added_toast i18n testiyle kilitli, değişmez).
       ui: {
-        tab: { for_you: 'Sana Özel', following: 'Takip' },
+        tab: { for_you: 'Sana Özel', following: 'Keşfet' },
         a11y: {
           like: 'Beğen',
           save: 'Kaydet',
@@ -2278,7 +2278,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     },
     kesfet: {
       title: 'Discover',
-      tab: { for_you: 'For you', following: 'Following' },
+      tab: { for_you: 'For you', following: 'Explore' },
       empty: 'No posts yet.',
       empty_following: 'No posts from people you follow yet.',
       loadError: 'Could not load the feed.',
@@ -2302,7 +2302,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
         adds: { one: '%{count} add', other: '%{count} adds' },
       },
       ui: {
-        tab: { for_you: 'For you', following: 'Following' },
+        tab: { for_you: 'For you', following: 'Explore' },
         a11y: {
           like: 'Like',
           save: 'Save',

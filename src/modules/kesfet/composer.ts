@@ -22,6 +22,8 @@ export interface MealDraft {
   fat_g: string;
   portionLabel: string;
   productId: string | null;
+  /** 17 Kas: öğün kartı görseli (ürün fotoğrafı — herkese açık URL). Yoksa null. */
+  photoUrl?: string | null;
 }
 
 export interface ActivityDraft {
@@ -101,7 +103,7 @@ function mealDraftCard(m: MealDraft): MealCard {
     carbs_g: n(m.carbs_g),
     fat_g: n(m.fat_g),
     portion_label: m.portionLabel.trim() || '1 porsiyon',
-    photo_url: null,
+    photo_url: m.photoUrl && /^https?:\/\//.test(m.photoUrl) ? m.photoUrl : null,
     product_id: m.productId,
   };
 }

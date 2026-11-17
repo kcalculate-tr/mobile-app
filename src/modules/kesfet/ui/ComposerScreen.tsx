@@ -48,7 +48,7 @@ import {
   type ComposerDraft,
   type MealDraft,
 } from '../composer';
-import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, type LocalPhoto } from '../media';
+import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, downloadScanPhoto, type LocalPhoto } from '../media';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { RulesSheet, rulesSeen } from './RulesSheet';
 import { ComposeIcon, type ComposeIconName } from './compose/icons';
@@ -239,6 +239,7 @@ export function ComposerScreen({
       carbs_g: String(p.carbs_g),
       fat_g: String(p.fat_g),
       productId: p.id,
+      photoUrl: p.image_url ?? null,
     }));
     setMealThumb(p.image_url ?? null);
     setMealSource(null);
@@ -263,9 +264,18 @@ export function ComposerScreen({
       carbs_g: String(last.carbs_g),
       fat_g: String(last.fat_g),
       productId: null,
+      photoUrl: null,
     }));
     setMealThumb(null);
     setMealSource(null);
+    // 17 Kas: taramanın fotoğrafı gönderiye görsel olarak eklenir (önceden hiç eklenmiyordu).
+    if (last.photoPath) {
+      const photo = await downloadScanPhoto(last.photoPath);
+      if (photo) {
+        setMealThumb(photo.uri);
+        setPhotos((ps) => (ps.length >= MAX_PHOTOS ? ps : [photo, ...ps]));
+      }
+    }
   }, []);
 
   // Doğrulama: video da medya sayılır (serbest gönderi "boş" değil); fotoğraf sınırı aynı.

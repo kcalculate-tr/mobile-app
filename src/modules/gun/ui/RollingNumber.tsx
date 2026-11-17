@@ -125,12 +125,18 @@ function DigitColumn({
   }, [target, reduced]);
 
   const animStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  // 17 Kas: rakamın kendi genişliği (ör. Bricolage "0" = 0,665 em) yuvadan genişse metin kutusu
+  // daralıp glif sağdan kesiliyordu ("3.140"ın son 0'ı). Metin kutusu geniş + ortalı; yuva yalnız
+  // görünen alanı keser (mürekkep ~0,57 em → yuvaya sığar).
+  const fs = typeof textStyle.fontSize === 'number' ? textStyle.fontSize : slotWidth;
+  const textW = Math.max(slotWidth, Math.ceil(fs * 0.8));
+  const textOffset = (slotWidth - textW) / 2;
 
   return (
     <View style={{ height: lineHeight, width: slotWidth, overflow: 'hidden' }}>
-      <Animated.View style={animStyle}>
+      <Animated.View style={[animStyle, { width: textW, marginLeft: textOffset }]}>
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
-          <Text key={d} style={[textStyle, { height: lineHeight, width: slotWidth }]} allowFontScaling={false}>
+          <Text key={d} style={[textStyle, { height: lineHeight, width: textW }]} allowFontScaling={false} numberOfLines={1}>
             {d}
           </Text>
         ))}

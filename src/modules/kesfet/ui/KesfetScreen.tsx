@@ -120,16 +120,16 @@ function Header({
       {/* G39-S1 md.2: "Keşfet" yazısı yerine kcal. logosu; VoiceOver başlığı yine "Keşfet". */}
       <BrandLogo name="kcal" height={26} accessibilityRole="header" accessibilityLabel={tr('kesfet.title')} testID="kesfet-header-logo" />
       <View style={styles.headerIcons}>
+        {/* 17 Kas (İlter): kullanıcılar paylaşım girişini ("Günüm +") bulamıyordu → başlıkta
+            arama ile aynı dilde sade + (Composer). */}
+        {showCompose ? (
+          <Pressable onPress={onCompose} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.compose')} style={styles.iconBtn} testID="kesfet-header-compose">
+            <Icon name="plus" size={26} color={t.color.ink} />
+          </Pressable>
+        ) : null}
         <Pressable onPress={onSearch} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.search')} style={styles.iconBtn}>
           <Icon name="search" size={24} color={t.color.ink} />
         </Pressable>
-        {/* G15 — Final başlığında + yok: paylaş girişi Gün halkası şeridindeki
-            "Günüm +" rozetine taşındı (özellik kaybı yok). */}
-        {showCompose && !finalHeader ? (
-          <Pressable onPress={onCompose} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.compose')} style={styles.iconBtn}>
-            <Icon name="plus" size={24} color={t.color.ink} />
-          </Pressable>
-        ) : null}
         {showBell ? (
           <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn}>
             <Icon name="bell" size={24} color={t.color.ink} />

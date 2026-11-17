@@ -62,6 +62,28 @@ export async function uploadPhotos(userId: string, photos: LocalPhoto[]): Promis
   return out;
 }
 
+/**
+ * 17 Kas: Tara fotoğrafını (özel `user-media` kovası) cihaza indirir → composer'da normal
+ * fotoğraf gibi eklenir ve gönderiyle herkese açık post-media'ya yüklenir. Hata → null.
+ */
+export async function downloadScanPhoto(photoPath: string): Promise<LocalPhoto | null> {
+  try {
+    const { data, error } = await getSupabaseClient().storage.from('user-media').createSignedUrl(photoPath, 600);
+    if (error || !data?.signedUrl) return null;
+    const ext = (photoPath.split('.').pop() || 'jpg').toLowerCase();
+    const target = `${FileSystem.cacheDirectory}scan-share-${Date.now()}.${ext === 'png' ? 'png' : 'jpg'}`;
+    const res = await FileSystem.downloadAsync(data.signedUrl, target);
+    if (res.status !== 200) return null;
+    const { Image } = require('react-native') as typeof import('react-native');
+    const size = await new Promise<{ width: number; height: number }>((resolve) =>
+      Image.getSize(res.uri, (width, height) => resolve({ width, height }), () => resolve({ width: 1080, height: 1080 })),
+    );
+    return { uri: res.uri, width: size.width, height: size.height };
+  } catch {
+    return null;
+  }
+}
+
 /** Oturumdaki kullanıcının id'si (yoksa null). */
 export async function currentUserId(): Promise<string | null> {
   try {

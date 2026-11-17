@@ -319,7 +319,7 @@ export function FinTopBlock({
                 lang={numLang}
                 fontSize={28}
                 fontFamily={BRICOLAGE_BOLD}
-                slotRatio={0.56}
+                slotRatio={0.6}
                 color={t.color.ink}
                 accessibilityLabel={tt('gun.goal_kcal', { kcal, target })}
               />
