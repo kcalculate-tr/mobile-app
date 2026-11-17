@@ -75,7 +75,8 @@ test('ekranda yazılan metin değerleri gösteriyor (TR + EN)', () => {
 
 test('metin şablonlarında sınır sayısı gömülü değil (oran adları ve tek video — Composer tek `video` durumu — dışında)', () => {
   const c = read('src/modules/kesfet/ui/ComposerScreen.tsx');
-  assert.match(c, /useState<PickedVideoLite \| null>\(null\)/);
+  // G58: vitrin (yalnız __DEV__) seçili video ön dolumu — durum yine TEK video.
+  assert.match(c, /useState<PickedVideoLite \| null>\((?:pre\?\.video \?\? )?null\)/);
   for (const dict of [g53tr.share_guide, g53en.share_guide]) {
     for (const [k, s] of Object.entries(dict)) {
       const stripped = String(s).replace(/4:5|1:1|1 video/g, '');
