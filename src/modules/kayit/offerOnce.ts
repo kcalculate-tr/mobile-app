@@ -13,7 +13,7 @@ import { kv } from './store';
 /** Aktif abonelik (Fresh/Balance, deneme dahil) var mı — RevenueCat + sunucu hakkının yüksek olanı. */
 export function hasActiveSubscription(): boolean {
   const s = useSubscriptionStore.getState();
-  return resolveTier(s.rc?.tier ?? null, s.server?.tier ?? null).tier !== 'free';
+  return resolveTier(s.rc?.tier ?? null, s.server?.tier ?? null, s.server?.store ?? null).tier !== 'free';
 }
 
 /** Kayıt bitince: T1'e mi (true) yoksa doğrudan dokunulan eyleme mi. */

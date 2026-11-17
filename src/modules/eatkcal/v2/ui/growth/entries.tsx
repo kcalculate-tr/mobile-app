@@ -34,13 +34,14 @@ export function useInviteReward(): { visible: boolean; rewardTl: number | null }
   return { visible: inviteVisible({ signedIn: !!session, flag, rewardTl: reward }), rewardTl: reward };
 }
 
-/** Profil › eatkcal: "Arkadaşını davet et" + "[N] TL kupon" hapı (Siparişlerim ile Adreslerim arasında). */
+/** Profil › eatkcal: "Arkadaşını davet et" + "1 öğün bizden" hapı (Siparişlerim ile Adreslerim arasında). */
 export function ProfileInviteRow({ onOpen }: { onOpen: () => void }) {
   const t = useTheme();
   const { t: tr } = useT();
-  const { visible, rewardTl } = useInviteReward();
-  if (!visible || rewardTl == null) return null;
-  const pill = tr('ek56.invite.profile_pill', { n: Math.round(rewardTl) });
+  const { visible } = useInviteReward();
+  if (!visible) return null;
+  // G58-S2 md.4: ödül "1 öğün bizden" (TL tutarı yok).
+  const pill = tr('ek56.invite.profile_pill');
   return (
     <FinRow
       icon={<Gift size={18} color={t.color.ink} />}

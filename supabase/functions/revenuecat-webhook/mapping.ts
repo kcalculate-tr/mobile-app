@@ -13,6 +13,13 @@
 //  • PRODUCT_CHANGE → yükseltme (fresh→balance) hemen; düşürme bir sonraki RENEWAL'da
 //    (RevenueCat: "yeni ürün hemen geçerli olmayabilir") → yalnız will_renew/ürün notu.
 //  • Sırasız olay: last_event_at'ten eski olay yok sayılır.
+//  • G58-S2 md.4 — PERSONEL / MANUEL HAK KORUMASI: mevcut satır store='manual' (ör. product_id=
+//    'internal_staff') ve süresi geçmemişse (expires_at boş = süresiz) HİÇBİR RevenueCat olayı onu
+//    ezmez (ör. App Store denemesi bitince gelen EXPIRATION Balance'ı free yapıyordu).
+//  • G58-S2 md.4 — İZMİR TEKLİFİ: Fresh YILLIK INITIAL_PURCHASE (App Store / Play) + teklif
+//    'izmir_fresh' (subscriber attribute `offer` ya da sunucu teklif kaydı) → 2 ücretsiz öğün kuponu
+//    (izmirOfferDecision). Kişi başı bir kez + aynı olay iki kez gelirse tekrar yok (DB unique).
+//    İade/iptal (CANCELLATION, EXPIRATION) → kullanılmamış kuponlar void.
 export type Tier = 'free' | 'fresh' | 'balance';
 
 export const TIER_RANK: Record<Tier, number> = { free: 0, fresh: 1, balance: 2 };
@@ -41,6 +48,10 @@ export interface RevenueCatEvent {
   event_timestamp_ms?: number;
   store?: string;
   environment?: string;
+  /** RevenueCat: iptal nedeni (CUSTOMER_SUPPORT = iade, UNSUBSCRIBE, BILLING_ERROR …). */
+  cancel_reason?: string | null;
+  /** RevenueCat subscriber attributes: { offer: { value: 'izmir_fresh', updated_at_ms } }. */
+  subscriber_attributes?: Record<string, { value?: string | null; updated_at_ms?: number } | undefined> | null;
 }
 
 export interface EntitlementRow {
@@ -94,11 +105,23 @@ function iso(ms: number | null | undefined): string | null {
   return typeof ms === 'number' && Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
 }
 
-export function mapRevenueCatEvent(ev: RevenueCatEvent, current: EntitlementRow | null): MapResult {
+/** Personel / manuel hak (store='manual'), süresi geçmemiş (boş = süresiz) → korunur. */
+export function isProtectedManual(current: EntitlementRow | null, nowMs: number = Date.now()): boolean {
+  if (!current) return false;
+  if (String(current.store ?? '').toLowerCase() !== 'manual') return false;
+  if (current.tier === 'free') return false;
+  if (!current.expires_at) return true;
+  const exp = Date.parse(current.expires_at);
+  return Number.isFinite(exp) && exp > nowMs;
+}
+
+export function mapRevenueCatEvent(ev: RevenueCatEvent, current: EntitlementRow | null, nowMs: number = Date.now()): MapResult {
   const type = String(ev.type ?? '').toUpperCase();
   if (!(HANDLED_EVENTS as readonly string[]).includes(type)) return { action: 'ignore', reason: `event:${type || 'none'}` };
   const userId = resolveUserId(ev);
   if (!userId) return { action: 'ignore', reason: 'anonymous_user' };
+  // G58-S2: personel/manuel hak süresi boyunca RevenueCat olaylarıyla EZİLMEZ.
+  if (isProtectedManual(current, nowMs)) return { action: 'ignore', reason: 'manual_entitlement' };
 
   const eventAt = iso(ev.event_timestamp_ms);
   if (current?.last_event_at && eventAt && Date.parse(eventAt) < Date.parse(current.last_event_at)) {
@@ -195,6 +218,51 @@ export function mapRevenueCatEvent(ev: RevenueCatEvent, current: EntitlementRow 
     }
   }
   return { action: 'ignore', reason: 'unreachable' };
+}
+
+// ── G58-S2 md.4: İzmir teklifi (Fresh yıllık → 2 ücretsiz öğün) ─────────────────
+export const IZMIR_OFFER = 'izmir_fresh';
+export const IZMIR_FREE_MEALS = 2;
+/** Yalnız gerçek mağaza satın alımı (manuel/personel/promo hakları hariç). */
+export const IZMIR_STORES = ['APP_STORE', 'PLAY_STORE'] as const;
+
+/** Fresh YILLIK ürün mü (iOS kcalai_fresh_yearly · Play kcalai_fresh:yearly / …annual / P1Y). */
+export function isFreshYearly(productId: string | null | undefined): boolean {
+  const p = String(productId ?? '').toLowerCase();
+  return p.startsWith('kcalai_fresh') && /yearly|annual|p1y/.test(p);
+}
+
+/** RevenueCat subscriber attribute `offer` (istemci satın almadan önce yazar). */
+export function offerAttribute(ev: RevenueCatEvent): string | null {
+  const a = ev.subscriber_attributes?.offer?.value;
+  return typeof a === 'string' && a.trim() ? a.trim() : null;
+}
+
+export type IzmirDecision =
+  | { action: 'grant'; userId: string; count: number; ref: string }
+  | { action: 'void'; userId: string; reason: string }
+  | { action: 'none'; reason: string };
+
+/**
+ * Teklif kararı (SAF). `offerRecorded` = sunucudaki teklif kaydı (subscription_offer_intents) var mı —
+ * attribute yoksa yedek. Kişi başı bir kez + olay tekrarına karşı idempotensi DB'de (grant_free_meals).
+ */
+export function izmirOfferDecision(ev: RevenueCatEvent, opts: { offerRecorded?: boolean } = {}): IzmirDecision {
+  const type = String(ev.type ?? '').toUpperCase();
+  const userId = resolveUserId(ev);
+  if (!userId) return { action: 'none', reason: 'anonymous_user' };
+  if (String(ev.environment ?? '').toUpperCase() === 'SANDBOX') return { action: 'none', reason: 'sandbox' };
+  if (!isFreshYearly(ev.product_id)) return { action: 'none', reason: 'not_fresh_yearly' };
+  if (type === 'CANCELLATION' || type === 'EXPIRATION') {
+    return { action: 'void', userId, reason: type === 'CANCELLATION' ? `cancel:${String(ev.cancel_reason ?? '').toLowerCase() || 'unknown'}` : 'expiration' };
+  }
+  if (type !== 'INITIAL_PURCHASE') return { action: 'none', reason: `event:${type || 'none'}` };
+  const store = String(ev.store ?? '').toUpperCase();
+  if (!(IZMIR_STORES as readonly string[]).includes(store)) return { action: 'none', reason: 'store' };
+  const viaOffer = offerAttribute(ev) === IZMIR_OFFER || opts.offerRecorded === true;
+  if (!viaOffer) return { action: 'none', reason: 'no_offer' };
+  if (!ev.id) return { action: 'none', reason: 'no_event_id' };
+  return { action: 'grant', userId, count: IZMIR_FREE_MEALS, ref: ev.id };
 }
 
 /** Sabit süreli karşılaştırma (Authorization paylaşılan sırrı). "Bearer x" ve çıplak "x" kabul. */

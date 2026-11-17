@@ -79,8 +79,9 @@ test('Davet ekranı: kod, ödül, boş geçmiş; kopyala → panoya + "Kod kopya
   const r = render(<EkInviteScreen />);
   await waitFor(() => expect(r.getByTestId('ek56-invite-code')).toBeTruthy());
   expect(r.getByText('AB3K7MQ')).toBeTruthy();
-  expect(r.getByText('İkinize de 100 TL kupon')).toBeTruthy();
-  expect(r.getByText('İkinize de 100 TL kupon tanımlanır')).toBeTruthy();
+  // G58-S2 md.4: ödül her iki kişiye 1 ücretsiz öğün.
+  expect(r.getByText('Arkadaşını davet et, ikinize de 1 öğün bizden')).toBeTruthy();
+  expect(r.getByText('İkinize de 1 ücretsiz öğün kuponu tanımlanır')).toBeTruthy();
   expect(r.getByTestId('ek56-invite-empty')).toBeTruthy();
   await act(async () => {
     fireEvent.press(r.getByTestId('ek56-invite-copy'));

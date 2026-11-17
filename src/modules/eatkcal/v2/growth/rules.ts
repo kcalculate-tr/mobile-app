@@ -369,7 +369,11 @@ export function bannerVisible(cell: { audience?: string | null; navigate_to?: st
   return true; // bilinmeyen değer → eski uygulama gibi göster
 }
 
-/** Davet: giriş yapmış + `davet` bayrağı açık + ödül tutarı tanımlı. Misafirde ve bayrak kapalıyken hiçbir giriş yok. */
-export function inviteVisible(input: { signedIn: boolean; flag: boolean; rewardTl: number | null | undefined }): boolean {
-  return input.signedIn && input.flag && Number(input.rewardTl) > 0;
+/**
+ * Davet: giriş yapmış + `davet` bayrağı açık. Misafirde ve bayrak kapalıyken hiçbir giriş yok.
+ * G58-S2 md.4 (İlter): ödül artık her iki kişiye 1 ücretsiz öğün kuponu (TL tutarı yok) → görünürlük
+ * `referral_reward_tl`'ye BAĞLI DEĞİL; açma/kapama yalnız `davet` bayrağı. `rewardTl` geriye uyum için yok sayılır.
+ */
+export function inviteVisible(input: { signedIn: boolean; flag: boolean; rewardTl?: number | null }): boolean {
+  return input.signedIn && input.flag;
 }

@@ -71,7 +71,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set) => ({
 export function useTier(): { tier: Tier; status: ReturnType<typeof resolveTier>['status'] } {
   const rc = useSubscriptionStore((s) => s.rc?.tier ?? null);
   const server = useSubscriptionStore((s) => s.server?.tier ?? null);
-  return resolveTier(rc, server);
+  const serverStore = useSubscriptionStore((s) => s.server?.store ?? null);
+  return resolveTier(rc, server, serverStore);
 }
 
 /**

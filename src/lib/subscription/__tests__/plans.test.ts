@@ -122,6 +122,11 @@ test('kademe: RevenueCat yetkisi önce, sunucu doğrular', () => {
   assert.deepEqual(resolveTier('free', 'fresh'), { tier: 'fresh', status: 'verified' }, 'başka cihazda satın alındı');
   assert.deepEqual(resolveTier(null, 'fresh'), { tier: 'fresh', status: 'server_only' });
   assert.deepEqual(resolveTier(null, null), { tier: 'free', status: 'unknown' });
+  // G58-S2 md.4: sunucudaki MANUEL hak (personel) RevenueCat'ten önce gelir.
+  assert.deepEqual(resolveTier('free', 'balance', 'manual'), { tier: 'balance', status: 'verified' }, 'App Store denemesi bitti, RC free — personel Balance kalır');
+  assert.deepEqual(resolveTier('fresh', 'balance', 'manual'), { tier: 'balance', status: 'verified' });
+  assert.deepEqual(resolveTier('balance', 'free', 'manual'), { tier: 'balance', status: 'pending' }, 'süresi geçmiş manuel (sunucu free) → normal kural');
+  assert.deepEqual(resolveTier('free', 'fresh', 'APP_STORE'), { tier: 'fresh', status: 'verified' });
   const snap = rcSnapshot({
     entitlements: { active: { fresh: { productIdentifier: 'kcalai_fresh_yearly', expirationDate: '2026-11-17T00:00:00Z', willRenew: true, periodType: 'TRIAL', store: 'APP_STORE' } } },
     managementURL: 'https://apps.apple.com/account/subscriptions',

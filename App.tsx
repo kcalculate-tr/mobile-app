@@ -32,6 +32,7 @@ import {
   syncPushLocale,
 } from './src/core/notifications';
 import { navigationRef } from './src/navigation/navigationRef';
+import { FreeMealNoticeHost } from './src/lib/freeMeal/FreeMealNoticeHost';
 import { linking } from './src/navigation/linking';
 import { ErrorFallback } from './src/components/ErrorBoundary';
 import ForceUpdateModal from './src/components/ForceUpdateModal';
@@ -223,6 +224,8 @@ function App() {
               )}
               {/* G28-S1 md.1: Logla izi A (uçuş + toast) — gezinme kabının ÜSTÜNDE, yalnız yeni kabuk. */}
               <LogTraceGate />
+              {/* G58-S2 md.4: ücretsiz öğün kuponu tanımlandı bildirimi (→ Kuponlar). RPC yoksa sessiz. */}
+              <FreeMealNoticeHost />
               </AppSchemeGate>
             </FlagsProvider>
           </AuthProvider>

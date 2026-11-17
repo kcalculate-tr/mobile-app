@@ -53,7 +53,6 @@ export default function EkInviteScreen() {
     return () => clearTimeout(id);
   }, [copied, params?.vitrinCopied]);
 
-  const reward = data?.rewardTl != null ? Math.round(data.rewardTl) : null;
 
   const copy = async () => {
     if (!data) return;
@@ -66,7 +65,7 @@ export default function EkInviteScreen() {
     if (!data) return;
     haptic('light');
     track('referral_share', { method: 'share' });
-    void Share.share({ message: referralShareText(t, data.code, data.rewardTl) }).catch(() => {});
+    void Share.share({ message: referralShareText(t, data.code) }).catch(() => {});
   };
 
   const header = (
@@ -130,7 +129,7 @@ export default function EkInviteScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Image source={BOWL} style={styles.glass60} accessibilityIgnoresInvertColors accessible={false} />
                 <Text style={[styles.heroTitle, { color: k.ink, flex: 1 }]} maxFontSizeMultiplier={SCALE}>
-                  {reward != null ? t('ek56.invite.hero', { n: reward }) : t('ek56.invite.title')}
+                  {t('ek56.invite.hero')}
                 </Text>
               </View>
               <View style={[styles.codeBox, { backgroundColor: k.nest }]}>
@@ -163,7 +162,7 @@ export default function EkInviteScreen() {
               {t('ek56.invite.how')}
             </Text>
             <View style={[styles.rows, { backgroundColor: k.card, borderColor: k.line }]}>
-              {[t('ek56.invite.step1'), t('ek56.invite.step2'), reward != null ? t('ek56.invite.step3', { n: reward }) : t('ek56.invite.step3', { n: '' })].map((label, i) => (
+              {[t('ek56.invite.step1'), t('ek56.invite.step2'), t('ek56.invite.step3')].map((label, i) => (
                 <View key={i} style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: k.line }]}>
                   <View style={[styles.num, { backgroundColor: i === 2 ? k.lime : k.nest }]} accessible={false}>
                     <Text style={[styles.numText, { color: i === 2 ? k.limeInk : k.ink }]} maxFontSizeMultiplier={1.15}>

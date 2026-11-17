@@ -76,7 +76,7 @@ export type RootStackParamList = {
   ProfileSavedCards: undefined;
   ProfileAddCard: undefined;
   /** G56-S1: `campaignId` → kampanya detayı açık (banner hedefi `Campaign:<id>`). */
-  ProfileCoupons: { campaignId?: string } | undefined;
+  ProfileCoupons: { campaignId?: string; tab?: 'mine' } | undefined;
   // G21-S1 md.9 — FinPrProfile alt sayfaları (sağdan kayan yığın ekranı).
   ProfileSub: ProfileSubParams;
   ProfileSupport: undefined;

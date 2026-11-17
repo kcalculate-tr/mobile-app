@@ -92,10 +92,10 @@ export const STORE_LINKS = {
 } as const;
 
 /** Sistem paylaşımı metni (TR/EN): kod + mağaza bağlantıları. `t` = useT().t. */
-export function referralShareText(t: (k: string, p?: Record<string, string | number>) => string, code: string, rewardTl: number | null): string {
-  const amount = rewardTl != null ? String(Math.round(rewardTl)) : '';
+export function referralShareText(t: (k: string, p?: Record<string, string | number>) => string, code: string): string {
+  // G58-S2 md.4: ödül "ikimize de 1 öğün" — tutar yok.
   return [
-    t('ek56.invite.share_text', { code, amount }),
+    t('ek56.invite.share_text', { code }),
     `iPhone: ${STORE_LINKS.ios}`,
     `Android: ${STORE_LINKS.android}`,
   ].join('\n');

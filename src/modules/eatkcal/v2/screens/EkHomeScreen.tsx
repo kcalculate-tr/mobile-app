@@ -709,7 +709,7 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
           {orders == null && userId ? <SecSkeleton sec="reorder" /> : <ReorderSection cards={reorderCards} busyId={reorderBusy} onReorder={reorder} />}
 
           {/* 6 · Arkadaşını davet et (giriş + `davet` bayrağı + ödül; misafirde gizli). */}
-          {inviteOn && rewardTl != null ? <InviteBanner rewardTl={rewardTl} onPress={() => navigation.navigate('EkInvite')} /> : null}
+          {inviteOn ? <InviteBanner onPress={() => navigation.navigate('EkInvite')} /> : null}
 
           {reviews.length > 0 ? (
             <EkSection title={t('eatkcal.v2.home.reviews')} style={{ marginTop: 4 }}>

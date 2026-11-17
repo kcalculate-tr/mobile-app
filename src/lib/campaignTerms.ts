@@ -14,6 +14,13 @@ type TermsInput = Pick<
 
 export function campaignTerms(c: TermsInput, fmtDate: (iso: string) => string): CampaignTerm[] {
   const out: CampaignTerm[] = [];
+  // G58-S2 md.4: ücretsiz öğün kuponu — sepetteki en pahalı 1 ana öğün; içecek + yan ürün hariç;
+  // üst sınır (campaigns.max_discount ← settings.free_meal_max_tl) varsa yazılır.
+  if (c.discount_type === 'free_item') {
+    out.push({ key: 'coupons_term_free_meal' });
+    const cap = Number(c.max_discount ?? 0);
+    if (cap > 0) out.push({ key: 'coupons_term_free_meal_max', params: { n: Math.round(cap) } });
+  }
   if (c.first_order_only) out.push({ key: 'coupons_term_first' });
   const min = Number(c.min_cart_total ?? 0);
   if (min > 0) out.push({ key: 'coupons_term_min', params: { n: Math.round(min) } });

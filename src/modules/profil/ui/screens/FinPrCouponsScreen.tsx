@@ -32,7 +32,9 @@ export default function FinPrCouponsScreen({ onBack }: { onBack: () => void }) {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
 
-  const [tab, setTab] = useState(0);
+  // G58-S2 md.4: kupon bildirimi "Gör" → Kuponlarım sekmesi (`tab: 'mine'`).
+  const tabParam = (React.useContext(NavigationRouteContext)?.params as { tab?: string } | undefined)?.tab;
+  const [tab, setTab] = useState(tabParam === 'mine' ? 1 : 0);
   const [banners, setBanners] = useState<BannerCell[]>([]);
   const [all, setAll] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);

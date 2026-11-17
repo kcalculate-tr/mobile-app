@@ -30,6 +30,10 @@ export const tr = {
     protein: 'P %{n} g',
     activity_min: '%{n} dk',
   },
+  free_meal: {
+    notice: '%{n} öğünün kupon kısmına tanımlandı',
+    notice_referral: 'Davet ödülün: %{n} öğün kupon kısmına tanımlandı',
+  },
 };
 
 export const en: typeof tr = {
@@ -61,5 +65,9 @@ export const en: typeof tr = {
     kcal: '%{n} kcal',
     protein: 'P %{n} g',
     activity_min: '%{n} min',
+  },
+  free_meal: {
+    notice: '%{n} free meals were added to your coupons',
+    notice_referral: 'Invite reward: %{n} free meal was added to your coupons',
   },
 };

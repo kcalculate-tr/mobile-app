@@ -673,12 +673,13 @@ export function TopSection({ rows, addingId, onOpen, onAdd, onAll }: { rows: Top
 }
 
 // ── 6) Arkadaşını davet et (banner biçimi) ──────────────────────────────────
-export function InviteBanner({ rewardTl, onPress }: { rewardTl: number; onPress: () => void }) {
+export function InviteBanner({ onPress }: { onPress: () => void }) {
   const k = useGrowthTokens();
   const { t } = useEk();
   useSecView('invite', 'full', true);
   const title = t('ek56.invite.title');
-  const desc = t('ek56.invite.hero', { n: Math.round(rewardTl) });
+  // G58-S2 md.4: "Arkadaşını davet et, ikinize de 1 öğün bizden".
+  const desc = t('ek56.invite.hero');
   return (
     <View style={styles.gutter} testID="ek56-invite">
       <Pressable

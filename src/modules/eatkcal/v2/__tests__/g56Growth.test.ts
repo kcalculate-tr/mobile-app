@@ -221,13 +221,12 @@ test('banner hedefleri: Davet, paywall (Fresh yıllık), liste (filtre/kategori)
 });
 
 // ── 6) Davet ───────────────────────────────────────────────────────────────
-test('davet görünürlüğü: giriş + bayrak + ödül; bayrak yerelde kapalı', () => {
+test('davet görünürlüğü: giriş + bayrak (G58-S2: ödül 1 ücretsiz öğün, TL ayarına bağlı değil); bayrak yerelde kapalı', () => {
   assert.equal(FLAG_DEFAULTS.davet, false);
-  assert.equal(inviteVisible({ signedIn: true, flag: true, rewardTl: 100 }), true);
-  assert.equal(inviteVisible({ signedIn: false, flag: true, rewardTl: 100 }), false);
-  assert.equal(inviteVisible({ signedIn: true, flag: false, rewardTl: 100 }), false);
-  assert.equal(inviteVisible({ signedIn: true, flag: true, rewardTl: null }), false);
-  assert.equal(inviteVisible({ signedIn: true, flag: true, rewardTl: 0 }), false);
+  assert.equal(inviteVisible({ signedIn: true, flag: true }), true);
+  assert.equal(inviteVisible({ signedIn: false, flag: true }), false);
+  assert.equal(inviteVisible({ signedIn: true, flag: false }), false);
+  assert.equal(inviteVisible({ signedIn: true, flag: true, rewardTl: null }), true, 'TL ödül ayarı boş olsa da (ücretsiz öğün)');
 });
 
 test('davet kodu: karışmayan alfabe, 6–8 karakter, boşluk/küçük harf normalize', () => {
@@ -254,8 +253,8 @@ test('davet RPC ayrıştırma + geçmiş + paylaşım metni', () => {
   assert.deepEqual(parseApplyResult({ ok: true }), { ok: true });
   assert.deepEqual(parseApplyResult({ ok: false, error: 'own_code' }), { ok: false, error: 'own_code' });
   assert.deepEqual(parseApplyResult({ ok: false, error: 'weird' }), { ok: false, error: 'error' });
-  const text = referralShareText((k, p) => `${k}|${p?.code}|${p?.amount}`, 'AB3K7MQ', 100);
-  assert.match(text, /ek56\.invite\.share_text\|AB3K7MQ\|100/);
+  const text = referralShareText((k, p) => `${k}|${p?.code}`, 'AB3K7MQ');
+  assert.match(text, /ek56\.invite\.share_text\|AB3K7MQ/);
   assert.match(text, /apps\.apple\.com/);
   assert.match(text, /play\.google\.com/);
 });

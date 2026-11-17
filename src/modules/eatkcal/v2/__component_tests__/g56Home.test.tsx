@@ -193,7 +193,7 @@ test('siparişli + takipli kullanıcı: oos uyarısı, yalnız kalanlar sepete, 
 
   // Davet kartı: ödül tutarıyla.
   expect(r.getByTestId('ek56-invite')).toBeTruthy();
-  expect(r.getAllByText('İkinize de 100 TL kupon').length).toBeGreaterThan(0);
+  expect(r.getAllByText('Arkadaşını davet et, ikinize de 1 öğün bizden').length).toBeGreaterThan(0);
   expect(mockTrack).toHaveBeenCalledWith('eatkcal_sec_view', { sec: 'reorder', st: 'oos' });
   expect(mockTrack).toHaveBeenCalledWith('eatkcal_sec_view', { sec: 'kcal', st: 'full' });
 });

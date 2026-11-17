@@ -74,8 +74,16 @@ export function tierFromEntitlements(active: readonly string[] | null | undefine
  *  • RevenueCat yüksek, sunucu düşük → satın alma yeni (webhook gecikmesi): RC kademesi
  *    gösterilir, `pending` (sunucu hakları yine sunucudaki kademeyle sayar).
  *  • Sunucu yüksek, RC düşük/bilinmiyor → sunucu (ör. başka cihazda satın alındı, RC önbelleği eski).
+ *  • G58-S2: sunucu hakkı MANUEL (store='manual', personel) → her durumda sunucu (`verified`).
  */
-export function resolveTier(rc: Tier | null, server: Tier | null): { tier: Tier; status: 'verified' | 'pending' | 'rc_only' | 'server_only' | 'unknown' } {
+export function resolveTier(
+  rc: Tier | null,
+  server: Tier | null,
+  serverStore?: string | null,
+): { tier: Tier; status: 'verified' | 'pending' | 'rc_only' | 'server_only' | 'unknown' } {
+  // G58-S2 md.4: sunucudaki MANUEL hak (personel, store='manual'; my_entitlement süresi geçmişse zaten
+  // 'free' döner) RevenueCat sonucundan ÖNCE gelir — App Store denemesi bitince RC 'free' dese de düşmez.
+  if (server != null && server !== 'free' && String(serverStore ?? '').toLowerCase() === 'manual') return { tier: server, status: 'verified' };
   if (rc == null && server == null) return { tier: 'free', status: 'unknown' };
   if (rc == null) return { tier: server as Tier, status: 'server_only' };
   if (server == null) return { tier: rc, status: 'rc_only' };

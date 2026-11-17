@@ -7,10 +7,23 @@
 //
 // Gövde: { api_version, event: { type, app_user_id, product_id, entitlement_ids,
 //   expiration_at_ms, period_type, store, environment, id, event_timestamp_ms, … } }
+// G58-S2 md.4: personel/manuel hak (store='manual', süresi geçmemiş) hiçbir olayla ezilmez (mapping);
+// İzmir teklifi (Fresh yıllık + offer=izmir_fresh) → 2 ücretsiz öğün kuponu (grant_free_meals, idempotent),
+// iade/iptalde kullanılmamış kuponlar void (void_free_meals).
 // Eşleme saf modülde (mapping.ts). Yanıt her zaman 200 (yok sayılan olay dahil) —
 // RevenueCat 2xx dışını yeniden dener; yalnız yetki 401 ve sunucu hatası 500 döner.
 import { createClient } from '@supabase/supabase-js'
-import { authorized, mapRevenueCatEvent, resolveUserId, type EntitlementRow, type RevenueCatEvent } from './mapping.ts'
+import {
+  IZMIR_OFFER,
+  authorized,
+  izmirOfferDecision,
+  isFreshYearly,
+  mapRevenueCatEvent,
+  offerAttribute,
+  resolveUserId,
+  type EntitlementRow,
+  type RevenueCatEvent,
+} from './mapping.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -47,18 +60,57 @@ Deno.serve(async (req: Request) => {
     current = (data as EntitlementRow | null) ?? null
   }
 
+  // 1) Yetki (önce; teklif kuponu hatası yetkiyi ASLA engellemez).
   const res = mapRevenueCatEvent(ev, current)
-  // Kişisel veri günlüğe yazılmaz: yalnız olay tipi + sonuç + ortam.
-  console.log('[revenuecat-webhook]', { type: ev.type, env: ev.environment, result: res.action, reason: res.action === 'ignore' ? res.reason : undefined })
-  if (res.action === 'ignore') return json({ ok: true, ignored: res.reason })
-
-  const { error: upErr } = await admin
-    .from('user_entitlements')
-    .upsert({ user_id: res.userId, ...res.row, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-  if (upErr) {
+  let upsertFailed = false
+  if (res.action === 'upsert') {
+    const { error: upErr } = await admin
+      .from('user_entitlements')
+      .upsert({ user_id: res.userId, ...res.row, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
     // Kullanıcı silinmişse (FK) yeniden deneme anlamsız → 200 + not.
-    if (upErr.code === '23503') return json({ ok: true, ignored: 'unknown_user' })
-    return json({ error: 'server' }, 500)
+    if (upErr && upErr.code === '23503') return json({ ok: true, ignored: 'unknown_user' })
+    if (upErr) upsertFailed = true
   }
-  return json({ ok: true, tier: res.row.tier })
+
+  // 2) İzmir teklifi kuponları — idempotent (aynı olay yeniden gelirse grant_free_meals 'duplicate').
+  //    Yeniden denemede yetki 'duplicate_event' ile atlansa bile bu adım yine çalışır.
+  let offer: string | undefined
+  let offerFailed = false
+  try {
+    let offerRecorded = false
+    if (userId && isFreshYearly(ev.product_id) && String(ev.type ?? '').toUpperCase() === 'INITIAL_PURCHASE' && offerAttribute(ev) !== IZMIR_OFFER) {
+      // Attribute yoksa: satın almadan önceki 7 gün içinde sunucuya yazılmış teklif kaydı.
+      const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+      const { data: intent } = await admin
+        .from('subscription_offer_intents')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('offer', IZMIR_OFFER)
+        .gte('created_at', since)
+        .limit(1)
+      offerRecorded = Array.isArray(intent) && intent.length > 0
+    }
+    const d = izmirOfferDecision(ev, { offerRecorded })
+    if (d.action === 'grant') {
+      const { data: g, error: gErr } = await admin.rpc('grant_free_meals', { p_user: d.userId, p_source: 'izmir_fresh', p_ref: d.ref, p_count: d.count })
+      if (gErr) offerFailed = true
+      else {
+        const r = (g ?? {}) as { duplicate?: boolean; already?: boolean }
+        offer = r.duplicate ? 'duplicate' : r.already ? 'already' : 'granted'
+      }
+    } else if (d.action === 'void') {
+      const { error: vErr } = await admin.rpc('void_free_meals', { p_user: d.userId, p_source: 'izmir_fresh', p_reason: d.reason })
+      if (vErr) offerFailed = true
+      else offer = 'voided'
+    }
+  } catch {
+    offerFailed = true
+  }
+
+  // Kişisel veri günlüğe yazılmaz: yalnız olay tipi + sonuç + ortam.
+  console.log('[revenuecat-webhook]', { type: ev.type, env: ev.environment, result: res.action, reason: res.action === 'ignore' ? res.reason : undefined, offer, offerFailed, upsertFailed })
+  // Sunucu hatası → 500: RevenueCat yeniden dener (yetki tekrarı last_event_id ile, kupon grant ile idempotent).
+  if (upsertFailed || offerFailed) return json({ error: 'server' }, 500)
+  if (res.action === 'ignore') return json({ ok: true, ignored: res.reason, offer })
+  return json({ ok: true, tier: res.row.tier, offer })
 })
