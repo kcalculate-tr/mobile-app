@@ -331,6 +331,12 @@ export function KesfetScreen() {
   // G15 — FinActivityCard: "Ben de yaptım" süre sayfası + bu oturumda eklenenler ("✓ Yaptın").
   const [didItPost, setDidItPost] = useState<FeedPost | null>(null);
   const [didItDone, setDidItDone] = useState<ReadonlySet<string>>(() => new Set());
+  // G58-S2 md.1: "Devamını gör" ile açılan gönderiler — ekran düzeyinde (FlatList hücreyi
+  // yeniden çizince / geri dönünce metin kapanmasın).
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const expandBody = useCallback((id: string) => {
+    setExpandedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, []);
   // G22-S2 md.5 (FinShareDay): "Günüme paylaş" → paylaşım sheet'i (vitrin: tasarım karesi).
   const [shareDayOpen, setShareDayOpen] = useState(() => vitrin === 'shareDay' || vitrin === 'shareDayError');
 
@@ -793,11 +799,13 @@ export function KesfetScreen() {
             }}
             onDidIt={() => setDidItPost(item)}
             didItDone={didItDone.has(item.id)}
+            bodyExpanded={expandedIds.has(item.id)}
+            onExpandBody={() => expandBody(item.id)}
           />
         </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, didItDone, playablePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
+    [nowMs, lang, onShare, kesfetYorum, didItDone, expandedIds, expandBody, playablePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa

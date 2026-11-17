@@ -115,6 +115,8 @@ export function PostCard({
   onOpenVideo,
   onOpenAuthor,
   onOpenMedia,
+  bodyExpanded,
+  onExpandBody,
 }: {
   model: PostCardModel;
   /** Akışta sıra — girişte ardışık animasyon için (en fazla 6 gecikir). */
@@ -156,6 +158,10 @@ export function PostCard({
   onOpenAuthor?: () => void;
   /** G57 — görsele TEK dokunuş = tam ekran görüntüleyici (çift dokunuş beğenmeye devam eder). */
   onOpenMedia?: (index: number) => void;
+  /** G58-S2 md.1 — metin açık mı (ekran düzeyinde tutulur → liste yeniden çizince kapanmaz). */
+  bodyExpanded?: boolean;
+  /** G58-S2 md.1 — "Devamını gör" dokunuşu: ekran açık kimliklere ekler. */
+  onExpandBody?: () => void;
 }) {
   const t = useTheme();
   const { t: tr, fmt } = useT();
@@ -214,11 +220,17 @@ export function PostCard({
       }
     }
   };
-  // G57: uzun metin akışta 6 satırla kısalır + "Devamını gör" (Twitter gibi; dokunuş = ayrıntı).
+  // G57: uzun metin akışta 6 satırla kısalır + "Devamını gör".
+  // G58-S2 md.1 (İlter): "Devamını gör" HER ZAMAN aynı kartta metni tam açar (X/Twitter gibi) —
+  // sayfa değişmez, liste kaymaz. Ayrıntı sayfası metne/karta dokununca açılmaya devam eder.
   const longBody = isLongBody(model.body);
-  const [bodyOpen, setBodyOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const bodyOpen = bodyExpanded ?? localOpen;
   const clampBody = longBody && !bodyOpen;
-  const openMore = () => (onOpen ? onOpen() : setBodyOpen(true));
+  const openMore = () => {
+    setLocalOpen(true);
+    onExpandBody?.();
+  };
 
   // FinFeedTip balonu: öğün kartının altına (kartın son katmanı → aksiyonların üstünde).
   const [mealBottom, setMealBottom] = useState(0);
