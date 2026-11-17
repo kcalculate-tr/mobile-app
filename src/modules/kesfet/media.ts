@@ -63,22 +63,22 @@ export async function uploadPhotos(userId: string, photos: LocalPhoto[]): Promis
 }
 
 /**
- * 17 Kas: Tara fotoğrafını (özel `user-media` kovası) cihaza indirir → composer'da normal
- * fotoğraf gibi eklenir ve gönderiyle herkese açık post-media'ya yüklenir. Hata → null.
+ * 17 Kas: Tara çıkartmasını (özel `user-media`) herkese açık `post-media`ya kopyalar ve öğün
+ * kartının `photo_url`'i olacak herkese açık URL'yi döner (gönderiye ayrı görsel EKLENMEZ).
+ * Yol `posts/{uid}/sticker-…` — post-media yazma politikasıyla uyumlu. Hata → null.
  */
-export async function downloadScanPhoto(photoPath: string): Promise<LocalPhoto | null> {
+export async function publishMealSticker(userId: string, stickerPath: string): Promise<string | null> {
   try {
-    const { data, error } = await getSupabaseClient().storage.from('user-media').createSignedUrl(photoPath, 600);
-    if (error || !data?.signedUrl) return null;
-    const ext = (photoPath.split('.').pop() || 'jpg').toLowerCase();
-    const target = `${FileSystem.cacheDirectory}scan-share-${Date.now()}.${ext === 'png' ? 'png' : 'jpg'}`;
-    const res = await FileSystem.downloadAsync(data.signedUrl, target);
-    if (res.status !== 200) return null;
-    const { Image } = require('react-native') as typeof import('react-native');
-    const size = await new Promise<{ width: number; height: number }>((resolve) =>
-      Image.getSize(res.uri, (width, height) => resolve({ width, height }), () => resolve({ width: 1080, height: 1080 })),
-    );
-    return { uri: res.uri, width: size.width, height: size.height };
+    const sb = getSupabaseClient();
+    const { data, error } = await sb.storage.from('user-media').download(stickerPath);
+    if (error || !data) return null;
+    const buf = await data.arrayBuffer();
+    const isPng = stickerPath.toLowerCase().endsWith('.png');
+    const file = (stickerPath.split('/').pop() || 'sticker.webp').replace(/[^A-Za-z0-9._-]/g, '_');
+    const path = `posts/${userId}/sticker-${file}`;
+    const up = await sb.storage.from(POST_MEDIA_BUCKET).upload(path, buf, { contentType: isPng ? 'image/png' : 'image/webp', upsert: true });
+    if (up.error) return null;
+    return sb.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl ?? null;
   } catch {
     return null;
   }

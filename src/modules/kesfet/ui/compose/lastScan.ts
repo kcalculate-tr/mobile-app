@@ -9,8 +9,8 @@ export interface LastScanMeal {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
-  /** 17 Kas: taramanın fotoğrafı (user-media kovası yolu) — gönderiye görsel olarak eklenir. */
-  photoPath: string | null;
+  /** 17 Kas: taramanın çıkartması (user-media `<uid>/stickers/…`) — öğün kartının küçük görseli. */
+  stickerPath: string | null;
 }
 
 export async function fetchLastScanMeal(now: Date = new Date()): Promise<LastScanMeal | null> {
@@ -20,13 +20,13 @@ export async function fetchLastScanMeal(now: Date = new Date()): Promise<LastSca
     start.setHours(0, 0, 0, 0);
     const { data, error } = await sb
       .from('meal_consumptions')
-      .select('name, calories, protein, carbs, fat, consumed_at, photo_path')
+      .select('name, calories, protein, carbs, fat, consumed_at, sticker_path')
       .eq('source', 'ai_scan')
       .gte('consumed_at', start.toISOString())
       .order('consumed_at', { ascending: false })
       .limit(1);
     if (error || !data || data.length === 0) return null;
-    const r = data[0] as { name: string; calories: number; protein: number; carbs: number; fat: number; photo_path?: string | null };
+    const r = data[0] as { name: string; calories: number; protein: number; carbs: number; fat: number; sticker_path?: string | null };
     if (!r.name) return null;
     return {
       name: r.name,
@@ -34,7 +34,7 @@ export async function fetchLastScanMeal(now: Date = new Date()): Promise<LastSca
       protein_g: Number(r.protein) || 0,
       carbs_g: Number(r.carbs) || 0,
       fat_g: Number(r.fat) || 0,
-      photoPath: typeof r.photo_path === 'string' && r.photo_path ? r.photo_path : null,
+      stickerPath: typeof r.sticker_path === 'string' && r.sticker_path ? r.sticker_path : null,
     };
   } catch {
     return null;

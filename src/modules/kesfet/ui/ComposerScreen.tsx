@@ -48,7 +48,7 @@ import {
   type ComposerDraft,
   type MealDraft,
 } from '../composer';
-import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, downloadScanPhoto, type LocalPhoto } from '../media';
+import { MAX_PHOTOS, pickPhotos, uploadPhotos, currentUserId, publishMealSticker, type LocalPhoto } from '../media';
 import { inferMealTypeFromHour } from '../../ai/scan/mealTypeFromHour';
 import { RulesSheet, rulesSeen } from './RulesSheet';
 import { ComposeIcon, type ComposeIconName } from './compose/icons';
@@ -268,12 +268,14 @@ export function ComposerScreen({
     }));
     setMealThumb(null);
     setMealSource(null);
-    // 17 Kas: taramanın fotoğrafı gönderiye görsel olarak eklenir (önceden hiç eklenmiyordu).
-    if (last.photoPath) {
-      const photo = await downloadScanPhoto(last.photoPath);
-      if (photo) {
-        setMealThumb(photo.uri);
-        setPhotos((ps) => (ps.length >= MAX_PHOTOS ? ps : [photo, ...ps]));
+    // 17 Kas (İlter): gönderiye ayrı görsel EKLENMEZ; taramanın çıkartması öğün kartının
+    // küçük görseli olur (herkese açık kopyası post-media'da).
+    if (last.stickerPath) {
+      const uid = await currentUserId();
+      const url = uid ? await publishMealSticker(uid, last.stickerPath) : null;
+      if (url) {
+        setMeal((m) => ({ ...m, photoUrl: url }));
+        setMealThumb(url);
       }
     }
   }, []);

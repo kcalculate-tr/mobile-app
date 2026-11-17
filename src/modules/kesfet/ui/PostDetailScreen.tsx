@@ -44,7 +44,7 @@ import { DidItSheet } from './DidItSheet';
 import { PostMenu } from './PostMenu';
 import { AddToast, type ToastState } from './AddToast';
 import { Icon } from './icons';
-import { postLink, relativeTime, roleBadgeKey, type ReportReason, type UiLang } from './format';
+import { isStickerUrl, postLink, relativeTime, roleBadgeKey, type ReportReason, type UiLang } from './format';
 import { track } from '../../../lib/analytics';
 
 // Final ikonları: yorum (ChatCircle) ve "ben de logla" (tarama çerçevesi + artı).
@@ -126,9 +126,9 @@ function DetailMealCard({ post, onLog }: { post: FeedPost; onLog: (from: View | 
   return (
     <View style={[styles.mealCard, { backgroundColor: t.color.surface, borderColor: t.color.line }]}>
       <View style={styles.mealRow}>
-        <View ref={thumbRef} collapsable={false} style={[styles.mealThumb, { backgroundColor: t.color.line }]}>
+        <View ref={thumbRef} collapsable={false} style={[styles.mealThumb, { backgroundColor: isStickerUrl(meal.photo_url) ? 'transparent' : t.color.line }]}>
           {meal.photo_url ? (
-            <Image source={{ uri: meal.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <Image source={{ uri: meal.photo_url }} style={StyleSheet.absoluteFill} contentFit={isStickerUrl(meal.photo_url) ? 'contain' : 'cover'} />
           ) : null}
         </View>
         <View style={styles.mealInfo}>

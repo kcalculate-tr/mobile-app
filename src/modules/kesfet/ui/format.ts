@@ -157,3 +157,8 @@ export const REPORT_REASONS = [
   'other',
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** 17 Kas: öğün kartı görseli Tara çıkartması mı (post-media `posts/{uid}/sticker-…`)? */
+export function isStickerUrl(url: string | null | undefined): boolean {
+  return typeof url === 'string' && url.includes('/sticker-');
+}

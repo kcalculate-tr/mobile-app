@@ -16,6 +16,7 @@ import { Icon } from './icons';
 import type { MealCard as MealCardData, MealType } from '../types';
 import { MealMenuPopover } from '../../gun/home/MealMenuPopover'; // G18-S5 md.8: S2 FinMoPopover
 import type { Rect } from '../../gun/home/popoverGeometry';
+import { isStickerUrl } from './format';
 
 export interface LogOriginFrame {
   x: number;
@@ -94,12 +95,13 @@ export function MealCard({
       ]}
     >
       <View style={styles.top}>
-        <View ref={thumbRef} style={[styles.thumb, { backgroundColor: t.color.line }]}>
+        {/* 17 Kas: Tara çıkartması (şeffaf) zeminsiz ve kırpılmadan; ürün fotoğrafı eskisi gibi. */}
+        <View ref={thumbRef} style={[styles.thumb, { backgroundColor: isStickerUrl(meal.photo_url) ? 'transparent' : t.color.line }]}>
           {meal.photo_url ? (
             <Image
               source={{ uri: meal.photo_url }}
               style={styles.thumbImg}
-              contentFit="cover"
+              contentFit={isStickerUrl(meal.photo_url) ? 'contain' : 'cover'}
               transition={120}
               accessibilityIgnoresInvertColors
             />
