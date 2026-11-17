@@ -21,7 +21,7 @@ const H = FEED_DEFAULT_H;
 const GAP = 2;
 const POST_MEDIA_BUCKET = 'post-media';
 
-function publicUrlForPath(path: string): string {
+export function publicUrlForPath(path: string): string {
   const { data } = getSupabaseClient().storage.from(POST_MEDIA_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }

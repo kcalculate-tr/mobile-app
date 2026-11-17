@@ -78,6 +78,7 @@ const KesfetScreen = lazy(() => import('../modules/kesfet/ui/KesfetScreen'));
 const ComposerScreen = lazy(() => import('../modules/kesfet/ui/ComposerScreen'));
 // G15-S3 — Bildirimler tam sayfa (FinNotifications); `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
 const KesfetNotificationsScreen = lazy(() => import('../modules/kesfet/ui/NotificationsScreen'));
+const KesfetReelsScreen = lazy(() => import('../modules/kesfet/ui/ReelsScreen'));
 // G22-S2 md.4 — Keşfet arama (FinSearch); `kesfet` açıkken (ya da __DEV__) kayıtlı.
 const KesfetSearchScreen = lazy(() => import('../modules/kesfet/ui/SearchScreen'));
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
@@ -165,6 +166,7 @@ const FeedDataLabLazy = withSuspense(FeedDataLabScreen);
 const KesfetLazy = withSuspense(KesfetScreen);
 const ComposerLazy = withSuspense(ComposerScreen);
 const KesfetNotificationsLazy = withSuspense(KesfetNotificationsScreen);
+const KesfetReelsLazy = withSuspense(KesfetReelsScreen);
 const KesfetSearchLazy = withSuspense(KesfetSearchScreen);
 const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
 const PublicProfileLazy = withSuspense(PublicProfileScreen);
@@ -460,6 +462,7 @@ export default function AppNavigator() {
   // G8: Composer yalnız `kesfet_paylasim` açıkken (ya da __DEV__) kayıtlı.
   const kesfetPaylasimEnabled = useFeature('kesfet_paylasim');
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
+  const kesfetVideoEnabled = useFeature('kesfet_video');
   // G12-S1: `yeni_onboarding` açıkken oturumsuz soğuk açılış WelcomeGate yerine
   // yeni onboarding akışını gösterir (soğuk-başlangıçta bir kez okunur, böylece
   // process ömrü boyunca tek initialRoute). Kapalıyken WelcomeGate bugünküyle aynı.
@@ -615,6 +618,10 @@ export default function AppNavigator() {
       )}
       {(sosyalBildirimEnabled || __DEV__) && (
         <Stack.Screen name="KesfetNotifications" component={KesfetNotificationsLazy} options={aiPush} />
+      )}
+      {/* G58-S2 md.3: Reels — bayrak kapalıyken rota YOK (giriş de yok). */}
+      {(kesfetVideoEnabled || __DEV__) && (
+        <Stack.Screen name="KesfetReels" component={KesfetReelsLazy} options={{ ...aiPush, headerShown: false, contentStyle: { backgroundColor: '#000000' } }} />
       )}
       {__DEV__ && (
         <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />

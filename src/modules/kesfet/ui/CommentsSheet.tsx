@@ -162,6 +162,7 @@ export function CommentsSheet({
   onToast,
   onSent,
   vitrinMenu,
+  showClose = false,
 }: {
   visible: boolean;
   postId: string | null;
@@ -174,6 +175,8 @@ export function CommentsSheet({
   onSent?: () => void;
   /** YALNIZ __DEV__ vitrini: FinComments kare 2 — ilk yorumun ⋯ menüsü açık. */
   vitrinMenu?: boolean;
+  /** G58-S2 (FinReelsComments): başlıkta sağda × + yazı varken lime Gönder (Reels yorum sayfası). */
+  showClose?: boolean;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -288,6 +291,19 @@ export function CommentsSheet({
               <AppText style={[styles.title, { color: t.color.ink }]}>{tr('kesfet.comments.title')}</AppText>
               <CountPill count={shownCount} max={999} bg={line2} fg={t.color.ink} testID="comments-count" />
             </View>
+            {showClose ? (
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel={tr('common.close')}
+                style={styles.headClose}
+                testID="comments-close"
+              >
+                <View style={[styles.headCloseCircle, { backgroundColor: t.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(10,10,10,0.06)' }]}>
+                  <Icon name="x" size={16} color={t.color.ink} />
+                </View>
+              </Pressable>
+            ) : null}
 
             {loading && items.length === 0 ? (
               <View style={styles.center}>
@@ -364,9 +380,15 @@ export function CommentsSheet({
                 accessibilityState={{ disabled: !text.trim() || submitting }}
                 accessibilityLabel={tr('kesfet.comments.send')}
                 hitSlop={4}
-                style={({ pressed }) => [styles.sendBtn, { backgroundColor: t.color.ink, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [
+                  styles.sendBtn,
+                  {
+                    backgroundColor: showClose ? (text.trim() ? '#C6F04F' : line2) : t.color.ink,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
               >
-                <Glyph d={SEND_PATH} size={18} color={onInk} />
+                <Glyph d={SEND_PATH} size={18} color={showClose ? (text.trim() ? '#0A0A0A' : t.color.secondary) : onInk} />
               </Pressable>
             </View>
             {text.length > MAX_LEN - 60 ? (
@@ -448,6 +470,8 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 5, borderRadius: 3, alignSelf: 'center', marginTop: 8, marginBottom: 16 },
   title: { textAlign: 'center', fontSize: 15, lineHeight: 21, fontFamily: fontFamily.bodyBold },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  headClose: { position: 'absolute', right: 0, top: 14, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  headCloseCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   center: { minHeight: 160, alignItems: 'center', justifyContent: 'center' },
   empty: { paddingTop: 40, paddingBottom: 60, alignItems: 'center', gap: 8 },
   emptyTitle: { fontFamily: fontFamily.headingBold, fontSize: 18, lineHeight: 24 },

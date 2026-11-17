@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Animated, { FadeIn, FadeOut, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { StatusBar } from 'expo-status-bar';
 import { AppText, BrandLogo, useTheme, LogTrail } from '../../../core/design';
 import { useFeature } from '../../../core/flags';
@@ -99,7 +100,10 @@ function Header({
   unread,
   finalHeader = true,
   me,
+  onReels,
 }: {
+  /** G58-S2 md.3: `kesfet_video` açıkken başlığın sağında küçük oynat simgesi → Reels (ilk video). */
+  onReels?: () => void;
   /** G53-S1 md.1: sağda kendi profil fotoğrafım (yoksa baş harf) → kendi herkese açık profilim. */
   me?: { url: string | null; name: string; onPress: () => void };
   onSearch: () => void;
@@ -127,6 +131,11 @@ function Header({
       <View style={styles.headerIcons}>
         {/* 17 Kas (İlter): kullanıcılar paylaşım girişini ("Günüm +") bulamıyordu → başlıkta
             arama ile aynı dilde sade + (Composer). */}
+        {onReels ? (
+          <Pressable onPress={onReels} accessibilityRole="button" accessibilityLabel={tr('kesfet_reels.entry_a11y')} style={styles.iconBtn} testID="kesfet-header-reels">
+            <ReelsGlyph color={t.color.ink} />
+          </Pressable>
+        ) : null}
         {showCompose ? (
           <Pressable onPress={onCompose} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.compose')} style={styles.iconBtn} testID="kesfet-header-compose">
             <Icon name="plus" size={26} color={t.color.ink} />
@@ -154,6 +163,16 @@ function Header({
         {me ? <KesfetMeButton url={me.url} name={me.name} onPress={me.onPress} /> : null}
       </View>
     </View>
+  );
+}
+
+/** G58-S2 md.3 — Reels girişi: yuvarlatılmış çerçeve içinde oynat üçgeni (24 pt, başlık ikonlarıyla aynı çizgi). */
+function ReelsGlyph({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round">
+      <Rect x={3.5} y={3.5} width={17} height={17} rx={5} />
+      <Path d="M10 8.8v6.4l5.2-3.2L10 8.8Z" fill={color} />
+    </Svg>
   );
 }
 
@@ -265,6 +284,8 @@ export function KesfetScreen() {
   // G18-S5 md.8: yerinde öğün menüsü (FinMoPopover) yalnız yeni kabukta; kapalıyken ⌄ = seçici sayfası (aynen).
   const yeniKabukMenu = useFeature('yeni_kabuk');
   const sosyalBildirim = useFeature('sosyal_bildirim');
+  // G58-S2 md.3: Reels yalnız `kesfet_video` açıkken (kapalıyken hiçbir giriş yok).
+  const kesfetVideo = useFeature('kesfet_video');
 
   const unread = useNotificationsStore((s) => s.unread);
   const online = useIsOnline();
@@ -777,7 +798,8 @@ export function KesfetScreen() {
                 ? () => navigation.navigate('PublicProfile', { handle: (item.author.handle || item.author.id).replace(/^@/, '') })
                 : undefined
             }
-            onOpenVideo={() => setVideoPostId(item.id)}
+            // G58-S2 md.3: videoya dokun = Reels dikey akışı (dokunulan video ilk sırada).
+            onOpenVideo={() => (kesfetVideo ? navigation.navigate('KesfetReels', { startId: item.id }) : setVideoPostId(item.id))}
             onLike={() => {
               const on = !item.me.liked;
               void useKesfetStore.getState().react(item.id, 'like', on);
@@ -808,7 +830,7 @@ export function KesfetScreen() {
         </View>
       );
     },
-    [nowMs, lang, onShare, kesfetYorum, didItDone, expandedIds, expandBody, playablePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
+    [nowMs, lang, onShare, kesfetYorum, kesfetVideo, didItDone, expandedIds, expandBody, playablePostId, quickMealLabel, onQuickLog, quickLogLabel, quickMealType, yeniKabukMenu, remainingKcal, vitrinXray, navigation, showFeedTip, firstMealPostId, postingId, postingPhase],
   );
 
   // G18-S4 md.4: akış boşken (FinFeedEmpty/FinFollowingEmpty) başka halka yoksa
@@ -970,6 +992,7 @@ export function KesfetScreen() {
         onCompose={() => navigation.navigate('Composer')}
         showCompose={kesfetPaylasim}
         showBell={sosyalBildirim}
+        onReels={kesfetVideo ? () => navigation.navigate('KesfetReels') : undefined}
         me={me}
         unread={unread}
       />

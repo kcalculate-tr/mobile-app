@@ -88,3 +88,23 @@ test('sona yaklaşınca yeni sayfa istenir', () => {
   assert.equal(reelsShouldLoadMore(1, 5, true), false);
   assert.equal(reelsShouldLoadMore(4, 5, false), false);
 });
+
+// ── Bayrak kapısı + tasarım istisnaları (statik) ──
+import fs from 'node:fs';
+import path from 'node:path';
+const SRC = path.resolve(__dirname, '../../..');
+const read = (p: string) => fs.readFileSync(path.join(SRC, p), 'utf8');
+
+test('kesfet_video kapalıyken hiçbir Reels girişi yok: başlık simgesi, video dokunuşu, rota', () => {
+  const kesfet = read('modules/kesfet/ui/KesfetScreen.tsx');
+  assert.match(kesfet, /onReels=\{kesfetVideo \? \(\) => navigation\.navigate\('KesfetReels'\) : undefined\}/);
+  assert.match(kesfet, /kesfetVideo \? navigation\.navigate\('KesfetReels', \{ startId: item\.id \}\)/);
+  const nav = read('navigation/AppNavigator.tsx');
+  assert.match(nav, /\(kesfetVideoEnabled \|\| __DEV__\) && \(\s*<Stack\.Screen name="KesfetReels"/);
+});
+
+test('Reels: müzik satırı / dönen plak YOK; "Gönder" sistem paylaşım sayfası', () => {
+  const reels = read('modules/kesfet/ui/ReelsScreen.tsx');
+  assert.doesNotMatch(reels, /disc|music|track_name|artist/i);
+  assert.match(reels, /Share\.share\(/);
+});
