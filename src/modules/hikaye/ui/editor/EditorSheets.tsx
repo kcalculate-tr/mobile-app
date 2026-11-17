@@ -2,6 +2,7 @@
 // cam yüzey (açık rgba(255,255,255,0.86) / koyu rgba(28,28,30,0.86); Reduce Transparency → düz), üst köşe 28,
 // tutamaç 36×5, başlık Bricolage 22 + kapat 44 (32 daire). Açılış 550 ms enter eğrisi, perde 330 ms;
 // Reduce Motion → 200 ms opaklık. Müzik / soru / bağlantı / challenge karoları YOK (kapsam dışı; LOG).
+import { SCROLL_KEYBOARD } from '../../../../core/design/keyboard';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
@@ -113,7 +114,7 @@ export function StickersSheet({ visible, onClose, tiles, onGeneric, onTile }: {
   const shownTiles = tiles.filter((x) => !q.trim() || x.label.toLocaleLowerCase('tr-TR').includes(q.trim().toLocaleLowerCase('tr-TR')));
   return (
     <EditorSheet visible={visible} onClose={onClose} top={150} title={tr('hikaye.stickers')} testID="story-stickers-sheet">
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
         <View style={[styles.search, { backgroundColor: st.field }]}>
           <Svg width={18} height={18} viewBox="0 0 256 256"><Path d={P_SEARCH} fill={st.sec} /></Svg>
           <TextInput value={q} onChangeText={setQ} placeholder={tr('hikaye.search_stickers')} placeholderTextColor={st.sec} accessibilityLabel={tr('hikaye.search_stickers')} style={[styles.searchIn, { color: st.text }]} returnKeyType="search" />
@@ -217,7 +218,7 @@ export function MealPickSheet({ visible, onClose, meals, initialId, previewUri, 
         </View>
       }
     >
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
         <View accessibilityLabel={tr('hikaye.preview')} style={styles.preview}>
           {previewUri ? <Image source={{ uri: previewUri }} style={[StyleSheet.absoluteFill, { opacity: 0.85 }]} contentFit="cover" /> : <LinearGradient colors={['#4A4F3A', '#17191C']} style={StyleSheet.absoluteFill} />}
           {preview ? <View style={{ transform: [{ scale: 0.9 }] }}><StorySticker overlay={preview} /></View> : null}
@@ -290,7 +291,7 @@ export function LabelSheet({ kind, initial, onClose, onDone }: {
         </View>
       }
     >
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, gap: 10 }} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, gap: 10 }} keyboardShouldPersistTaps="handled">
         {kind === 'poll' ? (
           <>
             <TextInput autoFocus value={q} onChangeText={(v) => setQ(v.slice(0, 80))} placeholder={tr('hikaye.poll_q_ph')} placeholderTextColor={st.sec} style={[styles.input, { color: st.text, backgroundColor: st.card, borderColor: st.line2 }]} accessibilityLabel={tr('hikaye.poll_q_ph')} />

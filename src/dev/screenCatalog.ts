@@ -985,6 +985,39 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(d.scene ? { scene: d.scene } : {}),
     };
   }
+  // G59-S1 — `G59-<Sahne>(-EN)(-Dark)`: hikâye (tepsi, kamera, düzenleyici hâlleri, görüntüleyici view/coach/reply,
+  // görenler liste/boş, öne çıkanlar row/edit/new). Örnek veri yalnız __DEV__ (src/dev/vitrinHikaye.ts).
+  const g59 = /^G59-(Tepsi|Kamera|Duzenleyici|Yazi|Cizim|Cikartma|Yerlesim|GundenSec|Kit|Goruntuleyici|Ipucu|Yanit|Gorenler|GorenlerBos|OneCikanlar|OneCikanDuzenle|OneCikanYeni)(-EN)?(-Dark)?$/.exec(name);
+  if (g59) {
+    const ed = (params: Record<string, unknown>) => route([...kes(), { name: 'StoryEditor', params: { mediaType: 'image', mediaUri: '__vitrinPhoto:somon', width: 1080, height: 1920, mealId: 'mc2', preset: 'tools', ...params } }]);
+    const vw = (params: Record<string, unknown>) => route([...kes(), { name: 'StoryViewer', params }]);
+    const prof = (params?: Record<string, unknown>) => route(tab('Profile', params));
+    const T: Record<string, { area: string; target: VitrinTarget; scene?: string }> = {
+      Tepsi: { area: 'kesfet', target: route(kes({ initialTab: 'for_you' })) },
+      Kamera: { area: 'kesfet', target: route([...kes(), { name: 'StoryCamera', params: { vitrinPreview: '__vitrinPhoto:somon' } }]) },
+      Duzenleyici: { area: 'kesfet', target: ed({}) },
+      Yazi: { area: 'kesfet', target: ed({ vitrinState: 'text' }) },
+      Cizim: { area: 'kesfet', target: ed({ vitrinState: 'draw' }) },
+      Cikartma: { area: 'kesfet', target: ed({ vitrinState: 'stickers' }) },
+      Yerlesim: { area: 'kesfet', target: ed({ vitrinState: 'placed' }) },
+      GundenSec: { area: 'kesfet', target: ed({ vitrinState: 'mealpick' }) },
+      Kit: { area: 'kesfet', target: route([...kes(), { name: 'StoryEditor', params: { mediaType: 'none', preset: 'kit' } }]) },
+      Goruntuleyici: { area: 'kesfet', target: vw({ userIds: ['ayse', 'mert', 'kcal'], startUserId: 'ayse' }) },
+      Ipucu: { area: 'kesfet', target: vw({ userIds: ['ayse'], startUserId: 'ayse' }), scene: 'g59Coach' },
+      Yanit: { area: 'kesfet', target: vw({ userIds: ['ayse'], startUserId: 'ayse', vitrinState: 'reply' }) },
+      Gorenler: { area: 'kesfet', target: vw({ userIds: ['00000000-0000-4000-8000-00000000a14e'], startUserId: '00000000-0000-4000-8000-00000000a14e', openViewers: true }) },
+      GorenlerBos: { area: 'kesfet', target: vw({ userIds: ['00000000-0000-4000-8000-00000000a14e'], startUserId: '00000000-0000-4000-8000-00000000a14e', openViewers: true }), scene: 'g59ViewersEmpty' },
+      OneCikanlar: { area: 'profil', target: prof() },
+      OneCikanDuzenle: { area: 'profil', target: prof({ vitrinHighlight: 'edit' }) },
+      OneCikanYeni: { area: 'profil', target: prof({ vitrinHighlight: 'new' }) },
+    };
+    const d = T[g59[1]];
+    return {
+      pano: name, area: d.area, target: d.target, data: 'default', flags: [...FINAL_FLAGS, 'hikaye', 'koc', 'su_takibi'],
+      lang: g59[2] ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g59[3] ? 'dark' : 'light',
+      ...(d.scene ? { scene: d.scene } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

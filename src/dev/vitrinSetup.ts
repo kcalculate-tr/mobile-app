@@ -169,6 +169,11 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     }
   }
 
+  // G59-S1 — hikâye vitrini (bellek içi dünya + bugünün öğünleri).
+  if (entry.pano.startsWith('G59-')) {
+    const { prepareHikayeScene } = require('./vitrinHikaye') as typeof import('./vitrinHikaye');
+    await prepareHikayeScene({ scene, en: entry.lang === 'en' });
+  }
   if (scene === 'draft') {
     // TakibeNavigator açılışta taslağı sıfırlar → sonra doldur.
     setTimeout(() => {

@@ -114,6 +114,8 @@ export const CURVE = {
   standard: Easing.bezier(0.2, 0, 0, 1),
   enter: Easing.bezier(0.05, 0.7, 0.1, 1),
   exit: Easing.bezier(0.3, 0, 0.8, 0.15),
+  /** G59-S1: hikâye ilerleme çubuğu — süre boyunca DOĞRUSAL dolum (tasarım `.seg{animation:seg 5000ms linear}`). */
+  linear: Easing.linear,
   // --- Eski adlar (takma ad) ---
   /** @deprecated → standard. */
   move: Easing.bezier(0.2, 0, 0, 1),

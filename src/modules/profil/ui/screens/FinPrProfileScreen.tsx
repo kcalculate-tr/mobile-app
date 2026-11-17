@@ -284,6 +284,7 @@ export default function FinPrProfileScreen() {
             isOwner
             enabled={hikaye}
             onOpen={(h) => navigation.navigate('StoryViewer', { highlightId: h.id, highlightOwnerId: user?.id, title: h.title, ownerAvatar: avatarUrl })}
+            devOpen={__DEV__ ? (routeCtx?.params as { vitrinHighlight?: 'edit' | 'new' } | undefined)?.vitrinHighlight : undefined}
           />
         ) : null}
 

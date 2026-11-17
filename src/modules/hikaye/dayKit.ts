@@ -65,27 +65,27 @@ export function availableKitTiles(d: DayKitData): Array<'meal' | 'ring' | 'strea
 }
 
 /**
- * "Günüm" kiti (kameradaki "Günüm"): tasarım `kit` yerleşimi — halka sol üst, su ve seri sağda.
+ * "Günüm" kiti (kameradaki "Günüm"): tasarım `kit` yerleşimi (halka sol üst, su/seri altında, öğün en altta; araç çubuğu sağ sütunu boş kalır).
  * Veri olmayan parça eklenmez. Koordinatlar 393×699 tuvalinden orana çevrildi.
  */
 export function buildDayKit(d: DayKitData, now: number = Date.now()): StoryOverlay[] {
   const out: StoryOverlay[] = [];
   let z = 0;
   if (d.goal && d.goal > 0) {
-    out.push({ id: newOverlayId('ring', now), kind: 'ring', x: 0.25, y: 0.405, scale: 1.15, rotation: -4, z: z++, data: { kcal: Math.round(d.kcal), goal: Math.round(d.goal), skin: 'dark' } });
+    out.push({ id: newOverlayId('ring', now), kind: 'ring', x: 0.3, y: 0.3, scale: 1.1, rotation: -4, z: z++, data: { kcal: Math.round(d.kcal), goal: Math.round(d.goal), skin: 'dark' } });
   }
   if (d.waterMl != null) {
-    out.push({ id: newOverlayId('water', now + 1), kind: 'water', x: 0.6, y: 0.375, scale: 1.1, rotation: 3, z: z++, data: { ml: Math.round(d.waterMl), skin: 'glass' } });
+    out.push({ id: newOverlayId('water', now + 1), kind: 'water', x: 0.2, y: 0.58, scale: 1.05, rotation: 3, z: z++, data: { ml: Math.round(d.waterMl), skin: 'glass' } });
   }
   if (d.streak != null && d.streak > 0) {
-    out.push({ id: newOverlayId('streak', now + 2), kind: 'streak', x: 0.85, y: 0.38, scale: 1.05, rotation: -2, z: z++, data: { days: d.streak, skin: 'glass' } });
+    out.push({ id: newOverlayId('streak', now + 2), kind: 'streak', x: 0.45, y: 0.58, scale: 1.05, rotation: -2, z: z++, data: { days: d.streak, skin: 'glass' } });
   }
   if (d.steps != null) {
-    out.push({ id: newOverlayId('steps', now + 3), kind: 'steps', x: 0.85, y: 0.55, scale: 1, rotation: 2, z: z++, data: { steps: d.steps, skin: 'glass' } });
+    out.push({ id: newOverlayId('steps', now + 3), kind: 'steps', x: 0.7, y: 0.58, scale: 1, rotation: 2, z: z++, data: { steps: d.steps, skin: 'glass' } });
   }
   const last = d.meals[0];
   if (last) {
-    out.push({ id: newOverlayId('meal', now + 4), kind: 'meal', x: 0.5, y: 0.66, scale: 1, rotation: 4, z: z++, data: mealDataFrom(last, 'light', true) });
+    out.push({ id: newOverlayId('meal', now + 4), kind: 'meal', x: 0.5, y: 0.8, scale: 1, rotation: 4, z: z++, data: mealDataFrom(last, 'light', true) });
   }
   return out;
 }

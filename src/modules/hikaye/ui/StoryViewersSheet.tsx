@@ -2,6 +2,7 @@
 // (sunucu get_story_viewers sahibi denetler). Üstte küçültülmüş hikâye (132×234, köşe 14, 2 pt çerçeve); cam sayfa
 // top 312: göz + "N görüntüleme", 24 sa notu, Öne çıkar / Paylaş / Sil, çıkartma etkileşimleri, filtre
 // Tümü / Tepkiler, satır 60 pt (avatar 44, beğeni kalbi, tepki hapı, kişi seçenekleri 44). Boş hâl: halka + göz.
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image as RNImage } from 'react-native';
@@ -126,7 +127,7 @@ export function StoryViewersSheet({
             </Pressable>
           ))}
         </View>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 34 }}>
+        <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 34 }}>
           {!data && !error ? <ActivityIndicator style={{ marginTop: 24 }} /> : null}
           {error ? (
             <Pressable onPress={load} accessibilityRole="button" style={styles.retry}>

@@ -4,6 +4,7 @@
 // Kapsam dışı: müzik, bağlantı, soru, challenge, "Yakın arkadaşlar" (özellik yok), "Cihaza kaydet" (görüntü
 // yakalama + medya kütüphanesi paketi yok) — LOG KARAR. Hareket: araç geçişi 220 ms solma, sayfa 550 ms enter,
 // seçili katman 220 ms; Reduce Motion → 200 ms opaklık. Haptik: araç = seçim, Bitti = hafif, paylaş = başarı.
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Keyboard, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -91,6 +92,25 @@ function VideoBase({ uri }: { uri: string }) {
 
 const emptyText = (): TextData => ({ text: '', font: 'modern', color: 'white', align: 'center', box: true });
 
+/** YALNIZ __DEV__ vitrini: düzenleyici hâllerinin örnek katmanları (tasarım FinStoryEditor yerleşimi). */
+function vitrinOverlays(state: string): StoryOverlay[] {
+  const meal: StoryOverlay = {
+    id: 'v-meal', kind: 'meal', x: 0.5, y: 0.5, scale: 1, rotation: -6, z: 2,
+    data: { name: 'Somon kinoa kase', meal_type: 'lunch', kcal: 520, protein_g: 38, carbs_g: 52, fat_g: 16, image_url: null, show_macros: true, skin: 'light' },
+  };
+  const streak: StoryOverlay = { id: 'v-streak', kind: 'streak', x: 0.84, y: 0.21, scale: 1, rotation: 6, z: 1, data: { days: 7, skin: 'light' } };
+  if (state === 'placed') return [streak, meal];
+  if (state === 'draw') {
+    const circle: number[] = [];
+    for (let i = 0; i <= 40; i++) {
+      const a = (i / 40) * Math.PI * 2;
+      circle.push(0.5 + Math.cos(a) * 0.3, 0.5 + Math.sin(a) * 0.14);
+    }
+    return [{ id: 'v-draw', kind: 'draw', x: 0.5, y: 0.5, scale: 1, rotation: 0, z: 0, data: { paths: [{ pts: circle, color: '#B9EF14', width: 10, brush: 'pen' }, { pts: [0.8, 0.78, 0.6, 0.65, 0.61, 0.69, 0.6, 0.65, 0.66, 0.66], color: '#B9EF14', width: 10, brush: 'pen' }] } }];
+  }
+  return [];
+}
+
 export default function StoryEditorScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Rp>();
@@ -108,12 +128,13 @@ export default function StoryEditorScreen() {
   const suTakibi = useFeature('su_takibi');
   const notePosted = useStoryTray((s) => s.notePosted);
 
-  const [view, setView] = useState<View_>(p.preset === 'text' ? 'text' : 'tools');
-  const [overlays, setOverlays] = useState<StoryOverlay[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [drag, setDrag] = useState<DragState | null>(null);
+  const vState = __DEV__ ? p.vitrinState : undefined;
+  const [view, setView] = useState<View_>(p.preset === 'text' || vState === 'text' ? 'text' : vState === 'draw' ? 'draw' : vState === 'stickers' ? 'stickers' : vState === 'mealpick' ? 'mealpick' : 'tools');
+  const [overlays, setOverlays] = useState<StoryOverlay[]>(() => (vState ? vitrinOverlays(vState) : []));
+  const [selected, setSelected] = useState<string | null>(vState === 'placed' ? 'v-meal' : null);
+  const [drag, setDrag] = useState<DragState | null>(vState === 'placed' ? { id: 'v-meal', overTrash: false, guideV: true, guideH: false } : null);
   const [bgIdx, setBgIdx] = useState(0);
-  const [draft, setDraft] = useState<TextData>(emptyText);
+  const [draft, setDraft] = useState<TextData>(() => (vState === 'text' ? { text: 'Koşu sonrası tabak', font: 'modern', color: 'white', align: 'center', box: true } : emptyText()));
   const [editTextId, setEditTextId] = useState<string | null>(null);
   const [brush, setBrush] = useState<StoryBrush>('pen');
   const [dcol, setDcol] = useState<StoryColorId>('lime');
@@ -572,7 +593,7 @@ export default function StoryEditorScreen() {
 
       {view === 'text' ? (
         <View style={[styles.textRows, { bottom: kb > 0 ? kb + 8 : bottomPad + 8 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" accessibilityRole="radiogroup" accessibilityLabel={tr('hikaye.colours')} contentContainerStyle={styles.colRow}>
+          <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" accessibilityRole="radiogroup" accessibilityLabel={tr('hikaye.colours')} contentContainerStyle={styles.colRow}>
             {STORY_COLORS.map((c) => {
               const on = draft.color === c.id;
               return (
@@ -582,7 +603,7 @@ export default function StoryEditorScreen() {
               );
             })}
           </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" accessibilityRole="radiogroup" accessibilityLabel={tr('hikaye.fonts')} contentContainerStyle={styles.fontRow}>
+          <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" accessibilityRole="radiogroup" accessibilityLabel={tr('hikaye.fonts')} contentContainerStyle={styles.fontRow}>
             {STORY_FONTS.map((f: StoryFont) => {
               const on = draft.font === f;
               const fs = storyFontStyle(f);
@@ -601,7 +622,7 @@ export default function StoryEditorScreen() {
             <SizeSlider value={size} onChange={setSize} track={st.line2} label={tr('hikaye.size')} valueText={tr('hikaye.size_pt', { n: size })} />
             <Text style={[styles.sizeV, { color: st.text }]}>{tr('hikaye.size_pt', { n: size })}</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="radiogroup" accessibilityLabel={tr('hikaye.colours')}>
+          <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} accessibilityRole="radiogroup" accessibilityLabel={tr('hikaye.colours')}>
             {STORY_COLORS.map((c) => {
               const on = dcol === c.id;
               return (

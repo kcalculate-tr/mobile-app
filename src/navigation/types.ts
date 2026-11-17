@@ -59,7 +59,7 @@ export type RootStackParamList = {
   // G59-S1: hikâye kamerasının "Reels" sekmesi `startVideo` ile açar (video seçici hemen açılır).
   Composer: { startVideo?: boolean } | undefined;
   // G59-S1 — Hikâye (yalnız `hikaye` açıkken ya da __DEV__ kayıtlı): kamera → düzenleyici → paylaş; görüntüleyici.
-  StoryCamera: { start?: 'camera' | 'create' | 'day' } | undefined;
+  StoryCamera: { start?: 'camera' | 'create' | 'day'; /** YALNIZ __DEV__ vitrini: vizörde örnek görsel. */ vitrinPreview?: string } | undefined;
   StoryEditor: {
     mediaType: 'image' | 'video' | 'none';
     mediaUri?: string | null;
@@ -73,6 +73,8 @@ export type RootStackParamList = {
     /** Fotoğrafın eşleştiği öğün kaydı (araç çubuğu "Bu fotoğraf öğle kaydında"). */
     mealId?: string | null;
     preset?: 'tools' | 'text' | 'kit';
+    /** YALNIZ __DEV__ vitrini: açılış hâli. */
+    vitrinState?: 'text' | 'draw' | 'stickers' | 'placed' | 'mealpick';
   };
   StoryViewer: {
     /** Tepsi sırası (kişiler); startUserId'den açılır. */
@@ -87,6 +89,8 @@ export type RootStackParamList = {
     ownerAvatar?: string | null;
     /** Görenler sayfasını açık başlat (sahibi). */
     openViewers?: boolean;
+    /** YALNIZ __DEV__ vitrini: açılış hâli. */
+    vitrinState?: 'reply';
   };
   // G15-S3 — Bildirimler tam sayfa; yalnız `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
   KesfetNotifications: undefined;

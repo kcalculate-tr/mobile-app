@@ -19,6 +19,9 @@ export const VITRIN_PHOTO = {
   get mercimek() { return uri(require('./assets/ph-mercimek.jpg')); },
   get yogurt() { return uri(require('./assets/ph-yogurt.jpg')); },
   get coban() { return uri(require('./assets/ph-coban.jpg')); },
+  /** G59-S1 hikâye vitrini (tasarım `t19/ph-somon.jpg`, `ph-menemen.jpg`). */
+  get somon() { return uri(require('./assets/ph-somon.jpg')); },
+  get menemen() { return uri(require('./assets/ph-menemen.jpg')); },
   get thTavukKinoa() { return uri(require('./assets/th-tavuk-kinoa.png')); },
   get thMercimek() { return uri(require('./assets/th-mercimek.png')); },
   get thYogurt() { return uri(require('./assets/th-yogurt.png')); },

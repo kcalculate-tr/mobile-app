@@ -4,6 +4,7 @@
 // yalnız `kesfet_video` açıkken), kamerayı çevir, mod sekmesi Gönderi / Hikâye / Reels (Reels yalnız kesfet_video).
 // Hareket: deklanşör 110 ms standart (ölçek 0,9), çevirme 330 ms; Reduce Motion → 200 ms opaklık. Haptik:
 // flaş = hafif, çekim = orta. Kamera izni bir kez reddedildiyse tekrar sorulmaz (askOnce); galeri/oluştur açık kalır.
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -299,7 +300,9 @@ export default function StoryCameraScreen() {
   return (
     <View style={[styles.root, { backgroundColor: st.bg, paddingTop: topPad }]} testID="story-camera">
       <View style={[styles.vf, { height: vfH }]} accessibilityLabel={tr('hikaye.viewfinder')}>
-        {perm === 'granted' && CameraView ? (
+        {__DEV__ && route.params?.vitrinPreview ? (
+          <Image source={{ uri: route.params.vitrinPreview }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : perm === 'granted' && CameraView ? (
           <Animated.View style={[StyleSheet.absoluteFill, flipStyle]}>
             <CameraView
               ref={camRef as never}
@@ -387,7 +390,7 @@ export default function StoryCameraScreen() {
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel={tr('hikaye.today_strip')} style={styles.strip} contentContainerStyle={styles.stripRow}>
+      <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} accessibilityLabel={tr('hikaye.today_strip')} style={styles.strip} contentContainerStyle={styles.stripRow}>
         <View style={[styles.todayCard, { backgroundColor: st.card, borderColor: st.line }]}>
           <View style={styles.limeDot} />
           <Text style={[styles.todayT, { color: st.text }]}>{tr('hikaye.today')}</Text>
@@ -421,7 +424,7 @@ export default function StoryCameraScreen() {
           accessibilityState={{ disabled: perm !== 'granted', busy }}
           testID="story-camera-shutter"
         >
-          <Animated.View style={[styles.shutter, { borderColor: st.text, opacity: perm === 'granted' ? 1 : 0.4 }, shutterStyle]}>
+          <Animated.View style={[styles.shutter, { borderColor: st.text, opacity: perm === 'granted' || (__DEV__ && route.params?.vitrinPreview) ? 1 : 0.4 }, shutterStyle]}>
             <View style={[styles.shutterIn, { backgroundColor: recording ? '#E5484D' : LIME }]} />
             {recording ? (
               <Svg width={84} height={84} style={StyleSheet.absoluteFill}>

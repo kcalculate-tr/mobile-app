@@ -3,8 +3,9 @@
 // (yalnız sahibi). Sayfa (top 96): kapak 80 + Ad (≤ 16, sayaç) + "Kapağı düzenle", Seçili / Arşiv sekmesi, 3 sütun
 // hikâye ızgarası (168 pt; seçim sırası numaralı lime nokta), "Öne çıkanı sil" (düzenle), Kaydet / Oluştur (lime;
 // ad + ≥ 1 hikâye yoksa pasif). Kapak seçimi: Kapağı düzenle → kapak modu, dokunulan seçili hikâye kapak olur.
+import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image as RNImage, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image as RNImage, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, haptic, useTheme } from '../../../core/design';
@@ -50,12 +51,15 @@ export function HighlightsRow({
   enabled,
   onOpen,
   refreshKey = 0,
+  devOpen,
 }: {
   userId: string | null | undefined;
   isOwner: boolean;
   enabled: boolean;
   onOpen: (h: Highlight) => void;
   refreshKey?: number;
+  /** YALNIZ __DEV__ vitrini: düzenle / yeni sayfası açık başlar. */
+  devOpen?: 'edit' | 'new';
 }) {
   const t = useTheme();
   const st = storyTheme(t.isDark);
@@ -74,6 +78,12 @@ export function HighlightsRow({
   useEffect(() => {
     load();
   }, [load, refreshKey]);
+  useEffect(() => {
+    if (!__DEV__ || !devOpen || !list) return;
+    if (devOpen === 'new') setSheet({ mode: 'new', h: null });
+    else if (list[0]) setSheet({ mode: 'edit', h: list[0] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devOpen, list == null]);
 
   if (!enabled || !userId) return null;
   if (!isOwner && (!list || list.length === 0)) return null;
@@ -88,7 +98,7 @@ export function HighlightsRow({
           </Pressable>
         ) : null}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView {...SCROLL_KEYBOARD} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {isOwner ? (
           <View style={styles.item}>
             <Pressable onPress={() => { haptic('selection'); setSheet({ mode: 'new', h: null }); }} accessibilityRole="button" accessibilityLabel={tr('hikaye.new_a11y')} style={[styles.newBtn, { borderColor: st.line2 }]} testID="story-highlights-new">
@@ -115,8 +125,9 @@ export function HighlightsRow({
         {list == null ? <ActivityIndicator style={{ marginLeft: 8 }} /> : null}
       </ScrollView>
       {pickEdit && list ? (
+        <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => setPickEdit(false)}>
         <EditorSheet visible onClose={() => setPickEdit(false)} top={300} title={tr('hikaye.edit_title')}>
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 4 }}>
+          <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ padding: 16, gap: 4 }}>
             {list.map((h) => (
               <Pressable key={h.id} onPress={() => { setPickEdit(false); setSheet({ mode: 'edit', h }); }} accessibilityRole="button" style={styles.pickRow}>
                 <Cover cover={h.cover} size={40} />
@@ -125,8 +136,10 @@ export function HighlightsRow({
             ))}
           </ScrollView>
         </EditorSheet>
+        </Modal>
       ) : null}
       {sheet ? (
+        <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => setSheet(null)}>
         <HighlightSheet
           mode={sheet.mode}
           highlight={sheet.h}
@@ -136,6 +149,7 @@ export function HighlightsRow({
             load();
           }}
         />
+        </Modal>
       ) : null}
     </View>
   );
@@ -246,7 +260,7 @@ export function HighlightSheet({
         </View>
       }
     >
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={[styles.cover80, { borderColor: coverMode ? LIME : st.line2 }]}>
             <View style={{ flex: 1, borderRadius: 40, overflow: 'hidden', backgroundColor: st.ph, alignItems: 'center', justifyContent: 'center' }}>

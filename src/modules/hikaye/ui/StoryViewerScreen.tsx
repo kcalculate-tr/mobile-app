@@ -166,7 +166,7 @@ export default function StoryViewerScreen() {
 
   // ── hâller ──────────────────────────────────────────────────────────────────
   const [holding, setHolding] = useState(false);
-  const [reply, setReply] = useState(false);
+  const [reply, setReply] = useState(__DEV__ && params.vitrinState === 'reply');
   const [menu, setMenu] = useState(false);
   const [report, setReport] = useState(false);
   const [viewers, setViewers] = useState(!!params.openViewers);
@@ -239,7 +239,7 @@ export default function StoryViewerScreen() {
       return;
     }
     const remaining = Math.max(50, duration * (1 - progress.value));
-    progress.value = withTiming(1, { duration: remaining, easing: (x) => x }, (done) => {
+    progress.value = withTiming(1, { duration: remaining, easing: CURVE.linear }, (done) => {
       if (done) runOnJS(finish)();
     });
     return () => cancelAnimation(progress);
