@@ -11,7 +11,8 @@
 // • Sunucu fonksiyonu yoksa (404) → girişler gizlenir, ekran geri döner (çökme yok).
 // • VoiceOver: balonlar "Koç:" / "Sen:" etiketli; kartlar tek öğe + eylem; dokunma ≥ 44 pt.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Dimensions, FlatList, Keyboard, LayoutAnimation, Platform, Pressable, StyleSheet, View, type KeyboardEvent } from 'react-native';
+import { SHEET_KEYBOARD_EVENTS, keyboardLift, keyboardTopFromEvent } from '../../../core/design/keyboard';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -69,6 +70,31 @@ export default function CoachChatScreen() {
   const c = useCoachTones();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
+  // 17 Kas (İlter): KeyboardAvoidingView + alt güvenli alan klavye açıkken yazma alanı ile klavye
+  // arasında boşluk bırakıyordu. Klavyenin üst kenarı ile ekran kökünün alt kenarı arasındaki fark
+  // kadar alt boşluk verilir (Android adjustResize'da kök zaten küçülür → fark 0, çift kaldırma yok);
+  // klavye açıkken alt güvenli alan eklenmez.
+  const rootRef = useRef<View>(null);
+  const [kbLift, setKbLift] = useState(0);
+  useEffect(() => {
+    const onShow = (e: KeyboardEvent) => {
+      const top = keyboardTopFromEvent(e, Dimensions.get('window').height);
+      rootRef.current?.measureInWindow((_x, y, _w, h) => {
+        if (Platform.OS === 'ios' && !reduced) LayoutAnimation.configureNext(LayoutAnimation.create(e?.duration || 250, 'keyboard', 'opacity'));
+        setKbLift(keyboardLift(y + h, top));
+      });
+    };
+    const onHide = (e: KeyboardEvent) => {
+      if (Platform.OS === 'ios' && !reduced) LayoutAnimation.configureNext(LayoutAnimation.create(e?.duration || 250, 'keyboard', 'opacity'));
+      setKbLift(0);
+    };
+    const a = Keyboard.addListener(SHEET_KEYBOARD_EVENTS.show, onShow);
+    const b = Keyboard.addListener(SHEET_KEYBOARD_EVENTS.hide, onHide);
+    return () => {
+      a.remove();
+      b.remove();
+    };
+  }, [reduced]);
   const { summary } = useNutritionSummary();
   const subOn = useSubscriptionEnabled();
   const limits = useSubscriptionStore((s) => s.limits);
@@ -354,7 +380,7 @@ export default function CoachChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={[styles.fill, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined} testID="coach-chat">
+    <View ref={rootRef} style={[styles.fill, { backgroundColor: c.bg, paddingBottom: kbLift }]} testID="coach-chat">
       {/* Başlık */}
       <View style={[styles.header, { paddingTop: insets.top + 4, borderBottomColor: c.line }]}>
         <Pressable onPress={() => nav.goBack()} accessibilityRole="button" accessibilityLabel={tr('coach.back')} style={styles.icon44} testID="coach-back">
@@ -427,7 +453,7 @@ export default function CoachChatScreen() {
         chips={showChips ? chips : null}
         onChip={(q) => void doSend(q, 'chip')}
         lang={lang}
-        bottomInset={insets.bottom}
+        bottomInset={kbLift > 0 ? 0 : insets.bottom}
       />
 
       <UpsellSheet
@@ -480,7 +506,7 @@ export default function CoachChatScreen() {
         }}
       />
       <Toast visible={toast != null} message={toast ?? ''} onDismiss={() => setToast(null)} autoHideMs={2200} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
