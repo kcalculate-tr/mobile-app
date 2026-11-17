@@ -61,6 +61,8 @@ export default function ShoppingListScreen() {
   // Kilit bir kez paywall'u açar (eskisi gibi); kapatılınca altta liste DEĞİL kilitli kart kalır.
   const paywallShown = useRef(false);
   useEffect(() => {
+    // Vitrin (yalnız __DEV__): paywall kapatılmış hâl — kilitli kart görünsün.
+    if (__DEV__ && (params as { vitrinLocked?: boolean }).vitrinLocked) paywallShown.current = true;
     if (gate === 'locked' && !!user?.id && !paywallShown.current) {
       paywallShown.current = true;
       openPaywall();

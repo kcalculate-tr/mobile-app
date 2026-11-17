@@ -360,6 +360,11 @@ export function KesfetScreen() {
   useEffect(() => {
     if (__DEV__ && route.params?.initialTab === 'following') {
       void useKesfetStore.getState().setTab('following');
+    } else if (__DEV__ && route.params?.initialTab === 'for_you') {
+      // G58 vitrin: "Keşfet" sekmesiyle aç (17 Kas sonrası ilk açılış "Sana Özel").
+      openedPersonal = true;
+      if (useKesfetStore.getState().tab !== 'for_you') void useKesfetStore.getState().setTab('for_you');
+      else void useKesfetStore.getState().load();
     } else if (kesfetTakip && !openedPersonal) {
       // 17 Kas: oturumun ilk açılışı "Sana Özel"de (kendi + takip ettiklerim).
       openedPersonal = true;

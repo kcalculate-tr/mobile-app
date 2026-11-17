@@ -89,6 +89,8 @@ interface VitrinPrefill {
   photos?: LocalPhoto[];
   meal?: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; photo_url?: string | null };
   activity?: { type: ActivityType; minutes: number; distanceKm?: number };
+  /** G58 vitrin: seçilmiş video kutusu (süre etiketi). */
+  video?: PickedVideoLite;
 }
 
 const num = (v: number) => String(v).replace('.', ',');
@@ -142,7 +144,7 @@ export function ComposerScreen({
   const [type, setType] = useState<PostType>(vitrinKind ?? 'ogun');
   const [body, setBody] = useState(pre?.body ?? '');
   const [photos, setPhotos] = useState<LocalPhoto[]>(pre?.photos ?? []);
-  const [video, setVideo] = useState<PickedVideoLite | null>(null);
+  const [video, setVideo] = useState<PickedVideoLite | null>(pre?.video ?? null);
   const [meal, setMeal] = useState<MealDraft>(() =>
     pre?.meal
       ? {

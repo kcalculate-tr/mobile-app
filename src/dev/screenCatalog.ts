@@ -938,20 +938,25 @@ function resolveParity(name: string): ResolvedEntry | null {
   // Plan / PlanBos = Öğün planı dolu / boş · Liste / ListeBos = Alışveriş listesi (Fresh) dolu / boş ·
   // ListeKilit = Ücretsiz kilitli kart · Bildirim / BildirimBos = Keşfet bildirimleri · Video = akışta
   // sessiz otomatik oynatma · VideoTam = tam ekran · VideoYaz = Composer (video düğmesi, seçim yok).
-  const g58 = /^G58-(PlanBos|Plan|ListeBos|ListeKilit|Liste|BildirimBos|Bildirim|VideoTam|VideoYaz|Video)(-EN)?(-Dark)?$/.exec(name);
+  const g58 = /^G58-(PlanBos|Plan|ListeBos|ListeKilit|Liste|BildirimBos|Bildirim|VideoTam|VideoYaz|VideoSecili|Video)(-EN)?(-Dark)?$/.exec(name);
   if (g58) {
-    const prof = (screen: string) => route([...tab('Profile'), { name: screen }]);
+    const prof = (screen: string, params?: Record<string, unknown>) => route([...tab('Profile'), { name: screen, ...(params ? { params } : {}) }]);
     const T: Record<string, { area: string; target: VitrinTarget; scene?: string; data?: VitrinDataState }> = {
       Plan: { area: 'profil', target: prof('MealPlan'), scene: 'g58Plan' },
       PlanBos: { area: 'profil', target: prof('MealPlan'), scene: 'g58PlanBos' },
       Liste: { area: 'profil', target: prof('ShoppingList'), scene: 'g58Plan' },
       ListeBos: { area: 'profil', target: prof('ShoppingList'), scene: 'g58PlanBos' },
-      ListeKilit: { area: 'profil', target: prof('ShoppingList'), scene: 'g58PlanKilit' },
+      ListeKilit: { area: 'profil', target: prof('ShoppingList', { vitrinLocked: true }), scene: 'g58PlanKilit' },
       Bildirim: { area: 'kesfet', target: route([...kes(), { name: 'KesfetNotifications' }]), scene: 'notifications' },
       BildirimBos: { area: 'kesfet', target: route([...kes(), { name: 'KesfetNotifications' }]), scene: 'notifications', data: 'empty' },
-      Video: { area: 'kesfet', target: route(kes()), scene: 'video' },
-      VideoTam: { area: 'kesfet', target: route(kes({ vitrin: 'videoFull' })), scene: 'videoFull' },
+      Video: { area: 'kesfet', target: route(kes({ initialTab: 'for_you' })), scene: 'video' },
+      VideoTam: { area: 'kesfet', target: route(kes({ vitrin: 'videoFull', initialTab: 'for_you' })), scene: 'videoFull' },
       VideoYaz: { area: 'kesfet', target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest' } }]), scene: 'composeVideo' },
+      VideoSecili: {
+        area: 'kesfet',
+        target: route([...kes(), { name: 'Composer', params: { vitrinKind: 'serbest', vitrinPrefill: { body: '60 saniyede bulgur salatası.', photos: [{ uri: '__vitrinPhoto:coban', width: 1080, height: 1080 }], video: { uri: 'file:///vitrin.mp4', width: 1080, height: 1920, durationMs: 60000, fileSizeBytes: 18000000, mimeType: 'video/mp4' } } } }]),
+        scene: 'composeVideo2',
+      },
     };
     const d = T[g58[1]];
     return {

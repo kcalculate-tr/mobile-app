@@ -101,6 +101,8 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
   await seedStorage({
     'g12-intro-seen-v1': scene === 'intro' || scene === 'introOrder' ? null : '1',
     [FEED_TIP_SEEN_FLAG]: scene === 'tip' ? null : '1',
+    // G58: video composer sahnelerinde görsel kılavuzu kendiliğinden açılmasın (kare kararlı olsun).
+    ...(scene.startsWith('composeVideo') ? { 'g53-share-guide-seen': '1' } : {}),
     'eatkcal-city-gate-passed': GATE_SCENES.has(scene) ? null : '1',
     // G50-S1: ilk gün görevleri "kapatıldı" işareti (vitrin kullanıcısı) her sahnede temiz başlar.
     '@kcal_first_tasks_closed:00000000-0000-4000-8000-00000000a14e': null,
