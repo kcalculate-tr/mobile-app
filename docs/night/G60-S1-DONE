@@ -1,0 +1,4 @@
+G60-S1 DONE — 2026-11-17
+Dal: release/1.1.0
+Commit: 407d8a5 (migration) · 0e1424e (istemci) · b14bdfd (eatkcal kapısı) · LOG docs/night/G60-S1-LOG.md
+Kontroller: hygiene+tsc ✓ · unit 1551/1551 ✓ · jest 137/137 suite 959/959 ✓ · PGlite 45/45 ✓ · expo export iOS ✓ Android ✓
