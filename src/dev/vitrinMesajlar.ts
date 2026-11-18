@@ -13,6 +13,7 @@ export async function prepareMesajlarScene(opts: { scene: string; en: boolean })
   const people = [
     { id: ME, name: 'Deniz Kaya', handle: 'deniz' },
     { id: 'ayse', name: 'Ayşe K.', handle: 'aysek' },
+    { id: 'beyza', name: 'Beyza Er', handle: 'beyzaer' },
     { id: 'elif', name: 'Elif Tan', handle: 'dyt.elif', role: 'diyetisyen' },
     { id: 'zeynep', name: 'Zeynep Arslan', handle: 'zeynepfit' },
     { id: 'mert', name: 'Mert', handle: 'mertfit' },
@@ -27,7 +28,7 @@ export async function prepareMesajlarScene(opts: { scene: string; en: boolean })
     me: ME,
     people,
     follows: [
-      [ME, 'ayse'], ['ayse', ME], [ME, 'elif'], ['elif', ME], [ME, 'zeynep'], ['zeynep', ME], [ME, 'mert'], ['mert', ME],
+      [ME, 'ayse'], ['ayse', ME], [ME, 'beyza'], ['beyza', ME], [ME, 'elif'], ['elif', ME], [ME, 'zeynep'], ['zeynep', ME], [ME, 'mert'], ['mert', ME],
       [ME, 'can'], ['can', ME], [ME, 'selin'], ['selin', ME], ['emre', ME], [ME, 'elif2'],
     ],
     now: () => Date.now(),
@@ -37,7 +38,7 @@ export async function prepareMesajlarScene(opts: { scene: string; en: boolean })
   const empty = s === 'chatsEmpty' || s === 'requestsEmpty';
 
   if (!empty) {
-    dm.seed({ id: 'c-ayse', with: 'ayse', messages: [{ from: 'them', body: T('Tarifi denedim, çok iyi oldu', 'Tried the recipe, it turned out great'), at: now - 4 * MIN }] });
+    dm.seed({ id: 'c-beyza', with: 'beyza', messages: [{ from: 'them', body: T('Tarifi denedim, çok iyi oldu', 'Tried the recipe, it turned out great'), at: now - 4 * MIN }] });
     dm.seed({ id: 'c-elif', with: 'elif', myRead: now, messages: [{ from: 'me', body: T('Perşembe soru-cevapta görüşürüz', 'See you at Thursday’s Q&A'), at: now - 2 * 60 * MIN }] });
     dm.seed({ id: 'c-zeynep', with: 'zeynep', muted: true, myRead: now, messages: [{ from: 'them', body: null, kind: 'post', ref: { post_id: '00000000-0000-4000-8000-0000000000p1' }, at: now - 3 * 60 * MIN }] });
     dm.seed({ id: 'c-mert', with: 'mert', messages: [{ from: 'them', body: T('Fotoğraf', 'Photo'), at: now - 26 * 60 * MIN }] });
@@ -49,11 +50,11 @@ export async function prepareMesajlarScene(opts: { scene: string; en: boolean })
     dm.seed({ id: 'r-emre', with: 'emre', myState: 'request', messages: [{ from: 'them', body: T('Koşu sonrası tabağın çok iyi görünüyordu, indirim için www.ornek-kupon.com', 'Your post-run plate looked great, discount at www.example-coupon.com'), at: now - 2 * 24 * 60 * MIN }] });
   }
   if (s === 'requestsEmpty') {
-    dm.seed({ id: 'c-ayse', with: 'ayse', myRead: now, messages: [{ from: 'them', body: T('Tarifi denedim, çok iyi oldu', 'Tried the recipe, it turned out great'), at: now - 4 * MIN }] });
+    dm.seed({ id: 'c-beyza', with: 'beyza', myRead: now, messages: [{ from: 'them', body: T('Tarifi denedim, çok iyi oldu', 'Tried the recipe, it turned out great'), at: now - 4 * MIN }] });
   }
 
   // Sohbet (FinChat `chat`): tarif yerine öğün kartı, hikâye yanıtı, okundu + yazıyor.
-  dm.seed({
+  if (!empty) dm.seed({
     id: 'chat-ayse',
     with: 'ayse',
     otherRead: now,

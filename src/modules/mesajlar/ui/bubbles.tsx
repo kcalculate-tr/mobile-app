@@ -6,7 +6,7 @@
 // Hareket: yeni balon 330 ms enter (8 pt yukarı + 0,96 → 1); azaltılmış harekette 220 ms doğrusal opaklık,
 // yazıyor noktaları sabit 0,6 opaklık.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { FinText as Text } from '../../../core/design/components/FinText';
 import { RN_CURVE, DURATION, REDUCED, fontFamily, useReducedMotion } from '../../../core/design';
 import { useT } from '../../../core/i18n';
@@ -47,15 +47,23 @@ export function MsgIn({ animate, mine, children }: { animate: boolean; mine: boo
           { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
         ],
       };
-  return <Animated.View style={[{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '100%' }, style]}>{children}</Animated.View>;
+  return <Animated.View style={[{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '100%', alignItems: mine ? 'flex-end' : 'flex-start' }, style]}>{children}</Animated.View>;
+}
+
+/** Tasarım: balon en çok 280 pt. Büyük yazıda (yazı ölçeği > 1,3) kelime bölünmesin diye ekranın %85'i. */
+export function useBubbleMax(): number {
+  const { width, fontScale } = useWindowDimensions();
+  return fontScale > 1.3 ? Math.round(width * 0.85) : Math.min(280, Math.round(width * 0.8));
 }
 
 export function TextBubble({ m, c, first, last }: { m: DmMessage; c: DmPalette; first: boolean; last: boolean }) {
   const mine = m.mine;
+  const maxW = useBubbleMax();
   return (
     <View
       style={[
         styles.bubble,
+        { maxWidth: maxW },
         bubbleRadius(mine, first, last),
         mine
           ? { backgroundColor: LIME }
@@ -181,14 +189,16 @@ export function StoryReplyBubble({ m, c, first, last }: { m: DmMessage; c: DmPal
   const { t: tr } = useT();
   return (
     <View style={{ alignItems: m.mine ? 'flex-end' : 'flex-start', gap: 4 }}>
-      <Text style={[styles.cardLabel, { color: c.sec, fontFamily: fontFamily.bodyRegular }]}>
-        {m.mine ? tr('dm.chat.story_reply_mine') : tr('dm.chat.story_reply_theirs')}
-      </Text>
-      <View style={{ flexDirection: m.mine ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 6 }}>
-        <View style={[styles.storyBar, { backgroundColor: c.line2 }]} />
+      <View style={{ flexDirection: m.mine ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }}>
+        {/* Küçük görsel yoksa (hikâye 24 sa sonra kalkar; sunucu yalnız story_id saklar) çizgi etiket boyunda. */}
+        <View style={[styles.storyBar, { backgroundColor: c.line2, height: m.ref?.thumb_url ? 112 : 18 }]} />
         {m.ref?.thumb_url ? (
           <Image source={{ uri: m.ref.thumb_url }} style={styles.storyThumb} accessibilityLabel={tr('dm.chat.story_alt')} />
-        ) : null}
+        ) : (
+          <Text style={[styles.cardLabel, { color: c.sec, fontFamily: fontFamily.bodyRegular }]}>
+            {m.mine ? tr('dm.chat.story_reply_mine') : tr('dm.chat.story_reply_theirs')}
+          </Text>
+        )}
       </View>
       <TextBubble m={m} c={c} first={first} last={last} />
     </View>
@@ -250,7 +260,7 @@ export function TypingBubble({ c, label }: { c: DmPalette; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  bubble: { maxWidth: 280, paddingVertical: 10, paddingHorizontal: 14 },
+  bubble: { paddingVertical: 10, paddingHorizontal: 14 },
   body: { fontSize: 15, lineHeight: 21 },
   sub13: { fontSize: 13 },
   postCard: { width: 268, padding: 12, borderWidth: 1, gap: 8, overflow: 'hidden' },
@@ -266,7 +276,7 @@ const styles = StyleSheet.create({
   mealThumb: { width: 64, height: 64, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   cardLabel: { fontFamily: fontFamily.bodyBold, fontSize: 12 },
   cardTitle: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 19 },
-  storyBar: { width: 3, height: 56, borderRadius: 2 },
+  storyBar: { width: 3, borderRadius: 2 },
   storyThumb: { width: 68, height: 112, borderRadius: 12 },
   dayChip: { alignSelf: 'center', marginTop: 2, marginBottom: 8, minHeight: 26, paddingHorizontal: 12, borderRadius: 13, justifyContent: 'center' },
   dayChipText: { fontFamily: fontFamily.bodySemibold, fontSize: 12 },

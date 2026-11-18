@@ -754,8 +754,8 @@ export default function StoryViewerScreen() {
           ) : null}
         </Animated.View>
 
-        {/* Alt çubuk */}
-        {story ? (
+        {/* Alt çubuk (G63: `mesajlar` açıkken yanıt açıldığında yerini serbest metin alanı alır). */}
+        {story && !(mesajlar && reply && !own) ? (
           own ? (
             <View style={styles.bottom}>
               <Pressable onPress={() => setViewers(true)} accessibilityRole="button" style={[styles.replyPill, { backgroundColor: st.card, borderColor: st.line2, justifyContent: 'center', gap: 8 }]} testID="story-viewer-viewers">
@@ -771,7 +771,7 @@ export default function StoryViewerScreen() {
           ) : (
             <View style={styles.bottom}>
               <Pressable onPress={() => setReply(true)} accessibilityRole="button" style={[styles.replyPill, { backgroundColor: st.card, borderColor: st.line2 }]} testID="story-viewer-reply-open">
-                <Text style={[styles.replyPh, { color: st.sec }]}>{tr('hikaye.reply_ph')}</Text>
+                <Text style={[styles.replyPh, { color: st.sec }]}>{mesajlar ? tr('dm.story.reply_ph') : tr('hikaye.reply_ph')}</Text>
               </Pressable>
               <Pressable onPress={() => react('like')} accessibilityRole="button" accessibilityLabel={tr('hikaye.like')} accessibilityState={{ selected: liked }} style={styles.icon48} testID="story-viewer-like">
                 <Svg width={26} height={26} viewBox="0 0 256 256"><Path d={liked ? P_HEART_F : P_HEART} fill={liked ? HEART : st.text} /></Svg>
