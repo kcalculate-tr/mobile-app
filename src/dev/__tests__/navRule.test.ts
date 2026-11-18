@@ -91,6 +91,8 @@ const IN_PLACE: Record<string, string> = {
   'modules/kayit/ui/foodPickers.tsx': 'G54 P11 seçili besini × ile kaldır / aramayı temizle (rota değişmez)',
   'modules/personalPlan/ui/flowHeader.tsx': 'kişisel plan akışı: adım geri akış İÇİ (rota değişmez) + Giriş / Kaldığın yerden kapat X (Tur 26o 01)',
   'modules/personalPlan/ui/entries.tsx': 'Ana sayfa tek seferlik kişisel plan kartını kapat',
+  'modules/eatkcal/v2/ui/rate/OrderRateCard.tsx': 'G62 Ana sayfa değerlendirme kartını kapat (Şimdi değil)',
+  'modules/eatkcal/v2/ui/rate/OrderRateSheet.tsx': 'G62 eklenen fotoğrafı kaldır (sayfanın kapat X\'i ortak Sheet\'te)',
 };
 
 /** Yalnız bayrak KAPALI yol (1.0.7) — bayrak açıkken finalRoutes/v2ScreenFor Final karşılığını verir. */

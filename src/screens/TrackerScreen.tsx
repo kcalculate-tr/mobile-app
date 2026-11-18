@@ -85,6 +85,7 @@ import { HomeExploreStrip } from './tracker/HomeStrips';
 // G18-S2 — Ana sayfa Tur 26: öne çıkanlar banner'ı, bölge bölümü, boş hâl (S1 bileşeni).
 import { HomeBanner, useHomeBanners } from '../modules/gun/home/HomeBanner';
 import { HomeRegionSection } from '../modules/gun/home/HomeRegion';
+import { HomeOrderRatePrompt } from '../modules/eatkcal/v2/ui/rate/OrderRateEntry';
 import { homeEatkcalActions } from '../modules/gun/home/homeEatkcalNav';
 import { HomeActivitySection } from '../modules/gun/home/HomeActivitySection';
 import { CoachHomeCard } from '../modules/coach/ui/entries';
@@ -2938,6 +2939,8 @@ const html = `
             {/* G49-S1 md.2–3: profilsiz Ana sayfa = yeni plan kartı + hemen altında "Neler yapabilirsin" (2×2). */}
             {/* G50-S1 md.1 (profilsiz sıra): Plan kartı → İlk gün görevleri → Neler yapabilirsin (tarama rozeti) →
                 [G51: Koç kartı →] Koç hazır soruları → Bugünün tarifleri → (Öne çıkanlar · Keşfet) → eatkcal. */}
+            {/* G62-S1: teslim edilen eatkcal siparişini değerlendir (bayrak `siparis_degerlendirme`; kapalıyken hiç çizilmez). */}
+            {yeniKabuk ? <HomeOrderRatePrompt /> : null}
             {yeniKabuk && profileGate.blocked ? <HomePlanGateCard onStart={() => profileGate.require(null)} cycleKey={focusTick} /> : null}
             {yeniKabuk && profileGate.blocked ? homeTasks : null}
             {yeniKabuk && profileGate.blocked ? <HomeQuickActions actions={quickActions} onAction={onQuickAction} /> : null}

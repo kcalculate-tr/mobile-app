@@ -80,6 +80,10 @@ export const FLAG_DEFAULTS = {
   // Sunucu satırı 20261117230300_g60_get_feed_ranked.sql (KAPALI, min_app_version 1.1.0). Kapalıyken get_feed
   // (kronolojik, dil 'tr') bayt bayt aynı; "Sana Özel" her durumda kronolojik. Geri alma = kapat. Native yok → OTA.
   kesfet_siralama: false,
+  // G62-S1 — eatkcal siparişi değerlendir v2 (FinEkRateSheet: Teslimat / Kalori uyumu / Lezzet + ürün oyu +
+  // yorum + fotoğraf; Ana sayfa ve sipariş detayında giriş kartı). Sunucu satırı 20261118120100_g62_order_rating.sql
+  // (KAPALI, min_app_version 1.1.0). Kapalıyken v1 akışı (EkOrderDetail ReviewCard, eski HomeScreen modalı) AYNEN.
+  siparis_degerlendirme: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

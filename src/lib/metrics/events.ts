@@ -383,6 +383,18 @@ export const EVENTS = {
     category: 'commerce', tr: 'Sipariş değerlendirildi', en: 'Order review submitted',
     props: { order_id: 'id', rating: 'number', item_votes: 'number' },
   },
+  // G62-S1: sipariş değerlendirme v2 (puanlar + sayılar; yorum METNİ ve fotoğraf YOK, yalnız var/yok).
+  order_rate_prompt: {
+    category: 'commerce', tr: 'Sipariş değerlendirme istemi görüldü', en: 'Order rating prompt shown',
+    props: { order_id: 'id', surface: ['home', 'order_detail'] },
+  },
+  order_rate_submit: {
+    category: 'commerce', tr: 'Sipariş değerlendirmesi gönderildi', en: 'Order rating submitted',
+    props: {
+      order_id: 'id', rating: 'number', delivery: 'number', calorie_fit: 'number', taste: 'number',
+      item_count: 'number', has_comment: 'boolean', has_photo: 'boolean', surface: ['home', 'order_detail'],
+    },
+  },
 
   // ── Pazarlama ──────────────────────────────────────────────────────────
   coupon_apply: {

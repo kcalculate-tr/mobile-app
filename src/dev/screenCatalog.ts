@@ -1030,6 +1030,17 @@ function resolveParity(name: string): ResolvedEntry | null {
       lang: en ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g61[4] ? 'dark' : 'light',
     };
   }
+  // G62-S1 — `G62-<Bos|Dolu|Gonderildi|Dusuk|Kart>(-EN)(-Dark)`: FinEkRateSheet hâlleri + giriş kartı.
+  const g62 = /^G62-(Bos|Dolu|Gonderildi|Dusuk|Kart)(-EN)?(-Dark)?$/.exec(name);
+  if (g62) {
+    const STATE: Record<string, string> = { Bos: 'empty', Dolu: 'filled', Gonderildi: 'sent', Dusuk: 'low', Kart: 'card' };
+    const en = !!g62[2];
+    return {
+      pano: name, area: 'eatkcal', target: comp('g62Rate', { state: STATE[g62[1]], en }), data: 'default',
+      flags: [...FINAL_FLAGS, 'siparis_degerlendirme'], lang: en ? 'en' : 'tr', auth: 'user', hasDark: true,
+      requested: name, scheme: g62[3] ? 'dark' : 'light',
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

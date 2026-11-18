@@ -26,6 +26,7 @@ import { tr as g58Tr, en as g58En } from './g58';
 import { tr as g59Tr, en as g59En } from './g59';
 import { tr as g60Tr, en as g60En } from './g60';
 import { tr as g61Tr, en as g61En } from './g61';
+import { tr as g62Tr, en as g62En } from './g62';
 import { tr as coachTr, en as coachEn } from '../../modules/coach/i18n';
 import { tr as planTr, en as planEn } from '../../modules/plan/i18n';
 import { tr as ppTr, en as ppEn } from '../../modules/personalPlan/i18n';
@@ -57,6 +58,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g59Tr,
     ...g60Tr,
     ...g61Tr,
+    ...g62Tr,
     // G24-S1 — kcalAI Koç.
     coach: coachTr,
     // G33-S1 — Öğün planı + alışveriş listesi (Tur 26m).
@@ -2040,6 +2042,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
     ...g59En,
     ...g60En,
     ...g61En,
+    ...g62En,
     coach: coachEn,
     plan: planEn,
     pp: ppEn,

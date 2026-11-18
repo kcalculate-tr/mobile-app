@@ -10,6 +10,8 @@
 //    alanlar: genel puan 1–5, isteğe bağlı yorum, ürün bazında beğeni).
 //    Panodaki Lezzet / Teslimat / Kalori uyumu alt puanları mevcut şemada
 //    (reviews: rating + comment) YOK → o satırlar gösterilmez.
+//  - G62-S1: `siparis_degerlendirme` AÇIKKEN "Değerlendir" = v2 giriş kartı + FinEkRateSheet (ui/rate);
+//    v1 sorgusu hiç çalışmaz. KAPALIYKEN yukarıdaki v1 akışı AYNEN.
 //  - Değişiklik talebi (iptal/tarih/adres) → bugünkü OrderDetail ekranı (aynı
 //    kurallar orada; v2 yeni talep mantığı yazmaz).
 //  - Destek: Ara tel:02323322100 · Talep oluştur → ProfileSupport.
@@ -44,6 +46,8 @@ import {
   type PendingFeedbackOrder,
 } from '../../../../lib/orderFeedback';
 import { track } from '../../../../lib/analytics';
+import { useFeature } from '../../../../core/flags';
+import { OrderRateEntry, useOrderDetailRatePrompt } from '../ui/rate/OrderRateEntry';
 import { useCartStore } from '../../../../store/cartStore';
 import { CachedImage } from '../../../../components/CachedImage';
 import { useProductImages } from '../ui/orders/useProductImages';
@@ -120,8 +124,10 @@ export default function EkOrderDetailScreen() {
 
   // Değerlendirme uygunluğu — mevcut kuralın tek kaynağı fetchPendingFeedbackOrder.
   const status = order?.status;
+  const rateV2 = useFeature('siparis_degerlendirme');
+  const rate = useOrderDetailRatePrompt(orderId, status, rateV2);
   useEffect(() => {
-    if (!user?.id || status !== 'delivered') {
+    if (rateV2 || !user?.id || status !== 'delivered') {
       setFeedback(null);
       return;
     }
@@ -134,7 +140,7 @@ export default function EkOrderDetailScreen() {
     return () => {
       mounted = false;
     };
-  }, [user?.id, status]);
+  }, [user?.id, status, rateV2]);
 
   // Canlı durum (Realtime) — değişince aynı sorguyla yeniden çek.
   const { style: deliverPopStyle, pop } = usePop();
@@ -355,7 +361,9 @@ export default function EkOrderDetailScreen() {
           </View>
         ) : null}
 
-        {canReview(order.id, feedback) && feedback ? (
+        {rateV2 ? (
+          <OrderRateEntry prompt={rate.prompt} surface="order_detail" onRated={rate.clear} />
+        ) : canReview(order.id, feedback) && feedback ? (
           <ReviewCard
             feedback={feedback}
             onDone={() => setFeedback(null)}

@@ -483,6 +483,11 @@ function HomeEmptyPartsScene() {
 }
 
 export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
+  // G62-S1 — sipariş değerlendirme sayfası hâlleri + giriş kartı (src/dev/vitrinRate.tsx).
+  g62Rate: (p) => {
+    const { G62RateScene } = require('./vitrinRate') as typeof import('./vitrinRate');
+    return <G62RateScene {...P(p)} />;
+  },
   // G61-S1 — paylaş sayfası hâlleri + kartların cihazda PNG dışa aktarımı (src/dev/vitrinShare.tsx).
   g61Share: (p) => {
     const { G61ShareScene } = require('./vitrinShare') as typeof import('./vitrinShare');

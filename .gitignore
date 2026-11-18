@@ -109,6 +109,7 @@ plugins/
 !src/dev/vitrinHikaye.ts
 # G61-S1 paylaşım vitrini (YALNIZ __DEV__).
 !src/dev/vitrinShare.tsx
+!src/dev/vitrinRate.tsx
 
 # Adisyo entegrasyonu .env dosyaları (gerçek API key/secret/bearer token içeriyor)
 tools/**/.env
