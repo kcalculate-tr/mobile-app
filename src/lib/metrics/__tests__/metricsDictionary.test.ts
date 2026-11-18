@@ -135,6 +135,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
     'supabase/migrations/20261115100100_g54_orient_v110_events.sql',
     // G56-S1: eatkcal ana sayfa bölümleri + davet.
     'supabase/migrations/20261116200100_g56_eatkcal_growth.sql',
+    // G61-S1: paylaşım paketi.
+    'supabase/migrations/20261118100100_g61_share.sql',
   ]
     .map((f) => readFileSync(join(ROOT, f), 'utf8'))
     .join('\n');
@@ -171,6 +173,8 @@ test('sunucu sözlüğü (migration) istemci sözlüğünün tamamını içerir,
   for (const n of ['eatkcal_sec_view', 'eatkcal_sec_tap', 'referral_share', 'referral_apply']) {
     assert.ok(rb56.includes(`'${n}'`), `${n} rollback'te yok`);
   }
+  const rb61 = readFileSync(join(ROOT, 'supabase/rollbacks/20261118100100_g61_share_rollback.sql'), 'utf8');
+  assert.match(rb61, /delete from public\.analytics_event_names where name in \('share_open', 'share_target'\)/);
 });
 
 test('D-S1 sözlüğündeki 38 ad istemci sözlüğünde de var (sözleşme)', () => {

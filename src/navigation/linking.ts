@@ -16,6 +16,8 @@
 //    bayrak (kisisel_plan / ogun_plani) kapalıyken kayıtlı değil → React Navigation yok sayar.
 //  • G58-S2 md.5: kcal://teklif/izmir (ve https://l.eatkcal.com/teklif/izmir) → SubPaywall
 //    { plan:'fresh', yearly:true, offer:'izmir_fresh' } (offerLinks.ts).
+//  • G61-S1 md.3: /m/ /d/ /x/ (anlık görüntü) · /r/ tarif · /i/ davet · /s/<UUID> hikâye → ShareLink
+//    (shareLinks.ts). Rota yalnız `paylasim_baglanti` açıkken kayıtlı. `/s/<kod>` (saha) eşleşmez.
 //  • Eşleşmeyen her URL (ör. kcal://reviews) config'de yok → React Navigation
 //    yok sayar, normal açılışa (initialRouteName) düşer.
 //
@@ -28,6 +30,7 @@ import type { LinkingOptions } from '@react-navigation/native';
 import { RootStackParamList } from './types';
 import { PLAN_LINK } from './planLinks';
 import { OFFER_LINK, offerFromSlug } from './offerLinks';
+import { SHARE_LINK_PATH, SHARE_STORY_PATH } from './shareLinks';
 
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [
@@ -55,6 +58,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
       // G58-S2 md.5: kcal://teklif/izmir → paywall (Fresh yıllık + İzmir teklifi); bölge/abonelik/görüldü
       // koşulları atlanır (offerLinks.ts). Bilinmeyen teklif adı → teklifsiz paywall.
       SubPaywall: { path: OFFER_LINK, parse: { offer: (v: string) => offerFromSlug(v) as never } },
+      ShareLink: { path: SHARE_LINK_PATH, alias: [SHARE_STORY_PATH] },
     },
   },
 };

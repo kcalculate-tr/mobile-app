@@ -111,6 +111,7 @@ const SupportScreen = lazy(() => import('../screens/profile/SupportScreen'));
 const MyReviewsScreen = lazy(() => import('../screens/profile/MyReviewsScreen'));
 // Derin bağlantı hedefleri (G5-S4) — yalnız /p/ /u/ bağlantısıyla erişilir.
 const SharedPostScreen = lazy(() => import('../screens/share/SharedPostScreen'));
+const ShareLinkScreen = lazy(() => import('../screens/share/ShareLinkScreen'));
 const SharedProfileScreen = lazy(() => import('../screens/share/SharedProfileScreen'));
 // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken TrackerScreen'den erişilir.
 const ScanScreen = lazy(() => import('../modules/ai/scan/screens/ScanScreen'));
@@ -197,6 +198,7 @@ const NotificationPreferencesLazy = withSuspense(NotificationPreferencesScreen);
 const SupportLazy = withSuspense(SupportScreen);
 const MyReviewsLazy = withSuspense(MyReviewsScreen);
 const SharedPostLazy = withSuspense(SharedPostScreen);
+const ShareLinkLazy = withSuspense(ShareLinkScreen);
 const SharedProfileLazy = withSuspense(SharedProfileScreen);
 const ScanLazy = withSuspense(ScanScreen);
 const ScanOfflineLazy = withSuspense(ScanOfflineScreen);
@@ -470,6 +472,8 @@ export default function AppNavigator() {
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
   const kesfetVideoEnabled = useFeature('kesfet_video');
   const hikayeEnabled = useFeature('hikaye');
+  // G61-S1: l.eatkcal.com/m|d|x|r|i ve /s/<UUID> hedefi yalnız `paylasim_baglanti` açıkken kayıtlı.
+  const paylasimBaglantiEnabled = useFeature('paylasim_baglanti');
   // G12-S1: `yeni_onboarding` açıkken oturumsuz soğuk açılış WelcomeGate yerine
   // yeni onboarding akışını gösterir (soğuk-başlangıçta bir kez okunur, böylece
   // process ömrü boyunca tek initialRoute). Kapalıyken WelcomeGate bugünküyle aynı.
@@ -676,6 +680,9 @@ export default function AppNavigator() {
       {/* Derin bağlantı hedefleri (G5-S4). Koyu zeminli iniş ekranları. */}
       <Stack.Screen name="SharedPost" component={SharedPostLazy} options={{ ...aiPush, contentStyle: { backgroundColor: yeniKabukRoutes ? stackBg : '#0A0A0A' } }} />
       <Stack.Screen name="SharedProfile" component={finalScreenFor('SharedProfile', finalFlag.kesfet, SharedProfileLazy)} options={{ ...aiPush, contentStyle: { backgroundColor: yeniKabukRoutes ? stackBg : '#0A0A0A' } }} />
+      {(paylasimBaglantiEnabled || __DEV__) && (
+        <Stack.Screen name="ShareLink" component={ShareLinkLazy} options={aiPush} />
+      )}
       {/* AI tarama (G6-S4) — tam ekran kamera görünümü. */}
       <Stack.Screen
         name="AiScan"

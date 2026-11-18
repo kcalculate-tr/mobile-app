@@ -165,6 +165,7 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   PersonalInfo: { kind: 'finalRoute' },
   ProfileContracts: { kind: 'v2swap', file: 'modules/eatkcal/v2/screens/EkProfileLinks.tsx' },
   PaymentScreen: { kind: 'v2swap', file: 'modules/eatkcal/v2/screens/EkPaymentScreen.tsx' },
+  ShareLink: { kind: 'final', file: 'screens/share/ShareLinkScreen.tsx' }, // G61-S1 md.3: l.eatkcal.com/m|d|x|r|i, /s/<UUID> (paylasim_baglanti)
   SharedPost: { kind: 'internal', why: 'kesfet açıkken KesfetPostDetail (PostDetailScreen), değilse Legacy*' },
   SharedProfile: { kind: 'finalRoute' },
   AiScan: { kind: 'internal', why: 'ScanScreen yeni_kabuk ile dallanır (G17-S2: FinScanCamera canlı + FinScanAnalyzing/FinPhotoResult/FinScanErrorSheet; eski derlemede FinScanViewfinder yedeği)' },

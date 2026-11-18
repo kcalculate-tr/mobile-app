@@ -14,6 +14,7 @@ import { FinRow } from '../../../../profil/ui/finUi';
 import { inviteVisible } from '../../growth/rules';
 import { applyReferralCode, fetchCanApplyReferral, fetchReferralSettings } from '../../growth/growthApi';
 import { referralCodeLooksValid, type ApplyError } from '../../growth/referral';
+import { clearPendingInvite, readPendingInvite } from '../../../../../lib/share/pendingInvite';
 
 /** Ödül tutarı (settings.referral_reward_tl) — bayrak açık + oturum varken bir kez okunur. */
 export function useInviteReward(): { visible: boolean; rewardTl: number | null } {
@@ -83,6 +84,12 @@ export function CartInviteCodeRow({ onMessage }: { onMessage: (text: string) => 
       return;
     }
     fetchCanApplyReferral(userId).then((ok) => alive && setEligible(ok));
+    // G61-S1: l.eatkcal.com/i/<kod> ile gelen kod → satır açık + dolu.
+    readPendingInvite().then((pending) => {
+      if (!alive || !pending) return;
+      setCode(pending);
+      setOpen(true);
+    });
     return () => {
       alive = false;
     };
@@ -100,6 +107,7 @@ export function CartInviteCodeRow({ onMessage }: { onMessage: (text: string) => 
     const r = await applyReferralCode(code);
     setBusy(false);
     track('referral_apply', { result: r.ok ? 'ok' : r.error, where: 'cart' });
+    if (r.ok || (r as { error: ApplyError }).error !== 'error') void clearPendingInvite();
     if (r.ok) {
       haptic('success');
       setDone(true);

@@ -125,6 +125,8 @@ export type RootStackParamList = {
   MeasurementHistory: undefined;
   // Derin bağlantı hedefleri (G5-S4) — l.eatkcal.com/p/:postId, /u/:handle.
   SharedPost: { postId: string; commentId?: string };
+  // G61-S1 md.3 — l.eatkcal.com/m|d|x|r|i/<id> ve /s/<UUID> (shareLinks.ts); yalnız `paylasim_baglanti` açıkken kayıtlı.
+  ShareLink: { kind: string; id: string };
   SharedProfile: { handle: string };
   // AI tarama (G6-S4) — yalnız `ai_tarama` bayrağı açıkken erişilir.
   AiScan: undefined;
