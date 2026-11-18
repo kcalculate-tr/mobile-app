@@ -16,6 +16,7 @@ import {
   Animated,
   InteractionManager,
   Linking,
+  PixelRatio,
   Pressable,
   ScrollView,
   Share,
@@ -127,6 +128,8 @@ function Icon({ d, size, color, sw = 1.8 }: { d: string; size: number; color: st
 }
 
 const THUMB_W = 150;
+// toDataURL yerel piksel ölçeğinde çizer (iOS 3×) → çıktı tam 1080 px olsun diye pt genişliği 1080 / ölçek.
+const CAPTURE_W = CARD_W / PixelRatio.get();
 const LEGACY_SHARE_TARGET: Partial<Record<ShareKind, 'post' | 'day' | 'meal'>> = { post: 'post', day: 'day', meal: 'meal', xray: 'meal' };
 
 export function ShareSheet({
@@ -534,6 +537,7 @@ export function ShareSheet({
           lang={cardLang}
           link={short}
           qrValue={qrValue}
+          width={CAPTURE_W}
         />
         <ShareCard
           ref={(r) => {
@@ -546,6 +550,7 @@ export function ShareSheet({
           lang={cardLang}
           link={short}
           qrValue={qrValue}
+          width={CAPTURE_W}
         />
       </View>
     </Sheet>

@@ -483,6 +483,15 @@ function HomeEmptyPartsScene() {
 }
 
 export const VITRIN_SCENES: Record<string, React.ComponentType<any>> = {
+  // G61-S1 — paylaş sayfası hâlleri + kartların cihazda PNG dışa aktarımı (src/dev/vitrinShare.tsx).
+  g61Share: (p) => {
+    const { G61ShareScene } = require('./vitrinShare') as typeof import('./vitrinShare');
+    return <G61ShareScene {...P(p)} />;
+  },
+  g61Export: (p) => {
+    const { G61ExportScene } = require('./vitrinShare') as typeof import('./vitrinShare');
+    return <G61ExportScene {...P(p)} />;
+  },
   // G18-S1 — FinOrient2 (Tara sonucu üstünde ipucu 2/4) + FinCelebrateProfile.
   orientLog: () => (
     <View style={{ flex: 1 }}>

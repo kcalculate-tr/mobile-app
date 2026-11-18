@@ -811,7 +811,8 @@ function StoryContent({ c, d, link }: { c: Ctx; d: Extract<ShareCardInput, { kin
   const nameLines = d.mealName ? wrapText(d.mealName, stName, stW - 44 - stImg - 20, 2, 'jakarta', 800) : [];
   const stH = Math.max(stImg, nameLines.length * stName * 1.15 + 6 + stK * 1.35 + 8) + 44;
   const kcalTxt = d.mealKcal != null ? `${fmtNum(d.mealKcal, c.lang)} kcal` : '';
-  const linkW = 22 + 38 + 14 + textWidth(link, 30, 'jakarta', 800) + 30;
+  const linkTxt = fitLine(link, 30, fw - 80 - (22 + 38 + 14 + 30), 'jakarta', 800);
+  const linkW = 22 + 38 + 14 + textWidth(linkTxt, 30, 'jakarta', 800) + 30;
   const linkY = photo ? c.H - c.L.foot - 54 - 14 - 41 - 40 - 84 : fy + fh - 40 - 84;
   return (
     <G>
@@ -875,7 +876,7 @@ function StoryContent({ c, d, link }: { c: Ctx; d: Extract<ShareCardInput, { kin
         <Rect x={fx + 40} y={linkY} width={linkW} height={84} rx={42} fill="#FFFFFF" />
         <StrokeIcon d={ICON.link} x={fx + 40 + 22} y={linkY + 23} size={38} color="#0A0A0A" sw={2.4} />
         <SvgText x={fx + 40 + 22 + 38 + 14} y={linkY + 42 + 30 * 0.35} fontFamily={FONT.j800} fontSize={30} fill="#0A0A0A">
-          {link}
+          {linkTxt}
         </SvgText>
       </G>
     </G>

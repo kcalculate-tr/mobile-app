@@ -1018,6 +1018,18 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(d.scene ? { scene: d.scene } : {}),
     };
   }
+  // G61-S1 — `G61-<Hâl>(-<tür>)(-EN)(-Dark)`: paylaş sayfası (Sayfa/Kopyalandi/Yukleniyor/Hata) ve
+  // `G61-Disa(-EN)`: 48 kartı cihazda PNG'ye aktarır (Documents/g61). Örnek veri src/dev/vitrinShare.tsx.
+  const g61 = /^G61-(Sayfa|Kopyalandi|Yukleniyor|Hata|Disa)(?:-(meal|day|post|profile|recipe|invite|xray|story))?(-EN)?(-Dark)?$/.exec(name);
+  if (g61) {
+    const STATE: Record<string, string> = { Sayfa: 'default', Kopyalandi: 'copied', Yukleniyor: 'loading', Hata: 'error' };
+    const en = !!g61[3];
+    const target = g61[1] === 'Disa' ? comp('g61Export', { en }) : comp('g61Share', { state: STATE[g61[1]], kind: g61[2] ?? 'meal', en });
+    return {
+      pano: name, area: 'kesfet', target, data: 'default', flags: [...FINAL_FLAGS, 'paylasim_karti', 'paylasim_baglanti'],
+      lang: en ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g61[4] ? 'dark' : 'light',
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {
