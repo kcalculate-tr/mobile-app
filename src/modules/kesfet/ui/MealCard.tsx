@@ -57,10 +57,13 @@ export function MealCard({
   const [portion, setPortion] = useState(1);
   const [anchor, setAnchor] = useState<Rect | null>(null);
   const meal0 = menuMeal ?? quickMeal;
-  const logText =
-    quickMeal && menuMeal && menuMeal !== quickMeal
-      ? tr('kesfet.ui.meal_card.log_to', { meal: tr(`kesfet.ui.meal_dat.${menuMeal}`) })
-      : logLabel ?? tr('kesfet.ui.meal_card.log_to_meal', { meal: quickMealLabel });
+  // 18 Kas (İlter): saate göre öğün ÖNCEDEN seçilmez. Etiket "Öğüne logla"; dokununca öğün menüsü
+  // (Kahvaltı / Öğle / Akşam / Ara öğün + porsiyon) açılır, seçilen öğün etikete yazılır, ikinci dokunuş loglar.
+  void logLabel;
+  void quickMealLabel;
+  const logText = menuMeal
+    ? tr('kesfet.ui.meal_card.log_to', { meal: tr(`kesfet.ui.meal_dat.${menuMeal}`) })
+    : tr('kesfet.ui.meal_card.log_any');
   const openMenu = () => {
     if (!quickMeal) return onOpenSheet();
     if (anchor) return;
@@ -136,7 +139,7 @@ export function MealCard({
         {/* Lime "⟨Öğün⟩'ye logla ⌄" — iki parçalı: etiket (hızlı logla) + ⌄ (seçici). */}
         <View ref={btnRef} collapsable={false} style={[styles.logBtn, { backgroundColor: t.color.accent }]}>
           <Pressable
-            onPress={quickLog}
+            onPress={menuMeal ? quickLog : openMenu}
             onLongPress={onOpenSheet}
             accessibilityRole="button"
             accessibilityLabel={logText}

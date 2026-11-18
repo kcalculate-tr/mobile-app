@@ -382,6 +382,8 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           added: { one: '%{count} kişi ekledi', other: '%{count} kişi ekledi' },
           logged_count: { one: '%{count} kişi logladı', other: '%{count} kişi logladı' },
           log_to_meal: '%{meal}’ye logla',
+          // 18 Kas (İlter): öğün önceden seçili gelmez; dokununca Kahvaltı / Öğle / Akşam / Ara öğün seçilir.
+          log_any: 'Öğüne logla',
           log_hint: 'Uzun bas: öğün ve porsiyon seç',
           pick_meal: 'Öğün ve porsiyon seç',
           // G15 — yönelme eki öğüne göre (Kahvaltı’ya · Öğle’ye · Akşam’a · Ara öğüne).
@@ -2349,6 +2351,7 @@ export const translations: Record<Lang, Record<string, unknown>> = {
           added: { one: '%{count} person added', other: '%{count} people added' },
           logged_count: { one: '%{count} person logged', other: '%{count} people logged' },
           log_to_meal: 'Log to %{meal}',
+          log_any: 'Log meal',
           log_hint: 'Long-press: pick meal and portion',
           pick_meal: 'Pick meal and portion',
           log_to: 'Log to %{meal}',

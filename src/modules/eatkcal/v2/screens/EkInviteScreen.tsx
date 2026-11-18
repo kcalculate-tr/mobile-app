@@ -2,7 +2,9 @@
 // Veri: my_referral() (kod yoksa üretir + geçmiş). Paylaşım: sistem paylaşımı (kod + mağaza bağlantıları).
 // `davet` bayrağı kapalı / misafir / ödül tanımsızsa giriş zaten yok; yine de açılırsa boş hâl.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { CachedImage } from '../../../../components/CachedImage';
+import { inviteBannerUrl, INVITE_BANNER_RATIO } from '../growth/inviteBanner';
 import * as Clipboard from 'expo-clipboard';
 import { useRoute } from '@react-navigation/native';
 import { FinText as Text } from '../../../../core/design/components/FinText';
@@ -18,7 +20,6 @@ import { useGrowthTokens } from '../ui/growth/tokens';
 import { fetchMyReferral } from '../growth/growthApi';
 import { referralShareText, visibleHistory, type MyReferral } from '../growth/referral';
 
-const BOWL = require('../../../../../assets/glass/bowl.png');
 const SCALE = 1.3;
 
 type Params = { vitrin?: MyReferral; vitrinCopied?: boolean } | undefined;
@@ -119,19 +120,19 @@ export default function EkInviteScreen() {
           />
         ) : data === undefined ? (
           <View style={{ gap: 10 }} accessible accessibilityLabel={t('ek56.loading')}>
-            <EkSkeleton height={226} radius={20} style={{ backgroundColor: k.skel }} />
+            <EkSkeleton height={124} radius={20} style={{ backgroundColor: k.skel }} />
+            <EkSkeleton height={160} radius={20} style={{ backgroundColor: k.skel }} />
             <EkSkeleton width={160} height={22} radius={8} style={{ backgroundColor: k.skel }} />
             <EkSkeleton height={180} radius={20} style={{ backgroundColor: k.skel }} />
           </View>
         ) : (
           <>
+            {/* 18 Kas (İlter): sayfanın başında kampanya banner'ı net, tam genişlikte. */}
+            <CachedImage uri={inviteBannerUrl(lang)} style={[styles.banner, { backgroundColor: k.skel }]} contentFit="cover" />
+            <Text style={[styles.heroTitle, { color: k.ink }]} accessibilityRole="header" maxFontSizeMultiplier={SCALE}>
+              {t('ek56.invite.hero')}
+            </Text>
             <View style={[styles.hero, { backgroundColor: k.card, borderColor: k.line }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Image source={BOWL} style={styles.glass60} accessibilityIgnoresInvertColors accessible={false} />
-                <Text style={[styles.heroTitle, { color: k.ink, flex: 1 }]} maxFontSizeMultiplier={SCALE}>
-                  {t('ek56.invite.hero')}
-                </Text>
-              </View>
               <View style={[styles.codeBox, { backgroundColor: k.nest }]}>
                 <View style={{ flex: 1 }} accessible accessibilityLabel={`${t('ek56.invite.code_label')}: ${data.code.split('').join(' ')}`}>
                   <Text style={[styles.c12, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
   h1: { fontFamily: fontFamily.headingBold, fontSize: 24, lineHeight: 29 },
   h2: { fontFamily: fontFamily.headingBold, fontSize: 20, lineHeight: 24, minHeight: 24 },
   hero: { padding: 16, borderRadius: 20, borderWidth: 1, gap: 12 },
-  glass60: { width: 60, height: 60, resizeMode: 'contain' },
+  banner: { width: '100%', aspectRatio: INVITE_BANNER_RATIO, borderRadius: 20, overflow: 'hidden' },
   heroTitle: { fontFamily: fontFamily.headingBold, fontSize: 20, lineHeight: 24 },
   codeBox: { minHeight: 64, paddingLeft: 16, paddingRight: 6, borderRadius: 16, flexDirection: 'row', alignItems: 'center' },
   c12: { fontFamily: fontFamily.bodyMedium, fontSize: 12, lineHeight: 16 },

@@ -69,14 +69,22 @@ export async function uploadPhotos(userId: string, photos: LocalPhoto[]): Promis
  */
 export async function publishMealSticker(userId: string, stickerPath: string): Promise<string | null> {
   try {
+    // 18 Kas: React Native'de Blob.arrayBuffer() yok → download() + arrayBuffer() sessizce düşüyordu
+    // (çıkartma hiç kopyalanmıyordu). uploadPhotos ile aynı kanıtlı yol: imzalı URL → önbelleğe indir
+    // → base64 → ArrayBuffer.
     const sb = getSupabaseClient();
-    const { data, error } = await sb.storage.from('user-media').download(stickerPath);
-    if (error || !data) return null;
-    const buf = await data.arrayBuffer();
+    const signed = await sb.storage.from('user-media').createSignedUrl(stickerPath, 120);
+    if (signed.error || !signed.data?.signedUrl) return null;
     const isPng = stickerPath.toLowerCase().endsWith('.png');
     const file = (stickerPath.split('/').pop() || 'sticker.webp').replace(/[^A-Za-z0-9._-]/g, '_');
+    const dir = FileSystem.cacheDirectory;
+    if (!dir) return null;
+    const local = `${dir}kcal-sticker-${file}`;
+    const dl = await FileSystem.downloadAsync(signed.data.signedUrl, local);
+    if (dl.status !== 200) return null;
+    const base64 = await FileSystem.readAsStringAsync(local, { encoding: FileSystem.EncodingType.Base64 });
     const path = `posts/${userId}/sticker-${file}`;
-    const up = await sb.storage.from(POST_MEDIA_BUCKET).upload(path, buf, { contentType: isPng ? 'image/png' : 'image/webp', upsert: true });
+    const up = await sb.storage.from(POST_MEDIA_BUCKET).upload(path, decode(base64), { contentType: isPng ? 'image/png' : 'image/webp', upsert: true });
     if (up.error) return null;
     return sb.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl ?? null;
   } catch {

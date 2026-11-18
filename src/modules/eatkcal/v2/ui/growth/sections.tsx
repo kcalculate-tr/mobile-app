@@ -32,9 +32,9 @@ import { filterChips, productKcal, type GrowthProduct, type KcalState, type Plan
 import type { FilterKey } from '../../growth/config';
 import type { PastOrder } from '../../../../../lib/reorder';
 import { SEC, useGrowthTokens, type GrowthTokens } from './tokens';
+import { INVITE_BANNER_RATIO, inviteBannerUrl } from '../../growth/inviteBanner';
 
 const FLAME = require('../../../../../../assets/glass/flame.png');
-const BOWL = require('../../../../../../assets/glass/bowl.png');
 
 export type EkSecKey = 'banners' | 'chips' | 'reorder' | 'kcal' | 'plan' | 'top' | 'invite';
 
@@ -672,47 +672,47 @@ export function TopSection({ rows, addingId, onOpen, onAdd, onAll }: { rows: Top
   );
 }
 
-// ── 6) Arkadaşını davet et (banner biçimi) ──────────────────────────────────
+// ── 6) Arkadaşını davet et ─────────────────────────────────────────────────
+// 18 Kas (İlter): kampanya banner'ı (görsel) + altında başlık/açıklama ve sağda lime "Davet et" düğmesi.
 export function InviteBanner({ onPress }: { onPress: () => void }) {
   const k = useGrowthTokens();
-  const { t } = useEk();
+  const { t, lang } = useEk();
   useSecView('invite', 'full', true);
   const title = t('ek56.invite.title');
-  // G58-S2 md.4: "Arkadaşını davet et, ikinize de 1 öğün bizden".
   const desc = t('ek56.invite.hero');
+  const open = () => {
+    haptic('selection');
+    secTap('invite', 'open');
+    onPress();
+  };
   return (
     <View style={styles.gutter} testID="ek56-invite">
-      <Pressable
-        onPress={() => {
-          haptic('selection');
-          secTap('invite', 'open');
-          onPress();
-        }}
-        accessibilityRole="link"
-        accessibilityLabel={`${t('ek56.banners.invite_tag')}: ${title}. ${desc}`}
-        style={({ pressed }) => [{ gap: 8 }, pressed && { opacity: 0.85 }]}
-      >
-        {/* Görsel Claude Design'dan gelecek; o zamana kadar opak yüzey + cam nesne (kase = sipariş). */}
-        <View style={[styles.inviteImg, { backgroundColor: k.card, borderColor: k.line2 }]}>
-          <Image source={BOWL} style={styles.bowl} accessibilityIgnoresInvertColors accessible={false} />
-          <View style={[styles.invitePill, { backgroundColor: k.lime }]}>
-            <Text style={[styles.tagText, { color: k.limeInk, fontSize: 14 }]} maxFontSizeMultiplier={SCALE}>
-              {t('ek56.invite.banner_cta')}
+      <View style={[styles.inviteCard, { backgroundColor: k.card, borderColor: k.line }]}>
+        <Pressable onPress={open} accessibilityRole="link" accessibilityLabel={`${title}. ${desc}`} style={({ pressed }) => [pressed && { opacity: 0.9 }]}>
+          <CachedImage uri={inviteBannerUrl(lang)} style={[styles.inviteImg, { backgroundColor: k.skel }]} contentFit="cover" />
+        </Pressable>
+        <View style={styles.inviteRow}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text style={[styles.bTitle, { color: k.ink }]} maxFontSizeMultiplier={SCALE}>
+              {title}
+            </Text>
+            <Text style={[ekType.c13, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
+              {desc}
             </Text>
           </View>
+          <Pressable
+            onPress={open}
+            accessibilityRole="button"
+            accessibilityLabel={t('ek56.invite.banner_cta')}
+            style={({ pressed }) => [styles.invitePill, { backgroundColor: k.lime }, pressed && { opacity: 0.85 }]}
+            testID="ek56-invite-cta"
+          >
+            <Text style={[styles.tagText, { color: k.limeInk, fontSize: 15 }]} maxFontSizeMultiplier={SCALE}>
+              {t('ek56.invite.banner_cta')}
+            </Text>
+          </Pressable>
         </View>
-        <View style={{ gap: 2, paddingHorizontal: 2 }}>
-          <Text style={[ekType.c13s, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
-            {t('ek56.banners.invite_tag')}
-          </Text>
-          <Text style={[styles.bTitle, { color: k.ink }]} maxFontSizeMultiplier={SCALE}>
-            {title}
-          </Text>
-          <Text style={[ekType.c13, { color: k.sec }]} maxFontSizeMultiplier={SCALE}>
-            {desc}
-          </Text>
-        </View>
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -829,9 +829,10 @@ const styles = StyleSheet.create({
   planRow: { paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 76 },
   planImg: { width: 56, height: 56, borderRadius: 14 },
   planFoot: { paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12, borderTopWidth: 1 },
-  inviteImg: { height: SEC.bannerH, borderRadius: 20, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, overflow: 'hidden' },
-  bowl: { width: 76, height: 76, resizeMode: 'contain' },
-  invitePill: { height: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center' },
+  inviteCard: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  inviteImg: { width: '100%', aspectRatio: INVITE_BANNER_RATIO },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  invitePill: { minHeight: 44, paddingHorizontal: 18, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   bTitle: { fontFamily: fontFamily.bodyBold, fontSize: 15, lineHeight: 19 },
   toastWrap: { alignItems: 'center' },
   toast: { minHeight: 52, shadowOpacity: 1, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 },

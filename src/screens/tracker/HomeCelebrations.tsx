@@ -13,7 +13,11 @@
 // ekranı (FinSheetNotify) açılır → tek fonksiyon core/push/pushPermission
 // (requestPushPermission('first_meal'); izin verilirse jeton orada kaydedilir).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Share } from 'react-native';
+import { Share, View } from 'react-native';
+import type Svg from 'react-native-svg';
+import { CelebrateShareCard } from '../../components/share/CelebrateShareCard';
+import { captureSvgToPngBase64 } from '../../lib/shareCard';
+import { sharePngImage } from '../../lib/shareImage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { DURATION, TIMING } from '../../core/design';
@@ -298,16 +302,36 @@ export function HomeCelebrations({
     month: 'short',
   });
 
+  // 18 Kas (İlter): metin yerine GÖRSEL paylaşılır → paylaşım sayfasında Instagram (hikâye/gönderi) çıkar.
+  // Görsel üretilemezse eski metin paylaşımına düşer.
+  const shareCardRef = useRef<Svg>(null);
   const onShare = useCallback(() => {
     if (!shown) return;
     const msg = `${tt(`celebrate.${shown}_title1`)} ${tt(`celebrate.${shown}_mark`)} · ${cardSub} · Kcalculate`;
-    void Share.share({ message: msg })
-      .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'streak', surface: 'celebration' }); })
-      .catch(() => {});
+    const textFallback = () =>
+      void Share.share({ message: msg })
+        .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'streak', surface: 'celebration' }); })
+        .catch(() => {});
+    void captureSvgToPngBase64(shareCardRef.current as never)
+      .then((b64) => sharePngImage(b64, `kutlama-${shown}`, { dialogTitle: tt('celebrate.share'), target: 'streak', surface: 'celebration_image' }))
+      .catch(textFallback);
   }, [shown, cardSub, tt]);
 
   return (
     <>
+      {shown ? (
+        <View pointerEvents="none" style={{ position: 'absolute', left: -10000, top: 0, opacity: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <CelebrateShareCard
+            ref={shareCardRef}
+            title1={tt(`celebrate.${shown}_title1`)}
+            mark={tt(`celebrate.${shown}_mark`)}
+            sub={cardSub}
+            date={dateLabel}
+            brand="kcalculate"
+            link="eatkcal.com"
+          />
+        </View>
+      ) : null}
       {shown ? (
         <CelebrateOverlay
           visible
