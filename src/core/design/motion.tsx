@@ -355,6 +355,17 @@ export const SHEET = {
     spring: null,
     detentHaptic: 'light' as HapticKind,
   },
+  /**
+   * G61-S1 FinShareSheet: sayfa 500 emphasized (slow + enter) alttan · kapanış fast 200 exit ·
+   * scrim 0→0.4. Azaltılmış harekette Sheet zaten 220 ms opaklığa düşer.
+   */
+  share: {
+    openDuration: DURATION.slow,
+    closeDuration: DURATION.fast,
+    scrimTo: 0.4,
+    spring: null,
+    detentHaptic: 'light' as HapticKind,
+  },
   /** eatkcal sheet: açılış eatkcal 200/28 yayı · scrim base 300 · kapanış fast 200. */
   eat: {
     openDuration: DURATION.base,
@@ -363,6 +374,20 @@ export const SHEET = {
     spring: SPRING.eat,
     detentHaptic: 'light' as HapticKind,
   },
+} as const;
+
+/**
+ * G61-S1 — Paylaş sayfası (FinShareNotes "Hareket ve Reduce Motion"): seçim halkası 220 · bildirim
+ * 300 giriş + 2,4 sn bekleme · iskelet 990 nabız · hedef basışı 110 ×0,96. Azaltılmış harekette
+ * 220 ms opaklık; nabız ve basış ölçeği yok.
+ */
+export const SHARE_MOTION = {
+  select: DURATION.fast,
+  toastIn: DURATION.base,
+  toastHold: 2400,
+  skeleton: DURATION.story,
+  press: DURATION.instant,
+  pressScale: 0.96,
 } as const;
 
 /** Tam ekran modal: sheet ile aynı — açılış base 300 (y 100%→0) enter · kapanış fast 200 exit. */

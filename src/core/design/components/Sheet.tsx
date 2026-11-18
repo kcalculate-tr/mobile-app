@@ -52,7 +52,8 @@ export function Sheet({
   visible: boolean;
   onClose: () => void;
   title?: string;
-  product?: 'ai' | 'eat';
+  /** G61-S1: 'share' = FinShareSheet açılışı (500 ms). */
+  product?: 'ai' | 'eat' | 'share';
   children: React.ReactNode;
   footer?: React.ReactNode;
   maxHeightRatio?: number;

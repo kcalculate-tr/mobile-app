@@ -57,6 +57,9 @@ const LOG_SOURCES = ['scan', 'manual', 'order', 'pantry', 'kesfet', 'day_card', 
 const BARCODE_MISS = ['missing', 'no_kcal', 'timeout', 'network', 'http', 'offline'] as const;
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 const SHARE_TARGETS = ['post', 'day', 'meal', 'product', 'app', 'report', 'streak'] as const;
+// G61-S1: paylaşım paketi kart türleri ve paylaş sayfası hedefleri.
+const SHARE_KINDS = ['meal', 'day', 'post', 'profile', 'recipe', 'invite', 'xray', 'story'] as const;
+const SHARE_SHEET_TARGETS = ['ig_story', 'ig_post', 'whatsapp', 'x', 'copy', 'save', 'other'] as const;
 const UI = ['ek_v2', 'legacy', 'fin'] as const;
 // G56-S1: eatkcal ana sayfa bölümleri (EkSec `sec`).
 const EK_SECS = ['banners', 'chips', 'reorder', 'kcal', 'plan', 'top', 'invite'] as const;
@@ -293,6 +296,15 @@ export const EVENTS = {
     category: 'social', kpi: true,
     tr: 'Paylaşım yapıldı (gönderi / gün kartı / ürün)', en: 'Content shared (post / day card / product)',
     props: { target: SHARE_TARGETS, surface: 'text' },
+  },
+  // G61-S1: paylaşım paketi (kart türü / hedef / ölçü / zemin — içerik ve kimlik YOK).
+  share_open: {
+    category: 'social', tr: 'Paylaş sayfası açıldı', en: 'Share sheet opened',
+    props: { kind: SHARE_KINDS, surface: 'text' },
+  },
+  share_target: {
+    category: 'social', tr: 'Paylaşım hedefi seçildi', en: 'Share target chosen',
+    props: { kind: SHARE_KINDS, target: SHARE_SHEET_TARGETS, size: ['story', 'post'], bg: ['light', 'dark', 'photo'], ok: 'boolean' },
   },
   follow: {
     category: 'social', tr: 'Kullanıcı takip edildi / bırakıldı', en: 'User followed / unfollowed',

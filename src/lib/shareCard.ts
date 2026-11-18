@@ -98,3 +98,20 @@ export async function sharePngBase64(base64: string, mealName: string, seed?: st
   // G19-S3: shareAsync iptali bildirmez — paylaşım sayfası açıldıysa sayılır.
   track('share', { target: 'meal', surface: 'meal_card' });
 }
+
+// ─── G61-S1: paylaş sayfası (ShareSheet) yardımcıları ────────────────────────
+/** Base64 PNG'yi önbelleğe yazar, dosya yolunu döndürür (paylaşmaz). */
+export async function writePngBase64(base64: string, name: string, seed?: string | number): Promise<string> {
+  const dir = FileSystem.cacheDirectory;
+  if (!dir) throw new Error('Geçici klasöre erişilemedi.');
+  const uniq = seed != null ? String(seed).replace(/[^a-zA-Z0-9]/g, '').slice(-16) : 'kart';
+  const uri = `${dir}kcal-paylasim-${slugify(name)}-${uniq}.png`;
+  await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+  return uri;
+}
+
+/** Yerel PNG'yi sistem paylaşım sayfasıyla açar (Instagram / Kaydet / Mesajlar …). */
+export async function shareImageUri(uri: string, dialogTitle?: string): Promise<void> {
+  if (!(await Sharing.isAvailableAsync())) throw new Error('Bu cihazda paylaşım kullanılamıyor.');
+  await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle, UTI: 'public.png' });
+}
