@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Yeni mesaj · Light</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit;cursor:pointer}
+a,button{-webkit-tap-highlight-color:transparent}
+a:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.to input{border:none;background:transparent;outline:none;font:inherit;color:inherit;flex:1;min-width:0;height:100%;padding:0;-webkit-appearance:none;appearance:none}
+.to input::-webkit-search-cancel-button{display:none}
+.toL input::placeholder{color:#6B6B70}
+.toD input::placeholder{color:#A1A1A6}
+.fade{animation:nFade 220ms cubic-bezier(0.2, 0, 0, 1) both}
+@keyframes nFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.fade{animation:nFade 220ms linear both!important}}
+</style>
+</helmet>
+<div style="position: relative; width: 393px; height: 852px; overflow: hidden; background: {{t.under}}; color: {{t.text}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.4"><div style="position: absolute; left: 0; right: 0; top: 0; height: 54px; display: flex; align-items: center; padding: 0 32px; font-size: 16px; font-weight: 600; color: #F5F5F5">9:41</div><div role="dialog" aria-modal="true" aria-labelledby="nm-t" style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; border-radius: 14px 14px 0 0; background: {{t.bg}}; overflow: hidden; display: flex; flex-direction: column"><span aria-hidden="true" style="flex: none; display: block; width: 36px; height: 5px; border-radius: 3px; background: {{t.line2}}; margin: 6px auto 0"></span><header style="flex: none; position: relative; min-height: 48px; display: flex; align-items: center; justify-content: center; padding: 0 52px"><h1 id="nm-t" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 18px">{{s.title}}</h1><a href="{{inboxHref}}" aria-label="{{s.close}}" style="position: absolute; right: 4px; top: 2px; width: 44px; height: 44px; color: {{t.text}}; display: flex; align-items: center; justify-content: center"><span style="width: 30px; height: 30px; border-radius: 15px; background: {{t.chip}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></span></a></header><label class="to {{fieldCls}}" style="flex: none; position: relative; min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 16px; border-top: 1px solid {{t.line}}; border-bottom: 1px solid {{t.line}}; font-size: 16px"><span style="flex: none; color: {{t.sec}}">{{s.to}}</span><input type="search" aria-label="{{s.toLabel}}" placeholder="{{s.toPh}}" value="{{query}}" onChange="{{onType}}" autocomplete="off" autocapitalize="off" spellcheck="false"><sc-if value="{{showCaret}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="position: absolute; left: {{caretX}}px; top: 13px; width: 2px; height: 22px; border-radius: 1px; background: {{t.text}}"></span></sc-if><sc-if value="{{hasQuery}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{clear}}" aria-label="{{s.clear}}" style="flex: none; width: 44px; height: 44px; border: none; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center"><span style="width: 20px; height: 20px; border-radius: 10px; background: {{t.sec}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 256 256" fill="{{t.bg}}"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></span></button></sc-if></label><div style="flex: 1; min-height: 0; overflow: hidden; padding-bottom: 300px"><sc-if value="{{isSuggest}}" hint-placeholder-val="{{ true }}"><div class="fade"><h2 style="margin: 14px 16px 2px; font-size: 13px; font-weight: 700; color: {{t.sec}}">{{s.suggested}}</h2><ul style="list-style: none; margin: 0; padding: 0"><sc-for list="{{suggested}}" as="p" hint-placeholder-count="3"><li><a href="{{p.href}}" style="min-height: 60px; padding: 6px 16px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none"><sc-if value="{{p.isGroup}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="flex: none; width: 44px; height: 44px; border-radius: 13px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; align-items: center; justify-content: center"><img src="glass/trophy.png" alt="" style="width: 34px; height: 34px; object-fit: contain"></span></sc-if><sc-if value="{{p.isPerson}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: {{t.ph}}; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 256 256" fill="{{t.phGlyph}}"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path></svg></span></sc-if><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><b style="font-size: 15px">{{p.name}}</b><span style="font-size: 13px; color: {{t.sec}}">{{p.sub}}</span></span></a></li></sc-for></ul><h2 style="margin: 12px 16px 2px; font-size: 13px; font-weight: 700; color: {{t.sec}}">{{s.recent}}</h2><ul style="list-style: none; margin: 0; padding: 0"><sc-for list="{{recent}}" as="p" hint-placeholder-count="2"><li><a href="{{chatHref}}" style="min-height: 60px; padding: 6px 16px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none"><span aria-hidden="true" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: {{t.ph}}; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 256 256" fill="{{t.phGlyph}}"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><b style="font-size: 15px">{{p.name}}</b><span style="font-size: 13px; color: {{t.sec}}">{{s.handle}}</span></span></a></li></sc-for></ul></div></sc-if><sc-if value="{{isResults}}" hint-placeholder-val="{{ false }}"><div class="fade"><p role="status" style="margin: 14px 16px 2px; font-size: 13px; font-weight: 700; color: {{t.sec}}">{{s.people}}</p><ul style="list-style: none; margin: 0; padding: 0"><sc-for list="{{results}}" as="p" hint-placeholder-count="4"><li><a href="{{chatHref}}" style="min-height: 60px; padding: 6px 16px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none"><span aria-hidden="true" style="flex: none; width: 44px; height: 44px; border-radius: 22px; background: {{t.ph}}; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 256 256" fill="{{t.phGlyph}}"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap"><b style="font-size: 15px">{{p.name}}</b><sc-if value="{{p.hasRole}}" hint-placeholder-val="{{ false }}"><span style="height: 22px; padding: 0 8px; border-radius: 11px; background: {{t.chip}}; display: flex; align-items: center; font-size: 12px; font-weight: 700">{{p.role}}</span></sc-if></span><span style="font-size: 13px; color: {{t.sec}}">{{p.sub}}</span></span></a></li></sc-for></ul></div></sc-if><sc-if value="{{isNone}}" hint-placeholder-val="{{ false }}"><div class="fade" style="padding: 40px 32px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px"><span aria-hidden="true" style="width: 64px; height: 64px; border-radius: 32px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; align-items: center; justify-content: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="{{t.text}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17.5a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z M15.5 15.5 20.5 20.5 M8.3 8.3l4.4 4.4 M12.7 8.3l-4.4 4.4"></path></svg></span><h2 role="status" style="margin: 4px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; line-height: 1.25">{{noneTitle}}</h2><p style="margin: 0; font-size: 15px; color: {{t.sec}}">{{s.noneBody}}</p><button type="button" style="margin-top: 8px; min-height: 44px; padding: 0 20px; border: none; border-radius: 22px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line2}}; color: {{t.text}}; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M216,112v96a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V112A16,16,0,0,1,56,96H80a8,8,0,0,1,0,16H56v96H200V112H176a8,8,0,0,1,0-16h24A16,16,0,0,1,216,112ZM93.66,69.66,120,43.31V136a8,8,0,0,0,16,0V43.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,69.66Z"></path></svg>{{s.invite}}</button></div></sc-if></div><div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 300px; background: {{t.kb}}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: {{t.kbText}}">{{s.keyboard}}</div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"state":{"editor":"enum","options":["suggest","results","none"],"default":"suggest"},"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var st = (props && props.state) || 'suggest';
+    this.state = { query: st === 'results' ? 'dyt' : st === 'none' ? 'kcal_yok' : '' };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    var dark = this.props.theme === 'dark';
+    var en = (this.props.lang ?? 'tr') === 'en';
+    var t = dark
+      ? { under: '#000000', bg: '#1C1C1E', text: '#F5F5F5', sec: '#A1A1A6', line: '#2C2C2E', line2: '#48484A', ph: '#3A3A3C', phGlyph: '#98989D', card: '#2C2C2E', chip: '#3A3A3C', kb: '#2C2C2E', kbText: '#A1A1A6' }
+      : { under: '#3A3B3D', bg: '#F3F4F6', text: '#0A0A0A', sec: '#6B6B70', line: '#E9EBEE', line2: '#C3C7CC', ph: '#DCDEE2', phGlyph: '#8A8A90', card: '#FFFFFF', chip: '#E4E6EA', kb: '#D1D3D9', kbText: '#45454A' };
+    var S = {
+      title: ['Yeni mesaj', 'New message'], close: ['Kapat', 'Close'],
+      to: ['Kime:', 'To:'], toLabel: ['Kime: kişi ya da grup ara', 'To: search people or groups'], toPh: ['', ''], clear: ['Temizle', 'Clear'],
+      suggested: ['Önerilen', 'Suggested'], recent: ['Son sohbetler', 'Recent chats'], people: ['Kişiler', 'People'],
+      group: ['21 Gün Protein Serisi', '21-Day Protein Streak'], groupSub: ['Grup, [N] kişi', 'Group, [N] people'],
+      name: ['[Ad]', '[Name]'], rd: ['Dyt. [Ad]', 'RD [Name]'], handle: ['@[kullanıcı]', '@[username]'],
+      followsYou: ['Seni takip ediyor', 'Follows you'], youFollow: ['Takip ediyorsun', 'You follow them'],
+      dietitian: ['Diyetisyen', 'Dietitian'], mutual: ['@[kullanıcı], ortak takip [N]', '@[username], [N] mutual'],
+      none: ['için kimse bulunamadı', 'No one found for'],
+      noneBody: ['Kullanıcı adını kontrol et. Kcalculate’te olmayan arkadaşlarını davet edebilirsin.', 'Check the username. You can invite friends who aren’t on Kcalculate yet.'],
+      invite: ['Davet bağlantısı paylaş', 'Share invite link'], keyboard: ['Klavye', 'Keyboard']
+    };
+    var li = en ? 1 : 0, s = {};
+    for (var k in S) s[k] = S[k][li];
+    var suf = (en ? 'EN' : '') + (dark ? '-Dark' : '');
+    var chatHref = 'FinChat' + suf + '.dc.html';
+    var q = (st.query || '').trim();
+    var lq = q.toLocaleLowerCase(en ? 'en' : 'tr');
+    var known = ['dy', 'rd', 'diy', 'die', '@', 'ad', 'name', 'kcal', 'protein'];
+    var hit = known.some(function (w) { return lq.indexOf(w) === 0 || lq === w; }) && lq !== 'kcal_yok';
+    var view = !q ? 'suggest' : hit ? 'results' : 'none';
+    var suggested = [
+      { isGroup: true, isPerson: false, name: s.group, sub: s.groupSub, href: 'FinChatGroup' + suf + '.dc.html' },
+      { isGroup: false, isPerson: true, name: s.name, sub: s.followsYou, href: chatHref },
+      { isGroup: false, isPerson: true, name: s.rd, sub: s.youFollow, href: chatHref }
+    ];
+    var recent = [{ name: s.name }, { name: s.name }];
+    var results = [[s.rd, s.dietitian, s.handle], [s.rd, s.dietitian, s.mutual], [s.name, '', s.mutual], [s.name, '', s.handle]].map(function (r) {
+      return { name: r[0], role: r[1], hasRole: !!r[1], sub: r[2] };
+    });
+    return {
+      t: t, s: s, fieldCls: dark ? 'toD' : 'toL', inboxHref: 'FinInbox' + suf + '.dc.html', chatHref: chatHref,
+      query: st.query, hasQuery: q.length > 0, showCaret: q.length === 0, caretX: en ? 50 : 66,
+      onType: function (e) { self.setState({ query: e.target.value }); },
+      clear: function () { self.setState({ query: '' }); },
+      isSuggest: view === 'suggest', isResults: view === 'results', isNone: view === 'none',
+      suggested: suggested, recent: recent, results: results,
+      noneTitle: en ? s.none + ' “' + q + '”' : '“' + q + '” ' + s.none
+    };
+  }
+}
+</script>
+</body>
+</html>

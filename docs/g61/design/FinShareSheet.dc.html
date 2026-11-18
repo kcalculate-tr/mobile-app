@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Paylaş sayfası · Öğün · Light</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit;cursor:pointer}
+a:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.glL{background:rgba(255,255,255,0.84);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%)}
+.glD{background:rgba(28,28,30,0.84);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%)}
+@media (prefers-reduced-transparency: reduce){.glL{background:#FFFFFF;backdrop-filter:none;-webkit-backdrop-filter:none}.glD{background:#1C1C1E;backdrop-filter:none;-webkit-backdrop-filter:none}}
+.scr{scrollbar-width:none;scroll-snap-type:x mandatory}.scr::-webkit-scrollbar{display:none}
+/* motion = FinShareDay / FinMoTokens x1.1: sheet 500 emphasized, scrim 300, toast 300, selection 220, skeleton 990 */
+.sheetIn{animation:sheetIn 500ms cubic-bezier(0.05, 0.7, 0.1, 1) both}
+.scrimIn{animation:fadeIn 300ms cubic-bezier(0.2, 0, 0, 1) both}
+.toastIn{animation:toastIn 300ms cubic-bezier(0.05, 0.7, 0.1, 1) both}
+.sel{transition:box-shadow 220ms cubic-bezier(0.2, 0, 0, 1)}
+.sw{transition:transform 200ms cubic-bezier(0.2, 0, 0, 1)}
+.sk{animation:sk 990ms cubic-bezier(0.2, 0, 0, 1) infinite alternate}
+.tgt{transition:transform 110ms cubic-bezier(0.2, 0, 0, 1)}
+.tgt:active{transform:scale(.96)}
+@keyframes sheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes sk{from{opacity:.55}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.sheetIn,.scrimIn,.toastIn{animation:fadeIn 200ms linear both!important;transform:none!important}.sel,.sw{transition:none}.sk{animation:none}.tgt:active{transform:none}}
+</style>
+</helmet>
+<div style="position: relative; width: 393px; height: 852px; overflow: hidden; background: {{t.bg}}; color: {{t.text}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.4">
+<div aria-hidden="true" style="position: absolute; inset: 0">
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 50px; display: flex; align-items: center; padding: 0 32px; font-size: 16px; font-weight: 600">9:41</div>
+<div style="position: absolute; left: 16px; right: 16px; top: 64px; display: flex; flex-direction: column; gap: 12px"><div style="height: 44px; width: 140px; border-radius: 12px; background: {{t.ph}}"></div><div style="height: 220px; border-radius: 20px; background: {{t.ph}}"></div><div style="height: 120px; border-radius: 20px; background: {{t.ph}}"></div></div>
+</div>
+<div class="scrimIn" aria-hidden="true" style="position: absolute; inset: 0; background: {{t.scrim}}"></div>
+
+<div class="sheetIn {{glassCls}}" role="dialog" aria-modal="true" aria-labelledby="sh-title" style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; display: flex; flex-direction: column; border-radius: 28px 28px 0 0; border-top: 1px solid {{t.edge}}; box-shadow: 0 -8px 32px rgba(0,0,0,{{t.shadow}})">
+<div aria-hidden="true" style="flex: none; display: flex; justify-content: center; padding-top: 6px"><span style="width: 36px; height: 5px; border-radius: 3px; background: {{t.line2}}"></span></div>
+<div style="flex: none; display: flex; align-items: flex-start; gap: 8px; padding: 4px 8px 0 20px">
+<div style="flex: 1; min-width: 0; padding-top: 6px"><h2 id="sh-title" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 22px; line-height: 1.15">{{s.title}}</h2><p style="margin: 2px 0 0; font-size: 14px; color: {{t.sec}}">{{cardName}}</p></div>
+<button type="button" aria-label="{{s.close}}" style="flex: none; width: 44px; height: 44px; border: none; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; color: {{t.text}}"><span style="width: 32px; height: 32px; border-radius: 16px; background: {{t.closeBg}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M6 6l12 12 M18 6 6 18"></path></svg></span></button>
+</div>
+
+<div style="flex: none; padding: 10px 16px 0">
+<div role="radiogroup" aria-label="{{s.sizeA11y}}" style="height: 40px; padding: 3px; box-sizing: border-box; border-radius: 20px; background: {{t.track}}; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px">
+<sc-for list="{{sizes}}" as="z" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{z.aria}}" onClick="{{z.pick}}" class="sel" style="position: relative; border: none; border-radius: 17px; background: {{z.bg}}; color: {{t.text}}; box-shadow: {{z.sh}}; font-size: 14px; font-weight: 700">{{z.label}}<span aria-hidden="true" style="position: absolute; left: 0; right: 0; top: -4px; bottom: -4px"></span></button></sc-for>
+</div>
+</div>
+
+<sc-if value="{{showPreviews}}" hint-placeholder-val="{{ true }}">
+<div role="radiogroup" aria-label="{{s.tplA11y}}" class="scr" style="flex: none; display: flex; gap: 12px; overflow-x: auto; padding: 14px 16px 4px">
+<sc-for list="{{tpls}}" as="p" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{p.aria}}" aria-label="{{p.a11y}}" onClick="{{p.pick}}" style="flex: none; scroll-snap-align: center; width: 150px; padding: 0; border: none; background: transparent; color: {{t.text}}; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<span class="sel" style="position: relative; width: 150px; height: {{p.fh}}; border-radius: 14px; overflow: hidden; box-shadow: {{p.ring}}; display: block">
+<span style="position: absolute; left: 0; top: 0; width: 1080px; height: {{p.hh}}; transform: scale(0.138889); transform-origin: 0 0; display: block">
+<sc-if value="{{is.meal}}" hint-placeholder-val="{{ true }}"><dc-import name="FinShareCardMeal" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.day}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardDay" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.post}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardPost" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.profile}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardProfile" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.recipe}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardRecipe" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.invite}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardInvite" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.xray}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardXray" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+<sc-if value="{{is.story}}" hint-placeholder-val="{{ false }}"><dc-import name="FinShareCardStory" size="{{size}}" bg="{{p.bg}}" lang="{{lang}}" qr="{{qr}}" hint-size="1080px,{{p.hh}}"></dc-import></sc-if>
+</span>
+</span>
+<span style="display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: {{p.fw}}"><sc-if value="{{p.on}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 16px; height: 16px; border-radius: 8px; background: #B9EF14; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></sc-if>{{p.label}}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{loading}}" hint-placeholder-val="{{ false }}">
+<div role="status" aria-label="{{s.loadingA11y}}" style="flex: none; display: flex; gap: 12px; overflow: hidden; padding: 14px 16px 4px">
+<sc-for list="{{tpls}}" as="p" hint-placeholder-count="3"><div style="flex: none; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px"><span class="sk" style="position: relative; width: 150px; height: {{p.fh}}; border-radius: 14px; background: {{t.sk}}; display: block"><span style="position: absolute; left: 14px; right: 40px; bottom: 54px; height: 12px; border-radius: 6px; background: {{t.sk2}}"></span><span style="position: absolute; left: 14px; right: 70px; bottom: 34px; height: 12px; border-radius: 6px; background: {{t.sk2}}"></span><span style="position: absolute; left: 14px; bottom: 12px; width: 40px; height: 8px; border-radius: 4px; background: {{t.sk2}}"></span></span><span class="sk" style="width: 56px; height: 12px; border-radius: 6px; background: {{t.sk}}"></span></div></sc-for>
+</div>
+<p style="flex: none; margin: 4px 16px 0; font-size: 13px; color: {{t.sec}}; text-align: center">{{s.loading}}</p>
+</sc-if>
+
+<sc-if value="{{error}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="flex: none; margin: 14px 16px 0; min-height: {{errH}}; box-sizing: border-box; padding: 18px; border-radius: 20px; background: {{t.card}}; box-shadow: inset 0 0 0 1px {{t.line}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center">
+<span aria-hidden="true" style="width: 48px; height: 48px; border-radius: 24px; background: {{t.errBg}}; color: {{t.err}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M12 4 2.5 20h19Z M12 10v4 M12 17h.01"></path></svg></span>
+<h3 style="margin: 6px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 18px">{{s.errTitle}}</h3>
+<p style="margin: 0; max-width: 280px; font-size: 14px; color: {{t.sec}}">{{s.errBody}}</p>
+<button type="button" onClick="{{retry}}" style="margin-top: 6px; min-height: 44px; padding: 0 18px; border: none; border-radius: 22px; background: {{t.text}}; color: {{t.bg}}; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3 M19.5 4.5v4h-4"></path></svg>{{s.retry}}</button>
+</div>
+</sc-if>
+
+<div style="flex: none; padding: 6px 16px 0; display: flex; flex-direction: column">
+<button type="button" role="switch" aria-checked="{{qrAria}}" onClick="{{toggleQr}}" aria-disabled="{{imgOffAria}}" style="min-height: 48px; padding: 0; border: none; background: transparent; color: {{t.text}}; display: flex; align-items: center; gap: 10px; text-align: left; opacity: {{imgOp}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2.5v2.5H14z M17.5 17.5H20V20h-2.5z"></path></svg><span style="flex: 1; font-size: 15px; font-weight: 600">{{s.qr}}</span><span aria-hidden="true" style="flex: none; width: 51px; height: 31px; border-radius: 16px; background: {{swBg}}; position: relative; display: block"><span class="sw" style="position: absolute; left: 2px; top: 2px; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transform: {{swX}}; display: block"></span></span></button>
+<p style="margin: 0; display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.4; color: {{t.sec}}"><span style="margin-top: 1px"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M7.5 11V8a4.5 4.5 0 0 1 9 0v3 M5.5 11h13v9h-13z"></path></svg></span>{{privacy}}</p>
+</div>
+
+<div role="list" aria-label="{{s.targetsA11y}}" style="flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 4px; padding: 14px 8px 0">
+<sc-for list="{{targets}}" as="g" hint-placeholder-count="7"><div role="listitem" style="display: flex; justify-content: center"><button type="button" onClick="{{g.act}}" aria-disabled="{{g.dis}}" class="tgt" style="width: 84px; min-height: 84px; padding: 0; border: none; background: transparent; color: {{t.text}}; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: {{g.op}}"><span style="width: 54px; height: 54px; border-radius: 27px; background: {{g.bg}}; color: {{g.fg}}; box-shadow: {{g.ring}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.icon}}"></path></svg></span><span style="font-size: 12px; font-weight: 600; line-height: 1.25; text-align: center">{{g.label}}</span></button></div></sc-for>
+</div>
+</div>
+
+<sc-if value="{{copied}}" hint-placeholder-val="{{ false }}">
+<div role="status" class="toastIn" style="position: absolute; left: 16px; right: 16px; bottom: 40px; min-height: 56px; box-sizing: border-box; border-radius: 28px; background: {{t.ink}}; color: {{t.onInk}}; display: flex; align-items: center; gap: 10px; padding: 8px 16px; z-index: 45; box-shadow: 0 8px 24px rgba(0,0,0,0.24)">
+<span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: #B9EF14; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 700">{{s.copied}}</span><span style="font-size: 12px; opacity: 0.78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{link}}</span></span>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"card":{"editor":"enum","options":["meal","day","post","profile","recipe","invite","xray","story"],"default":"meal"},"state":{"editor":"enum","options":["default","copied","loading","error"],"default":"default"},"size":{"editor":"enum","options":["story","post"],"default":"story"},"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tpl: 0, size: props.size === 'post' ? 'post' : 'story', qr: false, phase: props.state || 'default' };
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+  renderVals() {
+    var self = this, st = this.state;
+    var dark = this.props.theme === 'dark';
+    var en = (this.props.lang ?? 'tr') === 'en';
+    var card = this.props.card || 'meal';
+    var t = dark
+      ? { bg: '#000000', text: '#F5F5F5', sec: '#A1A1A6', line: '#38383A', line2: '#48484A', ph: '#1C1C1E', card: '#2C2C2E', track: 'rgba(118,118,128,0.24)', segOn: '#636366', tile: '#2C2C2E', tileRing: 'inset 0 0 0 1px #38383A', ink: '#F5F5F5', onInk: '#0A0A0A', scrim: 'rgba(0,0,0,0.55)', edge: 'rgba(255,255,255,0.14)', shadow: '0.40', closeBg: 'rgba(255,255,255,0.12)', sk: '#2C2C2E', sk2: '#3A3A3C', err: '#FF6961', errBg: 'rgba(255,105,97,0.16)', swOff: '#48484A' }
+      : { bg: '#F3F4F6', text: '#0A0A0A', sec: '#6B6B70', line: '#E9EBEE', line2: '#C3C7CC', ph: '#E9EBEE', card: '#FFFFFF', track: 'rgba(118,118,128,0.12)', segOn: '#FFFFFF', tile: '#FFFFFF', tileRing: 'inset 0 0 0 1px #E9EBEE', ink: '#0A0A0A', onInk: '#FFFFFF', scrim: 'rgba(10,10,10,0.32)', edge: 'rgba(255,255,255,0.9)', shadow: '0.10', closeBg: 'rgba(10,10,10,0.06)', sk: '#E9EBEE', sk2: '#DCDEE2', err: '#C62828', errBg: 'rgba(198,40,40,0.10)', swOff: '#C3C7CC' };
+    var S = {
+      title: ['Paylaş', 'Share'], close: ['Kapat', 'Close'], sizeA11y: ['Ölçü', 'Format'], story: ['Hikâye 9:16', 'Story 9:16'], post: ['Gönderi 4:5', 'Post 4:5'],
+      tplA11y: ['Şablon', 'Template'], light: ['Açık', 'Light'], dark: ['Koyu', 'Dark'], photo: ['Fotoğraflı', 'Photo'],
+      qr: ['QR kodu ekle', 'Add QR code'], targetsA11y: ['Paylaşım hedefleri', 'Share targets'],
+      igStory: ['Instagram Hikâye', 'Instagram Story'], igPost: ['Instagram Gönderi', 'Instagram Post'], wa: ['WhatsApp', 'WhatsApp'], x: ['X', 'X'],
+      copy: ['Bağlantıyı kopyala', 'Copy link'], save: ['Kaydet', 'Save'], more: ['Diğer', 'More'],
+      copied: ['Bağlantı kopyalandı', 'Link copied'], loading: ['Görsel hazırlanıyor…', 'Preparing image…'], loadingA11y: ['Görsel hazırlanıyor', 'Preparing image'],
+      errTitle: ['Görsel hazırlanamadı', 'Couldn’t prepare the image'], errBody: ['Bağlantıyı yine de kopyalayıp paylaşabilirsin.', 'You can still copy and share the link.'], retry: ['Tekrar dene', 'Try again']
+    };
+    var NAMES = {
+      meal: ['Öğün kartı', 'Meal card'], day: ['Gün özeti', 'Day summary'], post: ['Keşfet gönderisi', 'Explore post'], profile: ['Profil kartı', 'Profile card'],
+      recipe: ['Tarif kartı', 'Recipe card'], invite: ['Davet kartı', 'Invite card'], xray: ['Tabak Röntgeni', 'Plate X-ray'], story: ['Hikâye', 'Story']
+    };
+    var PRIV = {
+      meal: ['Kalori hedefin ve gün toplamın paylaşılmaz.', 'Your calorie goal and daily total aren’t shared.'],
+      day: ['Kalori hedefin, gün toplamın ve kilon paylaşılmaz; yalnız yüzde görünür.', 'Your calorie goal, daily total and weight aren’t shared; only the percentage shows.'],
+      post: ['Gönderinin herkese açık hâli paylaşılır; beğeni sayısı görünmez.', 'The public version of the post is shared; like counts don’t show.'],
+      profile: ['Kilo, hedef ve sağlık bilgilerin kartta yer almaz.', 'Your weight, goals and health details aren’t on the card.'],
+      recipe: ['Tarif paylaşılır; günlüğünden bilgi eklenmez.', 'The recipe is shared; nothing from your log is added.'],
+      invite: ['Kartta yalnız davet kodun ve kısa bağlantı yer alır.', 'The card only shows your invite code and a short link.'],
+      xray: ['Kalori hedefin ve gün toplamın paylaşılmaz.', 'Your calorie goal and daily total aren’t shared.'],
+      story: ['Hikâyedeki katmanlar paylaşılır; görenler listesi paylaşılmaz.', 'Your story layers are shared; the viewer list isn’t.']
+    };
+    var LINK = { meal: 'l.eatkcal.com/m/[id]', day: 'l.eatkcal.com/d/[id]', post: 'l.eatkcal.com/p/[id]', profile: 'l.eatkcal.com/u/[kullanıcı]', recipe: 'l.eatkcal.com/r/[tarif]', invite: 'l.eatkcal.com/i/[kod]', xray: 'l.eatkcal.com/x/[id]', story: 'l.eatkcal.com/s/[id]' };
+    var li = en ? 1 : 0, s = {};
+    for (var k in S) s[k] = S[k][li];
+    var post = st.size === 'post';
+    var ph = st.phase;
+    var loading = ph === 'loading', error = ph === 'error', copied = ph === 'copied';
+    var imgOff = loading || error;
+    var hh = post ? '1350px' : '1920px', fh = post ? '187.5px' : '266.7px';
+    var is = {}; ['meal', 'day', 'post', 'profile', 'recipe', 'invite', 'xray', 'story'].forEach(function (c) { is[c] = c === card; });
+    var bgs = [['light', s.light], ['dark', s.dark], ['photo', s.photo]];
+    var tpls = bgs.map(function (b, i) {
+      var on = st.tpl === i;
+      return { bg: b[0], label: b[1], a11y: b[1] + ', ' + (post ? s.post : s.story), on: on, aria: on ? 'true' : 'false', fw: on ? '700' : '500', hh: hh, fh: fh,
+        ring: on ? '0 0 0 3px #B9EF14, 0 0 0 4px ' + t.text : '0 0 0 1px ' + t.line,
+        pick: function () { self.setState({ tpl: i }); } };
+    });
+    var sizes = [['story', s.story], ['post', s.post]].map(function (z) {
+      var on = st.size === z[0];
+      return { label: z[1], aria: on ? 'true' : 'false', bg: on ? t.segOn : 'transparent', sh: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', pick: function () { self.setState({ size: z[0] }); } };
+    });
+    var I = { igStory: 'M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z M12 8.5v7 M8.5 12h7', igPost: 'M7.5 3.5h9a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4Z M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z M17 7h.01', wa: 'M4 20l1.2-3.8A8 8 0 1 1 8 19l-4 1Z M9.2 8.8c-.4 3.2 2.8 6.4 6 6', x: 'M4.5 4.5h4L19.5 19.5h-4Z M19 4.5l-6 6.6 M5 19.5l6-6.6', copy: 'M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1 M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1', save: 'M12 4v11 M7 10l5 5 5-5 M5 20h14', more: 'M6 12h.01 M12 12h.01 M18 12h.01' };
+    var copyAct = function () {
+      self.setState({ phase: 'copied' });
+      clearTimeout(self._t);
+      self._t = setTimeout(function () { if (self.state.phase === 'copied') self.setState({ phase: 'default' }); }, 2400);
+    };
+    var targets = ['igStory', 'igPost', 'wa', 'x', 'copy', 'save', 'more'].map(function (k) {
+      var needsImg = k === 'igStory' || k === 'igPost' || k === 'save' || (k === 'x' && false);
+      var dis = imgOff && needsImg;
+      return { label: s[k], icon: I[k], dis: dis ? 'true' : 'false', op: dis ? '0.38' : '1',
+        bg: k === 'copy' ? '#B9EF14' : t.tile, fg: k === 'copy' ? '#0A0A0A' : t.text, ring: k === 'copy' ? 'none' : t.tileRing,
+        act: k === 'copy' ? copyAct : function () {} };
+    });
+    return {
+      t: t, s: s, lang: en ? 'en' : 'tr', size: st.size, qr: st.qr ? 'true' : 'false',
+      glassCls: dark ? 'glD' : 'glL', cardName: NAMES[card] ? NAMES[card][li] : NAMES.meal[li], privacy: (PRIV[card] || PRIV.meal)[li], link: LINK[card] || LINK.meal,
+      is: is, tpls: tpls, sizes: sizes, targets: targets,
+      showPreviews: !imgOff, loading: loading, error: error, copied: copied, errH: post ? '213px' : '292px',
+      imgOp: imgOff ? '0.38' : '1', imgOffAria: imgOff ? 'true' : 'false',
+      qrAria: st.qr ? 'true' : 'false', swBg: st.qr ? '#B9EF14' : t.swOff, swX: st.qr ? 'translateX(20px)' : 'translateX(0)',
+      toggleQr: function () { if (!imgOff) self.setState({ qr: !self.state.qr }); },
+      retry: function () { self.setState({ phase: 'default' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

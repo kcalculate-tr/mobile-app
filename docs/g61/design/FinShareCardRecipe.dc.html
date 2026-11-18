@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Paylaşım kartı · Tarif</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit;cursor:pointer}
+a:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.glP{backdrop-filter:blur(40px) saturate(160%);-webkit-backdrop-filter:blur(40px) saturate(160%)}
+@media (prefers-reduced-transparency: reduce){.glP{backdrop-filter:none;-webkit-backdrop-filter:none;background:#1C1C1E!important}}
+</style>
+</helmet>
+<div style="position: relative; width: 1080px; height: {{H}}; overflow: hidden; background: {{t.bg}}; color: {{t.text}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 32px; line-height: 1.35; isolation: isolate">
+<sc-if value="{{notPhoto}}" hint-placeholder-val="{{ true }}">
+<div aria-hidden="true" style="position: absolute; left: -260px; top: -200px; width: 1100px; height: 1100px; border-radius: 50%; background: radial-gradient(circle, {{t.blobA}} 0, rgba(185,239,20,0) 68%); filter: blur(60px); z-index: -1"></div>
+<div aria-hidden="true" style="position: absolute; right: -320px; bottom: 160px; width: 1000px; height: 1000px; border-radius: 50%; background: radial-gradient(circle, {{t.blobB}} 0, rgba(185,239,20,0) 68%); filter: blur(60px); z-index: -1"></div>
+</sc-if>
+<sc-if value="{{isPhoto}}" hint-placeholder-val="{{ false }}">
+<img src="{{photo}}" alt="" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; filter: {{photoFilter}}">
+<div aria-hidden="true" style="position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.05) 32%, rgba(0,0,0,0.25) 58%, rgba(0,0,0,0.82) 100%)"></div>
+</sc-if>
+<div style="position: absolute; left: 88px; right: 88px; top: {{L.top}}; bottom: {{L.bottom}}; display: flex; flex-direction: column; gap: {{L.gap}}">
+<sc-if value="{{notPhoto}}" hint-placeholder-val="{{ true }}"><img src="t19/ph-mercimek.jpg" alt="{{s.name}}" style="display: block; width: 100%; height: {{L2.img}}; object-fit: cover; border-radius: 48px; flex: none"></sc-if>
+<sc-if value="{{isPhoto}}" hint-placeholder-val="{{ false }}"><div style="flex: 1 1 auto"></div></sc-if>
+<div class="{{panelCls}}" style="padding: {{L2.pad}}; border-radius: 48px; background: {{t.panel}}; box-shadow: {{t.panelShadow}}; display: flex; flex-direction: column; gap: {{L2.pgap}}"><span style="align-self: flex-start; height: 68px; padding: 0 28px; border-radius: 34px; background: {{t.chip}}; display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 700; white-space: nowrap">{{s.recipe}}</span>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: {{L2.h}}; line-height: 1.05; letter-spacing: -0.02em">{{s.name}}</h1>
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<span style="height: 64px; padding: 0 22px; border-radius: 32px; background: {{t.chip}}; display: flex; align-items: center; gap: 10px; font-size: 28px; font-weight: 700"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17Z M12 7.5V12l3 2"></path></svg>{{s.time}}</span>
+<span style="height: 64px; padding: 0 22px; border-radius: 32px; background: {{t.chip}}; display: flex; align-items: center; gap: 10px; font-size: 28px; font-weight: 700"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z M2.5 20c1.2-3 3.6-4.5 6.5-4.5s5.3 1.5 6.5 4.5 M16 4.3a3.5 3.5 0 0 1 0 6.4 M18 15.8c1.6.6 2.8 2 3.5 4.2"></path></svg>{{s.serv}}</span>
+<span style="height: 64px; padding: 0 22px; border-radius: 32px; background: #B9EF14; color: #0A0A0A; display: flex; align-items: center; font-size: 28px; font-weight: 800">{{s.kcal}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px"><span style="font-size: 26px; font-weight: 700; color: {{t.sec}}">{{s.ingTitle}}</span>
+<sc-for list="{{ings}}" as="g" hint-placeholder-count="3"><span style="display: flex; align-items: center; gap: 16px; font-size: {{L2.ing}}; font-weight: 600"><span aria-hidden="true" style="width: 16px; height: 16px; border-radius: 8px; background: #B9EF14; flex: none"></span>{{g}}</span></sc-for>
+</div>
+</div>
+</div>
+<footer style="position: absolute; left: 88px; right: 88px; bottom: {{L.foot}}; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 14px; min-width: 0">
+<svg viewBox="150 1705 3720 590" role="img" aria-label="Kcalculate" style="height: 54px; width: auto; display: block; fill: {{t.logo}}; flex: none"><path d="M606.81,2206.11l-34.66,79.66c-82.97-36.1-130.99-78.16-158.87-114.37-38.11,58.15-72.44,101.34-114.86,101.34-7.770,0-15.81-1.45-24.21-4.52-39.82-14.56-63.28-50.33-76.65-93.02-19.74,4.62-39.87,5.63-60.19,2.87l11.71-86.1c11.38,1.55,22.62.37,33.58-3-3.5-51.99.89-101.12,3.92-126.33,6.62-55.22,35.33-236.18,126.56-246.42,37.28-4.25,69.57,10.89,88.4,41.39,42.54,68.91,6.31,204.92-53.29,296.6-21.88,33.64-46,60.87-71.64,81.23,5.93,25.1,13.89,39.29,20.55,46.22,16.82-15.69,45.56-60.85,65.4-92.05,58.91-92.58,125.67-197.52,219.05-214.71l15.73,85.45c-44.49,8.2-91.940,70-131.85,130.08,9.82,22.62,41.76,72.35,141.32,115.67ZM299.07,1964.54c40.75-85.11,38.04-151.81,27.91-162.19-.06.05-.4.05-1.01.05-21.22,17.52-51.68,112.74-57.17,213.94,11.75-16.68,21.99-34.52,30.27-51.79Z"></path><path d="M957.49,2158.88l67.02,46.45-1.12,1.22c-43.06,46.94-102.74,71.75-172.59,71.75-132.04,0-224.25-85.1-224.25-206.95s92.21-206.95,224.25-206.95c69.84,0,129.52,24.81,172.59,71.75l1.12,1.22-67.03,46.45-.85-1.06c-24.68-30.98-63.9-48.75-107.62-48.75-75.29,0-125.87,55.19-125.87,137.32s50.59,137.32,125.87,137.32c42.47,0,82.71-18.22,107.63-48.76l.85-1.01Z"></path><path d="M1350.17,2012.92v-4.53c0-45.18-41.77-74.38-106.42-74.38-48.91,0-88.87,17.12-115.6,49.52l-.86,1.03-1.09-.78-65.89-46.44,1.11-1.22c43.48-47.61,105.42-71.75,184.07-71.75,122.51,0,198.62,54.6,198.62,142.48v263.83h-93.96v-48.38c-32.23,36.13-83.34,55.960-144.44,55.96-92.72,0-152.63-43.73-152.63-111.41,0-31.38,12.78-59.29,37.96-82.97,59.37-55.79,175.61-75.83,259.13-70.99ZM1350.16,2132.75v-72.89c-1.62-.01-3.27-.02-4.92-.02-58.86,0-137.71,12.98-175.49,50.15-13.89,13.67-20.93,29.48-20.93,47.03,0,43.09,43.55,58.45,84.31,58.45,65.64,0,117.04-36.34,117.04-82.72Z"></path><path d="M1511.35,2270.69v-556.46h93.97v556.46h-93.97Z"></path><path d="M1990.56,2158.88l67.02,46.45-1.12,1.22c-43.06,46.94-102.74,71.75-172.59,71.75-132.04,0-224.25-85.1-224.25-206.95s92.21-206.95,224.25-206.95c69.84,0,129.52,24.81,172.59,71.75l1.12,1.22-67.03,46.45-.85-1.06c-24.68-30.98-63.9-48.75-107.62-48.75-75.29,0-125.87,55.19-125.87,137.32s50.59,137.32,125.87,137.32c42.47,0,82.71-18.22,107.63-48.76l.85-1.01Z"></path><path d="M2414.47,2083.47v-211.51h93.96v398.73h-93.96v-67.15c-33.32,48.92-86.81,74.74-155.04,74.74-73.26,0-160.59-28.8-160.59-166v-240.31h93.96v226.67c0,90.94,52.11,110.03,95.81,110.030,60.63,0,125.87-39.18,125.87-125.19h-.01Z"></path><path d="M2580.09,2270.69v-556.46h93.97v556.46h-93.97Z"></path><path d="M3025.44,2012.92v-4.53c0-45.18-41.77-74.38-106.42-74.38-48.91,0-88.87,17.12-115.6,49.52l-.86,1.03-1.09-.78-65.89-46.44,1.11-1.22c43.48-47.61,105.42-71.75,184.07-71.75,122.51,0,198.62,54.6,198.62,142.48v263.83h-93.96v-48.38c-32.23,36.13-83.34,55.96-144.44,55.96-92.72,0-152.63-43.73-152.63-111.41,0-31.38,12.78-59.29,37.96-82.97,59.37-55.79,175.61-75.83,259.13-70.99ZM3025.42,2132.75v-72.89c-1.62-.01-3.27-.02-4.92-.02-58.86,0-137.71,12.98-175.49,50.15-13.89,13.67-20.93,29.48-20.93,47.03,0,43.09,43.55,58.45,84.31,58.45,65.64,0,117.04-36.34,117.04-82.72Z"></path><path d="M3429.41,2200.65v69.73l-1.09.27c-19.79,4.84-42.79,7.62-63.12,7.62-97.01,0-152.65-51.65-152.65-141.73v-194.19h-59.23v-69.63h59.23v-107.67h93.97v107.66h117.59v69.63h-117.59v192.69c0,52.29,19.31,73.61,66.64,73.61,16.71,0,35.03-2.54,54.45-7.54l1.81-.46Z"></path><path d="M3658.45,1864.38c61.73,0,111.29,19.03,147.33,56.57,38.75,40.38,59.37,101.84,56.61,168.63l-.06,1.39h-316.34c6.67,71.55,55.18,117.67,123.98,117.67,42.85,0,82.07-17.77,107.63-48.76l.85-1.03,67,46.45-1.12,1.22c-43.69,47.61-102.05,71.75-173.48,71.75-131.52,0-223.37-84.79-223.37-206.19s84.79-207.7,210.98-207.7ZM3769.06,2037.28c-9.06-63.75-51.32-103.27-110.62-103.27s-102.16,39.53-109.79,103.27h220.4Z"></path></svg>
+<span style="font-size: 30px; font-weight: 600; color: {{t.sec}}; white-space: nowrap">{{link}}</span>
+</div>
+<sc-if value="{{showQr}}" hint-placeholder-val="{{ false }}">
+<div style="flex: none; width: 188px; height: 188px; box-sizing: border-box; padding: 16px; border-radius: 28px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(0,0,0,0.12)"><svg role="img" aria-label="QR" width="156" height="156" viewBox="0 0 25 25" shape-rendering="crispEdges" style="display: block"><path d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM11 1h1v1h-1zM14 1h1v1h-1zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM11 2h1v1h-1zM14 2h1v1h-1zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM11 3h1v1h-1zM12 3h1v1h-1zM13 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM9 4h1v1h-1zM11 4h1v1h-1zM13 4h1v1h-1zM15 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM12 7h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM12 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM0 9h1v1h-1zM1 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM13 9h1v1h-1zM15 9h1v1h-1zM17 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM21 9h1v1h-1zM24 9h1v1h-1zM1 10h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM14 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM2 11h1v1h-1zM10 11h1v1h-1zM12 11h1v1h-1zM16 11h1v1h-1zM18 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM9 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM22 12h1v1h-1zM23 12h1v1h-1zM0 13h1v1h-1zM1 13h1v1h-1zM5 13h1v1h-1zM8 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM16 13h1v1h-1zM17 13h1v1h-1zM18 13h1v1h-1zM19 13h1v1h-1zM21 13h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM3 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM9 14h1v1h-1zM11 14h1v1h-1zM17 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM1 15h1v1h-1zM5 15h1v1h-1zM7 15h1v1h-1zM8 15h1v1h-1zM9 15h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM14 15h1v1h-1zM19 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM1 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM15 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM16 17h1v1h-1zM20 17h1v1h-1zM22 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM12 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM20 19h1v1h-1zM23 19h1v1h-1zM0 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM6 20h1v1h-1zM9 20h1v1h-1zM11 20h1v1h-1zM13 20h1v1h-1zM16 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM0 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM6 21h1v1h-1zM8 21h1v1h-1zM9 21h1v1h-1zM15 21h1v1h-1zM16 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM24 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM13 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM23 23h1v1h-1zM0 24h1v1h-1zM1 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM13 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1z" fill="#0A0A0A"></path></svg></div>
+</sc-if>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bg":{"editor":"enum","options":["light","dark","photo"],"default":"light"},"size":{"editor":"enum","options":["story","post"],"default":"story"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"qr":{"editor":"boolean","default":false},"$preview":{"width":1080,"height":1920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var bg = this.props.bg || 'light';
+    if (bg !== 'dark' && bg !== 'photo') bg = 'light';
+    var post = this.props.size === 'post';
+    var en = (this.props.lang ?? 'tr') === 'en';
+    var qr = this.props.qr === true || this.props.qr === 'true';
+
+    var T = {
+      light: { bg: '#F3F4F6', text: '#0A0A0A', sec: '#45454A', panel: '#FFFFFF', panelShadow: '0 2px 4px rgba(10,10,10,0.04), 0 24px 64px rgba(10,10,10,0.08)', chip: '#F3F4F6', acc: '#4A6B00', logo: '#0A0A0A', blobA: 'rgba(185,239,20,0.42)', blobB: 'rgba(185,239,20,0.26)', track: '#E9EBEE', hiBg: '#B9EF14', hiFg: '#0A0A0A', glow: 'rgba(185,239,20,0.55)', av: '#DCDEE2', avIcon: '#6B6B70' },
+      dark: { bg: '#000000', text: '#F5F5F5', sec: '#A1A1A6', panel: '#1C1C1E', panelShadow: 'inset 0 0 0 2px #2C2C2E', chip: '#2C2C2E', acc: '#B9EF14', logo: '#FFFFFF', blobA: 'rgba(185,239,20,0.36)', blobB: 'rgba(185,239,20,0.22)', track: '#2C2C2E', hiBg: 'transparent', hiFg: '#B9EF14', glow: 'rgba(185,239,20,0.24)', av: '#3A3A3C', avIcon: '#A1A1A6' },
+      photo: { bg: '#0A0A0A', text: '#FFFFFF', sec: 'rgba(255,255,255,0.86)', panel: 'rgba(20,20,20,0.55)', panelShadow: 'inset 0 0 0 2px rgba(255,255,255,0.14)', chip: 'rgba(255,255,255,0.16)', acc: '#B9EF14', logo: '#FFFFFF', blobA: 'rgba(0,0,0,0)', blobB: 'rgba(0,0,0,0)', track: 'rgba(255,255,255,0.24)', hiBg: 'transparent', hiFg: '#B9EF14', glow: 'rgba(185,239,20,0.30)', av: 'rgba(255,255,255,0.22)', avIcon: '#FFFFFF' }
+    };
+    var t = T[bg];
+    var P = function (a, b) { return post ? b : a; };
+    var base = {
+      t: t, H: post ? '1350px' : '1920px', isPhoto: bg === 'photo', notPhoto: bg !== 'photo', isLight: bg === 'light', isDark: bg === 'dark',
+      isStory: !post, isPost: post, showQr: qr, photoFilter: 'none',
+      L: { top: P('120px', '96px'), bottom: P('320px', '300px'), foot: P('88px', '72px'), gap: P('40px', '28px') }
+    };
+    var X = (function () {
+
+      var panelCls = bg === 'photo' ? 'glP' : '';
+      var s = en ? { recipe: 'Recipe', name: 'Red lentil soup', time: '[N] min', serv: '[N] servings', kcal: '[N] kcal · [N] g protein / serving', ingTitle: 'Key ingredients', ings: ['Red lentils', 'Carrot', 'Onion'] }
+                 : { recipe: 'Tarif', name: 'Mercimek çorbası', time: '[N] dk', serv: '[N] porsiyon', kcal: 'Porsiyon: [N] kcal · [N] g protein', ingTitle: 'Öne çıkan malzemeler', ings: ['Kırmızı mercimek', 'Havuç', 'Soğan'] };
+      return { photo: 't19/ph-mercimek.jpg', panelCls: panelCls, s: s, ings: s.ings, link: 'l.eatkcal.com/r/[tarif]',
+        L2: { pad: P('44px', '36px'), pgap: P('24px', '16px'), h: P('80px', '60px'), img: P('700px', '300px'), ing: P('36px', '32px') } };
+    })();
+    return Object.assign(base, X);
+  }
+}
+</script>
+</body>
+</html>

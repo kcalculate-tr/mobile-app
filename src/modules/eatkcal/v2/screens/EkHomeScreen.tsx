@@ -97,7 +97,7 @@ import {
 import { useQuickAdd } from '../ui/growth/useQuickAdd';
 import { useSubscriptionEnabled } from '../../../../lib/subscription/useSubscriptionBootstrap';
 import { useTier } from '../../../../lib/subscription/purchases';
-import { IZMIR_OFFER_FROM, IZMIR_OFFER_SEEN_KEY, shouldShowIzmirOffer } from '../../../subscription/izmirOffer';
+import { IZMIR_OFFER_FROM, IZMIR_OFFER_LAST_KEY, izmirOfferDue, shouldShowIzmirOffer } from '../../../subscription/izmirOffer';
 
 // EatHomeScreen.tsx ile AYNI yerel anahtar ("haber ver" sunucuya gitmez).
 const NEARBY_INTEREST_KEY = 'eatkcal-nearby-interest-notified';
@@ -289,7 +289,7 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
   const { chip } = useDeliveryChip(businessHours);
 
   // G57 (İlter 17 Kas): İzmir teslimat bölgesinden giren, aboneliği olmayan kullanıcıya paywall
-  // (Fresh yıllık seçili + "2 öğün fiyatına Fresh yıllık, ekstra 2 öğün bizden") BİR KEZ doğrudan açılır.
+  // (Fresh yıllık seçili + "2 öğün fiyatına Fresh yıllık, ekstra 2 öğün bizden") doğrudan açılır; 18 Kas: 2 günde bir.
   const subsOn = useSubscriptionEnabled();
   const { tier, status: tierStatus } = useTier();
   const inZone = chip != null;
@@ -297,8 +297,8 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
     if (isVitrin) return;
     let alive = true;
     const id = setTimeout(() => {
-      AsyncStorage.getItem(IZMIR_OFFER_SEEN_KEY)
-        .then((seen) => {
+      AsyncStorage.getItem(IZMIR_OFFER_LAST_KEY)
+        .then((last) => {
           if (!alive) return;
           const show = shouldShowIzmirOffer({
             signedIn: !!userId,
@@ -306,10 +306,10 @@ function EkHomeContent({ vitrin, vitrinScroll }: { vitrin?: VitrinGrowthKind; vi
             tier,
             tierKnown: tierStatus !== 'unknown',
             subscriptionsEnabled: subsOn,
-            seen: !!seen,
+            seen: !izmirOfferDue(last, Date.now()),
           });
           if (!show) return;
-          void AsyncStorage.setItem(IZMIR_OFFER_SEEN_KEY, '1').catch(() => {});
+          void AsyncStorage.setItem(IZMIR_OFFER_LAST_KEY, String(Date.now())).catch(() => {});
           nav.navigate('SubPaywall', { plan: 'fresh', yearly: true, from: IZMIR_OFFER_FROM, offer: 'izmir_fresh' });
         })
         .catch(() => {});

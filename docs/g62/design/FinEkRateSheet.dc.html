@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>eatkcal · siparişi değerlendir · Light</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}
+/* Tur 26h süreleri = FinMoTokens x1,1. Sheet girişi 550 ms enter eğrisi; yıldız dokunuşu eatkcal yayı 200/28 (CSS karşılığı 0.25, 0.9, 0.3, 1) 330 ms; durum geçişi 220 ms opaklık. */
+.sheetIn{animation:sheetIn 550ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes sheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.fadeIn{animation:fadeIn 220ms cubic-bezier(0.2, 0, 0, 1) both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.starPop{animation:starPop 330ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes starPop{0%{transform:scale(.9)}100%{transform:scale(1)}}
+.okIn{animation:okIn 550ms cubic-bezier(0.25, 0.9, 0.3, 1) both}
+@keyframes okIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.sheetIn,.starPop,.okIn{animation:fadeIn 200ms linear both!important;transform:none!important}}
+textarea::placeholder{color:inherit;opacity:.68}
+</style>
+</helmet>
+<div style="position: relative; width: 393px; height: 852px; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.4; border-radius: 44px">
+<div aria-hidden="true" style="position: absolute; left: 28px; top: 16px; font-size: 16px; font-weight: 600; z-index: 2">9:41</div>
+<!-- Arka plan: teslim edilen sipariş ekranı (yer tutucu). Sheet açıkken etkileşimsiz. -->
+<div aria-hidden="true" style="padding: 62px 16px 0; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px">{{L.bgTitle}}</span>
+<div style="padding: 14px; border-radius: 20px; background: {{c.card}}; display: flex; align-items: center; gap: 12px">
+<img src="t19/ph-tavuk-kinoa.jpg" alt="" style="width: 56px; height: 56px; border-radius: 14px; object-fit: cover">
+<span style="display: flex; flex-direction: column"><b style="font-size: 15px">{{L.order}}</b><span style="font-size: 13px; color: {{c.sec}}">{{L.delivered}}</span></span>
+</div>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: {{c.scrim}}; z-index: 5"></div>
+
+<div role="dialog" aria-modal="true" aria-labelledby="rt-title" class="sheetIn" style="position: absolute; left: 0; right: 0; bottom: 0; top: 96px; z-index: 6; padding: 8px 16px 34px; box-sizing: border-box; border-radius: 28px 28px 0 0; background: {{c.card}}; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; scrollbar-width: none">
+<span aria-hidden="true" style="flex: none; width: 36px; height: 5px; border-radius: 3px; background: {{c.line2}}; margin: 0 auto"></span>
+<div style="flex: none; display: flex; align-items: flex-start; gap: 8px">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 6px">
+<h2 id="rt-title" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 22px; line-height: 1.2">{{L.title}}</h2>
+<span style="font-size: 13px; color: {{c.sec}}">{{L.sub}}</span>
+</span>
+<!-- Sheet: yalnız sağda X. -->
+<button type="button" aria-label="{{L.close}}" style="flex: none; width: 44px; height: 44px; border: none; border-radius: 22px; background: {{c.nested}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></button>
+</div>
+
+<sc-if value="{{form}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<!-- Üç boyut, her biri 1–5 yıldız. Her yıldız 44 pt dokunma alanı, role=radio. Dokunuşta hafif haptik + 0,9 → 1 yay. -->
+<sc-for list="{{dims}}" as="d" hint-placeholder-count="3">
+<div role="radiogroup" aria-label="{{d.aria}}" style="padding: 10px 12px 6px; border-radius: 18px; background: {{c.nested}}; display: flex; flex-direction: column; gap: 2px">
+<span style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px"><b style="font-size: 15px">{{d.t}}</b><span style="font-size: 13px; color: {{c.secN}}">{{d.hint}}</span></span>
+<span style="display: flex; justify-content: space-between; margin: 0 -6px">
+<sc-for list="{{d.stars}}" as="s" hint-placeholder-count="5">
+<button type="button" role="radio" aria-checked="{{s.checked}}" aria-label="{{s.label}}" onClick="{{s.pick}}" style="flex: none; width: 52px; height: 48px; padding: 0; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<sc-if value="{{s.on}}" hint-placeholder-val="{{ false }}"><span class="{{s.cls}}" style="position: relative; width: 32px; height: 32px; display: block"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 256 256" fill="#C6F04F" style="position: absolute; inset: 0"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"></path></svg><svg aria-hidden="true" width="32" height="32" viewBox="0 0 256 256" fill="{{c.starLine}}" style="position: absolute; inset: 0"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"></path></svg></span></sc-if>
+<sc-if value="{{s.off}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 256 256" fill="{{c.starOff}}" style="display: block"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"></path></svg></sc-if>
+</button>
+</sc-for>
+</span>
+</div>
+</sc-for>
+
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px; font-weight: 600">{{L.comment}} <span style="font-weight: 500; color: {{c.sec}}">{{L.optional}}</span></span>
+<textarea rows="3" placeholder="{{L.commentPh}}" value="{{commentVal}}" onChange="{{onComment}}" style="min-height: 88px; box-sizing: border-box; padding: 12px 14px; border: none; border-radius: 16px; background: {{c.nested}}; color: {{c.ink}}; box-shadow: inset 0 0 0 1px {{c.line}}; font-family: inherit; font-size: 15px; line-height: 1.4; resize: none; outline-color: {{c.focus}}"></textarea>
+</label>
+
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<sc-if value="{{hasPhoto}}" hint-placeholder-val="{{ false }}">
+<span class="fadeIn" style="position: relative; width: 72px; height: 72px; flex: none">
+<img src="t19/ph-tavuk-kinoa.jpg" alt="{{L.photoAlt}}" style="display: block; width: 72px; height: 72px; border-radius: 14px; object-fit: cover">
+<button type="button" aria-label="{{L.removePhoto}}" onClick="{{removePhoto}}" style="position: absolute; right: -14px; top: -14px; width: 44px; height: 44px; padding: 0; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 12px; background: #0A0A0A; color: #FFFFFF; box-shadow: 0 0 0 2px {{c.card}}; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg></span></button>
+</span>
+</sc-if>
+<button type="button" onClick="{{addPhoto}}" style="min-height: 44px; padding: 0 16px; border: none; border-radius: 22px; background: transparent; box-shadow: inset 0 0 0 1px {{c.line2}}; color: {{c.ink}}; font-family: inherit; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" style="flex: none"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"></path></svg>{{photoLabel}}</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 2px">
+<button type="button" aria-disabled="{{sendDis}}" onClick="{{send}}" style="height: 52px; border: none; border-radius: 26px; background: {{sendBg}}; color: {{sendFg}}; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; cursor: pointer">{{L.send}}</button>
+<span role="status" aria-live="polite" style="min-height: 18px; font-size: 13px; text-align: center; color: {{c.sec}}">{{sendHint}}</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sent}}" hint-placeholder-val="{{ false }}">
+<div class="fadeIn" role="status" aria-live="polite" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 8px 40px; text-align: center">
+<span class="okIn" aria-hidden="true" style="width: 72px; height: 72px; border-radius: 36px; background: #C6F04F; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 256 256" fill="#0A0A0A" style="flex: none"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path></svg></span>
+<b style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; line-height: 1.2">{{L.thanks}}</b>
+<span style="max-width: 300px; font-size: 15px; color: {{c.sec}}">{{L.sentBody}}</span>
+<div aria-hidden="true" style="margin-top: 4px; padding: 10px 14px; border-radius: 16px; background: {{c.nested}}; display: flex; flex-direction: column; gap: 4px; align-self: stretch; text-align: left">
+<sc-for list="{{summary}}" as="m" hint-placeholder-count="3">
+<span style="display: flex; justify-content: space-between; gap: 8px; font-size: 14px"><span style="color: {{c.secN}}">{{m.t}}</span><b style="font-variant-numeric: tabular-nums">{{m.v}}</b></span>
+</sc-for>
+</div>
+<button type="button" onClick="{{reset}}" style="margin-top: 8px; align-self: stretch; height: 52px; border: none; border-radius: 26px; background: {{c.ink}}; color: {{c.onInk}}; font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; cursor: pointer">{{L.done}}</button>
+</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"state":{"editor":"enum","options":["empty","filled","sent"],"default":"empty"},"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var s = props.state || 'empty';
+    // empty: hiç puan yok, Gönder pasif. filled: 5 / 4 / 5, yorum ve fotoğraf eklenmiş. sent: onay.
+    this.state = s === 'empty'
+      ? { r: [0, 0, 0], photo: false, comment: '', sent: false, tried: false, pop: -1 }
+      : { r: [5, 4, 5], photo: true, comment: props.lang === 'en' ? '[Your review]' : '[Yorumun]', sent: s === 'sent', tried: false, pop: -1 };
+  }
+  renderVals() {
+    var self = this, st = this.state, P = this.props, dark = P.theme === 'dark', en = P.lang === 'en';
+    var c = dark
+      ? { bg: '#000000', card: '#1C1C1E', nested: '#2C2C2E', ink: '#F5F5F5', onInk: '#0A0A0A', sec: '#A1A1A6', secN: '#A1A1A6', line: '#2C2C2E', line2: '#48484A', starOff: '#8E8E93', starLine: '#C6F04F', dis: '#2C2C2E', disText: '#A1A1A6', focus: '#C6F04F', scrim: 'rgba(0,0,0,0.6)' }
+      : { bg: '#F3F4F6', card: '#FFFFFF', nested: '#F3F4F6', ink: '#0A0A0A', onInk: '#FFFFFF', sec: '#6B6B70', secN: '#5C5C61', line: '#E9EBEE', line2: '#C3C7CC', starOff: '#6B6B70', starLine: '#0A0A0A', dis: '#DCDEE2', disText: '#45454A', focus: '#4A6B00', scrim: 'rgba(10,10,10,0.32)' };
+    var L = en
+      ? { bgTitle: 'My orders', order: 'Order [KCAL-XXXX]', delivered: 'Delivered', title: 'Rate your order', sub: 'kcalculate, [Date]', close: 'Close',
+          dims: ['Delivery', 'Calorie match', 'Taste'], dimAria: ' rating, 1 to 5 stars', notRated: 'Not rated', star: [' star', ' stars'],
+          words: ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'],
+          comment: 'Comment', optional: '(optional)', commentPh: 'What stood out about this order?', addPhoto: 'Add photo', changePhoto: 'Change photo', photoAlt: 'Photo you added', removePhoto: 'Remove photo',
+          send: 'Send', needAll: 'Rate all three to send.', ready: '', thanks: 'Thanks for your rating', sentBody: 'Your rating counts towards the store score. The score is the average of the last 3 months.', done: 'Done' }
+      : { bgTitle: 'Siparişlerim', order: 'Sipariş [KCAL-XXXX]', delivered: 'Teslim edildi', title: 'Siparişini değerlendir', sub: 'kcalculate, [Tarih]', close: 'Kapat',
+          dims: ['Teslimat', 'Kalori uyumu', 'Lezzet'], dimAria: ' puanı, 1 ile 5 yıldız arası', notRated: 'Puanlanmadı', star: [' yıldız', ' yıldız'],
+          words: ['', 'Kötü', 'İdare eder', 'İyi', 'Çok iyi', 'Harika'],
+          comment: 'Yorum', optional: '(isteğe bağlı)', commentPh: 'Bu siparişte ne dikkatini çekti?', addPhoto: 'Fotoğraf ekle', changePhoto: 'Fotoğrafı değiştir', photoAlt: 'Eklediğin fotoğraf', removePhoto: 'Fotoğrafı kaldır',
+          send: 'Gönder', needAll: 'Göndermek için üç başlığı da puanla.', ready: '', thanks: 'Teşekkürler', sentBody: 'Değerlendirmen mağaza puanına eklendi. Puan, son 3 ayın ortalamasıdır.', done: 'Tamam' };
+    var r = st.r, ok = r[0] > 0 && r[1] > 0 && r[2] > 0;
+    var dims = L.dims.map(function (t, di) {
+      var stars = [1, 2, 3, 4, 5].map(function (n) {
+        var on = r[di] >= n;
+        return {
+          on: on, off: !on, checked: r[di] === n ? 'true' : 'false', label: n + (n === 1 ? L.star[0] : L.star[1]),
+          cls: st.pop === di && on ? 'starPop' : '',
+          pick: function () { var nr = self.state.r.slice(); nr[di] = n; self.setState({ r: nr, pop: di }); }
+        };
+      });
+      return { t: t, aria: t + L.dimAria, hint: r[di] ? L.words[r[di]] : L.notRated, stars: stars };
+    });
+    var fmt = function (n) { return n + ' / 5'; };
+    return {
+      c: c, L: L, dims: dims,
+      form: !st.sent, sent: !!st.sent,
+      commentVal: st.comment,
+      onComment: function (e) { self.setState({ comment: e.target.value }); },
+      hasPhoto: !!st.photo, photoLabel: st.photo ? L.changePhoto : L.addPhoto,
+      addPhoto: function () { self.setState({ photo: true }); },
+      removePhoto: function () { self.setState({ photo: false }); },
+      sendDis: ok ? 'false' : 'true', sendBg: ok ? c.ink : c.dis, sendFg: ok ? c.onInk : c.disText,
+      sendHint: ok ? L.ready : L.needAll,
+      // Gönder: başarı haptiği + 220 ms opaklıkla onaya geçiş.
+      send: function () { if (!ok) { self.setState({ tried: true }); return; } self.setState({ sent: true }); },
+      summary: L.dims.map(function (t, i) { return { t: t, v: fmt(r[i]) }; }),
+      reset: function () { self.setState({ r: [0, 0, 0], photo: false, comment: '', sent: false, pop: -1 }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
