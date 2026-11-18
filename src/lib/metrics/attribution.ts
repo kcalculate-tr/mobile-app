@@ -5,6 +5,8 @@
 //   /k/<kod>  ya da ?kutu=<kod>                                     → kutu kartı QR (source=box_card, medium=qr)
 //   /s/<kod>  ya da ?saha=<kod>                                     → saha kodu (source=saha, medium=field)
 //   /p/<id>   /u/<handle>  /kesfet                                  → paylaşım bağlantısı (source=share)
+//   G61-S1: /m/ öğün · /d/ gün · /x/ röntgen · /r/ tarif · /i/ davet · /s/<UUID> hikâye → source=share
+//   (`/s/` UUID değilse saha kodu olarak kalır — hikâye kimlikleri UUID, saha kodları ≤ 32 karakter.)
 //   diğer l.eatkcal.com yolları                                      → source=eatkcal_link
 // Yok sayılan: auth-callback, payment-callback, dev/screen (uygulamanın kendi
 // geri dönüşleri — linking.ts ile aynı filtre), expo geliştirme adresleri.
@@ -15,7 +17,10 @@
 // olaylarına ATTRIBUTION_WINDOW_MS içinde ise eklenir.
 //
 // Kişisel veri: handle, gönderi kimliği gibi kişiye bağlanabilen yol parçaları
-// SAKLANMAZ — yalnız bağlantı türü (link=post|profile|explore|box|saha|other).
+// SAKLANMAZ — yalnız bağlantı türü (link=post|profile|explore|meal|day|xray|recipe|invite|story|box|saha|other).
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SHARE_LINK: Record<string, string> = { p: 'post', u: 'profile', kesfet: 'explore', m: 'meal', d: 'day', x: 'xray', r: 'recipe', i: 'invite' };
 
 export type Touch = {
   source: string;
@@ -95,16 +100,18 @@ export function parseAttribution(url: string | null | undefined, nowIso: string)
   const first = (u.path[0] ?? '').toLowerCase();
   const touch: Touch = { source: '', at: nowIso };
 
-  const sahaCode = cleanCode(first === 's' ? u.path[1] : q.saha);
+  const isStory = first === 's' && UUID_RE.test(u.path[1] ?? '');
+  const sahaCode = isStory ? undefined : cleanCode(first === 's' ? u.path[1] : q.saha);
   const boxCode = cleanCode(first === 'k' ? u.path[1] : q.kutu);
 
   if (sahaCode) {
     Object.assign(touch, { source: 'saha', medium: 'field', code: sahaCode, link: 'saha' });
   } else if (boxCode) {
     Object.assign(touch, { source: 'box_card', medium: 'qr', code: boxCode, link: 'box' });
-  } else if (first === 'p' || first === 'u' || first === 'kesfet') {
-    const link = first === 'p' ? 'post' : first === 'u' ? 'profile' : 'explore';
-    Object.assign(touch, { source: 'share', medium: 'link', link });
+  } else if (isStory) {
+    Object.assign(touch, { source: 'share', medium: 'link', link: 'story' });
+  } else if (SHARE_LINK[first] && (first === 'kesfet' || u.path.length >= 2)) {
+    Object.assign(touch, { source: 'share', medium: 'link', link: SHARE_LINK[first] });
   } else if (u.host === 'l.eatkcal.com') {
     Object.assign(touch, { source: 'eatkcal_link', medium: 'link', link: 'other' });
   }
