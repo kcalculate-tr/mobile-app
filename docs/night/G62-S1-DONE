@@ -1,0 +1,5 @@
+G62-S1 tamam (18 Kas).
+Bölüm 1 (mevcut durum) + 2 (akış) release/1.1.0 dalında.
+Kontroller: hygiene + tsc, unit 1602/1602, jest 140 suite / 987 test, expo export iOS + Android geçti.
+Ekran görüntüleri: docs/night/g62/ (16 pano).
+LOG: docs/night/G62-S1-LOG.md (CANLIYA UYGULANACAK migration, DEPLOY, SORULAR).
