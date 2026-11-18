@@ -1,7 +1,10 @@
 // moderate-content — Keşfet gönderi/yorum AI içerik denetimi (G8-CONTRACT.md §Edge).
 // YALNIZ DOSYA: deploy edilmez, anahtar koda yazılmaz. analyze-ai-scan stiliyle birebir.
 //
-// POST { target_type: 'post'|'comment'|'story', target_id: uuid }
+// POST { target_type: 'post'|'comment'|'story'|'review', target_id: uuid }
+//   G62-S1: 'review' — sipariş değerlendirmesi; target_id = reviews.moderation_id. Yorum metni + varsa
+//   fotoğraf (user-media `<uid>/reviews/…`). allow → reviews.is_approved = true (herkese açık listelere
+//   yalnız onaylılar girer); !allow → onaysız kalır + content_reports('review'). Yorum/fotoğraf yoksa atlanır.
 //   G59-S1: 'story' — metin katmanları (yazı/konum/bahset/etiket/anket) + taban görsel (videoda kapak).
 //   Servis rolüyle hedefi okur. Gönderide: görseller (+ varsa video kareleri) + metin;
 //   yorumda: metin. Anthropic Messages API → JSON { allow, categories, confidence }.
@@ -20,6 +23,7 @@
 // fotoğrafı TEK BAŞINA ihlal DEĞİLDİR; talimatta açıkça belirtilir.
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { storyImagePaths, storyModerationText } from './story.ts'
+import { reviewImagePaths, reviewModerationText, reviewNeedsModeration, reviewStatus } from './review.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -30,6 +34,7 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
 const AI_MODERATION_MODEL = Deno.env.get('AI_MODERATION_MODEL') ?? 'claude-haiku-5-5'
 
 const BUCKET = 'post-media'
+const REVIEW_BUCKET = 'user-media' // G62: değerlendirme fotoğrafı (özel kova)
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB (karede/görselde tek tek)
 const MAX_IMAGES = 6                      // en fazla 4 foto + 3 kareden ilk 6
 const TIMEOUT_MS = 20_000
@@ -142,7 +147,7 @@ Deno.serve(async (req: Request) => {
   }
   const targetType = (body.target_type ?? '').trim()
   const targetId = (body.target_id ?? '').trim()
-  if ((targetType !== 'post' && targetType !== 'comment' && targetType !== 'story') || !targetId) {
+  if ((targetType !== 'post' && targetType !== 'comment' && targetType !== 'story' && targetType !== 'review') || !targetId) {
     return json({ error: 'bad_request' }, 400)
   }
 
@@ -152,6 +157,8 @@ Deno.serve(async (req: Request) => {
   let text = ''
   const images: Array<{ mediaType: string; data: string }> = []
   let storyPaths: string[] = []
+  let reviewPaths: string[] = []
+  let reviewEmpty = false
 
   if (targetType === 'post') {
     const { data: post, error } = await admin
@@ -176,6 +183,19 @@ Deno.serve(async (req: Request) => {
     status = st.status
     text = storyModerationText(st.overlays)
     storyPaths = storyImagePaths(st)
+  } else if (targetType === 'review') {
+    const { data: rv, error } = await admin
+      .from('reviews')
+      .select('user_id, comment, is_approved, photo_path')
+      .eq('moderation_id', targetId)
+      .maybeSingle()
+    if (error) return json({ error: 'server' }, 500)
+    if (!rv) return json({ error: 'not_found' }, 404)
+    authorId = rv.user_id
+    status = reviewStatus(rv)
+    text = reviewModerationText(rv)
+    reviewPaths = reviewImagePaths(rv)
+    reviewEmpty = !reviewNeedsModeration(rv)
   } else {
     const { data: c, error } = await admin
       .from('post_comments')
@@ -204,8 +224,8 @@ Deno.serve(async (req: Request) => {
     if (user.id !== authorId) return json({ error: 'forbidden' }, 403)
   }
 
-  // 4) Zaten karara bağlanmış (pending değil) → kuyruğu 'done' yap, çık.
-  if (status !== 'pending') {
+  // 4) Zaten karara bağlanmış (pending değil) — ya da G62: denetlenecek metin/görsel yok — → kuyruğu 'done' yap, çık.
+  if (status !== 'pending' || reviewEmpty) {
     await admin.from('moderation_queue').update({ status: 'done' })
       .eq('target_type', targetType).eq('target_id', targetId)
     return json({ skip: true, reason: `status=${status}` })
@@ -246,10 +266,22 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // 5c) G62: değerlendirme fotoğrafı (user-media).
+  if (targetType === 'review') {
+    for (const path of reviewPaths.slice(0, MAX_IMAGES)) {
+      const { data: blob, error: dlErr } = await admin.storage.from(REVIEW_BUCKET).download(path)
+      if (dlErr || !blob || blob.size > MAX_IMAGE_BYTES) continue
+      const mediaType = mediaTypeFor(path, blob.type)
+      if (!mediaType) continue
+      images.push({ mediaType, data: bytesToBase64(new Uint8Array(await blob.arrayBuffer())) })
+    }
+  }
+
   // 6) Anthropic Messages API — denetim JSON'ı iste. 20 sn zaman aşımı.
   const prompt =
     'You are a content safety classifier for a fitness/nutrition social app. ' +
-    'Review the user post/comment/story (text and any images) and decide if it is allowed. ' +
+    'Review the user post/comment/story/food order review (text and any images) and decide if it is allowed. ' +
+    'Honest negative feedback about food, delivery or service is ALLOWED (not spam, not hate). ' +
     'PROHIBITED: real violence or threats, sexual/explicit content, nudity, hate speech, ' +
     'self-harm/suicide promotion, content involving minors in unsafe/inappropriate ways, spam. ' +
     'IMPORTANT: This is a FITNESS app. Sportswear, swimwear/bikini, gym/training photos, ' +
@@ -315,8 +347,13 @@ Deno.serve(async (req: Request) => {
   // 8) Karar uygula.
   if (parsed.allow && cats.length === 0) {
     // Onaylandı → yayımla.
-    const table = targetType === 'post' ? 'posts' : targetType === 'story' ? 'stories' : 'post_comments'
-    await admin.from(table).update({ status: 'published' }).eq('id', targetId).eq('status', 'pending')
+    if (targetType === 'review') {
+      // G62: onay = is_approved (yalnız onaysızsa; Boss panelinin kararını ezmez).
+      await admin.from('reviews').update({ is_approved: true }).eq('moderation_id', targetId).eq('is_approved', false)
+    } else {
+      const table = targetType === 'post' ? 'posts' : targetType === 'story' ? 'stories' : 'post_comments'
+      await admin.from(table).update({ status: 'published' }).eq('id', targetId).eq('status', 'pending')
+    }
     // Varsa önceki AI şikayetini temizle (tekrar denemede onaylandıysa).
     await admin.from('content_reports').delete()
       .eq('target_type', targetType).eq('target_id', targetId).eq('source', 'ai')
