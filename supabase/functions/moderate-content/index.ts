@@ -1,7 +1,10 @@
 // moderate-content — Keşfet gönderi/yorum AI içerik denetimi (G8-CONTRACT.md §Edge).
 // YALNIZ DOSYA: deploy edilmez, anahtar koda yazılmaz. analyze-ai-scan stiliyle birebir.
 //
-// POST { target_type: 'post'|'comment'|'story'|'review', target_id: uuid }
+// POST { target_type: 'post'|'comment'|'story'|'review'|'message', target_id: uuid }
+//   G63-S1: 'message' — DM mesajı (messages, 'pending' yazılır). Yalnız metin. allow → 'sent' (alıcı görür,
+//   push tetiklenir); !allow → 'blocked' (alıcı hiç görmez; istemci gönderene nötr hata gösterir) +
+//   content_reports('message', source 'ai'). Hata/timeout → 'pending' kalır, pg_cron yeniden dener.
 //   G62-S1: 'review' — sipariş değerlendirmesi; target_id = reviews.moderation_id. Yorum metni + varsa
 //   fotoğraf (user-media `<uid>/reviews/…`). allow → reviews.is_approved = true (herkese açık listelere
 //   yalnız onaylılar girer); !allow → onaysız kalır + content_reports('review'). Yorum/fotoğraf yoksa atlanır.
@@ -24,6 +27,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { storyImagePaths, storyModerationText } from './story.ts'
 import { reviewImagePaths, reviewModerationText, reviewNeedsModeration, reviewStatus } from './review.ts'
+import { MESSAGE_PROMPT_NOTE, messageDecisionStatus, messageModerationText, messageNeedsModeration } from './message.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -147,7 +151,7 @@ Deno.serve(async (req: Request) => {
   }
   const targetType = (body.target_type ?? '').trim()
   const targetId = (body.target_id ?? '').trim()
-  if ((targetType !== 'post' && targetType !== 'comment' && targetType !== 'story' && targetType !== 'review') || !targetId) {
+  if ((targetType !== 'post' && targetType !== 'comment' && targetType !== 'story' && targetType !== 'review' && targetType !== 'message') || !targetId) {
     return json({ error: 'bad_request' }, 400)
   }
 
@@ -159,6 +163,7 @@ Deno.serve(async (req: Request) => {
   let storyPaths: string[] = []
   let reviewPaths: string[] = []
   let reviewEmpty = false
+  let messageEmpty = false
 
   if (targetType === 'post') {
     const { data: post, error } = await admin
@@ -196,6 +201,18 @@ Deno.serve(async (req: Request) => {
     text = reviewModerationText(rv)
     reviewPaths = reviewImagePaths(rv)
     reviewEmpty = !reviewNeedsModeration(rv)
+  } else if (targetType === 'message') {
+    const { data: m, error } = await admin
+      .from('messages')
+      .select('sender_id, status, body, kind, deleted_at')
+      .eq('id', targetId)
+      .maybeSingle()
+    if (error) return json({ error: 'server' }, 500)
+    if (!m) return json({ error: 'not_found' }, 404)
+    authorId = m.sender_id
+    status = m.status
+    text = messageModerationText(m)
+    messageEmpty = !messageNeedsModeration(m)
   } else {
     const { data: c, error } = await admin
       .from('post_comments')
@@ -225,9 +242,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // 4) Zaten karara bağlanmış (pending değil) — ya da G62: denetlenecek metin/görsel yok — → kuyruğu 'done' yap, çık.
-  if (status !== 'pending' || reviewEmpty) {
+  if (status !== 'pending' || reviewEmpty || messageEmpty) {
     await admin.from('moderation_queue').update({ status: 'done' })
       .eq('target_type', targetType).eq('target_id', targetId)
+    // G63: metinsiz/silinmiş bekleyen mesaj → doğrudan gönderilmiş say (denetlenecek metin yok).
+    if (targetType === 'message' && messageEmpty && status === 'pending') {
+      await admin.from('messages').update({ status: 'sent' }).eq('id', targetId).eq('status', 'pending')
+      return json({ allow: true, categories: [], skip: true })
+    }
+    // G63: karar zaten verilmiş mesajda istemci sonucu bilsin (tekrar çağrı).
+    if (targetType === 'message') return json({ skip: true, allow: status === 'sent', reason: `status=${status}` })
     return json({ skip: true, reason: `status=${status}` })
   }
 
@@ -295,7 +319,8 @@ Deno.serve(async (req: Request) => {
   for (const img of images) {
     content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })
   }
-  content.push({ type: 'text', text: `${prompt}\n\nUSER CONTENT:\n${text || '(no text)'}` })
+  const promptFull = targetType === 'message' ? `${prompt} ${MESSAGE_PROMPT_NOTE}` : prompt
+  content.push({ type: 'text', text: `${promptFull}\n\nUSER CONTENT:\n${text || '(no text)'}` })
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -347,7 +372,10 @@ Deno.serve(async (req: Request) => {
   // 8) Karar uygula.
   if (parsed.allow && cats.length === 0) {
     // Onaylandı → yayımla.
-    if (targetType === 'review') {
+    if (targetType === 'message') {
+      // G63: onay = 'sent' → alıcı görür (Realtime UPDATE), push tetikleyicisi çalışır.
+      await admin.from('messages').update({ status: messageDecisionStatus(true) }).eq('id', targetId).eq('status', 'pending')
+    } else if (targetType === 'review') {
       // G62: onay = is_approved (yalnız onaysızsa; Boss panelinin kararını ezmez).
       await admin.from('reviews').update({ is_approved: true }).eq('moderation_id', targetId).eq('is_approved', false)
     } else {
@@ -363,6 +391,10 @@ Deno.serve(async (req: Request) => {
       ? cats.reduce((a, b) => (riskForCategory(b) > riskForCategory(a) ? b : a))
       : 'other'
     await writeAiReport(admin, targetType, targetId, `ai:${topCat}`, riskForCategory(topCat))
+    // G63: engellenen mesaj gönderilmez (alıcı hiç görmez).
+    if (targetType === 'message') {
+      await admin.from('messages').update({ status: messageDecisionStatus(false) }).eq('id', targetId).eq('status', 'pending')
+    }
   }
 
   // Nihai karar verildi → kuyruğu kapat.
