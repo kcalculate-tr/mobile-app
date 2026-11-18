@@ -108,6 +108,7 @@ export interface MealPreviewData {
  * görsel + ad + "kcal · protein" + P/K/Y çipleri + "N kişi logladı" + "+ <Öğün>'ye logla".
  */
 export function MealPreview({ data, mealLabel }: { data: MealPreviewData; mealLabel: string }) {
+  void mealLabel;
   const t = useTheme();
   const { t: tr, fmt } = useT();
   const chip = (k: string, v: number) => (
@@ -149,7 +150,8 @@ export function MealPreview({ data, mealLabel }: { data: MealPreviewData; mealLa
           <View style={[styles.logPill, { backgroundColor: t.color.accent }]}>
             <ComposeIcon name="plus" size={14} color={t.color.onAccent} />
             <AppText style={[styles.logText, F.bold, { color: t.color.onAccent }]}>
-              {tr('kesfet.ui.meal_card.log_to_meal', { meal: mealLabel })}
+              {/* 18 Kas (İlter): önizleme de akıştaki kartla aynı — öğün önceden seçili değil. */}
+              {tr('kesfet.ui.meal_card.log_any')}
             </AppText>
           </View>
         </View>
