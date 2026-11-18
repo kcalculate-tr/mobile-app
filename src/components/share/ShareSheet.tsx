@@ -27,6 +27,7 @@ import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { AppText, Sheet, useTheme } from '../../core/design';
+import { SCROLL_KEYBOARD } from '../../core/design/keyboard';
 import { FinSkeletonBlock } from '../../core/design/components/FinSkeleton';
 import { REDUCED, RN_CURVE, SHARE_MOTION, useReducedMotion, haptic } from '../../core/design/motion';
 import { useT } from '../../core/i18n';
@@ -349,6 +350,7 @@ export function ShareSheet({
       {/* Şablonlar */}
       {showPreviews ? (
         <ScrollView
+          {...SCROLL_KEYBOARD}
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={THUMB_W + 12}

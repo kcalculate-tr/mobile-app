@@ -885,7 +885,7 @@ export function KesfetScreen() {
               const urls = viewerImageUrls(item);
               if (urls.length) setViewer({ urls, index: Math.min(i, urls.length - 1), postId: item.id });
             }}
-            onShare={paylasimBaglanti || shareKitEnabled ? () => onShare(item) : undefined}
+            onShare={paylasimBaglanti ? () => onShare(item) : undefined}
             quickMeal={yeniKabukMenu ? quickMealType : undefined}
             onQuickLog={(frame, meal, portion) => onQuickLog(item, frame, meal, portion)}
             onOpenSheet={() => setSheetPost(item)}
@@ -1143,7 +1143,7 @@ export function KesfetScreen() {
         onClose={() => setVideoPostId(null)}
         onLike={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'like', !videoPost.me.liked)}
         onSave={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'save', !videoPost.me.saved)}
-        onShare={paylasimBaglanti || shareKitEnabled ? () => videoPost && void onShare(videoPost) : undefined}
+        onShare={paylasimBaglanti ? () => videoPost && void onShare(videoPost) : undefined}
         onComment={
           kesfetYorum
             ? () => {
@@ -1173,7 +1173,7 @@ export function KesfetScreen() {
           void useKesfetStore.getState().react(viewerPost.id, 'save', on);
           if (on) void showFirstTip('save');
         }}
-        onShare={(paylasimBaglanti || shareKitEnabled) && viewerPost ? () => void onShare(viewerPost) : undefined}
+        onShare={paylasimBaglanti && viewerPost ? () => void onShare(viewerPost) : undefined}
         onOpenAuthor={
           viewerPost && (viewerPost.author.handle || viewerPost.author.id)
             ? () => {

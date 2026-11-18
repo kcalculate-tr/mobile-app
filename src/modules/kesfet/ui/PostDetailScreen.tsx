@@ -616,7 +616,7 @@ export function PostDetailScreen({
                 onPress={() => react('save')}
                 color={iconColor}
               />
-              {paylasimBaglanti || shareKit.enabled ? (
+              {paylasimBaglanti ? (
                 <IconCount
                   icon={<Icon name="share" size={18} color={iconColor} />}
                   label={tr('kesfet.ui.a11y.share')}
@@ -733,7 +733,7 @@ export function PostDetailScreen({
         commentsEnabled={yorum}
         onLike={() => react('like')}
         onSave={() => react('save')}
-        onShare={paylasimBaglanti || shareKit.enabled ? onShare : undefined}
+        onShare={paylasimBaglanti ? onShare : undefined}
         onOpenAuthor={
           post && onOpenAuthor && (post.author.handle || post.author.id)
             ? () => {

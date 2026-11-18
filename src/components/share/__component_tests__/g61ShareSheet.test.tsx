@@ -207,7 +207,7 @@ test('bayrak kapalı yol kaynakta duruyor: eski modallar + Share.share + giriş 
   expect(scan).toMatch(/shareKit\.enabled\s*\?\s*shareKit\.open\(/);
   const kesfet = SRC('modules/kesfet/ui/KesfetScreen.tsx');
   expect(kesfet).toMatch(/Share\.share\(\{ message: postLink\(post\.id\)/);
-  expect(kesfet).toMatch(/onShare=\{shareKitEnabled \?/);
+  expect(kesfet).toMatch(/onShare=\{shareKitEnabled \?/); // menü "Paylaş" yalnız etkinken
   const invite = SRC('modules/eatkcal/v2/screens/EkInviteScreen.tsx');
   expect(invite).toMatch(/Share\.share\(\{ message: referralShareText/);
   const story = SRC('modules/hikaye/ui/StoryViewerScreen.tsx');
