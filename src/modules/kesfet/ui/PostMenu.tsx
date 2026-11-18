@@ -56,6 +56,7 @@ export function PostMenu({
   isMine = false,
   canEdit = false,
   onCopyLink,
+  onShare,
   onReport,
   onBlock,
   onMute,
@@ -74,6 +75,8 @@ export function PostMenu({
   canEdit?: boolean;
   /** Bağlantıyı kopyala. G25-S1 md.7 (A10): verilmezse (bayrak `paylasim_baglanti` kapalı) düğme çizilmez. */
   onCopyLink?: () => void;
+  /** G61-S1 md.5 (FinShareEntry): "Paylaş" → paylaş sayfası. Verilmezse (bayrak `paylasim_karti` kapalı) satır yok. */
+  onShare?: () => void;
   /** Şikayet: neden + isteğe bağlı not. false → başarısız (sayfada sakin not). */
   onReport: (reason: ReportReason, note?: string) => void | boolean | Promise<boolean | void>;
   onBlock: () => void;
@@ -134,6 +137,17 @@ export function PostMenu({
       >
         {view === 'menu' ? (
           <View style={styles.group}>
+            {onShare ? (
+              <MenuRow
+                icon="share"
+                label={tr('share_kit.entry.share')}
+                onPress={() => {
+                  haptic('selection');
+                  close();
+                  onShare();
+                }}
+              />
+            ) : null}
             {onCopyLink ? (
               <MenuRow
                 icon="link"

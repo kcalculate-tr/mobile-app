@@ -35,6 +35,7 @@ import { useBreath } from '../../../core/design/motion';
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useStoryRing } from '../../hikaye/useStoryRing';
 import { HighlightsRow } from '../../hikaye/ui/Highlights';
+import { useShareSheet } from '../../../components/share/useShareSheet';
 
 // G22-S2 md.5 (FinFollowError): "Takip edilemedi." uyarısı ~6 sn kalır (okuma süresi).
 const FOLLOW_ERROR_HOLD = WAIT.actionToastHold;
@@ -56,6 +57,8 @@ export default function PublicProfileScreen() {
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const storyRingState = useStoryRing(profile && !profile.blocked ? profile.id : null, hikaye, Boolean(user?.id && profile?.id === user.id));
+  // G61-S1 md.5: profil başlığı paylaş simgesi (yalnız `paylasim_karti`; gizli hesapta yok — web önizlemesi açılmaz).
+  const shareKit = useShareSheet('profile_header');
   const [loading, setLoading] = useState(true);
   const [followBusy, setFollowBusy] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -176,6 +179,15 @@ export default function PublicProfileScreen() {
         blocked={Boolean(profile.blocked)}
         locked={!canView}
         editable={isMe}
+        onShare={
+          shareKit.enabled && !profile.blocked && !profile.is_private && profile.handle
+            ? () =>
+                shareKit.open(
+                  { kind: 'profile', data: { name: profile.display_name, handle: profile.handle, bio: profile.bio, avatarUri: profile.avatar_url } },
+                  profile.handle,
+                )
+            : undefined
+        }
         storyRing={hikaye && !profile.blocked ? { state: storyRingState.state, onOpen: () => navigation.navigate('StoryViewer', { userIds: [profile.id], startUserId: profile.id, ownerName: profile.display_name, ownerAvatar: profile.avatar_url }) } : null}
         afterStats={
           hikaye && !profile.blocked && canView ? (
@@ -194,6 +206,7 @@ export default function PublicProfileScreen() {
         }
       />
       {followToastView}
+      {shareKit.node}
       </>
     );
   }

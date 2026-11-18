@@ -47,6 +47,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ActivityCard } from './ActivityCard';
 import { DidItSheet } from './DidItSheet';
 import { PostMenu } from './PostMenu';
+import { postShareInput, useShareSheet } from '../../../components/share/useShareSheet';
 import { AddToast, type ToastState } from './AddToast';
 import { Icon } from './icons';
 import { isStickerUrl, postLink, relativeTime, roleBadgeKey, type ReportReason, type UiLang } from './format';
@@ -377,12 +378,18 @@ export function PostDetailScreen({
     });
   }, [post, tr]);
 
+  // G61-S1 md.5: `paylasim_karti` açıkken yeni paylaş sayfası; kapalıyken bugünkü Share.share.
+  const shareKit = useShareSheet('post_detail');
   const onShare = useCallback(() => {
     if (!post) return;
+    if (shareKit.enabled) {
+      shareKit.open(postShareInput(post), post.id);
+      return;
+    }
     void Share.share({ message: postLink(post.id), url: postLink(post.id) })
       .then((r) => { if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'post_detail' }); })
       .catch(() => {});
-  }, [post]);
+  }, [post, shareKit]);
 
   const send = useCallback(async () => {
     const body = text.trim();
@@ -609,7 +616,7 @@ export function PostDetailScreen({
                 onPress={() => react('save')}
                 color={iconColor}
               />
-              {paylasimBaglanti ? (
+              {paylasimBaglanti || shareKit.enabled ? (
                 <IconCount
                   icon={<Icon name="share" size={18} color={iconColor} />}
                   label={tr('kesfet.ui.a11y.share')}
@@ -679,6 +686,7 @@ export function PostDetailScreen({
               }
             : undefined
         }
+        onShare={shareKit.enabled ? () => shareKit.open(postShareInput(post), post.id) : undefined}
         onReport={(reason: ReportReason) => useKesfetStore.getState().report('post', post.id, reason)}
         onBlock={() => {
           void useKesfetStore
@@ -717,6 +725,7 @@ export function PostDetailScreen({
       />
       <AddToast toast={toast} onDismiss={() => setToast(null)} />
       {/* G58-S2 md.2: akıştakiyle AYNI görüntüleyici — sayılar bu sayfanın iyimser durumundan. */}
+      {shareKit.node}
       <ImageViewer
         state={viewer}
         onClose={() => setViewer(null)}
@@ -724,7 +733,7 @@ export function PostDetailScreen({
         commentsEnabled={yorum}
         onLike={() => react('like')}
         onSave={() => react('save')}
-        onShare={paylasimBaglanti ? onShare : undefined}
+        onShare={paylasimBaglanti || shareKit.enabled ? onShare : undefined}
         onOpenAuthor={
           post && onOpenAuthor && (post.author.handle || post.author.id)
             ? () => {

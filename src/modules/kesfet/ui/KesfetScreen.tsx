@@ -64,6 +64,7 @@ import { ImageViewer, type ImageViewerState } from './ImageViewer';
 import { firstActionTip } from '../activityRuntime';
 import { KIND_TAB, type MyActivityKind } from '../myActivity';
 import { ShareDaySheet } from './ShareDaySheet';
+import { postShareInput, useShareSheet } from '../../../components/share/useShareSheet';
 import { buildShareDayCard, shareDayToastKey, type ShareDayCard } from '../../gun/shareDay';
 
 // YALNIZ __DEV__ vitrini (FinShareDay karesi): sabit örnek gün — canlı akışta HİÇ
@@ -624,14 +625,22 @@ export function KesfetScreen() {
   // G15 — FinFeedTip balonu ilk öğün kartlı gönderinin logla düğmesine çapalanır.
   const firstMealPostId = useMemo(() => posts.find((p) => p.meal_card != null)?.id ?? null, [posts]);
 
+  // G61-S1 md.5: `paylasim_karti` açıkken Paylaş → yeni paylaş sayfası (kapalıyken bugünkü Share.share).
+  const shareKit = useShareSheet('post_menu');
+  const shareKitEnabled = shareKit.enabled;
+  const shareKitOpen = shareKit.open;
   const onShare = useCallback(async (post: FeedPost) => {
+    if (shareKitEnabled) {
+      shareKitOpen(postShareInput(post), post.id);
+      return;
+    }
     try {
       const r = await Share.share({ message: postLink(post.id), url: postLink(post.id) });
       if (r?.action !== Share.dismissedAction) track('share', { target: 'post', surface: 'kesfet' });
     } catch {
       // kullanıcı iptal etti
     }
-  }, []);
+  }, [shareKitEnabled, shareKitOpen]);
 
   // Tek loglama yolu — hem hızlı logla (dokun) hem seçiciden (sheet) buraya gelir.
   // addToDay → uçuş olayı (`kcal:logFlight`, her yolda) → "Logla izi"; toast'ı kabuk
@@ -876,7 +885,7 @@ export function KesfetScreen() {
               const urls = viewerImageUrls(item);
               if (urls.length) setViewer({ urls, index: Math.min(i, urls.length - 1), postId: item.id });
             }}
-            onShare={paylasimBaglanti ? () => onShare(item) : undefined}
+            onShare={paylasimBaglanti || shareKitEnabled ? () => onShare(item) : undefined}
             quickMeal={yeniKabukMenu ? quickMealType : undefined}
             onQuickLog={(frame, meal, portion) => onQuickLog(item, frame, meal, portion)}
             onOpenSheet={() => setSheetPost(item)}
@@ -1100,6 +1109,7 @@ export function KesfetScreen() {
         isMine={menuPost?.me.is_author ?? false}
         canEdit={(menuPost?.me.is_author ?? false) && editAvailable}
         onCopyLink={paylasimBaglanti ? () => menuPost && void onCopyLink(menuPost) : undefined}
+        onShare={shareKitEnabled ? () => menuPost && shareKitOpen(postShareInput(menuPost), menuPost.id) : undefined}
         onReport={(reason, note) => (menuPost ? onReport(menuPost, reason, note) : false)}
         onBlock={() => menuPost && void onBlock(menuPost)}
         onMute={() => menuPost && onMute(menuPost)}
@@ -1133,7 +1143,7 @@ export function KesfetScreen() {
         onClose={() => setVideoPostId(null)}
         onLike={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'like', !videoPost.me.liked)}
         onSave={() => videoPost && void useKesfetStore.getState().react(videoPost.id, 'save', !videoPost.me.saved)}
-        onShare={paylasimBaglanti ? () => videoPost && void onShare(videoPost) : undefined}
+        onShare={paylasimBaglanti || shareKitEnabled ? () => videoPost && void onShare(videoPost) : undefined}
         onComment={
           kesfetYorum
             ? () => {
@@ -1163,7 +1173,7 @@ export function KesfetScreen() {
           void useKesfetStore.getState().react(viewerPost.id, 'save', on);
           if (on) void showFirstTip('save');
         }}
-        onShare={paylasimBaglanti && viewerPost ? () => void onShare(viewerPost) : undefined}
+        onShare={(paylasimBaglanti || shareKitEnabled) && viewerPost ? () => void onShare(viewerPost) : undefined}
         onOpenAuthor={
           viewerPost && (viewerPost.author.handle || viewerPost.author.id)
             ? () => {
@@ -1174,6 +1184,7 @@ export function KesfetScreen() {
             : undefined
         }
       />
+      {shareKit.node}
       <ShareDaySheet
         visible={shareDayOpen}
         onClose={() => setShareDayOpen(false)}

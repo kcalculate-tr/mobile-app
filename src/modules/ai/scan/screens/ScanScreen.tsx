@@ -74,6 +74,7 @@ import { useFeature } from '../../../../core/flags';
 import { haptic, useReducedMotion } from '../../../../core/design';
 import { FinChip } from '../../../profil/ui/finUi';
 import PlateXRayShareModal from '../../../../components/share/PlateXRayShareModal';
+import { useShareSheet } from '../../../../components/share/useShareSheet';
 import type { PlateXRayData } from '../../../../components/share/PlateXRayShareCard';
 import { trackBarcodeLog, trackScanLog, trackScanOutcome } from '../scanTrack';
 import { lookupBarcode, productDisplayName } from '../barcode/off';
@@ -149,6 +150,9 @@ export default function ScanScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
+  // G61-S1 md.1: Tabak Röntgeni kartı (FinShareCardXray) eski PlateXRayShareModal'ın yerine —
+  // yalnız iki paylaşım bayrağı da açıkken; değilse eski modal AYNEN.
+  const shareKit = useShareSheet('xray');
   // "Günüme ekle" → Logla izi + zaman hapı.
   const [logToken, setLogToken] = useState(0);
   const [savedToast, setSavedToast] = useState(false);
@@ -1297,7 +1301,26 @@ export default function ScanScreen() {
         </TouchableOpacity>
 
         {paylasimKarti ? (
-          <TouchableOpacity style={styles.shareBtn} onPress={() => setShareVisible(true)} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={() =>
+              shareKit.enabled
+                ? shareKit.open({
+                    kind: 'xray',
+                    data: {
+                      name: result.name,
+                      totalKcal: result.kcal,
+                      protein: result.protein_g,
+                      carbs: result.carbs_g,
+                      fat: result.fat_g,
+                      items: result.ingredients.map((i) => ({ name: i.name, kcal: i.kcal ?? null })),
+                      photoUri,
+                    },
+                  })
+                : setShareVisible(true)
+            }
+            activeOpacity={0.85}
+          >
             <Text style={styles.shareBtnText}>{t('ai_scan.share_card')}</Text>
           </TouchableOpacity>
         ) : null}
@@ -1332,6 +1355,7 @@ export default function ScanScreen() {
           />
         </View>
 
+        {shareKit.node}
         {paylasimKarti ? (
           <PlateXRayShareModal
             visible={shareVisible}

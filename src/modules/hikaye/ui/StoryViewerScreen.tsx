@@ -35,6 +35,7 @@ import { HEART, LIME, LIME_INK, OM_BG, OM_SOLID, storyTheme } from './tokens';
 import { OverlayAt, StoryBackground, StoryCanvas } from './StoryCanvas';
 import type { StickerInteract } from './StorySticker';
 import { REACTION_KEY, StoryViewersSheet } from './StoryViewersSheet';
+import { useShareSheet } from '../../../components/share/useShareSheet';
 import { HighlightSheet } from './Highlights';
 import { useReduceTransparency } from './a11y';
 
@@ -332,11 +333,34 @@ export default function StoryViewerScreen() {
   );
 
   // ── menü eylemleri ──────────────────────────────────────────────────────────
+  // G61-S1 md.5 (FinShareEntry "Hikâye görenler"): iki paylaşım bayrağı da açıkken hikâye kartı
+  // (katmanlar + l.eatkcal.com/s/<id>); görenler / tepkiler / konum karta GİRMEZ. Değilse bugünkü davranış.
+  const shareKit = useShareSheet('story_viewers');
   const shareStory = useMemo(() => {
     const h = group?.handle;
+    if (shareKit.enabled && story) {
+      return () => {
+        const text = story.overlays.find((o) => o.kind === 'text');
+        const meal = story.overlays.find((o) => o.kind === 'meal');
+        const photo = story.media_type === 'image' ? storyMediaUrl(story.media_url) : story.media_type === 'video' ? storyMediaUrl(story.thumb_url) : null;
+        shareKit.open(
+          {
+            kind: 'story',
+            data: {
+              photoUri: photo,
+              text: text && text.kind === 'text' ? text.data.text : null,
+              mealName: meal && meal.kind === 'meal' ? meal.data.name : null,
+              mealKcal: meal && meal.kind === 'meal' ? meal.data.kcal : null,
+              mealImageUri: meal && meal.kind === 'meal' ? meal.data.image_url : null,
+            },
+          },
+          story.id,
+        );
+      };
+    }
     if (!paylasimBaglanti || !h) return undefined;
     return () => void Share.share({ message: `https://l.eatkcal.com/u/${h}` }).catch(() => undefined);
-  }, [group?.handle, paylasimBaglanti]);
+  }, [group?.handle, paylasimBaglanti, shareKit, story]);
   const deleteStory = useCallback(() => {
     if (!story) return;
     Alert.alert(tr('hikaye.delete_confirm'), tr('hikaye.delete_body'), [
@@ -707,6 +731,7 @@ export default function StoryViewerScreen() {
           onOpenProfile={(h) => nav.push('PublicProfile', { handle: h })}
         />
       ) : null}
+      {shareKit.node}
       {hlSheet && story ? (
         <HighlightSheet
           mode="new"

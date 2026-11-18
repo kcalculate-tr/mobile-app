@@ -28,7 +28,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { AppText, useTheme, haptic, CURVE, DURATION, REDUCED, useReducedMotion } from '../../core/design';
 import { useT } from '../../core/i18n';
-import { TrophyIcon } from '../../components/icons';
+import { ShareNetwork, TrophyIcon } from '../../components/icons';
 import { RollingNumber } from '../../modules/gun/ui';
 import type { NumLang } from '../../modules/gun/motion';
 import { WATER_STEP_ML, formatLiters, pctLabel } from '../../modules/gun/waterFormat';
@@ -234,6 +234,8 @@ export interface FinTopBlockProps {
   streak?: number;
   /** Kullanıcının kayıtlı hedefi var mı (yoksa "Hedef belirlenmedi"). Varsayılan true. */
   hasTarget?: boolean;
+  /** G61-S1 md.5 (FinShareEntry "Gün kartı"): "Günü paylaş" → paylaş sayfası. Verilmezse çizilmez. */
+  onShareDay?: () => void;
 }
 
 export function FinTopBlock({
@@ -249,6 +251,7 @@ export function FinTopBlock({
   popStyle,
   streak = 0,
   hasTarget = true,
+  onShareDay,
 }: FinTopBlockProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -357,6 +360,23 @@ export function FinTopBlock({
               })}
             />
           ) : null}
+          {onShareDay && hasTarget && !empty ? (
+            <Pressable
+              onPress={() => {
+                haptic('selection');
+                onShareDay();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={tt('share_kit.entry.share_day')}
+              style={styles.shareDay}
+              testID="home-share-day"
+            >
+              <ShareNetwork size={16} color={k.limeLine} weight="bold" />
+              <AppText style={[styles.shareDayText, { color: k.limeLine }]} numberOfLines={1}>
+                {tt('share_kit.entry.share_day')}
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -408,6 +428,8 @@ const styles = StyleSheet.create({
   statVal: { fontSize: 13, lineHeight: 17, fontFamily: 'PlusJakartaSans_600SemiBold' },
   statTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   statFill: { height: 4, borderRadius: 2 },
+  shareDay: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: -8 },
+  shareDayText: { fontSize: 13, fontFamily: 'PlusJakartaSans_700Bold', flexShrink: 1 },
   chipRow: {
     marginTop: 16,
     paddingHorizontal: 16,

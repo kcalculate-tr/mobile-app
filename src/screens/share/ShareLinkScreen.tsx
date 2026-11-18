@@ -6,7 +6,7 @@
 //  • s: hikâye — süresi dolmamışsa yazarın profiline gider (halka → görüntüleyici); dolmuşsa
 //    "Hikâye süresi doldu" + profil
 // Silinmiş / iptal / gizli içerik → "Bu içerik artık yok". Rota yalnız `paylasim_baglanti` açıkken kayıtlı.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -37,6 +37,11 @@ export default function ShareLinkScreen() {
   const kind = shareKindFromParam(route.params?.kind);
   const id = kind ? cleanShareId(kind, route.params?.id) : null;
   const [state, setState] = useState<State>({ s: 'loading' });
+  // `t` ve gezinme nesnesi her çizimde yenilenebilir → efekt yalnız tür/kimlik/dil değişince koşar.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const navRef = useRef(navigation);
+  navRef.current = navigation;
 
   useEffect(() => {
     let alive = true;
@@ -52,7 +57,7 @@ export default function ShareLinkScreen() {
       if (kind === 'invite') {
         const code = await savePendingInvite(id);
         if (!code) return set({ s: 'gone' });
-        return set({ s: 'card', input: { kind: 'invite', data: { code } }, note: t('share_kit.invite_saved', { code }) });
+        return set({ s: 'card', input: { kind: 'invite', data: { code } }, note: tRef.current('share_kit.invite_saved', { code }) });
       }
       if (kind === 'recipe') {
         const p = await getSharePreview('recipe', id);
@@ -72,7 +77,7 @@ export default function ShareLinkScreen() {
         if (p.gone) return set({ s: 'gone' });
         const handle = typeof p.handle === 'string' ? p.handle : null;
         if (!p.expired && handle) {
-          navigation.replace('PublicProfile', { handle });
+          navRef.current.replace('PublicProfile', { handle });
           return;
         }
         return set({ s: 'expired', handle, name: typeof p.author_name === 'string' ? p.author_name : null });
@@ -83,7 +88,7 @@ export default function ShareLinkScreen() {
     return () => {
       alive = false;
     };
-  }, [kind, id, lang, navigation, t]);
+  }, [kind, id, lang]);
 
   const back = () => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Tabs' as never));
   const cardW = Math.min(width - 32, 380);

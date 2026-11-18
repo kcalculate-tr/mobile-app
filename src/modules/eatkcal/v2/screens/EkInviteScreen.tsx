@@ -19,6 +19,7 @@ import { useEkNav } from '../nav';
 import { useGrowthTokens } from '../ui/growth/tokens';
 import { fetchMyReferral } from '../growth/growthApi';
 import { referralShareText, visibleHistory, type MyReferral } from '../growth/referral';
+import { useShareSheet } from '../../../../components/share/useShareSheet';
 
 const SCALE = 1.3;
 
@@ -62,10 +63,17 @@ export default function EkInviteScreen() {
     track('referral_share', { method: 'copy' });
     setCopied(true);
   };
+  // G61-S1 md.5 (FinShareEntry "Davet ekranı"): iki paylaşım bayrağı da açıkken "Kodunu paylaş" →
+  // davet kartı (kod büyük + QR, l.eatkcal.com/i/<kod>); değilse bugünkü sistem metin paylaşımı.
+  const shareKit = useShareSheet('invite');
   const share = () => {
     if (!data) return;
     haptic('light');
     track('referral_share', { method: 'share' });
+    if (shareKit.enabled) {
+      shareKit.open({ kind: 'invite', data: { code: data.code } }, data.code);
+      return;
+    }
     void Share.share({ message: referralShareText(t, data.code) }).catch(() => {});
   };
 
@@ -154,7 +162,7 @@ export default function EkInviteScreen() {
               >
                 <Export size={18} color={k.limeInk} weight="bold" />
                 <Text style={[styles.shareText, { color: k.limeInk }]} maxFontSizeMultiplier={SCALE}>
-                  {t('ek56.invite.share')}
+                  {shareKit.enabled ? t('share_kit.entry.share_code') : t('ek56.invite.share')}
                 </Text>
               </Pressable>
             </View>
@@ -221,6 +229,7 @@ export default function EkInviteScreen() {
           </>
         )}
       </View>
+      {shareKit.node}
     </EkScreen>
   );
 }

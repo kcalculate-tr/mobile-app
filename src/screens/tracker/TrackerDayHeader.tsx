@@ -72,6 +72,8 @@ export interface TrackerDayHeaderProps {
   onOpenMacros?: () => void;
   /** G18-S2: kayıtlı hedef var mı (yoksa "Hedef belirlenmedi"). */
   hasTarget?: boolean;
+  /** G61-S1 md.5: "Günü paylaş" (yalnız iki paylaşım bayrağı açıkken verilir). */
+  onShareDay?: () => void;
 }
 
 /** Saate göre selamlama anahtarı (05–11 sabah, 11–18 gün, diğer akşam). */
@@ -150,6 +152,7 @@ export function TrackerDayHeader({
   onFirstManual,
   onOpenMacros,
   hasTarget,
+  onShareDay,
 }: TrackerDayHeaderProps) {
   const t = useTheme();
   const { t: tt, lang } = useT();
@@ -241,6 +244,7 @@ export function TrackerDayHeader({
           onFirstManual={onFirstManual}
           onOpenMacros={onOpenMacros}
           hasTarget={hasTarget}
+          onShareDay={onShareDay}
           popStyle={popStyle}
           streak={streak}
         />

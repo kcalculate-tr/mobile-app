@@ -101,6 +101,7 @@ import { pickAutoLogInstances } from '../modules/gun/delivery';
 import { loadAutoLogged, markAutoLogged } from '../modules/gun/autoLogStore';
 import { tabBarContentInset, useTabBarCollapse } from '../modules/shell';
 import ShareMealCardModal from '../components/share/ShareMealCardModal';
+import { useShareSheet } from '../components/share/useShareSheet';
 import type { ShareMealData } from '../components/share/MealShareCard';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useNutritionSummary } from '../hooks/useNutritionSummary';
@@ -931,6 +932,9 @@ export default function TrackerScreen() {
   // hiçbir yeni UI/mount yok, mevcut ekran davranışı değişmez.
   const paylasimKarti = useFeature('paylasim_karti');
   const [shareMeal, setShareMeal] = useState<{ data: ShareMealData; seed: string } | null>(null);
+  // G61-S1 md.5 (FinShareEntry "Öğün detayı"): iki paylaşım bayrağı da açıkken yeni paylaş sayfası
+  // (öğün kartı); değilse yukarıdaki eski ShareMealCardModal AYNEN.
+  const shareKit = useShareSheet('meal_detail');
   // AI tarama (G6-S4) — yalnız bayrak açıkken "AI ile tara" butonu görünür;
   // kapalıyken bu buton hiç render olmaz, ScanScreen'e hiç erişilmez.
   const aiTarama = useFeature('ai_tarama');
@@ -1461,7 +1465,7 @@ export default function TrackerScreen() {
     sosyalBildirim: useFeature('sosyal_bildirim' as FlagKey),
     kesfet: useFeature('kesfet' as FlagKey),
   });
-  const { t: tt } = useT();
+  const { t: tt, lang: ttLang } = useT();
   const water = useWaterToday(yeniKabuk && suTakibi, user?.id);
   const serverWaterTarget = waterTargetMl(nutritionProfile?.target_water);
   // su_takibi açık → sunucu (water_daily); kapalı → 1.0.7'deki cihaz içi bardak
@@ -1913,11 +1917,31 @@ export default function TrackerScreen() {
     const row = todayConsumed.find((c) => c.id === item.id);
     if (!row) return;
     const note = (row.note ?? '').trim();
+    if (shareKit.enabled) {
+      openMealShare(row);
+      return;
+    }
     setShareMeal({
       data: { name: row.name, calories: row.calories, protein: row.protein, portion: note || null, estimate: true },
       seed: row.id,
     });
   };
+
+  // Öğün kartı: yalnız öğün adı / kcal / makro + öğün etiketi (hedef ve gün toplamı YOK).
+  function openMealShare(row: ConsumedRow) {
+    const mt = row.meal_type && ['breakfast', 'lunch', 'dinner', 'snack'].includes(row.meal_type) ? row.meal_type : null;
+    shareKit.open({
+      kind: 'meal',
+      data: {
+        mealLabel: mt ? tt(`meal.${mt}`) : null,
+        name: row.name,
+        kcal: row.calories,
+        protein: row.protein,
+        carbs: row.carbs,
+        fat: row.fat,
+      },
+    });
+  }
 
   // Teslim edilen sipariş otomatik loglanır (yeni kabukta "Dolabındakiler" yok).
   // Kayıt biçimi "Tükettim" ile AYNI (source='pantry', source_ref=instanceId,
@@ -2937,6 +2961,25 @@ const html = `
                 onFirstManual={() => openMealFormFor(slotFromHour(istanbulHour()))}
                 onOpenMacros={openGoal}
                 hasTarget={homeGoal.has}
+                onShareDay={
+                  shareKit.enabled
+                    ? () => {
+                        const goal = homeGoal.has ? homeGoal.kcal : targets.kcal;
+                        const kcalNow = Math.max(0, homeTotals.kcal - heldKcal);
+                        // Gün kartı: YALNIZ yüzde + öğün sayısı + protein + su (hedef/toplam rakamı YOK).
+                        shareKit.open({
+                          kind: 'day',
+                          data: {
+                            pct: goal > 0 ? Math.round((kcalNow / goal) * 100) : 0,
+                            meals: todayConsumed.length,
+                            protein: homeTotals.protein,
+                            waterL: homeWater && homeWater.ml != null ? homeWater.ml / 1000 : null,
+                            dateLabel: new Date().toLocaleDateString(ttLang === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'long' }),
+                          },
+                        });
+                      }
+                    : undefined
+                }
               />
             ) : null}
             {/* G34-S1 md.5 (Tur 26o 04 "Ana sayfa kartı"): halkanın altında TEK SEFERLİK kişisel plan kartı
@@ -3278,7 +3321,9 @@ const html = `
                           <TouchableOpacity
                             style={s.consumedShareBtn}
                             onPress={() =>
-                              setShareMeal({
+                              shareKit.enabled
+                                ? openMealShare(row)
+                                : setShareMeal({
                                 data: {
                                   name: row.name,
                                   calories: row.calories,
@@ -3312,6 +3357,7 @@ const html = `
       </Reanimated.ScrollView>
       </TextScaleCapContext.Provider>
 
+      {shareKit.node}
       {/* Paylaşım kartı modalı (G5-S4) — yalnız bayrak açıkken. */}
       {paylasimKarti ? (
         <ShareMealCardModal

@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { palette, useTheme } from '../../../../core/design';
 import { useT } from '../../../../core/i18n';
-import { ArrowLeft, LockSimple } from '../../../../components/icons';
+import { ArrowLeft, LockSimple, ShareNetwork } from '../../../../components/icons';
 import { getProfilClient } from '../../client';
 import type { PublicProfile } from '../../types';
 import { VerifiedBadge } from '../../../kesfet/ui/VerifiedBadge';
@@ -41,8 +41,11 @@ export default function PublicPreviewScreen({
   editable = false,
   storyRing = null,
   afterStats = null,
+  onShare,
 }: {
   onBack: () => void;
+  /** G61-S1 md.5 (FinShareEntry "Profil başlığı"): paylaş simgesi → paylaş sayfası. Verilmezse (bayrak kapalı) çizilmez. */
+  onShare?: () => void;
   /** G59-S1: aktif hikâye halkası (lime = görülmemiş, gri = görülmüş); dokununca görüntüleyici. */
   storyRing?: { state: 'unseen' | 'seen' | 'none'; onOpen: () => void } | null;
   /** G59-S1: sayaçların altında öne çıkanlar satırı. */
@@ -143,6 +146,28 @@ export default function PublicPreviewScreen({
         >
           <ArrowLeft size={20} color="#FFFFFF" weight="bold" />
         </Pressable>
+        {onShare ? (
+          <Pressable
+            onPress={onShare}
+            accessibilityRole="button"
+            accessibilityLabel={tr('share_kit.entry.share_profile')}
+            hitSlop={8}
+            testID="public-profile-share"
+            style={{
+              position: 'absolute',
+              top: insets.top + 6,
+              right: 12,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(10,10,10,0.55)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ShareNetwork size={20} color="#FFFFFF" weight="bold" />
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={{ paddingHorizontal: 16, marginTop: -44 }}>
