@@ -491,7 +491,10 @@ function SlotItem({
       testID={`home-item-${item.id}`}
       style={[styles.item, lit ? { backgroundColor: hlBg } : null]}
     >
+      {/* 18 Kas (İlter): kayıt menüsü (porsiyon · öğün · paylaş · Kaldır) yalnız uzun basışla açılıyordu,
+          silme bulunamıyordu → dokunmak da açar. */}
       <Pressable
+        onPress={() => onToggleMenu(item.id)}
         onLongPress={() => onToggleMenu(item.id)}
         accessibilityRole="button"
         accessibilityLabel={`${item.name}, ${sourceLabel}, ${item.time}, ${tt('gun.item_kcal', { kcal: item.kcal })}`}

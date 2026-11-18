@@ -82,9 +82,23 @@ function normalizeProduct(raw: Partial<ProductSearchItem> & { id: string }): Pro
 
 // Sunucu eski (G7 öncesi) şekilde döndürse bile G8 alanlarını güvenli
 // varsayılanlarla doldur — UI her zaman tam bir FeedPost görür.
+// 18 Kas (İlter): sunucu `me.is_author` döndürmüyor → kendi gönderisinde "Şikâyet et / Engelle" çıkıyor,
+// "Sil" çıkmıyordu. Yazar = oturumdaki kullanıcı ise is_author istemcide türetilir.
+let viewerId: string | null = null;
+async function refreshViewer(): Promise<void> {
+  try {
+    const { data } = await sb().auth.getSession();
+    viewerId = data.session?.user?.id ?? null;
+  } catch {
+    // eski değer kalır
+  }
+}
+
 function normalizePost(raw: Partial<FeedPost> & { id: string }): FeedPost {
   const stats = raw.stats ?? { likes: 0, saves: 0, adds: 0, comments: 0, did_it: 0 };
   const me = raw.me ?? { liked: false, saved: false, is_author: false };
+  const authorId = (raw.author as { id?: string } | undefined)?.id ?? null;
+  const isAuthor = me.is_author ?? (viewerId != null && authorId != null && authorId === viewerId);
   return {
     ...(raw as FeedPost),
     stats: {
@@ -97,7 +111,7 @@ function normalizePost(raw: Partial<FeedPost> & { id: string }): FeedPost {
     me: {
       liked: me.liked ?? false,
       saved: me.saved ?? false,
-      is_author: me.is_author ?? false,
+      is_author: isAuthor,
     },
     // G57: depo içi yol → herkese açık adres (önceden fotoğraflı gönderiler gri kalıyordu).
     media: (raw.media ?? []).map((m) => ({ ...m, url: resolvePostMediaUrl(m.url) })),
@@ -116,6 +130,7 @@ export const realKesfetClient: KesfetClient = {
       p_limit: limit,
     });
     if (error) rpcError('get_feed', error);
+    await refreshViewer();
     const page = (data ?? {}) as Partial<FeedPage>;
     const items = Array.isArray(page.items) ? page.items : [];
     return {
@@ -132,6 +147,7 @@ export const realKesfetClient: KesfetClient = {
       p_limit: limit,
     });
     if (error) rpcError('get_feed_ranked', error);
+    await refreshViewer();
     const page = (data ?? {}) as Partial<FeedPage>;
     const items = Array.isArray(page.items) ? page.items : [];
     return {
@@ -156,6 +172,7 @@ export const realKesfetClient: KesfetClient = {
     const { data, error } = await sb().rpc('get_post', { p_post: post });
     if (error) rpcError('get_post', error);
     if (data == null) return null;
+    await refreshViewer();
     return normalizePost(data as Partial<FeedPost> & { id: string });
   },
 
