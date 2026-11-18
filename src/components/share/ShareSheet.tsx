@@ -63,6 +63,8 @@ export type ShareSheetProps = {
   forcePhase?: SharePhase;
   /** YALNIZ vitrin / test: anlık görüntü kimliği sabit. */
   presetSnapshotId?: string | null;
+  /** G63-S1: `mesajlar` açıkken gönderi için "Mesajla gönder" hedefi (ızgaranın başında). Verilmezse çizilmez. */
+  onSendMessage?: () => void;
   testID?: string;
 };
 
@@ -119,6 +121,9 @@ const TARGET_LABEL: Record<TargetKey, string> = {
   other: 'share_kit.more',
 };
 
+/** G63-S1 "Mesajla gönder": kağıt uçak (24 · stroke 1.8, hedef ikonlarıyla aynı çizgi dili). */
+const DM_TARGET_ICON = 'M21 3 10 14 M21 3l-6.5 18-4.5-7-7-4.5L21 3Z';
+
 function Icon({ d, size, color, sw = 1.8 }: { d: string; size: number; color: string; sw?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -141,6 +146,7 @@ export function ShareSheet({
   surface,
   forcePhase,
   presetSnapshotId,
+  onSendMessage,
   testID = 'share-sheet',
 }: ShareSheetProps) {
   const theme = useTheme();
@@ -462,6 +468,28 @@ export function ShareSheet({
 
       {/* Hedefler */}
       <View accessibilityRole="list" accessibilityLabel={t('share_kit.targets_a11y')} style={styles.grid} testID="share-targets">
+        {onSendMessage ? (
+          <View style={styles.cell}>
+            <Pressable
+              onPress={() => {
+                haptic('selection');
+                onSendMessage();
+              }}
+              disabled={busy != null}
+              accessibilityRole="button"
+              accessibilityLabel={t('dm.share_target')}
+              style={({ pressed }) => [styles.tgt, { transform: [{ scale: pressed && !reduced ? SHARE_MOTION.pressScale : 1 }] }]}
+              testID="share-target-dm"
+            >
+              <View style={[styles.tgtCircle, { backgroundColor: c.tile, borderColor: c.tileRing, borderWidth: StyleSheet.hairlineWidth * 2 }]}>
+                <Icon d={DM_TARGET_ICON} size={24} color={c.text} />
+              </View>
+              <AppText style={[styles.tgtLabel, { color: c.text }]} numberOfLines={2}>
+                {t('dm.share_target')}
+              </AppText>
+            </Pressable>
+          </View>
+        ) : null}
         {targets.map((k) => {
           const dis = isTargetDisabled(k, !imgOff);
           const isCopy = k === 'copy';

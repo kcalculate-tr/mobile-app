@@ -82,6 +82,10 @@ const KesfetReelsScreen = lazy(() => import('../modules/kesfet/ui/ReelsScreen'))
 const StoryCameraScreen = lazy(() => import('../modules/hikaye/ui/StoryCameraScreen'));
 const StoryEditorScreen = lazy(() => import('../modules/hikaye/ui/StoryEditorScreen'));
 const StoryViewerScreen = lazy(() => import('../modules/hikaye/ui/StoryViewerScreen'));
+// G63-S1 — Mesajlar (DM); `mesajlar` açıkken (ya da __DEV__) kayıtlı.
+const DmInboxScreen = lazy(() => import('../modules/mesajlar/ui/InboxScreen'));
+const DmChatScreen = lazy(() => import('../modules/mesajlar/ui/ChatScreen'));
+const DmNewScreen = lazy(() => import('../modules/mesajlar/ui/NewMessageScreen'));
 // G22-S2 md.4 — Keşfet arama (FinSearch); `kesfet` açıkken (ya da __DEV__) kayıtlı.
 const KesfetSearchScreen = lazy(() => import('../modules/kesfet/ui/SearchScreen'));
 // Yalnız __DEV__: G6-S3 Gün halkası/profil UI vitrini.
@@ -174,6 +178,9 @@ const KesfetReelsLazy = withSuspense(KesfetReelsScreen);
 const StoryCameraLazy = withSuspense(StoryCameraScreen);
 const StoryEditorLazy = withSuspense(StoryEditorScreen);
 const StoryViewerLazy = withSuspense(StoryViewerScreen);
+const DmInboxLazy = withSuspense(DmInboxScreen);
+const DmChatLazy = withSuspense(DmChatScreen);
+const DmNewLazy = withSuspense(DmNewScreen);
 const KesfetSearchLazy = withSuspense(KesfetSearchScreen);
 const GunProfilUiLabLazy = withSuspense(GunProfilUiLabScreen);
 const PublicProfileLazy = withSuspense(PublicProfileScreen);
@@ -472,6 +479,8 @@ export default function AppNavigator() {
   const sosyalBildirimEnabled = useFeature('sosyal_bildirim');
   const kesfetVideoEnabled = useFeature('kesfet_video');
   const hikayeEnabled = useFeature('hikaye');
+  // G63-S1: Mesajlar — kapalıyken rotalar KAYITLI DEĞİL (giriş de yok).
+  const mesajlarEnabled = useFeature('mesajlar');
   // G61-S1: l.eatkcal.com/m|d|x|r|i ve /s/<UUID> hedefi yalnız `paylasim_baglanti` açıkken kayıtlı.
   const paylasimBaglantiEnabled = useFeature('paylasim_baglanti');
   // G12-S1: `yeni_onboarding` açıkken oturumsuz soğuk açılış WelcomeGate yerine
@@ -644,6 +653,10 @@ export default function AppNavigator() {
       {(hikayeEnabled || __DEV__) && (
         <Stack.Screen name="StoryViewer" component={StoryViewerLazy} options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
       )}
+      {/* G63-S1: Mesajlar — bayrak kapalıyken rota YOK. Yeni mesaj sayfa (modal) olarak açılır. */}
+      {(mesajlarEnabled || __DEV__) && <Stack.Screen name="DmInbox" component={DmInboxLazy} options={{ ...aiPush, headerShown: false }} />}
+      {(mesajlarEnabled || __DEV__) && <Stack.Screen name="DmChat" component={DmChatLazy} options={{ ...aiPush, headerShown: false }} />}
+      {(mesajlarEnabled || __DEV__) && <Stack.Screen name="DmNew" component={DmNewLazy} options={{ headerShown: false, presentation: 'modal' }} />}
       {__DEV__ && (
         <Stack.Screen name="GunProfilUiLab" component={GunProfilUiLabLazy} options={{ title: 'Gün halkası / profil (UI)' }} />
       )}

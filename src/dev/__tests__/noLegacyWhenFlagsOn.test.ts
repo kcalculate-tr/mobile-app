@@ -145,6 +145,10 @@ const ROUTE_AUDIT: Record<string, Audit> = {
   StoryCamera: { kind: 'final', file: 'modules/hikaye/ui/StoryCameraScreen.tsx' },
   StoryEditor: { kind: 'final', file: 'modules/hikaye/ui/StoryEditorScreen.tsx' },
   StoryViewer: { kind: 'final', file: 'modules/hikaye/ui/StoryViewerScreen.tsx' },
+  // G63-S1: Mesajlar (yalnız `mesajlar` açıkken kayıtlı).
+  DmInbox: { kind: 'final', file: 'modules/mesajlar/ui/InboxScreen.tsx' },
+  DmChat: { kind: 'final', file: 'modules/mesajlar/ui/ChatScreen.tsx' },
+  DmNew: { kind: 'final', file: 'modules/mesajlar/ui/NewMessageScreen.tsx' },
   KesfetSearch: { kind: 'final', file: 'modules/kesfet/ui/SearchScreen.tsx' }, // G22-S2 md.4: Keşfet arama (profil + içerik)
   PublicProfile: { kind: 'internal', why: 'PublicProfileScreen yeni_kabuk ile dallanır (Final dal: profil/ui)' },
   ProfileSub: { kind: 'final', file: 'modules/profil/ui/screens/ProfileSubRoute.tsx' }, // G21-S1 md.9: FinPrProfile alt sayfaları (yalnız yeni kabuktan açılır)

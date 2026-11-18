@@ -94,6 +94,9 @@ import { SectionSlide, SlidingIndicator, useRowWidth } from '../../../core/desig
 import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { KesfetMeButton, useKesfetMe } from './KesfetMe';
 import { StoryTray } from '../../hikaye/ui/StoryTray';
+import { useDmBadge } from '../../mesajlar/store';
+import { badgeText } from '../../mesajlar/rules';
+import { DmIcon } from '../../mesajlar/ui/parts';
 import { useStoryTray, viewerQueue } from '../../hikaye/store';
 
 function Header({
@@ -106,7 +109,10 @@ function Header({
   finalHeader = true,
   me,
   onReels,
+  dm,
 }: {
+  /** G63-S1: `mesajlar` açıkken mesaj simgesi + okunmamış sohbet rozeti (sayı, 9+). Verilmezse çizilmez. */
+  dm?: { unread: number; onPress: () => void };
   /** G58-S2 md.3: `kesfet_video` açıkken başlığın sağında küçük oynat simgesi → Reels (ilk video). */
   onReels?: () => void;
   /** G53-S1 md.1: sağda kendi profil fotoğrafım (yoksa baş harf) → kendi herkese açık profilim. */
@@ -149,6 +155,24 @@ function Header({
         <Pressable onPress={onSearch} accessibilityRole="button" accessibilityLabel={tr('kesfet.ui.a11y.search')} style={styles.iconBtn}>
           <Icon name="search" size={24} color={t.color.ink} />
         </Pressable>
+        {dm ? (
+          <Pressable
+            onPress={dm.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={dm.unread > 0 ? `${tr('dm.entry_a11y')}, ${tr('dm.entry_unread', { n: dm.unread })}` : tr('dm.entry_a11y')}
+            style={styles.iconBtn}
+            testID="kesfet-header-dm"
+          >
+            <DmIcon name="chatCircle" size={24} color={t.color.ink} />
+            {dm.unread > 0 ? (
+              <View style={[styles.dmBadge, { backgroundColor: t.color.accent, borderColor: t.color.bg }]} testID="kesfet-dm-badge">
+                <AppText variant="caption" style={styles.badgeText}>
+                  {badgeText(dm.unread)}
+                </AppText>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
         {showBell ? (
           <Pressable onPress={onNotifications} accessibilityRole="button" accessibilityLabel={unread > 0 ? `${tr('kesfet.ui.a11y.notifications')}, ${tr('kesfet.ui.a11y.notifications_unread', { count: unread })}` : tr('kesfet.ui.a11y.notifications')} style={styles.iconBtn} testID="kesfet-bell">
             <Icon name="bell" size={24} color={t.color.ink} />
@@ -301,6 +325,22 @@ export function KesfetScreen() {
   const kesfetVideo = useFeature('kesfet_video');
   // G59-S1: hikâye tepsisi yalnız `hikaye` açıkken (kapalıyken tepsi, istek ve rota YOK).
   const hikaye = useFeature('hikaye');
+  // G63-S1: Mesajlar girişi yalnız `mesajlar` açıkken (kapalıyken simge yok, sayaç isteği yok).
+  const mesajlar = useFeature('mesajlar');
+  const dmUnread = useDmBadge((s) => s.unread);
+  useFocusEffect(
+    useCallback(() => {
+      if (mesajlar) void useDmBadge.getState().refresh();
+    }, [mesajlar]),
+  );
+  // Ön plana gelişte rozeti tazele (Realtime yoksa da güncel).
+  useEffect(() => {
+    if (!mesajlar) return undefined;
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') void useDmBadge.getState().refresh();
+    });
+    return () => sub.remove();
+  }, [mesajlar]);
   // G60-S1: Keşfet sekmesi sıralaması v2 + görüntülenme ölçümü (kapalıyken get_feed + dil 'tr' AYNEN).
   const kesfetSiralama = useFeature('kesfet_siralama');
   const siralamaRef = useRef(kesfetSiralama);
@@ -1080,6 +1120,7 @@ export function KesfetScreen() {
         onReels={kesfetVideo ? () => navigation.navigate('KesfetReels') : undefined}
         me={me}
         unread={unread}
+        dm={mesajlar ? { unread: dmUnread, onPress: () => navigation.navigate('DmInbox') } : undefined}
       />
       <Tabs
         tab={tab}
@@ -1257,6 +1298,7 @@ const styles = StyleSheet.create({
   dot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
   badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
   badgeText: { color: '#0A0A0A', fontSize: 10, fontWeight: '800', lineHeight: 14 },
+  dmBadge: { position: 'absolute', top: 5, right: 4, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 1.5, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   tabUnderline: { position: 'absolute', bottom: 0, width: 56, height: 3, borderRadius: 2 },

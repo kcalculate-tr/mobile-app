@@ -4,9 +4,10 @@
 // Dokunma: sol üçte bir = önceki, sağ üçte iki = sonraki, basılı tut = duraklat (başlık 220 ms solar; haptik yok).
 // Jest: aşağı kaydır = kapat, yana kaydır = sonraki/önceki kişi, yukarı kaydır = hızlı tepkiler (başkası) / Görenler
 // (sahibi). `coach` = ilk açılışta gezinme ipucu (bir kez) + kendi hikâyende kcalAI Koç ipucu kartı (koç bayrağı açıksa).
-// `reply` = YALNIZ hızlı tepkiler (serbest metin DM'e kadar yok). Reduce Motion: kişi geçişi / kapanış 200 ms opaklık.
+// `reply` = hızlı tepkiler; G63-S1: `mesajlar` açıkken altta serbest metin yanıtı (DM `kind='story_reply'`,
+// G59 tasarımındaki yanıt alanı: 48 pt alan, 2 pt çerçeve, 48 pt gönder — taslak varken lime). Kapalıyken AYNEN. Reduce Motion: kişi geçişi / kapanış 200 ms opaklık.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Image as RNImage, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, AppState, Image as RNImage, KeyboardAvoidingView, PanResponder, Platform, Pressable, Share, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -38,6 +39,8 @@ import { REACTION_KEY, StoryViewersSheet } from './StoryViewersSheet';
 import { useShareSheet } from '../../../components/share/useShareSheet';
 import { HighlightSheet } from './Highlights';
 import { useReduceTransparency } from './a11y';
+import { getDmClient } from '../../mesajlar/client';
+import { cleanBody, errorKey as dmErrorKey, newIdem, rpcCode } from '../../mesajlar/rules';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Rp = RouteProp<RootStackParamList, 'StoryViewer'>;
@@ -115,6 +118,8 @@ export default function StoryViewerScreen() {
   const { user } = useAuth();
   const koc = useFeature('koc');
   const paylasimBaglanti = useFeature('paylasim_baglanti');
+  // G63-S1: serbest metin yanıtı yalnız `mesajlar` açıkken.
+  const mesajlar = useFeature('mesajlar');
   const trayItems = useStoryTray((s) => s.items);
   const markSeenTray = useStoryTray((s) => s.markSeen);
   const refreshTray = useStoryTray((s) => s.refresh);
@@ -177,6 +182,8 @@ export default function StoryViewerScreen() {
   const [tipClosed, setTipClosed] = useState(false);
   const [bg, setBg] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [replyText, setReplyText] = useState(__DEV__ && params.vitrinReplyText ? params.vitrinReplyText : '');
+  const [replySending, setReplySending] = useState(false);
   useEffect(() => {
     AsyncStorage.getItem(COACH_KEY)
       .then((v) => {
@@ -393,6 +400,34 @@ export default function StoryViewerScreen() {
   const fade = useSharedValue(1);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
+  // G63-S1: hikâyeye serbest metin yanıtı → DM (story_reply). Kurallar (istek, gizli hesap, engel, hız) sunucuda.
+  const sendReply = async () => {
+    const body = cleanBody(replyText);
+    if (!body || !story || replySending || own) return;
+    setReplySending(true);
+    try {
+      const dm = getDmClient();
+      const { conversation_id } = await dm.open({ user: story.author_id });
+      const res = await dm.send({ conversation: conversation_id, body, kind: 'story_reply', ref: { story_id: story.id }, idem: newIdem() });
+      if (!res.ok) {
+        setToast({ message: tr(dmErrorKey(res.error, 'scope' in res ? res.scope : undefined)) });
+        return;
+      }
+      if (res.needs_moderation && (await dm.moderate({ message: res.id })) === 'blocked') {
+        setToast({ message: tr('dm.err.not_sent') });
+        return;
+      }
+      haptic('success');
+      setReplyText('');
+      setReply(false);
+      setToast({ message: tr('dm.story.sent'), success: true });
+    } catch (e) {
+      setToast({ message: tr(dmErrorKey(rpcCode(e))) });
+    } finally {
+      setReplySending(false);
+    }
+  };
+
   const actions = useRef({ goNext, goPrev, goUser, close, own, setReply, setViewers });
   actions.current = { goNext, goPrev, goUser, close, own, setReply, setViewers };
   const storyH = Math.max(420, H - Math.max(insets.top, 20) - 69 - Math.max(insets.bottom, 8));
@@ -663,7 +698,7 @@ export default function StoryViewerScreen() {
             </View>
           ) : null}
 
-          {/* reply: YALNIZ hızlı tepkiler. */}
+          {/* reply: hızlı tepkiler (+ G63: `mesajlar` açıkken serbest metin, aşağıda). */}
           {reply && story && !own ? (
             <View style={StyleSheet.absoluteFill} testID="story-viewer-reply">
               <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.55)' }]} onPress={() => setReply(false)} accessibilityRole="button" accessibilityLabel={tr('hikaye.close')} />
@@ -683,6 +718,38 @@ export default function StoryViewerScreen() {
                   })}
                 </View>
               </View>
+              {mesajlar ? (
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.replyKav} pointerEvents="box-none">
+                  <View style={[styles.replyRow, { backgroundColor: st.bg }]} testID="story-reply-text">
+                    <View style={[styles.replyField, { backgroundColor: st.card, borderColor: st.text }]}>
+                      <TextInput
+                        value={replyText}
+                        onChangeText={setReplyText}
+                        placeholder={tr('dm.story.reply_ph')}
+                        placeholderTextColor={st.sec}
+                        accessibilityLabel={tr('dm.story.reply_a11y', { name: group?.name ?? '' })}
+                        autoFocus={!(__DEV__ && params.vitrinState === 'reply')}
+                        maxLength={1000}
+                        returnKeyType="send"
+                        onSubmitEditing={() => void sendReply()}
+                        style={[styles.replyInput, { color: st.text }]}
+                        testID="story-reply-input"
+                      />
+                    </View>
+                    <Pressable
+                      onPress={() => void sendReply()}
+                      disabled={!replyText.trim() || replySending}
+                      accessibilityRole="button"
+                      accessibilityLabel={tr('dm.story.send')}
+                      accessibilityState={{ disabled: !replyText.trim(), busy: replySending }}
+                      style={[styles.replySend, { backgroundColor: replyText.trim() ? LIME : st.card }]}
+                      testID="story-reply-send"
+                    >
+                      <Svg width={22} height={22} viewBox="0 0 256 256"><Path d={P_SEND} fill={replyText.trim() ? '#0A0A0A' : st.sec} /></Svg>
+                    </Pressable>
+                  </View>
+                </KeyboardAvoidingView>
+              ) : null}
             </View>
           ) : null}
         </Animated.View>
@@ -819,6 +886,11 @@ const styles = StyleSheet.create({
   gotIt: { minWidth: 160, minHeight: 48, borderRadius: 24, backgroundColor: '#FFFFFF', paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
   gotItT: { color: '#0A0A0A', fontFamily: fontFamily.bodyBold, fontSize: 15 },
   quick: { position: 'absolute', left: 16, right: 16, top: '30%' },
+  replyKav: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
+  replyRow: { minHeight: 64, paddingVertical: 8, paddingLeft: 16, paddingRight: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  replyField: { flex: 1, minWidth: 0, minHeight: 48, borderRadius: 24, borderWidth: 2, paddingHorizontal: 16, justifyContent: 'center' },
+  replyInput: { fontFamily: fontFamily.bodyRegular, fontSize: 16, paddingVertical: 10 },
+  replySend: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   quickT: { marginBottom: 10, textAlign: 'center', color: '#FFFFFF', fontFamily: fontFamily.bodyBold, fontSize: 14 },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   quickBtn: { width: '31.5%', minHeight: 76, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', gap: 4 },

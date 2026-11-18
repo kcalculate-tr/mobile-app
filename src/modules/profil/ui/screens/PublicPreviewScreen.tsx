@@ -42,7 +42,10 @@ export default function PublicPreviewScreen({
   storyRing = null,
   afterStats = null,
   onShare,
+  secondaryAction,
 }: {
+  /** G63-S1: `mesajlar` açıkken takip düğmesinin yanında "Mesaj" (çerçeveli, 44 pt). Verilmezse çizilmez. */
+  secondaryAction?: { label: string; accessibilityLabel?: string; onPress: () => void; testID?: string };
   onBack: () => void;
   /** G61-S1 md.5 (FinShareEntry "Profil başlığı"): paylaş simgesi → paylaş sayfası. Verilmezse (bayrak kapalı) çizilmez. */
   onShare?: () => void;
@@ -214,6 +217,27 @@ export default function PublicPreviewScreen({
           })()}
           {/* Önizleme: başkalarının göreceği düğme; kendi profilinde etkileşimsiz. */}
           {blocked ? null : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {secondaryAction ? (
+              <Pressable
+                onPress={secondaryAction.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={secondaryAction.accessibilityLabel ?? secondaryAction.label}
+                testID={secondaryAction.testID}
+                style={{
+                  height: 44,
+                  paddingHorizontal: 18,
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  borderColor: t.color.line,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 6,
+                }}
+              >
+                <Text style={{ fontFamily: bodySemibold, fontSize: 15, color: t.color.ink }}>{secondaryAction.label}</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={action?.onPress}
               disabled={!action || action.busy}
@@ -239,6 +263,7 @@ export default function PublicPreviewScreen({
                 </Text>
               )}
             </Pressable>
+            </View>
           )}
         </View>
 

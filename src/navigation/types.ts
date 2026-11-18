@@ -91,7 +91,31 @@ export type RootStackParamList = {
     openViewers?: boolean;
     /** YALNIZ __DEV__ vitrini: açılış hâli. */
     vitrinState?: 'reply';
+    /** YALNIZ __DEV__ vitrini (G63): yanıt alanında örnek metin. */
+    vitrinReplyText?: string;
   };
+  // G63-S1 — Mesajlar (DM); yalnız `mesajlar` açıkken (ya da __DEV__) kayıtlı. Kapalıyken giriş YOK.
+  DmInbox: { tab?: 'all' | 'requests' } | undefined;
+  DmChat: {
+    /** Var olan sohbet; yoksa userId ile dm_open. */
+    conversationId?: string;
+    userId?: string;
+    /** Yükleme bitene kadar başlıkta gösterilecek (giriş noktasından). */
+    name?: string | null;
+    handle?: string | null;
+    avatar?: string | null;
+    /** YALNIZ __DEV__ vitrini. */
+    vitrinMe?: string;
+    vitrinView?: 'menu' | 'block' | 'blocked';
+    vitrinDraft?: string;
+    vitrinTyping?: boolean;
+  };
+  DmNew: {
+    /** G61 ShareSheet "Mesajla gönder": seçilen kişiye gönderi kartı gider. */
+    share?: { kind: 'post'; postId: string };
+    /** YALNIZ __DEV__ vitrini. */
+    vitrinQuery?: string;
+  } | undefined;
   // G15-S3 — Bildirimler tam sayfa; yalnız `sosyal_bildirim` açıkken (ya da __DEV__) kayıtlı.
   KesfetNotifications: undefined;
   // G58-S2 md.3 — Reels dikey video akışı; yalnız `kesfet_video` açıkken (ya da __DEV__) kayıtlı.

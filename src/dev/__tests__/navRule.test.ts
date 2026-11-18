@@ -48,6 +48,7 @@ const MODAL_FILES = [
   'modules/kayit/auth/AuthSheet.tsx', // G47-S1 tek giriş katmanı (alttan sheet, kapat X sağ üstte)
   'modules/subscription/ui/SubResult.tsx',
   'modules/subscription/ui/SubLimitSheet.tsx',
+  'modules/mesajlar/ui/NewMessageScreen.tsx', // G63-S1 FinChatNew (sayfa/modal, kapat X sağda)
 ];
 
 /** İtilen sayfa / sayfa başlığı (bayrak açık yol) — kapat X YOK, yalnız sol geri. */

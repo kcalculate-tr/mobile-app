@@ -1042,6 +1042,41 @@ function resolveParity(name: string): ResolvedEntry | null {
       ...(g62[4] ? { textSize: 'accessibility-extra-large' as const } : {}),
     };
   }
+  // G63-S1 — `G63-<Hâl>(-EN)(-Dark)(-XL)`: Mesajlar (FinInbox / FinChat / FinChatNew) + girişler (Keşfet simgesi,
+  // hikâye yanıtı). Bellek içi DM dünyası: src/dev/vitrinMesajlar.ts (sahne = hâl).
+  const g63 = /^G63-(Gelen|GelenBos|Istekler|IsteklerBos|Sohbet|Menu|Engelle|Engellendi|Istek|Yeni|YeniSonuc|YeniYok|HikayeYanit|Kesfet|Profil)(-EN)?(-Dark)?(-XL)?$/.exec(name);
+  if (g63) {
+    const dmIn = (params?: Record<string, unknown>) => route([...kes(), { name: 'DmInbox', ...(params ? { params } : {}) }]);
+    const chat = (params: Record<string, unknown>) => route([...kes(), { name: 'DmInbox' }, { name: 'DmChat', params: { vitrinMe: '00000000-0000-4000-8000-00000000a14e', ...params } }]);
+    const nw = (params?: Record<string, unknown>) => route([...kes(), { name: 'DmInbox' }, { name: 'DmNew', ...(params ? { params } : {}) }]);
+    const T: Record<string, { target: VitrinTarget; scene: string }> = {
+      Gelen: { target: dmIn(), scene: 'chats' },
+      GelenBos: { target: dmIn(), scene: 'chatsEmpty' },
+      Istekler: { target: dmIn({ tab: 'requests' }), scene: 'requests' },
+      IsteklerBos: { target: dmIn({ tab: 'requests' }), scene: 'requestsEmpty' },
+      Sohbet: { target: chat({ conversationId: 'chat-ayse', vitrinTyping: true }), scene: 'chat' },
+      Menu: { target: chat({ conversationId: 'chat-ayse', vitrinView: 'menu' }), scene: 'chat' },
+      Engelle: { target: chat({ conversationId: 'chat-ayse', vitrinView: 'block' }), scene: 'chat' },
+      Engellendi: { target: chat({ conversationId: 'chat-ayse', vitrinView: 'blocked' }), scene: 'chat' },
+      Istek: { target: chat({ conversationId: 'req-burak' }), scene: 'request' },
+      Yeni: { target: nw(), scene: 'chats' },
+      YeniSonuc: { target: nw({ vitrinQuery: 'dyt' }), scene: 'chats' },
+      YeniYok: { target: nw({ vitrinQuery: 'kcal_yok' }), scene: 'chats' },
+      HikayeYanit: {
+        target: route([...kes(), { name: 'StoryViewer', params: { userIds: ['ayse'], startUserId: 'ayse', vitrinState: 'reply', vitrinReplyText: 'Bu kahvaltıyı yarın deneyeceğim' } }]),
+        scene: 'story',
+      },
+      Kesfet: { target: route(kes()), scene: 'chats' },
+      Profil: { target: route([...kes(), { name: 'PublicProfile', params: { handle: 'aysek' } }]), scene: 'chats' },
+    };
+    const d = T[g63[1]];
+    return {
+      pano: name, area: 'kesfet', target: d.target, data: 'default', scene: d.scene,
+      flags: [...FINAL_FLAGS, 'mesajlar', 'hikaye', 'paylasim_karti', 'paylasim_baglanti'],
+      lang: g63[2] ? 'en' : 'tr', auth: 'user', hasDark: true, requested: name, scheme: g63[3] ? 'dark' : 'light',
+      ...(g63[4] ? { textSize: 'accessibility-extra-large' as const } : {}),
+    };
+  }
   const sub = /^Sub-([a-zA-Z]+)$/.exec(name);
   if (sub) {
     return {

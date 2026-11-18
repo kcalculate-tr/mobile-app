@@ -1,5 +1,6 @@
 import { dayKey } from './dayKey';
 import { planLinkTarget } from '../navigation/planLinks';
+import { dmLinkTarget } from '../modules/mesajlar/links';
 
 export function resolveNavigation(
   navigation: any,
@@ -28,6 +29,18 @@ export function resolveNavigation(
   // Push bildirimlerinden gelen kcal:// derin baglantilari. Onceden ham sema
   // dogrudan navigate'e veriliyordu; ekran adi olmadigi icin fallback'e
   // dusuyor ve bildirim yanlis ekran aciyordu.
+  // G63-S1: yeni mesaj push'u (kcal://dm/<sohbet>) — DmChat yalnız `mesajlar` açıkken kayıtlı; değilse fallback.
+  const dm = dmLinkTarget(target);
+  if (dm) {
+    const names: unknown =
+      (typeof navigation?.getRootState === 'function' ? navigation.getRootState()?.routeNames : null) ??
+      (typeof navigation?.getState === 'function' ? navigation.getState()?.routeNames : null);
+    const known = Array.isArray(names) ? (names as string[]) : null;
+    if (known && !known.includes('DmChat')) navigation.navigate(fallback as any);
+    else navigation.navigate('DmChat', { conversationId: dm.conversationId });
+    return;
+  }
+
   if (target.startsWith('kcal://')) {
     const yol = target.substring('kcal://'.length).replace(/^\/+|\/+$/g, '');
     const HARITA: Record<string, string> = {

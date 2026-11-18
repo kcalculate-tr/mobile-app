@@ -84,6 +84,11 @@ export const FLAG_DEFAULTS = {
   // yorum + fotoğraf; Ana sayfa ve sipariş detayında giriş kartı). Sunucu satırı 20261118120100_g62_order_rating.sql
   // (KAPALI, min_app_version 1.1.0). Kapalıyken v1 akışı (EkOrderDetail ReviewCard, eski HomeScreen modalı) AYNEN.
   siparis_degerlendirme: false,
+  // G63-S1 — Mesajlar (DM): Keşfet başlığında mesaj simgesi (okunmamış rozeti), gelen kutusu + istekler, 1:1 sohbet,
+  // PublicProfile "Mesaj", paylaş sayfasında "Mesajla gönder", hikâye görüntüleyicide serbest metin yanıtı.
+  // Sunucu satırı 20261118140100_g63_mesajlar.sql (KAPALI, min_app_version 1.1.0). Kapalıyken HİÇBİR giriş yok
+  // (rotalar kayıtlı değil, sorgu yok), sunucu RPC'leri 'kapali' döner, push gitmez. Native yok → OTA.
+  mesajlar: false,
 } as const;
 
 export type FlagKey = keyof typeof FLAG_DEFAULTS;

@@ -18,6 +18,7 @@
 //    { plan:'fresh', yearly:true, offer:'izmir_fresh' } (offerLinks.ts).
 //  • G61-S1 md.3: /m/ /d/ /x/ (anlık görüntü) · /r/ tarif · /i/ davet · /s/<UUID> hikâye → ShareLink
 //    (shareLinks.ts). Rota yalnız `paylasim_baglanti` açıkken kayıtlı. `/s/<kod>` (saha) eşleşmez.
+//  • G63-S1: kcal://dm/<sohbet> → DmChat (yalnız `mesajlar` açıkken kayıtlı; push dm_push deep_link'i).
 //  • Eşleşmeyen her URL (ör. kcal://reviews) config'de yok → React Navigation
 //    yok sayar, normal açılışa (initialRouteName) düşer.
 //
@@ -59,6 +60,8 @@ export const linking: LinkingOptions<RootStackParamList> = {
       // koşulları atlanır (offerLinks.ts). Bilinmeyen teklif adı → teklifsiz paywall.
       SubPaywall: { path: OFFER_LINK, parse: { offer: (v: string) => offerFromSlug(v) as never } },
       ShareLink: { path: SHARE_LINK_PATH, alias: [SHARE_STORY_PATH] },
+      // G63-S1: kcal://dm/<sohbet> → DmChat (push "yeni mesaj"). Rota yalnız `mesajlar` açıkken kayıtlı.
+      DmChat: 'dm/:conversationId',
     },
   },
 };

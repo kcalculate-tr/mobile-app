@@ -22,6 +22,8 @@ export function useShareSheet(surface: string): {
   const karti = useFeature('paylasim_karti');
   const linkEnabled = useFeature('paylasim_baglanti');
   const enabled = karti && linkEnabled;
+  // G63-S1: gönderi paylaşımında "Mesajla gönder" (yalnız `mesajlar` açıkken; G61 hedef listesine ek).
+  const mesajlar = useFeature('mesajlar');
   const [req, setReq] = useState<Req | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -40,6 +42,18 @@ export function useShareSheet(surface: string): {
       linkId={req?.linkId ?? null}
       linkEnabled={linkEnabled}
       surface={surface}
+      onSendMessage={
+        mesajlar && req?.input.kind === 'post' && req.linkId
+          ? () => {
+              const postId = req.linkId!;
+              setVisible(false);
+              // Tembel: gezinme modülünü taklit eden testlerde/eski kabukta modül düzeyinde yüklenmesin.
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              const { navigationRef } = require('../../navigation/navigationRef') as typeof import('../../navigation/navigationRef');
+              if (navigationRef.isReady()) navigationRef.navigate('DmNew', { share: { kind: 'post', postId } });
+            }
+          : undefined
+      }
     />
   ) : null;
 

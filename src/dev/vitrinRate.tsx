@@ -6,6 +6,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { FinText as Text } from '../core/design/components/FinText';
 import { fontFamily, useTheme } from '../core/design';
+import { SCROLL_KEYBOARD } from '../core/design/keyboard';
 import { OrderRateSheet, type OrderRateDeps, type OrderRateInitial } from '../modules/eatkcal/v2/ui/rate/OrderRateSheet';
 import { OrderRateCard } from '../modules/eatkcal/v2/ui/rate/OrderRateCard';
 import type { RatePromptOrder } from '../modules/eatkcal/v2/model/orderRateData';
@@ -48,7 +49,7 @@ export function G62RateScene({ state = 'empty', en = false }: { state?: G62State
   const label = order.orderCode ?? '';
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={styles.bg}>
+      <ScrollView {...SCROLL_KEYBOARD} contentContainerStyle={styles.bg}>
         <Text style={[styles.h, { color: c.ink }]}>{en ? 'My orders' : 'Siparişlerim'}</Text>
         <OrderRateCard orderLabel={label} imageUrl={VITRIN_PHOTO.tavukKinoa} onRate={() => {}} onDismiss={state === 'card' ? () => {} : undefined} />
         {state === 'card' ? (

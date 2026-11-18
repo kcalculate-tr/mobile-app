@@ -174,6 +174,15 @@ export async function prepareScene(entry: ResolvedEntry): Promise<PreparedScene>
     const { prepareHikayeScene } = require('./vitrinHikaye') as typeof import('./vitrinHikaye');
     await prepareHikayeScene({ scene, en: entry.lang === 'en' });
   }
+  // G63-S1 — mesajlar vitrini (bellek içi DM dünyası; hikâye yanıtı sahnesi hikâye dünyasını da kurar).
+  if (entry.pano.startsWith('G63-')) {
+    if (scene === 'story') {
+      const { prepareHikayeScene } = require('./vitrinHikaye') as typeof import('./vitrinHikaye');
+      await prepareHikayeScene({ scene, en: entry.lang === 'en' });
+    }
+    const { prepareMesajlarScene } = require('./vitrinMesajlar') as typeof import('./vitrinMesajlar');
+    await prepareMesajlarScene({ scene, en: entry.lang === 'en' });
+  }
   if (scene === 'draft') {
     // TakibeNavigator açılışta taslağı sıfırlar → sonra doldur.
     setTimeout(() => {

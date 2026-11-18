@@ -36,6 +36,7 @@ import { SCROLL_KEYBOARD } from '../../../core/design/keyboard';
 import { useStoryRing } from '../../hikaye/useStoryRing';
 import { HighlightsRow } from '../../hikaye/ui/Highlights';
 import { useShareSheet } from '../../../components/share/useShareSheet';
+import { canMessageProfile } from '../../mesajlar/rules';
 
 // G22-S2 md.5 (FinFollowError): "Takip edilemedi." uyarısı ~6 sn kalır (okuma süresi).
 const FOLLOW_ERROR_HOLD = WAIT.actionToastHold;
@@ -54,6 +55,8 @@ export default function PublicProfileScreen() {
   const yeniKabuk = useFeature('yeni_kabuk' as any);
   // G59-S1: profil fotoğrafı hikâye halkası + öne çıkanlar (yalnız `hikaye` açıkken).
   const hikaye = useFeature('hikaye');
+  // G63-S1: "Mesaj" yalnız `mesajlar` açıkken (kapalıyken düğme yok).
+  const mesajlar = useFeature('mesajlar');
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const storyRingState = useStoryRing(profile && !profile.blocked ? profile.id : null, hikaye, Boolean(user?.id && profile?.id === user.id));
@@ -198,6 +201,16 @@ export default function PublicProfileScreen() {
               onOpen={(h) => navigation.navigate('StoryViewer', { highlightId: h.id, highlightOwnerId: profile.id, title: h.title, ownerAvatar: profile.avatar_url })}
             />
           ) : null
+        }
+        secondaryAction={
+          mesajlar && !isMe && !profile.blocked && canMessageProfile(profile)
+            ? {
+                label: tt('dm.profile_message'),
+                accessibilityLabel: tt('dm.profile_message_a11y', { name: profile.display_name ?? profile.handle ?? '' }),
+                onPress: () => navigation.navigate('DmChat', { userId: profile.id, name: profile.display_name, handle: profile.handle, avatar: profile.avatar_url }),
+                testID: 'public-profile-message',
+              }
+            : undefined
         }
         action={
           isMe
