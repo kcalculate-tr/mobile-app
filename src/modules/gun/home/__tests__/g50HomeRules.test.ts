@@ -124,3 +124,11 @@ test('seri: track/streak kuralı (bugün yoksa dünden); bugünün yeni kaydı s
   assert.equal(homeStreak([], '2026-11-14', 0), 0);
   assert.equal(homeStreak([{ date: '2026-11-11', kcal: 100, count: 1 }], '2026-11-14', 0), 0);
 });
+
+test('18 Kas: tarifler yalnız resmi/doğrulanmış hesaplardan; kendi gönderin ve sıradan kullanıcı paylaşımı girmez', () => {
+  const base = { id: 'x', status: 'published', media: [], meal_card: { name: 'Buzlu Amerikano', kcal: 10, protein_g: 1, photo_url: 'https://x/s.webp' } };
+  assert.equal(recipesFromFeed([{ ...base, author: { role: 'kurum', verified: true } }]).length, 1);
+  assert.equal(recipesFromFeed([{ ...base, author: { role: null, verified: true } }]).length, 1);
+  assert.equal(recipesFromFeed([{ ...base, author: { role: null, verified: false } }]).length, 0);
+  assert.equal(recipesFromFeed([{ ...base, author: { role: 'kurum', verified: true }, me: { is_author: true } }]).length, 0);
+});

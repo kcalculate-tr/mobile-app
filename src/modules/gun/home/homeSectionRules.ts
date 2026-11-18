@@ -77,6 +77,16 @@ export interface RecipeSourcePost {
   media?: readonly { url: string; kind?: string; thumb_path?: string | null }[] | null;
   meal_card: { name: string; kcal: number; protein_g?: number | null; photo_url?: string | null } | null;
   status?: string;
+  /** 18 Kas: yalnız resmi/doğrulanmış hesapların tarifleri; kullanıcıların kendi öğün paylaşımları değil. */
+  author?: { role?: string | null; verified?: boolean | null } | null;
+  me?: { is_author?: boolean | null } | null;
+}
+
+/** "Bugünün tarifleri"ne yalnız resmi (kurum) ya da doğrulanmış hesapların gönderileri girer; kendi gönderin girmez. */
+export function isRecipeSource(p: Pick<RecipeSourcePost, 'author' | 'me'>): boolean {
+  if (p.me?.is_author) return false;
+  if (!p.author) return true; // eski veri / test: yazar bilgisi yoksa önceki kural
+  return p.author.role === 'kurum' || p.author.verified === true;
 }
 
 export interface HomeRecipe {
@@ -94,7 +104,7 @@ export function recipesFromFeed(items: readonly RecipeSourcePost[] | null | unde
   for (const p of items ?? []) {
     if (out.length >= max) break;
     const m = p?.meal_card;
-    if (!m || seen.has(p.id) || (p.status && p.status !== 'published')) continue;
+    if (!m || seen.has(p.id) || (p.status && p.status !== 'published') || !isRecipeSource(p)) continue;
     const kcal = Number(m.kcal);
     if (!Number.isFinite(kcal) || kcal <= 0) continue;
     const first = p.media?.[0];
