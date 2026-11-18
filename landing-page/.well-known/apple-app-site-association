@@ -4,14 +4,16 @@
       {
         "appIDs": ["A63MT69ASR.com.kcalmobile.app"],
         "components": [
-          {
-            "/": "/p/*",
-            "comment": "Paylasilan gonderi (post) derin baglantisi"
-          },
-          {
-            "/": "/u/*",
-            "comment": "Profil (handle) derin baglantisi"
-          }
+          { "/": "/p/*", "comment": "Paylasilan gonderi (post) derin baglantisi" },
+          { "/": "/u/*", "comment": "Profil (handle) derin baglantisi" },
+          { "/": "/r/*", "comment": "G61: tarif" },
+          { "/": "/i/*", "comment": "G61: davet kodu" },
+          { "/": "/m/*", "comment": "G61: paylasilan ogun (anlik goruntu)" },
+          { "/": "/d/*", "comment": "G61: paylasilan gun ozeti (anlik goruntu)" },
+          { "/": "/x/*", "comment": "G61: Tabak Rontgeni (anlik goruntu)" },
+          { "/": "/s/*", "comment": "G61: hikaye (UUID) + G20 saha kodu (uygulama ayirir)" },
+          { "/": "/k/*", "comment": "G20: kutu karti QR kodu - kaynak takibi" },
+          { "/": "/kesfet", "comment": "Kesfet akisi" }
         ]
       }
     ]

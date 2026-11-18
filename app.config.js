@@ -362,6 +362,12 @@ module.exports = {
             { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/u/' },
             { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/k/' },
             { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/s/' },
+            // G61-S1: tarif / davet / öğün / gün / röntgen paylaşım bağlantıları (yeni build gerekir; OTA'da etkisiz).
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/r/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/i/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/m/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/d/' },
+            { scheme: 'https', host: 'l.eatkcal.com', pathPrefix: '/x/' },
             { scheme: 'https', host: 'l.eatkcal.com', path: '/kesfet' },
           ],
         },

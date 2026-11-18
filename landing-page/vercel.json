@@ -2,8 +2,14 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/p/:postId", "destination": "/p.html" },
-    { "source": "/u/:handle", "destination": "/u.html" }
+    { "source": "/p/:id", "destination": "/api/share?k=p&id=:id" },
+    { "source": "/u/:id", "destination": "/api/share?k=u&id=:id" },
+    { "source": "/r/:id", "destination": "/api/share?k=r&id=:id" },
+    { "source": "/i/:id", "destination": "/api/share?k=i&id=:id" },
+    { "source": "/m/:id", "destination": "/api/share?k=m&id=:id" },
+    { "source": "/d/:id", "destination": "/api/share?k=d&id=:id" },
+    { "source": "/x/:id", "destination": "/api/share?k=x&id=:id" },
+    { "source": "/s/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})", "destination": "/api/share?k=s&id=:id" }
   ],
   "headers": [
     {
@@ -13,6 +19,10 @@
     {
       "source": "/.well-known/assetlinks.json",
       "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "source": "/og/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
     }
   ]
 }

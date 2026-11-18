@@ -30,7 +30,8 @@ const aasa = JSON.parse(readFileSync(join(ROOT, 'docs/store/well-known/apple-app
 };
 
 // Uygulamanın tanıdığı yollar: linking.ts (p, u, kesfet) + attribution.ts (k, s).
-const EXPECTED = ['/p/*', '/u/*', '/k/*', '/s/*', '/kesfet'];
+// G61-S1: /r/ tarif · /i/ davet · /m/ /d/ /x/ anlık görüntü eklendi.
+const EXPECTED = ['/p/*', '/u/*', '/k/*', '/s/*', '/r/*', '/i/*', '/m/*', '/d/*', '/x/*', '/kesfet'];
 
 test('sürüm 1.1.1 (build numarası EAS remote)', () => {
   assert.equal(appConfig.expo.version, '1.1.1');
