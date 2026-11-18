@@ -694,6 +694,8 @@ begin
       'other',       case when v_other is not null then public.dm_person_json(v_other, v_uid) end,
       -- Karşı taraf isteği henüz kabul etmediyse gönderen bunu "beklemede" diye bilmez; yalnız okundu gizlenir.
       'other_last_read_at', case when v_me.state = 'active' and v_om.state = 'active' then v_om.last_read_at end,
+      -- Okundu + yazıyor yalnız iki taraf da 'active' iken (istemci typing yayınını buna bağlar).
+      'receipts',    v_other is not null and v_me.state = 'active' and v_om.state = 'active',
       'can_send',    v_other is null or public.dm_can_message(v_uid, v_other) is null,
       'cannot_reason', case when v_other is not null then public.dm_can_message(v_uid, v_other) end
     ),
