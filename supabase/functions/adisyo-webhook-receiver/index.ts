@@ -57,6 +57,11 @@ const ADISYO_API_KEY         = Deno.env.get("ADISYO_API_KEY") ?? "";
 const ADISYO_API_SECRET      = Deno.env.get("ADISYO_API_SECRET") ?? "";
 const ADISYO_API_CONSUMER    = Deno.env.get("ADISYO_API_CONSUMER") ?? "";
 const ADISYO_WEBHOOK_API_KEY = Deno.env.get("ADISYO_WEBHOOK_API_KEY") ?? "";
+// Mansuroğlu (Bayraklı) şubesinin ayrı Adisyo hesabı: webhook imza anahtarı ayrı secret'ta,
+// sipariş okuma (GET /Order) kimlik bilgileri branches.adisyo_config'te.
+const ADISYO_WEBHOOK_API_KEY_MANSUROGLU = Deno.env.get("ADISYO_WEBHOOK_API_KEY_MANSUROGLU") ?? "";
+type Creds = { apiKey: string; apiSecret: string; apiConsumer: string };
+const ENV_CREDS: Creds = { apiKey: ADISYO_API_KEY, apiSecret: ADISYO_API_SECRET, apiConsumer: ADISYO_API_CONSUMER };
 const SUPABASE_URL           = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -134,34 +139,52 @@ serve(async (req) => {
   let hmacMessage = "";
   let hmacExpected = "";
 
-  if (ADISYO_WEBHOOK_API_KEY) {
+  // Hangi Adisyo hesabından geldiğini imza belirler: önce Basın Sitesi, sonra Mansuroğlu anahtarı denenir.
+  let matchedBranch: "basinsitesi" | "mansuroglu" | null = null;
+  for (const k of [
+    { key: ADISYO_WEBHOOK_API_KEY, branch: "basinsitesi" as const },
+    { key: ADISYO_WEBHOOK_API_KEY_MANSUROGLU, branch: "mansuroglu" as const },
+  ]) {
+    if (!k.key || signatureValid) continue;
     try {
-      hmacMessage = `${eventType}|${eventTime}|${ADISYO_WEBHOOK_API_KEY}`;
-      hmacExpected = createHmac("sha256", ADISYO_WEBHOOK_API_KEY)
-        .update(hmacMessage)
+      const expected = createHmac("sha256", k.key)
+        .update(`${eventType}|${eventTime}|${k.key}`)
         .digest("base64");
-      signatureValid = timingSafeEqualStr(sigHeader, hmacExpected);
+      if (timingSafeEqualStr(sigHeader, expected)) {
+        signatureValid = true;
+        matchedBranch = k.branch;
+      } else if (!hmacExpected) {
+        hmacExpected = expected;
+      }
     } catch (e) {
       console.error("HMAC compute failed:", e);
     }
   }
+  // Kayıt ve loglarda anahtarın kendisi ASLA yazılmaz.
+  hmacMessage = `${eventType}|${eventTime}|<apiKey>`;
 
-  // Debug log — Adisyo imza formülünü reverse-engineer etmek için
   if (!signatureValid) {
-    console.log("[HMAC DEBUG]", {
-      receivedSignature: sigHeader,
-      rawBody,
+    console.log("[HMAC] imza eşleşmedi", {
       parsedWebhookEventType: eventType,
       parsedEventTimeUtc: eventTime,
-      apiKeyFirst8: ADISYO_WEBHOOK_API_KEY.substring(0, 8),
-      apiKeyLength: ADISYO_WEBHOOK_API_KEY.length,
-      messageString: hmacMessage,
-      expectedSignatureBase64: hmacExpected,
-      match: false,
+      restaurantIdentity,
+      keysConfigured: [ADISYO_WEBHOOK_API_KEY ? "basinsitesi" : null, ADISYO_WEBHOOK_API_KEY_MANSUROGLU ? "mansuroglu" : null].filter(Boolean),
     });
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Mansuroğlu olayıysa sipariş okuma o hesabın kimlik bilgileriyle yapılır.
+  let creds: Creds = ENV_CREDS;
+  let branchId: string | null = null;
+  if (matchedBranch) {
+    const { data: br } = await supabase.from("branches").select("id, adisyo_config").eq("slug", matchedBranch).maybeSingle();
+    branchId = (br?.id as string | undefined) ?? null;
+    const cfg = (br?.adisyo_config ?? null) as Partial<Creds> | null;
+    if (matchedBranch === "mansuroglu" && cfg?.apiKey && cfg?.apiSecret && cfg?.apiConsumer) {
+      creds = { apiKey: cfg.apiKey, apiSecret: cfg.apiSecret, apiConsumer: cfg.apiConsumer };
+    }
+  }
 
   // 6. Idempotency (eventId UNIQUE constraint zaten var, ama erken dönmek için)
   const { data: existing } = await supabase
@@ -238,7 +261,7 @@ serve(async (req) => {
         // amaçlı kaydedilir, status değiştirmez.
         // D-S1: uygulama DIŞI sipariş → adisyo_orders.
         if (!supabaseOrderId && adisyoOrderId) {
-          const r = await syncExternalOrder(supabase, inserted.id, adisyoOrderId);
+          const r = await syncExternalOrder(supabase, inserted.id, adisyoOrderId, creds, branchId);
           if (r.error) {
             processError = `adisyo_orders_sync_failed: ${r.error}`;
             processedFlag = false;
@@ -256,7 +279,7 @@ serve(async (req) => {
           // Adisyo bizim sistemimizde bilmediğimiz bir order için event attı
           // (Yemeksepeti / Trendyol / salon / telefon…). orders'a DOKUNULMAZ;
           // D-S1: sipariş adisyo_orders'a yazılır.
-          const r = await syncExternalOrder(supabase, inserted.id, adisyoOrderId);
+          const r = await syncExternalOrder(supabase, inserted.id, adisyoOrderId, creds, branchId);
           if (r.error) {
             processError = `adisyo_orders_sync_failed: ${r.error}`;
             processedFlag = false;
@@ -264,7 +287,7 @@ serve(async (req) => {
           break;
         }
 
-        const orderRes = await fetchAdisyoOrder(supabase, supabaseOrderId, adisyoOrderId);
+        const orderRes = await fetchAdisyoOrder(supabase, supabaseOrderId, adisyoOrderId, creds);
         if (!orderRes.ok) {
           processError = `get_order_failed: ${orderRes.errorMsg}`;
           processedFlag = false;
@@ -352,18 +375,21 @@ async function syncExternalOrder(
   supabase: SupabaseClient,
   eventRowId: number,
   adisyoOrderId: number,
+  creds: Creds = ENV_CREDS,
+  branchId: string | null = null,
 ): Promise<{ error: string | null }> {
   try {
-    const res = await fetchAdisyoOrderRaw(
-      { apiKey: ADISYO_API_KEY, apiSecret: ADISYO_API_SECRET, apiConsumer: ADISYO_API_CONSUMER },
-      adisyoOrderId,
-    );
+    const res = await fetchAdisyoOrderRaw(creds, adisyoOrderId);
     await logApi(supabase, null, "GetOrder.external", { adisyoOrderId }, res.status, null, res.error, res.ms);
     if (!res.ok) {
       await markAoFailure(supabase, eventRowId, 0, `get_order_failed: ${res.error}`);
       return { error: `get_order_failed: ${res.error}` };
     }
-    return await upsertAdisyoOrderRow(supabase, eventRowId, adisyoOrderId, res.body, 0);
+    const r = await upsertAdisyoOrderRow(supabase, eventRowId, adisyoOrderId, res.body, 0);
+    if (!r.error && branchId) {
+      await supabase.from("adisyo_orders").update({ branch_id: branchId }).eq("adisyo_order_id", adisyoOrderId).is("branch_id", null);
+    }
+    return r;
   } catch (e) {
     await markAoFailure(supabase, eventRowId, 0, `exception: ${String(e)}`);
     return { error: `exception: ${String(e)}` };
@@ -411,6 +437,7 @@ async function fetchAdisyoOrder(
   supabase: SupabaseClient,
   orderId: number,
   adisyoOrderId: number,
+  creds: Creds = ENV_CREDS,
 ): Promise<{ ok: boolean; body?: any; errorMsg: string }> {
   const url = `${ADISYO_BASE}/Order/${adisyoOrderId}`;
   const t0 = Date.now();
@@ -424,9 +451,9 @@ async function fetchAdisyoOrder(
     const resp = await fetch(url, {
       method: "GET",
       headers: {
-        "x-api-key": ADISYO_API_KEY,
-        "x-api-secret": ADISYO_API_SECRET,
-        "x-api-consumer": ADISYO_API_CONSUMER,
+        "x-api-key": creds.apiKey,
+        "x-api-secret": creds.apiSecret,
+        "x-api-consumer": creds.apiConsumer,
       },
     });
     respStatus = resp.status;
