@@ -342,8 +342,9 @@ function AddressPhoneFlow({
         setAddressCount(rows.length);
         setIndex(buildZoneIndex(zoneRows));
         const profileOk = Boolean(contact.fullName && contact.phone);
-        setHasProfileContact(profileOk);
         const { first, last } = profileOk ? splitName(contact.fullName) : { first: '', last: '' };
+        // Tek kelimelik ad (soyad boş) → ad/soyad alanları gösterilir; yoksa kayıt err_required ile kilitlenir.
+        setHasProfileContact(profileOk && Boolean(first.trim() && last.trim()));
         setForm((prev) => ({
           ...prev,
           contact_email: user.email || '',

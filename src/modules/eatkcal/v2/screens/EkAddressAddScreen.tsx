@@ -177,6 +177,8 @@ export default function EkAddressAddScreen() {
           setHasProfileContact(profileOk && Boolean(f.first_name && f.last_name));
         } else {
           const { first, last } = profileOk ? splitName(contact.fullName) : { first: '', last: '' };
+          // Profilde tek kelimelik ad varsa (soyad boş) ad/soyad alanları gizlenmez; yoksa kayıt düzeltilemez biçimde err_required verir.
+          setHasProfileContact(profileOk && Boolean(first.trim() && last.trim()));
           const zi = buildZoneIndex(zoneRows);
           const gateOpt = gateDistrict ? zi.districtOptions.find((o) => o.value.toLocaleLowerCase('tr') === gateDistrict.toLocaleLowerCase('tr')) : undefined;
           setForm({
