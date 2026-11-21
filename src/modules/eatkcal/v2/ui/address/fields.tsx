@@ -32,6 +32,7 @@ export function AddressInput({
   autoComplete,
   textContentType,
   autoCapitalize,
+  multiline,
 }: {
   label: string;
   value: string;
@@ -43,6 +44,8 @@ export function AddressInput({
   autoComplete?: TextInputProps['autoComplete'];
   textContentType?: TextInputProps['textContentType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
+  /** Uzun metin (adres tarifi): kutu yazıyla birlikte büyür, metin kutudan taşmaz. */
+  multiline?: boolean;
 }) {
   const { c } = useEk();
   return (
@@ -61,7 +64,8 @@ export function AddressInput({
         autoCapitalize={autoCapitalize}
         accessibilityLabel={label}
         testID={testID}
-        style={[ekType.b15, styles.input, { backgroundColor: c.line, color: c.ink }]}
+        multiline={multiline}
+        style={[ekType.b15, styles.input, multiline ? styles.inputMulti : null, { backgroundColor: c.line, color: c.ink }]}
       />
     </View>
   );
@@ -218,6 +222,7 @@ export function MapThumb({ label }: { label: string }) {
 const styles = StyleSheet.create({
   field: { gap: 3, minWidth: 0 },
   input: { minHeight: 44, paddingHorizontal: 12, borderRadius: 12 },
+  inputMulti: { paddingTop: 12, paddingBottom: 12, textAlignVertical: 'top', maxHeight: 132 },
   select: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {

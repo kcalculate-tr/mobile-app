@@ -564,6 +564,7 @@ export default function EkAddressAddScreen() {
               value={form.directions}
               onChangeText={(v) => set('directions', v)}
               placeholder={t('eatkcal.v2.address.directions_ph')}
+              multiline
             />
 
             {!hasProfileContact ? (
