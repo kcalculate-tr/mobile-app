@@ -151,6 +151,27 @@ export async function purchasesLogIn(userId: string): Promise<void> {
   } catch {
     // ağ yoksa sonra yeniden denenir (refresh)
   }
+  void syncSubscriberAttributes(userId);
+}
+
+/** RevenueCat panelinde abonenin adı ve e-postası görünsün ($displayName, $email). Hata sessiz. */
+async function syncSubscriberAttributes(userId: string): Promise<void> {
+  if (!configured || !mod) return;
+  try {
+    const sb = getSupabaseClient();
+    const [{ data: auth }, { data: prof }] = await Promise.all([
+      sb.auth.getUser(),
+      sb.from('profiles').select('full_name').eq('id', userId).maybeSingle(),
+    ]);
+    const attrs: Record<string, string | null> = {};
+    const email = auth?.user?.email ?? null;
+    const name = (prof as { full_name?: string | null } | null)?.full_name?.trim() || null;
+    if (email) attrs.$email = email;
+    if (name) attrs.$displayName = name;
+    if (Object.keys(attrs).length) await (mod as unknown as { setAttributes: (a: Record<string, string | null>) => Promise<void> }).setAttributes(attrs);
+  } catch {
+    // isteğe bağlı: RevenueCat paneli için
+  }
 }
 
 export async function purchasesLogOut(): Promise<void> {
